@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Anchor box and labeler definition."""
 
 import collections
@@ -140,7 +140,11 @@ class AnchorLabeler(object):
         force_match_for_each_col=True)
     self.box_coder = faster_rcnn_box_coder.FasterRcnnBoxCoder()
 
-  def label_anchors(self, anchor_boxes, gt_boxes, gt_labels):
+  def label_anchors(self,
+                    anchor_boxes,
+                    gt_boxes,
+                    gt_labels,
+                    gt_attributes=None):
     """Labels anchors with ground truth inputs.
 
     Args:
@@ -150,6 +154,9 @@ class AnchorLabeler(object):
         For each row, it stores [y0, x0, y1, x1] for four corners of a box.
       gt_labels: A integer tensor with shape [N, 1] representing groundtruth
         classes.
+      gt_attributes: If not None, a dict of (name, gt_attribute) pairs.
+        `gt_attribute` is a float tensor with shape [N, attribute_size]
+        representing groundtruth attributes.
     Returns:
       cls_targets_dict: ordered dictionary with keys
         [min_level, min_level+1, ..., max_level]. The values are tensor with
@@ -160,6 +167,12 @@ class AnchorLabeler(object):
         shape [height_l, width_l, num_anchors_per_location * 4]. The height_l
         and width_l represent the dimension of bounding box regression output at
         l-th level.
+      attribute_targets_dict: a dict with (name, attribute_targets) pairs. Each
+        `attribute_targets` represents an ordered dictionary with keys
+        [min_level, min_level+1, ..., max_level]. The values are tensor with
+        shape [height_l, width_l, num_anchors_per_location * attribute_size].
+        The height_l and width_l represent the dimension of attribute prediction
+        output at l-th level.
       cls_weights: A flattened Tensor with shape [batch_size, num_anchors], that
         serves as masking / sample weight for classification loss. Its value
         is 1.0 for positive and negative matched anchors, and 0.0 for ignored
@@ -175,11 +188,19 @@ class AnchorLabeler(object):
     flattened_anchor_boxes = tf.concat(flattened_anchor_boxes, axis=0)
     similarity_matrix = self.similarity_calc(flattened_anchor_boxes, gt_boxes)
     match_indices, match_indicators = self.matcher(similarity_matrix)
+
     mask = tf.less_equal(match_indicators, 0)
     cls_mask = tf.expand_dims(mask, -1)
     cls_targets = self.target_gather(gt_labels, match_indices, cls_mask, -1)
     box_mask = tf.tile(cls_mask, [1, 4])
     box_targets = self.target_gather(gt_boxes, match_indices, box_mask)
+    att_targets = {}
+    if gt_attributes:
+      for k, v in gt_attributes.items():
+        att_size = v.get_shape().as_list()[-1]
+        att_mask = tf.tile(cls_mask, [1, att_size])
+        att_targets[k] = self.target_gather(v, match_indices, att_mask, -1)
+
     weights = tf.squeeze(tf.ones_like(gt_labels, dtype=tf.float32), -1)
     box_weights = self.target_gather(weights, match_indices, mask)
     ignore_mask = tf.equal(match_indicators, -2)
@@ -191,8 +212,11 @@ class AnchorLabeler(object):
     # Unpacks labels into multi-level representations.
     cls_targets_dict = unpack_targets(cls_targets, anchor_boxes)
     box_targets_dict = unpack_targets(box_targets, anchor_boxes)
+    attribute_targets_dict = {}
+    for k, v in att_targets.items():
+      attribute_targets_dict[k] = unpack_targets(v, anchor_boxes)
 
-    return cls_targets_dict, box_targets_dict, cls_weights, box_weights
+    return cls_targets_dict, box_targets_dict, attribute_targets_dict, cls_weights, box_weights
 
 
 class RpnAnchorLabeler(AnchorLabeler):
@@ -203,7 +227,8 @@ class RpnAnchorLabeler(AnchorLabeler):
                unmatched_threshold=0.3,
                rpn_batch_size_per_im=256,
                rpn_fg_fraction=0.5):
-    AnchorLabeler.__init__(self, match_threshold=0.7, unmatched_threshold=0.3)
+    AnchorLabeler.__init__(self, match_threshold=match_threshold,
+                           unmatched_threshold=unmatched_threshold)
     self._rpn_batch_size_per_im = rpn_batch_size_per_im
     self._rpn_fg_fraction = rpn_fg_fraction
 

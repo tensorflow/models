@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Common functionalities used by both Keras and Estimator implementations."""
 
 from __future__ import absolute_import
@@ -32,7 +32,6 @@ from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
 from official.recommendation import movielens
 from official.utils.flags import core as flags_core
-from official.utils.misc import keras_utils
 
 FLAGS = flags.FLAGS
 
@@ -163,7 +162,6 @@ def define_ncf_flags():
       dtype=True,
       fp16_implementation=True,
       loss_scale=True,
-      dynamic_loss_scale=True,
       enable_xla=True,
   )
   flags_core.define_device(tpu=True)

@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Losses used for detection models."""
 
 # Import libraries
@@ -68,7 +68,7 @@ class FocalLoss(tf.keras.losses.Loss):
                name=None):
     """Initializes `FocalLoss`.
 
-    Arguments:
+    Args:
       alpha: The `alpha` weight factor for binary class imbalance.
       gamma: The `gamma` focusing parameter to re-weight loss.
       num_classes: Number of foreground classes.
@@ -91,7 +91,7 @@ class FocalLoss(tf.keras.losses.Loss):
   def call(self, y_true, y_pred):
     """Invokes the `FocalLoss`.
 
-    Arguments:
+    Args:
       y_true: Ordered Dict with level to [batch, height, width, num_anchors].
         for example,
         {3: tf.Tensor(shape=[32, 512, 512, 9], dtype=tf.float32),
@@ -143,7 +143,7 @@ class RetinanetBoxLoss(tf.keras.losses.Loss):
                name=None):
     """Initializes `RetinanetBoxLoss`.
 
-    Arguments:
+    Args:
       delta: A float, the point where the Huber loss function changes from a
         quadratic to linear.
       reduction: (Optional) Type of `tf.keras.losses.Reduction` to apply to
@@ -167,7 +167,7 @@ class RetinanetBoxLoss(tf.keras.losses.Loss):
 
     Computes total detection loss including box and class loss from all levels.
 
-    Arguments:
+    Args:
       y_true: Ordered Dict with level to [batch, height, width,
         num_anchors * 4] for example,
         {3: tf.Tensor(shape=[32, 512, 512, 9 * 4], dtype=tf.float32),

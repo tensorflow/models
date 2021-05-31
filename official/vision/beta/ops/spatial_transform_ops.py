@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Spatial transform ops."""
 
 import tensorflow as tf
@@ -523,7 +523,7 @@ def nearest_upsampling(data, scale):
     w = shape[2]
     bs = -1 if bs is None else bs
     # Uses reshape to quickly upsample the input.  The nearest pixel is selected
-    # implicitly via broadcasting.
-    data = tf.reshape(data, [bs, h, 1, w, 1, c]) * tf.ones(
-        [1, 1, scale, 1, scale, 1], dtype=data.dtype)
+    # via tiling.
+    data = tf.tile(
+        tf.reshape(data, [bs, h, 1, w, 1, c]), [1, 1, scale, 1, scale, 1])
     return tf.reshape(data, [bs, h * scale, w * scale, c])

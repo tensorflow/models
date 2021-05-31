@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Mock task for testing."""
 
 import dataclasses
@@ -52,7 +51,7 @@ class MockTask(base_task.Task):
   def build_model(self, *arg, **kwargs):
     inputs = tf.keras.layers.Input(shape=(2,), name="random", dtype=tf.float32)
     outputs = tf.keras.layers.Dense(
-        1, bias_initializer=tf.keras.initializers.Ones())(
+        1, bias_initializer=tf.keras.initializers.Ones(), name="dense_0")(
             inputs)
     network = tf.keras.Model(inputs=inputs, outputs=outputs)
     return MockModel(network)
@@ -63,7 +62,7 @@ class MockTask(base_task.Task):
 
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
     logs = super().validation_step(inputs, model, metrics)
-    logs["counter"] = tf.ones((1,), dtype=tf.float32)
+    logs["counter"] = tf.constant(1, dtype=tf.float32)
     return logs
 
   def build_inputs(self, params):
@@ -89,7 +88,7 @@ class MockTask(base_task.Task):
           np.concatenate([np.expand_dims(v.numpy(), axis=0) for v in value]))
     return state
 
-  def reduce_aggregated_logs(self, aggregated_logs):
+  def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     for k, v in aggregated_logs.items():
       aggregated_logs[k] = np.sum(np.stack(v, axis=0))
     return aggregated_logs

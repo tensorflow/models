@@ -27,6 +27,7 @@ from object_detection.builders import model_builder
 from object_detection.core import model
 from object_detection.protos import pipeline_pb2
 from object_detection.utils import tf_version
+from google.protobuf import text_format
 
 if six.PY2:
   import mock  # pylint: disable=g-importing-member,g-import-not-at-top
@@ -79,6 +80,10 @@ class FakeModel(model.DetectionModel):
               tf.constant([[0, 1], [1, 0]], tf.float32),
           'num_detections':
               tf.constant([2, 1], tf.float32),
+          'detection_keypoints':
+              tf.zeros([2, 17, 2], tf.float32),
+          'detection_keypoint_scores':
+              tf.zeros([2, 17], tf.float32),
       }
     return postprocessed_tensors
 
@@ -124,6 +129,49 @@ class ExportTfLiteGraphTest(tf.test.TestCase):
     pipeline_config.model.ssd.box_coder.faster_rcnn_box_coder.width_scale = 5.0
     pipeline_config.model.ssd.post_processing.batch_non_max_suppression.iou_threshold = 0.5
     return pipeline_config
+
+  def _get_center_net_config(self):
+    pipeline_config_text = """
+model {
+  center_net {
+    num_classes: 1
+    feature_extractor {
+      type: "mobilenet_v2_fpn"
+    }
+    image_resizer {
+      fixed_shape_resizer {
+        height: 10
+        width: 10
+      }
+    }
+    object_detection_task {
+      localization_loss {
+        l1_localization_loss {
+        }
+      }
+    }
+    object_center_params {
+      classification_loss {
+      }
+      max_box_predictions: 20
+    }
+    keypoint_estimation_task {
+      loss {
+        localization_loss {
+          l1_localization_loss {
+          }
+        }
+        classification_loss {
+          penalty_reduced_logistic_focal_loss {
+          }
+        }
+      }
+    }
+  }
+}
+    """
+    return text_format.Parse(
+        pipeline_config_text, pipeline_pb2.TrainEvalPipelineConfig())
 
   # The tf.implements signature is important since it ensures MLIR legalization,
   # so we test it here.
@@ -177,7 +225,7 @@ class ExportTfLiteGraphTest(tf.test.TestCase):
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = FakeModel()
       output_directory = os.path.join(tmp_dir, 'output')
-      expected_message = 'Only ssd models are supported in tflite'
+      expected_message = 'Only ssd or center_net models are supported in tflite'
       try:
         export_tflite_graph_lib_tf2.export_tflite_model(
             pipeline_config=pipeline_config,
@@ -239,6 +287,55 @@ class ExportTfLiteGraphTest(tf.test.TestCase):
     # The exported graph doesn't have numerically correct outputs, but there
     # should be 4.
     self.assertEqual(4, len(detections))
+
+  def test_center_net_inference_object_detection(self):
+    tmp_dir = self.get_temp_dir()
+    output_directory = os.path.join(tmp_dir, 'output')
+    self._save_checkpoint_from_mock_model(tmp_dir)
+    with mock.patch.object(
+        model_builder, 'build', autospec=True) as mock_builder:
+      mock_builder.return_value = FakeModel()
+      export_tflite_graph_lib_tf2.export_tflite_model(
+          pipeline_config=self._get_center_net_config(),
+          trained_checkpoint_dir=tmp_dir,
+          output_directory=output_directory,
+          max_detections=10,
+          use_regular_nms=False)
+
+    saved_model_path = os.path.join(output_directory, 'saved_model')
+    detect_fn = tf.saved_model.load(saved_model_path)
+    detect_fn_sig = detect_fn.signatures['serving_default']
+    image = tf.zeros(shape=[1, 10, 10, 3], dtype=tf.float32)
+    detections = detect_fn_sig(image)
+
+    # The exported graph doesn't have numerically correct outputs, but there
+    # should be 4.
+    self.assertEqual(4, len(detections))
+
+  def test_center_net_inference_keypoint(self):
+    tmp_dir = self.get_temp_dir()
+    output_directory = os.path.join(tmp_dir, 'output')
+    self._save_checkpoint_from_mock_model(tmp_dir)
+    with mock.patch.object(
+        model_builder, 'build', autospec=True) as mock_builder:
+      mock_builder.return_value = FakeModel()
+      export_tflite_graph_lib_tf2.export_tflite_model(
+          pipeline_config=self._get_center_net_config(),
+          trained_checkpoint_dir=tmp_dir,
+          output_directory=output_directory,
+          max_detections=10,
+          use_regular_nms=False,
+          include_keypoints=True)
+
+    saved_model_path = os.path.join(output_directory, 'saved_model')
+    detect_fn = tf.saved_model.load(saved_model_path)
+    detect_fn_sig = detect_fn.signatures['serving_default']
+    image = tf.zeros(shape=[1, 10, 10, 3], dtype=tf.float32)
+    detections = detect_fn_sig(image)
+
+    # The exported graph doesn't have numerically correct outputs, but there
+    # should be 6 (4 for boxes, 2 for keypoints).
+    self.assertEqual(6, len(detections))
 
 
 if __name__ == '__main__':

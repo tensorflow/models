@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """IOU Metrics used for semantic segmentation models."""
 
 import numpy as np
@@ -48,7 +48,7 @@ class PerClassIoU(tf.keras.metrics.Metric):
   def __init__(self, num_classes, name=None, dtype=None):
     """Initializes `PerClassIoU`.
 
-    Arguments:
+    Args:
       num_classes: The possible number of labels the prediction task can have.
         This value must be provided, since a confusion matrix of dimension =
         [num_classes, num_classes] will be allocated.

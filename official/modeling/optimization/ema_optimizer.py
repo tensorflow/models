@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Exponential moving average optimizer."""
 
-from typing import Text, List
+from typing import List, Optional, Text
 
 import tensorflow as tf
 
@@ -48,6 +48,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
 
   def __init__(self,
                optimizer: tf.keras.optimizers.Optimizer,
+               trainable_weights_only: bool = True,
                average_decay: float = 0.99,
                start_step: int = 0,
                dynamic_decay: bool = True,
@@ -58,6 +59,9 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
     Args:
       optimizer: `tf.keras.optimizers.Optimizer` that will be
         used to compute and apply gradients.
+      trainable_weights_only: 'bool', if True, only model trainable weights will
+        be updated. Otherwise, all model weights will be updated. This mainly
+        affects batch normalization parameters.
       average_decay: float. Decay to use to maintain the moving averages
         of trained variables.
       start_step: int. What step to start the moving average.
@@ -70,31 +74,39 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
       **kwargs: keyword arguments. Allowed to be {`clipnorm`,
         `clipvalue`, `lr`, `decay`}.
     """
-    super(ExponentialMovingAverage, self).__init__(name, **kwargs)
+    super().__init__(name, **kwargs)
     self._average_decay = average_decay
+    self._trainable_weights_only = trainable_weights_only
     self._start_step = tf.constant(start_step, tf.float32)
     self._dynamic_decay = dynamic_decay
     self._optimizer = optimizer
     self._track_trackable(self._optimizer, 'base_optimizer')
+    self._average_weights = None
+    self._model_weights = None
 
   def shadow_copy(self, model: tf.keras.Model):
     """Creates shadow variables for the given model weights."""
-    for var in model.weights:
+
+    if self._trainable_weights_only:
+      self._model_weights = model.trainable_variables
+    else:
+      self._model_weights = model.variables
+    for var in self._model_weights:
       self.add_slot(var, 'average', initializer='zeros')
+
     self._average_weights = [
-        self.get_slot(var, 'average') for var in model.weights
+        self.get_slot(var, 'average') for var in self._model_weights
     ]
-    self._model_weights = model.weights
 
   @property
   def has_shadow_copy(self):
     """Whether this optimizer has created shadow variables."""
-    return self._model_weights is not None
+    return self._model_weights is not None and self._average_weights is not None
 
   def _create_slots(self, var_list):
     self._optimizer._create_slots(var_list=var_list)  # pylint: disable=protected-access
 
-  def apply_gradients(self, grads_and_vars, name: Text = None):
+  def apply_gradients(self, grads_and_vars, name: Optional[Text] = None):
     result = self._optimizer.apply_gradients(grads_and_vars, name)
     self.update_average(self.iterations)
     return result

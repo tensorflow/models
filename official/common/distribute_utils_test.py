@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """ Tests for distribution util functions."""
 
 import tensorflow as tf
@@ -40,6 +40,19 @@ class GetDistributionStrategyTest(tf.test.TestCase):
     self.assertEquals(len(ds.extended.worker_devices), 5)
     for device in ds.extended.worker_devices:
       self.assertIn('GPU', device)
+
+  def test_no_strategy(self):
+    ds = distribute_utils.get_distribution_strategy('off')
+    self.assertIsNone(ds)
+
+  def test_invalid_strategy(self):
+    with self.assertRaisesRegexp(
+        ValueError,
+        'distribution_strategy must be a string but got: False. If'):
+      distribute_utils.get_distribution_strategy(False)
+    with self.assertRaisesRegexp(
+        ValueError, 'distribution_strategy must be a string but got: 1'):
+      distribute_utils.get_distribution_strategy(1)
 
 
 if __name__ == '__main__':

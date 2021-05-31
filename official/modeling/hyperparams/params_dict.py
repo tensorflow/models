@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """A parameter dictionary class which supports the nest structure."""
 
 import collections
@@ -40,6 +40,26 @@ _PARAM_RE = re.compile(
   ($|,\s*)""", re.VERBOSE)
 
 _CONST_VALUE_RE = re.compile(r'(\d.*|-\d.*|None)')
+
+# Yaml loader with an implicit resolver to parse float decimal and exponential
+# format. The regular experission parse the following cases:
+# 1- Decimal number with an optional exponential term.
+# 2- Integer number with an exponential term.
+# 3- Decimal number with an optional exponential term.
+# 4- Decimal number.
+
+LOADER = yaml.SafeLoader
+LOADER.add_implicit_resolver(
+    'tag:yaml.org,2002:float',
+    re.compile(r'''
+    ^(?:[-+]?(?:[0-9][0-9_]*)\\.[0-9_]*(?:[eE][-+]?[0-9]+)?
+    |
+    [-+]?(?:[0-9][0-9_]*)(?:[eE][-+]?[0-9]+)
+    |
+    \\.[0-9_]+(?:[eE][-+][0-9]+)?
+    |
+    [-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\\.[0-9_]*)$''', re.X),
+    list('-+0123456789.'))
 
 
 class ParamsDict(object):
@@ -309,10 +329,10 @@ class ParamsDict(object):
         raise ValueError('Unsupported relation in restriction.')
 
 
-def read_yaml_to_params_dict(file_path):
+def read_yaml_to_params_dict(file_path: str):
   """Reads a YAML file to a ParamsDict."""
   with tf.io.gfile.GFile(file_path, 'r') as f:
-    params_dict = yaml.load(f, Loader=yaml.FullLoader)
+    params_dict = yaml.load(f, Loader=LOADER)
     return ParamsDict(params_dict)
 
 
@@ -433,7 +453,7 @@ def override_params_dict(params, dict_or_string_or_yaml_file, is_strict):
           nested_csv_str_to_json_str(dict_or_string_or_yaml_file))
     except ValueError:
       pass
-    params_dict = yaml.load(dict_or_string_or_yaml_file, Loader=yaml.FullLoader)
+    params_dict = yaml.load(dict_or_string_or_yaml_file, Loader=LOADER)
     if isinstance(params_dict, dict):
       params.override(params_dict, is_strict)
     else:

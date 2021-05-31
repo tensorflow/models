@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Classes to build various prediction heads in all supported models."""
 
 from __future__ import absolute_import
@@ -23,7 +23,6 @@ import functools
 import numpy as np
 import tensorflow as tf
 
-from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.modeling.architecture import nn_ops
 from official.vision.detection.ops import spatial_transform_ops
 
@@ -60,6 +59,8 @@ class RpnHead(tf.keras.layers.Layer):
       norm_activation: an operation that includes a normalization layer followed
         by an optional activation layer.
     """
+    super().__init__(autocast=False)
+
     self._min_level = min_level
     self._max_level = max_level
     self._anchors_per_location = anchors_per_location
@@ -123,12 +124,12 @@ class RpnHead(tf.keras.layers.Layer):
 
     return scores, bboxes
 
-  def __call__(self, features, is_training=None):
+  def call(self, features, is_training=None):
 
     scores_outputs = {}
     box_outputs = {}
 
-    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('rpn_head'):
+    with tf.name_scope('rpn_head'):
       for level in range(self._min_level, self._max_level + 1):
         scores_output, box_output = self._shared_rpn_heads(
             features[level], self._anchors_per_location, level, is_training)
@@ -251,7 +252,7 @@ class OlnRpnHead(tf.keras.layers.Layer):
     box_outputs = {}
     center_outputs = {}
 
-    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('rpn_head'):
+    with tf.name_scope('rpn_head'):
       for level in range(self._min_level, self._max_level + 1):
         scores_output, box_output, center_output = self._shared_rpn_heads(
             features[level], self._anchors_per_location, level, is_training)
@@ -294,6 +295,8 @@ class FastrcnnHead(tf.keras.layers.Layer):
       norm_activation: an operation that includes a normalization layer followed
         by an optional activation layer.
     """
+    super(FastrcnnHead, self).__init__(autocast=False)
+
     self._num_classes = num_classes
 
     self._num_convs = num_convs
@@ -360,7 +363,7 @@ class FastrcnnHead(tf.keras.layers.Layer):
         bias_initializer=tf.zeros_initializer(),
         name='box-predict')
 
-  def __call__(self, roi_features, is_training=None):
+  def call(self, roi_features, is_training=None):
     """Box and class branches for the Mask-RCNN model.
 
     Args:
@@ -376,7 +379,7 @@ class FastrcnnHead(tf.keras.layers.Layer):
         predictions.
     """
 
-    with keras_utils.maybe_enter_backend_graph(), tf.name_scope(
+    with tf.name_scope(
         'fast_rcnn_head'):
       # reshape inputs beofre FC.
       _, num_rois, height, width, filters = roi_features.get_shape().as_list()
@@ -520,8 +523,7 @@ class OlnBoxScoreHead(tf.keras.layers.Layer):
         predictions.
     """
 
-    with keras_utils.maybe_enter_backend_graph(), tf.name_scope(
-        'fast_rcnn_head'):
+    with tf.name_scope('fast_rcnn_head'):
       # reshape inputs beofre FC.
       _, num_rois, height, width, filters = roi_features.get_shape().as_list()
 
@@ -574,6 +576,7 @@ class MaskrcnnHead(tf.keras.layers.Layer):
       norm_activation: an operation that includes a normalization layer followed
         by an optional activation layer.
     """
+    super(MaskrcnnHead, self).__init__(autocast=False)
     self._num_classes = num_classes
     self._mask_target_size = mask_target_size
 
@@ -621,7 +624,15 @@ class MaskrcnnHead(tf.keras.layers.Layer):
         bias_initializer=tf.zeros_initializer(),
         name='conv5-mask')
 
-  def __call__(self, roi_features, class_indices, is_training=None):
+    with tf.name_scope('mask_head'):
+      self._mask_conv2d_op = self._conv2d_op(
+          self._num_classes,
+          kernel_size=(1, 1),
+          strides=(1, 1),
+          padding='valid',
+          name='mask_fcn_logits')
+
+  def call(self, roi_features, class_indices, is_training=None):
     """Mask branch for the Mask-RCNN model.
 
     Args:
@@ -642,45 +653,38 @@ class MaskrcnnHead(tf.keras.layers.Layer):
         boxes is not 4.
     """
 
-    with keras_utils.maybe_enter_backend_graph():
-      with tf.name_scope('mask_head'):
-        _, num_rois, height, width, filters = roi_features.get_shape().as_list()
-        net = tf.reshape(roi_features, [-1, height, width, filters])
+    with tf.name_scope('mask_head'):
+      _, num_rois, height, width, filters = roi_features.get_shape().as_list()
+      net = tf.reshape(roi_features, [-1, height, width, filters])
 
-        for i in range(self._num_convs):
-          net = self._conv2d_ops[i](net)
-          if self._use_batch_norm:
-            net = self._norm_activation()(net, is_training=is_training)
-
-        net = self._mask_conv_transpose(net)
+      for i in range(self._num_convs):
+        net = self._conv2d_ops[i](net)
         if self._use_batch_norm:
           net = self._norm_activation()(net, is_training=is_training)
 
-        mask_outputs = self._conv2d_op(
-            self._num_classes,
-            kernel_size=(1, 1),
-            strides=(1, 1),
-            padding='valid',
-            name='mask_fcn_logits')(
-                net)
-        mask_outputs = tf.reshape(mask_outputs, [
-            -1, num_rois, self._mask_target_size, self._mask_target_size,
-            self._num_classes
-        ])
+      net = self._mask_conv_transpose(net)
+      if self._use_batch_norm:
+        net = self._norm_activation()(net, is_training=is_training)
 
-        with tf.name_scope('masks_post_processing'):
-          # TODO(pengchong): Figure out the way not to use the static inferred
-          # batch size.
-          batch_size, num_masks = class_indices.get_shape().as_list()
-          mask_outputs = tf.transpose(a=mask_outputs, perm=[0, 1, 4, 2, 3])
-          # Contructs indices for gather.
-          batch_indices = tf.tile(
-              tf.expand_dims(tf.range(batch_size), axis=1), [1, num_masks])
-          mask_indices = tf.tile(
-              tf.expand_dims(tf.range(num_masks), axis=0), [batch_size, 1])
-          gather_indices = tf.stack(
-              [batch_indices, mask_indices, class_indices], axis=2)
-          mask_outputs = tf.gather_nd(mask_outputs, gather_indices)
+      mask_outputs = self._mask_conv2d_op(net)
+      mask_outputs = tf.reshape(mask_outputs, [
+          -1, num_rois, self._mask_target_size, self._mask_target_size,
+          self._num_classes
+      ])
+
+      with tf.name_scope('masks_post_processing'):
+        # TODO(pengchong): Figure out the way not to use the static inferred
+        # batch size.
+        batch_size, num_masks = class_indices.get_shape().as_list()
+        mask_outputs = tf.transpose(a=mask_outputs, perm=[0, 1, 4, 2, 3])
+        # Constructs indices for gather.
+        batch_indices = tf.tile(
+            tf.expand_dims(tf.range(batch_size), axis=1), [1, num_masks])
+        mask_indices = tf.tile(
+            tf.expand_dims(tf.range(num_masks), axis=0), [batch_size, 1])
+        gather_indices = tf.stack(
+            [batch_indices, mask_indices, class_indices], axis=2)
+        mask_outputs = tf.gather_nd(mask_outputs, gather_indices)
       return mask_outputs
 
 
@@ -826,8 +830,7 @@ class RetinanetHead(object):
     """Returns outputs of RetinaNet head."""
     class_outputs = {}
     box_outputs = {}
-    with keras_utils.maybe_enter_backend_graph(), tf.name_scope(
-        'retinanet_head'):
+    with tf.name_scope('retinanet_head'):
       for level in range(self._min_level, self._max_level + 1):
         features = fpn_features[level]
 
@@ -915,7 +918,7 @@ class ShapemaskPriorHead(object):
       detection_priors: A float Tensor of shape [batch_size * num_instances,
         mask_size, mask_size, 1].
     """
-    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('prior_mask'):
+    with tf.name_scope('prior_mask'):
       batch_size, num_instances, _ = boxes.get_shape().as_list()
       outer_boxes = tf.cast(outer_boxes, tf.float32)
       boxes = tf.cast(boxes, tf.float32)
@@ -991,8 +994,8 @@ class ShapemaskPriorHead(object):
     features = tf.reduce_mean(features, axis=(2, 3))
     logits = tf.keras.layers.Dense(
         self._mask_num_classes * self._num_clusters,
-        kernel_initializer=tf.random_normal_initializer(stddev=0.01))(
-            features)
+        kernel_initializer=tf.random_normal_initializer(stddev=0.01),
+        name='classify-shape-prior-fc')(features)
     logits = tf.reshape(
         logits,
         [batch_size, num_instances, self._mask_num_classes, self._num_clusters])
@@ -1085,7 +1088,7 @@ class ShapemaskCoarsemaskHead(object):
       mask_outputs: instance mask prediction as a float Tensor of shape
         [batch_size, num_instances, mask_size, mask_size].
     """
-    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('coarse_mask'):
+    with tf.name_scope('coarse_mask'):
       # Transform detection priors to have the same dimension as features.
       detection_priors = tf.expand_dims(detection_priors, axis=-1)
       detection_priors = self._coarse_mask_fc(detection_priors)
@@ -1217,7 +1220,7 @@ class ShapemaskFinemaskHead(object):
     """
     # Extract the foreground mean features
     # with tf.variable_scope('fine_mask', reuse=tf.AUTO_REUSE):
-    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('fine_mask'):
+    with tf.name_scope('fine_mask'):
       mask_probs = tf.nn.sigmoid(mask_logits)
       # Compute instance embedding for hard average.
       binary_mask = tf.cast(tf.greater(mask_probs, 0.5), features.dtype)

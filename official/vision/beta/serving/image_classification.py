@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Detection input and model functions for serving/inference."""
 
 import tensorflow as tf
@@ -29,16 +29,14 @@ STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
 class ClassificationModule(export_base.ExportModule):
   """classification Module."""
 
-  def build_model(self):
+  def _build_model(self):
     input_specs = tf.keras.layers.InputSpec(
         shape=[self._batch_size] + self._input_image_size + [3])
 
-    self._model = factory.build_classification_model(
+    return factory.build_classification_model(
         input_specs=input_specs,
-        model_config=self._params.task.model,
+        model_config=self.params.task.model,
         l2_regularizer=None)
-
-    return self._model
 
   def _build_inputs(self, image):
     """Builds classification model inputs for serving."""
@@ -57,7 +55,7 @@ class ClassificationModule(export_base.ExportModule):
                                            scale=STDDEV_RGB)
     return image
 
-  def _run_inference_on_image_tensors(self, images):
+  def serve(self, images):
     """Cast image to float and run inference.
 
     Args:
@@ -78,6 +76,7 @@ class ClassificationModule(export_base.ExportModule):
               )
           )
 
-    logits = self._model(images, training=False)
+    logits = self.inference_step(images)
+    probs = tf.nn.softmax(logits)
 
-    return dict(outputs=logits)
+    return {'logits': logits, 'probs': probs}

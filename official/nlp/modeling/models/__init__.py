@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Models package definition."""
+
+"""Models are combinations of `tf.keras` layers and models that can be trained.
+
+Several pre-built canned models are provided to train encoder networks.
+These models are intended as both convenience functions and canonical examples.
+"""
 from official.nlp.modeling.models.bert_classifier import BertClassifier
 from official.nlp.modeling.models.bert_pretrainer import *
 from official.nlp.modeling.models.bert_span_labeler import BertSpanLabeler

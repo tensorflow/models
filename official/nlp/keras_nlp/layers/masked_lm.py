@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Masked language model network."""
 # pylint: disable=g-classes-have-attributes
 import tensorflow as tf
@@ -31,7 +31,7 @@ class MaskedLM(tf.keras.layers.Layer):
   lm_layer=MaskedLM(embedding_table=encoder.get_embedding_table())
   ```
 
-  Arguments:
+  Args:
     embedding_table: The embedding table from encoder network.
     activation: The activation, if any, for the dense layer.
     initializer: The initializer for the dense layer. Defaults to a Glorot
@@ -94,12 +94,12 @@ class MaskedLM(tf.keras.layers.Layer):
                               'it has variable sharing logic.')
 
   def _gather_indexes(self, sequence_tensor, positions):
-    """Gathers the vectors at the specific positions.
+    """Gathers the vectors at the specific positions, for performance.
 
     Args:
-        sequence_tensor: Sequence output of `BertModel` layer of shape
+        sequence_tensor: Sequence output of shape
           (`batch_size`, `seq_length`, num_hidden) where num_hidden is number of
-          hidden units of `BertModel` layer.
+          hidden units.
         positions: Positions ids of tokens in sequence to mask for pretraining
           of with dimension (batch_size, num_predictions) where
           `num_predictions` is maximum number of tokens to mask out and predict

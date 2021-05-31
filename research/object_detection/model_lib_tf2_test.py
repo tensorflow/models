@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
 import os
 import tempfile
 import unittest
@@ -26,9 +27,9 @@ import six
 import tensorflow.compat.v1 as tf
 import tensorflow.compat.v2 as tf2
 
+from object_detection import exporter_lib_v2
 from object_detection import inputs
 from object_detection import model_lib_v2
-from object_detection.builders import model_builder
 from object_detection.core import model
 from object_detection.protos import train_pb2
 from object_detection.utils import config_util
@@ -69,7 +70,8 @@ def _get_config_kwarg_overrides():
   return {
       'train_input_path': data_path,
       'eval_input_path': data_path,
-      'label_map_path': label_map_path
+      'label_map_path': label_map_path,
+      'train_input_reader': {'batch_size': 1}
   }
 
 
@@ -97,6 +99,7 @@ class ModelLibTest(tf.test.TestCase):
           model_dir=model_dir,
           train_steps=train_steps,
           checkpoint_every_n=1,
+          num_steps_per_iteration=1,
           **config_kwarg_overrides)
 
     model_lib_v2.eval_continuously(
@@ -145,6 +148,12 @@ class SimpleModel(model.DetectionModel):
     return []
 
 
+def fake_model_builder(*_, **__):
+  return SimpleModel()
+
+FAKE_BUILDER_MAP = {'detection_model_fn_base': fake_model_builder}
+
+
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
 class ModelCheckpointTest(tf.test.TestCase):
   """Test for model checkpoint related functionality."""
@@ -153,10 +162,9 @@ class ModelCheckpointTest(tf.test.TestCase):
     """Test that only the most recent checkpoints are kept."""
 
     strategy = tf2.distribute.OneDeviceStrategy(device='/cpu:0')
-    with mock.patch.object(
-        model_builder, 'build', autospec=True) as mock_builder:
-      with strategy.scope():
-        mock_builder.return_value = SimpleModel()
+    with mock.patch.dict(
+        model_lib_v2.MODEL_BUILD_UTIL_MAP, FAKE_BUILDER_MAP):
+
       model_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
       pipeline_config_path = get_pipeline_config_path(MODEL_NAME_FOR_TEST)
       new_pipeline_config_path = os.path.join(model_dir, 'new_pipeline.config')
@@ -167,8 +175,8 @@ class ModelCheckpointTest(tf.test.TestCase):
       with strategy.scope():
         model_lib_v2.train_loop(
             new_pipeline_config_path, model_dir=model_dir,
-            train_steps=20, checkpoint_every_n=2, checkpoint_max_to_keep=3,
-            **config_kwarg_overrides
+            train_steps=5, checkpoint_every_n=2, checkpoint_max_to_keep=3,
+            num_steps_per_iteration=1, **config_kwarg_overrides
         )
       ckpt_files = tf.io.gfile.glob(os.path.join(model_dir, 'ckpt-*.index'))
       self.assertEqual(len(ckpt_files), 3,
@@ -210,6 +218,7 @@ class CheckpointV2Test(tf.test.TestCase):
     model_lib_v2.load_fine_tune_checkpoint(
         self._model, self._ckpt_path, checkpoint_type='',
         checkpoint_version=train_pb2.CheckpointVersion.V2,
+        run_model_on_dummy_input=True,
         input_dataset=self._train_input_fn(),
         unpad_groundtruth_tensors=True)
     np.testing.assert_allclose(self._model.weight.numpy(), 42)
@@ -222,8 +231,45 @@ class CheckpointV2Test(tf.test.TestCase):
       model_lib_v2.load_fine_tune_checkpoint(
           IncompatibleModel(), self._ckpt_path, checkpoint_type='',
           checkpoint_version=train_pb2.CheckpointVersion.V2,
+          run_model_on_dummy_input=True,
           input_dataset=self._train_input_fn(),
           unpad_groundtruth_tensors=True)
+
+
+@unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
+class MetricsExportTest(tf.test.TestCase):
+
+  @classmethod
+  def setUpClass(cls):  # pylint:disable=g-missing-super-call
+    tf.keras.backend.clear_session()
+
+  def test_export_metrics_json_serializable(self):
+    """Tests that Estimator and input function are constructed correctly."""
+
+    strategy = tf2.distribute.OneDeviceStrategy(device='/cpu:0')
+
+    def export(data, _):
+      json.dumps(data)
+
+    with mock.patch.dict(
+        exporter_lib_v2.INPUT_BUILDER_UTIL_MAP, FAKE_BUILDER_MAP):
+      with strategy.scope():
+        model_dir = tf.test.get_temp_dir()
+        new_pipeline_config_path = os.path.join(model_dir,
+                                                'new_pipeline.config')
+        pipeline_config_path = get_pipeline_config_path(MODEL_NAME_FOR_TEST)
+        config_util.clear_fine_tune_checkpoint(pipeline_config_path,
+                                               new_pipeline_config_path)
+        train_steps = 2
+        with strategy.scope():
+          model_lib_v2.train_loop(
+              new_pipeline_config_path,
+              model_dir=model_dir,
+              train_steps=train_steps,
+              checkpoint_every_n=100,
+              performance_summary_exporter=export,
+              num_steps_per_iteration=1,
+              **_get_config_kwarg_overrides())
 
 
 if __name__ == '__main__':

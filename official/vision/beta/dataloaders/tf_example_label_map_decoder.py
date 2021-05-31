@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tensorflow Example proto decoder for object detection.
 
 A decoder to decode string tensors containing serialized tensorflow.Example
@@ -27,9 +27,11 @@ from official.vision.beta.dataloaders import tf_example_decoder
 class TfExampleDecoderLabelMap(tf_example_decoder.TfExampleDecoder):
   """Tensorflow Example proto decoder."""
 
-  def __init__(self, label_map, include_mask=False, regenerate_source_id=False):
+  def __init__(self, label_map, include_mask=False, regenerate_source_id=False,
+               mask_binarize_threshold=None):
     super(TfExampleDecoderLabelMap, self).__init__(
-        include_mask=include_mask, regenerate_source_id=regenerate_source_id)
+        include_mask=include_mask, regenerate_source_id=regenerate_source_id,
+        mask_binarize_threshold=mask_binarize_threshold)
     self._keys_to_features.update({
         'image/object/class/text': tf.io.VarLenFeature(tf.string),
     })

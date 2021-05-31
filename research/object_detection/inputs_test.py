@@ -1420,6 +1420,49 @@ class DataTransformationFnTest(test_case.TestCase, parameterized.TestCase):
         [[[0., 0., 0., 0.,], [0., 0., 0., 0.,]],
          [[0.1, 0.1, 0.3, 0.4,], [0.6, 0.4, 0.6, 0.7,]]])
 
+  def test_groundtruth_keypoint_depths(self):
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(100, 50, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(np.array([[.5, .5, 1, 1], [.0, .0, .5, .5]],
+                                   np.float32)),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([1, 2], np.int32)),
+          fields.InputDataFields.groundtruth_keypoints:
+              tf.constant([[[0.1, 0.2], [0.3, 0.4]],
+                           [[0.5, 0.6], [0.7, 0.8]]]),
+          fields.InputDataFields.groundtruth_keypoint_visibilities:
+              tf.constant([[True, False], [True, True]]),
+          fields.InputDataFields.groundtruth_keypoint_depths:
+              tf.constant([[1.0, 0.9], [0.8, 0.7]]),
+          fields.InputDataFields.groundtruth_keypoint_depth_weights:
+              tf.constant([[0.7, 0.8], [0.9, 1.0]]),
+      }
+
+      num_classes = 3
+      keypoint_type_weight = [1.0, 2.0]
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_resize50_preprocess_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=num_classes,
+          keypoint_type_weight=keypoint_type_weight)
+      transformed_inputs = input_transformation_fn(tensor_dict=tensor_dict)
+      return (transformed_inputs[
+          fields.InputDataFields.groundtruth_keypoint_depths],
+              transformed_inputs[
+                  fields.InputDataFields.groundtruth_keypoint_depth_weights])
+
+    keypoint_depths, keypoint_depth_weights = self.execute_cpu(graph_fn, [])
+    self.assertAllClose(
+        keypoint_depths,
+        [[1.0, 0.9], [0.8, 0.7]])
+    self.assertAllClose(
+        keypoint_depth_weights,
+        [[0.7, 0.8], [0.9, 1.0]])
+
 
 class PadInputDataToStaticShapesFnTest(test_case.TestCase):
 

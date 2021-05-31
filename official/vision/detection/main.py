@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Main function to train various object detection models."""
 
 import functools
@@ -70,9 +70,7 @@ def run_executor(params,
   """Runs the object detection model on distribution strategy defined by the user."""
 
   if params.architecture.use_bfloat16:
-    policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
-        'mixed_bfloat16')
-    tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
+    tf.compat.v2.keras.mixed_precision.set_global_policy('mixed_bfloat16')
 
   model_builder = model_factory.model_generator(params)
 

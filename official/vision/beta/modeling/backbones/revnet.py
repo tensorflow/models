@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,17 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# =============================================================================="""
-"""RevNet Implementation.
 
-[1] Aidan N. Gomez, Mengye Ren, Raquel Urtasun, Roger B. Grosse
-    The Reversible Residual Network: Backpropagation Without Storing Activations
-    https://arxiv.org/pdf/1707.04585.pdf
-"""
+# Lint as: python3
+"""Contains definitions of RevNet."""
 
 from typing import Any, Callable, Dict, Optional
 # Import libraries
 import tensorflow as tf
+from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
@@ -55,32 +51,40 @@ REVNET_SPECS = {
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class RevNet(tf.keras.Model):
-  """Reversible ResNet, RevNet implementation."""
+  """Creates a Reversible ResNet (RevNet) family model.
 
-  def __init__(self,
-               model_id: int,
-               input_specs: tf.keras.layers.InputSpec
-               = tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
-               activation: str = 'relu',
-               use_sync_bn: bool = False,
-               norm_momentum: float = 0.99,
-               norm_epsilon: float = 0.001,
-               kernel_initializer: str = 'VarianceScaling',
-               kernel_regularizer: tf.keras.regularizers.Regularizer = None,
-               **kwargs):
-    """RevNet initialization function.
+  This implements:
+    Aidan N. Gomez, Mengye Ren, Raquel Urtasun, Roger B. Grosse.
+    The Reversible Residual Network: Backpropagation Without Storing
+    Activations.
+    (https://arxiv.org/pdf/1707.04585.pdf)
+  """
+
+  def __init__(
+      self,
+      model_id: int,
+      input_specs: tf.keras.layers.InputSpec = tf.keras.layers.InputSpec(
+          shape=[None, None, None, 3]),
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
+    """Initializes a RevNet model.
 
     Args:
-      model_id: `int` depth/id of ResNet backbone model.
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
-      activation: `str` name of the activation function.
-      use_sync_bn: `bool` if True, use synchronized batch normalization.
-      norm_momentum: `float` normalization omentum for the moving average.
-      norm_epsilon: `float` small float added to variance to avoid dividing by
-        zero.
-      kernel_initializer: `str` kernel_initializer for convolutional layers.
-      kernel_regularizer: `tf.keras.regularizers.Regularizer` for Conv2D.
-      **kwargs: additional keyword arguments to be passed.
+      model_id: An `int` of depth/id of ResNet backbone model.
+      input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
+      activation: A `str` name of the activation function.
+      use_sync_bn: If True, use synchronized batch normalization.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      kernel_initializer: A str for kernel initializer of convolutional layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default to None.
+      **kwargs: Additional keyword arguments to be passed.
     """
     self._model_id = model_id
     self._input_specs = input_specs
@@ -148,19 +152,21 @@ class RevNet(tf.keras.Model):
     """Creates one reversible block for RevNet model.
 
     Args:
-      inputs: `Tensor` of size `[batch, channels, height, width]`.
-      filters: `int` number of filters for the first convolution of the layer.
-      strides: `int` stride to use for the first convolution of the layer. If
+      inputs: A `tf.Tensor` of size `[batch, channels, height, width]`.
+      filters: An `int` number of filters for the first convolution of the
+        layer.
+      strides: An `int` stride to use for the first convolution of the layer. If
         greater than 1, this block group will downsample the input.
       inner_block_fn: Either `nn_blocks.ResidualInner` or
         `nn_blocks.BottleneckResidualInner`.
-      block_repeats: `int` number of blocks contained in this block group.
-      batch_norm_first: `bool` whether to apply BatchNormalization and
-        activation layer before feeding into convolution layers.
-      name: `str`name for the block.
+      block_repeats: An `int` number of blocks contained in this block group.
+      batch_norm_first: A `bool` that specifies whether to apply
+        BatchNormalization and activation layer before feeding into convolution
+        layers.
+      name: A `str` name for the block.
 
     Returns:
-      The output `Tensor` of the block layer.
+      The output `tf.Tensor` of the block layer.
     """
     x = inputs
     for i in range(block_repeats):
@@ -208,12 +214,12 @@ class RevNet(tf.keras.Model):
 @factory.register_backbone_builder('revnet')
 def build_revnet(
     input_specs: tf.keras.layers.InputSpec,
-    model_config,
+    backbone_config: hyperparams.Config,
+    norm_activation_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
-  """Builds ResNet 3d backbone from a config."""
-  backbone_type = model_config.backbone.type
-  backbone_cfg = model_config.backbone.get()
-  norm_activation_config = model_config.norm_activation
+  """Builds RevNet backbone from a config."""
+  backbone_type = backbone_config.type
+  backbone_cfg = backbone_config.get()
   assert backbone_type == 'revnet', (f'Inconsistent backbone type '
                                      f'{backbone_type}')
 

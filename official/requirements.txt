@@ -12,7 +12,7 @@ tensorflow-hub>=0.6.0
 tensorflow-model-optimization>=0.4.1
 tensorflow-datasets
 tensorflow-addons
-dataclasses
+dataclasses;python_version<"3.7"
 gin-config
 tf_slim>=1.1.0
 Cython
@@ -25,3 +25,4 @@ pycocotools
 # NLP related dependencies
 seqeval
 sentencepiece
+sacrebleu

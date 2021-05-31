@@ -153,6 +153,15 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
         detection_model.groundtruth_lists(fields.BoxListFields.keypoints))
 
   if detection_model.groundtruth_has_field(
+      fields.BoxListFields.keypoint_depths):
+    groundtruth[input_data_fields.groundtruth_keypoint_depths] = tf.stack(
+        detection_model.groundtruth_lists(fields.BoxListFields.keypoint_depths))
+    groundtruth[
+        input_data_fields.groundtruth_keypoint_depth_weights] = tf.stack(
+            detection_model.groundtruth_lists(
+                fields.BoxListFields.keypoint_depth_weights))
+
+  if detection_model.groundtruth_has_field(
       fields.BoxListFields.keypoint_visibilities):
     groundtruth[input_data_fields.groundtruth_keypoint_visibilities] = tf.stack(
         detection_model.groundtruth_lists(
@@ -260,6 +269,8 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
         fields.InputDataFields.groundtruth_classes,
         fields.InputDataFields.groundtruth_boxes,
         fields.InputDataFields.groundtruth_keypoints,
+        fields.InputDataFields.groundtruth_keypoint_depths,
+        fields.InputDataFields.groundtruth_keypoint_depth_weights,
         fields.InputDataFields.groundtruth_keypoint_visibilities,
         fields.InputDataFields.groundtruth_dp_num_points,
         fields.InputDataFields.groundtruth_dp_part_ids,
@@ -311,6 +322,13 @@ def provide_groundtruth(model, labels):
   gt_keypoints_list = None
   if fields.InputDataFields.groundtruth_keypoints in labels:
     gt_keypoints_list = labels[fields.InputDataFields.groundtruth_keypoints]
+  gt_keypoint_depths_list = None
+  gt_keypoint_depth_weights_list = None
+  if fields.InputDataFields.groundtruth_keypoint_depths in labels:
+    gt_keypoint_depths_list = (
+        labels[fields.InputDataFields.groundtruth_keypoint_depths])
+    gt_keypoint_depth_weights_list = (
+        labels[fields.InputDataFields.groundtruth_keypoint_depth_weights])
   gt_keypoint_visibilities_list = None
   if fields.InputDataFields.groundtruth_keypoint_visibilities in labels:
     gt_keypoint_visibilities_list = labels[
@@ -376,7 +394,9 @@ def provide_groundtruth(model, labels):
       groundtruth_area_list=gt_area_list,
       groundtruth_track_ids_list=gt_track_ids_list,
       groundtruth_verified_neg_classes=gt_verified_neg_classes,
-      groundtruth_not_exhaustive_classes=gt_not_exhaustive_classes)
+      groundtruth_not_exhaustive_classes=gt_not_exhaustive_classes,
+      groundtruth_keypoint_depths_list=gt_keypoint_depths_list,
+      groundtruth_keypoint_depth_weights_list=gt_keypoint_depth_weights_list)
 
 
 def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
@@ -425,8 +445,7 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
       from tensorflow.python.keras.engine import base_layer_utils  # pylint: disable=g-import-not-at-top
       # Enable v2 behavior, as `mixed_bfloat16` is only supported in TF 2.0.
       base_layer_utils.enable_v2_dtype_behavior()
-      tf2.keras.mixed_precision.experimental.set_policy(
-          'mixed_bfloat16')
+      tf2.keras.mixed_precision.set_global_policy('mixed_bfloat16')
     detection_model = detection_model_fn(
         is_training=is_training, add_summaries=(not use_tpu))
     scaffold_fn = None
@@ -971,12 +990,12 @@ def _evaluate_checkpoint(estimator,
         raise e
 
 
-def continuous_eval(estimator,
-                    model_dir,
-                    input_fn,
-                    train_steps,
-                    name,
-                    max_retries=0):
+def continuous_eval_generator(estimator,
+                              model_dir,
+                              input_fn,
+                              train_steps,
+                              name,
+                              max_retries=0):
   """Perform continuous evaluation on checkpoints written to a model directory.
 
   Args:
@@ -989,6 +1008,9 @@ def continuous_eval(estimator,
     max_retries: Maximum number of times to retry the evaluation on encountering
       a tf.errors.InvalidArgumentError. If negative, will always retry the
       evaluation.
+
+  Yields:
+    Pair of current step and eval_results.
   """
 
   def terminate_eval():
@@ -1011,6 +1033,7 @@ def continuous_eval(estimator,
 
       # Terminate eval job when final checkpoint is reached
       current_step = int(os.path.basename(ckpt).split('-')[1])
+      yield (current_step, eval_results)
       if current_step >= train_steps:
         tf.logging.info(
             'Evaluation finished after training step %d' % current_step)
@@ -1019,6 +1042,30 @@ def continuous_eval(estimator,
     except tf.errors.NotFoundError:
       tf.logging.info(
           'Checkpoint %s no longer exists, skipping checkpoint' % ckpt)
+
+
+def continuous_eval(estimator,
+                    model_dir,
+                    input_fn,
+                    train_steps,
+                    name,
+                    max_retries=0):
+  """Performs continuous evaluation on checkpoints written to a model directory.
+
+  Args:
+    estimator: Estimator object to use for evaluation.
+    model_dir: Model directory to read checkpoints for continuous evaluation.
+    input_fn: Input function to use for evaluation.
+    train_steps: Number of training steps. This is used to infer the last
+      checkpoint and stop evaluation loop.
+    name: Namescope for eval summary.
+    max_retries: Maximum number of times to retry the evaluation on encountering
+      a tf.errors.InvalidArgumentError. If negative, will always retry the
+      evaluation.
+  """
+  for current_step, eval_results in continuous_eval_generator(
+      estimator, model_dir, input_fn, train_steps, name, max_retries):
+    tf.logging.info('Step %s, Eval results: %s', current_step, eval_results)
 
 
 def populate_experiment(run_config,

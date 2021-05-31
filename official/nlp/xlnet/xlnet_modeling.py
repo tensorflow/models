@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Keras layers of XLNet model in TF 2.0."""
 
 import copy
@@ -114,7 +114,7 @@ class RelativePositionEncoding(tf.keras.layers.Layer):
   def call(self, pos_seq, batch_size=None):
     """Implements call() for the layer.
 
-    Arguments:
+    Args:
       pos_seq: A 1-D `Tensor`
       batch_size: The optionally provided batch size that tiles the relative
         positional encoding.

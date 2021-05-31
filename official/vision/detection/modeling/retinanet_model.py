@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Model defination for the RetinaNet Model."""
 
 from __future__ import absolute_import
@@ -25,7 +25,6 @@ from official.vision.detection.evaluation import factory as eval_factory
 from official.vision.detection.modeling import base_model
 from official.vision.detection.modeling import losses
 from official.vision.detection.modeling.architecture import factory
-from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.ops import postprocess_ops
 
 
@@ -117,14 +116,13 @@ class RetinanetModel(base_model.Model):
 
   def build_model(self, params, mode=None):
     if self._keras_model is None:
-      with keras_utils.maybe_enter_backend_graph():
-        outputs = self.model_outputs(self._input_layer, mode)
+      outputs = self.model_outputs(self._input_layer, mode)
 
-        model = tf.keras.models.Model(
-            inputs=self._input_layer, outputs=outputs, name='retinanet')
-        assert model is not None, 'Fail to build tf.keras.Model.'
-        model.optimizer = self.build_optimizer()
-        self._keras_model = model
+      model = tf.keras.models.Model(
+          inputs=self._input_layer, outputs=outputs, name='retinanet')
+      assert model is not None, 'Fail to build tf.keras.Model.'
+      model.optimizer = self.build_optimizer()
+      self._keras_model = model
 
     return self._keras_model
 

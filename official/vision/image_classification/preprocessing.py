@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Preprocessing functions for images."""
 
 from __future__ import absolute_import
@@ -329,7 +329,7 @@ def load_eval_image(filename: Text, image_size: int = IMAGE_SIZE) -> tf.Tensor:
 
 
 def build_eval_dataset(filenames: List[Text],
-                       labels: List[int] = None,
+                       labels: Optional[List[int]] = None,
                        image_size: int = IMAGE_SIZE,
                        batch_size: int = 1) -> tf.Tensor:
   """Builds a tf.data.Dataset from a list of filenames and labels.

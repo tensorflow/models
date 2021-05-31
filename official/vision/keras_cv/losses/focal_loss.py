@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Losses used for detection models."""
 
 import tensorflow as tf
@@ -31,7 +31,7 @@ class FocalLoss(tf.keras.losses.Loss):
                name=None):
     """Initializes `FocalLoss`.
 
-    Arguments:
+    Args:
       alpha: The `alpha` weight factor for binary class imbalance.
       gamma: The `gamma` focusing parameter to re-weight loss.
       reduction: (Optional) Type of `tf.keras.losses.Reduction` to apply to
@@ -52,7 +52,7 @@ class FocalLoss(tf.keras.losses.Loss):
   def call(self, y_true, y_pred):
     """Invokes the `FocalLoss`.
 
-    Arguments:
+    Args:
       y_true: A tensor of size [batch, num_anchors, num_classes]
       y_pred: A tensor of size [batch, num_anchors, num_classes]
 

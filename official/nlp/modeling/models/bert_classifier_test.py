@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,13 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for BERT trainer network."""
 
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
+from official.nlp.modeling import layers
 from official.nlp.modeling import networks
 from official.nlp.modeling.models import bert_classifier
 
@@ -53,16 +54,22 @@ class BertClassifierTest(keras_parameterized.TestCase):
     expected_classification_shape = [None, num_classes]
     self.assertAllEqual(expected_classification_shape, cls_outs.shape.as_list())
 
-  @parameterized.parameters(1, 2)
-  def test_bert_trainer_tensor_call(self, num_classes):
+  @parameterized.named_parameters(
+      ('single_cls', 1, False),
+      ('2_cls', 2, False),
+      ('single_cls_custom_head', 1, True),
+      ('2_cls_custom_head', 2, True))
+  def test_bert_trainer_tensor_call(self, num_classes, use_custom_head):
     """Validate that the Keras object can be invoked."""
     # Build a transformer network to use within the BERT trainer. (Here, we use
     # a short sequence_length for convenience.)
     test_network = networks.BertEncoder(vocab_size=100, num_layers=2)
+    cls_head = layers.GaussianProcessClassificationHead(
+        inner_dim=0, num_classes=num_classes) if use_custom_head else None
 
     # Create a BERT trainer with the created network.
     bert_trainer_model = bert_classifier.BertClassifier(
-        test_network, num_classes=num_classes)
+        test_network, num_classes=num_classes, cls_head=cls_head)
 
     # Create a set of 2-dimensional data tensors to feed into the model.
     word_ids = tf.constant([[1, 1], [2, 2]], dtype=tf.int32)
@@ -74,7 +81,11 @@ class BertClassifierTest(keras_parameterized.TestCase):
     # too complex: this simply ensures we're not hitting runtime errors.)
     _ = bert_trainer_model([word_ids, mask, type_ids])
 
-  def test_serialize_deserialize(self):
+  @parameterized.named_parameters(
+      ('default_cls_head', None),
+      ('sngp_cls_head', layers.GaussianProcessClassificationHead(
+          inner_dim=0, num_classes=4)))
+  def test_serialize_deserialize(self, cls_head):
     """Validate that the BERT trainer can be serialized and deserialized."""
     # Build a transformer network to use within the BERT trainer. (Here, we use
     # a short sequence_length for convenience.)
@@ -84,7 +95,7 @@ class BertClassifierTest(keras_parameterized.TestCase):
     # Create a BERT trainer with the created network. (Note that all the args
     # are different, so we can catch any serialization mismatches.)
     bert_trainer_model = bert_classifier.BertClassifier(
-        test_network, num_classes=4, initializer='zeros')
+        test_network, num_classes=4, initializer='zeros', cls_head=cls_head)
 
     # Create another BERT trainer via serialization and deserialization.
     config = bert_trainer_model.get_config()

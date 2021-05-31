@@ -34,10 +34,10 @@ do_pylint() {
     #   --incremental  Performs check on only the python files changed in the
     #                  last non-merge git commit.
 
-    # Use this list to whitelist pylint errors
-    ERROR_WHITELIST=""
+    # Use this list to ALLOWLIST pylint errors
+    ERROR_ALLOWLIST=""
 
-    echo "ERROR_WHITELIST=\"${ERROR_WHITELIST}\""
+    echo "ERROR_ALLOWLIST=\"${ERROR_ALLOWLIST}\""
 
     PYLINT_BIN="python3 -m pylint"
 
@@ -92,16 +92,16 @@ do_pylint() {
 
     N_ERRORS=0
     while read -r LINE; do
-        IS_WHITELISTED=0
-        for WL_REGEX in ${ERROR_WHITELIST}; do
+        IS_ALLOWLISTED=0
+        for WL_REGEX in ${ERROR_ALLOWLIST}; do
             if echo ${LINE} | grep -q "${WL_REGEX}"; then
-                echo "Found a whitelisted error:"
+                echo "Found a ALLOWLISTed error:"
                 echo "  ${LINE}"
-                IS_WHITELISTED=1
+                IS_ALLOWLISTED=1
             fi
         done
 
-        if [[ ${IS_WHITELISTED} == "0" ]]; then
+        if [[ ${IS_ALLOWLISTED} == "0" ]]; then
             echo "${LINE}" >> ${NONWL_ERRORS_FILE}
             echo "" >> ${NONWL_ERRORS_FILE}
             ((N_ERRORS++))
@@ -116,7 +116,7 @@ do_pylint() {
         cat "${NONWL_ERRORS_FILE}"
         return 1
     else
-        echo "PASS: No non-whitelisted pylint errors were found."
+        echo "PASS: No non-ALLOWLISTed pylint errors were found."
         return 0
     fi
 }

@@ -126,18 +126,13 @@ class CenterNetResnetFeatureExtractor(CenterNetFeatureExtractor):
     return 4
 
   @property
-  def supported_sub_model_types(self):
-    return ['classification']
-
-  def get_sub_model(self, sub_model_type):
-    if sub_model_type == 'classification':
-      return self._base_model
-    else:
-      ValueError('Sub model type "{}" not supported.'.format(sub_model_type))
+  def classification_backbone(self):
+    return self._base_model
 
 
-def resnet_v2_101(channel_means, channel_stds, bgr_ordering):
+def resnet_v2_101(channel_means, channel_stds, bgr_ordering, **kwargs):
   """The ResNet v2 101 feature extractor."""
+  del kwargs
 
   return CenterNetResnetFeatureExtractor(
       resnet_type='resnet_v2_101',
@@ -147,8 +142,9 @@ def resnet_v2_101(channel_means, channel_stds, bgr_ordering):
   )
 
 
-def resnet_v2_50(channel_means, channel_stds, bgr_ordering):
+def resnet_v2_50(channel_means, channel_stds, bgr_ordering, **kwargs):
   """The ResNet v2 50 feature extractor."""
+  del kwargs
 
   return CenterNetResnetFeatureExtractor(
       resnet_type='resnet_v2_50',

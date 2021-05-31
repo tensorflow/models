@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Transformer-based text encoder network."""
 # pylint: disable=g-classes-have-attributes
 
@@ -20,7 +20,34 @@ import tensorflow as tf
 from official.modeling import activations
 from official.nlp import keras_nlp
 from official.nlp.modeling import layers
-from official.nlp.projects.bigbird import attention
+from official.nlp.projects.bigbird import recompute_grad
+from official.nlp.projects.bigbird import recomputing_dropout
+
+
+_MAX_SEQ_LEN = 4096
+
+
+class RecomputeTransformerLayer(layers.TransformerScaffold):
+  """Transformer layer that recomputes the forward pass during backpropagation."""
+
+  def call(self, inputs, training=None):
+    emb, mask = inputs
+    def f(*args):
+      # recompute_grad can only handle tensor inputs. so we enumerate the
+      # nested input [emb, mask] as follows:
+      # args[0]: emb
+      # args[1]: mask[0] = band_mask
+      # args[2]: mask[1] = encoder_from_mask
+      # args[3]: mask[2] = encoder_to_mask
+      # args[4]: mask[3] = blocked_encoder_mask
+      x = super(RecomputeTransformerLayer,
+                self).call([args[0], [args[1], args[2], args[3], args[4]]],
+                           training=training)
+      return x
+
+    f = recompute_grad.recompute_grad(f)
+
+    return f(emb, *mask)
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
@@ -30,15 +57,16 @@ class BigBirdEncoder(tf.keras.Model):
   *Note* that the network is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     vocab_size: The size of the token vocabulary.
     hidden_size: The size of the transformer hidden layers.
     num_layers: The number of transformer layers.
     num_attention_heads: The number of attention heads for each transformer. The
       hidden size must be divisible by the number of attention heads.
-    max_sequence_length: The maximum sequence length that this encoder can
-      consume. If None, max_sequence_length uses the value from sequence length.
-      This determines the variable shape for positional embeddings.
+    max_position_embeddings: The maximum length of position embeddings that this
+      encoder can consume. If None, max_position_embeddings uses the value from
+      sequence length. This determines the variable shape for positional
+      embeddings.
     type_vocab_size: The number of types that the 'type_ids' input can take.
     intermediate_size: The intermediate size for the transformer layers.
     activation: The activation to use for the transformer layers.
@@ -51,6 +79,8 @@ class BigBirdEncoder(tf.keras.Model):
       matrices in the shape of ['vocab_size', 'embedding_width'] and
       ['embedding_width', 'hidden_size'] ('embedding_width' is usually much
       smaller than 'hidden_size').
+    use_gradient_checkpointing: Use gradient checkpointing to trade-off compute
+      for memory.
   """
 
   def __init__(self,
@@ -58,7 +88,7 @@ class BigBirdEncoder(tf.keras.Model):
                hidden_size=768,
                num_layers=12,
                num_attention_heads=12,
-               max_sequence_length=attention.MAX_SEQ_LEN,
+               max_position_embeddings=_MAX_SEQ_LEN,
                type_vocab_size=16,
                intermediate_size=3072,
                block_size=64,
@@ -68,9 +98,16 @@ class BigBirdEncoder(tf.keras.Model):
                attention_dropout_rate=0.1,
                initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
                embedding_width=None,
+               use_gradient_checkpointing=False,
                **kwargs):
     activation = tf.keras.activations.get(activation)
     initializer = tf.keras.initializers.get(initializer)
+
+    if use_gradient_checkpointing:
+      tf.keras.layers.Dropout = recomputing_dropout.RecomputingDropout
+      layer_cls = RecomputeTransformerLayer
+    else:
+      layer_cls = layers.TransformerScaffold
 
     self._self_setattr_tracking = False
     self._config_dict = {
@@ -78,7 +115,7 @@ class BigBirdEncoder(tf.keras.Model):
         'hidden_size': hidden_size,
         'num_layers': num_layers,
         'num_attention_heads': num_attention_heads,
-        'max_sequence_length': max_sequence_length,
+        'max_position_embeddings': max_position_embeddings,
         'type_vocab_size': type_vocab_size,
         'intermediate_size': intermediate_size,
         'block_size': block_size,
@@ -109,7 +146,7 @@ class BigBirdEncoder(tf.keras.Model):
     # Always uses dynamic slicing for simplicity.
     self._position_embedding_layer = keras_nlp.layers.PositionEmbedding(
         initializer=initializer,
-        max_length=max_sequence_length,
+        max_length=max_position_embeddings,
         name='position_embedding')
     position_embeddings = self._position_embedding_layer(word_embeddings)
     self._type_embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
@@ -142,16 +179,16 @@ class BigBirdEncoder(tf.keras.Model):
 
     self._transformer_layers = []
     data = embeddings
-    masks = attention.BigBirdMasks(block_size=block_size)(
-        tf.cast(mask, embeddings.dtype))
+    masks = layers.BigBirdMasks(block_size=block_size)(
+        data, mask)
     encoder_outputs = []
     attn_head_dim = hidden_size // num_attention_heads
     for i in range(num_layers):
-      layer = layers.TransformerScaffold(
+      layer = layer_cls(
           num_attention_heads,
           intermediate_size,
           activation,
-          attention_cls=attention.BigBirdAttention,
+          attention_cls=layers.BigBirdAttention,
           attention_cfg=dict(
               num_heads=num_attention_heads,
               key_dim=attn_head_dim,
@@ -159,7 +196,7 @@ class BigBirdEncoder(tf.keras.Model):
               from_block_size=block_size,
               to_block_size=block_size,
               num_rand_blocks=num_rand_blocks,
-              max_rand_mask_length=max_sequence_length,
+              max_rand_mask_length=max_position_embeddings,
               seed=i),
           dropout_rate=dropout_rate,
           attention_dropout_rate=dropout_rate,

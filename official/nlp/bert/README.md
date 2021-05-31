@@ -1,13 +1,15 @@
 # BERT (Bidirectional Encoder Representations from Transformers)
 
+**WARNING**: We are on the way to deprecate most of the code in this directory.
+Please see
+[this link](https://github.com/tensorflow/models/blob/master/official/nlp/docs/train.md)
+for the new tutorial and use the new code in `nlp/modeling`. This README is
+still correct for this legacy implementation.
+
 The academic paper which describes BERT in detail and provides full results on a
 number of tasks can be found here: https://arxiv.org/abs/1810.04805.
 
 This repository contains TensorFlow 2.x implementation for BERT.
-
-**Note: We are in the progress to update the documentation to use
-official/nlp/train.py as the central place for the training driver.
-Internal users please refer to the g3doc for documentation.**
 
 ## Contents
   * [Contents](#contents)
@@ -129,6 +131,23 @@ which is essentially branched from [BERT research repo](https://github.com/googl
 to get processed pre-training data and it adapts to TF2 symbols and python3
 compatibility.
 
+Running the pre-training script requires an input and output directory, as well as a vocab file.  Note that max_seq_length will need to match the sequence length parameter you specify when you run pre-training.
+
+Example shell script to call create_pretraining_data.py
+```
+export WORKING_DIR='local disk or cloud location'
+export BERT_DIR='local disk or cloud location'
+python models/official/nlp/data/create_pretraining_data.py \
+  --input_file=$WORKING_DIR/input/input.txt \
+  --output_file=$WORKING_DIR/output/tf_examples.tfrecord \
+  --vocab_file=$BERT_DIR/wwm_uncased_L-24_H-1024_A-16/vocab.txt \
+  --do_lower_case=True \
+  --max_seq_length=512 \
+  --max_predictions_per_seq=76 \
+  --masked_lm_prob=0.15 \
+  --random_seed=12345 \
+  --dupe_factor=5
+```
 
 ### Fine-tuning
 

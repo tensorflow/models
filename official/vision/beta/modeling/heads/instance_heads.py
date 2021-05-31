@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Instance prediction heads."""
 
+"""Contains definitions of instance prediction heads."""
+
+from typing import List, Union, Optional
 # Import libraries
 import tensorflow as tf
 
@@ -22,47 +23,50 @@ from official.modeling import tf_utils
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class DetectionHead(tf.keras.layers.Layer):
-  """Detection head."""
+  """Creates a detection head."""
 
-  def __init__(self,
-               num_classes,
-               num_convs=0,
-               num_filters=256,
-               use_separable_conv=False,
-               num_fcs=2,
-               fc_dims=1024,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
-    """Initialize params to build the detection head.
+  def __init__(
+      self,
+      num_classes: int,
+      num_convs: int = 0,
+      num_filters: int = 256,
+      use_separable_conv: bool = False,
+      num_fcs: int = 2,
+      fc_dims: int = 1024,
+      class_agnostic_bbox_pred: bool = False,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
+    """Initializes a detection head.
 
     Args:
-      num_classes: a integer for the number of classes.
-      num_convs: `int` number that represents the number of the intermediate
-        conv layers before the FC layers.
-      num_filters: `int` number that represents the number of filters of the
-        intermediate conv layers.
-      use_separable_conv: `bool`, indicating whether the separable conv layers
-        is used.
-      num_fcs: `int` number that represents the number of FC layers before the
-        predictions.
-      fc_dims: `int` number that represents the number of dimension of the FC
+      num_classes: An `int` for the number of classes.
+      num_convs: An `int` number that represents the number of the intermediate
+        convolution layers before the FC layers.
+      num_filters: An `int` number that represents the number of filters of the
+        intermediate convolution layers.
+      use_separable_conv: A `bool` that indicates whether the separable
+        convolution layers is used.
+      num_fcs: An `int` number that represents the number of FC layers before
+        the predictions.
+      fc_dims: An `int` number that represents the number of dimension of the FC
         layers.
-      activation: `string`, indicating which activation is used, e.g. 'relu',
+      class_agnostic_bbox_pred: `bool`, indicating whether bboxes should be
+        predicted for every class or not.
+      activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
-      use_sync_bn: `bool`, whether to use synchronized batch normalization
-        across different replicas.
-      norm_momentum: `float`, the momentum parameter of the normalization
-        layers.
-      norm_epsilon: `float`, the epsilon parameter of the normalization layers.
-      kernel_regularizer: `tf.keras.regularizers.Regularizer` object for layer
-        kernel.
-      bias_regularizer: `tf.keras.regularizers.Regularizer` object for bias.
-      **kwargs: other keyword arguments passed to Layer.
+      use_sync_bn: A `bool` that indicates whether to use synchronized batch
+        normalization across different replicas.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default is None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      **kwargs: Additional keyword arguments to be passed.
     """
     super(DetectionHead, self).__init__(**kwargs)
     self._config_dict = {
@@ -72,6 +76,7 @@ class DetectionHead(tf.keras.layers.Layer):
         'use_separable_conv': use_separable_conv,
         'num_fcs': num_fcs,
         'fc_dims': fc_dims,
+        'class_agnostic_bbox_pred': class_agnostic_bbox_pred,
         'activation': activation,
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
@@ -86,7 +91,7 @@ class DetectionHead(tf.keras.layers.Layer):
       self._bn_axis = 1
     self._activation = tf_utils.get_activation(activation)
 
-  def build(self, input_shape):
+  def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the head."""
     conv_op = (tf.keras.layers.SeparableConv2D
                if self._config_dict['use_separable_conv']
@@ -154,8 +159,11 @@ class DetectionHead(tf.keras.layers.Layer):
         kernel_regularizer=self._config_dict['kernel_regularizer'],
         bias_regularizer=self._config_dict['bias_regularizer'],
         name='detection-scores')
+
+    num_box_outputs = (4 if self._config_dict['class_agnostic_bbox_pred'] else
+                       self._config_dict['num_classes'] * 4)
     self._box_regressor = tf.keras.layers.Dense(
-        units=self._config_dict['num_classes'] * 4,
+        units=num_box_outputs,
         kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.001),
         bias_initializer=tf.zeros_initializer(),
         kernel_regularizer=self._config_dict['kernel_regularizer'],
@@ -164,19 +172,18 @@ class DetectionHead(tf.keras.layers.Layer):
 
     super(DetectionHead, self).build(input_shape)
 
-  def call(self, inputs, training=None):
-    """Box and class branches for the Mask-RCNN model.
+  def call(self, inputs: tf.Tensor, training: bool = None):
+    """Forward pass of box and class branches for the Mask-RCNN model.
 
     Args:
-      inputs: ROI features, a tensor of shape
-        [batch_size, num_instances, roi_height, roi_width, roi_channels],
-        representing the ROI features.
-      training: a boolean indicating whether it is in `training` mode.
+      inputs: A `tf.Tensor` of the shape [batch_size, num_instances, roi_height,
+        roi_width, roi_channels], representing the ROI features.
+      training: a `bool` indicating whether it is in `training` mode.
 
     Returns:
-      class_outputs: a tensor with a shape of
+      class_outputs: A `tf.Tensor` of the shape
         [batch_size, num_rois, num_classes], representing the class predictions.
-      box_outputs: a tensor with a shape of
+      box_outputs: A `tf.Tensor` of the shape
         [batch_size, num_rois, num_classes * 4], representing the box
         predictions.
     """
@@ -211,47 +218,47 @@ class DetectionHead(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class MaskHead(tf.keras.layers.Layer):
-  """Mask head."""
+  """Creates a mask head."""
 
-  def __init__(self,
-               num_classes,
-               upsample_factor=2,
-               num_convs=4,
-               num_filters=256,
-               use_separable_conv=False,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               class_agnostic=False,
-               **kwargs):
-    """Initialize params to build the mask head.
+  def __init__(
+      self,
+      num_classes: int,
+      upsample_factor: int = 2,
+      num_convs: int = 4,
+      num_filters: int = 256,
+      use_separable_conv: bool = False,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      class_agnostic: bool = False,
+      **kwargs):
+    """Initializes a mask head.
 
     Args:
-      num_classes: `int`, the number of classes.
-      upsample_factor: `int`, >= 1, the upsample factor to generate the
-        final predicted masks.
-      num_convs: `int` number that represents the number of the intermediate
-        conv layers before the mask prediction layers.
-      num_filters: `int` number that represents the number of filters of the
-        intermediate conv layers.
-      use_separable_conv: `bool`, indicating whether the separable conv layers
-        is used.
-      activation: `string`, indicating which activation is used, e.g. 'relu',
+      num_classes: An `int` of the number of classes.
+      upsample_factor: An `int` that indicates the upsample factor to generate
+        the final predicted masks. It should be >= 1.
+      num_convs: An `int` number that represents the number of the intermediate
+        convolution layers before the mask prediction layers.
+      num_filters: An `int` number that represents the number of filters of the
+        intermediate convolution layers.
+      use_separable_conv: A `bool` that indicates whether the separable
+        convolution layers is used.
+      activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
-      use_sync_bn: `bool`, whether to use synchronized batch normalization
-        across different replicas.
-      norm_momentum: `float`, the momentum parameter of the normalization
-        layers.
-      norm_epsilon: `float`, the epsilon parameter of the normalization layers.
-      kernel_regularizer: `tf.keras.regularizers.Regularizer` object for layer
-        kernel.
-      bias_regularizer: `tf.keras.regularizers.Regularizer` object for bias.
-      class_agnostic: `bool`, if set, we use a single channel mask head that
+      use_sync_bn: A `bool` that indicates whether to use synchronized batch
+        normalization across different replicas.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default is None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      class_agnostic: A `bool`. If set, we use a single channel mask head that
         is shared between all classes.
-      **kwargs: other keyword arguments passed to Layer.
+      **kwargs: Additional keyword arguments to be passed.
     """
     super(MaskHead, self).__init__(**kwargs)
     self._config_dict = {
@@ -275,7 +282,7 @@ class MaskHead(tf.keras.layers.Layer):
       self._bn_axis = 1
     self._activation = tf_utils.get_activation(activation)
 
-  def build(self, input_shape):
+  def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the head."""
     conv_op = (tf.keras.layers.SeparableConv2D
                if self._config_dict['use_separable_conv']
@@ -367,20 +374,19 @@ class MaskHead(tf.keras.layers.Layer):
 
     super(MaskHead, self).build(input_shape)
 
-  def call(self, inputs, training=None):
-    """Mask branch for the Mask-RCNN model.
+  def call(self, inputs: List[tf.Tensor], training: bool = None):
+    """Forward pass of mask branch for the Mask-RCNN model.
 
     Args:
-      inputs: a list of two tensors
-        inputs[0]: ROI features, a tensor of shape
-          [batch_size, num_instances, roi_height, roi_width, roi_channels],
-          representing the ROI features.
-        inputs[1]: ROI classes, a tensor of shape
-          [batch_size, num_instances], representing the classes of the ROIs.
-      training: a boolean indicating whether it is in `training` mode.
+      inputs: A `list` of two tensors where
+        inputs[0]: A `tf.Tensor` of shape [batch_size, num_instances,
+          roi_height, roi_width, roi_channels], representing the ROI features.
+        inputs[1]: A `tf.Tensor` of shape [batch_size, num_instances],
+          representing the classes of the ROIs.
+      training: A `bool` indicating whether it is in `training` mode.
 
     Returns:
-      mask_outputs: a tensor of shape
+      mask_outputs: A `tf.Tensor` of shape
         [batch_size, num_instances, roi_height * upsample_factor,
          roi_width * upsample_factor], representing the mask predictions.
     """

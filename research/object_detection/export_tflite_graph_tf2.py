@@ -53,7 +53,7 @@ certain fields in the provided pipeline_config_path.  These are useful for
 making small changes to the inference graph that differ from the training or
 eval config.
 
-Example Usage (in which we change the NMS iou_threshold to be 0.5 and
+Example Usage 1 (in which we change the NMS iou_threshold to be 0.5 and
 NMS score_threshold to be 0.0):
 python object_detection/export_tflite_model_tf2.py \
     --pipeline_config_path path/to/ssd_model/pipeline.config \
@@ -71,6 +71,27 @@ python object_detection/export_tflite_model_tf2.py \
           } \
        } \
        "
+
+Example Usage 2 (export CenterNet model for keypoint estimation task with fixed
+shape resizer and customized input resolution):
+python object_detection/export_tflite_model_tf2.py \
+    --pipeline_config_path path/to/ssd_model/pipeline.config \
+    --trained_checkpoint_dir path/to/ssd_model/checkpoint \
+    --output_directory path/to/exported_model_directory \
+    --keypoint_label_map_path path/to/label_map.txt \
+    --max_detections 10 \
+    --centernet_include_keypoints true \
+    --config_override " \
+            model{ \
+              center_net { \
+                image_resizer { \
+                  fixed_shape_resizer { \
+                    height: 320 \
+                    width: 320 \
+                  } \
+                } \
+              } \
+            }" \
 """
 from absl import app
 from absl import flags
@@ -94,13 +115,26 @@ flags.DEFINE_string('output_directory', None, 'Path to write outputs.')
 flags.DEFINE_string(
     'config_override', '', 'pipeline_pb2.TrainEvalPipelineConfig '
     'text proto to override pipeline_config_path.')
-# SSD-specific flags
-flags.DEFINE_integer('ssd_max_detections', 10,
+flags.DEFINE_integer('max_detections', 10,
                      'Maximum number of detections (boxes) to return.')
+# SSD-specific flags
 flags.DEFINE_bool(
     'ssd_use_regular_nms', False,
     'Flag to set postprocessing op to use Regular NMS instead of Fast NMS '
     '(Default false).')
+# CenterNet-specific flags
+flags.DEFINE_bool(
+    'centernet_include_keypoints', False,
+    'Whether to export the predicted keypoint tensors. Only CenterNet model'
+    ' supports this flag.'
+)
+flags.DEFINE_string(
+    'keypoint_label_map_path', None,
+    'Path of the label map used by CenterNet keypoint estimation task. If'
+    ' provided, the label map path in the pipeline config will be replaced by'
+    ' this one. Note that it is only used when exporting CenterNet model for'
+    ' keypoint estimation task.'
+)
 
 
 def main(argv):
@@ -113,13 +147,14 @@ def main(argv):
 
   with tf.io.gfile.GFile(FLAGS.pipeline_config_path, 'r') as f:
     text_format.Parse(f.read(), pipeline_config)
-  text_format.Parse(FLAGS.config_override, pipeline_config)
+  override_config = pipeline_pb2.TrainEvalPipelineConfig()
+  text_format.Parse(FLAGS.config_override, override_config)
+  pipeline_config.MergeFrom(override_config)
 
-  export_tflite_graph_lib_tf2.export_tflite_model(pipeline_config,
-                                                  FLAGS.trained_checkpoint_dir,
-                                                  FLAGS.output_directory,
-                                                  FLAGS.ssd_max_detections,
-                                                  FLAGS.ssd_use_regular_nms)
+  export_tflite_graph_lib_tf2.export_tflite_model(
+      pipeline_config, FLAGS.trained_checkpoint_dir, FLAGS.output_directory,
+      FLAGS.max_detections, FLAGS.ssd_use_regular_nms,
+      FLAGS.centernet_include_keypoints, FLAGS.keypoint_label_map_path)
 
 
 if __name__ == '__main__':

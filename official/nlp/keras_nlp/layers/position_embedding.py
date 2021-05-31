@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Keras-based positional embedding layer."""
 # pylint: disable=g-classes-have-attributes
 import tensorflow as tf
@@ -29,10 +29,11 @@ class PositionEmbedding(tf.keras.layers.Layer):
   ```
 
 
-  Arguments:
+  Args:
     max_length: The maximum size of the dynamic sequence.
     initializer: The initializer to use for the embedding weights. Defaults to
       "glorot_uniform".
+    seq_axis: The axis of the input tensor where we add the embeddings.
 
   Reference: This layer creates a positional embedding as described in
   [BERT: Pre-training of Deep Bidirectional Transformers for Language
@@ -42,6 +43,7 @@ class PositionEmbedding(tf.keras.layers.Layer):
   def __init__(self,
                max_length,
                initializer="glorot_uniform",
+               seq_axis=1,
                **kwargs):
 
     super(PositionEmbedding, self).__init__(**kwargs)
@@ -51,11 +53,13 @@ class PositionEmbedding(tf.keras.layers.Layer):
       )
     self._max_length = max_length
     self._initializer = tf.keras.initializers.get(initializer)
+    self._seq_axis = seq_axis
 
   def get_config(self):
     config = {
         "max_length": self._max_length,
         "initializer": tf.keras.initializers.serialize(self._initializer),
+        "seq_axis": self._seq_axis,
     }
     base_config = super(PositionEmbedding, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -63,12 +67,8 @@ class PositionEmbedding(tf.keras.layers.Layer):
   def build(self, input_shape):
     dimension_list = input_shape.as_list()
 
-    if len(dimension_list) != 3:
-      raise ValueError("PositionEmbedding expects a 3-dimensional input tensor "
-                       "of shape [batch, sequence, width], got "
-                       "{}".format(input_shape))
-    seq_length = dimension_list[1]
-    width = dimension_list[2]
+    seq_length = dimension_list[self._seq_axis]
+    width = dimension_list[-1]
 
     if self._max_length is not None:
       weight_sequence_length = self._max_length
@@ -84,5 +84,10 @@ class PositionEmbedding(tf.keras.layers.Layer):
 
   def call(self, inputs):
     input_shape = tf.shape(inputs)
-    position_embeddings = self._position_embeddings[:input_shape[1], :]
+    actual_seq_len = input_shape[self._seq_axis]
+    position_embeddings = self._position_embeddings[:actual_seq_len, :]
+    new_shape = [1 for _ in inputs.get_shape().as_list()]
+    new_shape[self._seq_axis] = actual_seq_len
+    new_shape[-1] = position_embeddings.get_shape().as_list()[-1]
+    position_embeddings = tf.reshape(position_embeddings, new_shape)
     return tf.broadcast_to(position_embeddings, input_shape)

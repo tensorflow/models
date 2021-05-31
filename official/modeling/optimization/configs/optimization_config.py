@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Dataclasses for optimization configs.
 
 This file define the dataclass for optimization configs (OptimizationConfig).
@@ -40,6 +39,8 @@ class OptimizerConfig(oneof.OneOfConfig):
     adamw: adam with weight decay.
     lamb: lamb optimizer.
     rmsprop: rmsprop optimizer.
+    lars: lars optimizer.
+    adagrad: adagrad optimizer.
   """
   type: Optional[str] = None
   sgd: opt_cfg.SGDConfig = opt_cfg.SGDConfig()
@@ -47,6 +48,8 @@ class OptimizerConfig(oneof.OneOfConfig):
   adamw: opt_cfg.AdamWeightDecayConfig = opt_cfg.AdamWeightDecayConfig()
   lamb: opt_cfg.LAMBConfig = opt_cfg.LAMBConfig()
   rmsprop: opt_cfg.RMSPropConfig = opt_cfg.RMSPropConfig()
+  lars: opt_cfg.LARSConfig = opt_cfg.LARSConfig()
+  adagrad: opt_cfg.AdagradConfig = opt_cfg.AdagradConfig()
 
 
 @dataclasses.dataclass
@@ -54,7 +57,7 @@ class LrConfig(oneof.OneOfConfig):
   """Configuration for lr schedule.
 
   Attributes:
-    type: 'str', type of lr schedule to be used, on the of fields below.
+    type: 'str', type of lr schedule to be used, one of the fields below.
     constant: constant learning rate config.
     stepwise: stepwise learning rate config.
     exponential: exponential learning rate config.
@@ -63,6 +66,7 @@ class LrConfig(oneof.OneOfConfig):
     power: step^power learning rate config.
     power_linear: learning rate config of step^power followed by
       step^power*linear.
+    power_with_offset: power decay with a step offset.
   """
   type: Optional[str] = None
   constant: lr_cfg.ConstantLrConfig = lr_cfg.ConstantLrConfig()
@@ -73,6 +77,8 @@ class LrConfig(oneof.OneOfConfig):
   power: lr_cfg.DirectPowerLrConfig = lr_cfg.DirectPowerLrConfig()
   power_linear: lr_cfg.PowerAndLinearDecayLrConfig = (
       lr_cfg.PowerAndLinearDecayLrConfig())
+  power_with_offset: lr_cfg.PowerDecayWithOffsetLrConfig = (
+      lr_cfg.PowerDecayWithOffsetLrConfig())
 
 
 @dataclasses.dataclass
@@ -80,7 +86,7 @@ class WarmupConfig(oneof.OneOfConfig):
   """Configuration for lr schedule.
 
   Attributes:
-    type: 'str', type of warmup schedule to be used, on the of fields below.
+    type: 'str', type of warmup schedule to be used, one of the fields below.
     linear: linear warmup config.
     polynomial: polynomial warmup config.
   """
@@ -95,8 +101,8 @@ class OptimizationConfig(base_config.Config):
 
   Attributes:
     optimizer: optimizer oneof config.
-    ema: optional exponential moving average optimizer config, if specified,
-      ema optimizer will be used.
+    ema: optional exponential moving average optimizer config, if specified, ema
+      optimizer will be used.
     learning_rate: learning rate oneof config.
     warmup: warmup oneof config.
   """

@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,12 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Register flags for optimizing performance."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Register flags for optimizing performance."""
 
 import multiprocessing
 
@@ -65,7 +61,6 @@ def define_performance(num_parallel_calls=False,
                        tf_gpu_thread_mode=False,
                        datasets_num_private_threads=False,
                        datasets_num_parallel_batches=False,
-                       dynamic_loss_scale=False,
                        fp16_implementation=False,
                        loss_scale=False,
                        tf_data_experimental_slack=False,
@@ -88,8 +83,6 @@ def define_performance(num_parallel_calls=False,
     datasets_num_private_threads: Number of private threads for datasets.
     datasets_num_parallel_batches: Determines how many batches to process in
       parallel when using map and batch from tf.data.
-    dynamic_loss_scale: Allow the "loss_scale" flag to take on the value
-      "dynamic". Only valid if `dtype` is True.
     fp16_implementation: Create fp16_implementation flag.
     loss_scale: Controls the loss scaling, normally for mixed-precision
       training. Can only be turned on if dtype is also True.
@@ -160,45 +153,37 @@ def define_performance(num_parallel_calls=False,
         default="fp32",
         enum_values=DTYPE_MAP.keys(),
         help=help_wrap("The TensorFlow datatype used for calculations. "
-                       "Variables may be cast to a higher precision on a "
-                       "case-by-case basis for numerical stability."))
+                       "For 16-bit dtypes, variables and certain ops will "
+                       "still be float32 for numeric stability."))
 
-    loss_scale_help_text = (
-        "The amount to scale the loss by when the model is run. {}. Before "
-        "gradients are computed, the loss is multiplied by the loss scale, "
-        "making all gradients loss_scale times larger. To adjust for this, "
-        "gradients are divided by the loss scale before being applied to "
-        "variables. This is mathematically equivalent to training without "
-        "a loss scale, but the loss scale helps avoid some intermediate "
-        "gradients from underflowing to zero. If not provided the default "
-        "for fp16 is 128 and 1 for all other dtypes.{}")
-    if dynamic_loss_scale:
-      loss_scale_help_text = loss_scale_help_text.format(
-          "This can be an int/float or the string 'dynamic'",
-          " The string 'dynamic' can be used to dynamically determine the "
-          "optimal loss scale during training, but currently this "
-          "significantly slows down performance")
-      loss_scale_validation_msg = ("loss_scale should be a positive int/float "
-                                   "or the string 'dynamic'.")
-    else:
-      loss_scale_help_text = loss_scale_help_text.format(
-          "This must be an int/float", "")
-      loss_scale_validation_msg = "loss_scale should be a positive int/float."
     if loss_scale:
       flags.DEFINE_string(
           name="loss_scale",
           short_name="ls",
           default=None,
-          help=help_wrap(loss_scale_help_text))
+          help=help_wrap(
+              "The amount to scale the loss by when --dtype=fp16. This can be "
+              "an int/float or the string 'dynamic'. Before gradients are "
+              "computed, the loss is multiplied by the loss scale, making all "
+              "gradients loss_scale times larger. To adjust for this, "
+              "gradients are divided by the loss scale before being applied to "
+              "variables. This is mathematically equivalent to training "
+              "without a loss scale, but the loss scale helps avoid some "
+              "intermediate gradients from underflowing to zero. The default "
+              "is 'dynamic', which dynamic determines the optimal loss scale "
+              "during training."))
 
+      # pylint: disable=unused-variable
       @flags.validator(
-          flag_name="loss_scale", message=loss_scale_validation_msg)
-      def _check_loss_scale(loss_scale):  # pylint: disable=unused-variable
+          flag_name="loss_scale",
+          message="loss_scale should be a positive int/float or the string "
+                  "'dynamic'.")
+      def _check_loss_scale(loss_scale):
         """Validator to check the loss scale flag is valid."""
         if loss_scale is None:
           return True  # null case is handled in get_loss_scale()
 
-        if loss_scale == "dynamic" and dynamic_loss_scale:
+        if loss_scale == "dynamic":
           return True
 
         try:
@@ -207,6 +192,7 @@ def define_performance(num_parallel_calls=False,
           return False
 
         return loss_scale > 0
+      # pylint: enable=unused-variable
 
     if fp16_implementation:
       flags.DEFINE_enum(
@@ -217,8 +203,8 @@ def define_performance(num_parallel_calls=False,
               "When --dtype=fp16, how fp16 should be implemented. This has no "
               "impact on correctness. 'keras' uses the "
               "tf.keras.mixed_precision API. 'graph_rewrite' uses the "
-              "tf.train.experimental.enable_mixed_precision_graph_rewrite "
-              "API."))
+              "tf.compat.v1.mixed_precision."
+              "enable_mixed_precision_graph_rewrite API."))
 
       @flags.multi_flags_validator(
           ["fp16_implementation", "dtype", "loss_scale"])

@@ -51,8 +51,7 @@ class FakeModel(model.DetectionModel):
             value=conv_weight_scalar))
 
   def preprocess(self, inputs):
-    true_image_shapes = []  # Doesn't matter for the fake model.
-    return tf.identity(inputs), true_image_shapes
+    return tf.identity(inputs), exporter_lib_v2.get_true_shapes(inputs)
 
   def predict(self, preprocessed_inputs, true_image_shapes, **side_inputs):
     return_dict = {'image': self._conv(preprocessed_inputs)}
@@ -75,6 +74,13 @@ class FakeModel(model.DetectionModel):
           'num_detections': tf.constant([2, 1], tf.float32),
       }
     return postprocessed_tensors
+
+  def predict_masks_from_boxes(self, prediction_dict, true_image_shapes, boxes):
+    output_dict = self.postprocess(prediction_dict, true_image_shapes)
+    output_dict.update({
+        'detection_masks': tf.ones(shape=(1, 2, 16), dtype=tf.float32),
+    })
+    return output_dict
 
   def restore_map(self, checkpoint_path, fine_tune_checkpoint_type):
     pass
@@ -290,6 +296,83 @@ class ExportInferenceGraphTest(tf.test.TestCase, parameterized.TestCase):
       # 150 = conv_weight_scalar * height * width * channels = 2 * 5 * 5 * 3.
       self.assertAllClose(detections['detection_scores'],
                           [[150 + 0.7, 150 + 0.6], [150 + 0.9, 150 + 0.0]])
+
+
+class DetectionFromImageAndBoxModuleTest(tf.test.TestCase):
+
+  def get_dummy_input(self, input_type):
+    """Get dummy input for the given input type."""
+
+    if input_type == 'image_tensor' or input_type == 'image_and_boxes_tensor':
+      return np.zeros((1, 20, 20, 3), dtype=np.uint8)
+    if input_type == 'float_image_tensor':
+      return np.zeros((1, 20, 20, 3), dtype=np.float32)
+    elif input_type == 'encoded_image_string_tensor':
+      image = Image.new('RGB', (20, 20))
+      byte_io = io.BytesIO()
+      image.save(byte_io, 'PNG')
+      return [byte_io.getvalue()]
+    elif input_type == 'tf_example':
+      image_tensor = tf.zeros((20, 20, 3), dtype=tf.uint8)
+      encoded_jpeg = tf.image.encode_jpeg(tf.constant(image_tensor)).numpy()
+      example = tf.train.Example(
+          features=tf.train.Features(
+              feature={
+                  'image/encoded':
+                      dataset_util.bytes_feature(encoded_jpeg),
+                  'image/format':
+                      dataset_util.bytes_feature(six.b('jpeg')),
+                  'image/source_id':
+                      dataset_util.bytes_feature(six.b('image_id')),
+              })).SerializeToString()
+      return [example]
+
+  def _save_checkpoint_from_mock_model(self,
+                                       checkpoint_dir,
+                                       conv_weight_scalar=6.0):
+    mock_model = FakeModel(conv_weight_scalar)
+    fake_image = tf.zeros(shape=[1, 10, 10, 3], dtype=tf.float32)
+    preprocessed_inputs, true_image_shapes = mock_model.preprocess(fake_image)
+    predictions = mock_model.predict(preprocessed_inputs, true_image_shapes)
+    mock_model.postprocess(predictions, true_image_shapes)
+
+    ckpt = tf.train.Checkpoint(model=mock_model)
+    exported_checkpoint_manager = tf.train.CheckpointManager(
+        ckpt, checkpoint_dir, max_to_keep=1)
+    exported_checkpoint_manager.save(checkpoint_number=0)
+
+  def test_export_saved_model_and_run_inference_for_segmentation(
+      self, input_type='image_and_boxes_tensor'):
+    tmp_dir = self.get_temp_dir()
+    self._save_checkpoint_from_mock_model(tmp_dir)
+
+    with mock.patch.object(
+        model_builder, 'build', autospec=True) as mock_builder:
+      mock_builder.return_value = FakeModel()
+      exporter_lib_v2.INPUT_BUILDER_UTIL_MAP['model_build'] = mock_builder
+      output_directory = os.path.join(tmp_dir, 'output')
+      pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+      exporter_lib_v2.export_inference_graph(
+          input_type=input_type,
+          pipeline_config=pipeline_config,
+          trained_checkpoint_dir=tmp_dir,
+          output_directory=output_directory)
+
+      saved_model_path = os.path.join(output_directory, 'saved_model')
+      detect_fn = tf.saved_model.load(saved_model_path)
+      image = self.get_dummy_input(input_type)
+      boxes = tf.constant([
+          [
+              [0.0, 0.0, 0.5, 0.5],
+              [0.5, 0.5, 0.8, 0.8],
+          ],
+      ])
+      detections = detect_fn(tf.constant(image), boxes)
+
+      detection_fields = fields.DetectionResultFields
+      self.assertIn(detection_fields.detection_masks, detections)
+      self.assertListEqual(
+          list(detections[detection_fields.detection_masks].shape), [1, 2, 16])
 
 
 if __name__ == '__main__':

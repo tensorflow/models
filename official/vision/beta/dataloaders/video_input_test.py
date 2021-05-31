@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 
 import io
 
@@ -20,6 +20,7 @@ import io
 import numpy as np
 from PIL import Image
 import tensorflow as tf
+import tensorflow_datasets as tfds
 
 from official.vision.beta.configs import video_classification as exp_cfg
 from official.vision.beta.dataloaders import video_input
@@ -87,6 +88,16 @@ class DecoderTest(tf.test.TestCase):
     self.assertEqual(label, results[video_input.LABEL_KEY])
     self.assertEqual(results[AUDIO_KEY].shape, (10, 256))
 
+  def test_tfds_decode(self):
+    with tfds.testing.mock_data(num_examples=1):
+      dataset = tfds.load('ucf101', split='train').take(1)
+      data = next(iter(dataset))
+
+    decoder = video_input.VideoTfdsDecoder()
+    decoded_tensors = decoder.decode(data)
+    self.assertContainsSubset([video_input.LABEL_KEY, video_input.IMAGE_KEY],
+                              decoded_tensors.keys())
+
 
 class VideoAndLabelParserTest(tf.test.TestCase):
 
@@ -134,6 +145,50 @@ class VideoAndLabelParserTest(tf.test.TestCase):
     self.assertAllEqual(image.shape, (2, 224, 224, 3))
     self.assertAllEqual(label.shape, (600,))
     self.assertEqual(audio.shape, (15, 256))
+
+  def test_video_input_random_stride(self):
+    params = exp_cfg.kinetics600(is_training=True)
+    params.feature_shape = (2, 224, 224, 3)
+    params.min_image_size = 224
+
+    params.temporal_stride = 2
+    params.random_stride_range = 1
+
+    decoder = video_input.Decoder()
+    parser = video_input.Parser(params).parse_fn(params.is_training)
+
+    seq_example, label = fake_seq_example()
+
+    input_tensor = tf.constant(seq_example.SerializeToString())
+    decoded_tensors = decoder.decode(input_tensor)
+    output_tensor = parser(decoded_tensors)
+    image_features, label = output_tensor
+    image = image_features['image']
+
+    self.assertAllEqual(image.shape, (2, 224, 224, 3))
+    self.assertAllEqual(label.shape, (600,))
+
+  def test_video_input_augmentation_returns_shape(self):
+    params = exp_cfg.kinetics600(is_training=True)
+    params.feature_shape = (2, 224, 224, 3)
+    params.min_image_size = 224
+
+    params.temporal_stride = 2
+    params.aug_type = 'autoaug'
+
+    decoder = video_input.Decoder()
+    parser = video_input.Parser(params).parse_fn(params.is_training)
+
+    seq_example, label = fake_seq_example()
+
+    input_tensor = tf.constant(seq_example.SerializeToString())
+    decoded_tensors = decoder.decode(input_tensor)
+    output_tensor = parser(decoded_tensors)
+    image_features, label = output_tensor
+    image = image_features['image']
+
+    self.assertAllEqual(image.shape, (2, 224, 224, 3))
+    self.assertAllEqual(label.shape, (600,))
 
 
 if __name__ == '__main__':

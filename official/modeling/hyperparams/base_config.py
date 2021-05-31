@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Base configurations to standardize experiments."""
 
 import copy
@@ -30,11 +30,15 @@ from official.modeling.hyperparams import params_dict
 class Config(params_dict.ParamsDict):
   """The base configuration class that supports YAML/JSON based overrides.
 
-  * It recursively enforces a whitelist of basic types and container types, so
+  Because of YAML/JSON serialization limitations, some semantics of dataclass
+  are not supported:
+  * It recursively enforces a allowlist of basic types and container types, so
     it avoids surprises with copy and reuse caused by unanticipated types.
-  * It converts dict to Config even within sequences,
+  * Warning: it converts Dict to `Config` even within sequences,
     e.g. for config = Config({'key': [([{'a': 42}],)]),
          type(config.key[0][0][0]) is Config rather than dict.
+    If you define/annotate some field as Dict, the field will convert to a
+    `Config` instance and lose the dictionary type.
   """
 
   # It's safe to add bytes and other immutable types here.

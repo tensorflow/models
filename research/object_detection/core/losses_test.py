@@ -1447,5 +1447,111 @@ class L1LocalizationLossTest(test_case.TestCase):
     self.assertAllClose(computed_value, [[0.8, 0.0], [0.6, 0.1]], rtol=1e-6)
 
 
+class WeightedDiceClassificationLoss(test_case.TestCase):
+
+  def test_compute_weights_1(self):
+    def graph_fn():
+      loss = losses.WeightedDiceClassificationLoss(squared_normalization=False)
+      pred = np.zeros((2, 3, 4), dtype=np.float32)
+      target = np.zeros((2, 3, 4), dtype=np.float32)
+
+      pred[0, 1, 0] = _logit(0.9)
+      pred[0, 2, 0] = _logit(0.1)
+      pred[0, 2, 2] = _logit(0.5)
+      pred[0, 1, 3] = _logit(0.1)
+
+      pred[1, 2, 3] = _logit(0.2)
+      pred[1, 1, 1] = _logit(0.3)
+      pred[1, 0, 2] = _logit(0.1)
+
+      target[0, 1, 0] = 1.0
+      target[0, 2, 2] = 1.0
+      target[0, 1, 3] = 1.0
+
+      target[1, 2, 3] = 1.0
+      target[1, 1, 1] = 0.0
+      target[1, 0, 2] = 0.0
+
+      weights = np.ones_like(target)
+      return loss._compute_loss(pred, target, weights)
+
+    dice_coeff = np.zeros((2, 4))
+    dice_coeff[0, 0] = 2 * 0.9 / 2.5
+    dice_coeff[0, 2] = 2 * 0.5 / 2.5
+    dice_coeff[0, 3] = 2 * 0.1 / 2.1
+    dice_coeff[1, 3] = 2 * 0.2 / 2.2
+
+    computed_value = self.execute(graph_fn, [])
+    self.assertAllClose(computed_value, 1 - dice_coeff, rtol=1e-6)
+
+  def test_compute_weights_set(self):
+
+    def graph_fn():
+      loss = losses.WeightedDiceClassificationLoss(squared_normalization=False)
+      pred = np.zeros((2, 3, 4), dtype=np.float32)
+      target = np.zeros((2, 3, 4), dtype=np.float32)
+
+      pred[0, 1, 0] = _logit(0.9)
+      pred[0, 2, 0] = _logit(0.1)
+      pred[0, 2, 2] = _logit(0.5)
+      pred[0, 1, 3] = _logit(0.1)
+
+      pred[1, 2, 3] = _logit(0.2)
+      pred[1, 1, 1] = _logit(0.3)
+      pred[1, 0, 2] = _logit(0.1)
+
+      target[0, 1, 0] = 1.0
+      target[0, 2, 2] = 1.0
+      target[0, 1, 3] = 1.0
+
+      target[1, 2, 3] = 1.0
+      target[1, 1, 1] = 0.0
+      target[1, 0, 2] = 0.0
+
+      weights = np.ones_like(target)
+      weights[:, :, 0] = 0.0
+      return loss._compute_loss(pred, target, weights)
+
+    dice_coeff = np.zeros((2, 4))
+    dice_coeff[0, 2] = 2 * 0.5 / 2.5
+    dice_coeff[0, 3] = 2 * 0.1 / 2.1
+    dice_coeff[1, 3] = 2 * 0.2 / 2.2
+
+    computed_value = self.execute(graph_fn, [])
+    self.assertAllClose(computed_value, 1 - dice_coeff, rtol=1e-6)
+
+  def test_class_indices(self):
+    def graph_fn():
+      loss = losses.WeightedDiceClassificationLoss(squared_normalization=False)
+      pred = np.zeros((2, 3, 4), dtype=np.float32)
+      target = np.zeros((2, 3, 4), dtype=np.float32)
+
+      pred[0, 1, 0] = _logit(0.9)
+      pred[0, 2, 0] = _logit(0.1)
+      pred[0, 2, 2] = _logit(0.5)
+      pred[0, 1, 3] = _logit(0.1)
+
+      pred[1, 2, 3] = _logit(0.2)
+      pred[1, 1, 1] = _logit(0.3)
+      pred[1, 0, 2] = _logit(0.1)
+
+      target[0, 1, 0] = 1.0
+      target[0, 2, 2] = 1.0
+      target[0, 1, 3] = 1.0
+
+      target[1, 2, 3] = 1.0
+      target[1, 1, 1] = 0.0
+      target[1, 0, 2] = 0.0
+
+      weights = np.ones_like(target)
+      return loss._compute_loss(pred, target, weights, class_indices=[0])
+
+    dice_coeff = np.zeros((2, 4))
+    dice_coeff[0, 0] = 2 * 0.9 / 2.5
+
+    computed_value = self.execute(graph_fn, [])
+    self.assertAllClose(computed_value, 1 - dice_coeff, rtol=1e-6)
+
+
 if __name__ == '__main__':
   tf.test.main()

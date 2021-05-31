@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Loads dataset for the BERT pretraining task."""
 from typing import Mapping, Optional
 
@@ -61,8 +60,7 @@ class BertPretrainDataLoader(data_loader.DataLoader):
     self._use_next_sentence_label = params.use_next_sentence_label
     self._use_position_id = params.use_position_id
 
-  def _decode(self, record: tf.Tensor):
-    """Decodes a serialized tf.Example."""
+  def _name_to_features(self):
     name_to_features = {
         'input_mask':
             tf.io.FixedLenFeature([self._seq_length], tf.int64),
@@ -89,7 +87,11 @@ class BertPretrainDataLoader(data_loader.DataLoader):
     if self._use_position_id:
       name_to_features['position_ids'] = tf.io.FixedLenFeature(
           [self._seq_length], tf.int64)
+    return name_to_features
 
+  def _decode(self, record: tf.Tensor):
+    """Decodes a serialized tf.Example."""
+    name_to_features = self._name_to_features()
     example = tf.io.parse_single_example(record, name_to_features)
 
     # tf.Example only supports tf.int64, but the TPU only supports tf.int32.

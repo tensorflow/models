@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Dataclasses for optimizer configs."""
 from typing import List, Optional
 
@@ -30,7 +29,7 @@ class BaseOptimizerConfig(base_config.Config):
     clipvalue: float >= 0 or None. If not None, Gradients will be clipped when
       their absolute value exceeds this value.
     global_clipnorm: float >= 0 or None. If not None, gradient of all weights is
-        clipped so that their global norm is no higher than this value
+      clipped so that their global norm is no higher than this value
   """
   clipnorm: Optional[float] = None
   clipvalue: Optional[float] = None
@@ -77,6 +76,24 @@ class RMSPropConfig(BaseOptimizerConfig):
 
 
 @dataclasses.dataclass
+class AdagradConfig(BaseOptimizerConfig):
+  """Configuration for Adagrad optimizer.
+
+  The attributes of this class match the arguments of
+  tf.keras.optimizer.Adagrad.
+
+  Attributes:
+    name: name of the optimizer.
+    initial_accumulator_value: A floating point value. Starting value for the
+      accumulators, must be non-negative.
+    epsilon: A small floating point value to avoid zero denominator.
+  """
+  name: str = "Adagrad"
+  initial_accumulator_value: float = 0.1
+  epsilon: float = 1e-07
+
+
+@dataclasses.dataclass
 class AdamConfig(BaseOptimizerConfig):
   """Configuration for Adam optimizer.
 
@@ -112,8 +129,10 @@ class AdamWeightDecayConfig(BaseOptimizerConfig):
     weight_decay_rate: float. Weight decay rate. Default to 0.
     include_in_weight_decay: list[str], or None. List of weight names to include
       in weight decay.
-    include_in_weight_decay: list[str], or None. List of weight names to not
+    exclude_from_weight_decay: list[str], or None. List of weight names to not
       include in weight decay.
+    gradient_clip_norm: A positive float. Clips the gradients to this maximum
+      L2-norm. Default to 1.0.
   """
   name: str = "AdamWeightDecay"
   beta_1: float = 0.9
@@ -161,11 +180,49 @@ class EMAConfig(BaseOptimizerConfig):
 
   Attributes:
     name: 'str', name of the optimizer.
+    trainable_weights_only: 'bool', if True, only model trainable weights will
+      be updated. Otherwise, all model weights will be updated. This mainly
+      affects batch normalization parameters.
     average_decay: 'float', average decay value.
     start_step: 'int', start step to apply moving average.
     dynamic_decay: 'bool', whether to apply dynamic decay or not.
   """
   name: str = "ExponentialMovingAverage"
+  trainable_weights_only: bool = True
   average_decay: float = 0.99
   start_step: int = 0
   dynamic_decay: bool = True
+
+
+@dataclasses.dataclass
+class LARSConfig(BaseOptimizerConfig):
+  """Layer-wise adaptive rate scaling config.
+
+  Attributes:
+    name: 'str', name of the optimizer.
+    momentum: `float` hyperparameter >= 0 that accelerates gradient descent in
+      the relevant direction and dampens oscillations. Defaults to 0.9.
+    eeta: `float` LARS coefficient as used in the paper. Default set to LARS
+      coefficient from the paper. (eeta / weight_decay) determines the highest
+      scaling factor in LARS..
+    weight_decay_rate: `float` for weight decay.
+    nesterov: 'boolean' for whether to use nesterov momentum.
+    classic_momentum: `boolean` for whether to use classic (or popular)
+      momentum. The learning rate is applied during momentum update in classic
+      momentum, but after momentum for popular momentum.
+    exclude_from_weight_decay: A list of `string` for variable screening, if any
+      of the string appears in a variable's name, the variable will be excluded
+      for computing weight decay. For example, one could specify the list like
+      ['batch_normalization', 'bias'] to exclude BN and bias from weight decay.
+    exclude_from_layer_adaptation: Similar to exclude_from_weight_decay, but for
+      layer adaptation. If it is None, it will be defaulted the same as
+      exclude_from_weight_decay.
+  """
+  name: str = "LARS"
+  momentum: float = 0.9
+  eeta: float = 0.001
+  weight_decay_rate: float = 0.0
+  nesterov: bool = False
+  classic_momentum: bool = True
+  exclude_from_weight_decay: Optional[List[str]] = None
+  exclude_from_layer_adaptation: Optional[List[str]] = None

@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Defines the Transformer model in TF 2.0.
 
 Model paper: https://arxiv.org/pdf/1706.03762.pdf
@@ -109,8 +109,8 @@ class Transformer(tf.keras.Model):
       sequence. float tensor with shape [batch_size, target_length, vocab_size]
       If target is none, then generate output sequence one token at a time.
         returns a dictionary {
-          outputs: [batch_size, decoded length]
-          scores: [batch_size, float]}
+          outputs: int tensor with shape [batch_size, decoded_length]
+          scores: float tensor with shape [batch_size]}
       Even when float16 is used, the output tensor(s) are always float32.
 
     Raises:

@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Runs a ResNet model on the ImageNet dataset using custom training loops."""
 
 import orbit
@@ -81,8 +81,7 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
         self.optimizer,
         use_float16=self.dtype == tf.float16,
         use_graph_rewrite=use_graph_rewrite,
-        loss_scale=flags_core.get_loss_scale(flags_obj, default_for_fp16=128),
-        use_experimental_api=False)
+        loss_scale=flags_core.get_loss_scale(flags_obj, default_for_fp16=128))
 
     self.train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
     self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
@@ -168,7 +167,8 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
           tape, self.optimizer, loss, self.model.trainable_variables)
       self.train_loss.update_state(loss)
       self.train_accuracy.update_state(labels, logits)
-
+    if self.flags_obj.enable_xla:
+      step_fn = tf.function(step_fn, jit_compile=True)
     self.strategy.run(step_fn, args=(next(iterator),))
 
   def train_loop_end(self):

@@ -1,4 +1,4 @@
-# Copyright 2020 The Orbit Authors. All Rights Reserved.
+# Copyright 2021 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for orbit.controller."""
 
 import os
@@ -583,7 +583,7 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     test_runner = TestRunner()
 
     class EarlyStopController(controller.Controller):
-      """A subclass of Controller supports early stopping."""
+      """A subclass of Controller that supports early stopping."""
 
       def train_and_evaluate(self,
                              train_steps: int = None,
@@ -723,6 +723,53 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotEmpty(
         summaries_with_matching_keyword(
             "accuracy", os.path.join(self.model_dir, "dataset2")))
+
+  def test_actions(self):
+    test_runner = TestRunner()
+    checkpoint = tf.train.Checkpoint(
+        model=test_runner.model, optimizer=test_runner.optimizer)
+    checkpoint_manager = tf.train.CheckpointManager(
+        checkpoint,
+        self.model_dir,
+        max_to_keep=None,
+        step_counter=test_runner.global_step,
+        checkpoint_interval=10)
+
+    class OutputRecorderAction:
+      """Simple `Action` that just saves the outputs passed to `__call__`."""
+
+      def __init__(self):
+        self.outputs = []
+
+      def __call__(self, output):
+        self.outputs.append(output)
+
+    train_output_recorder = OutputRecorderAction()
+    eval_output_recorder = OutputRecorderAction()
+
+    test_controller = controller.Controller(
+        trainer=test_runner,
+        evaluator=test_runner,
+        train_actions=[train_output_recorder],
+        eval_actions=[eval_output_recorder],
+        global_step=test_runner.global_step,
+        steps_per_loop=2,
+        summary_dir=os.path.join(self.model_dir, "summaries/train"),
+        checkpoint_manager=checkpoint_manager,
+        eval_summary_dir=os.path.join(self.model_dir, "summaries/eval"))
+    test_controller.train_and_evaluate(
+        train_steps=10, eval_steps=2, eval_interval=6)
+
+    self.assertLen(train_output_recorder.outputs, 5)
+    for output in train_output_recorder.outputs:
+      self.assertIn("loss", output)
+      self.assertGreaterEqual(output["loss"], 0)
+
+    self.assertLen(eval_output_recorder.outputs, 2)
+    for output in eval_output_recorder.outputs:
+      self.assertIn("eval_loss", output)
+      self.assertGreaterEqual(output["eval_loss"], 0)
+
 
 if __name__ == "__main__":
   tf.test.main()

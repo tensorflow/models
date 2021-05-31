@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Layers for DeepLabV3."""
 
 import tensorflow as tf
@@ -42,7 +42,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
       **kwargs):
     """Initializes `SpatialPyramidPooling`.
 
-    Arguments:
+    Args:
       output_channels: Number of channels produced by SpatialPyramidPooling.
       dilation_rates: A list of integers for parallel dilated conv.
       pool_kernel_size: A list of integers or None. If None, global average
@@ -142,7 +142,10 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
                 epsilon=self.batchnorm_epsilon),
             tf.keras.layers.Activation(self.activation),
             tf.keras.layers.experimental.preprocessing.Resizing(
-                height, width, interpolation=self.interpolation)
+                height,
+                width,
+                interpolation=self.interpolation,
+                dtype=tf.float32)
         ]))
 
     self.aspp_layers.append(pool_sequential)
@@ -165,7 +168,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
       training = tf.keras.backend.learning_phase()
     result = []
     for layer in self.aspp_layers:
-      result.append(layer(inputs, training=training))
+      result.append(tf.cast(layer(inputs, training=training), inputs.dtype))
     result = tf.concat(result, axis=-1)
     result = self.projection(result, training=training)
     return result

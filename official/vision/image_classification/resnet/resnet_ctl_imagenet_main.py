@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Runs a ResNet model on the ImageNet dataset using custom training loops."""
 
 import math
@@ -97,10 +97,8 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
-  keras_utils.set_session_config(
-      enable_xla=flags_obj.enable_xla)
-  performance.set_mixed_precision_policy(flags_core.get_tf_dtype(flags_obj),
-                                         use_experimental_api=False)
+  keras_utils.set_session_config()
+  performance.set_mixed_precision_policy(flags_core.get_tf_dtype(flags_obj))
 
   if tf.config.list_physical_devices('GPU'):
     if flags_obj.tf_gpu_thread_mode:

@@ -305,7 +305,7 @@ class KerasMultiResolutionFeatureMaps(tf.keras.Model):
       # this net must be appended only once it's been filled with layers
       self.convolutions.append(net)
 
-  def call(self, image_features, training=None):
+  def call(self, image_features):
     """Generate the multi-resolution feature maps.
 
     Executed when calling the `.__call__` method on input.
@@ -313,11 +313,6 @@ class KerasMultiResolutionFeatureMaps(tf.keras.Model):
     Args:
       image_features: A dictionary of handles to activation tensors from the
         base feature extractor.
-      training: A boolean, True when in training mode. If not specified,
-        defaults to (in order of priority): the training mode of the outer
-        `Layer.call`; the default mode set by
-        `tf.keras.backend.set_learning_phase`; or the default value for
-        `training` in the call signature.
 
     Returns:
       feature_maps: an OrderedDict mapping keys (feature map names) to
@@ -333,7 +328,7 @@ class KerasMultiResolutionFeatureMaps(tf.keras.Model):
       else:
         feature_map = feature_maps[-1]
         for layer in self.convolutions[index]:
-          feature_map = layer(feature_map, training=training)
+          feature_map = layer(feature_map)
         layer_name = self.convolutions[index][-1].name
         feature_map_keys.append(layer_name)
       feature_maps.append(feature_map)
@@ -472,9 +467,11 @@ def multi_resolution_feature_maps(feature_map_layout, depth_multiplier,
             stride=1,
             scope=layer_name)
         if pool_residual and pre_layer_depth == depth_fn(layer_depth):
+          if use_explicit_padding:
+            pre_layer = ops.fixed_padding(pre_layer, conv_kernel_size)
           feature_map += slim.avg_pool2d(
-              pre_layer, [3, 3],
-              padding='SAME',
+              pre_layer, [conv_kernel_size, conv_kernel_size],
+              padding=padding,
               stride=2,
               scope=layer_name + '_pool')
       else:
@@ -621,7 +618,7 @@ class KerasFpnTopDownFeatureMaps(tf.keras.Model):
       self.reshape_blocks.append(reshaped_residual)
       self.conv_layers.append(conv_net)
 
-  def call(self, image_features, training=None):
+  def call(self, image_features):
     """Generate the multi-resolution feature maps.
 
     Executed when calling the `.__call__` method on input.
@@ -630,11 +627,6 @@ class KerasFpnTopDownFeatureMaps(tf.keras.Model):
       image_features: list of tuples of (tensor_name, image_feature_tensor).
         Spatial resolutions of succesive tensors must reduce exactly by a factor
         of 2.
-      training: A boolean, True when in training mode. If not specified,
-        defaults to (in order of priority): the training mode of the outer
-        `Layer.call`; the default mode set by
-        `tf.keras.backend.set_learning_phase`; or the default value for
-        `training` in the call signature.
 
     Returns:
       feature_maps: an OrderedDict mapping keys (feature map names) to
@@ -646,7 +638,7 @@ class KerasFpnTopDownFeatureMaps(tf.keras.Model):
     with tf.name_scope(self.scope):
       top_down = image_features[-1][1]
       for layer in self.top_layers:
-        top_down = layer(top_down, training=training)
+        top_down = layer(top_down)
       output_feature_maps_list.append(top_down)
       output_feature_map_keys.append('top_down_%s' % image_features[-1][0])
 
@@ -655,14 +647,14 @@ class KerasFpnTopDownFeatureMaps(tf.keras.Model):
         residual = image_features[level][1]
         top_down = output_feature_maps_list[-1]
         for layer in self.residual_blocks[index]:
-          residual = layer(residual, training=training)
+          residual = layer(residual)
         for layer in self.top_down_blocks[index]:
-          top_down = layer(top_down, training=training)
+          top_down = layer(top_down)
         for layer in self.reshape_blocks[index]:
-          top_down = layer([residual, top_down], training=training)
+          top_down = layer([residual, top_down])
         top_down += residual
         for layer in self.conv_layers[index]:
-          top_down = layer(top_down, training=training)
+          top_down = layer(top_down)
         output_feature_maps_list.append(top_down)
         output_feature_map_keys.append('top_down_%s' % image_features[level][0])
     return collections.OrderedDict(reversed(

@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for official.modeling.training.model_training_utils."""
 
 import os
@@ -40,9 +40,7 @@ def eager_strategy_combinations():
           strategy_combinations.one_device_strategy_gpu,
           strategy_combinations.mirrored_strategy_with_gpu_and_cpu,
           strategy_combinations.mirrored_strategy_with_two_gpus,
-      ],
-      mode='eager',
-  )
+      ],)
 
 
 def eager_gpu_strategy_combinations():
@@ -52,9 +50,7 @@ def eager_gpu_strategy_combinations():
           strategy_combinations.one_device_strategy_gpu,
           strategy_combinations.mirrored_strategy_with_gpu_and_cpu,
           strategy_combinations.mirrored_strategy_with_two_gpus,
-      ],
-      mode='eager',
-  )
+      ],)
 
 
 def create_fake_data_input_fn(batch_size, features_shape, num_classes):
@@ -290,9 +286,7 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
       combinations.combine(
           distribution=[
               strategy_combinations.one_device_strategy_gpu,
-          ],
-          mode='eager',
-      ))
+          ],))
   def test_train_check_artifacts_non_chief(self, distribution):
     # We shouldn't export artifacts on non-chief workers. Since there's no easy
     # way to test with real MultiWorkerMirroredStrategy, we patch the strategy

@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for Keras-based gated feedforward layer."""
 
 from absl.testing import parameterized
@@ -29,7 +29,7 @@ class GatedFeedforwardTest(keras_parameterized.TestCase):
 
   def tearDown(self):
     super(GatedFeedforwardTest, self).tearDown()
-    tf.keras.mixed_precision.experimental.set_policy("float32")
+    tf.keras.mixed_precision.set_global_policy("float32")
 
   @parameterized.parameters(
       (True, 1, "after_residual", "float32"),
@@ -42,7 +42,7 @@ class GatedFeedforwardTest(keras_parameterized.TestCase):
       (False, 1, "before_residual", "mixed_float16"),
   )
   def test_layer_creation(self, use_gate, num_blocks, dropout_position, dtype):
-    tf.keras.mixed_precision.experimental.set_policy(dtype)
+    tf.keras.mixed_precision.set_global_policy(dtype)
     kwargs = dict(
         intermediate_size=128,
         intermediate_activation="relu",
@@ -74,7 +74,7 @@ class GatedFeedforwardTest(keras_parameterized.TestCase):
   )
   def test_layer_invocation(self, use_gate, num_blocks, dropout_position,
                             dtype):
-    tf.keras.mixed_precision.experimental.set_policy(dtype)
+    tf.keras.mixed_precision.set_global_policy(dtype)
     kwargs = dict(
         intermediate_size=16,
         intermediate_activation="relu",

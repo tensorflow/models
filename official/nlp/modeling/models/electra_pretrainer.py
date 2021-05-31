@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Trainer network for ELECTRA models."""
 # pylint: disable=g-classes-have-attributes
 
@@ -37,9 +37,9 @@ class ElectraPretrainer(tf.keras.Model):
   that are used to create the training objectives.
 
   *Note* that the model is constructed by Keras Subclass API, where layers are
-  defined inside __init__ and call() implements the computation.
+  defined inside `__init__` and `call()` implements the computation.
 
-  Arguments:
+  Args:
     generator_network: A transformer network for generator, this network should
       output a sequence output and an optional classification output.
     discriminator_network: A transformer network for discriminator, this network
@@ -52,8 +52,8 @@ class ElectraPretrainer(tf.keras.Model):
       classification networks. If None, no activation will be used.
     mlm_initializer: The initializer (if any) to use in the masked LM and
       classification networks. Defaults to a Glorot uniform initializer.
-    output_type: The output style for this network. Can be either 'logits' or
-      'predictions'.
+    output_type: The output style for this network. Can be either `logits` or
+      `predictions`.
     disallow_correct: Whether to disallow the generator to generate the exact
       same token in the original sentence
   """
@@ -120,13 +120,13 @@ class ElectraPretrainer(tf.keras.Model):
 
     Returns:
       outputs: A dict of pretrainer model outputs, including
-        (1) lm_outputs: a [batch_size, num_token_predictions, vocab_size] tensor
-        indicating logits on masked positions.
-        (2) sentence_outputs: a [batch_size, num_classes] tensor indicating
+        (1) lm_outputs: A `[batch_size, num_token_predictions, vocab_size]`
+        tensor indicating logits on masked positions.
+        (2) sentence_outputs: A `[batch_size, num_classes]` tensor indicating
         logits for nsp task.
-        (3) disc_logits: a [batch_size, sequence_length] tensor indicating
+        (3) disc_logits: A `[batch_size, sequence_length]` tensor indicating
         logits for discriminator replaced token detection task.
-        (4) disc_label: a [batch_size, sequence_length] tensor indicating
+        (4) disc_label: A `[batch_size, sequence_length]` tensor indicating
         target labels for discriminator replaced token detection task.
     """
     input_word_ids = inputs['input_word_ids']
@@ -176,7 +176,7 @@ class ElectraPretrainer(tf.keras.Model):
     """Generate corrupted data for discriminator.
 
     Args:
-      inputs: A dict of all inputs, same as the input of call() function
+      inputs: A dict of all inputs, same as the input of `call()` function
       mlm_logits: The generator's output logits
       duplicate: Whether to copy the original inputs dict during modifications
 
@@ -227,16 +227,18 @@ def scatter_update(sequence, updates, positions):
   """Scatter-update a sequence.
 
   Args:
-    sequence: A [batch_size, seq_len] or [batch_size, seq_len, depth] tensor
-    updates: A tensor of size batch_size*seq_len(*depth)
-    positions: A [batch_size, n_positions] tensor
+    sequence: A `[batch_size, seq_len]` or `[batch_size, seq_len, depth]`
+      tensor.
+    updates: A tensor of size `batch_size*seq_len(*depth)`.
+    positions: A `[batch_size, n_positions]` tensor.
 
   Returns:
-    updated_sequence: A [batch_size, seq_len] or [batch_size, seq_len, depth]
-      tensor of "sequence" with elements at "positions" replaced by the values
-      at "updates". Updates to index 0 are ignored. If there are duplicated
-      positions the update is only applied once.
-    updates_mask: A [batch_size, seq_len] mask tensor of which inputs were
+    updated_sequence: A `[batch_size, seq_len]` or
+      `[batch_size, seq_len, depth]` tensor of "sequence" with elements at
+      "positions" replaced by the values at "updates". Updates to index 0 are
+      ignored. If there are duplicated positions the update is only
+      applied once.
+    updates_mask: A `[batch_size, seq_len]` mask tensor of which inputs were
       updated.
   """
   shape = tf_utils.get_shape_list(sequence, expected_rank=[2, 3])
@@ -289,14 +291,14 @@ def sample_from_softmax(logits, disallow=None):
   """Implement softmax sampling using gumbel softmax trick.
 
   Args:
-    logits: A [batch_size, num_token_predictions, vocab_size] tensor indicating
-      the generator output logits for each masked position.
+    logits: A `[batch_size, num_token_predictions, vocab_size]` tensor
+      indicating the generator output logits for each masked position.
     disallow: If `None`, we directly sample tokens from the logits. Otherwise,
-      this is a tensor of size [batch_size, num_token_predictions, vocab_size]
+      this is a tensor of size `[batch_size, num_token_predictions, vocab_size]`
       indicating the true word id in each masked position.
 
   Returns:
-    sampled_tokens: A [batch_size, num_token_predictions, vocab_size] one hot
+    sampled_tokens: A `[batch_size, num_token_predictions, vocab_size]` one hot
       tensor indicating the sampled word id in each masked position.
   """
   if disallow is not None:

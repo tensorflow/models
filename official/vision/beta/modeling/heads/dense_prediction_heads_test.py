@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Tests for dense_prediction_heads.py."""
 
 # Import libraries
@@ -26,12 +26,17 @@ from official.vision.beta.modeling.heads import dense_prediction_heads
 class RetinaNetHeadTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (False, False),
-      (False, True),
-      (True, False),
-      (True, True),
+      (False, False, False),
+      (False, True, False),
+      (True, False, True),
+      (True, True, True),
   )
-  def test_forward(self, use_separable_conv, use_sync_bn):
+  def test_forward(self, use_separable_conv, use_sync_bn, has_att_heads):
+    if has_att_heads:
+      attribute_heads = [dict(name='depth', type='regression', size=1)]
+    else:
+      attribute_heads = None
+
     retinanet_head = dense_prediction_heads.RetinaNetHead(
         min_level=3,
         max_level=4,
@@ -39,6 +44,7 @@ class RetinaNetHeadTest(parameterized.TestCase, tf.test.TestCase):
         num_anchors_per_location=3,
         num_convs=2,
         num_filters=256,
+        attribute_heads=attribute_heads,
         use_separable_conv=use_separable_conv,
         activation='relu',
         use_sync_bn=use_sync_bn,
@@ -51,11 +57,15 @@ class RetinaNetHeadTest(parameterized.TestCase, tf.test.TestCase):
         '3': np.random.rand(2, 128, 128, 16),
         '4': np.random.rand(2, 64, 64, 16),
     }
-    scores, boxes = retinanet_head(features)
+    scores, boxes, attributes = retinanet_head(features)
     self.assertAllEqual(scores['3'].numpy().shape, [2, 128, 128, 9])
     self.assertAllEqual(scores['4'].numpy().shape, [2, 64, 64, 9])
     self.assertAllEqual(boxes['3'].numpy().shape, [2, 128, 128, 12])
     self.assertAllEqual(boxes['4'].numpy().shape, [2, 64, 64, 12])
+    if has_att_heads:
+      for att in attributes.values():
+        self.assertAllEqual(att['3'].numpy().shape, [2, 128, 128, 3])
+        self.assertAllEqual(att['4'].numpy().shape, [2, 64, 64, 3])
 
   def test_serialize_deserialize(self):
     retinanet_head = dense_prediction_heads.RetinaNetHead(
@@ -65,6 +75,7 @@ class RetinaNetHeadTest(parameterized.TestCase, tf.test.TestCase):
         num_anchors_per_location=9,
         num_convs=2,
         num_filters=16,
+        attribute_heads=None,
         use_separable_conv=False,
         activation='relu',
         use_sync_bn=False,

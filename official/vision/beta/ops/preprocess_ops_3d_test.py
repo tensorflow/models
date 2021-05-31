@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 
 import io
 import itertools
@@ -91,6 +91,8 @@ class ParserUtilsTest(tf.test.TestCase):
     cropped_image_1 = preprocess_ops_3d.crop_image(self._frames, 50, 70)
     cropped_image_2 = preprocess_ops_3d.crop_image(self._frames, 200, 200)
     cropped_image_3 = preprocess_ops_3d.crop_image(self._frames, 50, 70, True)
+    cropped_image_4 = preprocess_ops_3d.crop_image(
+        self._frames, 90, 90, False, 3)
 
     self.assertAllEqual(cropped_image_1.shape, (6, 50, 70, 3))
     self.assertAllEqual(cropped_image_1, self._np_frames[:, 20:70, 25:95, :])
@@ -106,6 +108,7 @@ class ParserUtilsTest(tf.test.TestCase):
     expected = expected[np.newaxis, :, :, np.newaxis]
     expected = np.broadcast_to(expected, (6, 50, 70, 3))
     self.assertAllEqual(cropped_image_3, expected)
+    self.assertAllEqual(cropped_image_4.shape, (18, 90, 90, 3))
 
   def test_resize_smallest(self):
     resized_frames_1 = preprocess_ops_3d.resize_smallest(self._frames, 180)
@@ -118,6 +121,20 @@ class ParserUtilsTest(tf.test.TestCase):
     self.assertAllEqual(resized_frames_2.shape, (6, 45, 60, 3))
     self.assertAllEqual(resized_frames_3.shape, (6, 90, 120, 3))
     self.assertAllEqual(resized_frames_4.shape, (6, 60, 45, 3))
+
+  def test_random_crop_resize(self):
+    resized_frames_1 = preprocess_ops_3d.random_crop_resize(
+        self._frames, 256, 256, 6, 3, (0.5, 2), (0.3, 1))
+    resized_frames_2 = preprocess_ops_3d.random_crop_resize(
+        self._frames, 224, 224, 6, 3, (0.5, 2), (0.3, 1))
+    resized_frames_3 = preprocess_ops_3d.random_crop_resize(
+        self._frames, 256, 256, 6, 3, (0.8, 1.2), (0.3, 1))
+    resized_frames_4 = preprocess_ops_3d.random_crop_resize(
+        self._frames, 256, 256, 6, 3, (0.5, 2), (0.1, 1))
+    self.assertAllEqual(resized_frames_1.shape, (6, 256, 256, 3))
+    self.assertAllEqual(resized_frames_2.shape, (6, 224, 224, 3))
+    self.assertAllEqual(resized_frames_3.shape, (6, 256, 256, 3))
+    self.assertAllEqual(resized_frames_4.shape, (6, 256, 256, 3))
 
   def test_random_flip_left_right(self):
     flipped_frames = preprocess_ops_3d.random_flip_left_right(self._frames)

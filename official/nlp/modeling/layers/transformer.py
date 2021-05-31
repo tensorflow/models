@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Keras-based transformer block layer."""
 # pylint: disable=g-classes-have-attributes
 
@@ -31,7 +31,7 @@ class Transformer(keras_nlp.layers.TransformerEncoderBlock):
   This layer implements the Transformer from "Attention Is All You Need".
   (https://arxiv.org/abs/1706.03762).
 
-  Arguments:
+  Args:
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate layer.
     intermediate_activation: Activation for the intermediate layer.
@@ -77,7 +77,7 @@ class Transformer(keras_nlp.layers.TransformerEncoderBlock):
                intermediate_dropout=0.0,
                attention_initializer=None,
                **kwargs):
-    super(Transformer, self).__init__(
+    super().__init__(
         num_attention_heads=num_attention_heads,
         inner_dim=intermediate_size,
         inner_activation=intermediate_activation,
@@ -98,6 +98,46 @@ class Transformer(keras_nlp.layers.TransformerEncoderBlock):
         attention_initializer=attention_initializer,
         **kwargs)
 
+  def get_config(self):
+    return {
+        "num_attention_heads":
+            self._num_heads,
+        "intermediate_size":
+            self._inner_dim,
+        "intermediate_activation":
+            self._inner_activation,
+        "dropout_rate":
+            self._output_dropout_rate,
+        "attention_dropout_rate":
+            self._attention_dropout_rate,
+        "output_range":
+            self._output_range,
+        "kernel_initializer":
+            tf.keras.initializers.serialize(self._kernel_initializer),
+        "bias_initializer":
+            tf.keras.initializers.serialize(self._bias_initializer),
+        "kernel_regularizer":
+            tf.keras.regularizers.serialize(self._kernel_regularizer),
+        "bias_regularizer":
+            tf.keras.regularizers.serialize(self._bias_regularizer),
+        "activity_regularizer":
+            tf.keras.regularizers.serialize(self._activity_regularizer),
+        "kernel_constraint":
+            tf.keras.constraints.serialize(self._kernel_constraint),
+        "bias_constraint":
+            tf.keras.constraints.serialize(self._bias_constraint),
+        "use_bias":
+            self._use_bias,
+        "norm_first":
+            self._norm_first,
+        "norm_epsilon":
+            self._norm_epsilon,
+        "intermediate_dropout":
+            self._inner_dropout,
+        "attention_initializer":
+            tf.keras.initializers.serialize(self._attention_initializer)
+    }
+
 
 @tf.keras.utils.register_keras_serializable(package="Text")
 @gin.configurable
@@ -105,7 +145,7 @@ class CompiledTransformer(Transformer):
 
   @tf_function_if_eager(experimental_compile=True)
   def call(self, inputs):
-    return super(CompiledTransformer, self).call(inputs)
+    return super().call(inputs)
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
@@ -117,7 +157,7 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
   (2) a encoder-decoder attention.
   (3) a positionwise fully connected feed-forward network.
 
-  Arguments:
+  Args:
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate layer.
     intermediate_activation: Activation for the intermediate layer.
@@ -202,7 +242,7 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
       raise ValueError(
           "The hidden size (%d) is not a multiple of the number of attention "
           "heads (%d)" % (hidden_size, self.num_attention_heads))
-    self.attention_head_size = int(hidden_size / self.num_attention_heads)
+    self.attention_head_size = int(hidden_size) // self.num_attention_heads
     common_kwargs = dict(
         bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
@@ -232,7 +272,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         tf.keras.layers.LayerNormalization(
             name="self_attention_layer_norm",
             axis=-1,
-            epsilon=self._norm_epsilon))
+            epsilon=self._norm_epsilon,
+            dtype="float32"))
     # Encoder-decoder attention.
     self.encdec_attention = self._cross_attention_cls(
         num_heads=self.num_attention_heads,
@@ -250,7 +291,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         tf.keras.layers.LayerNormalization(
             name="attention/encdec_output_layer_norm",
             axis=-1,
-            epsilon=self._norm_epsilon))
+            epsilon=self._norm_epsilon,
+            dtype="float32"))
 
     # Feed-forward projection.
     self.intermediate_dense = tf.keras.layers.experimental.EinsumDense(
@@ -273,7 +315,10 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         **common_kwargs)
     self.output_dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
     self.output_layer_norm = tf.keras.layers.LayerNormalization(
-        name="output_layer_norm", axis=-1, epsilon=self._norm_epsilon)
+        name="output_layer_norm",
+        axis=-1,
+        epsilon=self._norm_epsilon,
+        dtype="float32")
     super().build(input_shape)
 
   def get_config(self):

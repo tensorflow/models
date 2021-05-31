@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Optimizer factory class."""
-from typing import Callable, Union
 
+"""Optimizer factory class."""
+from typing import Callable, Optional, Union
 
 import gin
 import tensorflow as tf
 import tensorflow_addons.optimizers as tfa_optimizers
 
 from official.modeling.optimization import ema_optimizer
+from official.modeling.optimization import lars_optimizer
 from official.modeling.optimization import lr_schedule
 from official.modeling.optimization.configs import optimization_config as opt_cfg
 from official.nlp import optimization as nlp_optimization
@@ -31,7 +30,9 @@ OPTIMIZERS_CLS = {
     'adam': tf.keras.optimizers.Adam,
     'adamw': nlp_optimization.AdamWeightDecay,
     'lamb': tfa_optimizers.LAMB,
-    'rmsprop': tf.keras.optimizers.RMSprop
+    'rmsprop': tf.keras.optimizers.RMSprop,
+    'lars': lars_optimizer.LARS,
+    'adagrad': tf.keras.optimizers.Adagrad,
 }
 
 LR_CLS = {
@@ -41,6 +42,7 @@ LR_CLS = {
     'cosine': tf.keras.experimental.CosineDecay,
     'power': lr_schedule.DirectPowerDecay,
     'power_linear': lr_schedule.PowerAndLinearDecay,
+    'power_with_offset': lr_schedule.PowerDecayWithOffset,
 }
 
 WARMUP_CLS = {
@@ -49,7 +51,7 @@ WARMUP_CLS = {
 }
 
 
-class OptimizerFactory(object):
+class OptimizerFactory:
   """Optimizer factory class.
 
   This class builds learning rate and optimizer based on an optimization config.
@@ -132,8 +134,8 @@ class OptimizerFactory(object):
   def build_optimizer(
       self,
       lr: Union[tf.keras.optimizers.schedules.LearningRateSchedule, float],
-      postprocessor: Callable[[tf.keras.optimizers.Optimizer],
-                              tf.keras.optimizers.Optimizer] = None):
+      postprocessor: Optional[Callable[[tf.keras.optimizers.Optimizer],
+                                       tf.keras.optimizers.Optimizer]] = None):
     """Build optimizer.
 
     Builds optimizer from config. It takes learning rate as input, and builds

@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Trainer network for dual encoder style models."""
 # pylint: disable=g-classes-have-attributes
 import collections
@@ -31,14 +31,14 @@ class DualEncoder(tf.keras.Model):
   The DualEncoder allows a user to pass in a transformer stack, and build a dual
   encoder model based on the transformer stack.
 
-  Arguments:
+  Args:
     network: A transformer network which should output an encoding output.
     max_seq_length: The maximum allowed sequence length for transformer.
     normalize: If set to True, normalize the encoding produced by transfomer.
     logit_scale: The scaling factor of dot products when doing training.
     logit_margin: The margin between positive and negative when doing training.
-    output: The output style for this network. Can be either 'logits' or
-      'predictions'. If set to 'predictions', it will output the embedding
+    output: The output style for this network. Can be either `logits` or
+      `predictions`. If set to `predictions`, it will output the embedding
       producted by transformer network.
   """
 

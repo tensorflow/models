@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """BERT token classifier."""
 # pylint: disable=g-classes-have-attributes
 import collections
@@ -33,15 +33,18 @@ class BertTokenClassifier(tf.keras.Model):
   *Note* that the model is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     network: A transformer network. This network should output a sequence output
       and a classification output. Furthermore, it should expose its embedding
-      table via a "get_embedding_table" method.
+      table via a `get_embedding_table` method.
     num_classes: Number of classes to predict from the classification network.
     initializer: The initializer (if any) to use in the classification networks.
       Defaults to a Glorot uniform initializer.
-    output: The output style for this network. Can be either 'logits' or
-      'predictions'.
+    output: The output style for this network. Can be either `logits` or
+      `predictions`.
+    dropout_rate: The dropout probability of the token classification head.
+    output_encoder_outputs: Whether to include intermediate sequence output
+      in the final output.
   """
 
   def __init__(self,
@@ -50,6 +53,7 @@ class BertTokenClassifier(tf.keras.Model):
                initializer='glorot_uniform',
                output='logits',
                dropout_rate=0.1,
+               output_encoder_outputs=False,
                **kwargs):
 
     # We want to use the inputs of the passed network as the inputs to this
@@ -74,13 +78,18 @@ class BertTokenClassifier(tf.keras.Model):
         name='predictions/transform/logits')
     logits = classifier(sequence_output)
     if output == 'logits':
-      output_tensors = logits
+      output_tensors = {'logits': logits}
     elif output == 'predictions':
-      output_tensors = tf.keras.layers.Activation(tf.nn.log_softmax)(logits)
+      output_tensors = {
+          'predictions': tf.keras.layers.Activation(tf.nn.log_softmax)(logits)
+      }
     else:
       raise ValueError(
           ('Unknown `output` value "%s". `output` can be either "logits" or '
            '"predictions"') % output)
+
+    if output_encoder_outputs:
+      output_tensors['encoder_outputs'] = sequence_output
 
     # b/164516224
     # Once we've created the network using the Functional API, we call
@@ -98,6 +107,7 @@ class BertTokenClassifier(tf.keras.Model):
         'num_classes': num_classes,
         'initializer': initializer,
         'output': output,
+        'output_encoder_outputs': output_encoder_outputs
     }
 
     # We are storing the config dict as a namedtuple here to ensure checkpoint

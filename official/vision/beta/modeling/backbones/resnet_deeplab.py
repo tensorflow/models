@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,11 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Contains definitions of Residual Networks with Deeplab modifications."""
+
+from typing import Callable, Optional, Tuple, List
 
 import numpy as np
 import tensorflow as tf
+from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
@@ -45,55 +48,58 @@ RESNET_SPECS = {
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class DilatedResNet(tf.keras.Model):
-  """Class to build ResNet model with Deeplabv3 modifications.
+  """Creates a ResNet model with Deeplabv3 modifications.
 
-  This backbone is suitable for semantic segmentation. It was proposed in:
-  [1] Liang-Chieh Chen, George Papandreou, Florian Schroff, Hartwig Adam
+  This backbone is suitable for semantic segmentation. This implements
+    Liang-Chieh Chen, George Papandreou, Florian Schroff, Hartwig Adam.
     Rethinking Atrous Convolution for Semantic Image Segmentation.
-    arXiv:1706.05587
+    (https://arxiv.org/pdf/1706.05587)
   """
 
-  def __init__(self,
-               model_id,
-               output_stride,
-               input_specs=layers.InputSpec(shape=[None, None, None, 3]),
-               stem_type='v0',
-               se_ratio=None,
-               init_stochastic_depth_rate=0.0,
-               multigrid=None,
-               last_stage_repeats=1,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_initializer='VarianceScaling',
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
-    """ResNet with DeepLab modification initialization function.
+  def __init__(
+      self,
+      model_id: int,
+      output_stride: int,
+      input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
+          shape=[None, None, None, 3]),
+      stem_type: str = 'v0',
+      se_ratio: Optional[float] = None,
+      init_stochastic_depth_rate: float = 0.0,
+      multigrid: Optional[Tuple[int]] = None,
+      last_stage_repeats: int = 1,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
+    """Initializes a ResNet model with DeepLab modification.
 
     Args:
-      model_id: `int` depth of ResNet backbone model.
-      output_stride: `int` output stride, ratio of input to output resolution.
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
-      stem_type: `standard` or `deeplab`, deeplab replaces 7x7 conv by 3 3x3
-        convs.
-      se_ratio: `float` or None. Ratio of the Squeeze-and-Excitation layer.
-      init_stochastic_depth_rate: `float` initial stochastic depth rate.
-      multigrid: `Tuple` of the same length as the number of blocks in the last
+      model_id: An `int` specifies depth of ResNet backbone model.
+      output_stride: An `int` of output stride, ratio of input to output
+        resolution.
+      input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
+      stem_type: A `str` of stem type. Can be `v0` or `v1`. `v1` replaces 7x7
+        conv by 3 3x3 convs.
+      se_ratio: A `float` or None. Ratio of the Squeeze-and-Excitation layer.
+      init_stochastic_depth_rate: A `float` of initial stochastic depth rate.
+      multigrid: A tuple of the same length as the number of blocks in the last
         resnet stage.
-      last_stage_repeats: `int`, how many times last stage is repeated.
-      activation: `str` name of the activation function.
-      use_sync_bn: if True, use synchronized batch normalization.
-      norm_momentum: `float` normalization omentum for the moving average.
-      norm_epsilon: `float` small float added to variance to avoid dividing by
-        zero.
-      kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-                          Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
-                        Default to None.
-      **kwargs: keyword arguments to be passed.
+      last_stage_repeats: An `int` that specifies how many times last stage is
+        repeated.
+      activation: A `str` name of the activation function.
+      use_sync_bn: If True, use synchronized batch normalization.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      kernel_initializer: A str for kernel initializer of convolutional layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default to None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+        Default to None.
+      **kwargs: Additional keyword arguments to be passed.
     """
     self._model_id = model_id
     self._output_stride = output_stride
@@ -233,34 +239,36 @@ class DilatedResNet(tf.keras.Model):
         inputs=inputs, outputs=endpoints, **kwargs)
 
   def _block_group(self,
-                   inputs,
-                   filters,
-                   strides,
-                   dilation_rate,
-                   block_fn,
-                   block_repeats=1,
-                   stochastic_depth_drop_rate=0.0,
-                   multigrid=None,
-                   name='block_group'):
+                   inputs: tf.Tensor,
+                   filters: int,
+                   strides: int,
+                   dilation_rate: int,
+                   block_fn: Callable[..., tf.keras.layers.Layer],
+                   block_repeats: int = 1,
+                   stochastic_depth_drop_rate: float = 0.0,
+                   multigrid: Optional[List[int]] = None,
+                   name: str = 'block_group'):
     """Creates one group of blocks for the ResNet model.
 
     Deeplab applies strides at the last block.
 
     Args:
-      inputs: `Tensor` of size `[batch, channels, height, width]`.
-      filters: `int` number of filters for the first convolution of the layer.
-      strides: `int` stride to use for the first convolution of the layer. If
-        greater than 1, this layer will downsample the input.
-      dilation_rate: `int`, diluted convolution rates.
+      inputs: A `tf.Tensor` of size `[batch, channels, height, width]`.
+      filters: An `int` off number of filters for the first convolution of the
+        layer.
+      strides: An `int` of stride to use for the first convolution of the layer.
+        If greater than 1, this layer will downsample the input.
+      dilation_rate: An `int` of diluted convolution rates.
       block_fn: Either `nn_blocks.ResidualBlock` or `nn_blocks.BottleneckBlock`.
-      block_repeats: `int` number of blocks contained in the layer.
-      stochastic_depth_drop_rate: `float` drop rate of the current block group.
-      multigrid: List of ints or None, if specified, dilation rates for each
+      block_repeats: An `int` of number of blocks contained in the layer.
+      stochastic_depth_drop_rate: A `float` of drop rate of the current block
+        group.
+      multigrid: A list of `int` or None. If specified, dilation rates for each
         block is scaled up by its corresponding factor in the multigrid.
-      name: `str`name for the block.
+      name: A `str` name for the block.
 
     Returns:
-      The output `Tensor` of the block layer.
+      The output `tf.Tensor` of the block layer.
     """
     if multigrid is not None and len(multigrid) != block_repeats:
       raise ValueError('multigrid has to match number of block_repeats')
@@ -333,12 +341,12 @@ class DilatedResNet(tf.keras.Model):
 @factory.register_backbone_builder('dilated_resnet')
 def build_dilated_resnet(
     input_specs: tf.keras.layers.InputSpec,
-    model_config,
+    backbone_config: hyperparams.Config,
+    norm_activation_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds ResNet backbone from a config."""
-  backbone_type = model_config.backbone.type
-  backbone_cfg = model_config.backbone.get()
-  norm_activation_config = model_config.norm_activation
+  backbone_type = backbone_config.type
+  backbone_cfg = backbone_config.get()
   assert backbone_type == 'dilated_resnet', (f'Inconsistent backbone type '
                                              f'{backbone_type}')
 

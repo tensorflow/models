@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Keras-based gated feedforward layer."""
 # pylint: disable=g-classes-have-attributes
 
@@ -28,13 +28,13 @@ class GatedFeedforward(tf.keras.layers.Layer):
   (https://arxiv.org/abs/2002.05202). In additional, it allows to stack
   multiple feedforward blocks and specify the position of dropout layer.
 
-  Arguments:
+  Args:
     intermediate_size: Size of the intermediate layer.
     intermediate_activation: Activation for the intermediate layer.
     dropout: Dropout probability for the output dropout.
     use_gate: Whether to use gated linear units. If True, assuming `GELU` as the
-      activation and omitting bias, will apply `GEGLU(x, W, V, W_2) = (GEGLU(xW)
-      * xV)W2`; if False, will follow
+      activation and omitting bias, will apply
+      `GEGLU(x, W, V, W_2) = (GEGLU(xW) * xV)W2`; if False, will follow
       "Attention Is All You Need" (https://arxiv.org/abs/1706.03762) paper and
         apply `FFN(x, W, W_2) = GELU(xW_1)W_2.`
     num_blocks: The number of feedforward blocks to stack. Each block contains a
@@ -43,8 +43,8 @@ class GatedFeedforward(tf.keras.layers.Layer):
     dropout_position: Where to apply the dropout, the value can be either
       `before_residual` or `after_residual`. If `before_residual`, will apply
       `layer_output = layer_norm(dropout(layer_output) + layer_input)`; if
-      `after residual`, will apply `layer_output =
-      dropout(layer_norm(layer_output + layer_input))`.
+      `after residual`, will apply
+      `layer_output = dropout(layer_norm(layer_output + layer_input))`.
     kernel_initializer: Initializer for dense layer kernels.
     bias_initializer: Initializer for dense layer biases.
     kernel_regularizer: Regularizer for dense layer kernels.
@@ -108,7 +108,7 @@ class GatedFeedforward(tf.keras.layers.Layer):
     self._output_dense = []
     self._output_dropout = []
     self._output_layer_norm = []
-    activation_policy = tf.keras.mixed_precision.experimental.global_policy()
+    activation_policy = tf.keras.mixed_precision.global_policy()
     if activation_policy.name == "mixed_bfloat16":
       # bfloat16 causes BERT with the LAMB optimizer to not converge
       # as well, so we use float32.

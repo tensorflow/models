@@ -31,15 +31,15 @@ import os
 import sys
 import time
 
+from absl import app
 import numpy as np
 import tensorflow as tf
 
 from google.protobuf import text_format
-from tensorflow.python.platform import app
 from delf import delf_config_pb2
 from delf import feature_io
 from delf import utils
-from delf.python.detect_to_retrieve import dataset
+from delf.python.datasets.revisited_op import dataset
 from delf import extractor
 
 cmd_args = None
@@ -76,8 +76,8 @@ def main(argv):
     query_image_name = query_list[i]
     input_image_filename = os.path.join(cmd_args.images_dir,
                                         query_image_name + _IMAGE_EXTENSION)
-    output_feature_filename = os.path.join(
-        cmd_args.output_features_dir, query_image_name + _DELF_EXTENSION)
+    output_feature_filename = os.path.join(cmd_args.output_features_dir,
+                                           query_image_name + _DELF_EXTENSION)
     if tf.io.gfile.exists(output_feature_filename):
       print(f'Skipping {query_image_name}')
       continue
@@ -94,8 +94,7 @@ def main(argv):
     attention_out = extracted_features['local_features']['attention']
 
     feature_io.WriteToFile(output_feature_filename, locations_out,
-                           feature_scales_out, descriptors_out,
-                           attention_out)
+                           feature_scales_out, descriptors_out, attention_out)
 
   elapsed = (time.time() - start)
   print('Processed %d query images in %f seconds' % (num_images, elapsed))

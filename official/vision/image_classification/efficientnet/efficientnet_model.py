@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Contains definitions for EfficientNet model.
 
 [1] Mingxing Tan, Quoc V. Le
@@ -160,9 +160,9 @@ def conv2d_block(inputs: tf.Tensor,
                  strides: Any = (1, 1),
                  use_batch_norm: bool = True,
                  use_bias: bool = False,
-                 activation: Any = None,
+                 activation: Optional[Any] = None,
                  depthwise: bool = False,
-                 name: Text = None):
+                 name: Optional[Text] = None):
   """A conv2d followed by batch norm and an activation."""
   batch_norm = common_modules.get_batch_norm(config.batch_norm)
   bn_momentum = config.bn_momentum
@@ -212,7 +212,7 @@ def conv2d_block(inputs: tf.Tensor,
 def mb_conv_block(inputs: tf.Tensor,
                   block: BlockConfig,
                   config: ModelConfig,
-                  prefix: Text = None):
+                  prefix: Optional[Text] = None):
   """Mobile Inverted Residual Bottleneck.
 
   Args:
@@ -432,8 +432,8 @@ class EfficientNet(tf.keras.Model):
   """
 
   def __init__(self,
-               config: ModelConfig = None,
-               overrides: Dict[Text, Any] = None):
+               config: Optional[ModelConfig] = None,
+               overrides: Optional[Dict[Text, Any]] = None):
     """Create an EfficientNet model.
 
     Args:
@@ -463,9 +463,9 @@ class EfficientNet(tf.keras.Model):
   @classmethod
   def from_name(cls,
                 model_name: Text,
-                model_weights_path: Text = None,
+                model_weights_path: Optional[Text] = None,
                 weights_format: Text = 'saved_model',
-                overrides: Dict[Text, Any] = None):
+                overrides: Optional[Dict[Text, Any]] = None):
     """Construct an EfficientNet model from a predefined model name.
 
     E.g., `EfficientNet.from_name('efficientnet-b0')`.

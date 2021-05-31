@@ -94,22 +94,37 @@ class DetectionInferenceModule(tf.Module):
   def _get_side_names_from_zip(self, zipped_side_inputs):
     return [side[2] for side in zipped_side_inputs]
 
-  def _run_inference_on_images(self, image, **kwargs):
+  def _preprocess_input(self, batch_input, decode_fn):
+    # Input preprocessing happends on the CPU. We don't need to use the device
+    # placement as it is automatically handled by TF.
+    def _decode_and_preprocess(single_input):
+      image = decode_fn(single_input)
+      image = tf.cast(image, tf.float32)
+      image, true_shape = self._model.preprocess(image[tf.newaxis, :, :, :])
+      return image[0], true_shape[0]
+
+    images, true_shapes = tf.map_fn(
+        _decode_and_preprocess,
+        elems=batch_input,
+        parallel_iterations=32,
+        back_prop=False,
+        fn_output_signature=(tf.float32, tf.int32))
+    return images, true_shapes
+
+  def _run_inference_on_images(self, images, true_shapes, **kwargs):
     """Cast image to float and run inference.
 
     Args:
-      image: uint8 Tensor of shape [1, None, None, 3].
+      images: float32 Tensor of shape [None, None, None, 3].
+      true_shapes: int32 Tensor of form [batch, 3]
       **kwargs: additional keyword arguments.
 
     Returns:
       Tensor dictionary holding detections.
     """
     label_id_offset = 1
-
-    image = tf.cast(image, tf.float32)
-    image, shapes = self._model.preprocess(image)
-    prediction_dict = self._model.predict(image, shapes, **kwargs)
-    detections = self._model.postprocess(prediction_dict, shapes)
+    prediction_dict = self._model.predict(images, true_shapes, **kwargs)
+    detections = self._model.postprocess(prediction_dict, true_shapes)
     classes_field = fields.DetectionResultFields.detection_classes
     detections[classes_field] = (
         tf.cast(detections[classes_field], tf.float32) + label_id_offset)
@@ -144,7 +159,8 @@ class DetectionFromImageModule(DetectionInferenceModule):
 
     def call_func(input_tensor, *side_inputs):
       kwargs = dict(zip(self._side_input_names, side_inputs))
-      return self._run_inference_on_images(input_tensor, **kwargs)
+      images, true_shapes = self._preprocess_input(input_tensor, lambda x: x)
+      return self._run_inference_on_images(images, true_shapes, **kwargs)
 
     self.__call__ = tf.function(call_func, input_signature=sig)
 
@@ -154,52 +170,43 @@ class DetectionFromImageModule(DetectionInferenceModule):
                                                    zipped_side_inputs)
 
 
+def get_true_shapes(input_tensor):
+  input_shape = tf.shape(input_tensor)
+  batch = input_shape[0]
+  image_shape = input_shape[1:]
+  true_shapes = tf.tile(image_shape[tf.newaxis, :], [batch, 1])
+  return true_shapes
+
+
 class DetectionFromFloatImageModule(DetectionInferenceModule):
   """Detection Inference Module for float image inputs."""
 
   @tf.function(
       input_signature=[
-          tf.TensorSpec(shape=[1, None, None, 3], dtype=tf.float32)])
+          tf.TensorSpec(shape=[None, None, None, 3], dtype=tf.float32)])
   def __call__(self, input_tensor):
-    return self._run_inference_on_images(input_tensor)
+    images, true_shapes = self._preprocess_input(input_tensor, lambda x: x)
+    return self._run_inference_on_images(images,
+                                         true_shapes)
 
 
 class DetectionFromEncodedImageModule(DetectionInferenceModule):
   """Detection Inference Module for encoded image string inputs."""
 
-  @tf.function(input_signature=[tf.TensorSpec(shape=[1], dtype=tf.string)])
+  @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=tf.string)])
   def __call__(self, input_tensor):
-    with tf.device('cpu:0'):
-      image = tf.map_fn(
-          _decode_image,
-          elems=input_tensor,
-          dtype=tf.uint8,
-          parallel_iterations=32,
-          back_prop=False)
-    return self._run_inference_on_images(image)
+    images, true_shapes = self._preprocess_input(input_tensor, _decode_image)
+    return self._run_inference_on_images(images, true_shapes)
 
 
 class DetectionFromTFExampleModule(DetectionInferenceModule):
   """Detection Inference Module for TF.Example inputs."""
 
-  @tf.function(input_signature=[tf.TensorSpec(shape=[1], dtype=tf.string)])
+  @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=tf.string)])
   def __call__(self, input_tensor):
-    with tf.device('cpu:0'):
-      image = tf.map_fn(
-          _decode_tf_example,
-          elems=input_tensor,
-          dtype=tf.uint8,
-          parallel_iterations=32,
-          back_prop=False)
-    return self._run_inference_on_images(image)
-
-DETECTION_MODULE_MAP = {
-    'image_tensor': DetectionFromImageModule,
-    'encoded_image_string_tensor':
-    DetectionFromEncodedImageModule,
-    'tf_example': DetectionFromTFExampleModule,
-    'float_image_tensor': DetectionFromFloatImageModule
-}
+    images, true_shapes = self._preprocess_input(input_tensor,
+                                                 _decode_tf_example)
+    return self._run_inference_on_images(images, true_shapes)
 
 
 def export_inference_graph(input_type,
@@ -273,3 +280,78 @@ def export_inference_graph(input_type,
                       signatures=concrete_function)
 
   config_util.save_pipeline_config(pipeline_config, output_directory)
+
+
+class DetectionFromImageAndBoxModule(DetectionInferenceModule):
+  """Detection Inference Module for image with bounding box inputs.
+
+  The saved model will require two inputs (image and normalized boxes) and run
+  per-box mask prediction. To be compatible with this exporter, the detection
+  model has to implement a called predict_masks_from_boxes(
+    prediction_dict, true_image_shapes, provided_boxes, **params), where
+    - prediciton_dict is a dict returned by the predict method.
+    - true_image_shapes is a tensor of size [batch_size, 3], containing the
+      true shape of each image in case it is padded.
+    - provided_boxes is a [batch_size, num_boxes, 4] size tensor containing
+      boxes specified in normalized coordinates.
+  """
+
+  def __init__(self,
+               detection_model,
+               use_side_inputs=False,
+               zipped_side_inputs=None):
+    """Initializes a module for detection.
+
+    Args:
+      detection_model: the detection model to use for inference.
+      use_side_inputs: whether to use side inputs.
+      zipped_side_inputs: the zipped side inputs.
+    """
+    assert hasattr(detection_model, 'predict_masks_from_boxes')
+    super(DetectionFromImageAndBoxModule,
+          self).__init__(detection_model, use_side_inputs, zipped_side_inputs)
+
+  def _run_segmentation_on_images(self, image, boxes, **kwargs):
+    """Run segmentation on images with provided boxes.
+
+    Args:
+      image: uint8 Tensor of shape [1, None, None, 3].
+      boxes: float32 tensor of shape [1, None, 4] containing normalized box
+        coordinates.
+      **kwargs: additional keyword arguments.
+
+    Returns:
+      Tensor dictionary holding detections (including masks).
+    """
+    label_id_offset = 1
+
+    image = tf.cast(image, tf.float32)
+    image, shapes = self._model.preprocess(image)
+    prediction_dict = self._model.predict(image, shapes, **kwargs)
+    detections = self._model.predict_masks_from_boxes(prediction_dict, shapes,
+                                                      boxes)
+    classes_field = fields.DetectionResultFields.detection_classes
+    detections[classes_field] = (
+        tf.cast(detections[classes_field], tf.float32) + label_id_offset)
+
+    for key, val in detections.items():
+      detections[key] = tf.cast(val, tf.float32)
+
+    return detections
+
+  @tf.function(input_signature=[
+      tf.TensorSpec(shape=[1, None, None, 3], dtype=tf.uint8),
+      tf.TensorSpec(shape=[1, None, 4], dtype=tf.float32)
+  ])
+  def __call__(self, input_tensor, boxes):
+    return self._run_segmentation_on_images(input_tensor, boxes)
+
+
+DETECTION_MODULE_MAP = {
+    'image_tensor': DetectionFromImageModule,
+    'encoded_image_string_tensor':
+    DetectionFromEncodedImageModule,
+    'tf_example': DetectionFromTFExampleModule,
+    'float_image_tensor': DetectionFromFloatImageModule,
+    'image_and_boxes_tensor': DetectionFromImageAndBoxModule,
+}

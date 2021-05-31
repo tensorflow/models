@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Utilities to save models."""
 
 import os
@@ -27,7 +27,7 @@ def export_bert_model(model_export_path: typing.Text,
                       restore_model_using_load_weights: bool = False) -> None:
   """Export BERT model for serving which does not include the optimizer.
 
-  Arguments:
+  Args:
       model_export_path: Path to which exported model will be saved.
       model: Keras model object to export.
       checkpoint_dir: Path from which model weights will be loaded, if

@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """TFM common training driver."""
 
 from absl import app
@@ -46,8 +45,7 @@ def main(_):
   # GPUs, and bfloat16 in the case of TPUs. loss_scale takes effect only when
   # dtype is float16
   if params.runtime.mixed_precision_dtype:
-    performance.set_mixed_precision_policy(params.runtime.mixed_precision_dtype,
-                                           params.runtime.loss_scale)
+    performance.set_mixed_precision_policy(params.runtime.mixed_precision_dtype)
   distribution_strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=params.runtime.distribution_strategy,
       all_reduce_alg=params.runtime.all_reduce_alg,
@@ -63,6 +61,8 @@ def main(_):
       mode=FLAGS.mode,
       params=params,
       model_dir=model_dir)
+
+  train_utils.save_gin_config(FLAGS.mode, model_dir)
 
 if __name__ == '__main__':
   tfm_flags.define_flags()

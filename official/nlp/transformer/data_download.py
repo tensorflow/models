@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Download and preprocess WMT17 ende training and evaluation datasets."""
 
 import os
@@ -68,8 +68,8 @@ _EVAL_DATA_SOURCES = [{
 }]
 
 _TEST_DATA_SOURCES = [{
-    "url": ("https://storage.googleapis.com/tf-perf-public/"
-            "official_transformer/test_data/newstest2014.tgz"),
+    "url": ("https://storage.googleapis.com/cloud-tpu-test-datasets/"
+            "transformer_data/newstest2014.tgz"),
     "input": "newstest2014.en",
     "target": "newstest2014.de",
 }]

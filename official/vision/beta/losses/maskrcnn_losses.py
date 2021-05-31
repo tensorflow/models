@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Losses for maskrcn model."""
 
 # Import libraries
@@ -173,13 +173,21 @@ class FastrcnnClassLoss(object):
 class FastrcnnBoxLoss(object):
   """Fast R-CNN box regression loss function."""
 
-  def __init__(self, huber_loss_delta: float):
-    # The delta is typically around the mean value of regression target.
-    # for instances, the regression targets of 512x512 input with 6 anchors on
-    # P2-P6 pyramid is about [0.1, 0.1, 0.2, 0.2].
+  def __init__(self,
+               huber_loss_delta: float,
+               class_agnostic_bbox_pred: bool = False):
+    """Initiate Faster RCNN box loss.
 
+    Args:
+      huber_loss_delta: the delta is typically around the mean value of
+        regression target. for instances, the regression targets of 512x512
+        input with 6 anchors on P2-P6 pyramid is about [0.1, 0.1, 0.2, 0.2].
+      class_agnostic_bbox_pred: if True, class agnostic bounding box prediction
+        is performed.
+    """
     self._huber_loss = tf.keras.losses.Huber(
         delta=huber_loss_delta, reduction=tf.keras.losses.Reduction.SUM)
+    self._class_agnostic_bbox_pred = class_agnostic_bbox_pred
 
   def __call__(self, box_outputs, class_targets, box_targets):
     """Computes the box loss (Fast-RCNN branch) of Mask-RCNN.
@@ -207,31 +215,34 @@ class FastrcnnBoxLoss(object):
     """
     with tf.name_scope('fast_rcnn_loss'):
       class_targets = tf.cast(class_targets, dtype=tf.int32)
-
-      # Selects the box from `box_outputs` based on `class_targets`, with which
-      # the box has the maximum overlap.
-      (batch_size, num_rois,
-       num_class_specific_boxes) = box_outputs.get_shape().as_list()
-      num_classes = num_class_specific_boxes // 4
-      box_outputs = tf.reshape(box_outputs,
-                               [batch_size, num_rois, num_classes, 4])
-
-      box_indices = tf.reshape(
-          class_targets + tf.tile(
-              tf.expand_dims(
-                  tf.range(batch_size) * num_rois * num_classes, 1),
-              [1, num_rois]) + tf.tile(
-                  tf.expand_dims(tf.range(num_rois) * num_classes, 0),
-                  [batch_size, 1]), [-1])
-
-      box_outputs = tf.matmul(
-          tf.one_hot(
-              box_indices,
-              batch_size * num_rois * num_classes,
-              dtype=box_outputs.dtype), tf.reshape(box_outputs, [-1, 4]))
-      box_outputs = tf.reshape(box_outputs, [batch_size, -1, 4])
+      if not self._class_agnostic_bbox_pred:
+        box_outputs = self._assign_class_targets(box_outputs, class_targets)
 
       return self._fast_rcnn_box_loss(box_outputs, box_targets, class_targets)
+
+  def _assign_class_targets(self, box_outputs, class_targets):
+    """Selects the box from `box_outputs` based on `class_targets`, with which the box has the maximum overlap."""
+    (batch_size, num_rois,
+     num_class_specific_boxes) = box_outputs.get_shape().as_list()
+    num_classes = num_class_specific_boxes // 4
+    box_outputs = tf.reshape(box_outputs,
+                             [batch_size, num_rois, num_classes, 4])
+
+    box_indices = tf.reshape(
+        class_targets + tf.tile(
+            tf.expand_dims(tf.range(batch_size) * num_rois * num_classes, 1),
+            [1, num_rois]) + tf.tile(
+                tf.expand_dims(tf.range(num_rois) * num_classes, 0),
+                [batch_size, 1]), [-1])
+
+    box_outputs = tf.matmul(
+        tf.one_hot(
+            box_indices,
+            batch_size * num_rois * num_classes,
+            dtype=box_outputs.dtype), tf.reshape(box_outputs, [-1, 4]))
+    box_outputs = tf.reshape(box_outputs, [batch_size, -1, 4])
+
+    return box_outputs
 
   def _fast_rcnn_box_loss(self, box_outputs, box_targets, class_targets,
                           normalizer=1.0):
@@ -299,4 +310,3 @@ class MaskrcnnLoss(object):
       # The loss is normalized by the number of 1's in weights and
       # + 0.01 is used to avoid division by zero.
       return mask_loss / (tf.reduce_sum(weights) + 0.01)
-

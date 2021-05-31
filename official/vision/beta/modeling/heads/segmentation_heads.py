@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Segmentation heads."""
 
+"""Contains definitions of segmentation heads."""
+from typing import List, Union, Optional, Mapping
 import tensorflow as tf
 
 from official.modeling import tf_utils
@@ -23,56 +23,59 @@ from official.vision.beta.ops import spatial_transform_ops
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class SegmentationHead(tf.keras.layers.Layer):
-  """Segmentation head."""
+  """Creates a segmentation head."""
 
-  def __init__(self,
-               num_classes,
-               level,
-               num_convs=2,
-               num_filters=256,
-               upsample_factor=1,
-               feature_fusion=None,
-               low_level=2,
-               low_level_num_filters=48,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
-    """Initialize params to build segmentation head.
+  def __init__(
+      self,
+      num_classes: int,
+      level: Union[int, str],
+      num_convs: int = 2,
+      num_filters: int = 256,
+      prediction_kernel_size: int = 1,
+      upsample_factor: int = 1,
+      feature_fusion: Optional[str] = None,
+      low_level: int = 2,
+      low_level_num_filters: int = 48,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
+    """Initializes a segmentation head.
 
     Args:
-      num_classes: `int` number of mask classification categories. The number of
-        classes does not include background class.
-      level: `int` or `str`, level to use to build segmentation head.
-      num_convs: `int` number of stacked convolution before the last prediction
-        layer.
-      num_filters: `int` number to specify the number of filters used.
+      num_classes: An `int` number of mask classification categories. The number
+        of classes does not include background class.
+      level: An `int` or `str`, level to use to build segmentation head.
+      num_convs: An `int` number of stacked convolution before the last
+        prediction layer.
+      num_filters: An `int` number to specify the number of filters used.
         Default is 256.
-      upsample_factor: `int` number to specify the upsampling factor to generate
-        finer mask. Default 1 means no upsampling is applied.
+      prediction_kernel_size: An `int` number to specify the kernel size of the
+      prediction layer.
+      upsample_factor: An `int` number to specify the upsampling factor to
+        generate finer mask. Default 1 means no upsampling is applied.
       feature_fusion: One of `deeplabv3plus`, `pyramid_fusion`, or None. If
         `deeplabv3plus`, features from decoder_features[level] will be fused
         with low level feature maps from backbone. If `pyramid_fusion`,
         multiscale features will be resized and fused at the target level.
-      low_level: `int`, backbone level to be used for feature fusion. This arg
-        is used when feature_fusion is set to deeplabv3plus.
-      low_level_num_filters: `int`, reduced number of filters for the low
-        level features before fusing it with higher level features. This args is
-        only used when feature_fusion is set to deeplabv3plus.
-      activation: `string`, indicating which activation is used, e.g. 'relu',
+      low_level: An `int` of backbone level to be used for feature fusion. It is
+        used when feature_fusion is set to `deeplabv3plus`.
+      low_level_num_filters: An `int` of reduced number of filters for the low
+        level features before fusing it with higher level features. It is only
+        used when feature_fusion is set to `deeplabv3plus`.
+      activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
-      use_sync_bn: `bool`, whether to use synchronized batch normalization
-        across different replicas.
-      norm_momentum: `float`, the momentum parameter of the normalization
-        layers.
-      norm_epsilon: `float`, the epsilon parameter of the normalization layers.
-      kernel_regularizer: `tf.keras.regularizers.Regularizer` object for layer
-        kernel.
-      bias_regularizer: `tf.keras.regularizers.Regularizer` object for bias.
-      **kwargs: other keyword arguments passed to Layer.
+      use_sync_bn: A `bool` that indicates whether to use synchronized batch
+        normalization across different replicas.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default is None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      **kwargs: Additional keyword arguments to be passed.
     """
     super(SegmentationHead, self).__init__(**kwargs)
 
@@ -81,6 +84,7 @@ class SegmentationHead(tf.keras.layers.Layer):
         'level': level,
         'num_convs': num_convs,
         'num_filters': num_filters,
+        'prediction_kernel_size': prediction_kernel_size,
         'upsample_factor': upsample_factor,
         'feature_fusion': feature_fusion,
         'low_level': low_level,
@@ -98,7 +102,7 @@ class SegmentationHead(tf.keras.layers.Layer):
       self._bn_axis = 1
     self._activation = tf_utils.get_activation(activation)
 
-  def build(self, input_shape):
+  def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the segmentation head."""
     conv_op = tf.keras.layers.Conv2D
     conv_kwargs = {
@@ -147,7 +151,7 @@ class SegmentationHead(tf.keras.layers.Layer):
     self._classifier = conv_op(
         name='segmentation_output',
         filters=self._config_dict['num_classes'],
-        kernel_size=1,
+        kernel_size=self._config_dict['prediction_kernel_size'],
         padding='same',
         bias_initializer=tf.zeros_initializer(),
         kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
@@ -156,21 +160,22 @@ class SegmentationHead(tf.keras.layers.Layer):
 
     super(SegmentationHead, self).build(input_shape)
 
-  def call(self, backbone_output, decoder_output):
+  def call(self, backbone_output: Mapping[str, tf.Tensor],
+           decoder_output: Mapping[str, tf.Tensor]):
     """Forward pass of the segmentation head.
 
     Args:
-      backbone_output: a dict of tensors
-        - key: `str`, the level of the multilevel features.
-        - values: `Tensor`, the feature map tensors, whose shape is
+      backbone_output: A `dict` of tensors
+        - key: A `str` of the level of the multilevel features.
+        - values: A `tf.Tensor` of the feature map tensors, whose shape is
             [batch, height_l, width_l, channels].
-      decoder_output: a dict of tensors
-        - key: `str`, the level of the multilevel features.
-        - values: `Tensor`, the feature map tensors, whose shape is
+      decoder_output: A `dict` of tensors
+        - key: A `str` of the level of the multilevel features.
+        - values: A `tf.Tensor` of the feature map tensors, whose shape is
             [batch, height_l, width_l, channels].
     Returns:
-      segmentation prediction mask: `Tensor`, the segmentation mask scores
-        predicted from input feature.
+      segmentation prediction mask: A `tf.Tensor` of the segmentation mask
+        scores predicted from input features.
     """
     if self._config_dict['feature_fusion'] == 'deeplabv3plus':
       # deeplabv3+ feature fusion
@@ -182,6 +187,7 @@ class SegmentationHead(tf.keras.layers.Layer):
 
       x = tf.image.resize(
           x, tf.shape(y)[1:3], method=tf.image.ResizeMethod.BILINEAR)
+      x = tf.cast(x, dtype=y.dtype)
       x = tf.concat([x, y], axis=self._bn_axis)
     elif self._config_dict['feature_fusion'] == 'pyramid_fusion':
       x = nn_layers.pyramid_feature_fusion(decoder_output,
@@ -193,8 +199,10 @@ class SegmentationHead(tf.keras.layers.Layer):
       x = conv(x)
       x = norm(x)
       x = self._activation(x)
-    x = spatial_transform_ops.nearest_upsampling(
-        x, scale=self._config_dict['upsample_factor'])
+    if self._config_dict['upsample_factor'] > 1:
+      x = spatial_transform_ops.nearest_upsampling(
+          x, scale=self._config_dict['upsample_factor'])
+
     return self._classifier(x)
 
   def get_config(self):

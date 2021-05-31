@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Semantic segmentation configuration definition."""
 import os
 from typing import List, Optional, Union
@@ -24,35 +24,43 @@ from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
 from official.modeling.hyperparams import config_definitions as cfg
-from official.vision.beta.configs import backbones
 from official.vision.beta.configs import common
 from official.vision.beta.configs import decoders
+from official.vision.beta.configs import backbones
 
 
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
   """Input config for training."""
   output_size: List[int] = dataclasses.field(default_factory=list)
-  train_on_crops: bool = False
+  # If crop_size is specified, image will be resized first to
+  # output_size, then crop of size crop_size will be cropped.
+  crop_size: List[int] = dataclasses.field(default_factory=list)
   input_path: str = ''
   global_batch_size: int = 0
   is_training: bool = True
   dtype: str = 'float32'
   shuffle_buffer_size: int = 1000
   cycle_length: int = 10
+  # If resize_eval_groundtruth is set to False, original image sizes are used
+  # for eval. In that case, groundtruth_padded_size has to be specified too to
+  # allow for batching the variable input sizes of images.
   resize_eval_groundtruth: bool = True
   groundtruth_padded_size: List[int] = dataclasses.field(default_factory=list)
   aug_scale_min: float = 1.0
   aug_scale_max: float = 1.0
   aug_rand_hflip: bool = True
   drop_remainder: bool = True
+  file_type: str = 'tfrecord'
 
 
 @dataclasses.dataclass
 class SegmentationHead(hyperparams.Config):
+  """Segmentation head config."""
   level: int = 3
   num_convs: int = 2
   num_filters: int = 256
+  prediction_kernel_size: int = 1
   upsample_factor: int = 1
   feature_fusion: Optional[str] = None  # None, deeplabv3plus, or pyramid_fusion
   # deeplabv3plus feature fusion params
@@ -85,12 +93,19 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class Evaluation(hyperparams.Config):
+  report_per_class_iou: bool = True
+  report_train_mean_iou: bool = True  # Turning this off can speed up training.
+
+
+@dataclasses.dataclass
 class SemanticSegmentationTask(cfg.TaskConfig):
   """The model config."""
   model: SemanticSegmentationModel = SemanticSegmentationModel()
   train_data: DataConfig = DataConfig(is_training=True)
   validation_data: DataConfig = DataConfig(is_training=False)
   losses: Losses = Losses()
+  evaluation: Evaluation = Evaluation()
   train_input_partition_dims: List[int] = dataclasses.field(
       default_factory=list)
   eval_input_partition_dims: List[int] = dataclasses.field(
@@ -392,7 +407,9 @@ def seg_deeplabv3plus_cityscapes() -> cfg.ExperimentConfig:
   config = cfg.ExperimentConfig(
       task=SemanticSegmentationTask(
           model=SemanticSegmentationModel(
-              num_classes=20,
+              # Cityscapes uses only 19 semantic classes for train/evaluation.
+              # The void (background) class is ignored in train and evaluation.
+              num_classes=19,
               input_size=[None, None, 3],
               backbone=backbones.Backbone(
                   type='dilated_resnet', dilated_resnet=backbones.DilatedResNet(
@@ -401,7 +418,8 @@ def seg_deeplabv3plus_cityscapes() -> cfg.ExperimentConfig:
               decoder=decoders.Decoder(
                   type='aspp',
                   aspp=decoders.ASPP(
-                      level=level, dilation_rates=aspp_dilation_rates)),
+                      level=level, dilation_rates=aspp_dilation_rates,
+                      pool_kernel_size=[512, 1024])),
               head=SegmentationHead(
                   level=level,
                   num_convs=2,
@@ -417,8 +435,8 @@ def seg_deeplabv3plus_cityscapes() -> cfg.ExperimentConfig:
           train_data=DataConfig(
               input_path=os.path.join(CITYSCAPES_INPUT_PATH_BASE,
                                       'train_fine**'),
+              crop_size=[512, 1024],
               output_size=[1024, 2048],
-              train_on_crops=True,
               is_training=True,
               global_batch_size=train_batch_size,
               aug_scale_min=0.5,

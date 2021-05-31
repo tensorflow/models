@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Box sampler."""
+
+"""Contains definitions of box sampler."""
 
 # Import libraries
 import tensorflow as tf
@@ -22,19 +22,19 @@ from official.vision.beta.ops import sampling_ops
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class BoxSampler(tf.keras.layers.Layer):
-  """Sample positive and negative boxes."""
+  """Creates a BoxSampler to sample positive and negative boxes."""
 
   def __init__(self,
-               num_samples=512,
-               foreground_fraction=0.25,
+               num_samples: int = 512,
+               foreground_fraction: float = 0.25,
                **kwargs):
-    """Initializes a ROI sampler.
+    """Initializes a box sampler.
 
     Args:
-      num_samples: int, the number of sampled boxes per image.
-      foreground_fraction: float in [0, 1], what percentage of boxes should be
-        sampled from the positive examples.
-      **kwargs: other key word arguments passed to Layer.
+      num_samples: An `int` of the number of sampled boxes per image.
+      foreground_fraction: A `float` in [0, 1], what percentage of boxes should
+        be sampled from the positive examples.
+      **kwargs: Additional keyword arguments passed to Layer.
     """
     self._config_dict = {
         'num_samples': num_samples,
@@ -42,23 +42,24 @@ class BoxSampler(tf.keras.layers.Layer):
     }
     super(BoxSampler, self).__init__(**kwargs)
 
-  def call(self, positive_matches, negative_matches, ignored_matches):
-    """Sample and select positive and negative instances.
+  def call(self, positive_matches: tf.Tensor, negative_matches: tf.Tensor,
+           ignored_matches: tf.Tensor):
+    """Samples and selects positive and negative instances.
 
     Args:
-      positive_matches: a `bool` tensor of shape of [batch, N] where N is the
+      positive_matches: A `bool` tensor of shape of [batch, N] where N is the
         number of instances. For each element, `True` means the instance
         corresponds to a positive example.
-      negative_matches: a `bool` tensor of shape of [batch, N] where N is the
+      negative_matches: A `bool` tensor of shape of [batch, N] where N is the
         number of instances. For each element, `True` means the instance
         corresponds to a negative example.
-      ignored_matches: a `bool` tensor of shape of [batch, N] where N is the
-        number of instances. For each element, `True` means the instance
-        should be ignored.
+      ignored_matches: A `bool` tensor of shape of [batch, N] where N is the
+        number of instances. For each element, `True` means the instance should
+        be ignored.
 
     Returns:
-      selected_indices: a tensor of shape of [batch_size, K], storing the
-        indices of the sampled examples, where K is `num_samples`.
+      A `tf.tensor` of shape of [batch_size, K], storing the indices of the
+        sampled examples, where K is `num_samples`.
     """
     sample_candidates = tf.logical_and(
         tf.logical_or(positive_matches, negative_matches),

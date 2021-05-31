@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """3D Backbones configurations."""
 from typing import Optional, Tuple
 
@@ -34,10 +34,13 @@ class ResNet3DBlock(hyperparams.Config):
 class ResNet3D(hyperparams.Config):
   """ResNet config."""
   model_id: int = 50
+  stem_type: str = 'v0'
   stem_conv_temporal_kernel_size: int = 5
   stem_conv_temporal_stride: int = 2
   stem_pool_temporal_stride: int = 2
   block_specs: Tuple[ResNet3DBlock, ...] = ()
+  stochastic_depth_drop_rate: float = 0.0
+  se_ratio: float = 0.0
 
 
 @dataclasses.dataclass
@@ -61,12 +64,44 @@ class ResNet3D50(ResNet3D):
 
 
 @dataclasses.dataclass
+class ResNet3DRS(ResNet3D):
+  """Block specifications of the ResNet-RS (3D) model."""
+  model_id: int = 50
+  stem_type: str = 'v1'
+  stem_conv_temporal_kernel_size: int = 5
+  stem_conv_temporal_stride: int = 2
+  stem_pool_temporal_stride: int = 2
+  stochastic_depth_drop_rate: float = 0.1
+  se_ratio: float = 0.2
+  block_specs: Tuple[
+      ResNet3DBlock, ResNet3DBlock, ResNet3DBlock, ResNet3DBlock] = (
+          ResNet3DBlock(temporal_strides=1,
+                        temporal_kernel_sizes=(1,),
+                        use_self_gating=True),
+          ResNet3DBlock(temporal_strides=1,
+                        temporal_kernel_sizes=(1,),
+                        use_self_gating=True),
+          ResNet3DBlock(temporal_strides=1,
+                        temporal_kernel_sizes=(3,),
+                        use_self_gating=True),
+          ResNet3DBlock(temporal_strides=1,
+                        temporal_kernel_sizes=(3,),
+                        use_self_gating=True))
+
+
+_RESNET3D50_DEFAULT_CFG = ResNet3D50()
+_RESNET3DRS_DEFAULT_CFG = ResNet3DRS()
+
+
+@dataclasses.dataclass
 class Backbone3D(hyperparams.OneOfConfig):
   """Configuration for backbones.
 
   Attributes:
-    type: 'str', type of backbone be used, on the of fields below.
-    resnet: resnet3d backbone config.
+    type: 'str', type of backbone be used, one of the fields below.
+    resnet_3d: resnet3d backbone config.
+    resnet_3d_rs: resnet3d-rs backbone config.
   """
   type: Optional[str] = None
-  resnet_3d: ResNet3D = ResNet3D50()
+  resnet_3d: ResNet3D = _RESNET3D50_DEFAULT_CFG
+  resnet_3d_rs: ResNet3D = _RESNET3DRS_DEFAULT_CFG

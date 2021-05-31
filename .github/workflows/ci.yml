@@ -1,0 +1,29 @@
+name: CI
+on: pull_request
+
+jobs:
+  pylint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      
+      - name: Install pylint 2.4.4
+        run: |
+          python -m pip install --upgrade pip
+          pip install pylint==2.4.4
+        
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      
+      - name: Fetch master for diff
+        run: git fetch origin master:master
+       
+      - name: Run pylint script
+        run: bash ./.github/scripts/pylint.sh --incremental

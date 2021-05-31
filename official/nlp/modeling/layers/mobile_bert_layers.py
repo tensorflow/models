@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """MobileBERT embedding and transformer layers."""
 import tensorflow as tf
 
@@ -42,9 +42,9 @@ class NoNorm(tf.keras.layers.Layer):
 def _get_norm_layer(normalization_type='no_norm', name=None):
   """Get normlization layer.
 
-  Arguments:
+  Args:
       normalization_type: String. The type of normalization_type, only
-        'no_norm' and 'layer_norm' are supported.
+        `no_norm` and `layer_norm` are supported.
       name: Name for the norm layer.
 
   Returns:
@@ -82,14 +82,14 @@ class MobileBertEmbedding(tf.keras.layers.Layer):
                **kwargs):
     """Class initialization.
 
-    Arguments:
+    Args:
       word_vocab_size: Number of words in the vocabulary.
       word_embed_size: Word embedding size.
       type_vocab_size: Number of word types.
       output_embed_size: Embedding size for the final embedding output.
       max_sequence_length: Maximum length of input sequence.
       normalization_type: String. The type of normalization_type, only
-        'no_norm' and 'layer_norm' are supported.
+        `no_norm` and `layer_norm` are supported.
       initializer: The initializer to use for the embedding weights and
         linear projection weights.
       dropout_rate: Dropout rate.
@@ -113,7 +113,6 @@ class MobileBertEmbedding(tf.keras.layers.Layer):
     self.type_embedding = keras_nlp.layers.OnDeviceEmbedding(
         self.type_vocab_size,
         self.output_embed_size,
-        use_one_hot=True,
         initializer=initializer,
         name='type_embedding')
     self.pos_embedding = keras_nlp.layers.PositionEmbedding(
@@ -192,7 +191,7 @@ class MobileBertTransformer(tf.keras.layers.Layer):
                **kwargs):
     """Class initialization.
 
-    Arguments:
+    Args:
       hidden_size: Hidden size for the Transformer input and output tensor.
       num_attention_heads: Number of attention heads in the Transformer.
       intermediate_size: The size of the "intermediate" (a.k.a., feed
@@ -209,10 +208,10 @@ class MobileBertTransformer(tf.keras.layers.Layer):
       key_query_shared_bottleneck: Whether to share linear transformation for
         keys and queries.
       num_feedforward_networks: Number of stacked feed-forward networks.
-      normalization_type: The type of normalization_type, only 'no_norm' and
-        'layer_norm' are supported. 'no_norm' represents the element-wise
+      normalization_type: The type of normalization_type, only `no_norm` and
+        `layer_norm` are supported. `no_norm` represents the element-wise
         linear transformation for the student model, as suggested by the
-        original MobileBERT paper. 'layer_norm' is used for the teacher model.
+        original MobileBERT paper. `layer_norm` is used for the teacher model.
       initializer: The initializer to use for the embedding weights and
         linear projection weights.
       **kwargs: keyword arguments.
@@ -346,15 +345,17 @@ class MobileBertTransformer(tf.keras.layers.Layer):
            return_attention_scores=False):
     """Implementes the forward pass.
 
-    Arguments:
-      input_tensor: Float tensor of shape [batch_size, seq_length, hidden_size].
-      attention_mask: (optional) int32 tensor of shape [batch_size, seq_length,
-        seq_length], with 1 for positions that can be attended to and 0 in
-        positions that should not be.
+    Args:
+      input_tensor: Float tensor of shape
+        `(batch_size, seq_length, hidden_size)`.
+      attention_mask: (optional) int32 tensor of shape
+        `(batch_size, seq_length, seq_length)`, with 1 for positions that can
+        be attended to and 0 in positions that should not be.
       return_attention_scores: If return attention score.
 
     Returns:
-      layer_output: Float tensor of shape [batch_size, seq_length, hidden_size].
+      layer_output: Float tensor of shape
+        `(batch_size, seq_length, hidden_size)`.
       attention_scores (Optional): Only when return_attention_scores is True.
 
     Raises:
@@ -446,13 +447,13 @@ class MobileBertMaskedLM(tf.keras.layers.Layer):
                **kwargs):
     """Class initialization.
 
-    Arguments:
+    Args:
       embedding_table: The embedding table from encoder network.
       activation: The activation, if any, for the dense layer.
       initializer: The initializer for the dense layer. Defaults to a Glorot
         uniform initializer.
-      output: The output style for this layer. Can be either 'logits' or
-        'predictions'.
+      output: The output style for this layer. Can be either `logits` or
+        `predictions`.
       **kwargs: keyword arguments.
     """
     super(MobileBertMaskedLM, self).__init__(**kwargs)
@@ -528,16 +529,16 @@ class MobileBertMaskedLM(tf.keras.layers.Layer):
 
     Args:
       sequence_tensor: Sequence output of `BertModel` layer of shape
-        (`batch_size`, `seq_length`, num_hidden) where num_hidden is number of
+        `(batch_size, seq_length, num_hidden)` where `num_hidden` is number of
         hidden units of `BertModel` layer.
       positions: Positions ids of tokens in sequence to mask for pretraining
-        of with dimension (batch_size, num_predictions) where
+        of with dimension `(batch_size, num_predictions)` where
         `num_predictions` is maximum number of tokens to mask out and predict
         per each sequence.
 
     Returns:
-      Masked out sequence tensor of shape (batch_size * num_predictions,
-      num_hidden).
+      Masked out sequence tensor of shape
+        `(batch_size * num_predictions, num_hidden)`.
     """
     sequence_shape = tf.shape(sequence_tensor)
     batch_size, seq_length = sequence_shape[0], sequence_shape[1]

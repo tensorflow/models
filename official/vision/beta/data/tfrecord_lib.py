@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Helper functions for creating TFRecord datasets."""
 
 import hashlib
@@ -19,6 +19,7 @@ import io
 import itertools
 
 from absl import logging
+import numpy as np
 from PIL import Image
 import tensorflow as tf
 
@@ -45,10 +46,10 @@ def convert_to_feature(value, value_type=None):
     if isinstance(element, bytes):
       value_type = 'bytes'
 
-    elif isinstance(element, int):
+    elif isinstance(element, (int, np.integer)):
       value_type = 'int64'
 
-    elif isinstance(element, float):
+    elif isinstance(element, (float, np.floating)):
       value_type = 'float'
 
     else:
@@ -62,12 +63,14 @@ def convert_to_feature(value, value_type=None):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
   elif value_type == 'int64_list':
+    value = np.asarray(value).astype(np.int64).reshape(-1)
     return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
 
   elif value_type == 'float':
     return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
 
   elif value_type == 'float_list':
+    value = np.asarray(value).astype(np.float32).reshape(-1)
     return tf.train.Feature(float_list=tf.train.FloatList(value=value))
 
   elif value_type == 'bytes':
@@ -104,8 +107,9 @@ def encode_binary_mask_as_png(binary_mask):
   return output_io.getvalue()
 
 
-def write_tf_record_dataset(output_path, annotation_iterator, process_func,
-                            num_shards, use_multiprocessing=True):
+def write_tf_record_dataset(output_path, annotation_iterator,
+                            process_func, num_shards,
+                            use_multiprocessing=True, unpack_arguments=True):
   """Iterates over annotations, processes them and writes into TFRecords.
 
   Args:
@@ -118,6 +122,9 @@ def write_tf_record_dataset(output_path, annotation_iterator, process_func,
     num_shards: int, the number of shards to write for the dataset.
     use_multiprocessing:
       Whether or not to use multiple processes to write TF Records.
+    unpack_arguments:
+      Whether to unpack the tuples from annotation_iterator as individual
+        arguments to the process func or to pass the returned value as it is.
 
   Returns:
     num_skipped: The total number of skipped annotations.
@@ -133,9 +140,15 @@ def write_tf_record_dataset(output_path, annotation_iterator, process_func,
 
   if use_multiprocessing:
     pool = mp.Pool()
-    tf_example_iterator = pool.starmap(process_func, annotation_iterator)
+    if unpack_arguments:
+      tf_example_iterator = pool.starmap(process_func, annotation_iterator)
+    else:
+      tf_example_iterator = pool.imap(process_func, annotation_iterator)
   else:
-    tf_example_iterator = itertools.starmap(process_func, annotation_iterator)
+    if unpack_arguments:
+      tf_example_iterator = itertools.starmap(process_func, annotation_iterator)
+    else:
+      tf_example_iterator = map(process_func, annotation_iterator)
 
   for idx, (tf_example, num_annotations_skipped) in enumerate(
       tf_example_iterator):
@@ -155,3 +168,9 @@ def write_tf_record_dataset(output_path, annotation_iterator, process_func,
   logging.info('Finished writing, skipped %d annotations.',
                total_num_annotations_skipped)
   return total_num_annotations_skipped
+
+
+def check_and_make_dir(directory):
+  """Creates the directory if it doesn't exist."""
+  if not tf.io.gfile.isdir(directory):
+    tf.io.gfile.makedirs(directory)

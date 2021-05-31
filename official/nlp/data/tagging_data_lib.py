@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Library to process data for tagging task such as NER/POS."""
 import collections
 import os
@@ -96,7 +96,7 @@ class PanxProcessor(classifier_data_lib.DataProcessor):
                only_use_en_dev=True):
     """See base class.
 
-    Arguments:
+    Args:
       process_text_fn: See base class.
       only_use_en_train: If True, only use english training data. Otherwise, use
         training data from all languages.
@@ -162,7 +162,7 @@ class UdposProcessor(classifier_data_lib.DataProcessor):
                only_use_en_dev=True):
     """See base class.
 
-    Arguments:
+    Args:
       process_text_fn: See base class.
       only_use_en_train: If True, only use english training data. Otherwise, use
         training data from all languages.
@@ -224,10 +224,10 @@ def _tokenize_example(example, max_length, tokenizer, text_preprocessing=None):
   max_length = max_length - 2
   new_examples = []
   new_example = InputExample(sentence_id=example.sentence_id, sub_sentence_id=0)
-  for i, word in enumerate(example.words):
-    if any([x < 0 for x in example.label_ids]):
-      raise ValueError("Unexpected negative label_id: %s" % example.label_ids)
+  if any([x < 0 for x in example.label_ids]):
+    raise ValueError("Unexpected negative label_id: %s" % example.label_ids)
 
+  for i, word in enumerate(example.words):
     if text_preprocessing:
       word = text_preprocessing(word)
     subwords = tokenizer.tokenize(word)

@@ -83,9 +83,6 @@ class CenterNetMobileNetV2FeatureExtractor(
   def load_feature_extractor_weights(self, path):
     self._network.load_weights(path)
 
-  def get_base_model(self):
-    return self._network
-
   def call(self, inputs):
     return [self._network(inputs)]
 
@@ -100,21 +97,21 @@ class CenterNetMobileNetV2FeatureExtractor(
     return 1
 
   @property
-  def supported_sub_model_types(self):
-    return ['detection']
-
-  def get_sub_model(self, sub_model_type):
-    if sub_model_type == 'detection':
-      return self._network
-    else:
-      ValueError('Sub model type "{}" not supported.'.format(sub_model_type))
+  def classification_backbone(self):
+    return self._network
 
 
-def mobilenet_v2(channel_means, channel_stds, bgr_ordering):
+def mobilenet_v2(channel_means, channel_stds, bgr_ordering,
+                 depth_multiplier=1.0, **kwargs):
   """The MobileNetV2 backbone for CenterNet."""
+  del kwargs
 
   # We set 'is_training' to True for now.
-  network = mobilenetv2.mobilenet_v2(True, include_top=False)
+  network = mobilenetv2.mobilenet_v2(
+      batchnorm_training=True,
+      alpha=depth_multiplier,
+      include_top=False,
+      weights='imagenet' if depth_multiplier == 1.0 else None)
   return CenterNetMobileNetV2FeatureExtractor(
       network,
       channel_means=channel_means,

@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,14 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Optimizer factory for vision tasks."""
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
 
-from typing import Any, Dict, Text
+from typing import Any, Dict, Optional, Text
 
 from absl import logging
 import tensorflow as tf
@@ -35,7 +35,7 @@ def build_optimizer(
     optimizer_name: Text,
     base_learning_rate: tf.keras.optimizers.schedules.LearningRateSchedule,
     params: Dict[Text, Any],
-    model: tf.keras.Model = None):
+    model: Optional[tf.keras.Model] = None):
   """Build the optimizer based on name.
 
   Args:
@@ -124,9 +124,9 @@ def build_optimizer(
 
 
 def build_learning_rate(params: base_configs.LearningRateConfig,
-                        batch_size: int = None,
-                        train_epochs: int = None,
-                        train_steps: int = None):
+                        batch_size: Optional[int] = None,
+                        train_epochs: Optional[int] = None,
+                        train_steps: Optional[int] = None):
   """Build the learning rate given the provided configuration."""
   decay_type = params.name
   base_lr = params.initial_lr

@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests NCF."""
 
 from __future__ import absolute_import
@@ -38,11 +38,13 @@ class NcfTest(tf.test.TestCase):
     ncf_common.define_ncf_flags()
 
   def setUp(self):
+    super().setUp()
     self.top_k_old = rconst.TOP_K
     self.num_eval_negatives_old = rconst.NUM_EVAL_NEGATIVES
     rconst.NUM_EVAL_NEGATIVES = 2
 
   def tearDown(self):
+    super().tearDown()
     rconst.NUM_EVAL_NEGATIVES = self.num_eval_negatives_old
     rconst.TOP_K = self.top_k_old
 

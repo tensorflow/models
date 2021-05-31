@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Losses used for segmentation models."""
 
 # Import libraries
@@ -83,7 +83,7 @@ class SegmentationLoss:
       top_k_losses, _ = tf.math.top_k(
           cross_entropy_loss, k=top_k_pixels, sorted=True)
       normalizer = tf.reduce_sum(
-          tf.cast(tf.not_equal(top_k_losses, 0.0), tf.float32) + EPSILON)
+          tf.cast(tf.not_equal(top_k_losses, 0.0), tf.float32)) + EPSILON
       loss = tf.reduce_sum(top_k_losses) / normalizer
 
     return loss

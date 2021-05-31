@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Keras-based Transformer XL layer."""
 
 from absl import logging
@@ -25,7 +24,7 @@ from official.nlp.modeling.layers import relative_attention
 def _cache_memory(current_state, previous_state, memory_length, reuse_length=0):
   """Caches hidden states into memory.
 
-  Arguments:
+  Args:
     current_state: `Tensor`, the current state.
     previous_state: `Tensor`, the previous state.
     memory_length: `int`, the number of tokens to cache.
@@ -228,7 +227,7 @@ class TransformerXLBlock(tf.keras.layers.Layer):
            target_mapping=None):
     """Implements `call` for the Layer.
 
-    Arguments:
+    Args:
       content_stream: `Tensor`, the input content stream. This is the standard
         input to Transformer XL and is commonly referred to as `h` in XLNet.
       content_attention_bias: Bias `Tensor` for content based attention of shape
@@ -476,7 +475,7 @@ class TransformerXL(tf.keras.layers.Layer):
            target_mapping=None):
     """Implements call() for the layer.
 
-    Arguments:
+    Args:
       content_stream: `Tensor`, the input content stream. This is the standard
         input to Transformer XL and is commonly referred to as `h` in XLNet.
       relative_position_encoding: Relative positional encoding `Tensor` of shape

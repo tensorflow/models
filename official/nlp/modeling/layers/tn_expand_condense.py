@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """ExpandCondense tensor network layer used in TN-BERT."""
 # pylint: disable=g-classes-have-attributes
 from typing import List, Optional, Text, Any, Dict
@@ -36,9 +36,9 @@ class TNExpandCondense(Layer):
 
   Note the input shape and output shape will be identical.
 
-  Arguments:
-    proj_multiplier: Positive integer, multiple of input_shape[-1] to project
-      up to. Must be one of [2, 4, 6, 8].
+  Args:
+    proj_multiplier: Positive integer, multiple of `input_shape[-1]` to project
+      up to. Must be one of `[2, 4, 6, 8]`.
     use_bias: Boolean, whether the layer uses a bias vector.
     activation: Activation function to use between Expand and Condense. If you
       don't specify anything, no activation is applied

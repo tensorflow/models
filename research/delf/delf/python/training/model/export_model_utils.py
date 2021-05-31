@@ -22,7 +22,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 from delf import feature_extractor
-from delf.python.training.datasets import googlelandmarks as gld
+from delf.python.datasets.google_landmarks_dataset import googlelandmarks as gld
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 

@@ -37,6 +37,7 @@ install_tensorflow() {
   # Install TensorFlow 2.2.
   echo "Installing TensorFlow 2.2"
   pip3 install --upgrade tensorflow==2.2.0
+  pip3 install tensorflow-addons==0.11.2
   local exit_code=$?
   handle_exit_code ${exit_code} "Unable to install Tensorflow 2.2."
   echo "Installing TensorFlow 2.2 for GPU"

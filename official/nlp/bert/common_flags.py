@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Defining common flags used across all BERT models/applications."""
 
 from absl import flags
@@ -100,7 +100,6 @@ def define_common_bert_flags():
       synthetic_data=False,
       max_train_steps=False,
       dtype=True,
-      dynamic_loss_scale=True,
       loss_scale=True,
       all_reduce_alg=True,
       num_packs=False,

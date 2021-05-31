@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Runs a simple model on the MNIST dataset."""
 from __future__ import absolute_import
 from __future__ import division
@@ -81,6 +81,9 @@ def run(flags_obj, datasets_override=None, strategy_override=None):
   Returns:
     Dictionary of training and eval stats.
   """
+  # Start TF profiler server.
+  tf.profiler.experimental.server.start(flags_obj.profiler_port)
+
   strategy = strategy_override or distribute_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_obj.num_gpus,
@@ -154,8 +157,10 @@ def define_mnist_flags():
       distribution_strategy=True)
   flags_core.define_device()
   flags_core.define_distribution()
-  flags.DEFINE_bool('download', False,
+  flags.DEFINE_bool('download', True,
                     'Whether to download data to `--data_dir`.')
+  flags.DEFINE_integer('profiler_port', 9012,
+                       'Port to start profiler server on.')
   FLAGS.set_default('batch_size', 1024)
 
 

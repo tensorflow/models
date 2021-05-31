@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,19 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """RetinaNet configuration definition."""
 
 import os
 from typing import List, Optional
 import dataclasses
+
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.vision.beta.configs import backbones
 from official.vision.beta.configs import common
 from official.vision.beta.configs import decoders
+from official.vision.beta.configs import backbones
 
 
 # pylint: disable=missing-class-docstring
@@ -68,6 +69,7 @@ class DataConfig(cfg.DataConfig):
   decoder: DataDecoder = DataDecoder()
   parser: Parser = Parser()
   shuffle_buffer_size: int = 10000
+  file_type: str = 'tfrecord'
 
 
 @dataclasses.dataclass
@@ -88,14 +90,23 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class AttributeHead(hyperparams.Config):
+  name: str = ''
+  type: str = 'regression'
+  size: int = 1
+
+
+@dataclasses.dataclass
 class RetinaNetHead(hyperparams.Config):
   num_convs: int = 4
   num_filters: int = 256
   use_separable_conv: bool = False
+  attribute_heads: Optional[List[AttributeHead]] = None
 
 
 @dataclasses.dataclass
 class DetectionGenerator(hyperparams.Config):
+  apply_nms: bool = True
   pre_nms_top_k: int = 5000
   pre_nms_score_threshold: float = 0.05
   nms_iou_threshold: float = 0.5
@@ -143,7 +154,7 @@ def retinanet() -> cfg.ExperimentConfig:
 
 
 COCO_INPUT_PATH_BASE = 'coco'
-COCO_TRIAN_EXAMPLES = 118287
+COCO_TRAIN_EXAMPLES = 118287
 COCO_VAL_EXAMPLES = 5000
 
 
@@ -152,7 +163,7 @@ def retinanet_resnetfpn_coco() -> cfg.ExperimentConfig:
   """COCO object detection with RetinaNet."""
   train_batch_size = 256
   eval_batch_size = 8
-  steps_per_epoch = COCO_TRIAN_EXAMPLES // train_batch_size
+  steps_per_epoch = COCO_TRAIN_EXAMPLES // train_batch_size
 
   config = cfg.ExperimentConfig(
       runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
@@ -164,6 +175,7 @@ def retinanet_resnetfpn_coco() -> cfg.ExperimentConfig:
           model=RetinaNet(
               num_classes=91,
               input_size=[640, 640, 3],
+              norm_activation=common.NormActivation(use_sync_bn=False),
               min_level=3,
               max_level=7),
           losses=Losses(l2_weight_decay=1e-4),
@@ -172,7 +184,7 @@ def retinanet_resnetfpn_coco() -> cfg.ExperimentConfig:
               is_training=True,
               global_batch_size=train_batch_size,
               parser=Parser(
-                  aug_rand_hflip=True, aug_scale_min=0.5, aug_scale_max=2.0)),
+                  aug_rand_hflip=True, aug_scale_min=0.8, aug_scale_max=1.2)),
           validation_data=DataConfig(
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
               is_training=False,
@@ -225,7 +237,7 @@ def retinanet_spinenet_coco() -> cfg.ExperimentConfig:
   """COCO object detection with RetinaNet using SpineNet backbone."""
   train_batch_size = 256
   eval_batch_size = 8
-  steps_per_epoch = COCO_TRIAN_EXAMPLES // train_batch_size
+  steps_per_epoch = COCO_TRAIN_EXAMPLES // train_batch_size
   input_size = 640
 
   config = cfg.ExperimentConfig(
@@ -237,7 +249,10 @@ def retinanet_spinenet_coco() -> cfg.ExperimentConfig:
               backbone=backbones.Backbone(
                   type='spinenet',
                   spinenet=backbones.SpineNet(
-                      model_id='49', stochastic_depth_drop_rate=0.2)),
+                      model_id='49',
+                      stochastic_depth_drop_rate=0.2,
+                      min_level=3,
+                      max_level=7)),
               decoder=decoders.Decoder(
                   type='identity', identity=decoders.Identity()),
               anchor=Anchor(anchor_size=3),
@@ -295,7 +310,96 @@ def retinanet_spinenet_coco() -> cfg.ExperimentConfig:
           })),
       restrictions=[
           'task.train_data.is_training != None',
-          'task.validation_data.is_training != None'
+          'task.validation_data.is_training != None',
+          'task.model.min_level == task.model.backbone.spinenet.min_level',
+          'task.model.max_level == task.model.backbone.spinenet.max_level',
+      ])
+
+  return config
+
+
+@exp_factory.register_config_factory('retinanet_spinenet_mobile_coco')
+def retinanet_spinenet_mobile_coco() -> cfg.ExperimentConfig:
+  """COCO object detection with RetinaNet using Mobile SpineNet backbone."""
+  train_batch_size = 256
+  eval_batch_size = 8
+  steps_per_epoch = COCO_TRAIN_EXAMPLES // train_batch_size
+  input_size = 384
+
+  config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(mixed_precision_dtype='float32'),
+      task=RetinaNetTask(
+          annotation_file=os.path.join(COCO_INPUT_PATH_BASE,
+                                       'instances_val2017.json'),
+          model=RetinaNet(
+              backbone=backbones.Backbone(
+                  type='spinenet_mobile',
+                  spinenet_mobile=backbones.SpineNetMobile(
+                      model_id='49',
+                      stochastic_depth_drop_rate=0.2,
+                      min_level=3,
+                      max_level=7)),
+              decoder=decoders.Decoder(
+                  type='identity', identity=decoders.Identity()),
+              head=RetinaNetHead(num_filters=48, use_separable_conv=True),
+              anchor=Anchor(anchor_size=3),
+              norm_activation=common.NormActivation(
+                  use_sync_bn=True, activation='swish'),
+              num_classes=91,
+              input_size=[input_size, input_size, 3],
+              min_level=3,
+              max_level=7),
+          losses=Losses(l2_weight_decay=3e-5),
+          train_data=DataConfig(
+              input_path=os.path.join(COCO_INPUT_PATH_BASE, 'train*'),
+              is_training=True,
+              global_batch_size=train_batch_size,
+              parser=Parser(
+                  aug_rand_hflip=True, aug_scale_min=0.1, aug_scale_max=2.0)),
+          validation_data=DataConfig(
+              input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
+              is_training=False,
+              global_batch_size=eval_batch_size)),
+      trainer=cfg.TrainerConfig(
+          train_steps=600 * steps_per_epoch,
+          validation_steps=COCO_VAL_EXAMPLES // eval_batch_size,
+          validation_interval=steps_per_epoch,
+          steps_per_loop=steps_per_epoch,
+          summary_interval=steps_per_epoch,
+          checkpoint_interval=steps_per_epoch,
+          optimizer_config=optimization.OptimizationConfig({
+              'optimizer': {
+                  'type': 'sgd',
+                  'sgd': {
+                      'momentum': 0.9
+                  }
+              },
+              'learning_rate': {
+                  'type': 'stepwise',
+                  'stepwise': {
+                      'boundaries': [
+                          575 * steps_per_epoch, 590 * steps_per_epoch
+                      ],
+                      'values': [
+                          0.32 * train_batch_size / 256.0,
+                          0.032 * train_batch_size / 256.0,
+                          0.0032 * train_batch_size / 256.0
+                      ],
+                  }
+              },
+              'warmup': {
+                  'type': 'linear',
+                  'linear': {
+                      'warmup_steps': 2000,
+                      'warmup_learning_rate': 0.0067
+                  }
+              }
+          })),
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None',
+          'task.model.min_level == task.model.backbone.spinenet_mobile.min_level',
+          'task.model.max_level == task.model.backbone.spinenet_mobile.max_level',
       ])
 
   return config

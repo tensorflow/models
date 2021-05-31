@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Target and sampling related ops."""
 
 from __future__ import absolute_import
@@ -292,7 +292,7 @@ def sample_and_crop_foreground_masks(candidate_rois,
     return foreground_rois, foreground_classes, cropped_foreground_masks
 
 
-class ROISampler(object):
+class ROISampler(tf.keras.layers.Layer):
   """Samples RoIs and creates training targets."""
 
   def __init__(self, params):
@@ -302,8 +302,9 @@ class ROISampler(object):
     self._bg_iou_thresh_hi = params.bg_iou_thresh_hi
     self._bg_iou_thresh_lo = params.bg_iou_thresh_lo
     self._mix_gt_boxes = params.mix_gt_boxes
+    super(ROISampler, self).__init__(autocast=False)
 
-  def __call__(self, rois, gt_boxes, gt_classes):
+  def call(self, rois, gt_boxes, gt_classes):
     """Sample and assign RoIs for training.
 
     Args:
@@ -516,15 +517,20 @@ class ROIScoreSampler(ROISampler):
               sampled_gt_classes, sampled_gt_indices)
 
 
-class MaskSampler(object):
+class MaskSampler(tf.keras.layers.Layer):
   """Samples and creates mask training targets."""
 
   def __init__(self, mask_target_size, num_mask_samples_per_image):
     self._mask_target_size = mask_target_size
     self._num_mask_samples_per_image = num_mask_samples_per_image
+    super(MaskSampler, self).__init__(autocast=False)
 
-  def __call__(self, candidate_rois, candidate_gt_boxes, candidate_gt_classes,
-               candidate_gt_indices, gt_masks):
+  def call(self,
+           candidate_rois,
+           candidate_gt_boxes,
+           candidate_gt_classes,
+           candidate_gt_indices,
+           gt_masks):
     """Sample and create mask targets for training.
 
     Args:

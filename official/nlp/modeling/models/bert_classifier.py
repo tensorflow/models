@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,14 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """BERT cls-token classifier."""
 # pylint: disable=g-classes-have-attributes
 import collections
 import tensorflow as tf
 
 from official.nlp.modeling import layers
-from official.nlp.modeling import networks
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
@@ -36,7 +35,7 @@ class BertClassifier(tf.keras.Model):
   *Note* that the model is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     network: A transformer network. This network should output a sequence output
       and a classification output. Furthermore, it should expose its embedding
       table via a "get_embedding_table" method.
@@ -46,6 +45,10 @@ class BertClassifier(tf.keras.Model):
     dropout_rate: The dropout probability of the cls head.
     use_encoder_pooler: Whether to use the pooler layer pre-defined inside the
       encoder.
+    cls_head: (Optional) The layer instance to use for the classifier head.
+      It should take in the output from network and produce the final logits.
+      If set, the arguments ('num_classes', 'initializer', 'dropout_rate',
+      'use_encoder_pooler') will be ignored.
   """
 
   def __init__(self,
@@ -54,7 +57,11 @@ class BertClassifier(tf.keras.Model):
                initializer='glorot_uniform',
                dropout_rate=0.1,
                use_encoder_pooler=True,
+               cls_head=None,
                **kwargs):
+    self.num_classes = num_classes
+    self.initializer = initializer
+    self.use_encoder_pooler = use_encoder_pooler
 
     # We want to use the inputs of the passed network as the inputs to this
     # Model. To do this, we need to keep a handle to the network inputs for use
@@ -66,31 +73,28 @@ class BertClassifier(tf.keras.Model):
       # invoke the Network object with its own input tensors to start the Model.
       outputs = network(inputs)
       if isinstance(outputs, list):
-        cls_output = outputs[1]
+        cls_inputs = outputs[1]
       else:
-        cls_output = outputs['pooled_output']
-      cls_output = tf.keras.layers.Dropout(rate=dropout_rate)(cls_output)
-
-      classifier = networks.Classification(
-          input_width=cls_output.shape[-1],
-          num_classes=num_classes,
-          initializer=initializer,
-          output='logits',
-          name='sentence_prediction')
-      predictions = classifier(cls_output)
+        cls_inputs = outputs['pooled_output']
+      cls_inputs = tf.keras.layers.Dropout(rate=dropout_rate)(cls_inputs)
     else:
       outputs = network(inputs)
       if isinstance(outputs, list):
-        sequence_output = outputs[0]
+        cls_inputs = outputs[0]
       else:
-        sequence_output = outputs['sequence_output']
+        cls_inputs = outputs['sequence_output']
+
+    if cls_head:
+      classifier = cls_head
+    else:
       classifier = layers.ClassificationHead(
-          inner_dim=sequence_output.shape[-1],
+          inner_dim=0 if use_encoder_pooler else cls_inputs.shape[-1],
           num_classes=num_classes,
           initializer=initializer,
           dropout_rate=dropout_rate,
           name='sentence_prediction')
-      predictions = classifier(sequence_output)
+
+    predictions = classifier(cls_inputs)
 
     # b/164516224
     # Once we've created the network using the Functional API, we call
@@ -102,13 +106,9 @@ class BertClassifier(tf.keras.Model):
     super(BertClassifier, self).__init__(
         inputs=inputs, outputs=predictions, **kwargs)
     self._network = network
-    config_dict = {
-        'network': network,
-        'num_classes': num_classes,
-        'initializer': initializer,
-        'use_encoder_pooler': use_encoder_pooler,
-    }
+    self._cls_head = cls_head
 
+    config_dict = self._make_config_dict()
     # We are storing the config dict as a namedtuple here to ensure checkpoint
     # compatibility with an earlier version of this model which did not track
     # the config dict attribute. TF does not track immutable attrs which
@@ -132,3 +132,12 @@ class BertClassifier(tf.keras.Model):
   @classmethod
   def from_config(cls, config, custom_objects=None):
     return cls(**config)
+
+  def _make_config_dict(self):
+    return {
+        'network': self._network,
+        'num_classes': self.num_classes,
+        'initializer': self.initializer,
+        'use_encoder_pooler': self.use_encoder_pooler,
+        'cls_head': self._cls_head,
+    }

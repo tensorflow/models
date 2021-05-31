@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Talking Head Attention layer."""
 # pylint: disable=g-classes-have-attributes
 import math
@@ -33,9 +33,9 @@ class TalkingHeadsAttention(tf.keras.layers.MultiHeadAttention):
   multi-head attention by including linearprojections across the attention-heads
   dimension, immediately before and after the softmax operation.
 
-  See the base class `MultiHeadAttention` for more details.
+  See the base class `tf.keras.layers.MultiHeadAttention` for more details.
 
-  Arguments:
+  Args:
     num_heads: Number of attention heads.
     key_dim: Size of each attention head for query and key.
     value_dim:  Size of each attention head for value.
@@ -63,7 +63,7 @@ class TalkingHeadsAttention(tf.keras.layers.MultiHeadAttention):
     that will be applied on attention scores before and after softmax.
 
     Args:
-      qkv_rank: the rank of query, key, value tensors after projection.
+      qkv_rank: The rank of query, key, value tensors after projection.
     """
     super(TalkingHeadsAttention, self)._build_attention(qkv_rank)
 

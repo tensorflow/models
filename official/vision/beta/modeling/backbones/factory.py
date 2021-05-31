@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Backbone registers and factory method.
 
 One can regitered a new backbone model by the following two steps:
@@ -42,10 +42,14 @@ in place that uses it.
 
 
 """
+from typing import Sequence, Union
+
 # Import libraries
+
 import tensorflow as tf
 
 from official.core import registry
+from official.modeling import hyperparams
 
 
 _REGISTERED_BACKBONE_CLS = {}
@@ -70,29 +74,40 @@ def register_backbone_builder(key: str):
   ```
 
   Args:
-    key: the key to look up the builder.
+    key: A `str` of key to look up the builder.
 
   Returns:
-    A callable for use as class decorator that registers the decorated class
+    A callable for using as class decorator that registers the decorated class
     for creation from an instance of task_config_cls.
   """
   return registry.register(_REGISTERED_BACKBONE_CLS, key)
 
 
-def build_backbone(input_specs: tf.keras.layers.InputSpec,
-                   model_config,
-                   l2_regularizer: tf.keras.regularizers.Regularizer = None):
+def build_backbone(input_specs: Union[tf.keras.layers.InputSpec,
+                                      Sequence[tf.keras.layers.InputSpec]],
+                   backbone_config: hyperparams.Config,
+                   norm_activation_config: hyperparams.Config,
+                   l2_regularizer: tf.keras.regularizers.Regularizer = None,
+                   **kwargs) -> tf.keras.Model:
   """Builds backbone from a config.
 
   Args:
-    input_specs: tf.keras.layers.InputSpec.
-    model_config: a OneOfConfig. Model config.
-    l2_regularizer: tf.keras.regularizers.Regularizer instance. Default to None.
+    input_specs: A (sequence of) `tf.keras.layers.InputSpec` of input.
+    backbone_config: A `OneOfConfig` of backbone config.
+    norm_activation_config: A config for normalization/activation layer.
+    l2_regularizer: A `tf.keras.regularizers.Regularizer` object. Default to
+      None.
+    **kwargs: Additional keyword args to be passed to backbone builder.
 
   Returns:
-    tf.keras.Model instance of the backbone.
+    A `tf.keras.Model` instance of the backbone.
   """
   backbone_builder = registry.lookup(_REGISTERED_BACKBONE_CLS,
-                                     model_config.backbone.type)
+                                     backbone_config.type)
 
-  return backbone_builder(input_specs, model_config, l2_regularizer)
+  return backbone_builder(
+      input_specs=input_specs,
+      backbone_config=backbone_config,
+      norm_activation_config=norm_activation_config,
+      l2_regularizer=l2_regularizer,
+      **kwargs)

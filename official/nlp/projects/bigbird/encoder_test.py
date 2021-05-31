@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for official.nlp.projects.bigbird.encoder."""
 
 import numpy as np
@@ -27,7 +27,7 @@ class BigBirdEncoderTest(tf.test.TestCase):
     batch_size = 2
     vocab_size = 1024
     network = encoder.BigBirdEncoder(
-        num_layers=1, vocab_size=1024, max_sequence_length=4096)
+        num_layers=1, vocab_size=1024, max_position_embeddings=4096)
     word_id_data = np.random.randint(
         vocab_size, size=(batch_size, sequence_length))
     mask_data = np.random.randint(2, size=(batch_size, sequence_length))
@@ -41,7 +41,7 @@ class BigBirdEncoderTest(tf.test.TestCase):
     batch_size = 2
     vocab_size = 1024
     network = encoder.BigBirdEncoder(
-        num_layers=1, vocab_size=1024, max_sequence_length=4096)
+        num_layers=1, vocab_size=1024, max_position_embeddings=4096)
     word_id_data = np.random.randint(
         vocab_size, size=(batch_size, sequence_length))
     mask_data = np.random.randint(2, size=(batch_size, sequence_length))

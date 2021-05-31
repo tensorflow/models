@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Keras-based TransformerEncoder block layer."""
 
 import tensorflow as tf
@@ -51,10 +51,11 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
                attention_dropout=0.0,
                inner_dropout=0.0,
                attention_initializer=None,
+               attention_axes=None,
                **kwargs):
     """Initializes `TransformerEncoderBlock`.
 
-    Arguments:
+    Args:
       num_attention_heads: Number of attention heads.
       inner_dim: The output dimension of the first Dense layer in a two-layer
         feedforward network.
@@ -83,15 +84,19 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
       attention_initializer: Initializer for kernels of attention layers. If set
         `None`, attention layers use kernel_initializer as initializer for
         kernel.
+      attention_axes: axes over which the attention is applied. `None` means
+        attention over all axes, but batch, heads, and features.
       **kwargs: keyword arguments/
     """
-    super(TransformerEncoderBlock, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
     self._num_heads = num_attention_heads
     self._inner_dim = inner_dim
     self._inner_activation = inner_activation
     self._attention_dropout = attention_dropout
+    self._attention_dropout_rate = attention_dropout
     self._output_dropout = output_dropout
+    self._output_dropout_rate = output_dropout
     self._output_range = output_range
     self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
     self._bias_initializer = tf.keras.initializers.get(bias_initializer)
@@ -109,25 +114,21 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
           attention_initializer)
     else:
       self._attention_initializer = self._kernel_initializer
+    self._attention_axes = attention_axes
 
   def build(self, input_shape):
-    input_tensor = input_shape[0] if len(input_shape) == 2 else input_shape
-    input_tensor_shape = tf.TensorShape(input_tensor)
-    if len(input_tensor_shape.as_list()) != 3:
-      raise ValueError("TransformerEncoderBlock expects a three-dimensional "
-                       "input of shape [batch, sequence, width].")
-    batch_size, sequence_length, hidden_size = input_tensor_shape
-
-    if len(input_shape) == 2:
-      mask_tensor_shape = tf.TensorShape(input_shape[1])
-      expected_mask_tensor_shape = tf.TensorShape(
-          [batch_size, sequence_length, sequence_length])
-      if not expected_mask_tensor_shape.is_compatible_with(mask_tensor_shape):
-        raise ValueError("When passing a mask tensor to "
-                         "TransformerEncoderBlock, the mask tensor must be of "
-                         "shape [batch, sequence_length, sequence_length] "
-                         "(here %s). Got a mask tensor of shape %s." %
-                         (expected_mask_tensor_shape, mask_tensor_shape))
+    if isinstance(input_shape, tf.TensorShape):
+      input_tensor_shape = input_shape
+    elif isinstance(input_shape, (list, tuple)):
+      input_tensor_shape = tf.TensorShape(input_shape[0])
+    else:
+      raise ValueError(
+          "The type of input shape argument is not supported, got: %s" %
+          type(input_shape))
+    einsum_equation = "abc,cd->abd"
+    if len(input_tensor_shape.as_list()) > 3:
+      einsum_equation = "...bc,cd->...bd"
+    hidden_size = input_tensor_shape[-1]
     if hidden_size % self._num_heads != 0:
       raise ValueError(
           "The input size (%d) is not a multiple of the number of attention "
@@ -146,6 +147,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         dropout=self._attention_dropout,
         use_bias=self._use_bias,
         kernel_initializer=self._attention_initializer,
+        attention_axes=self._attention_axes,
         name="self_attention",
         **common_kwargs)
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
@@ -158,13 +160,13 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
             epsilon=self._norm_epsilon,
             dtype=tf.float32))
     self._intermediate_dense = tf.keras.layers.experimental.EinsumDense(
-        "abc,cd->abd",
+        einsum_equation,
         output_shape=(None, self._inner_dim),
         bias_axes="d",
         kernel_initializer=self._kernel_initializer,
         name="intermediate",
         **common_kwargs)
-    policy = tf.keras.mixed_precision.experimental.global_policy()
+    policy = tf.keras.mixed_precision.global_policy()
     if policy.name == "mixed_bfloat16":
       # bfloat16 causes BERT with the LAMB optimizer to not converge
       # as well, so we use float32.
@@ -175,7 +177,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     self._inner_dropout_layer = tf.keras.layers.Dropout(
         rate=self._inner_dropout)
     self._output_dense = tf.keras.layers.experimental.EinsumDense(
-        "abc,cd->abd",
+        einsum_equation,
         output_shape=(None, hidden_size),
         bias_axes="d",
         name="output",
@@ -200,9 +202,9 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         "inner_activation":
             self._inner_activation,
         "output_dropout":
-            self._output_dropout,
+            self._output_dropout_rate,
         "attention_dropout":
-            self._attention_dropout,
+            self._attention_dropout_rate,
         "output_range":
             self._output_range,
         "kernel_initializer":
@@ -228,21 +230,45 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         "inner_dropout":
             self._inner_dropout,
         "attention_initializer":
-            tf.keras.initializers.serialize(self._attention_initializer)
+            tf.keras.initializers.serialize(self._attention_initializer),
+        "attention_axes": self._attention_axes,
     }
     base_config = super(TransformerEncoderBlock, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs):
-    if isinstance(inputs, (list, tuple)) and len(inputs) == 2:
-      input_tensor, attention_mask = inputs
+    """Transformer self-attention encoder block call.
+
+    Args:
+      inputs: a single tensor or a list of tensors.
+        `input tensor` as the single sequence of embeddings.
+        [`input tensor`, `attention mask`] to have the additional attention
+          mask.
+        [`query tensor`, `key value tensor`, `attention mask`] to have separate
+          input streams for the query, and key/value to the multi-head
+          attention.
+
+    Returns:
+      An ouput tensor with the same dimensions as input/query tensor.
+    """
+    if isinstance(inputs, (list, tuple)):
+      if len(inputs) == 2:
+        input_tensor, attention_mask = inputs
+        key_value = None
+      elif len(inputs) == 3:
+        input_tensor, key_value, attention_mask = inputs
+      else:
+        raise ValueError("Unexpected inputs to %s with length at %d" %
+                         (self.__class__, len(inputs)))
     else:
-      input_tensor, attention_mask = (inputs, None)
+      input_tensor, key_value, attention_mask = (inputs, None, None)
 
     if self._output_range:
       if self._norm_first:
         source_tensor = input_tensor[:, 0:self._output_range, :]
         input_tensor = self._attention_layer_norm(input_tensor)
+        if key_value is not None:
+          key_value = self._attention_layer_norm(key_value)
       target_tensor = input_tensor[:, 0:self._output_range, :]
       if attention_mask is not None:
         attention_mask = attention_mask[:, 0:self._output_range, :]
@@ -250,10 +276,14 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
       if self._norm_first:
         source_tensor = input_tensor
         input_tensor = self._attention_layer_norm(input_tensor)
+        if key_value is not None:
+          key_value = self._attention_layer_norm(key_value)
       target_tensor = input_tensor
 
+    if key_value is None:
+      key_value = input_tensor
     attention_output = self._attention_layer(
-        query=target_tensor, value=input_tensor, attention_mask=attention_mask)
+        query=target_tensor, value=key_value, attention_mask=attention_mask)
     attention_output = self._attention_dropout(attention_output)
     if self._norm_first:
       attention_output = source_tensor + attention_output

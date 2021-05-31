@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Keras-based transformer scaffold layer."""
 # pylint: disable=g-classes-have-attributes
 
@@ -35,7 +35,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
   instantiate the class with the config, or pass a class instance to
   `attention_cls`/`feedforward_cls`.
 
-  Arguments:
+  Args:
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate layer.
     intermediate_activation: Activation for the intermediate layer.
@@ -112,8 +112,9 @@ class TransformerScaffold(tf.keras.layers.Layer):
     self._bias_constraint = tf.keras.constraints.get(bias_constraint)
 
   def build(self, input_shape):
-    input_tensor = input_shape[0] if len(input_shape) == 2 else input_shape
-    input_tensor_shape = tf.TensorShape(input_tensor)
+    input_tensor_shape = input_shape[0] if (
+        len(input_shape) == 2) else input_shape
+    input_tensor_shape = tf.TensorShape(input_tensor_shape)
     if len(input_tensor_shape.as_list()) != 3:
       raise ValueError(
           "TransformerScaffold expects a three-dimensional input of "
@@ -170,6 +171,8 @@ class TransformerScaffold(tf.keras.layers.Layer):
     else:
       self._feedforward_block = None
 
+    # self._dropout_rate controls dropout rates at two places:
+    # after attention, and after FFN.
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     # Use float32 in layernorm for numeric stability.
     # It is probably safe in mixed_float16, but we haven't validated this yet.
@@ -187,7 +190,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
           bias_axes="d",
           name="intermediate",
           **common_kwargs)
-      policy = tf.keras.mixed_precision.experimental.global_policy()
+      policy = tf.keras.mixed_precision.global_policy()
       if policy.name == "mixed_bfloat16":
         # bfloat16 causes BERT with the LAMB optimizer to not converge
         # as well, so we use float32.
@@ -246,7 +249,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
     base_config = super(TransformerScaffold, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def call(self, inputs):
+  def call(self, inputs, training=None):
     if isinstance(inputs, (list, tuple)) and len(inputs) == 2:
       input_tensor, attention_mask = inputs
     else:
@@ -254,27 +257,31 @@ class TransformerScaffold(tf.keras.layers.Layer):
 
     if self._norm_first:
       source_tensor = input_tensor
-      input_tensor = self._attention_layer_norm(input_tensor)
+      input_tensor = self._attention_layer_norm(input_tensor, training=training)
 
     attention_output = self._attention_layer(
-        query=input_tensor, value=input_tensor, attention_mask=attention_mask)
-    attention_output = self._attention_dropout(attention_output)
+        query=input_tensor, value=input_tensor, attention_mask=attention_mask,
+        training=training)
+    attention_output = self._attention_dropout(attention_output,
+                                               training=training)
 
     if self._norm_first:
       attention_output = source_tensor + attention_output
     else:
       attention_output = self._attention_layer_norm(input_tensor +
-                                                    attention_output)
+                                                    attention_output,
+                                                    training=training)
     if self._norm_first:
       source_attention_output = attention_output
-      attention_output = self._output_layer_norm(attention_output)
+      attention_output = self._output_layer_norm(attention_output,
+                                                 training=training)
 
     if self._feedforward_block is None:
       intermediate_output = self._intermediate_dense(attention_output)
       intermediate_output = self._intermediate_activation_layer(
           intermediate_output)
-      layer_output = self._output_dense(intermediate_output)
-      layer_output = self._output_dropout(layer_output)
+      layer_output = self._output_dense(intermediate_output, training=training)
+      layer_output = self._output_dropout(layer_output, training=training)
       # During mixed precision training, attention_output is from layer norm
       # and is always fp32 for now. Cast layer_output to fp32 for the subsequent
       # add.
@@ -282,14 +289,17 @@ class TransformerScaffold(tf.keras.layers.Layer):
       if self._norm_first:
         layer_output = source_attention_output + layer_output
       else:
-        layer_output = self._output_layer_norm(layer_output + attention_output)
+        layer_output = self._output_layer_norm(layer_output + attention_output,
+                                               training=training)
     else:
       if self._norm_first:
         # if norm_first, assume the feedforward block will not apply layer norm
-        layer_output = self._feedforward_block(attention_output)
+        layer_output = self._feedforward_block(attention_output,
+                                               training=training)
         layer_output += source_attention_output
       else:
         # if not norm_first, assume that the feedforwad does apply layer norm
-        layer_output = self._feedforward_block(attention_output)
+        layer_output = self._feedforward_block(attention_output,
+                                               training=training)
 
     return layer_output

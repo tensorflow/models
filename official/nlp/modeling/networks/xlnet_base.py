@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Keras-based XLNet Model."""
 
 from absl import logging
@@ -52,7 +51,7 @@ def _create_causal_attention_mask(
   We then flip the matrix values in order to match the representation where
   real values are 1s.
 
-  Arguments:
+  Args:
     seq_length: int, The length of each sequence.
     memory_length: int, The length of memory blocks.
     dtype: dtype of the mask.
@@ -392,7 +391,7 @@ class RelativePositionEncoding(tf.keras.layers.Layer):
   def call(self, pos_seq, batch_size=None):
     """Implements call() for the layer.
 
-    Arguments:
+    Args:
       pos_seq: A 1-D `Tensor`
       batch_size: The optionally provided batch size that tiles the relative
         positional encoding.

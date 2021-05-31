@@ -1,4 +1,4 @@
-![Logo](https://storage.googleapis.com/model_garden_artifacts/TF_Model_Garden.png)
+![Logo](https://storage.googleapis.com/tf_model_garden/tf_model_garden_logo.png)
 
 # TensorFlow Research Models
 

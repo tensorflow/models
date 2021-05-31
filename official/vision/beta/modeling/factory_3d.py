@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Factory methods to build models."""
 
 # Import libraries
@@ -53,11 +53,12 @@ def register_model_builder(key: str):
   return registry.register(_REGISTERED_MODEL_CLS, key)
 
 
-def build_model(model_type: str,
-                input_specs: tf.keras.layers.InputSpec,
-                model_config: video_classification_cfg.hyperparams.Config,
-                num_classes: int,
-                l2_regularizer: tf.keras.regularizers.Regularizer = None):
+def build_model(
+    model_type: str,
+    input_specs: tf.keras.layers.InputSpec,
+    model_config: video_classification_cfg.hyperparams.Config,
+    num_classes: int,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds backbone from a config.
 
   Args:
@@ -81,17 +82,20 @@ def build_video_classification_model(
     input_specs: tf.keras.layers.InputSpec,
     model_config: video_classification_cfg.VideoClassificationModel,
     num_classes: int,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None):
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds the video classification model."""
+  input_specs_dict = {'image': input_specs}
+  norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
-      model_config=model_config,
+      backbone_config=model_config.backbone,
+      norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
 
   model = video_classification_model.VideoClassificationModel(
       backbone=backbone,
       num_classes=num_classes,
-      input_specs=input_specs,
+      input_specs=input_specs_dict,
       dropout_rate=model_config.dropout_rate,
       aggregate_endpoints=model_config.aggregate_endpoints,
       kernel_regularizer=l2_regularizer)

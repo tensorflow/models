@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Keras-based one-hot embedding layer."""
 # pylint: disable=g-classes-have-attributes
 
@@ -25,7 +25,7 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
   This layer uses either tf.gather or tf.one_hot to translate integer indices to
   float embeddings.
 
-  Arguments:
+  Args:
     vocab_size: Number of elements in the vocabulary.
     embedding_width: Output size of the embedding layer.
     initializer: The initializer to use for the embedding weights. Defaults to

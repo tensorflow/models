@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tagging (e.g., NER/POS) task."""
 from typing import List, Optional, Tuple
 
@@ -99,13 +98,14 @@ class TaggingTask(base_task.Task):
         initializer=tf.keras.initializers.TruncatedNormal(
             stddev=self.task_config.model.head_initializer_range),
         dropout_rate=self.task_config.model.head_dropout,
-        output='logits')
+        output='logits',
+        output_encoder_outputs=True)
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
-    model_outputs = tf.cast(model_outputs, tf.float32)
+    logits = tf.cast(model_outputs['logits'], tf.float32)
     masked_labels, masked_weights = _masked_labels_and_weights(labels)
     loss = tf.keras.losses.sparse_categorical_crossentropy(
-        masked_labels, model_outputs, from_logits=True)
+        masked_labels, logits, from_logits=True)
     numerator_loss = tf.reduce_sum(loss * masked_weights)
     denominator_loss = tf.reduce_sum(masked_weights)
     loss = tf.math.divide_no_nan(numerator_loss, denominator_loss)
@@ -140,7 +140,7 @@ class TaggingTask(base_task.Task):
 
   def inference_step(self, inputs, model: tf.keras.Model):
     """Performs the forward step."""
-    logits = model(inputs, training=False)
+    logits = model(inputs, training=False)['logits']
     return {'logits': logits,
             'predict_ids': tf.argmax(logits, axis=-1, output_type=tf.int32)}
 
@@ -157,7 +157,7 @@ class TaggingTask(base_task.Task):
     """
     features, labels = inputs
     outputs = self.inference_step(features, model)
-    loss = self.build_losses(labels=labels, model_outputs=outputs['logits'])
+    loss = self.build_losses(labels=labels, model_outputs=outputs)
 
     # Negative label ids are padding labels which should be ignored.
     real_label_index = tf.where(tf.greater_equal(labels, 0))
@@ -189,7 +189,7 @@ class TaggingTask(base_task.Task):
     state['label_class'].extend(id_to_class_name(step_outputs['label_ids']))
     return state
 
-  def reduce_aggregated_logs(self, aggregated_logs):
+  def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     """Reduces aggregated logs over validation steps."""
     label_class = aggregated_logs['label_class']
     predict_class = aggregated_logs['predict_class']

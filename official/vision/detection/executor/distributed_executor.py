@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Custom training loop for running TensorFlow 2.0 models."""
 
 from __future__ import absolute_import
@@ -108,7 +108,7 @@ class SummaryWriter(object):
   def __init__(self, model_dir: Text, name: Text):
     """Inits SummaryWriter with paths.
 
-    Arguments:
+    Args:
       model_dir: the model folder path.
       name: the summary subfolder name.
     """
@@ -322,21 +322,21 @@ class DistributedExecutor(object):
 
     return test_step
 
-  def train(self,
-            train_input_fn: Callable[[params_dict.ParamsDict], tf.data.Dataset],
-            eval_input_fn: Callable[[params_dict.ParamsDict],
-                                    tf.data.Dataset] = None,
-            model_dir: Text = None,
-            total_steps: int = 1,
-            iterations_per_loop: int = 1,
-            train_metric_fn: Callable[[], Any] = None,
-            eval_metric_fn: Callable[[], Any] = None,
-            summary_writer_fn: Callable[[Text, Text],
-                                        SummaryWriter] = SummaryWriter,
-            init_checkpoint: Callable[[tf.keras.Model], Any] = None,
-            custom_callbacks: List[tf.keras.callbacks.Callback] = None,
-            continuous_eval: bool = False,
-            save_config: bool = True):
+  def train(
+      self,
+      train_input_fn: Callable[[params_dict.ParamsDict], tf.data.Dataset],
+      eval_input_fn: Optional[Callable[[params_dict.ParamsDict],
+                                       tf.data.Dataset]] = None,
+      model_dir: Optional[Text] = None,
+      total_steps: int = 1,
+      iterations_per_loop: int = 1,
+      train_metric_fn: Optional[Callable[[], Any]] = None,
+      eval_metric_fn: Optional[Callable[[], Any]] = None,
+      summary_writer_fn: Callable[[Text, Text], SummaryWriter] = SummaryWriter,
+      init_checkpoint: Optional[Callable[[tf.keras.Model], Any]] = None,
+      custom_callbacks: Optional[List[tf.keras.callbacks.Callback]] = None,
+      continuous_eval: bool = False,
+      save_config: bool = True):
     """Runs distributed training.
 
     Args:
@@ -590,7 +590,7 @@ class DistributedExecutor(object):
       eval_input_fn: Callable[[params_dict.ParamsDict], tf.data.Dataset],
       eval_metric_fn: Callable[[], Any],
       total_steps: int = -1,
-      eval_timeout: int = None,
+      eval_timeout: Optional[int] = None,
       min_eval_interval: int = 180,
       summary_writer_fn: Callable[[Text, Text], SummaryWriter] = SummaryWriter):
     """Runs distributed evaluation on model folder.
@@ -646,7 +646,7 @@ class DistributedExecutor(object):
                           eval_input_fn: Callable[[params_dict.ParamsDict],
                                                   tf.data.Dataset],
                           eval_metric_fn: Callable[[], Any],
-                          summary_writer: SummaryWriter = None):
+                          summary_writer: Optional[SummaryWriter] = None):
     """Runs distributed evaluation on the one checkpoint.
 
     Args:

@@ -1149,38 +1149,31 @@ def giou(boxes1, boxes2):
     a tensor of shape [num_boxes] containing GIoUs
 
   """
-  def _two_boxes_giou(boxes):
-    """Compute giou between two boxes."""
-    boxes1, boxes2 = boxes
+  pred_ymin, pred_xmin, pred_ymax, pred_xmax = tf.unstack(boxes1, axis=1)
+  gt_ymin, gt_xmin, gt_ymax, gt_xmax = tf.unstack(boxes2, axis=1)
 
-    pred_ymin, pred_xmin, pred_ymax, pred_xmax = tf.unstack(boxes1)
-    gt_ymin, gt_xmin, gt_ymax, gt_xmax = tf.unstack(boxes2)
+  gt_area = (gt_ymax - gt_ymin) * (gt_xmax - gt_xmin)
+  pred_area = (pred_ymax - pred_ymin) * (pred_xmax - pred_xmin)
 
-    gt_area = (gt_ymax - gt_ymin) * (gt_xmax - gt_xmin)
-    pred_area = (pred_ymax - pred_ymin) * (pred_xmax - pred_xmin)
+  x1_i = tf.maximum(pred_xmin, gt_xmin)
+  x2_i = tf.minimum(pred_xmax, gt_xmax)
+  y1_i = tf.maximum(pred_ymin, gt_ymin)
+  y2_i = tf.minimum(pred_ymax, gt_ymax)
+  intersection_area = tf.maximum(0.0, y2_i - y1_i) * tf.maximum(0.0,
+                                                                x2_i - x1_i)
 
-    x1_i = tf.maximum(pred_xmin, gt_xmin)
-    x2_i = tf.minimum(pred_xmax, gt_xmax)
-    y1_i = tf.maximum(pred_ymin, gt_ymin)
-    y2_i = tf.minimum(pred_ymax, gt_ymax)
-    intersection_area = tf.maximum(0.0, y2_i - y1_i) * tf.maximum(0.0,
-                                                                  x2_i - x1_i)
+  x1_c = tf.minimum(pred_xmin, gt_xmin)
+  x2_c = tf.maximum(pred_xmax, gt_xmax)
+  y1_c = tf.minimum(pred_ymin, gt_ymin)
+  y2_c = tf.maximum(pred_ymax, gt_ymax)
+  hull_area = (y2_c - y1_c) * (x2_c - x1_c)
 
-    x1_c = tf.minimum(pred_xmin, gt_xmin)
-    x2_c = tf.maximum(pred_xmax, gt_xmax)
-    y1_c = tf.minimum(pred_ymin, gt_ymin)
-    y2_c = tf.maximum(pred_ymax, gt_ymax)
-    hull_area = (y2_c - y1_c) * (x2_c - x1_c)
-
-    union_area = gt_area + pred_area - intersection_area
-    iou = tf.where(
-        tf.equal(union_area, 0.0), 0.0, intersection_area / union_area)
-    giou_ = iou - tf.where(hull_area > 0.0,
-                           (hull_area - union_area) / hull_area, iou)
-
-    return giou_
-
-  return shape_utils.static_or_dynamic_map_fn(_two_boxes_giou, [boxes1, boxes2])
+  union_area = gt_area + pred_area - intersection_area
+  iou = tf.where(tf.equal(union_area, 0.0),
+                 tf.zeros_like(union_area), intersection_area / union_area)
+  giou_ = iou - tf.where(hull_area > 0.0,
+                         (hull_area - union_area) / hull_area, iou)
+  return giou_
 
 
 def center_to_corner_coordinate(input_tensor):

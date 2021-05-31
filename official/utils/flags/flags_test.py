@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
 
 import unittest
 
@@ -33,7 +32,6 @@ def define_flags():
       num_parallel_calls=True,
       inter_op=True,
       intra_op=True,
-      dynamic_loss_scale=True,
       loss_scale=True,
       synthetic_data=True,
       dtype=True)

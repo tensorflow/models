@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Unit tests for the classifier trainer models."""
 
 from __future__ import absolute_import
@@ -54,7 +54,6 @@ def distribution_strategy_combinations() -> Iterable[Tuple[Any, ...]]:
           'efficientnet',
           'resnet',
       ],
-      mode='eager',
       dataset=[
           'imagenet',
       ],
@@ -151,7 +150,6 @@ class ClassifierTest(tf.test.TestCase, parameterized.TestCase):
               'efficientnet',
               'resnet',
           ],
-          mode='eager',
           dataset='imagenet',
           dtype='float16',
       ))
@@ -196,7 +194,6 @@ class ClassifierTest(tf.test.TestCase, parameterized.TestCase):
               'efficientnet',
               'resnet',
           ],
-          mode='eager',
           dataset='imagenet',
           dtype='bfloat16',
       ))

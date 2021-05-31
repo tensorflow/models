@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """RetinaNet task definition."""
+from typing import Any, Optional, List, Tuple, Mapping
 
 from absl import logging
 import tensorflow as tf
+from official.common import dataset_fn
 from official.core import base_task
-from official.core import input_reader
 from official.core import task_factory
 from official.vision.beta.configs import maskrcnn as exp_cfg
+from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import maskrcnn_input
 from official.vision.beta.dataloaders import tf_example_decoder
 from official.vision.beta.dataloaders import tf_example_label_map_decoder
@@ -29,7 +30,8 @@ from official.vision.beta.losses import maskrcnn_losses
 from official.vision.beta.modeling import factory
 
 
-def zero_out_disallowed_class_ids(batch_class_ids, allowed_class_ids):
+def zero_out_disallowed_class_ids(batch_class_ids: tf.Tensor,
+                                  allowed_class_ids: List[int]):
   """Zero out IDs of classes not in allowed_class_ids.
 
   Args:
@@ -99,23 +101,28 @@ class MaskRCNNTask(base_task.Task):
       status = ckpt.restore(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     else:
-      assert "Only 'all' or 'backbone' can be used to initialize the model."
+      raise ValueError(
+          "Only 'all' or 'backbone' can be used to initialize the model.")
 
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
 
-  def build_inputs(self, params, input_context=None):
+  def build_inputs(self,
+                   params: exp_cfg.DataConfig,
+                   input_context: Optional[tf.distribute.InputContext] = None):
     """Build input dataset."""
     decoder_cfg = params.decoder.get()
     if params.decoder.type == 'simple_decoder':
       decoder = tf_example_decoder.TfExampleDecoder(
           include_mask=self._task_config.model.include_mask,
-          regenerate_source_id=decoder_cfg.regenerate_source_id)
+          regenerate_source_id=decoder_cfg.regenerate_source_id,
+          mask_binarize_threshold=decoder_cfg.mask_binarize_threshold)
     elif params.decoder.type == 'label_map_decoder':
       decoder = tf_example_label_map_decoder.TfExampleDecoderLabelMap(
           label_map=decoder_cfg.label_map,
           include_mask=self._task_config.model.include_mask,
-          regenerate_source_id=decoder_cfg.regenerate_source_id)
+          regenerate_source_id=decoder_cfg.regenerate_source_id,
+          mask_binarize_threshold=decoder_cfg.mask_binarize_threshold)
     else:
       raise ValueError('Unknown decoder type: {}!'.format(params.decoder.type))
 
@@ -139,18 +146,22 @@ class MaskRCNNTask(base_task.Task):
         include_mask=self._task_config.model.include_mask,
         mask_crop_size=params.parser.mask_crop_size)
 
-    reader = input_reader.InputReader(
+    reader = input_reader_factory.input_reader_generator(
         params,
-        dataset_fn=tf.data.TFRecordDataset,
+        dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
         parser_fn=parser.parse_fn(params.is_training))
     dataset = reader.read(input_context=input_context)
 
     return dataset
 
-  def build_losses(self, outputs, labels, aux_losses=None):
+  def build_losses(self,
+                   outputs: Mapping[str, Any],
+                   labels: Mapping[str, Any],
+                   aux_losses: Optional[Any] = None):
     """Build Mask R-CNN losses."""
     params = self.task_config
+    cascade_ious = params.model.roi_sampler.cascade_iou_thresholds
 
     rpn_score_loss_fn = maskrcnn_losses.RpnScoreLoss(
         tf.shape(outputs['box_outputs'])[1])
@@ -165,15 +176,32 @@ class MaskRCNNTask(base_task.Task):
 
     frcnn_cls_loss_fn = maskrcnn_losses.FastrcnnClassLoss()
     frcnn_box_loss_fn = maskrcnn_losses.FastrcnnBoxLoss(
-        params.losses.frcnn_huber_loss_delta)
-    frcnn_cls_loss = tf.reduce_mean(
-        frcnn_cls_loss_fn(
-            outputs['class_outputs'], outputs['class_targets']))
-    frcnn_box_loss = tf.reduce_mean(
-        frcnn_box_loss_fn(
-            outputs['box_outputs'],
-            outputs['class_targets'],
-            outputs['box_targets']))
+        params.losses.frcnn_huber_loss_delta,
+        params.model.detection_head.class_agnostic_bbox_pred)
+
+    # Final cls/box losses are computed as an average of all detection heads.
+    frcnn_cls_loss = 0.0
+    frcnn_box_loss = 0.0
+    num_det_heads = 1 if cascade_ious is None else 1 + len(cascade_ious)
+    for cas_num in range(num_det_heads):
+      frcnn_cls_loss_i = tf.reduce_mean(
+          frcnn_cls_loss_fn(
+              outputs['class_outputs_{}'
+                      .format(cas_num) if cas_num else 'class_outputs'],
+              outputs['class_targets_{}'
+                      .format(cas_num) if cas_num else 'class_targets']))
+      frcnn_box_loss_i = tf.reduce_mean(
+          frcnn_box_loss_fn(
+              outputs['box_outputs_{}'.format(cas_num
+                                             ) if cas_num else 'box_outputs'],
+              outputs['class_targets_{}'
+                      .format(cas_num) if cas_num else 'class_targets'],
+              outputs['box_targets_{}'.format(cas_num
+                                             ) if cas_num else 'box_targets']))
+      frcnn_cls_loss += frcnn_cls_loss_i
+      frcnn_box_loss += frcnn_box_loss_i
+    frcnn_cls_loss /= num_det_heads
+    frcnn_box_loss /= num_det_heads
 
     if params.model.include_mask:
       mask_loss_fn = maskrcnn_losses.MaskrcnnLoss()
@@ -214,7 +242,7 @@ class MaskRCNNTask(base_task.Task):
     }
     return losses
 
-  def build_metrics(self, training=True):
+  def build_metrics(self, training: bool = True):
     """Build detection metrics."""
     metrics = []
     if training:
@@ -238,7 +266,11 @@ class MaskRCNNTask(base_task.Task):
 
     return metrics
 
-  def train_step(self, inputs, model, optimizer, metrics=None):
+  def train_step(self,
+                 inputs: Tuple[Any, Any],
+                 model: tf.keras.Model,
+                 optimizer: tf.keras.optimizers.Optimizer,
+                 metrics: Optional[List[Any]] = None):
     """Does forward and backward.
 
     Args:
@@ -287,11 +319,13 @@ class MaskRCNNTask(base_task.Task):
     if metrics:
       for m in metrics:
         m.update_state(losses[m.name])
-        logs.update({m.name: m.result()})
 
     return logs
 
-  def validation_step(self, inputs, model, metrics=None):
+  def validation_step(self,
+                      inputs: Tuple[Any, Any],
+                      model: tf.keras.Model,
+                      metrics: Optional[List[Any]] = None):
     """Validatation step.
 
     Args:
@@ -337,5 +371,5 @@ class MaskRCNNTask(base_task.Task):
         step_outputs[self.coco_metric.name][1])
     return state
 
-  def reduce_aggregated_logs(self, aggregated_logs):
+  def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     return self.coco_metric.result()

@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """An executor class for running model on TensorFlow 2.0."""
 
 from __future__ import absolute_import
@@ -63,10 +63,9 @@ class DetectionDistributedExecutor(executor.DistributedExecutor):
           trainable_variables)
     logging.info('Filter trainable variables from %d to %d',
                  len(model.trainable_variables), len(trainable_variables))
-    _update_state = lambda labels, outputs: None
+    update_state_fn = lambda labels, outputs: None
     if isinstance(metric, tf.keras.metrics.Metric):
-      _update_state = lambda labels, outputs: metric.update_state(
-          labels, outputs)
+      update_state_fn = metric.update_state
     else:
       logging.error('Detection: train metric is not an instance of '
                     'tf.keras.metrics.Metric.')
@@ -82,10 +81,11 @@ class DetectionDistributedExecutor(executor.DistributedExecutor):
         for k, v in all_losses.items():
           losses[k] = tf.reduce_mean(v)
         per_replica_loss = losses['total_loss'] / strategy.num_replicas_in_sync
-        _update_state(labels, outputs)
+        update_state_fn(labels, outputs)
 
       grads = tape.gradient(per_replica_loss, trainable_variables)
-      optimizer.apply_gradients(zip(grads, trainable_variables))
+      clipped_grads, _ = tf.clip_by_global_norm(grads, clip_norm=1.0)
+      optimizer.apply_gradients(zip(clipped_grads, trainable_variables))
       return losses
 
     return _replicated_step

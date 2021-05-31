@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Build video classification models."""
-# Import libraries
+from typing import Any, Mapping, Optional, Union
 import tensorflow as tf
 
 layers = tf.keras.layers
@@ -23,16 +23,17 @@ layers = tf.keras.layers
 class VideoClassificationModel(tf.keras.Model):
   """A video classification class builder."""
 
-  def __init__(self,
-               backbone,
-               num_classes,
-               input_specs=layers.InputSpec(shape=[None, None, None, None, 3]),
-               dropout_rate=0.0,
-               aggregate_endpoints=False,
-               kernel_initializer='random_uniform',
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
+  def __init__(
+      self,
+      backbone: tf.keras.Model,
+      num_classes: int,
+      input_specs: Optional[Mapping[str, tf.keras.layers.InputSpec]] = None,
+      dropout_rate: float = 0.0,
+      aggregate_endpoints: bool = False,
+      kernel_initializer: str = 'random_uniform',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
     """Video Classification initialization function.
 
     Args:
@@ -49,6 +50,10 @@ class VideoClassificationModel(tf.keras.Model):
         None.
       **kwargs: keyword arguments to be passed.
     """
+    if not input_specs:
+      input_specs = {
+          'image': layers.InputSpec(shape=[None, None, None, None, 3])
+      }
     self._self_setattr_tracking = False
     self._config_dict = {
         'backbone': backbone,
@@ -65,8 +70,10 @@ class VideoClassificationModel(tf.keras.Model):
     self._bias_regularizer = bias_regularizer
     self._backbone = backbone
 
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
-    endpoints = backbone(inputs)
+    inputs = {
+        k: tf.keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
+    }
+    endpoints = backbone(inputs['image'])
 
     if aggregate_endpoints:
       pooled_feats = []
@@ -89,15 +96,16 @@ class VideoClassificationModel(tf.keras.Model):
         inputs=inputs, outputs=x, **kwargs)
 
   @property
-  def checkpoint_items(self):
+  def checkpoint_items(
+      self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     return dict(backbone=self.backbone)
 
   @property
-  def backbone(self):
+  def backbone(self) -> tf.keras.Model:
     return self._backbone
 
-  def get_config(self):
+  def get_config(self) -> Mapping[str, Any]:
     return self._config_dict
 
   @classmethod

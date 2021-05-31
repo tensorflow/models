@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """XLNet models."""
 # pylint: disable=g-classes-have-attributes
 
-from typing import Any, Mapping, Union
+from typing import Any, Mapping, Optional, Union
 
 import tensorflow as tf
 
@@ -84,7 +84,7 @@ class XLNetPretrainer(tf.keras.Model):
   Transformer-XL encoder as described in "XLNet: Generalized Autoregressive
   Pretraining for Language Understanding" (https://arxiv.org/abs/1906.08237).
 
-  Arguments:
+  Args:
     network: An XLNet/Transformer-XL based network. This network should output a
       sequence output and list of `state` tensors.
     mlm_activation: The activation (if any) to use in the Masked LM network. If
@@ -99,7 +99,7 @@ class XLNetPretrainer(tf.keras.Model):
       network: Union[tf.keras.layers.Layer, tf.keras.Model],
       mlm_activation=None,
       mlm_initializer='glorot_uniform',
-      name: str = None,
+      name: Optional[str] = None,
       **kwargs):
     super().__init__(name=name, **kwargs)
     self._config = {
@@ -163,7 +163,7 @@ class XLNetClassifier(tf.keras.Model):
   Note: This model does not use utilize the memory mechanism used in the
   original XLNet Classifier.
 
-  Arguments:
+  Args:
     network: An XLNet/Transformer-XL based network. This network should output a
       sequence output and list of `state` tensors.
     num_classes: Number of classes to predict from the classification network.
@@ -249,7 +249,7 @@ class XLNetSpanLabeler(tf.keras.Model):
   Transformer-XL encoder as described in "XLNet: Generalized Autoregressive
   Pretraining for Language Understanding" (https://arxiv.org/abs/1906.08237).
 
-  Arguments:
+  Args:
     network: A transformer network. This network should output a sequence output
       and a classification output. Furthermore, it should expose its embedding
       table via a "get_embedding_table" method.

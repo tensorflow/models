@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,9 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for Keras-based positional embedding layer."""
 
+from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
@@ -53,6 +55,33 @@ class RelativePositionEmbeddingLayerTest(keras_parameterized.TestCase):
     # sine cosine relative position embedding formula.
     expected_output_tensor = tf.constant([[0, 0, 0, 0, 1, 1, 1, 1]])
     self.assertAllEqual(output_tensor, expected_output_tensor)
+
+
+@keras_parameterized.run_all_keras_modes
+class RelativePositionBiasTest(keras_parameterized.TestCase):
+
+  @parameterized.named_parameters(("bidirectional", True),
+                                  ("unidirectional", False))
+  def test_relative_position_bias(self, bidirectional):
+    query = tf.zeros((4, 4, 2))
+    key = tf.zeros((4, 2, 2))
+    l = position_embedding.RelativePositionBias(
+        num_heads=3,
+        bidirectional=bidirectional,
+        name="foo")
+    self.assertEqual(l(query, key).shape, (4, 3, 4, 2))
+    self.assertLen(l.trainable_variables, 1)
+    self.assertEqual(l.trainable_variables[0].name, "foo/rel_embedding:0")
+
+  def test_relative_position_bucket(self):
+    context_position = tf.range(3)[:, None]
+    memory_position = tf.range(2)[None, :]
+    relative_position = memory_position - context_position
+    outputs = position_embedding._relative_position_bucket(relative_position)
+    self.assertAllEqual(outputs.numpy(), np.array([[0, 17], [1, 0], [2, 1]]))
+    outputs = position_embedding._relative_position_bucket(
+        relative_position, bidirectional=False)
+    self.assertAllEqual(outputs.numpy(), np.array([[0, 0], [1, 0], [2, 1]]))
 
 
 if __name__ == "__main__":

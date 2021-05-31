@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Test Transformer model."""
 
 import os
@@ -25,7 +25,6 @@ import tensorflow as tf
 from tensorflow.python.eager import context  # pylint: disable=ungrouped-imports
 from official.nlp.transformer import misc
 from official.nlp.transformer import transformer_main
-from official.utils.misc import keras_utils
 
 FLAGS = flags.FLAGS
 FIXED_TIMESTAMP = 'my_time_stamp'
@@ -41,7 +40,7 @@ def _generate_file(filepath, lines):
 class TransformerTaskTest(tf.test.TestCase):
   local_flags = None
 
-  def setUp(self):
+  def setUp(self):  # pylint: disable=g-missing-super-call
     temp_dir = self.get_temp_dir()
     if TransformerTaskTest.local_flags is None:
       misc.define_transformer_flags()
@@ -68,10 +67,10 @@ class TransformerTaskTest(tf.test.TestCase):
     self.bleu_source = os.path.join(temp_dir, 'bleu_source')
     self.bleu_ref = os.path.join(temp_dir, 'bleu_ref')
     self.orig_policy = (
-        tf.compat.v2.keras.mixed_precision.experimental.global_policy())
+        tf.compat.v2.keras.mixed_precision.global_policy())
 
-  def tearDown(self):
-    tf.compat.v2.keras.mixed_precision.experimental.set_policy(self.orig_policy)
+  def tearDown(self):  # pylint: disable=g-missing-super-call
+    tf.compat.v2.keras.mixed_precision.set_global_policy(self.orig_policy)
 
   def _assert_exists(self, filepath):
     self.assertTrue(os.path.exists(filepath))

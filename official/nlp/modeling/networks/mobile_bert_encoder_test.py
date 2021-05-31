@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 from absl.testing import parameterized
 
 import numpy as np
@@ -21,7 +21,7 @@ from official.nlp.modeling.networks import mobile_bert_encoder
 
 
 def generate_fake_input(batch_size=1, seq_len=5, vocab_size=10000, seed=0):
-  """Generate consisitant fake integer input sequences."""
+  """Generate consistent fake integer input sequences."""
   np.random.seed(seed)
   fake_input = []
   for _ in range(batch_size):
@@ -89,7 +89,8 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     self.assertIsInstance(all_layer_output, list)
     self.assertLen(all_layer_output, num_blocks + 1)
 
-  def test_mobilebert_encoder_invocation(self):
+  @parameterized.parameters('int32', 'float32')
+  def test_mobilebert_encoder_invocation(self, input_mask_dtype):
     vocab_size = 100
     hidden_size = 32
     sequence_length = 16
@@ -97,10 +98,11 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     test_network = mobile_bert_encoder.MobileBERTEncoder(
         word_vocab_size=vocab_size,
         hidden_size=hidden_size,
-        num_blocks=num_blocks)
+        num_blocks=num_blocks,
+        input_mask_dtype=input_mask_dtype)
 
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf.keras.Input(shape=(sequence_length,), dtype=input_mask_dtype)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     outputs = test_network([word_ids, mask, type_ids])
     model = tf.keras.Model([word_ids, mask, type_ids], outputs)
@@ -158,6 +160,8 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     prediction = classifier([word_ids, mask, type_ids])
+    if task == models.BertTokenClassifier:
+      prediction = prediction['logits']
     self.assertAllEqual(prediction.shape.as_list(), prediction_shape)
 
 

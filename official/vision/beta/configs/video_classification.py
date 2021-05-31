@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Video classification configuration definition."""
 from typing import Optional, Tuple
 import dataclasses
@@ -31,14 +31,15 @@ class DataConfig(cfg.DataConfig):
   file_type: Optional[str] = 'tfrecord'
   compressed_input: bool = False
   split: str = 'train'
+  variant_name: Optional[str] = None
   feature_shape: Tuple[int, ...] = (64, 224, 224, 3)
   temporal_stride: int = 1
+  random_stride_range: int = 0
   num_test_clips: int = 1
+  num_test_crops: int = 1
   num_classes: int = -1
-  num_channels: int = 3
   num_examples: int = -1
   global_batch_size: int = 128
-  num_devices: int = 1
   data_format: str = 'channels_last'
   dtype: str = 'float32'
   one_hot: bool = True
@@ -53,6 +54,13 @@ class DataConfig(cfg.DataConfig):
   output_audio: bool = False
   audio_feature: str = ''
   audio_feature_shape: Tuple[int, ...] = (-1,)
+  aug_min_aspect_ratio: float = 0.5
+  aug_max_aspect_ratio: float = 2.0
+  aug_min_area_ratio: float = 0.49
+  aug_max_area_ratio: float = 1.0
+  aug_type: Optional[str] = None  # 'autoaug', 'randaug', or None
+  image_field_key: str = 'image/encoded'
+  label_field_key: str = 'clip/label/index'
 
 
 def kinetics400(is_training):
@@ -79,13 +87,38 @@ def kinetics600(is_training):
       feature_shape=(64, 224, 224, 3) if is_training else (250, 224, 224, 3))
 
 
+def kinetics700(is_training):
+  """Generated Kinectics 600 dataset configs."""
+  return DataConfig(
+      name='kinetics700',
+      num_classes=700,
+      is_training=is_training,
+      split='train' if is_training else 'valid',
+      drop_remainder=is_training,
+      num_examples=522883 if is_training else 33441,
+      feature_shape=(64, 224, 224, 3) if is_training else (250, 224, 224, 3))
+
+
+def kinetics700_2020(is_training):
+  """Generated Kinectics 600 dataset configs."""
+  return DataConfig(
+      name='kinetics700',
+      num_classes=700,
+      is_training=is_training,
+      split='train' if is_training else 'valid',
+      drop_remainder=is_training,
+      num_examples=535982 if is_training else 33640,
+      feature_shape=(64, 224, 224, 3) if is_training else (250, 224, 224, 3))
+
+
 @dataclasses.dataclass
 class VideoClassificationModel(hyperparams.Config):
   """The model config."""
   model_type: str = 'video_classification'
   backbone: backbones_3d.Backbone3D = backbones_3d.Backbone3D(
       type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50())
-  norm_activation: common.NormActivation = common.NormActivation()
+  norm_activation: common.NormActivation = common.NormActivation(
+      use_sync_bn=False)
   dropout_rate: float = 0.2
   aggregate_endpoints: bool = False
 
@@ -98,6 +131,11 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class Metrics(hyperparams.Config):
+  use_per_class_recall: bool = False
+
+
+@dataclasses.dataclass
 class VideoClassificationTask(cfg.TaskConfig):
   """The task config."""
   model: VideoClassificationModel = VideoClassificationModel()
@@ -105,6 +143,9 @@ class VideoClassificationTask(cfg.TaskConfig):
   validation_data: DataConfig = DataConfig(
       is_training=False, drop_remainder=False)
   losses: Losses = Losses()
+  metrics: Metrics = Metrics()
+  init_checkpoint: Optional[str] = None
+  init_checkpoint_modules: str = 'all'  # all or backbone
 
 
 def add_trainer(experiment: cfg.ExperimentConfig,
@@ -171,6 +212,57 @@ def video_classification() -> cfg.ExperimentConfig:
       ])
 
 
+@exp_factory.register_config_factory('video_classification_ucf101')
+def video_classification_ucf101() -> cfg.ExperimentConfig:
+  """Video classification on UCF-101 with resnet."""
+  train_dataset = DataConfig(
+      name='ucf101',
+      num_classes=101,
+      is_training=True,
+      split='train',
+      drop_remainder=True,
+      num_examples=9537,
+      temporal_stride=2,
+      feature_shape=(32, 224, 224, 3))
+  train_dataset.tfds_name = 'ucf101'
+  train_dataset.tfds_split = 'train'
+  validation_dataset = DataConfig(
+      name='ucf101',
+      num_classes=101,
+      is_training=True,
+      split='test',
+      drop_remainder=False,
+      num_examples=3783,
+      temporal_stride=2,
+      feature_shape=(32, 224, 224, 3))
+  validation_dataset.tfds_name = 'ucf101'
+  validation_dataset.tfds_split = 'test'
+  task = VideoClassificationTask(
+      model=VideoClassificationModel(
+          backbone=backbones_3d.Backbone3D(
+              type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50()),
+          norm_activation=common.NormActivation(
+              norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)),
+      losses=Losses(l2_weight_decay=1e-4),
+      train_data=train_dataset,
+      validation_data=validation_dataset)
+  config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
+      task=task,
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None',
+          'task.train_data.num_classes == task.validation_data.num_classes',
+      ])
+  add_trainer(
+      config,
+      train_batch_size=64,
+      eval_batch_size=16,
+      learning_rate=0.8,
+      train_epochs=100)
+  return config
+
+
 @exp_factory.register_config_factory('video_classification_kinetics400')
 def video_classification_kinetics400() -> cfg.ExperimentConfig:
   """Video classification on Kinectics 400 with resnet."""
@@ -181,7 +273,7 @@ def video_classification_kinetics400() -> cfg.ExperimentConfig:
           backbone=backbones_3d.Backbone3D(
               type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50()),
           norm_activation=common.NormActivation(
-              norm_momentum=0.9, norm_epsilon=1e-5)),
+              norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)),
       losses=Losses(l2_weight_decay=1e-4),
       train_data=train_dataset,
       validation_data=validation_dataset)
@@ -207,7 +299,59 @@ def video_classification_kinetics600() -> cfg.ExperimentConfig:
           backbone=backbones_3d.Backbone3D(
               type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50()),
           norm_activation=common.NormActivation(
-              norm_momentum=0.9, norm_epsilon=1e-5)),
+              norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)),
+      losses=Losses(l2_weight_decay=1e-4),
+      train_data=train_dataset,
+      validation_data=validation_dataset)
+  config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
+      task=task,
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None',
+          'task.train_data.num_classes == task.validation_data.num_classes',
+      ])
+  add_trainer(config, train_batch_size=1024, eval_batch_size=64)
+  return config
+
+
+@exp_factory.register_config_factory('video_classification_kinetics700')
+def video_classification_kinetics700() -> cfg.ExperimentConfig:
+  """Video classification on Kinectics 700 with resnet."""
+  train_dataset = kinetics700(is_training=True)
+  validation_dataset = kinetics700(is_training=False)
+  task = VideoClassificationTask(
+      model=VideoClassificationModel(
+          backbone=backbones_3d.Backbone3D(
+              type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50()),
+          norm_activation=common.NormActivation(
+              norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)),
+      losses=Losses(l2_weight_decay=1e-4),
+      train_data=train_dataset,
+      validation_data=validation_dataset)
+  config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
+      task=task,
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None',
+          'task.train_data.num_classes == task.validation_data.num_classes',
+      ])
+  add_trainer(config, train_batch_size=1024, eval_batch_size=64)
+  return config
+
+
+@exp_factory.register_config_factory('video_classification_kinetics700_2020')
+def video_classification_kinetics700_2020() -> cfg.ExperimentConfig:
+  """Video classification on Kinectics 700 2020 with resnet."""
+  train_dataset = kinetics700_2020(is_training=True)
+  validation_dataset = kinetics700_2020(is_training=False)
+  task = VideoClassificationTask(
+      model=VideoClassificationModel(
+          backbone=backbones_3d.Backbone3D(
+              type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50()),
+          norm_activation=common.NormActivation(
+              norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)),
       losses=Losses(l2_weight_decay=1e-4),
       train_data=train_dataset,
       validation_data=validation_dataset)

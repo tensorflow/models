@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for anchor.py."""
 
 # Import libraries
@@ -107,12 +107,15 @@ class AnchorTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(expected_boxes, boxes.tolist())
 
   @parameterized.parameters(
-      (3, 6, 2, [1.0], 2.0),
+      (3, 6, 2, [1.0], 2.0, False),
+      (3, 6, 2, [1.0], 2.0, True),
   )
-  def testLabelAnchors(self, min_level, max_level, num_scales,
-                       aspect_ratios, anchor_size):
+  def testLabelAnchors(self, min_level, max_level, num_scales, aspect_ratios,
+                       anchor_size, has_attribute):
     input_size = [512, 512]
     ground_truth_class_id = 2
+    attribute_name = 'depth'
+    ground_truth_depth = 3.0
 
     # The matched anchors are the anchors used as ground truth and the anchors
     # at the next octave scale on the same location.
@@ -126,9 +129,13 @@ class AnchorTest(parameterized.TestCase, tf.test.TestCase):
     # two anchors with two intermediate scales at the same location.
     gt_boxes = anchor_boxes['3'][0:1, 0, 0:4]
     gt_classes = tf.constant([[ground_truth_class_id]], dtype=tf.float32)
-    (cls_targets, box_targets, _,
-     box_weights) = anchor_labeler.label_anchors(
-         anchor_boxes, gt_boxes, gt_classes)
+    gt_attributes = {
+        attribute_name: tf.constant([[ground_truth_depth]], dtype=tf.float32)
+    } if has_attribute else {}
+
+    (cls_targets, box_targets, att_targets, _,
+     box_weights) = anchor_labeler.label_anchors(anchor_boxes, gt_boxes,
+                                                 gt_classes, gt_attributes)
 
     for k, v in cls_targets.items():
       cls_targets[k] = v.numpy()
@@ -141,6 +148,17 @@ class AnchorTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllClose(expected_anchor_locations, anchor_locations)
     # Two anchor boxes on min_level got matched to the gt_boxes.
     self.assertAllClose(tf.reduce_sum(box_weights), 2)
+
+    if has_attribute:
+      self.assertIn(attribute_name, att_targets)
+      for k, v in att_targets[attribute_name].items():
+        att_targets[attribute_name][k] = v.numpy()
+      anchor_locations = np.vstack(
+          np.where(
+              att_targets[attribute_name][str(min_level)] > -1)).transpose()
+      self.assertAllClose(expected_anchor_locations, anchor_locations)
+    else:
+      self.assertEmpty(att_targets)
 
   @parameterized.parameters(
       (3, 7, [.5, 1., 2.], 2, 8, (256, 256)),

@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for Keras-based positional embedding layer."""
 
 import numpy as np
@@ -38,6 +38,22 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
     # When using static positional embedding shapes, the output is expected
     # to be the same as the input shape in all dimensions save batch.
     expected_output_shape = [None, sequence_length, width]
+    self.assertEqual(expected_output_shape, output_tensor.shape.as_list())
+    # The default output dtype for this layer should be tf.float32.
+    self.assertEqual(tf.float32, output_tensor.dtype)
+
+  def test_non_default_axis_static(self):
+    # Create a 3-dimensional input (the first dimension is implicit).
+    sequence_length = 21
+    test_layer = position_embedding.PositionEmbedding(
+        max_length=sequence_length, seq_axis=2)
+    width = 30
+    input_tensor = tf.keras.Input(shape=(sequence_length, width, width))
+    output_tensor = test_layer(input_tensor)
+
+    # When using static positional embedding shapes, the output is expected
+    # to be the same as the input shape in all dimensions save batch.
+    expected_output_shape = [None, sequence_length, width, width]
     self.assertEqual(expected_output_shape, output_tensor.shape.as_list())
     # The default output dtype for this layer should be tf.float32.
     self.assertEqual(tf.float32, output_tensor.dtype)
@@ -71,6 +87,21 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
     # to be the same as the input shape in all dimensions - but may be None if
     # the input shape is None there.
     expected_output_shape = [None, None, width]
+    self.assertEqual(expected_output_shape, output_tensor.shape.as_list())
+
+  def test_non_default_axis_dynamic(self):
+    max_sequence_length = 60
+    test_layer = position_embedding.PositionEmbedding(
+        max_length=max_sequence_length, seq_axis=2)
+    # Create a 3-dimensional input (the first dimension is implicit).
+    width = 30
+    input_tensor = tf.keras.Input(shape=(None, None, width))
+    output_tensor = test_layer(input_tensor)
+
+    # When using dynamic positional embedding shapes, the output is expected
+    # to be the same as the input shape in all dimensions - but may be None if
+    # the input shape is None there.
+    expected_output_shape = [None, None, None, width]
     self.assertEqual(expected_output_shape, output_tensor.shape.as_list())
 
   def test_dynamic_layer_slicing(self):

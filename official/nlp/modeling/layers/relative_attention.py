@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Keras-based relative attention layers."""
 import math
 import string
@@ -75,7 +74,7 @@ class MultiHeadRelativeAttention(tf.keras.layers.MultiHeadAttention):
   """A multi-head attention layer with relative attention + position encoding.
 
   This layer shares the same input/output projections as the common
-  MultiHeadAttention layer.
+  `tf.keras.layers.MultiHeadAttention` layer.
 
   When it calculates attention logits, position encoding is projected to form
   relative keys. The logits are composed by shifted relative logits and content
@@ -104,10 +103,10 @@ class MultiHeadRelativeAttention(tf.keras.layers.MultiHeadAttention):
     segment_attention_bias: Optional trainable bias parameter added to the
       query had when calculating the segment-based attention score used in
       XLNet of shape `[num_heads, dim]`.
-    state: Optional `Tensor` of shape [B, M, E] where M is the length of the
+    state: Optional `Tensor` of shape `[B, M, E]` where M is the length of the
       state or memory.
       If passed, this is also attended over as in Transformer XL.
-    attention_mask: a boolean mask of shape `[B, T, S]` that prevents attention
+    attention_mask: A boolean mask of shape `[B, T, S]` that prevents attention
       to certain positions.
   """
 
@@ -333,8 +332,9 @@ class TwoStreamRelativeAttention(MultiHeadRelativeAttention):
   The query stream only has access to contextual information and the position,
   but not the content.
 
-  This layer shares the same build signature as `MultiHeadRelativeAttention` but
-  has different input/output projections.
+  This layer shares the same build signature as
+  `tf.keras.layers.MultiHeadAttention` but has different input/output
+  projections.
 
   **Note: This layer is currently experimental.
 

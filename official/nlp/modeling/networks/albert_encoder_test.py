@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for ALBERT transformer-based text encoder network."""
 
 from __future__ import absolute_import
@@ -33,7 +33,7 @@ class AlbertEncoderTest(keras_parameterized.TestCase):
 
   def tearDown(self):
     super(AlbertEncoderTest, self).tearDown()
-    tf.keras.mixed_precision.experimental.set_policy("float32")
+    tf.keras.mixed_precision.set_global_policy("float32")
 
   @parameterized.named_parameters(
       dict(testcase_name="default", expected_dtype=tf.float32),
@@ -49,7 +49,7 @@ class AlbertEncoderTest(keras_parameterized.TestCase):
         num_attention_heads=2,
         num_layers=3)
     if expected_dtype == tf.float16:
-      tf.keras.mixed_precision.experimental.set_policy("mixed_float16")
+      tf.keras.mixed_precision.set_global_policy("mixed_float16")
 
     # Create a small TransformerEncoder for testing.
     test_network = albert_encoder.AlbertEncoder(**kwargs)
@@ -148,7 +148,7 @@ class AlbertEncoderTest(keras_parameterized.TestCase):
     self.assertLen(dict_outputs["pooled_output"], num_layers)
 
   def test_serialize_deserialize(self):
-    tf.keras.mixed_precision.experimental.set_policy("mixed_float16")
+    tf.keras.mixed_precision.set_global_policy("mixed_float16")
     # Create a network object that sets all of its config options.
     kwargs = dict(
         vocab_size=100,

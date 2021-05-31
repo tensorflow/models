@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Data parser and processing for segmentation datasets."""
 
 import tensorflow as tf
@@ -43,7 +43,7 @@ class Parser(parser.Parser):
 
   def __init__(self,
                output_size,
-               train_on_crops=False,
+               crop_size=None,
                resize_eval_groundtruth=True,
                groundtruth_padded_size=None,
                ignore_label=255,
@@ -56,9 +56,10 @@ class Parser(parser.Parser):
     Args:
       output_size: `Tensor` or `list` for [height, width] of output image. The
         output_size should be divided by the largest feature stride 2^max_level.
-      train_on_crops: `bool`, if True, a training crop of size output_size
-        is returned. This is useful for cropping original images during training
-        while evaluating on original image sizes.
+      crop_size: `Tensor` or `list` for [height, width] of the crop. If
+        specified a training crop of size crop_size is returned. This is useful
+        for cropping original images during training while evaluating on
+        original image sizes.
       resize_eval_groundtruth: `bool`, if True, eval groundtruth masks are
         resized to output_size.
       groundtruth_padded_size: `Tensor` or `list` for [height, width]. When
@@ -75,7 +76,7 @@ class Parser(parser.Parser):
       dtype: `str`, data type. One of {`bfloat16`, `float32`, `float16`}.
     """
     self._output_size = output_size
-    self._train_on_crops = train_on_crops
+    self._crop_size = crop_size
     self._resize_eval_groundtruth = resize_eval_groundtruth
     if (not resize_eval_groundtruth) and (groundtruth_padded_size is None):
       raise ValueError('groundtruth_padded_size ([height, width]) needs to be'
@@ -110,28 +111,32 @@ class Parser(parser.Parser):
     """Parses data for training and evaluation."""
     image, label = self._prepare_image_and_label(data)
 
-    if self._train_on_crops:
-      if data['image/height'] < self._output_size[0] or data[
-          'image/width'] < self._output_size[1]:
-        raise ValueError(
-            'Image size has to be larger than crop size (output_size)')
+    if self._crop_size:
+
       label = tf.reshape(label, [data['image/height'], data['image/width'], 1])
+      # If output_size is specified, resize image, and label to desired
+      # output_size.
+      if self._output_size:
+        image = tf.image.resize(image, self._output_size, method='bilinear')
+        label = tf.image.resize(label, self._output_size, method='nearest')
+
       image_mask = tf.concat([image, label], axis=2)
       image_mask_crop = tf.image.random_crop(image_mask,
-                                             self._output_size + [4])
+                                             self._crop_size + [4])
       image = image_mask_crop[:, :, :-1]
-      label = tf.reshape(image_mask_crop[:, :, -1], [1] + self._output_size)
+      label = tf.reshape(image_mask_crop[:, :, -1], [1] + self._crop_size)
 
     # Flips image randomly during training.
     if self._aug_rand_hflip:
       image, _, label = preprocess_ops.random_horizontal_flip(
           image, masks=label)
 
+    train_image_size = self._crop_size if self._crop_size else self._output_size
     # Resizes and crops image.
     image, image_info = preprocess_ops.resize_and_crop_image(
         image,
-        self._output_size,
-        self._output_size,
+        train_image_size,
+        train_image_size,
         aug_scale_min=self._aug_scale_min,
         aug_scale_max=self._aug_scale_max)
 
@@ -144,7 +149,7 @@ class Parser(parser.Parser):
     label += 1
     label = tf.expand_dims(label, axis=3)
     label = preprocess_ops.resize_and_crop_masks(
-        label, image_scale, self._output_size, offset)
+        label, image_scale, train_image_size, offset)
     label -= 1
     label = tf.where(tf.equal(label, -1),
                      self._ignore_label * tf.ones_like(label), label)

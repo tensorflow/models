@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Dot product with margin layer."""
 # pylint: disable=g-classes-have-attributes
 
@@ -26,7 +26,7 @@ from official.modeling import tf_utils
 class MatMulWithMargin(tf.keras.layers.Layer):
   """This layer computs a dot product matrix given two encoded inputs.
 
-  Arguments:
+  Args:
     logit_scale: The scaling factor of dot products when doing training.
     logit_margin: The margin value between the positive and negative examples
       when doing training.

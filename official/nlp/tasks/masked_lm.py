@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Masked language task."""
 
 import dataclasses
@@ -47,10 +46,13 @@ class MaskedLMConfig(cfg.TaskConfig):
 class MaskedLMTask(base_task.Task):
   """Task object for Mask language modeling."""
 
+  def _build_encoder(self, encoder_cfg):
+    return encoders.build_encoder(encoder_cfg)
+
   def build_model(self, params=None):
     config = params or self.task_config.model
     encoder_cfg = config.encoder
-    encoder_network = encoders.build_encoder(encoder_cfg)
+    encoder_network = self._build_encoder(encoder_cfg)
     cls_heads = [
         layers.ClassificationHead(**cfg.as_dict()) for cfg in config.cls_heads
     ] if config.cls_heads else []

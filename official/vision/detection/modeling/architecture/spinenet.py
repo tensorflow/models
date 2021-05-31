@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# Lint as: python3
 # ==============================================================================
 """Implementation of SpineNet model.
 
@@ -25,7 +26,6 @@ from absl import logging
 import tensorflow as tf
 
 from official.modeling import tf_utils
-from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.modeling.architecture import nn_blocks
 
 layers = tf.keras.layers
@@ -486,21 +486,20 @@ class SpineNetBuilder(object):
     self._norm_epsilon = norm_epsilon
 
   def __call__(self, inputs, is_training=None):
-    with keras_utils.maybe_enter_backend_graph():
-      model = SpineNet(
-          input_specs=self._input_specs,
-          min_level=self._min_level,
-          max_level=self._max_level,
-          block_specs=self._block_specs,
-          endpoints_num_filters=self._endpoints_num_filters,
-          resample_alpha=self._resample_alpha,
-          block_repeats=self._block_repeats,
-          filter_size_scale=self._filter_size_scale,
-          kernel_initializer=self._kernel_initializer,
-          kernel_regularizer=self._kernel_regularizer,
-          bias_regularizer=self._bias_regularizer,
-          activation=self._activation,
-          use_sync_bn=self._use_sync_bn,
-          norm_momentum=self._norm_momentum,
-          norm_epsilon=self._norm_epsilon)
-      return model(inputs)
+    model = SpineNet(
+        input_specs=self._input_specs,
+        min_level=self._min_level,
+        max_level=self._max_level,
+        block_specs=self._block_specs,
+        endpoints_num_filters=self._endpoints_num_filters,
+        resample_alpha=self._resample_alpha,
+        block_repeats=self._block_repeats,
+        filter_size_scale=self._filter_size_scale,
+        kernel_initializer=self._kernel_initializer,
+        kernel_regularizer=self._kernel_regularizer,
+        bias_regularizer=self._bias_regularizer,
+        activation=self._activation,
+        use_sync_bn=self._use_sync_bn,
+        norm_momentum=self._norm_momentum,
+        norm_epsilon=self._norm_epsilon)
+    return model(inputs)

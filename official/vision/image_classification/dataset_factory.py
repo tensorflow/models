@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Dataset utilities for vision tasks using TFDS and tf.data.Dataset."""
 from __future__ import absolute_import
 from __future__ import division
@@ -280,7 +280,9 @@ class DatasetBuilder:
       raise e
     return self.builder_info
 
-  def build(self, strategy: tf.distribute.Strategy = None) -> tf.data.Dataset:
+  def build(
+      self,
+      strategy: Optional[tf.distribute.Strategy] = None) -> tf.data.Dataset:
     """Construct a dataset end-to-end and return it using an optional strategy.
 
     Args:
@@ -305,7 +307,8 @@ class DatasetBuilder:
 
   def _build(
       self,
-      input_context: tf.distribute.InputContext = None) -> tf.data.Dataset:
+      input_context: Optional[tf.distribute.InputContext] = None
+  ) -> tf.data.Dataset:
     """Construct a dataset end-to-end and return it.
 
     Args:

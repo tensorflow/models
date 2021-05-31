@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Create masked LM/next sentence masked_lm TF examples for BERT."""
 
 import collections
@@ -110,8 +110,8 @@ class TrainingInstance(object):
 
 def write_instance_to_example_files(instances, tokenizer, max_seq_length,
                                     max_predictions_per_seq, output_files,
-                                    gzip_compress):
-  """Create TF example files from `TrainingInstance`s."""
+                                    gzip_compress, use_v2_feature_names):
+  """Creates TF example files from `TrainingInstance`s."""
   writers = []
   for output_file in output_files:
     writers.append(
@@ -148,7 +148,7 @@ def write_instance_to_example_files(instances, tokenizer, max_seq_length,
     next_sentence_label = 1 if instance.is_random_next else 0
 
     features = collections.OrderedDict()
-    if FLAGS.use_v2_feature_names:
+    if use_v2_feature_names:
       features["input_word_ids"] = create_int_feature(input_ids)
       features["input_type_ids"] = create_int_feature(segment_ids)
     else:
@@ -390,7 +390,7 @@ def _window(iterable, size):
     _window(input, 4) => [1, 2, 3, 4]
     _window(input, 5) => None
 
-  Arguments:
+  Args:
     iterable: elements to iterate over.
     size: size of the window.
 
@@ -414,7 +414,7 @@ def _window(iterable, size):
 def _contiguous(sorted_grams):
   """Test whether a sequence of grams is contiguous.
 
-  Arguments:
+  Args:
     sorted_grams: _Grams which are sorted in increasing order.
   Returns:
     True if `sorted_grams` are touching each other.
@@ -454,7 +454,7 @@ def _masking_ngrams(grams, max_ngram_size, max_masked_tokens, rng):
   The length of the selected n-gram follows a zipf weighting to
   favor shorter n-gram sizes (weight(1)=1, weight(2)=1/2, weight(3)=1/3, ...).
 
-  Arguments:
+  Args:
     grams: List of one-grams.
     max_ngram_size: Maximum number of contiguous one-grams combined to create
       an n-gram.
@@ -542,7 +542,7 @@ def _wordpieces_to_grams(tokens):
      tokens: ['[CLS]', 'That', 'lit', '##tle', 'blue', 'tru', '##ck', '[SEP]']
       grams: [          [1,2), [2,         4),  [4,5) , [5,       6)]
 
-  Arguments:
+  Args:
     tokens: list of wordpieces
   Returns:
     List of _Grams representing spans of whole words
@@ -658,7 +658,8 @@ def main(_):
 
   write_instance_to_example_files(instances, tokenizer, FLAGS.max_seq_length,
                                   FLAGS.max_predictions_per_seq, output_files,
-                                  FLAGS.gzip_compress)
+                                  FLAGS.gzip_compress,
+                                  FLAGS.use_v2_feature_names)
 
 
 if __name__ == "__main__":

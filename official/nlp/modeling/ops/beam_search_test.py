@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Test beam search helper methods."""
 
 from absl.testing import parameterized
@@ -54,16 +54,7 @@ class BeamSearchTests(tf.test.TestCase, parameterized.TestCase):
     #                  [16 17 18 19]
     #                  [20 21 22 23]]]
 
-    y = beam_search._gather_beams(x, [[1, 2], [0, 2]], 2, 2)
-    self.assertAllEqual(
-        [[[4, 5, 6, 7], [8, 9, 10, 11]], [[12, 13, 14, 15], [20, 21, 22, 23]]],
-        y)
-
-  def test_gather_topk_beams(self):
-    x = tf.reshape(tf.range(24), [2, 3, 4])
-    x_scores = [[0, 1, 1], [1, 0, 1]]
-
-    y = beam_search._gather_topk_beams(x, x_scores, 2, 2)
+    y = beam_search.SequenceBeamSearch._gather_beams(x, [[1, 2], [0, 2]], 2, 2)
     self.assertAllEqual(
         [[[4, 5, 6, 7], [8, 9, 10, 11]], [[12, 13, 14, 15], [20, 21, 22, 23]]],
         y)

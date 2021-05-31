@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 r"""Convert checkpoints created by Estimator (tf1) to be Keras compatible."""
 
 import numpy as np
@@ -116,7 +116,13 @@ def create_v2_checkpoint(model,
   """Converts a name-based matched TF V1 checkpoint to TF V2 checkpoint."""
   # Uses streaming-restore in eager model to read V1 name-based checkpoints.
   model.load_weights(src_checkpoint).assert_existing_objects_matched()
-  checkpoint = tf.train.Checkpoint(**{checkpoint_model_name: model})
+  if hasattr(model, "checkpoint_items"):
+    checkpoint_items = model.checkpoint_items
+  else:
+    checkpoint_items = {}
+
+  checkpoint_items[checkpoint_model_name] = model
+  checkpoint = tf.train.Checkpoint(**checkpoint_items)
   checkpoint.save(output_path)
 
 

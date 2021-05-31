@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Utils for processing video dataset features."""
 
-from typing import Optional
+from typing import Optional, Tuple
 import tensorflow as tf
 
 
@@ -106,9 +106,10 @@ def sample_sequence(sequence: tf.Tensor,
 
   if random:
     sequence_length = tf.cast(sequence_length, tf.float32)
+    frame_stride = tf.cast(stride, tf.float32)
     max_offset = tf.cond(
-        sequence_length > (num_steps - 1) * stride,
-        lambda: sequence_length - (num_steps - 1) * stride,
+        sequence_length > (num_steps - 1) * frame_stride,
+        lambda: sequence_length - (num_steps - 1) * frame_stride,
         lambda: sequence_length)
     offset = tf.random.uniform(
         (),
@@ -148,20 +149,22 @@ def decode_jpeg(image_string: tf.Tensor, channels: int = 0) -> tf.Tensor:
 
 
 def crop_image(frames: tf.Tensor,
-               height: int,
-               width: int,
+               target_height: int,
+               target_width: int,
                random: bool = False,
+               num_crops: int = 1,
                seed: Optional[int] = None) -> tf.Tensor:
   """Crops the image sequence of images.
 
   If requested size is bigger than image size, image is padded with 0. If not
-  random cropping, a central crop is performed.
+  random cropping, a central crop is performed if num_crops is 1.
 
   Args:
     frames: A Tensor of dimension [timesteps, in_height, in_width, channels].
-    height: Cropped image height.
-    width: Cropped image width.
+    target_height: Target cropped image height.
+    target_width: Target cropped image width.
     random: A boolean indicating if crop should be randomized.
+    num_crops: Number of crops (support 1 for central crop and 3 for 3-crop).
     seed: A deterministic seed to use when random cropping.
 
   Returns:
@@ -176,11 +179,54 @@ def crop_image(frames: tf.Tensor,
     static_shape = frames.shape.as_list()
     seq_len = shape[0] if static_shape[0] is None else static_shape[0]
     channels = shape[3] if static_shape[3] is None else static_shape[3]
-    frames = tf.image.random_crop(frames, (seq_len, height, width, channels),
-                                  seed)
+    frames = tf.image.random_crop(
+        frames, (seq_len, target_height, target_width, channels), seed)
   else:
-    # Central crop or pad.
-    frames = tf.image.resize_with_crop_or_pad(frames, height, width)
+    if num_crops == 1:
+      # Central crop or pad.
+      frames = tf.image.resize_with_crop_or_pad(frames, target_height,
+                                                target_width)
+
+    elif num_crops == 3:
+      # Three-crop evaluation.
+      shape = tf.shape(frames)
+      static_shape = frames.shape.as_list()
+      seq_len = shape[0] if static_shape[0] is None else static_shape[0]
+      height = shape[1] if static_shape[1] is None else static_shape[1]
+      width = shape[2] if static_shape[2] is None else static_shape[2]
+      channels = shape[3] if static_shape[3] is None else static_shape[3]
+
+      size = tf.convert_to_tensor(
+          (seq_len, target_height, target_width, channels))
+
+      offset_1 = tf.broadcast_to([0, 0, 0, 0], [4])
+      # pylint:disable=g-long-lambda
+      offset_2 = tf.cond(
+          tf.greater_equal(height, width),
+          true_fn=lambda: tf.broadcast_to([
+              0, tf.cast(height, tf.float32) / 2 - target_height // 2, 0, 0
+          ], [4]),
+          false_fn=lambda: tf.broadcast_to([
+              0, 0, tf.cast(width, tf.float32) / 2 - target_width // 2, 0
+          ], [4]))
+      offset_3 = tf.cond(
+          tf.greater_equal(height, width),
+          true_fn=lambda: tf.broadcast_to(
+              [0, tf.cast(height, tf.float32) - target_height, 0, 0], [4]),
+          false_fn=lambda: tf.broadcast_to(
+              [0, 0, tf.cast(width, tf.float32) - target_width, 0], [4]))
+      # pylint:disable=g-long-lambda
+
+      crops = []
+      for offset in [offset_1, offset_2, offset_3]:
+        offset = tf.cast(tf.math.round(offset), tf.int32)
+        crops.append(tf.slice(frames, offset, size))
+      frames = tf.concat(crops, axis=0)
+
+    else:
+      raise NotImplementedError(
+          f"Only 1-crop and 3-crop are supported. Found {num_crops!r}.")
+
   return frames
 
 
@@ -214,6 +260,55 @@ def resize_smallest(frames: tf.Tensor,
                                      tf.not_equal(input_h, output_h))
   frames = tf.cond(should_resize, resize_fn, lambda: frames)
 
+  return frames
+
+
+def random_crop_resize(frames: tf.Tensor,
+                       output_h: int,
+                       output_w: int,
+                       num_frames: int,
+                       num_channels: int,
+                       aspect_ratio: Tuple[float, float],
+                       area_range: Tuple[float, float]) -> tf.Tensor:
+  """First crops clip with jittering and then resizes to (output_h, output_w).
+
+  Args:
+    frames: A Tensor of dimension [timesteps, input_h, input_w, channels].
+    output_h: Resized image height.
+    output_w: Resized image width.
+    num_frames: Number of input frames per clip.
+    num_channels: Number of channels of the clip.
+    aspect_ratio: Float tuple with the aspect range for cropping.
+    area_range: Float tuple with the area range for cropping.
+  Returns:
+    A Tensor of shape [timesteps, output_h, output_w, channels] of type
+      frames.dtype.
+  """
+  shape = tf.shape(frames)
+  seq_len, _, _, channels = shape[0], shape[1], shape[2], shape[3]
+  bbox = tf.constant([0.0, 0.0, 1.0, 1.0], dtype=tf.float32, shape=[1, 1, 4])
+  factor = output_w / output_h
+  aspect_ratio = (aspect_ratio[0] * factor, aspect_ratio[1] * factor)
+  sample_distorted_bbox = tf.image.sample_distorted_bounding_box(
+      shape[1:],
+      bounding_boxes=bbox,
+      min_object_covered=0.1,
+      aspect_ratio_range=aspect_ratio,
+      area_range=area_range,
+      max_attempts=100,
+      use_image_if_no_bounding_boxes=True)
+  bbox_begin, bbox_size, _ = sample_distorted_bbox
+  offset_y, offset_x, _ = tf.unstack(bbox_begin)
+  target_height, target_width, _ = tf.unstack(bbox_size)
+  size = tf.convert_to_tensor((
+      seq_len, target_height, target_width, channels))
+  offset = tf.convert_to_tensor((
+      0, offset_y, offset_x, 0))
+  frames = tf.slice(frames, offset, size)
+  frames = tf.cast(
+      tf.image.resize(frames, (output_h, output_w)),
+      frames.dtype)
+  frames.set_shape((num_frames, output_h, output_w, num_channels))
   return frames
 
 

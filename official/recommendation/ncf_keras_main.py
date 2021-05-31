@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,16 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """NCF framework to train and evaluate the NeuMF model.
 
 The NeuMF model assembles both MF and MLP models under the NCF framework. Check
 `neumf_model.py` for more details about the models.
 """
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import json
 import os
@@ -30,7 +26,7 @@ import os
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.common import distribute_utils
@@ -262,10 +258,9 @@ def run_ncf(_):
         "val_HR_METRIC", desired_value=FLAGS.hr_threshold)
     callbacks.append(early_stopping_callback)
 
-  (train_input_dataset, eval_input_dataset,
-   num_train_steps, num_eval_steps) = \
-    (ncf_input_pipeline.create_ncf_input_data(
-        params, producer, input_meta_data, strategy))
+  (train_input_dataset, eval_input_dataset, num_train_steps,
+   num_eval_steps) = ncf_input_pipeline.create_ncf_input_data(
+       params, producer, input_meta_data, strategy)
   steps_per_epoch = None if generate_input_online else num_train_steps
 
   with distribute_utils.get_strategy_scope(strategy):
@@ -311,7 +306,8 @@ def run_ncf(_):
       if not FLAGS.ml_perf:
         # Create Tensorboard summary and checkpoint callbacks.
         summary_dir = os.path.join(FLAGS.model_dir, "summaries")
-        summary_callback = tf.keras.callbacks.TensorBoard(summary_dir)
+        summary_callback = tf.keras.callbacks.TensorBoard(
+            summary_dir, profile_batch=0)
         checkpoint_path = os.path.join(FLAGS.model_dir, "checkpoint")
         checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
             checkpoint_path, save_weights_only=True)

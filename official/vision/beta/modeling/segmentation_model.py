@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Build segmentation models."""
+from typing import Any, Mapping, Union
 
 # Import libraries
 import tensorflow as tf
@@ -33,11 +34,8 @@ class SegmentationModel(tf.keras.Model):
   different backbones, and decoders.
   """
 
-  def __init__(self,
-               backbone,
-               decoder,
-               head,
-               **kwargs):
+  def __init__(self, backbone: tf.keras.Model, decoder: tf.keras.Model,
+               head: tf.keras.layers.Layer, **kwargs):
     """Segmentation initialization function.
 
     Args:
@@ -56,7 +54,7 @@ class SegmentationModel(tf.keras.Model):
     self.decoder = decoder
     self.head = head
 
-  def call(self, inputs, training=None):
+  def call(self, inputs: tf.Tensor, training: bool = None) -> tf.Tensor:
     backbone_features = self.backbone(inputs)
 
     if self.decoder:
@@ -67,14 +65,15 @@ class SegmentationModel(tf.keras.Model):
     return self.head(backbone_features, decoder_features)
 
   @property
-  def checkpoint_items(self):
+  def checkpoint_items(
+      self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(backbone=self.backbone, head=self.head)
     if self.decoder is not None:
       items.update(decoder=self.decoder)
     return items
 
-  def get_config(self):
+  def get_config(self) -> Mapping[str, Any]:
     return self._config_dict
 
   @classmethod

@@ -14,14 +14,9 @@
 # ==============================================================================
 """Some gradient util functions to help users writing custom training loop."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
-
 from absl import logging
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 
 def _filter_grads(grads_and_vars):
@@ -57,7 +52,7 @@ def _filter_and_allreduce_gradients(grads_and_vars,
   The allreduced gradients are then passed to optimizer.apply_gradients(
   experimental_aggregate_gradients=False).
 
-  Arguments:
+  Args:
       grads_and_vars: gradients and variables pairs.
       allreduce_precision: Whether to allreduce gradients in float32 or float16.
       bytes_per_pack: A non-negative integer. Breaks collective operations into
@@ -70,10 +65,10 @@ def _filter_and_allreduce_gradients(grads_and_vars,
   (grads, variables) = zip(*filtered_grads_and_vars)
   if allreduce_precision == "float16":
     grads = [tf.cast(grad, "float16") for grad in grads]
-  hints = tf.distribute.experimental.CollectiveHints(
+  hints = tf.distribute.experimental.CommunicationOptions(
       bytes_per_pack=bytes_per_pack)
-  allreduced_grads = tf.distribute.get_replica_context().all_reduce(
-      tf.distribute.ReduceOp.SUM, grads, hints)
+  allreduced_grads = tf.distribute.get_strategy(  # pylint: disable=protected-access
+  ).extended._replica_ctx_all_reduce(tf.distribute.ReduceOp.SUM, grads, hints)
   if allreduce_precision == "float16":
     allreduced_grads = [tf.cast(grad, "float32") for grad in allreduced_grads]
   return allreduced_grads, variables
@@ -101,7 +96,7 @@ def minimize_using_explicit_allreduce(tape,
   For TPU and GPU training using FP32, explicit allreduce will aggregate
   gradients in FP32 format.
 
-  Arguments:
+  Args:
       tape: An instance of `tf.GradientTape`.
       optimizer: An instance of `tf.keras.optimizers.Optimizer`.
       loss: the loss tensor.

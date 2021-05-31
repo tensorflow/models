@@ -158,6 +158,9 @@ python3 train.py \
   --logdir=gldv2_training/
 ```
 
+*NOTE: The `--use_autoencoder` parameter is set by default to `True`, therefore
+the model will be by default trained with the autoencoder.*
+
 ### Training with Local and Global Features
 
 It is also possible to train the model with an improved global features head as
@@ -175,6 +178,9 @@ python3 train.py \
   --delg_global_features
 ```
 
+*NOTE: The `--use_autoencoder` parameter is set by default to `True`, therefore
+the model will be by default trained with the autoencoder.*
+
 ### Hyperparameter Guidelines
 
 In order to improve the convergence of the training, the following
@@ -183,9 +189,6 @@ infrastructures, the remaining `train.py` flags keeping their **default
 values**:
 * 8 Tesla P100 GPUs: `--batch_size=256`, `--initial_lr=0.01`
 * 4 Tesla P100 GPUs: `--batch_size=128`, `--initial_lr=0.005`
-
-*NOTE*: We are currently working on adding the autoencoder described in the DELG
-paper to this codebase. Currently, it is not yet implemented here. Stay tuned!
 
 ## Exporting the Trained Model
 
@@ -200,8 +203,7 @@ model.
 ```
 python3 model/export_local_model.py \
   --ckpt_path=gldv2_training/delf_weights \
-  --export_path=gldv2_model_local \
-  --block3_strides
+  --export_path=gldv2_model_local
 ```
 
 ### DELG global feature-only model
@@ -225,8 +227,7 @@ global features.
 python3 model/export_local_and_global_model.py \
   --ckpt_path=gldv2_training/delf_weights \
   --export_path=gldv2_model_local_and_global \
-  --delg_global_features \
-  --block3_strides
+  --delg_global_features
 ```
 
 ### Kaggle-compatible global feature model

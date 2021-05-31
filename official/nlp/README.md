@@ -51,4 +51,12 @@ READMEs for specific papers.
 ### Common Training Driver
 
 We provide a single common driver [train.py](train.py) to train above SoTA
-models on popluar tasks. Please see [train.md](train.md) for more details.
+models on popluar tasks. Please see [docs/train.md](docs/train.md) for
+more details.
+
+
+### Pre-trained models with checkpoints and TF-Hub
+
+We provide a large collection of baselines and checkpoints for NLP pre-trained
+models. Please see [docs/pretrained_models.md](docs/pretrained_models.md) for
+more details.

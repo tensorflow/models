@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Translate text or files using trained transformer model."""
 
 # Import libraries
@@ -146,19 +146,13 @@ def translate_file(model,
       def text_as_per_replica():
         replica_context = tf.distribute.get_replica_context()
         replica_id = replica_context.replica_id_in_sync_group
-        return replica_id, text[replica_id]
+        return replica_id, text[replica_id]  # pylint: disable=cell-var-from-loop
 
       text = distribution_strategy.run(text_as_per_replica)
       outputs = distribution_strategy.experimental_local_results(
           predict_step(text))
-      tags, unordered_val_outputs = outputs[0]
-      tags = [tag.numpy() for tag in tags._values]
-      unordered_val_outputs = [
-          val_output.numpy() for val_output in unordered_val_outputs._values]
-      # pylint: enable=protected-access
-      val_outputs = [None] * len(tags)
-      for k in range(len(tags)):
-        val_outputs[tags[k]] = unordered_val_outputs[k]
+      val_outputs = [output for _, output in outputs]
+
       val_outputs = np.reshape(val_outputs, [params["decode_batch_size"], -1])
     else:
       val_outputs, _ = model.predict(text)

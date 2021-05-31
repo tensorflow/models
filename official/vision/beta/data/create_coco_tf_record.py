@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 r"""Convert raw COCO dataset to TFRecord format.
 
 This scripts follows the label map decoder format and supports detection
@@ -283,11 +283,11 @@ def generate_annotations(images, image_dir,
   """Generator for COCO annotations."""
 
   for image in images:
-    if img_to_obj_annotation:
-      object_annotation = img_to_obj_annotation.get(image['id'], None)
+    object_annotation = (img_to_obj_annotation.get(image['id'], None) if
+                         img_to_obj_annotation else None)
 
-    if img_to_caption_annotation:
-      caption_annotaion = img_to_caption_annotation.get(image['id'], None)
+    caption_annotaion = (img_to_caption_annotation.get(image['id'], None) if
+                         img_to_caption_annotation else None)
 
     yield (image, image_dir, object_annotation, id_to_name_map,
            caption_annotaion, include_masks)
