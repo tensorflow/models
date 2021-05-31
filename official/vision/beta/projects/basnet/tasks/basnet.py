@@ -30,9 +30,9 @@ from official.vision.beta.projects.basnet.evaluation import relax_f
 from official.vision.beta.projects.basnet.evaluation import mae
 from official.vision.beta.projects.basnet.losses import basnet_losses
 
-from official.vision.beta.projects.basnet.modeling import basnet_en
+from official.vision.beta.projects.basnet.modeling import basnet_encoder
 from official.vision.beta.projects.basnet.modeling import basnet_model
-from official.vision.beta.projects.basnet.modeling import basnet_de
+from official.vision.beta.projects.basnet.modeling import basnet_decoder
 from official.vision.beta.projects.basnet.modeling import refunet
 
 def build_basnet_model(
@@ -40,12 +40,12 @@ def build_basnet_model(
     model_config: exp_cfg.BASNetModel,
     l2_regularizer: tf.keras.regularizers.Regularizer = None):
   """Builds BASNet model."""
-  backbone = basnet_en.BASNet_En(
+  backbone = basnet_encoder.BASNet_Encoder(
       input_specs=input_specs)
 
   norm_activation_config = model_config.norm_activation
 
-  decoder = basnet_de.BASNet_De(
+  decoder = basnet_decoder.BASNet_Decoder(
         input_specs=backbone.output_specs,
         use_sync_bn=norm_activation_config.use_sync_bn,
         norm_momentum=norm_activation_config.norm_momentum,

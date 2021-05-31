@@ -17,15 +17,13 @@
 # Import libraries
 import tensorflow as tf
 
-layers = tf.keras.layers
-
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class BASNetModel(tf.keras.Model):
   """A BASNet model.
 
   Input images are passed through backbone first. Decoder network is then
-  applied, and finally, Refinement module is applied on the output of the
+  applied, and finally, refinement module is applied on the output of the
   decoder network.
   """
 
@@ -37,8 +35,8 @@ class BASNetModel(tf.keras.Model):
     """BASNet initialization function.
 
     Args:
-      backbone: a backbone network.
-      decoder: a decoder network. E.g. FPN.
+      backbone: a backbone network. basnet_encoder
+      decoder: a decoder network. basnet_decoder
       refinement: a module for salient map refinement
       **kwargs: keyword arguments to be passed.
     """

@@ -20,18 +20,16 @@ Boundary-Awar network (BASNet) were proposed in:
 """
 
 
-
 # Import libraries
 import tensorflow as tf
 from official.vision.beta.projects.basnet.modeling.layers import nn_blocks
 
-layers = tf.keras.layers
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class RefUnet(tf.keras.Model):
 
   def __init__(self,
-               input_specs=layers.InputSpec(shape=[None, None, None, 1]),
+               input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 1]),
                activation='relu',
                use_sync_bn=False,
                use_bias=True,
@@ -65,9 +63,9 @@ class RefUnet(tf.keras.Model):
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     if use_sync_bn:
-      self._norm = layers.experimental.SyncBatchNormalization
+      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
     else:
-      self._norm = layers.BatchNormalization
+      self._norm = tf.keras.layers.BatchNormalization
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
@@ -83,7 +81,7 @@ class RefUnet(tf.keras.Model):
     endpoints = {}  
     residual = inputs
 
-    x = layers.Conv2D(
+    x = tf.keras.layers.Conv2D(
         filters=64, kernel_size=3, strides=1,
         use_bias=self._use_bias, padding='same',
         kernel_initializer=self._kernel_initializer,
@@ -111,7 +109,7 @@ class RefUnet(tf.keras.Model):
         
       endpoints[str(i)] = x
 
-      x = layers.MaxPool2D(pool_size=2, strides=2, padding='valid')(x)
+      x = tf.keras.layers.MaxPool2D(pool_size=2, strides=2, padding='valid')(x)
 
     # Bridge
     x = nn_blocks.ConvBlock(
@@ -129,7 +127,7 @@ class RefUnet(tf.keras.Model):
         norm_epsilon=0.001
         )(x)
 
-    x = layers.UpSampling2D(
+    x = tf.keras.layers.UpSampling2D(
         size=2,
         interpolation='bilinear'
         )(x)
@@ -137,7 +135,7 @@ class RefUnet(tf.keras.Model):
     # Bottom-up
 
     for i in range(4):
-      x = layers.Concatenate(axis=-1)([endpoints[str(3-i)], x])
+      x = tf.keras.layers.Concatenate(axis=-1)([endpoints[str(3-i)], x])
       x = nn_blocks.ConvBlock(
           filters=64,
           kernel_size=3,
@@ -154,7 +152,7 @@ class RefUnet(tf.keras.Model):
           )(x)
 
       if i == 3:
-        x = layers.Conv2D(
+        x = tf.keras.layers.Conv2D(
             filters=1, kernel_size=3, strides=1,
             use_bias=self._use_bias, padding='same',
             kernel_initializer=self._kernel_initializer,
@@ -162,7 +160,7 @@ class RefUnet(tf.keras.Model):
             bias_regularizer=self._bias_regularizer
             )(x)
       else:
-        x = layers.UpSampling2D(
+        x = tf.keras.layers.UpSampling2D(
             size=2,
             interpolation='bilinear'
             )(x)
@@ -171,7 +169,7 @@ class RefUnet(tf.keras.Model):
 
     output = x + residual
 
-    output = layers.Activation(
+    output = tf.keras.layers.Activation(
         activation='sigmoid'
         )(output)
 

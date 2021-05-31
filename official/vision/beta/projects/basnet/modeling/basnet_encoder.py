@@ -26,13 +26,12 @@ from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.projects.basnet.modeling.layers import nn_blocks
 
-layers = tf.keras.layers
 
 # Specifications for BASNet encoder.
 # Each element in the block configuration is in the following format:
 # (block_fn, num_filters, stride, block_repeats, maxpool)
 
-BASNET_EN_SPECS = [
+BASNET_ENCODER_SPECS = [
         ('residual', 64,  1, 3, 0),   #ResNet-34,
         ('residual', 128, 2, 4, 0),   #ResNet-34,
         ('residual', 256, 2, 6, 0),   #ResNet-34,
@@ -42,10 +41,10 @@ BASNET_EN_SPECS = [
     ]
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
-class BASNet_En(tf.keras.Model):
+class BASNet_Encoder(tf.keras.Model):
 
   def __init__(self,
-               input_specs=layers.InputSpec(shape=[None, None, None, 3]),
+               input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
                activation='relu',
                use_sync_bn=False,
                use_bias=True,
@@ -79,9 +78,9 @@ class BASNet_En(tf.keras.Model):
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     if use_sync_bn:
-      self._norm = layers.experimental.SyncBatchNormalization
+      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
     else:
-      self._norm = layers.BatchNormalization
+      self._norm = tf.keras.layers.BatchNormalization
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
@@ -94,7 +93,7 @@ class BASNet_En(tf.keras.Model):
     # Build BASNet.
     inputs = tf.keras.Input(shape=input_specs.shape[1:])
 
-    x = layers.Conv2D(
+    x = tf.keras.layers.Conv2D(
         filters=64, kernel_size=3, strides=1,
         use_bias=self._use_bias, padding='same',
         kernel_initializer=self._kernel_initializer,
@@ -109,7 +108,7 @@ class BASNet_En(tf.keras.Model):
 
     endpoints = {}
 
-    for i, spec in enumerate(BASNET_EN_SPECS):
+    for i, spec in enumerate(BASNET_ENCODER_SPECS):
       if spec[0] == 'residual':
         block_fn = nn_blocks.ResBlock
       else:
@@ -123,10 +122,10 @@ class BASNet_En(tf.keras.Model):
           name='block_group_l{}'.format(i + 2))
       endpoints[str(i)] = x
       if spec[4]:
-        x = layers.MaxPool2D(pool_size=2, strides=2, padding='same')(x)
+        x = tf.keras.layers.MaxPool2D(pool_size=2, strides=2, padding='same')(x)
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
 
-    super(BASNet_En, self).__init__(inputs=inputs, outputs=endpoints, **kwargs)
+    super(BASNet_Encoder, self).__init__(inputs=inputs, outputs=endpoints, **kwargs)
 
   def _block_group(self,
                    inputs,
@@ -192,8 +191,8 @@ class BASNet_En(tf.keras.Model):
 
 
 
-@factory.register_backbone_builder('basnet_en')
-def build_basnet_en(
+@factory.register_backbone_builder('basnet_encoder')
+def build_basnet_encoder(
     input_specs: tf.keras.layers.InputSpec,
     model_config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
@@ -201,10 +200,10 @@ def build_basnet_en(
   backbone_type = model_config.backbone.type
   backbone_cfg = model_config.backbone.get()
   norm_activation_config = model_config.norm_activation
-  assert backbone_type == 'basnet_en', (f'Inconsistent backbone type '
+  assert backbone_type == 'basnet_encoder', (f'Inconsistent backbone type '
                                              f'{backbone_type}')
 
-  return BASNet_En(
+  return BASNet_Encoder(
       input_specs=input_specs,
       activation=norm_activation_config.activation,
       use_sync_bn=norm_activation_config.use_sync_bn,

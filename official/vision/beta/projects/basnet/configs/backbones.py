@@ -23,9 +23,9 @@ from official.modeling import hyperparams
 
 
 @dataclasses.dataclass
-class BASNet_En(hyperparams.Config):
+class BASNet_Encoder(hyperparams.Config):
   """BASNet Encoder config."""
-  model_id: str = 'BASNet_En'
+  model_id: str = 'BASNet_Encoder'
 
 
 @dataclasses.dataclass
@@ -34,7 +34,7 @@ class Backbone(hyperparams.OneOfConfig):
 
   Attributes:
     type: 'str', type of backbone be used, one the of fields below.
-    basnet_en: basnet encoder config.
+    basnet_encoder: basnet encoder config.
   """
   type: Optional[str] = None
-  basnet_en: BASNet_En = BASNet_En()
+  basnet_encoder: BASNet_Encoder = BASNet_Encoder()

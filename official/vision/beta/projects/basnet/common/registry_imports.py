@@ -17,7 +17,7 @@
 # pylint: disable=unused-import
 from official.vision import beta
 from official.vision.beta.projects.basnet.configs import basnet
-from official.vision.beta.projects.basnet.modeling import basnet_en
-from official.vision.beta.projects.basnet.modeling import basnet_de
+from official.vision.beta.projects.basnet.modeling import basnet_encoder
+from official.vision.beta.projects.basnet.modeling import basnet_decoder
 from official.vision.beta.projects.basnet.modeling import refunet
 from official.vision.beta.projects.basnet.tasks import basnet

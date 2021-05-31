@@ -50,8 +50,8 @@ class BASNetModel(hyperparams.Config):
   num_classes: int = 0
   input_size: List[int] = dataclasses.field(default_factory=list)
   backbone: backbones.Backbone = backbones.Backbone(
-      type='basnet_en', basnet_en=backbones.BASNet_En())
-  decoder: decoders.Decoder = decoders.Decoder(type='basnet_de')
+      type='basnet_encoder', basnet_encoder=backbones.BASNet_Encoder())
+  decoder: decoders.Decoder = decoders.Decoder(type='basnet_decoder')
   norm_activation: common.NormActivation = common.NormActivation()
 
 
@@ -88,13 +88,12 @@ def basnet() -> cfg.ExperimentConfig:
           'task.validation_data.is_training != None'
       ])
 
+
 # DUTS Dataset
-#DUTS_TRAIN_EXAMPLES = 21106
 DUTS_TRAIN_EXAMPLES = 10553
 DUTS_VAL_EXAMPLES = 5019
 DUTS_INPUT_PATH_BASE_TR = '/home/datasets/DUTS/DUTS_TR_TFRecords/'
 DUTS_INPUT_PATH_BASE_VAL = '/home/datasets/DUTS/DUTS_TE_TFRecords/'
-
 
 
 @exp_factory.register_config_factory('basnet_duts')
@@ -108,10 +107,10 @@ def basnet_duts() -> cfg.ExperimentConfig:
           model=BASNetModel(
               input_size=[None, None, 3],   # Resize to 256, 256
               backbone=backbones.Backbone(
-                  type='basnet_en', basnet_en=backbones.BASNet_En(
+                  type='basnet_encoder', basnet_encoder=backbones.BASNet_Encoder(
                       )),
               decoder=decoders.Decoder(
-                  type='basnet_de', basnet_de=decoders.BASNet_De(
+                  type='basnet_decoder', basnet_decoder=decoders.BASNet_Decoder(
                       )),
               norm_activation=common.NormActivation(
                   activation='relu',

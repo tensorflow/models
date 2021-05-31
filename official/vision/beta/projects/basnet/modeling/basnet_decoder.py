@@ -25,11 +25,9 @@ import tensorflow as tf
 from official.modeling import tf_utils
 from official.vision.beta.projects.basnet.modeling.layers import nn_blocks
 
-layers = tf.keras.layers
-
 # nf : num_filters, dr : dilation_rate
 # (conv1_nf, conv1_dr, convm_nf, convm_dr, conv2_nf, conv2_dr, scale_factor)
-BASNET_DE_SPECS = [
+BASNET_DECODER_SPECS = [
             (512, 2, 512, 2, 512, 2, 32),    #Bridge(Sup0)
             (512, 1, 512, 2, 512, 2, 32), #Sup1, stage6d
             (512, 1, 512, 1, 512, 1, 16), #Sup2, stage5d
@@ -40,7 +38,7 @@ BASNET_DE_SPECS = [
         ]
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
-class BASNet_De(tf.keras.Model):
+class BASNet_Decoder(tf.keras.Model):
   """BASNet Decoder."""
 
   def __init__(self,
@@ -107,11 +105,11 @@ class BASNet_De(tf.keras.Model):
 
     sup = {}
 
-    for i, spec in enumerate(BASNET_DE_SPECS):
+    for i, spec in enumerate(BASNET_DECODER_SPECS):
       if i == 0:
         x = inputs['5'] # Bridge input
       else:
-        x = layers.Concatenate(axis=-1)([x, inputs[str(6-i)]])
+        x = tf.keras.layers.Concatenate(axis=-1)([x, inputs[str(6-i)]])
 
       for j in range(3):
         x = nn_blocks.ConvBlock(
@@ -129,14 +127,14 @@ class BASNet_De(tf.keras.Model):
             norm_epsilon=0.001
             )(x)
 
-      output = layers.Conv2D(
+      output = tf.keras.layers.Conv2D(
           filters=1, kernel_size=3, strides=1,
           use_bias=use_bias, padding='same',
           kernel_initializer=kernel_initializer,
           kernel_regularizer=kernel_regularizer,
           bias_regularizer=bias_regularizer
           )(x)
-      output = layers.UpSampling2D(
+      output = tf.keras.layers.UpSampling2D(
           size=spec[6],
           interpolation='bilinear'
           )(output)
@@ -145,7 +143,7 @@ class BASNet_De(tf.keras.Model):
           )(output)
       sup[str(i+1)] = output
       if i != 0:
-        x = layers.UpSampling2D(
+        x = tf.keras.layers.UpSampling2D(
             size=2,
             interpolation='bilinear'
             )(x)
@@ -155,7 +153,7 @@ class BASNet_De(tf.keras.Model):
         for order in range(1, 7)
     }
 
-    super(BASNet_De, self).__init__(inputs=inputs, outputs=sup, **kwargs)
+    super(BASNet_Decoder, self).__init__(inputs=inputs, outputs=sup, **kwargs)
 
   def _build_input_pyramid(self, input_specs):
     assert isinstance(input_specs, dict)

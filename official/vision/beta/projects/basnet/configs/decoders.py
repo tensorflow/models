@@ -29,8 +29,8 @@ class Identity(hyperparams.Config):
 
 
 @dataclasses.dataclass
-class BASNet_De(hyperparams.Config):
-  """BASNet_De config."""
+class BASNet_Decoder(hyperparams.Config):
+  """BASNet_Decoder config."""
   use_separable_conv: bool = False
 
 @dataclasses.dataclass
@@ -39,7 +39,7 @@ class Decoder(hyperparams.OneOfConfig):
 
   Attributes:
     type: 'str', type of decoder be used, on the of fields below.
-    basnet_de: BASNet decoder config.
+    basnet_decoder: BASNet decoder config.
   """
   type: Optional[str] = None
-  basnet_de: BASNet_De = BASNet_De()
+  basnet_decoder: BASNet_Decoder = BASNet_Decoder()

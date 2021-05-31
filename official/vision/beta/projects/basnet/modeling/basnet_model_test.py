@@ -19,20 +19,17 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.projects.basnet.modeling import backbones
+from official.vision.beta.projects.basnet.modeling import basnet_encoder
 from official.vision.beta.projects.basnet.modeling import basnet_model
-from official.vision.beta.projects.basnet.modeling.decoders import basnet_de
-from official.vision.beta.projects.basnet.modeling.modules import refunet
+from official.vision.beta.projects.basnet.modeling import basnet_decoder
+from official.vision.beta.projects.basnet.modeling import refunet
+
 
 
 class BASNetNetworkTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
       (256),
-      (256),
-      (256),
-      (512),
-      (512),
       (512),
   )
   def test_basnet_network_creation(
@@ -41,8 +38,8 @@ class BASNetNetworkTest(parameterized.TestCase, tf.test.TestCase):
     inputs = np.random.rand(2, input_size, input_size, 3)
     tf.keras.backend.set_image_data_format('channels_last')
 
-    backbone = backbones.BASNet_En()
-    decoder = basnet_de.BASNet_De(
+    backbone = basnet_encoder.BASNet_Encoder()
+    decoder = basnet_decoder.BASNet_Decoder(
         input_specs=backbone.output_specs)
     refinement = refunet.RefUnet()
 
@@ -53,15 +50,15 @@ class BASNetNetworkTest(parameterized.TestCase, tf.test.TestCase):
     )
 
     sigmoids = model(inputs)
-    print(sigmoids['ref'].numpy().shape)
+    #print(sigmoids['ref'].numpy().shape)
     self.assertAllEqual(
         [2, input_size, input_size, 1],
         sigmoids['ref'].numpy().shape)
 
   def test_serialize_deserialize(self):
     """Validate the network can be serialized and deserialized."""
-    backbone = backbones.BASNet_En()
-    decoder = basnet_de.BASNet_De(
+    backbone = basnet_encoder.BASNet_Encoder()
+    decoder = basnet_decoder.BASNet_Decoder(
         input_specs=backbone.output_specs)
     refinement = refunet.RefUnet()
 
