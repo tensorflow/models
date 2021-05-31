@@ -22,8 +22,6 @@ from official.modeling import hyperparams
 from official.modeling import optimization
 from official.modeling.hyperparams import config_definitions as cfg
 from official.vision.beta.configs import common
-from official.vision.beta.projects.basnet.configs import backbones
-from official.vision.beta.projects.basnet.configs import decoders
 
 
 @dataclasses.dataclass
@@ -47,19 +45,14 @@ class DataConfig(cfg.DataConfig):
 @dataclasses.dataclass
 class BASNetModel(hyperparams.Config):
   """BASNet model config."""
-  num_classes: int = 0
   input_size: List[int] = dataclasses.field(default_factory=list)
-  backbone: backbones.Backbone = backbones.Backbone(
-      type='basnet_encoder', basnet_encoder=backbones.BASNet_Encoder())
-  decoder: decoders.Decoder = decoders.Decoder(type='basnet_decoder')
   norm_activation: common.NormActivation = common.NormActivation()
 
 
 @dataclasses.dataclass
 class Losses(hyperparams.Config):
   label_smoothing: float = 0.1
-  ignore_label: int = 111 # arbitrary number except 0, 255
-  class_weights: List[float] = dataclasses.field(default_factory=list)
+  ignore_label: int = 0 # set 0 (background)
   l2_weight_decay: float = 0.0
   use_groundtruth_dimension: bool = True
 
@@ -105,13 +98,7 @@ def basnet_duts() -> cfg.ExperimentConfig:
   config = cfg.ExperimentConfig(
       task=BASNetTask(
           model=BASNetModel(
-              input_size=[None, None, 3],   # Resize to 256, 256
-              backbone=backbones.Backbone(
-                  type='basnet_encoder', basnet_encoder=backbones.BASNet_Encoder(
-                      )),
-              decoder=decoders.Decoder(
-                  type='basnet_decoder', basnet_decoder=decoders.BASNet_Decoder(
-                      )),
+              input_size=[None, None, 3],
               norm_activation=common.NormActivation(
                   activation='relu',
                   norm_momentum=0.99,
@@ -131,8 +118,8 @@ def basnet_duts() -> cfg.ExperimentConfig:
               is_training=False,
               global_batch_size=eval_batch_size,
           ),
-          #init_checkpoint='',
-          #init_checkpoint_modules='backbone'
+          init_checkpoint='',
+          init_checkpoint_modules='backbone'
       ),
       trainer=cfg.TrainerConfig(
           steps_per_loop=steps_per_epoch,

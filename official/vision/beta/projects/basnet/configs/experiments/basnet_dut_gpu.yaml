@@ -3,11 +3,6 @@ runtime:
   mixed_precision_dtype: 'float32'
   num_gpus: 4
 task:
-  losses:
-    ignore_label: 0
-  model:
-    norm_activation:
-      activation: 'relu'
   init_checkpoint: ''
   init_checkpoint_modules: 'backbone'
   train_data:
