@@ -297,11 +297,38 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     return model(inputs, training=False)
 
   def aggregate_logs(self, state, step_logs):
-    """Optional aggregation over logs returned from a validation step."""
+    """Optional aggregation over logs returned from a validation step.
+
+    Given step_logs from a validation step, this function aggregates the logs
+    after each eval_step() (see eval_reduce() function in
+    official/core/base_trainer.py). It runs on CPU and can be used to aggregate
+    metrics during validation, when there are too many metrics that cannot fit
+    into TPU memory. Note that this may increase latency due to data transfer
+    between TPU and CPU. Also, the step output from a validation step may be a
+    tuple with elements from replicas, and a concatenation of the elements is
+    needed in such case.
+
+    Args:
+      state: The current state of training, for example, it can be a sequence of
+        metrics.
+      step_logs: Logs from a validation step. Can be a dictionary.
+    """
     pass
 
   def reduce_aggregated_logs(self,
                              aggregated_logs,
                              global_step: Optional[tf.Tensor] = None):
-    """Optional reduce of aggregated logs over validation steps."""
+    """Optional reduce of aggregated logs over validation steps.
+
+    This function reduces aggregated logs at the end of validation, and can be
+    used to compute the final metrics. It runs on CPU and in each eval_end() in
+    base trainer (see eval_end() function in official/core/base_trainer.py).
+
+    Args:
+      aggregated_logs: Aggregated logs over multiple validation steps.
+      global_step: An optional variable of global step.
+
+    Returns:
+      A dictionary of reduced results.
+    """
     return {}
