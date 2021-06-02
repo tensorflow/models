@@ -66,8 +66,8 @@ flags.DEFINE_integer('test_freq', 5,
                      'Run test evaluation every N epochs.')
 flags.DEFINE_list('multiscale', [1.],
                   'Use multiscale vectors for testing, ' +
-                  ' examples: \'[1]\' | \'[1, 1/2**(1/2), 1/2]\' | \'['
-                  '1, 2**(1/2), 1/2**(1/2)]\'.')
+                  ' examples: 1 | 1,1/2**(1/2),1/2 | 1,2**(1/2),1/2**(1/2)]. '
+                  'Pass as a string of comma separated values.')
 
 # Network architecture and initialization options.
 flags.DEFINE_enum('arch', 'ResNet101', _MODEL_NAMES,
@@ -94,7 +94,7 @@ flags.DEFINE_integer('query_size', 2000,
 flags.DEFINE_integer('pool_size', 20000,
                      'Size of the pool for hard negative mining.')
 
-# Standard train/val options.
+# Standard training/validation options.
 flags.DEFINE_string('gpu_id', '0', 'GPU id used for training.')
 flags.DEFINE_integer('epochs', 100, 'Number of total epochs to run.')
 flags.DEFINE_integer('batch_size', 5,
@@ -181,6 +181,8 @@ def main(argv):
     raise ValueError('Loss {} not available.'.format(FLAGS.loss))
 
   # Defining parameters for the training.
+  # When pre-computing whitening, we run evaluation before the network training
+  # and the `start_epoch` is set to 0. In other cases, we start from epoch 1.
   start_epoch = 1
   exp_decay = math.exp(-0.01)
   decay_steps = FLAGS.query_size / FLAGS.batch_size
@@ -262,10 +264,12 @@ def main(argv):
     # Precompute whitening if needed.
     if FLAGS.precompute_whitening is not None:
       epoch = 0
-      train_utils.test(FLAGS.test_datasets, model, writer=writer, epoch=epoch,
-                       model_directory=model_directory,
-                       precompute_whitening=FLAGS.precompute_whitening,
-                       data_root=FLAGS.data_root, multiscale=FLAGS.multiscale)
+      train_utils.test_retrieval(
+              FLAGS.test_datasets, model, writer=writer,
+              epoch=epoch, model_directory=model_directory,
+              precompute_whitening=FLAGS.precompute_whitening,
+              data_root=FLAGS.data_root,
+              multiscale=FLAGS.multiscale)
 
     for epoch in range(start_epoch, FLAGS.epochs + 1):
       # Set manual seeds per epoch.
@@ -286,7 +290,7 @@ def main(argv):
               _train_gen,
               output_types=tuple(train_dataset_output_types))
 
-      loss = train_utils.train_val(
+      loss = train_utils.train_val_one_epoch(
               loader=iter(train_loader), model=model,
               criterion=criterion, optimizer=optimizer, epoch=epoch,
               batch_size=FLAGS.batch_size, query_size=FLAGS.query_size,
@@ -310,7 +314,7 @@ def main(argv):
         val_loader = tf.data.Dataset.from_generator(
                 _val_gen, output_types=tuple(train_dataset_output_types))
 
-        loss = train_utils.train_val(
+        loss = train_utils.train_val_one_epoch(
                 loader=iter(val_loader), model=model,
                 criterion=criterion, optimizer=None,
                 epoch=epoch, train=False, batch_size=FLAGS.batch_size,
@@ -321,10 +325,11 @@ def main(argv):
 
       # Evaluate on test datasets every test_freq epochs.
       if epoch == 1 or epoch % FLAGS.test_freq == 0:
-        train_utils.test(FLAGS.test_datasets, model, writer=writer, epoch=epoch,
-                         model_directory=model_directory,
-                         precompute_whitening=FLAGS.precompute_whitening,
-                         data_root=FLAGS.data_root, multiscale=FLAGS.multiscale)
+        train_utils.test_retrieval(
+                FLAGS.test_datasets, model, writer=writer, epoch=epoch,
+                model_directory=model_directory,
+                precompute_whitening=FLAGS.precompute_whitening,
+                data_root=FLAGS.data_root, multiscale=FLAGS.multiscale)
 
       # Saving checkpoints and model weights.
       try:

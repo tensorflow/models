@@ -29,7 +29,7 @@ from delf.python.training import global_features_utils
 from delf.python.training.model import global_model
 
 
-def grad(criterion, model, input, target, neg_num=5):
+def _compute_loss_and_gradient(criterion, model, input, target, neg_num=5):
   """Records gradients and loss through the network.
 
   Args:
@@ -45,16 +45,16 @@ def grad(criterion, model, input, target, neg_num=5):
   """
   # Record gradients and loss through the network.
   with tf.GradientTape() as tape:
-    output = tf.Variable(
+    descriptors = tf.Variable(
             tf.zeros(shape=(0, model.meta['outputdim']), dtype=tf.float32))
     for img in input:
       # Compute descriptor vector for each image.
       o = model(tf.expand_dims(img, axis=0), training=True)
-      output = tf.concat([output, o], 0)
+      descriptors = tf.concat([descriptors, o], 0)
 
-    queries = tf.boolean_mask(output, target == -1, axis=0)
-    positives = tf.boolean_mask(output, target == 1, axis=0)
-    negatives = tf.boolean_mask(output, target == 0, axis=0)
+    queries = tf.boolean_mask(descriptors, target == -1, axis=0)
+    positives = tf.boolean_mask(descriptors, target == 1, axis=0)
+    negatives = tf.boolean_mask(descriptors, target == 0, axis=0)
     negatives = tf.reshape(negatives, [tf.shape(queries)[0], neg_num,
                                        model.meta['outputdim']])
     # Loss calculation.
@@ -63,9 +63,10 @@ def grad(criterion, model, input, target, neg_num=5):
   return loss, tape.gradient(loss, model.trainable_variables)
 
 
-def train_val(loader, model, criterion, optimizer, epoch, train=True,
-              batch_size=5, query_size=2000, neg_num=5, update_every=1,
-              debug=False):
+def train_val_one_epoch(loader, model, criterion, optimizer, epoch, train=True,
+                        batch_size=5, query_size=2000, neg_num=5,
+                        update_every=1,
+                        debug=False):
   """Executes either training or validation step based on `train` value.
 
   Args:
@@ -111,7 +112,7 @@ def train_val(loader, model, criterion, optimizer, epoch, train=True,
     if train:
       try:
         # Train on one batch.
-        # We load batches into memory consequently.
+        # Each image in the batch is loaded into memory consecutively.
         for _ in range(batch_size):
           # Because the images are not necessarily of the same size, we can't
           # set the batch size with .batch().
@@ -119,15 +120,14 @@ def train_val(loader, model, criterion, optimizer, epoch, train=True,
           input_tuple = batch[0:-1]
           target_tuple = batch[-1]
 
-          loss_value, grads = grad(criterion, model, input_tuple,
-                                   target_tuple, neg_num)
+          loss_value, grads = _compute_loss_and_gradient(
+                  criterion, model, input_tuple, target_tuple, neg_num)
           losses.update(loss_value)
-          # Adds to each element from the list you initialized earlier
-          # with zeros its gradient (works because accum_vars and gvs
-          # are in the same order).
+          # Accumulate gradients.
           accum_grads = [accum_grads[i].assign_add(gv) for i, gv in
                          enumerate(grads)]
 
+        # Perform weight update if required.
         if (batch_num + 1) % update_every == 0 or (
                 batch_num + 1) == all_batch_num:
           # Do one step for multiple batches. Accumulated gradients are
@@ -157,19 +157,19 @@ def train_val(loader, model, criterion, optimizer, epoch, train=True,
         global_features_utils.debug_and_log(ex)
         break
 
-      output = tf.zeros(shape=(0, model.meta['outputdim']), dtype=tf.float32)
+      descriptors = tf.zeros(shape=(0, model.meta['outputdim']), dtype=tf.float32)
       for input_tuple in input:
         for img in input_tuple:
           # Compute the global descriptor vector.
           model_out = model(tf.expand_dims(img, axis=0), training=False)
-          output = tf.concat([output, model_out], 0)
+          descriptors = tf.concat([descriptors, model_out], 0)
 
       # No need to reduce memory consumption (no backward pass):
       # Compute loss for the full batch.
       tmp_target = tf.concat(target, axis=0)
-      queries = tf.boolean_mask(output, tmp_target == -1, axis=0)
-      positives = tf.boolean_mask(output, tmp_target == 1, axis=0)
-      negatives = tf.boolean_mask(output, tmp_target == 0, axis=0)
+      queries = tf.boolean_mask(descriptors, tmp_target == -1, axis=0)
+      positives = tf.boolean_mask(descriptors, tmp_target == 1, axis=0)
+      negatives = tf.boolean_mask(descriptors, tmp_target == 0, axis=0)
       negatives = tf.reshape(negatives, [tf.shape(queries)[0], neg_num,
                                          model.meta['outputdim']])
       loss = criterion(queries, positives, negatives)
@@ -200,8 +200,9 @@ def train_val(loader, model, criterion, optimizer, epoch, train=True,
   return losses.avg
 
 
-def test(datasets, net, epoch, writer=None, model_directory=None,
-         precompute_whitening=None, data_root='data', multiscale=[1.]):
+def test_retrieval(datasets, net, epoch, writer=None, model_directory=None,
+         precompute_whitening=None, data_root='data', multiscale=[1.],
+         test_image_size=1024):
   """Testing step.
 
   Evaluates the network on the provided test datasets by computing single-scale
@@ -216,16 +217,15 @@ def test(datasets, net, epoch, writer=None, model_directory=None,
     writer: Tensorboard writer.
     model_directory: String, path to the model directory.
     precompute_whitening: Dataset used to learn whitening. If no
-      precomputation required, then `None`.
+      precomputation required, then `None`. Only 'retrieval-SfM-30k' and
+      'retrieval-SfM-120k' datasets are supported for whitening pre-computation.
     data_root: Absolute path to the data folder.
     multiscale: List of scales for multiscale testing.
+    test_image_size: Integer, maximum size of the test images.
   """
   global_features_utils.debug_and_log(">> Testing step:")
   global_features_utils.debug_and_log(
           '>> Evaluating network on test datasets...')
-
-  # For testing we use image size of max 1024.
-  image_size = 1024
 
   # Precompute whitening.
   if precompute_whitening is not None:
@@ -238,7 +238,7 @@ def test(datasets, net, epoch, writer=None, model_directory=None,
             'learned_whitening_layer_config_{}_epoch.pkl'.format(
                     epoch))
 
-    if os.path.isfile(filename):
+    if tf.io.gfile.exists(filename):
       global_features_utils.debug_and_log(
               '>> {}: Whitening for this epoch is already precomputed. '
               'Loading...'.format(precompute_whitening))
@@ -253,9 +253,9 @@ def test(datasets, net, epoch, writer=None, model_directory=None,
       # Loading db.
       db_root = os.path.join(data_root, 'train', precompute_whitening)
       ims_root = os.path.join(db_root, 'ims')
-      db_fn = os.path.join(db_root,
+      db_filename = os.path.join(db_root,
                            '{}-whiten.pkl'.format(precompute_whitening))
-      with tf.io.gfile.GFile(db_fn, 'rb') as f:
+      with tf.io.gfile.GFile(db_filename, 'rb') as f:
         db = pickle.load(f)
       images = [sfm120k.id2filename(db['cids'][i], ims_root) for i in
                 range(len(db['cids']))]
@@ -264,7 +264,7 @@ def test(datasets, net, epoch, writer=None, model_directory=None,
       global_features_utils.debug_and_log(
               '>> {}: Extracting...'.format(precompute_whitening))
       wvecs = global_model.extract_global_descriptors_from_list(net, images,
-                                                                image_size)
+                                                                test_image_size)
 
       # Learning whitening.
       global_features_utils.debug_and_log(
@@ -312,11 +312,11 @@ def test(datasets, net, epoch, writer=None, model_directory=None,
     global_features_utils.debug_and_log(
             '>> {}: Extracting database images...'.format(dataset))
     vecs = global_model.extract_global_descriptors_from_list(
-            net, images, image_size, ms=multiscale)
+            net, images, test_image_size, ms=multiscale)
     global_features_utils.debug_and_log(
             '>> {}: Extracting query images...'.format(dataset))
     qvecs = global_model.extract_global_descriptors_from_list(
-            net, qimages, image_size, bounding_boxes,
+            net, qimages, test_image_size, bounding_boxes,
             ms=multiscale)
 
     global_features_utils.debug_and_log('>> {}: Evaluating...'.format(dataset))
