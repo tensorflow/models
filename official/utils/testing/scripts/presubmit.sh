@@ -31,8 +31,8 @@ py_test() {
   local exit_code=0
 
   echo "===========Running Python test============"
-
-  for test_file in `find official/ -name '*test.py' -print`
+  # Skipping Ranking tests, TODO(b/189265753) remove it once the issue is fixed.
+  for test_file in `find official/ -name '*test.py' -print | grep -v 'official/recommendation/ranking'`
   do
     echo "####=======Testing ${test_file}=======####"
     ${PY_BINARY} "${test_file}"
