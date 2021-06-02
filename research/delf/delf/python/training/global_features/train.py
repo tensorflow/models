@@ -25,6 +25,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
 
+from delf.python.datasets.sfm120k import dataset_download
 from delf.python.datasets.sfm120k import sfm120k
 from delf.python.training import global_features_utils
 from delf.python.training import tensorboard_utils
@@ -133,7 +134,7 @@ def main(argv):
               'the DELG instructions.'.format(dataset, FLAGS.data_root))
 
   # Check if train dataset is downloaded and download it if not found.
-  sfm120k.download_train(FLAGS.data_root)
+  dataset_download.download_train(FLAGS.data_root)
 
   # Creating model export directory if it does not exist.
   model_directory = global_features_utils.create_model_directory(
