@@ -23,7 +23,8 @@ from delf.python.datasets import utils
 class ImagesFromList():
   """A generic data loader that loads images from a list.
 
-  Supports images of different sizes."""
+  Supports images of different sizes.
+  """
 
   def __init__(self, root, image_paths, imsize=None, bounding_boxes=None,
                loader=utils.default_loader):
@@ -49,7 +50,7 @@ class ImagesFromList():
     self.root = root
     self.images = image_paths
     self.imsize = imsize
-    self.images_fn = images_filenames
+    self.images_filenames = images_filenames
     self.bounding_boxes = bounding_boxes
     self.loader = loader
 
@@ -62,7 +63,7 @@ class ImagesFromList():
     Returns:
         image: Tensor, loaded image.
     """
-    path = self.images_fn[index]
+    path = self.images_filenames[index]
 
     if self.bounding_boxes is not None:
       img = self.loader(path, self.imsize, self.bounding_boxes[index])
@@ -77,4 +78,4 @@ class ImagesFromList():
     Returns:
       len: Number of images in the dataset.
     """
-    return len(self.images_fn)
+    return len(self.images_filenames)

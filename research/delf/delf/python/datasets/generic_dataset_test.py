@@ -39,7 +39,7 @@ class GenericDatasetTest(tf.test.TestCase):
     """Tests loading dummy images from list."""
     # Number of images to be created.
     n = 2
-    image_paths = []
+    image_names = []
 
     # Create and save `n` dummy images.
     for i in range(n):
@@ -48,13 +48,12 @@ class GenericDatasetTest(tf.test.TestCase):
       filename = os.path.join(FLAGS.test_tmpdir,
                               'test_image_{}.jpg'.format(i))
       img_out.save(filename)
-      image_paths.append(filename)
+      image_names.append('test_image_{}.jpg'.format(i))
 
-    data = generic_dataset.ImagesFromList(root='',
-                                          image_paths=image_paths,
+    data = generic_dataset.ImagesFromList(root=FLAGS.test_tmpdir,
+                                          image_paths=image_names,
                                           imsize=1024)
-    expected_len = len(image_paths)
-    self.assertLen(data, expected_len)
+    self.assertLen(data, n)
 
 
 if __name__ == '__main__':
