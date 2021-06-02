@@ -42,7 +42,7 @@ class TuplesDatasetTest(tf.test.TestCase):
     name = 'test_dataset'
     qsize = 1
     poolsize = 5
-    nnum = 2
+    num_negatives = 2
     # Create a ground truth .pkl file.
     gnd = {
       'train': {'ids': [str(i) + '.png' for i in range(2 * qsize + poolsize)],
@@ -65,7 +65,7 @@ class TuplesDatasetTest(tf.test.TestCase):
       data_root=FLAGS.test_tmpdir,
       mode='train',
       imsize=1024,
-      nnum=nnum,
+      num_negatives=num_negatives,
       qsize=qsize,
       poolsize=poolsize
     )
@@ -82,7 +82,7 @@ class TuplesDatasetTest(tf.test.TestCase):
 
     # Check that an appropriate number of negative images has been chosen per
     # query.
-    self.assertAllEqual(tf.shape(dataset._nidxs), [qsize, nnum])
+    self.assertAllEqual(tf.shape(dataset._nidxs), [qsize, num_negatives])
 
 
   def testExtractDescriptorsFromImagePaths(self):

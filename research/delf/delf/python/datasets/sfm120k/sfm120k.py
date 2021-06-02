@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Structure-from-Motion dataset (Sfm120k).
+"""Structure-from-Motion dataset (Sfm120k) module.
 
 [1] From Single Image Query to Detailed 3D Reconstruction.
 Johannes L. Schonberger, Filip Radenovic, Ondrej Chum, Jan-Michael Frahm.
@@ -56,7 +56,7 @@ class _Sfm120k(tuples_dataset.TuplesDataset):
   on the fly to the desired dimensionality.
   """
 
-  def __init__(self, mode, data_root, imsize=None, nnum=5, qsize=2000,
+  def __init__(self, mode, data_root, imsize=None, num_negatives=5, qsize=2000,
                poolsize=20000, loader=utils.default_loader, eccv2020=False):
     """Structure-from-Motion (Sfm120k) dataset initialization.
 
@@ -64,7 +64,7 @@ class _Sfm120k(tuples_dataset.TuplesDataset):
       mode: Either 'train' or 'val'.
       data_root: Path to the root directory of the dataset.
       imsize: Integer, defines the maximum size of longer image side.
-      nnum: Integer, number of negative images per one query.
+      num_negatives: Integer, number of negative images per one query.
       qsize: Integer, number of query images.
       poolsize: Integer, size of the negative image pool, from where the
         hard-negative images are chosen.
@@ -99,7 +99,8 @@ class _Sfm120k(tuples_dataset.TuplesDataset):
                    img_name in db['cids']]
 
     # Initializing tuples dataset.
-    super().__init__(name, mode, db_root, imsize, nnum, qsize, poolsize,
+    super().__init__(name, mode, db_root, imsize, num_negatives, qsize,
+                     poolsize,
                      loader, ims_root)
 
   def Sfm120kInfo(self):
@@ -118,16 +119,15 @@ class _Sfm120k(tuples_dataset.TuplesDataset):
     return info
 
 
-def CreateDataset(mode, data_root, imsize=None, nnum=5, qsize=2000,
-                  poolsize=20000, loader=utils.default_loader,
-                  eccv2020=False):
+def CreateDataset(mode, data_root, imsize=None, num_negatives=5, qsize=2000,
+                  poolsize=20000, loader=utils.default_loader, eccv2020=False):
   '''Creates Structure-from-Motion (Sfm120k) dataset.
 
   Args:
     mode: String, either 'train' or 'val'.
     data_root: Path to the root directory of the dataset.
     imsize: Integer, defines the maximum size of longer image side.
-    nnum: Integer, number of negative images per one query.
+    num_negatives: Integer, number of negative images per one query.
     qsize: Integer, number of query images.
     poolsize: Integer, size of the negative image pool, from where the
       hard-negative images are chosen.
@@ -138,5 +138,5 @@ def CreateDataset(mode, data_root, imsize=None, nnum=5, qsize=2000,
   Returns:
     sfm120k: Sfm120k dataset instance.
   '''
-  return _Sfm120k(mode, data_root, imsize, nnum, qsize, poolsize, loader,
-                  eccv2020)
+  return _Sfm120k(mode, data_root, imsize, num_negatives, qsize, poolsize,
+                  loader, eccv2020)

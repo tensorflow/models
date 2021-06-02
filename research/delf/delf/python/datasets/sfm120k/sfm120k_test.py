@@ -25,9 +25,9 @@ class Sfm120kTest(tf.test.TestCase):
 
   def testId2Filename(self):
     """Tests conversion of image id to full path mapping."""
-    id = "29fdc243aeb939388cfdf2d081dc080e"
+    image_id = "29fdc243aeb939388cfdf2d081dc080e"
     prefix = "train/retrieval-SfM-120k/ims/"
-    path = sfm120k.id2filename(id, prefix)
+    path = sfm120k.id2filename(image_id, prefix)
     expected_path = "train/retrieval-SfM-120k/ims/0e/08/dc" \
                     "/29fdc243aeb939388cfdf2d081dc080e"
     self.assertEqual(path, expected_path)

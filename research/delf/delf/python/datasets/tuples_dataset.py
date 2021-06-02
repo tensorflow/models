@@ -13,17 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tuple dataset based on the Radenovic et al. ECCV16: CNN image retrieval
-learns from BoW.
+"""Tuple dataset module.
 
+Based on the Radenovic et al. ECCV16: CNN image retrieval learns from BoW.
 For more information refer to https://arxiv.org/abs/1604.02426.
 """
 
 import os
 import pickle
 
-from absl import flags
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
@@ -31,20 +29,21 @@ from delf.python.datasets import generic_dataset
 from delf.python.datasets import utils as image_loading_utils
 from delf.python.training import global_features_utils
 
-FLAGS = flags.FLAGS
-
 
 class TuplesDataset():
   """Data loader that loads training and validation tuples.
 
+  After initialization, the function create_epoch_tuples() should be called to
+  create the dataset tuples. After that, the dataset can be iterated through
+  using next() function.
   Tuples are based on Radenovic et al. ECCV16 work: CNN image retrieval
   learns from BoW. For more information refer to
   https://arxiv.org/abs/1604.02426.
   """
 
-  def __init__(self, name, mode, data_root, imsize=None, nnum=5, qsize=2000,
-               poolsize=20000, loader=image_loading_utils.default_loader,
-               ims_root=None):
+  def __init__(self, name, mode, data_root, imsize=None, num_negatives=5,
+               qsize=2000, poolsize=20000,
+               loader=image_loading_utils.default_loader, ims_root=None):
     """TuplesDataset object initialization.
 
     Args:
@@ -52,12 +51,13 @@ class TuplesDataset():
       mode: 'train' or 'val' for training and validation parts of dataset.
       data_root: Path to the root directory of the dataset.
       imsize: Integer, defines the maximum size of longer image side transform.
-      nnum: Integer, number of negative images for a query image in a
+      num_negatives: Integer, number of negative images for a query image in a
         training tuple.
       qsize: Integer, number of query images to be processed in one epoch.
       poolsize: Integer, size of the negative image pool, from where the
         hard-negative images are re-mined.
       loader: Callable, a function to load an image given its path.
+      ims_root: String, image root directory.
 
     Raises:
       ValueError: If mode is not either 'train' or 'val'.
@@ -86,7 +86,7 @@ class TuplesDataset():
       self.images = db['ids']
 
     # Size of training subset for an epoch.
-    self._nnum = nnum
+    self._num_negatives = num_negatives
     self._qsize = min(qsize, len(self._qpool))
     self._poolsize = min(poolsize, len(self.images))
     self._qidxs = None
@@ -167,7 +167,7 @@ class TuplesDataset():
               self._img_names_to_full_path(self.images[nidx]),
               self._imsize))
     # Labels for the query (-1), positive (1), negative (0) images in the tuple.
-    target = tf.convert_to_tensor([-1, 1] + [0] * self._nnum)
+    target = tf.convert_to_tensor([-1, 1] + [0] * self._num_negatives)
     output.append(target)
 
     return tuple(output)
@@ -192,7 +192,8 @@ class TuplesDataset():
     fmt_str += '\tName and mode: {} {}\n'.format(self._name, self._mode)
     fmt_str += '\tNumber of images: {}\n'.format(len(self.images))
     fmt_str += '\tNumber of training tuples: {}\n'.format(len(self._qpool))
-    fmt_str += '\tNumber of negatives per tuple: {}\n'.format(self._nnum)
+    fmt_str += '\tNumber of negatives per tuple: {}\n'.format(
+            self._num_negatives)
     fmt_str += '\tNumber of tuples processed in an epoch: {}\n'.format(
             self._qsize)
     fmt_str += '\tPool size for negative remining: {}\n'.format(self._poolsize)
@@ -236,9 +237,9 @@ class TuplesDataset():
     self._pidxs = [self._ppool[i] for i in idxs2qpool]
 
     ## Selecting negative pairs.
-    # If nnum = 0 create dummy nidxs.
+    # If num_negatives = 0 create dummy nidxs.
     # Useful when only positives used for training.
-    if self._nnum == 0:
+    if self._num_negatives == 0:
       self._nidxs = [[] for _ in range(len(self._qidxs))]
       return 0
 
@@ -290,7 +291,7 @@ class TuplesDataset():
       nidxs = []
       r = 0
 
-      while len(nidxs) < self._nnum:
+      while len(nidxs) < self._num_negatives:
         potential = idxs2images[ranks[r, q]]
         # Take at most one image from the same cluster.
         if not self._clusters[potential] in clusters:
@@ -307,12 +308,6 @@ class TuplesDataset():
     global_features_utils.debug_and_log(
             '>> Average negative l2-distance: {:.2f}'.format(
                     avg_ndist / n_ndist))
-
-    # Save the obtained descriptors to a file.
-    filename_dataset_descriptors = os.path.join(FLAGS.directory,
-                                                "data_descriptors.pkl")
-    with tf.io.gfile.GFile(filename_dataset_descriptors, 'wb') as desc_file:
-      pickle.dump({"qvecs": qvecs, "poolvecs": poolvecs}, desc_file)
 
     # Return average negative L2-distance.
     return avg_ndist / n_ndist
