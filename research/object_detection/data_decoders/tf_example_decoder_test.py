@@ -1225,6 +1225,9 @@ class TfExampleDecoderTest(test_case.TestCase):
     self.assertAllEqual(
         instance_masks.astype(np.float32),
         tensor_dict[fields.InputDataFields.groundtruth_instance_masks])
+    self.assertAllEqual(
+        tensor_dict[fields.InputDataFields.groundtruth_instance_mask_weights],
+        [1, 1, 1, 1])
     self.assertAllEqual(object_classes,
                         tensor_dict[fields.InputDataFields.groundtruth_classes])
 
@@ -1271,6 +1274,71 @@ class TfExampleDecoderTest(test_case.TestCase):
     tensor_dict = self.execute_cpu(graph_fn, [])
     self.assertNotIn(fields.InputDataFields.groundtruth_instance_masks,
                      tensor_dict)
+
+  def testDecodeInstanceSegmentationWithWeights(self):
+    num_instances = 4
+    image_height = 5
+    image_width = 3
+
+    # Randomly generate image.
+    image_tensor = np.random.randint(
+        256, size=(image_height, image_width, 3)).astype(np.uint8)
+    encoded_jpeg, _ = self._create_encoded_and_decoded_data(
+        image_tensor, 'jpeg')
+
+    # Randomly generate instance segmentation masks.
+    instance_masks = (
+        np.random.randint(2, size=(num_instances, image_height,
+                                   image_width)).astype(np.float32))
+    instance_masks_flattened = np.reshape(instance_masks, [-1])
+    instance_mask_weights = np.array([1, 1, 0, 1], dtype=np.float32)
+
+    # Randomly generate class labels for each instance.
+    object_classes = np.random.randint(
+        100, size=(num_instances)).astype(np.int64)
+
+    def graph_fn():
+      example = tf.train.Example(
+          features=tf.train.Features(
+              feature={
+                  'image/encoded':
+                      dataset_util.bytes_feature(encoded_jpeg),
+                  'image/format':
+                      dataset_util.bytes_feature(six.b('jpeg')),
+                  'image/height':
+                      dataset_util.int64_feature(image_height),
+                  'image/width':
+                      dataset_util.int64_feature(image_width),
+                  'image/object/mask':
+                      dataset_util.float_list_feature(instance_masks_flattened),
+                  'image/object/mask/weight':
+                      dataset_util.float_list_feature(instance_mask_weights),
+                  'image/object/class/label':
+                      dataset_util.int64_list_feature(object_classes)
+              })).SerializeToString()
+      example_decoder = tf_example_decoder.TfExampleDecoder(
+          load_instance_masks=True)
+      output = example_decoder.decode(tf.convert_to_tensor(example))
+
+      self.assertAllEqual(
+          (output[fields.InputDataFields.groundtruth_instance_masks].get_shape(
+          ).as_list()), [4, 5, 3])
+      self.assertAllEqual(
+          output[fields.InputDataFields.groundtruth_instance_mask_weights],
+          [1, 1, 0, 1])
+
+      self.assertAllEqual((output[
+          fields.InputDataFields.groundtruth_classes].get_shape().as_list()),
+                          [4])
+      return output
+
+    tensor_dict = self.execute_cpu(graph_fn, [])
+
+    self.assertAllEqual(
+        instance_masks.astype(np.float32),
+        tensor_dict[fields.InputDataFields.groundtruth_instance_masks])
+    self.assertAllEqual(object_classes,
+                        tensor_dict[fields.InputDataFields.groundtruth_classes])
 
   def testDecodeImageLabels(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)

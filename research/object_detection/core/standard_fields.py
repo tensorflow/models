@@ -64,6 +64,7 @@ class InputDataFields(object):
     proposal_boxes: coordinates of object proposal boxes.
     proposal_objectness: objectness score of each proposal.
     groundtruth_instance_masks: ground truth instance masks.
+    groundtruth_instance_mask_weights: ground truth instance masks weights.
     groundtruth_instance_boundaries: ground truth instance boundaries.
     groundtruth_instance_classes: instance mask-level class labels.
     groundtruth_keypoints: ground truth keypoints.
@@ -122,6 +123,7 @@ class InputDataFields(object):
   proposal_boxes = 'proposal_boxes'
   proposal_objectness = 'proposal_objectness'
   groundtruth_instance_masks = 'groundtruth_instance_masks'
+  groundtruth_instance_mask_weights = 'groundtruth_instance_mask_weights'
   groundtruth_instance_boundaries = 'groundtruth_instance_boundaries'
   groundtruth_instance_classes = 'groundtruth_instance_classes'
   groundtruth_keypoints = 'groundtruth_keypoints'

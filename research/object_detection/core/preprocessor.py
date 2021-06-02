@@ -1414,6 +1414,7 @@ def _strict_random_crop_image(image,
                               label_confidences=None,
                               multiclass_scores=None,
                               masks=None,
+                              mask_weights=None,
                               keypoints=None,
                               keypoint_visibilities=None,
                               densepose_num_points=None,
@@ -1451,6 +1452,8 @@ def _strict_random_crop_image(image,
     masks: (optional) rank 3 float32 tensor with shape
            [num_instances, height, width] containing instance masks. The masks
            are of the same height, width as the input `image`.
+    mask_weights: (optional) rank 1 float32 tensor with shape [num_instances]
+                  with instance masks weights.
     keypoints: (optional) rank 3 float32 tensor with shape
                [num_instances, num_keypoints, 2]. The keypoints are in y-x
                normalized coordinates.
@@ -1488,7 +1491,7 @@ def _strict_random_crop_image(image,
            Boxes are in normalized form.
     labels: new labels.
 
-    If label_weights, multiclass_scores, masks, keypoints,
+    If label_weights, multiclass_scores, masks, mask_weights, keypoints,
     keypoint_visibilities, densepose_num_points, densepose_part_ids, or
     densepose_surface_coords is not None, the function also returns:
     label_weights: rank 1 float32 tensor with shape [num_instances].
@@ -1496,6 +1499,8 @@ def _strict_random_crop_image(image,
                        [num_instances, num_classes]
     masks: rank 3 float32 tensor with shape [num_instances, height, width]
            containing instance masks.
+    mask_weights: rank 1 float32 tensor with shape [num_instances] with mask
+                  weights.
     keypoints: rank 3 float32 tensor with shape
                [num_instances, num_keypoints, 2]
     keypoint_visibilities: rank 2 bool tensor with shape
@@ -1605,6 +1610,12 @@ def _strict_random_crop_image(image,
           0]:im_box_end[0], im_box_begin[1]:im_box_end[1]]
       result.append(new_masks)
 
+    if mask_weights is not None:
+      mask_weights_inside_window = tf.gather(mask_weights, inside_window_ids)
+      mask_weights_completely_inside_window = tf.gather(
+          mask_weights_inside_window, keep_ids)
+      result.append(mask_weights_completely_inside_window)
+
     if keypoints is not None:
       keypoints_of_boxes_inside_window = tf.gather(keypoints, inside_window_ids)
       keypoints_of_boxes_completely_inside_window = tf.gather(
@@ -1654,6 +1665,7 @@ def random_crop_image(image,
                       label_confidences=None,
                       multiclass_scores=None,
                       masks=None,
+                      mask_weights=None,
                       keypoints=None,
                       keypoint_visibilities=None,
                       densepose_num_points=None,
@@ -1701,6 +1713,8 @@ def random_crop_image(image,
     masks: (optional) rank 3 float32 tensor with shape
            [num_instances, height, width] containing instance masks. The masks
            are of the same height, width as the input `image`.
+    mask_weights: (optional) rank 1 float32 tensor with shape [num_instances]
+                  containing weights for each instance mask.
     keypoints: (optional) rank 3 float32 tensor with shape
                [num_instances, num_keypoints, 2]. The keypoints are in y-x
                normalized coordinates.
@@ -1751,6 +1765,7 @@ def random_crop_image(image,
                        [num_instances, num_classes]
     masks: rank 3 float32 tensor with shape [num_instances, height, width]
            containing instance masks.
+    mask_weights: rank 1 float32 tensor with shape [num_instances].
     keypoints: rank 3 float32 tensor with shape
                [num_instances, num_keypoints, 2]
     keypoint_visibilities: rank 2 bool tensor with shape
@@ -1771,6 +1786,7 @@ def random_crop_image(image,
         label_confidences=label_confidences,
         multiclass_scores=multiclass_scores,
         masks=masks,
+        mask_weights=mask_weights,
         keypoints=keypoints,
         keypoint_visibilities=keypoint_visibilities,
         densepose_num_points=densepose_num_points,
@@ -1803,6 +1819,8 @@ def random_crop_image(image,
       outputs.append(multiclass_scores)
     if masks is not None:
       outputs.append(masks)
+    if mask_weights is not None:
+      outputs.append(mask_weights)
     if keypoints is not None:
       outputs.append(keypoints)
     if keypoint_visibilities is not None:
@@ -4388,6 +4406,7 @@ def get_default_func_arg_map(include_label_weights=True,
                              include_label_confidences=False,
                              include_multiclass_scores=False,
                              include_instance_masks=False,
+                             include_instance_mask_weights=False,
                              include_keypoints=False,
                              include_keypoint_visibilities=False,
                              include_dense_pose=False,
@@ -4403,6 +4422,8 @@ def get_default_func_arg_map(include_label_weights=True,
       multiclass scores, too.
     include_instance_masks: If True, preprocessing functions will modify the
       instance masks, too.
+    include_instance_mask_weights: If True, preprocessing functions will modify
+      the instance mask weights.
     include_keypoints: If True, preprocessing functions will modify the
       keypoints, too.
     include_keypoint_visibilities: If True, preprocessing functions will modify
@@ -4433,6 +4454,11 @@ def get_default_func_arg_map(include_label_weights=True,
   if include_instance_masks:
     groundtruth_instance_masks = (
         fields.InputDataFields.groundtruth_instance_masks)
+
+  groundtruth_instance_mask_weights = None
+  if include_instance_mask_weights:
+    groundtruth_instance_mask_weights = (
+        fields.InputDataFields.groundtruth_instance_mask_weights)
 
   groundtruth_keypoints = None
   if include_keypoints:
@@ -4503,7 +4529,8 @@ def get_default_func_arg_map(include_label_weights=True,
            fields.InputDataFields.groundtruth_boxes,
            fields.InputDataFields.groundtruth_classes,
            groundtruth_label_weights, groundtruth_label_confidences,
-           multiclass_scores, groundtruth_instance_masks, groundtruth_keypoints,
+           multiclass_scores, groundtruth_instance_masks,
+           groundtruth_instance_mask_weights, groundtruth_keypoints,
            groundtruth_keypoint_visibilities, groundtruth_dp_num_points,
            groundtruth_dp_part_ids, groundtruth_dp_surface_coords),
       random_pad_image:
