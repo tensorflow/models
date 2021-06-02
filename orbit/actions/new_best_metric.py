@@ -12,109 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Defines an "action" abstraction for use with `orbit.Controller`.
-
-"Actions" are simply arbitrary callables that are applied by the `Controller`
-to the output of train steps (after each inner loop of `steps_per_loop` steps)
-or an evaluation. This provides a hook mechanism, enabling things like reporting
-metrics to Vizier, model exporting, additional logging, etc.
-
-The basic `Action` abstraction (just a type alias) is defined in the
-`controller` module. This `actions` module adds a `ConditionalAction` utility
-class to make it easy to trigger actions conditionally based on reusable
-predicates, as well as a small handful of predefined conditions/actions (in
-particular, a `NewBestMetric` condition and an `ExportSavedModel` action).
-
-One example of using actions to do metric-conditional export:
-
-    new_best_metric = orbit.actions.NewBestMetric('accuracy')
-    export_action = orbit.actions.ConditionalAction(
-        condition=lambda x: x['accuracy'] > 0.9 and new_best_metric(x),
-        action=orbit.actions.ExportSavedModel(
-            model,
-            orbit.actions.ExportFileManager(
-                base_name=f'{FLAGS.model_dir}/saved_model',
-                next_id_fn=trainer.global_step.numpy),
-            signatures=model.infer))
-
-    controller = orbit.Controller(
-        strategy=strategy,
-        trainer=trainer,
-        evaluator=evaluator,
-        eval_actions=[export_action],
-        global_step=trainer.global_step,
-        steps_per_loop=FLAGS.steps_per_loop,
-        checkpoint_manager=checkpoint_manager,
-        summary_interval=1000)
-
-Note: In multi-client settings where each client runs its own `Controller`
-instance, some care should be taken in deciding which clients should run certain
-actions. Isolating actions to an individual client (say client 0) can be
-achieved using `ConditionalAction` as follows:
-
-    client_0_actions = orbit.actions.ConditionalAction(
-        condition=lambda _: client_id() == 0,
-        action=[
-            ...
-        ])
-
-In particular, the `NewBestMetric` condition may be used in multi-client
-settings if all clients are guaranteed to compute the same metric (ensuring this
-is up to client code, not Orbit). However, when saving metrics it may be helpful
-to avoid unnecessary writes by setting the `write_value` parameter to `False`
-for most clients.
-"""
+"""Provides the `NewBestMetric` condition and associated helper classes."""
 
 import json
 import os
 import sys
-from typing import Any, Callable, Optional, Sequence, Union
+from typing import Any, Callable, Optional, Union
 import uuid
 
-from orbit import controller
 from orbit import runner
 from orbit import utils
 
 import tensorflow as tf
-
-Condition = Callable[[runner.Output], Union[bool, tf.Tensor]]
-
-
-def _as_sequence(maybe_sequence: Union[Any, Sequence[Any]]) -> Sequence[Any]:
-  if isinstance(maybe_sequence, Sequence):
-    return maybe_sequence
-  return [maybe_sequence]
-
-
-class ConditionalAction:
-  """Represents an action that is only taken when a given condition is met.
-
-  This class is itself an `Action` (a callable that can be applied to train or
-  eval outputs), but is intended to make it easier to write modular and reusable
-  conditions by decoupling "when" something whappens (the condition) from "what"
-  happens (the action).
-  """
-
-  def __init__(
-      self,
-      condition: Condition,
-      action: Union[controller.Action, Sequence[controller.Action]],
-  ):
-    """Initializes the instance.
-
-    Args:
-      condition: A callable accepting train or eval outputs and returing a bool.
-      action: The action (or optionally sequence of actions) to perform when
-        `condition` is met.
-    """
-    self.condition = condition
-    self.action = action
-
-  def __call__(self, output: runner.Output) -> None:
-    if self.condition(output):
-      for action in _as_sequence(self.action):
-        action(output)
-
 
 MetricFn = Callable[[runner.Output], Union[float, tf.Tensor]]
 
@@ -151,7 +60,7 @@ class NewBestMetric:
 
   Attributes:
     metric: The metric passed to __init__ (may be a string key or a callable
-     that can be applied to train/eval output).
+      that can be applied to train/eval output).
     higher_is_better: Whether higher metric values are better.
   """
 
@@ -290,7 +199,7 @@ class JSONPersistedValue:
       if tf.io.gfile.exists(self._filename):
         if tf.io.gfile.stat(self._filename).length > 0:
           with tf.io.gfile.GFile(self._filename, 'r') as f:
-            self._value = json.loads(f.read())
+            self._value = json.load(f)
       elif self._write_value:
         tf.io.gfile.makedirs(os.path.dirname(self._filename))
 
@@ -311,119 +220,3 @@ class JSONPersistedValue:
       with tf.io.gfile.GFile(tmp_filename, 'w') as f:
         json.dump(self._value, f)
       tf.io.gfile.rename(tmp_filename, self._filename, overwrite=True)
-
-
-class _CounterIdFn:
-  """Implements a counter-based ID function for `ExportFileManager`."""
-
-  def __init__(self, base_name: str):
-    filenames = tf.io.gfile.glob(f'{base_name}-*')
-    max_counter = -1
-    for filename in filenames:
-      try:
-        _, file_number = filename.rsplit('-', maxsplit=1)
-        max_counter = max(max_counter, int(file_number))
-      except ValueError:
-        continue
-    self.value = max_counter + 1
-
-  def __call__(self):
-    output = self.value
-    self.value += 1
-    return output
-
-
-class ExportFileManager:
-  """Utility class that manages a group of files with a shared base name.
-
-  For actions like SavedModel exporting, there are potentially many different
-  file naming and cleanup strategies that may be desirable. This class provides
-  a basic interface allowing SavedModel export to be decoupled from these
-  details, and a default implementation that should work for many basic
-  scenarios. Users may subclass this class to alter behavior and define more
-  customized naming and cleanup strategies.
-  """
-
-  def __init__(self,
-               base_name: str,
-               max_to_keep: int = 5,
-               next_id_fn: Optional[Callable[[], int]] = None):
-    """Initializes the instance.
-
-    Args:
-      base_name: A shared base name for file names generated by this class.
-      max_to_keep: The maximum number of files matching `base_name` to keep
-        after each call to `cleanup`. The most recent (as determined by file
-        modification time) `max_to_keep` files are preserved; the rest are
-        deleted. If < 0, all files are preserved.
-      next_id_fn: An optional callable that returns integer IDs to append to
-        base name (formatted as `'{base_name}-{id}'`). The order of integers is
-        used to sort files to determine the oldest ones deleted by `clean_up`.
-        If not supplied, a default ID based on an incrementing counter is used.
-        One common alternative maybe be to use the current global step count,
-        for instance passing `next_id_fn=global_step.numpy`.
-    """
-    self._base_name = base_name
-    self._max_to_keep = max_to_keep
-    self._next_id_fn = next_id_fn or _CounterIdFn(base_name)
-
-  @property
-  def managed_files(self):
-    """Returns all files managed by this instance, in sorted order.
-
-    Returns:
-      The list of files matching the `base_name` provided when constructing this
-      `ExportFileManager` instance, sorted in increasing integer order of the
-      IDs returned by `next_id_fn`.
-    """
-
-    def id_key(name):
-      _, id_num = name.rsplit('-', maxsplit=1)
-      return int(id_num)
-
-    filenames = tf.io.gfile.glob(f'{self._base_name}-*')
-    return sorted(filenames, key=id_key)
-
-  def clean_up(self):
-    """Cleans up old files matching `{base_name}-*`.
-
-    The most recent `max_to_keep` files are preserved.
-    """
-    if self._max_to_keep < 0:
-      return
-
-    for filename in self.managed_files[:-self._max_to_keep]:
-      tf.io.gfile.rmtree(filename)
-
-  def next_name(self) -> str:
-    """Returns a new file name based on `base_name` and `next_id_fn()`."""
-    return f'{self._base_name}-{self._next_id_fn()}'
-
-
-class ExportSavedModel:
-  """Action that exports the given model as a SavedModel."""
-
-  def __init__(self,
-               model: tf.Module,
-               file_manager: ExportFileManager,
-               signatures,
-               options: Optional[tf.saved_model.SaveOptions] = None):
-    """Initializes the instance.
-
-    Args:
-      model: The model to export.
-      file_manager: An instance of `ExportFileManager` (or a subclass), that
-        provides file naming and cleanup functionality.
-      signatures: The signatures to forward to `tf.saved_model.save()`.
-      options: Optional options to forward to `tf.saved_model.save()`.
-    """
-    self.model = model
-    self.file_manager = file_manager
-    self.signatures = signatures
-    self.options = options
-
-  def __call__(self, _):
-    """Exports the SavedModel."""
-    export_dir = self.file_manager.next_name()
-    tf.saved_model.save(self.model, export_dir, self.signatures, self.options)
-    self.file_manager.clean_up()
