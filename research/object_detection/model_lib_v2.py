@@ -87,6 +87,8 @@ def _compute_losses_and_predictions_dicts(
         labels[fields.InputDataFields.groundtruth_instance_masks] is a
           float32 tensor containing only binary values, which represent
           instance masks for objects.
+        labels[fields.InputDataFields.groundtruth_instance_mask_weights] is a
+          float32 tensor containing weights for the instance masks.
         labels[fields.InputDataFields.groundtruth_keypoints] is a
           float32 tensor containing keypoints for each box.
         labels[fields.InputDataFields.groundtruth_dp_num_points] is an int32
@@ -237,6 +239,9 @@ def eager_train_step(detection_model,
         labels[fields.InputDataFields.groundtruth_instance_masks] is a
           [batch_size, num_boxes, H, W] float32 tensor containing only binary
           values, which represent instance masks for objects.
+        labels[fields.InputDataFields.groundtruth_instance_mask_weights] is a
+          [batch_size, num_boxes] float32 tensor containing weights for the
+          instance masks.
         labels[fields.InputDataFields.groundtruth_keypoints] is a
           [batch_size, num_boxes, num_keypoints, 2] float32 tensor containing
           keypoints for each box.

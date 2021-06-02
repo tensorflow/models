@@ -210,6 +210,7 @@ class BoxListFields(object):
     weights: sample weights per bounding box.
     objectness: objectness score per bounding box.
     masks: masks per bounding box.
+    mask_weights: mask weights for each bounding box.
     boundaries: boundaries per bounding box.
     keypoints: keypoints per bounding box.
     keypoint_visibilities: keypoint visibilities per bounding box.
@@ -230,6 +231,7 @@ class BoxListFields(object):
   confidences = 'confidences'
   objectness = 'objectness'
   masks = 'masks'
+  mask_weights = 'mask_weights'
   boundaries = 'boundaries'
   keypoints = 'keypoints'
   keypoint_visibilities = 'keypoint_visibilities'
