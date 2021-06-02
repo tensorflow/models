@@ -238,7 +238,7 @@ def main(argv):
             data_root=FLAGS.data_root,
             mode='train',
             imsize=FLAGS.image_size,
-            nnum=FLAGS.neg_num,
+            num_negatives=FLAGS.neg_num,
             qsize=FLAGS.query_size,
             poolsize=FLAGS.pool_size
     )
@@ -247,7 +247,7 @@ def main(argv):
               data_root=FLAGS.data_root,
               mode='val',
               imsize=FLAGS.image_size,
-              nnum=FLAGS.neg_num,
+              num_negatives=FLAGS.neg_num,
               qsize=float('Inf'),
               poolsize=float('Inf'),
               eccv2020=True if FLAGS.validation_type == 'eccv2020' else False
