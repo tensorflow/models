@@ -239,8 +239,8 @@ def main(argv):
             mode='train',
             imsize=FLAGS.image_size,
             num_negatives=FLAGS.neg_num,
-            qsize=FLAGS.query_size,
-            poolsize=FLAGS.pool_size
+            num_queries=FLAGS.query_size,
+            pool_size=FLAGS.pool_size
     )
     if FLAGS.validation_type is not None:
       val_dataset = sfm120k.CreateDataset(
@@ -248,8 +248,8 @@ def main(argv):
               mode='val',
               imsize=FLAGS.image_size,
               num_negatives=FLAGS.neg_num,
-              qsize=float('Inf'),
-              poolsize=float('Inf'),
+              num_queries=float('Inf'),
+              pool_size=float('Inf'),
               eccv2020=True if FLAGS.validation_type == 'eccv2020' else False
       )
 
