@@ -40,12 +40,12 @@ class TuplesDatasetTest(tf.test.TestCase):
     """Tests epoch tuple creation."""
     # Create a tuples dataset instance.
     name = 'test_dataset'
-    qsize = 1
-    poolsize = 5
+    num_queries = 1
+    pool_size = 5
     num_negatives = 2
     # Create a ground truth .pkl file.
     gnd = {
-      'train': {'ids': [str(i) + '.png' for i in range(2 * qsize + poolsize)],
+      'train': {'ids': [str(i) + '.png' for i in range(2 * num_queries + pool_size)],
                 'cluster': [0, 0, 1, 2, 3, 4, 5],
                 'qidxs': [0], 'pidxs': [1]}}
     gnd_name = name + '.pkl'
@@ -54,7 +54,7 @@ class TuplesDatasetTest(tf.test.TestCase):
       pickle.dump(gnd, gnd_file)
 
     # Create random images for the dataset.
-    for i in range(2 * qsize + poolsize):
+    for i in range(2 * num_queries + pool_size):
       dummy_image = np.random.rand(1024, 750, 3) * 255
       img_out = Image.fromarray(dummy_image.astype('uint8')).convert('RGB')
       filename = os.path.join(FLAGS.test_tmpdir, '{}.png'.format(i))
@@ -66,8 +66,8 @@ class TuplesDatasetTest(tf.test.TestCase):
       mode='train',
       imsize=1024,
       num_negatives=num_negatives,
-      qsize=qsize,
-      poolsize=poolsize
+      num_queries=num_queries,
+      pool_size=pool_size
     )
 
     # Assert that initially no negative images are set.
@@ -82,7 +82,7 @@ class TuplesDatasetTest(tf.test.TestCase):
 
     # Check that an appropriate number of negative images has been chosen per
     # query.
-    self.assertAllEqual(tf.shape(dataset._nidxs), [qsize, num_negatives])
+    self.assertAllEqual(tf.shape(dataset._nidxs), [num_queries, num_negatives])
 
 
   def testExtractDescriptorsFromImagePaths(self):

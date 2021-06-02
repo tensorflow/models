@@ -42,7 +42,7 @@ class TuplesDataset():
   """
 
   def __init__(self, name, mode, data_root, imsize=None, num_negatives=5,
-               qsize=2000, poolsize=20000,
+               num_queries=2000, poolsize=20000,
                loader=image_loading_utils.default_loader, ims_root=None):
     """TuplesDataset object initialization.
 
@@ -53,7 +53,7 @@ class TuplesDataset():
       imsize: Integer, defines the maximum size of longer image side transform.
       num_negatives: Integer, number of negative images for a query image in a
         training tuple.
-      qsize: Integer, number of query images to be processed in one epoch.
+      num_queries: Integer, number of query images to be processed in one epoch.
       poolsize: Integer, size of the negative image pool, from where the
         hard-negative images are re-mined.
       loader: Callable, a function to load an image given its path.
@@ -87,7 +87,7 @@ class TuplesDataset():
 
     # Size of training subset for an epoch.
     self._num_negatives = num_negatives
-    self._qsize = min(qsize, len(self._qpool))
+    self._num_queries = min(num_queries, len(self._qpool))
     self._poolsize = min(poolsize, len(self.images))
     self._qidxs = None
     self._pidxs = None
@@ -195,7 +195,7 @@ class TuplesDataset():
     fmt_str += '\tNumber of negatives per tuple: {}\n'.format(
             self._num_negatives)
     fmt_str += '\tNumber of tuples processed in an epoch: {}\n'.format(
-            self._qsize)
+            self._num_queries)
     fmt_str += '\tPool size for negative remining: {}\n'.format(self._poolsize)
     return fmt_str
 
@@ -225,10 +225,10 @@ class TuplesDataset():
     global_features_utils.debug_and_log(net.meta_repr(), True)
 
     ## Selecting queries.
-    # Draw `qsize` random queries for the tuples.
+    # Draw `num_queries` random queries for the tuples.
     idx_list = np.arange(len(self._qpool))
     np.random.shuffle(idx_list)
-    idxs2qpool = idx_list[:self._qsize]
+    idxs2qpool = idx_list[:self._num_queries]
     self._qidxs = [self._qpool[i] for i in idxs2qpool]
 
     ## Selecting positive pairs.

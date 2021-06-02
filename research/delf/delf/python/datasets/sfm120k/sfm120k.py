@@ -56,8 +56,9 @@ class _Sfm120k(tuples_dataset.TuplesDataset):
   on the fly to the desired dimensionality.
   """
 
-  def __init__(self, mode, data_root, imsize=None, num_negatives=5, qsize=2000,
-               poolsize=20000, loader=utils.default_loader, eccv2020=False):
+  def __init__(self, mode, data_root, imsize=None, num_negatives=5,
+               num_queries=2000, pool_size=20000, loader=utils.default_loader,
+               eccv2020=False):
     """Structure-from-Motion (Sfm120k) dataset initialization.
 
     Args:
@@ -65,8 +66,8 @@ class _Sfm120k(tuples_dataset.TuplesDataset):
       data_root: Path to the root directory of the dataset.
       imsize: Integer, defines the maximum size of longer image side.
       num_negatives: Integer, number of negative images per one query.
-      qsize: Integer, number of query images.
-      poolsize: Integer, size of the negative image pool, from where the
+      num_queries: Integer, number of query images.
+      pool_size: Integer, size of the negative image pool, from where the
         hard-negative images are chosen.
       loader: Callable, a function to load an image given its path.
       eccv2020: Bool, whether to use a new validation dataset used with ECCV
@@ -99,9 +100,8 @@ class _Sfm120k(tuples_dataset.TuplesDataset):
                    img_name in db['cids']]
 
     # Initializing tuples dataset.
-    super().__init__(name, mode, db_root, imsize, num_negatives, qsize,
-                     poolsize,
-                     loader, ims_root)
+    super().__init__(name, mode, db_root, imsize, num_negatives, num_queries,
+                     pool_size, loader, ims_root)
 
   def Sfm120kInfo(self):
     """Metadata for the Sfm120k dataset.
@@ -119,8 +119,9 @@ class _Sfm120k(tuples_dataset.TuplesDataset):
     return info
 
 
-def CreateDataset(mode, data_root, imsize=None, num_negatives=5, qsize=2000,
-                  poolsize=20000, loader=utils.default_loader, eccv2020=False):
+def CreateDataset(mode, data_root, imsize=None, num_negatives=5,
+                  num_queries=2000, pool_size=20000,
+                  loader=utils.default_loader, eccv2020=False):
   '''Creates Structure-from-Motion (Sfm120k) dataset.
 
   Args:
@@ -128,8 +129,8 @@ def CreateDataset(mode, data_root, imsize=None, num_negatives=5, qsize=2000,
     data_root: Path to the root directory of the dataset.
     imsize: Integer, defines the maximum size of longer image side.
     num_negatives: Integer, number of negative images per one query.
-    qsize: Integer, number of query images.
-    poolsize: Integer, size of the negative image pool, from where the
+    num_queries: Integer, number of query images.
+    pool_size: Integer, size of the negative image pool, from where the
       hard-negative images are chosen.
     loader: Callable, a function to load an image given its path.
     eccv2020: Bool, whether to use a new validation dataset used with ECCV
@@ -138,5 +139,6 @@ def CreateDataset(mode, data_root, imsize=None, num_negatives=5, qsize=2000,
   Returns:
     sfm120k: Sfm120k dataset instance.
   '''
-  return _Sfm120k(mode, data_root, imsize, num_negatives, qsize, poolsize,
+  return _Sfm120k(mode, data_root, imsize, num_negatives, num_queries,
+                  pool_size,
                   loader, eccv2020)
