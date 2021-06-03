@@ -196,13 +196,36 @@ class TargetUtilTest(parameterized.TestCase, test_case.TestCase):
       return output
 
     output = self.execute(graph_fn, [])
-    # All zeros in region [0:6, 0:6].
-    self.assertAlmostEqual(np.sum(output[0:6, 0:6]), 0.0)
-    # All zeros in region [12:19, 6:9].
-    self.assertAlmostEqual(np.sum(output[6:9, 12:19]), 0.0)
+    # All zeros in region [0:5, 0:5].
+    self.assertAlmostEqual(np.sum(output[0:5, 0:5]), 0.0)
+    # All zeros in region [12:18, 6:8].
+    self.assertAlmostEqual(np.sum(output[6:8, 12:18]), 0.0)
     # All other pixel weights should be 1.0.
-    # 20 * 10 - 6 * 6 - 3 * 7 = 143.0
-    self.assertAlmostEqual(np.sum(output), 143.0)
+    # 20 * 10 - 5 * 5 - 2 * 6 = 163.0
+    self.assertAlmostEqual(np.sum(output), 163.0)
+
+  def test_blackout_pixel_weights_by_box_regions_with_weights(self):
+    def graph_fn():
+      boxes = tf.constant(
+          [[0.0, 0.0, 2.0, 2.0],
+           [0.0, 0.0, 4.0, 2.0],
+           [3.0, 0.0, 4.0, 4.0]],
+          dtype=tf.float32)
+      blackout = tf.constant([False, False, True], dtype=tf.bool)
+      weights = tf.constant([0.4, 0.3, 0.2], tf.float32)
+      blackout_pixel_weights_by_box_regions = tf.function(
+          ta_utils.blackout_pixel_weights_by_box_regions)
+      output = blackout_pixel_weights_by_box_regions(
+          4, 4, boxes, blackout, weights)
+      return output
+
+    output = self.execute(graph_fn, [])
+    expected_weights = [
+        [0.4, 0.4, 1.0, 1.0],
+        [0.4, 0.4, 1.0, 1.0],
+        [0.3, 0.3, 1.0, 1.0],
+        [0.0, 0.0, 0.0, 0.0]]
+    np.testing.assert_array_almost_equal(expected_weights, output)
 
   def test_blackout_pixel_weights_by_box_regions_zero_instance(self):
     def graph_fn():

@@ -1734,9 +1734,9 @@ class CenterNetKeypointTargetAssignerTest(test_case.TestCase):
     # the region of the 1st instance boxing box should be blacked out
     # (0.0, 0.0, 0.5, 0.5), transfering to (0, 0, 15, 10) in absolute output
     # space.
-    self.assertAlmostEqual(np.sum(valid_mask[:, 0:16, 0:11]), 0.0)
-    # All other values are 1.0 so the sum is: 30 * 20 - 16 * 11 = 424.
-    self.assertAlmostEqual(np.sum(valid_mask), 424.0)
+    self.assertAlmostEqual(np.sum(valid_mask[:, 0:15, 0:10]), 0.0)
+    # All other values are 1.0 so the sum is: 30 * 20 - 15 * 10 = 450.
+    self.assertAlmostEqual(np.sum(valid_mask), 450.0)
 
   def test_assign_keypoints_offset_targets(self):
     def graph_fn():
