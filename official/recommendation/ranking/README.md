@@ -16,8 +16,8 @@ When training on TPUs we use
 [TPUEmbedding layer](https://github.com/tensorflow/recommenders/blob/main/tensorflow_recommenders/layers/embedding/tpu_embedding_layer.py)
 for categorical features. TPU embedding supports large embedding tables with
 fast lookup, the size of embedding tables scales linearly with the size of TPU
-pod. We can have up to 96 GB embedding tables for TPU v3-8 and 6.14 TB for
-v3-512 and 24.6 TB for TPU Pod v3-2048.
+pod. We can have up to 90 GB embedding tables for TPU v3-8 and 5.6 TB for
+v3-512 and 22,4 TB for TPU Pod v3-2048.
 
 The Model code is in
 [TensorFlow Recommenders](https://github.com/tensorflow/recommenders/tree/main/tensorflow_recommenders/experimental/models)
@@ -25,16 +25,30 @@ library, while input pipeline, configuration and training loop is here.
 
 ## Prerequisites
 To get started, download the code from TensorFlow models GitHub repository or
-use the pre-installed Google Cloud VM. We also need to install [TensorFlow
-Recommenders](https://www.tensorflow.org/recommenders) library.
+use the pre-installed Google Cloud VM.
 
 ```bash
 git clone https://github.com/tensorflow/models.git
-pip install -r models/official/requirements.txt
 export PYTHONPATH=$PYTHONPATH:$(pwd)/models
 ```
 
-Make sure to use TensorFlow 2.4+.
+We also need to install
+[TensorFlow Recommenders](https://www.tensorflow.org/recommenders) library.
+If you are using [tf-nightly](https://pypi.org/project/tf-nightly/) make
+sure to install
+[tensorflow-recommenders](https://pypi.org/project/tensorflow-recommenders/)
+without its dependancies by passing `--no-deps` argument.
+
+For tf-nightly:
+```bash
+pip install tensorflow-recommenders --no-deps
+```
+
+For stable TensorFlow 2.4+ [releases](https://pypi.org/project/tensorflow/):
+```bash
+pip install tensorflow-recommenders
+```
+
 
 ## Dataset
 
@@ -98,10 +112,10 @@ export EXPERIMENT_NAME=my_experiment_name
 export BUCKET_NAME="gs://my_dlrm_bucket"
 export DATA_DIR="${BUCKET_NAME}/data"
 
-python3 official/recommendation/ranking/main.py --mode=train_and_eval \
+python3 models/official/recommendation/ranking/train.py --mode=train_and_eval \
 --model_dir=${BUCKET_NAME}/model_dirs/${EXPERIMENT_NAME} --params_override="
 runtime:
-    distribution_strategy='tpu'
+    distribution_strategy: 'tpu'
 task:
     use_synthetic_data: false
     train_data:
@@ -125,7 +139,7 @@ trainer:
     checkpoint_interval: 100000
     validation_steps: 5440
     train_steps: 256054
-    steps_per_execution: 1000
+    steps_per_loop: 1000
 "
 ```
 

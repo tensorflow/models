@@ -227,7 +227,8 @@ def image_classification_imagenet_resnetrs() -> cfg.ExperimentConfig:
                   }
               },
               'ema': {
-                  'average_decay': 0.9999
+                  'average_decay': 0.9999,
+                  'trainable_weights_only': False,
               },
               'learning_rate': {
                   'type': 'cosine',

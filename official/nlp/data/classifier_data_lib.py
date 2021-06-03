@@ -1316,8 +1316,8 @@ class AXgProcessor(DataProcessor):
     return examples
 
 
-class SuperGLUERTEProcessor(DataProcessor):
-  """Processor for the RTE dataset (SuperGLUE version)."""
+class SuperGLUEDataProcessor(DataProcessor):
+  """Processor for the SuperGLUE dataset."""
 
   def get_train_examples(self, data_dir):
     """See base class."""
@@ -1333,6 +1333,70 @@ class SuperGLUERTEProcessor(DataProcessor):
     """See base class."""
     return self._create_examples(
         self._read_jsonl(os.path.join(data_dir, "test.jsonl")), "test")
+
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training/dev/test sets."""
+    raise NotImplementedError()
+
+
+class BoolQProcessor(SuperGLUEDataProcessor):
+  """Processor for the BoolQ dataset (SuperGLUE diagnostics dataset)."""
+
+  def get_labels(self):
+    """See base class."""
+    return ["True", "False"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "BoolQ"
+
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training/dev/test sets."""
+    examples = []
+    for line in lines:
+      guid = "%s-%s" % (set_type, self.process_text_fn(str(line["idx"])))
+      text_a = self.process_text_fn(line["question"])
+      text_b = self.process_text_fn(line["passage"])
+      if set_type == "test":
+        label = "False"
+      else:
+        label = str(line["label"])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+
+class CBProcessor(SuperGLUEDataProcessor):
+  """Processor for the CB dataset (SuperGLUE diagnostics dataset)."""
+
+  def get_labels(self):
+    """See base class."""
+    return ["entailment", "neutral", "contradiction"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "CB"
+
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training/dev/test sets."""
+    examples = []
+    for line in lines:
+      guid = "%s-%s" % (set_type, self.process_text_fn(str(line["idx"])))
+      text_a = self.process_text_fn(line["premise"])
+      text_b = self.process_text_fn(line["hypothesis"])
+      if set_type == "test":
+        label = "entailment"
+      else:
+        label = self.process_text_fn(line["label"])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+
+class SuperGLUERTEProcessor(SuperGLUEDataProcessor):
+  """Processor for the RTE dataset (SuperGLUE version)."""
 
   def get_labels(self):
     """See base class."""

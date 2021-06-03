@@ -27,6 +27,7 @@ import tensorflow as tf
 
 from official.common import distribute_utils
 # Imports registered experiment configs.
+from official.common import registry_imports  # pylint: disable=unused-import
 from official.core import exp_factory
 from official.core import task_factory
 from official.core import train_lib
@@ -64,6 +65,8 @@ EVAL_METRIC_MAP = {
 
 AXG_CLASS_NAMES = ['entailment', 'not_entailment']
 RTE_CLASS_NAMES = ['entailment', 'not_entailment']
+CB_CLASS_NAMES = ['entailment', 'neutral', 'contradiction']
+BOOLQ_CLASS_NAMES = ['True', 'False']
 
 
 def _override_exp_config_by_file(exp_config, exp_config_files):
@@ -153,7 +156,9 @@ def _write_submission_file(task, seq_length):
   write_fn = binary_helper.write_superglue_classification
   write_fn_map = {
       'RTE': functools.partial(write_fn, class_names=RTE_CLASS_NAMES),
-      'AX-g': functools.partial(write_fn, class_names=AXG_CLASS_NAMES)
+      'AX-g': functools.partial(write_fn, class_names=AXG_CLASS_NAMES),
+      'CB': functools.partial(write_fn, class_names=CB_CLASS_NAMES),
+      'BoolQ': functools.partial(write_fn, class_names=BOOLQ_CLASS_NAMES)
   }
   logging.info('Predicting %s', FLAGS.test_input_path)
   write_fn_map[FLAGS.task_name](
