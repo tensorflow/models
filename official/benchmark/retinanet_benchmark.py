@@ -279,11 +279,11 @@ class DetectionBenchmarkReal(DetectionAccuracy):
 
   @flagsaver.flagsaver
   def benchmark_4x4_tpu_coco(self):
-    """Run detection model accuracy test with 4 TPUs."""
+    """Run detection model accuracy test with 4x4 TPU."""
     self._setup()
     params = self._params()
     params['train']['batch_size'] = 256
-    params['train']['total_steps'] = 469  # One epoch.
+    params['train']['total_steps'] = 10 * 469  # 10 epochs.
     params['train']['iterations_per_loop'] = 500
     FLAGS.model_dir = self._get_model_dir('real_benchmark_4x4_tpu_coco')
     FLAGS.strategy_type = 'tpu'
