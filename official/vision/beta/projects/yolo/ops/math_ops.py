@@ -1,6 +1,5 @@
 """A set of private math operations used to safely implement the yolo loss"""
 import tensorflow as tf
-import tensorflow.keras.backend as K
 
 
 def rm_nan_inf(x, val=0.0):
