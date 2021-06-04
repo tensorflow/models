@@ -17,7 +17,8 @@
 
 Reference: https://arxiv.org/pdf/2103.11511.pdf
 """
-from typing import Optional, Sequence, Tuple
+import math
+from typing import Dict, Mapping, Optional, Sequence, Tuple, Union
 
 import dataclasses
 import tensorflow as tf
@@ -71,8 +72,6 @@ class HeadSpec(BlockSpec):
   """Configuration of a Movinet block."""
   project_filters: int = 0
   head_filters: int = 0
-  output_per_frame: bool = False
-  max_pool_predictions: bool = False
 
 
 # Block specs specify the architecture of each model
@@ -317,6 +316,7 @@ class Movinet(tf.keras.Model):
                kernel_regularizer: Optional[str] = None,
                bias_regularizer: Optional[str] = None,
                stochastic_depth_drop_rate: float = 0.,
+               use_external_states: bool = False,
                **kwargs):
     """MoViNet initialization function.
 
@@ -344,6 +344,8 @@ class Movinet(tf.keras.Model):
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
         Defaults to None.
       stochastic_depth_drop_rate: the base rate for stochastic depth.
+      use_external_states: if True, expects states to be passed as additional
+        input.
       **kwargs: keyword arguments to be passed.
     """
     block_specs = BLOCK_SPECS[model_id]
@@ -371,7 +373,10 @@ class Movinet(tf.keras.Model):
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
+    self._use_external_states = use_external_states
 
+    if self._use_external_states and not self._causal:
+      raise ValueError('External states should be used with causal mode.')
     if not isinstance(block_specs[0], StemSpec):
       raise ValueError(
           'Expected first spec to be StemSpec, got {}'.format(block_specs[0]))
@@ -380,22 +385,55 @@ class Movinet(tf.keras.Model):
           'Expected final spec to be HeadSpec, got {}'.format(block_specs[-1]))
     self._head_filters = block_specs[-1].head_filters
 
-    if tf.keras.backend.image_data_format() == 'channels_last':
-      bn_axis = -1
-    else:
-      bn_axis = 1
+    state_specs = None
+    if use_external_states:
+      self._set_dtype_policy(input_specs.dtype)
+      state_specs = self.initial_state_specs(input_specs.shape)
 
-    # Build MoViNet backbone.
-    inputs = tf.keras.Input(shape=input_specs.shape[1:], name='inputs')
+    inputs, outputs = self._build_network(input_specs, state_specs=state_specs)
 
-    x = inputs
-    states = {}
+    super(Movinet, self).__init__(inputs=inputs, outputs=outputs, **kwargs)
+
+    self._state_specs = state_specs
+
+  def _build_network(
+      self,
+      input_specs: tf.keras.layers.InputSpec,
+      state_specs: Optional[Mapping[str, tf.keras.layers.InputSpec]] = None,
+  ) -> Tuple[Mapping[str, tf.keras.Input], Tuple[Mapping[str, tf.Tensor],
+                                                 Mapping[str, tf.Tensor]]]:
+    """Builds the model network.
+
+    Args:
+      input_specs: the model input spec to use.
+      state_specs: a dict mapping a state name to the corresponding state spec.
+        State names should match with the `state` input/output dict.
+
+    Returns:
+      Inputs and outputs as a tuple. Inputs are expected to be a dict with
+      base input and states. Outputs are expected to be a dict of endpoints
+      and output states.
+    """
+    state_specs = state_specs if state_specs is not None else {}
+
+    image_input = tf.keras.Input(shape=input_specs.shape[1:], name='inputs')
+
+    states = {
+        name: tf.keras.Input(shape=spec.shape[1:], dtype=spec.dtype, name=name)
+        for name, spec in state_specs.items()
+    }
+
+    inputs = {**states, 'image': image_input}
     endpoints = {}
 
-    num_layers = sum(len(block.expand_filters) for block in block_specs
-                     if isinstance(block, MovinetBlockSpec))
+    x = image_input
+
+    num_layers = sum(
+        len(block.expand_filters)
+        for block in self._block_specs
+        if isinstance(block, MovinetBlockSpec))
     stochastic_depth_idx = 1
-    for block_idx, block in enumerate(block_specs):
+    for block_idx, block in enumerate(self._block_specs):
       if isinstance(block, StemSpec):
         x, states = movinet_layers.Stem(
             block.filters,
@@ -404,12 +442,14 @@ class Movinet(tf.keras.Model):
             conv_type=self._conv_type,
             causal=self._causal,
             activation=self._activation,
-            kernel_initializer=kernel_initializer,
-            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=self._kernel_initializer,
+            kernel_regularizer=self._kernel_regularizer,
             batch_norm_layer=self._norm,
             batch_norm_momentum=self._norm_momentum,
             batch_norm_epsilon=self._norm_epsilon,
-            name='stem')(x, states=states)
+            state_prefix='state/stem',
+            name='stem')(
+                x, states=states)
         endpoints['stem'] = x
       elif isinstance(block, MovinetBlockSpec):
         if not (len(block.expand_filters) == len(block.kernel_sizes) ==
@@ -437,14 +477,16 @@ class Movinet(tf.keras.Model):
               activation=self._activation,
               stochastic_depth_drop_rate=stochastic_depth_drop_rate,
               conv_type=self._conv_type,
-              use_positional_encoding=
-              self._use_positional_encoding and self._causal,
-              kernel_initializer=kernel_initializer,
-              kernel_regularizer=kernel_regularizer,
+              use_positional_encoding=self._use_positional_encoding and
+              self._causal,
+              kernel_initializer=self._kernel_initializer,
+              kernel_regularizer=self._kernel_regularizer,
               batch_norm_layer=self._norm,
               batch_norm_momentum=self._norm_momentum,
               batch_norm_epsilon=self._norm_epsilon,
-              name=name)(x, states=states)
+              state_prefix=f'state/{name}',
+              name=name)(
+                  x, states=states)
           endpoints[name] = x
           stochastic_depth_idx += 1
       elif isinstance(block, HeadSpec):
@@ -452,27 +494,154 @@ class Movinet(tf.keras.Model):
             project_filters=block.project_filters,
             conv_type=self._conv_type,
             activation=self._activation,
-            kernel_initializer=kernel_initializer,
-            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=self._kernel_initializer,
+            kernel_regularizer=self._kernel_regularizer,
             batch_norm_layer=self._norm,
             batch_norm_momentum=self._norm_momentum,
-            batch_norm_epsilon=self._norm_epsilon)(x, states=states)
+            batch_norm_epsilon=self._norm_epsilon,
+            state_prefix='state/head',
+            name='head')(
+                x, states=states)
         endpoints['head'] = x
       else:
         raise ValueError('Unknown block type {}'.format(block))
 
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
-
-    inputs = {
-        'image': inputs,
-        'states': {
-            name: tf.keras.Input(shape=state.shape[1:], name=f'states/{name}')
-            for name, state in states.items()
-        },
-    }
     outputs = (endpoints, states)
 
-    super(Movinet, self).__init__(inputs=inputs, outputs=outputs, **kwargs)
+    return inputs, outputs
+
+  def _get_initial_state_shapes(
+      self,
+      block_specs: Sequence[BlockSpec],
+      input_shape: Union[Sequence[int], tf.Tensor],
+      use_positional_encoding: bool = False) -> Dict[str, Sequence[int]]:
+    """Generates names and shapes for all input states.
+
+    Args:
+      block_specs: sequence of specs used for creating a model.
+      input_shape: the expected 5D shape of the image input.
+      use_positional_encoding: whether the model will use positional encoding.
+
+    Returns:
+      A dict mapping state names to state shapes.
+    """
+
+    def divide_resolution(shape, num_downsamples):
+      """Downsamples the dimension to calculate strided convolution shape."""
+      if shape is None:
+        return None
+      if isinstance(shape, tf.Tensor):
+        # Avoid using div and ceil to support tf lite
+        shape = tf.cast(shape, tf.float32)
+        resolution_divisor = 2 ** num_downsamples
+        resolution_multiplier = 0.5 ** num_downsamples
+        shape = ((shape + resolution_divisor - 1) * resolution_multiplier)
+        return tf.cast(shape, tf.int32)
+      else:
+        resolution_divisor = 2 ** num_downsamples
+        return math.ceil(shape / resolution_divisor)
+
+    states = {}
+    num_downsamples = 0
+
+    for block_idx, block in enumerate(block_specs):
+      if isinstance(block, StemSpec):
+        if block.kernel_size[0] > 1:
+          states['state/stem/stream_buffer'] = (
+              input_shape[0],
+              input_shape[1],
+              divide_resolution(input_shape[2], num_downsamples),
+              divide_resolution(input_shape[3], num_downsamples),
+              block.filters,
+          )
+        num_downsamples += 1
+      elif isinstance(block, MovinetBlockSpec):
+        block_idx -= 1
+        params = list(zip(
+            block.expand_filters,
+            block.kernel_sizes,
+            block.strides))
+        for layer_idx, layer in enumerate(params):
+          expand_filters, kernel_size, strides = layer
+
+          if kernel_size[0] > 1:
+            states[f'state/b{block_idx}/l{layer_idx}/stream_buffer'] = (
+                input_shape[0],
+                kernel_size[0] - 1,
+                divide_resolution(input_shape[2], num_downsamples),
+                divide_resolution(input_shape[3], num_downsamples),
+                expand_filters,
+            )
+
+          states[f'state/b{block_idx}/l{layer_idx}/pool_buffer'] = (
+              input_shape[0], 1, 1, 1, expand_filters,
+          )
+          states[f'state/b{block_idx}/l{layer_idx}/pool_frame_count'] = (1,)
+
+          if use_positional_encoding:
+            name = f'state/b{block_idx}/l{layer_idx}/pos_enc_frame_count'
+            states[name] = (1,)
+
+          if strides[1] != strides[2]:
+            raise ValueError('Strides must match in the spatial dimensions, '
+                             'got {}'.format(strides))
+          if strides[1] != 1 or strides[2] != 1:
+            num_downsamples += 1
+      elif isinstance(block, HeadSpec):
+        states['state/head/pool_buffer'] = (
+            input_shape[0], 1, 1, 1, block.project_filters,
+        )
+        states['state/head/pool_frame_count'] = (1,)
+
+    return states
+
+  def _get_state_dtype(self, name: str) -> str:
+    """Returns the dtype associated with a state."""
+    if 'frame_count' in name:
+      return 'int32'
+    return self.dtype
+
+  def initial_state_specs(
+      self, input_shape: Sequence[int]) -> Dict[str, tf.keras.layers.InputSpec]:
+    """Creates a mapping of state name to InputSpec from the input shape."""
+    state_shapes = self._get_initial_state_shapes(
+        self._block_specs,
+        input_shape,
+        use_positional_encoding=self._use_positional_encoding)
+
+    return {
+        name: tf.keras.layers.InputSpec(
+            shape=shape, dtype=self._get_state_dtype(name))
+        for name, shape in state_shapes.items()
+    }
+
+  def init_states(self, input_shape: Sequence[int]) -> Dict[str, tf.Tensor]:
+    """Returns initial states for the first call in steaming mode."""
+    state_shapes = self._get_initial_state_shapes(
+        self._block_specs,
+        input_shape,
+        use_positional_encoding=self._use_positional_encoding)
+
+    states = {
+        name: tf.zeros(shape, dtype=self._get_state_dtype(name))
+        for name, shape in state_shapes.items()
+    }
+    return states
+
+  @property
+  def use_external_states(self) -> bool:
+    """Whether this model is expecting input states as additional input."""
+    return self._use_external_states
+
+  @property
+  def head_filters(self):
+    """The number of filters expected to be in the head classifer layer."""
+    return self._head_filters
+
+  @property
+  def conv_type(self):
+    """The expected convolution type (see __init__ for more details)."""
+    return self._conv_type
 
   def get_config(self):
     config_dict = {
@@ -495,11 +664,6 @@ class Movinet(tf.keras.Model):
   def from_config(cls, config, custom_objects=None):
     return cls(**config)
 
-  @property
-  def output_specs(self):
-    """A dict of {level: TensorShape} pairs for the model output."""
-    return self._output_specs
-
 
 @factory.register_backbone_builder('movinet')
 def build_movinet(
@@ -508,8 +672,6 @@ def build_movinet(
     norm_activation_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds MoViNet backbone from a config."""
-  l2_regularizer = l2_regularizer or tf.keras.regularizers.L2(1.5e-5)
-
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()
   assert backbone_type == 'movinet', ('Inconsistent backbone type '
@@ -526,4 +688,5 @@ def build_movinet(
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
       kernel_regularizer=l2_regularizer,
-      stochastic_depth_drop_rate=backbone_cfg.stochastic_depth_drop_rate)
+      stochastic_depth_drop_rate=backbone_cfg.stochastic_depth_drop_rate,
+      use_external_states=backbone_cfg.use_external_states)

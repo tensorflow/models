@@ -18,7 +18,7 @@
 Reference: https://arxiv.org/pdf/2103.11511.pdf
 """
 
-from typing import Any, Optional, Sequence, Tuple, Union, Dict
+from typing import Any, Mapping, Optional, Sequence, Tuple, Union
 
 import tensorflow as tf
 
@@ -270,7 +270,6 @@ class ConvBlock(tf.keras.layers.Layer):
       batch_norm_epsilon: float = 1e-3,
       activation: Optional[Any] = None,
       conv_type: str = '3d',
-      use_positional_encoding: bool = False,
       use_buffered_input: bool = False,
       **kwargs):
     """Initializes a conv block.
@@ -293,9 +292,6 @@ class ConvBlock(tf.keras.layers.Layer):
           ops. '2plus1d' split any 3D ops into two sequential 2D ops with their
           own batch norm and activation. '3d_2plus1d' is like '2plus1d', but
           uses two sequential 3D ops instead.
-      use_positional_encoding: add a positional encoding before the temporal
-          convolution. Assumes `kernel_size[0] > 1`. Otherwise, this argument
-          is ignored.
       use_buffered_input: if True, the input is expected to be padded
           beforehand. In effect, calling this layer will use 'valid' padding on
           the temporal dimension to simulate 'causal' padding.
@@ -324,7 +320,6 @@ class ConvBlock(tf.keras.layers.Layer):
     self._batch_norm_epsilon = batch_norm_epsilon
     self._activation = activation
     self._conv_type = conv_type
-    self._use_positional_encoding = use_positional_encoding
     self._use_buffered_input = use_buffered_input
 
     if activation is not None:
@@ -350,7 +345,6 @@ class ConvBlock(tf.keras.layers.Layer):
         'batch_norm_epsilon': self._batch_norm_epsilon,
         'activation': self._activation,
         'conv_type': self._conv_type,
-        'use_positional_encoding': self._use_positional_encoding,
         'use_buffered_input': self._use_buffered_input,
     }
     base_config = super(ConvBlock, self).get_config()
@@ -426,11 +420,6 @@ class ConvBlock(tf.keras.layers.Layer):
           use_buffered_input=self._use_buffered_input,
           name='conv3d')
 
-    if self._use_positional_encoding and self._kernel_size[0] > 1:
-      self._pos_encoding = nn_layers.PositionalEncoding()
-    else:
-      self._pos_encoding = None
-
     self._batch_norm = None
     self._batch_norm_temporal = None
 
@@ -451,9 +440,6 @@ class ConvBlock(tf.keras.layers.Layer):
     """Calls the layer with the given inputs."""
     x = inputs
 
-    if self._pos_encoding is not None and self._conv_temporal is None:
-      x = self._pos_encoding(x)
-
     x = self._conv(x)
     if self._batch_norm is not None:
       x = self._batch_norm(x)
@@ -461,9 +447,6 @@ class ConvBlock(tf.keras.layers.Layer):
       x = self._activation_layer(x)
 
     if self._conv_temporal is not None:
-      if self._pos_encoding is not None:
-        x = self._pos_encoding(x)
-
       x = self._conv_temporal(x)
       if self._batch_norm_temporal is not None:
         x = self._batch_norm_temporal(x)
@@ -477,11 +460,15 @@ class ConvBlock(tf.keras.layers.Layer):
 class StreamBuffer(tf.keras.layers.Layer):
   """Stream buffer wrapper which caches activations of previous frames."""
 
-  def __init__(self, buffer_size: int, **kwargs):
+  def __init__(self,
+               buffer_size: int,
+               state_prefix: Optional[str] = None,
+               **kwargs):
     """Initializes a stream buffer.
 
     Args:
       buffer_size: the number of input frames to cache.
+      state_prefix: a prefix string to identify states.
       **kwargs: keyword arguments to be passed to this layer.
 
     Returns:
@@ -489,36 +476,32 @@ class StreamBuffer(tf.keras.layers.Layer):
     """
     super(StreamBuffer, self).__init__(**kwargs)
 
+    state_prefix = state_prefix if state_prefix is not None else ''
+    self._state_prefix = state_prefix
+    self._state_name = f'{state_prefix}/stream_buffer'
     self._buffer_size = buffer_size
-
-  def build(self, input_shape):
-    """Builds the layer with the given input shape."""
-    # Here we define strings that will uniquely reference the buffer states
-    # in the TF graph. These will be used for passing in a mapping of states
-    # for streaming mode. To do this, we can use a name scope.
-    with tf.name_scope('buffer') as state_name:
-      self._state_name = state_name
-
-    super(StreamBuffer, self).build(input_shape)
 
   def get_config(self):
     """Returns a dictionary containing the config used for initialization."""
     config = {
         'buffer_size': self._buffer_size,
+        'state_prefix': self._state_prefix,
     }
     base_config = super(StreamBuffer, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def call(self,
-           inputs: tf.Tensor,
-           states: Optional[nn_layers.States] = None
-           ) -> Tuple[Any, nn_layers.States]:
+  def call(
+      self,
+      inputs: tf.Tensor,
+      states: Optional[nn_layers.States] = None,
+  ) -> Tuple[Any, nn_layers.States]:
     """Calls the layer with the given inputs.
 
     Args:
       inputs: the input tensor.
       states: a dict of states such that, if any of the keys match for this
           layer, will overwrite the contents of the buffer(s).
+          Expected keys include `state_prefix + '/stream_buffer'`.
 
     Returns:
       the output tensor and states
@@ -526,12 +509,16 @@ class StreamBuffer(tf.keras.layers.Layer):
     states = dict(states) if states is not None else {}
     buffer = states.get(self._state_name, None)
 
-    # `tf.pad` has limited support for tf lite, so use tf.concat instead
+    # Create the buffer if it does not exist in the states.
+    # Output buffer shape:
+    # [batch_size, buffer_size, input_height, input_width, num_channels]
     if buffer is None:
       shape = tf.shape(inputs)
       buffer = tf.zeros(
           [shape[0], self._buffer_size, shape[2], shape[3], shape[4]],
           dtype=inputs.dtype)
+
+    # tf.pad has limited support for tf lite, so use tf.concat instead.
     full_inputs = tf.concat([buffer, inputs], axis=1)
 
     # Cache the last b frames of the input where b is the buffer size and f
@@ -557,16 +544,16 @@ class StreamConvBlock(ConvBlock):
       causal: bool = False,
       use_bias: bool = False,
       kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] =
-      tf.keras.regularizers.L2(KERNEL_WEIGHT_DECAY),
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = tf.keras
+      .regularizers.L2(KERNEL_WEIGHT_DECAY),
       use_batch_norm: bool = True,
-      batch_norm_layer: tf.keras.layers.Layer =
-      tf.keras.layers.experimental.SyncBatchNormalization,
+      batch_norm_layer: tf.keras.layers.Layer = tf.keras.layers.experimental
+      .SyncBatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       activation: Optional[Any] = None,
       conv_type: str = '3d',
-      use_positional_encoding: bool = False,
+      state_prefix: Optional[str] = None,
       **kwargs):
     """Initializes a stream conv block.
 
@@ -588,7 +575,7 @@ class StreamConvBlock(ConvBlock):
           ops. '2plus1d' split any 3D ops into two sequential 2D ops with their
           own batch norm and activation. '3d_2plus1d' is like '2plus1d', but
           uses two sequential 3D ops instead.
-      use_positional_encoding: add a positional encoding before the convolution.
+      state_prefix: a prefix string to identify states.
       **kwargs: keyword arguments to be passed to this layer.
 
     Returns:
@@ -597,6 +584,8 @@ class StreamConvBlock(ConvBlock):
     kernel_size = normalize_tuple(kernel_size, 3, 'kernel_size')
     buffer_size = kernel_size[0] - 1
     use_buffer = buffer_size > 0 and causal
+
+    self._state_prefix = state_prefix
 
     super(StreamConvBlock, self).__init__(
         filters,
@@ -613,18 +602,17 @@ class StreamConvBlock(ConvBlock):
         batch_norm_epsilon=batch_norm_epsilon,
         activation=activation,
         conv_type=conv_type,
-        use_positional_encoding=use_positional_encoding,
         use_buffered_input=use_buffer,
         **kwargs)
 
     self._stream_buffer = None
     if use_buffer:
       self._stream_buffer = StreamBuffer(
-          buffer_size=buffer_size)
+          buffer_size=buffer_size, state_prefix=state_prefix)
 
   def get_config(self):
     """Returns a dictionary containing the config used for initialization."""
-    config = {}
+    config = {'state_prefix': self._state_prefix}
     base_config = super(StreamConvBlock, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
@@ -667,9 +655,10 @@ class StreamSqueezeExcitation(tf.keras.layers.Layer):
       causal: bool = False,
       conv_type: str = '3d',
       kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] =
-      tf.keras.regularizers.L2(KERNEL_WEIGHT_DECAY),
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = tf.keras
+      .regularizers.L2(KERNEL_WEIGHT_DECAY),
       use_positional_encoding: bool = False,
+      state_prefix: Optional[str] = None,
       **kwargs):
     """Implementation for squeeze and excitation.
 
@@ -686,6 +675,7 @@ class StreamSqueezeExcitation(tf.keras.layers.Layer):
       kernel_regularizer: kernel regularizer for the conv operation.
       use_positional_encoding: add a positional encoding after the (cumulative)
           global average pooling layer.
+      state_prefix: a prefix string to identify states.
       **kwargs: keyword arguments to be passed to this layer.
     """
     super(StreamSqueezeExcitation, self).__init__(**kwargs)
@@ -698,13 +688,15 @@ class StreamSqueezeExcitation(tf.keras.layers.Layer):
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._use_positional_encoding = use_positional_encoding
+    self._state_prefix = state_prefix
 
-    self._pool = nn_layers.GlobalAveragePool3D(keepdims=True, causal=causal)
+    self._pool = nn_layers.GlobalAveragePool3D(
+        keepdims=True, causal=causal, state_prefix=state_prefix)
 
+    self._pos_encoding = None
     if use_positional_encoding:
-      self._pos_encoding = nn_layers.PositionalEncoding()
-    else:
-      self._pos_encoding = None
+      self._pos_encoding = nn_layers.PositionalEncoding(
+          initializer='zeros', state_prefix=state_prefix)
 
   def get_config(self):
     """Returns a dictionary containing the config used for initialization."""
@@ -717,6 +709,7 @@ class StreamSqueezeExcitation(tf.keras.layers.Layer):
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'use_positional_encoding': self._use_positional_encoding,
+        'state_prefix': self._state_prefix,
     }
     base_config = super(StreamSqueezeExcitation, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -768,7 +761,7 @@ class StreamSqueezeExcitation(tf.keras.layers.Layer):
     x, states = self._pool(inputs, states=states)
 
     if self._pos_encoding is not None:
-      x = self._pos_encoding(x)
+      x, states = self._pos_encoding(x, states=states)
 
     x = self._se_reduce(x)
     x = self._se_expand(x)
@@ -992,12 +985,13 @@ class MovinetBlock(tf.keras.layers.Layer):
       conv_type: str = '3d',
       use_positional_encoding: bool = False,
       kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] =
-      tf.keras.regularizers.L2(KERNEL_WEIGHT_DECAY),
-      batch_norm_layer: tf.keras.layers.Layer =
-      tf.keras.layers.experimental.SyncBatchNormalization,
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = tf.keras
+      .regularizers.L2(KERNEL_WEIGHT_DECAY),
+      batch_norm_layer: tf.keras.layers.Layer = tf.keras.layers.experimental
+      .SyncBatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
+      state_prefix: Optional[str] = None,
       **kwargs):
     """Implementation for MoViNet block.
 
@@ -1021,6 +1015,7 @@ class MovinetBlock(tf.keras.layers.Layer):
       batch_norm_layer: class to use for batch norm.
       batch_norm_momentum: momentum of the batch norm operation.
       batch_norm_epsilon: epsilon of the batch norm operation.
+      state_prefix: a prefix string to identify states.
       **kwargs: keyword arguments to be passed to this layer.
     """
     super(MovinetBlock, self).__init__(**kwargs)
@@ -1045,6 +1040,7 @@ class MovinetBlock(tf.keras.layers.Layer):
     self._batch_norm_layer = batch_norm_layer
     self._batch_norm_momentum = batch_norm_momentum
     self._batch_norm_epsilon = batch_norm_epsilon
+    self._state_prefix = state_prefix
 
     self._expansion = ConvBlock(
         expand_filters,
@@ -1066,15 +1062,14 @@ class MovinetBlock(tf.keras.layers.Layer):
         causal=self._causal,
         activation=activation,
         conv_type=conv_type,
-        use_positional_encoding=use_positional_encoding,
         kernel_initializer=kernel_initializer,
         kernel_regularizer=kernel_regularizer,
         use_batch_norm=True,
         batch_norm_layer=self._batch_norm_layer,
         batch_norm_momentum=self._batch_norm_momentum,
         batch_norm_epsilon=self._batch_norm_epsilon,
+        state_prefix=state_prefix,
         name='feature')
-
     self._projection = ConvBlock(
         out_filters,
         (1, 1, 1),
@@ -1095,6 +1090,7 @@ class MovinetBlock(tf.keras.layers.Layer):
         use_positional_encoding=use_positional_encoding,
         kernel_initializer=kernel_initializer,
         kernel_regularizer=kernel_regularizer,
+        state_prefix=state_prefix,
         name='se')
 
   def get_config(self):
@@ -1114,6 +1110,7 @@ class MovinetBlock(tf.keras.layers.Layer):
         'kernel_regularizer': self._kernel_regularizer,
         'batch_norm_momentum': self._batch_norm_momentum,
         'batch_norm_epsilon': self._batch_norm_epsilon,
+        'state_prefix': self._state_prefix,
     }
     base_config = super(MovinetBlock, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -1176,12 +1173,13 @@ class Stem(tf.keras.layers.Layer):
       conv_type: str = '3d',
       activation: nn_layers.Activation = 'swish',
       kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] =
-      tf.keras.regularizers.L2(KERNEL_WEIGHT_DECAY),
-      batch_norm_layer: tf.keras.layers.Layer =
-      tf.keras.layers.experimental.SyncBatchNormalization,
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = tf.keras
+      .regularizers.L2(KERNEL_WEIGHT_DECAY),
+      batch_norm_layer: tf.keras.layers.Layer = tf.keras.layers.experimental
+      .SyncBatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
+      state_prefix: Optional[str] = None,
       **kwargs):
     """Implementation for video model stem.
 
@@ -1200,35 +1198,38 @@ class Stem(tf.keras.layers.Layer):
       batch_norm_layer: class to use for batch norm.
       batch_norm_momentum: momentum of the batch norm operation.
       batch_norm_epsilon: epsilon of the batch norm operation.
+      state_prefix: a prefix string to identify states.
       **kwargs: keyword arguments to be passed to this layer.
     """
     super(Stem, self).__init__(**kwargs)
 
+    self._out_filters = out_filters
     self._kernel_size = normalize_tuple(kernel_size, 3, 'kernel_size')
     self._strides = normalize_tuple(strides, 3, 'strides')
-
-    self._out_filters = out_filters
-    self._conv_type = conv_type
     self._causal = causal
+    self._conv_type = conv_type
+    self._activation = activation
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._batch_norm_layer = batch_norm_layer
     self._batch_norm_momentum = batch_norm_momentum
     self._batch_norm_epsilon = batch_norm_epsilon
+    self._state_prefix = state_prefix
 
     self._stem = StreamConvBlock(
         filters=self._out_filters,
         kernel_size=self._kernel_size,
         strides=self._strides,
         causal=self._causal,
-        activation=activation,
+        activation=self._activation,
         conv_type=self._conv_type,
-        kernel_initializer=kernel_initializer,
-        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=self._kernel_initializer,
+        kernel_regularizer=self._kernel_regularizer,
         use_batch_norm=True,
         batch_norm_layer=self._batch_norm_layer,
         batch_norm_momentum=self._batch_norm_momentum,
         batch_norm_epsilon=self._batch_norm_epsilon,
+        state_prefix=self._state_prefix,
         name='stem')
 
   def get_config(self):
@@ -1238,11 +1239,13 @@ class Stem(tf.keras.layers.Layer):
         'kernel_size': self._kernel_size,
         'strides': self._strides,
         'causal': self._causal,
+        'activation': self._activation,
         'conv_type': self._conv_type,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'batch_norm_momentum': self._batch_norm_momentum,
         'batch_norm_epsilon': self._batch_norm_epsilon,
+        'state_prefix': self._state_prefix,
     }
     base_config = super(Stem, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -1278,12 +1281,13 @@ class Head(tf.keras.layers.Layer):
       conv_type: str = '3d',
       activation: nn_layers.Activation = 'swish',
       kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] =
-      tf.keras.regularizers.L2(KERNEL_WEIGHT_DECAY),
-      batch_norm_layer: tf.keras.layers.Layer =
-      tf.keras.layers.experimental.SyncBatchNormalization,
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = tf.keras
+      .regularizers.L2(KERNEL_WEIGHT_DECAY),
+      batch_norm_layer: tf.keras.layers.Layer = tf.keras.layers.experimental
+      .SyncBatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
+      state_prefix: Optional[str] = None,
       **kwargs):
     """Implementation for video model head.
 
@@ -1299,17 +1303,20 @@ class Head(tf.keras.layers.Layer):
       batch_norm_layer: class to use for batch norm.
       batch_norm_momentum: momentum of the batch norm operation.
       batch_norm_epsilon: epsilon of the batch norm operation.
+      state_prefix: a prefix string to identify states.
       **kwargs: keyword arguments to be passed to this layer.
     """
     super(Head, self).__init__(**kwargs)
 
     self._project_filters = project_filters
     self._conv_type = conv_type
+    self._activation = activation
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._batch_norm_layer = batch_norm_layer
     self._batch_norm_momentum = batch_norm_momentum
     self._batch_norm_epsilon = batch_norm_epsilon
+    self._state_prefix = state_prefix
 
     self._project = ConvBlock(
         filters=project_filters,
@@ -1322,25 +1329,29 @@ class Head(tf.keras.layers.Layer):
         batch_norm_momentum=self._batch_norm_momentum,
         batch_norm_epsilon=self._batch_norm_epsilon,
         name='project')
-    self._pool = nn_layers.GlobalAveragePool3D(keepdims=True, causal=False)
+    self._pool = nn_layers.GlobalAveragePool3D(
+        keepdims=True, causal=False, state_prefix=state_prefix)
 
   def get_config(self):
     """Returns a dictionary containing the config used for initialization."""
     config = {
         'project_filters': self._project_filters,
         'conv_type': self._conv_type,
+        'activation': self._activation,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'batch_norm_momentum': self._batch_norm_momentum,
         'batch_norm_epsilon': self._batch_norm_epsilon,
+        'state_prefix': self._state_prefix,
     }
     base_config = super(Head, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def call(self,
-           inputs: Union[tf.Tensor, Dict[str, tf.Tensor]],
-           states: Optional[nn_layers.States] = None,
-           ) -> Tuple[tf.Tensor, nn_layers.States]:
+  def call(
+      self,
+      inputs: Union[tf.Tensor, Mapping[str, tf.Tensor]],
+      states: Optional[nn_layers.States] = None,
+  ) -> Tuple[tf.Tensor, nn_layers.States]:
     """Calls the layer with the given inputs.
 
     Args:

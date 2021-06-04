@@ -146,7 +146,6 @@ class MovinetLayersTest(parameterized.TestCase, tf.test.TestCase):
         use_bias=False,
         activation='relu',
         conv_type='2plus1d',
-        use_positional_encoding=True,
     )
 
     stream_conv_block = movinet_layers.StreamConvBlock(
@@ -158,7 +157,6 @@ class MovinetLayersTest(parameterized.TestCase, tf.test.TestCase):
         use_bias=False,
         activation='relu',
         conv_type='2plus1d',
-        use_positional_encoding=True,
     )
 
     inputs = tf.ones([1, 4, 2, 2, 3])
@@ -197,7 +195,6 @@ class MovinetLayersTest(parameterized.TestCase, tf.test.TestCase):
         use_bias=False,
         activation='relu',
         conv_type='3d_2plus1d',
-        use_positional_encoding=True,
     )
 
     stream_conv_block = movinet_layers.StreamConvBlock(
@@ -209,7 +206,6 @@ class MovinetLayersTest(parameterized.TestCase, tf.test.TestCase):
         use_bias=False,
         activation='relu',
         conv_type='3d_2plus1d',
-        use_positional_encoding=True,
     )
 
     inputs = tf.ones([1, 4, 2, 2, 3])

@@ -48,14 +48,15 @@ class MoViNetTest(parameterized.TestCase, tf.test.TestCase):
     """Test creation of MoViNet family models with states."""
     tf.keras.backend.set_image_data_format('channels_last')
 
-    network = movinet.Movinet(
+    backbone = movinet.Movinet(
         model_id='a0',
         causal=True,
+        use_external_states=True,
     )
     inputs = tf.ones([1, 8, 128, 128, 3])
 
-    _, states = network(inputs)
-    endpoints, new_states = network(dict(image=inputs, states=states))
+    init_states = backbone.init_states(tf.shape(inputs))
+    endpoints, new_states = backbone({**init_states, 'image': inputs})
 
     self.assertAllEqual(endpoints['stem'].shape, [1, 8, 64, 64, 8])
     self.assertAllEqual(endpoints['b0/l0'].shape, [1, 8, 32, 32, 8])
@@ -65,25 +66,28 @@ class MoViNetTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(endpoints['b4/l0'].shape, [1, 8, 4, 4, 104])
     self.assertAllEqual(endpoints['head'].shape, [1, 1, 1, 1, 480])
 
-    self.assertNotEmpty(states)
+    self.assertNotEmpty(init_states)
     self.assertNotEmpty(new_states)
 
   def test_movinet_stream(self):
+    """Test if the backbone can be run in streaming mode."""
     tf.keras.backend.set_image_data_format('channels_last')
 
-    model = movinet.Movinet(
+    backbone = movinet.Movinet(
         model_id='a0',
         causal=True,
+        use_external_states=True,
     )
     inputs = tf.ones([1, 5, 128, 128, 3])
 
-    expected_endpoints, _ = model(dict(image=inputs, states={}))
+    init_states = backbone.init_states(tf.shape(inputs))
+    expected_endpoints, _ = backbone({**init_states, 'image': inputs})
 
     frames = tf.split(inputs, inputs.shape[1], axis=1)
 
-    output, states = None, {}
+    states = init_states
     for frame in frames:
-      output, states = model(dict(image=frame, states=states))
+      output, states = backbone({**states, 'image': frame})
     predicted_endpoints = output
 
     predicted = predicted_endpoints['head']
@@ -98,20 +102,22 @@ class MoViNetTest(parameterized.TestCase, tf.test.TestCase):
   def test_movinet_2plus1d_stream(self):
     tf.keras.backend.set_image_data_format('channels_last')
 
-    model = movinet.Movinet(
+    backbone = movinet.Movinet(
         model_id='a0',
         causal=True,
         conv_type='2plus1d',
+        use_external_states=True,
     )
     inputs = tf.ones([1, 5, 128, 128, 3])
 
-    expected_endpoints, _ = model(dict(image=inputs, states={}))
+    init_states = backbone.init_states(tf.shape(inputs))
+    expected_endpoints, _ = backbone({**init_states, 'image': inputs})
 
     frames = tf.split(inputs, inputs.shape[1], axis=1)
 
-    output, states = None, {}
+    states = init_states
     for frame in frames:
-      output, states = model(dict(image=frame, states=states))
+      output, states = backbone({**states, 'image': frame})
     predicted_endpoints = output
 
     predicted = predicted_endpoints['head']
@@ -126,20 +132,22 @@ class MoViNetTest(parameterized.TestCase, tf.test.TestCase):
   def test_movinet_3d_2plus1d_stream(self):
     tf.keras.backend.set_image_data_format('channels_last')
 
-    model = movinet.Movinet(
+    backbone = movinet.Movinet(
         model_id='a0',
         causal=True,
         conv_type='3d_2plus1d',
+        use_external_states=True,
     )
     inputs = tf.ones([1, 5, 128, 128, 3])
 
-    expected_endpoints, _ = model(dict(image=inputs, states={}))
+    init_states = backbone.init_states(tf.shape(inputs))
+    expected_endpoints, _ = backbone({**init_states, 'image': inputs})
 
     frames = tf.split(inputs, inputs.shape[1], axis=1)
 
-    output, states = None, {}
+    states = init_states
     for frame in frames:
-      output, states = model(dict(image=frame, states=states))
+      output, states = backbone({**states, 'image': frame})
     predicted_endpoints = output
 
     predicted = predicted_endpoints['head']
@@ -157,6 +165,7 @@ class MoViNetTest(parameterized.TestCase, tf.test.TestCase):
         model_id='a0',
         causal=True,
         use_positional_encoding=True,
+        use_external_states=True,
     )
     network = movinet.Movinet(**kwargs)
 

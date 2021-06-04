@@ -48,28 +48,85 @@ class MovinetModelTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual([2, num_classes], logits.shape)
 
   def test_movinet_classifier_stream(self):
+    """Test if the classifier can be run in streaming mode."""
     tf.keras.backend.set_image_data_format('channels_last')
 
-    model = movinet.Movinet(
+    backbone = movinet.Movinet(
         model_id='a0',
         causal=True,
+        use_external_states=True,
     )
-    inputs = tf.ones([1, 5, 128, 128, 3])
+    model = movinet_model.MovinetClassifier(
+        backbone, num_classes=600, output_states=True)
 
-    expected_endpoints, _ = model(dict(image=inputs, states={}))
+    inputs = tf.ones([1, 8, 172, 172, 3])
+
+    init_states = model.init_states(tf.shape(inputs))
+    expected, _ = model({**init_states, 'image': inputs})
 
     frames = tf.split(inputs, inputs.shape[1], axis=1)
 
-    output, states = None, {}
+    states = init_states
     for frame in frames:
-      output, states = model(dict(image=frame, states=states))
-    predicted_endpoints = output
+      output, states = model({**states, 'image': frame})
+    predicted = output
 
-    predicted = predicted_endpoints['head']
+    self.assertEqual(predicted.shape, expected.shape)
+    self.assertAllClose(predicted, expected, 1e-5, 1e-5)
 
-    # The expected final output is simply the mean across frames
-    expected = expected_endpoints['head']
-    expected = tf.reduce_mean(expected, 1, keepdims=True)
+  def test_movinet_classifier_stream_pos_enc(self):
+    """Test if the classifier can be run in streaming mode with pos encoding."""
+    tf.keras.backend.set_image_data_format('channels_last')
+
+    backbone = movinet.Movinet(
+        model_id='a0',
+        causal=True,
+        use_external_states=True,
+        use_positional_encoding=True,
+    )
+    model = movinet_model.MovinetClassifier(
+        backbone, num_classes=600, output_states=True)
+
+    inputs = tf.ones([1, 8, 172, 172, 3])
+
+    init_states = model.init_states(tf.shape(inputs))
+    expected, _ = model({**init_states, 'image': inputs})
+
+    frames = tf.split(inputs, inputs.shape[1], axis=1)
+
+    states = init_states
+    for frame in frames:
+      output, states = model({**states, 'image': frame})
+    predicted = output
+
+    self.assertEqual(predicted.shape, expected.shape)
+    self.assertAllClose(predicted, expected, 1e-5, 1e-5)
+
+  def test_movinet_classifier_stream_pos_enc_2plus1d(self):
+    """Test if the model can run in streaming mode with pos encoding, (2+1)D."""
+    tf.keras.backend.set_image_data_format('channels_last')
+
+    backbone = movinet.Movinet(
+        model_id='a0',
+        causal=True,
+        use_external_states=True,
+        use_positional_encoding=True,
+        conv_type='2plus1d',
+    )
+    model = movinet_model.MovinetClassifier(
+        backbone, num_classes=600, output_states=True)
+
+    inputs = tf.ones([1, 8, 172, 172, 3])
+
+    init_states = model.init_states(tf.shape(inputs))
+    expected, _ = model({**init_states, 'image': inputs})
+
+    frames = tf.split(inputs, inputs.shape[1], axis=1)
+
+    states = init_states
+    for frame in frames:
+      output, states = model({**states, 'image': frame})
+    predicted = output
 
     self.assertEqual(predicted.shape, expected.shape)
     self.assertAllClose(predicted, expected, 1e-5, 1e-5)
