@@ -2979,20 +2979,32 @@ class CenterNetMetaArch(model.DetectionModel):
     Returns:
       A float scalar tensor representing the mask loss.
     """
+    gt_boxes_list = self.groundtruth_lists(fields.BoxListFields.boxes)
     gt_masks_list = self.groundtruth_lists(fields.BoxListFields.masks)
+    gt_mask_weights_list = None
+    if self.groundtruth_has_field(fields.BoxListFields.mask_weights):
+      gt_mask_weights_list = self.groundtruth_lists(
+          fields.BoxListFields.mask_weights)
     gt_classes_list = self.groundtruth_lists(fields.BoxListFields.classes)
 
     # Convert the groundtruth to targets.
     assigner = self._target_assigner_dict[SEGMENTATION_TASK]
-    heatmap_targets = assigner.assign_segmentation_targets(
+    heatmap_targets, heatmap_weight = assigner.assign_segmentation_targets(
         gt_masks_list=gt_masks_list,
-        gt_classes_list=gt_classes_list)
+        gt_classes_list=gt_classes_list,
+        gt_boxes_list=gt_boxes_list,
+        gt_mask_weights_list=gt_mask_weights_list)
 
     flattened_heatmap_targets = _flatten_spatial_dimensions(heatmap_targets)
+    flattened_heatmap_mask = _flatten_spatial_dimensions(
+        heatmap_weight[:, :, :, tf.newaxis])
+    per_pixel_weights *= flattened_heatmap_mask
 
     loss = 0.0
     mask_loss_fn = self._mask_params.classification_loss
-    total_pixels_in_loss = tf.reduce_sum(per_pixel_weights)
+
+    total_pixels_in_loss = tf.math.maximum(
+        tf.reduce_sum(per_pixel_weights), 1)
 
     # Loop through each feature output head.
     for pred in segmentation_predictions:

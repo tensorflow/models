@@ -2001,8 +2001,8 @@ class CenterNetMaskTargetAssigner(object):
     self._stride = stride
 
   def assign_segmentation_targets(
-      self, gt_masks_list, gt_classes_list,
-      mask_resize_method=ResizeMethod.BILINEAR):
+      self, gt_masks_list, gt_classes_list, gt_boxes_list=None,
+      gt_mask_weights_list=None, mask_resize_method=ResizeMethod.BILINEAR):
     """Computes the segmentation targets.
 
     This utility produces a semantic segmentation mask for each class, starting
@@ -2016,15 +2016,25 @@ class CenterNetMaskTargetAssigner(object):
       gt_classes_list: A list of float tensors with shape [num_boxes,
         num_classes] representing the one-hot encoded class labels for each box
         in the gt_boxes_list.
+      gt_boxes_list: An optional list of float tensors with shape [num_boxes, 4]
+        with normalized boxes corresponding to each mask. The boxes are used to
+        spatially allocate mask weights.
+      gt_mask_weights_list: An optional list of float tensors with shape
+        [num_boxes] with weights for each mask. If a mask has a zero weight, it
+        indicates that the box region associated with the mask should not
+        contribute to the loss. If not provided, will use a per-pixel weight of
+        1.
       mask_resize_method: A `tf.compat.v2.image.ResizeMethod`. The method to use
         when resizing masks from input resolution to output resolution.
+
 
     Returns:
       segmentation_targets: An int32 tensor of size [batch_size, output_height,
         output_width, num_classes] representing the class of each location in
         the output space.
+      segmentation_weight: A float32 tensor of size [batch_size, output_height,
+        output_width] indicating the loss weight to apply at each location.
     """
-    # TODO(ronnyvotel): Handle groundtruth weights.
     _, num_classes = shape_utils.combined_static_and_dynamic_shape(
         gt_classes_list[0])
 
@@ -2033,8 +2043,35 @@ class CenterNetMaskTargetAssigner(object):
     output_height = tf.maximum(input_height // self._stride, 1)
     output_width = tf.maximum(input_width // self._stride, 1)
 
+    if gt_boxes_list is None:
+      gt_boxes_list = [None] * len(gt_masks_list)
+    if gt_mask_weights_list is None:
+      gt_mask_weights_list = [None] * len(gt_masks_list)
+
     segmentation_targets_list = []
-    for gt_masks, gt_classes in zip(gt_masks_list, gt_classes_list):
+    segmentation_weights_list = []
+
+    for gt_boxes, gt_masks, gt_mask_weights, gt_classes in zip(
+        gt_boxes_list, gt_masks_list, gt_mask_weights_list, gt_classes_list):
+
+      if gt_boxes is not None and gt_mask_weights is not None:
+        boxes = box_list.BoxList(gt_boxes)
+        # Convert the box coordinates to absolute output image dimension space.
+        boxes_absolute = box_list_ops.to_absolute_coordinates(
+            boxes, output_height, output_width)
+
+        # Generate a segmentation weight that applies mask weights in object
+        # regions.
+        blackout = gt_mask_weights <= 0
+        segmentation_weight_for_image = (
+            ta_utils.blackout_pixel_weights_by_box_regions(
+                output_height, output_width, boxes_absolute.get(), blackout,
+                weights=gt_mask_weights))
+        segmentation_weights_list.append(segmentation_weight_for_image)
+      else:
+        segmentation_weights_list.append(tf.ones((output_height, output_width),
+                                                 dtype=tf.float32))
+
       gt_masks = _resize_masks(gt_masks, output_height, output_width,
                                mask_resize_method)
       gt_masks = gt_masks[:, :, :, tf.newaxis]
@@ -2047,7 +2084,8 @@ class CenterNetMaskTargetAssigner(object):
       segmentation_targets_list.append(segmentations_for_image)
 
     segmentation_target = tf.stack(segmentation_targets_list, axis=0)
-    return segmentation_target
+    segmentation_weight = tf.stack(segmentation_weights_list, axis=0)
+    return segmentation_target, segmentation_weight
 
 
 class CenterNetDensePoseTargetAssigner(object):
