@@ -281,9 +281,6 @@ class Scale(tf.keras.layers.Layer):
 
   This is useful for applying ReZero to layers, which improves convergence
   speed. This implements the paper:
-
-  Thomas Bachlechner, Bodhisattwa Prasad Majumder, Huanru Henry Mao,
-  Garrison W. Cottrell, Julian McAuley.
   ReZero is All You Need: Fast Convergence at Large Depth.
   (https://arxiv.org/pdf/2003.04887.pdf).
   """
@@ -371,6 +368,7 @@ class PositionalEncoding(tf.keras.layers.Layer):
   def __init__(self,
                initializer: tf.keras.initializers.Initializer = 'zeros',
                cache_encoding: bool = False,
+               state_prefix: Optional[str] = None,
                **kwargs):
     """Initializes positional encoding.
 
@@ -380,6 +378,7 @@ class PositionalEncoding(tf.keras.layers.Layer):
         after calling build. Otherwise, rebuild the tensor for every call.
         Setting this to False can be useful when we want to input a variable
         number of frames, so the positional encoding tensor can change shape.
+      state_prefix: a prefix string to identify states.
       **kwargs: Additional keyword arguments to be passed to this layer.
 
     Returns:
@@ -390,33 +389,43 @@ class PositionalEncoding(tf.keras.layers.Layer):
     self._cache_encoding = cache_encoding
     self._pos_encoding = None
     self._rezero = Scale(initializer=initializer, name='rezero')
+    state_prefix = state_prefix if state_prefix is not None else ''
+    self._state_prefix = state_prefix
+    self._frame_count_name = f'{state_prefix}/pos_enc_frame_count'
 
   def get_config(self):
     """Returns a dictionary containing the config used for initialization."""
     config = {
         'initializer': self._initializer,
         'cache_encoding': self._cache_encoding,
+        'state_prefix': self._state_prefix,
     }
     base_config = super(PositionalEncoding, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def _positional_encoding(self,
-                           num_positions: int,
-                           hidden_size: int,
-                           dtype: tf.DType = tf.float32):
+                           num_positions: Union[int, tf.Tensor],
+                           hidden_size: Union[int, tf.Tensor],
+                           start_position: Union[int, tf.Tensor] = 0,
+                           dtype: str = 'float32') -> tf.Tensor:
     """Creates a sequence of sinusoidal positional encoding vectors.
 
     Args:
-      num_positions: An `int` of number of positions (frames).
-      hidden_size: An `int` of number of channels used for the hidden vectors.
-      dtype: The dtype of the output tensor.
+      num_positions: the total number of positions (frames).
+      hidden_size: the number of channels used for the hidden vectors.
+      start_position: the start position.
+      dtype: the dtype of the output tensor.
 
     Returns:
       The positional encoding tensor with shape [num_positions, hidden_size].
     """
+    if isinstance(start_position, tf.Tensor) and start_position.shape.rank == 1:
+      start_position = start_position[0]
+
     # Calling `tf.range` with `dtype=tf.bfloat16` results in an error,
     # so we cast afterward.
-    positions = tf.cast(tf.range(num_positions)[:, tf.newaxis], dtype)
+    positions = tf.range(start_position, start_position + num_positions)
+    positions = tf.cast(positions, dtype)[:, tf.newaxis]
     idx = tf.range(hidden_size)[tf.newaxis, :]
 
     power = tf.cast(2 * (idx // 2), dtype)
@@ -430,11 +439,24 @@ class PositionalEncoding(tf.keras.layers.Layer):
 
     return pos_encoding
 
-  def _get_pos_encoding(self, input_shape):
-    """Calculates the positional encoding from the input shape."""
+  def _get_pos_encoding(self,
+                        input_shape: tf.Tensor,
+                        frame_count: int = 0) -> tf.Tensor:
+    """Calculates the positional encoding from the input shape.
+
+    Args:
+      input_shape: the shape of the input.
+      frame_count: a count of frames that indicates the index of the first
+        frame.
+
+    Returns:
+      The positional encoding tensor with shape [num_positions, hidden_size].
+
+    """
     frames = input_shape[1]
     channels = input_shape[-1]
-    pos_encoding = self._positional_encoding(frames, channels, dtype=self.dtype)
+    pos_encoding = self._positional_encoding(
+        frames, channels, start_position=frame_count, dtype=self.dtype)
     pos_encoding = tf.reshape(pos_encoding, [1, frames, 1, 1, channels])
     return pos_encoding
 
@@ -455,16 +477,46 @@ class PositionalEncoding(tf.keras.layers.Layer):
 
     super(PositionalEncoding, self).build(input_shape)
 
-  def call(self, inputs):
-    """Calls the layer with the given inputs."""
+  def call(
+      self,
+      inputs: tf.Tensor,
+      states: Optional[States] = None,
+      output_states: bool = True,
+  ) -> Union[tf.Tensor, Tuple[tf.Tensor, States]]:
+    """Calls the layer with the given inputs.
+
+    Args:
+      inputs: An input `tf.Tensor`.
+      states: A `dict` of states such that, if any of the keys match for this
+        layer, will overwrite the contents of the buffer(s). Expected keys
+        include `state_prefix + '/pos_enc_frame_count'`.
+      output_states: A `bool`. If True, returns the output tensor and output
+        states. Returns just the output tensor otherwise.
+
+    Returns:
+      An output `tf.Tensor` (and optionally the states if `output_states=True`).
+
+    Raises:
+      ValueError: If using 'channels_first' data format.
+    """
+    states = dict(states) if states is not None else {}
+
+    # Keep a count of frames encountered across input iterations in
+    # num_frames to be able to accurately update the positional encoding.
+    num_frames = tf.shape(inputs)[1]
+    frame_count = tf.cast(states.get(self._frame_count_name, [0]), tf.int32)
+    states[self._frame_count_name] = frame_count + num_frames
+
     if self._cache_encoding:
       pos_encoding = self._pos_encoding
     else:
-      pos_encoding = self._get_pos_encoding(tf.shape(inputs))
+      pos_encoding = self._get_pos_encoding(
+          tf.shape(inputs), frame_count=frame_count)
     pos_encoding = tf.cast(pos_encoding, inputs.dtype)
-    pos_encoding = tf.stop_gradient(pos_encoding)
     pos_encoding = self._rezero(pos_encoding)
-    return inputs + pos_encoding
+    outputs = inputs + pos_encoding
+
+    return (outputs, states) if output_states else outputs
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -480,6 +532,7 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
   def __init__(self,
                keepdims: bool = False,
                causal: bool = False,
+               state_prefix: Optional[str] = None,
                **kwargs):
     """Initializes a global average pool layer.
 
@@ -487,6 +540,7 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
       keepdims: A `bool`. If True, keep the averaged dimensions.
       causal: A `bool` of whether to run in causal mode with a cumulative sum
         across frames.
+      state_prefix: a prefix string to identify states.
       **kwargs: Additional keyword arguments to be passed to this layer.
 
     Returns:
@@ -496,28 +550,21 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
 
     self._keepdims = keepdims
     self._causal = causal
+    state_prefix = state_prefix if state_prefix is not None else ''
+    self._state_prefix = state_prefix
 
-    self._frame_count = None
+    self._state_name = f'{state_prefix}/pool_buffer'
+    self._frame_count_name = f'{state_prefix}/pool_frame_count'
 
   def get_config(self):
     """Returns a dictionary containing the config used for initialization."""
     config = {
         'keepdims': self._keepdims,
         'causal': self._causal,
+        'state_prefix': self._state_prefix,
     }
     base_config = super(GlobalAveragePool3D, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
-
-  def build(self, input_shape):
-    """Builds the layer with the given input shape."""
-    # Here we define strings that will uniquely reference the buffer states
-    # in the TF graph. These will be used for passing in a mapping of states
-    # for streaming mode. To do this, we can use a name scope.
-    with tf.name_scope('buffer') as state_name:
-      self._state_name = state_name
-      self._frame_count_name = state_name + '_frame_count'
-
-    super(GlobalAveragePool3D, self).build(input_shape)
 
   def call(self,
            inputs: tf.Tensor,
@@ -530,6 +577,8 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
       inputs: An input `tf.Tensor`.
       states: A `dict` of states such that, if any of the keys match for this
         layer, will overwrite the contents of the buffer(s).
+        Expected keys include `state_prefix + '/pool_buffer'` and
+        `state_prefix + '/pool_frame_count'`.
       output_states: A `bool`. If True, returns the output tensor and output
         states. Returns just the output tensor otherwise.
 
@@ -561,7 +610,8 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
     # num_frames to be able to accurately take a cumulative average across
     # all frames when running in streaming mode
     num_frames = tf.shape(inputs)[1]
-    frame_count = states.get(self._frame_count_name, 0)
+    frame_count = states.get(self._frame_count_name, tf.constant([0]))
+    frame_count = tf.cast(frame_count, tf.int32)
     states[self._frame_count_name] = frame_count + num_frames
 
     if self._causal:

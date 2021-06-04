@@ -16,7 +16,7 @@
 
 Reference: https://arxiv.org/pdf/2103.11511.pdf
 """
-from typing import Mapping, Optional
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 
 from absl import logging
 import tensorflow as tf
@@ -71,33 +71,13 @@ class MovinetClassifier(tf.keras.Model):
     self._bias_regularizer = bias_regularizer
     self._output_states = output_states
 
-    # Keras model variable that excludes @property.setters from tracking
-    self._self_setattr_tracking = False
+    state_specs = None
+    if backbone.use_external_states:
+      state_specs = backbone.initial_state_specs(
+          input_shape=input_specs['image'].shape)
 
-    inputs = {
-        name: tf.keras.Input(shape=state.shape[1:], name=f'states/{name}')
-        for name, state in input_specs.items()
-    }
-    states = inputs.get('states', {})
-
-    endpoints, states = backbone(dict(image=inputs['image'], states=states))
-    x = endpoints['head']
-
-    x = movinet_layers.ClassifierHead(
-        head_filters=backbone._head_filters,
-        num_classes=num_classes,
-        dropout_rate=dropout_rate,
-        kernel_initializer=kernel_initializer,
-        kernel_regularizer=kernel_regularizer,
-        conv_type=backbone._conv_type)(x)
-
-    if output_states:
-      inputs['states'] = {
-          k: tf.keras.Input(shape=v.shape[1:], name=k)
-          for k, v in states.items()
-      }
-
-    outputs = (x, states) if output_states else x
+    inputs, outputs = self._build_network(
+        backbone, input_specs, state_specs=state_specs)
 
     super(MovinetClassifier, self).__init__(
         inputs=inputs, outputs=outputs, **kwargs)
@@ -105,13 +85,80 @@ class MovinetClassifier(tf.keras.Model):
     # Move backbone after super() call so Keras is happy
     self._backbone = backbone
 
+  def _build_network(
+      self,
+      backbone: tf.keras.Model,
+      input_specs: Mapping[str, tf.keras.layers.InputSpec],
+      state_specs: Optional[Mapping[str, tf.keras.layers.InputSpec]] = None,
+  ) -> Tuple[Mapping[str, tf.keras.Input], Union[Tuple[Mapping[
+      str, tf.Tensor], Mapping[str, tf.Tensor]], Mapping[str, tf.Tensor]]]:
+    """Builds the model network.
+
+    Args:
+      backbone: the model backbone.
+      input_specs: the model input spec to use.
+      state_specs: a dict of states such that, if any of the keys match for a
+        layer, will overwrite the contents of the buffer(s).
+
+    Returns:
+      Inputs and outputs as a tuple. Inputs are expected to be a dict with
+      base input and states. Outputs are expected to be a dict of endpoints
+      and (optionally) output states.
+    """
+    state_specs = state_specs if state_specs is not None else {}
+
+    states = {
+        name: tf.keras.Input(shape=spec.shape[1:], dtype=spec.dtype, name=name)
+        for name, spec in state_specs.items()
+    }
+    image = tf.keras.Input(shape=input_specs['image'].shape[1:], name='image')
+    inputs = {**states, 'image': image}
+
+    if backbone.use_external_states:
+      before_states = set(states)
+      endpoints, states = backbone(inputs)
+      after_states = set(states)
+
+      new_states = after_states - before_states
+      if new_states:
+        raise AttributeError('Expected input and output states to be the same. '
+                             'Got extra states {}, expected {}'.format(
+                                 new_states, before_states))
+    else:
+      endpoints, states = backbone(inputs)
+
+    x = endpoints['head']
+
+    x = movinet_layers.ClassifierHead(
+        head_filters=backbone.head_filters,
+        num_classes=self._num_classes,
+        dropout_rate=self._dropout_rate,
+        kernel_initializer=self._kernel_initializer,
+        kernel_regularizer=self._kernel_regularizer,
+        conv_type=backbone.conv_type)(
+            x)
+
+    outputs = (x, states) if self._output_states else x
+
+    return inputs, outputs
+
+  def initial_state_specs(
+      self, input_shape: Sequence[int]) -> Dict[str, tf.keras.layers.InputSpec]:
+    return self._backbone.initial_state_specs(input_shape=input_shape)
+
+  @tf.function
+  def init_states(self, input_shape: Sequence[int]) -> Dict[str, tf.Tensor]:
+    """Returns initial states for the first call in steaming mode."""
+    return self._backbone.init_states(input_shape)
+
   @property
-  def checkpoint_items(self):
+  def checkpoint_items(self) -> Dict[str, Any]:
     """Returns a dictionary of items to be additionally checkpointed."""
     return dict(backbone=self.backbone)
 
   @property
-  def backbone(self):
+  def backbone(self) -> tf.keras.Model:
+    """Returns the backbone of the model."""
     return self._backbone
 
   def get_config(self):
@@ -142,7 +189,7 @@ class MovinetClassifier(tf.keras.Model):
 
 @model_factory.register_model_builder('movinet')
 def build_movinet_model(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: Mapping[str, tf.keras.layers.InputSpec],
     model_config: cfg.MovinetModel,
     num_classes: int,
     l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None):
