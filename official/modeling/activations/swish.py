@@ -52,7 +52,8 @@ def hard_swish(features):
     The activation value.
   """
   features = tf.convert_to_tensor(features)
-  return features * tf.nn.relu6(features + tf.constant(3.)) * (1. / 6.)
+  fdtype = features.dtype
+  return features * tf.nn.relu6(features + tf.cast(3., fdtype)) * (1. / 6.)
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
