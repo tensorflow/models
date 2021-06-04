@@ -1,9 +1,7 @@
 # SimCLR Imagenet 10% finetuning.
 runtime:
-  distribution_strategy: 'mirrored'
-  mixed_precision_dtype: 'float16'
-  loss_scale: 'dynamic'
-  num_gpus: 16
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
 task:
   model:
     mode: 'finetune'
@@ -38,7 +36,7 @@ task:
     input_path: ''
     is_training: true
     global_batch_size: 1024
-    dtype: 'float16'
+    dtype: 'bfloat16'
     parser:
       mode: 'finetune'
   validation_data:
@@ -47,7 +45,7 @@ task:
     input_path: ''
     is_training: false
     global_batch_size: 1024
-    dtype: 'float16'
+    dtype: 'bfloat16'
     drop_remainder: false
     parser:
       mode: 'finetune'
