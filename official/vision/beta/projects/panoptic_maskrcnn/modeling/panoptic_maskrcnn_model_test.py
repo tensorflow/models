@@ -553,6 +553,23 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
       partial_ckpt_mask.restore(tf.train.latest_checkpoint(
           save_dir)).expect_partial().assert_existing_objects_matched()
 
+    if include_segmentation_head:
+      if not shared_backbone:
+        partial_ckpt_segmentation = tf.train.Checkpoint(
+            segmentation_backbone=segmentation_backbone,
+            segmentation_decoder=segmentation_decoder,
+            segmentation_head=segmentation_head)
+      elif not shared_decoder:
+        partial_ckpt_segmentation = tf.train.Checkpoint(
+            segmentation_decoder=segmentation_decoder,
+            segmentation_head=segmentation_head)
+      else:
+        partial_ckpt_segmentation = tf.train.Checkpoint(
+            segmentation_head=segmentation_head)
+
+      partial_ckpt_segmentation.restore(tf.train.latest_checkpoint(
+          save_dir)).expect_partial().assert_existing_objects_matched()
+            
 
 if __name__ == '__main__':
   tf.test.main()
