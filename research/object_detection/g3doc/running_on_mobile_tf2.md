@@ -87,6 +87,11 @@ converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8,
 converter.representative_dataset = <...>
 ```
 
+**NOTE:** Make sure to **normalize** your input images, otherwise the model will output 
+meaningless results. You can find an example of input normalization 
+[here](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2_detection_zoo.md), 
+when the `preprocess` method is called.
+
 ## Running our model on Android
 
 To run our TensorFlow Lite model on device, we will use Android Studio to build
