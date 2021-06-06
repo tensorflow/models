@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Tests for maskrcnn_model.py."""
+"""Tests for panoptic_maskrcnn_model.py."""
 
 import os
 # Import libraries

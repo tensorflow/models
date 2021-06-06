@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Mask R-CNN model."""
+"""Panoptic Segmentation  model."""
 
 from typing import Any, List, Mapping, Optional, Union
 
@@ -25,7 +25,7 @@ from official.vision.beta.ops import box_ops
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class PanopticMaskRCNNModel(tf.keras.Model):
-  """The Mask R-CNN model."""
+  """The Panoptic Segmentation  model."""
 
   def __init__(self,
                backbone: tf.keras.Model,
@@ -52,7 +52,7 @@ class PanopticMaskRCNNModel(tf.keras.Model):
                aspect_ratios: Optional[List[float]] = None,
                anchor_size: Optional[float] = None,
                **kwargs):
-    """Initializes the Mask R-CNN model.
+    """Initializes the Panoptic Mask R-CNN model.
 
     Args:
       backbone: `tf.keras.Model`, the backbone network.
@@ -68,10 +68,19 @@ class PanopticMaskRCNNModel(tf.keras.Model):
       mask_sampler: the mask sampler.
       mask_roi_aligner: the ROI alginer for mask prediction.
       segmentation_backbone: `tf.keras.Model`, the backbone network for the
-        segmentation head for panoptic task.
+        segmentation head for panoptic task. Providing `segmentation_backbone`
+        will allow the segmentation head to use a standlone backbone. Setting
+        `segmentation_backbone=None` would enable backbone sharing between
+        the MaskRCNN model and segmentation head.
       segmentation_decoder: `tf.keras.Model`, the decoder network for the
-        segmentation head for panoptic task.
-      segmentation_head: segmentatation head for panoptic task.
+        segmentation head for panoptic task. Providing `segmentation_decoder`
+        will allow the segmentation head to use a standlone decoder. Setting
+        `segmentation_decoder=None` would enable decoder sharing between
+        the MaskRCNN model and segmentation head. Decoders can only be shared
+        when `segmentation_backbone` is shared as well. 
+      segmentation_head: segmentatation head for panoptic task. Providing
+        `segmentatation_head` will enable the panoptic segmentation
+        functionality.
       class_agnostic_bbox_pred: if True, perform class agnostic bounding box
         prediction. Needs to be `True` for Cascade RCNN models.
       cascade_class_ensemble: if True, ensemble classification scores over
