@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Panoptic Segmentation  model."""
+"""Panoptic Segmentation model."""
 
-from typing import Any, List, Mapping, Optional, Union
+from typing import List, Mapping, Optional, Union
 
 # Import libraries
 import tensorflow as tf
 
+from official.vision.beta.modeling import maskrcnn_model
 from official.vision.beta.ops import anchor
 from official.vision.beta.ops import box_ops
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
-class PanopticMaskRCNNModel(tf.keras.Model):
-  """The Panoptic Segmentation  model."""
+class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
+  """The Panoptic Segmentation model."""
 
   def __init__(self,
                backbone: tf.keras.Model,
@@ -43,7 +44,7 @@ class PanopticMaskRCNNModel(tf.keras.Model):
                mask_roi_aligner: Optional[tf.keras.layers.Layer] = None,
                segmentation_backbone: Optional[tf.keras.Model] = None,
                segmentation_decoder: Optional[tf.keras.Model] = None,
-               segmentation_head: Optional[tf.keras.layers.Layer] = None,
+               segmentation_head: tf.keras.layers.Layer = None,
                class_agnostic_bbox_pred: bool = False,
                cascade_class_ensemble: bool = False,
                min_level: Optional[int] = None,
@@ -78,9 +79,7 @@ class PanopticMaskRCNNModel(tf.keras.Model):
         `segmentation_decoder=None` would enable decoder sharing between
         the MaskRCNN model and segmentation head. Decoders can only be shared
         when `segmentation_backbone` is shared as well. 
-      segmentation_head: segmentatation head for panoptic task. Providing
-        `segmentatation_head` will enable the panoptic segmentation
-        functionality.
+      segmentation_head: segmentatation head for panoptic task.
       class_agnostic_bbox_pred: if True, perform class agnostic bounding box
         prediction. Needs to be `True` for Cascade RCNN models.
       cascade_class_ensemble: if True, ensemble classification scores over
@@ -98,73 +97,44 @@ class PanopticMaskRCNNModel(tf.keras.Model):
         anchor to the feature stride 2^level.
       **kwargs: keyword arguments to be passed.
     """
-    super(PanopticMaskRCNNModel, self).__init__(**kwargs)
-    self._config_dict = {
-        'backbone': backbone,
-        'decoder': decoder,
-        'rpn_head': rpn_head,
-        'detection_head': detection_head,
-        'roi_generator': roi_generator,
-        'roi_sampler': roi_sampler,
-        'roi_aligner': roi_aligner,
-        'detection_generator': detection_generator,
-        'mask_head': mask_head,
-        'mask_sampler': mask_sampler,
-        'mask_roi_aligner': mask_roi_aligner,
+    super(PanopticMaskRCNNModel, self).__init__(
+      backbone=backbone,
+      decoder=decoder,
+      rpn_head=rpn_head,
+      detection_head=detection_head,
+      roi_generator=roi_generator,
+      roi_sampler=roi_sampler,
+      roi_aligner=roi_aligner,
+      detection_generator=detection_generator,
+      mask_head=mask_head,
+      mask_sampler=mask_sampler,
+      mask_roi_aligner=mask_roi_aligner,
+      class_agnostic_bbox_pred=class_agnostic_bbox_pred,
+      cascade_class_ensemble=cascade_class_ensemble,
+      min_level=min_level,
+      max_level=max_level,
+      num_scales=num_scales,
+      aspect_ratios=aspect_ratios,
+      anchor_size=anchor_size,
+      **kwargs)
+
+    self._config_dict.update({
         'segmentation_backbone':segmentation_backbone,
         'segmentation_decoder': segmentation_decoder,
-        'segmentation_head': segmentation_head,
-        'class_agnostic_bbox_pred': class_agnostic_bbox_pred,
-        'cascade_class_ensemble': cascade_class_ensemble,
-        'min_level': min_level,
-        'max_level': max_level,
-        'num_scales': num_scales,
-        'aspect_ratios': aspect_ratios,
-        'anchor_size': anchor_size,
-    }
-    self.backbone = backbone
-    self.decoder = decoder
-    self.rpn_head = rpn_head
-    if not isinstance(detection_head, (list, tuple)):
-      self.detection_head = [detection_head]
-    else:
-      self.detection_head = detection_head
-    self.roi_generator = roi_generator
-    if not isinstance(roi_sampler, (list, tuple)):
-      self.roi_sampler = [roi_sampler]
-    else:
-      self.roi_sampler = roi_sampler
-    if len(self.roi_sampler) > 1 and not class_agnostic_bbox_pred:
-      raise ValueError(
-          '`class_agnostic_bbox_pred` needs to be True if multiple detection heads are specified.'
-      )
-    self.roi_aligner = roi_aligner
-    self.detection_generator = detection_generator
-    self._include_mask = mask_head is not None
-    self.mask_head = mask_head
-    if self._include_mask and mask_sampler is None:
-      raise ValueError('`mask_sampler` is not provided in Mask R-CNN.')
-    self.mask_sampler = mask_sampler
-    if self._include_mask and mask_roi_aligner is None:
-      raise ValueError('`mask_roi_aligner` is not provided in Mask R-CNN.')
-    self.mask_roi_aligner = mask_roi_aligner
-    if not self._include_mask and segmentation_head is not None:
+        'segmentation_head': segmentation_head
+        })
+
+    if not self._include_mask:
       raise ValueError(
           '`mask_head` needs to be provided for Panoptic Mask R-CNN.')
+    if segmentation_backbone is not None and segmentation_decoder is None:
+      raise ValueError(
+          '`segmentation_decoder` needs to be provided for Panoptic Mask R-CNN if `backbone` is not shared.'
+      )
+
     self.segmentation_backbone = segmentation_backbone
     self.segmentation_decoder = segmentation_decoder
     self.segmentation_head = segmentation_head
-    if segmentation_backbone is not None and segmentation_decoder is None:
-      raise ValueError(
-        '`segmentation_decoder` needs to be provided for Panoptic Mask R-CNN if `backbone` is not shared.'
-        )
-    # Weights for the regression losses for each FRCNN layer.
-    # TODO(xianzhi): Make the weights configurable.
-    self._cascade_layer_to_weights = [
-        [10.0, 10.0, 5.0, 5.0],
-        [20.0, 20.0, 10.0, 10.0],
-        [30.0, 30.0, 15.0, 15.0],
-    ]
 
   def call(self,
            images: tf.Tensor,
@@ -298,129 +268,35 @@ class PanopticMaskRCNNModel(tf.keras.Model):
           'detection_masks': tf.math.sigmoid(raw_masks),
       })
 
-    if self.segmentation_head is not None:
-
-      if self.segmentation_backbone is not None:
-        backbone_features = self.segmentation_backbone(
-          images,
-          training=training)
-
-      if self.segmentation_decoder is not None:
-        decoder_features = self.segmentation_decoder(
-          backbone_features,
-          training=training)
-      
-      segmentation_outputs = self.segmentation_head(
-        backbone_features,
-        decoder_features,
+    if self.segmentation_backbone is not None:
+      backbone_features = self.segmentation_backbone(
+        images,
         training=training)
 
-      model_outputs.update({
-          'segmentation_outputs': segmentation_outputs,
-      })
-
-    return model_outputs
-
-  def _run_frcnn_head(self, features, rois, gt_boxes, gt_classes, training,
-                      model_outputs, cascade_num, regression_weights):
-    """Runs the frcnn head that does both class and box prediction.
-
-    Args:
-      features: `list` of features from the feature extractor.
-      rois: `list` of current rois that will be used to predict bbox refinement
-        and classes from.
-      gt_boxes: a tensor with a shape of [batch_size, MAX_NUM_INSTANCES, 4].
-        This tensor might have paddings with a negative value.
-      gt_classes: [batch_size, MAX_INSTANCES] representing the groundtruth box
-        classes. It is padded with -1s to indicate the invalid classes.
-      training: `bool`, if model is training or being evaluated.
-      model_outputs: `dict`, used for storing outputs used for eval and losses.
-      cascade_num: `int`, the current frcnn layer in the cascade.
-      regression_weights: `list`, weights used for l1 loss in bounding box
-        regression.
-
-    Returns:
-      class_outputs: Class predictions for rois.
-      box_outputs: Box predictions for rois. These are formatted for the
-        regression loss and need to be converted before being used as rois
-        in the next stage.
-      model_outputs: Updated dict with predictions used for losses and eval.
-      matched_gt_boxes: If `is_training` is true, then these give the gt box
-        location of its positive match.
-      matched_gt_classes: If `is_training` is true, then these give the gt class
-         of the predicted box.
-      matched_gt_boxes: If `is_training` is true, then these give the box
-        location of its positive match.
-      matched_gt_indices: If `is_training` is true, then gives the index of
-        the positive box match. Used for mask prediction.
-      rois: The sampled rois used for this layer.
-    """
-    # Only used during training.
-    matched_gt_boxes, matched_gt_classes, matched_gt_indices = (None, None,
-                                                                None)
-    if training and gt_boxes is not None:
-      rois = tf.stop_gradient(rois)
-
-      current_roi_sampler = self.roi_sampler[cascade_num]
-      rois, matched_gt_boxes, matched_gt_classes, matched_gt_indices = (
-          current_roi_sampler(rois, gt_boxes, gt_classes))
-      # Create bounding box training targets.
-      box_targets = box_ops.encode_boxes(
-          matched_gt_boxes, rois, weights=regression_weights)
-      # If the target is background, the box target is set to all 0s.
-      box_targets = tf.where(
-          tf.tile(
-              tf.expand_dims(tf.equal(matched_gt_classes, 0), axis=-1),
-              [1, 1, 4]), tf.zeros_like(box_targets), box_targets)
-      model_outputs.update({
-          'class_targets_{}'.format(cascade_num)
-          if cascade_num else 'class_targets':
-              matched_gt_classes,
-          'box_targets_{}'.format(cascade_num)
-          if cascade_num else 'box_targets':
-              box_targets,
-      })
-
-    # Get roi features.
-    roi_features = self.roi_aligner(features, rois)
-
-    # Run frcnn head to get class and bbox predictions.
-    current_detection_head = self.detection_head[cascade_num]
-    class_outputs, box_outputs = current_detection_head(roi_features)
+    if self.segmentation_decoder is not None:
+      decoder_features = self.segmentation_decoder(
+        backbone_features,
+        training=training)
+    
+    segmentation_outputs = self.segmentation_head(
+      backbone_features,
+      decoder_features,
+      training=training)
 
     model_outputs.update({
-        'class_outputs_{}'.format(cascade_num)
-        if cascade_num else 'class_outputs':
-            class_outputs,
-        'box_outputs_{}'.format(cascade_num) if cascade_num else 'box_outputs':
-            box_outputs,
+        'segmentation_outputs': segmentation_outputs,
     })
-    return (class_outputs, box_outputs, model_outputs, matched_gt_boxes,
-            matched_gt_classes, matched_gt_indices, rois)
+
+    return model_outputs
 
   @property
   def checkpoint_items(
       self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
-    items = dict(
-        backbone=self.backbone,
-        rpn_head=self.rpn_head,
-        detection_head=self.detection_head)
-    if self.decoder is not None:
-      items.update(decoder=self.decoder)
-    if self._include_mask:
-      items.update(mask_head=self.mask_head)
-    if self.segmentation_head is not None:
-      if self.segmentation_backbone is not None:
-        items.update(segmentation_backbone=self.segmentation_backbone)
-      if self.segmentation_decoder is not None:
-        items.update(segmentation_decoder=self.segmentation_decoder)
-      items.update(segmentation_head=self.segmentation_head)
+    items = super(PanopticMaskRCNNModel, self).checkpoint_items
+    if self.segmentation_backbone is not None:
+      items.update(segmentation_backbone=self.segmentation_backbone)
+    if self.segmentation_decoder is not None:
+      items.update(segmentation_decoder=self.segmentation_decoder)
+    items.update(segmentation_head=self.segmentation_head)
     return items
-
-  def get_config(self) -> Mapping[str, Any]:
-    return self._config_dict
-
-  @classmethod
-  def from_config(cls, config):
-    return cls(**config)
