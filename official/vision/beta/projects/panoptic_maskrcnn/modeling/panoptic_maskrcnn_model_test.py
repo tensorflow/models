@@ -42,15 +42,12 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
 
   @combinations.generate(
       combinations.combine(
-          include_mask=[True, False],
           use_separable_conv=[True, False],
           build_anchor_boxes=[True, False],
-          include_segmentation_head=[True, False],
           shared_backbone=[True, False],
           shared_decoder=[True, False],
           is_training=[True, False]))
-  def test_build_model(self, include_mask, use_separable_conv,
-                       build_anchor_boxes, include_segmentation_head,
+  def test_build_model(self, use_separable_conv, build_anchor_boxes,
                        shared_backbone, shared_decoder, is_training):
     num_classes = 3
     min_level = 3
@@ -69,7 +66,6 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
     images = np.random.rand(2, image_size, image_size, 3)
     image_shape = np.array(
         [[image_size, image_size], [image_size, image_size]])
-    include_mask = include_mask or include_segmentation_head
     shared_decoder = shared_decoder and shared_backbone
     if build_anchor_boxes:
       anchor_boxes = anchor.Anchor(
@@ -101,38 +97,29 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
     roi_sampler_obj = roi_sampler.ROISampler()
     roi_aligner_obj = roi_aligner.MultilevelROIAligner()
     detection_generator_obj = detection_generator.DetectionGenerator()
-    if include_mask:
-      mask_head = instance_heads.MaskHead(
-          num_classes=num_classes, upsample_factor=2)
-      mask_sampler_obj = mask_sampler.MaskSampler(
-          mask_target_size=28, num_sampled_masks=1)
-      mask_roi_aligner_obj = roi_aligner.MultilevelROIAligner(crop_size=14)
-    else:
-      mask_head = None
-      mask_sampler_obj = None
-      mask_roi_aligner_obj = None
-    if include_segmentation_head:
-      if shared_backbone:
-        segmentation_backbone = None
-      else:
-        segmentation_backbone = resnet.ResNet(
-            model_id=segmentation_resnet_model_id)
-      if not shared_decoder:
-        level = aspp_decoder_level
-        segmentation_decoder = aspp.ASPP(
-          level=level, dilation_rates=aspp_dilation_rates)
-      else:
-        level = fpn_decoder_level
-        segmentation_decoder = None
-      segmentation_head = segmentation_heads.SegmentationHead(
-        num_classes=2,  # stuff and common class for things,
-        level=level,
-        num_convs=2,
-        feature_fusion='deeplabv3plus')
-    else:
+    mask_head = instance_heads.MaskHead(
+        num_classes=num_classes, upsample_factor=2)
+    mask_sampler_obj = mask_sampler.MaskSampler(
+        mask_target_size=28, num_sampled_masks=1)
+    mask_roi_aligner_obj = roi_aligner.MultilevelROIAligner(crop_size=14)
+
+    if shared_backbone:
       segmentation_backbone = None
+    else:
+      segmentation_backbone = resnet.ResNet(
+          model_id=segmentation_resnet_model_id)
+    if not shared_decoder:
+      level = aspp_decoder_level
+      segmentation_decoder = aspp.ASPP(
+        level=level, dilation_rates=aspp_dilation_rates)
+    else:
+      level = fpn_decoder_level
       segmentation_decoder = None
-      segmentation_head = None
+    segmentation_head = segmentation_heads.SegmentationHead(
+      num_classes=2,  # stuff and common class for things,
+      level=level,
+      num_convs=2)
+
     model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
         backbone,
         decoder,
@@ -159,10 +146,7 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
          [[100, 100, 150, 150], [-1, -1, -1, -1], [-1, -1, -1, -1]]],
         dtype=np.float32)
     gt_classes = np.array([[2, 1, -1], [1, -1, -1]], dtype=np.int32)
-    if include_mask:
-      gt_masks = np.ones((2, 3, 100, 100))
-    else:
-      gt_masks = None
+    gt_masks = np.ones((2, 3, 100, 100))
 
     # Results will be checked in test_forward.
     _ = model(
@@ -180,17 +164,14 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
               strategy_combinations.cloud_tpu_strategy,
               strategy_combinations.one_device_strategy_gpu,
           ],
-          include_mask=[True, False],
           build_anchor_boxes=[True, False],
           use_cascade_heads=[True, False],
-          include_segmentation_head=[True, False],
           shared_backbone=[True, False],
           shared_decoder=[True, False],
           training=[True, False],
       ))
-  def test_forward(self, strategy, include_mask, build_anchor_boxes,
-                  training, include_segmentation_head,
-                  shared_backbone, shared_decoder, use_cascade_heads):
+  def test_forward(self, strategy, build_anchor_boxes, training,
+                   shared_backbone, shared_decoder, use_cascade_heads):
     num_classes = 3
     min_level = 3
     max_level = 4
@@ -214,7 +195,6 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
     image_size = (256, 256)
     images = np.random.rand(2, image_size[0], image_size[1], 3)
     image_shape = np.array([[224, 100], [100, 224]])
-    include_mask = include_mask or include_segmentation_head
     shared_decoder = shared_decoder and shared_backbone
     with strategy.scope():
       if build_anchor_boxes:
@@ -258,38 +238,29 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
           roi_sampler_cascade.append(roi_sampler_obj)
       roi_aligner_obj = roi_aligner.MultilevelROIAligner()
       detection_generator_obj = detection_generator.DetectionGenerator()
-      if include_mask:
-        mask_head = instance_heads.MaskHead(
-            num_classes=num_classes, upsample_factor=2)
-        mask_sampler_obj = mask_sampler.MaskSampler(
-            mask_target_size=28, num_sampled_masks=1)
-        mask_roi_aligner_obj = roi_aligner.MultilevelROIAligner(crop_size=14)
-      else:
-        mask_head = None
-        mask_sampler_obj = None
-        mask_roi_aligner_obj = None
-      if include_segmentation_head:
-        if shared_backbone:
-          segmentation_backbone = None
-        else:
-          segmentation_backbone = resnet.ResNet(
-              model_id=segmentation_resnet_model_id)
-        if not shared_decoder:
-          level = aspp_decoder_level
-          segmentation_decoder = aspp.ASPP(
-              level=level, dilation_rates=aspp_dilation_rates)
-        else:
-          level = fpn_decoder_level
-          segmentation_decoder = None
-        segmentation_head = segmentation_heads.SegmentationHead(
-            num_classes=2,  # stuff and common class for things,
-            level=level,
-            num_convs=2)
-            # feature_fusion='deeplabv3plus')
-      else:
+      mask_head = instance_heads.MaskHead(
+          num_classes=num_classes, upsample_factor=2)
+      mask_sampler_obj = mask_sampler.MaskSampler(
+          mask_target_size=28, num_sampled_masks=1)
+      mask_roi_aligner_obj = roi_aligner.MultilevelROIAligner(crop_size=14)
+
+      if shared_backbone:
         segmentation_backbone = None
+      else:
+        segmentation_backbone = resnet.ResNet(
+            model_id=segmentation_resnet_model_id)
+      if not shared_decoder:
+        level = aspp_decoder_level
+        segmentation_decoder = aspp.ASPP(
+            level=level, dilation_rates=aspp_dilation_rates)
+      else:
+        level = fpn_decoder_level
         segmentation_decoder = None
-        segmentation_head = None
+      segmentation_head = segmentation_heads.SegmentationHead(
+          num_classes=2,  # stuff and common class for things,
+          level=level,
+          num_convs=2)
+
       model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
           backbone,
           decoder,
@@ -318,10 +289,7 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
            [[100, 100, 150, 150], [-1, -1, -1, -1], [-1, -1, -1, -1]]],
           dtype=np.float32)
       gt_classes = np.array([[2, 1, -1], [1, -1, -1]], dtype=np.int32)
-      if include_mask:
-        gt_masks = np.ones((2, 3, 100, 100))
-      else:
-        gt_masks = None
+      gt_masks = np.ones((2, 3, 100, 100))
 
       results = model(
           images,
@@ -339,16 +307,13 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
       self.assertIn('box_targets', results)
       self.assertIn('class_outputs', results)
       self.assertIn('box_outputs', results)
-      if include_mask:
-        self.assertIn('mask_outputs', results)
+      self.assertIn('mask_outputs', results)
     else:
       self.assertIn('detection_boxes', results)
       self.assertIn('detection_scores', results)
       self.assertIn('detection_classes', results)
       self.assertIn('num_detections', results)
-      if include_mask:
-        self.assertIn('detection_masks', results)
-    if include_segmentation_head:
+      self.assertIn('detection_masks', results)
       self.assertIn('segmentation_outputs', results)
       self.assertAllEqual(
           [2,
@@ -358,12 +323,9 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
 
   @combinations.generate(
       combinations.combine(
-          include_mask=[True, False],
-          include_segmentation_head=[True, False],
           shared_backbone=[True, False],
           shared_decoder=[True, False]))
-  def test_serialize_deserialize(self, include_mask, shared_backbone,
-                                 shared_decoder, include_segmentation_head):
+  def test_serialize_deserialize(self, shared_backbone, shared_decoder):
     input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, 3])
     backbone = resnet.ResNet(model_id=50, input_specs=input_specs)
     decoder = fpn.FPN(
@@ -380,40 +342,29 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
     aspp_dilation_rates = [6, 12, 18]
     aspp_decoder_level = int(np.math.log2(segmentation_output_stride))
     fpn_decoder_level = 3
-    include_mask = include_mask or include_segmentation_head
     shared_decoder = shared_decoder and shared_backbone
+    mask_head = instance_heads.MaskHead(num_classes=2, upsample_factor=2)
+    mask_sampler_obj = mask_sampler.MaskSampler(
+        mask_target_size=28, num_sampled_masks=1)
+    mask_roi_aligner_obj = roi_aligner.MultilevelROIAligner(crop_size=14)
 
-    if include_mask:
-      mask_head = instance_heads.MaskHead(num_classes=2, upsample_factor=2)
-      mask_sampler_obj = mask_sampler.MaskSampler(
-          mask_target_size=28, num_sampled_masks=1)
-      mask_roi_aligner_obj = roi_aligner.MultilevelROIAligner(crop_size=14)
-    else:
-      mask_head = None
-      mask_sampler_obj = None
-      mask_roi_aligner_obj = None
-    if include_segmentation_head:
-      if shared_backbone:
-        segmentation_backbone = None
-      else:
-        segmentation_backbone = resnet.ResNet(
-            model_id=segmentation_resnet_model_id)
-      if not shared_decoder:
-        level = aspp_decoder_level
-        segmentation_decoder = aspp.ASPP(
-            level=level, dilation_rates=aspp_dilation_rates)
-      else:
-        level = fpn_decoder_level
-        segmentation_decoder = None
-      segmentation_head = segmentation_heads.SegmentationHead(
-          num_classes=2,  # stuff and common class for things,
-          level=level,
-          num_convs=2,
-          feature_fusion='deeplabv3plus')
-    else:
+    if shared_backbone:
       segmentation_backbone = None
+    else:
+      segmentation_backbone = resnet.ResNet(
+          model_id=segmentation_resnet_model_id)
+    if not shared_decoder:
+      level = aspp_decoder_level
+      segmentation_decoder = aspp.ASPP(
+          level=level, dilation_rates=aspp_dilation_rates)
+    else:
+      level = fpn_decoder_level
       segmentation_decoder = None
-      segmentation_head = None
+    segmentation_head = segmentation_heads.SegmentationHead(
+        num_classes=2,  # stuff and common class for things,
+        level=level,
+        num_convs=2)
+
     model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
         backbone,
         decoder,
@@ -447,12 +398,9 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
 
   @combinations.generate(
       combinations.combine(
-          include_mask=[True, False],
-          include_segmentation_head=[True, False],
           shared_backbone=[True, False],
           shared_decoder=[True, False]))
-  def test_checkpoint(self, include_mask, shared_backbone,
-                      shared_decoder, include_segmentation_head):
+  def test_checkpoint(self, shared_backbone, shared_decoder):
     input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, 3])
     backbone = resnet.ResNet(model_id=50, input_specs=input_specs)
     decoder = fpn.FPN(
@@ -469,40 +417,29 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
     aspp_dilation_rates = [6, 12, 18]
     aspp_decoder_level = int(np.math.log2(segmentation_output_stride))
     fpn_decoder_level = 3
-    include_mask = include_mask or include_segmentation_head
     shared_decoder = shared_decoder and shared_backbone
+    mask_head = instance_heads.MaskHead(num_classes=2, upsample_factor=2)
+    mask_sampler_obj = mask_sampler.MaskSampler(
+        mask_target_size=28, num_sampled_masks=1)
+    mask_roi_aligner_obj = roi_aligner.MultilevelROIAligner(crop_size=14)
 
-    if include_mask:
-      mask_head = instance_heads.MaskHead(num_classes=2, upsample_factor=2)
-      mask_sampler_obj = mask_sampler.MaskSampler(
-          mask_target_size=28, num_sampled_masks=1)
-      mask_roi_aligner_obj = roi_aligner.MultilevelROIAligner(crop_size=14)
-    else:
-      mask_head = None
-      mask_sampler_obj = None
-      mask_roi_aligner_obj = None
-    if include_segmentation_head:
-      if shared_backbone:
-        segmentation_backbone = None
-      else:
-        segmentation_backbone = resnet.ResNet(
-            model_id=segmentation_resnet_model_id)
-      if not shared_decoder:
-        level = aspp_decoder_level
-        segmentation_decoder = aspp.ASPP(
-            level=level, dilation_rates=aspp_dilation_rates)
-      else:
-        level = fpn_decoder_level
-        segmentation_decoder = None
-      segmentation_head = segmentation_heads.SegmentationHead(
-          num_classes=2,  # stuff and common class for things,
-          level=level,
-          num_convs=2,
-          feature_fusion='deeplabv3plus')
-    else:
+    if shared_backbone:
       segmentation_backbone = None
+    else:
+      segmentation_backbone = resnet.ResNet(
+          model_id=segmentation_resnet_model_id)
+    if not shared_decoder:
+      level = aspp_decoder_level
+      segmentation_decoder = aspp.ASPP(
+          level=level, dilation_rates=aspp_dilation_rates)
+    else:
+      level = fpn_decoder_level
       segmentation_decoder = None
-      segmentation_head = None
+    segmentation_head = segmentation_heads.SegmentationHead(
+        num_classes=2,  # stuff and common class for things,
+        level=level,
+        num_convs=2)
+
     model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
         backbone,
         decoder,
@@ -528,14 +465,12 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         decoder=decoder,
         rpn_head=rpn_head,
         detection_head=[detection_head])
-    if include_mask:
-      expect_checkpoint_items['mask_head'] = mask_head
-    if include_segmentation_head:
-      if not shared_backbone:
-        expect_checkpoint_items['segmentation_backbone'] = segmentation_backbone
-      if not shared_decoder:
-        expect_checkpoint_items['segmentation_decoder'] = segmentation_decoder
-      expect_checkpoint_items['segmentation_head'] = segmentation_head
+    expect_checkpoint_items['mask_head'] = mask_head
+    if not shared_backbone:
+      expect_checkpoint_items['segmentation_backbone'] = segmentation_backbone
+    if not shared_decoder:
+      expect_checkpoint_items['segmentation_decoder'] = segmentation_decoder
+    expect_checkpoint_items['segmentation_head'] = segmentation_head
     self.assertAllEqual(expect_checkpoint_items, model.checkpoint_items)
 
     # Test save and load checkpoints.
@@ -547,29 +482,27 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
     partial_ckpt.restore(tf.train.latest_checkpoint(
         save_dir)).expect_partial().assert_existing_objects_matched()
 
-    if include_mask:
-      partial_ckpt_mask = tf.train.Checkpoint(
-          backbone=backbone, mask_head=mask_head)
-      partial_ckpt_mask.restore(tf.train.latest_checkpoint(
-          save_dir)).expect_partial().assert_existing_objects_matched()
+    partial_ckpt_mask = tf.train.Checkpoint(
+        backbone=backbone, mask_head=mask_head)
+    partial_ckpt_mask.restore(tf.train.latest_checkpoint(
+        save_dir)).expect_partial().assert_existing_objects_matched()
 
-    if include_segmentation_head:
-      if not shared_backbone:
-        partial_ckpt_segmentation = tf.train.Checkpoint(
-            segmentation_backbone=segmentation_backbone,
-            segmentation_decoder=segmentation_decoder,
-            segmentation_head=segmentation_head)
-      elif not shared_decoder:
-        partial_ckpt_segmentation = tf.train.Checkpoint(
-            segmentation_decoder=segmentation_decoder,
-            segmentation_head=segmentation_head)
-      else:
-        partial_ckpt_segmentation = tf.train.Checkpoint(
-            segmentation_head=segmentation_head)
+    if not shared_backbone:
+      partial_ckpt_segmentation = tf.train.Checkpoint(
+          segmentation_backbone=segmentation_backbone,
+          segmentation_decoder=segmentation_decoder,
+          segmentation_head=segmentation_head)
+    elif not shared_decoder:
+      partial_ckpt_segmentation = tf.train.Checkpoint(
+          segmentation_decoder=segmentation_decoder,
+          segmentation_head=segmentation_head)
+    else:
+      partial_ckpt_segmentation = tf.train.Checkpoint(
+          segmentation_head=segmentation_head)
 
-      partial_ckpt_segmentation.restore(tf.train.latest_checkpoint(
-          save_dir)).expect_partial().assert_existing_objects_matched()
-            
+    partial_ckpt_segmentation.restore(tf.train.latest_checkpoint(
+        save_dir)).expect_partial().assert_existing_objects_matched()
+
 
 if __name__ == '__main__':
   tf.test.main()
