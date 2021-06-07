@@ -226,3 +226,24 @@ class LARSConfig(BaseOptimizerConfig):
   classic_momentum: bool = True
   exclude_from_weight_decay: Optional[List[str]] = None
   exclude_from_layer_adaptation: Optional[List[str]] = None
+
+
+@dataclasses.dataclass
+class SLIDEConfig(BaseOptimizerConfig):
+  """Configuration for SLIDE optimizer.
+
+  Details coming soon.
+  """
+  name: str = "SLIDE"
+  beta_1: float = 0.9
+  beta_2: float = 0.999
+  epsilon: float = 1e-6
+  weight_decay_rate: float = 0.0
+  weight_decay_type: str = "inner"
+  exclude_from_weight_decay: Optional[List[str]] = None
+  exclude_from_layer_adaptation: Optional[List[str]] = None
+  include_in_sparse_layer_adaptation: Optional[List[str]] = None
+  sparse_layer_learning_rate: float = 0.1
+  do_gradient_rescaling: bool = True
+  norm_type: str = "layer"
+  ratio_clip_norm: float = 1e5
