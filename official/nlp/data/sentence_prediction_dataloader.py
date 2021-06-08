@@ -40,6 +40,7 @@ class SentencePredictionDataConfig(cfg.DataConfig):
   label_type: str = 'int'
   # Whether to include the example id number.
   include_example_id: bool = False
+  outputs_as_dict: bool = False
 
 
 @data_loader_factory.register_data_loader_cls(SentencePredictionDataConfig)
@@ -84,6 +85,10 @@ class SentencePredictionDataLoader(data_loader.DataLoader):
     }
     if self._include_example_id:
       x['example_id'] = record['example_id']
+
+    if self._params.outputs_as_dict:
+      x['next_sentence_labels'] = record['label_ids']
+      return x
 
     y = record['label_ids']
     return (x, y)
