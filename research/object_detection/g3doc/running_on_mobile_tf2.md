@@ -13,7 +13,7 @@ on-device machine learning inference with low latency and a small binary size.
 TensorFlow Lite uses many techniques for this such as quantized kernels that
 allow smaller and faster (fixed-point math) models.
 
-This document shows how elgible models from the
+This document shows how eligible models from the
 [TF2 Detection zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2_detection_zoo.md)
 can be converted for inference with TFLite.
 
@@ -50,7 +50,7 @@ There are two steps to TFLite conversion:
 
 This step generates an intermediate SavedModel that can be used with the
 [TFLite Converter](https://www.tensorflow.org/lite/convert) via commandline or
-Python API.
+Python API. Not supported on TensorFlow 2.3 ([#9201](https://github.com/tensorflow/models/issues/9201#issuecomment-687690299)). Install tf-nightly instead.
 
 To use the script:
 
@@ -128,7 +128,7 @@ the base assets directory. If you need to use a custom path or filename, open up
 the
 $TF_EXAMPLES/lite/examples/object_detection/android/app/src/main/java/org/tensorflow/demo/DetectorActivity.java
 file in a text editor and find the definition of TF_OD_API_LABELS_FILE. Update
-this path to point to your new label map file: "labels_list.txt". Note that if
+this path to point to your new label map file: "labels_list.txt". Change the TF_OD_API_INPUT_SIZE according to input size. Note that if
 your model is quantized, the flag TF_OD_API_IS_QUANTIZED is set to true, and if
 your model is floating point, the flag TF_OD_API_IS_QUANTIZED is set to false.
 This new section of DetectorActivity.java should now look as follows for a
