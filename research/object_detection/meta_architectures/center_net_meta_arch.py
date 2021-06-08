@@ -2755,8 +2755,7 @@ class CenterNetMetaArch(model.DetectionModel):
          gt_weights_list=gt_weights_list,
          gt_classes_list=gt_classes_list,
          gt_boxes_list=gt_boxes_list)
-    flattened_valid_mask = _flatten_spatial_dimensions(
-        tf.expand_dims(valid_mask_batch, axis=-1))
+    flattened_valid_mask = _flatten_spatial_dimensions(valid_mask_batch)
     flattened_heapmap_targets = _flatten_spatial_dimensions(keypoint_heatmap)
     # Sum over the number of instances per keypoint types to get the total
     # number of keypoints. Note that this is used to normalized the loss and we

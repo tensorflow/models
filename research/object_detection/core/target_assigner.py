@@ -1409,8 +1409,10 @@ class CenterNetKeypointTargetAssigner(object):
         [batch_size, num_keypoints] representing number of instances for each
         keypoint type.
       valid_mask: A float tensor with shape [batch_size, output_height,
-        output_width] where all values within the regions of the blackout boxes
-        are 0.0 and 1.0 else where.
+        output_width, num_keypoints] where all values within the regions of the
+        blackout boxes are 0.0 and 1.0 else where. Note that the blackout boxes
+        are per keypoint type and are blacked out if the keypoint
+        visibility/weight (of the corresponding keypoint type) is zero.
     """
     out_width = tf.cast(tf.maximum(width // self._stride, 1), tf.float32)
     out_height = tf.cast(tf.maximum(height // self._stride, 1), tf.float32)
@@ -1480,13 +1482,17 @@ class CenterNetKeypointTargetAssigner(object):
         keypoint_std_dev = keypoint_std_dev * tf.stack(
             [sigma] * num_keypoints, axis=1)
 
-        # Generate the valid region mask to ignore regions with target class but
-        # no corresponding keypoints.
-        # Shape: [num_instances].
-        blackout = tf.logical_and(classes[:, self._class_id] > 0,
-                                  tf.reduce_max(kp_weights, axis=1) < 1e-3)
-        valid_mask = ta_utils.blackout_pixel_weights_by_box_regions(
-            out_height, out_width, boxes.get(), blackout)
+        # Generate the per-keypoint type valid region mask to ignore regions
+        # with keypoint weights equal to zeros (e.g. visibility is 0).
+        # shape of valid_mask: [out_height, out_width, num_keypoints]
+        kp_weight_list = tf.unstack(kp_weights, axis=1)
+        valid_mask_channel_list = []
+        for kp_weight in kp_weight_list:
+          blackout = kp_weight < 1e-3
+          valid_mask_channel_list.append(
+              ta_utils.blackout_pixel_weights_by_box_regions(
+                  out_height, out_width, boxes.get(), blackout))
+        valid_mask = tf.stack(valid_mask_channel_list, axis=2)
         valid_mask_list.append(valid_mask)
 
       # Apply the Gaussian kernel to the keypoint coordinates. Returned heatmap
