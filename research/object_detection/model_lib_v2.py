@@ -397,7 +397,8 @@ def load_fine_tune_checkpoint(model, checkpoint_path, checkpoint_type,
       fine_tune_checkpoint_type=checkpoint_type)
   validate_tf_v2_checkpoint_restore_map(restore_from_objects_dict)
   ckpt = tf.train.Checkpoint(**restore_from_objects_dict)
-  ckpt.restore(checkpoint_path).assert_existing_objects_matched()
+  ckpt.restore(
+      checkpoint_path).expect_partial().assert_existing_objects_matched()
 
 
 def get_filepath(strategy, filepath):
