@@ -214,9 +214,10 @@ class Delf(tf.keras.Model):
     block3 = tf.stop_gradient(block3)
     if self._use_dim_reduction:
       (dim_expanded_features, dim_reduced_features) = self.autoencoder(block3)
-      attn_prelogits, attn_scores, _ = self.attention(block3,
-                                                      targets=dim_expanded_features,
-                                                      training=training)
+      attn_prelogits, attn_scores, _ = self.attention(
+          block3,
+          targets=dim_expanded_features,
+          training=training)
     else:
       attn_prelogits, attn_scores, _ = self.attention(block3, training=training)
       dim_expanded_features = None

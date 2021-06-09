@@ -71,8 +71,7 @@ class DelgTest(tf.test.TestCase, parameterized.TestCase):
 
     model = delg_model.Delg(
         block3_strides=block3_strides,
-        use_dim_reduction=True
-    )
+        use_dim_reduction=True)
     model.init_classifiers(num_classes)
 
     images = tf.random.uniform(input_shape, minval=-1.0, maxval=1.0, seed=0)
@@ -99,7 +98,6 @@ class DelgTest(tf.test.TestCase, parameterized.TestCase):
       ('block3_stridesFalse', False),
   )
   def test_train_step(self, block3_strides):
-
     image_size = 321
     num_classes = 1000
     batch_size = 2
