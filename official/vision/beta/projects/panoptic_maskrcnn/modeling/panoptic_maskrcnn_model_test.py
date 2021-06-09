@@ -23,7 +23,8 @@ import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
-from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_maskrcnn_model
+from official.vision.beta.projects.panoptic_maskrcnn.modeling import \
+    panoptic_maskrcnn_model
 from official.vision.beta.modeling.backbones import resnet
 from official.vision.beta.modeling.decoders import fpn
 from official.vision.beta.modeling.decoders import aspp
@@ -111,14 +112,14 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
     if not shared_decoder:
       level = aspp_decoder_level
       segmentation_decoder = aspp.ASPP(
-        level=level, dilation_rates=aspp_dilation_rates)
+          level=level, dilation_rates=aspp_dilation_rates)
     else:
       level = fpn_decoder_level
       segmentation_decoder = None
     segmentation_head = segmentation_heads.SegmentationHead(
-      num_classes=2,  # stuff and common class for things,
-      level=level,
-      num_convs=2)
+        num_classes=2,  # stuff and common class for things,
+        level=level,
+        num_convs=2)
 
     model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
         backbone,
@@ -316,9 +317,8 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
       self.assertIn('detection_masks', results)
       self.assertIn('segmentation_outputs', results)
       self.assertAllEqual(
-          [2,
-            image_size[0] // (2**level),
-            image_size[1] // (2**level), 2],
+          [2, image_size[0] // (2**level),
+           image_size[1] // (2**level), 2],
           results['segmentation_outputs'].numpy().shape)
 
   @combinations.generate(
