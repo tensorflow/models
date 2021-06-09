@@ -37,7 +37,7 @@ class DelgTest(tf.test.TestCase, parameterized.TestCase):
     batch_size = 2
     input_shape = (batch_size, image_size, image_size, 3)
     local_feature_dim = 64
-    feature_map_size = image_size // 16 # reduction factor for resnet50.
+    feature_map_size = image_size // 16  # reduction factor for resnet50.
     if block3_strides:
       feature_map_size //= 2
 
