@@ -95,11 +95,12 @@ class SentencePredictionTask(base_task.Task):
           use_encoder_pooler=self.task_config.model.use_encoder_pooler)
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
+    label_ids = labels['label_ids']
     if self.task_config.model.num_classes == 1:
-      loss = tf.keras.losses.mean_squared_error(labels, model_outputs)
+      loss = tf.keras.losses.mean_squared_error(label_ids, model_outputs)
     else:
       loss = tf.keras.losses.sparse_categorical_crossentropy(
-          labels, tf.cast(model_outputs, tf.float32), from_logits=True)
+          label_ids, tf.cast(model_outputs, tf.float32), from_logits=True)
 
     if aux_losses:
       loss += tf.add_n(aux_losses)
@@ -120,7 +121,8 @@ class SentencePredictionTask(base_task.Task):
           y = tf.zeros((1,), dtype=tf.float32)
         else:
           y = tf.zeros((1, 1), dtype=tf.int32)
-        return x, y
+        x['label_ids'] = y
+        return x
 
       dataset = tf.data.Dataset.range(1)
       dataset = dataset.repeat()
@@ -142,7 +144,7 @@ class SentencePredictionTask(base_task.Task):
 
   def process_metrics(self, metrics, labels, model_outputs):
     for metric in metrics:
-      metric.update_state(labels, model_outputs)
+      metric.update_state(labels['label_ids'], model_outputs)
 
   def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
     compiled_metrics.update_state(labels, model_outputs)
@@ -151,7 +153,7 @@ class SentencePredictionTask(base_task.Task):
     if self.metric_type == 'accuracy':
       return super(SentencePredictionTask,
                    self).validation_step(inputs, model, metrics)
-    features, labels = inputs
+    features, labels = inputs, inputs
     outputs = self.inference_step(features, model)
     loss = self.build_losses(
         labels=labels, model_outputs=outputs, aux_losses=model.losses)
@@ -161,12 +163,12 @@ class SentencePredictionTask(base_task.Task):
           'sentence_prediction':  # Ensure one prediction along batch dimension.
               tf.expand_dims(tf.math.argmax(outputs, axis=1), axis=1),
           'labels':
-              labels,
+              labels['label_ids'],
       })
     if self.metric_type == 'pearson_spearman_corr':
       logs.update({
           'sentence_prediction': outputs,
-          'labels': labels,
+          'labels': labels['label_ids'],
       })
     return logs
 
@@ -250,7 +252,7 @@ def predict(task: SentencePredictionTask,
 
   def predict_step(inputs):
     """Replicated prediction calculation."""
-    x, _ = inputs
+    x = inputs
     example_id = x.pop('example_id')
     outputs = task.inference_step(x, model)
     return dict(example_id=example_id, predictions=outputs)
