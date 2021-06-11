@@ -115,15 +115,31 @@ class MovinetClassifier(tf.keras.Model):
     inputs = {**states, 'image': image}
 
     if backbone.use_external_states:
-      before_states = set(states)
+      before_states = states
       endpoints, states = backbone(inputs)
-      after_states = set(states)
+      after_states = states
 
-      new_states = after_states - before_states
+      new_states = set(after_states) - set(before_states)
       if new_states:
-        raise AttributeError('Expected input and output states to be the same. '
-                             'Got extra states {}, expected {}'.format(
-                                 new_states, before_states))
+        raise ValueError(
+            'Expected input and output states to be the same. Got extra states '
+            '{}, expected {}'.format(new_states, set(before_states)))
+
+      mismatched_shapes = {}
+      for name in after_states:
+        before_shape = before_states[name].shape
+        after_shape = after_states[name].shape
+        if len(before_shape) != len(after_shape):
+          mismatched_shapes[name] = (before_shape, after_shape)
+          continue
+        for before, after in zip(before_shape, after_shape):
+          if before is not None and after is not None and before != after:
+            mismatched_shapes[name] = (before_shape, after_shape)
+            break
+      if mismatched_shapes:
+        raise ValueError(
+            'Got mismatched input and output state shapes: {}'.format(
+                mismatched_shapes))
     else:
       endpoints, states = backbone(inputs)
 
