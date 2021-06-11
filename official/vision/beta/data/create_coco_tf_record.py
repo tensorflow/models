@@ -46,7 +46,7 @@ from official.vision.beta.data import tfrecord_lib
 flags.DEFINE_boolean(
     'include_masks', False, 'Whether to include instance segmentations masks '
     '(PNG encoded) in the result. default: False.')
-flags.DEFINE_string('image_dir', '', 'Directory containing images.')
+flags.DEFINE_multi_string('image_dir', '', 'Directory containing images.')
 flags.DEFINE_string(
     'image_info_file', '', 'File containing image information. '
     'Tf Examples in the output files correspond to the image '
@@ -159,7 +159,7 @@ def encode_caption_annotations(caption_annotations):
 
 
 def create_tf_example(image,
-                      image_dir,
+                      image_dirs,
                       bbox_annotations=None,
                       id_to_name_map=None,
                       caption_annotations=None,
@@ -169,7 +169,7 @@ def create_tf_example(image,
   Args:
     image: dict with keys: [u'license', u'file_name', u'coco_url', u'height',
       u'width', u'date_captured', u'flickr_url', u'id']
-    image_dir: directory containing the image files.
+    image_dirs: list of directories containing the image files.
     bbox_annotations:
       list of dicts with keys: [u'segmentation', u'area', u'iscrowd',
         u'image_id', u'bbox', u'category_id', u'id'] Notice that bounding box
@@ -190,14 +190,31 @@ def create_tf_example(image,
     num_annotations_skipped: Number of (invalid) annotations that were ignored.
 
   Raises:
-    ValueError: if the image pointed to by data['filename'] is not a valid JPEG
+    ValueError: if the image pointed to by data['filename'] is not a valid JPEG,
+      does not exist, or is not unique across image directories.
   """
   image_height = image['height']
   image_width = image['width']
   filename = image['file_name']
   image_id = image['id']
 
-  full_path = os.path.join(image_dir, filename)
+  if len(image_dirs) > 1:
+    full_paths = [os.path.join(image_dir, filename) for image_dir in image_dirs]
+    full_existing_paths = [p for p in full_paths if tf.io.gfile.exists(p)]
+    if not full_existing_paths:
+      raise ValueError(
+          '{} does not exist across image directories.'.format(filename))
+    if len(full_existing_paths) > 1:
+      raise ValueError(
+          '{} is not unique across image directories'.format(filename))
+    full_path, = full_existing_paths
+  # If there is only one image directory, it's not worth checking for existence,
+  # since trying to open the file will raise an informative error message if it
+  # does not exist.
+  else:
+    image_dir, = image_dirs
+    full_path = os.path.join(image_dir, filename)
+
   with tf.io.gfile.GFile(full_path, 'rb') as fid:
     encoded_jpg = fid.read()
 
@@ -276,7 +293,7 @@ def _load_images_info(images_info_file):
   return info_dict['images']
 
 
-def generate_annotations(images, image_dir,
+def generate_annotations(images, image_dirs,
                          img_to_obj_annotation=None,
                          img_to_caption_annotation=None, id_to_name_map=None,
                          include_masks=False):
@@ -289,12 +306,12 @@ def generate_annotations(images, image_dir,
     caption_annotaion = (img_to_caption_annotation.get(image['id'], None) if
                          img_to_caption_annotation else None)
 
-    yield (image, image_dir, object_annotation, id_to_name_map,
+    yield (image, image_dirs, object_annotation, id_to_name_map,
            caption_annotaion, include_masks)
 
 
 def _create_tf_record_from_coco_annotations(images_info_file,
-                                            image_dir,
+                                            image_dirs,
                                             output_path,
                                             num_shards,
                                             object_annotations_file=None,
@@ -309,7 +326,7 @@ def _create_tf_record_from_coco_annotations(images_info_file,
       files Eg. 'image_info_test-dev2017.json',
       'instance_annotations_train2017.json',
       'caption_annotations_train2017.json', etc.
-    image_dir: Directory containing the image files.
+    image_dirs: List of directories containing the image files.
     output_path: Path to output tf.Record file.
     num_shards: Number of output files to create.
     object_annotations_file: JSON file containing bounding box annotations.
@@ -333,7 +350,7 @@ def _create_tf_record_from_coco_annotations(images_info_file,
         _load_caption_annotations(caption_annotations_file))
 
   coco_annotations_iter = generate_annotations(
-      images, image_dir, img_to_obj_annotation, img_to_caption_annotation,
+      images, image_dirs, img_to_obj_annotation, img_to_caption_annotation,
       id_to_name_map=id_to_name_map, include_masks=include_masks)
 
   num_skipped = tfrecord_lib.write_tf_record_dataset(
