@@ -40,6 +40,7 @@ class SentencePredictionDataConfig(cfg.DataConfig):
   label_type: str = 'int'
   # Whether to include the example id number.
   include_example_id: bool = False
+  label_field: str = 'label_ids'
   # Maps the key in TfExample to feature name.
   # E.g 'label_ids' to 'next_sentence_labels'
   label_name: Optional[Tuple[str, str]] = None
@@ -53,6 +54,7 @@ class SentencePredictionDataLoader(data_loader.DataLoader):
     self._params = params
     self._seq_length = params.seq_length
     self._include_example_id = params.include_example_id
+    self._label_field = params.label_field
     if params.label_name:
       self._label_name_mapping = dict([params.label_name])
     else:
@@ -65,7 +67,7 @@ class SentencePredictionDataLoader(data_loader.DataLoader):
         'input_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
         'input_mask': tf.io.FixedLenFeature([self._seq_length], tf.int64),
         'segment_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
-        'label_ids': tf.io.FixedLenFeature([], label_type),
+        self._label_field: tf.io.FixedLenFeature([], label_type),
     }
     if self._include_example_id:
       name_to_features['example_id'] = tf.io.FixedLenFeature([], tf.int64)
@@ -92,10 +94,10 @@ class SentencePredictionDataLoader(data_loader.DataLoader):
     if self._include_example_id:
       x['example_id'] = record['example_id']
 
-    x['label_ids'] = record['label_ids']
+    x[self._label_field] = record[self._label_field]
 
-    if 'label_ids' in self._label_name_mapping:
-      x[self._label_name_mapping['label_ids']] = record['label_ids']
+    if self._label_field in self._label_name_mapping:
+      x[self._label_name_mapping[self._label_field]] = record[self._label_field]
 
     return x
 
@@ -215,7 +217,7 @@ class SentencePredictionTextDataLoader(data_loader.DataLoader):
     model_inputs = self._text_processor(segments)
     if self._include_example_id:
       model_inputs['example_id'] = record['example_id']
-    model_inputs['label_ids'] = record[self._label_field]
+    model_inputs[self._label_field] = record[self._label_field]
     return model_inputs
 
   def _decode(self, record: tf.Tensor):

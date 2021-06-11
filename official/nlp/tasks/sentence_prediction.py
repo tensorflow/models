@@ -69,6 +69,10 @@ class SentencePredictionTask(base_task.Task):
     if params.metric_type not in METRIC_TYPES:
       raise ValueError('Invalid metric_type: {}'.format(params.metric_type))
     self.metric_type = params.metric_type
+    if hasattr(params.train_data, 'label_field'):
+      self.label_field = params.train_data.label_field
+    else:
+      self.label_field = 'label_ids'
 
   def build_model(self):
     if self.task_config.hub_module_url and self.task_config.init_checkpoint:
@@ -95,7 +99,7 @@ class SentencePredictionTask(base_task.Task):
           use_encoder_pooler=self.task_config.model.use_encoder_pooler)
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
-    label_ids = labels['label_ids']
+    label_ids = labels[self.label_field]
     if self.task_config.model.num_classes == 1:
       loss = tf.keras.losses.mean_squared_error(label_ids, model_outputs)
     else:
@@ -121,7 +125,7 @@ class SentencePredictionTask(base_task.Task):
           y = tf.zeros((1,), dtype=tf.float32)
         else:
           y = tf.zeros((1, 1), dtype=tf.int32)
-        x['label_ids'] = y
+        x[self.label_field] = y
         return x
 
       dataset = tf.data.Dataset.range(1)
@@ -144,10 +148,10 @@ class SentencePredictionTask(base_task.Task):
 
   def process_metrics(self, metrics, labels, model_outputs):
     for metric in metrics:
-      metric.update_state(labels['label_ids'], model_outputs)
+      metric.update_state(labels[self.label_field], model_outputs)
 
   def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
-    compiled_metrics.update_state(labels, model_outputs)
+    compiled_metrics.update_state(labels[self.label_field], model_outputs)
 
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
     if self.metric_type == 'accuracy':
@@ -163,12 +167,12 @@ class SentencePredictionTask(base_task.Task):
           'sentence_prediction':  # Ensure one prediction along batch dimension.
               tf.expand_dims(tf.math.argmax(outputs, axis=1), axis=1),
           'labels':
-              labels['label_ids'],
+              labels[self.label_field],
       })
     if self.metric_type == 'pearson_spearman_corr':
       logs.update({
           'sentence_prediction': outputs,
-          'labels': labels['label_ids'],
+          'labels': labels[self.label_field],
       })
     return logs
 
