@@ -188,7 +188,7 @@ class ModelBuilderTF2Test(
     return text_format.Merge(proto_txt,
                              center_net_pb2.CenterNet.ObjectCenterParams())
 
-  def get_fake_object_detection_proto(self):
+  def get_fake_object_detection_proto(self, customize_head_params=False):
     proto_txt = """
       task_loss_weight: 0.5
       offset_loss_weight: 0.1
@@ -198,10 +198,19 @@ class ModelBuilderTF2Test(
         }
       }
     """
+    if customize_head_params:
+      proto_txt += """
+      scale_head_params {
+        num_filters: 128
+        num_filters: 64
+        kernel_sizes: 5
+        kernel_sizes: 3
+      }
+    """
     return text_format.Merge(proto_txt,
                              center_net_pb2.CenterNet.ObjectDetection())
 
-  def get_fake_mask_proto(self):
+  def get_fake_mask_proto(self, customize_head_params=False):
     proto_txt = """
       task_loss_weight: 0.7
       classification_loss {
@@ -211,6 +220,15 @@ class ModelBuilderTF2Test(
       mask_width: 8
       score_threshold: 0.7
       heatmap_bias_init: -2.0
+    """
+    if customize_head_params:
+      proto_txt += """
+      mask_head_params {
+        num_filters: 128
+        num_filters: 64
+        kernel_sizes: 5
+        kernel_sizes: 3
+      }
     """
     return text_format.Merge(proto_txt,
                              center_net_pb2.CenterNet.MaskEstimation())
@@ -266,14 +284,16 @@ class ModelBuilderTF2Test(
         self.get_fake_object_center_proto(
             customize_head_params=customize_head_params))
     config.center_net.object_detection_task.CopyFrom(
-        self.get_fake_object_detection_proto())
+        self.get_fake_object_detection_proto(
+            customize_head_params=customize_head_params))
     config.center_net.keypoint_estimation_task.append(
         self.get_fake_keypoint_proto(
             customize_head_params=customize_head_params))
     config.center_net.keypoint_label_map_path = (
         self.get_fake_label_map_file_path())
     config.center_net.mask_estimation_task.CopyFrom(
-        self.get_fake_mask_proto())
+        self.get_fake_mask_proto(
+            customize_head_params=customize_head_params))
     config.center_net.densepose_estimation_task.CopyFrom(
         self.get_fake_densepose_proto())
 
@@ -303,6 +323,14 @@ class ModelBuilderTF2Test(
     self.assertAlmostEqual(model._od_params.task_loss_weight, 0.5)
     self.assertIsInstance(model._od_params.localization_loss,
                           losses.L1LocalizationLoss)
+    self.assertEqual(model._od_params.offset_head_num_filters, [256])
+    self.assertEqual(model._od_params.offset_head_kernel_sizes, [3])
+    if customize_head_params:
+      self.assertEqual(model._od_params.scale_head_num_filters, [128, 64])
+      self.assertEqual(model._od_params.scale_head_kernel_sizes, [5, 3])
+    else:
+      self.assertEqual(model._od_params.scale_head_num_filters, [256])
+      self.assertEqual(model._od_params.scale_head_kernel_sizes, [3])
 
     # Check keypoint estimation related parameters.
     kp_params = model._kp_params_dict['human_pose']
@@ -352,6 +380,12 @@ class ModelBuilderTF2Test(
     self.assertAlmostEqual(model._mask_params.score_threshold, 0.7)
     self.assertAlmostEqual(
         model._mask_params.heatmap_bias_init, -2.0, places=4)
+    if customize_head_params:
+      self.assertEqual(model._mask_params.mask_head_num_filters, [128, 64])
+      self.assertEqual(model._mask_params.mask_head_kernel_sizes, [5, 3])
+    else:
+      self.assertEqual(model._mask_params.mask_head_num_filters, [256])
+      self.assertEqual(model._mask_params.mask_head_kernel_sizes, [3])
 
     # Check DensePose related parameters.
     self.assertEqual(model._densepose_params.class_id, 0)

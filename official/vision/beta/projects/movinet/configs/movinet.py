@@ -45,6 +45,7 @@ class Movinet(hyperparams.Config):
   # 3d_2plus1d: (2+1)D convolution with Conv3D (no 2D reshaping)
   conv_type: str = '3d'
   stochastic_depth_drop_rate: float = 0.2
+  use_external_states: bool = False
 
 
 @dataclasses.dataclass

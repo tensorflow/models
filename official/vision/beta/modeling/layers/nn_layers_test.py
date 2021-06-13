@@ -48,8 +48,8 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
         initializer='ones', cache_encoding=True)
 
     inputs = tf.ones([1, 4, 1, 1, 3])
-    outputs = pos_encoding(inputs)
-    outputs_cached = pos_encoding_cached(inputs)
+    outputs, _ = pos_encoding(inputs)
+    outputs_cached, _ = pos_encoding_cached(inputs)
 
     expected = tf.constant(
         [[[[[1.0000000, 1.0000000, 2.0000000]]],
@@ -70,7 +70,7 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
     pos_encoding = nn_layers.PositionalEncoding(initializer='ones')
 
     inputs = tf.ones([1, 4, 1, 1, 3], dtype=tf.bfloat16)
-    outputs = pos_encoding(inputs)
+    outputs, _ = pos_encoding(inputs)
 
     expected = tf.constant(
         [[[[[1.0000000, 1.0000000, 2.0000000]]],
@@ -91,6 +91,31 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertEqual(outputs.shape, expected.shape)
     self.assertAllEqual(outputs, expected)
+
+  def test_positional_encoding_stream(self):
+    pos_encoding = nn_layers.PositionalEncoding(
+        initializer='ones', cache_encoding=False)
+
+    inputs = tf.range(4, dtype=tf.float32) + 1.
+    inputs = tf.reshape(inputs, [1, 4, 1, 1, 1])
+    inputs = tf.tile(inputs, [1, 1, 1, 1, 3])
+    expected, _ = pos_encoding(inputs)
+
+    for num_splits in [1, 2, 4]:
+      frames = tf.split(inputs, num_splits, axis=1)
+      states = {}
+      predicted = []
+      for frame in frames:
+        output, states = pos_encoding(frame, states=states)
+        predicted.append(output)
+      predicted = tf.concat(predicted, axis=1)
+
+      self.assertEqual(predicted.shape, expected.shape)
+      self.assertAllClose(predicted, expected)
+      self.assertAllClose(predicted, [[[[[1.0000000, 1.0000000, 2.0000000]]],
+                                       [[[2.8414710, 2.0021544, 2.5403023]]],
+                                       [[[3.9092975, 3.0043090, 2.5838532]]],
+                                       [[[4.1411200, 4.0064630, 3.0100074]]]]])
 
   def test_global_average_pool_keras(self):
     pool = nn_layers.GlobalAveragePool3D(keepdims=False)

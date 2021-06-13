@@ -246,10 +246,11 @@ class Trainer(_AsyncTrainer):
     self._train_loss = tf.keras.metrics.Mean("training_loss", dtype=tf.float32)
     self._validation_loss = tf.keras.metrics.Mean(
         "validation_loss", dtype=tf.float32)
+    model_metrics = model.metrics if hasattr(model, "metrics") else []
     self._train_metrics = self.task.build_metrics(
-        training=True) + self.model.metrics
+        training=True) + model_metrics
     self._validation_metrics = self.task.build_metrics(
-        training=False) + self.model.metrics
+        training=False) + model_metrics
 
     self.init_async()
 

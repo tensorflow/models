@@ -373,6 +373,11 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                     self._decode_png_instance_masks))
       else:
         raise ValueError('Did not recognize the `instance_mask_type` option.')
+      self.keys_to_features['image/object/mask/weight'] = (
+          tf.VarLenFeature(tf.float32))
+      self.items_to_handlers[
+          fields.InputDataFields.groundtruth_instance_mask_weights] = (
+              slim_example_decoder.Tensor('image/object/mask/weight'))
     if load_dense_pose:
       self.keys_to_features['image/object/densepose/num'] = (
           tf.VarLenFeature(tf.int64))
@@ -491,6 +496,10 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         tensor of shape [None, num_keypoints] containing keypoint visibilites.
       fields.InputDataFields.groundtruth_instance_masks - 3D float32 tensor of
         shape [None, None, None] containing instance masks.
+      fields.InputDataFields.groundtruth_instance_mask_weights - 1D float32
+        tensor of shape [None] containing weights. These are typically values
+        in {0.0, 1.0} which indicate whether to consider the mask related to an
+        object.
       fields.InputDataFields.groundtruth_image_classes - 1D int64 of shape
         [None] containing classes for the boxes.
       fields.InputDataFields.multiclass_scores - 1D float32 tensor of shape
@@ -530,6 +539,21 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                 tensor_dict[fields.InputDataFields.groundtruth_weights])[0],
             0), lambda: tensor_dict[fields.InputDataFields.groundtruth_weights],
         default_groundtruth_weights)
+
+    if fields.InputDataFields.groundtruth_instance_masks in tensor_dict:
+      gt_instance_masks = tensor_dict[
+          fields.InputDataFields.groundtruth_instance_masks]
+      num_gt_instance_masks = tf.shape(gt_instance_masks)[0]
+      gt_instance_mask_weights = tensor_dict[
+          fields.InputDataFields.groundtruth_instance_mask_weights]
+      num_gt_instance_mask_weights = tf.shape(gt_instance_mask_weights)[0]
+      def default_groundtruth_instance_mask_weights():
+        return tf.ones([num_gt_instance_masks], dtype=tf.float32)
+
+      tensor_dict[fields.InputDataFields.groundtruth_instance_mask_weights] = (
+          tf.cond(tf.greater(num_gt_instance_mask_weights, 0),
+                  lambda: gt_instance_mask_weights,
+                  default_groundtruth_instance_mask_weights))
 
     if fields.InputDataFields.groundtruth_keypoints in tensor_dict:
       # Set all keypoints that are not labeled to NaN.

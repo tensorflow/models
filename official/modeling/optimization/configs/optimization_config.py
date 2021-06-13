@@ -41,6 +41,7 @@ class OptimizerConfig(oneof.OneOfConfig):
     rmsprop: rmsprop optimizer.
     lars: lars optimizer.
     adagrad: adagrad optimizer.
+    slide: slide optimizer.
   """
   type: Optional[str] = None
   sgd: opt_cfg.SGDConfig = opt_cfg.SGDConfig()
@@ -50,6 +51,7 @@ class OptimizerConfig(oneof.OneOfConfig):
   rmsprop: opt_cfg.RMSPropConfig = opt_cfg.RMSPropConfig()
   lars: opt_cfg.LARSConfig = opt_cfg.LARSConfig()
   adagrad: opt_cfg.AdagradConfig = opt_cfg.AdagradConfig()
+  slide: opt_cfg.SLIDEConfig = opt_cfg.SLIDEConfig()
 
 
 @dataclasses.dataclass

@@ -1894,6 +1894,37 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllClose(
         new_boxes.flatten(), expected_boxes.flatten())
 
+  def testStrictRandomCropImageWithMaskWeights(self):
+    def graph_fn():
+      image = self.createColorfulTestImage()[0]
+      boxes = self.createTestBoxes()
+      labels = self.createTestLabels()
+      weights = self.createTestGroundtruthWeights()
+      masks = tf.random_uniform([2, 200, 400], dtype=tf.float32)
+      mask_weights = tf.constant([1.0, 0.0], dtype=tf.float32)
+      with mock.patch.object(
+          tf.image,
+          'sample_distorted_bounding_box'
+      ) as mock_sample_distorted_bounding_box:
+        mock_sample_distorted_bounding_box.return_value = (
+            tf.constant([6, 143, 0], dtype=tf.int32),
+            tf.constant([190, 237, -1], dtype=tf.int32),
+            tf.constant([[[0.03, 0.3575, 0.98, 0.95]]], dtype=tf.float32))
+        results = preprocessor._strict_random_crop_image(
+            image, boxes, labels, weights, masks=masks,
+            mask_weights=mask_weights)
+        return results
+    (new_image, new_boxes, _, _,
+     new_masks, new_mask_weights) = self.execute_cpu(graph_fn, [])
+    expected_boxes = np.array(
+        [[0.0, 0.0, 0.75789469, 1.0],
+         [0.23157893, 0.24050637, 0.75789469, 1.0]], dtype=np.float32)
+    self.assertAllEqual(new_image.shape, [190, 237, 3])
+    self.assertAllEqual(new_masks.shape, [2, 190, 237])
+    self.assertAllClose(new_mask_weights, [1.0, 0.0])
+    self.assertAllClose(
+        new_boxes.flatten(), expected_boxes.flatten())
+
   def testStrictRandomCropImageWithKeypoints(self):
     def graph_fn():
       image = self.createColorfulTestImage()[0]
@@ -1947,6 +1978,7 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
       labels = self.createTestLabels()
       weights = self.createTestGroundtruthWeights()
       masks = tf.random_uniform([2, 200, 400], dtype=tf.float32)
+      mask_weights = tf.constant([1.0, 0.0], dtype=tf.float32)
 
       tensor_dict = {
           fields.InputDataFields.image: image,
@@ -1954,10 +1986,12 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
           fields.InputDataFields.groundtruth_classes: labels,
           fields.InputDataFields.groundtruth_weights: weights,
           fields.InputDataFields.groundtruth_instance_masks: masks,
+          fields.InputDataFields.groundtruth_instance_mask_weights:
+              mask_weights
       }
 
       preprocessor_arg_map = preprocessor.get_default_func_arg_map(
-          include_instance_masks=True)
+          include_instance_masks=True, include_instance_mask_weights=True)
 
       preprocessing_options = [(preprocessor.random_crop_image, {})]
 
@@ -1980,16 +2014,19 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
             fields.InputDataFields.groundtruth_classes]
         distorted_masks = distorted_tensor_dict[
             fields.InputDataFields.groundtruth_instance_masks]
+        distorted_mask_weights = distorted_tensor_dict[
+            fields.InputDataFields.groundtruth_instance_mask_weights]
         return [distorted_image, distorted_boxes, distorted_labels,
-                distorted_masks]
+                distorted_masks, distorted_mask_weights]
     (distorted_image_, distorted_boxes_, distorted_labels_,
-     distorted_masks_) = self.execute_cpu(graph_fn, [])
+     distorted_masks_, distorted_mask_weights_) = self.execute_cpu(graph_fn, [])
     expected_boxes = np.array([
         [0.0, 0.0, 0.75789469, 1.0],
         [0.23157893, 0.24050637, 0.75789469, 1.0],
     ], dtype=np.float32)
     self.assertAllEqual(distorted_image_.shape, [1, 190, 237, 3])
     self.assertAllEqual(distorted_masks_.shape, [2, 190, 237])
+    self.assertAllClose(distorted_mask_weights_, [1.0, 0.0])
     self.assertAllEqual(distorted_labels_, [1, 2])
     self.assertAllClose(
         distorted_boxes_.flatten(), expected_boxes.flatten())

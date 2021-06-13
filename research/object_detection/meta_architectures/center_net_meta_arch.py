@@ -1668,7 +1668,9 @@ def predicted_embeddings_at_object_centers(embedding_predictions,
 class ObjectDetectionParams(
     collections.namedtuple('ObjectDetectionParams', [
         'localization_loss', 'scale_loss_weight', 'offset_loss_weight',
-        'task_loss_weight'
+        'task_loss_weight', 'scale_head_num_filters',
+        'scale_head_kernel_sizes', 'offset_head_num_filters',
+        'offset_head_kernel_sizes'
     ])):
   """Namedtuple to host object detection related parameters.
 
@@ -1684,7 +1686,11 @@ class ObjectDetectionParams(
               localization_loss,
               scale_loss_weight,
               offset_loss_weight,
-              task_loss_weight=1.0):
+              task_loss_weight=1.0,
+              scale_head_num_filters=(256),
+              scale_head_kernel_sizes=(3),
+              offset_head_num_filters=(256),
+              offset_head_kernel_sizes=(3)):
     """Constructor with default values for ObjectDetectionParams.
 
     Args:
@@ -1697,13 +1703,23 @@ class ObjectDetectionParams(
         depending on the input size.
       offset_loss_weight: float, The weight for localizing center offsets.
       task_loss_weight: float, the weight of the object detection loss.
+      scale_head_num_filters: filter numbers of the convolutional layers used
+        by the object detection box scale prediction head.
+      scale_head_kernel_sizes: kernel size of the convolutional layers used
+        by the object detection box scale prediction head.
+      offset_head_num_filters: filter numbers of the convolutional layers used
+        by the object detection box offset prediction head.
+      offset_head_kernel_sizes: kernel size of the convolutional layers used
+        by the object detection box offset prediction head.
 
     Returns:
       An initialized ObjectDetectionParams namedtuple.
     """
     return super(ObjectDetectionParams,
                  cls).__new__(cls, localization_loss, scale_loss_weight,
-                              offset_loss_weight, task_loss_weight)
+                              offset_loss_weight, task_loss_weight,
+                              scale_head_num_filters, scale_head_kernel_sizes,
+                              offset_head_num_filters, offset_head_kernel_sizes)
 
 
 class KeypointEstimationParams(
@@ -1937,7 +1953,8 @@ class ObjectCenterParams(
 class MaskParams(
     collections.namedtuple('MaskParams', [
         'classification_loss', 'task_loss_weight', 'mask_height', 'mask_width',
-        'score_threshold', 'heatmap_bias_init'
+        'score_threshold', 'heatmap_bias_init', 'mask_head_num_filters',
+        'mask_head_kernel_sizes'
     ])):
   """Namedtuple to store mask prediction related parameters."""
 
@@ -1949,7 +1966,9 @@ class MaskParams(
               mask_height=256,
               mask_width=256,
               score_threshold=0.5,
-              heatmap_bias_init=-2.19):
+              heatmap_bias_init=-2.19,
+              mask_head_num_filters=(256),
+              mask_head_kernel_sizes=(3)):
     """Constructor with default values for MaskParams.
 
     Args:
@@ -1963,6 +1982,10 @@ class MaskParams(
       heatmap_bias_init: float, the initial value of bias in the convolutional
         kernel of the semantic segmentation prediction head. If set to None, the
         bias is initialized with zeros.
+      mask_head_num_filters: filter numbers of the convolutional layers used
+        by the mask prediction head.
+      mask_head_kernel_sizes: kernel size of the convolutional layers used
+        by the mask prediction head.
 
     Returns:
       An initialized MaskParams namedtuple.
@@ -1970,7 +1993,8 @@ class MaskParams(
     return super(MaskParams,
                  cls).__new__(cls, classification_loss,
                               task_loss_weight, mask_height, mask_width,
-                              score_threshold, heatmap_bias_init)
+                              score_threshold, heatmap_bias_init,
+                              mask_head_num_filters, mask_head_kernel_sizes)
 
 
 class DensePoseParams(
@@ -2312,10 +2336,18 @@ class CenterNetMetaArch(model.DetectionModel):
 
     if self._od_params is not None:
       prediction_heads[BOX_SCALE] = self._make_prediction_net_list(
-          num_feature_outputs, NUM_SIZE_CHANNELS, name='box_scale',
+          num_feature_outputs,
+          NUM_SIZE_CHANNELS,
+          kernel_sizes=self._od_params.scale_head_kernel_sizes,
+          num_filters=self._od_params.scale_head_num_filters,
+          name='box_scale',
           unit_height_conv=unit_height_conv)
       prediction_heads[BOX_OFFSET] = self._make_prediction_net_list(
-          num_feature_outputs, NUM_OFFSET_CHANNELS, name='box_offset',
+          num_feature_outputs,
+          NUM_OFFSET_CHANNELS,
+          kernel_sizes=self._od_params.offset_head_kernel_sizes,
+          num_filters=self._od_params.offset_head_num_filters,
+          name='box_offset',
           unit_height_conv=unit_height_conv)
 
     if self._kp_params_dict is not None:
@@ -2370,6 +2402,8 @@ class CenterNetMetaArch(model.DetectionModel):
       prediction_heads[SEGMENTATION_HEATMAP] = self._make_prediction_net_list(
           num_feature_outputs,
           num_classes,
+          kernel_sizes=self._mask_params.mask_head_kernel_sizes,
+          num_filters=self._mask_params.mask_head_num_filters,
           bias_fill=self._mask_params.heatmap_bias_init,
           name='seg_heatmap',
           unit_height_conv=unit_height_conv)
@@ -2721,8 +2755,7 @@ class CenterNetMetaArch(model.DetectionModel):
          gt_weights_list=gt_weights_list,
          gt_classes_list=gt_classes_list,
          gt_boxes_list=gt_boxes_list)
-    flattened_valid_mask = _flatten_spatial_dimensions(
-        tf.expand_dims(valid_mask_batch, axis=-1))
+    flattened_valid_mask = _flatten_spatial_dimensions(valid_mask_batch)
     flattened_heapmap_targets = _flatten_spatial_dimensions(keypoint_heatmap)
     # Sum over the number of instances per keypoint types to get the total
     # number of keypoints. Note that this is used to normalized the loss and we
@@ -2945,20 +2978,32 @@ class CenterNetMetaArch(model.DetectionModel):
     Returns:
       A float scalar tensor representing the mask loss.
     """
+    gt_boxes_list = self.groundtruth_lists(fields.BoxListFields.boxes)
     gt_masks_list = self.groundtruth_lists(fields.BoxListFields.masks)
+    gt_mask_weights_list = None
+    if self.groundtruth_has_field(fields.BoxListFields.mask_weights):
+      gt_mask_weights_list = self.groundtruth_lists(
+          fields.BoxListFields.mask_weights)
     gt_classes_list = self.groundtruth_lists(fields.BoxListFields.classes)
 
     # Convert the groundtruth to targets.
     assigner = self._target_assigner_dict[SEGMENTATION_TASK]
-    heatmap_targets = assigner.assign_segmentation_targets(
+    heatmap_targets, heatmap_weight = assigner.assign_segmentation_targets(
         gt_masks_list=gt_masks_list,
-        gt_classes_list=gt_classes_list)
+        gt_classes_list=gt_classes_list,
+        gt_boxes_list=gt_boxes_list,
+        gt_mask_weights_list=gt_mask_weights_list)
 
     flattened_heatmap_targets = _flatten_spatial_dimensions(heatmap_targets)
+    flattened_heatmap_mask = _flatten_spatial_dimensions(
+        heatmap_weight[:, :, :, tf.newaxis])
+    per_pixel_weights *= flattened_heatmap_mask
 
     loss = 0.0
     mask_loss_fn = self._mask_params.classification_loss
-    total_pixels_in_loss = tf.reduce_sum(per_pixel_weights)
+
+    total_pixels_in_loss = tf.math.maximum(
+        tf.reduce_sum(per_pixel_weights), 1)
 
     # Loop through each feature output head.
     for pred in segmentation_predictions:
