@@ -237,12 +237,15 @@ class BASNetTask(base_task.Task):
     
     loss = 0
     logs = {self.loss: loss}
-
-    temp = labels['masks']
+    
+    levels = sorted(outputs.keys())
  
-    logs.update({self.mae_metric.name: (labels['masks'], outputs['ref'])})
-    logs.update({self.maxf_metric.name: (labels['masks'], outputs['ref'])})
-    logs.update({self.relaxf_metric.name: (labels['masks'], outputs['ref'])})
+    logs.update(
+        {self.mae_metric.name: (labels['masks'], outputs[levels[-1]])})
+    logs.update(
+        {self.maxf_metric.name: (labels['masks'], outputs[levels[-1]])})
+    logs.update(
+        {self.relaxf_metric.name: (labels['masks'], outputs[levels[-1]])})
     return logs    
 
   def inference_step(self, inputs, model):
