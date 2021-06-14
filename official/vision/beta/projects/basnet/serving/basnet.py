@@ -60,6 +60,9 @@ class BASNetModule(semantic_segmentation.SegmentationModule):
           )
 
     masks = self.inference_step(images)
-    output = tf.image.resize(masks['ref'], self._input_image_size, method='bilinear')
+    keys = sorted(masks.keys())
+    output = tf.image.resize(
+        masks[keys[-1]],
+        self._input_image_size, method='bilinear')
 
     return dict(predicted_masks=output)
