@@ -12,26 +12,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
-
-"""Backbones configurations."""
-
-import dataclasses
-
-from official.modeling import hyperparams
-
-from official.vision.beta.configs import backbones
-
-
-@dataclasses.dataclass
-class Darknet(hyperparams.Config):
-  """Darknet config."""
-  model_id: str = 'darknet53'
-  width_scale: float = 1.0
-  depth_scale: float = 1.0
-  dilate: bool = False
-
-
-@dataclasses.dataclass
-class Backbone(backbones.Backbone):
-  darknet: Darknet = Darknet()
