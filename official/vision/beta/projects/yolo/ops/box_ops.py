@@ -4,13 +4,13 @@ import math
 
 
 def yxyx_to_xcycwh(box: tf.Tensor):
-  """Converts boxes from ymin, xmin, ymax, xmax to x_center, y_center, width, 
+  """Converts boxes from ymin, xmin, ymax, xmax to x_center, y_center, width,
   height.
 
   Args:
-    box: any `Tensor` whose last dimension is 4 representing the coordinates of 
+    box: any `Tensor` whose last dimension is 4 representing the coordinates of
       boxes in ymin, xmin, ymax, xmax.
-  
+
   Returns:
     box: a `Tensor` whose shape is the same as `box` in new format.
   """
@@ -52,13 +52,13 @@ def _xcycwh_to_yxyx(box: tf.Tensor, scale):
 
 
 def xcycwh_to_yxyx(box: tf.Tensor, darknet=False):
-  """Converts boxes from x_center, y_center, width, height to ymin, xmin, ymax, 
+  """Converts boxes from x_center, y_center, width, height to ymin, xmin, ymax,
   xmax.
-  
+
   Args:
-    box: any `Tensor` whose last dimension is 4 representing the coordinates of 
+    box: any `Tensor` whose last dimension is 4 representing the coordinates of
       boxes in x_center, y_center, width, height.
-  
+
   Returns:
     box: a `Tensor` whose shape is the same as `box` in new format.
   """
@@ -75,9 +75,9 @@ def intersect_and_union(box1, box2, yxyx=False):
   """Calculates the intersection and union between box1 and box2.
 
   Args:
-    box1: any `Tensor` whose last dimension is 4 representing the coordinates of 
+    box1: any `Tensor` whose last dimension is 4 representing the coordinates of
       boxes.
-    box2: any `Tensor` whose last dimension is 4 representing the coordinates of 
+    box2: any `Tensor` whose last dimension is 4 representing the coordinates of
       boxes.
     yxyx: a `bool` indicating whether the input box is of the format x_center
       y_center, width, height or y_min, x_min, y_max, x_max.
@@ -109,15 +109,15 @@ def smallest_encompassing_box(box1, box2, yxyx=False):
   box1 and box2.
 
   Args:
-    box1: any `Tensor` whose last dimension is 4 representing the coordinates of 
+    box1: any `Tensor` whose last dimension is 4 representing the coordinates of
       boxes.
-    box2: any `Tensor` whose last dimension is 4 representing the coordinates of 
+    box2: any `Tensor` whose last dimension is 4 representing the coordinates of
       boxes.
     yxyx: a `bool` indicating whether the input box is of the format x_center
       y_center, width, height or y_min, x_min, y_max, x_max.
 
   Returns:
-    box_c: a `Tensor` whose last dimension is 4 representing the coordinates of 
+    box_c: a `Tensor` whose last dimension is 4 representing the coordinates of
       boxes, the return format is y_min, x_min, y_max, x_max if yxyx is set to
       to True. In other words it will match the input format.
   """
@@ -145,9 +145,9 @@ def compute_iou(box1, box2, yxyx=False):
   """Calculates the intersection over union between box1 and box2.
 
   Args:
-    box1: any `Tensor` whose last dimension is 4 representing the coordinates of 
+    box1: any `Tensor` whose last dimension is 4 representing the coordinates of
       boxes.
-    box2: any `Tensor` whose last dimension is 4 representing the coordinates of 
+    box2: any `Tensor` whose last dimension is 4 representing the coordinates of
       boxes.
     yxyx: a `bool` indicating whether the input box is of the format x_center
       y_center, width, height or y_min, x_min, y_max, x_max.
@@ -167,13 +167,13 @@ def compute_giou(box1, box2, yxyx=False, darknet=False):
   """Calculates the General intersection over union between box1 and box2.
 
   Args:
-    box1: any `Tensor` whose last dimension is 4 representing the coordinates of 
+    box1: any `Tensor` whose last dimension is 4 representing the coordinates of
       boxes.
-    box2: any `Tensor` whose last dimension is 4 representing the coordinates of 
+    box2: any `Tensor` whose last dimension is 4 representing the coordinates of
       boxes.
     yxyx: a `bool` indicating whether the input box is of the format x_center
       y_center, width, height or y_min, x_min, y_max, x_max.
-    darknet: a `bool` indicating whether the calling function is the yolo 
+    darknet: a `bool` indicating whether the calling function is the YOLO
       darknet loss.
 
   Returns:
@@ -208,15 +208,15 @@ def compute_diou(box1, box2, beta=1.0, yxyx=False, darknet=False):
   """Calculates the distance intersection over union between box1 and box2.
 
   Args:
-    box1: any `Tensor` whose last dimension is 4 representing the coordinates of 
+    box1: any `Tensor` whose last dimension is 4 representing the coordinates of
       boxes.
-    box2: any `Tensor` whose last dimension is 4 representing the coordinates of 
+    box2: any `Tensor` whose last dimension is 4 representing the coordinates of
       boxes.
-    beta: a `float` indicating the amount to scale the distance iou 
-      regularization term. 
+    beta: a `float` indicating the amount to scale the distance iou
+      regularization term.
     yxyx: a `bool` indicating whether the input box is of the format x_center
       y_center, width, height or y_min, x_min, y_max, x_max.
-    darknet: a `bool` indicating whether the calling function is the yolo 
+    darknet: a `bool` indicating whether the calling function is the YOLO
       darknet loss.
 
   Returns:
@@ -256,13 +256,13 @@ def compute_ciou(box1, box2, yxyx=False, darknet=False):
   """Calculates the complete intersection over union between box1 and box2.
 
   Args:
-    box1: any `Tensor` whose last dimension is 4 representing the coordinates of 
+    box1: any `Tensor` whose last dimension is 4 representing the coordinates of
       boxes.
-    box2: any `Tensor` whose last dimension is 4 representing the coordinates of 
+    box2: any `Tensor` whose last dimension is 4 representing the coordinates of
       boxes.
     yxyx: a `bool` indicating whether the input box is of the format x_center
       y_center, width, height or y_min, x_min, y_max, x_max.
-    darknet: a `bool` indicating whether the calling function is the yolo 
+    darknet: a `bool` indicating whether the calling function is the YOLO
       darknet loss.
 
   Returns:
@@ -297,23 +297,22 @@ def aggregated_comparitive_iou(boxes1,
                                boxes2=None,
                                iou_type=0,
                                beta=0.6):
-  """Calculates the intersection over union between every box in boxes1 and 
+  """Calculates the intersection over union between every box in boxes1 and
   every box in boxes2.
 
   Args:
-    boxes1: a `Tensor` of shape [batch size, N, 4] representing the coordinates 
+    boxes1: a `Tensor` of shape [batch size, N, 4] representing the coordinates
       of boxes.
-    boxes2: a `Tensor` of shape [batch size, N, 4] representing the coordinates 
+    boxes2: a `Tensor` of shape [batch size, N, 4] representing the coordinates
       of boxes.
-    iou_type: `integer` representing the iou version to use, 0 is distance iou, 
-      1 is the general iou, 2 is the complete iou, any other number uses the 
+    iou_type: `integer` representing the iou version to use, 0 is distance iou,
+      1 is the general iou, 2 is the complete iou, any other number uses the
       standard iou.
-    beta: `float` for the scaling quantity to apply to distance iou 
+    beta: `float` for the scaling quantity to apply to distance iou
       regularization.
-    
 
   Returns:
-    iou: a `Tensor` who represents the intersection over union in of the 
+    iou: a `Tensor` who represents the intersection over union in of the
       expected/input type.
   """
   boxes1 = tf.expand_dims(boxes1, axis=-2)

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Tests for yolo."""
+"""Tests for YOLO."""
 
 from absl.testing import parameterized
 import numpy as np

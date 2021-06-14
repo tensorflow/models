@@ -8,13 +8,12 @@ class TiledNMS():
   IOU_TYPES = {'diou': 0, 'giou': 1, 'ciou': 2, 'iou': 3}
 
   def __init__(self, iou_type='diou', beta=0.6):
-    '''initialization for all non max supression operations mainly used to 
-    select hyperperamters for the iou type and scaling.
+    '''initialization for all non max suppression operations mainly used to
+    select hyperparameters for the iou type and scaling.
 
-    Args: 
+    Args:
       iou_type: `str` for the version of IOU to use {diou, giou, ciou, iou}.
-      beta: `float` for the amount to scale regualrization on distance iou.
-    
+      beta: `float` for the amount to scale regularization on distance iou.
     '''
     self._iou_type = TiledNMS.IOU_TYPES[iou_type]
     self._beta = beta
@@ -54,7 +53,7 @@ class TiledNMS():
         overlap too much with respect to IOU.
       output_size: an int32 tensor of size [batch_size]. Representing the number
         of selected boxes for each batch.
-      idx: an integer scalar representing induction variable.
+      idx: an integer scalar representing an induction variable.
 
     Returns:
       boxes: updated boxes.
@@ -111,10 +110,10 @@ class TiledNMS():
     Assumption:
       * The boxes are sorted by scores unless the box is a dot (all coordinates
         are zero).
-      * Boxes with higher scores can be used to suppress boxes with lower 
+      * Boxes with higher scores can be used to suppress boxes with lower
         scores.
 
-    The overal design of the algorithm is to handle boxes tile-by-tile:
+    The overall design of the algorithm is to handle boxes tile-by-tile:
 
     boxes = boxes.pad_to_multiply_of(tile_size)
     num_tiles = len(boxes) // tile_size
@@ -126,7 +125,7 @@ class TiledNMS():
         iou = bbox_overlap(box_tile, suppressing_tile)
         # if the box is suppressed in iou, clear it to a dot
         box_tile *= _update_boxes(iou)
-      # Iteratively handle the diagnal tile.
+      # Iteratively handle the diagonal tile.
       iou = _box_overlap(box_tile, box_tile)
       iou_changed = True
       while iou_changed:
@@ -232,16 +231,16 @@ class TiledNMS():
 
     This implementation unrolls classes dimension while using the tf.while_loop
     to implement the batched NMS, so that it can be parallelized at the batch
-    dimension. It should give better performance comparing to v1 implementation.
+    dimension. It should give better performance compared to v1 implementation.
     It is TPU compatible.
 
     Args:
       boxes: a tensor with shape [batch_size, N, num_classes, 4] or [batch_size,
-        N, 1, 4], which box predictions on all feature levels. The N is the 
+        N, 1, 4], which box predictions on all feature levels. The N is the
         number of total anchors on all levels.
-      scores: a tensor with shape [batch_size, N, num_classes], which stacks 
-        class probability on all feature levels. The N is the number of total 
-        anchors on all levels. The num_classes is the number of classes the 
+      scores: a tensor with shape [batch_size, N, num_classes], which stacks
+        class probability on all feature levels. The N is the number of total
+        anchors on all levels. The num_classes is the number of classes the
         model predicted. Note that the class_outputs here is the raw score.
       pre_nms_top_k: an int number of top candidate detections per class
         before NMS.
@@ -327,21 +326,21 @@ def sorted_non_max_suppression_padded(scores, boxes, max_output_size,
 
 
 def sort_drop(objectness, box, classificationsi, k):
-  """This function sorts and drops boxes such that there are only k boxes 
-  sorted by number the objectness or confidence 
+  """This function sorts and drops boxes such that there are only k boxes
+  sorted by number the objectness or confidence
 
-  Args: 
-    objectness: a `Tensor` of shape [batch size, N] that needs to be 
+  Args:
+    objectness: a `Tensor` of shape [batch size, N] that needs to be
       filtered.
     box: a `Tensor` of shape [batch size, N, 4] that needs to be filtered.
-    classificationsi: a `Tensor` of shape [batch size, N, num_classes] that 
+    classificationsi: a `Tensor` of shape [batch size, N, num_classes] that
       needs to be filtered.
     k: a `integer` for the maximum number of boxes to keep after filtering
-  
+
   Return:
-    objectness: filtered `Tensor` of shape [batch size, k] 
-    boxes: filtered `Tensor` of shape [batch size, k, 4] 
-    classifications: filtered `Tensor` of shape [batch size, k, num_classes] 
+    objectness: filtered `Tensor` of shape [batch size, k]
+    boxes: filtered `Tensor` of shape [batch size, k, 4]
+    classifications: filtered `Tensor` of shape [batch size, k, num_classes]
   """
   # find rhe indexes for the boxes based on the scores
   objectness, ind = tf.math.top_k(objectness, k=k)
@@ -364,25 +363,25 @@ def sort_drop(objectness, box, classificationsi, k):
 
 
 def segment_nms(boxes, classes, confidence, k, iou_thresh):
-  """This is a quick nms that works on very well for small values of k, this 
-  was developed to operate for tflite models as the tiled NMS is far too slow 
-  and typically is not able to compile with tflite. This NMS does not account 
-  for classes, and only works to quickly filter boxes on phones. 
+  """This is a quick nms that works on very well for small values of k, this
+  was developed to operate for tflite models as the tiled NMS is far too slow
+  and typically is not able to compile with tflite. This NMS does not account
+  for classes, and only works to quickly filter boxes on phones.
 
-  Args: 
+  Args:
     boxes: a `Tensor` of shape [batch size, N, 4] that needs to be filtered.
-    classes: a `Tensor` of shape [batch size, N, num_classes] that needs to be 
+    classes: a `Tensor` of shape [batch size, N, num_classes] that needs to be
       filtered.
-    confidence: a `Tensor` of shape [batch size, N] that needs to be 
+    confidence: a `Tensor` of shape [batch size, N] that needs to be
       filtered.
     k: a `integer` for the maximum number of boxes to keep after filtering
-    iou_thresh: a `float` for the value above which boxes are consdered to be 
-      too similar, the closer to 1.0 the less that gets though. 
-  
+    iou_thresh: a `float` for the value above which boxes are considered to be
+      too similar, the closer to 1.0 the less that gets through.
+
   Return:
     boxes: filtered `Tensor` of shape [batch size, k, 4]
     classes: filtered `Tensor` of shape [batch size, k, num_classes] t
-    confidence: filtered `Tensor` of shape [batch size, k] 
+    confidence: filtered `Tensor` of shape [batch size, k]
   """
   mrange = tf.range(k)
   mask_x = tf.tile(
@@ -416,27 +415,27 @@ def nms(boxes,
         pre_nms_thresh,
         nms_thresh,
         prenms_top_k=500):
-  """This is a quick nms that works on very well for small values of k, this 
-  was developed to operate for tflite models as the tiled NMS is far too slow 
-  and typically is not able to compile with tflite. This NMS does not account 
-  for classes, and only works to quickly filter boxes on phones. 
+  """This is a quick nms that works on very well for small values of k, this
+  was developed to operate for tflite models as the tiled NMS is far too slow
+  and typically is not able to compile with tflite. This NMS does not account
+  for classes, and only works to quickly filter boxes on phones.
 
-  Args: 
+  Args:
     boxes: a `Tensor` of shape [batch size, N, 4] that needs to be filtered.
-    classes: a `Tensor` of shape [batch size, N, num_classes] that needs to be 
+    classes: a `Tensor` of shape [batch size, N, num_classes] that needs to be
       filtered.
-    confidence: a `Tensor` of shape [batch size, N] that needs to be 
+    confidence: a `Tensor` of shape [batch size, N] that needs to be
       filtered.
     k: a `integer` for the maximum number of boxes to keep after filtering
-    nms_thresh: a `float` for the value above which boxes are consdered to be 
-      too similar, the closer to 1.0 the less that gets though. 
+    nms_thresh: a `float` for the value above which boxes are considered to be
+      too similar, the closer to 1.0 the less that gets through.
     pre_nms_top_k: an int number of top candidate detections per class
       before NMS.
 
   Return:
     boxes: filtered `Tensor` of shape [batch size, k, 4]
     classes: filtered `Tensor` of shape [batch size, k, num_classes]
-    confidence: filtered `Tensor` of shape [batch size, k] 
+    confidence: filtered `Tensor` of shape [batch size, k]
   """
 
   # sort the boxes

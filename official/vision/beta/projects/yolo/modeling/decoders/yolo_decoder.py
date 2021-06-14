@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Feature Pyramid Network and Path Aggregation variants used in YOLO"""
+"""Feature Pyramid Network and Path Aggregation variants used in YOLO."""
 
 import tensorflow as tf
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
@@ -23,8 +23,10 @@ from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 class _IdentityRoute(tf.keras.layers.Layer):
 
   def __init__(self, **kwargs):
-    """Private class to mirror the outputs of blocks in nn_blocks for an easier
-    programatic generation of the feature pyramid network"""
+    """
+    Private class to mirror the outputs of blocks in nn_blocks for an easier
+    programatic generation of the feature pyramid network.
+    """
 
     super().__init__(**kwargs)
 
@@ -125,7 +127,7 @@ class YoloFPN(tf.keras.layers.Layer):
     # directly connect to an input path and process it
     self.preprocessors = dict()
     # resample an input and merge it with the output of another path
-    # inorder to aggregate backbone outputs
+    # in order to aggregate backbone outputs
     self.resamples = dict()
     # set of convoltion layers and upsample layers that are used to
     # prepare the FPN processors for output
@@ -214,7 +216,7 @@ class YoloPAN(tf.keras.layers.Layer):
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
-      fpn_input: `bool`, for whether the input into this fucntion is an FPN or
+      fpn_input: `bool`, for whether the input into this function is an FPN or
         a backbone.
       fpn_filter_scale: `int`, scaling factor for the FPN filters.
       **kwargs: keyword arguments to be passed.
@@ -268,7 +270,7 @@ class YoloPAN(tf.keras.layers.Layer):
     # directly connect to an input path and process it
     self.preprocessors = dict()
     # resample an input and merge it with the output of another path
-    # inorder to aggregate backbone outputs
+    # in order to aggregate backbone outputs
     self.resamples = dict()
 
     # FPN will reverse the key process order for the backbone, so we need

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Tests for yolo heads."""
+"""Tests for YOLO heads."""
 
 # Import libraries
 from absl.testing import parameterized
@@ -44,7 +44,6 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
       inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
 
     endpoints = head(inputs)
-    # print(endpoints)
 
     for key in endpoints.keys():
       expected_input_shape = input_shape[key]

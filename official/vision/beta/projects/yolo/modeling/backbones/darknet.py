@@ -16,7 +16,7 @@
 
 """Contains definitions of Darknet Backbone Networks.
 
-   The models are inspired by ResNet, and CSPNet
+These models are inspired by ResNet and CSPNet.
 
 Residual networks (ResNets) were proposed in:
 [1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
@@ -49,7 +49,7 @@ from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
 class BlockConfig:
   """
-  Class to store layer config to make code more readable
+  This is a class to store layer config to make code more readable.
   """
 
   def __init__(self, layer, stack, reps, bottleneck, filters, pool_size,
@@ -69,7 +69,7 @@ class BlockConfig:
       padding: An `int` for the padding to apply to layers in this stack.
       activation: A `str` for the activation to use for this stack.
       route: An `int` for the level to route from to get the next input.
-      dilation_rate: An `int` for the scale used in dialated Darknet.
+      dilation_rate: An `int` for the scale used in dilated Darknet.
       output_name: A `str` for the name to use for this output.
       is_output: A `bool` for whether this layer is an output in the default
         model.
@@ -99,9 +99,10 @@ def build_block_specs(config):
 
 class LayerBuilder:
   """
-  class for quick look up of default layers used by darknet to
-  connect, introduce or exit a level. Used in place of an if condition
-  or switch to make adding new layers easier and to reduce redundant code
+  This is a class that is used for quick look up of default layers used
+  by darknet to connect, introduce or exit a level. Used in place of an
+  if condition or switch to make adding new layers easier and to reduce
+  redundant code.
   """
 
   def __init__(self):
@@ -377,7 +378,7 @@ BACKBONES = {
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class Darknet(tf.keras.Model):
-  """ The Darknet backbone architecture """
+  """ The Darknet backbone architecture. """
 
   def __init__(
       self,

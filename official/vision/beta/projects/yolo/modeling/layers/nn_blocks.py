@@ -14,7 +14,7 @@
 
 # Lint as: python3
 
-"""Contains common building blocks for yolo neural networks."""
+"""Contains common building blocks for YOLO neural networks."""
 from typing import Callable, List
 import tensorflow as tf
 from official.modeling import tf_utils
@@ -35,9 +35,9 @@ class Identity(tf.keras.layers.Layer):
 class ConvBN(tf.keras.layers.Layer):
   """
   Modified Convolution layer to match that of the Darknet Library.
-  The Layer is a standards combination of Conv BatchNorm Activation,
-  however, the use of bias in the conv is determined by the use of batch
-  normalization.
+  The Layer is a standard combination of Conv BatchNorm Activation,
+  however, the use of bias in the Conv is determined by the use of
+  batch normalization.
   Cross Stage Partial networks (CSPNets) were proposed in:
   [1] Chien-Yao Wang, Hong-Yuan Mark Liao, I-Hau Yeh, Yueh-Hua Wu,
         Ping-Yang Chen, Jun-Wei Hsieh
@@ -71,16 +71,16 @@ class ConvBN(tf.keras.layers.Layer):
         use.
       padding: string 'valid' or 'same', if same, then pad the image, else do
         not.
-      dialtion_rate: tuple to indicate how much to modulate kernel weights and
+      dilation_rate: tuple to indicate how much to modulate kernel weights and
         how many pixels in a feature map to skip.
       kernel_initializer: string to indicate which function to use to initialize
         weights.
       bias_initializer: string to indicate which function to use to initialize
         bias.
-      kernel_regularizer: string to indicate which function to use to
-        regularizer weights.
       bias_regularizer: string to indicate which function to use to regularizer
         bias.
+      kernel_regularizer: string to indicate which function to use to
+        regularizer weights.
       use_bn: boolean for whether to use batch normalization.
       use_sync_bn: boolean for whether sync batch normalization statistics
         of all batch norm layers to the models global statistics
@@ -191,7 +191,7 @@ class ConvBN(tf.keras.layers.Layer):
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class DarkResidual(tf.keras.layers.Layer):
   """
-  Darknet block with Residual connection for Yolo v3 Backbone
+  Darknet block with Residual connection for YOLO v3 Backbone
   """
 
   def __init__(self,
@@ -228,8 +228,6 @@ class DarkResidual(tf.keras.layers.Layer):
         (across all input batches).
       norm_momentum: float for moment to use for batch normalization.
       norm_epsilon: float for batch normalization epsilon.
-      conv_activation: string or None for activation function to use in layer,
-        if None activation is replaced by linear.
       leaky_alpha: float to use as alpha if activation function is leaky.
       sc_activation: string for activation function to use in layer.
       downsample: boolean for if image input is larger than layer output, set
@@ -352,10 +350,10 @@ class DarkResidual(tf.keras.layers.Layer):
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class CSPTiny(tf.keras.layers.Layer):
   """
-  A Small size convolution block proposed in the CSPNet. The layer uses
-  shortcuts, routing(concatnation), and feature grouping in order to improve
-  gradient variablity and allow for high efficency, low power residual learning
-  for small networtf.keras.
+  A small size convolution block proposed in the CSPNet. The layer uses shortcuts,
+  routing(concatenation), and feature grouping in order to improve gradient
+  variability and allow for high efficiency, low power residual learning for small
+  networks.
   Cross Stage Partial networks (CSPNets) were proposed in:
   [1] Chien-Yao Wang, Hong-Yuan Mark Liao, I-Hau Yeh, Yueh-Hua Wu,
         Ping-Yang Chen, Jun-Wei Hsieh
@@ -387,11 +385,11 @@ class CSPTiny(tf.keras.layers.Layer):
         weights.
       bias_initializer: string to indicate which function to use to initialize
         bias.
-      use_bn: boolean for whether to use batch normalization.
-      kernel_regularizer: string to indicate which function to use to
-        regularizer weights.
       bias_regularizer: string to indicate which function to use to regularizer
         bias.
+      kernel_regularizer: string to indicate which function to use to
+        regularizer weights.
+      use_bn: boolean for whether to use batch normalization.
       use_sync_bn: boolean for whether sync batch normalization statistics
         of all batch norm layers to the models global statistics
         (across all input batches).
@@ -401,12 +399,12 @@ class CSPTiny(tf.keras.layers.Layer):
         feature stack output.
       norm_momentum: float for moment to use for batch normalization.
       norm_epsilon: float for batch normalization epsilon.
-      conv_activation: string or None for activation function to use in layer,
-        if None activation is replaced by linear.
-      leaky_alpha: float to use as alpha if activation function is leaky.
-      sc_activation: string for activation function to use in layer.
       downsample: boolean for if image input is larger than layer output, set
         downsample to True so the dimensions are forced to match.
+      leaky_alpha: float to use as alpha if activation function is leaky.
+      sc_activation: string for activation function to use in layer.
+      conv_activation: string or None for activation function to use in layer,
+        if None activation is replaced by linear.
       **kwargs: Keyword Arguments.
     """
 
@@ -505,18 +503,18 @@ class CSPTiny(tf.keras.layers.Layer):
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class CSPRoute(tf.keras.layers.Layer):
   """
-  Down sampling layer to take the place of down sampleing done in Residual
+  Down sampling layer to take the place of down sampling done in Residual
   networks. This is the first of 2 layers needed to convert any Residual Network
   model to a CSPNet. At the start of a new level change, this CSPRoute layer
-  creates a learned identity that will act as a cross stage connection,
-  that is used to inform the inputs to the next stage. It is called cross stage
-  partial because the number of filters required in every intermitent Residual
+  creates a learned identity that will act as a cross stage connection that
+  is used to inform the inputs to the next stage. This is called cross stage
+  partial because the number of filters required in every intermittent residual
   layer is reduced by half. The sister layer will take the partial generated by
-  this layer and concatnate it with the output of the final residual layer in
-  the stack to create a fully feature level output. This concatnation merges the
+  this layer and concatenate it with the output of the final residual layer in the
+  stack to create a fully feature level output. This concatenation merges the
   partial blocks of 2 levels as input to the next allowing the gradients of each
-  level to be more unique, and reducing the number of parameters required by
-  each level by 50% while keeping accuracy consistent.
+  level to be more unique, and reducing the number of parameters required by each
+  level by 50% while keeping accuracy consistent.
 
   Cross Stage Partial networks (CSPNets) were proposed in:
   [1] Chien-Yao Wang, Hong-Yuan Mark Liao, I-Hau Yeh, Yueh-Hua Wu,
@@ -544,24 +542,24 @@ class CSPRoute(tf.keras.layers.Layer):
     """
     Args:
       filters: integer for output depth, or the number of features to learn
-      filter_scale: integer dicating (filters//2) or the number of filters in
+      filter_scale: integer dictating (filters//2) or the number of filters in
         the partial feature stack.
-      downsample: down_sample the input.
       activation: string for activation function to use in layer.
       kernel_initializer: string to indicate which function to use to
         initialize weights.
       bias_initializer: string to indicate which function to use to initialize
         bias.
-      kernel_regularizer: string to indicate which function to use to
-        regularizer weights.
       bias_regularizer: string to indicate which function to use to regularizer
         bias.
+      kernel_regularizer: string to indicate which function to use to
+        regularizer weights.
       use_bn: boolean for whether to use batch normalization.
       use_sync_bn: boolean for whether sync batch normalization statistics
         of all batch norm layers to the models global statistics
         (across all input batches).
       norm_momentum: float for moment to use for batch normalization.
       norm_epsilon: float for batch normalization epsilon.
+      downsample: down_sample the input.
       **kwargs: Keyword Arguments.
     """
 
@@ -571,7 +569,7 @@ class CSPRoute(tf.keras.layers.Layer):
     self._filter_scale = filter_scale
     self._activation = activation
 
-    # convoultion params
+    # convolution params
     self._kernel_initializer = kernel_initializer
     self._bias_initializer = bias_initializer
     self._kernel_regularizer = kernel_regularizer
@@ -638,7 +636,7 @@ class CSPRoute(tf.keras.layers.Layer):
 class CSPConnect(tf.keras.layers.Layer):
   """
   Sister Layer to the CSPRoute layer. Merges the partial feature stacks
-  generated by the CSPDownsampling layer, and the finaly output of the
+  generated by the CSPDownsampling layer, and the final output of the
   residual stack. Suggested in the CSPNet paper.
   Cross Stage Partial networks (CSPNets) were proposed in:
   [1] Chien-Yao Wang, Hong-Yuan Mark Liao, I-Hau Yeh, Yueh-Hua Wu,
@@ -675,10 +673,10 @@ class CSPConnect(tf.keras.layers.Layer):
         weights.
       bias_initializer: string to indicate which function to use to initialize
         bias.
-      kernel_regularizer: string to indicate which function to use to
-        regularizer weights.
       bias_regularizer: string to indicate which function to use to regularizer
         bias.
+      kernel_regularizer: string to indicate which function to use to
+        regularizer weights.
       use_bn: boolean for whether to use batch normalization.
       use_sync_bn: boolean for whether sync batch normalization statistics
         of all batch norm layers to the models global
@@ -750,13 +748,13 @@ class CSPConnect(tf.keras.layers.Layer):
 
 class CSPStack(tf.keras.layers.Layer):
   """
-  CSP full stack, combines the route and the connect in case you dont want to
-  jsut quickly wrap an existing callable or list of layers to
-  make it a cross stage partial. Added for ease of use. you should be able
-  to wrap any layer stack with a CSP independent of wether it belongs
-  to the Darknet family. if filter_scale = 2, then the blocks in the stack
-  passed into the the CSP stack should also have filters = filters/filter_scale
-  Cross Stage Partial networks (CSPNets) were proposed in:
+  CSP full stack, combines the route and the connect in case you don't want to
+  just quickly wrap an existing callable or list of layers to make it a cross
+  stage partial. Added for ease of use. you should be able to wrap any layer
+  stack with a CSP independent of whether it belongs to the Darknet family. If
+  filter_scale = 2, then the blocks in the stack passed into the the CSP stack
+  should also have filters = filters/filter_scale Cross Stage Partial networks
+  (CSPNets) were proposed in:
 
   [1] Chien-Yao Wang, Hong-Yuan Mark Liao, I-Hau Yeh, Yueh-Hua Wu,
         Ping-Yang Chen, Jun-Wei Hsieh
@@ -781,11 +779,10 @@ class CSPStack(tf.keras.layers.Layer):
                **kwargs):
     """
     Args:
+      filters: integer for output depth, or the number of features to learn.
       model_to_wrap: callable Model or a list of callable objects that will
         process the output of CSPRoute, and be input into CSPConnect.
         list will be called sequentially.
-      downsample: down_sample the input.
-      filters: integer for output depth, or the number of features to learn.
       filter_scale: integer dicating (filters//2) or the number of filters in
         the partial feature stack.
       activation: string for activation function to use in layer.
@@ -793,10 +790,11 @@ class CSPStack(tf.keras.layers.Layer):
         weights.
       bias_initializer: string to indicate which function to use to initialize
         bias.
-      kernel_regularizer: string to indicate which function to use to
-        regularizer weights.
       bias_regularizer: string to indicate which function to use to regularizer
         bias.
+      kernel_regularizer: string to indicate which function to use to
+        regularizer weights.
+      downsample: down_sample the input.
       use_bn: boolean for whether to use batch normalization.
       use_sync_bn: boolean for whether sync batch normalization statistics
         of all batch norm layers to the models global statistics
@@ -891,10 +889,10 @@ class PathAggregationBlock(tf.keras.layers.Layer):
         weights.
       bias_initializer: string to indicate which function to use to initialize
         bias.
-      kernel_regularizer: string to indicate which function to use to
-        regularizer weights.
       bias_regularizer: string to indicate which function to use to regularizer
         bias.
+      kernel_regularizer: string to indicate which function to use to
+        regularizer weights.
       use_bn: boolean for whether to use batch normalization.
       use_sync_bn: boolean for whether sync batch normalization statistics
         of all batch norm layers to the models global statistics
@@ -905,8 +903,8 @@ class PathAggregationBlock(tf.keras.layers.Layer):
       activation: string or None for activation function to use in layer,
         if None activation is replaced by linear.
       leaky_alpha: float to use as alpha if activation function is leaky.
-      downsample: `bool` for whehter to downwample and merge.
-      upsample: `bool` for whehter to upsample and merge.
+      downsample: `bool` for whether to downsample and merge.
+      upsample: `bool` for whether to upsample and merge.
       upsample_size: `int` how much to upsample in order to match shapes.
       **kwargs: Keyword Arguments.
     """
@@ -1050,7 +1048,7 @@ class PathAggregationBlock(tf.keras.layers.Layer):
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class SPP(tf.keras.layers.Layer):
   """
-  a non-agregated SPP layer that uses Pooling to gain more performance
+  A non-aggregated SPP layer that uses Pooling to gain more performance.
   """
 
   def __init__(self, sizes, **kwargs):
@@ -1090,7 +1088,7 @@ class SAM(tf.keras.layers.Layer):
   [1] Sanghyun Woo, Jongchan Park, Joon-Young Lee, In So Kweon
   CBAM: Convolutional Block Attention Module. arXiv:1807.06521
 
-  implementation of the Spatial Attention Model (SAM)
+  Implementation of the Spatial Attention Model (SAM)
   """
 
   def __init__(self,
@@ -1167,7 +1165,7 @@ class CAM(tf.keras.layers.Layer):
   [1] Sanghyun Woo, Jongchan Park, Joon-Young Lee, In So Kweon
   CBAM: Convolutional Block Attention Module. arXiv:1807.06521
 
-  implementation of the Channel Attention Model (CAM)
+  Implementation of the Channel Attention Model (CAM)
   """
 
   def __init__(self,
@@ -1253,7 +1251,7 @@ class CBAM(tf.keras.layers.Layer):
   [1] Sanghyun Woo, Jongchan Park, Joon-Young Lee, In So Kweon
   CBAM: Convolutional Block Attention Module. arXiv:1807.06521
 
-  implementation of the Convolution Block Attention Module (CBAM)
+  Implementation of the Convolution Block Attention Module (CBAM)
   """
 
   def __init__(self,
@@ -1321,8 +1319,9 @@ class CBAM(tf.keras.layers.Layer):
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class DarkRouteProcess(tf.keras.layers.Layer):
   """
-  process darknet outputs and connect back bone to head more generalizably
-  Abstracts repetition of DarkConv objects that is common in YOLO.
+  Processes darknet outputs and connects the backbone to the head for more
+  generalizability and abstracts the repetition of DarkConv objects that is
+  common in YOLO.
 
   It is used like the following:
 
@@ -1357,18 +1356,18 @@ class DarkRouteProcess(tf.keras.layers.Layer):
       filters: the number of filters to be used in all subsequent layers
         filters should be the depth of the tensor input into this layer,
         as no downsampling can be done within this layer object.
-      repetitions: number of times to repeat the processign nodes
-        for tiny: 1 repition, no spp allowed
+      repetitions: number of times to repeat the processing nodes
+        for tiny: 1 repetition, no spp allowed
         for spp: insert_spp = True, and allow for 3+ repetitions
         for regular: insert_spp = False, and allow for 3+ repetitions.
       insert_spp: bool if true add the spatial pyramid pooling layer.
-      kernel_initializer: method to use to initializa kernel weights.
+      kernel_initializer: method to use to initialize kernel weights.
       bias_initializer: method to use to initialize the bias of the conv
         layers.
       norm_momentum: batch norm parameter see TensorFlow documentation.
       norm_epsilon: batch norm parameter see TensorFlow documentation.
       activation: activation function to use in processing.
-      leaky_alpha: if leaky acitivation function, the alpha to use in
+      leaky_alpha: if leaky activation function, the alpha to use in
         processing the relu input.
 
     Returns:
