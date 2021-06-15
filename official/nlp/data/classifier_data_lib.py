@@ -181,20 +181,21 @@ class AxProcessor(DataProcessor):
 class ColaProcessor(DataProcessor):
   """Processor for the CoLA data set (GLUE version)."""
 
+  def __init__(self, process_text_fn=tokenization.convert_to_unicode):
+    super(ColaProcessor, self).__init__(process_text_fn)
+    self.dataset = tfds.load("glue/cola", try_gcs=True)
+
   def get_train_examples(self, data_dir):
     """See base class."""
-    return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
+    return self._create_examples_tfds("train")
 
   def get_dev_examples(self, data_dir):
     """See base class."""
-    return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
+    return self._create_examples_tfds("validation")
 
   def get_test_examples(self, data_dir):
     """See base class."""
-    return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
+    return self._create_examples_tfds("test")
 
   def get_labels(self):
     """See base class."""
@@ -205,22 +206,19 @@ class ColaProcessor(DataProcessor):
     """See base class."""
     return "COLA"
 
-  def _create_examples(self, lines, set_type):
+  def _create_examples_tfds(self, set_type):
     """Creates examples for the training/dev/test sets."""
+    dataset = self.dataset[set_type].as_numpy_iterator()
     examples = []
-    for i, line in enumerate(lines):
-      # Only the test set has a header.
-      if set_type == "test" and i == 0:
-        continue
+    for i, example in enumerate(dataset):
       guid = "%s-%s" % (set_type, i)
-      if set_type == "test":
-        text_a = self.process_text_fn(line[1])
-        label = "0"
-      else:
-        text_a = self.process_text_fn(line[3])
-        label = self.process_text_fn(line[1])
+      label = "0"
+      text_a = self.process_text_fn(example["sentence"])
+      if set_type != "test":
+        label = str(example["label"])
       examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
+          InputExample(
+              guid=guid, text_a=text_a, text_b=None, label=label, weight=None))
     return examples
 
 

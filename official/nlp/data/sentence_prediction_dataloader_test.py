@@ -132,16 +132,17 @@ class SentencePredictionDataTest(tf.test.TestCase, parameterized.TestCase):
         global_batch_size=batch_size,
         label_type=label_type)
     dataset = loader.SentencePredictionDataLoader(data_config).load()
-    features, labels = next(iter(dataset))
-    self.assertCountEqual(['input_word_ids', 'input_mask', 'input_type_ids'],
-                          features.keys())
+    features = next(iter(dataset))
+    self.assertCountEqual(
+        ['input_word_ids', 'input_type_ids', 'input_mask', 'label_ids'],
+        features.keys())
     self.assertEqual(features['input_word_ids'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_mask'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_type_ids'].shape, (batch_size, seq_length))
-    self.assertEqual(labels.shape, (batch_size,))
-    self.assertEqual(labels.dtype, expected_label_type)
+    self.assertEqual(features['label_ids'].shape, (batch_size,))
+    self.assertEqual(features['label_ids'].dtype, expected_label_type)
 
-  def test_load_dataset_as_dict(self):
+  def test_load_dataset_with_label_mapping(self):
     input_path = os.path.join(self.get_temp_dir(), 'train.tf_record')
     batch_size = 10
     seq_length = 128
@@ -151,15 +152,18 @@ class SentencePredictionDataTest(tf.test.TestCase, parameterized.TestCase):
         seq_length=seq_length,
         global_batch_size=batch_size,
         label_type='int',
-        outputs_as_dict=True)
+        label_name=('label_ids', 'next_sentence_labels'))
     dataset = loader.SentencePredictionDataLoader(data_config).load()
     features = next(iter(dataset))
     self.assertCountEqual([
-        'input_word_ids', 'input_mask', 'input_type_ids', 'next_sentence_labels'
+        'input_word_ids', 'input_mask', 'input_type_ids',
+        'next_sentence_labels', 'label_ids'
     ], features.keys())
     self.assertEqual(features['input_word_ids'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_mask'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_type_ids'].shape, (batch_size, seq_length))
+    self.assertEqual(features['label_ids'].shape, (batch_size,))
+    self.assertEqual(features['label_ids'].dtype, tf.int32)
     self.assertEqual(features['next_sentence_labels'].shape, (batch_size,))
     self.assertEqual(features['next_sentence_labels'].dtype, tf.int32)
 
@@ -192,13 +196,15 @@ class SentencePredictionTfdsDataLoaderTest(tf.test.TestCase,
         lower_case=lower_case,
         vocab_file=vocab_file_path)
     dataset = loader.SentencePredictionTextDataLoader(data_config).load()
-    features, labels = next(iter(dataset))
-    self.assertCountEqual(['input_word_ids', 'input_type_ids', 'input_mask'],
-                          features.keys())
+    features = next(iter(dataset))
+    label_field = data_config.label_field
+    self.assertCountEqual(
+        ['input_word_ids', 'input_type_ids', 'input_mask', label_field],
+        features.keys())
     self.assertEqual(features['input_word_ids'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_mask'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_type_ids'].shape, (batch_size, seq_length))
-    self.assertEqual(labels.shape, (batch_size,))
+    self.assertEqual(features[label_field].shape, (batch_size,))
 
   @parameterized.parameters(True, False)
   def test_python_sentencepiece_preprocessing(self, use_tfds):
@@ -225,13 +231,15 @@ class SentencePredictionTfdsDataLoaderTest(tf.test.TestCase,
         vocab_file=sp_model_file_path,
     )
     dataset = loader.SentencePredictionTextDataLoader(data_config).load()
-    features, labels = next(iter(dataset))
-    self.assertCountEqual(['input_word_ids', 'input_type_ids', 'input_mask'],
-                          features.keys())
+    features = next(iter(dataset))
+    label_field = data_config.label_field
+    self.assertCountEqual(
+        ['input_word_ids', 'input_type_ids', 'input_mask', label_field],
+        features.keys())
     self.assertEqual(features['input_word_ids'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_mask'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_type_ids'].shape, (batch_size, seq_length))
-    self.assertEqual(labels.shape, (batch_size,))
+    self.assertEqual(features[label_field].shape, (batch_size,))
 
   @parameterized.parameters(True, False)
   def test_saved_model_preprocessing(self, use_tfds):
@@ -258,13 +266,15 @@ class SentencePredictionTfdsDataLoaderTest(tf.test.TestCase,
         label_type='int' if use_tfds else 'float',
     )
     dataset = loader.SentencePredictionTextDataLoader(data_config).load()
-    features, labels = next(iter(dataset))
-    self.assertCountEqual(['input_word_ids', 'input_type_ids', 'input_mask'],
-                          features.keys())
+    features = next(iter(dataset))
+    label_field = data_config.label_field
+    self.assertCountEqual(
+        ['input_word_ids', 'input_type_ids', 'input_mask', label_field],
+        features.keys())
     self.assertEqual(features['input_word_ids'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_mask'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_type_ids'].shape, (batch_size, seq_length))
-    self.assertEqual(labels.shape, (batch_size,))
+    self.assertEqual(features[label_field].shape, (batch_size,))
 
 
 if __name__ == '__main__':

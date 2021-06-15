@@ -32,7 +32,7 @@ class ImageClassificationModel(hyperparams.Config):
   num_classes: int = 0
   input_size: List[int] = dataclasses.field(default_factory=list)
   backbone: backbones.Backbone = backbones.Backbone(
-      type='darknet', resnet=backbones.DarkNet())
+      type='darknet', darknet=backbones.Darknet())
   dropout_rate: float = 0.0
   norm_activation: common.NormActivation = common.NormActivation()
   # Adds a BatchNormalization layer pre-GlobalAveragePooling in classification
