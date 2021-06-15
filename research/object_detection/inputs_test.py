@@ -795,15 +795,20 @@ class DataAugmentationFnTest(test_case.TestCase):
           fields.InputDataFields.image:
               tf.constant(np.random.rand(10, 10, 3).astype(np.float32)),
           fields.InputDataFields.groundtruth_instance_masks:
-              tf.constant(np.zeros([2, 10, 10], np.uint8))
+              tf.constant(np.zeros([2, 10, 10], np.uint8)),
+          fields.InputDataFields.groundtruth_instance_mask_weights:
+              tf.constant([1.0, 0.0], np.float32)
       }
       augmented_tensor_dict = data_augmentation_fn(tensor_dict=tensor_dict)
       return (augmented_tensor_dict[fields.InputDataFields.image],
               augmented_tensor_dict[fields.InputDataFields.
-                                    groundtruth_instance_masks])
-    image, masks = self.execute_cpu(graph_fn, [])
+                                    groundtruth_instance_masks],
+              augmented_tensor_dict[fields.InputDataFields.
+                                    groundtruth_instance_mask_weights])
+    image, masks, mask_weights = self.execute_cpu(graph_fn, [])
     self.assertAllEqual(image.shape, [20, 20, 3])
     self.assertAllEqual(masks.shape, [2, 20, 20])
+    self.assertAllClose(mask_weights, [1.0, 0.0])
 
   def test_include_keypoints_in_data_augmentation(self):
     data_augmentation_options = [

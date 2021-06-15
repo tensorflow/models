@@ -43,6 +43,7 @@ class DataConfig(cfg.DataConfig):
   file_type: str = 'tfrecord'
   image_field_key: str = 'image/encoded'
   label_field_key: str = 'image/class/label'
+  decode_jpeg_only: bool = True
 
   # Keep for backward compatibility.
   aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'.

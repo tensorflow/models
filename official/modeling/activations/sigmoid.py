@@ -28,4 +28,4 @@ def hard_sigmoid(features):
     The activation value.
   """
   features = tf.convert_to_tensor(features)
-  return tf.nn.relu6(features + tf.constant(3.)) * 0.16667
+  return tf.nn.relu6(features + tf.cast(3., features.dtype)) * 0.16667

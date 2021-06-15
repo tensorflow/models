@@ -13,15 +13,12 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Tests for YOLO heads."""
+"""Tests for yolo heads."""
 
 # Import libraries
 from absl.testing import parameterized
-import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.distribute import combinations
-from tensorflow.python.distribute import strategy_combinations
 from official.vision.beta.projects.yolo.modeling.heads import yolo_head as heads
 
 
@@ -40,10 +37,11 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
     head = heads.YoloHead(3, 5, classes=classes, boxes_per_level=bps)
 
     inputs = {}
-    for key in input_shape.keys():
+    for key in input_shape:
       inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
 
     endpoints = head(inputs)
+    # print(endpoints)
 
     for key in endpoints.keys():
       expected_input_shape = input_shape[key]
@@ -63,14 +61,13 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
     head = heads.YoloHead(3, 5, classes=classes, boxes_per_level=bps)
 
     inputs = {}
-    for key in input_shape.keys():
+    for key in input_shape:
       inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
 
     _ = head(inputs)
     configs = head.get_config()
     head_from_config = heads.YoloHead.from_config(configs)
     self.assertAllEqual(head.get_config(), head_from_config.get_config())
-
 
 if __name__ == '__main__':
   tf.test.main()

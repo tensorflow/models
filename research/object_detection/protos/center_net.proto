@@ -65,6 +65,14 @@ message CenterNet {
 
     // Localization loss configuration for object scale and offset losses.
     optional LocalizationLoss localization_loss = 8;
+
+    // Parameters to determine the architecture of the object scale prediction
+    // head.
+    optional PredictionHeadParams scale_head_params = 9;
+
+    // Parameters to determine the architecture of the object offset prediction
+    // head.
+    optional PredictionHeadParams offset_head_params = 10;
   }
   optional ObjectDetection object_detection_task = 4;
 
@@ -268,6 +276,10 @@ message CenterNet {
     // prediction head. -2.19 corresponds to predicting foreground with
     // a probability of 0.1.
     optional float heatmap_bias_init = 3 [default = -2.19];
+
+    // Parameters to determine the architecture of the segmentation mask
+    // prediction head.
+    optional PredictionHeadParams mask_head_params = 7;
   }
   optional MaskEstimation mask_estimation_task = 8;
 

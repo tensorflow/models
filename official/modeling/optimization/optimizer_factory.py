@@ -13,12 +13,13 @@
 # limitations under the License.
 
 """Optimizer factory class."""
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
 import gin
 import tensorflow as tf
 import tensorflow_addons.optimizers as tfa_optimizers
 
+from official.modeling.optimization import slide_optimizer
 from official.modeling.optimization import ema_optimizer
 from official.modeling.optimization import lars_optimizer
 from official.modeling.optimization import lr_schedule
@@ -33,6 +34,7 @@ OPTIMIZERS_CLS = {
     'rmsprop': tf.keras.optimizers.RMSprop,
     'lars': lars_optimizer.LARS,
     'adagrad': tf.keras.optimizers.Adagrad,
+    'slide': slide_optimizer.SLIDE
 }
 
 LR_CLS = {
@@ -134,8 +136,8 @@ class OptimizerFactory:
   def build_optimizer(
       self,
       lr: Union[tf.keras.optimizers.schedules.LearningRateSchedule, float],
-      postprocessor: Callable[[tf.keras.optimizers.Optimizer],
-                              tf.keras.optimizers.Optimizer] = None):
+      postprocessor: Optional[Callable[[tf.keras.optimizers.Optimizer],
+                                       tf.keras.optimizers.Optimizer]] = None):
     """Build optimizer.
 
     Builds optimizer from config. It takes learning rate as input, and builds

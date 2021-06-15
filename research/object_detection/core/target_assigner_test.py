@@ -1699,7 +1699,7 @@ class CenterNetKeypointTargetAssignerTest(test_case.TestCase):
               np.array([[0.0, 0.0, 0.3, 0.3],
                         [0.0, 0.0, 0.5, 0.5],
                         [0.0, 0.0, 0.5, 0.5],
-                        [0.0, 0.0, 1.0, 1.0]]),
+                        [0.5, 0.5, 1.0, 1.0]]),
               dtype=tf.float32)
       ]
 
@@ -1728,15 +1728,20 @@ class CenterNetKeypointTargetAssignerTest(test_case.TestCase):
     # Verify the number of instances is correct.
     np.testing.assert_array_almost_equal([[0, 1]],
                                          num_instances_batch)
+    self.assertAllEqual([1, 30, 20, 2], valid_mask.shape)
     # When calling the function, we specify the class id to be 1 (1th and 3rd)
     # instance and the keypoint indices to be [0, 2], meaning that the 1st
     # instance is the target class with no valid keypoints in it. As a result,
-    # the region of the 1st instance boxing box should be blacked out
-    # (0.0, 0.0, 0.5, 0.5), transfering to (0, 0, 15, 10) in absolute output
-    # space.
-    self.assertAlmostEqual(np.sum(valid_mask[:, 0:16, 0:11]), 0.0)
-    # All other values are 1.0 so the sum is: 30 * 20 - 16 * 11 = 424.
-    self.assertAlmostEqual(np.sum(valid_mask), 424.0)
+    # the region of both keypoint types of the 1st instance boxing box should be
+    # blacked out (0.0, 0.0, 0.5, 0.5), transfering to (0, 0, 15, 10) in
+    # absolute output space.
+    self.assertAlmostEqual(np.sum(valid_mask[:, 0:15, 0:10, 0:2]), 0.0)
+    # For the 2nd instance, only the 1st keypoint has visibility of 0 so only
+    # the corresponding valid mask contains zeros.
+    self.assertAlmostEqual(np.sum(valid_mask[:, 15:30, 10:20, 0]), 0.0)
+    # All other values are 1.0 so the sum is:
+    # 30 * 20 * 2 - 15 * 10 * 2 - 15 * 10 * 1 = 750.
+    self.assertAlmostEqual(np.sum(valid_mask), 750.0)
 
   def test_assign_keypoints_offset_targets(self):
     def graph_fn():
@@ -2090,13 +2095,31 @@ class CenterNetMaskTargetAssignerTest(test_case.TestCase):
           tf.constant([[0., 1., 0.],
                        [0., 1., 0.]], dtype=tf.float32)
       ]
+      gt_boxes_list = [
+          # Example 0.
+          tf.constant([[0.0, 0.0, 0.5, 0.5],
+                       [0.0, 0.5, 0.5, 1.0],
+                       [0.0, 0.0, 1.0, 1.0]], dtype=tf.float32),
+          # Example 1.
+          tf.constant([[0.0, 0.0, 1.0, 1.0],
+                       [0.5, 0.0, 1.0, 0.5]], dtype=tf.float32)
+      ]
+      gt_mask_weights_list = [
+          # Example 0.
+          tf.constant([0.0, 1.0, 1.0], dtype=tf.float32),
+          # Example 1.
+          tf.constant([1.0, 1.0], dtype=tf.float32)
+      ]
       cn_assigner = targetassigner.CenterNetMaskTargetAssigner(stride=2)
-      segmentation_target = cn_assigner.assign_segmentation_targets(
-          gt_masks_list=gt_masks_list,
-          gt_classes_list=gt_classes_list,
-          mask_resize_method=targetassigner.ResizeMethod.NEAREST_NEIGHBOR)
-      return segmentation_target
-    segmentation_target = self.execute(graph_fn, [])
+      segmentation_target, segmentation_weight = (
+          cn_assigner.assign_segmentation_targets(
+              gt_masks_list=gt_masks_list,
+              gt_classes_list=gt_classes_list,
+              gt_boxes_list=gt_boxes_list,
+              gt_mask_weights_list=gt_mask_weights_list,
+              mask_resize_method=targetassigner.ResizeMethod.NEAREST_NEIGHBOR))
+      return segmentation_target, segmentation_weight
+    segmentation_target, segmentation_weight = self.execute(graph_fn, [])
 
     expected_seg_target = np.array([
         # Example 0  [[class 0, class 1], [background, class 0]]
@@ -2108,13 +2131,18 @@ class CenterNetMaskTargetAssignerTest(test_case.TestCase):
     ], dtype=np.float32)
     np.testing.assert_array_almost_equal(
         expected_seg_target, segmentation_target)
+    expected_seg_weight = np.array([
+        [[0, 1], [1, 1]],
+        [[1, 1], [1, 1]]], dtype=np.float32)
+    np.testing.assert_array_almost_equal(
+        expected_seg_weight, segmentation_weight)
 
   def test_assign_segmentation_targets_no_objects(self):
     def graph_fn():
       gt_masks_list = [tf.zeros((0, 5, 5))]
       gt_classes_list = [tf.zeros((0, 10))]
       cn_assigner = targetassigner.CenterNetMaskTargetAssigner(stride=1)
-      segmentation_target = cn_assigner.assign_segmentation_targets(
+      segmentation_target, _ = cn_assigner.assign_segmentation_targets(
           gt_masks_list=gt_masks_list,
           gt_classes_list=gt_classes_list,
           mask_resize_method=targetassigner.ResizeMethod.NEAREST_NEIGHBOR)

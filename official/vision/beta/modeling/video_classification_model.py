@@ -27,7 +27,7 @@ class VideoClassificationModel(tf.keras.Model):
       self,
       backbone: tf.keras.Model,
       num_classes: int,
-      input_specs: Mapping[str, tf.keras.layers.InputSpec] = None,
+      input_specs: Optional[Mapping[str, tf.keras.layers.InputSpec]] = None,
       dropout_rate: float = 0.0,
       aggregate_endpoints: bool = False,
       kernel_initializer: str = 'random_uniform',

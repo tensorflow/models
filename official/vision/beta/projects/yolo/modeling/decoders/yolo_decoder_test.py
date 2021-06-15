@@ -17,7 +17,6 @@
 
 # Import libraries
 from absl.testing import parameterized
-import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
@@ -26,6 +25,45 @@ from official.vision.beta.projects.yolo.modeling.decoders import yolo_decoder as
 
 
 class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
+
+  def _build_yolo_decoder(self, input_specs, name='1'):
+    # Builds 4 different arbitrary decoders.
+    if name == '1':
+      model = decoders.YoloDecoder(
+          input_specs=input_specs,
+          embed_spp=False,
+          use_fpn=False,
+          max_level_process_len=2,
+          path_process_len=1,
+          activation='mish')
+    elif name == '6spp':
+      model = decoders.YoloDecoder(
+          input_specs=input_specs,
+          embed_spp=True,
+          use_fpn=False,
+          max_level_process_len=None,
+          path_process_len=6,
+          activation='mish')
+    elif name == '6sppfpn':
+      model = decoders.YoloDecoder(
+          input_specs=input_specs,
+          embed_spp=True,
+          use_fpn=True,
+          max_level_process_len=None,
+          path_process_len=6,
+          activation='mish')
+    elif name == '6':
+      model = decoders.YoloDecoder(
+          input_specs=input_specs,
+          embed_spp=False,
+          use_fpn=False,
+          max_level_process_len=None,
+          path_process_len=6,
+          activation='mish')
+    else:
+      raise NotImplementedError(f'YOLO decoder test {type} not implemented.')
+
+    return model
 
   @parameterized.parameters('1', '6spp', '6sppfpn', '6')
   def test_network_creation(self, version):
@@ -36,10 +74,10 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
         '4': [1, 26, 26, 512],
         '5': [1, 13, 13, 1024]
     }
-    decoder = build_yolo_decoder(input_shape, version)
+    decoder = self._build_yolo_decoder(input_shape, version)
 
     inputs = {}
-    for key in input_shape.keys():
+    for key in input_shape:
       inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
 
     endpoints = decoder.call(inputs)
@@ -50,7 +88,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
   @combinations.generate(
       combinations.combine(
           strategy=[
-              strategy_combinations.tpu_strategy,
+              strategy_combinations.cloud_tpu_strategy,
               strategy_combinations.one_device_strategy_gpu,
           ],
           use_sync_bn=[False, True],
@@ -66,10 +104,10 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
           '4': [1, 26, 26, 512],
           '5': [1, 13, 13, 1024]
       }
-      decoder = build_yolo_decoder(input_shape, '6')
+      decoder = self._build_yolo_decoder(input_shape, '6')
 
       inputs = {}
-      for key in input_shape.keys():
+      for key in input_shape:
         inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
 
       _ = decoder.call(inputs)
@@ -84,10 +122,10 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
         '4': [1, 26, 26, 512],
         '5': [1, 13, 13, 1024]
     }
-    decoder = build_yolo_decoder(input_shape, '6')
+    decoder = self._build_yolo_decoder(input_shape, '6')
 
     inputs = {}
-    for key in input_shape.keys():
+    for key in input_shape:
       inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
     _ = decoder(inputs)
 
@@ -100,55 +138,16 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
         '4': [1, 26, 26, 512],
         '5': [1, 13, 13, 1024]
     }
-    decoder = build_yolo_decoder(input_shape, '6')
+    decoder = self._build_yolo_decoder(input_shape, '6')
 
     inputs = {}
-    for key in input_shape.keys():
+    for key in input_shape:
       inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
 
     _ = decoder(inputs)
     config = decoder.get_config()
     decoder_from_config = decoders.YoloDecoder.from_config(config)
     self.assertAllEqual(decoder.get_config(), decoder_from_config.get_config())
-
-
-def build_yolo_decoder(input_specs, type='1'):
-  if type == '1':
-    model = decoders.YoloDecoder(
-        input_specs=input_specs,
-        embed_spp=False,
-        use_fpn=False,
-        max_level_process_len=2,
-        path_process_len=1,
-        activation='mish')
-  elif type == '6spp':
-    model = decoders.YoloDecoder(
-        input_specs=input_specs,
-        embed_spp=True,
-        use_fpn=False,
-        max_level_process_len=None,
-        path_process_len=6,
-        activation='mish')
-  elif type == '6sppfpn':
-    model = decoders.YoloDecoder(
-        input_specs=input_specs,
-        embed_spp=True,
-        use_fpn=True,
-        max_level_process_len=None,
-        path_process_len=6,
-        activation='mish')
-  elif type == '6':
-    model = decoders.YoloDecoder(
-        input_specs=input_specs,
-        embed_spp=False,
-        use_fpn=False,
-        max_level_process_len=None,
-        path_process_len=6,
-        activation='mish')
-  else:
-    raise NotImplementedError(f"YOLO decoder test {type} not implemented.")
-  return model
-
 
 if __name__ == '__main__':
   tf.test.main()

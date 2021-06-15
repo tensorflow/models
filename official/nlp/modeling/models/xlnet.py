@@ -15,7 +15,7 @@
 """XLNet models."""
 # pylint: disable=g-classes-have-attributes
 
-from typing import Any, Mapping, Union
+from typing import Any, Mapping, Optional, Union
 
 import tensorflow as tf
 
@@ -99,7 +99,7 @@ class XLNetPretrainer(tf.keras.Model):
       network: Union[tf.keras.layers.Layer, tf.keras.Model],
       mlm_activation=None,
       mlm_initializer='glorot_uniform',
-      name: str = None,
+      name: Optional[str] = None,
       **kwargs):
     super().__init__(name=name, **kwargs)
     self._config = {

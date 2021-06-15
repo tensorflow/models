@@ -1539,7 +1539,9 @@ def get_fake_mask_params():
       classification_loss=losses.WeightedSoftmaxClassificationLoss(),
       task_loss_weight=1.0,
       mask_height=4,
-      mask_width=4)
+      mask_width=4,
+      mask_head_num_filters=[96],
+      mask_head_kernel_sizes=[3])
 
 
 def get_fake_densepose_params():

@@ -13,6 +13,8 @@
 # limitations under the License.
 
 # Lint as: python3
+from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 import numpy as np
 from absl.testing import parameterized
@@ -334,12 +336,13 @@ class DarkRouteProcessTest(tf.test.TestCase, parameterized.TestCase):
     test_layer = nn_blocks.DarkRouteProcess(
         filters=filters, repetitions=repetitions, insert_spp=spp)
     outx = test_layer(x)
-    self.assertEqual(len(outx), 2, msg='len(outx) != 2')
+    self.assertLen(outx, 2, msg='len(outx) != 2')
     if repetitions == 1:
       filter_y1 = filters
     else:
       filter_y1 = filters // 2
-    self.assertAllEqual(outx[1].shape.as_list(), [None, width, height, filter_y1])
+    self.assertAllEqual(
+        outx[1].shape.as_list(), [None, width, height, filter_y1])
     self.assertAllEqual(
         filters % 2,
         0,
@@ -366,7 +369,8 @@ class DarkRouteProcessTest(tf.test.TestCase, parameterized.TestCase):
     y_0 = tf.Variable(
         initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
     y_1 = tf.Variable(
-        initial_value=init(shape=(1, width, height, filter_y1), dtype=tf.float32))
+        initial_value=init(
+            shape=(1, width, height, filter_y1), dtype=tf.float32))
 
     with tf.GradientTape() as tape:
       x_hat_0, x_hat_1 = test_layer(x)
@@ -378,7 +382,6 @@ class DarkRouteProcessTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertNotIn(None, grad)
     return
-
 
 if __name__ == '__main__':
   tf.test.main()

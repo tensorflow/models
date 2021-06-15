@@ -1,4 +1,4 @@
-# ImageNet classification.
+# SimCLR Imagenet 10% finetuning.
 runtime:
   distribution_strategy: 'mirrored'
   mixed_precision_dtype: 'float16'
@@ -55,7 +55,7 @@ trainer:
   train_steps: 12500  # 100 epochs
   validation_steps: 49  # NUM_EXAMPLES (50000) // global_batch_size
   validation_interval: 125
-  steps_per_loop: 125  # NUM_EXAMPLES (1281167) // global_batch_size
+  steps_per_loop: 125  # NUM_EXAMPLES (128116) // global_batch_size
   summary_interval: 125
   checkpoint_interval: 125
   optimizer_config:

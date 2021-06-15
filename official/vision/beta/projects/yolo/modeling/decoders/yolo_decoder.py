@@ -22,15 +22,7 @@ from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class _IdentityRoute(tf.keras.layers.Layer):
 
-  def __init__(self, **kwargs):
-    """
-    Private class to mirror the outputs of blocks in nn_blocks for an easier
-    programatic generation of the feature pyramid network.
-    """
-
-    super().__init__(**kwargs)
-
-  def call(self, inputs): # pylint: disable=arguments-differ
+  def call(self, inputs):
     return None, inputs
 
 
@@ -111,8 +103,7 @@ class YoloFPN(tf.keras.layers.Layer):
     return list(reversed(depths))
 
   def build(self, inputs):
-    """Use config dictionary to generate all important attributes for head
-    construction.
+    """Use config dictionary to generate all important attributes for head.
 
     Args:
        inputs: dictionary of the shape of input args as a dictionary of lists.
@@ -127,7 +118,7 @@ class YoloFPN(tf.keras.layers.Layer):
     # directly connect to an input path and process it
     self.preprocessors = dict()
     # resample an input and merge it with the output of another path
-    # in order to aggregate backbone outputs
+    # inorder to aggregate backbone outputs
     self.resamples = dict()
     # set of convoltion layers and upsample layers that are used to
     # prepare the FPN processors for output
@@ -181,7 +172,7 @@ class YoloFPN(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class YoloPAN(tf.keras.layers.Layer):
-  """YOLO Path Aggregation Network"""
+  """YOLO Path Aggregation Network."""
 
   def __init__(self,
                path_process_len=6,
@@ -216,7 +207,7 @@ class YoloPAN(tf.keras.layers.Layer):
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
-      fpn_input: `bool`, for whether the input into this function is an FPN or
+      fpn_input: `bool`, for whether the input into this fucntion is an FPN or
         a backbone.
       fpn_filter_scale: `int`, scaling factor for the FPN filters.
       **kwargs: keyword arguments to be passed.
@@ -253,8 +244,7 @@ class YoloPAN(tf.keras.layers.Layer):
         norm_momentum=self._norm_momentum)
 
   def build(self, inputs):
-    """Use config dictionary to generate all important attributes for head
-    construction.
+    """Use config dictionary to generate all important attributes for head.
 
     Args:
       inputs: dictionary of the shape of input args as a dictionary of lists.
@@ -270,7 +260,7 @@ class YoloPAN(tf.keras.layers.Layer):
     # directly connect to an input path and process it
     self.preprocessors = dict()
     # resample an input and merge it with the output of another path
-    # in order to aggregate backbone outputs
+    # inorder to aggregate backbone outputs
     self.resamples = dict()
 
     # FPN will reverse the key process order for the backbone, so we need
@@ -368,7 +358,7 @@ class YoloPAN(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class YoloDecoder(tf.keras.Model):
-  """Darknet Backbone Decoder"""
+  """Darknet Backbone Decoder."""
 
   def __init__(self,
                input_specs,
@@ -388,8 +378,10 @@ class YoloDecoder(tf.keras.Model):
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
-    """Yolo Decoder initialization function. A unified model that ties all
-    decoder components into a conditionally build YOLO decoder.
+    """Yolo Decoder initialization function.
+
+    A unified model that ties all decoder components into a conditionally build
+    YOLO decoder.
 
     Args:
       input_specs: `dict[str, tf.InputSpec]`: input specs of each of the inputs

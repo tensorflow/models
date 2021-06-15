@@ -926,11 +926,27 @@ def object_detection_proto_to_params(od_config):
       losses_pb2.WeightedSigmoidClassificationLoss())
   loss.localization_loss.CopyFrom(od_config.localization_loss)
   _, localization_loss, _, _, _, _, _ = (losses_builder.build(loss))
+  if od_config.HasField('scale_head_params'):
+    scale_head_num_filters = list(od_config.scale_head_params.num_filters)
+    scale_head_kernel_sizes = list(od_config.scale_head_params.kernel_sizes)
+  else:
+    scale_head_num_filters = [256]
+    scale_head_kernel_sizes = [3]
+  if od_config.HasField('offset_head_params'):
+    offset_head_num_filters = list(od_config.offset_head_params.num_filters)
+    offset_head_kernel_sizes = list(od_config.offset_head_params.kernel_sizes)
+  else:
+    offset_head_num_filters = [256]
+    offset_head_kernel_sizes = [3]
   return center_net_meta_arch.ObjectDetectionParams(
       localization_loss=localization_loss,
       scale_loss_weight=od_config.scale_loss_weight,
       offset_loss_weight=od_config.offset_loss_weight,
-      task_loss_weight=od_config.task_loss_weight)
+      task_loss_weight=od_config.task_loss_weight,
+      scale_head_num_filters=scale_head_num_filters,
+      scale_head_kernel_sizes=scale_head_kernel_sizes,
+      offset_head_num_filters=offset_head_num_filters,
+      offset_head_kernel_sizes=offset_head_kernel_sizes)
 
 
 def object_center_proto_to_params(oc_config):
@@ -973,13 +989,21 @@ def mask_proto_to_params(mask_config):
       losses_pb2.WeightedL2LocalizationLoss())
   loss.classification_loss.CopyFrom(mask_config.classification_loss)
   classification_loss, _, _, _, _, _, _ = (losses_builder.build(loss))
+  if mask_config.HasField('mask_head_params'):
+    mask_head_num_filters = list(mask_config.mask_head_params.num_filters)
+    mask_head_kernel_sizes = list(mask_config.mask_head_params.kernel_sizes)
+  else:
+    mask_head_num_filters = [256]
+    mask_head_kernel_sizes = [3]
   return center_net_meta_arch.MaskParams(
       classification_loss=classification_loss,
       task_loss_weight=mask_config.task_loss_weight,
       mask_height=mask_config.mask_height,
       mask_width=mask_config.mask_width,
       score_threshold=mask_config.score_threshold,
-      heatmap_bias_init=mask_config.heatmap_bias_init)
+      heatmap_bias_init=mask_config.heatmap_bias_init,
+      mask_head_num_filters=mask_head_num_filters,
+      mask_head_kernel_sizes=mask_head_kernel_sizes)
 
 
 def densepose_proto_to_params(densepose_config):

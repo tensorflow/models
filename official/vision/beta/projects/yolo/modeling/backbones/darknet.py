@@ -13,7 +13,6 @@
 # limitations under the License.
 
 # Lint as: python3
-
 """Contains definitions of Darknet Backbone Networks.
 
 These models are inspired by ResNet and CSPNet.
@@ -46,16 +45,14 @@ from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
 # builder required classes
 
-
 class BlockConfig:
-  """
-  This is a class to store layer config to make code more readable.
-  """
+  """Class to store layer config to make code more readable."""
 
   def __init__(self, layer, stack, reps, bottleneck, filters, pool_size,
                kernel_size, strides, padding, activation, route, dilation_rate,
                output_name, is_output):
-    """
+    """Initializing method for BlockConfig.
+
     Args:
       layer: A `str` for layer name.
       stack: A `str` for the type of layer ordering to use for this specific
@@ -69,7 +66,7 @@ class BlockConfig:
       padding: An `int` for the padding to apply to layers in this stack.
       activation: A `str` for the activation to use for this stack.
       route: An `int` for the level to route from to get the next input.
-      dilation_rate: An `int` for the scale used in dilated Darknet.
+      dilation_rate: An `int` for the scale used in dialated Darknet.
       output_name: A `str` for the name to use for this output.
       is_output: A `bool` for whether this layer is an output in the default
         model.
@@ -98,11 +95,11 @@ def build_block_specs(config):
 
 
 class LayerBuilder:
-  """
-  This is a class that is used for quick look up of default layers used
-  by darknet to connect, introduce or exit a level. Used in place of an
-  if condition or switch to make adding new layers easier and to reduce
-  redundant code.
+  """Layer builder class.
+
+  Class for quick look up of default layers used by darknet to
+  connect, introduce or exit a level. Used in place of an if condition
+  or switch to make adding new layers easier and to reduce redundant code.
   """
 
   def __init__(self):
@@ -378,7 +375,7 @@ BACKBONES = {
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class Darknet(tf.keras.Model):
-  """ The Darknet backbone architecture. """
+  """The Darknet backbone architecture."""
 
   def __init__(
       self,
@@ -596,8 +593,8 @@ class Darknet(tf.keras.Model):
         filters=config.filters, downsample=True, **self._default_dict)(
             inputs)
 
-    dilated_reps = config.repetitions - \
-        (self._default_dict['dilation_rate'] // 2) - 1
+    dilated_reps = config.repetitions - (
+        self._default_dict['dilation_rate'] // 2) - 1
     for i in range(dilated_reps):
       self._default_dict['name'] = f'{name}_{i}'
       x = nn_blocks.DarkResidual(
@@ -668,14 +665,13 @@ def build_darknet(
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+  """Builds darknet."""
 
-  backbone_cfg = model_config.backbone.get()
-  norm_activation_config = model_config.norm_activation
-
+  backbone_cfg = backbone_config.get()
   model = Darknet(
       model_id=backbone_cfg.model_id,
-      min_level=model_config.min_level,
-      max_level=model_config.max_level,
+      min_level=backbone_cfg.min_level,
+      max_level=backbone_cfg.max_level,
       input_specs=input_specs,
       dilate=backbone_cfg.dilate,
       width_scale=backbone_cfg.width_scale,

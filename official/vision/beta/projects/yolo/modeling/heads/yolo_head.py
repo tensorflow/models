@@ -13,12 +13,14 @@
 # limitations under the License.
 
 # Lint as: python3
+"""Yolo heads."""
+
 import tensorflow as tf
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
 
 class YoloHead(tf.keras.layers.Layer):
-  """YOLO Prediction Head"""
+  """YOLO Prediction Head."""
 
   def __init__(self,
                min_level,

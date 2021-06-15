@@ -266,6 +266,7 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
         # dimension. This list has to be kept in sync with InputDataFields in
         # standard_fields.py.
         fields.InputDataFields.groundtruth_instance_masks,
+        fields.InputDataFields.groundtruth_instance_mask_weights,
         fields.InputDataFields.groundtruth_classes,
         fields.InputDataFields.groundtruth_boxes,
         fields.InputDataFields.groundtruth_keypoints,
@@ -319,6 +320,10 @@ def provide_groundtruth(model, labels):
   if fields.InputDataFields.groundtruth_instance_masks in labels:
     gt_masks_list = labels[
         fields.InputDataFields.groundtruth_instance_masks]
+  gt_mask_weights_list = None
+  if fields.InputDataFields.groundtruth_instance_mask_weights in labels:
+    gt_mask_weights_list = labels[
+        fields.InputDataFields.groundtruth_instance_mask_weights]
   gt_keypoints_list = None
   if fields.InputDataFields.groundtruth_keypoints in labels:
     gt_keypoints_list = labels[fields.InputDataFields.groundtruth_keypoints]
@@ -383,6 +388,7 @@ def provide_groundtruth(model, labels):
       groundtruth_confidences_list=gt_confidences_list,
       groundtruth_labeled_classes=gt_labeled_classes,
       groundtruth_masks_list=gt_masks_list,
+      groundtruth_mask_weights_list=gt_mask_weights_list,
       groundtruth_keypoints_list=gt_keypoints_list,
       groundtruth_keypoint_visibilities_list=gt_keypoint_visibilities_list,
       groundtruth_dp_num_points_list=gt_dp_num_points_list,

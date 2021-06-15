@@ -140,10 +140,10 @@ class MaskRCNNModel(tf.keras.Model):
            images: tf.Tensor,
            image_shape: tf.Tensor,
            anchor_boxes: Optional[Mapping[str, tf.Tensor]] = None,
-           gt_boxes: tf.Tensor = None,
-           gt_classes: tf.Tensor = None,
-           gt_masks: tf.Tensor = None,
-           training: bool = None) -> Mapping[str, tf.Tensor]:
+           gt_boxes: Optional[tf.Tensor] = None,
+           gt_classes: Optional[tf.Tensor] = None,
+           gt_masks: Optional[tf.Tensor] = None,
+           training: Optional[bool] = None) -> Mapping[str, tf.Tensor]:
     model_outputs = {}
 
     # Feature extraction.

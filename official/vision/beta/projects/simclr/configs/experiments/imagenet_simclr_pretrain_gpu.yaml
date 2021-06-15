@@ -1,4 +1,4 @@
-# ImageNet classification.
+# SimCLR Imagenet pretraining.
 runtime:
   distribution_strategy: 'mirrored'
   mixed_precision_dtype: 'float16'
@@ -49,12 +49,12 @@ task:
     decoder:
       decode_label: true
 trainer:
-  train_steps: 187200  # 300 epochs
+  train_steps: 500000  # 800 epochs
   validation_steps: 24  # NUM_EXAMPLES (50000) // global_batch_size
-  validation_interval: 624
-  steps_per_loop: 624  # NUM_EXAMPLES (1281167) // global_batch_size
-  summary_interval: 624
-  checkpoint_interval: 624
+  validation_interval: 625
+  steps_per_loop: 625  # NUM_EXAMPLES (1281167) // global_batch_size
+  summary_interval: 625
+  checkpoint_interval: 625
   optimizer_config:
     optimizer:
       type: 'lars'
@@ -66,8 +66,8 @@ trainer:
       type: 'cosine'
       cosine:
         initial_learning_rate: 1.6  #  0.2 * BatchSize / 256
-        decay_steps: 177840  # train_steps - warmup_steps
+        decay_steps: 500000
     warmup:
       type: 'linear'
       linear:
-        warmup_steps: 9360  # 5% of total epochs
+        warmup_steps: 25000  # 5% of total epochs
