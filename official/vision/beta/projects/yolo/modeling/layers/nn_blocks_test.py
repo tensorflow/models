@@ -62,7 +62,6 @@ class CSPConnectTest(tf.test.TestCase, parameterized.TestCase):
       grad_loss = loss(x_hat, y)
     grad = tape.gradient(grad_loss, test_layer.trainable_variables)
     optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
-
     self.assertNotIn(None, grad)
 
 

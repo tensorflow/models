@@ -17,9 +17,9 @@ repository.
 
 ## Description
 
-YOLO v1 the original implementation was released in 2015 providing a groundbreaking
-algorithm that would quickly process images and locate objects in a
-single pass through the detector. The original implementation used a
+YOLO v1 the original implementation was released in 2015 providing a 
+groundbreakingalgorithm that would quickly process images and locate objects in 
+a single pass through the detector. The original implementation used a
 backbone derived from state of the art object classifiers of the time, like
 [GoogLeNet](https://arxiv.org/abs/1409.4842) and
 [VGG](https://arxiv.org/abs/1409.1556). More attention was given to the novel
@@ -32,14 +32,15 @@ update and develop this model.
 
 YOLO v3 and v4 serve as the most up to date and capable versions of the YOLO
 network group. This model uses a custom backbone called Darknet53 that uses
-knowledge gained from the ResNet paper to improve its predictions. The new backbone
-also allows for objects to be detected at multiple scales. As for the new detection head,
-the model now predicts the bounding boxes using a set of anchor box priors (Anchor
-Boxes) as suggestions. Multiscale predictions in combination with Anchor boxes allow
-for the network to make up to 1000 object predictions on a single image. Finally,
-the new loss function forces the network to make better predictions by using Intersection
-Over Union (IOU) to inform the model's confidence rather than relying on the mean
-squared error for the entire output.
+knowledge gained from the ResNet paper to improve its predictions. The new 
+backbone also allows for objects to be detected at multiple scales. As for the 
+new detection head, the model now predicts the bounding boxes using a set of 
+anchor box priors (Anchor Boxes) as suggestions. Multiscale predictions in 
+combination with Anchor boxes allow for the network to make up to 1000 object 
+predictions on a single image. Finally, the new loss function forces the network 
+to make better predictions by using Intersection Over Union (IOU) to inform the
+model's confidence rather than relying on the mean squared error for the entire 
+output.
 
 
 ## Authors
@@ -79,4 +80,5 @@ connected to a new, more powerful backbone if a person chose to.
 [![Python 3.8](https://img.shields.io/badge/Python-3.8-3776AB)](https://www.python.org/downloads/release/python-380/)
 
 
-DISCLAIMER: this YOLO implementation is still under development. No support will be provided during the development phase.
+DISCLAIMER: this YOLO implementation is still under development. No support 
+will be provided during the development phase.
