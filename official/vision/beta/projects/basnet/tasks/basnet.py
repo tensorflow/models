@@ -46,7 +46,6 @@ def build_basnet_model(
   norm_activation_config = model_config.norm_activation
 
   decoder = basnet_decoder.BASNet_Decoder(
-        input_specs=backbone.output_specs,
         use_sync_bn=norm_activation_config.use_sync_bn,
         norm_momentum=norm_activation_config.norm_momentum,
         norm_epsilon=norm_activation_config.norm_epsilon,

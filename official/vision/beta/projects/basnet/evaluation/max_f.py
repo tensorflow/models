@@ -26,12 +26,7 @@ class maxFscore(object):
   """Maximum F-score metric for basnet."""
   
   def __init__(self):
-    """Constructs BASNet evaluation class.
-
-    Args:
-
-    """
-
+    """Constructs BASNet evaluation class."""
     self.reset_states()
 
   @property
@@ -76,7 +71,6 @@ class maxFscore(object):
     recalls    = np.sum(recalls,0)/(len(self._groundtruths)+1e-8)
     f          = (1+beta)*precisions*recalls/(beta*precisions+recalls+1e-8)
     f_max      = np.max(f)
-
     f_max = f_max.astype(np.float32)
 
     return f_max
@@ -128,7 +122,6 @@ class maxFscore(object):
                      groundtruth masks. range [0, 1]
       predictions  : Tuple of signle Tensor [batch, width, height, 1],
                      predicted masks. range [0, 1]
-    
     """
     groundtruths, predictions = self._convert_to_numpy(groundtruths[0],
                                                        predictions[0])

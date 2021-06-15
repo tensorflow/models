@@ -27,7 +27,7 @@ class ConvBlock(tf.keras.layers.Layer):
   def __init__(self,
                filters,
                strides,
-               dilation_rate,
+               dilation_rate=1,
                kernel_size=3,
                kernel_initializer='VarianceScaling',
                kernel_regularizer=None,

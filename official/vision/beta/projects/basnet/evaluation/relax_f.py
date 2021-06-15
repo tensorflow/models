@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Metrics for basnet"""
 
 # Import libraries
 import numpy as np
@@ -23,12 +22,7 @@ class relaxedFscore(object):
   """Relaxed F-score metric for basnet."""
 
   def __init__(self):
-    """Constructs BASNet evaluation class.
-
-    Args:
-
-    """
-
+    """Constructs BASNet evaluation class."""
     self.reset_states()
 
   @property
@@ -86,10 +80,8 @@ class relaxedFscore(object):
  
       pre, rec = self._compute_relax_pre_rec(true_xor, pred_xor, rho)
       relax_fs[i] = (1+beta)*pre*rec/(beta*pre+rec+1e-8)
-    
 
     relax_f = np.sum(relax_fs,0)/(len(self._groundtruths)+1e-8)
-    
     relax_f = relax_f.astype(np.float32)
 
     return relax_f
@@ -134,7 +126,6 @@ class relaxedFscore(object):
                      groundtruth masks. range [0, 1]
       predictions  : Tuple of single Tensor [batch, width, height, 1],
                      predicted masks. range [0, 1]
-    
     """
 
     groundtruths, predictions = self._convert_to_numpy(groundtruths[0],

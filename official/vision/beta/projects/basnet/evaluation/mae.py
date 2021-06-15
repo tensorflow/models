@@ -26,11 +26,7 @@ class MAE(object):
   """Mean Absolute Error(MAE) metric for basnet."""
 
   def __init__(self):
-    """Constructs MAE metric class.
-    
-    Args:
-
-    """
+    """Constructs MAE metric class."""
     self.reset_states()
 
   @property
@@ -55,7 +51,6 @@ class MAE(object):
     Returns:
       average_mae: average MAE with float numpy.
     """
-
     mae_total = 0.0
 
     for i, (true, pred) in enumerate(zip(self._groundtruths,
@@ -71,7 +66,6 @@ class MAE(object):
 
   def _mask_normalize(self, mask):
     return mask/(np.amax(mask)+1e-8)
-
 
   def _compute_mae(self, true, pred):
     h, w = true.shape[0], true.shape[1]
