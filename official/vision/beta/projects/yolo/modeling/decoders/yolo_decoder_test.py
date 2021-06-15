@@ -62,7 +62,6 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
           activation='mish')
     else:
       raise NotImplementedError(f'YOLO decoder test {type} not implemented.')
-
     return model
 
   @parameterized.parameters('1', '6spp', '6sppfpn', '6')
