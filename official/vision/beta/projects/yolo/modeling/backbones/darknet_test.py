@@ -125,5 +125,6 @@ class DarknetTest(parameterized.TestCase, tf.test.TestCase):
     # If the serialization was successful, the new config should match the old.
     self.assertAllEqual(network.get_config(), new_network.get_config())
 
+
 if __name__ == '__main__':
   tf.test.main()

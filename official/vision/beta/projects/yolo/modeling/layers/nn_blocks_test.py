@@ -383,5 +383,6 @@ class DarkRouteProcessTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotIn(None, grad)
     return
 
+
 if __name__ == '__main__':
   tf.test.main()

@@ -69,5 +69,6 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
     head_from_config = heads.YoloHead.from_config(configs)
     self.assertAllEqual(head.get_config(), head_from_config.get_config())
 
+
 if __name__ == '__main__':
   tf.test.main()
