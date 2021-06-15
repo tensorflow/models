@@ -14,7 +14,6 @@
 
 # Lint as: python3
 """Contains common building blocks for yolo neural networks."""
-
 from typing import Callable, List
 import tensorflow as tf
 from official.modeling import tf_utils
@@ -805,7 +804,6 @@ class CSPStack(tf.keras.layers.Layer):
     """CSPStack layer initializer.
 
     Args:
-      filters: integer for output depth, or the number of features to learn.
       model_to_wrap: callable Model or a list of callable objects that will
         process the output of CSPRoute, and be input into CSPConnect.
         list will be called sequentially.
