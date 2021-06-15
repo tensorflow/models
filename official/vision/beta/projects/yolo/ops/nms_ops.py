@@ -8,7 +8,7 @@ class TiledNMS():
   IOU_TYPES = {'diou': 0, 'giou': 1, 'ciou': 2, 'iou': 3}
 
   def __init__(self, iou_type='diou', beta=0.6):
-    '''initialization for all non max suppression operations mainly used to
+    '''Initialization for all non max suppression operations mainly used to
     select hyperparameters for the iou type and scaling.
 
     Args:

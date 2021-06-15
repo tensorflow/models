@@ -3,7 +3,7 @@ import tensorflow as tf
 
 
 def rm_nan_inf(x, val=0.0):
-  """remove nan and infinity
+  """Remove nan and infinity
 
   Args:
     x: any `Tensor` of any type.

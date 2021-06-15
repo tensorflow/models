@@ -49,6 +49,5 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertArrayNear(ciou, expected_iou, 0.001)
     self.assertArrayNear(diou, expected_iou, 0.001)
 
-
 if __name__ == '__main__':
   tf.test.main()
