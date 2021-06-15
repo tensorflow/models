@@ -52,6 +52,7 @@ class BASNetLoss:
     total_iou_loss = tf.math.add_n(iou_losses)
     
     total_loss = total_bce_loss + total_ssim_loss + total_iou_loss
+    total_loss = total_loss / len(levels)
 
     return total_loss
     

@@ -30,7 +30,7 @@ class BASNetModel(tf.keras.Model):
   def __init__(self,
                backbone,
                decoder,
-               refinement,
+               refinement=None,
                **kwargs):
     """BASNet initialization function.
 
