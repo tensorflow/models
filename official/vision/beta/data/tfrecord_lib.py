@@ -139,7 +139,7 @@ def write_tf_record_dataset(output_path, annotation_iterator,
   total_num_annotations_skipped = 0
 
   if use_multiprocessing:
-    pool = mp.Pool(z)
+    pool = mp.Pool()
     if unpack_arguments:
       tf_example_iterator = pool.starmap(process_func, annotation_iterator)
     else:
