@@ -19,4 +19,3 @@ from official.common import registry_imports
 from official.vision.beta.projects.yolo.configs import darknet_classification
 from official.vision.beta.projects.yolo.modeling.backbones import darknet
 from official.vision.beta.projects.yolo.tasks import image_classification
-
