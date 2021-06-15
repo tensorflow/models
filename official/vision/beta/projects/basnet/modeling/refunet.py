@@ -22,7 +22,7 @@ from official.vision.beta.projects.basnet.modeling.layers import nn_blocks
 class RefUnet(tf.keras.layers.Layer):
   """Residual Refinement Module of BASNet.
 
-  Boundary-Awar network (BASNet) were proposed in:
+  Boundary-Aware network (BASNet) were proposed in:
   [1] Qin, Xuebin, et al. 
       Basnet: Boundary-aware salient object detection.
   """
@@ -140,6 +140,9 @@ class RefUnet(tf.keras.layers.Layer):
 
     self._output_specs = output.get_shape()
     return output
+
+  def get_config(self):
+    return self._config_dict
 
   @classmethod
   def from_config(cls, config, custom_objects=None):
