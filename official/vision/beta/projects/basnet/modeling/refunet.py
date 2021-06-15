@@ -12,13 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Residual Refinement Module of BASNet.
-
-Boundary-Awar network (BASNet) were proposed in:
-[1] Qin, Xuebin, et al. 
-    Basnet: Boundary-aware salient object detection.
-"""
-
 
 # Import libraries
 import tensorflow as tf
@@ -26,10 +19,15 @@ from official.vision.beta.projects.basnet.modeling.layers import nn_blocks
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
-class RefUnet(tf.keras.Model):
+class RefUnet(tf.keras.layers.Layer):
+  """Residual Refinement Module of BASNet.
 
+  Boundary-Awar network (BASNet) were proposed in:
+  [1] Qin, Xuebin, et al. 
+      Basnet: Boundary-aware salient object detection.
+  """
   def __init__(self,
-               input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 1]),
+               use_separable_conv=False,
                activation='relu',
                use_sync_bn=False,
                use_bias=True,
@@ -42,7 +40,8 @@ class RefUnet(tf.keras.Model):
     """Residual Refinement Module of BASNet.
 
     Args:
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+      use_separable_conv: `bool`, if True use separable convolution for
+        convolution in BASNet layers.
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
       use_bias: if True, use bias in conv2d.
@@ -56,126 +55,91 @@ class RefUnet(tf.keras.Model):
                         Default to None.
       **kwargs: keyword arguments to be passed.
     """
-    self._input_specs = input_specs
-    self._use_sync_bn = use_sync_bn
-    self._use_bias = use_bias
-    self._activation = activation
-    self._norm_momentum = norm_momentum
-    self._norm_epsilon = norm_epsilon
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
-    self._kernel_initializer = kernel_initializer
-    self._kernel_regularizer = kernel_regularizer
-    self._bias_regularizer = bias_regularizer
-
+    super(RefUnet, self).__init__(**kwargs)
+    self._config_dict = {
+        'use_separable_conv': use_separable_conv,
+        'activation': activation,
+        'use_sync_bn': use_sync_bn,
+        'use_bias': use_bias,
+        'norm_momentum': norm_momentum,
+        'norm_epsilon': norm_epsilon,
+        'kernel_initializer': kernel_initializer,
+        'kernel_regularizer': kernel_regularizer,
+        'bias_regularizer': bias_regularizer,
+    }
     if tf.keras.backend.image_data_format() == 'channels_last':
       bn_axis = -1
     else:
       bn_axis = 1
+    self._concat = tf.keras.layers.Concatenate(axis=-1)
+    self._sigmoid = tf.keras.layers.Activation(activation='sigmoid')
+    self._maxpool = tf.keras.layers.MaxPool2D(
+        pool_size=2,
+        strides=2,
+        padding='valid')
+    self._upsample = tf.keras.layers.UpSampling2D(
+        size=2,
+        interpolation='bilinear')
 
-    # Build ResNet.
-    inputs = tf.keras.Input(shape=self._input_specs.shape[1:])
+  def build(self, input_shape):
+    """Creates the variables of the BASNet decoder."""
+    if self._config_dict['use_separable_conv']:
+      conv_op = tf.keras.layers.SeparableConv2D
+    else:
+      conv_op = tf.keras.layers.Conv2D
+    conv_kwargs = {
+      'kernel_size': 3,
+      'strides': 1,
+      'use_bias': self._config_dict['use_bias'],
+      'kernel_initializer': self._config_dict['kernel_initializer'],
+      'kernel_regularizer': self._config_dict['kernel_regularizer'],
+      'bias_regularizer': self._config_dict['bias_regularizer'],
+    }
 
-    endpoints = {}  
+    self._in_conv = conv_op(filters=64, padding='same',**conv_kwargs)
+
+    self._en_convs = []
+    for _ in range(4):
+      self._en_convs.append(nn_blocks.ConvBlock(filters=64, **conv_kwargs))
+
+    self._bridge_convs = []
+    for _ in range(1):
+      self._bridge_convs.append(nn_blocks.ConvBlock(filters=64, **conv_kwargs))
+
+    self._de_convs = []
+    for _ in range(4):
+      self._de_convs.append(nn_blocks.ConvBlock(filters=64, **conv_kwargs))
+
+    self._out_conv = conv_op(padding='same', filters=1, **conv_kwargs)
+
+  def call(self, inputs):
+    endpoints = {}
+    
     residual = inputs
-
-    x = tf.keras.layers.Conv2D(
-        filters=64, kernel_size=3, strides=1,
-        use_bias=self._use_bias, padding='same',
-        kernel_initializer=self._kernel_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer)(
-            inputs)
-
+    x = self._in_conv(inputs)
 
     # Top-down
-    for i in range(4):
-      x = nn_blocks.ConvBlock(
-          filters=64,
-          kernel_size=3,
-          strides=1,
-          dilation_rate=1,
-          kernel_initializer=self._kernel_initializer,
-          kernel_regularizer=self._kernel_regularizer,
-          bias_regularizer=self._bias_regularizer,
-          activation='relu',
-          use_sync_bn=self._use_sync_bn,
-          use_bias=self._use_bias,
-          norm_momentum=0.99,
-          norm_epsilon=0.001
-          )(x)
-        
+    for i, block in enumerate(self._en_convs):
+      x = block(x)
       endpoints[str(i)] = x
-
-      x = tf.keras.layers.MaxPool2D(pool_size=2, strides=2, padding='valid')(x)
+      x = self._maxpool(x)
 
     # Bridge
-    x = nn_blocks.ConvBlock(
-        filters=64,
-        kernel_size=3,
-        strides=1,
-        dilation_rate=1,
-        kernel_initializer=self._kernel_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer,
-        activation='relu',
-        use_sync_bn=self._use_sync_bn,
-        use_bias=self._use_bias,
-        norm_momentum=0.99,
-        norm_epsilon=0.001
-        )(x)
-
-    x = tf.keras.layers.UpSampling2D(
-        size=2,
-        interpolation='bilinear'
-        )(x)
+    for i, block in enumerate(self._bridge_convs):
+      x = block(x)
 
     # Bottom-up
+    for i, block in enumerate(self._de_convs):
+      x = self._upsample(x)
+      x = self._concat([endpoints[str(3-i)], x])
+      x = block(x)
 
-    for i in range(4):
-      x = tf.keras.layers.Concatenate(axis=-1)([endpoints[str(3-i)], x])
-      x = nn_blocks.ConvBlock(
-          filters=64,
-          kernel_size=3,
-          strides=1,
-          dilation_rate=1,
-          kernel_initializer=self._kernel_initializer,
-          kernel_regularizer=self._kernel_regularizer,
-          bias_regularizer=self._bias_regularizer,
-          activation='relu',
-          use_sync_bn=self._use_sync_bn,
-          use_bias=self._use_bias,
-          norm_momentum=0.99,
-          norm_epsilon=0.001
-          )(x)
-
-      if i == 3:
-        x = tf.keras.layers.Conv2D(
-            filters=1, kernel_size=3, strides=1,
-            use_bias=self._use_bias, padding='same',
-            kernel_initializer=self._kernel_initializer,
-            kernel_regularizer=self._kernel_regularizer,
-            bias_regularizer=self._bias_regularizer
-            )(x)
-      else:
-        x = tf.keras.layers.UpSampling2D(
-            size=2,
-            interpolation='bilinear'
-            )(x)
-
+    x = self._out_conv(x)
     residual = tf.cast(residual, dtype=x.dtype)
-
-    output = x + residual
-
-    output = tf.keras.layers.Activation(
-        activation='sigmoid'
-        )(output)
+    output = self._sigmoid(x + residual)
 
     self._output_specs = output.get_shape()
-
-    super(RefUnet, self).__init__(inputs=inputs, outputs=output, **kwargs)
+    return output
 
   @classmethod
   def from_config(cls, config, custom_objects=None):

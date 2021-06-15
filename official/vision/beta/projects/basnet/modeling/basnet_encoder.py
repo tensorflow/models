@@ -12,13 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""BASNet Encoder
-
-Boundary-Awar network (BASNet) were proposed in:
-[1] Qin, Xuebin, et al. 
-    Basnet: Boundary-aware salient object detection.
-"""
-
 
 # Import libraries
 import tensorflow as tf
@@ -29,19 +22,26 @@ from official.vision.beta.projects.basnet.modeling.layers import nn_blocks
 
 # Specifications for BASNet encoder.
 # Each element in the block configuration is in the following format:
-# (block_fn, num_filters, stride, block_repeats, maxpool)
+# (num_filters, stride, block_repeats, maxpool)
 
 BASNET_ENCODER_SPECS = [
-        ('residual', 64,  1, 3, 0),   #ResNet-34,
-        ('residual', 128, 2, 4, 0),   #ResNet-34,
-        ('residual', 256, 2, 6, 0),   #ResNet-34,
-        ('residual', 512, 2, 3, 1),   #ResNet-34,
-        ('residual', 512, 1, 3, 1),   #BASNet,   
-        ('residual', 512, 1, 3, 0),   #BASNet,   
+        (64,  1, 3, 0),   #ResNet-34,
+        (128, 2, 4, 0),   #ResNet-34,
+        (256, 2, 6, 0),   #ResNet-34,
+        (512, 2, 3, 1),   #ResNet-34,
+        (512, 1, 3, 1),   #BASNet,   
+        (512, 1, 3, 0),   #BASNet,   
     ]
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class BASNet_Encoder(tf.keras.Model):
+  """BASNet Encoder
+
+  Boundary-Awar network (BASNet) were proposed in:
+  [1] Qin, Xuebin, et al. 
+      Basnet: Boundary-aware salient object detection.
+  """
+
 
   def __init__(self,
                input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
@@ -54,7 +54,7 @@ class BASNet_Encoder(tf.keras.Model):
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
-    """BASNet_En initialization function.
+    """BASNet_Encoder initialization function.
 
     Args:
       input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
@@ -109,19 +109,14 @@ class BASNet_Encoder(tf.keras.Model):
     endpoints = {}
 
     for i, spec in enumerate(BASNET_ENCODER_SPECS):
-      if spec[0] == 'residual':
-        block_fn = nn_blocks.ResBlock
-      else:
-        raise ValueError('Block fn `{}` is not supported.'.format(spec[0]))
       x = self._block_group(
           inputs=x,
-          filters=spec[1],
-          strides=spec[2],
-          block_fn=block_fn,
-          block_repeats=spec[3],
+          filters=spec[0],
+          strides=spec[1],
+          block_repeats=spec[2],
           name='block_group_l{}'.format(i + 2))
       endpoints[str(i)] = x
-      if spec[4]:
+      if spec[3]:
         x = tf.keras.layers.MaxPool2D(pool_size=2, strides=2, padding='same')(x)
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
 
@@ -131,24 +126,22 @@ class BASNet_Encoder(tf.keras.Model):
                    inputs,
                    filters,
                    strides,
-                   block_fn,
                    block_repeats=1,
                    name='block_group'):
-    """Creates one group of blocks for the ResNet model.
+    """Creates one group of residual blocks for the BASNet encoder model.
 
     Args:
       inputs: `Tensor` of size `[batch, channels, height, width]`.
       filters: `int` number of filters for the first convolution of the layer.
       strides: `int` stride to use for the first convolution of the layer. If
         greater than 1, this layer will downsample the input.
-      block_fn: Either `nn_blocks.ResidualBlock` or `nn_blocks.BottleneckBlock`.
       block_repeats: `int` number of blocks contained in the layer.
       name: `str`name for the block.
 
     Returns:
       The output `Tensor` of the block layer.
     """
-    x = block_fn(
+    x = nn_blocks.ResBlock(
         filters=filters,
         strides=strides,
         use_projection=True,
@@ -163,7 +156,7 @@ class BASNet_Encoder(tf.keras.Model):
             inputs)
 
     for _ in range(1, block_repeats):
-      x = block_fn(
+      x = nn_block.ResBlock(
           filters=filters,
           strides=1,
           use_projection=False,
