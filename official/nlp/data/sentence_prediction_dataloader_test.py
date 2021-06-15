@@ -197,13 +197,14 @@ class SentencePredictionTfdsDataLoaderTest(tf.test.TestCase,
         vocab_file=vocab_file_path)
     dataset = loader.SentencePredictionTextDataLoader(data_config).load()
     features = next(iter(dataset))
+    label_field = data_config.label_field
     self.assertCountEqual(
-        ['input_word_ids', 'input_type_ids', 'input_mask', 'label_ids'],
+        ['input_word_ids', 'input_type_ids', 'input_mask', label_field],
         features.keys())
     self.assertEqual(features['input_word_ids'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_mask'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_type_ids'].shape, (batch_size, seq_length))
-    self.assertEqual(features['label_ids'].shape, (batch_size,))
+    self.assertEqual(features[label_field].shape, (batch_size,))
 
   @parameterized.parameters(True, False)
   def test_python_sentencepiece_preprocessing(self, use_tfds):
@@ -231,13 +232,14 @@ class SentencePredictionTfdsDataLoaderTest(tf.test.TestCase,
     )
     dataset = loader.SentencePredictionTextDataLoader(data_config).load()
     features = next(iter(dataset))
+    label_field = data_config.label_field
     self.assertCountEqual(
-        ['input_word_ids', 'input_type_ids', 'input_mask', 'label_ids'],
+        ['input_word_ids', 'input_type_ids', 'input_mask', label_field],
         features.keys())
     self.assertEqual(features['input_word_ids'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_mask'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_type_ids'].shape, (batch_size, seq_length))
-    self.assertEqual(features['label_ids'].shape, (batch_size,))
+    self.assertEqual(features[label_field].shape, (batch_size,))
 
   @parameterized.parameters(True, False)
   def test_saved_model_preprocessing(self, use_tfds):
@@ -265,13 +267,14 @@ class SentencePredictionTfdsDataLoaderTest(tf.test.TestCase,
     )
     dataset = loader.SentencePredictionTextDataLoader(data_config).load()
     features = next(iter(dataset))
+    label_field = data_config.label_field
     self.assertCountEqual(
-        ['input_word_ids', 'input_type_ids', 'input_mask', 'label_ids'],
+        ['input_word_ids', 'input_type_ids', 'input_mask', label_field],
         features.keys())
     self.assertEqual(features['input_word_ids'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_mask'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_type_ids'].shape, (batch_size, seq_length))
-    self.assertEqual(features['label_ids'].shape, (batch_size,))
+    self.assertEqual(features[label_field].shape, (batch_size,))
 
 
 if __name__ == '__main__':

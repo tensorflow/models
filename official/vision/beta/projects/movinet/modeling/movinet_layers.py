@@ -633,9 +633,28 @@ class StreamConvBlock(ConvBlock):
     states = dict(states) if states is not None else {}
 
     x = inputs
-    if self._stream_buffer is not None:
+
+    # If we have no separate temporal conv, use the buffer before the 3D conv.
+    if self._conv_temporal is None and self._stream_buffer is not None:
       x, states = self._stream_buffer(x, states=states)
-    x = super(StreamConvBlock, self).call(x)
+
+    x = self._conv(x)
+    if self._batch_norm is not None:
+      x = self._batch_norm(x)
+    if self._activation_layer is not None:
+      x = self._activation_layer(x)
+
+    if self._conv_temporal is not None:
+      if self._stream_buffer is not None:
+        # If we have a separate temporal conv, use the buffer before the
+        # 1D conv instead (otherwise, we may waste computation on the 2D conv).
+        x, states = self._stream_buffer(x, states=states)
+
+      x = self._conv_temporal(x)
+      if self._batch_norm_temporal is not None:
+        x = self._batch_norm_temporal(x)
+      if self._activation_layer is not None:
+        x = self._activation_layer(x)
 
     return x, states
 

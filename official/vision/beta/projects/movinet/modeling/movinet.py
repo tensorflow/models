@@ -525,7 +525,6 @@ class Movinet(tf.keras.Model):
     Returns:
       A dict mapping state names to state shapes.
     """
-
     def divide_resolution(shape, num_downsamples):
       """Downsamples the dimension to calculate strided convolution shape."""
       if shape is None:
@@ -564,6 +563,12 @@ class Movinet(tf.keras.Model):
         for layer_idx, layer in enumerate(params):
           expand_filters, kernel_size, strides = layer
 
+          # If we use a 2D kernel, we apply spatial downsampling
+          # before the buffer.
+          if (tuple(strides[1:3]) != (1, 1) and
+              self._conv_type in ['2plus1d', '3d_2plus1d']):
+            num_downsamples += 1
+
           if kernel_size[0] > 1:
             states[f'state/b{block_idx}/l{layer_idx}/stream_buffer'] = (
                 input_shape[0],
@@ -585,7 +590,11 @@ class Movinet(tf.keras.Model):
           if strides[1] != strides[2]:
             raise ValueError('Strides must match in the spatial dimensions, '
                              'got {}'.format(strides))
-          if strides[1] != 1 or strides[2] != 1:
+
+          # If we use a 3D kernel, we apply spatial downsampling
+          # after the buffer.
+          if (tuple(strides[1:3]) != (1, 1) and
+              self._conv_type not in ['2plus1d', '3d_2plus1d']):
             num_downsamples += 1
       elif isinstance(block, HeadSpec):
         states['state/head/pool_buffer'] = (
