@@ -123,6 +123,9 @@ class ModelBuilderTF2Test(
       predict_depth: true
       per_keypoint_depth: true
       keypoint_depth_loss_weight: 0.3
+      score_distance_multiplier: 11.0
+      std_dev_multiplier: 2.8
+      rescoring_threshold: 0.5
     """
     if customize_head_params:
       task_proto_txt += """
@@ -358,6 +361,9 @@ class ModelBuilderTF2Test(
     self.assertEqual(kp_params.predict_depth, True)
     self.assertEqual(kp_params.per_keypoint_depth, True)
     self.assertAlmostEqual(kp_params.keypoint_depth_loss_weight, 0.3)
+    self.assertAlmostEqual(kp_params.score_distance_multiplier, 11.0)
+    self.assertAlmostEqual(kp_params.std_dev_multiplier, 2.8)
+    self.assertAlmostEqual(kp_params.rescoring_threshold, 0.5)
     if customize_head_params:
       # Set by the config.
       self.assertEqual(kp_params.heatmap_head_num_filters, [64, 32])
