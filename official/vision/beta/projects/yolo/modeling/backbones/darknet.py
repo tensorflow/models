@@ -668,6 +668,7 @@ def build_darknet(
   """Builds darknet."""
 
   backbone_cfg = backbone_cfg.get()
+
   model = Darknet(
       model_id=backbone_cfg.model_id,
       min_level=backbone_cfg.min_level,

@@ -913,7 +913,10 @@ def keypoint_proto_to_params(kp_config, keypoint_map_dict):
       offset_head_num_filters=offset_head_num_filters,
       offset_head_kernel_sizes=offset_head_kernel_sizes,
       regress_head_num_filters=regress_head_num_filters,
-      regress_head_kernel_sizes=regress_head_kernel_sizes)
+      regress_head_kernel_sizes=regress_head_kernel_sizes,
+      score_distance_multiplier=kp_config.score_distance_multiplier,
+      std_dev_multiplier=kp_config.std_dev_multiplier,
+      rescoring_threshold=kp_config.rescoring_threshold)
 
 
 def object_detection_proto_to_params(od_config):
