@@ -25,9 +25,7 @@ from official.core import input_reader
 from official.core import task_factory
 from official.vision.beta.projects.basnet.configs import basnet as exp_cfg
 from official.vision.beta.dataloaders import segmentation_input
-from official.vision.beta.projects.basnet.evaluation import max_f
-from official.vision.beta.projects.basnet.evaluation import relax_f
-from official.vision.beta.projects.basnet.evaluation import mae
+from official.vision.beta.projects.basnet.evaluation import metrics
 from official.vision.beta.projects.basnet.losses import basnet_losses
 
 from official.vision.beta.projects.basnet.modeling import basnet_model
@@ -155,16 +153,16 @@ class BASNetTask(base_task.Task):
 
   def build_metrics(self, training=False):
     """Gets streaming metrics for training/validation."""
-    metrics = []
+    evaluations = []
     
     if training:
-      metrics = []
+      evaluations = []
     else:
-      self.mae_metric = mae.MAE()
-      self.maxf_metric = max_f.maxFscore()
-      self.relaxf_metric = relax_f.relaxedFscore()
+      self.mae_metric = metrics.MAE()
+      self.maxf_metric = metrics.maxFscore()
+      self.relaxf_metric = metrics.relaxedFscore()
 
-    return metrics
+    return evaluations
 
   def train_step(self, inputs, model, optimizer, metrics=None):
     """Does forward and backward.

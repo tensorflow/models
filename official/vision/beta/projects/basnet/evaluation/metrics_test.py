@@ -21,8 +21,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.projects.basnet.evaluation import mae
-from official.vision.beta.projects.basnet.evaluation import max_f
+from official.vision.beta.projects.basnet.evaluation import metrics
 
 
 class BASNetMetricTest(parameterized.TestCase, tf.test.TestCase):
@@ -33,7 +32,7 @@ class BASNetMetricTest(parameterized.TestCase, tf.test.TestCase):
     inputs = (tf.random.uniform([2, input_size, input_size, 1]),)
     labels = (tf.random.uniform([2, input_size, input_size, 1]),)
     
-    mae_obj = mae.MAE()
+    mae_obj = metrics.MAE()
     mae_obj.reset_states()
     mae_obj.update_state(labels, inputs)
     output = mae_obj.result()
@@ -52,7 +51,7 @@ class BASNetMetricTest(parameterized.TestCase, tf.test.TestCase):
     inputs = (tf.random.uniform([2, input_size, input_size, 1]),)
     labels = (tf.random.uniform([2, input_size, input_size, 1]),)
     
-    max_f_obj = max_f.maxFscore()
+    max_f_obj = metrics.maxFscore()
     max_f_obj.reset_states()
     max_f_obj.update_state(labels, inputs)
     output = max_f_obj.result()
