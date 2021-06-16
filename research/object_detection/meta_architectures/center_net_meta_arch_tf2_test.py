@@ -1380,6 +1380,136 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
       np.testing.assert_allclose(expected_refined_keypoints, refined_keypoints)
       np.testing.assert_allclose(expected_refined_scores, refined_scores)
 
+  def test_sdr_scaled_ranking_score(self):
+    keypoint_scores_np = np.array(
+        [
+            # Example 0.
+            [
+                [0.9, 0.9, 0.9],  # Candidate 0.
+                [0.9, 0.9, 0.9],  # Candidate 1.
+            ]
+        ],
+        dtype=np.float32)
+    distances_np = np.expand_dims(
+        np.array(
+            [
+                # Instance 0.
+                [
+                    [2.0, 1.0, 0.0],  # Candidate 0.
+                    [2.0, 1.0, 2.0],  # Candidate 1.
+                ],
+                # Instance 1.
+                [
+                    [2.0, 1.0, 0.0],  # Candidate 0.
+                    [2.0, 1.0, 2.0],  # Candidate 1.
+                ]
+            ],
+            dtype=np.float32),
+        axis=0)
+    bboxes_np = np.array(
+        [
+            # Example 0.
+            [
+                [2.0, 2.0, 20.0, 20.0],  # Instance 0 large box.
+                [3.0, 3.0, 4.0, 4.0],  # Instance 1 small box.
+            ],
+        ],
+        dtype=np.float32)
+
+    # def graph_fn():
+    keypoint_scores = tf.constant(
+        keypoint_scores_np, dtype=tf.float32)
+    distances = tf.constant(
+        distances_np, dtype=tf.float32)
+    bboxes = tf.constant(bboxes_np, dtype=tf.float32)
+    ranking_scores = cnma.sdr_scaled_ranking_score(
+        keypoint_scores=keypoint_scores,
+        distances=distances,
+        bboxes=bboxes,
+        score_distance_multiplier=0.1)
+
+    self.assertAllEqual([1, 2, 2, 3], ranking_scores.shape)
+    # When the scores are the same, larger distance results in lower ranking
+    # score.
+    #   instance 0, candidate 0, keypoint type 0 v.s 1 vs. 2
+    self.assertGreater(ranking_scores[0, 0, 0, 2], ranking_scores[0, 0, 0, 1])
+    self.assertGreater(ranking_scores[0, 0, 0, 1], ranking_scores[0, 0, 0, 0])
+
+    # When the scores are the same, the difference of distances are the same,
+    # instance with larger bbox has less ranking score difference, i.e. less
+    # sensitive to the distance change.
+    #   instance 0 vs. 1, candidate 0, keypoint type 0 and 1
+    self.assertGreater(
+        ranking_scores[0, 1, 1, 1] - ranking_scores[0, 1, 1, 0],
+        ranking_scores[0, 0, 1, 1] - ranking_scores[0, 0, 1, 0]
+    )
+
+  def test_gaussian_weighted_score(self):
+    keypoint_scores_np = np.array(
+        [
+            # Example 0.
+            [
+                [0.9, 0.9, 0.9],  # Candidate 0.
+                [1.0, 0.8, 1.0],  # Candidate 1.
+            ]
+        ],
+        dtype=np.float32)
+    distances_np = np.expand_dims(
+        np.array(
+            [
+                # Instance 0.
+                [
+                    [2.0, 1.0, 0.0],  # Candidate 0.
+                    [1.0, 0.0, 2.0],  # Candidate 1.
+                ],
+                # Instance 1.
+                [
+                    [2.0, 1.0, 0.0],  # Candidate 0.
+                    [1.0, 0.0, 2.0],  # Candidate 1.
+                ]
+            ],
+            dtype=np.float32),
+        axis=0)
+    bboxes_np = np.array(
+        [
+            # Example 0.
+            [
+                [2.0, 2.0, 20.0, 20.0],  # Instance 0 large box.
+                [3.0, 3.0, 4.0, 4.0],  # Instance 1 small box.
+            ],
+        ],
+        dtype=np.float32)
+
+    # def graph_fn():
+    keypoint_scores = tf.constant(
+        keypoint_scores_np, dtype=tf.float32)
+    distances = tf.constant(
+        distances_np, dtype=tf.float32)
+    bboxes = tf.constant(bboxes_np, dtype=tf.float32)
+    ranking_scores = cnma.gaussian_weighted_score(
+        keypoint_scores=keypoint_scores,
+        distances=distances,
+        keypoint_std_dev=[1.0, 0.5, 1.5],
+        bboxes=bboxes)
+
+    self.assertAllEqual([1, 2, 2, 3], ranking_scores.shape)
+    # When distance is zero, the candidate's score remains the same.
+    #   instance 0, candidate 0, keypoint type 2
+    self.assertAlmostEqual(ranking_scores[0, 0, 0, 2], keypoint_scores[0, 0, 2])
+    #   instance 0, candidate 1, keypoint type 1
+    self.assertAlmostEqual(ranking_scores[0, 0, 1, 1], keypoint_scores[0, 1, 1])
+
+    # When the distances of two candidates are 1:2 and the keypoint standard
+    # deviation is 1:2 and the keypoint heatmap scores are the same, the
+    # resulting ranking score should be the same.
+    #   instance 0, candidate 0, keypoint type 0, 1.
+    self.assertAlmostEqual(
+        ranking_scores[0, 0, 0, 0], ranking_scores[0, 0, 0, 1])
+
+    # When the distances/heatmap scores/keypoint standard deviations are the
+    # same, the instance with larger bbox size gets higher score.
+    self.assertGreater(ranking_scores[0, 0, 0, 0], ranking_scores[0, 1, 0, 0])
+
   def test_pad_to_full_keypoint_dim(self):
     batch_size = 4
     num_instances = 8
