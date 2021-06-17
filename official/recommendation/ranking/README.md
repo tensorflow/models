@@ -154,7 +154,7 @@ Training on GPUs are similar to TPU training. Only distribution strategy needs
 to be updated and number of GPUs provided (for 4 GPUs):
 
 ```shell
-python3 official/recommendation/ranking/main.py --mode=train_and_eval \
+python3 official/recommendation/ranking/train.py --mode=train_and_eval \
 --model_dir=${BUCKET_NAME}/model_dirs/${EXPERIMENT_NAME} --params_override="
 runtime:
   distribution_strategy: 'mirrored'
