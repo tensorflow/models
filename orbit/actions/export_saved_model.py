@@ -14,24 +14,32 @@
 
 """Provides the `ExportSavedModel` action and associated helper classes."""
 
+import re
+
 from typing import Callable, Optional
 
 import tensorflow as tf
+
+
+def _id_key(filename):
+  _, id_num = filename.rsplit('-', maxsplit=1)
+  return int(id_num)
+
+
+def _find_managed_files(base_name):
+  r"""Returns all files matching '{base_name}-\d+', in sorted order."""
+  managed_file_regex = re.compile(rf'{re.escape(base_name)}-\d+$')
+  filenames = tf.io.gfile.glob(f'{base_name}-*')
+  filenames = filter(managed_file_regex.match, filenames)
+  return sorted(filenames, key=_id_key)
 
 
 class _CounterIdFn:
   """Implements a counter-based ID function for `ExportFileManager`."""
 
   def __init__(self, base_name: str):
-    filenames = tf.io.gfile.glob(f'{base_name}-*')
-    max_counter = -1
-    for filename in filenames:
-      try:
-        _, file_number = filename.rsplit('-', maxsplit=1)
-        max_counter = max(max_counter, int(file_number))
-      except ValueError:
-        continue
-    self.value = max_counter + 1
+    managed_files = _find_managed_files(base_name)
+    self.value = _id_key(managed_files[-1]) + 1 if managed_files else 0
 
   def __call__(self):
     output = self.value
@@ -82,13 +90,7 @@ class ExportFileManager:
       `ExportFileManager` instance, sorted in increasing integer order of the
       IDs returned by `next_id_fn`.
     """
-
-    def id_key(name):
-      _, id_num = name.rsplit('-', maxsplit=1)
-      return int(id_num)
-
-    filenames = tf.io.gfile.glob(f'{self._base_name}-*')
-    return sorted(filenames, key=id_key)
+    return _find_managed_files(self._base_name)
 
   def clean_up(self):
     """Cleans up old files matching `{base_name}-*`.
