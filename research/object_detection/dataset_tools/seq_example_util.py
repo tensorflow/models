@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -123,6 +122,15 @@ def sequence_bytes_feature(ndarray):
   return feature_list
 
 
+def sequence_strings_feature(strings):
+  new_str_arr = []
+  for single_str in strings:
+    new_str_arr.append(tf.train.Feature(
+        bytes_list=tf.train.BytesList(
+            value=[single_str.encode('utf8')])))
+  return tf.train.FeatureList(feature=new_str_arr)
+
+
 def boxes_to_box_components(bboxes):
   """Converts a list of numpy arrays (boxes) to box components.
 
@@ -137,8 +145,11 @@ def boxes_to_box_components(bboxes):
   ymax_list = []
   xmax_list = []
   for bbox in bboxes:
-    bbox = np.array(bbox).astype(np.float32)
-    ymin, xmin, ymax, xmax = np.split(bbox, 4, axis=1)
+    if bbox != []:  # pylint: disable=g-explicit-bool-comparison
+      bbox = np.array(bbox).astype(np.float32)
+      ymin, xmin, ymax, xmax = np.split(bbox, 4, axis=1)
+    else:
+      ymin, xmin, ymax, xmax = [], [], [], []
     ymin_list.append(np.reshape(ymin, [-1]))
     xmin_list.append(np.reshape(xmin, [-1]))
     ymax_list.append(np.reshape(ymax, [-1]))
@@ -159,7 +170,11 @@ def make_sequence_example(dataset_name,
                           label_strings=None,
                           detection_bboxes=None,
                           detection_classes=None,
-                          detection_scores=None):
+                          detection_scores=None,
+                          use_strs_for_source_id=False,
+                          context_features=None,
+                          context_feature_length=None,
+                          context_features_image_id_list=None):
   """Constructs tf.SequenceExamples.
 
   Args:
@@ -189,6 +204,14 @@ def make_sequence_example(dataset_name,
     detection_scores: (Optional) A list (with num_frames_elements) of
       [num_boxes_i] numpy float32 arrays holding predicted object scores for
       each frame.
+    use_strs_for_source_id: (Optional) Whether to write the source IDs as
+      strings rather than byte lists of characters.
+    context_features: (Optional) A list or numpy array of features to use in
+      Context R-CNN, of length num_context_features * context_feature_length.
+    context_feature_length: (Optional) The length of each context feature, used
+      for reshaping.
+    context_features_image_id_list: (Optional) A list of image ids of length
+      num_context_features corresponding to the context features.
 
   Returns:
     A tf.train.SequenceExample.
@@ -221,7 +244,11 @@ def make_sequence_example(dataset_name,
   if image_format is not None:
     context_dict['image/format'] = context_bytes_feature([image_format])
   if image_source_ids is not None:
-    feature_list['image/source_id'] = sequence_bytes_feature(image_source_ids)
+    if use_strs_for_source_id:
+      feature_list['image/source_id'] = sequence_strings_feature(
+          image_source_ids)
+    else:
+      feature_list['image/source_id'] = sequence_bytes_feature(image_source_ids)
   if bboxes is not None:
     bbox_ymin, bbox_xmin, bbox_ymax, bbox_xmax = boxes_to_box_components(bboxes)
     feature_list['region/bbox/xmin'] = sequence_float_feature(bbox_xmin)
@@ -254,6 +281,16 @@ def make_sequence_example(dataset_name,
   if detection_scores is not None:
     feature_list['predicted/region/label/confidence'] = sequence_float_feature(
         detection_scores)
+
+  if context_features is not None:
+    context_dict['image/context_features'] = context_float_feature(
+        context_features)
+  if context_feature_length is not None:
+    context_dict['image/context_feature_length'] = context_int64_feature(
+        context_feature_length)
+  if context_features_image_id_list is not None:
+    context_dict['image/context_features_image_id_list'] = (
+        context_bytes_feature(context_features_image_id_list))
 
   context = tf.train.Features(feature=context_dict)
   feature_lists = tf.train.FeatureLists(feature_list=feature_list)

@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,12 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Test Transformer model helper methods."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Test Transformer model helper methods."""
 
 import tensorflow as tf
 
@@ -40,22 +36,19 @@ class ModelUtilsTest(tf.test.TestCase):
     bias_shape = tf.shape(bias)
     flattened_bias = tf.reshape(bias, [3, 5])
 
-    self.assertAllEqual([[0, NEG_INF, NEG_INF, NEG_INF, 0],
-                         [0, 0, NEG_INF, NEG_INF, NEG_INF],
-                         [NEG_INF, 0, 0, NEG_INF, 0]],
-                        flattened_bias)
+    self.assertAllEqual(
+        [[0, NEG_INF, NEG_INF, NEG_INF, 0], [0, 0, NEG_INF, NEG_INF, NEG_INF],
+         [NEG_INF, 0, 0, NEG_INF, 0]], flattened_bias)
     self.assertAllEqual([3, 1, 1, 5], bias_shape)
 
   def test_get_decoder_self_attention_bias(self):
     length = 5
     bias = model_utils.get_decoder_self_attention_bias(length)
 
-    self.assertAllEqual([[[[0, NEG_INF, NEG_INF, NEG_INF, NEG_INF],
-                           [0, 0, NEG_INF, NEG_INF, NEG_INF],
-                           [0, 0, 0, NEG_INF, NEG_INF],
-                           [0, 0, 0, 0, NEG_INF],
-                           [0, 0, 0, 0, 0]]]],
-                        bias)
+    self.assertAllEqual(
+        [[[[0, NEG_INF, NEG_INF, NEG_INF, NEG_INF],
+           [0, 0, NEG_INF, NEG_INF, NEG_INF], [0, 0, 0, NEG_INF, NEG_INF],
+           [0, 0, 0, 0, NEG_INF], [0, 0, 0, 0, 0]]]], bias)
 
 
 if __name__ == "__main__":

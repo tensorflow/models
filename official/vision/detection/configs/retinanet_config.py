@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Config template to train Retinanet."""
 
 from official.modeling.hyperparams import params_dict
@@ -39,7 +39,6 @@ RETINANET_CFG.override({
         'max_num_instances': 100,
     },
     'retinanet_head': {
-        'anchors_per_location': 9,
         'num_convs': 4,
         'num_filters': 256,
         'use_separable_conv': False,

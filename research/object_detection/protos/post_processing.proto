@@ -27,10 +27,10 @@ message BatchNonMaxSuppression {
   // Class-agnostic NMS function implements a class-agnostic version
   // of Non Maximal Suppression where if max_classes_per_detection=k,
   // 1) we keep the top-k scores for each detection and
-  // 2) during NMS, each detection only uses the highest class score for sorting.
-  // 3) Compared to regular NMS, the worst runtime of this version is O(N^2)
-  // instead of O(KN^2) where N is the number of detections and K the number of
-  // classes.
+  // 2) during NMS, each detection only uses the highest class score for
+  // sorting. 3) Compared to regular NMS, the worst runtime of this version is
+  // O(N^2) instead of O(KN^2) where N is the number of detections and K the
+  // number of classes.
   optional bool use_class_agnostic_nms = 7 [default = false];
 
   // Number of classes retained per detection in class agnostic NMS.
@@ -57,6 +57,12 @@ message BatchNonMaxSuppression {
   // export models for older versions of TF.
   optional bool use_hard_nms = 13 [default = false];
 
+  // Use cpu NMS. NMSV3/NMSV4 by default runs on GPU, which may cause OOM issue
+  // if the model is large and/or batch size is large during training.
+  // Setting this flag to false moves the nms op to CPU when OOM happens.
+  // The flag is not needed if use_hard_nms = false, as soft NMS currently
+  // runs on CPU by default.
+  optional bool use_cpu_nms = 14 [default = false];
 }
 
 // Configuration proto for post-processing predicted boxes and

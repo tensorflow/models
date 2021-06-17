@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,10 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import tensorflow as tf
 
@@ -48,10 +44,12 @@ class BertModelsTest(tf.test.TestCase):
         initializer=None,
         use_next_sentence_label=True)
     self.assertIsInstance(model, tf.keras.Model)
-    self.assertIsInstance(encoder, networks.TransformerEncoder)
+    self.assertIsInstance(encoder, networks.BertEncoder)
 
     # model has one scalar output: loss value.
-    self.assertEqual(model.output.shape.as_list(), [None,])
+    self.assertEqual(model.output.shape.as_list(), [
+        None,
+    ])
 
     # Expect two output from encoder: sequence and classification output.
     self.assertIsInstance(encoder.output, list)

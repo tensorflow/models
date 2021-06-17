@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,37 +11,33 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """NCF framework to train and evaluate the NeuMF model.
 
 The NeuMF model assembles both MF and MLP models under the NCF framework. Check
 `neumf_model.py` for more details about the models.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
 import os
 
 # pylint: disable=g-bad-import-order
+
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
+from official.common import distribute_utils
 from official.recommendation import constants as rconst
 from official.recommendation import movielens
 from official.recommendation import ncf_common
 from official.recommendation import ncf_input_pipeline
 from official.recommendation import neumf_model
 from official.utils.flags import core as flags_core
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
-
 
 FLAGS = flags.FLAGS
 
@@ -50,9 +46,7 @@ def metric_fn(logits, dup_mask, match_mlperf):
   dup_mask = tf.cast(dup_mask, tf.float32)
   logits = tf.slice(logits, [0, 1], [-1, -1])
   in_top_k, _, metric_weights, _ = neumf_model.compute_top_k_and_ndcg(
-      logits,
-      dup_mask,
-      match_mlperf)
+      logits, dup_mask, match_mlperf)
   metric_weights = tf.cast(metric_weights, tf.float32)
   return in_top_k, metric_weights
 
@@ -152,9 +146,10 @@ class CustomEarlyStopping(tf.keras.callbacks.Callback):
     logs = logs or {}
     monitor_value = logs.get(self.monitor)
     if monitor_value is None:
-      logging.warning("Early stopping conditioned on metric `%s` "
-                      "which is not available. Available metrics are: %s",
-                      self.monitor, ",".join(list(logs.keys())))
+      logging.warning(
+          "Early stopping conditioned on metric `%s` "
+          "which is not available. Available metrics are: %s", self.monitor,
+          ",".join(list(logs.keys())))
     return monitor_value
 
 
@@ -181,12 +176,9 @@ def _get_keras_model(params):
 
   logits = base_model.output
 
-  zeros = tf.keras.layers.Lambda(
-      lambda x: x * 0)(logits)
+  zeros = tf.keras.layers.Lambda(lambda x: x * 0)(logits)
 
-  softmax_logits = tf.keras.layers.concatenate(
-      [zeros, logits],
-      axis=-1)
+  softmax_logits = tf.keras.layers.concatenate([zeros, logits], axis=-1)
 
   # Custom training loop calculates loss and metric as a part of
   # training/evaluation step function.
@@ -204,7 +196,8 @@ def _get_keras_model(params):
           movielens.ITEM_COLUMN: item_input,
           rconst.VALID_POINT_MASK: valid_pt_mask_input,
           rconst.DUPLICATE_MASK: dup_mask_input,
-          rconst.TRAIN_LABEL_KEY: label_input},
+          rconst.TRAIN_LABEL_KEY: label_input
+      },
       outputs=softmax_logits)
 
   keras_model.summary()
@@ -223,12 +216,9 @@ def run_ncf(_):
   model_helpers.apply_clean(FLAGS)
 
   if FLAGS.dtype == "fp16" and FLAGS.fp16_implementation == "keras":
-    policy = tf.keras.mixed_precision.experimental.Policy(
-        "mixed_float16",
-        loss_scale=flags_core.get_loss_scale(FLAGS, default_for_fp16="dynamic"))
-    tf.keras.mixed_precision.experimental.set_policy(policy)
+    tf.keras.mixed_precision.set_global_policy("mixed_float16")
 
-  strategy = distribution_utils.get_distribution_strategy(
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
       num_gpus=FLAGS.num_gpus,
       tpu_address=FLAGS.tpu)
@@ -268,13 +258,12 @@ def run_ncf(_):
         "val_HR_METRIC", desired_value=FLAGS.hr_threshold)
     callbacks.append(early_stopping_callback)
 
-  (train_input_dataset, eval_input_dataset,
-   num_train_steps, num_eval_steps) = \
-    (ncf_input_pipeline.create_ncf_input_data(
-        params, producer, input_meta_data, strategy))
+  (train_input_dataset, eval_input_dataset, num_train_steps,
+   num_eval_steps) = ncf_input_pipeline.create_ncf_input_data(
+       params, producer, input_meta_data, strategy)
   steps_per_epoch = None if generate_input_online else num_train_steps
 
-  with distribution_utils.get_strategy_scope(strategy):
+  with distribute_utils.get_strategy_scope(strategy):
     keras_model = _get_keras_model(params)
     optimizer = tf.keras.optimizers.Adam(
         learning_rate=params["learning_rate"],
@@ -287,12 +276,17 @@ def run_ncf(_):
             optimizer,
             loss_scale=flags_core.get_loss_scale(FLAGS,
                                                  default_for_fp16="dynamic"))
-    elif FLAGS.dtype == "fp16" and params["keras_use_ctl"]:
-      # When keras_use_ctl is False, instead Model.fit() automatically applies
-      # loss scaling so we don't need to create a LossScaleOptimizer.
-      optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-          optimizer,
-          tf.keras.mixed_precision.experimental.global_policy().loss_scale)
+    elif FLAGS.dtype == "fp16":
+      loss_scale = flags_core.get_loss_scale(FLAGS, default_for_fp16="dynamic")
+      # Note Model.compile automatically wraps the optimizer with a
+      # LossScaleOptimizer using dynamic loss scaling. We explicitly wrap it
+      # here for the case where a custom training loop or fixed loss scale is
+      # used.
+      if loss_scale == "dynamic":
+        optimizer = tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
+      else:
+        optimizer = tf.keras.mixed_precision.LossScaleOptimizer(
+            optimizer, dynamic=False, initial_scale=loss_scale)
 
     if params["keras_use_ctl"]:
       train_loss, eval_results = run_ncf_custom_training(
@@ -312,7 +306,8 @@ def run_ncf(_):
       if not FLAGS.ml_perf:
         # Create Tensorboard summary and checkpoint callbacks.
         summary_dir = os.path.join(FLAGS.model_dir, "summaries")
-        summary_callback = tf.keras.callbacks.TensorBoard(summary_dir)
+        summary_callback = tf.keras.callbacks.TensorBoard(
+            summary_dir, profile_batch=0)
         checkpoint_path = os.path.join(FLAGS.model_dir, "checkpoint")
         checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
             checkpoint_path, save_weights_only=True)
@@ -412,8 +407,7 @@ def run_ncf_custom_training(params,
       optimizer.apply_gradients(grads)
       return loss
 
-    per_replica_losses = strategy.run(
-        step_fn, args=(next(train_iterator),))
+    per_replica_losses = strategy.run(step_fn, args=(next(train_iterator),))
     mean_loss = strategy.reduce(
         tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
     return mean_loss
@@ -432,8 +426,7 @@ def run_ncf_custom_training(params,
       return hr_sum, hr_count
 
     per_replica_hr_sum, per_replica_hr_count = (
-        strategy.run(
-            step_fn, args=(next(eval_iterator),)))
+        strategy.run(step_fn, args=(next(eval_iterator),)))
     hr_sum = strategy.reduce(
         tf.distribute.ReduceOp.SUM, per_replica_hr_sum, axis=None)
     hr_count = strategy.reduce(
@@ -482,8 +475,8 @@ def run_ncf_custom_training(params,
       # Write train loss once in every 1000 steps.
       if train_summary_writer and step % 1000 == 0:
         with train_summary_writer.as_default():
-          tf.summary.scalar("training_loss", train_loss/(step + 1),
-                            step=current_step)
+          tf.summary.scalar(
+              "training_loss", train_loss / (step + 1), step=current_step)
 
       for c in callbacks:
         c.on_batch_end(current_step)
@@ -552,7 +545,7 @@ def build_stats(loss, eval_result, time_callback):
     if len(timestamp_log) > 1:
       stats["avg_exp_per_second"] = (
           time_callback.batch_size * time_callback.log_steps *
-          (len(time_callback.timestamp_log)-1) /
+          (len(time_callback.timestamp_log) - 1) /
           (timestamp_log[-1].timestamp - timestamp_log[0].timestamp))
 
   return stats

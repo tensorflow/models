@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,23 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """ELECTRA pretraining task (Joint Masked LM and Replaced Token Detection)."""
+
 import dataclasses
 import tensorflow as tf
 
 from official.core import base_task
+from official.core import config_definitions as cfg
 from official.core import task_factory
-from official.modeling.hyperparams import config_definitions as cfg
+from official.modeling import tf_utils
 from official.nlp.configs import bert
 from official.nlp.configs import electra
+from official.nlp.configs import encoders
 from official.nlp.data import pretrain_dataloader
+from official.nlp.modeling import layers
+from official.nlp.modeling import models
 
 
 @dataclasses.dataclass
-class ELECTRAPretrainConfig(cfg.TaskConfig):
+class ElectraPretrainConfig(cfg.TaskConfig):
   """The model config."""
-  model: electra.ELECTRAPretrainerConfig = electra.ELECTRAPretrainerConfig(
+  model: electra.ElectraPretrainerConfig = electra.ElectraPretrainerConfig(
       cls_heads=[
           bert.ClsHeadConfig(
               inner_dim=768,
@@ -40,13 +44,44 @@ class ELECTRAPretrainConfig(cfg.TaskConfig):
   validation_data: cfg.DataConfig = cfg.DataConfig()
 
 
-@task_factory.register_task_cls(ELECTRAPretrainConfig)
-class ELECTRAPretrainTask(base_task.Task):
+def _build_pretrainer(
+    config: electra.ElectraPretrainerConfig) -> models.ElectraPretrainer:
+  """Instantiates ElectraPretrainer from the config."""
+  generator_encoder_cfg = config.generator_encoder
+  discriminator_encoder_cfg = config.discriminator_encoder
+  # Copy discriminator's embeddings to generator for easier model serialization.
+  discriminator_network = encoders.build_encoder(discriminator_encoder_cfg)
+  if config.tie_embeddings:
+    embedding_layer = discriminator_network.get_embedding_layer()
+    generator_network = encoders.build_encoder(
+        generator_encoder_cfg, embedding_layer=embedding_layer)
+  else:
+    generator_network = encoders.build_encoder(generator_encoder_cfg)
+
+  generator_encoder_cfg = generator_encoder_cfg.get()
+  return models.ElectraPretrainer(
+      generator_network=generator_network,
+      discriminator_network=discriminator_network,
+      vocab_size=generator_encoder_cfg.vocab_size,
+      num_classes=config.num_classes,
+      sequence_length=config.sequence_length,
+      num_token_predictions=config.num_masked_tokens,
+      mlm_activation=tf_utils.get_activation(
+          generator_encoder_cfg.hidden_activation),
+      mlm_initializer=tf.keras.initializers.TruncatedNormal(
+          stddev=generator_encoder_cfg.initializer_range),
+      classification_heads=[
+          layers.ClassificationHead(**cfg.as_dict()) for cfg in config.cls_heads
+      ],
+      disallow_correct=config.disallow_correct)
+
+
+@task_factory.register_task_cls(ElectraPretrainConfig)
+class ElectraPretrainTask(base_task.Task):
   """ELECTRA Pretrain Task (Masked LM + Replaced Token Detection)."""
 
   def build_model(self):
-    return electra.instantiate_pretrainer_from_cfg(
-        self.task_config.model)
+    return _build_pretrainer(self.task_config.model)
 
   def build_losses(self,
                    labels,
@@ -70,9 +105,7 @@ class ELECTRAPretrainTask(base_task.Task):
       sentence_outputs = tf.cast(
           model_outputs['sentence_outputs'], dtype=tf.float32)
       sentence_loss = tf.keras.losses.sparse_categorical_crossentropy(
-          sentence_labels,
-          sentence_outputs,
-          from_logits=True)
+          sentence_labels, sentence_outputs, from_logits=True)
       metrics['next_sentence_loss'].update_state(sentence_loss)
       total_loss = mlm_loss + sentence_loss
     else:
@@ -181,7 +214,6 @@ class ELECTRAPretrainTask(base_task.Task):
           aux_losses=model.losses)
       # Scales loss as the default gradients allreduce performs sum inside the
       # optimizer.
-      # TODO(b/154564893): enable loss scaling.
       scaled_loss = loss / tf.distribute.get_strategy().num_replicas_in_sync
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)

@@ -43,8 +43,6 @@ model:
     epsilon: 0.001
     moving_average_decay: 0.
     lookahead: False
-  learning_rate:
-    name: 'piecewise_constant_with_warmup'
   loss:
     label_smoothing: 0.1
 train:

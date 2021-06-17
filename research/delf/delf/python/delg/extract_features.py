@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +41,7 @@ from delf import delf_config_pb2
 from delf import datum_io
 from delf import feature_io
 from delf import utils
-from delf.python.detect_to_retrieve import dataset
+from delf.python.datasets.revisited_op import dataset
 from delf import extractor
 
 FLAGS = flags.FLAGS

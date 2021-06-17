@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,52 +11,84 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Defines the base task abstraction."""
 import abc
-import functools
-from typing import Any, Callable, Optional
+from typing import Optional
 
 from absl import logging
-import six
 import tensorflow as tf
 
-from official.modeling.hyperparams import config_definitions as cfg
+from official.core import config_definitions
+from official.modeling import optimization
+from official.modeling import performance
+
+OptimizationConfig = optimization.OptimizationConfig
+RuntimeConfig = config_definitions.RuntimeConfig
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Task(tf.Module):
+class Task(tf.Module, metaclass=abc.ABCMeta):
   """A single-replica view of training procedure.
 
-  Tasks provide artifacts for training/evalution procedures, including
-  loading/iterating over Datasets, initializing the model, calculating the loss
-  and customized metrics with reduction.
+  Tasks provide artifacts for training/validation procedures, including
+  loading/iterating over Datasets, training/validation steps, calculating the
+  loss and customized metrics with reduction.
   """
 
   # Special keys in train/validate step returned logs.
   loss = "loss"
 
-  def __init__(self, params: cfg.TaskConfig, logging_dir: str = None):
+  def __init__(self,
+               params,
+               logging_dir: Optional[str] = None,
+               name: Optional[str] = None):
     """Task initialization.
 
     Args:
-      params: cfg.TaskConfig instance.
+      params: the task configuration instance, which can be any of dataclass,
+        ConfigDict, namedtuple, etc.
       logging_dir: a string pointing to where the model, summaries etc. will be
         saved. You can also write additional stuff in this directory.
+      name: the task name.
     """
+    super().__init__(name=name)
     self._task_config = params
     self._logging_dir = logging_dir
 
   @property
-  def task_config(self) -> cfg.TaskConfig:
+  def task_config(self):
     return self._task_config
 
   @property
   def logging_dir(self) -> str:
     return self._logging_dir
 
+  @classmethod
+  def create_optimizer(cls, optimizer_config: OptimizationConfig,
+                       runtime_config: Optional[RuntimeConfig] = None):
+    """Creates an TF optimizer from configurations.
+
+    Args:
+      optimizer_config: the parameters of the Optimization settings.
+      runtime_config: the parameters of the runtime.
+
+    Returns:
+      A tf.optimizers.Optimizer object.
+    """
+    opt_factory = optimization.OptimizerFactory(optimizer_config)
+    optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
+    # Configuring optimizer when loss_scale is set in runtime config. This helps
+    # avoiding overflow/underflow for float16 computations.
+    if runtime_config and runtime_config.loss_scale:
+      optimizer = performance.configure_optimizer(
+          optimizer,
+          use_float16=runtime_config.mixed_precision_dtype == "float16",
+          loss_scale=runtime_config.loss_scale)
+
+    return optimizer
+
   def initialize(self, model: tf.keras.Model):
-    """A callback function used as CheckpointManager's init_fn.
+    """[Optional] A callback function used as CheckpointManager's init_fn.
 
     This function will be called when no checkpoint is found for the model.
     If there is a checkpoint, the checkpoint will be loaded and this function
@@ -75,58 +106,26 @@ class Task(tf.Module):
     if not ckpt_dir_or_file:
       return
 
-    ckpt = tf.train.Checkpoint(**model.checkpoint_items)
-    status = ckpt.restore(ckpt_dir_or_file)
+    if hasattr(model, "checkpoint_items"):
+      checkpoint_items = model.checkpoint_items
+    else:
+      checkpoint_items = dict(model=model)
+    ckpt = tf.train.Checkpoint(**checkpoint_items)
+    status = ckpt.read(ckpt_dir_or_file)
     status.expect_partial().assert_existing_objects_matched()
     logging.info("Finished loading pretrained checkpoint from %s",
                  ckpt_dir_or_file)
 
-  @abc.abstractmethod
   def build_model(self) -> tf.keras.Model:
-    """Creates model architecture.
+    """[Optional] Creates model architecture.
 
     Returns:
       A model instance.
     """
 
-  def compile_model(self,
-                    model: tf.keras.Model,
-                    optimizer: tf.keras.optimizers.Optimizer,
-                    loss=None,
-                    train_step: Optional[Callable[..., Any]] = None,
-                    validation_step: Optional[Callable[..., Any]] = None,
-                    **kwargs) -> tf.keras.Model:
-    """Compiles the model with objects created by the task.
-
-    The method should not be used in any customized training implementation.
-
-    Args:
-      model: a keras.Model.
-      optimizer: the keras optimizer.
-      loss: a callable/list of losses.
-      train_step: optional train step function defined by the task.
-      validation_step: optional validation_step step function defined by the
-        task.
-      **kwargs: other kwargs consumed by keras.Model compile().
-
-    Returns:
-      a compiled keras.Model.
-    """
-    if bool(loss is None) == bool(train_step is None):
-      raise ValueError("`loss` and `train_step` should be exclusive to "
-                       "each other.")
-    model.compile(optimizer=optimizer, loss=loss, **kwargs)
-
-    if train_step:
-      model.train_step = functools.partial(
-          train_step, model=model, optimizer=model.optimizer)
-    if validation_step:
-      model.test_step = functools.partial(validation_step, model=model)
-    return model
-
   @abc.abstractmethod
   def build_inputs(self,
-                   params: cfg.DataConfig,
+                   params,
                    input_context: Optional[tf.distribute.InputContext] = None):
     """Returns a dataset or a nested structure of dataset functions.
 
@@ -134,7 +133,8 @@ class Task(tf.Module):
     With distributed training, this method runs on remote hosts.
 
     Args:
-      params: hyperparams to create input pipelines.
+      params: hyperparams to create input pipelines, which can be any of
+        dataclass, ConfigDict, namedtuple, etc.
       input_context: optional distribution input pipeline context.
 
     Returns:
@@ -167,26 +167,30 @@ class Task(tf.Module):
     return []
 
   def process_metrics(self, metrics, labels, model_outputs):
-    """Process and update metrics. Called when using custom training loop API.
+    """Process and update metrics.
+
+    Called when using custom training loop API.
 
     Args:
-      metrics: a nested structure of metrics objects.
-        The return of function self.build_metrics.
+      metrics: a nested structure of metrics objects. The return of function
+        self.build_metrics.
       labels: a tensor or a nested structure of tensors.
-      model_outputs: a tensor or a nested structure of tensors.
-        For example, output of the keras model built by self.build_model.
+      model_outputs: a tensor or a nested structure of tensors. For example,
+        output of the keras model built by self.build_model.
     """
     for metric in metrics:
       metric.update_state(labels, model_outputs)
 
   def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
-    """Process and update compiled_metrics. call when using compile/fit API.
+    """Process and update compiled_metrics.
+
+    call when using compile/fit API.
 
     Args:
       compiled_metrics: the compiled metrics (model.compiled_metrics).
       labels: a tensor or a nested structure of tensors.
-      model_outputs: a tensor or a nested structure of tensors.
-        For example, output of the keras model built by self.build_model.
+      model_outputs: a tensor or a nested structure of tensors. For example,
+        output of the keras model built by self.build_model.
     """
     compiled_metrics.update_state(labels, model_outputs)
 
@@ -215,8 +219,14 @@ class Task(tf.Module):
     with tf.GradientTape() as tape:
       outputs = model(features, training=True)
       # Computes per-replica loss.
-      loss = self.build_losses(
-          labels=labels, model_outputs=outputs, aux_losses=model.losses)
+      if model.compiled_loss:
+        loss = model.compiled_loss(
+            labels, outputs, regularization_losses=model.losses)
+        loss += self.build_losses(
+            labels=labels, model_outputs=outputs, aux_losses=None)
+      else:
+        loss = self.build_losses(
+            labels=labels, model_outputs=outputs, aux_losses=model.losses)
       # Scales loss as the default gradients allreduce performs sum inside the
       # optimizer.
       scaled_loss = loss / tf.distribute.get_strategy().num_replicas_in_sync
@@ -224,22 +234,22 @@ class Task(tf.Module):
       # For mixed precision, when a LossScaleOptimizer is used, the loss is
       # scaled to avoid numeric underflow.
       if isinstance(optimizer,
-                    tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+                    tf.keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
 
     if isinstance(optimizer,
-                  tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+                  tf.keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
     logs = {self.loss: loss}
     if metrics:
       self.process_metrics(metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in metrics})
-    elif model.compiled_metrics:
+    if model.compiled_metrics:
       self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
+      logs.update({m.name: m.result() for m in metrics or []})
       logs.update({m.name: m.result() for m in model.metrics})
     return logs
 
@@ -266,9 +276,9 @@ class Task(tf.Module):
     logs = {self.loss: loss}
     if metrics:
       self.process_metrics(metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in metrics})
-    elif model.compiled_metrics:
+    if model.compiled_metrics:
       self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
+      logs.update({m.name: m.result() for m in metrics or []})
       logs.update({m.name: m.result() for m in model.metrics})
     return logs
 
@@ -287,10 +297,38 @@ class Task(tf.Module):
     return model(inputs, training=False)
 
   def aggregate_logs(self, state, step_logs):
-    """Optional aggregation over logs returned from a validation step."""
+    """Optional aggregation over logs returned from a validation step.
+
+    Given step_logs from a validation step, this function aggregates the logs
+    after each eval_step() (see eval_reduce() function in
+    official/core/base_trainer.py). It runs on CPU and can be used to aggregate
+    metrics during validation, when there are too many metrics that cannot fit
+    into TPU memory. Note that this may increase latency due to data transfer
+    between TPU and CPU. Also, the step output from a validation step may be a
+    tuple with elements from replicas, and a concatenation of the elements is
+    needed in such case.
+
+    Args:
+      state: The current state of training, for example, it can be a sequence of
+        metrics.
+      step_logs: Logs from a validation step. Can be a dictionary.
+    """
     pass
 
-  def reduce_aggregated_logs(self, aggregated_logs):
-    """Optional reduce of aggregated logs over validation steps."""
-    return {}
+  def reduce_aggregated_logs(self,
+                             aggregated_logs,
+                             global_step: Optional[tf.Tensor] = None):
+    """Optional reduce of aggregated logs over validation steps.
 
+    This function reduces aggregated logs at the end of validation, and can be
+    used to compute the final metrics. It runs on CPU and in each eval_end() in
+    base trainer (see eval_end() function in official/core/base_trainer.py).
+
+    Args:
+      aggregated_logs: Aggregated logs over multiple validation steps.
+      global_step: An optional variable of global step.
+
+    Returns:
+      A dictionary of reduced results.
+    """
+    return {}

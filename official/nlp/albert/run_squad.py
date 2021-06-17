@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,27 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Run ALBERT on SQuAD 1.1 and SQuAD 2.0 in TF 2.x."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Run ALBERT on SQuAD 1.1 and SQuAD 2.0 in TF 2.x."""
 
 import json
 import os
 import time
 
+# Import libraries
 from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
-
+from official.common import distribute_utils
 from official.nlp.albert import configs as albert_configs
 from official.nlp.bert import run_squad_helper
 from official.nlp.bert import tokenization
 from official.nlp.data import squad_lib_sp
-from official.utils.misc import distribution_utils
 
 flags.DEFINE_string(
     'sp_model_file', None,
@@ -103,9 +99,8 @@ def main(_):
 
   # Configures cluster spec for multi-worker distribution strategy.
   if FLAGS.num_gpus > 0:
-    _ = distribution_utils.configure_cluster(FLAGS.worker_hosts,
-                                             FLAGS.task_index)
-  strategy = distribution_utils.get_distribution_strategy(
+    _ = distribute_utils.configure_cluster(FLAGS.worker_hosts, FLAGS.task_index)
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
       num_gpus=FLAGS.num_gpus,
       all_reduce_alg=FLAGS.all_reduce_alg,

@@ -4,6 +4,7 @@ import os
 import demo_inference
 import tensorflow as tf
 from tensorflow.python.training import monitored_session
+from tensorflow.compat.v1 import flags
 
 _CHECKPOINT = 'model.ckpt-399731'
 _CHECKPOINT_URL = 'http://download.tensorflow.org/models/attention_ocr_2017_08_09.tar.gz'
@@ -19,7 +20,7 @@ class DemoInferenceTest(tf.test.TestCase):
                           'Please download and extract it from %s' %
                           (filename, _CHECKPOINT_URL))
     self._batch_size = 32
-    tf.flags.FLAGS.dataset_dir = os.path.join(
+    flags.FLAGS.dataset_dir = os.path.join(
         os.path.dirname(__file__), 'datasets/testdata/fsns')
 
   def test_moving_variables_properly_loaded_from_a_checkpoint(self):

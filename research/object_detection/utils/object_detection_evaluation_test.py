@@ -524,30 +524,6 @@ class PascalEvaluationTest(tf.test.TestCase):
     pascal_evaluator.clear()
     self.assertFalse(pascal_evaluator._image_ids)
 
-  def test_value_error_on_duplicate_images(self):
-    categories = [{'id': 1, 'name': 'cat'},
-                  {'id': 2, 'name': 'dog'},
-                  {'id': 3, 'name': 'elephant'}]
-    #  Add groundtruth
-    pascal_evaluator = object_detection_evaluation.PascalDetectionEvaluator(
-        categories)
-    image_key1 = 'img1'
-    groundtruth_boxes1 = np.array([[0, 0, 1, 1], [0, 0, 2, 2], [0, 0, 3, 3]],
-                                  dtype=float)
-    groundtruth_class_labels1 = np.array([1, 3, 1], dtype=int)
-    pascal_evaluator.add_single_ground_truth_image_info(
-        image_key1,
-        {standard_fields.InputDataFields.groundtruth_boxes: groundtruth_boxes1,
-         standard_fields.InputDataFields.groundtruth_classes:
-         groundtruth_class_labels1})
-    with self.assertRaises(ValueError):
-      pascal_evaluator.add_single_ground_truth_image_info(
-          image_key1,
-          {standard_fields.InputDataFields.groundtruth_boxes:
-           groundtruth_boxes1,
-           standard_fields.InputDataFields.groundtruth_classes:
-           groundtruth_class_labels1})
-
 
 class WeightedPascalEvaluationTest(tf.test.TestCase):
 
@@ -658,28 +634,6 @@ class WeightedPascalEvaluationTest(tf.test.TestCase):
                            1. / (3 + 1 + 2) / 3)
     self.wp_eval.clear()
     self.assertFalse(self.wp_eval._image_ids)
-
-  def test_value_error_on_duplicate_images(self):
-    #  Add groundtruth
-    self.wp_eval = (
-        object_detection_evaluation.WeightedPascalDetectionEvaluator(
-            self.categories))
-    image_key1 = 'img1'
-    groundtruth_boxes1 = np.array([[0, 0, 1, 1], [0, 0, 2, 2], [0, 0, 3, 3]],
-                                  dtype=float)
-    groundtruth_class_labels1 = np.array([1, 3, 1], dtype=int)
-    self.wp_eval.add_single_ground_truth_image_info(
-        image_key1,
-        {standard_fields.InputDataFields.groundtruth_boxes: groundtruth_boxes1,
-         standard_fields.InputDataFields.groundtruth_classes:
-         groundtruth_class_labels1})
-    with self.assertRaises(ValueError):
-      self.wp_eval.add_single_ground_truth_image_info(
-          image_key1,
-          {standard_fields.InputDataFields.groundtruth_boxes:
-           groundtruth_boxes1,
-           standard_fields.InputDataFields.groundtruth_classes:
-           groundtruth_class_labels1})
 
 
 class PrecisionAtRecallEvaluationTest(tf.test.TestCase):
@@ -806,31 +760,6 @@ class PrecisionAtRecallEvaluationTest(tf.test.TestCase):
                 'Precision/mAP@0.5IOU@[0.0,0.5]Recall'], 1. / (3 + 1 + 2) / 3)
     self.wp_eval.clear()
     self.assertFalse(self.wp_eval._image_ids)
-
-  def test_value_error_on_duplicate_images(self):
-    #  Add groundtruth
-    self.wp_eval = (
-        object_detection_evaluation.PrecisionAtRecallDetectionEvaluator(
-            self.categories, recall_lower_bound=0.0, recall_upper_bound=0.5))
-    image_key1 = 'img1'
-    groundtruth_boxes1 = np.array([[0, 0, 1, 1], [0, 0, 2, 2], [0, 0, 3, 3]],
-                                  dtype=float)
-    groundtruth_class_labels1 = np.array([1, 3, 1], dtype=int)
-    self.wp_eval.add_single_ground_truth_image_info(
-        image_key1, {
-            standard_fields.InputDataFields.groundtruth_boxes:
-                groundtruth_boxes1,
-            standard_fields.InputDataFields.groundtruth_classes:
-                groundtruth_class_labels1
-        })
-    with self.assertRaises(ValueError):
-      self.wp_eval.add_single_ground_truth_image_info(
-          image_key1, {
-              standard_fields.InputDataFields.groundtruth_boxes:
-                  groundtruth_boxes1,
-              standard_fields.InputDataFields.groundtruth_classes:
-                  groundtruth_class_labels1
-          })
 
 
 class ObjectDetectionEvaluationTest(tf.test.TestCase):

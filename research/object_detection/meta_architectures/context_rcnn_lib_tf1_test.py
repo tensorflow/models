@@ -50,9 +50,9 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
     filtered_weights, filtered_values = context_rcnn_lib.filter_weight_value(
         weights, values, valid_mask)
     expected_weights = tf.constant([[[4, 4], [4, 4], [4, 4]],
-                                    [[4, _NEGATIVE_PADDING_VALUE + 4],
-                                     [4, _NEGATIVE_PADDING_VALUE + 4],
-                                     [4, _NEGATIVE_PADDING_VALUE + 4]]])
+                                    [[4, _NEGATIVE_PADDING_VALUE],
+                                     [4, _NEGATIVE_PADDING_VALUE],
+                                     [4, _NEGATIVE_PADDING_VALUE]]])
 
     expected_values = tf.constant([[[1, 1, 1, 1], [1, 1, 1, 1]],
                                    [[1, 1, 1, 1], [0, 0, 0, 0]]])
@@ -66,9 +66,9 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
         weights, values, valid_mask)
     expected_weights = tf.constant(
         [[[4, 4], [4, 4], [4, 4]],
-         [[_NEGATIVE_PADDING_VALUE + 4, _NEGATIVE_PADDING_VALUE + 4],
-          [_NEGATIVE_PADDING_VALUE + 4, _NEGATIVE_PADDING_VALUE + 4],
-          [_NEGATIVE_PADDING_VALUE + 4, _NEGATIVE_PADDING_VALUE + 4]]])
+         [[_NEGATIVE_PADDING_VALUE, _NEGATIVE_PADDING_VALUE],
+          [_NEGATIVE_PADDING_VALUE, _NEGATIVE_PADDING_VALUE],
+          [_NEGATIVE_PADDING_VALUE, _NEGATIVE_PADDING_VALUE]]])
 
     expected_values = tf.constant([[[1, 1, 1, 1], [1, 1, 1, 1]],
                                    [[0, 0, 0, 0], [0, 0, 0, 0]]])
@@ -100,27 +100,67 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
     input_features = tf.ones([2, 3, 4], tf.float32)
     context_features = tf.ones([2, 2, 3], tf.float32)
     valid_mask = tf.constant([[True, True], [False, False]], tf.bool)
+    box_valid_mask = tf.constant([[True, True, True], [False, False, False]],
+                                 tf.bool)
     is_training = False
     output_features = context_rcnn_lib.attention_block(
         input_features, context_features, bottleneck_dimension,
-        output_dimension, attention_temperature, valid_mask, is_training)
+        output_dimension, attention_temperature,
+        keys_values_valid_mask=valid_mask,
+        queries_valid_mask=box_valid_mask,
+        is_training=is_training)
 
     # Makes sure the shape is correct.
     self.assertAllEqual(output_features.shape, [2, 3, output_dimension])
 
   @parameterized.parameters(True, False)
   def test_compute_box_context_attention(self, is_training):
-    box_features = tf.ones([2, 3, 4, 4, 4], tf.float32)
+    box_features = tf.ones([2 * 3, 4, 4, 4], tf.float32)
     context_features = tf.ones([2, 5, 6], tf.float32)
     valid_context_size = tf.constant((2, 3), tf.int32)
+    num_proposals = tf.constant((2, 3), tf.int32)
     bottleneck_dimension = 10
     attention_temperature = 1
-    attention_features = context_rcnn_lib.compute_box_context_attention(
-        box_features, context_features, valid_context_size,
-        bottleneck_dimension, attention_temperature, is_training)
+    attention_features = context_rcnn_lib._compute_box_context_attention(
+        box_features, num_proposals, context_features, valid_context_size,
+        bottleneck_dimension, attention_temperature, is_training,
+        max_num_proposals=3)
     # Makes sure the shape is correct.
     self.assertAllEqual(attention_features.shape, [2, 3, 1, 1, 4])
 
+  @parameterized.parameters(True, False)
+  def test_compute_box_context_attention_with_self_attention(self, is_training):
+    box_features = tf.ones([2 * 3, 4, 4, 4], tf.float32)
+    context_features = tf.ones([2, 5, 6], tf.float32)
+    valid_context_size = tf.constant((2, 3), tf.int32)
+    num_proposals = tf.constant((2, 3), tf.int32)
+    bottleneck_dimension = 10
+    attention_temperature = 1
+    attention_features = context_rcnn_lib._compute_box_context_attention(
+        box_features, num_proposals, context_features, valid_context_size,
+        bottleneck_dimension, attention_temperature, is_training,
+        max_num_proposals=3,
+        use_self_attention=True)
+    # Makes sure the shape is correct.
+    self.assertAllEqual(attention_features.shape, [2, 3, 1, 1, 4])
+
+  @parameterized.parameters(True, False)
+  def test_compute_box_context_attention_with_layers_and_heads(
+      self, is_training):
+    box_features = tf.ones([2 * 3, 4, 4, 4], tf.float32)
+    context_features = tf.ones([2, 5, 6], tf.float32)
+    valid_context_size = tf.constant((2, 3), tf.int32)
+    num_proposals = tf.constant((2, 3), tf.int32)
+    bottleneck_dimension = 10
+    attention_temperature = 1
+    attention_features = context_rcnn_lib._compute_box_context_attention(
+        box_features, num_proposals, context_features, valid_context_size,
+        bottleneck_dimension, attention_temperature, is_training,
+        max_num_proposals=3,
+        num_attention_layers=3,
+        num_attention_heads=3)
+    # Makes sure the shape is correct.
+    self.assertAllEqual(attention_features.shape, [2, 3, 1, 1, 4])
 
 if __name__ == '__main__':
   tf.test.main()

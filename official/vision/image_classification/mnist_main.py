@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Runs a simple model on the MNIST dataset."""
 from __future__ import absolute_import
 from __future__ import division
@@ -19,14 +19,14 @@ from __future__ import print_function
 
 import os
 
+# Import libraries
 from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
 import tensorflow_datasets as tfds
-
+from official.common import distribute_utils
 from official.utils.flags import core as flags_core
-from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 from official.vision.image_classification.resnet import common
 
@@ -81,12 +81,15 @@ def run(flags_obj, datasets_override=None, strategy_override=None):
   Returns:
     Dictionary of training and eval stats.
   """
-  strategy = strategy_override or distribution_utils.get_distribution_strategy(
+  # Start TF profiler server.
+  tf.profiler.experimental.server.start(flags_obj.profiler_port)
+
+  strategy = strategy_override or distribute_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_obj.num_gpus,
       tpu_address=flags_obj.tpu)
 
-  strategy_scope = distribution_utils.get_strategy_scope(strategy)
+  strategy_scope = distribute_utils.get_strategy_scope(strategy)
 
   mnist = tfds.builder('mnist', data_dir=flags_obj.data_dir)
   if flags_obj.download:
@@ -154,8 +157,10 @@ def define_mnist_flags():
       distribution_strategy=True)
   flags_core.define_device()
   flags_core.define_distribution()
-  flags.DEFINE_bool('download', False,
+  flags.DEFINE_bool('download', True,
                     'Whether to download data to `--data_dir`.')
+  flags.DEFINE_integer('profiler_port', 9012,
+                       'Port to start profiler server on.')
   FLAGS.set_default('batch_size', 1024)
 
 

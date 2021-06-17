@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,12 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Common TF utilities."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Common TF utilities."""
 
 import six
 import tensorflow as tf
@@ -29,8 +25,7 @@ from official.modeling import activations
     None,
     "tf.keras.layers.Layer supports multiple positional args and kwargs as "
     "input tensors. pack/unpack inputs to override __call__ is no longer "
-    "needed."
-)
+    "needed.")
 def pack_inputs(inputs):
   """Pack a list of `inputs` tensors to a tuple.
 
@@ -55,8 +50,7 @@ def pack_inputs(inputs):
     None,
     "tf.keras.layers.Layer supports multiple positional args and kwargs as "
     "input tensors. pack/unpack inputs to override __call__ is no longer "
-    "needed."
-)
+    "needed.")
 def unpack_inputs(inputs):
   """unpack a tuple of `inputs` tensors to a tuple.
 
@@ -88,27 +82,44 @@ def is_special_none_tensor(tensor):
   return tensor.shape.ndims == 0 and tensor.dtype == tf.int32
 
 
-def get_activation(identifier):
+def get_activation(identifier, use_keras_layer=False):
   """Maps a identifier to a Python function, e.g., "relu" => `tf.nn.relu`.
 
   It checks string first and if it is one of customized activation not in TF,
   the corresponding activation will be returned. For non-customized activation
   names and callable identifiers, always fallback to tf.keras.activations.get.
 
+  Prefers using keras layers when use_keras_layer=True. Now it only supports
+  'relu', 'linear', 'identity', 'swish'.
+
   Args:
     identifier: String name of the activation function or callable.
+    use_keras_layer: If True, use keras layer if identifier is allow-listed.
 
   Returns:
-    A Python function corresponding to the activation function.
+    A Python function corresponding to the activation function or a keras
+    activation layer when use_keras_layer=True.
   """
   if isinstance(identifier, six.string_types):
+    identifier = str(identifier).lower()
+    if use_keras_layer:
+      keras_layer_allowlist = {
+          "relu": "relu",
+          "linear": "linear",
+          "identity": "linear",
+          "swish": "swish",
+          "relu6": tf.nn.relu6,
+      }
+      if identifier in keras_layer_allowlist:
+        return tf.keras.layers.Activation(keras_layer_allowlist[identifier])
     name_to_fn = {
         "gelu": activations.gelu,
         "simple_swish": activations.simple_swish,
         "hard_swish": activations.hard_swish,
+        "relu6": activations.relu6,
+        "hard_sigmoid": activations.hard_sigmoid,
         "identity": activations.identity,
     }
-    identifier = str(identifier).lower()
     if identifier in name_to_fn:
       return tf.keras.activations.get(name_to_fn[identifier])
   return tf.keras.activations.get(identifier)

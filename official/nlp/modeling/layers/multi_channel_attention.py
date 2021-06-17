@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,29 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Multi-channel Attention."""
 # pylint: disable=g-classes-have-attributes
-
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import math
 
 import tensorflow as tf
 from official.modeling import tf_utils
-from official.nlp.modeling.layers import attention
 from official.nlp.modeling.layers import masked_softmax
 
 
 class VotingAttention(tf.keras.layers.Layer):
   """Voting Attention layer.
 
-  Arguments:
-    num_heads: the number of attention heads.
-    head_size: per-head hidden size.
+  Args:
+    num_heads: The number of attention heads.
+    head_size: Per-head hidden size.
     kernel_initializer: Initializer for dense layer kernels.
     bias_initializer: Initializer for dense layer biases.
     kernel_regularizer: Regularizer for dense layer kernels.
@@ -107,7 +100,7 @@ class VotingAttention(tf.keras.layers.Layer):
     return tf.nn.softmax(doc_attention_probs + infadder)
 
 
-class MultiChannelAttention(attention.MultiHeadAttention):
+class MultiChannelAttention(tf.keras.layers.MultiHeadAttention):
   """Multi-channel Attention layer.
 
   Introduced in, [Generating Representative Headlines for News Stories
@@ -122,12 +115,12 @@ class MultiChannelAttention(attention.MultiHeadAttention):
       context tensors according to the distribution among channels.
     key: Optional key `Tensor` of shape `[B, A, S, dim]`. If not given, will use
       `value` for both `key` and `value`, which is the most common case.
-    attention_mask: a boolean mask of shape `[B, T, S]`, that prevents attention
+    attention_mask: A boolean mask of shape `[B, T, S]`, that prevents attention
       to certain positions.
   """
 
-  def build_attention(self, rank):
-    super(MultiChannelAttention, self).build_attention(rank)
+  def _build_attention(self, rank):
+    super(MultiChannelAttention, self)._build_attention(rank)
     self._masked_softmax = masked_softmax.MaskedSoftmax(mask_expansion_axes=[2])
 
   def call(self,
@@ -161,7 +154,7 @@ class MultiChannelAttention(attention.MultiHeadAttention):
     # attention scores.
     attention_scores = tf.einsum("BATNH,BFNH->BANFT", key_tensor, query_tensor)
     attention_scores = tf.multiply(attention_scores,
-                                   1.0 / math.sqrt(float(self._key_size)))
+                                   1.0 / math.sqrt(float(self._key_dim)))
 
     # Normalize the attention scores to probabilities.
     # `attention_probs` = [B, A, N, F, T]

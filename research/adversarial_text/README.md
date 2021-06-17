@@ -54,7 +54,7 @@ $ PRETRAIN_DIR=/tmp/models/imdb_pretrain
 $ python pretrain.py \
     --train_dir=$PRETRAIN_DIR \
     --data_dir=$IMDB_DATA_DIR \
-    --vocab_size=86934 \
+    --vocab_size=87007 \
     --embedding_dims=256 \
     --rnn_cell_size=1024 \
     --num_candidate_samples=1024 \
@@ -83,7 +83,7 @@ $ python train_classifier.py \
     --train_dir=$TRAIN_DIR \
     --pretrained_model_dir=$PRETRAIN_DIR \
     --data_dir=$IMDB_DATA_DIR \
-    --vocab_size=86934 \
+    --vocab_size=87007 \
     --embedding_dims=256 \
     --rnn_cell_size=1024 \
     --cl_num_layers=1 \
@@ -111,7 +111,7 @@ $ python evaluate.py \
     --run_once \
     --num_examples=25000 \
     --data_dir=$IMDB_DATA_DIR \
-    --vocab_size=86934 \
+    --vocab_size=87007 \
     --embedding_dims=256 \
     --rnn_cell_size=1024 \
     --batch_size=256 \

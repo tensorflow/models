@@ -293,7 +293,6 @@ class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
 
     first_stage_nms_score_threshold = -1.0
     first_stage_nms_iou_threshold = 1.0
-    first_stage_max_proposals = first_stage_max_proposals
     first_stage_non_max_suppression_fn = functools.partial(
         post_processing.batch_multiclass_non_max_suppression,
         score_thresh=first_stage_nms_score_threshold,
@@ -444,7 +443,7 @@ class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
   def test_prediction_mock_tf1(self, mock_context_rcnn_lib_v1):
     """Mocks the context_rcnn_lib_v1 module to test the prediction.
 
-    Using mock object so that we can ensure compute_box_context_attention is
+    Using mock object so that we can ensure _compute_box_context_attention is
     called in side the prediction function.
 
     Args:
@@ -457,7 +456,7 @@ class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
         num_classes=42)
     mock_tensor = tf.ones([2, 8, 3, 3, 3], tf.float32)
 
-    mock_context_rcnn_lib_v1.compute_box_context_attention.return_value = mock_tensor
+    mock_context_rcnn_lib_v1._compute_box_context_attention.return_value = mock_tensor
     inputs_shape = (2, 20, 20, 3)
     inputs = tf.cast(
         tf.random_uniform(inputs_shape, minval=0, maxval=255, dtype=tf.int32),
@@ -479,7 +478,7 @@ class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
     side_inputs = model.get_side_inputs(features)
 
     _ = model.predict(preprocessed_inputs, true_image_shapes, **side_inputs)
-    mock_context_rcnn_lib_v1.compute_box_context_attention.assert_called_once()
+    mock_context_rcnn_lib_v1._compute_box_context_attention.assert_called_once()
 
   @parameterized.named_parameters(
       {'testcase_name': 'static_shapes', 'static_shapes': True},
@@ -529,7 +528,8 @@ class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
     (rpn_box_predictor_features, rpn_box_encodings, refined_box_encodings,
      proposal_boxes_normalized, proposal_boxes) = execute_fn(graph_fn, [],
                                                              graph=g)
-    self.assertAllEqual(rpn_box_predictor_features.shape, [2, 20, 20, 512])
+    self.assertAllEqual(len(rpn_box_predictor_features), 1)
+    self.assertAllEqual(rpn_box_predictor_features[0].shape, [2, 20, 20, 512])
     self.assertAllEqual(rpn_box_encodings.shape, [2, 3600, 4])
     self.assertAllEqual(refined_box_encodings.shape, [16, 42, 4])
     self.assertAllEqual(proposal_boxes_normalized.shape, [2, 8, 4])

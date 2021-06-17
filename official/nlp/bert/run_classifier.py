@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,22 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """BERT classification or regression finetuning runner in TF 2.x."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import functools
 import json
 import math
 import os
 
+# Import libraries
 from absl import app
 from absl import flags
 from absl import logging
 import gin
 import tensorflow as tf
+from official.common import distribute_utils
 from official.modeling import performance
 from official.nlp import optimization
 from official.nlp.bert import bert_models
@@ -34,7 +33,6 @@ from official.nlp.bert import common_flags
 from official.nlp.bert import configs as bert_configs
 from official.nlp.bert import input_pipeline
 from official.nlp.bert import model_saving_utils
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 
 flags.DEFINE_enum(
@@ -52,6 +50,9 @@ flags.DEFINE_string(
     'input_meta_data_path', None,
     'Path to file that contains meta data about input '
     'to be used for training and evaluation.')
+flags.DEFINE_integer('train_data_size', None, 'Number of training samples '
+                     'to use. If None, uses the full train data. '
+                     '(default: None).')
 flags.DEFINE_string('predict_checkpoint_path', None,
                     'Path to the checkpoint for predictions.')
 flags.DEFINE_integer(
@@ -91,7 +92,8 @@ def get_dataset_fn(input_file_pattern,
                    global_batch_size,
                    is_training,
                    label_type=tf.int64,
-                   include_sample_weights=False):
+                   include_sample_weights=False,
+                   num_samples=None):
   """Gets a closure to create a dataset."""
 
   def _dataset_fn(ctx=None):
@@ -105,7 +107,8 @@ def get_dataset_fn(input_file_pattern,
         is_training=is_training,
         input_pipeline_context=ctx,
         label_type=label_type,
-        include_sample_weights=include_sample_weights)
+        include_sample_weights=include_sample_weights,
+        num_samples=num_samples)
     return dataset
 
   return _dataset_fn
@@ -216,8 +219,8 @@ def run_keras_compile_fit(model_dir,
     optimizer = bert_model.optimizer
 
     if init_checkpoint:
-      checkpoint = tf.train.Checkpoint(model=sub_model)
-      checkpoint.restore(init_checkpoint).assert_existing_objects_matched()
+      checkpoint = tf.train.Checkpoint(model=sub_model, encoder=sub_model)
+      checkpoint.read(init_checkpoint).assert_existing_objects_matched()
 
     if not isinstance(metric_fn, (list, tuple)):
       metric_fn = [metric_fn]
@@ -225,7 +228,7 @@ def run_keras_compile_fit(model_dir,
         optimizer=optimizer,
         loss=loss_fn,
         metrics=[fn() for fn in metric_fn],
-        experimental_steps_per_execution=steps_per_loop)
+        steps_per_execution=steps_per_loop)
 
     summary_dir = os.path.join(model_dir, 'summaries')
     summary_callback = tf.keras.callbacks.TensorBoard(summary_dir)
@@ -262,6 +265,7 @@ def run_keras_compile_fit(model_dir,
 def get_predictions_and_labels(strategy,
                                trained_model,
                                eval_input_fn,
+                               is_regression=False,
                                return_probs=False):
   """Obtains predictions of trained model on evaluation data.
 
@@ -272,6 +276,7 @@ def get_predictions_and_labels(strategy,
     strategy: Distribution strategy.
     trained_model: Trained model with preloaded weights.
     eval_input_fn: Input function for evaluation data.
+    is_regression: Whether it is a regression task.
     return_probs: Whether to return probabilities of classes.
 
   Returns:
@@ -287,8 +292,11 @@ def get_predictions_and_labels(strategy,
       """Replicated predictions."""
       inputs, labels = inputs
       logits = trained_model(inputs, training=False)
-      probabilities = tf.nn.softmax(logits)
-      return probabilities, labels
+      if not is_regression:
+        probabilities = tf.nn.softmax(logits)
+        return probabilities, labels
+      else:
+        return logits, labels
 
     outputs, labels = strategy.run(_test_step_fn, args=(next(iterator),))
     # outputs: current batch logits as a tuple of shard logits
@@ -314,8 +322,7 @@ def get_predictions_and_labels(strategy,
       tf.experimental.async_clear_error()
     return preds, golds
 
-  test_iter = iter(
-      strategy.experimental_distribute_datasets_from_function(eval_input_fn))
+  test_iter = iter(strategy.distribute_datasets_from_function(eval_input_fn))
   predictions, labels = _run_evaluation(test_iter)
 
   return predictions, labels
@@ -341,7 +348,7 @@ def export_classifier(model_export_path, input_meta_data, bert_config,
     raise ValueError('Export path is not specified: %s' % model_dir)
 
   # Export uses float32 for now, even if training uses mixed precision.
-  tf.keras.mixed_precision.experimental.set_policy('float32')
+  tf.keras.mixed_precision.set_global_policy('float32')
   classifier_model = bert_models.classifier_model(
       bert_config,
       input_meta_data.get('num_labels', 1),
@@ -368,6 +375,9 @@ def run_bert(strategy,
   epochs = FLAGS.num_train_epochs * FLAGS.num_eval_per_epoch
   train_data_size = (
       input_meta_data['train_data_size'] // FLAGS.num_eval_per_epoch)
+  if FLAGS.train_data_size:
+    train_data_size = min(train_data_size, FLAGS.train_data_size)
+    logging.info('Updated train_data_size: %s', train_data_size)
   steps_per_epoch = int(train_data_size / FLAGS.train_batch_size)
   warmup_steps = int(epochs * train_data_size * 0.1 / FLAGS.train_batch_size)
   eval_steps = int(
@@ -433,7 +443,7 @@ def custom_main(custom_callbacks=None, custom_metrics=None):
                       FLAGS.model_dir)
     return
 
-  strategy = distribution_utils.get_distribution_strategy(
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
       num_gpus=FLAGS.num_gpus,
       tpu_address=FLAGS.tpu)
@@ -446,9 +456,10 @@ def custom_main(custom_callbacks=None, custom_metrics=None):
       include_sample_weights=include_sample_weights)
 
   if FLAGS.mode == 'predict':
+    num_labels = input_meta_data.get('num_labels', 1)
     with strategy.scope():
       classifier_model = bert_models.classifier_model(
-          bert_config, input_meta_data['num_labels'])[0]
+          bert_config, num_labels)[0]
       checkpoint = tf.train.Checkpoint(model=classifier_model)
       latest_checkpoint_file = (
           FLAGS.predict_checkpoint_path or
@@ -459,7 +470,11 @@ def custom_main(custom_callbacks=None, custom_metrics=None):
       checkpoint.restore(
           latest_checkpoint_file).assert_existing_objects_matched()
       preds, _ = get_predictions_and_labels(
-          strategy, classifier_model, eval_input_fn, return_probs=True)
+          strategy,
+          classifier_model,
+          eval_input_fn,
+          is_regression=(num_labels == 1),
+          return_probs=True)
     output_predict_file = os.path.join(FLAGS.model_dir, 'test_results.tsv')
     with tf.io.gfile.GFile(output_predict_file, 'w') as writer:
       logging.info('***** Predict results *****')
@@ -478,7 +493,8 @@ def custom_main(custom_callbacks=None, custom_metrics=None):
       FLAGS.train_batch_size,
       is_training=True,
       label_type=label_type,
-      include_sample_weights=include_sample_weights)
+      include_sample_weights=include_sample_weights,
+      num_samples=FLAGS.train_data_size)
   run_bert(
       strategy,
       input_meta_data,

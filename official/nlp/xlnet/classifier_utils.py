@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Utilities for pre-processing classification data."""
+
 from absl import logging
 
 from official.nlp.xlnet import data_utils
@@ -152,7 +153,7 @@ def convert_single_example(example_index, example, label_list, max_seq_length,
     logging.info("input_ids: %s", " ".join([str(x) for x in input_ids]))
     logging.info("input_mask: %s", " ".join([str(x) for x in input_mask]))
     logging.info("segment_ids: %s", " ".join([str(x) for x in segment_ids]))
-    logging.info("label: %d (id = %d)", example.label, label_id)
+    logging.info("label: %s (id = %d)", example.label, label_id)
 
   feature = InputFeatures(
       input_ids=input_ids,

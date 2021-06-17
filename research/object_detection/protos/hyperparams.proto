@@ -42,6 +42,8 @@ message Hyperparams {
     // Note that if nothing below is selected, then no normalization is applied
     // BatchNorm hyperparameters.
     BatchNorm batch_norm = 5;
+    // SyncBatchNorm hyperparameters (KerasLayerHyperparams only).
+    BatchNorm sync_batch_norm = 9;
     // GroupNorm hyperparameters. This is only supported on a subset of models.
     // Note that the current implementation of group norm instantiated in
     // tf.contrib.group.layers.group_norm() only supports fixed_size_resizer
@@ -86,6 +88,11 @@ message Initializer {
     TruncatedNormalInitializer truncated_normal_initializer = 1;
     VarianceScalingInitializer variance_scaling_initializer = 2;
     RandomNormalInitializer random_normal_initializer = 3;
+    // Allows specifying initializers by name, as a string, which will be passed
+    // directly as an argument during layer construction. Currently, this is
+    // only supported when using KerasLayerHyperparams, and for valid Keras
+    // initializers, e.g. `glorot_uniform`, `variance_scaling`, etc.
+    string keras_initializer_by_name = 4;
   }
 }
 

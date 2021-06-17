@@ -56,6 +56,7 @@ def clip_to_window(keypoints, window, scope=None):
   Returns:
     new_keypoints: a tensor of shape [num_instances, num_keypoints, 2]
   """
+  keypoints.get_shape().assert_has_rank(3)
   with tf.name_scope(scope, 'ClipToWindow'):
     y, x = tf.split(value=keypoints, num_or_size_splits=2, axis=2)
     win_y_min, win_x_min, win_y_max, win_x_max = tf.unstack(window)
@@ -81,6 +82,7 @@ def prune_outside_window(keypoints, window, scope=None):
   Returns:
     new_keypoints: a tensor of shape [num_instances, num_keypoints, 2]
   """
+  keypoints.get_shape().assert_has_rank(3)
   with tf.name_scope(scope, 'PruneOutsideWindow'):
     y, x = tf.split(value=keypoints, num_or_size_splits=2, axis=2)
     win_y_min, win_x_min, win_y_max, win_x_max = tf.unstack(window)
@@ -125,22 +127,24 @@ def change_coordinate_frame(keypoints, window, scope=None):
     return new_keypoints
 
 
-def keypoints_to_enclosing_bounding_boxes(keypoints):
+def keypoints_to_enclosing_bounding_boxes(keypoints, keypoints_axis=1):
   """Creates enclosing bounding boxes from keypoints.
 
   Args:
     keypoints: a [num_instances, num_keypoints, 2] float32 tensor with keypoints
       in [y, x] format.
+    keypoints_axis: An integer indicating the axis that correspond to the
+      keypoint dimension.
 
   Returns:
     A [num_instances, 4] float32 tensor that tightly covers all the keypoints
     for each instance.
   """
-  ymin = tf.math.reduce_min(keypoints[:, :, 0], axis=1)
-  xmin = tf.math.reduce_min(keypoints[:, :, 1], axis=1)
-  ymax = tf.math.reduce_max(keypoints[:, :, 0], axis=1)
-  xmax = tf.math.reduce_max(keypoints[:, :, 1], axis=1)
-  return tf.stack([ymin, xmin, ymax, xmax], axis=1)
+  ymin = tf.math.reduce_min(keypoints[..., 0], axis=keypoints_axis)
+  xmin = tf.math.reduce_min(keypoints[..., 1], axis=keypoints_axis)
+  ymax = tf.math.reduce_max(keypoints[..., 0], axis=keypoints_axis)
+  xmax = tf.math.reduce_max(keypoints[..., 1], axis=keypoints_axis)
+  return tf.stack([ymin, xmin, ymax, xmax], axis=keypoints_axis)
 
 
 def to_normalized_coordinates(keypoints, height, width,
@@ -240,6 +244,7 @@ def flip_horizontal(keypoints, flip_point, flip_permutation=None, scope=None):
   Returns:
     new_keypoints: a tensor of shape [num_instances, num_keypoints, 2]
   """
+  keypoints.get_shape().assert_has_rank(3)
   with tf.name_scope(scope, 'FlipHorizontal'):
     keypoints = tf.transpose(keypoints, [1, 0, 2])
     if flip_permutation:
@@ -274,6 +279,7 @@ def flip_vertical(keypoints, flip_point, flip_permutation=None, scope=None):
   Returns:
     new_keypoints: a tensor of shape [num_instances, num_keypoints, 2]
   """
+  keypoints.get_shape().assert_has_rank(3)
   with tf.name_scope(scope, 'FlipVertical'):
     keypoints = tf.transpose(keypoints, [1, 0, 2])
     if flip_permutation:
@@ -299,6 +305,7 @@ def rot90(keypoints, rotation_permutation=None, scope=None):
   Returns:
     new_keypoints: a tensor of shape [num_instances, num_keypoints, 2]
   """
+  keypoints.get_shape().assert_has_rank(3)
   with tf.name_scope(scope, 'Rot90'):
     keypoints = tf.transpose(keypoints, [1, 0, 2])
     if rotation_permutation:
@@ -308,6 +315,8 @@ def rot90(keypoints, rotation_permutation=None, scope=None):
     new_keypoints = tf.concat([v, u], 2)
     new_keypoints = tf.transpose(new_keypoints, [1, 0, 2])
     return new_keypoints
+
+
 
 
 def keypoint_weights_from_visibilities(keypoint_visibilities,
@@ -334,6 +343,7 @@ def keypoint_weights_from_visibilities(keypoint_visibilities,
     keypoints deemed visible will have the provided per-keypoint weight, and
     all others will be set to zero.
   """
+  keypoint_visibilities.get_shape().assert_has_rank(2)
   if per_keypoint_weights is None:
     num_keypoints = keypoint_visibilities.shape.as_list()[1]
     per_keypoint_weight_mult = tf.ones((1, num_keypoints,), dtype=tf.float32)
@@ -363,6 +373,7 @@ def set_keypoint_visibilities(keypoints, initial_keypoint_visibilities=None):
     keypoint_visibilities: a bool tensor of shape [num_instances, num_keypoints]
     indicating whether a keypoint is visible or not.
   """
+  keypoints.get_shape().assert_has_rank(3)
   if initial_keypoint_visibilities is not None:
     keypoint_visibilities = tf.cast(initial_keypoint_visibilities, tf.bool)
   else:

@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
 
 """Tests for params_dict.py."""
 
@@ -56,8 +55,7 @@ class ParamsDictTest(tf.test.TestCase):
 
   def test_setattr(self):
     params = params_dict.ParamsDict()
-    params.override(
-        {'a': 'aa', 'b': 2, 'c': None}, is_strict=False)
+    params.override({'a': 'aa', 'b': 2, 'c': None}, is_strict=False)
     params.c = 'ccc'
     self.assertEqual(params.a, 'aa')
     self.assertEqual(params.b, 2)
@@ -65,17 +63,23 @@ class ParamsDictTest(tf.test.TestCase):
 
   def test_getattr(self):
     params = params_dict.ParamsDict()
-    params.override(
-        {'a': 'aa', 'b': 2, 'c': None}, is_strict=False)
+    params.override({'a': 'aa', 'b': 2, 'c': None}, is_strict=False)
     self.assertEqual(params.a, 'aa')
     self.assertEqual(params.b, 2)
     self.assertEqual(params.c, None)
 
   def test_delattr(self):
     params = params_dict.ParamsDict()
-    params.override(
-        {'a': 'aa', 'b': 2, 'c': None, 'd': {'d1': 1, 'd2': 10}},
-        is_strict=False)
+    params.override({
+        'a': 'aa',
+        'b': 2,
+        'c': None,
+        'd': {
+            'd1': 1,
+            'd2': 10
+        }
+    },
+                    is_strict=False)
     del params.c
     self.assertEqual(params.a, 'aa')
     self.assertEqual(params.b, 2)
@@ -87,22 +91,26 @@ class ParamsDictTest(tf.test.TestCase):
 
   def test_contains(self):
     params = params_dict.ParamsDict()
-    params.override(
-        {'a': 'aa'}, is_strict=False)
+    params.override({'a': 'aa'}, is_strict=False)
     self.assertIn('a', params)
     self.assertNotIn('b', params)
 
   def test_get(self):
     params = params_dict.ParamsDict()
-    params.override(
-        {'a': 'aa'}, is_strict=False)
+    params.override({'a': 'aa'}, is_strict=False)
     self.assertEqual(params.get('a'), 'aa')
     self.assertEqual(params.get('b', 2), 2)
     self.assertEqual(params.get('b'), None)
 
   def test_override_is_strict_true(self):
-    params = params_dict.ParamsDict(
-        {'a': 'aa', 'b': 2, 'c': {'c1': 'cc', 'c2': 20}})
+    params = params_dict.ParamsDict({
+        'a': 'aa',
+        'b': 2,
+        'c': {
+            'c1': 'cc',
+            'c2': 20
+        }
+    })
     params.override({'a': 2, 'c': {'c1': 'ccc'}}, is_strict=True)
     self.assertEqual(params.a, 2)
     self.assertEqual(params.c.c1, 'ccc')
@@ -112,8 +120,14 @@ class ParamsDictTest(tf.test.TestCase):
       params.override({'c': {'c3': 30}}, is_strict=True)
 
   def test_override_is_strict_false(self):
-    params = params_dict.ParamsDict(
-        {'a': 'aa', 'b': 2, 'c': {'c1': 10, 'c2': 20}})
+    params = params_dict.ParamsDict({
+        'a': 'aa',
+        'b': 2,
+        'c': {
+            'c1': 10,
+            'c2': 20
+        }
+    })
     params.override({'a': 2, 'c': {'c3': 3000}}, is_strict=False)
     self.assertEqual(params.a, 2)
     self.assertEqual(params.c.c3, 3000)
@@ -123,8 +137,14 @@ class ParamsDictTest(tf.test.TestCase):
     self.assertEqual(params.c.c4, 4444)
 
   def test_as_dict(self):
-    params = params_dict.ParamsDict(
-        {'a': 'aa', 'b': 2, 'c': {'c1': 10, 'c2': 20}})
+    params = params_dict.ParamsDict({
+        'a': 'aa',
+        'b': 2,
+        'c': {
+            'c1': 10,
+            'c2': 20
+        }
+    })
     params_d = params.as_dict()
     self.assertEqual(params_d['a'], 'aa')
     self.assertEqual(params_d['b'], 2)
@@ -134,21 +154,27 @@ class ParamsDictTest(tf.test.TestCase):
   def test_validate(self):
     # Raise error due to the unknown parameter.
     with self.assertRaises(KeyError):
-      params = params_dict.ParamsDict(
-          {'a': 1, 'b': {'a': 11}}, ['a == c'])
+      params = params_dict.ParamsDict({'a': 1, 'b': {'a': 11}}, ['a == c'])
+      params.validate()
 
     # OK to check equality of two nested dicts.
-    params = params_dict.ParamsDict(
-        {'a': 1, 'b': {'a': 10}, 'c': {'a': 10}}, ['b == c'])
+    params = params_dict.ParamsDict({
+        'a': 1,
+        'b': {
+            'a': 10
+        },
+        'c': {
+            'a': 10
+        }
+    }, ['b == c'])
 
     # Raise error due to inconsistency
     with self.assertRaises(KeyError):
-      params = params_dict.ParamsDict(
-          {'a': 1, 'c': {'a': 10}}, ['a == c.a'])
+      params = params_dict.ParamsDict({'a': 1, 'c': {'a': 10}}, ['a == c.a'])
+      params.validate()
 
     # Valid rule.
-    params = params_dict.ParamsDict(
-        {'a': 1, 'c': {'a': 1}}, ['a == c.a'])
+    params = params_dict.ParamsDict({'a': 1, 'c': {'a': 1}}, ['a == c.a'])
 
     # Overridding violates the existing rule, raise error upon validate.
     params.override({'a': 11})
@@ -156,12 +182,21 @@ class ParamsDictTest(tf.test.TestCase):
       params.validate()
 
     # Valid restrictions with constant.
-    params = params_dict.ParamsDict(
-        {'a': None, 'c': {'a': 1}}, ['a == None', 'c.a == 1'])
+    params = params_dict.ParamsDict({
+        'a': None,
+        'c': {
+            'a': 1
+        }
+    }, ['a == None', 'c.a == 1'])
     params.validate()
     with self.assertRaises(KeyError):
-      params = params_dict.ParamsDict(
-          {'a': 4, 'c': {'a': 1}}, ['a == None', 'c.a == 1'])
+      params = params_dict.ParamsDict({
+          'a': 4,
+          'c': {
+              'a': 1
+          }
+      }, ['a == None', 'c.a == 1'])
+      params.validate()
 
 
 class ParamsDictIOTest(tf.test.TestCase):
@@ -173,8 +208,14 @@ class ParamsDictIOTest(tf.test.TestCase):
     return temp_file
 
   def test_save_params_dict_to_yaml(self):
-    params = params_dict.ParamsDict(
-        {'a': 'aa', 'b': 2, 'c': {'c1': 10, 'c2': 20}})
+    params = params_dict.ParamsDict({
+        'a': 'aa',
+        'b': 2,
+        'c': {
+            'c1': 10,
+            'c2': 20
+        }
+    })
     output_yaml_file = os.path.join(self.get_temp_dir(), 'params.yaml')
     params_dict.save_params_dict_to_yaml(params, output_yaml_file)
 
@@ -203,7 +244,12 @@ class ParamsDictIOTest(tf.test.TestCase):
 
   def test_override_params_dict_using_dict(self):
     params = params_dict.ParamsDict({
-        'a': 1, 'b': 2.5, 'c': [3, 4], 'd': 'hello', 'e': False})
+        'a': 1,
+        'b': 2.5,
+        'c': [3, 4],
+        'd': 'hello',
+        'e': False
+    })
     override_dict = {'b': 5.2, 'c': [30, 40]}
     params = params_dict.override_params_dict(
         params, override_dict, is_strict=True)
@@ -215,7 +261,12 @@ class ParamsDictIOTest(tf.test.TestCase):
 
   def test_override_params_dict_using_yaml_string(self):
     params = params_dict.ParamsDict({
-        'a': 1, 'b': 2.5, 'c': [3, 4], 'd': 'hello', 'e': False})
+        'a': 1,
+        'b': 2.5,
+        'c': [3, 4],
+        'd': 'hello',
+        'e': False
+    })
     override_yaml_string = "'b': 5.2\n'c': [30, 40]"
     params = params_dict.override_params_dict(
         params, override_yaml_string, is_strict=True)
@@ -227,8 +278,18 @@ class ParamsDictIOTest(tf.test.TestCase):
 
   def test_override_params_dict_using_json_string(self):
     params = params_dict.ParamsDict({
-        'a': 1, 'b': {'b1': 2, 'b2': [2, 3],},
-        'd': {'d1': {'d2': 'hello'}}, 'e': False})
+        'a': 1,
+        'b': {
+            'b1': 2,
+            'b2': [2, 3],
+        },
+        'd': {
+            'd1': {
+                'd2': 'hello'
+            }
+        },
+        'e': False
+    })
     override_json_string = "{ b: { b2: [3, 4] }, d: { d1: { d2: 'hi' } } }"
     params = params_dict.override_params_dict(
         params, override_json_string, is_strict=True)
@@ -240,8 +301,18 @@ class ParamsDictIOTest(tf.test.TestCase):
 
   def test_override_params_dict_using_csv_string(self):
     params = params_dict.ParamsDict({
-        'a': 1, 'b': {'b1': 2, 'b2': [2, 3],},
-        'd': {'d1': {'d2': 'hello'}}, 'e': False})
+        'a': 1,
+        'b': {
+            'b1': 2,
+            'b2': [2, 3],
+        },
+        'd': {
+            'd1': {
+                'd2': 'hello'
+            }
+        },
+        'e': False
+    })
     override_csv_string = "b.b2=[3,4], d.d1.d2='hi, world', e=gs://test"
     params = params_dict.override_params_dict(
         params, override_csv_string, is_strict=True)
@@ -250,10 +321,23 @@ class ParamsDictIOTest(tf.test.TestCase):
     self.assertEqual([3, 4], params.b.b2)
     self.assertEqual('hi, world', params.d.d1.d2)
     self.assertEqual('gs://test', params.e)
+    # Test different float formats
+    override_csv_string = 'b.b2=-1.e-3, d.d1.d2=+0.001, e=1e+3, a=-1.5E-3'
+    params = params_dict.override_params_dict(
+        params, override_csv_string, is_strict=True)
+    self.assertEqual(-1e-3, params.b.b2)
+    self.assertEqual(0.001, params.d.d1.d2)
+    self.assertEqual(1e3, params.e)
+    self.assertEqual(-1.5e-3, params.a)
 
   def test_override_params_dict_using_yaml_file(self):
     params = params_dict.ParamsDict({
-        'a': 1, 'b': 2.5, 'c': [3, 4], 'd': 'hello', 'e': False})
+        'a': 1,
+        'b': 2.5,
+        'c': [3, 4],
+        'd': 'hello',
+        'e': False
+    })
     override_yaml_file = self.write_temp_file(
         'params.yaml', r"""
         b: 5.2
@@ -321,8 +405,7 @@ class IOTest(tf.test.TestCase):
 
   def test_csv_str_load_unsupported_datatypes(self):
     csv_str = 'a=[[1,2,3],[4,5,6]]'
-    self.assertRaises(ValueError,
-                      params_dict.nested_csv_str_to_json_str,
+    self.assertRaises(ValueError, params_dict.nested_csv_str_to_json_str,
                       csv_str)
 
   def test_csv_str_to_json_str_spacing(self):

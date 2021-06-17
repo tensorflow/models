@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
 
 import dataclasses
 import tensorflow as tf
@@ -48,12 +46,18 @@ class Network(base_config.Config):
 class OneOfTest(tf.test.TestCase):
 
   def test_to_dict(self):
-    network_params = {'backbone': {'type': 'resnet',
-                                   'resnet': {'model_depth': 50}
-                                   },
-                      'output_layer': {'type': 'single',
-                                       'single': 1000}
-                      }
+    network_params = {
+        'backbone': {
+            'type': 'resnet',
+            'resnet': {
+                'model_depth': 50
+            }
+        },
+        'output_layer': {
+            'type': 'single',
+            'single': 1000
+        }
+    }
     network_config = Network(network_params)
     self.assertEqual(network_config.as_dict(), network_params)
 

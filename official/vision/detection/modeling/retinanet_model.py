@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Model defination for the RetinaNet Model."""
 
 from __future__ import absolute_import
@@ -25,7 +25,6 @@ from official.vision.detection.evaluation import factory as eval_factory
 from official.vision.detection.modeling import base_model
 from official.vision.detection.modeling import losses
 from official.vision.detection.modeling.architecture import factory
-from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.ops import postprocess_ops
 
 
@@ -52,18 +51,15 @@ class RetinanetModel(base_model.Model):
 
     # Predict function.
     self._generate_detections_fn = postprocess_ops.MultilevelDetectionGenerator(
-        params.architecture.min_level,
-        params.architecture.max_level,
+        params.architecture.min_level, params.architecture.max_level,
         params.postprocess)
 
     self._transpose_input = params.train.transpose_input
     assert not self._transpose_input, 'Transpose input is not supported.'
     # Input layer.
-    input_shape = (
-        params.retinanet_parser.output_size +
-        [params.retinanet_parser.num_channels])
     self._input_layer = tf.keras.layers.Input(
-        shape=input_shape, name='',
+        shape=(None, None, params.retinanet_parser.num_channels),
+        name='',
         dtype=tf.bfloat16 if self._use_bfloat16 else tf.float32)
 
   def build_outputs(self, inputs, mode):
@@ -120,14 +116,13 @@ class RetinanetModel(base_model.Model):
 
   def build_model(self, params, mode=None):
     if self._keras_model is None:
-      with keras_utils.maybe_enter_backend_graph():
-        outputs = self.model_outputs(self._input_layer, mode)
+      outputs = self.model_outputs(self._input_layer, mode)
 
-        model = tf.keras.models.Model(
-            inputs=self._input_layer, outputs=outputs, name='retinanet')
-        assert model is not None, 'Fail to build tf.keras.Model.'
-        model.optimizer = self.build_optimizer()
-        self._keras_model = model
+      model = tf.keras.models.Model(
+          inputs=self._input_layer, outputs=outputs, name='retinanet')
+      assert model is not None, 'Fail to build tf.keras.Model.'
+      model.optimizer = self.build_optimizer()
+      self._keras_model = model
 
     return self._keras_model
 
@@ -144,8 +139,8 @@ class RetinanetModel(base_model.Model):
         raise ValueError('"%s" is missing in outputs, requried %s found %s',
                          field, required_label_fields, labels.keys())
     boxes, scores, classes, valid_detections = self._generate_detections_fn(
-        outputs['box_outputs'], outputs['cls_outputs'],
-        labels['anchor_boxes'], labels['image_info'][:, 1:2, :])
+        outputs['box_outputs'], outputs['cls_outputs'], labels['anchor_boxes'],
+        labels['image_info'][:, 1:2, :])
     # Discards the old output tensors to save memory. The `cls_outputs` and
     # `box_outputs` are pretty big and could potentiall lead to memory issue.
     outputs = {

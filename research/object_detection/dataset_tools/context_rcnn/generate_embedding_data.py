@@ -63,6 +63,76 @@ except ModuleNotFoundError:
   pass
 
 
+def add_keys(serialized_example):
+  key = hash(serialized_example)
+  return key, serialized_example
+
+
+def drop_keys(key_value_tuple):
+  return key_value_tuple[1]
+
+
+def get_date_captured(example):
+  date_captured = datetime.datetime.strptime(
+      six.ensure_str(
+          example.features.feature['image/date_captured'].bytes_list.value[0]),
+      '%Y-%m-%d %H:%M:%S')
+  return date_captured
+
+
+def embed_date_captured(date_captured):
+  """Encodes the datetime of the image."""
+  embedded_date_captured = []
+  month_max = 12.0
+  day_max = 31.0
+  hour_max = 24.0
+  minute_max = 60.0
+  min_year = 1990.0
+  max_year = 2030.0
+
+  year = (date_captured.year - min_year) / float(max_year - min_year)
+  embedded_date_captured.append(year)
+
+  month = (date_captured.month - 1) / month_max
+  embedded_date_captured.append(month)
+
+  day = (date_captured.day - 1) / day_max
+  embedded_date_captured.append(day)
+
+  hour = date_captured.hour / hour_max
+  embedded_date_captured.append(hour)
+
+  minute = date_captured.minute / minute_max
+  embedded_date_captured.append(minute)
+
+  return np.asarray(embedded_date_captured)
+
+
+def embed_position_and_size(box):
+  """Encodes the bounding box of the object of interest."""
+  ymin = box[0]
+  xmin = box[1]
+  ymax = box[2]
+  xmax = box[3]
+  w = xmax - xmin
+  h = ymax - ymin
+  x = xmin + w / 2.0
+  y = ymin + h / 2.0
+  return np.asarray([x, y, w, h])
+
+
+def get_bb_embedding(detection_features, detection_boxes, detection_scores,
+                     index):
+  embedding = detection_features[0][index]
+  pooled_embedding = np.mean(np.mean(embedding, axis=1), axis=0)
+
+  box = detection_boxes[0][index]
+  position_embedding = embed_position_and_size(box)
+
+  score = detection_scores[0][index]
+  return np.concatenate((pooled_embedding, position_embedding)), score
+
+
 class GenerateEmbeddingDataFn(beam.DoFn):
   """Generates embedding data for camera trap images.
 
@@ -72,13 +142,14 @@ class GenerateEmbeddingDataFn(beam.DoFn):
   session_lock = threading.Lock()
 
   def __init__(self, model_dir, top_k_embedding_count,
-               bottom_k_embedding_count):
+               bottom_k_embedding_count, embedding_type='final_box_features'):
     """Initialization function.
 
     Args:
       model_dir: A directory containing saved model.
       top_k_embedding_count: the number of high-confidence embeddings to store
       bottom_k_embedding_count: the number of low-confidence embeddings to store
+      embedding_type: One of 'final_box_features', 'rpn_box_features'
     """
     self._model_dir = model_dir
     self._session = None
@@ -86,8 +157,9 @@ class GenerateEmbeddingDataFn(beam.DoFn):
         'embedding_data_generation', 'num_tf_examples_processed')
     self._top_k_embedding_count = top_k_embedding_count
     self._bottom_k_embedding_count = bottom_k_embedding_count
+    self._embedding_type = embedding_type
 
-  def start_bundle(self):
+  def setup(self):
     self._load_inference_model()
 
   def _load_inference_model(self):
@@ -97,76 +169,33 @@ class GenerateEmbeddingDataFn(beam.DoFn):
     with self.session_lock:
       self._detect_fn = tf.saved_model.load(self._model_dir)
 
-  def process(self, tfrecord_entry):
-    return self._run_inference_and_generate_embedding(tfrecord_entry)
+  def process(self, tfexample_key_value):
+    return self._run_inference_and_generate_embedding(tfexample_key_value)
 
-  def _run_inference_and_generate_embedding(self, tfrecord_entry):
-    input_example = tf.train.Example.FromString(tfrecord_entry)
-    # Convert date_captured datetime string to unix time integer and store
-
-    def get_date_captured(example):
-      date_captured = datetime.datetime.strptime(
-          six.ensure_str(
-              example.features.feature[
-                  'image/date_captured'].bytes_list.value[0]),
-          '%Y-%m-%d %H:%M:%S')
-      return date_captured
+  def _run_inference_and_generate_embedding(self, tfexample_key_value):
+    key, tfexample = tfexample_key_value
+    input_example = tf.train.Example.FromString(tfexample)
+    example = tf.train.Example()
+    example.CopyFrom(input_example)
 
     try:
       date_captured = get_date_captured(input_example)
+      unix_time = ((date_captured -
+                    datetime.datetime.fromtimestamp(0)).total_seconds())
+      example.features.feature['image/unix_time'].float_list.value.extend(
+          [unix_time])
+      temporal_embedding = embed_date_captured(date_captured)
     except Exception:  # pylint: disable=broad-except
-      # we require date_captured to be available for all images
-      return []
-
-    def embed_date_captured(date_captured):
-      """Encodes the datetime of the image."""
-      embedded_date_captured = []
-      month_max = 12.0
-      day_max = 31.0
-      hour_max = 24.0
-      minute_max = 60.0
-      min_year = 1990.0
-      max_year = 2030.0
-
-      year = (date_captured.year-min_year)/float(max_year-min_year)
-      embedded_date_captured.append(year)
-
-      month = (date_captured.month-1)/month_max
-      embedded_date_captured.append(month)
-
-      day = (date_captured.day-1)/day_max
-      embedded_date_captured.append(day)
-
-      hour = date_captured.hour/hour_max
-      embedded_date_captured.append(hour)
-
-      minute = date_captured.minute/minute_max
-      embedded_date_captured.append(minute)
-
-      return np.asarray(embedded_date_captured)
-
-    def embed_position_and_size(box):
-      """Encodes the bounding box of the object of interest."""
-      ymin = box[0]
-      xmin = box[1]
-      ymax = box[2]
-      xmax = box[3]
-      w = xmax - xmin
-      h = ymax - ymin
-      x = xmin + w / 2.0
-      y = ymin + h / 2.0
-      return np.asarray([x, y, w, h])
-
-    unix_time = (
-        (date_captured - datetime.datetime.fromtimestamp(0)).total_seconds())
-
-    example = tf.train.Example()
-    example.features.feature['image/unix_time'].float_list.value.extend(
-        [unix_time])
+      temporal_embedding = None
 
     detections = self._detect_fn.signatures['serving_default'](
-        (tf.expand_dims(tf.convert_to_tensor(tfrecord_entry), 0)))
-    detection_features = detections['detection_features']
+        (tf.expand_dims(tf.convert_to_tensor(tfexample), 0)))
+    if self._embedding_type == 'final_box_features':
+      detection_features = detections['detection_features']
+    elif self._embedding_type == 'rpn_box_features':
+      detection_features = detections['cropped_rpn_box_features']
+    else:
+      raise ValueError('embedding type not supported')
     detection_boxes = detections['detection_boxes']
     num_detections = detections['num_detections']
     detection_scores = detections['detection_scores']
@@ -177,25 +206,12 @@ class GenerateEmbeddingDataFn(beam.DoFn):
 
     detection_features = np.asarray(detection_features)
 
-    def get_bb_embedding(detection_features, detection_boxes, detection_scores,
-                         index):
-      embedding = detection_features[0][index]
-      pooled_embedding = np.mean(np.mean(embedding, axis=1), axis=0)
-
-      box = detection_boxes[0][index]
-      position_embedding = embed_position_and_size(box)
-
-      score = detection_scores[0][index]
-      return np.concatenate((pooled_embedding, position_embedding)), score
-
-    temporal_embedding = embed_date_captured(date_captured)
-
     embedding_count = 0
     for index in range(min(num_detections, self._top_k_embedding_count)):
       bb_embedding, score = get_bb_embedding(
           detection_features, detection_boxes, detection_scores, index)
       embed_all.extend(bb_embedding)
-      embed_all.extend(temporal_embedding)
+      if temporal_embedding is not None: embed_all.extend(temporal_embedding)
       score_all.append(score)
       embedding_count += 1
 
@@ -205,7 +221,7 @@ class GenerateEmbeddingDataFn(beam.DoFn):
       bb_embedding, score = get_bb_embedding(
           detection_features, detection_boxes, detection_scores, index)
       embed_all.extend(bb_embedding)
-      embed_all.extend(temporal_embedding)
+      if temporal_embedding is not None: embed_all.extend(temporal_embedding)
       score_all.append(score)
       embedding_count += 1
 
@@ -213,7 +229,7 @@ class GenerateEmbeddingDataFn(beam.DoFn):
       bb_embedding, score = get_bb_embedding(
           detection_features, detection_boxes, detection_scores, 0)
       embed_all.extend(bb_embedding)
-      embed_all.extend(temporal_embedding)
+      if temporal_embedding is not None: embed_all.extend(temporal_embedding)
       score_all.append(score)
 
     # Takes max in case embedding_count is 0.
@@ -230,65 +246,13 @@ class GenerateEmbeddingDataFn(beam.DoFn):
     example.features.feature['image/embedding_count'].int64_list.value.append(
         embedding_count)
 
-    # Add other essential example attributes
-    example.features.feature['image/encoded'].bytes_list.value.extend(
-        input_example.features.feature['image/encoded'].bytes_list.value)
-    example.features.feature['image/height'].int64_list.value.extend(
-        input_example.features.feature['image/height'].int64_list.value)
-    example.features.feature['image/width'].int64_list.value.extend(
-        input_example.features.feature['image/width'].int64_list.value)
-    example.features.feature['image/source_id'].bytes_list.value.extend(
-        input_example.features.feature['image/source_id'].bytes_list.value)
-    example.features.feature['image/location'].bytes_list.value.extend(
-        input_example.features.feature['image/location'].bytes_list.value)
-
-    example.features.feature['image/date_captured'].bytes_list.value.extend(
-        input_example.features.feature['image/date_captured'].bytes_list.value)
-
-    example.features.feature['image/class/text'].bytes_list.value.extend(
-        input_example.features.feature['image/class/text'].bytes_list.value)
-    example.features.feature['image/class/label'].int64_list.value.extend(
-        input_example.features.feature['image/class/label'].int64_list.value)
-
-    example.features.feature['image/seq_id'].bytes_list.value.extend(
-        input_example.features.feature['image/seq_id'].bytes_list.value)
-    example.features.feature['image/seq_num_frames'].int64_list.value.extend(
-        input_example.features.feature['image/seq_num_frames'].int64_list.value)
-    example.features.feature['image/seq_frame_num'].int64_list.value.extend(
-        input_example.features.feature['image/seq_frame_num'].int64_list.value)
-
-    example.features.feature['image/object/bbox/ymax'].float_list.value.extend(
-        input_example.features.feature[
-            'image/object/bbox/ymax'].float_list.value)
-    example.features.feature['image/object/bbox/ymin'].float_list.value.extend(
-        input_example.features.feature[
-            'image/object/bbox/ymin'].float_list.value)
-    example.features.feature['image/object/bbox/xmax'].float_list.value.extend(
-        input_example.features.feature[
-            'image/object/bbox/xmax'].float_list.value)
-    example.features.feature['image/object/bbox/xmin'].float_list.value.extend(
-        input_example.features.feature[
-            'image/object/bbox/xmin'].float_list.value)
-    example.features.feature[
-        'image/object/class/score'].float_list.value.extend(
-            input_example.features.feature[
-                'image/object/class/score'].float_list.value)
-    example.features.feature[
-        'image/object/class/label'].int64_list.value.extend(
-            input_example.features.feature[
-                'image/object/class/label'].int64_list.value)
-    example.features.feature[
-        'image/object/class/text'].bytes_list.value.extend(
-            input_example.features.feature[
-                'image/object/class/text'].bytes_list.value)
-
     self._num_examples_processed.inc(1)
-    return [example]
+    return [(key, example)]
 
 
 def construct_pipeline(pipeline, input_tfrecord, output_tfrecord, model_dir,
                        top_k_embedding_count, bottom_k_embedding_count,
-                       num_shards):
+                       num_shards, embedding_type):
   """Returns a beam pipeline to run object detection inference.
 
   Args:
@@ -300,19 +264,21 @@ def construct_pipeline(pipeline, input_tfrecord, output_tfrecord, model_dir,
     top_k_embedding_count: The number of high-confidence embeddings to store.
     bottom_k_embedding_count: The number of low-confidence embeddings to store.
     num_shards: The number of output shards.
+    embedding_type: Which features to embed.
   """
   input_collection = (
       pipeline | 'ReadInputTFRecord' >> beam.io.tfrecordio.ReadFromTFRecord(
-          input_tfrecord,
-          coder=beam.coders.BytesCoder()))
+          input_tfrecord, coder=beam.coders.BytesCoder())
+      | 'AddKeys' >> beam.Map(add_keys))
   output_collection = input_collection | 'ExtractEmbedding' >> beam.ParDo(
       GenerateEmbeddingDataFn(model_dir, top_k_embedding_count,
-                              bottom_k_embedding_count))
+                              bottom_k_embedding_count, embedding_type))
   output_collection = output_collection | 'Reshuffle' >> beam.Reshuffle()
-  _ = output_collection | 'WritetoDisk' >> beam.io.tfrecordio.WriteToTFRecord(
-      output_tfrecord,
-      num_shards=num_shards,
-      coder=beam.coders.ProtoCoder(tf.train.Example))
+  _ = output_collection | 'DropKeys' >> beam.Map(
+      drop_keys) | 'WritetoDisk' >> beam.io.tfrecordio.WriteToTFRecord(
+          output_tfrecord,
+          num_shards=num_shards,
+          coder=beam.coders.ProtoCoder(tf.train.Example))
 
 
 def parse_args(argv):
@@ -357,6 +323,12 @@ def parse_args(argv):
       dest='num_shards',
       default=0,
       help='Number of output shards.')
+  parser.add_argument(
+      '--embedding_type',
+      dest='embedding_type',
+      default='final_box_features',
+      help='What features to embed, supports `final_box_features`, '
+      '`rpn_box_features`.')
   beam_args, pipeline_args = parser.parse_known_args(argv)
   return beam_args, pipeline_args
 
@@ -388,11 +360,11 @@ def main(argv=None, save_main_session=True):
       args.embedding_model_dir,
       args.top_k_embedding_count,
       args.bottom_k_embedding_count,
-      args.num_shards)
+      args.num_shards,
+      args.embedding_type)
 
   p.run()
 
 
 if __name__ == '__main__':
   main()
-

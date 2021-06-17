@@ -71,13 +71,15 @@ class CenterNetResnetV1FpnFeatureExtractor(CenterNetFeatureExtractor):
         channel_means=channel_means, channel_stds=channel_stds,
         bgr_ordering=bgr_ordering)
     if resnet_type == 'resnet_v1_50':
-      self._base_model = tf.keras.applications.ResNet50(weights=None)
+      self._base_model = tf.keras.applications.ResNet50(weights=None,
+                                                        include_top=False)
     elif resnet_type == 'resnet_v1_101':
-      self._base_model = tf.keras.applications.ResNet101(weights=None)
+      self._base_model = tf.keras.applications.ResNet101(weights=None,
+                                                         include_top=False)
     elif resnet_type == 'resnet_v1_18':
-      self._base_model = resnet_v1.resnet_v1_18(weights=None)
+      self._base_model = resnet_v1.resnet_v1_18(weights=None, include_top=False)
     elif resnet_type == 'resnet_v1_34':
-      self._base_model = resnet_v1.resnet_v1_34(weights=None)
+      self._base_model = resnet_v1.resnet_v1_34(weights=None, include_top=False)
     else:
       raise ValueError('Unknown Resnet Model {}'.format(resnet_type))
     output_layers = _RESNET_MODEL_OUTPUT_LAYERS[resnet_type]
@@ -159,20 +161,14 @@ class CenterNetResnetV1FpnFeatureExtractor(CenterNetFeatureExtractor):
   def out_stride(self):
     return 4
 
-  def get_sub_model(self, sub_model_type):
-    if sub_model_type == 'classification':
-      return self._base_model
-    else:
-      supported_types = ['classification']
-      raise ValueError(
-          ('Sub model {} is not defined for ResNet FPN.'.format(sub_model_type)
-           + 'Supported types are {}.'.format(supported_types))
-          + 'Use the script convert_keras_models.py to create your own '
-          + 'classification checkpoints.')
+  @property
+  def classification_backbone(self):
+    return self._base_model
 
 
-def resnet_v1_101_fpn(channel_means, channel_stds, bgr_ordering):
+def resnet_v1_101_fpn(channel_means, channel_stds, bgr_ordering, **kwargs):
   """The ResNet v1 101 FPN feature extractor."""
+  del kwargs
 
   return CenterNetResnetV1FpnFeatureExtractor(
       resnet_type='resnet_v1_101',
@@ -182,8 +178,9 @@ def resnet_v1_101_fpn(channel_means, channel_stds, bgr_ordering):
   )
 
 
-def resnet_v1_50_fpn(channel_means, channel_stds, bgr_ordering):
+def resnet_v1_50_fpn(channel_means, channel_stds, bgr_ordering, **kwargs):
   """The ResNet v1 50 FPN feature extractor."""
+  del kwargs
 
   return CenterNetResnetV1FpnFeatureExtractor(
       resnet_type='resnet_v1_50',
@@ -192,8 +189,9 @@ def resnet_v1_50_fpn(channel_means, channel_stds, bgr_ordering):
       bgr_ordering=bgr_ordering)
 
 
-def resnet_v1_34_fpn(channel_means, channel_stds, bgr_ordering):
+def resnet_v1_34_fpn(channel_means, channel_stds, bgr_ordering, **kwargs):
   """The ResNet v1 34 FPN feature extractor."""
+  del kwargs
 
   return CenterNetResnetV1FpnFeatureExtractor(
       resnet_type='resnet_v1_34',
@@ -203,8 +201,9 @@ def resnet_v1_34_fpn(channel_means, channel_stds, bgr_ordering):
   )
 
 
-def resnet_v1_18_fpn(channel_means, channel_stds, bgr_ordering):
+def resnet_v1_18_fpn(channel_means, channel_stds, bgr_ordering, **kwargs):
   """The ResNet v1 18 FPN feature extractor."""
+  del kwargs
 
   return CenterNetResnetV1FpnFeatureExtractor(
       resnet_type='resnet_v1_18',

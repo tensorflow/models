@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Model architecture factory."""
 
 from __future__ import absolute_import
@@ -77,11 +77,13 @@ def multilevel_features_generator(params):
 def retinanet_head_generator(params):
   """Generator function for RetinaNet head architecture."""
   head_params = params.retinanet_head
+  anchors_per_location = params.anchor.num_scales * len(
+      params.anchor.aspect_ratios)
   return heads.RetinanetHead(
       params.architecture.min_level,
       params.architecture.max_level,
       params.architecture.num_classes,
-      head_params.anchors_per_location,
+      anchors_per_location,
       head_params.num_convs,
       head_params.num_filters,
       head_params.use_separable_conv,
@@ -91,10 +93,29 @@ def retinanet_head_generator(params):
 def rpn_head_generator(params):
   """Generator function for RPN head architecture."""
   head_params = params.rpn_head
+  anchors_per_location = params.anchor.num_scales * len(
+      params.anchor.aspect_ratios)
   return heads.RpnHead(
       params.architecture.min_level,
       params.architecture.max_level,
-      head_params.anchors_per_location,
+      anchors_per_location,
+      head_params.num_convs,
+      head_params.num_filters,
+      head_params.use_separable_conv,
+      params.norm_activation.activation,
+      head_params.use_batch_norm,
+      norm_activation=norm_activation_generator(params.norm_activation))
+
+
+def oln_rpn_head_generator(params):
+  """Generator function for OLN-proposal (OLN-RPN) head architecture."""
+  head_params = params.rpn_head
+  anchors_per_location = params.anchor.num_scales * len(
+      params.anchor.aspect_ratios)
+  return heads.OlnRpnHead(
+      params.architecture.min_level,
+      params.architecture.max_level,
+      anchors_per_location,
       head_params.num_convs,
       head_params.num_filters,
       head_params.use_separable_conv,
@@ -118,10 +139,39 @@ def fast_rcnn_head_generator(params):
       norm_activation=norm_activation_generator(params.norm_activation))
 
 
+def oln_box_score_head_generator(params):
+  """Generator function for Scoring Fast R-CNN head architecture."""
+  head_params = params.frcnn_head
+  return heads.OlnBoxScoreHead(
+      params.architecture.num_classes,
+      head_params.num_convs,
+      head_params.num_filters,
+      head_params.use_separable_conv,
+      head_params.num_fcs,
+      head_params.fc_dims,
+      params.norm_activation.activation,
+      head_params.use_batch_norm,
+      norm_activation=norm_activation_generator(params.norm_activation))
+
+
 def mask_rcnn_head_generator(params):
   """Generator function for Mask R-CNN head architecture."""
   head_params = params.mrcnn_head
   return heads.MaskrcnnHead(
+      params.architecture.num_classes,
+      params.architecture.mask_target_size,
+      head_params.num_convs,
+      head_params.num_filters,
+      head_params.use_separable_conv,
+      params.norm_activation.activation,
+      head_params.use_batch_norm,
+      norm_activation=norm_activation_generator(params.norm_activation))
+
+
+def oln_mask_score_head_generator(params):
+  """Generator function for Scoring Mask R-CNN head architecture."""
+  head_params = params.mrcnn_head
+  return heads.OlnMaskScoreHead(
       params.architecture.num_classes,
       params.architecture.mask_target_size,
       head_params.num_convs,

@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Runs a ResNet model on the ImageNet dataset using custom training loops."""
 
 import orbit
@@ -42,7 +42,7 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
               self.strategy.num_replicas_in_sync))
 
     # As auto rebatching is not supported in
-    # `experimental_distribute_datasets_from_function()` API, which is
+    # `distribute_datasets_from_function()` API, which is
     # required when cloning dataset to multiple workers in eager mode,
     # we use per-replica batch size.
     self.batch_size = int(batch_size / self.strategy.num_replicas_in_sync)
@@ -107,9 +107,12 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
         .datasets_num_private_threads,
         dtype=self.dtype,
         drop_remainder=True)
-    orbit.StandardTrainer.__init__(self, train_dataset,
-                                   flags_obj.use_tf_while_loop,
-                                   flags_obj.use_tf_function)
+    orbit.StandardTrainer.__init__(
+        self,
+        train_dataset,
+        options=orbit.StandardTrainerOptions(
+            use_tf_while_loop=flags_obj.use_tf_while_loop,
+            use_tf_function=flags_obj.use_tf_function))
     if not flags_obj.skip_eval:
       eval_dataset = orbit.utils.make_distributed_dataset(
           self.strategy,
@@ -119,8 +122,11 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
           batch_size=self.batch_size,
           parse_record_fn=imagenet_preprocessing.parse_record,
           dtype=self.dtype)
-      orbit.StandardEvaluator.__init__(self, eval_dataset,
-                                       flags_obj.use_tf_function)
+      orbit.StandardEvaluator.__init__(
+          self,
+          eval_dataset,
+          options=orbit.StandardEvaluatorOptions(
+              use_tf_function=flags_obj.use_tf_function))
 
   def train_loop_begin(self):
     """See base class."""
@@ -161,7 +167,8 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
           tape, self.optimizer, loss, self.model.trainable_variables)
       self.train_loss.update_state(loss)
       self.train_accuracy.update_state(labels, logits)
-
+    if self.flags_obj.enable_xla:
+      step_fn = tf.function(step_fn, jit_compile=True)
     self.strategy.run(step_fn, args=(next(iterator),))
 
   def train_loop_end(self):

@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,22 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Definitions for high level configuration groups.."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-
 from typing import Any, List, Mapping, Optional
 
 import dataclasses
 
+from official.core import config_definitions
 from official.modeling import hyperparams
-from official.modeling.hyperparams import config_definitions
+from official.modeling.hyperparams import config_definitions as legacy_cfg
 
-CallbacksConfig = config_definitions.CallbacksConfig
-TensorboardConfig = config_definitions.TensorboardConfig
+CallbacksConfig = legacy_cfg.CallbacksConfig
+TensorboardConfig = legacy_cfg.TensorboardConfig
 RuntimeConfig = config_definitions.RuntimeConfig
 
 
@@ -79,7 +75,7 @@ class TrainConfig(hyperparams.Config):
     callbacks: An instance of CallbacksConfig.
     metrics: An instance of MetricsConfig.
     tensorboard: An instance of TensorboardConfig.
-    set_epoch_loop: Whether or not to set `experimental_steps_per_execution` to
+    set_epoch_loop: Whether or not to set `steps_per_execution` to
       equal the number of training steps in `model.compile`. This reduces the
       number of callbacks run per epoch which significantly improves end-to-end
       TPU training time.

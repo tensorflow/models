@@ -313,6 +313,47 @@ class InputFnTest(test_case.TestCase, parameterized.TestCase):
         tf.float32,
         labels[fields.InputDataFields.groundtruth_weights].dtype)
 
+  def test_context_rcnn_resnet50_eval_input_with_sequence_example_image_id_list(
+      self, eval_batch_size=8):
+    """Tests the eval input function for FasterRcnnResnet50."""
+    configs = _get_configs_for_model_sequence_example(
+        'context_rcnn_camera_trap')
+    model_config = configs['model']
+    eval_config = configs['eval_config']
+    eval_config.batch_size = eval_batch_size
+    eval_input_config = configs['eval_input_configs'][0]
+    eval_input_config.load_context_image_ids = True
+    eval_input_fn = inputs.create_eval_input_fn(
+        eval_config, eval_input_config, model_config)
+    features, labels = _make_initializable_iterator(eval_input_fn()).get_next()
+    self.assertAllEqual([eval_batch_size, 640, 640, 3],
+                        features[fields.InputDataFields.image].shape.as_list())
+    self.assertEqual(tf.float32, features[fields.InputDataFields.image].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 640, 640, 3],
+        features[fields.InputDataFields.original_image].shape.as_list())
+    self.assertEqual(tf.uint8,
+                     features[fields.InputDataFields.original_image].dtype)
+    self.assertAllEqual([eval_batch_size],
+                        features[inputs.HASH_KEY].shape.as_list())
+    self.assertEqual(tf.int32, features[inputs.HASH_KEY].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 100, 4],
+        labels[fields.InputDataFields.groundtruth_boxes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_boxes].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 100, model_config.faster_rcnn.num_classes],
+        labels[fields.InputDataFields.groundtruth_classes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_classes].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 100],
+        labels[fields.InputDataFields.groundtruth_weights].shape.as_list())
+    self.assertEqual(
+        tf.float32,
+        labels[fields.InputDataFields.groundtruth_weights].dtype)
+
   def test_context_rcnn_resnet50_train_input_with_sequence_example_frame_index(
       self, train_batch_size=8):
     """Tests the training input function for FasterRcnnResnet50."""
@@ -754,15 +795,20 @@ class DataAugmentationFnTest(test_case.TestCase):
           fields.InputDataFields.image:
               tf.constant(np.random.rand(10, 10, 3).astype(np.float32)),
           fields.InputDataFields.groundtruth_instance_masks:
-              tf.constant(np.zeros([2, 10, 10], np.uint8))
+              tf.constant(np.zeros([2, 10, 10], np.uint8)),
+          fields.InputDataFields.groundtruth_instance_mask_weights:
+              tf.constant([1.0, 0.0], np.float32)
       }
       augmented_tensor_dict = data_augmentation_fn(tensor_dict=tensor_dict)
       return (augmented_tensor_dict[fields.InputDataFields.image],
               augmented_tensor_dict[fields.InputDataFields.
-                                    groundtruth_instance_masks])
-    image, masks = self.execute_cpu(graph_fn, [])
+                                    groundtruth_instance_masks],
+              augmented_tensor_dict[fields.InputDataFields.
+                                    groundtruth_instance_mask_weights])
+    image, masks, mask_weights = self.execute_cpu(graph_fn, [])
     self.assertAllEqual(image.shape, [20, 20, 3])
     self.assertAllEqual(masks.shape, [2, 20, 20])
+    self.assertAllClose(mask_weights, [1.0, 0.0])
 
   def test_include_keypoints_in_data_augmentation(self):
     data_augmentation_options = [
@@ -1379,6 +1425,49 @@ class DataTransformationFnTest(test_case.TestCase, parameterized.TestCase):
         [[[0., 0., 0., 0.,], [0., 0., 0., 0.,]],
          [[0.1, 0.1, 0.3, 0.4,], [0.6, 0.4, 0.6, 0.7,]]])
 
+  def test_groundtruth_keypoint_depths(self):
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(100, 50, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(np.array([[.5, .5, 1, 1], [.0, .0, .5, .5]],
+                                   np.float32)),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([1, 2], np.int32)),
+          fields.InputDataFields.groundtruth_keypoints:
+              tf.constant([[[0.1, 0.2], [0.3, 0.4]],
+                           [[0.5, 0.6], [0.7, 0.8]]]),
+          fields.InputDataFields.groundtruth_keypoint_visibilities:
+              tf.constant([[True, False], [True, True]]),
+          fields.InputDataFields.groundtruth_keypoint_depths:
+              tf.constant([[1.0, 0.9], [0.8, 0.7]]),
+          fields.InputDataFields.groundtruth_keypoint_depth_weights:
+              tf.constant([[0.7, 0.8], [0.9, 1.0]]),
+      }
+
+      num_classes = 3
+      keypoint_type_weight = [1.0, 2.0]
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_resize50_preprocess_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=num_classes,
+          keypoint_type_weight=keypoint_type_weight)
+      transformed_inputs = input_transformation_fn(tensor_dict=tensor_dict)
+      return (transformed_inputs[
+          fields.InputDataFields.groundtruth_keypoint_depths],
+              transformed_inputs[
+                  fields.InputDataFields.groundtruth_keypoint_depth_weights])
+
+    keypoint_depths, keypoint_depth_weights = self.execute_cpu(graph_fn, [])
+    self.assertAllClose(
+        keypoint_depths,
+        [[1.0, 0.9], [0.8, 0.7]])
+    self.assertAllClose(
+        keypoint_depth_weights,
+        [[0.7, 0.8], [0.9, 1.0]])
+
 
 class PadInputDataToStaticShapesFnTest(test_case.TestCase):
 
@@ -1568,6 +1657,22 @@ class PadInputDataToStaticShapesFnTest(test_case.TestCase):
     self.assertAllEqual(
         padded_tensor_dict[fields.InputDataFields.groundtruth_dp_surface_coords]
         .shape.as_list(), [3, 200, 4])
+
+  def test_pad_input_data_to_static_shapes_for_trackid(self):
+    input_tensor_dict = {
+        fields.InputDataFields.groundtruth_track_ids:
+            tf.constant([0, 1], dtype=tf.int32),
+    }
+
+    padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
+        tensor_dict=input_tensor_dict,
+        max_num_boxes=3,
+        num_classes=1,
+        spatial_image_shape=[128, 128])
+
+    self.assertAllEqual(
+        padded_tensor_dict[fields.InputDataFields.groundtruth_track_ids]
+        .shape.as_list(), [3])
 
   def test_context_features(self):
     context_memory_size = 8

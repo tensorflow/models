@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,11 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Functions and classes related to optimization (weight updates)."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import re
 
@@ -72,7 +69,8 @@ def create_optimizer(init_lr,
                      num_train_steps,
                      num_warmup_steps,
                      end_lr=0.0,
-                     optimizer_type='adamw'):
+                     optimizer_type='adamw',
+                     beta_1=0.9):
   """Creates an optimizer with learning rate schedule."""
   # Implements linear decay of the learning rate.
   lr_schedule = tf.keras.optimizers.schedules.PolynomialDecay(
@@ -90,7 +88,7 @@ def create_optimizer(init_lr,
     optimizer = AdamWeightDecay(
         learning_rate=lr_schedule,
         weight_decay_rate=0.01,
-        beta_1=0.9,
+        beta_1=beta_1,
         beta_2=0.999,
         epsilon=1e-6,
         exclude_from_weight_decay=['LayerNorm', 'layer_norm', 'bias'])
@@ -99,7 +97,7 @@ def create_optimizer(init_lr,
     optimizer = tfa_optimizers.LAMB(
         learning_rate=lr_schedule,
         weight_decay_rate=0.01,
-        beta_1=0.9,
+        beta_1=beta_1,
         beta_2=0.999,
         epsilon=1e-6,
         exclude_from_weight_decay=['LayerNorm', 'layer_norm', 'bias'])
@@ -116,7 +114,7 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
   correct way of using L2 regularization/weight decay with Adam, since that will
   interact with the m and v parameters in strange ways.
 
-  Instead we want ot decay the weights in a manner that doesn't interact with
+  Instead we want to decay the weights in a manner that doesn't interact with
   the m/v parameters. This is equivalent to adding the square of the weights to
   the loss with plain (non-momentum) SGD.
   """
@@ -130,13 +128,16 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
                weight_decay_rate=0.0,
                include_in_weight_decay=None,
                exclude_from_weight_decay=None,
+               gradient_clip_norm=1.0,
                name='AdamWeightDecay',
                **kwargs):
     super(AdamWeightDecay, self).__init__(learning_rate, beta_1, beta_2,
                                           epsilon, amsgrad, name, **kwargs)
     self.weight_decay_rate = weight_decay_rate
+    self.gradient_clip_norm = gradient_clip_norm
     self._include_in_weight_decay = include_in_weight_decay
     self._exclude_from_weight_decay = exclude_from_weight_decay
+    logging.info('gradient_clip_norm=%f', gradient_clip_norm)
 
   @classmethod
   def from_config(cls, config):
@@ -165,13 +166,14 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
                       name=None,
                       experimental_aggregate_gradients=True):
     grads, tvars = list(zip(*grads_and_vars))
-    if experimental_aggregate_gradients:
+    if experimental_aggregate_gradients and self.gradient_clip_norm > 0.0:
       # when experimental_aggregate_gradients = False, apply_gradients() no
       # longer implicitly allreduce gradients, users manually allreduce gradient
       # and passed the allreduced grads_and_vars. For now, the
       # clip_by_global_norm will be moved to before the explicit allreduce to
       # keep the math the same as TF 1 and pre TF 2.2 implementation.
-      (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
+      (grads, _) = tf.clip_by_global_norm(
+          grads, clip_norm=self.gradient_clip_norm)
     return super(AdamWeightDecay, self).apply_gradients(
         zip(grads, tvars),
         name=name,

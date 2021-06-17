@@ -16,17 +16,14 @@ VGGish depends on the following Python packages:
 
 * [`numpy`](http://www.numpy.org/)
 * [`resampy`](http://resampy.readthedocs.io/en/latest/)
-* [`tensorflow`](http://www.tensorflow.org/) (currently, only TF v1.x)
+* [`tensorflow`](http://www.tensorflow.org/)
 * [`tf_slim`](https://github.com/google-research/tf-slim)
 * [`six`](https://pythonhosted.org/six/)
 * [`soundfile`](https://pysoundfile.readthedocs.io/)
 
 These are all easily installable via, e.g., `pip install numpy` (as in the
-sample installation session below).
-
-Any reasonably recent version of these packages shold work. Note that we currently only support
-TensorFlow v1.x due to a [`tf_slim` limitation](https://github.com/google-research/tf-slim/pull/1).
-TensorFlow v1.15 (the latest version as of Jan 2020) has been tested to work.
+sample installation session below). Any reasonably recent version of these
+packages shold work.
 
 VGGish also requires downloading two data files:
 
@@ -60,7 +57,7 @@ Here's a sample installation and test session:
 $ sudo python -m pip install --upgrade pip wheel
 
 # Install all dependences.
-$ sudo pip install numpy resampy tensorflow==1.15 tf_slim six soundfile
+$ sudo pip install numpy resampy tensorflow tf_slim six soundfile
 
 # Clone TensorFlow models repo into a 'models' directory.
 $ git clone https://github.com/tensorflow/models.git
@@ -129,7 +126,10 @@ changes we made:
   fully connected layer. This acts as a compact embedding layer.
 
 The model definition provided here defines layers up to and including the
-128-wide embedding layer.
+128-wide embedding layer. Note that the embedding layer does not include
+a final non-linear activation, so the embedding value is pre-activation.
+When training a model stacked on top of VGGish, you should send the
+embedding through a non-linearity of your choice before adding more layers.
 
 ### Input: Audio Features
 
@@ -150,14 +150,7 @@ VGGish was trained with audio features computed as follows:
   where each example covers 64 mel bands and 96 frames of 10 ms each.
 
 We provide our own NumPy implementation that produces features that are very
-similar to those produced by our internal production code. This results in
-embedding outputs that are closely match the embeddings that we have already
-released. Note that these embeddings will *not* be bit-for-bit identical to the
-released embeddings due to small differences between the feature computation
-code paths, and even between two different installations of VGGish with
-different underlying libraries and hardware. However, we expect that the
-embeddings will be equivalent in the context of a downstream classification
-task.
+similar to those produced by our internal production code.
 
 ### Output: Embeddings
 
@@ -177,8 +170,7 @@ the postprocessor can be run after inference.
 If you don't need to use the released embeddings or YouTube-8M, then you could
 skip postprocessing and use raw embeddings.
 
-A [Colab](https://colab.research.google.com/)
-showing how to download the model and calculate the embeddings on your
+A Colab showing how to download the model and calculate the embeddings on your
 own sound data is available here:
-[AudioSet Embedding Colab](https://colab.research.google.com/drive/1TbX92UL9sYWbdwdGE0rJ9owmezB-Rl1C).
+[VGGish Embedding Colab](https://colab.research.google.com/drive/1E3CaPAqCai9P9QhJ3WYPNCVmrJU4lAhF).
 

@@ -19,9 +19,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from tensorflow.python.keras.applications import resnet
+
 import tensorflow.compat.v1 as tf
 
-from tensorflow.python.keras.applications import resnet
 from object_detection.core import freezable_batch_norm
 from object_detection.models.keras_models import model_utils
 
@@ -408,7 +409,7 @@ def block_basic(x,
                 name=None):
   """A residual block for ResNet18/34.
 
-  Arguments:
+  Args:
       x: input tensor.
       filters: integer, filters of the bottleneck layer.
       kernel_size: default 3, kernel size of the bottleneck layer.
@@ -465,7 +466,7 @@ def block_basic(x,
 def stack_basic(x, filters, blocks, stride1=2, name=None):
   """A set of stacked residual blocks for ResNet18/34.
 
-  Arguments:
+  Args:
       x: input tensor.
       filters: integer, filters of the bottleneck layer in a block.
       blocks: integer, blocks in the stacked blocks.

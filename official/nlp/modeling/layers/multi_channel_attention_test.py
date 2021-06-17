@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Tests for nlp.nhnet.multi_channel_attention."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Tests for nlp.nhnet.multi_channel_attention."""
 
 import numpy as np
 import tensorflow as tf
@@ -41,7 +36,7 @@ class MultiChannelAttentionTest(tf.test.TestCase):
     num_heads = 2
     num_docs = 5
     attention_layer = multi_channel_attention.MultiChannelAttention(
-        num_heads, key_size=2)
+        num_heads, key_dim=2)
 
     from_data = 10 * np.random.random_sample((3, 4, 8))
     to_data = 10 * np.random.random_sample((3, num_docs, 2, 8))

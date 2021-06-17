@@ -1,0 +1,58 @@
+# --experiment_type=cascadercnn_spinenet_coco
+# Expect to reach: box mAP: 51.9%, mask mAP: 45.0% on COCO
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  init_checkpoint: null
+  train_data:
+    global_batch_size: 256
+    parser:
+      aug_rand_hflip: true
+      aug_scale_min: 0.1
+      aug_scale_max: 2.5
+  losses:
+    l2_weight_decay: 0.00004
+  model:
+    anchor:
+      anchor_size: 4.0
+      num_scales: 3
+    min_level: 3
+    max_level: 7
+    input_size: [1280, 1280, 3]
+    backbone:
+      spinenet:
+        stochastic_depth_drop_rate: 0.2
+        model_id: '143'
+      type: 'spinenet'
+    decoder:
+      type: 'identity'
+    detection_head:
+      cascade_class_ensemble: true
+      class_agnostic_bbox_pred: true
+    rpn_head:
+      num_convs: 2
+      num_filters: 256
+    roi_sampler:
+      cascade_iou_thresholds: [0.7]
+      foreground_iou_threshold: 0.6
+    norm_activation:
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+      activation: 'swish'
+    detection_generator:
+      pre_nms_top_k: 1000
+trainer:
+  train_steps: 231000
+  optimizer_config:
+    learning_rate:
+      type: 'stepwise'
+      stepwise:
+        boundaries: [219450, 226380]
+        values: [0.32, 0.032, 0.0032]
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 2000
+        warmup_learning_rate: 0.0067

@@ -116,6 +116,35 @@ class KeypointOpsTest(test_case.TestCase):
         ])
     self.assertAllClose(expected_bboxes, output)
 
+  def test_keypoints_to_enclosing_bounding_boxes_axis2(self):
+    def graph_fn():
+      keypoints = tf.constant(
+          [
+              [  # Instance 0.
+                  [5., 10.],
+                  [3., 20.],
+                  [8., 4.],
+              ],
+              [  # Instance 1.
+                  [2., 12.],
+                  [0., 3.],
+                  [5., 19.],
+              ],
+          ], dtype=tf.float32)
+      keypoints = tf.stack([keypoints, keypoints], axis=0)
+      bboxes = keypoint_ops.keypoints_to_enclosing_bounding_boxes(
+          keypoints, keypoints_axis=2)
+      return bboxes
+    output = self.execute(graph_fn, [])
+
+    expected_bboxes = np.array(
+        [
+            [3., 4., 8., 20.],
+            [0., 3., 5., 19.]
+        ])
+    self.assertAllClose(expected_bboxes, output[0])
+    self.assertAllClose(expected_bboxes, output[1])
+
   def test_to_normalized_coordinates(self):
     def graph_fn():
       keypoints = tf.constant([
@@ -270,6 +299,7 @@ class KeypointOpsTest(test_case.TestCase):
 
     output, expected_keypoints = self.execute(graph_fn, [])
     self.assertAllClose(output, expected_keypoints)
+
 
   def test_keypoint_weights_from_visibilities(self):
     def graph_fn():

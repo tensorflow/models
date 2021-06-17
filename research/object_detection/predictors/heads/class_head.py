@@ -24,6 +24,7 @@ import tensorflow.compat.v1 as tf
 import tf_slim as slim
 
 from object_detection.predictors.heads import head
+from object_detection.utils import shape_utils
 
 
 class MaskRCNNClassHead(head.Head):
@@ -303,13 +304,23 @@ class WeightSharedConvolutionalClassHead(head.Head):
         biases_initializer=tf.constant_initializer(
             self._class_prediction_bias_init),
         scope=self._scope)
-    batch_size = features.get_shape().as_list()[0]
-    if batch_size is None:
-      batch_size = tf.shape(features)[0]
+    batch_size, height, width = shape_utils.combined_static_and_dynamic_shape(
+        features)[0:3]
+    class_predictions_with_background = tf.reshape(
+        class_predictions_with_background, [
+            batch_size, height, width, num_predictions_per_location,
+            self._num_class_slots
+        ])
     class_predictions_with_background = self._score_converter_fn(
         class_predictions_with_background)
     if self._return_flat_predictions:
       class_predictions_with_background = tf.reshape(
           class_predictions_with_background,
           [batch_size, -1, self._num_class_slots])
+    else:
+      class_predictions_with_background = tf.reshape(
+          class_predictions_with_background, [
+              batch_size, height, width,
+              num_predictions_per_location * self._num_class_slots
+          ])
     return class_predictions_with_background

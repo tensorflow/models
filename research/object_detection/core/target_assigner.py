@@ -51,6 +51,7 @@ from object_detection.core import matcher as mat
 from object_detection.core import region_similarity_calculator as sim_calc
 from object_detection.core import standard_fields as fields
 from object_detection.matchers import argmax_matcher
+from object_detection.matchers import hungarian_matcher
 from object_detection.utils import shape_utils
 from object_detection.utils import target_assigner_utils as ta_utils
 from object_detection.utils import tf_version
@@ -510,7 +511,8 @@ def batch_assign(target_assigner,
       anchors_batch, gt_box_batch, gt_class_targets_batch, gt_weights_batch):
     (cls_targets, cls_weights,
      reg_targets, reg_weights, match) = target_assigner.assign(
-         anchors, gt_boxes, gt_class_targets, unmatched_class_label, gt_weights)
+         anchors, gt_boxes, gt_class_targets, unmatched_class_label,
+         gt_weights)
     cls_targets_list.append(cls_targets)
     cls_weights_list.append(cls_weights)
     reg_targets_list.append(reg_targets)
@@ -810,7 +812,20 @@ def get_batch_predictions_from_indices(batch_predictions, indices):
     values: A tensor of shape [num_instances, channels] holding the predicted
       values at the given indices.
   """
-  return tf.gather_nd(batch_predictions, indices)
+  # Note, gather_nd (and its gradient scatter_nd) runs significantly slower (on
+  # TPU) than gather with flattened inputs, so reshape the tensor, flatten the
+  # indices, and run gather.
+  shape = shape_utils.combined_static_and_dynamic_shape(batch_predictions)
+
+  # [B, H, W, C] -> [H*W, W, 1] or [B, H, W, N, C] -> [H*W*N, W*N, N, 1]
+  rev_cum_interior_indices = tf.reverse(tf.math.cumprod(shape[-2:0:-1]), [0])
+  rev_cum_interior_indices = tf.concat([rev_cum_interior_indices, [1]], axis=0)
+
+  # Compute flattened indices and gather.
+  flattened_inds = tf.linalg.matmul(
+      indices, rev_cum_interior_indices[:, tf.newaxis])[:, 0]
+  batch_predictions_2d = tf.reshape(batch_predictions, [-1, shape[-1]])
+  return tf.gather(batch_predictions_2d, flattened_inds, axis=0)
 
 
 def _compute_std_dev_from_box_size(boxes_height, boxes_width, min_overlap):
@@ -835,20 +850,111 @@ def _compute_std_dev_from_box_size(boxes_height, boxes_width, min_overlap):
   return sigma
 
 
+def _preprocess_keypoints_and_weights(out_height, out_width, keypoints,
+                                      class_onehot, class_weights,
+                                      keypoint_weights, class_id,
+                                      keypoint_indices):
+  """Preprocesses the keypoints and the corresponding keypoint weights.
+
+  This function performs several common steps to preprocess the keypoints and
+  keypoint weights features, including:
+    1) Select the subset of keypoints based on the keypoint indices, fill the
+       keypoint NaN values with zeros and convert to absolute coordinates.
+    2) Generate the weights of the keypoint using the following information:
+       a. The class of the instance.
+       b. The NaN value of the keypoint coordinates.
+       c. The provided keypoint weights.
+
+  Args:
+    out_height: An integer or an integer tensor indicating the output height
+      of the model.
+    out_width: An integer or an integer tensor indicating the output width of
+      the model.
+    keypoints: A float tensor of shape [num_instances, num_total_keypoints, 2]
+      representing the original keypoint grountruth coordinates.
+    class_onehot: A float tensor of shape [num_instances, num_classes]
+      containing the class targets with the 0th index assumed to map to the
+      first non-background class.
+    class_weights: A float tensor of shape [num_instances] containing weights
+      for groundtruth instances.
+    keypoint_weights: A float tensor of shape
+      [num_instances, num_total_keypoints] representing the weights of each
+      keypoints.
+    class_id: int, the ID of the class (0-indexed) that contains the target
+      keypoints to consider in this task.
+    keypoint_indices: A list of integers representing the indices of the
+      keypoints to be considered in this task. This is used to retrieve the
+      subset of the keypoints that should be considered in this task.
+
+  Returns:
+    A tuple of two tensors:
+      keypoint_absolute: A float tensor of shape
+        [num_instances, num_keypoints, 2] which is the selected and updated
+        keypoint coordinates.
+      keypoint_weights: A float tensor of shape [num_instances, num_keypoints]
+        representing the updated weight of each keypoint.
+  """
+  # Select the targets keypoints by their type ids and generate the mask
+  # of valid elements.
+  valid_mask, keypoints = ta_utils.get_valid_keypoint_mask_for_class(
+      keypoint_coordinates=keypoints,
+      class_id=class_id,
+      class_onehot=class_onehot,
+      class_weights=class_weights,
+      keypoint_indices=keypoint_indices)
+  # Keypoint coordinates in absolute coordinate system.
+  # The shape of the tensors: [num_instances, num_keypoints, 2].
+  keypoints_absolute = keypoint_ops.to_absolute_coordinates(
+      keypoints, out_height, out_width)
+  # Assign default weights for the keypoints.
+  if keypoint_weights is None:
+    keypoint_weights = tf.ones_like(keypoints[:, :, 0])
+  else:
+    keypoint_weights = tf.gather(
+        keypoint_weights, indices=keypoint_indices, axis=1)
+  keypoint_weights = keypoint_weights * valid_mask
+  return keypoints_absolute, keypoint_weights
+
+
 class CenterNetCenterHeatmapTargetAssigner(object):
   """Wrapper to compute the object center heatmap."""
 
-  def __init__(self, stride, min_overlap=0.7):
+  def __init__(self,
+               stride,
+               min_overlap=0.7,
+               compute_heatmap_sparse=False,
+               keypoint_class_id=None,
+               keypoint_indices=None,
+               keypoint_weights_for_center=None):
     """Initializes the target assigner.
 
     Args:
       stride: int, the stride of the network in output pixels.
       min_overlap: The minimum IOU overlap that boxes need to have to not be
         penalized.
+      compute_heatmap_sparse: bool, indicating whether or not to use the sparse
+        version of the Op that computes the heatmap. The sparse version scales
+        better with number of classes, but in some cases is known to cause
+        OOM error. See (b/170989061).
+      keypoint_class_id: int, the ID of the class (0-indexed) that contains the
+        target keypoints to consider in this task.
+      keypoint_indices: A list of integers representing the indices of the
+        keypoints to be considered in this task. This is used to retrieve the
+        subset of the keypoints from gt_keypoints that should be considered in
+        this task.
+      keypoint_weights_for_center: The keypoint weights used for calculating the
+        location of object center. The number of weights need to be the same as
+        the number of keypoints. The object center is calculated by the weighted
+        mean of the keypoint locations. If not provided, the object center is
+        determined by the center of the bounding box (default behavior).
     """
 
     self._stride = stride
     self._min_overlap = min_overlap
+    self._compute_heatmap_sparse = compute_heatmap_sparse
+    self._keypoint_class_id = keypoint_class_id
+    self._keypoint_indices = keypoint_indices
+    self._keypoint_weights_for_center = keypoint_weights_for_center
 
   def assign_center_targets_from_boxes(self,
                                        height,
@@ -879,8 +985,8 @@ class CenterNetCenterHeatmapTargetAssigner(object):
         the stride specified during initialization.
     """
 
-    out_height = tf.cast(height // self._stride, tf.float32)
-    out_width = tf.cast(width // self._stride, tf.float32)
+    out_height = tf.cast(tf.maximum(height // self._stride, 1), tf.float32)
+    out_width = tf.cast(tf.maximum(width // self._stride, 1), tf.float32)
     # Compute the yx-grid to be used to generate the heatmap. Each returned
     # tensor has shape of [out_height, out_width]
     (y_grid, x_grid) = ta_utils.image_shape_to_grids(out_height, out_width)
@@ -893,9 +999,10 @@ class CenterNetCenterHeatmapTargetAssigner(object):
                                              gt_weights_list):
       boxes = box_list.BoxList(boxes)
       # Convert the box coordinates to absolute output image dimension space.
-      boxes = box_list_ops.to_absolute_coordinates(boxes,
-                                                   height // self._stride,
-                                                   width // self._stride)
+      boxes = box_list_ops.to_absolute_coordinates(
+          boxes,
+          tf.maximum(height // self._stride, 1),
+          tf.maximum(width // self._stride, 1))
       # Get the box center coordinates. Each returned tensors have the shape of
       # [num_instances]
       (y_center, x_center, boxes_height,
@@ -913,7 +1020,147 @@ class CenterNetCenterHeatmapTargetAssigner(object):
           x_coordinates=x_center,
           sigma=sigma,
           channel_onehot=class_targets,
-          channel_weights=weights)
+          channel_weights=weights,
+          sparse=self._compute_heatmap_sparse)
+      heatmaps.append(heatmap)
+
+    # Return the stacked heatmaps over the batch.
+    return tf.stack(heatmaps, axis=0)
+
+  def assign_center_targets_from_keypoints(self,
+                                           height,
+                                           width,
+                                           gt_classes_list,
+                                           gt_keypoints_list,
+                                           gt_weights_list=None,
+                                           gt_keypoints_weights_list=None):
+    """Computes the object center heatmap target using keypoint locations.
+
+    Args:
+      height: int, height of input to the model. This is used to
+        determine the height of the output.
+      width: int, width of the input to the model. This is used to
+        determine the width of the output.
+      gt_classes_list: A list of float tensors with shape [num_boxes,
+        num_classes] representing the one-hot encoded class labels for each box
+        in the gt_boxes_list.
+      gt_keypoints_list: A list of float tensors with shape [num_boxes, 4]
+        representing the groundtruth detection bounding boxes for each sample in
+        the batch. The box coordinates are expected in normalized coordinates.
+      gt_weights_list: A list of float tensors with shape [num_boxes]
+        representing the weight of each groundtruth detection box.
+      gt_keypoints_weights_list: [Optional] a list of 3D tf.float32 tensors of
+        shape [num_instances, num_total_keypoints] representing the weights of
+        each keypoints. If not provided, then all not NaN keypoints will be
+        equally weighted.
+
+    Returns:
+      heatmap: A Tensor of size [batch_size, output_height, output_width,
+        num_classes] representing the per class center heatmap. output_height
+        and output_width are computed by dividing the input height and width by
+        the stride specified during initialization.
+    """
+    assert (self._keypoint_weights_for_center is not None and
+            self._keypoint_class_id is not None and
+            self._keypoint_indices is not None)
+    out_height = tf.cast(tf.maximum(height // self._stride, 1), tf.float32)
+    out_width = tf.cast(tf.maximum(width // self._stride, 1), tf.float32)
+    # Compute the yx-grid to be used to generate the heatmap. Each returned
+    # tensor has shape of [out_height, out_width]
+    (y_grid, x_grid) = ta_utils.image_shape_to_grids(out_height, out_width)
+
+    heatmaps = []
+    if gt_weights_list is None:
+      gt_weights_list = [None] * len(gt_classes_list)
+    if gt_keypoints_weights_list is None:
+      gt_keypoints_weights_list = [None] * len(gt_keypoints_list)
+
+    for keypoints, classes, kp_weights, weights in zip(
+        gt_keypoints_list, gt_classes_list, gt_keypoints_weights_list,
+        gt_weights_list):
+
+      keypoints_absolute, kp_weights = _preprocess_keypoints_and_weights(
+          out_height=out_height,
+          out_width=out_width,
+          keypoints=keypoints,
+          class_onehot=classes,
+          class_weights=weights,
+          keypoint_weights=kp_weights,
+          class_id=self._keypoint_class_id,
+          keypoint_indices=self._keypoint_indices)
+      # _, num_keypoints, _ = (
+      #     shape_utils.combined_static_and_dynamic_shape(keypoints_absolute))
+
+      # Update the keypoint weights by the specified keypoints weights.
+      kp_loc_weights = tf.constant(
+          self._keypoint_weights_for_center, dtype=tf.float32)
+      updated_kp_weights = kp_weights * kp_loc_weights[tf.newaxis, :]
+
+      # Obtain the sum of the weights for each instance.
+      # instance_weight_sum has shape: [num_instance].
+      instance_weight_sum = tf.reduce_sum(updated_kp_weights, axis=1)
+
+      # Weight the keypoint coordinates by updated_kp_weights.
+      # weighted_keypoints has shape: [num_instance, num_keypoints, 2]
+      weighted_keypoints = keypoints_absolute * tf.expand_dims(
+          updated_kp_weights, axis=2)
+
+      # Compute the mean of the keypoint coordinates over the weighted
+      # keypoints.
+      # keypoint_mean has shape: [num_instance, 2]
+      keypoint_mean = tf.math.divide(
+          tf.reduce_sum(weighted_keypoints, axis=1),
+          tf.expand_dims(instance_weight_sum, axis=-1))
+
+      # Replace the NaN values (due to divided by zeros in the above operation)
+      # by 0.0 where the sum of instance weight is zero.
+      # keypoint_mean has shape: [num_instance, 2]
+      keypoint_mean = tf.where(
+          tf.stack([instance_weight_sum, instance_weight_sum], axis=1) > 0.0,
+          keypoint_mean, tf.zeros_like(keypoint_mean))
+
+      # Compute the distance from each keypoint to the mean location using
+      # broadcasting and weighted by updated_kp_weights.
+      # keypoint_dist has shape: [num_instance, num_keypoints]
+      keypoint_mean = tf.expand_dims(keypoint_mean, axis=1)
+      keypoint_dist = tf.math.sqrt(
+          tf.reduce_sum(
+              tf.math.square(keypoints_absolute - keypoint_mean), axis=2))
+      keypoint_dist = keypoint_dist * updated_kp_weights
+
+      # Compute the average of the distances from each keypoint to the mean
+      # location and update the average value by zero when the instance weight
+      # is zero.
+      # avg_radius has shape: [num_instance]
+      avg_radius = tf.math.divide(
+          tf.reduce_sum(keypoint_dist, axis=1), instance_weight_sum)
+      avg_radius = tf.where(
+          instance_weight_sum > 0.0, avg_radius, tf.zeros_like(avg_radius))
+
+      # Update the class instance weight. If the instance doesn't contain enough
+      # valid keypoint values (i.e. instance_weight_sum == 0.0), then set the
+      # instance weight to zero.
+      # updated_class_weights has shape: [num_instance]
+      updated_class_weights = tf.where(
+          instance_weight_sum > 0.0, weights, tf.zeros_like(weights))
+
+      # Compute the sigma from average distance. We use 2 * average distance to
+      # to approximate the width/height of the bounding box.
+      # sigma has shape: [num_instances].
+      sigma = _compute_std_dev_from_box_size(2 * avg_radius, 2 * avg_radius,
+                                             self._min_overlap)
+
+      # Apply the Gaussian kernel to the center coordinates. Returned heatmap
+      # has shape of [out_height, out_width, num_classes]
+      heatmap = ta_utils.coordinates_to_heatmap(
+          y_grid=y_grid,
+          x_grid=x_grid,
+          y_coordinates=keypoint_mean[:, 0, 0],
+          x_coordinates=keypoint_mean[:, 0, 1],
+          sigma=sigma,
+          channel_onehot=classes,
+          channel_weights=updated_class_weights,
+          sparse=self._compute_heatmap_sparse)
       heatmaps.append(heatmap)
 
     # Return the stacked heatmaps over the batch.
@@ -984,9 +1231,10 @@ class CenterNetBoxTargetAssigner(object):
 
     for i, (boxes, weights) in enumerate(zip(gt_boxes_list, gt_weights_list)):
       boxes = box_list.BoxList(boxes)
-      boxes = box_list_ops.to_absolute_coordinates(boxes,
-                                                   height // self._stride,
-                                                   width // self._stride)
+      boxes = box_list_ops.to_absolute_coordinates(
+          boxes,
+          tf.maximum(height // self._stride, 1),
+          tf.maximum(width // self._stride, 1))
       # Get the box center coordinates. Each returned tensors have the shape of
       # [num_boxes]
       (y_center, x_center, boxes_height,
@@ -1071,7 +1319,9 @@ class CenterNetKeypointTargetAssigner(object):
                keypoint_indices,
                keypoint_std_dev=None,
                per_keypoint_offset=False,
-               peak_radius=0):
+               peak_radius=0,
+               compute_heatmap_sparse=False,
+               per_keypoint_depth=False):
     """Initializes a CenterNet keypoints target assigner.
 
     Args:
@@ -1098,78 +1348,28 @@ class CenterNetKeypointTargetAssigner(object):
         out_width, 2 * num_keypoints].
       peak_radius: int, the radius (in the unit of output pixel) around heatmap
         peak to assign the offset targets.
+      compute_heatmap_sparse: bool, indicating whether or not to use the sparse
+        version of the Op that computes the heatmap. The sparse version scales
+        better with number of keypoint types, but in some cases is known to
+        cause an OOM error. See (b/170989061).
+      per_keypoint_depth: A bool indicates whether the model predicts the depth
+        of each keypoints in independent channels. Similar to
+        per_keypoint_offset but for the keypoint depth.
     """
 
     self._stride = stride
     self._class_id = class_id
     self._keypoint_indices = keypoint_indices
     self._per_keypoint_offset = per_keypoint_offset
+    self._per_keypoint_depth = per_keypoint_depth
     self._peak_radius = peak_radius
+    self._compute_heatmap_sparse = compute_heatmap_sparse
     if keypoint_std_dev is None:
       self._keypoint_std_dev = ([_DEFAULT_KEYPOINT_OFFSET_STD_DEV] *
                                 len(keypoint_indices))
     else:
       assert len(keypoint_indices) == len(keypoint_std_dev)
       self._keypoint_std_dev = keypoint_std_dev
-
-  def _preprocess_keypoints_and_weights(self, out_height, out_width, keypoints,
-                                        class_onehot, class_weights,
-                                        keypoint_weights):
-    """Preprocesses the keypoints and the corresponding keypoint weights.
-
-    This function performs several common steps to preprocess the keypoints and
-    keypoint weights features, including:
-      1) Select the subset of keypoints based on the keypoint indices, fill the
-         keypoint NaN values with zeros and convert to absoluate coordinates.
-      2) Generate the weights of the keypoint using the following information:
-         a. The class of the instance.
-         b. The NaN value of the keypoint coordinates.
-         c. The provided keypoint weights.
-
-    Args:
-      out_height: An integer or an interger tensor indicating the output height
-        of the model.
-      out_width: An integer or an interger tensor indicating the output width of
-        the model.
-      keypoints: A float tensor of shape [num_instances, num_total_keypoints, 2]
-        representing the original keypoint grountruth coordinates.
-      class_onehot: A float tensor of shape [num_instances, num_classes]
-        containing the class targets with the 0th index assumed to map to the
-        first non-background class.
-      class_weights: A float tensor of shape [num_instances] containing weights
-        for groundtruth instances.
-      keypoint_weights: A float tensor of shape
-        [num_instances, num_total_keypoints] representing the weights of each
-        keypoints.
-
-    Returns:
-      A tuple of two tensors:
-        keypoint_absolute: A float tensor of shape
-          [num_instances, num_keypoints, 2] which is the selected and updated
-          keypoint coordinates.
-        keypoint_weights: A float tensor of shape [num_instances, num_keypoints]
-          representing the updated weight of each keypoint.
-    """
-    # Select the targets keypoints by their type ids and generate the mask
-    # of valid elements.
-    valid_mask, keypoints = ta_utils.get_valid_keypoint_mask_for_class(
-        keypoint_coordinates=keypoints,
-        class_id=self._class_id,
-        class_onehot=class_onehot,
-        class_weights=class_weights,
-        keypoint_indices=self._keypoint_indices)
-    # Keypoint coordinates in absolute coordinate system.
-    # The shape of the tensors: [num_instances, num_keypoints, 2].
-    keypoints_absolute = keypoint_ops.to_absolute_coordinates(
-        keypoints, out_height, out_width)
-    # Assign default weights for the keypoints.
-    if keypoint_weights is None:
-      keypoint_weights = tf.ones_like(keypoints[:, :, 0])
-    else:
-      keypoint_weights = tf.gather(
-          keypoint_weights, indices=self._keypoint_indices, axis=1)
-    keypoint_weights = keypoint_weights * valid_mask
-    return keypoints_absolute, keypoint_weights
 
   def assign_keypoint_heatmap_targets(self,
                                       height,
@@ -1209,11 +1409,13 @@ class CenterNetKeypointTargetAssigner(object):
         [batch_size, num_keypoints] representing number of instances for each
         keypoint type.
       valid_mask: A float tensor with shape [batch_size, output_height,
-        output_width] where all values within the regions of the blackout boxes
-        are 0.0 and 1.0 else where.
+        output_width, num_keypoints] where all values within the regions of the
+        blackout boxes are 0.0 and 1.0 else where. Note that the blackout boxes
+        are per keypoint type and are blacked out if the keypoint
+        visibility/weight (of the corresponding keypoint type) is zero.
     """
-    out_width = tf.cast(width // self._stride, tf.float32)
-    out_height = tf.cast(height // self._stride, tf.float32)
+    out_width = tf.cast(tf.maximum(width // self._stride, 1), tf.float32)
+    out_height = tf.cast(tf.maximum(height // self._stride, 1), tf.float32)
     # Compute the yx-grid to be used to generate the heatmap. Each returned
     # tensor has shape of [out_height, out_width]
     y_grid, x_grid = ta_utils.image_shape_to_grids(out_height, out_width)
@@ -1231,13 +1433,15 @@ class CenterNetKeypointTargetAssigner(object):
     for keypoints, classes, kp_weights, weights, boxes in zip(
         gt_keypoints_list, gt_classes_list, gt_keypoints_weights_list,
         gt_weights_list, gt_boxes_list):
-      keypoints_absolute, kp_weights = self._preprocess_keypoints_and_weights(
+      keypoints_absolute, kp_weights = _preprocess_keypoints_and_weights(
           out_height=out_height,
           out_width=out_width,
           keypoints=keypoints,
           class_onehot=classes,
           class_weights=weights,
-          keypoint_weights=kp_weights)
+          keypoint_weights=kp_weights,
+          class_id=self._class_id,
+          keypoint_indices=self._keypoint_indices)
       num_instances, num_keypoints, _ = (
           shape_utils.combined_static_and_dynamic_shape(keypoints_absolute))
 
@@ -1264,9 +1468,10 @@ class CenterNetKeypointTargetAssigner(object):
       if boxes is not None:
         boxes = box_list.BoxList(boxes)
         # Convert the box coordinates to absolute output image dimension space.
-        boxes = box_list_ops.to_absolute_coordinates(boxes,
-                                                     height // self._stride,
-                                                     width // self._stride)
+        boxes = box_list_ops.to_absolute_coordinates(
+            boxes,
+            tf.maximum(height // self._stride, 1),
+            tf.maximum(width // self._stride, 1))
         # Get the box height and width. Each returned tensors have the shape
         # of [num_instances]
         (_, _, boxes_height,
@@ -1277,13 +1482,17 @@ class CenterNetKeypointTargetAssigner(object):
         keypoint_std_dev = keypoint_std_dev * tf.stack(
             [sigma] * num_keypoints, axis=1)
 
-        # Generate the valid region mask to ignore regions with target class but
-        # no corresponding keypoints.
-        # Shape: [num_instances].
-        blackout = tf.logical_and(classes[:, self._class_id] > 0,
-                                  tf.reduce_max(kp_weights, axis=1) < 1e-3)
-        valid_mask = ta_utils.blackout_pixel_weights_by_box_regions(
-            out_height, out_width, boxes.get(), blackout)
+        # Generate the per-keypoint type valid region mask to ignore regions
+        # with keypoint weights equal to zeros (e.g. visibility is 0).
+        # shape of valid_mask: [out_height, out_width, num_keypoints]
+        kp_weight_list = tf.unstack(kp_weights, axis=1)
+        valid_mask_channel_list = []
+        for kp_weight in kp_weight_list:
+          blackout = kp_weight < 1e-3
+          valid_mask_channel_list.append(
+              ta_utils.blackout_pixel_weights_by_box_regions(
+                  out_height, out_width, boxes.get(), blackout))
+        valid_mask = tf.stack(valid_mask_channel_list, axis=2)
         valid_mask_list.append(valid_mask)
 
       # Apply the Gaussian kernel to the keypoint coordinates. Returned heatmap
@@ -1385,13 +1594,15 @@ class CenterNetKeypointTargetAssigner(object):
     for i, (keypoints, classes, kp_weights, weights) in enumerate(
         zip(gt_keypoints_list, gt_classes_list, gt_keypoints_weights_list,
             gt_weights_list)):
-      keypoints_absolute, kp_weights = self._preprocess_keypoints_and_weights(
-          out_height=height // self._stride,
-          out_width=width // self._stride,
+      keypoints_absolute, kp_weights = _preprocess_keypoints_and_weights(
+          out_height=tf.maximum(height // self._stride, 1),
+          out_width=tf.maximum(width // self._stride, 1),
           keypoints=keypoints,
           class_onehot=classes,
           class_weights=weights,
-          keypoint_weights=kp_weights)
+          keypoint_weights=kp_weights,
+          class_id=self._class_id,
+          keypoint_indices=self._keypoint_indices)
       num_instances, num_keypoints, _ = (
           shape_utils.combined_static_and_dynamic_shape(keypoints_absolute))
 
@@ -1402,10 +1613,11 @@ class CenterNetKeypointTargetAssigner(object):
       # All keypoint coordinates and their neighbors:
       # [num_instance * num_keypoints, num_neighbors]
       (y_source_neighbors, x_source_neighbors,
-       valid_sources) = ta_utils.get_surrounding_grids(height // self._stride,
-                                                       width // self._stride,
-                                                       y_source, x_source,
-                                                       self._peak_radius)
+       valid_sources) = ta_utils.get_surrounding_grids(
+           tf.cast(tf.maximum(height // self._stride, 1), tf.float32),
+           tf.cast(tf.maximum(width // self._stride, 1), tf.float32),
+           y_source, x_source,
+           self._peak_radius)
       _, num_neighbors = shape_utils.combined_static_and_dynamic_shape(
           y_source_neighbors)
 
@@ -1453,6 +1665,179 @@ class CenterNetKeypointTargetAssigner(object):
     # shape: [batch_size * num_instances * num_keypoints * num_neighbors, 2]
     batch_offsets = tf.concat(batch_offsets, axis=0)
     return (batch_indices, batch_offsets, batch_weights)
+
+  def assign_keypoints_depth_targets(self,
+                                     height,
+                                     width,
+                                     gt_keypoints_list,
+                                     gt_classes_list,
+                                     gt_keypoint_depths_list,
+                                     gt_keypoint_depth_weights_list,
+                                     gt_keypoints_weights_list=None,
+                                     gt_weights_list=None):
+    """Returns the target depths of the keypoints.
+
+    The returned values are the relative depth information of each keypoints.
+
+    Args:
+      height: int, height of input to the CenterNet model. This is used to
+        determine the height of the output.
+      width: int, width of the input to the CenterNet model. This is used to
+        determine the width of the output.
+      gt_keypoints_list: A list of tensors with shape [num_instances,
+        num_total_keypoints, 2]. See class-level description for more detail.
+      gt_classes_list: A list of tensors with shape [num_instances,
+        num_classes]. See class-level description for more detail.
+      gt_keypoint_depths_list: A list of tensors with shape [num_instances,
+        num_total_keypoints] corresponding to the relative depth of the
+        keypoints.
+      gt_keypoint_depth_weights_list: A list of tensors with shape
+        [num_instances, num_total_keypoints] corresponding to the weights of
+        the relative depth.
+      gt_keypoints_weights_list: A list of tensors with shape [num_instances,
+        num_total_keypoints] corresponding to the weight of each keypoint.
+      gt_weights_list: A list of float tensors with shape [num_instances]. See
+        class-level description for more detail.
+
+    Returns:
+      batch_indices: an integer tensor of shape [num_total_instances, 3] (or
+        [num_total_instances, 4] if 'per_keypoint_depth' is set True) holding
+        the indices inside the predicted tensor which should be penalized. The
+        first column indicates the index along the batch dimension and the
+        second and third columns indicate the index along the y and x
+        dimensions respectively. The fourth column corresponds to the channel
+        dimension (if 'per_keypoint_offset' is set True).
+      batch_depths: a float tensor of shape [num_total_instances, 1] (or
+        [num_total_instances, num_keypoints] if per_keypoint_depth is set True)
+        indicating the target depth of each keypoint.
+      batch_weights: a float tensor of shape [num_total_instances] indicating
+        the weight of each prediction.
+      Note that num_total_instances = batch_size * num_instances *
+                                      num_keypoints * num_neighbors
+    """
+
+    batch_indices = []
+    batch_weights = []
+    batch_depths = []
+
+    if gt_keypoints_weights_list is None:
+      gt_keypoints_weights_list = [None] * len(gt_keypoints_list)
+    if gt_weights_list is None:
+      gt_weights_list = [None] * len(gt_classes_list)
+    if gt_keypoint_depths_list is None:
+      gt_keypoint_depths_list = [None] * len(gt_classes_list)
+    for i, (keypoints, classes, kp_weights, weights,
+            keypoint_depths, keypoint_depth_weights) in enumerate(
+                zip(gt_keypoints_list, gt_classes_list,
+                    gt_keypoints_weights_list, gt_weights_list,
+                    gt_keypoint_depths_list, gt_keypoint_depth_weights_list)):
+      keypoints_absolute, kp_weights = _preprocess_keypoints_and_weights(
+          out_height=tf.maximum(height // self._stride, 1),
+          out_width=tf.maximum(width // self._stride, 1),
+          keypoints=keypoints,
+          class_onehot=classes,
+          class_weights=weights,
+          keypoint_weights=kp_weights,
+          class_id=self._class_id,
+          keypoint_indices=self._keypoint_indices)
+      num_instances, num_keypoints, _ = (
+          shape_utils.combined_static_and_dynamic_shape(keypoints_absolute))
+
+      # [num_instances * num_keypoints]
+      y_source = tf.keras.backend.flatten(keypoints_absolute[:, :, 0])
+      x_source = tf.keras.backend.flatten(keypoints_absolute[:, :, 1])
+
+      # All keypoint coordinates and their neighbors:
+      # [num_instance * num_keypoints, num_neighbors]
+      (y_source_neighbors, x_source_neighbors,
+       valid_sources) = ta_utils.get_surrounding_grids(
+           tf.cast(tf.maximum(height // self._stride, 1), tf.float32),
+           tf.cast(tf.maximum(width // self._stride, 1), tf.float32),
+           y_source, x_source,
+           self._peak_radius)
+      _, num_neighbors = shape_utils.combined_static_and_dynamic_shape(
+          y_source_neighbors)
+
+      # Update the valid keypoint weights.
+      # [num_instance * num_keypoints, num_neighbors]
+      valid_keypoints = tf.cast(
+          valid_sources, dtype=tf.float32) * tf.stack(
+              [tf.keras.backend.flatten(kp_weights)] * num_neighbors, axis=-1)
+
+      # Compute the offsets and indices of the box centers. Shape:
+      #   indices: [num_instances * num_keypoints, num_neighbors, 2]
+      _, indices = ta_utils.compute_floor_offsets_with_indices(
+          y_source=y_source_neighbors,
+          x_source=x_source_neighbors,
+          y_target=y_source,
+          x_target=x_source)
+      # Reshape to:
+      #   indices: [num_instances * num_keypoints * num_neighbors, 2]
+      indices = tf.reshape(indices, [-1, 2])
+
+      # Gather the keypoint depth from corresponding keypoint indices:
+      #   [num_instances, num_keypoints]
+      keypoint_depths = tf.gather(
+          keypoint_depths, self._keypoint_indices, axis=1)
+      # Tile the depth target to surrounding pixels.
+      #   [num_instances, num_keypoints, num_neighbors]
+      tiled_keypoint_depths = tf.tile(
+          tf.expand_dims(keypoint_depths, axis=-1),
+          multiples=[1, 1, num_neighbors])
+
+      # [num_instances, num_keypoints]
+      keypoint_depth_weights = tf.gather(
+          keypoint_depth_weights, self._keypoint_indices, axis=1)
+      # [num_instances, num_keypoints, num_neighbors]
+      keypoint_depth_weights = tf.tile(
+          tf.expand_dims(keypoint_depth_weights, axis=-1),
+          multiples=[1, 1, num_neighbors])
+      # Update the weights of keypoint depth by the weights of the keypoints.
+      # A keypoint depth target is valid only if its corresponding keypoint
+      # target is also valid.
+      # [num_instances, num_keypoints, num_neighbors]
+      tiled_depth_weights = (
+          tf.reshape(valid_keypoints,
+                     [num_instances, num_keypoints, num_neighbors]) *
+          keypoint_depth_weights)
+      invalid_depths = tf.logical_or(
+          tf.math.is_nan(tiled_depth_weights),
+          tf.math.is_nan(tiled_keypoint_depths))
+      # Assign zero values and weights to NaN values.
+      final_keypoint_depths = tf.where(invalid_depths,
+                                       tf.zeros_like(tiled_keypoint_depths),
+                                       tiled_keypoint_depths)
+      final_keypoint_depth_weights = tf.where(
+          invalid_depths,
+          tf.zeros_like(tiled_depth_weights),
+          tiled_depth_weights)
+      # [num_instances * num_keypoints * num_neighbors, 1]
+      batch_depths.append(tf.reshape(final_keypoint_depths, [-1, 1]))
+
+      # Prepare the batch indices to be prepended.
+      batch_index = tf.fill(
+          [num_instances * num_keypoints * num_neighbors, 1], i)
+      if self._per_keypoint_depth:
+        tiled_keypoint_types = self._get_keypoint_types(
+            num_instances, num_keypoints, num_neighbors)
+        batch_indices.append(
+            tf.concat([batch_index, indices,
+                       tf.reshape(tiled_keypoint_types, [-1, 1])], axis=1))
+      else:
+        batch_indices.append(tf.concat([batch_index, indices], axis=1))
+      batch_weights.append(
+          tf.keras.backend.flatten(final_keypoint_depth_weights))
+
+    # Concatenate the tensors in the batch in the first dimension:
+    # shape: [batch_size * num_instances * num_keypoints * num_neighbors, 3] or
+    # [batch_size * num_instances * num_keypoints * num_neighbors, 4] if
+    # 'per_keypoint_offset' is set to True.
+    batch_indices = tf.concat(batch_indices, axis=0)
+    # shape: [batch_size * num_instances * num_keypoints * num_neighbors]
+    batch_weights = tf.concat(batch_weights, axis=0)
+    # shape: [batch_size * num_instances * num_keypoints * num_neighbors, 1]
+    batch_depths = tf.concat(batch_depths, axis=0)
+    return (batch_indices, batch_depths, batch_weights)
 
   def assign_joint_regression_targets(self,
                                       height,
@@ -1519,13 +1904,15 @@ class CenterNetKeypointTargetAssigner(object):
     for i, (keypoints, classes, boxes, kp_weights, weights) in enumerate(
         zip(gt_keypoints_list, gt_classes_list,
             gt_boxes_list, gt_keypoints_weights_list, gt_weights_list)):
-      keypoints_absolute, kp_weights = self._preprocess_keypoints_and_weights(
-          out_height=height // self._stride,
-          out_width=width // self._stride,
+      keypoints_absolute, kp_weights = _preprocess_keypoints_and_weights(
+          out_height=tf.maximum(height // self._stride, 1),
+          out_width=tf.maximum(width // self._stride, 1),
           keypoints=keypoints,
           class_onehot=classes,
           class_weights=weights,
-          keypoint_weights=kp_weights)
+          keypoint_weights=kp_weights,
+          class_id=self._class_id,
+          keypoint_indices=self._keypoint_indices)
       num_instances, num_keypoints, _ = (
           shape_utils.combined_static_and_dynamic_shape(keypoints_absolute))
 
@@ -1533,9 +1920,10 @@ class CenterNetKeypointTargetAssigner(object):
       if boxes is not None:
         # Compute joint center from boxes.
         boxes = box_list.BoxList(boxes)
-        boxes = box_list_ops.to_absolute_coordinates(boxes,
-                                                     height // self._stride,
-                                                     width // self._stride)
+        boxes = box_list_ops.to_absolute_coordinates(
+            boxes,
+            tf.maximum(height // self._stride, 1),
+            tf.maximum(width // self._stride, 1))
         y_center, x_center, _, _ = boxes.get_center_coordinates_and_sizes()
       else:
         # TODO(yuhuic): Add the logic to generate object centers from keypoints.
@@ -1554,7 +1942,8 @@ class CenterNetKeypointTargetAssigner(object):
       # [num_instance * num_keypoints, num_neighbors]
       (y_source_neighbors, x_source_neighbors,
        valid_sources) = ta_utils.get_surrounding_grids(
-           height // self._stride, width // self._stride,
+           tf.cast(tf.maximum(height // self._stride, 1), tf.float32),
+           tf.cast(tf.maximum(width // self._stride, 1), tf.float32),
            tf.keras.backend.flatten(y_center_tiled),
            tf.keras.backend.flatten(x_center_tiled), self._peak_radius)
 
@@ -1618,8 +2007,8 @@ class CenterNetMaskTargetAssigner(object):
     self._stride = stride
 
   def assign_segmentation_targets(
-      self, gt_masks_list, gt_classes_list,
-      mask_resize_method=ResizeMethod.BILINEAR):
+      self, gt_masks_list, gt_classes_list, gt_boxes_list=None,
+      gt_mask_weights_list=None, mask_resize_method=ResizeMethod.BILINEAR):
     """Computes the segmentation targets.
 
     This utility produces a semantic segmentation mask for each class, starting
@@ -1633,25 +2022,62 @@ class CenterNetMaskTargetAssigner(object):
       gt_classes_list: A list of float tensors with shape [num_boxes,
         num_classes] representing the one-hot encoded class labels for each box
         in the gt_boxes_list.
+      gt_boxes_list: An optional list of float tensors with shape [num_boxes, 4]
+        with normalized boxes corresponding to each mask. The boxes are used to
+        spatially allocate mask weights.
+      gt_mask_weights_list: An optional list of float tensors with shape
+        [num_boxes] with weights for each mask. If a mask has a zero weight, it
+        indicates that the box region associated with the mask should not
+        contribute to the loss. If not provided, will use a per-pixel weight of
+        1.
       mask_resize_method: A `tf.compat.v2.image.ResizeMethod`. The method to use
         when resizing masks from input resolution to output resolution.
+
 
     Returns:
       segmentation_targets: An int32 tensor of size [batch_size, output_height,
         output_width, num_classes] representing the class of each location in
         the output space.
+      segmentation_weight: A float32 tensor of size [batch_size, output_height,
+        output_width] indicating the loss weight to apply at each location.
     """
-    # TODO(ronnyvotel): Handle groundtruth weights.
     _, num_classes = shape_utils.combined_static_and_dynamic_shape(
         gt_classes_list[0])
 
     _, input_height, input_width = (
         shape_utils.combined_static_and_dynamic_shape(gt_masks_list[0]))
-    output_height = input_height // self._stride
-    output_width = input_width // self._stride
+    output_height = tf.maximum(input_height // self._stride, 1)
+    output_width = tf.maximum(input_width // self._stride, 1)
+
+    if gt_boxes_list is None:
+      gt_boxes_list = [None] * len(gt_masks_list)
+    if gt_mask_weights_list is None:
+      gt_mask_weights_list = [None] * len(gt_masks_list)
 
     segmentation_targets_list = []
-    for gt_masks, gt_classes in zip(gt_masks_list, gt_classes_list):
+    segmentation_weights_list = []
+
+    for gt_boxes, gt_masks, gt_mask_weights, gt_classes in zip(
+        gt_boxes_list, gt_masks_list, gt_mask_weights_list, gt_classes_list):
+
+      if gt_boxes is not None and gt_mask_weights is not None:
+        boxes = box_list.BoxList(gt_boxes)
+        # Convert the box coordinates to absolute output image dimension space.
+        boxes_absolute = box_list_ops.to_absolute_coordinates(
+            boxes, output_height, output_width)
+
+        # Generate a segmentation weight that applies mask weights in object
+        # regions.
+        blackout = gt_mask_weights <= 0
+        segmentation_weight_for_image = (
+            ta_utils.blackout_pixel_weights_by_box_regions(
+                output_height, output_width, boxes_absolute.get(), blackout,
+                weights=gt_mask_weights))
+        segmentation_weights_list.append(segmentation_weight_for_image)
+      else:
+        segmentation_weights_list.append(tf.ones((output_height, output_width),
+                                                 dtype=tf.float32))
+
       gt_masks = _resize_masks(gt_masks, output_height, output_width,
                                mask_resize_method)
       gt_masks = gt_masks[:, :, :, tf.newaxis]
@@ -1664,7 +2090,8 @@ class CenterNetMaskTargetAssigner(object):
       segmentation_targets_list.append(segmentations_for_image)
 
     segmentation_target = tf.stack(segmentation_targets_list, axis=0)
-    return segmentation_target
+    segmentation_weight = tf.stack(segmentation_weights_list, axis=0)
+    return segmentation_target, segmentation_weight
 
 
 class CenterNetDensePoseTargetAssigner(object):
@@ -1738,7 +2165,9 @@ class CenterNetDensePoseTargetAssigner(object):
       part_ids_one_hot = tf.one_hot(part_ids_flattened, depth=self._num_parts)
       # Get DensePose coordinates in the output space.
       surface_coords_abs = densepose_ops.to_absolute_coordinates(
-          surface_coords, height // self._stride, width // self._stride)
+          surface_coords,
+          tf.maximum(height // self._stride, 1),
+          tf.maximum(width // self._stride, 1))
       surface_coords_abs = tf.reshape(surface_coords_abs, [-1, 4])
       # Each tensor has shape [num_boxes * max_sampled_points].
       yabs, xabs, v, u = tf.unstack(surface_coords_abs, axis=-1)
@@ -1780,6 +2209,90 @@ class CenterNetDensePoseTargetAssigner(object):
     batch_surface_coords = tf.concat(batch_surface_coords, axis=0)
     batch_weights = tf.concat(batch_weights, axis=0)
     return batch_indices, batch_part_ids, batch_surface_coords, batch_weights
+
+
+class CenterNetTrackTargetAssigner(object):
+  """Wrapper to compute targets for tracking task.
+
+  Reference paper: A Simple Baseline for Multi-Object Tracking [1]
+  [1]: https://arxiv.org/abs/2004.01888
+  """
+
+  def __init__(self, stride, num_track_ids):
+    self._stride = stride
+    self._num_track_ids = num_track_ids
+
+  def assign_track_targets(self,
+                           height,
+                           width,
+                           gt_track_ids_list,
+                           gt_boxes_list,
+                           gt_weights_list=None):
+    """Computes the track ID targets.
+
+    Args:
+      height: int, height of input to the model. This is used to determine the
+        height of the output.
+      width: int, width of the input to the model. This is used to determine the
+        width of the output.
+      gt_track_ids_list: A list of 1-D tensors with shape [num_boxes]
+        corresponding to the track ID of each groundtruth detection box.
+      gt_boxes_list: A list of float tensors with shape [num_boxes, 4]
+        representing the groundtruth detection bounding boxes for each sample in
+        the batch. The coordinates are expected in normalized coordinates.
+      gt_weights_list: A list of 1-D tensors with shape [num_boxes]
+        corresponding to the weight of each groundtruth detection box.
+
+    Returns:
+      batch_indices: an integer tensor of shape [batch_size, num_boxes, 3]
+        holding the indices inside the predicted tensor which should be
+        penalized. The first column indicates the index along the batch
+        dimension and the second and third columns indicate the index
+        along the y and x dimensions respectively.
+      batch_weights: a float tensor of shape [batch_size, num_boxes] indicating
+        the weight of each prediction.
+      track_id_targets: An int32 tensor of size [batch_size, num_boxes,
+        num_track_ids] containing the one-hot track ID vector of each
+        groundtruth detection box.
+    """
+    track_id_targets = tf.one_hot(
+        gt_track_ids_list, depth=self._num_track_ids, axis=-1)
+
+    if gt_weights_list is None:
+      gt_weights_list = [None] * len(gt_boxes_list)
+
+    batch_indices = []
+    batch_weights = []
+
+    for i, (boxes, weights) in enumerate(zip(gt_boxes_list, gt_weights_list)):
+      boxes = box_list.BoxList(boxes)
+      boxes = box_list_ops.to_absolute_coordinates(
+          boxes,
+          tf.maximum(height // self._stride, 1),
+          tf.maximum(width // self._stride, 1))
+      # Get the box center coordinates. Each returned tensors have the shape of
+      # [num_boxes]
+      (y_center, x_center, _, _) = boxes.get_center_coordinates_and_sizes()
+      num_boxes = tf.shape(x_center)
+
+      # Compute the indices of the box centers. Shape:
+      #   indices: [num_boxes, 2]
+      (_, indices) = ta_utils.compute_floor_offsets_with_indices(
+          y_source=y_center, x_source=x_center)
+
+      # Assign ones if weights are not provided.
+      if weights is None:
+        weights = tf.ones(num_boxes, dtype=tf.float32)
+
+      # Shape of [num_boxes, 1] integer tensor filled with current batch index.
+      batch_index = i * tf.ones_like(indices[:, 0:1], dtype=tf.int32)
+      batch_indices.append(tf.concat([batch_index, indices], axis=1))
+      batch_weights.append(weights)
+
+    batch_indices = tf.stack(batch_indices, axis=0)
+    batch_weights = tf.stack(batch_weights, axis=0)
+
+    return batch_indices, batch_weights, track_id_targets
 
 
 def filter_mask_overlap_min_area(masks):
@@ -1859,8 +2372,8 @@ class CenterNetCornerOffsetTargetAssigner(object):
     """
     _, input_height, input_width = (
         shape_utils.combined_static_and_dynamic_shape(gt_masks_list[0]))
-    output_height = input_height // self._stride
-    output_width = input_width // self._stride
+    output_height = tf.maximum(input_height // self._stride, 1)
+    output_width = tf.maximum(input_width // self._stride, 1)
     y_grid, x_grid = tf.meshgrid(
         tf.range(output_height), tf.range(output_width),
         indexing='ij')
@@ -1873,6 +2386,8 @@ class CenterNetCornerOffsetTargetAssigner(object):
                                method=ResizeMethod.NEAREST_NEIGHBOR)
       gt_masks = filter_mask_overlap(gt_masks, self._overlap_resolution)
 
+      output_height = tf.cast(output_height, tf.float32)
+      output_width = tf.cast(output_width, tf.float32)
       ymin, xmin, ymax, xmax = tf.unstack(gt_boxes, axis=1)
       ymin, ymax = ymin * output_height, ymax * output_height
       xmin, xmax = xmin * output_width, xmax * output_width
@@ -1897,3 +2412,292 @@ class CenterNetCornerOffsetTargetAssigner(object):
 
     return (tf.stack(corner_targets, axis=0),
             tf.stack(foreground_targets, axis=0))
+
+
+class CenterNetTemporalOffsetTargetAssigner(object):
+  """Wrapper to compute target tensors for the temporal offset task.
+
+  This class has methods that take as input a batch of ground truth tensors
+  (in the form of a list) and returns the targets required to train the
+  temporal offset task.
+  """
+
+  def __init__(self, stride):
+    """Initializes the target assigner.
+
+    Args:
+      stride: int, the stride of the network in output pixels.
+    """
+
+    self._stride = stride
+
+  def assign_temporal_offset_targets(self,
+                                     height,
+                                     width,
+                                     gt_boxes_list,
+                                     gt_offsets_list,
+                                     gt_match_list,
+                                     gt_weights_list=None):
+    """Returns the temporal offset targets and their indices.
+
+    For each ground truth box, this function assigns it the corresponding
+    temporal offset to train the model.
+
+    Args:
+      height: int, height of input to the model. This is used to determine the
+        height of the output.
+      width: int, width of the input to the model. This is used to determine the
+        width of the output.
+      gt_boxes_list: A list of float tensors with shape [num_boxes, 4]
+        representing the groundtruth detection bounding boxes for each sample in
+        the batch. The coordinates are expected in normalized coordinates.
+      gt_offsets_list: A list of 2-D tf.float32 tensors of shape [num_boxes, 2]
+        containing the spatial offsets of objects' centers compared with the
+        previous frame.
+      gt_match_list: A list of 1-D tf.float32 tensors of shape [num_boxes]
+        containing flags that indicate if an object has existed in the
+        previous frame.
+      gt_weights_list: A list of tensors with shape [num_boxes] corresponding to
+        the weight of each groundtruth detection box.
+
+    Returns:
+      batch_indices: an integer tensor of shape [num_boxes, 3] holding the
+        indices inside the predicted tensor which should be penalized. The
+        first column indicates the index along the batch dimension and the
+        second and third columns indicate the index along the y and x
+        dimensions respectively.
+      batch_temporal_offsets: a float tensor of shape [num_boxes, 2] of the
+        expected y and x temporal offset of each object center in the
+        output space.
+      batch_weights: a float tensor of shape [num_boxes] indicating the
+        weight of each prediction.
+    """
+
+    if gt_weights_list is None:
+      gt_weights_list = [None] * len(gt_boxes_list)
+
+    batch_indices = []
+    batch_weights = []
+    batch_temporal_offsets = []
+
+    for i, (boxes, offsets, match_flags, weights) in enumerate(zip(
+        gt_boxes_list, gt_offsets_list, gt_match_list, gt_weights_list)):
+      boxes = box_list.BoxList(boxes)
+      boxes = box_list_ops.to_absolute_coordinates(
+          boxes,
+          tf.maximum(height // self._stride, 1),
+          tf.maximum(width // self._stride, 1))
+      # Get the box center coordinates. Each returned tensors have the shape of
+      # [num_boxes]
+      (y_center, x_center, _, _) = boxes.get_center_coordinates_and_sizes()
+      num_boxes = tf.shape(x_center)
+
+      # Compute the offsets and indices of the box centers. Shape:
+      #   offsets: [num_boxes, 2]
+      #   indices: [num_boxes, 2]
+      (_, indices) = ta_utils.compute_floor_offsets_with_indices(
+          y_source=y_center, x_source=x_center)
+
+      # Assign ones if weights are not provided.
+      # if an object is not matched, its weight becomes zero.
+      if weights is None:
+        weights = tf.ones(num_boxes, dtype=tf.float32)
+      weights *= match_flags
+
+      # Shape of [num_boxes, 1] integer tensor filled with current batch index.
+      batch_index = i * tf.ones_like(indices[:, 0:1], dtype=tf.int32)
+      batch_indices.append(tf.concat([batch_index, indices], axis=1))
+      batch_weights.append(weights)
+      batch_temporal_offsets.append(offsets)
+
+    batch_indices = tf.concat(batch_indices, axis=0)
+    batch_weights = tf.concat(batch_weights, axis=0)
+    batch_temporal_offsets = tf.concat(batch_temporal_offsets, axis=0)
+    return (batch_indices, batch_temporal_offsets, batch_weights)
+
+
+class DETRTargetAssigner(object):
+  """Target assigner for DETR (https://arxiv.org/abs/2005.12872).
+
+  Detection Transformer (DETR) matches predicted boxes to groundtruth directly
+  to determine targets instead of matching anchors to groundtruth. Hence, the
+  new target assigner.
+  """
+
+  def __init__(self):
+    """Construct Object Detection Target Assigner."""
+    self._similarity_calc = sim_calc.DETRSimilarity()
+    self._matcher = hungarian_matcher.HungarianBipartiteMatcher()
+
+  def batch_assign(self,
+                   pred_box_batch,
+                   gt_box_batch,
+                   pred_class_batch,
+                   gt_class_targets_batch,
+                   gt_weights_batch=None,
+                   unmatched_class_label_batch=None):
+    """Batched assignment of classification and regression targets.
+
+    Args:
+      pred_box_batch: a tensor of shape [batch_size, num_queries, 4]
+        representing predicted bounding boxes.
+      gt_box_batch: a tensor of shape [batch_size, num_queries, 4]
+        representing groundtruth bounding boxes.
+      pred_class_batch: A list of tensors with length batch_size, where each
+        each tensor has shape [num_queries, num_classes] to be used
+        by certain similarity calculators.
+      gt_class_targets_batch: a list of tensors with length batch_size, where
+        each tensor has shape [num_gt_boxes_i, num_classes] and
+        num_gt_boxes_i is the number of boxes in the ith boxlist of
+        gt_box_batch.
+      gt_weights_batch: A list of 1-D tf.float32 tensors of shape
+        [num_boxes] containing weights for groundtruth boxes.
+      unmatched_class_label_batch: a float32 tensor with shape
+        [d_1, d_2, ..., d_k] which is consistent with the classification target
+        for each anchor (and can be empty for scalar targets).  This shape must
+        thus be compatible with the `gt_class_targets_batch`.
+
+    Returns:
+      batch_cls_targets: a tensor with shape [batch_size, num_pred_boxes,
+        num_classes],
+      batch_cls_weights: a tensor with shape [batch_size, num_pred_boxes,
+        num_classes],
+      batch_reg_targets: a tensor with shape [batch_size, num_pred_boxes,
+        box_code_dimension]
+      batch_reg_weights: a tensor with shape [batch_size, num_pred_boxes].
+    """
+    pred_box_batch = [
+        box_list.BoxList(pred_box)
+        for pred_box in tf.unstack(pred_box_batch)]
+    gt_box_batch = [
+        box_list.BoxList(gt_box)
+        for gt_box in tf.unstack(gt_box_batch)]
+
+    cls_targets_list = []
+    cls_weights_list = []
+    reg_targets_list = []
+    reg_weights_list = []
+    if gt_weights_batch is None:
+      gt_weights_batch = [None] * len(gt_class_targets_batch)
+    if unmatched_class_label_batch is None:
+      unmatched_class_label_batch = [None] * len(gt_class_targets_batch)
+    pred_class_batch = tf.unstack(pred_class_batch)
+    for (pred_boxes, gt_boxes, pred_class_batch, gt_class_targets, gt_weights,
+         unmatched_class_label) in zip(pred_box_batch, gt_box_batch,
+                                       pred_class_batch, gt_class_targets_batch,
+                                       gt_weights_batch,
+                                       unmatched_class_label_batch):
+      (cls_targets, cls_weights, reg_targets,
+       reg_weights) = self.assign(pred_boxes, gt_boxes, pred_class_batch,
+                                  gt_class_targets, gt_weights,
+                                  unmatched_class_label)
+      cls_targets_list.append(cls_targets)
+      cls_weights_list.append(cls_weights)
+      reg_targets_list.append(reg_targets)
+      reg_weights_list.append(reg_weights)
+    batch_cls_targets = tf.stack(cls_targets_list)
+    batch_cls_weights = tf.stack(cls_weights_list)
+    batch_reg_targets = tf.stack(reg_targets_list)
+    batch_reg_weights = tf.stack(reg_weights_list)
+    return (batch_cls_targets, batch_cls_weights, batch_reg_targets,
+            batch_reg_weights)
+
+  def assign(self,
+             pred_boxes,
+             gt_boxes,
+             pred_classes,
+             gt_labels,
+             gt_weights=None,
+             unmatched_class_label=None):
+    """Assign classification and regression targets to each box_pred.
+
+    For a given set of pred_boxes and groundtruth detections, match pred_boxes
+    to gt_boxes and assign classification and regression targets to
+    each box_pred as well as weights based on the resulting match (specifying,
+    e.g., which pred_boxes should not contribute to training loss).
+
+    pred_boxes that are not matched to anything are given a classification
+    target of `unmatched_cls_target`.
+
+    Args:
+      pred_boxes: a BoxList representing N pred_boxes
+      gt_boxes: a BoxList representing M groundtruth boxes
+      pred_classes: A tensor with shape [max_num_boxes, num_classes]
+        to be used by certain similarity calculators.
+      gt_labels:  a tensor of shape [M, num_classes]
+        with labels for each of the ground_truth boxes. The subshape
+        [num_classes] can be empty (corresponding to scalar inputs).  When set
+        to None, gt_labels assumes a binary problem where all
+        ground_truth boxes get a positive label (of 1).
+      gt_weights: a float tensor of shape [M] indicating the weight to
+        assign to all pred_boxes match to a particular groundtruth box. The
+        weights must be in [0., 1.]. If None, all weights are set to 1.
+        Generally no groundtruth boxes with zero weight match to any pred_boxes
+        as matchers are aware of groundtruth weights. Additionally,
+        `cls_weights` and `reg_weights` are calculated using groundtruth
+        weights as an added safety.
+      unmatched_class_label: a float32 tensor with shape [d_1, d_2, ..., d_k]
+        which is consistent with the classification target for each
+        anchor (and can be empty for scalar targets).  This shape must thus be
+        compatible with the groundtruth labels that are passed to the "assign"
+        function (which have shape [num_gt_boxes, d_1, d_2, ..., d_k]).
+
+    Returns:
+      cls_targets: a float32 tensor with shape [num_pred_boxes, num_classes],
+        where the subshape [num_classes] is compatible with gt_labels
+        which has shape [num_gt_boxes, num_classes].
+      cls_weights: a float32 tensor with shape [num_pred_boxes, num_classes],
+        representing weights for each element in cls_targets.
+      reg_targets: a float32 tensor with shape [num_pred_boxes,
+        box_code_dimension]
+      reg_weights: a float32 tensor with shape [num_pred_boxes]
+
+    """
+    if not unmatched_class_label:
+      unmatched_class_label = tf.constant(
+          [1] + [0] * (gt_labels.shape[1] - 1), tf.float32)
+
+    if gt_weights is None:
+      num_gt_boxes = gt_boxes.num_boxes_static()
+      if not num_gt_boxes:
+        num_gt_boxes = gt_boxes.num_boxes()
+      gt_weights = tf.ones([num_gt_boxes], dtype=tf.float32)
+
+    gt_boxes.add_field(fields.BoxListFields.classes, gt_labels)
+    pred_boxes.add_field(fields.BoxListFields.classes, pred_classes)
+
+    match_quality_matrix = self._similarity_calc.compare(
+        gt_boxes,
+        pred_boxes)
+    match = self._matcher.match(match_quality_matrix,
+                                valid_rows=tf.greater(gt_weights, 0))
+
+    matched_gt_boxes = match.gather_based_on_match(
+        gt_boxes.get(),
+        unmatched_value=tf.zeros(4),
+        ignored_value=tf.zeros(4))
+    matched_gt_boxlist = box_list.BoxList(matched_gt_boxes)
+    ty, tx, th, tw = matched_gt_boxlist.get_center_coordinates_and_sizes()
+    reg_targets = tf.transpose(tf.stack([ty, tx, th, tw]))
+    cls_targets = match.gather_based_on_match(
+        gt_labels,
+        unmatched_value=unmatched_class_label,
+        ignored_value=unmatched_class_label)
+    reg_weights = match.gather_based_on_match(
+        gt_weights,
+        ignored_value=0.,
+        unmatched_value=0.)
+    cls_weights = match.gather_based_on_match(
+        gt_weights,
+        ignored_value=0.,
+        unmatched_value=1)
+
+    # convert cls_weights from per-box_pred to per-class.
+    class_label_shape = tf.shape(cls_targets)[1:]
+    weights_multiple = tf.concat(
+        [tf.constant([1]), class_label_shape],
+        axis=0)
+    cls_weights = tf.expand_dims(cls_weights, -1)
+    cls_weights = tf.tile(cls_weights, weights_multiple)
+
+    return (cls_targets, cls_weights, reg_targets, reg_weights)

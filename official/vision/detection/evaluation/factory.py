@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Evaluator factory."""
 
 from __future__ import absolute_import
@@ -29,6 +29,18 @@ def evaluator_generator(params):
   elif params.type == 'box_and_mask':
     evaluator = coco_evaluator.COCOEvaluator(
         annotation_file=params.val_json_file, include_mask=True)
+  elif params.type == 'oln_xclass_box':
+    evaluator = coco_evaluator.OlnXclassEvaluator(
+        annotation_file=params.val_json_file, include_mask=False,
+        use_category=False, seen_class=params.seen_class,)
+  elif params.type == 'oln_xclass_box_and_mask':
+    evaluator = coco_evaluator.OlnXclassEvaluator(
+        annotation_file=params.val_json_file, include_mask=True,
+        use_category=False, seen_class=params.seen_class,)
+  elif params.type == 'oln_xdata_box':
+    evaluator = coco_evaluator.OlnXdataEvaluator(
+        annotation_file=params.val_json_file, include_mask=False,
+        use_category=False, seen_class='all',)
   elif params.type == 'shapemask_box_and_mask':
     evaluator = coco_evaluator.ShapeMaskCOCOEvaluator(
         mask_eval_class=params.mask_eval_class,

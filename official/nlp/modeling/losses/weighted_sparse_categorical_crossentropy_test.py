@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,13 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for masked LM loss."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import numpy as np
 
 import tensorflow as tf
@@ -39,7 +34,7 @@ class ClassificationLossTest(keras_parameterized.TestCase):
                       output="predictions"):
     # First, create a transformer stack that we can use to get the LM's
     # vocabulary weight.
-    xformer_stack = networks.TransformerEncoder(
+    xformer_stack = networks.BertEncoder(
         vocab_size=vocab_size,
         num_layers=1,
         sequence_length=sequence_length,
@@ -203,6 +198,7 @@ class ClassificationLossTest(keras_parameterized.TestCase):
         from_logits=True)
     expected_loss_data = 6.4222
     self.assertAllClose(expected_loss_data, loss_data, rtol=1e-3)
+
 
 if __name__ == "__main__":
   tf.test.main()

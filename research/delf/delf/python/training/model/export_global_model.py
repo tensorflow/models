@@ -15,7 +15,7 @@
 # ==============================================================================
 """Export global feature tensorflow inference model.
 
-This model includes image pyramids for multi-scale processing.
+The exported model may leverage image pyramids for multi-scale processing.
 """
 
 from __future__ import absolute_import
@@ -29,6 +29,7 @@ from absl import flags
 import tensorflow as tf
 
 from delf.python.training.model import delf_model
+from delf.python.training.model import delg_model
 from delf.python.training.model import export_model_utils
 
 FLAGS = flags.FLAGS
@@ -50,6 +51,16 @@ flags.DEFINE_enum(
     "'global_descriptor'.")
 flags.DEFINE_boolean('normalize_global_descriptor', False,
                      'If True, L2-normalizes global descriptor.')
+flags.DEFINE_boolean('delg_global_features', False,
+                     'Whether the model uses a DELG-like global feature head.')
+flags.DEFINE_float(
+    'delg_gem_power', 3.0,
+    'Power for Generalized Mean pooling. Used only if --delg_global_features'
+    'is present.')
+flags.DEFINE_integer(
+    'delg_embedding_layer_dim', 2048,
+    'Size of the FC whitening layer (embedding layer). Used only if'
+    '--delg_global_features is present.')
 
 
 class _ExtractModule(tf.Module):
@@ -58,7 +69,10 @@ class _ExtractModule(tf.Module):
   def __init__(self,
                multi_scale_pool_type='None',
                normalize_global_descriptor=False,
-               input_scales_tensor=None):
+               input_scales_tensor=None,
+               delg_global_features=False,
+               delg_gem_power=3.0,
+               delg_embedding_layer_dim=2048):
     """Initialization of global feature model.
 
     Args:
@@ -69,6 +83,12 @@ class _ExtractModule(tf.Module):
         the exported model. If not None, the specified 1D tensor of floats will
         be hard-coded as the desired input scales, in conjunction with
         ExtractFeaturesFixedScales.
+      delg_global_features: Whether the model uses a DELG-like global feature
+        head.
+      delg_gem_power: Power for Generalized Mean pooling in the DELG model. Used
+        only if 'delg_global_features' is True.
+      delg_embedding_layer_dim: Size of the FC whitening layer (embedding
+        layer). Used only if 'delg_global_features' is True.
     """
     self._multi_scale_pool_type = multi_scale_pool_type
     self._normalize_global_descriptor = normalize_global_descriptor
@@ -78,7 +98,14 @@ class _ExtractModule(tf.Module):
       self._input_scales_tensor = input_scales_tensor
 
     # Setup the DELF model for extraction.
-    self._model = delf_model.Delf(block3_strides=False, name='DELF')
+    if delg_global_features:
+      self._model = delg_model.Delg(
+          block3_strides=False,
+          name='DELG',
+          gem_power=delg_gem_power,
+          embedding_layer_dim=delg_embedding_layer_dim)
+    else:
+      self._model = delf_model.Delf(block3_strides=False, name='DELF')
 
   def LoadWeights(self, checkpoint_path):
     self._model.load_weights(checkpoint_path)
@@ -134,7 +161,8 @@ def main(argv):
         name='input_scales')
   module = _ExtractModule(FLAGS.multi_scale_pool_type,
                           FLAGS.normalize_global_descriptor,
-                          input_scales_tensor)
+                          input_scales_tensor, FLAGS.delg_global_features,
+                          FLAGS.delg_gem_power, FLAGS.delg_embedding_layer_dim)
 
   # Load the weights.
   checkpoint_path = FLAGS.ckpt_path

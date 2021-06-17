@@ -20,5 +20,4 @@ from __future__ import print_function
 # pylint: disable=unused-import
 from delf.python.detect_to_retrieve import aggregation_extraction
 from delf.python.detect_to_retrieve import boxes_and_features_extraction
-from delf.python.detect_to_retrieve import dataset
 # pylint: enable=unused-import

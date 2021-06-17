@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Central location for NCF specific values."""
 
 import sys
@@ -65,7 +65,7 @@ CACHE_INVALIDATION_SEC = 3600 * 24
 # == Data Generation ===========================================================
 # ==============================================================================
 CYCLES_TO_BUFFER = 3  # The number of train cycles worth of data to "run ahead"
-                      # of the main training loop.
+# of the main training loop.
 
 # Number of batches to run per epoch when using synthetic data. At high batch
 # sizes, we run for more batches than with real data, which is good since

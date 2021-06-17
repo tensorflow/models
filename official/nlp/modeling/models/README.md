@@ -1,9 +1,9 @@
 # Models
 
-Models are combinations of layers and networks that would be trained.
+Models are combinations of `tf.keras` layers and models that can be trained.
 
-Several pre-built canned models are provided to train encoder networks. These
-models are intended as both convenience functions and canonical examples.
+Several pre-built canned models are provided to train encoder networks.
+These models are intended as both convenience functions and canonical examples.
 
 * [`BertClassifier`](bert_classifier.py) implements a simple classification
 model containing a single classification head using the Classification network.
@@ -20,3 +20,6 @@ index and an end token index), suitable for SQuAD-style tasks.
 * [`BertPretrainer`](bert_pretrainer.py) implements a masked LM and a
 classification head using the Masked LM and Classification networks,
 respectively.
+
+* [`DualEncoder`](dual_encoder.py) implements a dual encoder model, suitbale for
+retrieval tasks.

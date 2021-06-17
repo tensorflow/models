@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Examples of SavedModel export for tf-serving."""
 
 from absl import app
@@ -22,11 +21,11 @@ import tensorflow as tf
 from official.nlp.bert import bert_models
 from official.nlp.bert import configs
 
-flags.DEFINE_integer("sequence_length", None,
-                     "Sequence length to parse the tf.Example. If "
-                     "sequence_length > 0, add a signature for serialized "
-                     "tf.Example and define the parsing specification by the "
-                     "sequence_length.")
+flags.DEFINE_integer(
+    "sequence_length", None, "Sequence length to parse the tf.Example. If "
+    "sequence_length > 0, add a signature for serialized "
+    "tf.Example and define the parsing specification by the "
+    "sequence_length.")
 flags.DEFINE_string("bert_config_file", None,
                     "Bert configuration file to define core bert layers.")
 flags.DEFINE_string("model_checkpoint_path", None,

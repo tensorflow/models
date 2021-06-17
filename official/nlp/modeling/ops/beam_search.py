@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Beam search to find the translated sequence with the highest probability."""
 
 import numpy as np
@@ -188,8 +188,8 @@ class SequenceBeamSearch(tf.Module):
             tf.slice(alive_seq, [0, 0, i], [batch_size, self.beam_size, 1]),
             [batch_size * self.beam_size, -1])
       else:
-        flat_ids = _flatten_beam_dim(alive_seq)  # [batch_size * beam_size]
-      flat_cache = tf.nest.map_structure(_flatten_beam_dim, alive_cache)
+        flat_ids = flatten_beam_dim(alive_seq)  # [batch_size * beam_size]
+      flat_cache = tf.nest.map_structure(flatten_beam_dim, alive_cache)
 
       flat_logits, flat_cache = self.symbols_to_logits_fn(
           flat_ids, i, flat_cache)
@@ -218,9 +218,9 @@ class SequenceBeamSearch(tf.Module):
       # Extract the alive sequences that generate the highest log probabilities
       # after being extended.
       topk_beam_indices = topk_indices // self.vocab_size
-      topk_seq, new_cache = _gather_beams([alive_seq, new_cache],
-                                          topk_beam_indices, batch_size,
-                                          beams_to_keep)
+      topk_seq, new_cache = self._gather_beams([alive_seq, new_cache],
+                                               topk_beam_indices, batch_size,
+                                               beams_to_keep)
 
       # Append the most probable IDs to the topk sequences
       topk_ids = topk_indices % self.vocab_size
@@ -259,9 +259,10 @@ class SequenceBeamSearch(tf.Module):
       new_log_probs += tf.cast(new_finished_flags,
                                self.dtype) * -inf(self.dtype)
 
-      top_alive_seq, top_alive_log_probs, top_alive_cache = _gather_topk_beams(
-          [new_seq, new_log_probs, new_cache], new_log_probs, batch_size,
-          self.beam_size)
+      _, topk_indexes = tf.nn.top_k(new_log_probs, k=self.beam_size)
+      top_alive_seq, top_alive_log_probs, top_alive_cache = (
+          self._gather_beams([new_seq, new_log_probs, new_cache],
+                             topk_indexes, batch_size, self.beam_size))
 
       return {
           _StateKeys.ALIVE_SEQ: top_alive_seq,
@@ -316,9 +317,10 @@ class SequenceBeamSearch(tf.Module):
       finished_flags = tf.concat([finished_flags, new_finished_flags], axis=1)
 
       # Return the finished sequences with the best scores.
+      _, topk_indexes = tf.nn.top_k(finished_scores, k=self.beam_size)
       top_finished_seq, top_finished_scores, top_finished_flags = (
-          _gather_topk_beams([finished_seq, finished_scores, finished_flags],
-                             finished_scores, batch_size, self.beam_size))
+          self._gather_beams([finished_seq, finished_scores, finished_flags],
+                             topk_indexes, batch_size, self.beam_size))
 
       return {
           _StateKeys.FINISHED_SEQ: top_finished_seq,
@@ -398,13 +400,13 @@ class SequenceBeamSearch(tf.Module):
           raise TypeError(
               "initial_cache element for key '%s' has dtype %s that does not "
               "match SequenceBeamSearch's dtype of %s. Value: %s" %
-              (key, value.dtype.name, self.dtype.name, inner_value))
+              (key, inner_value.dtype.name, self.dtype.name, inner_value))
 
     # Current loop index (starts at 0)
     cur_index = tf.constant(0)
 
     # Create alive sequence with shape [batch_size, beam_size, 1]
-    alive_seq = _expand_to_beam_size(initial_ids, self.beam_size)
+    alive_seq = expand_to_beam_size(initial_ids, self.beam_size)
     alive_seq = tf.expand_dims(alive_seq, axis=2)
     if self.padded_decode:
       alive_seq = tf.tile(alive_seq, [1, 1, self.max_decode_length + 1])
@@ -419,7 +421,7 @@ class SequenceBeamSearch(tf.Module):
     # Expand all values stored in the dictionary to the beam size, so that each
     # beam has a separate cache.
     alive_cache = tf.nest.map_structure(
-        lambda t: _expand_to_beam_size(t, self.beam_size), initial_cache)
+        lambda t: expand_to_beam_size(t, self.beam_size), initial_cache)
 
     # Initialize tensor storing finished sequences with filler values.
     finished_seq = tf.zeros(tf.shape(alive_seq), tf.int32)
@@ -457,7 +459,8 @@ class SequenceBeamSearch(tf.Module):
           _StateKeys.ALIVE_LOG_PROBS:
               tf.TensorShape([batch_size, self.beam_size]),
           _StateKeys.ALIVE_CACHE:
-              tf.nest.map_structure(_get_shape, alive_cache),
+              tf.nest.map_structure(lambda state: state.get_shape(),
+                                    alive_cache),
           _StateKeys.FINISHED_SEQ:
               tf.TensorShape(
                   [batch_size, self.beam_size, self.max_decode_length + 1]),
@@ -513,7 +516,11 @@ class SequenceBeamSearch(tf.Module):
     max_length_norm = _length_normalization(
         self.alpha, self.max_decode_length, dtype=self.dtype)
     # Get the best possible scores from alive sequences.
-    best_alive_scores = alive_log_probs[:, 0] / max_length_norm
+    # This tf.slice/tf.squeeze is equivalent to alive_log_probs[:, 0] which
+    # emits a tf.strided_slice. tf.slice is easier to reason about as we aren't
+    # actually taking a non trivial stride.
+    best_alive_scores = tf.squeeze(tf.slice(alive_log_probs, [0, 0], [-1, 1]),
+                                   axis=1) / max_length_norm
 
     # Compute worst score in finished sequences for each batch element
     finished_scores *= tf.cast(finished_flags,
@@ -532,6 +539,43 @@ class SequenceBeamSearch(tf.Module):
     return tf.logical_and(
         not_at_max_decode_length,
         tf.logical_not(worst_finished_score_better_than_best_alive_score))
+
+  @staticmethod
+  def _gather_beams(nested, beam_indices, batch_size, new_beam_size):
+    """Gather beams from nested structure of tensors.
+
+    Each tensor in nested represents a batch of beams, where beam refers to a
+    single search state (beam search involves searching through multiple states
+    in parallel).
+
+    This function is used to gather the top beams, specified by
+    beam_indices, from the nested tensors.
+
+    Args:
+      nested: Nested structure (tensor, list, tuple or dict) containing tensors
+        with shape [batch_size, beam_size, ...].
+      beam_indices: int32 tensor with shape [batch_size, new_beam_size]. Each
+        value in beam_indices must be between [0, beam_size), and are not
+        necessarily unique.
+      batch_size: int size of batch
+      new_beam_size: int number of beams to be pulled from the nested tensors.
+
+    Returns:
+      Nested structure containing tensors with shape
+        [batch_size, new_beam_size, ...]
+    """
+    # Computes the i'th coodinate that contains the batch index for gather_nd.
+    # Batch pos is a tensor like [[0,0,0,0,],[1,1,1,1],..].
+    batch_pos = tf.range(batch_size * new_beam_size) // new_beam_size
+    batch_pos = tf.reshape(batch_pos, [batch_size, new_beam_size])
+
+    # Create coordinates to be passed to tf.gather_nd. Stacking creates a tensor
+    # with shape [batch_size, beam_size, 2], where the last dimension contains
+    # the (i, j) gathering coordinates.
+    coordinates = tf.stack([batch_pos, beam_indices], axis=2)
+
+    return tf.nest.map_structure(lambda state: tf.gather_nd(state, coordinates),
+                                 nested)
 
 
 def sequence_beam_search(symbols_to_logits_fn,
@@ -587,7 +631,7 @@ def _length_normalization(alpha, length, dtype=tf.float32):
   return tf.pow(((5. + tf.cast(length, dtype)) / 6.), alpha)
 
 
-def _expand_to_beam_size(tensor, beam_size):
+def expand_to_beam_size(tensor, beam_size):
   """Tiles a given tensor by beam_size.
 
   Args:
@@ -602,6 +646,21 @@ def _expand_to_beam_size(tensor, beam_size):
   tile_dims[1] = beam_size
 
   return tf.tile(tensor, tile_dims)
+
+
+def flatten_beam_dim(tensor):
+  """Reshapes first two dimensions into a single dimension.
+
+  Args:
+    tensor: Tensor to reshape of shape [A, B, ...]
+
+  Returns:
+    Reshaped tensor of shape [A*B, ...]
+  """
+  shape = _shape_list(tensor)
+  shape[0] *= shape[1]
+  shape.pop(1)  # Remove beam dim
+  return tf.reshape(tensor, shape)
 
 
 def _shape_list(tensor):
@@ -629,26 +688,6 @@ def _get_shape_keep_last_dim(tensor):
   return tf.TensorShape(shape_list)
 
 
-def _get_shape(tensor):
-  """Return the shape of the input tensor."""
-  return tf.TensorShape(_shape_list(tensor))
-
-
-def _flatten_beam_dim(tensor):
-  """Reshapes first two dimensions in to single dimension.
-
-  Args:
-    tensor: Tensor to reshape of shape [A, B, ...]
-
-  Returns:
-    Reshaped tensor of shape [A*B, ...]
-  """
-  shape = _shape_list(tensor)
-  shape[0] *= shape[1]
-  shape.pop(1)  # Remove beam dim
-  return tf.reshape(tensor, shape)
-
-
 def _unflatten_beam_dim(tensor, batch_size, beam_size):
   """Reshapes first dimension back to [batch_size, beam_size].
 
@@ -663,46 +702,3 @@ def _unflatten_beam_dim(tensor, batch_size, beam_size):
   shape = _shape_list(tensor)
   new_shape = [batch_size, beam_size] + shape[1:]
   return tf.reshape(tensor, new_shape)
-
-
-def _gather_beams(nested, beam_indices, batch_size, new_beam_size):
-  """Gather beams from nested structure of tensors.
-
-  Each tensor in nested represents a batch of beams, where beam refers to a
-  single search state (beam search involves searching through multiple states
-  in parallel).
-
-  This function is used to gather the top beams, specified by
-  beam_indices, from the nested tensors.
-
-  Args:
-    nested: Nested structure (tensor, list, tuple or dict) containing tensors
-      with shape [batch_size, beam_size, ...].
-    beam_indices: int32 tensor with shape [batch_size, new_beam_size]. Each
-      value in beam_indices must be between [0, beam_size), and are not
-      necessarily unique.
-    batch_size: int size of batch
-    new_beam_size: int number of beams to be pulled from the nested tensors.
-
-  Returns:
-    Nested structure containing tensors with shape
-      [batch_size, new_beam_size, ...]
-  """
-  # Computes the i'th coodinate that contains the batch index for gather_nd.
-  # Batch pos is a tensor like [[0,0,0,0,],[1,1,1,1],..].
-  batch_pos = tf.range(batch_size * new_beam_size) // new_beam_size
-  batch_pos = tf.reshape(batch_pos, [batch_size, new_beam_size])
-
-  # Create coordinates to be passed to tf.gather_nd. Stacking creates a tensor
-  # with shape [batch_size, beam_size, 2], where the last dimension contains
-  # the (i, j) gathering coordinates.
-  coordinates = tf.stack([batch_pos, beam_indices], axis=2)
-
-  return tf.nest.map_structure(lambda state: tf.gather_nd(state, coordinates),
-                               nested)
-
-
-def _gather_topk_beams(nested, score_or_log_prob, batch_size, beam_size):
-  """Gather top beams from nested structure."""
-  _, topk_indexes = tf.nn.top_k(score_or_log_prob, k=beam_size)
-  return _gather_beams(nested, topk_indexes, batch_size, beam_size)

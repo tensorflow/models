@@ -87,28 +87,21 @@ class DelfTest(tf.test.TestCase, parameterized.TestCase):
       return tf.nn.compute_average_loss(
           per_example_loss, global_batch_size=batch_size)
 
-    with tf.GradientTape() as desc_tape:
-      blocks = {}
-      desc_prelogits = model.backbone(
-          images, intermediates_dict=blocks, training=False)
-      desc_logits = model.desc_classification(desc_prelogits)
+    with tf.GradientTape() as gradient_tape:
+      (desc_prelogits, attn_prelogits, _, _, _,
+       _) = model.global_and_local_forward_pass(images)
+      # Calculate global loss by applying the descriptor classifier.
       desc_logits = model.desc_classification(desc_prelogits)
       desc_loss = compute_loss(labels, desc_logits)
-
-    gradients = desc_tape.gradient(desc_loss, model.desc_trainable_weights)
-    clipped, _ = tf.clip_by_global_norm(gradients, clip_norm=clip_val)
-    optimizer.apply_gradients(zip(clipped, model.desc_trainable_weights))
-
-    with tf.GradientTape() as attn_tape:
-      block3 = blocks['block3']
-      block3 = tf.stop_gradient(block3)
-      attn_prelogits, _, _ = model.attention(block3, training=True)
+      # Calculate attention loss by applying the attention block classifier.
       attn_logits = model.attn_classification(attn_prelogits)
       attn_loss = compute_loss(labels, attn_logits)
-
-    gradients = attn_tape.gradient(attn_loss, model.attn_trainable_weights)
+      # Cumulate global loss and attention loss and backpropagate through the
+      # descriptor layer and attention layer together.
+      total_loss = desc_loss + attn_loss
+    gradients = gradient_tape.gradient(total_loss, model.trainable_weights)
     clipped, _ = tf.clip_by_global_norm(gradients, clip_norm=clip_val)
-    optimizer.apply_gradients(zip(clipped, model.attn_trainable_weights))
+    optimizer.apply_gradients(zip(clipped, model.trainable_weights))
 
 
 if __name__ == '__main__':

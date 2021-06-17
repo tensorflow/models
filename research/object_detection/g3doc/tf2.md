@@ -35,7 +35,7 @@ cd models/research
 protoc object_detection/protos/*.proto --python_out=.
 # Install TensorFlow Object Detection API.
 cp object_detection/packages/tf2/setup.py .
-python -m pip install .
+python -m pip install --use-feature=2020-resolver .
 ```
 
 ```bash
@@ -54,6 +54,9 @@ python object_detection/builders/model_builder_tf2_test.py
 
 *   Inference -
     [Run inference with models from the zoo](../colab_tutorials/inference_tf2_colab.ipynb)
+
+*   Few Shot Learning for Mobile Inference -
+    [Fine-tune a pre-trained detector for use with TensorFlow Lite](../colab_tutorials/eager_few_shot_od_training_tflite.ipynb)
 
 <!-- mdlint on -->
 

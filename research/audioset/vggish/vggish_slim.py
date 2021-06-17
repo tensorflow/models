@@ -31,28 +31,31 @@ https://github.com/tensorflow/models/blob/master/research/slim/nets/vgg.py
 """
 
 import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
 import tf_slim as slim
 
 import vggish_params as params
 
 
-def define_vggish_slim(training=False):
+def define_vggish_slim(features_tensor=None, training=False):
   """Defines the VGGish TensorFlow model.
 
   All ops are created in the current default graph, under the scope 'vggish/'.
 
-  The input is a placeholder named 'vggish/input_features' of type float32 and
-  shape [batch_size, num_frames, num_bands] where batch_size is variable and
-  num_frames and num_bands are constants, and [num_frames, num_bands] represents
-  a log-mel-scale spectrogram patch covering num_bands frequency bands and
-  num_frames time frames (where each frame step is usually 10ms). This is
-  produced by computing the stabilized log(mel-spectrogram + params.LOG_OFFSET).
-  The output is an op named 'vggish/embedding' which produces the activations of
-  a 128-D embedding layer, which is usually the penultimate layer when used as
-  part of a full model with a final classifier layer.
+  The input is either a tensor passed in via the optional 'features_tensor'
+  argument or a placeholder created below named 'vggish/input_features'. The
+  input is expected to have dtype float32 and shape [batch_size, num_frames,
+  num_bands] where batch_size is variable and num_frames and num_bands are
+  constants, and [num_frames, num_bands] represents a log-mel-scale spectrogram
+  patch covering num_bands frequency bands and num_frames time frames (where
+  each frame step is usually 10ms). This is produced by computing the stabilized
+  log(mel-spectrogram + params.LOG_OFFSET).  The output is a tensor named
+  'vggish/embedding' which produces the pre-activation values of a 128-D
+  embedding layer, which is usually the penultimate layer when used as part of a
+  full model with a final classifier layer.
 
   Args:
+    features_tensor: If not None, the tensor containing the input features.
+      If None, a placeholder input is created.
     training: If true, all parameters are marked trainable.
 
   Returns:
@@ -76,11 +79,13 @@ def define_vggish_slim(training=False):
                       kernel_size=[2, 2], stride=2, padding='SAME'), \
        tf.variable_scope('vggish'):
     # Input: a batch of 2-D log-mel-spectrogram patches.
-    features = tf.placeholder(
-        tf.float32, shape=(None, params.NUM_FRAMES, params.NUM_BANDS),
-        name='input_features')
+    if features_tensor is None:
+      features_tensor = tf.placeholder(
+          tf.float32, shape=(None, params.NUM_FRAMES, params.NUM_BANDS),
+          name='input_features')
     # Reshape to 4-D so that we can convolve a batch with conv2d().
-    net = tf.reshape(features, [-1, params.NUM_FRAMES, params.NUM_BANDS, 1])
+    net = tf.reshape(features_tensor,
+                     [-1, params.NUM_FRAMES, params.NUM_BANDS, 1])
 
     # The VGG stack of alternating convolutions and max-pools.
     net = slim.conv2d(net, 64, scope='conv1')
@@ -96,7 +101,8 @@ def define_vggish_slim(training=False):
     net = slim.flatten(net)
     net = slim.repeat(net, 2, slim.fully_connected, 4096, scope='fc1')
     # The embedding layer.
-    net = slim.fully_connected(net, params.EMBEDDING_SIZE, scope='fc2')
+    net = slim.fully_connected(net, params.EMBEDDING_SIZE, scope='fc2',
+                               activation_fn=None)
     return tf.identity(net, name='embedding')
 
 

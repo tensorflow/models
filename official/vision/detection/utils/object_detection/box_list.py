@@ -1,4 +1,4 @@
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
 
 """Bounding Box List definition.
 
@@ -126,8 +125,8 @@ class BoxList(object):
     it returns the box coordinates.
 
     Args:
-      field: this optional string parameter can be used to specify
-        a related field to be accessed.
+      field: this optional string parameter can be used to specify a related
+        field to be accessed.
 
     Returns:
       a tensor representing the box collection or an associated field.
@@ -192,8 +191,8 @@ class BoxList(object):
     """Retrieves specified fields as a dictionary of tensors.
 
     Args:
-      fields: (optional) list of fields to return in the dictionary.
-        If None (default), all fields are returned.
+      fields: (optional) list of fields to return in the dictionary. If None
+        (default), all fields are returned.
 
     Returns:
       tensor_dict: A dictionary of tensors specified by fields.

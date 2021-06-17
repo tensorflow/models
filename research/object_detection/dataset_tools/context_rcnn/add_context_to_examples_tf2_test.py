@@ -98,7 +98,8 @@ class GenerateContextDataTest(tf.test.TestCase):
             six.ensure_binary(str(datetime.datetime(2020, 1, 1, 1, 0, 0)))),
         'image/embedding': FloatListFeature([0.1, 0.2, 0.3]),
         'image/embedding_score': FloatListFeature([0.9]),
-        'image/embedding_length': Int64Feature(3)
+        'image/embedding_length': Int64Feature(3),
+        'image/embedding_count': Int64Feature(1)
 
     }))
 
@@ -127,7 +128,8 @@ class GenerateContextDataTest(tf.test.TestCase):
             six.ensure_binary(str(datetime.datetime(2020, 1, 1, 1, 1, 0)))),
         'image/embedding': FloatListFeature([0.4, 0.5, 0.6]),
         'image/embedding_score': FloatListFeature([0.9]),
-        'image/embedding_length': Int64Feature(3)
+        'image/embedding_length': Int64Feature(3),
+        'image/embedding_count': Int64Feature(1)
     }))
 
     return example.SerializeToString()

@@ -1,4 +1,4 @@
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
 
 """Base box coder.
 
@@ -31,7 +30,6 @@ from abc import abstractmethod
 from abc import abstractproperty
 
 import tensorflow as tf
-
 
 # Box coder types.
 FASTER_RCNN = 'faster_rcnn'
@@ -138,11 +136,11 @@ def batch_decode(encoded_boxes, box_coder, anchors):
   """
   encoded_boxes.get_shape().assert_has_rank(3)
   if encoded_boxes.get_shape()[1].value != anchors.num_boxes_static():
-    raise ValueError('The number of anchors inferred from encoded_boxes'
-                     ' and anchors are inconsistent: shape[1] of encoded_boxes'
-                     ' %s should be equal to the number of anchors: %s.' %
-                     (encoded_boxes.get_shape()[1].value,
-                      anchors.num_boxes_static()))
+    raise ValueError(
+        'The number of anchors inferred from encoded_boxes'
+        ' and anchors are inconsistent: shape[1] of encoded_boxes'
+        ' %s should be equal to the number of anchors: %s.' %
+        (encoded_boxes.get_shape()[1].value, anchors.num_boxes_static()))
 
   decoded_boxes = tf.stack([
       box_coder.decode(boxes, anchors).get()

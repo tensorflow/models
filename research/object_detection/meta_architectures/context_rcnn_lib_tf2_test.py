@@ -97,19 +97,21 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase):
   )
   def test_attention_block(self, bottleneck_dimension, output_dimension,
                            attention_temperature):
-    input_features = tf.ones([2, 8, 3, 3, 3], tf.float32)
+    input_features = tf.ones([2 * 8, 3, 3, 3], tf.float32)
     context_features = tf.ones([2, 20, 10], tf.float32)
+    num_proposals = tf.convert_to_tensor([6, 3])
     attention_block = context_rcnn_lib.AttentionBlock(
         bottleneck_dimension,
         attention_temperature,
         output_dimension=output_dimension,
-        is_training=False)
+        is_training=False,
+        max_num_proposals=8)
     valid_context_size = tf.random_uniform((2,),
                                            minval=0,
                                            maxval=10,
                                            dtype=tf.int32)
     output_features = attention_block(input_features, context_features,
-                                      valid_context_size)
+                                      valid_context_size, num_proposals)
 
     # Makes sure the shape is correct.
     self.assertAllEqual(output_features.shape,

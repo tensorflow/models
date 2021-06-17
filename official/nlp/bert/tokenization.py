@@ -1,5 +1,4 @@
-# coding=utf-8
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# coding=utf-8
 """Tokenization classes implementation.
 
 The file is forked from:
 https://github.com/google-research/bert/blob/master/tokenization.py.
 """
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 import re
@@ -421,7 +417,7 @@ def preprocess_text(inputs, remove_space=True, lower=False):
   """Preprocesses data by removing extra space and normalize data.
 
   This method is used together with sentence piece tokenizer and is forked from:
-  https://github.com/google-research/google-research/blob/master/albert/tokenization.py
+  https://github.com/google-research/google-research/blob/e1f6fa00/albert/tokenization.py
 
   Args:
     inputs: The input text.
@@ -454,7 +450,7 @@ def encode_pieces(sp_model, text, sample=False):
   """Segements text into pieces.
 
   This method is used together with sentence piece tokenizer and is forked from:
-  https://github.com/google-research/google-research/blob/master/albert/tokenization.py
+  https://github.com/google-research/google-research/blob/e1f6fa00/albert/tokenization.py
 
 
   Args:
@@ -496,7 +492,7 @@ def encode_ids(sp_model, text, sample=False):
   """Segments text and return token ids.
 
   This method is used together with sentence piece tokenizer and is forked from:
-  https://github.com/google-research/google-research/blob/master/albert/tokenization.py
+  https://github.com/google-research/google-research/blob/e1f6fa00/albert/tokenization.py
 
   Args:
     sp_model: A spm.SentencePieceProcessor object.

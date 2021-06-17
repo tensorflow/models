@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,12 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Flags related to distributed execution."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Flags related to distributed execution."""
 
 from absl import flags
 import tensorflow as tf
@@ -38,7 +34,8 @@ def define_distribution(worker_hosts=True, task_index=True):
 
   if worker_hosts:
     flags.DEFINE_string(
-        name='worker_hosts', default=None,
+        name='worker_hosts',
+        default=None,
         help=help_wrap(
             'Comma-separated list of worker ip:port pairs for running '
             'multi-worker models with DistributionStrategy.  The user would '
@@ -47,7 +44,8 @@ def define_distribution(worker_hosts=True, task_index=True):
 
   if task_index:
     flags.DEFINE_integer(
-        name='task_index', default=-1,
+        name='task_index',
+        default=-1,
         help=help_wrap('If multi-worker training, the task_index of this '
                        'worker.'))
 

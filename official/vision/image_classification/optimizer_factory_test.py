@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for optimizer_factory."""
 
 from __future__ import absolute_import
@@ -35,10 +35,8 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     return model
 
   @parameterized.named_parameters(
-      ('sgd', 'sgd', 0., False),
-      ('momentum', 'momentum', 0., False),
-      ('rmsprop', 'rmsprop', 0., False),
-      ('adam', 'adam', 0., False),
+      ('sgd', 'sgd', 0., False), ('momentum', 'momentum', 0., False),
+      ('rmsprop', 'rmsprop', 0., False), ('adam', 'adam', 0., False),
       ('adamw', 'adamw', 0., False),
       ('momentum_lookahead', 'momentum', 0., True),
       ('sgd_ema', 'sgd', 0.999, False),
@@ -84,17 +82,13 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     train_steps = 1
 
     lr = optimizer_factory.build_learning_rate(
-        params=params,
-        batch_size=batch_size,
-        train_steps=train_steps)
+        params=params, batch_size=batch_size, train_steps=train_steps)
     self.assertTrue(
         issubclass(
             type(lr), tf.keras.optimizers.schedules.LearningRateSchedule))
 
-  @parameterized.named_parameters(
-      ('exponential', 'exponential'),
-      ('piecewise_constant_with_warmup', 'piecewise_constant_with_warmup'),
-      ('cosine_with_warmup', 'cosine_with_warmup'))
+  @parameterized.named_parameters(('exponential', 'exponential'),
+                                  ('cosine_with_warmup', 'cosine_with_warmup'))
   def test_learning_rate_with_decay_and_warmup(self, lr_decay_type):
     """Basic smoke test for syntax."""
     params = base_configs.LearningRateConfig(

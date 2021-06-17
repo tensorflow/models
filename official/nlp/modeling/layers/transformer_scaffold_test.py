@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,14 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for Keras-based transformer block layer."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import json
 
 import numpy as np
 import tensorflow as tf
@@ -89,7 +83,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
 
   def tearDown(self):
     super(TransformerLayerTest, self).tearDown()
-    tf.keras.mixed_precision.experimental.set_policy('float32')
+    tf.keras.mixed_precision.set_global_policy('float32')
 
   def test_layer_creation(self):
     sequence_length = 21
@@ -98,7 +92,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -126,7 +120,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     feedforward_call_list = []
@@ -164,7 +158,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -186,30 +180,6 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     self.assertNotEmpty(call_list)
     self.assertTrue(call_list[0], "The passed layer class wasn't instantiated.")
 
-  def test_layer_creation_with_incorrect_mask_fails(self):
-    sequence_length = 21
-    width = 80
-
-    call_list = []
-    attention_layer_cfg = {
-        'num_heads': 10,
-        'key_size': 8,
-        'call_list': call_list,
-    }
-    test_layer = transformer_scaffold.TransformerScaffold(
-        attention_cls=ValidatedAttentionLayer,
-        attention_cfg=attention_layer_cfg,
-        num_attention_heads=10,
-        intermediate_size=2048,
-        intermediate_activation='relu')
-
-    # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(shape=(sequence_length, width))
-    # Create a 2-dimensional input (the first dimension is implicit).
-    mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length - 3))
-    with self.assertRaisesRegex(ValueError, 'When passing a mask tensor.*'):
-      _ = test_layer([data_tensor, mask_tensor])
-
   def test_layer_invocation(self):
     sequence_length = 21
     width = 80
@@ -217,7 +187,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -252,7 +222,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     feedforward_call_list = []
@@ -303,7 +273,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -338,14 +308,14 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     self.assertTrue(call_list[0], "The passed layer class wasn't instantiated.")
 
   def test_layer_invocation_with_float16_dtype(self):
-    tf.keras.mixed_precision.experimental.set_policy('mixed_float16')
+    tf.keras.mixed_precision.set_global_policy('mixed_float16')
     sequence_length = 21
     width = 80
 
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -386,7 +356,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -414,7 +384,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
         'name': 'test_layer',
     }
@@ -447,12 +417,11 @@ class TransformerLayerTest(keras_parameterized.TestCase):
 
     # Serialize the model config. Pass the serialized data through json to
     # ensure that we can serialize this layer to disk.
-    serialized_data = json.dumps(model.get_config())
-    post_string_serialized_data = json.loads(serialized_data)
+    serialized_data = model.get_config()
 
     # Create a new model from the old config, and copy the weights. These models
     # should have identical outputs.
-    new_model = tf.keras.Model.from_config(post_string_serialized_data)
+    new_model = tf.keras.Model.from_config(serialized_data)
     new_model.set_weights(model.get_weights())
     output = new_model.predict([input_data, mask_data])
 
@@ -474,7 +443,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
         'name': 'test_layer',
     }
@@ -512,14 +481,10 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         2, size=(batch_size, sequence_length, sequence_length))
     pre_serialization_output = model.predict([input_data, mask_data])
 
-    # Serialize the model config. Pass the serialized data through json to
-    # ensure that we can serialize this layer to disk.
-    serialized_data = json.dumps(model.get_config())
-    post_string_serialized_data = json.loads(serialized_data)
-
+    serialized_data = model.get_config()
     # Create a new model from the old config, and copy the weights. These models
     # should have identical outputs.
-    new_model = tf.keras.Model.from_config(post_string_serialized_data)
+    new_model = tf.keras.Model.from_config(serialized_data)
     new_model.set_weights(model.get_weights())
     output = new_model.predict([input_data, mask_data])
 

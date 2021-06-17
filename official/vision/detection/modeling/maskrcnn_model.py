@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Model defination for the Mask R-CNN Model."""
 
 from __future__ import absolute_import
@@ -26,7 +26,6 @@ from official.vision.detection.evaluation import factory as eval_factory
 from official.vision.detection.modeling import base_model
 from official.vision.detection.modeling import losses
 from official.vision.detection.modeling.architecture import factory
-from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.ops import postprocess_ops
 from official.vision.detection.ops import roi_ops
 from official.vision.detection.ops import spatial_transform_ops
@@ -118,9 +117,7 @@ class MaskrcnnModel(base_model.Model):
       box_targets = tf.where(
           tf.tile(
               tf.expand_dims(tf.equal(matched_gt_classes, 0), axis=-1),
-              [1, 1, 4]),
-          tf.zeros_like(box_targets),
-          box_targets)
+              [1, 1, 4]), tf.zeros_like(box_targets), box_targets)
       model_outputs.update({
           'class_targets': matched_gt_classes,
           'box_targets': box_targets,
@@ -183,9 +180,7 @@ class MaskrcnnModel(base_model.Model):
                                     mask_outputs),
       })
     else:
-      model_outputs.update({
-          'detection_masks': tf.nn.sigmoid(mask_outputs)
-      })
+      model_outputs.update({'detection_masks': tf.nn.sigmoid(mask_outputs)})
 
     return model_outputs
 
@@ -297,14 +292,13 @@ class MaskrcnnModel(base_model.Model):
   def build_model(self, params, mode):
     if self._keras_model is None:
       input_layers = self.build_input_layers(self._params, mode)
-      with keras_utils.maybe_enter_backend_graph():
-        outputs = self.model_outputs(input_layers, mode)
+      outputs = self.model_outputs(input_layers, mode)
 
-        model = tf.keras.models.Model(
-            inputs=input_layers, outputs=outputs, name='maskrcnn')
-        assert model is not None, 'Fail to build tf.keras.Model.'
-        model.optimizer = self.build_optimizer()
-        self._keras_model = model
+      model = tf.keras.models.Model(
+          inputs=input_layers, outputs=outputs, name='maskrcnn')
+      assert model is not None, 'Fail to build tf.keras.Model.'
+      model.optimizer = self.build_optimizer()
+      self._keras_model = model
 
     return self._keras_model
 
@@ -312,8 +306,8 @@ class MaskrcnnModel(base_model.Model):
     required_output_fields = ['class_outputs', 'box_outputs']
     for field in required_output_fields:
       if field not in outputs:
-        raise ValueError('"%s" is missing in outputs, requried %s found %s'
-                         %(field, required_output_fields, outputs.keys()))
+        raise ValueError('"%s" is missing in outputs, requried %s found %s' %
+                         (field, required_output_fields, outputs.keys()))
     predictions = {
         'image_info': labels['image_info'],
         'num_detections': outputs['num_detections'],

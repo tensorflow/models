@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """A script to export TF-Hub SavedModel."""
 
 from __future__ import absolute_import
@@ -30,10 +30,8 @@ from official.vision.image_classification.efficientnet import efficientnet_model
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string("model_name", None,
-                    "EfficientNet model name.")
-flags.DEFINE_string("model_path", None,
-                    "File path to TF model checkpoint.")
+flags.DEFINE_string("model_name", None, "EfficientNet model name.")
+flags.DEFINE_string("model_path", None, "File path to TF model checkpoint.")
 flags.DEFINE_string("export_path", None,
                     "TF-Hub SavedModel destination path to export.")
 
@@ -64,6 +62,7 @@ def main(argv):
     raise app.UsageError("Too many command-line arguments.")
 
   export_tfhub(FLAGS.model_path, FLAGS.export_path, FLAGS.model_name)
+
 
 if __name__ == "__main__":
   app.run(main)

@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,12 +34,12 @@ import os
 import sys
 import time
 
+from absl import app
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.platform import app
 from delf import feature_io
-from delf.python.detect_to_retrieve import dataset
+from delf.python.datasets.revisited_op import dataset
 
 cmd_args = None
 

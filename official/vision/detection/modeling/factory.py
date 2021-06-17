@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Factory to build detection model."""
 
 
 from official.vision.detection.modeling import maskrcnn_model
+from official.vision.detection.modeling import olnmask_model
 from official.vision.detection.modeling import retinanet_model
 from official.vision.detection.modeling import shapemask_model
 
@@ -26,6 +27,8 @@ def model_generator(params):
     model_fn = retinanet_model.RetinanetModel(params)
   elif params.type == 'mask_rcnn':
     model_fn = maskrcnn_model.MaskrcnnModel(params)
+  elif params.type == 'olnmask':
+    model_fn = olnmask_model.OlnMaskModel(params)
   elif params.type == 'shapemask':
     model_fn = shapemask_model.ShapeMaskModel(params)
   else:
