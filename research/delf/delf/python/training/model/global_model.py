@@ -116,6 +116,9 @@ class GlobalFeatureNet(tf.keras.Model):
     # `feature_extractor`, always end with ReLU to make last activations
     # non-negative.
     if architecture.lower().startswith('densenet'):
+      tmp_model = tf.keras.Sequential()
+      tmp_model.add(net_in)
+      net_in = tmp_model
       net_in.add(tf.keras.layers.ReLU())
 
     # Initialize pooling.
@@ -214,7 +217,7 @@ class GlobalFeatureNet(tf.keras.Model):
 
 
 def extract_global_descriptors_from_list(net, images, image_size,
-                                         bounding_boxes=None, ms=[1.],
+                                         bounding_boxes=None, scales=[1.],
                                          multi_scale_power=1., print_freq=10):
   """Extracting global descriptors from a list of images.
 

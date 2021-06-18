@@ -281,8 +281,7 @@ def main(argv):
       # While hard-positive examples are fixed during the whole training
       # process and are randomly chosen from every epoch; hard-negatives
       # depend on the current CNN parameters and are re-mined once per epoch.
-      avg_neg_distance = train_dataset.create_epoch_tuples(
-              model, model_directory)
+      avg_neg_distance = train_dataset.create_epoch_tuples(model)
 
       def _train_gen():
         return (inst for inst in train_dataset)

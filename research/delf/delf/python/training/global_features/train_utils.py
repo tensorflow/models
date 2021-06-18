@@ -94,8 +94,7 @@ def train_val_one_epoch(loader, model, criterion, optimizer, epoch, train=True,
 
   # Retrieve all trainable variables we defined in the graph.
   tvs = model.trainable_variables
-  accum_grads = [tf.Variable(tf.zeros_like(tv.read_value()), trainable=False)
-                 for tv in tvs]
+  accum_grads = [tf.zeros_like(tv.read_value()) for tv in tvs]
 
   end = time.time()
   batch_num = 0
@@ -124,8 +123,7 @@ def train_val_one_epoch(loader, model, criterion, optimizer, epoch, train=True,
                   criterion, model, input_tuple, target_tuple, neg_num)
           losses.update(loss_value)
           # Accumulate gradients.
-          accum_grads = [accum_grads[i].assign_add(gv) for i, gv in
-                         enumerate(grads)]
+          accum_grads += grads
 
         # Perform weight update if required.
         if (batch_num + 1) % update_every == 0 or (
@@ -134,11 +132,8 @@ def train_val_one_epoch(loader, model, criterion, optimizer, epoch, train=True,
           # used.
           optimizer.apply_gradients(
                   zip(accum_grads, model.trainable_variables))
-          accum_grads = [
-            tf.Variable(tf.zeros_like(tv.read_value()), trainable=False)
-            for tv in tvs]
-      except Exception as ex:
-        global_features_utils.debug_and_log(ex)
+          accum_grads = [tf.zeros_like(tv.read_value()) for tv in tvs]
+      except tf.errors.OutOfRangeError:
         break
 
     else:
@@ -153,11 +148,13 @@ def train_val_one_epoch(loader, model, criterion, optimizer, epoch, train=True,
           batch = loader.get_next()
           input.append(batch[0:-1])
           target.append(batch[-1])
-      except Exception as ex:
-        global_features_utils.debug_and_log(ex)
+
+      except tf.errors.OutOfRangeError:
         break
 
-      descriptors = tf.zeros(shape=(0, model.meta['outputdim']), dtype=tf.float32)
+      descriptors = tf.zeros(
+              shape=(0, model.meta['outputdim']), dtype=tf.float32)
+
       for input_tuple in input:
         for img in input_tuple:
           # Compute the global descriptor vector.
@@ -166,10 +163,9 @@ def train_val_one_epoch(loader, model, criterion, optimizer, epoch, train=True,
 
       # No need to reduce memory consumption (no backward pass):
       # Compute loss for the full batch.
-      tmp_target = tf.concat(target, axis=0)
-      queries = tf.boolean_mask(descriptors, tmp_target == -1, axis=0)
-      positives = tf.boolean_mask(descriptors, tmp_target == 1, axis=0)
-      negatives = tf.boolean_mask(descriptors, tmp_target == 0, axis=0)
+      queries = tf.boolean_mask(descriptors, target == -1, axis=0)
+      positives = tf.boolean_mask(descriptors, target == 1, axis=0)
+      negatives = tf.boolean_mask(descriptors, target == 0, axis=0)
       negatives = tf.reshape(negatives, [tf.shape(queries)[0], neg_num,
                                          model.meta['outputdim']])
       loss = criterion(queries, positives, negatives)
@@ -201,8 +197,8 @@ def train_val_one_epoch(loader, model, criterion, optimizer, epoch, train=True,
 
 
 def test_retrieval(datasets, net, epoch, writer=None, model_directory=None,
-         precompute_whitening=None, data_root='data', multiscale=[1.],
-         test_image_size=1024):
+                   precompute_whitening=None, data_root='data', multiscale=[1.],
+                   test_image_size=1024):
   """Testing step.
 
   Evaluates the network on the provided test datasets by computing single-scale
@@ -254,7 +250,7 @@ def test_retrieval(datasets, net, epoch, writer=None, model_directory=None,
       db_root = os.path.join(data_root, 'train', precompute_whitening)
       ims_root = os.path.join(db_root, 'ims')
       db_filename = os.path.join(db_root,
-                           '{}-whiten.pkl'.format(precompute_whitening))
+                                 '{}-whiten.pkl'.format(precompute_whitening))
       with tf.io.gfile.GFile(db_filename, 'rb') as f:
         db = pickle.load(f)
       images = [sfm120k.id2filename(db['cids'][i], ims_root) for i in
@@ -312,12 +308,12 @@ def test_retrieval(datasets, net, epoch, writer=None, model_directory=None,
     global_features_utils.debug_and_log(
             '>> {}: Extracting database images...'.format(dataset))
     vecs = global_model.extract_global_descriptors_from_list(
-            net, images, test_image_size, ms=multiscale)
+            net, images, test_image_size, scales=multiscale)
     global_features_utils.debug_and_log(
             '>> {}: Extracting query images...'.format(dataset))
     qvecs = global_model.extract_global_descriptors_from_list(
             net, qimages, test_image_size, bounding_boxes,
-            ms=multiscale)
+            scales=multiscale)
 
     global_features_utils.debug_and_log('>> {}: Evaluating...'.format(dataset))
 
@@ -326,22 +322,10 @@ def test_retrieval(datasets, net, epoch, writer=None, model_directory=None,
     qvecs = qvecs.numpy()
 
     # Search, rank and print test set metrics.
-    scores = np.dot(vecs.T, qvecs)
-    ranks = np.transpose(np.argsort(-scores, axis=0))
-    metrics = global_features_utils.compute_metrics_and_print(dataset, ranks,
-                                                              cfg['gnd'])
-    # Save calculated metrics in a tensorboard format.
-    if writer:
-      tf.summary.scalar('test_accuracy_{}_E'.format(dataset), metrics[0][0],
-                        step=epoch)
-      tf.summary.scalar('test_accuracy_{}_M'.format(dataset), metrics[1][0],
-                        step=epoch)
-      tf.summary.scalar('test_accuracy_{}_H'.format(dataset), metrics[2][0],
-                        step=epoch)
-      writer.flush()
+    _calculate_metrics_and_export_to_tensorboard(vecs, qvecs, dataset, cfg,
+                                                 writer, epoch, whiten=False)
 
     if learned_whitening is not None:
-
       # Whiten the vectors.
       mean_vector = learned_whitening['m']
       projection_matrix = learned_whitening['P']
@@ -349,20 +333,46 @@ def test_retrieval(datasets, net, epoch, writer=None, model_directory=None,
       qvecs_lw = whiten.whitenapply(qvecs, mean_vector, projection_matrix)
 
       # Search, rank, and print.
-      scores = np.dot(vecs_lw.T, qvecs_lw)
-      ranks = np.transpose(np.argsort(-scores, axis=0))
-      metrics = global_features_utils.compute_metrics_and_print(
-              dataset + ' + whiten', ranks, cfg['gnd'])
-
-      if writer:
-        tf.summary.scalar('test_accuracy_whiten_{}_E'.format(dataset),
-                          metrics[0][0], step=epoch)
-        tf.summary.scalar('test_accuracy_whiten_{}_M'.format(dataset),
-                          metrics[1][0], step=epoch)
-        tf.summary.scalar('test_accuracy_whiten_{}_H'.format(dataset),
-                          metrics[2][0], step=epoch)
-        writer.flush()
+      _calculate_metrics_and_export_to_tensorboard(
+              vecs_lw, qvecs_lw, dataset, cfg, writer, epoch, whiten=True)
 
     global_features_utils.debug_and_log(
             '>> {}: Elapsed time: {}'.format(
                     dataset, global_features_utils.htime(time.time() - start)))
+
+
+def _calculate_metrics_and_export_to_tensorboard(vecs, qvecs, dataset, cfg,
+                                               writer, epoch, whiten=False):
+  """
+  Calculates metrics and exports them to tensorboard.
+
+  Args:
+    vecs: Numpy array dataset global descriptors.
+    qvecs: Numpy array query global descriptors.
+    dataset: String, one of `_TEST_DATASET_NAMES`.
+    cfg: Dataset configuration.
+    writer: Tensorboard writer.
+    epoch: Integer, epoch number.
+    whiten: Boolean, whether the metrics are with for whitening used as a
+      post-processing step. Affects the name of the extracted TensorBoard
+      metrics.
+  """
+  # Search, rank and print test set metrics.
+  scores = np.dot(vecs.T, qvecs)
+  ranks = np.transpose(np.argsort(-scores, axis=0))
+  name = dataset
+  if whiten:
+    name += ' + whiten'
+  metrics = global_features_utils.compute_metrics_and_print(name, ranks,
+                                                            cfg['gnd'])
+  # Save calculated metrics in a tensorboard format.
+  if writer:
+    tf.summary.scalar('test_accuracy_{}_E'.format(dataset), metrics[0][0],
+                      step=epoch)
+    tf.summary.scalar('test_accuracy_{}_M'.format(dataset), metrics[1][0],
+                      step=epoch)
+    tf.summary.scalar('test_accuracy_{}_H'.format(dataset), metrics[2][0],
+                      step=epoch)
+    writer.flush()
+
+  return None
