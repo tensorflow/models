@@ -63,12 +63,14 @@ def convert_to_feature(value, value_type=None):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
   elif value_type == 'int64_list':
+    value = np.asarray(value).astype(np.int64).reshape(-1)
     return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
 
   elif value_type == 'float':
     return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
 
   elif value_type == 'float_list':
+    value = np.asarray(value).astype(np.float32).reshape(-1)
     return tf.train.Feature(float_list=tf.train.FloatList(value=value))
 
   elif value_type == 'bytes':
@@ -172,4 +174,3 @@ def check_and_make_dir(directory):
   """Creates the directory if it doesn't exist."""
   if not tf.io.gfile.isdir(directory):
     tf.io.gfile.makedirs(directory)
-

@@ -37,9 +37,11 @@ def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
                    model_config: deep_mask_head_rcnn_config.DeepMaskHeadRCNN,
                    l2_regularizer: tf.keras.regularizers.Regularizer = None):
   """Builds Mask R-CNN model."""
+  norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
-      model_config=model_config,
+      backbone_config=model_config.backbone,
+      norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
 
   decoder = decoder_factory.build_decoder(
@@ -53,7 +55,6 @@ def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
   roi_aligner_config = model_config.roi_aligner
   detection_head_config = model_config.detection_head
   generator_config = model_config.detection_generator
-  norm_activation_config = model_config.norm_activation
   num_anchors_per_location = (
       len(model_config.anchor.aspect_ratios) * model_config.anchor.num_scales)
 

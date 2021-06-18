@@ -280,7 +280,9 @@ class DatasetBuilder:
       raise e
     return self.builder_info
 
-  def build(self, strategy: tf.distribute.Strategy = None) -> tf.data.Dataset:
+  def build(
+      self,
+      strategy: Optional[tf.distribute.Strategy] = None) -> tf.data.Dataset:
     """Construct a dataset end-to-end and return it using an optional strategy.
 
     Args:
@@ -305,7 +307,8 @@ class DatasetBuilder:
 
   def _build(
       self,
-      input_context: tf.distribute.InputContext = None) -> tf.data.Dataset:
+      input_context: Optional[tf.distribute.InputContext] = None
+  ) -> tf.data.Dataset:
     """Construct a dataset end-to-end and return it.
 
     Args:

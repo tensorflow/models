@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Sets up TensorFlow Official Models."""
 import datetime
 import os
@@ -20,7 +20,7 @@ import sys
 from setuptools import find_packages
 from setuptools import setup
 
-version = '2.4.0'
+version = '2.5.0'
 
 project_name = 'tf-models-official'
 

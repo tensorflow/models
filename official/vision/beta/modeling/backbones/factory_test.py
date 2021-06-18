@@ -22,7 +22,6 @@ from tensorflow.python.distribute import combinations
 from official.vision.beta.configs import backbones as backbones_cfg
 from official.vision.beta.configs import backbones_3d as backbones_3d_cfg
 from official.vision.beta.configs import common as common_cfg
-from official.vision.beta.configs import retinanet as retinanet_cfg
 from official.vision.beta.modeling import backbones
 from official.vision.beta.modeling.backbones import factory
 
@@ -42,12 +41,11 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         resnet=backbones_cfg.ResNet(model_id=model_id, se_ratio=0.0))
     norm_activation_config = common_cfg.NormActivation(
         norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
-    model_config = retinanet_cfg.RetinaNet(
-        backbone=backbone_config, norm_activation=norm_activation_config)
 
     factory_network = factory.build_backbone(
         input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
-        model_config=model_config)
+        backbone_config=backbone_config,
+        norm_activation_config=norm_activation_config)
 
     network_config = network.get_config()
     factory_network_config = factory_network.get_config()
@@ -74,12 +72,11 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
             model_id=model_id, se_ratio=se_ratio))
     norm_activation_config = common_cfg.NormActivation(
         norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
-    model_config = retinanet_cfg.RetinaNet(
-        backbone=backbone_config, norm_activation=norm_activation_config)
 
     factory_network = factory.build_backbone(
         input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
-        model_config=model_config)
+        backbone_config=backbone_config,
+        norm_activation_config=norm_activation_config)
 
     network_config = network.get_config()
     factory_network_config = factory_network.get_config()
@@ -108,12 +105,11 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
             model_id=model_id, filter_size_scale=filter_size_scale))
     norm_activation_config = common_cfg.NormActivation(
         norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
-    model_config = retinanet_cfg.RetinaNet(
-        backbone=backbone_config, norm_activation=norm_activation_config)
 
     factory_network = factory.build_backbone(
         input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
-        model_config=model_config)
+        backbone_config=backbone_config,
+        norm_activation_config=norm_activation_config)
 
     network_config = network.get_config()
     factory_network_config = factory_network.get_config()
@@ -141,13 +137,12 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         spinenet=backbones_cfg.SpineNet(model_id=model_id))
     norm_activation_config = common_cfg.NormActivation(
         norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
-    model_config = retinanet_cfg.RetinaNet(
-        backbone=backbone_config, norm_activation=norm_activation_config)
 
     factory_network = factory.build_backbone(
         input_specs=tf.keras.layers.InputSpec(
             shape=[None, input_size, input_size, 3]),
-        model_config=model_config)
+        backbone_config=backbone_config,
+        norm_activation_config=norm_activation_config)
 
     network_config = network.get_config()
     factory_network_config = factory_network.get_config()
@@ -166,12 +161,11 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         revnet=backbones_cfg.RevNet(model_id=model_id))
     norm_activation_config = common_cfg.NormActivation(
         norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
-    model_config = retinanet_cfg.RetinaNet(
-        backbone=backbone_config, norm_activation=norm_activation_config)
 
     factory_network = factory.build_backbone(
         input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
-        model_config=model_config)
+        backbone_config=backbone_config,
+        norm_activation_config=norm_activation_config)
 
     network_config = network.get_config()
     factory_network_config = factory_network.get_config()

@@ -17,7 +17,7 @@
 import pprint
 import time
 
-from typing import Callable, Optional, Union
+from typing import Callable, List, Optional, Union
 
 from absl import logging
 
@@ -46,6 +46,9 @@ def _format_output(output, indent=4):
   return "\n" + "\n".join(lines)
 
 
+Action = Callable[[runner.Output], None]
+
+
 class Controller:
   """Class that controls the outer loop of model training and evaluation.
 
@@ -53,10 +56,9 @@ class Controller:
   loops are implemented by users in the form of `AbstractTrainer` and
   `AbstractEvaluator` subclasses, and define how to run a given number of
   training or evaluation steps. The outer loop is provided by this `Controller`,
-  and interleaves calls to the user provided inner loops with additional actions
-  such as saving checkpoints, running evaluations, and writing summaries
-  (depending on the arguments passed to `Controller.__init__` and the method
-  being called).
+  and interleaves calls to the user-provided inner loops with additional actions
+  such as saving checkpoints, running evaluations, writing summaries, as well as
+  (optionally) user provided `Action`s (see below).
 
   There are four top-level "outer loops" provided:
 
@@ -70,6 +72,15 @@ class Controller:
   training and evaluation use cases, the internal details and method
   implementations are also intended to be simple enough to make subclassing or
   other custom outer loop implementations easy to achieve.
+
+  Some additional customization can be achieved by supplying `train_actions` or
+  `eval_actions` when constructing the `Controller`. These are just lists of
+  arbitrary callables that are applied by the `Controller` to the output of
+  train steps (after each inner loop of `steps_per_loop` steps) or an
+  evaluation. This provides a hook mechanism, enabling things like reporting
+  metrics to Vizier, model exporting, additional logging, etc. See the
+  `orbit.actions` package for a small handful of predefined actions and some
+  utility classes that may be useful in defining your own.
   """
 
   def __init__(
@@ -79,6 +90,9 @@ class Controller:
       trainer: Optional[runner.AbstractTrainer] = None,
       evaluator: Optional[runner.AbstractEvaluator] = None,
       strategy: Optional[tf.distribute.Strategy] = None,
+      # Actions
+      train_actions: Optional[List[Action]] = None,
+      eval_actions: Optional[List[Action]] = None,
       # Train related
       steps_per_loop: Optional[int] = None,
       checkpoint_manager: Optional[tf.train.CheckpointManager] = None,
@@ -86,7 +100,8 @@ class Controller:
       summary_interval: Optional[int] = None,
       summary_dir: Optional[str] = None,
       # Evaluation related
-      eval_summary_dir: Optional[str] = None):
+      eval_summary_dir: Optional[str] = None,
+  ):
     """Initializes a `Controller` instance.
 
     Note that if `checkpoint_manager` is provided and there are checkpoints in
@@ -110,6 +125,12 @@ class Controller:
       strategy: An instance of `tf.distribute.Strategy`. If not provided, the
         strategy will be initialized from the current in-scope strategy using
         `tf.distribute.get_strategy()`.
+      train_actions: An optional list of `orbit.Action`s to call after each
+        block of `steps_per_loop` training steps are run. These will be called
+        with the output of `trainer.train`.
+      eval_actions: An optional list of `orbit.Action`s to call after each
+        evaluation. These will be called with the output of
+        `evaluator.evaluate`.
       steps_per_loop: The number of steps to run in each inner loop of training
         (passed as the `num_steps` parameter of `trainer.train`).
       checkpoint_manager: An instance of `tf.train.CheckpointManager`. If
@@ -138,6 +159,7 @@ class Controller:
     """
     if trainer is None and evaluator is None:
       raise ValueError("`trainer` and `evaluator` should not both be `None`.")
+
     if trainer is not None:
       if steps_per_loop is None:
         raise ValueError(
@@ -162,6 +184,9 @@ class Controller:
     self.evaluator = evaluator
 
     self.strategy = strategy or tf.distribute.get_strategy()
+
+    self.train_actions = train_actions or []
+    self.eval_actions = eval_actions or []
 
     self.global_step = global_step
     self.checkpoint_manager = checkpoint_manager
@@ -255,8 +280,12 @@ class Controller:
     with self.eval_summary_manager.summary_writer().as_default():
       steps_tensor = tf.convert_to_tensor(steps, dtype=tf.int32)
       eval_output = self.evaluator.evaluate(steps_tensor)
-    eval_output = tf.nest.map_structure(utils.get_value, eval_output or {})
     elapsed = time.time() - start
+
+    eval_output = eval_output or {}
+    for action in self.eval_actions:
+      action(eval_output)
+    eval_output = tf.nest.map_structure(utils.get_value, eval_output)
 
     _log(f" eval | step: {current_step: 6d} | "
          f"eval time: {elapsed: 6.1f} sec | "
@@ -338,7 +367,7 @@ class Controller:
       self.restore_checkpoint(checkpoint_path)
       self.evaluate(steps)
 
-  def restore_checkpoint(self, checkpoint_path: str = None):
+  def restore_checkpoint(self, checkpoint_path: Optional[str] = None):
     """Restores the model from a checkpoint.
 
     Args:
@@ -408,7 +437,6 @@ class Controller:
       with tf.summary.record_if(should_record):
         num_steps_tensor = tf.convert_to_tensor(num_steps, dtype=tf.int32)
         train_output = self.trainer.train(num_steps_tensor)
-    train_output = tf.nest.map_structure(utils.get_value, train_output or {})
 
     # Verify that global_step was updated properly, then update current_step.
     expected_step = current_step + num_steps
@@ -419,6 +447,11 @@ class Controller:
           f"to be {expected_step}, but it was {self.global_step.numpy()}.")
       logging.warning(message)
       return
+
+    train_output = train_output or {}
+    for action in self.train_actions:
+      action(train_output)
+    train_output = tf.nest.map_structure(utils.get_value, train_output)
 
     current_step = expected_step
     steps_per_second = self.step_timer.steps_per_second()

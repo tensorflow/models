@@ -12,11 +12,13 @@ from object_detection.builders import losses_builder
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.core import losses
+from object_detection.core import preprocessor
 from object_detection.core import standard_fields as fields
 from object_detection.meta_architectures import center_net_meta_arch
 from object_detection.models.keras_models import hourglass_network
 from object_detection.models.keras_models import resnet_v1
 from object_detection.protos import losses_pb2
+from object_detection.protos import preprocessor_pb2
 from object_detection.utils import shape_utils
 from object_detection.utils import spatial_transform_ops
 
@@ -32,7 +34,8 @@ class DeepMACParams(
         'classification_loss', 'dim', 'task_loss_weight', 'pixel_embedding_dim',
         'allowed_masked_classes_ids', 'mask_size', 'mask_num_subsamples',
         'use_xy', 'network_type', 'use_instance_embedding', 'num_init_channels',
-        'predict_full_resolution_masks', 'postprocess_crop_size'
+        'predict_full_resolution_masks', 'postprocess_crop_size',
+        'max_roi_jitter_ratio', 'roi_jitter_mode'
     ])):
   """Class holding the DeepMAC network configutration."""
 
@@ -42,7 +45,8 @@ class DeepMACParams(
               pixel_embedding_dim, allowed_masked_classes_ids, mask_size,
               mask_num_subsamples, use_xy, network_type, use_instance_embedding,
               num_init_channels, predict_full_resolution_masks,
-              postprocess_crop_size):
+              postprocess_crop_size, max_roi_jitter_ratio,
+              roi_jitter_mode):
     return super(DeepMACParams,
                  cls).__new__(cls, classification_loss, dim,
                               task_loss_weight, pixel_embedding_dim,
@@ -50,7 +54,8 @@ class DeepMACParams(
                               mask_num_subsamples, use_xy, network_type,
                               use_instance_embedding, num_init_channels,
                               predict_full_resolution_masks,
-                              postprocess_crop_size)
+                              postprocess_crop_size, max_roi_jitter_ratio,
+                              roi_jitter_mode)
 
 
 def subsample_instances(classes, weights, boxes, masks, num_subsamples):
@@ -355,6 +360,9 @@ def deepmac_proto_to_params(deepmac_config):
   loss.classification_loss.CopyFrom(deepmac_config.classification_loss)
   classification_loss, _, _, _, _, _, _ = (losses_builder.build(loss))
 
+  jitter_mode = preprocessor_pb2.RandomJitterBoxes.JitterMode.Name(
+      deepmac_config.jitter_mode).lower()
+
   return DeepMACParams(
       dim=deepmac_config.dim,
       classification_loss=classification_loss,
@@ -369,7 +377,9 @@ def deepmac_proto_to_params(deepmac_config):
       num_init_channels=deepmac_config.num_init_channels,
       predict_full_resolution_masks=
       deepmac_config.predict_full_resolution_masks,
-      postprocess_crop_size=deepmac_config.postprocess_crop_size
+      postprocess_crop_size=deepmac_config.postprocess_crop_size,
+      max_roi_jitter_ratio=deepmac_config.max_roi_jitter_ratio,
+      roi_jitter_mode=jitter_mode
   )
 
 
@@ -553,6 +563,11 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     """
 
     num_instances = tf.shape(boxes)[0]
+
+    if tf.keras.backend.learning_phase():
+      boxes = preprocessor.random_jitter_boxes(
+          boxes, self._deepmac_params.max_roi_jitter_ratio,
+          jitter_mode=self._deepmac_params.roi_jitter_mode)
     mask_input = self._get_mask_head_input(
         boxes, pixel_embedding)
     instance_embeddings = self._get_instance_embeddings(

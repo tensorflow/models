@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Tests for resnet."""
+"""Tests for yolo."""
 
 from absl.testing import parameterized
 import numpy as np
@@ -24,35 +24,48 @@ from tensorflow.python.distribute import strategy_combinations
 from official.vision.beta.projects.yolo.modeling.backbones import darknet
 
 
-class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
+class DarknetTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (224, "darknet53", 2, 1),
-      (224, "darknettiny", 1, 2),
-      (224, "cspdarknettiny", 1, 1),
-      (224, "cspdarknet53", 2, 1),
+      (224, 'darknet53', 2, 1, True),
+      (224, 'darknettiny', 1, 2, False),
+      (224, 'cspdarknettiny', 1, 1, False),
+      (224, 'cspdarknet53', 2, 1, True),
   )
-  def test_network_creation(self, input_size, model_id,
-                            endpoint_filter_scale, scale_final):
+  def test_network_creation(self, input_size, model_id, endpoint_filter_scale,
+                            scale_final, dilate):
     """Test creation of ResNet family models."""
-    tf.keras.backend.set_image_data_format("channels_last")
+    tf.keras.backend.set_image_data_format('channels_last')
 
-    network = darknet.Darknet(model_id=model_id, min_level=3, max_level=5)
+    network = darknet.Darknet(
+        model_id=model_id, min_level=3, max_level=5, dilate=dilate)
     self.assertEqual(network.model_id, model_id)
 
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
 
-    self.assertAllEqual(
-        [1, input_size / 2**3, input_size / 2**3, 128 * endpoint_filter_scale],
-        endpoints["3"].shape.as_list())
-    self.assertAllEqual(
-        [1, input_size / 2**4, input_size / 2**4, 256 * endpoint_filter_scale],
-        endpoints["4"].shape.as_list())
-    self.assertAllEqual([
-        1, input_size / 2**5, input_size / 2**5,
-        512 * endpoint_filter_scale * scale_final
-    ], endpoints["5"].shape.as_list())
+    if dilate:
+      self.assertAllEqual([
+          1, input_size / 2**3, input_size / 2**3, 128 * endpoint_filter_scale
+      ], endpoints['3'].shape.as_list())
+      self.assertAllEqual([
+          1, input_size / 2**3, input_size / 2**3, 256 * endpoint_filter_scale
+      ], endpoints['4'].shape.as_list())
+      self.assertAllEqual([
+          1, input_size / 2**3, input_size / 2**3,
+          512 * endpoint_filter_scale * scale_final
+      ], endpoints['5'].shape.as_list())
+    else:
+      self.assertAllEqual([
+          1, input_size / 2**3, input_size / 2**3, 128 * endpoint_filter_scale
+      ], endpoints['3'].shape.as_list())
+      self.assertAllEqual([
+          1, input_size / 2**4, input_size / 2**4, 256 * endpoint_filter_scale
+      ], endpoints['4'].shape.as_list())
+      self.assertAllEqual([
+          1, input_size / 2**5, input_size / 2**5,
+          512 * endpoint_filter_scale * scale_final
+      ], endpoints['5'].shape.as_list())
 
   @combinations.generate(
       combinations.combine(
@@ -66,20 +79,20 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
     """Test for sync bn on TPU and GPU devices."""
     inputs = np.random.rand(1, 224, 224, 3)
 
-    tf.keras.backend.set_image_data_format("channels_last")
+    tf.keras.backend.set_image_data_format('channels_last')
 
     with strategy.scope():
-      network = darknet.Darknet(model_id="darknet53", min_size=3, max_size=5)
+      network = darknet.Darknet(model_id='darknet53', min_size=3, max_size=5)
       _ = network(inputs)
 
   @parameterized.parameters(1, 3, 4)
   def test_input_specs(self, input_dim):
     """Test different input feature dimensions."""
-    tf.keras.backend.set_image_data_format("channels_last")
+    tf.keras.backend.set_image_data_format('channels_last')
 
     input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, input_dim])
     network = darknet.Darknet(
-        model_id="darknet53", min_level=3, max_level=5, input_specs=input_specs)
+        model_id='darknet53', min_level=3, max_level=5, input_specs=input_specs)
 
     inputs = tf.keras.Input(shape=(224, 224, input_dim), batch_size=1)
     _ = network(inputs)
@@ -87,14 +100,14 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.
     kwargs = dict(
-        model_id="darknet53",
+        model_id='darknet53',
         min_level=3,
         max_level=5,
         use_sync_bn=False,
-        activation="relu",
+        activation='relu',
         norm_momentum=0.99,
         norm_epsilon=0.001,
-        kernel_initializer="VarianceScaling",
+        kernel_initializer='VarianceScaling',
         kernel_regularizer=None,
         bias_regularizer=None,
     )
@@ -113,5 +126,5 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(network.get_config(), new_network.get_config())
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
   tf.test.main()

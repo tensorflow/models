@@ -20,6 +20,7 @@ import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.modeling import activations
+from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 from official.nlp.modeling.networks import encoder_scaffold
 
@@ -42,6 +43,30 @@ class ValidatedTransformerLayer(layers.Transformer):
 
   def get_config(self):
     config = super(ValidatedTransformerLayer, self).get_config()
+    config["call_list"] = self.list
+    config["call_class"] = tf.keras.utils.get_registered_name(self.call_class)
+    return config
+
+
+# Test class that wraps a standard self attention mask layer.
+# If this layer is called at any point, the list passed to the config
+# object will be filled with a
+# boolean 'True'. We register this class as a Keras serializable so we can
+# test serialization below.
+@tf.keras.utils.register_keras_serializable(package="TestOnly")
+class ValidatedMaskLayer(keras_nlp.layers.SelfAttentionMask):
+
+  def __init__(self, call_list, call_class=None, **kwargs):
+    super(ValidatedMaskLayer, self).__init__(**kwargs)
+    self.list = call_list
+    self.call_class = call_class
+
+  def call(self, inputs, mask):
+    self.list.append(True)
+    return super(ValidatedMaskLayer, self).call(inputs, mask)
+
+  def get_config(self):
+    config = super(ValidatedMaskLayer, self).get_config()
     config["call_list"] = self.list
     config["call_class"] = tf.keras.utils.get_registered_name(self.call_class)
     return config
@@ -95,6 +120,11 @@ class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
         "call_list":
             call_list
     }
+    mask_call_list = []
+    mask_cfg = {
+        "call_list":
+            mask_call_list
+    }
     # Create a small EncoderScaffold for testing.
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=num_hidden_instances,
@@ -103,6 +133,8 @@ class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
             stddev=0.02),
         hidden_cls=ValidatedTransformerLayer,
         hidden_cfg=hidden_cfg,
+        mask_cls=ValidatedMaskLayer,
+        mask_cfg=mask_cfg,
         embedding_cfg=embedding_cfg,
         layer_norm_before_pooling=True,
         return_all_layer_outputs=return_all_layer_outputs)
@@ -530,10 +562,15 @@ class EncoderScaffoldHiddenInstanceTest(keras_parameterized.TestCase):
         "call_list":
             call_list
     }
+    mask_call_list = []
+    mask_cfg = {
+        "call_list": mask_call_list
+    }
     # Create a small EncoderScaffold for testing. This time, we pass an already-
     # instantiated layer object.
 
     xformer = ValidatedTransformerLayer(**hidden_cfg)
+    xmask = ValidatedMaskLayer(**mask_cfg)
 
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
@@ -541,6 +578,7 @@ class EncoderScaffoldHiddenInstanceTest(keras_parameterized.TestCase):
         pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cls=xformer,
+        mask_cls=xmask,
         embedding_cfg=embedding_cfg)
 
     # Create the inputs (note that the first dimension is implicit).
@@ -603,6 +641,8 @@ class EncoderScaffoldHiddenInstanceTest(keras_parameterized.TestCase):
         "call_class":
             TestLayer
     }
+    mask_call_list = []
+    mask_cfg = {"call_list": mask_call_list, "call_class": TestLayer}
     # Create a small EncoderScaffold for testing. This time, we pass an already-
     # instantiated layer object.
     kwargs = dict(
@@ -614,11 +654,16 @@ class EncoderScaffoldHiddenInstanceTest(keras_parameterized.TestCase):
 
     if use_hidden_cls_instance:
       xformer = ValidatedTransformerLayer(**hidden_cfg)
+      xmask = ValidatedMaskLayer(**mask_cfg)
       test_network = encoder_scaffold.EncoderScaffold(
-          hidden_cls=xformer, **kwargs)
+          hidden_cls=xformer, mask_cls=xmask, **kwargs)
     else:
       test_network = encoder_scaffold.EncoderScaffold(
-          hidden_cls=ValidatedTransformerLayer, hidden_cfg=hidden_cfg, **kwargs)
+          hidden_cls=ValidatedTransformerLayer,
+          hidden_cfg=hidden_cfg,
+          mask_cls=ValidatedMaskLayer,
+          mask_cfg=mask_cfg,
+          **kwargs)
 
     # Create another network object from the first object's config.
     new_network = encoder_scaffold.EncoderScaffold.from_config(

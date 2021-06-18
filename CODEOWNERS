@@ -1,18 +1,20 @@
 * @tensorflow/tf-garden-team @tensorflow/tf-model-garden-team
 /official/ @rachellj218 @saberkun @jaeyounkim
-/official/nlp/ @saberkun @chenGitHuber @lehougoogle @rachellj218 @jaeyounkim
+/official/nlp/ @saberkun @lehougoogle @rachellj218 @jaeyounkim
+/official/recommendation/ranking/ @gagika
 /official/vision/ @xianzhidu @yeqingli @arashwan @saberkun @rachellj218 @jaeyounkim
 /official/vision/beta/projects/assemblenet/ @mryoo
 /official/vision/beta/projects/deepmac_maskrcnn/ @vighneshbirodkar
+/official/vision/beta/projects/movinet/ @hyperparticle @yuanliangzhe @yeqingli
 /official/vision/beta/projects/simclr/ @luotigerlsx @chentingpc @saxenasaurabh
 /research/adversarial_text/ @rsepassi @a-dai
 /research/attention_ocr/ @xavigibert
 /research/audioset/ @plakal @dpwe
-/research/autoaugment/* @barretzoph
+/research/autoaugment/ @barretzoph
 /research/cognitive_planning/ @s-gupta
 /research/cvt_text/ @clarkkev @lmthang
 /research/deep_speech/ @yhliang2018
-/research/deeplab/ @aquariusjay @yknzhu @gpapan
+/research/deeplab/ @aquariusjay @yknzhu
 /research/delf/ @andrefaraujo
 /research/efficient-hrl/ @ofirnachum
 /research/lfads/ @jazcollins @sussillo

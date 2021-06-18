@@ -15,6 +15,7 @@
 """Multitask training driver library."""
 # pytype: disable=attribute-error
 import os
+from typing import Optional
 from absl import logging
 import orbit
 import tensorflow as tf
@@ -71,7 +72,9 @@ def run_experiment(*, distribution_strategy: tf.distribute.Strategy,
       evaluator = evaluator_lib.MultiTaskEvaluator(
           task=task,
           model=model,
-          global_step=trainer.global_step if is_training else None)
+          global_step=trainer.global_step if is_training else None,
+          checkpoint_exporter=train_utils.maybe_create_best_ckpt_exporter(
+              params, model_dir))
     else:
       evaluator = None
 
@@ -139,7 +142,8 @@ def run_experiment_with_multitask_eval(
     params: configs.MultiEvalExperimentConfig,
     model_dir: str,
     run_post_eval: bool = False,
-    save_summary: bool = True) -> tf.keras.Model:
+    save_summary: bool = True,
+    trainer: Optional[core_lib.Trainer] = None) -> tf.keras.Model:
   """Runs train/eval configured by the experiment params.
 
   Args:
@@ -153,6 +157,9 @@ def run_experiment_with_multitask_eval(
     run_post_eval: Whether to run post eval once after training, metrics logs
       are returned.
     save_summary: Whether to save train and validation summary.
+    trainer: the core_lib.Trainer instance. It should be created within the
+      strategy.scope(). If not provided, an instance will be created by default
+      if `mode` contains 'train'.
 
   Returns:
       model: `tf.keras.Model` instance.
@@ -161,19 +168,19 @@ def run_experiment_with_multitask_eval(
   is_training = 'train' in mode
   is_eval = 'eval' in mode
   with distribution_strategy.scope():
-    optimizer = train_task.create_optimizer(params.trainer.optimizer_config,
-                                            params.runtime)
-    model = train_task.build_model()
     if is_training:
-      trainer = core_lib.Trainer(
+      trainer = trainer or core_lib.Trainer(
           config=params,
           task=train_task,
-          model=model,
-          optimizer=optimizer,
+          model=train_task.build_model(),
+          optimizer=train_task.create_optimizer(
+              params.trainer.optimizer_config, params.runtime),
           train=True,
           evaluate=False)
     else:
       trainer = None
+    model = trainer.model if trainer else train_task.build_model()
+
     if is_eval:
       evaluator = evaluator_lib.MultiTaskEvaluator(
           task=eval_tasks,

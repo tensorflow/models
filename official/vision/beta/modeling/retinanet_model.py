@@ -126,7 +126,7 @@ class RetinaNetModel(tf.keras.Model):
           'box_outputs': raw_boxes,
       }
       if raw_attributes:
-        outputs.update({'att_outputs': raw_attributes})
+        outputs.update({'attribute_outputs': raw_attributes})
       return outputs
     else:
       # Generate anchor boxes for this batch if not provided.
@@ -148,16 +148,25 @@ class RetinaNetModel(tf.keras.Model):
       final_results = self.detection_generator(
           raw_boxes, raw_scores, anchor_boxes, image_shape, raw_attributes)
       outputs = {
-          'detection_boxes': final_results['detection_boxes'],
-          'detection_scores': final_results['detection_scores'],
-          'detection_classes': final_results['detection_classes'],
-          'num_detections': final_results['num_detections'],
           'cls_outputs': raw_scores,
           'box_outputs': raw_boxes,
       }
+      if self.detection_generator.get_config()['apply_nms']:
+        outputs.update({
+            'detection_boxes': final_results['detection_boxes'],
+            'detection_scores': final_results['detection_scores'],
+            'detection_classes': final_results['detection_classes'],
+            'num_detections': final_results['num_detections']
+        })
+      else:
+        outputs.update({
+            'decoded_boxes': final_results['decoded_boxes'],
+            'decoded_box_scores': final_results['decoded_box_scores']
+        })
+
       if raw_attributes:
         outputs.update({
-            'att_outputs': raw_attributes,
+            'attribute_outputs': raw_attributes,
             'detection_attributes': final_results['detection_attributes'],
         })
       return outputs

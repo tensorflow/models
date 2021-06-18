@@ -41,7 +41,7 @@ In the near future, we will add:
 |-------|-------------------|
 | [MNIST](vision/image_classification) | A basic model to classify digits from the [MNIST dataset](http://yann.lecun.com/exdb/mnist/) |
 | [ResNet](vision/image_classification) | [Deep Residual Learning for Image Recognition](https://arxiv.org/abs/1512.03385) |
-| [ResNet-RS](vision/image_classification) | [Revisiting ResNets: Improved Training and Scaling Strategies](https://arxiv.org/abs/2103.07579) |
+| [ResNet-RS](vision/beta/MODEL_GARDEN.md) | [Revisiting ResNets: Improved Training and Scaling Strategies](https://arxiv.org/abs/2103.07579) |
 | [EfficientNet](vision/image_classification) | [EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks](https://arxiv.org/abs/1905.11946) |
 
 #### Object Detection and Segmentation
@@ -66,9 +66,11 @@ In the near future, we will add:
 
 ### Recommendation
 
-| Model | Reference (Paper) |
-|-------|-------------------|
-| [NCF](recommendation) | [Neural Collaborative Filtering](https://arxiv.org/abs/1708.05031) |
+Model                            | Reference (Paper)
+-------------------------------- | -----------------
+[DLRM](recommendation/ranking)   | [Deep Learning Recommendation Model for Personalization and Recommendation Systems](https://arxiv.org/abs/1906.00091)
+[DCN v2](recommendation/ranking) | [Improved Deep & Cross Network and Practical Lessons for Web-scale Learning to Rank Systems](https://arxiv.org/abs/2008.13535)
+[NCF](recommendation)            | [Neural Collaborative Filtering](https://arxiv.org/abs/1708.05031)
 
 ## How to get started with the official models
 

@@ -23,9 +23,8 @@ from official.modeling.optimization.configs import optimization_config
 
 class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
-  @parameterized.parameters(('sgd'), ('rmsprop'),
-                            ('adam'), ('adamw'),
-                            ('lamb'), ('lars'))
+  @parameterized.parameters(('sgd'), ('rmsprop'), ('adam'), ('adamw'), ('lamb'),
+                            ('lars'), ('adagrad'))
   def test_optimizers(self, optimizer_type):
     params = {
         'optimizer': {
@@ -50,10 +49,7 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(optimizer, optimizer_cls)
     self.assertEqual(expected_optimizer_config, optimizer.get_config())
 
-  @parameterized.parameters(
-      (None, None),
-      (1.0, None),
-      (None, 1.0))
+  @parameterized.parameters((None, None), (1.0, None), (None, 1.0))
   def test_gradient_clipping(self, clipnorm, clipvalue):
     params = {
         'optimizer': {
@@ -110,6 +106,9 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(ValueError):
       optimizer_factory.OptimizerFactory(
           optimization_config.OptimizationConfig(params))
+
+
+# TODO(b/187559334) refactor lr_schedule tests into `lr_schedule_test.py`.
 
   def test_stepwise_lr_schedule(self):
     params = {
@@ -356,11 +355,12 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
                 'power': -1.0,
                 'linear_decay_fraction': 0.5,
                 'total_decay_steps': 100,
+                'offset': 0,
             }
         }
     }
-    expected_lr_step_values = [
-        [0, 1.0], [1, 1.0], [40, 1. / 40.], [60, 1. / 60. * 0.8]]
+    expected_lr_step_values = [[0, 1.0], [1, 1.0], [40, 1. / 40.],
+                               [60, 1. / 60. * 0.8]]
     opt_config = optimization_config.OptimizationConfig(params)
     opt_factory = optimizer_factory.OptimizerFactory(opt_config)
     lr = opt_factory.build_learning_rate()
@@ -393,7 +393,6 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
     for step, value in expected_lr_step_values:
       self.assertAlmostEqual(lr(step).numpy(), value)
-
 
 if __name__ == '__main__':
   tf.test.main()

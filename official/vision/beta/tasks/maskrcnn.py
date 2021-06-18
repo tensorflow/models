@@ -161,6 +161,7 @@ class MaskRCNNTask(base_task.Task):
                    aux_losses: Optional[Any] = None):
     """Build Mask R-CNN losses."""
     params = self.task_config
+    cascade_ious = params.model.roi_sampler.cascade_iou_thresholds
 
     rpn_score_loss_fn = maskrcnn_losses.RpnScoreLoss(
         tf.shape(outputs['box_outputs'])[1])
@@ -175,15 +176,32 @@ class MaskRCNNTask(base_task.Task):
 
     frcnn_cls_loss_fn = maskrcnn_losses.FastrcnnClassLoss()
     frcnn_box_loss_fn = maskrcnn_losses.FastrcnnBoxLoss(
-        params.losses.frcnn_huber_loss_delta)
-    frcnn_cls_loss = tf.reduce_mean(
-        frcnn_cls_loss_fn(
-            outputs['class_outputs'], outputs['class_targets']))
-    frcnn_box_loss = tf.reduce_mean(
-        frcnn_box_loss_fn(
-            outputs['box_outputs'],
-            outputs['class_targets'],
-            outputs['box_targets']))
+        params.losses.frcnn_huber_loss_delta,
+        params.model.detection_head.class_agnostic_bbox_pred)
+
+    # Final cls/box losses are computed as an average of all detection heads.
+    frcnn_cls_loss = 0.0
+    frcnn_box_loss = 0.0
+    num_det_heads = 1 if cascade_ious is None else 1 + len(cascade_ious)
+    for cas_num in range(num_det_heads):
+      frcnn_cls_loss_i = tf.reduce_mean(
+          frcnn_cls_loss_fn(
+              outputs['class_outputs_{}'
+                      .format(cas_num) if cas_num else 'class_outputs'],
+              outputs['class_targets_{}'
+                      .format(cas_num) if cas_num else 'class_targets']))
+      frcnn_box_loss_i = tf.reduce_mean(
+          frcnn_box_loss_fn(
+              outputs['box_outputs_{}'.format(cas_num
+                                             ) if cas_num else 'box_outputs'],
+              outputs['class_targets_{}'
+                      .format(cas_num) if cas_num else 'class_targets'],
+              outputs['box_targets_{}'.format(cas_num
+                                             ) if cas_num else 'box_targets']))
+      frcnn_cls_loss += frcnn_cls_loss_i
+      frcnn_box_loss += frcnn_box_loss_i
+    frcnn_cls_loss /= num_det_heads
+    frcnn_box_loss /= num_det_heads
 
     if params.model.include_mask:
       mask_loss_fn = maskrcnn_losses.MaskrcnnLoss()

@@ -36,7 +36,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
       num_anchors_per_location: int,
       num_convs: int = 4,
       num_filters: int = 256,
-      attribute_heads: List[Dict[str, Any]] = None,
+      attribute_heads: Optional[List[Dict[str, Any]]] = None,
       use_separable_conv: bool = False,
       activation: str = 'relu',
       use_sync_bn: bool = False,
