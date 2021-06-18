@@ -65,11 +65,12 @@ class GlobalFeatureNetTest(tf.test.TestCase):
       image_paths.append(filename)
 
     descriptors = global_model.extract_global_descriptors_from_list(
-      model, image_paths, image_size=1024, bounding_boxes=None, ms=[1., 3.],
-      msp=2, print_freq=1)
+            model, image_paths, image_size=1024, bounding_boxes=None,
+            scales=[1., 3.],
+            multi_scale_power=2, print_freq=1)
     self.assertAllEqual([2048, 2], tf.shape(descriptors))
 
-  def testExtractMS(self):
+  def testExtractMultiScale(self):
     """Tests multi-scale global descriptor extraction."""
     # Initializing network for testing.
     model_params = {'architecture': 'ResNet101', 'pooling': 'gem',
@@ -77,7 +78,8 @@ class GlobalFeatureNetTest(tf.test.TestCase):
     model = global_model.GlobalFeatureNet(**model_params)
 
     input = tf.random.uniform([2, 1024, 750, 3], dtype=tf.float32, seed=0)
-    descriptors = global_model.extract_ms(model, input, ms=[1., 3.], msp=2)
+    descriptors = global_model.extract_multi_scale_descriptor(
+            model, input, scales=[1., 3.], multi_scale_power=2)
     self.assertAllEqual([2, 2048], tf.shape(descriptors))
 
 

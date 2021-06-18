@@ -29,9 +29,9 @@ import os
 import pickle
 import tensorflow as tf
 
-from delf.python.pooling_layers import pooling as pooling_layers
-from delf.python.normalization_layers import normalization
 from delf.python.datasets import generic_dataset
+from delf.python.normalization_layers import normalization
+from delf.python.pooling_layers import pooling as pooling_layers
 from delf.python.training import global_features_utils
 
 # Pre-computed global whitening, for most commonly used architectures.
@@ -84,15 +84,20 @@ class GlobalFeatureNet(tf.keras.Model):
     """GlobalFeatureNet network initialization.
 
     Args:
-      architecture: Network backbone 'VGG16'/'VGG19'/'ResNet50'/'ResNet101/
-        'ResNet101V2'/'ResNet152'/'DenseNet121'/'DenseNet169'/'DenseNet201'.
+      architecture: Network backbone.
       pooling: Pooling method used 'mac'/'spoc'/'gem'.
       whitening: Bool, whether to use whitening.
-      pretrained: Bool, whether to initialize the network with pretrained
-        weights.
+      pretrained: Bool, whether to initialize the network with the weights
+        pretrained on ImageNet.
       data_root: String, path to the data folder where the precomputed
-        whitening is/will be saved in case is `whitening` is True.
+        whitening is/will be saved in case `whitening` is True.
+
+    Raises:
+      ValueError: If `architecture` is not supported.
     """
+    if architecture not in _OUTPUT_DIM.keys():
+      raise ValueError("Architecture {} is not supported.".format(architecture))
+
     super(GlobalFeatureNet, self).__init__()
 
     # Get standard output dimensionality size.
@@ -114,7 +119,7 @@ class GlobalFeatureNet(tf.keras.Model):
       net_in.add(tf.keras.layers.ReLU())
 
     # Initialize pooling.
-    pool = _POOLING[pooling]()
+    self.pool = _POOLING[pooling]()
 
     # Initialize whitening.
     if whitening:
@@ -123,9 +128,9 @@ class GlobalFeatureNet(tf.keras.Model):
         # the fully-connected layer is going to be initialized according to
         # the precomputed layer configuration.
         global_features_utils.debug_and_log(
-          ">> {}: for '{}' custom computed whitening '{}' is used."
-            .format(os.getcwd(), architecture,
-                    os.path.basename(_WHITENING_CONFIG[architecture])))
+                ">> {}: for '{}' custom computed whitening '{}' is used."
+                  .format(os.getcwd(), architecture,
+                          os.path.basename(_WHITENING_CONFIG[architecture])))
         # The layer configuration is downloaded to the `data_root` folder.
         whiten_dir = os.path.join(data_root, architecture)
         path = tf.keras.utils.get_file(fname=whiten_dir,
@@ -134,18 +139,18 @@ class GlobalFeatureNet(tf.keras.Model):
         with tf.io.gfile.GFile(path, 'rb') as learned_whitening_file:
           whitening_config = pickle.load(learned_whitening_file)
         # Whitening layer is initialized according to the configuration.
-        whiten = tf.keras.layers.Dense.from_config(whitening_config)
+        self.whiten = tf.keras.layers.Dense.from_config(whitening_config)
       else:
         # In case if no precomputed whitening exists for the chosen
         # architecture, the fully-connected whitening layer is initialized
         # with the random weights.
-        whiten = tf.keras.layers.Dense(dim, activation=None, use_bias=True)
+        self.whiten = tf.keras.layers.Dense(dim, activation=None, use_bias=True)
         global_features_utils.debug_and_log(
-          ">> There there is either no whitening computed for the "
-          "used network architecture or the pretrained is False,"
-          " random weights are used.")
+                ">> There is either no whitening computed for the "
+                "used network architecture or pretrained is False,"
+                " random weights are used.")
     else:
-      whiten = None
+      self.whiten = None
 
     # Create meta information to be stored in the network.
     self.meta = {
@@ -166,9 +171,7 @@ class GlobalFeatureNet(tf.keras.Model):
         layer.trainable = False
 
     self.feature_extractor = net_in
-    self.pool = pool
-    self.whiten = whiten
-    self.norm = normalization.L2Normalization()
+    self.normalize = normalization.L2Normalization()
 
   def call(self, x, training=False):
     """Invokes the GlobalFeatureNet instance.
@@ -186,13 +189,13 @@ class GlobalFeatureNet(tf.keras.Model):
     # Pooling.
     o = self.pool(o)
     # Normalization.
-    o = self.norm(o)
+    o = self.normalize(o)
 
     # If whitening exists: the pooled global descriptor is whitened and
     # re-normalized.
     if self.whiten is not None:
       o = self.whiten(o)
-      o = tf.nn.l2_normalize(o, axis=1, epsilon=self.norm.eps)
+      o = self.normalize(o)
     return o
 
   def meta_repr(self):
@@ -212,7 +215,7 @@ class GlobalFeatureNet(tf.keras.Model):
 
 def extract_global_descriptors_from_list(net, images, image_size,
                                          bounding_boxes=None, ms=[1.],
-                                         msp=1., print_freq=10):
+                                         multi_scale_power=1., print_freq=10):
   """Extracting global descriptors from a list of images.
 
   Args:
@@ -220,8 +223,8 @@ def extract_global_descriptors_from_list(net, images, image_size,
     images: Absolute image paths as strings.
     image_size: Integer, defines the maximum size of longer image side.
     bounding_boxes: List of (x1,y1,x2,y2) tuples to crop the query images.
-    ms: List of float scales.
-    msp: Float, multi-scale normalization power parameter.
+    scales: List of float scales.
+    multi_scale_power: Float, multi-scale normalization power parameter.
     print_freq: Printing frequency for debugging.
 
   Returns:
@@ -232,45 +235,47 @@ def extract_global_descriptors_from_list(net, images, image_size,
                                         imsize=image_size,
                                         bounding_boxes=bounding_boxes)
 
-  def data_gen():
+  def _data_gen():
     return (inst for inst in data)
 
-  loader = tf.data.Dataset.from_generator(data_gen, output_types=(tf.float32))
+  loader = tf.data.Dataset.from_generator(_data_gen, output_types=(tf.float32))
   loader = loader.batch(1)
 
   # Extracting vectors.
   descriptors = tf.zeros((0, net.meta['outputdim']))
   for i, input in enumerate(loader):
-    if len(ms) == 1 and ms[0] == 1:
+    if len(scales) == 1 and scales[0] == 1:
       descriptors = tf.concat([descriptors, net(input)], 0)
     else:
-      descriptors = tf.concat([descriptors, extract_ms(net, input, ms, msp)], 0)
+      descriptors = tf.concat(
+              [descriptors, extract_multi_scale_descriptor(
+                      net, input, scales, multi_scale_power)], 0)
 
     if (i + 1) % print_freq == 0 or (i + 1) == len(images):
       global_features_utils.debug_and_log(
-        '\r>>>> {}/{} done...'.format((i + 1), len(images)),
-        debug_on_the_same_line=True)
+              '\r>>>> {}/{} done...'.format((i + 1), len(images)),
+              debug_on_the_same_line=True)
   global_features_utils.debug_and_log('', log=False)
 
   descriptors = tf.transpose(descriptors, perm=[1, 0])
   return descriptors
 
 
-def extract_ms(net, input, ms, msp):
+def extract_multi_scale_descriptor(net, input, scales, multi_scale_power):
   """Extracts the global descriptor multi scale.
 
   Args:
     net: Model object, network for the forward pass.
     input: [B, H, W, C] input tensor in channel-last (BHWC) configuration.
-    ms: List of float scales.
-    msp: Float, multi-scale normalization power parameter.
+    scales: List of float scales.
+    multi_scale_power: Float, multi-scale normalization power parameter.
 
   Returns:
     descriptors: Multi-scale global descriptors for the input images.
   """
   descriptors = tf.zeros(net.meta['outputdim'])
 
-  for s in ms:
+  for s in scales:
     if s == 1:
       input_t = input
     else:
@@ -278,10 +283,10 @@ def extract_ms(net, input, ms, msp):
       input_t = tf.image.resize(input, output_shape,
                                 method='bilinear',
                                 preserve_aspect_ratio=True)
-    descriptors += tf.pow(net(input_t), msp)
+    descriptors += tf.pow(net(input_t), multi_scale_power)
 
-  descriptors /= len(ms)
-  descriptors = tf.pow(descriptors, 1. / msp)
+  descriptors /= len(scales)
+  descriptors = tf.pow(descriptors, 1. / multi_scale_power)
   descriptors /= tf.norm(descriptors)
 
   return descriptors
