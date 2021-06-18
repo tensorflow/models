@@ -1,0 +1,71 @@
+# SimCLR Imagenet pretraining.
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  model:
+    mode: 'pretrain'
+    input_size: [224, 224, 3]
+    backbone:
+      type: 'resnet'
+      resnet:
+        model_id: 50
+    backbone_trainable: true
+    projection_head:
+      proj_output_dim: 128
+      num_proj_layers: 3
+      ft_proj_idx: 0
+    supervised_head:
+      num_classes: 1001
+    norm_activation:
+      use_sync_bn: true
+      norm_momentum: 0.9
+      norm_epsilon: 0.00001
+  loss:
+    projection_norm: true
+    temperature: 0.1
+  evaluation:
+    top_k: 5
+    one_hot: true
+  train_data:
+    input_path: '/readahead/200M/placer/prod/home/distbelief/imagenet-tensorflow/imagenet-2012-tfrecord/train*'
+    is_training: true
+    global_batch_size: 2048
+    dtype: 'bfloat16'
+    parser:
+      mode: 'pretrain'
+    decoder:
+      decode_label: true
+  validation_data:
+    input_path: '/readahead/200M/placer/prod/home/distbelief/imagenet-tensorflow/imagenet-2012-tfrecord/valid*'
+    is_training: false
+    global_batch_size: 2048
+    dtype: 'bfloat16'
+    drop_remainder: false
+    parser:
+      mode: 'pretrain'
+    decoder:
+      decode_label: true
+trainer:
+  train_steps: 500000  # 800 epochs
+  validation_steps: 24  # NUM_EXAMPLES (50000) // global_batch_size
+  validation_interval: 625
+  steps_per_loop: 625  # NUM_EXAMPLES (1281167) // global_batch_size
+  summary_interval: 625
+  checkpoint_interval: 625
+  optimizer_config:
+    optimizer:
+      type: 'lars'
+      lars:
+        momentum: 0.9
+        weight_decay_rate: 0.000001
+        exclude_from_weight_decay: ['batch_normalization', 'bias']
+    learning_rate:
+      type: 'cosine'
+      cosine:
+        initial_learning_rate: 1.6  #  0.2 * BatchSize / 256
+        decay_steps: 500000
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 25000  # 5% of total epochs

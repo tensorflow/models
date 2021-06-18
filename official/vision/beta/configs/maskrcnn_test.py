@@ -29,6 +29,7 @@ class MaskRCNNConfigTest(tf.test.TestCase, parameterized.TestCase):
       ('fasterrcnn_resnetfpn_coco',),
       ('maskrcnn_resnetfpn_coco',),
       ('maskrcnn_spinenet_coco',),
+      ('cascadercnn_spinenet_coco',),
   )
   def test_maskrcnn_configs(self, config_name):
     config = exp_factory.get_exp_config(config_name)
@@ -36,6 +37,7 @@ class MaskRCNNConfigTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(config.task, exp_cfg.MaskRCNNTask)
     self.assertIsInstance(config.task.model, exp_cfg.MaskRCNN)
     self.assertIsInstance(config.task.train_data, exp_cfg.DataConfig)
+    config.validate()
     config.task.train_data.is_training = None
     with self.assertRaisesRegex(KeyError, 'Found inconsistncy between key'):
       config.validate()

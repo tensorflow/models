@@ -329,7 +329,7 @@ def load_eval_image(filename: Text, image_size: int = IMAGE_SIZE) -> tf.Tensor:
 
 
 def build_eval_dataset(filenames: List[Text],
-                       labels: List[int] = None,
+                       labels: Optional[List[int]] = None,
                        image_size: int = IMAGE_SIZE,
                        batch_size: int = 1) -> tf.Tensor:
   """Builds a tf.data.Dataset from a list of filenames and labels.

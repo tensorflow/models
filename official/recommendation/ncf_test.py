@@ -38,11 +38,13 @@ class NcfTest(tf.test.TestCase):
     ncf_common.define_ncf_flags()
 
   def setUp(self):
+    super().setUp()
     self.top_k_old = rconst.TOP_K
     self.num_eval_negatives_old = rconst.NUM_EVAL_NEGATIVES
     rconst.NUM_EVAL_NEGATIVES = 2
 
   def tearDown(self):
+    super().tearDown()
     rconst.NUM_EVAL_NEGATIVES = self.num_eval_negatives_old
     rconst.TOP_K = self.top_k_old
 

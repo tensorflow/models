@@ -375,14 +375,15 @@ class BigBirdMasks(tf.keras.layers.Layer):
     super().__init__(**kwargs)
     self._block_size = block_size
 
-  def call(self, inputs):
-    encoder_shape = tf.shape(inputs)
+  def call(self, inputs, mask):
+    encoder_shape = tf.shape(mask)
+    mask = tf.cast(mask, inputs.dtype)
     batch_size, seq_length = encoder_shape[0], encoder_shape[1]
     # reshape for blocking
     blocked_encoder_mask = tf.reshape(
-        inputs, (batch_size, seq_length // self._block_size, self._block_size))
-    encoder_from_mask = tf.reshape(inputs, (batch_size, 1, seq_length, 1))
-    encoder_to_mask = tf.reshape(inputs, (batch_size, 1, 1, seq_length))
+        mask, (batch_size, seq_length // self._block_size, self._block_size))
+    encoder_from_mask = tf.reshape(mask, (batch_size, 1, seq_length, 1))
+    encoder_to_mask = tf.reshape(mask, (batch_size, 1, 1, seq_length))
 
     band_mask = create_band_mask_from_inputs(blocked_encoder_mask,
                                              blocked_encoder_mask)

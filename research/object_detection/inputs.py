@@ -479,6 +479,7 @@ def pad_input_data_to_static_shapes(tensor_dict,
       input_fields.groundtruth_instance_masks: [
           max_num_boxes, height, width
       ],
+      input_fields.groundtruth_instance_mask_weights: [max_num_boxes],
       input_fields.groundtruth_is_crowd: [max_num_boxes],
       input_fields.groundtruth_group_of: [max_num_boxes],
       input_fields.groundtruth_area: [max_num_boxes],
@@ -601,6 +602,8 @@ def augment_input_data(tensor_dict, data_augmentation_options):
 
   include_instance_masks = (fields.InputDataFields.groundtruth_instance_masks
                             in tensor_dict)
+  include_instance_mask_weights = (
+      fields.InputDataFields.groundtruth_instance_mask_weights in tensor_dict)
   include_keypoints = (fields.InputDataFields.groundtruth_keypoints
                        in tensor_dict)
   include_keypoint_visibilities = (
@@ -624,6 +627,7 @@ def augment_input_data(tensor_dict, data_augmentation_options):
           include_label_confidences=include_label_confidences,
           include_multiclass_scores=include_multiclass_scores,
           include_instance_masks=include_instance_masks,
+          include_instance_mask_weights=include_instance_mask_weights,
           include_keypoints=include_keypoints,
           include_keypoint_visibilities=include_keypoint_visibilities,
           include_dense_pose=include_dense_pose,
@@ -652,6 +656,7 @@ def _get_labels_dict(input_dict):
       fields.InputDataFields.groundtruth_keypoint_depths,
       fields.InputDataFields.groundtruth_keypoint_depth_weights,
       fields.InputDataFields.groundtruth_instance_masks,
+      fields.InputDataFields.groundtruth_instance_mask_weights,
       fields.InputDataFields.groundtruth_area,
       fields.InputDataFields.groundtruth_is_crowd,
       fields.InputDataFields.groundtruth_group_of,
@@ -804,6 +809,9 @@ def train_input(train_config, train_input_config,
       labels[fields.InputDataFields.groundtruth_instance_masks] is a
         [batch_size, num_boxes, H, W] float32 tensor containing only binary
         values, which represent instance masks for objects.
+      labels[fields.InputDataFields.groundtruth_instance_mask_weights] is a
+        [batch_size, num_boxes] float32 tensor containing groundtruth weights
+        for each instance mask.
       labels[fields.InputDataFields.groundtruth_keypoints] is a
         [batch_size, num_boxes, num_keypoints, 2] float32 tensor containing
         keypoints for each box.
@@ -961,6 +969,9 @@ def eval_input(eval_config, eval_input_config, model_config,
       labels[fields.InputDataFields.groundtruth_instance_masks] is a
         [1, num_boxes, H, W] float32 tensor containing only binary values,
         which represent instance masks for objects.
+      labels[fields.InputDataFields.groundtruth_instance_mask_weights] is a
+        [1, num_boxes] float32 tensor containing groundtruth weights for each
+        instance mask.
       labels[fields.InputDataFields.groundtruth_weights] is a
         [batch_size, num_boxes, num_keypoints] float32 tensor containing
         groundtruth weights for the keypoints.

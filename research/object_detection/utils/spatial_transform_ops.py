@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow.compat.v1 as tf
+from object_detection.utils import shape_utils
 
 
 def _coordinate_vector_1d(start, end, size, align_endpoints):
@@ -322,7 +323,7 @@ def multilevel_roi_align(features, boxes, box_levels, output_size,
   """
   with tf.name_scope(scope, 'MultiLevelRoIAlign'):
     features, true_feature_shapes = pad_to_max_size(features)
-    batch_size = tf.shape(features)[0]
+    batch_size = shape_utils.combined_static_and_dynamic_shape(features)[0]
     num_levels = features.get_shape().as_list()[1]
     max_feature_height = tf.shape(features)[2]
     max_feature_width = tf.shape(features)[3]

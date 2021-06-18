@@ -11,7 +11,7 @@ task:
       type: 'resnet'
       resnet:
         model_id: 50
-  init_checkpoint: 'gs://tf_model_garden/official/resnet50_imagenet/ckpt-28080'
+  init_checkpoint: 'gs://tf_model_garden/vision/resnet50_imagenet/ckpt-28080'
   train_data:
     global_batch_size: 64
   validation_data:

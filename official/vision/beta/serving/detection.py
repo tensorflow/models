@@ -34,9 +34,9 @@ class DetectionModule(export_base.ExportModule):
   def _build_model(self):
 
     if self._batch_size is None:
-      ValueError("batch_size can't be None for detection models")
+      raise ValueError('batch_size cannot be None for detection models.')
     if not self.params.task.model.detection_generator.use_batched_nms:
-      ValueError('Only batched_nms is supported.')
+      raise ValueError('Only batched_nms is supported.')
     input_specs = tf.keras.layers.InputSpec(shape=[self._batch_size] +
                                             self._input_image_size + [3])
 
@@ -120,20 +120,32 @@ class DetectionModule(export_base.ExportModule):
 
     input_image_shape = image_info[:, 1, :]
 
+    # To overcome keras.Model extra limitation to save a model with layers that
+    # have multiple inputs, we use `model.call` here to trigger the forward
+    # path. Note that, this disables some keras magics happens in `__call__`.
     detections = self.model.call(
         images=images,
         image_shape=input_image_shape,
         anchor_boxes=anchor_boxes,
         training=False)
 
-    final_outputs = {
-        'detection_boxes': detections['detection_boxes'],
-        'detection_scores': detections['detection_scores'],
-        'detection_classes': detections['detection_classes'],
-        'num_detections': detections['num_detections'],
-        'image_info': image_info
-    }
+    if self.params.task.model.detection_generator.apply_nms:
+      final_outputs = {
+          'detection_boxes': detections['detection_boxes'],
+          'detection_scores': detections['detection_scores'],
+          'detection_classes': detections['detection_classes'],
+          'num_detections': detections['num_detections']
+      }
+    else:
+      final_outputs = {
+          'decoded_boxes': detections['decoded_boxes'],
+          'decoded_box_scores': detections['decoded_box_scores'],
+          'cls_outputs': detections['cls_outputs'],
+          'box_outputs': detections['box_outputs']
+      }
+
     if 'detection_masks' in detections.keys():
       final_outputs['detection_masks'] = detections['detection_masks']
 
+    final_outputs.update({'image_info': image_info})
     return final_outputs

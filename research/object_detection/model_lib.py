@@ -266,6 +266,7 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
         # dimension. This list has to be kept in sync with InputDataFields in
         # standard_fields.py.
         fields.InputDataFields.groundtruth_instance_masks,
+        fields.InputDataFields.groundtruth_instance_mask_weights,
         fields.InputDataFields.groundtruth_classes,
         fields.InputDataFields.groundtruth_boxes,
         fields.InputDataFields.groundtruth_keypoints,
@@ -319,6 +320,10 @@ def provide_groundtruth(model, labels):
   if fields.InputDataFields.groundtruth_instance_masks in labels:
     gt_masks_list = labels[
         fields.InputDataFields.groundtruth_instance_masks]
+  gt_mask_weights_list = None
+  if fields.InputDataFields.groundtruth_instance_mask_weights in labels:
+    gt_mask_weights_list = labels[
+        fields.InputDataFields.groundtruth_instance_mask_weights]
   gt_keypoints_list = None
   if fields.InputDataFields.groundtruth_keypoints in labels:
     gt_keypoints_list = labels[fields.InputDataFields.groundtruth_keypoints]
@@ -383,6 +388,7 @@ def provide_groundtruth(model, labels):
       groundtruth_confidences_list=gt_confidences_list,
       groundtruth_labeled_classes=gt_labeled_classes,
       groundtruth_masks_list=gt_masks_list,
+      groundtruth_mask_weights_list=gt_mask_weights_list,
       groundtruth_keypoints_list=gt_keypoints_list,
       groundtruth_keypoint_visibilities_list=gt_keypoint_visibilities_list,
       groundtruth_dp_num_points_list=gt_dp_num_points_list,
@@ -442,9 +448,8 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
     tf.keras.backend.set_learning_phase(is_training)
     # Set policy for mixed-precision training with Keras-based models.
     if use_tpu and train_config.use_bfloat16:
-      from tensorflow.python.keras.engine import base_layer_utils  # pylint: disable=g-import-not-at-top
       # Enable v2 behavior, as `mixed_bfloat16` is only supported in TF 2.0.
-      base_layer_utils.enable_v2_dtype_behavior()
+      tf.keras.layers.enable_v2_dtype_behavior()
       tf2.keras.mixed_precision.set_global_policy('mixed_bfloat16')
     detection_model = detection_model_fn(
         is_training=is_training, add_summaries=(not use_tpu))

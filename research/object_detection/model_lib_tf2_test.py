@@ -70,7 +70,8 @@ def _get_config_kwarg_overrides():
   return {
       'train_input_path': data_path,
       'eval_input_path': data_path,
-      'label_map_path': label_map_path
+      'label_map_path': label_map_path,
+      'train_input_reader': {'batch_size': 1}
   }
 
 
@@ -98,6 +99,7 @@ class ModelLibTest(tf.test.TestCase):
           model_dir=model_dir,
           train_steps=train_steps,
           checkpoint_every_n=1,
+          num_steps_per_iteration=1,
           **config_kwarg_overrides)
 
     model_lib_v2.eval_continuously(
@@ -149,7 +151,7 @@ class SimpleModel(model.DetectionModel):
 def fake_model_builder(*_, **__):
   return SimpleModel()
 
-FAKE_BUILDER_MAP = {'build': fake_model_builder}
+FAKE_BUILDER_MAP = {'detection_model_fn_base': fake_model_builder}
 
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
@@ -161,7 +163,7 @@ class ModelCheckpointTest(tf.test.TestCase):
 
     strategy = tf2.distribute.OneDeviceStrategy(device='/cpu:0')
     with mock.patch.dict(
-        exporter_lib_v2.INPUT_BUILDER_UTIL_MAP, FAKE_BUILDER_MAP):
+        model_lib_v2.MODEL_BUILD_UTIL_MAP, FAKE_BUILDER_MAP):
 
       model_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
       pipeline_config_path = get_pipeline_config_path(MODEL_NAME_FOR_TEST)
@@ -173,8 +175,8 @@ class ModelCheckpointTest(tf.test.TestCase):
       with strategy.scope():
         model_lib_v2.train_loop(
             new_pipeline_config_path, model_dir=model_dir,
-            train_steps=20, checkpoint_every_n=2, checkpoint_max_to_keep=3,
-            **config_kwarg_overrides
+            train_steps=5, checkpoint_every_n=2, checkpoint_max_to_keep=3,
+            num_steps_per_iteration=1, **config_kwarg_overrides
         )
       ckpt_files = tf.io.gfile.glob(os.path.join(model_dir, 'ckpt-*.index'))
       self.assertEqual(len(ckpt_files), 3,
@@ -266,6 +268,7 @@ class MetricsExportTest(tf.test.TestCase):
               train_steps=train_steps,
               checkpoint_every_n=100,
               performance_summary_exporter=export,
+              num_steps_per_iteration=1,
               **_get_config_kwarg_overrides())
 
 

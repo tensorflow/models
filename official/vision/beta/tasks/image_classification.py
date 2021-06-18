@@ -75,15 +75,18 @@ class ImageClassificationTask(base_task.Task):
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
 
-  def build_inputs(self,
-                   params: exp_cfg.DataConfig,
-                   input_context: Optional[tf.distribute.InputContext] = None):
+  def build_inputs(
+      self,
+      params: exp_cfg.DataConfig,
+      input_context: Optional[tf.distribute.InputContext] = None
+  ) -> tf.data.Dataset:
     """Builds classification input."""
 
     num_classes = self.task_config.model.num_classes
     input_size = self.task_config.model.input_size
     image_field_key = self.task_config.train_data.image_field_key
     label_field_key = self.task_config.train_data.label_field_key
+    is_multilabel = self.task_config.train_data.is_multilabel
 
     if params.tfds_name:
       if params.tfds_name in tfds_classification_decoders.TFDS_ID_TO_DECODER_MAP:
@@ -93,15 +96,18 @@ class ImageClassificationTask(base_task.Task):
         raise ValueError('TFDS {} is not supported'.format(params.tfds_name))
     else:
       decoder = classification_input.Decoder(
-          image_field_key=image_field_key, label_field_key=label_field_key)
+          image_field_key=image_field_key, label_field_key=label_field_key,
+          is_multilabel=is_multilabel)
 
     parser = classification_input.Parser(
         output_size=input_size[:2],
         num_classes=num_classes,
         image_field_key=image_field_key,
         label_field_key=label_field_key,
+        decode_jpeg_only=params.decode_jpeg_only,
         aug_rand_hflip=params.aug_rand_hflip,
         aug_type=params.aug_type,
+        is_multilabel=is_multilabel,
         dtype=params.dtype)
 
     reader = input_reader_factory.input_reader_generator(
@@ -117,7 +123,7 @@ class ImageClassificationTask(base_task.Task):
   def build_losses(self,
                    labels: tf.Tensor,
                    model_outputs: tf.Tensor,
-                   aux_losses: Optional[Any] = None):
+                   aux_losses: Optional[Any] = None) -> tf.Tensor:
     """Builds sparse categorical cross entropy loss.
 
     Args:
@@ -129,15 +135,23 @@ class ImageClassificationTask(base_task.Task):
       The total loss tensor.
     """
     losses_config = self.task_config.losses
-    if losses_config.one_hot:
-      total_loss = tf.keras.losses.categorical_crossentropy(
-          labels,
-          model_outputs,
-          from_logits=True,
-          label_smoothing=losses_config.label_smoothing)
+    is_multilabel = self.task_config.train_data.is_multilabel
+
+    if not is_multilabel:
+      if losses_config.one_hot:
+        total_loss = tf.keras.losses.categorical_crossentropy(
+            labels,
+            model_outputs,
+            from_logits=True,
+            label_smoothing=losses_config.label_smoothing)
+      else:
+        total_loss = tf.keras.losses.sparse_categorical_crossentropy(
+            labels, model_outputs, from_logits=True)
     else:
-      total_loss = tf.keras.losses.sparse_categorical_crossentropy(
-          labels, model_outputs, from_logits=True)
+      # Multi-label weighted binary cross entropy loss.
+      total_loss = tf.nn.sigmoid_cross_entropy_with_logits(
+          labels=labels, logits=model_outputs)
+      total_loss = tf.reduce_sum(total_loss, axis=-1)
 
     total_loss = tf_utils.safe_mean(total_loss)
     if aux_losses:
@@ -145,19 +159,41 @@ class ImageClassificationTask(base_task.Task):
 
     return total_loss
 
-  def build_metrics(self, training: bool = True):
+  def build_metrics(self,
+                    training: bool = True) -> List[tf.keras.metrics.Metric]:
     """Gets streaming metrics for training/validation."""
-    k = self.task_config.evaluation.top_k
-    if self.task_config.losses.one_hot:
-      metrics = [
-          tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
-          tf.keras.metrics.TopKCategoricalAccuracy(
-              k=k, name='top_{}_accuracy'.format(k))]
+    is_multilabel = self.task_config.train_data.is_multilabel
+    if not is_multilabel:
+      k = self.task_config.evaluation.top_k
+      if self.task_config.losses.one_hot:
+        metrics = [
+            tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
+            tf.keras.metrics.TopKCategoricalAccuracy(
+                k=k, name='top_{}_accuracy'.format(k))]
+      else:
+        metrics = [
+            tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
+            tf.keras.metrics.SparseTopKCategoricalAccuracy(
+                k=k, name='top_{}_accuracy'.format(k))]
     else:
-      metrics = [
-          tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
-          tf.keras.metrics.SparseTopKCategoricalAccuracy(
-              k=k, name='top_{}_accuracy'.format(k))]
+      metrics = []
+      # These metrics destablize the training if included in training. The jobs
+      # fail due to OOM.
+      # TODO(arashwan): Investigate adding following metric to train.
+      if not training:
+        metrics = [
+            tf.keras.metrics.AUC(
+                name='globalPR-AUC',
+                curve='PR',
+                multi_label=False,
+                from_logits=True),
+            tf.keras.metrics.AUC(
+                name='meanPR-AUC',
+                curve='PR',
+                multi_label=True,
+                num_labels=self.task_config.model.num_classes,
+                from_logits=True),
+        ]
     return metrics
 
   def train_step(self,
@@ -177,7 +213,8 @@ class ImageClassificationTask(base_task.Task):
       A dictionary of logs.
     """
     features, labels = inputs
-    if self.task_config.losses.one_hot:
+    is_multilabel = self.task_config.train_data.is_multilabel
+    if self.task_config.losses.one_hot and not is_multilabel:
       labels = tf.one_hot(labels, self.task_config.model.num_classes)
 
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
@@ -233,7 +270,8 @@ class ImageClassificationTask(base_task.Task):
       A dictionary of logs.
     """
     features, labels = inputs
-    if self.task_config.losses.one_hot:
+    is_multilabel = self.task_config.train_data.is_multilabel
+    if self.task_config.losses.one_hot and not is_multilabel:
       labels = tf.one_hot(labels, self.task_config.model.num_classes)
 
     outputs = self.inference_step(features, model)

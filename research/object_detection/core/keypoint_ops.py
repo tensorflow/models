@@ -317,6 +317,8 @@ def rot90(keypoints, rotation_permutation=None, scope=None):
     return new_keypoints
 
 
+
+
 def keypoint_weights_from_visibilities(keypoint_visibilities,
                                        per_keypoint_weights=None):
   """Returns a keypoint weights tensor.

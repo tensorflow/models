@@ -18,7 +18,7 @@ from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
 
-from typing import Any, Dict, Text
+from typing import Any, Dict, Optional, Text
 
 from absl import logging
 import tensorflow as tf
@@ -35,7 +35,7 @@ def build_optimizer(
     optimizer_name: Text,
     base_learning_rate: tf.keras.optimizers.schedules.LearningRateSchedule,
     params: Dict[Text, Any],
-    model: tf.keras.Model = None):
+    model: Optional[tf.keras.Model] = None):
   """Build the optimizer based on name.
 
   Args:
@@ -124,9 +124,9 @@ def build_optimizer(
 
 
 def build_learning_rate(params: base_configs.LearningRateConfig,
-                        batch_size: int = None,
-                        train_epochs: int = None,
-                        train_steps: int = None):
+                        batch_size: Optional[int] = None,
+                        train_epochs: Optional[int] = None,
+                        train_steps: Optional[int] = None):
   """Build the learning rate given the provided configuration."""
   decay_type = params.name
   base_lr = params.initial_lr

@@ -14,7 +14,7 @@
 
 """Loads dataset for the sentence prediction (classification) task."""
 import functools
-from typing import List, Mapping, Optional
+from typing import List, Mapping, Optional, Tuple
 
 import dataclasses
 import tensorflow as tf
@@ -40,6 +40,10 @@ class SentencePredictionDataConfig(cfg.DataConfig):
   label_type: str = 'int'
   # Whether to include the example id number.
   include_example_id: bool = False
+  label_field: str = 'label_ids'
+  # Maps the key in TfExample to feature name.
+  # E.g 'label_ids' to 'next_sentence_labels'
+  label_name: Optional[Tuple[str, str]] = None
 
 
 @data_loader_factory.register_data_loader_cls(SentencePredictionDataConfig)
@@ -50,6 +54,11 @@ class SentencePredictionDataLoader(data_loader.DataLoader):
     self._params = params
     self._seq_length = params.seq_length
     self._include_example_id = params.include_example_id
+    self._label_field = params.label_field
+    if params.label_name:
+      self._label_name_mapping = dict([params.label_name])
+    else:
+      self._label_name_mapping = dict()
 
   def _decode(self, record: tf.Tensor):
     """Decodes a serialized tf.Example."""
@@ -58,7 +67,7 @@ class SentencePredictionDataLoader(data_loader.DataLoader):
         'input_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
         'input_mask': tf.io.FixedLenFeature([self._seq_length], tf.int64),
         'segment_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
-        'label_ids': tf.io.FixedLenFeature([], label_type),
+        self._label_field: tf.io.FixedLenFeature([], label_type),
     }
     if self._include_example_id:
       name_to_features['example_id'] = tf.io.FixedLenFeature([], tf.int64)
@@ -85,8 +94,12 @@ class SentencePredictionDataLoader(data_loader.DataLoader):
     if self._include_example_id:
       x['example_id'] = record['example_id']
 
-    y = record['label_ids']
-    return (x, y)
+    x[self._label_field] = record[self._label_field]
+
+    if self._label_field in self._label_name_mapping:
+      x[self._label_name_mapping[self._label_field]] = record[self._label_field]
+
+    return x
 
   def load(self, input_context: Optional[tf.distribute.InputContext] = None):
     """Returns a tf.dataset.Dataset."""
@@ -204,8 +217,8 @@ class SentencePredictionTextDataLoader(data_loader.DataLoader):
     model_inputs = self._text_processor(segments)
     if self._include_example_id:
       model_inputs['example_id'] = record['example_id']
-    y = record[self._label_field]
-    return model_inputs, y
+    model_inputs[self._label_field] = record[self._label_field]
+    return model_inputs
 
   def _decode(self, record: tf.Tensor):
     """Decodes a serialized tf.Example."""

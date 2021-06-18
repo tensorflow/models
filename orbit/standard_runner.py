@@ -83,7 +83,9 @@ class StandardTrainer(runner.AbstractTrainer, metaclass=abc.ABCMeta):
   `tf.function`, as determined by the `options` passed to `__init__`.
   """
 
-  def __init__(self, train_dataset, options: StandardTrainerOptions = None):
+  def __init__(self,
+               train_dataset,
+               options: Optional[StandardTrainerOptions] = None):
     """Initializes the `StandardTrainer` instance.
 
     Args:
@@ -256,7 +258,9 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
   is recommended in this case.
   """
 
-  def __init__(self, eval_dataset, options: StandardEvaluatorOptions = None):
+  def __init__(self,
+               eval_dataset,
+               options: Optional[StandardEvaluatorOptions] = None):
     """Initializes the `StandardEvaluator` instance.
 
     Args:
@@ -403,7 +407,7 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
     pass
 
   def eval_reduce(self,
-                  state: Any = None,
+                  state: Optional[Any] = None,
                   step_outputs: Optional[runner.Output] = None) -> Any:
     """A function to perform per-step reduction on the evaluation outputs.
 

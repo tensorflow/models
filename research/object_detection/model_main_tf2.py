@@ -65,8 +65,10 @@ flags.DEFINE_integer(
 flags.DEFINE_integer(
     'checkpoint_every_n', 1000, 'Integer defining how often we checkpoint.')
 flags.DEFINE_boolean('record_summaries', True,
-                     ('Whether or not to record summaries during'
-                      ' training.'))
+                     ('Whether or not to record summaries defined by the model'
+                      ' or the training pipeline. This does not impact the'
+                      ' summaries of the loss values which are always'
+                      ' recorded.'))
 
 FLAGS = flags.FLAGS
 

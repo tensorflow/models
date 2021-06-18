@@ -58,6 +58,9 @@ class TrainTest(tf.test.TestCase):
     num_frames = 4
 
     params_override = json.dumps({
+        'runtime': {
+            'mixed_precision_dtype': 'float32',
+        },
         'trainer': {
             'train_steps': 1,
             'validation_steps': 1,

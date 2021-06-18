@@ -16,13 +16,15 @@
 """Image classification configuration definition."""
 import os
 from typing import List, Optional
+
 import dataclasses
+
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.vision.beta.configs import backbones
 from official.vision.beta.configs import common
+from official.vision.beta.configs import backbones
 
 
 @dataclasses.dataclass
@@ -34,12 +36,14 @@ class DataConfig(cfg.DataConfig):
   dtype: str = 'float32'
   shuffle_buffer_size: int = 10000
   cycle_length: int = 10
+  is_multilabel: bool = False
   aug_rand_hflip: bool = True
   aug_type: Optional[
       common.Augmentation] = None  # Choose from AutoAugment and RandAugment.
   file_type: str = 'tfrecord'
   image_field_key: str = 'image/encoded'
   label_field_key: str = 'image/class/label'
+  decode_jpeg_only: bool = True
 
   # Keep for backward compatibility.
   aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'.
@@ -224,7 +228,8 @@ def image_classification_imagenet_resnetrs() -> cfg.ExperimentConfig:
                   }
               },
               'ema': {
-                  'average_decay': 0.9999
+                  'average_decay': 0.9999,
+                  'trainable_weights_only': False,
               },
               'learning_rate': {
                   'type': 'cosine',
