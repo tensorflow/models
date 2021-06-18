@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for Sfm120k."""
+"""Tests for Sfm120k dataset module."""
 
 import tensorflow as tf
 
@@ -21,12 +21,13 @@ from delf.python.datasets.sfm120k import sfm120k
 
 
 class Sfm120kTest(tf.test.TestCase):
+  """Tests for Sfm120k dataset module."""
 
   def testId2Filename(self):
-    # Testing the function for the image id to the full path mapping.
-    id = "29fdc243aeb939388cfdf2d081dc080e"
+    """Tests conversion of image id to full path mapping."""
+    image_id = "29fdc243aeb939388cfdf2d081dc080e"
     prefix = "train/retrieval-SfM-120k/ims/"
-    path = sfm120k.id2filename(id, prefix)
+    path = sfm120k.id2filename(image_id, prefix)
     expected_path = "train/retrieval-SfM-120k/ims/0e/08/dc" \
                     "/29fdc243aeb939388cfdf2d081dc080e"
     self.assertEqual(path, expected_path)
