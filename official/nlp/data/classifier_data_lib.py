@@ -181,10 +181,6 @@ class AxProcessor(DataProcessor):
 class ColaProcessor(DataProcessor):
   """Processor for the CoLA data set (GLUE version)."""
 
-  def __init__(self, process_text_fn=tokenization.convert_to_unicode):
-    super(ColaProcessor, self).__init__(process_text_fn)
-    self.dataset = tfds.load("glue/cola", try_gcs=True)
-
   def get_train_examples(self, data_dir):
     """See base class."""
     return self._create_examples_tfds("train")
@@ -208,7 +204,8 @@ class ColaProcessor(DataProcessor):
 
   def _create_examples_tfds(self, set_type):
     """Creates examples for the training/dev/test sets."""
-    dataset = self.dataset[set_type].as_numpy_iterator()
+    dataset = tfds.load(
+        "glue/cola", split=set_type, try_gcs=True).as_numpy_iterator()
     examples = []
     for i, example in enumerate(dataset):
       guid = "%s-%s" % (set_type, i)
