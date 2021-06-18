@@ -69,25 +69,25 @@ class TuplesDataset():
               "String.")
 
     # Loading db.
-    db_fn = os.path.join(data_root, '{}.pkl'.format(name))
-    with tf.io.gfile.GFile(db_fn, 'rb') as f:
+    db_filename = os.path.join(data_root, '{}.pkl'.format(name))
+    with tf.io.gfile.GFile(db_filename, 'rb') as f:
       db = pickle.load(f)[mode]
 
     # Initializing tuples dataset.
-    self._ims_root = data_root if not ims_root else ims_root
+    self._ims_root = data_root if ims_root is None else ims_root
     self._name = name
     self._mode = mode
     self._imsize = imsize
     self._clusters = db['cluster']
-    self._qpool = db['qidxs']
-    self._ppool = db['pidxs']
+    self._query_pool = db['qidxs']
+    self._positive_pool = db['pidxs']
 
     if not hasattr(self, 'images'):
       self.images = db['ids']
 
     # Size of training subset for an epoch.
     self._num_negatives = num_negatives
-    self._num_queries = min(num_queries, len(self._qpool))
+    self._num_queries = min(num_queries, len(self._query_pool))
     self._poolsize = min(poolsize, len(self.images))
     self._qidxs = None
     self._pidxs = None
@@ -95,6 +95,7 @@ class TuplesDataset():
 
     self._loader = loader
     self._print_freq = 10
+    # Indexer for the iterator.
     self._n = 0
 
   def __iter__(self):
@@ -191,7 +192,7 @@ class TuplesDataset():
     fmt_str = self.__class__.__name__ + '\n'
     fmt_str += '\tName and mode: {} {}\n'.format(self._name, self._mode)
     fmt_str += '\tNumber of images: {}\n'.format(len(self.images))
-    fmt_str += '\tNumber of training tuples: {}\n'.format(len(self._qpool))
+    fmt_str += '\tNumber of training tuples: {}\n'.format(len(self._query_pool))
     fmt_str += '\tNumber of negatives per tuple: {}\n'.format(
             self._num_negatives)
     fmt_str += '\tNumber of tuples processed in an epoch: {}\n'.format(
@@ -226,15 +227,15 @@ class TuplesDataset():
 
     ## Selecting queries.
     # Draw `num_queries` random queries for the tuples.
-    idx_list = np.arange(len(self._qpool))
+    idx_list = np.arange(len(self._query_pool))
     np.random.shuffle(idx_list)
-    idxs2qpool = idx_list[:self._num_queries]
-    self._qidxs = [self._qpool[i] for i in idxs2qpool]
+    idxs2query_pool = idx_list[:self._num_queries]
+    self._qidxs = [self._query_pool[i] for i in idxs2query_pool]
 
     ## Selecting positive pairs.
     # Positives examples are fixed for each query during the whole training
     # process.
-    self._pidxs = [self._ppool[i] for i in idxs2qpool]
+    self._pidxs = [self._positive_pool[i] for i in idxs2query_pool]
 
     ## Selecting negative pairs.
     # If num_negatives = 0 create dummy nidxs.
