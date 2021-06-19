@@ -173,8 +173,14 @@ flags.DEFINE_string(
 
 def generate_classifier_dataset():
   """Generates classifier dataset and returns input meta data."""
-  assert (FLAGS.input_data_dir and FLAGS.classification_task_name or
-          FLAGS.tfds_params)
+  if FLAGS.classification_task_name in [
+      "COLA", "WNLI", "SST-2", "MRPC", "QQP", "STS-B", "MNLI", "QNLI", "RTE",
+      "AX"
+  ]:
+    assert not FLAGS.input_data_dir or FLAGS.tfds_params
+  else:
+    assert (FLAGS.input_data_dir and FLAGS.classification_task_name or
+            FLAGS.tfds_params)
 
   if FLAGS.tokenization == "WordPiece":
     tokenizer = tokenization.FullTokenizer(
