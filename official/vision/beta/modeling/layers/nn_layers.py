@@ -720,6 +720,7 @@ class CausalConvMixin:
     Returns:
       A list of paddings for `tf.pad`.
     """
+    shape_in = inputs.shape[1:-1]
     del inputs
 
     if tf.keras.backend.image_data_format() == 'channels_first':
@@ -730,7 +731,11 @@ class CausalConvMixin:
          (self.kernel_size[i] - 1) * (self.dilation_rate[i] - 1))
         for i in range(self.rank)
     ]
-    pad_total = [kernel_size_effective[i] - 1 for i in range(self.rank)]
+    pad_total = [max(kernel_size_effective[i] - (self.strides[i]), 0)
+                 if (shape_in[i]%self.strides[i]) == 0 else
+                 max(kernel_size_effective[i] - 
+                     (shape_in[i]%self.strides[i]), 0)
+                 for i in range(self.rank)]
     pad_beg = [pad_total[i] // 2 for i in range(self.rank)]
     pad_end = [pad_total[i] - pad_beg[i] for i in range(self.rank)]
     padding = [[pad_beg[i], pad_end[i]] for i in range(self.rank)]

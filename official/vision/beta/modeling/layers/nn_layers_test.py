@@ -274,14 +274,14 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
     predicted = conv3d(padded_inputs)
 
     expected = tf.constant(
-        [[[[[12., 12., 12.],
+        [[[[[27., 27., 27.],
             [18., 18., 18.]],
            [[18., 18., 18.],
-            [27., 27., 27.]]],
-          [[[24., 24., 24.],
+            [12., 12., 12.]]],
+          [[[54., 54., 54.],
             [36., 36., 36.]],
            [[36., 36., 36.],
-            [54., 54., 54.]]]]])
+            [24., 24., 24.]]]]])
 
     self.assertEqual(predicted.shape, expected.shape)
     self.assertAllClose(predicted, expected)
@@ -311,14 +311,14 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
     predicted = conv3d(padded_inputs)
 
     expected = tf.constant(
-        [[[[[4.0, 4.0, 4.0],
+        [[[[[9.0, 9.0, 9.0],
             [6.0, 6.0, 6.0]],
            [[6.0, 6.0, 6.0],
-            [9.0, 9.0, 9.0]]],
-          [[[8.0, 8.0, 8.0],
+            [4.0, 4.0, 4.0]]],
+          [[[18.0, 18.0, 18.0],
             [12., 12., 12.]],
            [[12., 12., 12.],
-            [18., 18., 18.]]]]])
+            [8., 8., 8.]]]]])
 
     self.assertEqual(predicted.shape, expected.shape)
     self.assertAllClose(predicted, expected)
