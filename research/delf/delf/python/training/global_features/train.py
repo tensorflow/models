@@ -170,6 +170,17 @@ def main(argv):
                   'whitening': FLAGS.whitening, 'pretrained': FLAGS.pretrained,
                   'data_root': FLAGS.data_root}
   model = global_model.GlobalFeatureNet(**model_params)
+
+  # Freeze running mean and std in batch normalization layers.
+  # We do training one image at a time to improve memory requirements of
+  # the network; therefore, the computed statistics would not be per a
+  # batch. Instead, we choose freezing - setting the parameters of all
+  # batch norm layers in the network to non-trainable (i.e., using original
+  # imagenet statistics).
+  for layer in model.feature_extractor.layers:
+    if isinstance(layer, tf.keras.layers.BatchNormalization):
+      layer.trainable = False
+
   global_features_utils.debug_and_log('>> Network initialized.')
 
   global_features_utils.debug_and_log('>> Loss: {}.'.format(FLAGS.loss))
