@@ -84,30 +84,5 @@ class TuplesDatasetTest(tf.test.TestCase):
     # query.
     self.assertAllEqual(tf.shape(dataset._nidxs), [num_queries, num_negatives])
 
-
-  def testExtractDescriptorsFromImagePaths(self):
-    """Tests descriptor extraction from image paths."""
-    # Initialize a network.
-    model_params = {'architecture': 'ResNet101', 'pooling': 'gem',
-                    'whitening': False, 'pretrained': True}
-    model = global_model.GlobalFeatureNet(**model_params)
-
-    # Create `n` dummy images.
-    n = 5
-    image_paths = []
-    for i in range(n):
-      dummy_image = np.random.rand(1024, 750, 3) * 255
-      img_out = Image.fromarray(dummy_image.astype('uint8')).convert('RGB')
-      filename = os.path.join(FLAGS.test_tmpdir, '{}.png'.format(i))
-      img_out.save(filename)
-      image_paths.append(filename)
-
-    vecs = tuples_dataset.extract_descriptors_from_image_paths(model,
-                                                               image_paths,
-                                                               imsize=1024,
-                                                               print_freq=1)
-    self.assertAllEqual(tf.shape(vecs), [model.meta['outputdim'], n])
-
-
 if __name__ == '__main__':
   tf.test.main()

@@ -21,7 +21,7 @@ from absl import logging
 import numpy as np
 import tensorflow as tf
 
-from delf.python.datasets.revisited_op import dataset
+from delf.python.datasets.revisited_op import dataset as revisited_dataset
 
 
 class AverageMeter():
@@ -85,36 +85,40 @@ def compute_metrics_and_print(dataset_name,
   Raises:
     ValueError: If an unknown dataset name is provided as an argument.
   """
-  if dataset not in dataset.DATASET_NAMES:
+  if dataset_name not in revisited_dataset.DATASET_NAMES:
     raise ValueError('Unknown dataset: {}!'.format(dataset))
 
   if desired_pr_ranks is None:
     desired_pr_ranks = [1, 5, 10]
 
   (easy_ground_truth, medium_ground_truth,
-   hard_ground_truth) = dataset.ParseEasyMediumHardGroundTruth(ground_truth)
+   hard_ground_truth) = revisited_dataset.ParseEasyMediumHardGroundTruth(
+    ground_truth)
 
-  metrics_easy = dataset.ComputeMetrics(sorted_index_ids, easy_ground_truth,
-                                        desired_pr_ranks)
-  metrics_medium = dataset.ComputeMetrics(sorted_index_ids, medium_ground_truth,
-                                          desired_pr_ranks)
-  metrics_hard = dataset.ComputeMetrics(sorted_index_ids, hard_ground_truth,
-                                        desired_pr_ranks)
-
-  debug_and_log(
-      '>> {}: mAP E: {}, M: {}, H: {}'.format(
-          dataset_name, np.around(metrics_easy[0] * 100, decimals=2),
-          np.around(metrics_medium[0] * 100, decimals=2),
-          np.around(metrics_hard[0] * 100, decimals=2)),
-      log=log)
+  metrics_easy = revisited_dataset.ComputeMetrics(sorted_index_ids,
+                                                  easy_ground_truth,
+                                                  desired_pr_ranks)
+  metrics_medium = revisited_dataset.ComputeMetrics(sorted_index_ids,
+                                                    medium_ground_truth,
+                                                    desired_pr_ranks)
+  metrics_hard = revisited_dataset.ComputeMetrics(sorted_index_ids,
+                                                  hard_ground_truth,
+                                                  desired_pr_ranks)
 
   debug_and_log(
-      '>> {}: mP@k{} E: {}, M: {}, H: {}'.format(
-          dataset_name, desired_pr_ranks,
-          np.around(metrics_easy[1] * 100, decimals=2),
-          np.around(metrics_medium[1] * 100, decimals=2),
-          np.around(metrics_hard[1] * 100, decimals=2)),
-      log=log)
+          '>> {}: mAP E: {}, M: {}, H: {}'.format(
+                  dataset_name, np.around(metrics_easy[0] * 100, decimals=2),
+                  np.around(metrics_medium[0] * 100, decimals=2),
+                  np.around(metrics_hard[0] * 100, decimals=2)),
+          log=log)
+
+  debug_and_log(
+          '>> {}: mP@k{} E: {}, M: {}, H: {}'.format(
+                  dataset_name, desired_pr_ranks,
+                  np.around(metrics_easy[1] * 100, decimals=2),
+                  np.around(metrics_medium[1] * 100, decimals=2),
+                  np.around(metrics_hard[1] * 100, decimals=2)),
+          log=log)
 
   return metrics_easy, metrics_medium, metrics_hard
 
@@ -173,9 +177,9 @@ def get_standard_keras_models():
     model_names: List, names of the standard keras models.
   """
   model_names = sorted(
-      name for name in tf.keras.applications.__dict__
-      if not name.startswith('__') and
-      callable(tf.keras.applications.__dict__[name]))
+          name for name in tf.keras.applications.__dict__
+          if not name.startswith('__') and
+          callable(tf.keras.applications.__dict__[name]))
   return model_names
 
 
@@ -223,7 +227,7 @@ def create_model_directory(training_dataset, arch, pool, whitening, pretrained,
 
   folder = os.path.join(directory, folder)
   debug_and_log(
-      '>> Creating directory if does not exist:\n>> \'{}\''.format(folder))
+          '>> Creating directory if does not exist:\n>> \'{}\''.format(folder))
   if not os.path.exists(folder):
     os.makedirs(folder)
   return folder

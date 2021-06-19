@@ -25,9 +25,9 @@ import pickle
 import numpy as np
 import tensorflow as tf
 
-from delf.python.datasets import generic_dataset
 from delf.python.datasets import utils as image_loading_utils
 from delf.python.training import global_features_utils
+from delf.python.training.model import global_model
 
 
 class TuplesDataset():
@@ -123,7 +123,7 @@ class TuplesDataset():
     """Converts list of image names to the list of full paths to the images.
 
     Args:
-      image_list: List of image names.
+      image_list: Image names, either a list or a single image path.
 
     Returns:
       image_full_paths: List of full paths to the images.
@@ -133,7 +133,7 @@ class TuplesDataset():
     return [os.path.join(self._ims_root, img_name) for img_name in image_list]
 
   def __getitem__(self, index):
-    """Called to load an image at the given `index`.
+    """Called to load an image tuple at the given `index`.
 
     Args:
       index: Integer, index.
@@ -142,8 +142,9 @@ class TuplesDataset():
       output: Tuple [q,p,n1,...,nN, target], loaded 'train'/'val' tuple at
         index of qidxs. `q` is the query image tensor, `p` is the
         corresponding positive image tensor, `n1`,...,`nN` are the negatives
-        associated with the query. `target` is the tensor of labels
-        corresponding to the tuple list: query (-1), positive (1), negative (0).
+        associated with the query. `target` is a tensor (with the shape [2+N])
+        of integer labels corresponding to the tuple list: query (-1),
+        positive (1), negative (0).
 
     Raises:
       ValueError: Raised if the query indexes list `qidxs` is empty.
@@ -154,11 +155,11 @@ class TuplesDataset():
               "method to create subset for `train`/`val`.")
 
     output = []
-    # Query images.
+    # Query image.
     output.append(self._loader(
             self._img_names_to_full_path(self.images[self._qidxs[index]]),
             self._imsize))
-    # Positive images.
+    # Positive image.
     output.append(self._loader(
             self._img_names_to_full_path(self.images[self._pidxs[index]]),
             self._imsize))
@@ -179,7 +180,7 @@ class TuplesDataset():
     Returns:
       len: Integer, number of query images.
     """
-    if not self._qidxs:
+    if self._qidxs is None:
       return 0
     return len(self._qidxs)
 
@@ -214,10 +215,20 @@ class TuplesDataset():
     Args:
       net: Model, network to be used for negative re-mining.
 
+    Raises:
+      ValueError: If the poolsize is smaller than the number of negative
+        images per tuple.
+
     Returns:
       avg_l2: Float, average negative L2-distance.
     """
     self._n = 0
+
+    if self._num_negatives < self.self._poolsize:
+      raise ValueError("Unable to create epoch tuples. Negative poolsize "
+                       "should be larger than the number of negative images "
+                       "per tuple.")
+
     global_features_utils.debug_and_log(
             '>> Creating tuples for an epoch of {}-{}...'.format(self._name,
                                                                  self._mode),
@@ -238,36 +249,36 @@ class TuplesDataset():
     self._pidxs = [self._positive_pool[i] for i in idxs2query_pool]
 
     ## Selecting negative pairs.
-    # If num_negatives = 0 create dummy nidxs.
+    # If `num_negatives` = 0 create dummy nidxs.
     # Useful when only positives used for training.
     if self._num_negatives == 0:
       self._nidxs = [[] for _ in range(len(self._qidxs))]
       return 0
 
     # Draw poolsize random images for pool of negatives images.
-    idx_list = np.arange(len(self.images))
-    np.random.shuffle(idx_list)
-    idxs2images = idx_list[:self._poolsize]
+    neg_idx_list = np.arange(len(self.images))
+    np.random.shuffle(neg_idx_list)
+    neg_images_idxs = neg_idx_list[:self._poolsize]
 
     global_features_utils.debug_and_log(
             '>> Extracting descriptors for query images...', debug=True)
 
     img_list = self._img_names_to_full_path([self.images[i] for i in
                                              self._qidxs])
-    qvecs = extract_descriptors_from_image_paths(
+    qvecs = global_model.extract_global_descriptors_from_list(
             net,
-            image_paths=img_list,
-            imsize=self._imsize,
+            images=img_list,
+            image_size=self._imsize,
             print_freq=self._print_freq)
 
     global_features_utils.debug_and_log(
             '>> Extracting descriptors for negative pool...', debug=True)
 
-    poolvecs = extract_descriptors_from_image_paths(
+    poolvecs = global_model.extract_global_descriptors_from_list(
             net,
-            image_paths=self._img_names_to_full_path([self.images[i] for i in
-                                                      idxs2images]),
-            imsize=self._imsize,
+            images=self._img_names_to_full_path([self.images[i] for i in
+                                                 neg_images_idxs]),
+            image_size=self._imsize,
             print_freq=self._print_freq)
 
     global_features_utils.debug_and_log('>> Searching for hard negatives...',
@@ -277,12 +288,11 @@ class TuplesDataset():
     scores = tf.linalg.matmul(poolvecs, qvecs, transpose_a=True)
     ranks = tf.argsort(scores, axis=0, direction='DESCENDING')
 
-    avg_ndist = 0.
+    sum_ndist = 0.
     n_ndist = 0.
 
     # Selection of negative examples.
     self._nidxs = []
-    eps = 1e-6
 
     for q, qidx in enumerate(self._qidxs):
       # We are not using the query cluster, those images are potentially
@@ -290,63 +300,25 @@ class TuplesDataset():
       qcluster = self._clusters[qidx]
       clusters = [qcluster]
       nidxs = []
-      r = 0
+      rank = 0
 
       while len(nidxs) < self._num_negatives:
-        potential = idxs2images[ranks[r, q]]
+        potential = neg_images_idxs[ranks[rank, q]]
         # Take at most one image from the same cluster.
         if not self._clusters[potential] in clusters:
           nidxs.append(potential)
           clusters.append(self._clusters[potential])
-          dist = tf.norm(qvecs[:, q] - poolvecs[:, ranks[r, q]] + eps,
+          dist = tf.norm(qvecs[:, q] - poolvecs[:, ranks[rank, q]],
                          axis=0).numpy()
-          avg_ndist += dist
+          sum_ndist += dist
           n_ndist += 1
-        r += 1
+        rank += 1
 
       self._nidxs.append(nidxs)
 
     global_features_utils.debug_and_log(
             '>> Average negative l2-distance: {:.2f}'.format(
-                    avg_ndist / n_ndist))
+                    sum_ndist / n_ndist))
 
     # Return average negative L2-distance.
-    return avg_ndist / n_ndist
-
-
-def extract_descriptors_from_image_paths(net, image_paths, imsize, print_freq):
-  """Extracts descriptors of the images in the `image_paths`.
-
-  Args:
-    net: Model to be used for the descriptor extraction.
-    image_paths: List of the paths to the images.
-
-  Returns:
-    vecs: List of the extracted descriptors.
-  """
-  # Prepare the loader.
-  data = generic_dataset.ImagesFromList(
-          root='',
-          image_paths=image_paths,
-          imsize=imsize)
-
-  def images_gen():
-    return (inst for inst in data)
-
-  loader = tf.data.Dataset.from_generator(images_gen,
-                                          output_types=(tf.float32))
-  loader = loader.batch(batch_size=1)
-
-  # Extract vectors.
-  vecs = tf.zeros((net.meta['outputdim'], 0))
-
-  for i, input in enumerate(loader):
-    o = net(input, training=False)
-    o = tf.transpose(o, perm=[1, 0])
-    vecs = tf.concat([vecs, o], 1)
-    if (i + 1) % print_freq == 0 or (i + 1) == len(image_paths):
-      global_features_utils.debug_and_log('\r>>>> {}/{} done...'.format(
-              i + 1, len(image_paths)), debug_on_the_same_line=True)
-
-  global_features_utils.debug_and_log("", debug_on_the_same_line=True)
-  return vecs
+    return sum_ndist / n_ndist

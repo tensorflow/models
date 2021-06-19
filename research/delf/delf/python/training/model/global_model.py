@@ -163,16 +163,6 @@ class GlobalFeatureNet(tf.keras.Model):
       'outputdim': dim
     }
 
-    # Freeze running mean and std in batch normalization layers.
-    # We do training one image at a time to improve memory requirements of
-    # the network; therefore, the computed statistics would not be per a
-    # batch. Instead, we choose freezing - setting the parameters of all
-    # batch norm layers in the network to non-trainable (i.e., using original
-    # imagenet statistics).
-    for layer in net_in.layers:
-      if isinstance(layer, tf.keras.layers.BatchNormalization):
-        layer.trainable = False
-
     self.feature_extractor = net_in
     self.normalize = normalization.L2Normalization()
 

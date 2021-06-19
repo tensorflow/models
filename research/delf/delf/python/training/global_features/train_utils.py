@@ -342,7 +342,7 @@ def test_retrieval(datasets, net, epoch, writer=None, model_directory=None,
 
 
 def _calculate_metrics_and_export_to_tensorboard(vecs, qvecs, dataset, cfg,
-                                               writer, epoch, whiten=False):
+                                                 writer, epoch, whiten=False):
   """
   Calculates metrics and exports them to tensorboard.
 
@@ -360,19 +360,22 @@ def _calculate_metrics_and_export_to_tensorboard(vecs, qvecs, dataset, cfg,
   # Search, rank and print test set metrics.
   scores = np.dot(vecs.T, qvecs)
   ranks = np.transpose(np.argsort(-scores, axis=0))
-  name = dataset
-  if whiten:
-    name += ' + whiten'
-  metrics = global_features_utils.compute_metrics_and_print(name, ranks,
+
+  metrics = global_features_utils.compute_metrics_and_print(dataset, ranks,
                                                             cfg['gnd'])
   # Save calculated metrics in a tensorboard format.
   if writer:
-    tf.summary.scalar('test_accuracy_{}_E'.format(dataset), metrics[0][0],
-                      step=epoch)
-    tf.summary.scalar('test_accuracy_{}_M'.format(dataset), metrics[1][0],
-                      step=epoch)
-    tf.summary.scalar('test_accuracy_{}_H'.format(dataset), metrics[2][0],
-                      step=epoch)
+    if whiten:
+      metric_names = ['test_accuracy_whiten_{}_E'.format(dataset),
+                      'test_accuracy_whiten_{}_M'.format(dataset),
+                      'test_accuracy_whiten_{}_H'.format(dataset)]
+    else:
+      metric_names = ['test_accuracy_{}_E'.format(dataset),
+                      'test_accuracy_{}_M'.format(dataset),
+                      'test_accuracy_{}_H'.format(dataset)]
+    tf.summary.scalar(metric_names[0], metrics[0][0], step=epoch)
+    tf.summary.scalar(metric_names[1], metrics[1][0], step=epoch)
+    tf.summary.scalar(metric_names[2], metrics[2][0], step=epoch)
     writer.flush()
 
   return None
