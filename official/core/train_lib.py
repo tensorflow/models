@@ -15,13 +15,15 @@
 """TFM common training driver library."""
 # pytype: disable=attribute-error
 import os
-from typing import Any, Mapping, Tuple, Optional
+from typing import Any, Mapping, Optional, Tuple
 
 # Import libraries
+
 from absl import logging
 import orbit
 import tensorflow as tf
 
+from official.core import actions
 from official.core import base_task
 from official.core import base_trainer
 from official.core import config_definitions
@@ -97,7 +99,8 @@ def run_experiment(
                                     params.trainer.validation_summary_subdir) if
       (save_summary) else None,
       summary_interval=params.trainer.summary_interval if
-      (save_summary) else None)
+      (save_summary) else None,
+      eval_actions=actions.get_eval_actions(params, trainer, model_dir))
 
   logging.info('Starts to execute mode: %s', mode)
   with distribution_strategy.scope():
