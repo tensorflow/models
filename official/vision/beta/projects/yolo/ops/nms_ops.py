@@ -379,9 +379,9 @@ def segment_nms(boxes, classes, confidence, k, iou_thresh):
       too similar, the closer to 1.0 the less that gets through.
 
   Return:
-    boxes: filtered `Tensor` of shape [batch size, k, 4]
-    classes: filtered `Tensor` of shape [batch size, k, num_classes] t
-    confidence: filtered `Tensor` of shape [batch size, k]
+    boxes: filtered `Tensor` of shape [batch size, k, 4].
+    classes: filtered `Tensor` of shape [batch size, k, num_classes].
+    confidence: filtered `Tensor` of shape [batch size, k].
   """
   mrange = tf.range(k)
   mask_x = tf.tile(
@@ -433,9 +433,9 @@ def nms(boxes,
       before NMS.
 
   Return:
-    boxes: filtered `Tensor` of shape [batch size, k, 4]
-    classes: filtered `Tensor` of shape [batch size, k, num_classes]
-    confidence: filtered `Tensor` of shape [batch size, k]
+    boxes: filtered `Tensor` of shape [batch size, k, 4].
+    classes: filtered `Tensor` of shape [batch size, k, num_classes].
+    confidence: filtered `Tensor` of shape [batch size, k].
   """
 
   # sort the boxes
