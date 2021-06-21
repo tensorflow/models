@@ -1,5 +1,5 @@
 import tensorflow as tf
-from official.vision.beta.projects.yolo.ops import math_ops
+from official.vision.beta.projects.yolo.utils import math_ops
 import math
 
 
