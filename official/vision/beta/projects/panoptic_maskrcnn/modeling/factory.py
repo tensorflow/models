@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Factory method to build panoptic segmentation model"""
-
-# Import libraries
+"""Factory method to build panoptic segmentation model."""
 
 import tensorflow as tf
 
