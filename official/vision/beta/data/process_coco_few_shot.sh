@@ -13,7 +13,7 @@ done
 
 cocosplit_url="dl.yf.io/fs-det/datasets/cocosplit"
 wget --recursive --no-parent -q --show-progress --progress=bar:force:noscroll \
-    -P "${tmp_dir}" -A "5k.json,*10shot*.json,*30shot*.json" \
+    -P "${tmp_dir}" -A "trainvalno5k.json,5k.json,*10shot*.json,*30shot*.json" \
     "http://${cocosplit_url}/"
 mv "${tmp_dir}/${cocosplit_url}/"* "${tmp_dir}"
 rm -rf "${tmp_dir}/${cocosplit_url}/"
@@ -44,5 +44,15 @@ python create_coco_tf_record.py \
     --caption_annotations_file="" \
     --output_file_prefix="${output_dir}/5k" \
     --num_shards=10
+
+python create_coco_tf_record.py \
+    --logtostderr \
+    --image_dir=/namespace/vale-project/datasets/mscoco_raw/images/train2014 \
+    --image_dir=/namespace/vale-project/datasets/mscoco_raw/images/val2014 \
+    --image_info_file="${tmp_dir}/datasplit/trainvalno5k_base.json" \
+    --object_annotations_file="${tmp_dir}/datasplit/trainvalno5k_base.json" \
+    --caption_annotations_file="" \
+    --output_file_prefix="${output_dir}/trainvalno5k_base" \
+    --num_shards=200
 
 rm -rf "${tmp_dir}"
