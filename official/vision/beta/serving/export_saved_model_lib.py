@@ -27,6 +27,7 @@ from official.vision.beta import configs
 from official.vision.beta.serving import detection
 from official.vision.beta.serving import image_classification
 from official.vision.beta.serving import semantic_segmentation
+from official.vision.beta.serving import video_classification
 
 
 def export_inference_graph(
@@ -95,6 +96,13 @@ def export_inference_graph(
     elif isinstance(params.task,
                     configs.semantic_segmentation.SemanticSegmentationTask):
       export_module = semantic_segmentation.SegmentationModule(
+          params=params,
+          batch_size=batch_size,
+          input_image_size=input_image_size,
+          num_channels=num_channels)
+    elif isinstance(params.task,
+                    configs.video_classification.VideoClassificationTask):
+      export_module = video_classification.VideoClassificationModule(
           params=params,
           batch_size=batch_size,
           input_image_size=input_image_size,
