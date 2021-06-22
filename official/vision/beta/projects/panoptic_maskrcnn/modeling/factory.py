@@ -21,15 +21,10 @@ from official.vision.beta.projects.panoptic_maskrcnn.configs \
 from official.vision.beta.modeling import backbones
 from official.vision.beta.projects.panoptic_maskrcnn.modeling \
     import panoptic_maskrcnn_model
+from official.vision.beta.modeling.factory import build_maskrcnn
 from official.vision.beta.modeling.decoders import factory as decoder_factory
-from official.vision.beta.modeling.heads import dense_prediction_heads
-from official.vision.beta.modeling.heads import instance_heads
 from official.vision.beta.modeling.heads import segmentation_heads
-from official.vision.beta.modeling.layers import detection_generator
-from official.vision.beta.modeling.layers import mask_sampler
-from official.vision.beta.modeling.layers import roi_aligner
-from official.vision.beta.modeling.layers import roi_generator
-from official.vision.beta.modeling.layers import roi_sampler
+
 
 
 def build_panoptic_maskrcnn(
@@ -39,15 +34,9 @@ def build_panoptic_maskrcnn(
   """Builds Panoptic Mask R-CNN model."""
   norm_activation_config = model_config.norm_activation
   segmentation_config = model_config.segmentation_model
-  backbone = backbones.factory.build_backbone(
-      input_specs=input_specs,
-      backbone_config=model_config.backbone,
-      norm_activation_config=norm_activation_config,
-      l2_regularizer=l2_regularizer)
-  backbone(tf.keras.Input(input_specs.shape[1:]))
 
-  decoder = decoder_factory.build_decoder(
-      input_specs=backbone.output_specs,
+  maskrcnn_model = build_maskrcnn(
+      input_specs=input_specs,
       model_config=model_config,
       l2_regularizer=l2_regularizer)
 
@@ -60,7 +49,7 @@ def build_panoptic_maskrcnn(
     segmentation_decoder_input_specs = segmentation_backbone.output_specs
   else:
     segmentation_backbone = None
-    segmentation_decoder_input_specs = backbone.output_specs
+    segmentation_decoder_input_specs = maskrcnn_model.backbone.output_specs
 
   if not model_config.shared_decoder:
     segmentation_decoder = decoder_factory.build_decoder(
@@ -70,136 +59,8 @@ def build_panoptic_maskrcnn(
   else:
     segmentation_decoder = None
 
-  rpn_head_config = model_config.rpn_head
-  roi_generator_config = model_config.roi_generator
-  roi_sampler_config = model_config.roi_sampler
-  roi_aligner_config = model_config.roi_aligner
-  detection_head_config = model_config.detection_head
   segmentation_head_config = segmentation_config.head
-  generator_config = model_config.detection_generator
-  num_anchors_per_location = (
-      len(model_config.anchor.aspect_ratios) * model_config.anchor.num_scales)
-
-  rpn_head = dense_prediction_heads.RPNHead(
-      min_level=model_config.min_level,
-      max_level=model_config.max_level,
-      num_anchors_per_location=num_anchors_per_location,
-      num_convs=rpn_head_config.num_convs,
-      num_filters=rpn_head_config.num_filters,
-      use_separable_conv=rpn_head_config.use_separable_conv,
-      activation=norm_activation_config.activation,
-      use_sync_bn=norm_activation_config.use_sync_bn,
-      norm_momentum=norm_activation_config.norm_momentum,
-      norm_epsilon=norm_activation_config.norm_epsilon,
-      kernel_regularizer=l2_regularizer)
-
-  detection_head = instance_heads.DetectionHead(
-      num_classes=model_config.num_classes,
-      num_convs=detection_head_config.num_convs,
-      num_filters=detection_head_config.num_filters,
-      use_separable_conv=detection_head_config.use_separable_conv,
-      num_fcs=detection_head_config.num_fcs,
-      fc_dims=detection_head_config.fc_dims,
-      class_agnostic_bbox_pred=detection_head_config.class_agnostic_bbox_pred,
-      activation=norm_activation_config.activation,
-      use_sync_bn=norm_activation_config.use_sync_bn,
-      norm_momentum=norm_activation_config.norm_momentum,
-      norm_epsilon=norm_activation_config.norm_epsilon,
-      kernel_regularizer=l2_regularizer,
-      name='detection_head')
-  if roi_sampler_config.cascade_iou_thresholds:
-    detection_head_cascade = [detection_head]
-    for cascade_num in range(len(roi_sampler_config.cascade_iou_thresholds)):
-      detection_head = instance_heads.DetectionHead(
-          num_classes=model_config.num_classes,
-          num_convs=detection_head_config.num_convs,
-          num_filters=detection_head_config.num_filters,
-          use_separable_conv=detection_head_config.use_separable_conv,
-          num_fcs=detection_head_config.num_fcs,
-          fc_dims=detection_head_config.fc_dims,
-          class_agnostic_bbox_pred=detection_head_config
-          .class_agnostic_bbox_pred,
-          activation=norm_activation_config.activation,
-          use_sync_bn=norm_activation_config.use_sync_bn,
-          norm_momentum=norm_activation_config.norm_momentum,
-          norm_epsilon=norm_activation_config.norm_epsilon,
-          kernel_regularizer=l2_regularizer,
-          name='detection_head_{}'.format(cascade_num + 1))
-      detection_head_cascade.append(detection_head)
-    detection_head = detection_head_cascade
-
-  roi_generator_obj = roi_generator.MultilevelROIGenerator(
-      pre_nms_top_k=roi_generator_config.pre_nms_top_k,
-      pre_nms_score_threshold=roi_generator_config.pre_nms_score_threshold,
-      pre_nms_min_size_threshold=(
-          roi_generator_config.pre_nms_min_size_threshold),
-      nms_iou_threshold=roi_generator_config.nms_iou_threshold,
-      num_proposals=roi_generator_config.num_proposals,
-      test_pre_nms_top_k=roi_generator_config.test_pre_nms_top_k,
-      test_pre_nms_score_threshold=(
-          roi_generator_config.test_pre_nms_score_threshold),
-      test_pre_nms_min_size_threshold=(
-          roi_generator_config.test_pre_nms_min_size_threshold),
-      test_nms_iou_threshold=roi_generator_config.test_nms_iou_threshold,
-      test_num_proposals=roi_generator_config.test_num_proposals,
-      use_batched_nms=roi_generator_config.use_batched_nms)
-
-  roi_sampler_cascade = []
-  roi_sampler_obj = roi_sampler.ROISampler(
-      mix_gt_boxes=roi_sampler_config.mix_gt_boxes,
-      num_sampled_rois=roi_sampler_config.num_sampled_rois,
-      foreground_fraction=roi_sampler_config.foreground_fraction,
-      foreground_iou_threshold=roi_sampler_config.foreground_iou_threshold,
-      background_iou_high_threshold=(
-          roi_sampler_config.background_iou_high_threshold),
-      background_iou_low_threshold=(
-          roi_sampler_config.background_iou_low_threshold))
-  roi_sampler_cascade.append(roi_sampler_obj)
-  # Initialize addtional roi simplers for cascade heads.
-  if roi_sampler_config.cascade_iou_thresholds:
-    for iou in roi_sampler_config.cascade_iou_thresholds:
-      roi_sampler_obj = roi_sampler.ROISampler(
-          mix_gt_boxes=False,
-          num_sampled_rois=roi_sampler_config.num_sampled_rois,
-          foreground_iou_threshold=iou,
-          background_iou_high_threshold=iou,
-          background_iou_low_threshold=0.0,
-          skip_subsampling=True)
-      roi_sampler_cascade.append(roi_sampler_obj)
-
-  roi_aligner_obj = roi_aligner.MultilevelROIAligner(
-      crop_size=roi_aligner_config.crop_size,
-      sample_offset=roi_aligner_config.sample_offset)
-
-  detection_generator_obj = detection_generator.DetectionGenerator(
-      apply_nms=generator_config.apply_nms,
-      pre_nms_top_k=generator_config.pre_nms_top_k,
-      pre_nms_score_threshold=generator_config.pre_nms_score_threshold,
-      nms_iou_threshold=generator_config.nms_iou_threshold,
-      max_num_detections=generator_config.max_num_detections,
-      use_batched_nms=generator_config.use_batched_nms)
-
-  mask_head = instance_heads.MaskHead(
-      num_classes=model_config.num_classes,
-      upsample_factor=model_config.mask_head.upsample_factor,
-      num_convs=model_config.mask_head.num_convs,
-      num_filters=model_config.mask_head.num_filters,
-      use_separable_conv=model_config.mask_head.use_separable_conv,
-      activation=model_config.norm_activation.activation,
-      norm_momentum=model_config.norm_activation.norm_momentum,
-      norm_epsilon=model_config.norm_activation.norm_epsilon,
-      kernel_regularizer=l2_regularizer,
-      class_agnostic=model_config.mask_head.class_agnostic)
-
-  mask_sampler_obj = mask_sampler.MaskSampler(
-      mask_target_size=(
-          model_config.mask_roi_aligner.crop_size *
-          model_config.mask_head.upsample_factor),
-      num_sampled_masks=model_config.mask_sampler.num_sampled_masks)
-
-  mask_roi_aligner_obj = roi_aligner.MultilevelROIAligner(
-      crop_size=model_config.mask_roi_aligner.crop_size,
-      sample_offset=model_config.mask_roi_aligner.sample_offset)
+  detection_head_config = model_config.detection_head
 
   segmentation_head = segmentation_heads.SegmentationHead(
       num_classes=model_config.num_classes,
@@ -218,17 +79,17 @@ def build_panoptic_maskrcnn(
       kernel_regularizer=l2_regularizer)
 
   model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
-      backbone=backbone,
-      decoder=decoder,
-      rpn_head=rpn_head,
-      detection_head=detection_head,
-      roi_generator=roi_generator_obj,
-      roi_sampler=roi_sampler_cascade,
-      roi_aligner=roi_aligner_obj,
-      detection_generator=detection_generator_obj,
-      mask_head=mask_head,
-      mask_sampler=mask_sampler_obj,
-      mask_roi_aligner=mask_roi_aligner_obj,
+      backbone=maskrcnn_model.backbone,
+      decoder=maskrcnn_model.decoder,
+      rpn_head=maskrcnn_model.rpn_head,
+      detection_head=maskrcnn_model.detection_head,
+      roi_generator=maskrcnn_model.roi_generator,
+      roi_sampler=maskrcnn_model.roi_sampler,
+      roi_aligner=maskrcnn_model.roi_aligner,
+      detection_generator=maskrcnn_model.detection_generator,
+      mask_head=maskrcnn_model.mask_head,
+      mask_sampler=maskrcnn_model.mask_sampler,
+      mask_roi_aligner=maskrcnn_model.mask_roi_aligner,
       segmentation_backbone=segmentation_backbone,
       segmentation_decoder=segmentation_decoder,
       segmentation_head=segmentation_head,
