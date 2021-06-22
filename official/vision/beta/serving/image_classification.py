@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Detection input and model functions for serving/inference."""
+"""Image classification input and model functions for serving/inference."""
 
 import tensorflow as tf
 
