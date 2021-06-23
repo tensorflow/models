@@ -241,6 +241,9 @@ class ParseConfigOptions:
 def parse_configuration(flags_obj, lock_return=True, print_return=True):
   """Parses ExperimentConfig from flags."""
 
+  if flags_obj.experiment is None:
+    raise ValueError('The flag --experiment must be specified.')
+
   # 1. Get the default config from the registered experiment.
   params = exp_factory.get_exp_config(flags_obj.experiment)
 
@@ -285,7 +288,7 @@ def parse_configuration(flags_obj, lock_return=True, print_return=True):
 
   if print_return:
     pp = pprint.PrettyPrinter()
-    logging.info('Final experiment parameters: %s',
+    logging.info('Final experiment parameters:\n%s',
                  pp.pformat(params.as_dict()))
 
   return params
@@ -294,6 +297,8 @@ def parse_configuration(flags_obj, lock_return=True, print_return=True):
 def serialize_config(params: config_definitions.ExperimentConfig,
                      model_dir: str):
   """Serializes and saves the experiment config."""
+  if model_dir is None:
+    raise ValueError('model_dir must be specified, but got None')
   params_save_path = os.path.join(model_dir, 'params.yaml')
   logging.info('Saving experiment configuration to %s', params_save_path)
   tf.io.gfile.makedirs(model_dir)

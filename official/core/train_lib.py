@@ -78,6 +78,8 @@ def run_experiment(
               params, model_dir))
 
   if trainer.checkpoint:
+    if model_dir is None:
+      raise ValueError('model_dir must be specified, but got None')
     checkpoint_manager = tf.train.CheckpointManager(
         trainer.checkpoint,
         directory=model_dir,
