@@ -87,16 +87,18 @@ BASE_CLASS_IDS = [8, 10, 11, 13, 14, 15, 22, 23, 24, 25, 27, 28, 31, 32, 33, 34,
 def main(unused_argv):
   workdir = FLAGS.workdir
 
-  # Filter novel class annotations from the training set.
-  file_path = os.path.join(workdir, 'datasplit', 'trainvalno5k.json')
-  with tf.io.gfile.GFile(file_path, 'r') as f:
-    json_dict = json.load(f)
+  # Filter novel class annotations from the training and validation sets.
+  for name in ('trainvalno5k', '5k'):
+    file_path = os.path.join(workdir, 'datasplit', '{}.json'.format(name))
+    with tf.io.gfile.GFile(file_path, 'r') as f:
+      json_dict = json.load(f)
 
-  json_dict['annotations'] = [a for a in json_dict['annotations']
-                              if a['category_id'] in BASE_CLASS_IDS]
-  output_path = os.path.join(workdir, 'datasplit', 'trainvalno5k_base.json')
-  with tf.io.gfile.GFile(output_path, 'w') as f:
-    json.dump(json_dict, f)
+    json_dict['annotations'] = [a for a in json_dict['annotations']
+                                if a['category_id'] in BASE_CLASS_IDS]
+    output_path = os.path.join(
+        workdir, 'datasplit', '{}_base.json'.format(name))
+    with tf.io.gfile.GFile(output_path, 'w') as f:
+      json.dump(json_dict, f)
 
   for seed, shots in itertools.product(SEEDS, SHOTS):
     # Retrieve all examples for a given seed and shots setting.
