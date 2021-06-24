@@ -72,8 +72,8 @@ You will need to register in order to download the data.  Download the following
 ```shell
 mkdir -p ~/vid2depth/trained-model
 cd ~/vid2depth/trained-model
-wget https://storage.cloud.google.com/vid2depth/model/model-119496.zip
-unzip model-119496.zip
+wget https://storage.googleapis.com/vid2depth/dataset/BikeVideoDataset.tar
+tar –xvf BikeVideoDataset.tar
 ```
 
 ### Run inference
