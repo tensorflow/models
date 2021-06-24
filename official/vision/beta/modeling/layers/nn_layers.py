@@ -721,7 +721,6 @@ class CausalConvMixin:
       A list of paddings for `tf.pad`.
     """
     input_shape = tf.shape(inputs)[1:-1]
-    del inputs
 
     if tf.keras.backend.image_data_format() == 'channels_first':
       raise ValueError('"channels_first" mode is unsupported.')
