@@ -38,10 +38,10 @@ OPTIMIZERS_CLS = {
 }
 
 LR_CLS = {
-    'stepwise': tf.keras.optimizers.schedules.PiecewiseConstantDecay,
-    'polynomial': tf.keras.optimizers.schedules.PolynomialDecay,
-    'exponential': tf.keras.optimizers.schedules.ExponentialDecay,
-    'cosine': tf.keras.experimental.CosineDecay,
+    'stepwise': lr_schedule.PiecewiseConstantDecayWithOffset,
+    'polynomial': lr_schedule.PolynomialDecayWithOffset,
+    'exponential': lr_schedule.ExponentialDecayWithOffset,
+    'cosine': lr_schedule.CosineDecayWithOffset,
     'power': lr_schedule.DirectPowerDecay,
     'power_linear': lr_schedule.PowerAndLinearDecay,
     'power_with_offset': lr_schedule.PowerDecayWithOffset,

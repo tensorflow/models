@@ -70,5 +70,40 @@ class PowerAndLinearDecayTest(tf.test.TestCase, parameterized.TestCase):
       self.assertAlmostEqual(lr(step).numpy(), value)
 
 
+class OffsetLearningRateTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.parameters(
+      dict(class_name=lr_schedule.PiecewiseConstantDecayWithOffset),
+      dict(class_name=lr_schedule.PolynomialDecayWithOffset),
+      dict(class_name=lr_schedule.ExponentialDecayWithOffset),
+      dict(class_name=lr_schedule.CosineDecayWithOffset),
+  )
+  def test_generated_docstring(self, class_name):
+    self.assertNotEmpty(class_name.__init__.__doc__)
+
+  @parameterized.parameters(
+      dict(
+          class_name=lr_schedule.PiecewiseConstantDecayWithOffset,
+          kwarg=dict(boundaries=[50, 80], values=[1.0, 0.5, 0.1])),
+      dict(
+          class_name=lr_schedule.PolynomialDecayWithOffset,
+          kwarg=dict(initial_learning_rate=1.0, decay_steps=100)),
+      dict(
+          class_name=lr_schedule.ExponentialDecayWithOffset,
+          kwarg=dict(
+              initial_learning_rate=1.0, decay_steps=100, decay_rate=0.5)),
+      dict(
+          class_name=lr_schedule.CosineDecayWithOffset,
+          kwarg=dict(initial_learning_rate=1.0, decay_steps=100)),
+  )
+  def test_offset(self, class_name, kwarg):
+    offset = 10
+    offset_lr = class_name(offset=offset, **kwarg)
+    base_lr = class_name.base_lr_class(**kwarg)
+    self.assertIsInstance(offset_lr, class_name)
+    for step in range(10, 101, 10):
+      self.assertEqual(offset_lr(step), base_lr(step - offset))
+
+
 if __name__ == '__main__':
   tf.test.main()

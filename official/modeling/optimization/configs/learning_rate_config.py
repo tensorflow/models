@@ -56,10 +56,12 @@ class StepwiseLrConfig(base_config.Config):
               values[0] [boundaries[0], boundaries[1]]     -> values[1]
               [boundaries[n-1], boundaries[n]]   -> values[n] [boundaries[n],
               end]               -> values[n+1] Defaults to None.
+    offset: An int. The offset applied to steps. Defaults to 0.
   """
   name: str = 'PiecewiseConstantDecay'
   boundaries: Optional[List[int]] = None
   values: Optional[List[float]] = None
+  offset: int = 0
 
 
 @dataclasses.dataclass
@@ -76,12 +78,14 @@ class ExponentialLrConfig(base_config.Config):
     decay_rate: A float. Defaults to None.
     staircase: A boolean, if true, learning rate is decreased at discreate
       intervals. Defaults to False.
+    offset: An int. The offset applied to steps. Defaults to 0.
   """
   name: str = 'ExponentialDecay'
   initial_learning_rate: Optional[float] = None
   decay_steps: Optional[int] = None
   decay_rate: Optional[float] = None
   staircase: Optional[bool] = None
+  offset: int = 0
 
 
 @dataclasses.dataclass
@@ -99,6 +103,7 @@ class PolynomialLrConfig(base_config.Config):
     power: A float.  The power of the polynomial. Defaults to linear, 1.0.
     cycle: A boolean, whether or not it should cycle beyond decay_steps.
       Defaults to False.
+    offset: An int. The offset applied to steps. Defaults to 0.
   """
   name: str = 'PolynomialDecay'
   initial_learning_rate: Optional[float] = None
@@ -106,6 +111,7 @@ class PolynomialLrConfig(base_config.Config):
   end_learning_rate: float = 0.0001
   power: float = 1.0
   cycle: bool = False
+  offset: int = 0
 
 
 @dataclasses.dataclass
@@ -122,11 +128,13 @@ class CosineLrConfig(base_config.Config):
       to None.
     alpha: A float.  Minimum learning rate value as a fraction of
       initial_learning_rate.
+    offset: An int. The offset applied to steps. Defaults to 0.
   """
   name: str = 'CosineDecay'
   initial_learning_rate: Optional[float] = None
   decay_steps: Optional[int] = None
   alpha: float = 0.0
+  offset: int = 0
 
 
 @dataclasses.dataclass
