@@ -21,6 +21,7 @@ from typing import Any, Mapping
 from absl import logging
 import orbit
 import tensorflow as tf
+from official.benchmark import tflite_utils
 from official.common import distribute_utils
 from official.core import config_definitions
 from official.core import task_factory
@@ -37,8 +38,8 @@ def run_benchmark(
   """Runs benchmark for a specific experiment.
 
   Args:
-    execution_mode: A 'str', specifying the mode. Can be 'accuracy', or
-      'performance'.
+    execution_mode: A 'str', specifying the mode. Can be 'accuracy',
+      'performance', or 'tflite_accuracy'.
     params: ExperimentConfig instance.
     model_dir: A 'str', a path to store model checkpoints and summaries.
     distribution_strategy: A tf.distribute.Strategy to use. If specified,
@@ -46,6 +47,9 @@ def run_benchmark(
 
   Returns:
     benchmark_data: returns benchmark data in dict format.
+
+  Raises:
+    NotImplementedError: If try to use unsupported setup.
   """
 
   # For GPU runs, allow option to set thread mode
@@ -77,7 +81,7 @@ def run_benchmark(
     trainer.initialize()
 
   steps_per_loop = params.trainer.steps_per_loop if (
-      execution_mode == 'accuracy') else 100
+      execution_mode in ['accuracy', 'tflite_accuracy']) else 100
   controller = orbit.Controller(
       strategy=strategy,
       trainer=trainer,
@@ -105,6 +109,10 @@ def run_benchmark(
       benchmark_data = {'metrics': eval_logs}
     elif execution_mode == 'performance':
       benchmark_data = {}
+    elif execution_mode == 'tflite_accuracy':
+      eval_logs = tflite_utils.train_and_evaluate(
+          params, task, trainer, controller)
+      benchmark_data = {'metrics': eval_logs}
     else:
       raise NotImplementedError(
           'The benchmark execution mode is not implemented: %s' %

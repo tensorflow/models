@@ -32,12 +32,16 @@ from official.core import exp_factory
 from official.modeling import hyperparams
 
 
-def _get_benchmark_params(benchmark_models):
+def _get_benchmark_params(benchmark_models, eval_tflite=False):
   """Formats benchmark params into a list."""
   parameterized_benchmark_params = []
   for _, benchmarks in benchmark_models.items():
     for name, params in benchmarks.items():
-      for execution_mode in ['performance', 'accuracy']:
+      if eval_tflite:
+        execution_modes = ['performance', 'tflite_accuracy']
+      else:
+        execution_modes = ['performance', 'accuracy']
+      for execution_mode in execution_modes:
         benchmark_name = '{}.{}'.format(name, execution_mode)
         benchmark_params = (
             benchmark_name,  # First arg is used by ParameterizedBenchmark.
@@ -66,7 +70,8 @@ class BaseBenchmark(  # pylint: disable=undefined-variable
 
   _benchmark_parameters = _get_benchmark_params(
       benchmark_definitions.VISION_BENCHMARKS) + _get_benchmark_params(
-          benchmark_definitions.NLP_BENCHMARKS)
+          benchmark_definitions.NLP_BENCHMARKS) + _get_benchmark_params(
+              benchmark_definitions.QAT_BENCHMARKS, True)
 
   def __init__(self,
                output_dir=None,
@@ -144,7 +149,7 @@ class BaseBenchmark(  # pylint: disable=undefined-variable
         execution_mode, params, self._get_model_dir(benchmark_name))
 
     metrics = []
-    if execution_mode == 'accuracy':
+    if execution_mode in ['accuracy', 'tflite_accuracy']:
       for metric_bound in metric_bounds:
         metric = {
             'name': metric_bound['name'],
