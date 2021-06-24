@@ -3759,7 +3759,7 @@ class CenterNetMetaArch(model.DetectionModel):
         ])
         keypoints, keypoint_scores = self._postprocess_keypoints_multi_class(
             prediction_dict, channel_indices, y_indices, x_indices,
-            None, num_detections)
+            boxes_strided, num_detections)
         keypoints, keypoint_scores = (
             convert_strided_predictions_to_normalized_keypoints(
                 keypoints, keypoint_scores, self._stride, true_image_shapes,
