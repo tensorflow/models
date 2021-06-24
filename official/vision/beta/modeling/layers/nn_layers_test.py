@@ -320,6 +320,9 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
            [[12., 12., 12.],
             [8., 8., 8.]]]]])
 
+    output_shape = conv3d._spatial_output_shape([4, 4, 4])
+    self.assertAllClose(output_shape, [2, 2, 2])
+
     self.assertEqual(predicted.shape, expected.shape)
     self.assertAllClose(predicted, expected)
 
@@ -328,6 +331,75 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertEqual(predicted.shape, expected.shape)
     self.assertAllClose(predicted, expected)
+
+  def test_conv3d_causal_padding_2d(self):
+    """Test to ensure causal padding works like standard padding."""
+    conv3d = nn_layers.Conv3D(
+        filters=1,
+        kernel_size=(1, 3, 3),
+        strides=(1, 2, 2),
+        padding='causal',
+        use_buffered_input=False,
+        kernel_initializer='ones',
+        use_bias=False,
+    )
+
+    keras_conv3d = tf.keras.layers.Conv3D(
+        filters=1,
+        kernel_size=(1, 3, 3),
+        strides=(1, 2, 2),
+        padding='same',
+        kernel_initializer='ones',
+        use_bias=False,
+    )
+
+    inputs = tf.ones([1, 1, 4, 4, 1])
+
+    predicted = conv3d(inputs)
+    expected = keras_conv3d(inputs)
+
+    self.assertEqual(predicted.shape, expected.shape)
+    self.assertAllClose(predicted, expected)
+
+    self.assertAllClose(predicted,
+                        [[[[[9.],
+                            [6.]],
+                           [[6.],
+                            [4.]]]]])
+
+  def test_conv3d_causal_padding_1d(self):
+    """Test to ensure causal padding works like standard padding."""
+    conv3d = nn_layers.Conv3D(
+        filters=1,
+        kernel_size=(3, 1, 1),
+        strides=(2, 1, 1),
+        padding='causal',
+        use_buffered_input=False,
+        kernel_initializer='ones',
+        use_bias=False,
+    )
+
+    keras_conv1d = tf.keras.layers.Conv1D(
+        filters=1,
+        kernel_size=3,
+        strides=2,
+        padding='causal',
+        kernel_initializer='ones',
+        use_bias=False,
+    )
+
+    inputs = tf.ones([1, 4, 1, 1, 1])
+
+    predicted = conv3d(inputs)
+    expected = keras_conv1d(tf.squeeze(inputs, axis=[2, 3]))
+    expected = tf.reshape(expected, [1, 2, 1, 1, 1])
+
+    self.assertEqual(predicted.shape, expected.shape)
+    self.assertAllClose(predicted, expected)
+
+    self.assertAllClose(predicted,
+                        [[[[[1.]]],
+                          [[[3.]]]]])
 
 if __name__ == '__main__':
   tf.test.main()

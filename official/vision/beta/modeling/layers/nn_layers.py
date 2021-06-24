@@ -706,7 +706,7 @@ class CausalConvMixin:
     self._use_buffered_input = variable
 
   def _compute_buffered_causal_padding(self,
-                                       inputs: Optional[tf.Tensor] = None,
+                                       inputs: tf.Tensor,
                                        use_buffered_input: bool = False,
                                        time_axis: int = 1) -> List[List[int]]:
     """Calculates padding for 'causal' option for conv layers.
@@ -720,7 +720,7 @@ class CausalConvMixin:
     Returns:
       A list of paddings for `tf.pad`.
     """
-    shape_in = inputs.shape[1:-1]
+    input_shape = tf.shape(inputs)[1:-1]
     del inputs
 
     if tf.keras.backend.image_data_format() == 'channels_first':
@@ -731,11 +731,10 @@ class CausalConvMixin:
          (self.kernel_size[i] - 1) * (self.dilation_rate[i] - 1))
         for i in range(self.rank)
     ]
-    pad_total = [max(kernel_size_effective[i] - (self.strides[i]), 0)
-                 if (shape_in[i]%self.strides[i]) == 0 else
-                 max(kernel_size_effective[i] - 
-                     (shape_in[i]%self.strides[i]), 0)
-                 for i in range(self.rank)]
+    pad_total = [kernel_size_effective[0] - 1]
+    for i in range(1, self.rank):
+      overlap = (input_shape[i] - 1) % self.strides[i] + 1
+      pad_total.append(tf.maximum(kernel_size_effective[i] - overlap, 0))
     pad_beg = [pad_total[i] // 2 for i in range(self.rank)]
     pad_end = [pad_total[i] - pad_beg[i] for i in range(self.rank)]
     padding = [[pad_beg[i], pad_end[i]] for i in range(self.rank)]
@@ -768,7 +767,8 @@ class CausalConvMixin:
     # across time should be the input shape minus any padding, assuming
     # the stride across time is 1.
     if self._use_buffered_input and spatial_output_shape[0] is not None:
-      padding = self._compute_buffered_causal_padding(use_buffered_input=False)
+      padding = self._compute_buffered_causal_padding(
+          tf.zeros([1] + spatial_output_shape + [1]), use_buffered_input=False)
       spatial_output_shape[0] -= sum(padding[1])
     return spatial_output_shape
 
