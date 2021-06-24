@@ -131,6 +131,13 @@ class RetinaNet(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class ExportConfig(hyperparams.Config):
+  output_normalized_coordinates: bool = False
+  cast_num_detections_to_float: bool = False
+  cast_detection_classes_to_float: bool = False
+
+
+@dataclasses.dataclass
 class RetinaNetTask(cfg.TaskConfig):
   model: RetinaNet = RetinaNet()
   train_data: DataConfig = DataConfig(is_training=True)
@@ -140,6 +147,7 @@ class RetinaNetTask(cfg.TaskConfig):
   init_checkpoint_modules: str = 'all'  # all or backbone
   annotation_file: Optional[str] = None
   per_category_metrics: bool = False
+  export_config: ExportConfig = ExportConfig()
 
 
 @exp_factory.register_config_factory('retinanet')
