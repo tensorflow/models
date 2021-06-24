@@ -175,7 +175,7 @@ def generate_classifier_dataset():
   """Generates classifier dataset and returns input meta data."""
   if FLAGS.classification_task_name in [
       "COLA", "WNLI", "SST-2", "MRPC", "QQP", "STS-B", "MNLI", "QNLI", "RTE",
-      "AX"
+      "AX", "SUPERGLUE-RTE", "CB", "BoolQ"
   ]:
     assert not FLAGS.input_data_dir or FLAGS.tfds_params
   else:
