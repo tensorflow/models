@@ -1287,20 +1287,17 @@ class SuperGLUEDataProcessor(DataProcessor):
 
   def get_train_examples(self, data_dir):
     """See base class."""
-    return self._create_examples(
-        self._read_jsonl(os.path.join(data_dir, "train.jsonl")), "train")
+    return self._create_examples_tfds("train")
 
   def get_dev_examples(self, data_dir):
     """See base class."""
-    return self._create_examples(
-        self._read_jsonl(os.path.join(data_dir, "val.jsonl")), "dev")
+    return self._create_examples_tfds("validation")
 
   def get_test_examples(self, data_dir):
     """See base class."""
-    return self._create_examples(
-        self._read_jsonl(os.path.join(data_dir, "test.jsonl")), "test")
+    return self._create_examples_tfds("test")
 
-  def _create_examples(self, lines, set_type):
+  def _create_examples_tfds(self, set_type):
     """Creates examples for the training/dev/test sets."""
     raise NotImplementedError()
 
@@ -1317,17 +1314,18 @@ class BoolQProcessor(SuperGLUEDataProcessor):
     """See base class."""
     return "BoolQ"
 
-  def _create_examples(self, lines, set_type):
+  def _create_examples_tfds(self, set_type):
     """Creates examples for the training/dev/test sets."""
+    dataset = tfds.load(
+        "super_glue/boolq", split=set_type, try_gcs=True).as_numpy_iterator()
     examples = []
-    for line in lines:
-      guid = "%s-%s" % (set_type, self.process_text_fn(str(line["idx"])))
-      text_a = self.process_text_fn(line["question"])
-      text_b = self.process_text_fn(line["passage"])
-      if set_type == "test":
-        label = "False"
-      else:
-        label = str(line["label"])
+    for example in dataset:
+      guid = "%s-%s" % (set_type, self.process_text_fn(str(example["idx"])))
+      text_a = self.process_text_fn(example["question"])
+      text_b = self.process_text_fn(example["passage"])
+      label = "False"
+      if set_type != "test":
+        label = self.get_labels()[example["label"]]
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
@@ -1345,17 +1343,18 @@ class CBProcessor(SuperGLUEDataProcessor):
     """See base class."""
     return "CB"
 
-  def _create_examples(self, lines, set_type):
+  def _create_examples_tfds(self, set_type):
     """Creates examples for the training/dev/test sets."""
+    dataset = tfds.load(
+        "super_glue/cb", split=set_type, try_gcs=True).as_numpy_iterator()
     examples = []
-    for line in lines:
-      guid = "%s-%s" % (set_type, self.process_text_fn(str(line["idx"])))
-      text_a = self.process_text_fn(line["premise"])
-      text_b = self.process_text_fn(line["hypothesis"])
-      if set_type == "test":
-        label = "entailment"
-      else:
-        label = self.process_text_fn(line["label"])
+    for example in dataset:
+      guid = "%s-%s" % (set_type, self.process_text_fn(str(example["idx"])))
+      text_a = self.process_text_fn(example["premise"])
+      text_b = self.process_text_fn(example["hypothesis"])
+      label = "entailment"
+      if set_type != "test":
+        label = self.get_labels()[example["label"]]
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
@@ -1375,17 +1374,18 @@ class SuperGLUERTEProcessor(SuperGLUEDataProcessor):
     """See base class."""
     return "RTESuperGLUE"
 
-  def _create_examples(self, lines, set_type):
+  def _create_examples_tfds(self, set_type):
     """Creates examples for the training/dev/test sets."""
     examples = []
-    for i, line in enumerate(lines):
-      guid = "%s-%s" % (set_type, i)
-      text_a = self.process_text_fn(line["premise"])
-      text_b = self.process_text_fn(line["hypothesis"])
-      if set_type == "test":
-        label = "entailment"
-      else:
-        label = self.process_text_fn(line["label"])
+    dataset = tfds.load(
+        "super_glue/rte", split=set_type, try_gcs=True).as_numpy_iterator()
+    for example in dataset:
+      guid = "%s-%s" % (set_type, self.process_text_fn(str(example["idx"])))
+      text_a = self.process_text_fn(example["premise"])
+      text_b = self.process_text_fn(example["hypothesis"])
+      label = "entailment"
+      if set_type != "test":
+        label = self.get_labels()[example["label"]]
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
