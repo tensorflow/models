@@ -39,6 +39,7 @@ class BertClassifierLibTest(tf.test.TestCase, parameterized.TestCase):
         "CB": classifier_data_lib.CBProcessor,
         "SUPERGLUE-RTE": classifier_data_lib.SuperGLUERTEProcessor,
         "BOOLQ": classifier_data_lib.BoolQProcessor,
+        "WIC": classifier_data_lib.WiCProcessor,
     }
 
     vocab_tokens = [
@@ -55,6 +56,7 @@ class BertClassifierLibTest(tf.test.TestCase, parameterized.TestCase):
       {"task_type": "CB"},
       {"task_type": "BOOLQ"},
       {"task_type": "SUPERGLUE-RTE"},
+      {"task_type": "WIC"},
   )
   def test_generate_dataset_from_tfds_processor(self, task_type):
     with tfds.testing.mock_data(num_examples=5):
