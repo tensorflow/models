@@ -129,6 +129,30 @@ class DataProcessor(object):
         lines.append(json.loads(json_str))
     return lines
 
+  def featurize_example(self, *kargs, **kwargs):
+    """Converts a single `InputExample` into a single `InputFeatures`."""
+    return convert_single_example(*kargs, **kwargs)
+
+
+class DefaultGLUEDataProcessor(DataProcessor):
+  """Processor for the SuperGLUE dataset."""
+
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples_tfds("train")
+
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples_tfds("validation")
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples_tfds("test")
+
+  def _create_examples_tfds(self, set_type):
+    """Creates examples for the training/dev/test sets."""
+    raise NotImplementedError()
+
 
 class AxProcessor(DataProcessor):
   """Processor for the AX dataset (GLUE diagnostics dataset)."""
@@ -178,20 +202,8 @@ class AxProcessor(DataProcessor):
     return examples
 
 
-class ColaProcessor(DataProcessor):
+class ColaProcessor(DefaultGLUEDataProcessor):
   """Processor for the CoLA data set (GLUE version)."""
-
-  def get_train_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("train")
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("validation")
-
-  def get_test_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("test")
 
   def get_labels(self):
     """See base class."""
@@ -315,20 +327,8 @@ class MnliProcessor(DataProcessor):
     return examples
 
 
-class MrpcProcessor(DataProcessor):
+class MrpcProcessor(DefaultGLUEDataProcessor):
   """Processor for the MRPC data set (GLUE version)."""
-
-  def get_train_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("train")
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("validation")
-
-  def get_test_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("test")
 
   def get_labels(self):
     """See base class."""
@@ -437,20 +437,8 @@ class PawsxProcessor(DataProcessor):
     return "XTREME-PAWS-X"
 
 
-class QnliProcessor(DataProcessor):
+class QnliProcessor(DefaultGLUEDataProcessor):
   """Processor for the QNLI data set (GLUE version)."""
-
-  def get_train_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("train")
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("validation")
-
-  def get_test_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("test")
 
   def get_labels(self):
     """See base class."""
@@ -480,20 +468,8 @@ class QnliProcessor(DataProcessor):
     return examples
 
 
-class QqpProcessor(DataProcessor):
+class QqpProcessor(DefaultGLUEDataProcessor):
   """Processor for the QQP data set (GLUE version)."""
-
-  def get_train_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("train")
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("validation")
-
-  def get_test_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("test")
 
   def get_labels(self):
     """See base class."""
@@ -523,20 +499,8 @@ class QqpProcessor(DataProcessor):
     return examples
 
 
-class RteProcessor(DataProcessor):
+class RteProcessor(DefaultGLUEDataProcessor):
   """Processor for the RTE data set (GLUE version)."""
-
-  def get_train_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("train")
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("validation")
-
-  def get_test_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("test")
 
   def get_labels(self):
     """See base class."""
@@ -568,20 +532,8 @@ class RteProcessor(DataProcessor):
     return examples
 
 
-class SstProcessor(DataProcessor):
+class SstProcessor(DefaultGLUEDataProcessor):
   """Processor for the SST-2 data set (GLUE version)."""
-
-  def get_train_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("train")
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("validation")
-
-  def get_test_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("test")
 
   def get_labels(self):
     """See base class."""
@@ -609,7 +561,7 @@ class SstProcessor(DataProcessor):
     return examples
 
 
-class StsBProcessor(DataProcessor):
+class StsBProcessor(DefaultGLUEDataProcessor):
   """Processor for the STS-B data set (GLUE version)."""
 
   def __init__(self, process_text_fn=tokenization.convert_to_unicode):
@@ -617,18 +569,6 @@ class StsBProcessor(DataProcessor):
     self.is_regression = True
     self.label_type = float
     self._labels = None
-
-  def get_train_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("train")
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("validation")
-
-  def get_test_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("test")
 
   def _create_examples_tfds(self, set_type):
     """Creates examples for the training/dev/test sets."""
@@ -786,20 +726,8 @@ class TfdsProcessor(DataProcessor):
     return examples
 
 
-class WnliProcessor(DataProcessor):
+class WnliProcessor(DefaultGLUEDataProcessor):
   """Processor for the WNLI data set (GLUE version)."""
-
-  def get_train_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("train")
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("validation")
-
-  def get_test_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("test")
 
   def get_labels(self):
     """See base class."""
@@ -1282,27 +1210,7 @@ class AXgProcessor(DataProcessor):
     return examples
 
 
-class SuperGLUEDataProcessor(DataProcessor):
-  """Processor for the SuperGLUE dataset."""
-
-  def get_train_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("train")
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("validation")
-
-  def get_test_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples_tfds("test")
-
-  def _create_examples_tfds(self, set_type):
-    """Creates examples for the training/dev/test sets."""
-    raise NotImplementedError()
-
-
-class BoolQProcessor(SuperGLUEDataProcessor):
+class BoolQProcessor(DefaultGLUEDataProcessor):
   """Processor for the BoolQ dataset (SuperGLUE diagnostics dataset)."""
 
   def get_labels(self):
@@ -1331,7 +1239,7 @@ class BoolQProcessor(SuperGLUEDataProcessor):
     return examples
 
 
-class CBProcessor(SuperGLUEDataProcessor):
+class CBProcessor(DefaultGLUEDataProcessor):
   """Processor for the CB dataset (SuperGLUE diagnostics dataset)."""
 
   def get_labels(self):
@@ -1360,7 +1268,7 @@ class CBProcessor(SuperGLUEDataProcessor):
     return examples
 
 
-class SuperGLUERTEProcessor(SuperGLUEDataProcessor):
+class SuperGLUERTEProcessor(DefaultGLUEDataProcessor):
   """Processor for the RTE dataset (SuperGLUE version)."""
 
   def get_labels(self):
@@ -1396,7 +1304,8 @@ def file_based_convert_examples_to_features(examples,
                                             max_seq_length,
                                             tokenizer,
                                             output_file,
-                                            label_type=None):
+                                            label_type=None,
+                                            featurize_fn=None):
   """Convert a set of `InputExample`s to a TFRecord file."""
 
   tf.io.gfile.makedirs(os.path.dirname(output_file))
@@ -1406,8 +1315,12 @@ def file_based_convert_examples_to_features(examples,
     if ex_index % 10000 == 0:
       logging.info("Writing example %d of %d", ex_index, len(examples))
 
-    feature = convert_single_example(ex_index, example, label_list,
-                                     max_seq_length, tokenizer)
+    if featurize_fn:
+      feature = featurize_fn(ex_index, example, label_list, max_seq_length,
+                             tokenizer)
+    else:
+      feature = convert_single_example(ex_index, example, label_list,
+                                       max_seq_length, tokenizer)
 
     def create_int_feature(values):
       f = tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
@@ -1496,7 +1409,8 @@ def generate_tf_record_from_data_file(processor,
     file_based_convert_examples_to_features(train_input_data_examples,
                                             label_list, max_seq_length,
                                             tokenizer, train_data_output_path,
-                                            label_type)
+                                            label_type,
+                                            processor.featurize_example)
     num_training_data = len(train_input_data_examples)
 
   if eval_data_output_path:
@@ -1504,7 +1418,8 @@ def generate_tf_record_from_data_file(processor,
     file_based_convert_examples_to_features(eval_input_data_examples,
                                             label_list, max_seq_length,
                                             tokenizer, eval_data_output_path,
-                                            label_type)
+                                            label_type,
+                                            processor.featurize_example)
 
   meta_data = {
       "processor_type": processor.get_processor_name(),
@@ -1518,13 +1433,15 @@ def generate_tf_record_from_data_file(processor,
       for language, examples in test_input_data_examples.items():
         file_based_convert_examples_to_features(
             examples, label_list, max_seq_length, tokenizer,
-            test_data_output_path.format(language), label_type)
+            test_data_output_path.format(language), label_type,
+            processor.featurize_example)
         meta_data["test_{}_data_size".format(language)] = len(examples)
     else:
       file_based_convert_examples_to_features(test_input_data_examples,
                                               label_list, max_seq_length,
                                               tokenizer, test_data_output_path,
-                                              label_type)
+                                              label_type,
+                                              processor.featurize_example)
       meta_data["test_data_size"] = len(test_input_data_examples)
 
   if is_regression:
