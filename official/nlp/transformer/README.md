@@ -207,7 +207,7 @@ A brief look at each component in the code:
 * [ffn_layer.py](ffn_layer.py): Defines the feedforward network that is used in the encoder/decoder stacks. The network is composed of 2 fully connected layers.
 
 Other files:
-* [beam_search_v1.py](beam_search_v1.py) contains the beam search implementation, which is used during model inference to find high scoring translations.
+* [beam_search.py](beam_search.py) contains the beam search implementation, which is used during model inference to find high scoring translations.
 
 ### Model Trainer
 [transformer_main.py](transformer_main.py) creates an `TransformerTask` to train and evaluate the model using tf.keras.
