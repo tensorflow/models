@@ -50,7 +50,7 @@ flags.DEFINE_enum(
     "classification_task_name", "MNLI", [
         "AX", "COLA", "IMDB", "MNLI", "MRPC", "PAWS-X", "QNLI", "QQP", "RTE",
         "SST-2", "STS-B", "WNLI", "XNLI", "XTREME-XNLI", "XTREME-PAWS-X",
-        "AX-g", "SUPERGLUE-RTE", "CB", "BoolQ"
+        "AX-g", "SUPERGLUE-RTE", "CB", "BoolQ", "WIC"
     ], "The name of the task to train BERT classifier. The "
     "difference between XTREME-XNLI and XNLI is: 1. the format "
     "of input tsv files; 2. the dev set for XTREME is english "
@@ -174,8 +174,20 @@ flags.DEFINE_string(
 def generate_classifier_dataset():
   """Generates classifier dataset and returns input meta data."""
   if FLAGS.classification_task_name in [
-      "COLA", "WNLI", "SST-2", "MRPC", "QQP", "STS-B", "MNLI", "QNLI", "RTE",
-      "AX", "SUPERGLUE-RTE", "CB", "BoolQ"
+      "COLA",
+      "WNLI",
+      "SST-2",
+      "MRPC",
+      "QQP",
+      "STS-B",
+      "MNLI",
+      "QNLI",
+      "RTE",
+      "AX",
+      "SUPERGLUE-RTE",
+      "CB",
+      "BoolQ",
+      "WIC",
   ]:
     assert not FLAGS.input_data_dir or FLAGS.tfds_params
   else:
@@ -254,6 +266,8 @@ def generate_classifier_dataset():
             classifier_data_lib.CBProcessor,
         "boolq":
             classifier_data_lib.BoolQProcessor,
+        "wic":
+            classifier_data_lib.WnliProcessor,
     }
     task_name = FLAGS.classification_task_name.lower()
     if task_name not in processors:
