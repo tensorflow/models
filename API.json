@@ -1,0 +1,19 @@
+<dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>libraries-bom</artifactId>
+      <version>3.4.0</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+  </dependencies>
+</dependencyManagement>
+
+<dependency>
+  <groupId>com.google.cloud</groupId>
+  <artifactId>google-cloud-secretmanager</artifactId>
+</dependency>dependencies {
+  implementation platform("com.google.cloud:libraries-bom:3.4.0")
+  implementation("com.google.cloud:google-cloud-secretmanager")
+}
