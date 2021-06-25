@@ -143,3 +143,24 @@ def create_classification_example(
                   int64_list=tf.train.Int64List(value=labels))),
           })).SerializeToString()
   return serialized_example
+
+
+def create_3d_image_test_example(image_height: int, image_width: int,
+                                 image_volume: int,
+                                 image_channel: int) -> tf.train.Example:
+  """Creates 3D image and label."""
+  images = np.random.rand(image_height, image_width, image_volume,
+                          image_channel)
+  images = images.astype(np.float32)
+
+  labels = np.random.randint(
+      low=2, size=(image_height, image_width, image_volume, image_channel))
+  labels = labels.astype(np.float32)
+
+  feature = {
+      IMAGE_KEY: (tf.train.Feature(
+          bytes_list=tf.train.BytesList(value=[images.tobytes()]))),
+      CLASSIFICATION_LABEL_KEY: (tf.train.Feature(
+          bytes_list=tf.train.BytesList(value=[labels.tobytes()])))
+  }
+  return tf.train.Example(features=tf.train.Features(feature=feature))
