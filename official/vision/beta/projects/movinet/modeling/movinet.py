@@ -309,6 +309,7 @@ class Movinet(tf.keras.Model):
                conv_type: str = '3d',
                input_specs: Optional[tf.keras.layers.InputSpec] = None,
                activation: str = 'swish',
+               gating_activation: str = 'sigmoid',
                use_sync_bn: bool = True,
                norm_momentum: float = 0.99,
                norm_epsilon: float = 0.001,
@@ -333,7 +334,8 @@ class Movinet(tf.keras.Model):
         Conv3D and no 2D reshaping (e.g., a 5x3x3 kernel becomes 1x3x3 followed
         by 5x1x1 conv).
       input_specs: the model input spec to use.
-      activation: name of the activation function.
+      activation: name of the main activation function.
+      gating_activation: gating activation to use in squeeze excitation layers.
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: normalization momentum for the moving average.
       norm_epsilon: small float added to variance to avoid dividing by
@@ -363,6 +365,7 @@ class Movinet(tf.keras.Model):
     self._input_specs = input_specs
     self._use_sync_bn = use_sync_bn
     self._activation = activation
+    self._gating_activation = gating_activation
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     if use_sync_bn:
@@ -475,6 +478,7 @@ class Movinet(tf.keras.Model):
               strides=strides,
               causal=self._causal,
               activation=self._activation,
+              gating_activation=self._gating_activation,
               stochastic_depth_drop_rate=stochastic_depth_drop_rate,
               conv_type=self._conv_type,
               use_positional_encoding=self._use_positional_encoding and
@@ -692,7 +696,8 @@ def build_movinet(
       use_positional_encoding=backbone_cfg.use_positional_encoding,
       conv_type=backbone_cfg.conv_type,
       input_specs=input_specs,
-      activation=norm_activation_config.activation,
+      activation=backbone_cfg.activation,
+      gating_activation=backbone_cfg.gating_activation,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,

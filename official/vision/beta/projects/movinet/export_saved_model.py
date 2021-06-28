@@ -53,6 +53,12 @@ flags.DEFINE_string(
     '3x3 followed by 5x1 conv). 3d_2plus1d uses (2+1)D convolution with '
     'Conv3D and no 2D reshaping (e.g., a 5x3x3 kernel becomes 1x3x3 '
     'followed by 5x1x1 conv).')
+flags.DEFINE_string(
+    'activation', 'swish',
+    'The main activation to use across layers.')
+flags.DEFINE_string(
+    'gating_activation', 'sigmoid',
+    'The gating activation to use in squeeze-excitation layers.')
 flags.DEFINE_bool(
     'use_positional_encoding', False,
     'Whether to use positional encoding (only applied when causal=True).')
@@ -94,6 +100,8 @@ def main(_) -> None:
       conv_type=FLAGS.conv_type,
       use_external_states=FLAGS.causal,
       input_specs=input_specs,
+      activation=FLAGS.activation,
+      gating_activation=FLAGS.gating_activation,
       use_positional_encoding=FLAGS.use_positional_encoding)
   model = movinet_model.MovinetClassifier(
       backbone,
