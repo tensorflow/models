@@ -27,7 +27,6 @@ class RefUnet(tf.keras.layers.Layer):
       Basnet: Boundary-aware salient object detection.
   """
   def __init__(self,
-               use_separable_conv=False,
                activation='relu',
                use_sync_bn=False,
                use_bias=True,
@@ -40,8 +39,6 @@ class RefUnet(tf.keras.layers.Layer):
     """Residual Refinement Module of BASNet.
 
     Args:
-      use_separable_conv: `bool`, if True use separable convolution for
-        convolution in BASNet layers.
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
       use_bias: if True, use bias in conv2d.
@@ -57,7 +54,6 @@ class RefUnet(tf.keras.layers.Layer):
     """
     super(RefUnet, self).__init__(**kwargs)
     self._config_dict = {
-        'use_separable_conv': use_separable_conv,
         'activation': activation,
         'use_sync_bn': use_sync_bn,
         'use_bias': use_bias,
@@ -83,11 +79,10 @@ class RefUnet(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     """Creates the variables of the BASNet decoder."""
-    if self._config_dict['use_separable_conv']:
-      conv_op = tf.keras.layers.SeparableConv2D
-    else:
-      conv_op = tf.keras.layers.Conv2D
+    conv_op = tf.keras.layers.Conv2D
     conv_kwargs = {
+      'dilation_rate': 1,
+      'activation': self._config_dict['activation'],
       'kernel_size': 3,
       'strides': 1,
       'use_bias': self._config_dict['use_bias'],
@@ -96,21 +91,44 @@ class RefUnet(tf.keras.layers.Layer):
       'bias_regularizer': self._config_dict['bias_regularizer'],
     }
 
-    self._in_conv = conv_op(filters=64, padding='same',**conv_kwargs)
+    self._in_conv = conv_op(
+        filters=64,
+        padding='same',
+        **conv_kwargs)
 
     self._en_convs = []
     for _ in range(4):
-      self._en_convs.append(nn_blocks.ConvBlock(filters=64, **conv_kwargs))
+      self._en_convs.append(nn_blocks.ConvBlock(
+          filters=64,
+          use_sync_bn=self._config_dict['use_sync_bn'],
+          norm_momentum=self._config_dict['norm_momentum'],
+          norm_epsilon=self._config_dict['norm_epsilon'],
+          **conv_kwargs))
 
     self._bridge_convs = []
     for _ in range(1):
-      self._bridge_convs.append(nn_blocks.ConvBlock(filters=64, **conv_kwargs))
+      self._bridge_convs.append(nn_blocks.ConvBlock(
+          filters=64,
+          use_sync_bn=self._config_dict['use_sync_bn'],
+          norm_momentum=self._config_dict['norm_momentum'],
+          norm_epsilon=self._config_dict['norm_epsilon'],
+          **conv_kwargs))
+
 
     self._de_convs = []
     for _ in range(4):
-      self._de_convs.append(nn_blocks.ConvBlock(filters=64, **conv_kwargs))
+      self._de_convs.append(nn_blocks.ConvBlock(
+          filters=64,
+          use_sync_bn=self._config_dict['use_sync_bn'],
+          norm_momentum=self._config_dict['norm_momentum'],
+          norm_epsilon=self._config_dict['norm_epsilon'],
+          **conv_kwargs))
 
-    self._out_conv = conv_op(padding='same', filters=1, **conv_kwargs)
+
+    self._out_conv = conv_op(
+        filters=1,
+        padding='same',
+        **conv_kwargs)
 
   def call(self, inputs):
     endpoints = {}

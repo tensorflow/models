@@ -274,11 +274,11 @@ def build_basnet_encoder(
   norm_activation_config = model_config.norm_activation
   assert backbone_type == 'basnet_encoder', (f'Inconsistent backbone type '
                                              f'{backbone_type}')
-
   return BASNet_Encoder(
       input_specs=input_specs,
       activation=norm_activation_config.activation,
       use_sync_bn=norm_activation_config.use_sync_bn,
+      use_bias=norm_activation_config.use_bias,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
       kernel_regularizer=l2_regularizer)
@@ -289,7 +289,6 @@ class BASNet_Decoder(tf.keras.layers.Layer):
   """BASNet decoder."""
 
   def __init__(self,
-               use_separable_conv=False,
                activation='relu',
                use_sync_bn=False,
                use_bias=True,
@@ -302,11 +301,11 @@ class BASNet_Decoder(tf.keras.layers.Layer):
     """BASNet decoder initialization function.
 
     Args:
-      use_separable_conv: `bool`, if True use separable convolution for
-        convolution in BASNet layers.
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
       use_bias: if True, use bias in convolution.
+      use_separable_conv: `bool`, if True use separable convolution for
+        convolution in BASNet layers.
       norm_momentum: `float` normalization omentum for the moving average.
       norm_epsilon: `float` small float added to variance to avoid dividing by
         zero.
@@ -317,7 +316,6 @@ class BASNet_Decoder(tf.keras.layers.Layer):
     """
     super(BASNet_Decoder, self).__init__(**kwargs)
     self._config_dict = {
-        'use_separable_conv': use_separable_conv,
         'activation': activation,
         'use_sync_bn': use_sync_bn,
         'use_bias': use_bias,
@@ -337,10 +335,7 @@ class BASNet_Decoder(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     """Creates the variables of the BASNet decoder."""
-    if self._config_dict['use_separable_conv']:
-      conv_op = tf.keras.layers.SeparableConv2D
-    else:
-      conv_op = tf.keras.layers.Conv2D
+    conv_op = tf.keras.layers.Conv2D
     conv_kwargs = {
       'kernel_size': 3,
       'strides': 1,
@@ -362,6 +357,7 @@ class BASNet_Decoder(tf.keras.layers.Layer):
             filters=spec[2*j],
             dilation_rate=spec[2*j+1],
             activation='relu',
+            use_sync_bn=self._config_dict['use_sync_bn'],
             norm_momentum=0.99,
             norm_epsilon=0.001,
             **conv_kwargs))
@@ -384,6 +380,7 @@ class BASNet_Decoder(tf.keras.layers.Layer):
             filters=spec[2*j],
             dilation_rate=spec[2*j+1],
             activation='relu',
+            use_sync_bn=self._config_dict['use_sync_bn'],
             norm_momentum=0.99,
             norm_epsilon=0.001,
             **conv_kwargs))

@@ -46,6 +46,7 @@ class DataConfig(cfg.DataConfig):
 class BASNetModel(hyperparams.Config):
   """BASNet model config."""
   input_size: List[int] = dataclasses.field(default_factory=list)
+  use_bias: bool = False
   norm_activation: common.NormActivation = common.NormActivation()
 
 
@@ -99,6 +100,7 @@ def basnet_duts() -> cfg.ExperimentConfig:
       task=BASNetTask(
           model=BASNetModel(
               input_size=[None, None, 3],
+              use_bias=True,
               norm_activation=common.NormActivation(
                   activation='relu',
                   norm_momentum=0.99,

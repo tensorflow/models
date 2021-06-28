@@ -58,20 +58,20 @@ class ConvBlock(tf.keras.layers.Layer):
       **kwargs: keyword arguments to be passed.
     """
     super(ConvBlock, self).__init__(**kwargs)
-
-    self._filters = filters
-    self._kernel_size = kernel_size
-    self._strides = strides
-    self._dilation_rate = dilation_rate
-    self._kernel_initializer = kernel_initializer
-    self._kernel_regularizer = kernel_regularizer
-    self._bias_regularizer = bias_regularizer
-    self._activation = activation
-    self._use_bias = use_bias
-    self._use_sync_bn = use_sync_bn
-    self._norm_momentum = norm_momentum
-    self._norm_epsilon = norm_epsilon
-
+    self._config_dict = {
+        'filters': filters,
+        'kernel_size': kernel_size,
+        'strides': strides,
+        'dilation_rate': dilation_rate,
+        'kernel_initializer': kernel_initializer,
+        'kernel_regularizer': kernel_regularizer,
+        'bias_regularizer': bias_regularizer,
+        'activation': activation,
+        'use_sync_bn': use_sync_bn,
+        'use_bias': use_bias,
+        'norm_momentum': norm_momentum,
+        'norm_epsilon': norm_epsilon
+    }
     if use_sync_bn:
       self._norm = tf.keras.layers.experimental.SyncBatchNormalization
     else:
@@ -83,40 +83,29 @@ class ConvBlock(tf.keras.layers.Layer):
     self._activation_fn = tf_utils.get_activation(activation)
 
   def build(self, input_shape):
+    conv_kwargs = {
+      'padding': 'same',
+      'use_bias': self._config_dict['use_bias'],
+      'kernel_initializer': self._config_dict['kernel_initializer'],
+      'kernel_regularizer': self._config_dict['kernel_regularizer'],
+      'bias_regularizer': self._config_dict['bias_regularizer'],
+    }
+
     self._conv0 = tf.keras.layers.Conv2D(
-        filters=self._filters,
-        kernel_size=self._kernel_size,
-        strides=self._strides,
-        dilation_rate=self._dilation_rate,
-        padding='same',
-        use_bias=self._use_bias,
-        kernel_initializer=self._kernel_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer)
+        filters=self._config_dict['filters'],
+        kernel_size=self._config_dict['kernel_size'],
+        strides=self._config_dict['strides'],
+        dilation_rate=self._config_dict['dilation_rate'],
+        **conv_kwargs)
     self._norm0 = self._norm(
         axis=self._bn_axis,
-        momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        momentum=self._config_dict['norm_momentum'],
+        epsilon=self._config_dict['norm_epsilon'])
 
     super(ConvBlock, self).build(input_shape)
 
   def get_config(self):
-    config = {
-        'filters': self._filters,
-        'kernel_size': self._kernel_size,
-        'strides': self._strides,
-        'dilation_rate': self._dilation_rate,
-        'kernel_initializer': self._kernel_initializer,
-        'kernel_regularizer': self._kernel_regularizer,
-        'bias_regularizer': self._bias_regularizer,
-        'activation': self._activation,
-        'use_sync_bn': self._use_sync_bn,
-        'use_bias': self._use_bias,
-        'norm_momentum': self._norm_momentum,
-        'norm_epsilon': self._norm_epsilon
-    }
-    base_config = super(ConvBlock, self).get_config()
-    return dict(list(base_config.items()) + list(config.items()))
+    return self._config_dict
 
   def call(self, inputs, training=None):
     x = self._conv0(inputs)
@@ -168,19 +157,19 @@ class ResBlock(tf.keras.layers.Layer):
       **kwargs: Additional keyword arguments to be passed.
     """
     super(ResBlock, self).__init__(**kwargs)
-
-    self._filters = filters
-    self._strides = strides
-    self._use_projection = use_projection
-    self._use_sync_bn = use_sync_bn
-    self._use_bias = use_bias
-    self._activation = activation
-    self._kernel_initializer = kernel_initializer
-    self._norm_momentum = norm_momentum
-    self._norm_epsilon = norm_epsilon
-    self._kernel_regularizer = kernel_regularizer
-    self._bias_regularizer = bias_regularizer
-
+    self._config_dict = {
+        'filters': filters,
+        'strides': strides,
+        'use_projection': use_projection,
+        'kernel_initializer': kernel_initializer,
+        'kernel_regularizer': kernel_regularizer,
+        'bias_regularizer': bias_regularizer,
+        'activation': activation,
+        'use_sync_bn': use_sync_bn,
+        'use_bias': use_bias,
+        'norm_momentum': norm_momentum,
+        'norm_epsilon': norm_epsilon
+    }
     if use_sync_bn:
       self._norm = tf.keras.layers.experimental.SyncBatchNormalization
     else:
@@ -192,70 +181,55 @@ class ResBlock(tf.keras.layers.Layer):
     self._activation_fn = tf_utils.get_activation(activation)
 
   def build(self, input_shape):
-    if self._use_projection:
+    conv_kwargs = {
+      'filters': self._config_dict['filters'],
+      'padding': 'same',
+      'use_bias': self._config_dict['use_bias'],
+      'kernel_initializer': self._config_dict['kernel_initializer'],
+      'kernel_regularizer': self._config_dict['kernel_regularizer'],
+      'bias_regularizer': self._config_dict['bias_regularizer'],
+    }
+
+    if self._config_dict['use_projection']:
       self._shortcut = tf.keras.layers.Conv2D(
-          filters=self._filters,
+          filters=self._config_dict['filters'],
           kernel_size=1,
-          strides=self._strides,
-          use_bias=self._use_bias,
-          kernel_initializer=self._kernel_initializer,
-          kernel_regularizer=self._kernel_regularizer,
-          bias_regularizer=self._bias_regularizer)
+          strides=self._config_dict['strides'],
+          use_bias=self._config_dict['use_bias'],
+          kernel_initializer=self._config_dict['kernel_initializer'],
+          kernel_regularizer=self._config_dict['kernel_regularizer'],
+          bias_regularizer=self._config_dict['bias_regularizer'])
       self._norm0 = self._norm(
           axis=self._bn_axis,
-          momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)
+          momentum=self._config_dict['norm_momentum'],
+          epsilon=self._config_dict['norm_epsilon'])
 
     self._conv1 = tf.keras.layers.Conv2D(
-        filters=self._filters,
         kernel_size=3,
-        strides=self._strides,
-        padding='same',
-        use_bias=self._use_bias,
-        kernel_initializer=self._kernel_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer)
+        strides=self._config_dict['strides'],
+        **conv_kwargs)
     self._norm1 = self._norm(
         axis=self._bn_axis,
-        momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        momentum=self._config_dict['norm_momentum'],
+        epsilon=self._config_dict['norm_epsilon'])
 
     self._conv2 = tf.keras.layers.Conv2D(
-        filters=self._filters,
         kernel_size=3,
         strides=1,
-        padding='same',
-        use_bias=self._use_bias,
-        kernel_initializer=self._kernel_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer)
+        **conv_kwargs)
     self._norm2 = self._norm(
         axis=self._bn_axis,
-        momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        momentum=self._config_dict['norm_momentum'],
+        epsilon=self._config_dict['norm_epsilon'])
 
     super(ResBlock, self).build(input_shape)
 
   def get_config(self):
-    config = {
-        'filters': self._filters,
-        'strides': self._strides,
-        'use_projection': self._use_projection,
-        'kernel_initializer': self._kernel_initializer,
-        'kernel_regularizer': self._kernel_regularizer,
-        'bias_regularizer': self._bias_regularizer,
-        'activation': self._activation,
-        'use_sync_bn': self._use_sync_bn,
-        'use_bias': self._use_bias,
-        'norm_momentum': self._norm_momentum,
-        'norm_epsilon': self._norm_epsilon
-    }
-    base_config = super(ResBlock, self).get_config()
-    return dict(list(base_config.items()) + list(config.items()))
+    return self._config_dict
 
   def call(self, inputs, training=None):
     shortcut = inputs
-    if self._use_projection:
+    if self._config_dict['use_projection']:
       shortcut = self._shortcut(shortcut)
       shortcut = self._norm0(shortcut)
 

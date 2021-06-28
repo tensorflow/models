@@ -36,21 +36,31 @@ def build_basnet_model(
     model_config: exp_cfg.BASNetModel,
     l2_regularizer: tf.keras.regularizers.Regularizer = None):
   """Builds BASNet model."""
+  norm_activation_config = model_config.norm_activation
   backbone = basnet_model.BASNet_Encoder(
-      input_specs=input_specs)
-
-  norm_activation_config = model_config.norm_activation
-
+      input_specs=input_specs,
+      activation=norm_activation_config.activation,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      use_bias=model_config.use_bias,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      kernel_regularizer=l2_regularizer)
+ 
   decoder = basnet_model.BASNet_Decoder(
-        use_sync_bn=norm_activation_config.use_sync_bn,
-        norm_momentum=norm_activation_config.norm_momentum,
-        norm_epsilon=norm_activation_config.norm_epsilon,
-        activation=norm_activation_config.activation,
-        kernel_regularizer=l2_regularizer)
+      activation=norm_activation_config.activation,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      use_bias=model_config.use_bias,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      kernel_regularizer=l2_regularizer)
 
-  refinement = refunet.RefUnet()
-
-  norm_activation_config = model_config.norm_activation
+  refinement = refunet.RefUnet(
+      activation=norm_activation_config.activation,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      use_bias=model_config.use_bias,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      kernel_regularizer=l2_regularizer)
   
   model = basnet_model.BASNetModel(backbone, decoder, refinement)
   return model
