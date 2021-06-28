@@ -75,7 +75,7 @@ documentation of the Object Detection API:
 
 ### DeepMAC architecture
 
-We have released our new architecture, **DeepMAC**, desgined for partially
+We have released our new architecture, **DeepMAC**, designed for partially
 supervised instance segmentation. DeepMAC stands for Deep Mask-heads
 Above CenterNet, and is based on our CenterNet implementation. In our
 [paper](https://arxiv.org/abs/2104.00613) we show that DeepMAC achieves
