@@ -24,6 +24,11 @@ from official.vision.beta.modeling.layers import nn_layers
 
 class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
 
+  def test_hard_swish(self):
+    activation = tf.keras.layers.Activation('hard_swish')
+    output = activation(tf.constant([-3, -1.5, 0, 3]))
+    self.assertAllEqual(output, [0., -0.375, 0., 3.])
+
   def test_scale(self):
     scale = nn_layers.Scale(initializer=tf.keras.initializers.constant(10.))
     output = scale(3.)

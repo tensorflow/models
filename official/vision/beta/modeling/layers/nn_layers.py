@@ -68,6 +68,23 @@ def round_filters(filters: int,
   return int(new_filters)
 
 
+def hard_swish(x: tf.Tensor) -> tf.Tensor:
+  """A Swish6/H-Swish activation function.
+
+  Reference: Section 5.2 of Howard et al. "Searching for MobileNet V3."
+  https://arxiv.org/pdf/1905.02244.pdf
+
+  Args:
+    x: the input tensor.
+
+  Returns:
+    The activation output.
+  """
+  return x * tf.nn.relu6(x + 3.) * (1. / 6.)
+
+tf.keras.utils.get_custom_objects().update({'hard_swish': hard_swish})
+
+
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class SqueezeExcitation(tf.keras.layers.Layer):
   """Creates a squeeze and excitation layer."""

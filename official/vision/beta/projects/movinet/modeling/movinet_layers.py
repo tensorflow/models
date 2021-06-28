@@ -999,6 +999,7 @@ class MovinetBlock(tf.keras.layers.Layer):
       strides: Union[int, Sequence[int]] = (1, 1, 1),
       causal: bool = False,
       activation: nn_layers.Activation = 'swish',
+      gating_activation: nn_layers.Activation = 'sigmoid',
       se_ratio: float = 0.25,
       stochastic_depth_drop_rate: float = 0.,
       conv_type: str = '3d',
@@ -1021,6 +1022,7 @@ class MovinetBlock(tf.keras.layers.Layer):
       strides: strides of the main depthwise convolution.
       causal: if True, run the temporal convolutions in causal mode.
       activation: activation to use across all conv operations.
+      gating_activation: gating activation to use in squeeze excitation layers.
       se_ratio: squeeze excite filters ratio.
       stochastic_depth_drop_rate: optional drop rate for stochastic depth.
       conv_type: '3d', '2plus1d', or '3d_2plus1d'. '3d' uses the default 3D
@@ -1049,6 +1051,7 @@ class MovinetBlock(tf.keras.layers.Layer):
     self._kernel_size = kernel_size
     self._causal = causal
     self._activation = activation
+    self._gating_activation = gating_activation
     self._se_ratio = se_ratio
     self._downsample = any(s > 1 for s in self._strides)
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
@@ -1104,6 +1107,7 @@ class MovinetBlock(tf.keras.layers.Layer):
     self._attention = StreamSqueezeExcitation(
         se_hidden_filters,
         activation=activation,
+        gating_activation=gating_activation,
         causal=self._causal,
         conv_type=conv_type,
         use_positional_encoding=use_positional_encoding,
@@ -1121,6 +1125,7 @@ class MovinetBlock(tf.keras.layers.Layer):
         'strides': self._strides,
         'causal': self._causal,
         'activation': self._activation,
+        'gating_activation': self._gating_activation,
         'se_ratio': self._se_ratio,
         'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
         'conv_type': self._conv_type,
