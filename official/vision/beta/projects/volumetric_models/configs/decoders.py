@@ -22,6 +22,12 @@ from official.modeling import hyperparams
 
 
 @dataclasses.dataclass
+class Identity(hyperparams.Config):
+  """Identity config."""
+  pass
+
+
+@dataclasses.dataclass
 class UNet3DDecoder(hyperparams.Config):
   """UNet3D decoder config."""
   model_id: int = 4
@@ -37,7 +43,9 @@ class Decoder(hyperparams.OneOfConfig):
 
   Attributes:
     type: 'str', type of decoder be used, on the of fields below.
-    fpn: fpn config.
+    identity: identity decoder config.
+    unet_3d_decoder: UNet3D decoder config.
   """
   type: Optional[str] = None
+  identity: Identity = Identity()
   unet_3d_decoder: UNet3DDecoder = UNet3DDecoder()
