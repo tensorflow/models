@@ -37,12 +37,7 @@ class Backbone(hyperparams.OneOfConfig):
 
   Attributes:
     type: 'str', type of backbone be used, one the of fields below.
-    resnet: resnet backbone config.
-    dilated_resnet: dilated resnet backbone for semantic segmentation config.
-    revnet: revnet backbone config.
-    efficientnet: efficientnet backbone config.
-    spinenet: spinenet backbone config.
-    mobilenet: mobilenet backbone config.
+    unet_3d: UNet3D backbone config.
   """
   type: Optional[str] = None
   unet_3d: UNet3D = UNet3D()
