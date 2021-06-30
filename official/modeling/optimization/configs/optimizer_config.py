@@ -247,3 +247,22 @@ class SLIDEConfig(BaseOptimizerConfig):
   do_gradient_rescaling: bool = True
   norm_type: str = "layer"
   ratio_clip_norm: float = 1e5
+
+
+@dataclasses.dataclass
+class AdafactorConfig(BaseOptimizerConfig):
+  """Configuration for Adafactor optimizer.
+
+  The attributes for this class matches the arguments of the Adafactor
+  implementation.
+  """
+  name: str = "Adafactor"
+  factored: bool = True
+  multiply_by_parameter_scale: bool = True
+  beta1: Optional[float] = None
+  decay_rate: float = 0.8
+  step_offset: int = 0
+  clipping_threshold: float = 1.0
+  min_dim_size_to_factor: int = 128
+  epsilon1: float = 1e-30
+  epsilon2: float = 1e-3
