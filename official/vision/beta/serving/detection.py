@@ -162,9 +162,7 @@ class DetectionModule(export_base.ExportModule):
     else:
       final_outputs = {
           'decoded_boxes': detections['decoded_boxes'],
-          'decoded_box_scores': detections['decoded_box_scores'],
-          'cls_outputs': detections['cls_outputs'],
-          'box_outputs': detections['box_outputs']
+          'decoded_box_scores': detections['decoded_box_scores']
       }
 
     if 'detection_masks' in detections.keys():
