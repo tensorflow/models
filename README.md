@@ -42,6 +42,6 @@ If you use TensorFlow Model Garden in your research, please cite this repository
             Frederick Liu and Jaeyoun Kim and Jing Li},
   title = {TensorFlow Model Garden},
   howpublished = {\url{https://github.com/tensorflow/models}},
-  year = {2020},
+  year = {2020}
 }
 ```
