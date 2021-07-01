@@ -17,10 +17,10 @@
 
 import tensorflow as tf
 
-from cloud_tpu.models.detection.utils import box_utils
 from official.vision.beta import configs
 from official.vision.beta.modeling import factory
 from official.vision.beta.ops import anchor
+from official.vision.beta.ops import box_ops
 from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.serving import export_base
 
@@ -140,7 +140,7 @@ class DetectionModule(export_base.ExportModule):
           detection_boxes = (
               detections['detection_boxes'] /
               tf.tile(image_info[:, 2:3, :], [1, 1, 2]))
-          detections['detection_boxes'] = box_utils.normalize_boxes(
+          detections['detection_boxes'] = box_ops.normalize_boxes(
               detection_boxes, image_info[:, 0:1, :])
 
         # Cast num_detections and detection_classes to float. This allows the
