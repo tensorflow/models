@@ -163,17 +163,3 @@ pip3 install tensorflow-text-nightly
 ## Contributions
 
 If you want to contribute, please review the [contribution guidelines](https://github.com/tensorflow/models/wiki/How-to-contribute).
-
-## Citing TF Official Model Garden
-
-To cite this repository:
-
-```
-@software{tfmodels2020github,
-  author = {Chen Chen and Xianzhi Du and Le Hou and Jaeyoun Kim and Jing Li and
-  Yeqing Li and Abdullah Rashwan and Fan Yang and Hongkun Yu},
-  title = {TensorFlow Official Model Garden},
-  url = {https://github.com/tensorflow/models/tree/master/official},
-  year = {2020},
-}
-```
