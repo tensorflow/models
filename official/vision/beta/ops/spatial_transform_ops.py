@@ -511,18 +511,22 @@ def crop_mask_in_target_box(masks,
   return cropped_masks
 
 
-def nearest_upsampling(data, scale):
+def nearest_upsampling(data, scale, use_keras_layer=False):
   """Nearest neighbor upsampling implementation.
 
   Args:
     data: A tensor with a shape of [batch, height_in, width_in, channels].
     scale: An integer multiple to scale resolution of input data.
+    use_keras_layer: If True, use keras Upsampling2D layer.
 
   Returns:
     data_up: A tensor with a shape of
       [batch, height_in*scale, width_in*scale, channels]. Same dtype as input
       data.
   """
+  if use_keras_layer:
+    return tf.keras.layers.UpSampling2D(size=(scale, scale),
+                                        interpolation='nearest')(data)
   with tf.name_scope('nearest_upsampling'):
     bs, _, _, c = data.get_shape().as_list()
     shape = tf.shape(input=data)

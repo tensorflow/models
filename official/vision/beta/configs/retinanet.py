@@ -346,7 +346,8 @@ def retinanet_spinenet_mobile_coco() -> cfg.ExperimentConfig:
                       model_id='49',
                       stochastic_depth_drop_rate=0.2,
                       min_level=3,
-                      max_level=7)),
+                      max_level=7,
+                      use_keras_upsampling_2d=False)),
               decoder=decoders.Decoder(
                   type='identity', identity=decoders.Identity()),
               head=RetinaNetHead(num_filters=48, use_separable_conv=True),
