@@ -26,6 +26,10 @@ from official.modeling import tf_utils
 States = Dict[str, tf.Tensor]
 Activation = Union[str, Callable]
 
+# TODO(dankondratyuk): keep legacy padding until new checkpoints are trained.
+# Otherwise, accuracy will be affected.
+LEGACY_PADDING = True
+
 
 def make_divisible(value: float,
                    divisor: int,
@@ -725,7 +729,8 @@ class CausalConvMixin:
   def _compute_buffered_causal_padding(self,
                                        inputs: tf.Tensor,
                                        use_buffered_input: bool = False,
-                                       time_axis: int = 1) -> List[List[int]]:
+                                       time_axis: int = 1,
+                                       ) -> List[List[int]]:
     """Calculates padding for 'causal' option for conv layers.
 
     Args:
@@ -747,10 +752,14 @@ class CausalConvMixin:
          (self.kernel_size[i] - 1) * (self.dilation_rate[i] - 1))
         for i in range(self.rank)
     ]
-    pad_total = [kernel_size_effective[0] - 1]
-    for i in range(1, self.rank):
-      overlap = (input_shape[i] - 1) % self.strides[i] + 1
-      pad_total.append(tf.maximum(kernel_size_effective[i] - overlap, 0))
+    if LEGACY_PADDING:
+      # Apply legacy padding that does not take into account spatial strides
+      pad_total = [kernel_size_effective[i] - 1 for i in range(self.rank)]
+    else:
+      pad_total = [kernel_size_effective[0] - 1]
+      for i in range(1, self.rank):
+        overlap = (input_shape[i] - 1) % self.strides[i] + 1
+        pad_total.append(tf.maximum(kernel_size_effective[i] - overlap, 0))
     pad_beg = [pad_total[i] // 2 for i in range(self.rank)]
     pad_end = [pad_total[i] - pad_beg[i] for i in range(self.rank)]
     padding = [[pad_beg[i], pad_end[i]] for i in range(self.rank)]
