@@ -941,15 +941,13 @@ class Conv3D(tf.keras.layers.Conv3D, CausalConvMixin):
     base_config = super(Conv3D, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def build(self, input_shape):
-    """Builds the layer with the given input shape."""
-    super(Conv3D, self).build(input_shape)
-
-    # TODO(b/177662019): tf.nn.conv3d with depthwise kernels on CPU
-    # in eager mode may produce incorrect output or cause a segfault.
-    # To avoid this issue, compile the op to TF graph using tf.function.
-    self._convolution_op = tf.function(
-        self._convolution_op, experimental_compile=True)
+  def call(self, inputs):
+    """Call the layer with the given inputs."""
+    # Note: tf.nn.conv3d with depthwise kernels on CPU is currently only
+    # supported when compiling with TF graph (XLA) using tf.function, so it
+    # is compiled by default here (b/186463870).
+    conv_fn = tf.function(super(Conv3D, self).call, jit_compile=True)
+    return conv_fn(inputs)
 
   def _compute_causal_padding(self, inputs):
     """Computes causal padding dimensions for the given inputs."""
