@@ -16,6 +16,8 @@
 
 import tensorflow.compat.v1 as tf
 
+from object_detection.core import box_list
+from object_detection.core import box_list_ops
 from object_detection.utils import shape_utils
 
 
@@ -290,7 +292,8 @@ def get_valid_keypoint_mask_for_class(keypoint_coordinates,
 
 
 def blackout_pixel_weights_by_box_regions(height, width, boxes, blackout,
-                                          weights=None):
+                                          weights=None,
+                                          boxes_scale=1.0):
   """Apply weights at pixel locations.
 
   This function is used to generate the pixel weight mask (usually in the output
@@ -332,6 +335,10 @@ def blackout_pixel_weights_by_box_regions(height, width, boxes, blackout,
       a value to apply in each box region. Note that if blackout=True for a
       given box, the weight will be zero. If None, all weights are assumed to be
       1.
+    boxes_scale: The amount to scale the height/width of the boxes before
+      constructing the blackout regions. This is often useful to guarantee that
+      the proper weight fully covers the object boxes/masks during supervision,
+      as shifting might occur during image resizing, network stride, etc.
 
   Returns:
     A float tensor with shape [height, width] where all values within the
@@ -347,6 +354,10 @@ def blackout_pixel_weights_by_box_regions(height, width, boxes, blackout,
   (y_grid, x_grid) = image_shape_to_grids(height, width)
   y_grid = tf.expand_dims(y_grid, axis=0)
   x_grid = tf.expand_dims(x_grid, axis=0)
+  boxlist = box_list.BoxList(boxes)
+  boxlist = box_list_ops.scale_height_width(
+      boxlist, y_scale=boxes_scale, x_scale=boxes_scale)
+  boxes = boxlist.get()
   y_min = tf.expand_dims(boxes[:, 0:1], axis=-1)
   x_min = tf.expand_dims(boxes[:, 1:2], axis=-1)
   y_max = tf.expand_dims(boxes[:, 2:3], axis=-1)

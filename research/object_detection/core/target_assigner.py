@@ -2003,8 +2003,20 @@ def _resize_masks(masks, height, width, method):
 class CenterNetMaskTargetAssigner(object):
   """Wrapper to compute targets for segmentation masks."""
 
-  def __init__(self, stride):
+  def __init__(self, stride, boxes_scale=1.0):
+    """Constructor.
+
+    Args:
+      stride: The stride of the network. Targets are assigned at the output
+        stride.
+      boxes_scale: Scale to apply to boxes before producing mask weights. This
+        is meant to ensure the full object region is properly weighted prior to
+        applying loss. A value of ~1.05 is typically applied when object regions
+        should be blacked out (perhaps because valid groundtruth masks are not
+        present).
+    """
     self._stride = stride
+    self._boxes_scale = boxes_scale
 
   def assign_segmentation_targets(
       self, gt_masks_list, gt_classes_list, gt_boxes_list=None,
@@ -2072,7 +2084,7 @@ class CenterNetMaskTargetAssigner(object):
         segmentation_weight_for_image = (
             ta_utils.blackout_pixel_weights_by_box_regions(
                 output_height, output_width, boxes_absolute.get(), blackout,
-                weights=gt_mask_weights))
+                weights=gt_mask_weights, boxes_scale=self._boxes_scale))
         segmentation_weights_list.append(segmentation_weight_for_image)
       else:
         segmentation_weights_list.append(tf.ones((output_height, output_width),

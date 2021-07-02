@@ -2655,7 +2655,7 @@ class CenterNetMetaArch(model.DetectionModel):
                 per_keypoint_depth=kp_params.per_keypoint_depth))
     if self._mask_params is not None:
       target_assigners[SEGMENTATION_TASK] = (
-          cn_assigner.CenterNetMaskTargetAssigner(stride))
+          cn_assigner.CenterNetMaskTargetAssigner(stride, boxes_scale=1.05))
     if self._densepose_params is not None:
       dp_stride = 1 if self._densepose_params.upsample_to_input_res else stride
       target_assigners[DENSEPOSE_TASK] = (
