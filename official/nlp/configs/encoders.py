@@ -161,6 +161,7 @@ class KernelEncoderConfig(hyperparams.Config):
   redraw: bool = False
   is_short_seq: bool = False
   begin_kernel: int = 0
+  scale: Optional[float] = None
 
 
 @dataclasses.dataclass
@@ -377,6 +378,7 @@ def build_encoder(config: EncoderConfig,
         redraw=encoder_cfg.redraw,
         is_short_seq=encoder_cfg.is_short_seq,
         begin_kernel=encoder_cfg.begin_kernel,
+        scale=encoder_cfg.scale,
         )
     hidden_cfg = dict(
         num_attention_heads=encoder_cfg.num_attention_heads,
