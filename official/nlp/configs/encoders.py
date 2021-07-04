@@ -46,6 +46,8 @@ class BertEncoderConfig(hyperparams.Config):
   embedding_size: Optional[int] = None
   output_range: Optional[int] = None
   return_all_encoder_outputs: bool = False
+  # Pre/Post-LN Transformer
+  norm_first: bool = False
 
 
 @dataclasses.dataclass
@@ -132,6 +134,8 @@ class BigBirdEncoderConfig(hyperparams.Config):
   intermediate_size: int = 3072
   dropout_rate: float = 0.1
   attention_dropout_rate: float = 0.1
+  # Pre/Post-LN Transformer
+  norm_first: bool = False
   max_position_embeddings: int = 4096
   num_rand_blocks: int = 3
   block_size: int = 64
@@ -152,6 +156,8 @@ class KernelEncoderConfig(hyperparams.Config):
   intermediate_size: int = 3072
   dropout_rate: float = 0.1
   attention_dropout_rate: float = 0.1
+  # Pre/Post-LN Transformer
+  norm_first: bool = False
   max_position_embeddings: int = 512
   type_vocab_size: int = 2
   initializer_range: float = 0.02
@@ -340,6 +346,7 @@ def build_encoder(config: EncoderConfig,
             encoder_cfg.hidden_activation),
         dropout_rate=encoder_cfg.dropout_rate,
         attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+        norm_first=encoder_cfg.norm_first,
         kernel_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=encoder_cfg.initializer_range),
         attention_cls=layers.BigBirdAttention,
@@ -387,6 +394,7 @@ def build_encoder(config: EncoderConfig,
             encoder_cfg.hidden_activation),
         dropout_rate=encoder_cfg.dropout_rate,
         attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+        norm_first=encoder_cfg.norm_first,
         kernel_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=encoder_cfg.initializer_range),
         attention_cls=layers.KernelAttention,
@@ -447,4 +455,5 @@ def build_encoder(config: EncoderConfig,
       embedding_width=encoder_cfg.embedding_size,
       embedding_layer=embedding_layer,
       return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs,
-      dict_outputs=True)
+      dict_outputs=True,
+      norm_first=encoder_cfg.norm_first)

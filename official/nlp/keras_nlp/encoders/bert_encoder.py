@@ -69,6 +69,9 @@ class BertEncoder(tf.keras.Model):
       smaller than 'hidden_size').
     embedding_layer: An optional Layer instance which will be called to
      generate embeddings for the input word IDs.
+    norm_first: Whether to normalize inputs to attention and intermediate
+      dense layers. If set False, output of attention and intermediate dense
+      layers is normalized.
   """
 
   def __init__(
@@ -87,6 +90,7 @@ class BertEncoder(tf.keras.Model):
       output_range=None,
       embedding_width=None,
       embedding_layer=None,
+      norm_first=False,
       **kwargs):
     activation = tf.keras.activations.get(inner_activation)
     initializer = tf.keras.initializers.get(initializer)
@@ -162,6 +166,7 @@ class BertEncoder(tf.keras.Model):
           inner_activation=inner_activation,
           output_dropout=output_dropout,
           attention_dropout=attention_dropout,
+          norm_first=norm_first,
           output_range=transformer_output_range,
           kernel_initializer=initializer,
           name='transformer/layer_%d' % i)
@@ -211,6 +216,7 @@ class BertEncoder(tf.keras.Model):
         'output_range': output_range,
         'embedding_width': embedding_width,
         'embedding_layer': embedding_layer,
+        'norm_first': norm_first,
     }
 
     # We are storing the config dict as a namedtuple here to ensure checkpoint
