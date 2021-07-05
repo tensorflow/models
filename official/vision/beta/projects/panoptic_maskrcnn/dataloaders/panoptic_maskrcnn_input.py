@@ -144,11 +144,11 @@ class Parser(maskrcnn_input.Parser):
           with -1 to the fixed dimension [self._max_num_instances].
         gt_masks: Groundtruth masks cropped by the bounding box and
           resized to a fixed size determined by mask_crop_size.
-        gt_segmentation_mask: Groundtruth masks for segmentation head resized
-          to a fixed size determined by output_size.
-        gt_segmentation_valid_mask: Pixels to be used in computing the
-          segmentation loss while training. Pixels that are to be ignored while
-          trainig are set to segmentation_ignore_label.
+        gt_segmentation_mask: Groundtruth mask for segmentation head, this is
+          resized to a fixed size determined by output_size.
+        gt_segmentation_valid_mask: Binary mask that marks the pixels that
+          are supposed to be used in computing the segmentation loss while
+          training.
     """
     segmentation_mask = data['groundtruth_segmentation_mask']
     segmentation_mask = tf.expand_dims(segmentation_mask, axis=0)
