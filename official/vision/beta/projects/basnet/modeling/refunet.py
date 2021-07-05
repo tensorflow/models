@@ -81,8 +81,6 @@ class RefUnet(tf.keras.layers.Layer):
     """Creates the variables of the BASNet decoder."""
     conv_op = tf.keras.layers.Conv2D
     conv_kwargs = {
-      'dilation_rate': 1,
-      'activation': self._config_dict['activation'],
       'kernel_size': 3,
       'strides': 1,
       'use_bias': self._config_dict['use_bias'],
