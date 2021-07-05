@@ -24,7 +24,7 @@ from official.modeling.optimization.configs import optimization_config
 class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(('sgd'), ('rmsprop'), ('adam'), ('adamw'), ('lamb'),
-                            ('lars'), ('adagrad'), ('adafactor'))
+                            ('lars'), ('adagrad'))
   def test_optimizers(self, optimizer_type):
     params = {
         'optimizer': {
