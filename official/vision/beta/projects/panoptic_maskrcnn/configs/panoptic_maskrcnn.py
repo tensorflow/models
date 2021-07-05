@@ -15,10 +15,21 @@
 """Panoptic Mask R-CNN configuration definition."""
 
 import dataclasses
-
 from official.vision.beta.configs import maskrcnn
 from official.vision.beta.configs import semantic_segmentation
 
+# pylint: disable=missing-class-docstring
+
+@dataclasses.dataclass
+class Parser(maskrcnn.Parser):
+  resize_eval_segmentation_groundtruth = True,
+  segmentation_groundtruth_padded_size = None,
+  segmentation_ignore_label = 255
+
+@dataclasses.dataclass
+class DataConfig(maskrcnn.DataConfig):
+  """Input config for training."""
+  parser: Parser = Parser()
 
 @dataclasses.dataclass
 class PanopticMaskRCNN(maskrcnn.MaskRCNN):
