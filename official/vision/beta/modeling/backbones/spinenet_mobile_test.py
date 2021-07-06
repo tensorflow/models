@@ -90,6 +90,7 @@ class SpineNetMobileTest(parameterized.TestCase, tf.test.TestCase):
         kernel_initializer='VarianceScaling',
         kernel_regularizer=None,
         bias_regularizer=None,
+        use_keras_upsampling_2d=False,
     )
     network = spinenet_mobile.SpineNetMobile(**kwargs)
 
