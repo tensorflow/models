@@ -1,0 +1,93 @@
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  model:
+    base: 
+      backbone:
+        type: hourglass
+      decoder:
+        heatmap_bias: -2.19
+      odapi_weights: '/home/cam2tensorflow/centernet_hg104_512x512_coco17_tpu-8/checkpoint'
+      backbone_name: hourglass104_512
+      decoder_name: detection_2d
+    num_classes: 90
+    _input_size: [512, 512, 3] # null
+    filter:
+      max_detections: 100
+      peak_error: 0.000001
+      peak_extract_kernel_size: 3
+      class_offset: 1
+      net_down_scale: 4  
+      input_image_dims: 512
+      use_nms: False
+      nms_pre_thresh: 0.3
+      nms_thresh: 0.4
+      use_reduction_sum: True
+  validation_data:
+    input_path: 'gs://tensorflow2/coco_records/val/2017*'
+    global_batch_size: 8
+    tfds_download: false
+    dtype: bfloat16
+    is_training: false
+    drop_remainder: false
+    parser:
+      image_h: 512
+      image_w: 512
+      max_num_instances: 128
+      bgr_ordering: True
+      channel_means: [104.01362025, 114.03422265, 119.9165958]
+      channel_stds: [73.6027665, 69.89082075, 70.9150767]
+      dtype: 'float32'
+    shuffle_buffer_size: 100
+  subtasks:
+    detection:
+      use_centers: true
+      use_corners: false
+      predict_3d: false
+    segmentation: false
+  losses:
+    detection:
+      detection_weight: 1.0
+      corner_pull_weight: 0.1
+      corner_push_weight: 0.1
+      offset_weight: 1.0
+    image_h: 512
+    image_w: 512
+    output_dims: 128
+    max_num_instances: 128
+    use_gaussian_bump: true
+    gaussian_rad: -1
+    gaussian_iou: 0.7
+    class_offset: 1
+    dtype: float32
+  per_category_metrics: false
+  weight_decay: 0.0005
+  init_checkpoint: ''
+  annotation_file: null
+  gradient_clip_norm: 0.0
+  load_odapi_weights: true
+  load_extremenet_weights: false
+trainer:
+  train_steps: 10000 # 160 epochs at 64 batchsize -> 500500 * 64/16
+  validation_steps: 625 # 5063 #625
+  steps_per_loop: 10000
+  validation_interval: 1
+  summary_interval: 10000
+  checkpoint_interval: 10000
+  optimizer_config:
+    learning_rate:
+      type: stepwise
+      stepwise:
+        boundaries: [800000, 900000] # [400000, 450000]
+        name: PiecewiseConstantDecay
+        values: [0.00065, 0.000065, 0.0000065] #[0.0013, 0.00013, 0.000013]
+    optimizer:
+      type: sgd
+      sgd:
+        momentum: 0.949
+        name: SGD
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 1000 #learning rate rises from 0 to 0.0013 over 1000 steps
