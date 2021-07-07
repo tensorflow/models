@@ -50,7 +50,7 @@ def _compute_loss_and_gradient(criterion, model, input, target, neg_num=5):
       # Compute descriptor vector for each image.
       o = model(tf.expand_dims(img, axis=0), training=True)
       descriptors = tf.concat([descriptors, o], 0)
-      
+
     queries = descriptors[target == -1]
     positives = descriptors[target == 1]
     negatives = descriptors[target == 0]
