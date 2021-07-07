@@ -156,18 +156,15 @@ class RandomFeatureGaussianProcess(tf.keras.layers.Layer):
       if self.custom_random_features_activation is None:
         self.custom_random_features_activation = tf.math.cos
 
-  def build(self, input_shape):
-    # Defines model layers.
+    # Define model layers.
     if self.normalize_input:
       self._input_norm_layer = tf.keras.layers.LayerNormalization(
           name='gp_input_normalization')
-      self._input_norm_layer.build(input_shape)
-      input_shape = self._input_norm_layer.compute_output_shape(input_shape)
+    else:
+      self._input_norm_layer = None
 
     self._random_feature = self._make_random_feature_layer(
         name='gp_random_feature')
-    self._random_feature.build(input_shape)
-    input_shape = self._random_feature.compute_output_shape(input_shape)
 
     if self.return_gp_cov:
       self._gp_cov_layer = LaplaceRandomFeatureCovariance(
@@ -176,7 +173,8 @@ class RandomFeatureGaussianProcess(tf.keras.layers.Layer):
           likelihood=self.gp_cov_likelihood,
           dtype=self.dtype,
           name='gp_covariance')
-      self._gp_cov_layer.build(input_shape)
+    else:
+      self._gp_cov_layer = None
 
     self._gp_output_layer = tf.keras.layers.Dense(
         units=self.units,
@@ -185,15 +183,12 @@ class RandomFeatureGaussianProcess(tf.keras.layers.Layer):
         dtype=self.dtype,
         name='gp_output_weights',
         **self.gp_output_kwargs)
-    self._gp_output_layer.build(input_shape)
 
     self._gp_output_bias = tf.Variable(
         initial_value=[self.gp_output_bias] * self.units,
         dtype=self.dtype,
         trainable=self.gp_output_bias_trainable,
         name='gp_output_bias')
-
-    self.built = True
 
   def _make_random_feature_layer(self, name):
     """Defines random feature layer depending on kernel type."""
