@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Panoptic Mask R-CNN configuration definition."""
+from typing import List
 
 import dataclasses
 from official.vision.beta.configs import maskrcnn
@@ -22,9 +23,13 @@ from official.vision.beta.configs import semantic_segmentation
 
 @dataclasses.dataclass
 class Parser(maskrcnn.Parser):
-  resize_eval_segmentation_groundtruth = True,
-  segmentation_groundtruth_padded_size = None,
-  segmentation_ignore_label = 255
+  # If resize_eval_groundtruth is set to False, original image sizes are used
+  # for eval. In that case, groundtruth_padded_size has to be specified too to
+  # allow for batching the variable input sizes of images.
+  resize_eval_segmentation_groundtruth: bool = True
+  segmentation_groundtruth_padded_size: List[int] = dataclasses.field(
+      default_factory=list)
+  segmentation_ignore_label: int = 255
 
 @dataclasses.dataclass
 class DataConfig(maskrcnn.DataConfig):
