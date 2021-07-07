@@ -66,8 +66,7 @@ class GlobalFeatureNetTest(tf.test.TestCase):
 
     descriptors = global_model.extract_global_descriptors_from_list(
             model, image_paths, image_size=1024, bounding_boxes=None,
-            scales=[1., 3.],
-            multi_scale_power=2, print_freq=1)
+            scales=[1., 3.], multi_scale_power=2, print_freq=1)
     self.assertAllEqual([2048, 2], tf.shape(descriptors))
 
   def testExtractMultiScale(self):
