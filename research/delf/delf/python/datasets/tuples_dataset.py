@@ -303,6 +303,10 @@ class TuplesDataset():
       rank = 0
 
       while len(nidxs) < self._num_negatives:
+        if rank >= tf.shape(ranks)[0]:
+          raise ValueError("Unable to create epoch tuples. Number of required "
+                           "negative images is larger than the number of "
+                           "clusters in the dataset.")
         potential = neg_images_idxs[ranks[rank, q]]
         # Take at most one image from the same cluster.
         if not self._clusters[potential] in clusters:
