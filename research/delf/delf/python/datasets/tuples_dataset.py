@@ -42,7 +42,7 @@ class TuplesDataset():
   """
 
   def __init__(self, name, mode, data_root, imsize=None, num_negatives=5,
-               num_queries=2000, poolsize=20000,
+               num_queries=2000, pool_size=20000,
                loader=image_loading_utils.default_loader, ims_root=None):
     """TuplesDataset object initialization.
 
@@ -54,7 +54,7 @@ class TuplesDataset():
       num_negatives: Integer, number of negative images for a query image in a
         training tuple.
       num_queries: Integer, number of query images to be processed in one epoch.
-      poolsize: Integer, size of the negative image pool, from where the
+      pool_size: Integer, size of the negative image pool, from where the
         hard-negative images are re-mined.
       loader: Callable, a function to load an image given its path.
       ims_root: String, image root directory.
@@ -88,7 +88,7 @@ class TuplesDataset():
     # Size of training subset for an epoch.
     self._num_negatives = num_negatives
     self._num_queries = min(num_queries, len(self._query_pool))
-    self._poolsize = min(poolsize, len(self.images))
+    self._pool_size = min(pool_size, len(self.images))
     self._qidxs = None
     self._pidxs = None
     self._nidxs = None
@@ -198,7 +198,7 @@ class TuplesDataset():
             self._num_negatives)
     fmt_str += '\tNumber of tuples processed in an epoch: {}\n'.format(
             self._num_queries)
-    fmt_str += '\tPool size for negative remining: {}\n'.format(self._poolsize)
+    fmt_str += '\tPool size for negative remining: {}\n'.format(self._pool_size)
     return fmt_str
 
   def create_epoch_tuples(self, net):
@@ -216,7 +216,7 @@ class TuplesDataset():
       net: Model, network to be used for negative re-mining.
 
     Raises:
-      ValueError: If the poolsize is smaller than the number of negative
+      ValueError: If the pool_size is smaller than the number of negative
         images per tuple.
 
     Returns:
@@ -224,8 +224,8 @@ class TuplesDataset():
     """
     self._n = 0
 
-    if self._num_negatives < self.self._poolsize:
-      raise ValueError("Unable to create epoch tuples. Negative poolsize "
+    if self._num_negatives < self._pool_size:
+      raise ValueError("Unable to create epoch tuples. Negative pool_size "
                        "should be larger than the number of negative images "
                        "per tuple.")
 
@@ -255,10 +255,10 @@ class TuplesDataset():
       self._nidxs = [[] for _ in range(len(self._qidxs))]
       return 0
 
-    # Draw poolsize random images for pool of negatives images.
+    # Draw pool_size random images for pool of negatives images.
     neg_idx_list = np.arange(len(self.images))
     np.random.shuffle(neg_idx_list)
-    neg_images_idxs = neg_idx_list[:self._poolsize]
+    neg_images_idxs = neg_idx_list[:self._pool_size]
 
     global_features_utils.debug_and_log(
             '>> Extracting descriptors for query images...', debug=True)
