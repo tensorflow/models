@@ -154,8 +154,8 @@ def train_val_one_epoch(
       except tf.errors.OutOfRangeError:
         break
 
-      descriptors = tf.zeros(
-              shape=(0, model.meta['outputdim']), dtype=tf.float32)
+      descriptors = tf.zeros(shape=(0, model.meta['outputdim']),
+                             dtype=tf.float32)
 
       for input_tuple in input:
         for img in input_tuple:
@@ -165,9 +165,9 @@ def train_val_one_epoch(
 
       # No need to reduce memory consumption (no backward pass):
       # Compute loss for the full batch.
-      queries = tf.boolean_mask(descriptors, target == -1, axis=0)
-      positives = tf.boolean_mask(descriptors, target == 1, axis=0)
-      negatives = tf.boolean_mask(descriptors, target == 0, axis=0)
+      queries = descriptors[target == -1]
+      positives = descriptors[target == 1]
+      negatives = descriptors[target == 0]
       negatives = tf.reshape(negatives, [tf.shape(queries)[0], neg_num,
                                          model.meta['outputdim']])
       loss = criterion(queries, positives, negatives)
