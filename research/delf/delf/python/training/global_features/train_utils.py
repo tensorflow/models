@@ -45,16 +45,16 @@ def _compute_loss_and_gradient(criterion, model, input, target, neg_num=5):
   """
   # Record gradients and loss through the network.
   with tf.GradientTape() as tape:
-    descriptors = tf.Variable(
-            tf.zeros(shape=(0, model.meta['outputdim']), dtype=tf.float32))
+    descriptors = tf.zeros(shape=(0, model.meta['outputdim']), dtype=tf.float32)
     for img in input:
       # Compute descriptor vector for each image.
       o = model(tf.expand_dims(img, axis=0), training=True)
       descriptors = tf.concat([descriptors, o], 0)
+      
+    queries = descriptors[target == -1]
+    positives = descriptors[target == 1]
+    negatives = descriptors[target == 0]
 
-    queries = tf.boolean_mask(descriptors, target == -1, axis=0)
-    positives = tf.boolean_mask(descriptors, target == 1, axis=0)
-    negatives = tf.boolean_mask(descriptors, target == 0, axis=0)
     negatives = tf.reshape(negatives, [tf.shape(queries)[0], neg_num,
                                        model.meta['outputdim']])
     # Loss calculation.
