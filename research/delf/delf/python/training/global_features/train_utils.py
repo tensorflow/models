@@ -63,10 +63,9 @@ def _compute_loss_and_gradient(criterion, model, input, target, neg_num=5):
   return loss, tape.gradient(loss, model.trainable_variables)
 
 
-def train_val_one_epoch(loader, model, criterion, optimizer, epoch, train=True,
-                        batch_size=5, query_size=2000, neg_num=5,
-                        update_every=1,
-                        debug=False):
+def train_val_one_epoch(
+        loader, model, criterion, optimizer, epoch, train=True, batch_size=5,
+        query_size=2000, neg_num=5, update_every=1, debug=False):
   """Executes either training or validation step based on `train` value.
 
   Args:
@@ -133,6 +132,8 @@ def train_val_one_epoch(loader, model, criterion, optimizer, epoch, train=True,
           optimizer.apply_gradients(
                   zip(accum_grads, model.trainable_variables))
           accum_grads = [tf.zeros_like(tv.read_value()) for tv in tvs]
+      # We break when we run out of range, i.e., we exhausted all dataset
+      # images.
       except tf.errors.OutOfRangeError:
         break
 
@@ -148,7 +149,8 @@ def train_val_one_epoch(loader, model, criterion, optimizer, epoch, train=True,
           batch = loader.get_next()
           input.append(batch[0:-1])
           target.append(batch[-1])
-
+      # We break when we run out of range, i.e., we exhausted all dataset
+      # images.
       except tf.errors.OutOfRangeError:
         break
 
@@ -377,5 +379,4 @@ def _calculate_metrics_and_export_to_tensorboard(vecs, qvecs, dataset, cfg,
     tf.summary.scalar(metric_names[1], metrics[1][0], step=epoch)
     tf.summary.scalar(metric_names[2], metrics[2][0], step=epoch)
     writer.flush()
-
   return None
