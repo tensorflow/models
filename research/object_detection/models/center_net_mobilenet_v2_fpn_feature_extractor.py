@@ -125,14 +125,8 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
     self._base_model.load_weights(path)
 
   @property
-  def supported_sub_model_types(self):
-    return ['classification']
-
-  def get_sub_model(self, sub_model_type):
-    if sub_model_type == 'classification':
-      return self._base_model
-    else:
-      ValueError('Sub model type "{}" not supported.'.format(sub_model_type))
+  def classification_backbone(self):
+    return self._base_model
 
   def call(self, inputs):
     return [self._feature_extractor_model(inputs)]
