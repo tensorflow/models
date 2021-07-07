@@ -140,5 +140,4 @@ def CreateDataset(mode, data_root, imsize=None, num_negatives=5,
     sfm120k: Sfm120k dataset instance.
   '''
   return _Sfm120k(mode, data_root, imsize, num_negatives, num_queries,
-                  pool_size,
-                  loader, eccv2020)
+                  pool_size, loader, eccv2020)
