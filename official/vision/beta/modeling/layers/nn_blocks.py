@@ -55,6 +55,130 @@ def _maybe_downsample(x: tf.Tensor,
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
+class Conv2DBNBlock(tf.keras.layers.Layer):
+  """A convolution block with batch normalization."""
+
+  def __init__(
+      self,
+      filters: int,
+      kernel_size: int = 3,
+      strides: int = 1,
+      use_bias: bool = False,
+      use_explicit_padding: bool = False,
+      activation: str = 'relu6',
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      use_normalization: bool = True,
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      **kwargs):
+    """A convolution block with batch normalization.
+
+    Args:
+      filters: An `int` number of filters for the first two convolutions. Note
+        that the third and final convolution will use 4 times as many filters.
+      kernel_size: An `int` specifying the height and width of the 2D
+        convolution window.
+      strides: An `int` of block stride. If greater than 1, this block will
+        ultimately downsample the input.
+      use_bias: If True, use bias in the convolution layer.
+      use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
+        inputs so that the output dimensions are the same as if 'SAME' padding
+        were used.
+      activation: A `str` name of the activation function.
+      kernel_initializer: A `str` for kernel initializer of convolutional
+        layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default to None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+        Default to None.
+      use_normalization: If True, use batch normalization.
+      use_sync_bn: If True, use synchronized batch normalization.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      **kwargs: Additional keyword arguments to be passed.
+    """
+    super(Conv2DBNBlock, self).__init__(**kwargs)
+    self._filters = filters
+    self._kernel_size = kernel_size
+    self._strides = strides
+    self._activation = activation
+    self._use_bias = use_bias
+    self._use_explicit_padding = use_explicit_padding
+    self._kernel_initializer = kernel_initializer
+    self._kernel_regularizer = kernel_regularizer
+    self._bias_regularizer = bias_regularizer
+    self._use_normalization = use_normalization
+    self._use_sync_bn = use_sync_bn
+    self._norm_momentum = norm_momentum
+    self._norm_epsilon = norm_epsilon
+
+    if use_sync_bn:
+      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
+    else:
+      self._norm = tf.keras.layers.BatchNormalization
+    if use_explicit_padding:
+      self._padding = 'VALID'
+    else:
+      self._padding = 'SAME'
+    if tf.keras.backend.image_data_format() == 'channels_last':
+      self._bn_axis = -1
+    else:
+      self._bn_axis = 1
+
+  def get_config(self):
+    config = {
+        'filters': self._filters,
+        'strides': self._strides,
+        'kernel_size': self._kernel_size,
+        'use_bias': self._use_bias,
+        'use_explicit_padding': self._use_explicit_padding,
+        'kernel_initializer': self._kernel_initializer,
+        'kernel_regularizer': self._kernel_regularizer,
+        'bias_regularizer': self._bias_regularizer,
+        'activation': self._activation,
+        'use_sync_bn': self._use_sync_bn,
+        'use_normalization': self._use_normalization,
+        'norm_momentum': self._norm_momentum,
+        'norm_epsilon': self._norm_epsilon
+    }
+    base_config = super(Conv2DBNBlock, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+  def build(self, input_shape):
+    if self._use_explicit_padding:
+      self._pad = nn_layers.FixedPadding((self._kernel_size, self._kernel_size))
+    self._conv0 = tf.keras.layers.Conv2D(
+        filters=self._filters,
+        kernel_size=self._kernel_size,
+        strides=self._strides,
+        padding=self._padding,
+        use_bias=self._use_bias,
+        kernel_initializer=self._kernel_initializer,
+        kernel_regularizer=self._kernel_regularizer,
+        bias_regularizer=self._bias_regularizer)
+    if self._use_normalization:
+      self._norm0 = self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon)
+    self._activation_layer = tf_utils.get_activation(
+        self._activation, use_keras_layer=True)
+
+    super(Conv2DBNBlock, self).build(input_shape)
+
+  def call(self, inputs, training=None):
+    if self._use_explicit_padding:
+      inputs = self._pad(inputs)
+    x = self._conv0(inputs)
+    if self._use_normalization:
+      x = self._norm0(x)
+    return self._activation_layer(x)
+
+
+@tf.keras.utils.register_keras_serializable(package='Vision')
 class ResidualBlock(tf.keras.layers.Layer):
   """A residual block."""
 
