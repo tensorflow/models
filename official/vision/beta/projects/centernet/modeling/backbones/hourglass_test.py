@@ -27,40 +27,28 @@
 # limitations under the License.
 # ==============================================================================
 
-import dataclasses
 
 import numpy as np
 import tensorflow as tf
 from absl.testing import parameterized
 
 from official.vision.beta.projects.centernet.modeling.backbones import hourglass
-from official.modeling import hyperparams
 from official.vision.beta.projects.centernet.configs import backbones
+from official.vision.beta.configs import common
 from official.vision.beta.projects.centernet.common import \
   registry_imports  # pylint: disable=unused-import
-
-
-@dataclasses.dataclass
-class CenterNet(hyperparams.Config):
-  backbone: backbones.Backbone = backbones.Backbone(type='hourglass')
 
 
 class HourglassTest(tf.test.TestCase, parameterized.TestCase):
   
   def test_hourglass(self):
-    model = hourglass.Hourglass(
-        blocks_per_stage=[2, 3, 4, 5, 6],
-        input_channel_dims=4,
-        channel_dims_per_stage=[6, 8, 10, 12, 14],
-        num_hourglasses=2)
-    outputs = model(np.zeros((2, 64, 64, 3), dtype=np.float32))
-    self.assertEqual(outputs[0].shape, (2, 16, 16, 6))
-    self.assertEqual(outputs[1].shape, (2, 16, 16, 6))
-    
     backbone = hourglass.build_hourglass(
-        tf.keras.layers.InputSpec(shape=[None, 512, 512, 3]), CenterNet())
-    input = np.zeros((2, 512, 512, 3), dtype=np.float32)
-    outputs = backbone(input)
+        input_specs=tf.keras.layers.InputSpec(shape=[None, 512, 512, 3]),
+        backbone_config=backbones.Backbone(type='hourglass'),
+        norm_activation_config=common.NormActivation(use_sync_bn=True)
+    )
+    inputs = np.zeros((2, 512, 512, 3), dtype=np.float32)
+    outputs = backbone(inputs)
     self.assertEqual(outputs[0].shape, (2, 128, 128, 256))
     self.assertEqual(outputs[1].shape, (2, 128, 128, 256))
 

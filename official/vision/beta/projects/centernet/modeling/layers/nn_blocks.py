@@ -28,14 +28,19 @@ def _apply_blocks(inputs, blocks):
   return net
 
 
-def _make_repeated_residual_blocks(reps: int,
-                                   out_channels: int,
-                                   use_sync_bn: bool = True,
-                                   norm_momentum: float = 0.1,
-                                   norm_epsilon: float = 1e-5,
-                                   residual_channels: Optional[int] = None,
-                                   initial_stride: int = 1,
-                                   initial_skip_conv: bool = False):
+def _make_repeated_residual_blocks(
+    reps: int,
+    out_channels: int,
+    use_sync_bn: bool = True,
+    norm_momentum: float = 0.1,
+    norm_epsilon: float = 1e-5,
+    residual_channels: Optional[int] = None,
+    initial_stride: int = 1,
+    initial_skip_conv: bool = False,
+    kernel_initializer: str = 'VarianceScaling',
+    kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+    bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+):
   """Stack Residual blocks one after the other..
   
   Args:
@@ -52,6 +57,11 @@ def _make_repeated_residual_blocks(reps: int,
     initial_skip_conv: `bool`, if set, the first residual block uses a skip
       convolution. This is useful when the number of channels in the input
       are not the same as residual_channels.
+    kernel_initializer: A `str` for kernel initializer of convolutional layers.
+    kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      Conv2D. Default to None.
+    bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      Default to None.
   """
   blocks = []
   
@@ -76,7 +86,10 @@ def _make_repeated_residual_blocks(reps: int,
         use_projection=skip_conv,
         use_sync_bn=use_sync_bn,
         norm_momentum=norm_momentum,
-        norm_epsilon=norm_epsilon))
+        norm_epsilon=norm_epsilon,
+        kernel_initializer=kernel_initializer,
+        kernel_regularizer=kernel_regularizer,
+        bias_regularizer=bias_regularizer))
   
   if reps == 1:
     # If there is only 1 block, the `for` loop above is not run,
@@ -94,9 +107,12 @@ def _make_repeated_residual_blocks(reps: int,
       use_projection=skip_conv,
       use_sync_bn=use_sync_bn,
       norm_momentum=norm_momentum,
-      norm_epsilon=norm_epsilon))
-  
-  return blocks
+      norm_epsilon=norm_epsilon,
+      kernel_initializer=kernel_initializer,
+      kernel_regularizer=kernel_regularizer,
+      bias_regularizer=bias_regularizer))
+
+  return tf.keras.Sequential(blocks)
 
 
 @tf.keras.utils.register_keras_serializable(package='centernet')
@@ -106,14 +122,18 @@ class HourglassBlock(tf.keras.layers.Layer):
   defines the hourglass network.
   """
   
-  def __init__(self,
-               channel_dims_per_stage: List[int],
-               blocks_per_stage: List[int],
-               strides: int = 1,
-               use_sync_bn: bool = True,
-               norm_momentum: float = 0.1,
-               norm_epsilon: float = 1e-5,
-               **kwargs):
+  def __init__(
+      self,
+      channel_dims_per_stage: List[int],
+      blocks_per_stage: List[int],
+      strides: int = 1,
+      use_sync_bn: bool = True,
+      norm_momentum: float = 0.1,
+      norm_epsilon: float = 1e-5,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
     """
     Args:
       channel_dims_per_stage: List[int], list of filter sizes for Residual
@@ -128,10 +148,15 @@ class HourglassBlock(tf.keras.layers.Layer):
         down/upsample. `blocks_per_stage[0]` defines the number of blocks at the
         current stage and `blocks_per_stage[1:]` is used at further stages.
         For example, [2, 2, 2, 2, 2, 4].
-      strides: `int`, stride parameter to the Residual block
+      strides: `int`, stride parameter to the Residual block.
       use_sync_bn: A `bool`, if True, use synchronized batch normalization.
-      norm_momentum: `float`, momentum for the batch normalization layers
-      norm_epsilon: `float`, epsilon for the batch normalization layers
+      norm_momentum: `float`, momentum for the batch normalization layers.
+      norm_epsilon: `float`, epsilon for the batch normalization layers.
+      kernel_initializer: A `str` for kernel initializer of convolutional layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default to None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+        Default to None.
     """
     super(HourglassBlock, self).__init__(**kwargs)
     
@@ -146,6 +171,9 @@ class HourglassBlock(tf.keras.layers.Layer):
     self._use_sync_bn = use_sync_bn
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
+    self._kernel_initializer = kernel_initializer
+    self._kernel_regularizer = kernel_regularizer
+    self._bias_regularizer = bias_regularizer
     
     self._filters = channel_dims_per_stage[0]
     if self._num_stages > 0:
@@ -161,7 +189,10 @@ class HourglassBlock(tf.keras.layers.Layer):
           out_channels=self._filters,
           use_sync_bn=self._use_sync_bn,
           norm_momentum=self._norm_momentum,
-          norm_epsilon=self._norm_epsilon)
+          norm_epsilon=self._norm_epsilon,
+          bias_regularizer=self._bias_regularizer,
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer)
     
     else:
       # outer hourglass structures
@@ -170,7 +201,10 @@ class HourglassBlock(tf.keras.layers.Layer):
           out_channels=self._filters,
           use_sync_bn=self._use_sync_bn,
           norm_momentum=self._norm_momentum,
-          norm_epsilon=self._norm_epsilon)
+          norm_epsilon=self._norm_epsilon,
+          bias_regularizer=self._bias_regularizer,
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer)
       
       self.encoder_block2 = _make_repeated_residual_blocks(
           reps=self._reps,
@@ -179,6 +213,9 @@ class HourglassBlock(tf.keras.layers.Layer):
           use_sync_bn=self._use_sync_bn,
           norm_momentum=self._norm_momentum,
           norm_epsilon=self._norm_epsilon,
+          bias_regularizer=self._bias_regularizer,
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
           initial_skip_conv=self._filters != self._filters_downsampled)
       
       # recursively define inner hourglasses
@@ -193,23 +230,25 @@ class HourglassBlock(tf.keras.layers.Layer):
           residual_channels=self._filters_downsampled,
           out_channels=self._filters,
           use_sync_bn=self._use_sync_bn,
-          norm_momentum=self._norm_momentum,
-          norm_epsilon=self._norm_epsilon)
+          norm_epsilon=self._norm_epsilon,
+          bias_regularizer=self._bias_regularizer,
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer)
       
       self.upsample_layer = tf.keras.layers.UpSampling2D(
           size=2,
           interpolation='nearest')
     
-    super(HourglassBlock).build(input_shape)
+    super(HourglassBlock, self).build(input_shape)
   
   def call(self, x, training=None):
     if self._num_stages == 0:
-      return self._apply_blocks(self.blocks, x)
+      return self.blocks(x)
     else:
-      encoded_outputs = _apply_blocks(x, self.encoder_block1)
-      encoded_downsampled_outputs = _apply_blocks(x, self.encoder_block2)
+      encoded_outputs = self.encoder_block1(x)
+      encoded_downsampled_outputs = self.encoder_block2(x)
       inner_outputs = self.inner_hg(encoded_downsampled_outputs)
-      hg_output = _apply_blocks(inner_outputs, self.decoder_block)
+      hg_output = self.decoder_block(inner_outputs)
       return self.upsample_layer(hg_output) + encoded_outputs
   
   def get_config(self):
@@ -219,7 +258,10 @@ class HourglassBlock(tf.keras.layers.Layer):
         'strides': self._strides,
         'use_sync_bn': self._use_sync_bn,
         'norm_momentum': self._norm_momentum,
-        'norm_epsilon': self._norm_epsilon
+        'norm_epsilon': self._norm_epsilon,
+        'kernel_initializer': self._kernel_initializer,
+        'kernel_regularizer': self._kernel_regularizer,
+        'bias_regularizer': self._bias_regularizer,
     }
     config.update(super(HourglassBlock).get_config())
     return config
