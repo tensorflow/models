@@ -1802,6 +1802,31 @@ def predicted_embeddings_at_object_centers(embedding_predictions,
   return embeddings
 
 
+def mask_from_true_image_shape(data_shape, true_image_shapes):
+  """Get a binary mask based on the true_image_shape.
+
+  Args:
+    data_shape: a possibly static (4,) tensor for the shape of the feature
+      map.
+    true_image_shapes: int32 tensor of shape [batch, 3] where each row is of
+      the form [height, width, channels] indicating the shapes of true
+      images in the resized images, as resized images can be padded with
+      zeros.
+  Returns:
+    a [batch, data_height, data_width, 1] tensor of 1.0 wherever data_height
+    is less than height, etc.
+  """
+  mask_h = tf.cast(
+      tf.range(data_shape[1]) < true_image_shapes[:, tf.newaxis, 0],
+      tf.float32)
+  mask_w = tf.cast(
+      tf.range(data_shape[2]) < true_image_shapes[:, tf.newaxis, 1],
+      tf.float32)
+  mask = tf.expand_dims(
+      mask_h[:, :, tf.newaxis] * mask_w[:, tf.newaxis, :], 3)
+  return mask
+
+
 class ObjectDetectionParams(
     collections.namedtuple('ObjectDetectionParams', [
         'localization_loss', 'scale_loss_weight', 'offset_loss_weight',
@@ -3698,6 +3723,12 @@ class CenterNetMetaArch(model.DetectionModel):
           max_detections, reid_embed_size] containing object embeddings.
     """
     object_center_prob = tf.nn.sigmoid(prediction_dict[OBJECT_CENTER][-1])
+
+    # Mask object centers by true_image_shape. [batch, h, w, 1]
+    object_center_mask = mask_from_true_image_shape(
+        _get_shape(object_center_prob, 4), true_image_shapes)
+    object_center_prob *= object_center_mask
+
     # Get x, y and channel indices corresponding to the top indices in the class
     # center predictions.
     detection_scores, y_indices, x_indices, channel_indices = (
