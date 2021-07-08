@@ -23,12 +23,12 @@ from absl import logging
 import orbit
 import tensorflow as tf
 
+from official.common import distribute_utils
 from official.core import base_trainer
 from official.core import train_lib
 from official.core import train_utils
 from official.recommendation.ranking import common
 from official.recommendation.ranking.task import RankingTask
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 
 FLAGS = flags.FLAGS
@@ -86,7 +86,7 @@ def main(_) -> None:
 
   enable_tensorboard = params.trainer.callbacks.enable_tensorboard
 
-  strategy = distribution_utils.get_distribution_strategy(
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=params.runtime.distribution_strategy,
       all_reduce_alg=params.runtime.all_reduce_alg,
       num_gpus=params.runtime.num_gpus,
