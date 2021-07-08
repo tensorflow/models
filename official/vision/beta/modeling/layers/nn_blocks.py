@@ -188,6 +188,7 @@ class ResidualBlock(tf.keras.layers.Layer):
                use_projection=False,
                se_ratio=None,
                resnetd_shortcut=False,
+               use_explicit_padding: bool = False,
                stochastic_depth_drop_rate=None,
                kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
@@ -212,6 +213,9 @@ class ResidualBlock(tf.keras.layers.Layer):
       se_ratio: A `float` or None. Ratio of the Squeeze-and-Excitation layer.
       resnetd_shortcut: A `bool` if True, apply the resnetd style modification
         to the shortcut connection. Not implemented in residual blocks.
+      use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
+        inputs so that the output dimensions are the same as if 'SAME' padding
+        were used.
       stochastic_depth_drop_rate: A `float` or None. if not None, drop rate for
         the stochastic depth layer.
       kernel_initializer: A `str` of kernel_initializer for convolutional
@@ -235,6 +239,7 @@ class ResidualBlock(tf.keras.layers.Layer):
     self._use_projection = use_projection
     self._se_ratio = se_ratio
     self._resnetd_shortcut = resnetd_shortcut
+    self._use_explicit_padding = use_explicit_padding
     self._use_sync_bn = use_sync_bn
     self._activation = activation
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
@@ -248,6 +253,10 @@ class ResidualBlock(tf.keras.layers.Layer):
       self._norm = tf.keras.layers.experimental.SyncBatchNormalization
     else:
       self._norm = tf.keras.layers.BatchNormalization
+    if use_explicit_padding:
+      self._padding = 'VALID'
+    else:
+      self._padding = 'SAME'
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -271,11 +280,13 @@ class ResidualBlock(tf.keras.layers.Layer):
           epsilon=self._norm_epsilon,
           trainable=self._bn_trainable)
 
+    if self._use_explicit_padding:
+      self._pad = nn_layers.FixedPadding((self._kernel_size, self._kernel_size))
     self._conv1 = tf.keras.layers.Conv2D(
         filters=self._filters,
         kernel_size=3,
         strides=self._strides,
-        padding='same',
+        padding=self._padding,
         use_bias=False,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
@@ -327,6 +338,7 @@ class ResidualBlock(tf.keras.layers.Layer):
         'use_projection': self._use_projection,
         'se_ratio': self._se_ratio,
         'resnetd_shortcut': self._resnetd_shortcut,
+        'use_explicit_padding': self._use_explicit_padding,
         'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
@@ -346,6 +358,8 @@ class ResidualBlock(tf.keras.layers.Layer):
       shortcut = self._shortcut(shortcut)
       shortcut = self._norm0(shortcut)
 
+    if self._use_explicit_padding:
+      inputs = self._pad(inputs)
     x = self._conv1(inputs)
     x = self._norm1(x)
     x = self._activation_fn(x)
