@@ -8,13 +8,13 @@ class TiledNMS():
   IOU_TYPES = {'diou': 0, 'giou': 1, 'ciou': 2, 'iou': 3}
 
   def __init__(self, iou_type='diou', beta=0.6):
-    '''Initialization for all non max suppression operations mainly used to
+    """Initialization for all non max suppression operations mainly used to
     select hyperparameters for the iou type and scaling.
 
     Args:
       iou_type: `str` for the version of IOU to use {diou, giou, ciou, iou}.
       beta: `float` for the amount to scale regularization on distance iou.
-    '''
+    """
     self._iou_type = TiledNMS.IOU_TYPES[iou_type]
     self._beta = beta
 
@@ -326,8 +326,10 @@ def sorted_non_max_suppression_padded(scores, boxes, max_output_size,
 
 
 def sort_drop(objectness, box, classificationsi, k):
-  """This function sorts and drops boxes such that there are only k boxes
-  sorted by number the objectness or confidence
+  """This function sorts and then drops boxes.
+
+  Boxes are sorted and dropped such that there are only k boxes sorted by the
+  objectness or confidence.
 
   Args:
     objectness: a `Tensor` of shape [batch size, N] that needs to be
@@ -447,7 +449,7 @@ def nms(boxes,
   boxes, classes, confidence = segment_nms(boxes, classes, confidence,
                                            prenms_top_k, nms_thresh)
 
-  # sort the classes of the unspressed boxes
+  # sort the classes of the unsuppressed boxes
   class_confidence, class_ind = tf.math.top_k(
       classes, k=tf.shape(classes)[-1], sorted=True)
 
