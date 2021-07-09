@@ -307,6 +307,7 @@ class Movinet(tf.keras.Model):
                causal: bool = False,
                use_positional_encoding: bool = False,
                conv_type: str = '3d',
+               se_type: str = '3d',
                input_specs: Optional[tf.keras.layers.InputSpec] = None,
                activation: str = 'swish',
                gating_activation: str = 'sigmoid',
@@ -333,6 +334,10 @@ class Movinet(tf.keras.Model):
         3x3 followed by 5x1 conv). '3d_2plus1d' uses (2+1)D convolution with
         Conv3D and no 2D reshaping (e.g., a 5x3x3 kernel becomes 1x3x3 followed
         by 5x1x1 conv).
+      se_type: '3d', '2d', or '2plus3d'. '3d' uses the default 3D
+          spatiotemporal global average pooling for squeeze excitation. '2d'
+          uses 2D spatial global average pooling  on each frame. '2plus3d'
+          concatenates both 3D and 2D global average pooling.
       input_specs: the model input spec to use.
       activation: name of the main activation function.
       gating_activation: gating activation to use in squeeze excitation layers.
@@ -356,12 +361,15 @@ class Movinet(tf.keras.Model):
 
     if conv_type not in ('3d', '2plus1d', '3d_2plus1d'):
       raise ValueError('Unknown conv type: {}'.format(conv_type))
+    if se_type not in ('3d', '2d', '2plus3d'):
+      raise ValueError('Unknown squeeze excitation type: {}'.format(se_type))
 
     self._model_id = model_id
     self._block_specs = block_specs
     self._causal = causal
     self._use_positional_encoding = use_positional_encoding
     self._conv_type = conv_type
+    self._se_type = se_type
     self._input_specs = input_specs
     self._use_sync_bn = use_sync_bn
     self._activation = activation
@@ -481,8 +489,9 @@ class Movinet(tf.keras.Model):
               gating_activation=self._gating_activation,
               stochastic_depth_drop_rate=stochastic_depth_drop_rate,
               conv_type=self._conv_type,
-              use_positional_encoding=self._use_positional_encoding and
-              self._causal,
+              se_type=self._se_type,
+              use_positional_encoding=
+              self._use_positional_encoding and self._causal,
               kernel_initializer=self._kernel_initializer,
               kernel_regularizer=self._kernel_regularizer,
               batch_norm_layer=self._norm,
@@ -695,6 +704,7 @@ def build_movinet(
       causal=backbone_cfg.causal,
       use_positional_encoding=backbone_cfg.use_positional_encoding,
       conv_type=backbone_cfg.conv_type,
+      se_type=backbone_cfg.se_type,
       input_specs=input_specs,
       activation=backbone_cfg.activation,
       gating_activation=backbone_cfg.gating_activation,
