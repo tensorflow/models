@@ -222,7 +222,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
     # Get x, y and channel indices corresponding to the top indices in the flat
     # array.
     y_indices, x_indices, channel_indices = (
-        self.get_row_col_channel_indices_from_flattened_indices(
+        get_row_col_channel_indices_from_flattened_indices(
             top_indices, width, num_classes))
     
     return top_scores, y_indices, x_indices, channel_indices
@@ -267,7 +267,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
     
     # combined indices dtype=int32
     combined_indices = tf.stack([
-        self.multi_range(batch_size, value_repetitions=num_boxes),
+        multi_range(batch_size, value_repetitions=num_boxes),
         tf.reshape(y_indices, [-1]),
         tf.reshape(x_indices, [-1])
     ], axis=1)
@@ -323,7 +323,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
     
     shape = tf.shape(ct_heatmaps)
     
-    batch_size, height, width, num_channels = shape[0:3]
+    batch_size, height, width, num_channels = shape[0:4]
     
     # Process heatmaps using 3x3 max pool and applying sigmoid
     peaks = self.process_heatmap(

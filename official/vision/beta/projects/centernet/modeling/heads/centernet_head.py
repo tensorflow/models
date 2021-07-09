@@ -23,7 +23,7 @@ from official.vision.beta.projects.centernet.modeling.layers import nn_blocks
 
 
 @tf.keras.utils.register_keras_serializable(package='centernet')
-class CenterNetDecoder(tf.keras.Model):
+class CenterNetHead(tf.keras.Model):
   """
   CenterNet Decoder
   """
@@ -85,7 +85,7 @@ class CenterNetDecoder(tf.keras.Model):
         'num_inputs': self._num_inputs,
     }
     
-    base_config = super(CenterNetDecoder, self).get_config()
+    base_config = super(CenterNetHead, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
   
   @classmethod

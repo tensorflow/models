@@ -17,7 +17,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.projects.centernet.decoders import centernet_decoder
+from official.vision.beta.projects.centernet.modeling.heads import \
+  centernet_head
 
 
 class CenterNetDecoderTest(tf.test.TestCase, parameterized.TestCase):
@@ -33,16 +34,16 @@ class CenterNetDecoderTest(tf.test.TestCase, parameterized.TestCase):
         tf.keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
     ]
     
-    decoder = centernet_decoder.CenterNetDecoder(
+    head = centernet_head.CenterNetHead(
         task_outputs=task_config,
         input_specs=input_specs,
         num_inputs=2)
     
-    config = decoder.get_config()
+    config = head.get_config()
     self.assertEqual(config['heatmap_bias'], -2.19)
     
     # Output shape tests
-    outputs = decoder([np.zeros((2, 128, 128, 256), dtype=np.float32),
+    outputs = head([np.zeros((2, 128, 128, 256), dtype=np.float32),
                        np.zeros((2, 128, 128, 256), dtype=np.float32)])
     self.assertLen(outputs, 3)
     self.assertEqual(outputs['ct_heatmaps'][0].shape, (2, 128, 128, 90))
@@ -50,10 +51,10 @@ class CenterNetDecoderTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(outputs['ct_size'][0].shape, (2, 128, 128, 2))
     
     # Weight initialization tests
-    tf.print("\n\n{}\n\n".format(decoder.layers))
-    hm_bias_vector = np.asarray(decoder.layers[2].weights[-1])
-    off_bias_vector = np.asarray(decoder.layers[4].weights[-1])
-    size_bias_vector = np.asarray(decoder.layers[6].weights[-1])
+    tf.print("\n\n{}\n\n".format(head.layers))
+    hm_bias_vector = np.asarray(head.layers[2].weights[-1])
+    off_bias_vector = np.asarray(head.layers[4].weights[-1])
+    size_bias_vector = np.asarray(head.layers[6].weights[-1])
     
     self.assertArrayNear(hm_bias_vector,
                          np.repeat(-2.19, repeats=90), err=1.00e-6)
