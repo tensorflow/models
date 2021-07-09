@@ -20,9 +20,11 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+# pylint: disable=unused-import
 from official.core import exp_factory
-from official.vision.beta.projects.volumetric_models.configs import semantic_segmentation_3d as exp_cfg  # pylint: disable=unused-import
-from official.vision.beta.projects.volumetric_models.modeling.backbones import unet_3d  # pylint: disable=unused-import
+from official.vision.beta.projects.volumetric_models.configs import semantic_segmentation_3d as exp_cfg
+from official.vision.beta.projects.volumetric_models.modeling import backbones
+from official.vision.beta.projects.volumetric_models.modeling import decoders
 from official.vision.beta.projects.volumetric_models.serving import semantic_segmentation_3d
 
 

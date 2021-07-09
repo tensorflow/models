@@ -18,8 +18,10 @@ from typing import Mapping
 
 import tensorflow as tf
 
+# pylint: disable=unused-import
+from official.vision.beta.projects.volumetric_models.modeling import backbones
+from official.vision.beta.projects.volumetric_models.modeling import decoders
 from official.vision.beta.projects.volumetric_models.modeling import factory
-from official.vision.beta.projects.volumetric_models.modeling.backbones import unet_3d  # pylint: disable=unused-import
 from official.vision.beta.serving import export_base
 
 

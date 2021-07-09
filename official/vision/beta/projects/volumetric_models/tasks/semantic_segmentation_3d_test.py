@@ -28,7 +28,8 @@ from official.core import exp_factory
 from official.modeling import optimization
 from official.vision.beta.dataloaders import tfexample_utils
 from official.vision.beta.projects.volumetric_models.evaluation import segmentation_metrics
-from official.vision.beta.projects.volumetric_models.modeling.backbones import unet_3d
+from official.vision.beta.projects.volumetric_models.modeling import backbones
+from official.vision.beta.projects.volumetric_models.modeling import decoders
 from official.vision.beta.projects.volumetric_models.tasks import semantic_segmentation_3d as img_seg_task
 
 
