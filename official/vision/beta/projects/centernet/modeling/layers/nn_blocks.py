@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Lint as: python3
 from typing import Optional, List
 
 import tensorflow as tf
@@ -263,7 +264,7 @@ class HourglassBlock(tf.keras.layers.Layer):
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
     }
-    config.update(super(HourglassBlock).get_config())
+    config.update(super(HourglassBlock, self).get_config())
     return config
 
 
@@ -287,7 +288,7 @@ class CenterNetDecoderConv(tf.keras.layers.Layer):
         convolution layer
       name: `string`, layer name
     """
-    super(CenterNetDecoderConv).__init__(name=name, **kwargs)
+    super(CenterNetDecoderConv, self).__init__(name=name, **kwargs)
     self._output_filters = output_filters
     self._bias_init = bias_init
   
@@ -320,5 +321,5 @@ class CenterNetDecoderConv(tf.keras.layers.Layer):
         'output_filters': self._output_filters,
         'bias_init': self._bias_init,
     }
-    config.update(super(CenterNetDecoderConv).get_config())
+    config.update(super(CenterNetDecoderConv, self).get_config())
     return config

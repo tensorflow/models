@@ -73,7 +73,8 @@ class Hourglass(tf.keras.Model):
       input_channel_dims: `int`, number of filters used to downsample the
         input image.
       input_specs: A `tf.keras.layers.InputSpec` of specs of the input tensor.
-      num_hourglasses: `int``, number of hourglass blocks in backbone.
+      num_hourglasses: `int``, number of hourglass blocks in backbone. For
+        example, hourglass-104 has two hourglass-52 modules.
       initial_downsample: `bool`, whether or not to downsample the input.
       activation: A `str` name of the activation function.
       use_sync_bn: If True, use synchronized batch normalization.
@@ -225,7 +226,7 @@ class Hourglass(tf.keras.Model):
         'norm_momentum': self._norm_momentum,
         'norm_epsilon': self._norm_epsilon
     }
-    config.update(super().get_config())
+    config.update(super(Hourglass, self).get_config())
     return config
   
   @property
