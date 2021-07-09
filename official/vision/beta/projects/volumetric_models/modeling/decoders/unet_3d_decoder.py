@@ -19,10 +19,13 @@ Ronneberger. 3D U-Net: Learning Dense Volumetric Segmentation from Sparse
 Annotation. arXiv:1606.06650.
 """
 
-from typing import Any, Sequence, Dict, Mapping
+from typing import Any, Dict, Mapping, Optional, Sequence
 
 import tensorflow as tf
+
+from official.modeling import hyperparams
 from official.vision.beta.projects.volumetric_models.modeling import nn_blocks_3d
+from official.vision.beta.projects.volumetric_models.modeling.decoders import factory
 
 layers = tf.keras.layers
 
@@ -152,3 +155,39 @@ class UNet3DDecoder(tf.keras.Model):
   def output_specs(self) -> Mapping[str, tf.TensorShape]:
     """A dict of {level: TensorShape} pairs for the model output."""
     return self._output_specs
+
+
+@factory.register_decoder_builder('unet_3d_decoder')
+def build_unet_3d_decoder(
+    input_specs: Mapping[str, tf.TensorShape],
+    model_config: hyperparams.Config,
+    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
+) -> tf.keras.Model:
+  """Builds UNet3D decoder from a config.
+
+  Args:
+    input_specs: A `dict` of input specifications. A dictionary consists of
+      {level: TensorShape} from a backbone.
+    model_config: A OneOfConfig. Model config.
+    l2_regularizer: A `tf.keras.regularizers.Regularizer` instance. Default to
+      None.
+
+  Returns:
+    A `tf.keras.Model` instance of the UNet3D decoder.
+  """
+  decoder_type = model_config.decoder.type
+  decoder_cfg = model_config.decoder.get()
+  assert decoder_type == 'unet_3d_decoder', (f'Inconsistent decoder type '
+                                             f'{decoder_type}')
+  norm_activation_config = model_config.norm_activation
+  return UNet3DDecoder(
+      model_id=decoder_cfg.model_id,
+      input_specs=input_specs,
+      pool_size=decoder_cfg.pool_size,
+      kernel_regularizer=l2_regularizer,
+      activation=norm_activation_config.activation,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      use_batch_normalization=decoder_cfg.use_batch_normalization,
+      use_deconvolution=decoder_cfg.use_deconvolution)

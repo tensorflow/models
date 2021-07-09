@@ -17,4 +17,5 @@
 # pylint: disable=unused-import
 from official.common import registry_imports
 from official.vision.beta.projects.volumetric_models.modeling import backbones
+from official.vision.beta.projects.volumetric_models.modeling import decoders
 from official.vision.beta.projects.volumetric_models.tasks import semantic_segmentation_3d
