@@ -326,7 +326,7 @@ def sorted_non_max_suppression_padded(scores, boxes, max_output_size,
 
 
 def sort_drop(objectness, box, classificationsi, k):
-  """This function sorts and then drops boxes.
+  """Sorts and then drops boxes.
 
   Boxes are sorted and dropped such that there are only k boxes sorted by the
   objectness or confidence.
