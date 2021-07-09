@@ -44,6 +44,11 @@ class Movinet(hyperparams.Config):
   # 2plus1d: (2+1)D convolution with Conv2D (2D reshaping)
   # 3d_2plus1d: (2+1)D convolution with Conv3D (no 2D reshaping)
   conv_type: str = '3d'
+  # Choose from ['3d', '2d', '2plus3d']
+  # 3d: default 3D global average pooling.
+  # 2d: 2D global average pooling.
+  # 2plus3d: concatenation of 2D and 3D global average pooling.
+  se_type: str = '3d'
   activation: str = 'swish'
   gating_activation: str = 'sigmoid'
   stochastic_depth_drop_rate: float = 0.2

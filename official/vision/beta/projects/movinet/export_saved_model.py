@@ -54,6 +54,12 @@ flags.DEFINE_string(
     'Conv3D and no 2D reshaping (e.g., a 5x3x3 kernel becomes 1x3x3 '
     'followed by 5x1x1 conv).')
 flags.DEFINE_string(
+    'se_type', '3d',
+    '3d, 2d, or 2plus3d. 3d uses the default 3D spatiotemporal global average'
+    'pooling for squeeze excitation. 2d uses 2D spatial global average pooling '
+    'on each frame. 2plus3d concatenates both 3D and 2D global average '
+    'pooling.')
+flags.DEFINE_string(
     'activation', 'swish',
     'The main activation to use across layers.')
 flags.DEFINE_string(
@@ -102,6 +108,7 @@ def main(_) -> None:
       input_specs=input_specs,
       activation=FLAGS.activation,
       gating_activation=FLAGS.gating_activation,
+      se_type=FLAGS.se_type,
       use_positional_encoding=FLAGS.use_positional_encoding)
   model = movinet_model.MovinetClassifier(
       backbone,
