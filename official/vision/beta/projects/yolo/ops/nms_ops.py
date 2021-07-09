@@ -365,7 +365,10 @@ def sort_drop(objectness, box, classificationsi, k):
 
 
 def segment_nms(boxes, classes, confidence, k, iou_thresh):
-  """This is a quick nms that works on very well for small values of k, this
+  """non max-suppression used to filter predicted boxes that doesn't account
+  for classes.
+
+  This is a quick nms that works on very well for small values of k, this
   was developed to operate for tflite models as the tiled NMS is far too slow
   and typically is not able to compile with tflite. This NMS does not account
   for classes, and only works to quickly filter boxes on phones.
@@ -417,10 +420,7 @@ def nms(boxes,
         pre_nms_thresh,
         nms_thresh,
         prenms_top_k=500):
-  """This is a quick nms that works on very well for small values of k, this
-  was developed to operate for tflite models as the tiled NMS is far too slow
-  and typically is not able to compile with tflite. This NMS does not account
-  for classes, and only works to quickly filter boxes on phones.
+  """Tiled non max-suppression used to filter predicted boxes.
 
   Args:
     boxes: a `Tensor` of shape [batch size, N, 4] that needs to be filtered.
