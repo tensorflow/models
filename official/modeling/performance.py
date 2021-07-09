@@ -20,10 +20,10 @@ import tensorflow as tf
 def configure_optimizer(optimizer,
                         use_float16=False,
                         use_graph_rewrite=False,
-                        loss_scale='dynamic'):
+                        loss_scale=None):
   """Configures optimizer object with performance options."""
   if use_float16:
-    if loss_scale == 'dynamic':
+    if loss_scale in (None, 'dynamic'):
       optimizer = tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
     else:
       # loss_scale is a number. We interpret that as a fixed loss scale.

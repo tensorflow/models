@@ -79,7 +79,7 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
     # Configuring optimizer when loss_scale is set in runtime config. This helps
     # avoiding overflow/underflow for float16 computations.
-    if runtime_config and runtime_config.loss_scale:
+    if runtime_config:
       optimizer = performance.configure_optimizer(
           optimizer,
           use_float16=runtime_config.mixed_precision_dtype == "float16",
