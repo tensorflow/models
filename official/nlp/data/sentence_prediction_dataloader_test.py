@@ -198,9 +198,12 @@ class SentencePredictionTfdsDataLoaderTest(tf.test.TestCase,
     dataset = loader.SentencePredictionTextDataLoader(data_config).load()
     features = next(iter(dataset))
     label_field = data_config.label_field
-    self.assertCountEqual(
-        ['input_word_ids', 'input_type_ids', 'input_mask', label_field],
-        features.keys())
+    expected_keys = [
+        'input_word_ids', 'input_type_ids', 'input_mask', label_field
+    ]
+    if use_tfds:
+      expected_keys += ['idx']
+    self.assertCountEqual(expected_keys, features.keys())
     self.assertEqual(features['input_word_ids'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_mask'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_type_ids'].shape, (batch_size, seq_length))
@@ -233,9 +236,12 @@ class SentencePredictionTfdsDataLoaderTest(tf.test.TestCase,
     dataset = loader.SentencePredictionTextDataLoader(data_config).load()
     features = next(iter(dataset))
     label_field = data_config.label_field
-    self.assertCountEqual(
-        ['input_word_ids', 'input_type_ids', 'input_mask', label_field],
-        features.keys())
+    expected_keys = [
+        'input_word_ids', 'input_type_ids', 'input_mask', label_field
+    ]
+    if use_tfds:
+      expected_keys += ['idx']
+    self.assertCountEqual(expected_keys, features.keys())
     self.assertEqual(features['input_word_ids'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_mask'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_type_ids'].shape, (batch_size, seq_length))
@@ -268,9 +274,12 @@ class SentencePredictionTfdsDataLoaderTest(tf.test.TestCase,
     dataset = loader.SentencePredictionTextDataLoader(data_config).load()
     features = next(iter(dataset))
     label_field = data_config.label_field
-    self.assertCountEqual(
-        ['input_word_ids', 'input_type_ids', 'input_mask', label_field],
-        features.keys())
+    expected_keys = [
+        'input_word_ids', 'input_type_ids', 'input_mask', label_field
+    ]
+    if use_tfds:
+      expected_keys += ['idx']
+    self.assertCountEqual(expected_keys, features.keys())
     self.assertEqual(features['input_word_ids'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_mask'].shape, (batch_size, seq_length))
     self.assertEqual(features['input_type_ids'].shape, (batch_size, seq_length))
