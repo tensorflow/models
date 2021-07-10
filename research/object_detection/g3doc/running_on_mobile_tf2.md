@@ -1,10 +1,7 @@
 # Running TF2 Detection API Models on mobile
 
-[![TensorFlow 2.3](https://img.shields.io/badge/TensorFlow-2.3-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.3.0)
+[![TensorFlow 2.2](https://img.shields.io/badge/TensorFlow-2.2-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.2.0)
 [![Python 3.6](https://img.shields.io/badge/Python-3.6-3776AB)](https://www.python.org/downloads/release/python-360/)
-
-**NOTE:** This support was added *after* TF2.3, so please use the latest nightly
-for the TensorFlow Lite Converter for this to work.
 
 [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/)(TFLite) is
 TensorFlow’s lightweight solution for mobile and embedded devices. It enables
@@ -15,10 +12,6 @@ allow smaller and faster (fixed-point math) models.
 This document shows how elgible models from the
 [TF2 Detection zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2_detection_zoo.md)
 can be converted for inference with TFLite.
-
-For an end-to-end Python guide on how to fine-tune an SSD model for mobile
-inference, look at
-[this Colab](../colab_tutorials/eager_few_shot_od_training_tflite.ipynb).
 
 **NOTE:** TFLite currently only supports **SSD Architectures** (excluding
 EfficientDet) for boxes-based detection. Support for EfficientDet is coming
@@ -61,30 +54,16 @@ python object_detection/export_tflite_graph_tf2.py \
     --output_directory path/to/exported_model_directory
 ```
 
-Use `--help` with the above script to get the full list of supported parameters.
-These can fine-tune accuracy and speed for your model.
+Use `--help` with the aboev script to get the full list of supported parameters.
 
 ### Step 2: Convert to TFLite
 
 Use the [TensorFlow Lite Converter](https://www.tensorflow.org/lite/convert) to
-convert the `SavedModel` to TFLite. Note that you need to use `from_saved_model`
-for TFLite conversion with the Python API.
-
-You can also leverage
+convert the `SavedModel` to TFLite. You can also leverage
 [Post-training Quantization](https://www.tensorflow.org/lite/performance/post_training_quantization)
 to
 [optimize performance](https://www.tensorflow.org/lite/performance/model_optimization)
-and obtain a smaller model. Note that this is only possible from the *Python
-API*. Be sure to use a
-[representative dataset](https://www.tensorflow.org/lite/performance/post_training_quantization#full_integer_quantization)
-and set the following options on the converter:
-
-```python
-converter.optimizations = [tf.lite.Optimize.DEFAULT]
-converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8,
-                                       tf.lite.OpsSet.TFLITE_BUILTINS]
-converter.representative_dataset = <...>
-```
+and obtain a smaller model.
 
 ## Running our model on Android
 
@@ -115,11 +94,8 @@ directory.
 We will now edit the gradle build file to use these assets. First, open the
 `build.gradle` file
 `$TF_EXAMPLES/lite/examples/object_detection/android/app/build.gradle`. Comment
-out the model download script to avoid your assets being overwritten:
-
-```shell
-// apply from:'download_model.gradle'
-```
+out the model download script to avoid your assets being overwritten: `// apply
+from:'download_model.gradle'` ```
 
 If your model is named `detect.tflite`, and your labels file `labelmap.txt`, the
 example will use them automatically as long as they've been properly copied into
@@ -133,7 +109,7 @@ your model is floating point, the flag TF_OD_API_IS_QUANTIZED is set to false.
 This new section of DetectorActivity.java should now look as follows for a
 quantized model:
 
-```java
+```shell
   private static final boolean TF_OD_API_IS_QUANTIZED = true;
   private static final String TF_OD_API_MODEL_FILE = "detect.tflite";
   private static final String TF_OD_API_LABELS_FILE = "labels_list.txt";
