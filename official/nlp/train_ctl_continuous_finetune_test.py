@@ -15,9 +15,10 @@
 # ==============================================================================
 import os
 
+# Import libraries
+
 from absl import flags
 from absl.testing import flagsaver
-from absl.testing import parameterized
 import tensorflow as tf
 from official.common import flags as tfm_flags
 from official.core import task_factory
@@ -30,14 +31,14 @@ FLAGS = flags.FLAGS
 tfm_flags.define_flags()
 
 
-class ContinuousFinetuneTest(tf.test.TestCase, parameterized.TestCase):
+class MainContinuousFinetuneTest(tf.test.TestCase):
 
   def setUp(self):
-    super().setUp()
+    super(MainContinuousFinetuneTest, self).setUp()
     self._model_dir = os.path.join(self.get_temp_dir(), 'model_dir')
 
-  @parameterized.parameters(None, 1)
-  def testTrainCtl(self, pretrain_steps):
+  @flagsaver.flagsaver
+  def testTrainCtl(self):
     src_model_dir = self.get_temp_dir()
     flags_dict = dict(
         experiment='mock',
@@ -80,11 +81,7 @@ class ContinuousFinetuneTest(tf.test.TestCase, parameterized.TestCase):
 
       params = train_utils.parse_configuration(FLAGS)
       eval_metrics = train_ctl_continuous_finetune.run_continuous_finetune(
-          FLAGS.mode,
-          params,
-          FLAGS.model_dir,
-          run_post_eval=True,
-          pretrain_steps=pretrain_steps)
+          FLAGS.mode, params, FLAGS.model_dir, run_post_eval=True)
       self.assertIn('best_acc', eval_metrics)
 
 
