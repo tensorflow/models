@@ -12,9 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Orbit package definition."""
+"""Tests for orbit.utils."""
 
 from orbit import utils
-from orbit.controller import Controller
-from orbit.runner import *
-from orbit.standard_runner import *
+
+import tensorflow as tf
+
+
+class UtilsTest(tf.test.TestCase):
+
+  def test_create_global_step(self):
+    step = utils.create_global_step()
+    self.assertEqual(step.dtype, tf.int64)
+    self.assertEqual(step, 0)
+    step.assign_add(1)
+    self.assertEqual(step, 1)
+
+
+if __name__ == '__main__':
+  tf.test.main()

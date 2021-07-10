@@ -39,7 +39,8 @@ class TestTrainer(standard_runner.StandardTrainer):
   def __init__(self, options=None):
     self.strategy = tf.distribute.get_strategy()
     self.global_step = utils.create_global_step()
-    dataset = self.strategy.distribute_datasets_from_function(dataset_fn)
+    distribute = self.strategy.experimental_distribute_datasets_from_function
+    dataset = distribute(dataset_fn)
     super().__init__(train_dataset=dataset, options=options)
 
   def train_loop_begin(self):
@@ -62,7 +63,8 @@ class TestEvaluator(standard_runner.StandardEvaluator):
   def __init__(self, options=None):
     self.strategy = tf.distribute.get_strategy()
     self.global_step = utils.create_global_step()
-    dataset = self.strategy.distribute_datasets_from_function(dataset_fn)
+    distribute = self.strategy.experimental_distribute_datasets_from_function
+    dataset = distribute(dataset_fn)
     super().__init__(eval_dataset=dataset, options=options)
 
   def eval_begin(self):

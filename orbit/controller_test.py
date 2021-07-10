@@ -15,14 +15,10 @@
 """Tests for orbit.controller."""
 
 import os
-
 from absl import logging
 from absl.testing import parameterized
-
 import numpy as np
-
 from orbit import controller
-from orbit import runner
 from orbit import standard_runner
 
 import tensorflow as tf
@@ -69,8 +65,12 @@ class TestRunner(standard_runner.StandardTrainer,
     self.train_loss = tf.keras.metrics.Mean("train_loss", dtype=tf.float32)
     self.eval_loss = tf.keras.metrics.Mean("eval_loss", dtype=tf.float32)
     self.return_numpy = return_numpy
-    train_dataset = self.strategy.distribute_datasets_from_function(dataset_fn)
-    eval_dataset = self.strategy.distribute_datasets_from_function(dataset_fn)
+    train_dataset = (
+        self.strategy.experimental_distribute_datasets_from_function(dataset_fn)
+    )
+    eval_dataset = (
+        self.strategy.experimental_distribute_datasets_from_function(dataset_fn)
+    )
     standard_runner.StandardTrainer.__init__(self, train_dataset)
     standard_runner.StandardEvaluator.__init__(self, eval_dataset)
 
@@ -95,7 +95,8 @@ class TestRunner(standard_runner.StandardTrainer,
     }
 
   def build_eval_dataset(self):
-    return self.strategy.distribute_datasets_from_function(dataset_fn)
+    return self.strategy.experimental_distribute_datasets_from_function(
+        dataset_fn)
 
   def eval_begin(self):
     self.eval_loss.reset_states()
@@ -124,7 +125,8 @@ class TestEvaluator(standard_runner.StandardEvaluator):
   def __init__(self):
     self.strategy = tf.distribute.get_strategy()
     self.model = create_model()
-    eval_dataset = self.strategy.distribute_datasets_from_function(dataset_fn)
+    eval_dataset = self.strategy.experimental_distribute_datasets_from_function(
+        dataset_fn)
     standard_runner.StandardEvaluator.__init__(self, eval_dataset)
 
   def eval_reduce(self, state, output):
@@ -155,20 +157,16 @@ class TestEvaluator(standard_runner.StandardEvaluator):
     }
 
 
-class TestEvaluatorNoOutput(runner.AbstractEvaluator):
-
-  def evaluate(self, num_steps):
-    pass
-
-
 class TestEvaluatorWithNestedSummary(standard_runner.StandardEvaluator):
   """Implements the training and evaluation APIs for the test model."""
 
   def __init__(self):
     self.strategy = tf.distribute.get_strategy()
     self.model = create_model()
-    dataset = self.strategy.distribute_datasets_from_function(dataset_fn)
-    dataset2 = self.strategy.distribute_datasets_from_function(dataset_fn)
+    dataset = self.strategy.experimental_distribute_datasets_from_function(
+        dataset_fn)
+    dataset2 = self.strategy.experimental_distribute_datasets_from_function(
+        dataset_fn)
     self.loss = tf.keras.metrics.Mean("loss", dtype=tf.float32)
     self.accuracy = tf.keras.metrics.CategoricalAccuracy(
         "accuracy", dtype=tf.float32)
@@ -219,7 +217,9 @@ class TestTrainerWithSummaries(standard_runner.StandardTrainer):
     self.optimizer = tf.keras.optimizers.RMSprop(learning_rate=0.1)
     self.global_step = self.optimizer.iterations
     self.train_loss = tf.keras.metrics.Mean("train_loss", dtype=tf.float32)
-    train_dataset = self.strategy.distribute_datasets_from_function(dataset_fn)
+    train_dataset = (
+        self.strategy.experimental_distribute_datasets_from_function(dataset_fn)
+    )
     standard_runner.StandardTrainer.__init__(
         self,
         train_dataset,
@@ -227,7 +227,8 @@ class TestTrainerWithSummaries(standard_runner.StandardTrainer):
             use_tpu_summary_optimization=True))
 
   def build_train_dataset(self):
-    return self.strategy.distribute_datasets_from_function(dataset_fn)
+    return self.strategy.experimental_distribute_datasets_from_function(
+        dataset_fn)
 
   def train_step(self, iterator):
 
@@ -342,26 +343,6 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     # Evaluation summaries are saved.
     self.assertNotEmpty(tf.io.gfile.glob(
         os.path.join(self.model_dir, "summaries/eval/events.*")))
-
-  def test_restore_from_most_recent_checkpoint(self):
-    test_runner = TestRunner()
-    checkpoint = tf.train.Checkpoint(model=test_runner.model)
-    checkpoint_manager = tf.train.CheckpointManager(
-        checkpoint,
-        self.model_dir,
-        max_to_keep=None,
-        step_counter=test_runner.global_step,
-        checkpoint_interval=5)
-    test_controller = controller.Controller(
-        trainer=test_runner,
-        global_step=test_runner.global_step,
-        checkpoint_manager=checkpoint_manager,
-        eval_summary_dir=os.path.join(self.model_dir, "summaries/eval"),
-        steps_per_loop=5)
-    test_controller.train(20)
-    self.assertLen(checkpoint_manager.checkpoints, 4)
-    restored_path = test_controller.restore_checkpoint()
-    self.assertEqual(restored_path, checkpoint_manager.checkpoints[-1])
 
   @parameterized.named_parameters(("return_numpy", True),
                                   ("return_tensor", False))
@@ -620,7 +601,7 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertLess(test_runner.global_step, 10)
 
-  def test_evaluate_with_loss_output(self):
+  def test_evaluate_with_loss_outputs(self):
     test_evaluator = TestEvaluator()
 
     checkpoint = tf.train.Checkpoint(model=test_evaluator.model)
@@ -641,13 +622,6 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
         summaries_with_matching_keyword(
             "eval_loss", os.path.join(self.model_dir, "summaries/eval")))
 
-  def test_evaluate_with_no_output(self):
-    test_controller = controller.Controller(
-        evaluator=TestEvaluatorNoOutput(),
-        global_step=tf.Variable(0, dtype=tf.int64),
-        eval_summary_dir=os.path.join(self.model_dir, "summaries/eval"))
-    self.assertEqual(test_controller.evaluate(steps=5), {})
-
   def test_train_and_evaluate_reset_datasets(self):
     test_runner = TestRunner()
 
@@ -661,9 +635,11 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
         train_steps=10, eval_steps=2, eval_interval=6)
 
     train_dataset = (
-        test_runner.strategy.distribute_datasets_from_function(dataset_fn))
+        test_runner.strategy.experimental_distribute_datasets_from_function(
+            dataset_fn))
     eval_dataset = (
-        test_runner.strategy.distribute_datasets_from_function(dataset_fn))
+        test_runner.strategy.experimental_distribute_datasets_from_function(
+            dataset_fn))
     test_runner.train_dataset = train_dataset
     test_runner.eval_dataset = eval_dataset
 
@@ -691,9 +667,9 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     test_controller.train_and_evaluate(
         train_steps=10, eval_steps=2, eval_interval=5)
 
-    # Expect 3 checkpoints to be saved at step: 5, 10.
+    # Expect 3 checkpoints to be saved at step: 0, 5, 10.
     self.assertLen(
-        tf.io.gfile.glob(os.path.join(self.model_dir, "ckpt-*.data*")), 2)
+        tf.io.gfile.glob(os.path.join(self.model_dir, "ckpt-*.data*")), 3)
     # Expect evaluation is performed 2 times at step: 5, 10.
     self.assertLen(
         summaries_with_matching_keyword("eval_loss", self.model_dir), 2)
