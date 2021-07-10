@@ -21,24 +21,7 @@ from official.modeling.hyperparams import base_config
 
 
 @dataclasses.dataclass
-class BaseOptimizerConfig(base_config.Config):
-  """Base optimizer config.
-
-  Attributes:
-    clipnorm: float >= 0 or None. If not None, Gradients will be clipped when
-      their L2 norm exceeds this value.
-    clipvalue: float >= 0 or None. If not None, Gradients will be clipped when
-      their absolute value exceeds this value.
-    global_clipnorm: float >= 0 or None. If not None, gradient of all weights is
-        clipped so that their global norm is no higher than this value
-  """
-  clipnorm: Optional[float] = None
-  clipvalue: Optional[float] = None
-  global_clipnorm: Optional[float] = None
-
-
-@dataclasses.dataclass
-class SGDConfig(BaseOptimizerConfig):
+class SGDConfig(base_config.Config):
   """Configuration for SGD optimizer.
 
   The attributes for this class matches the arguments of tf.keras.optimizer.SGD.
@@ -56,7 +39,7 @@ class SGDConfig(BaseOptimizerConfig):
 
 
 @dataclasses.dataclass
-class RMSPropConfig(BaseOptimizerConfig):
+class RMSPropConfig(base_config.Config):
   """Configuration for RMSProp optimizer.
 
   The attributes for this class matches the arguments of
@@ -77,7 +60,7 @@ class RMSPropConfig(BaseOptimizerConfig):
 
 
 @dataclasses.dataclass
-class AdamConfig(BaseOptimizerConfig):
+class AdamConfig(base_config.Config):
   """Configuration for Adam optimizer.
 
   The attributes for this class matches the arguments of
@@ -89,7 +72,7 @@ class AdamConfig(BaseOptimizerConfig):
     beta_2: decay rate for 2st order moments.
     epsilon: epsilon value used for numerical stability in Adam optimizer.
     amsgrad: boolean. Whether to apply AMSGrad variant of this algorithm from
-      the paper "On the Convergence of Adam and beyond".
+    the paper "On the Convergence of Adam and beyond".
   """
   name: str = "Adam"
   beta_1: float = 0.9
@@ -99,7 +82,7 @@ class AdamConfig(BaseOptimizerConfig):
 
 
 @dataclasses.dataclass
-class AdamWeightDecayConfig(BaseOptimizerConfig):
+class AdamWeightDecayConfig(base_config.Config):
   """Configuration for Adam optimizer with weight decay.
 
   Attributes:
@@ -108,12 +91,12 @@ class AdamWeightDecayConfig(BaseOptimizerConfig):
     beta_2: decay rate for 2st order moments.
     epsilon: epsilon value used for numerical stability in the optimizer.
     amsgrad: boolean. Whether to apply AMSGrad variant of this algorithm from
-      the paper "On the Convergence of Adam and beyond".
+    the paper "On the Convergence of Adam and beyond".
     weight_decay_rate: float. Weight decay rate. Default to 0.
     include_in_weight_decay: list[str], or None. List of weight names to include
-      in weight decay.
+                             in weight decay.
     include_in_weight_decay: list[str], or None. List of weight names to not
-      include in weight decay.
+                             include in weight decay.
   """
   name: str = "AdamWeightDecay"
   beta_1: float = 0.9
@@ -127,7 +110,7 @@ class AdamWeightDecayConfig(BaseOptimizerConfig):
 
 
 @dataclasses.dataclass
-class LAMBConfig(BaseOptimizerConfig):
+class LAMBConfig(base_config.Config):
   """Configuration for LAMB optimizer.
 
   The attributes for this class matches the arguments of
@@ -140,11 +123,12 @@ class LAMBConfig(BaseOptimizerConfig):
     epsilon: epsilon value used for numerical stability in LAMB optimizer.
     weight_decay_rate: float. Weight decay rate. Default to 0.
     exclude_from_weight_decay: List of regex patterns of variables excluded from
-      weight decay. Variables whose name contain a substring matching the
-      pattern will be excluded.
+                               weight decay. Variables whose name contain a
+                               substring matching the pattern will be excluded.
     exclude_from_layer_adaptation: List of regex patterns of variables excluded
-      from layer adaptation. Variables whose name contain a substring matching
-      the pattern will be excluded.
+                                   from layer adaptation. Variables whose name
+                                   contain a substring matching the pattern will
+                                   be excluded.
   """
   name: str = "LAMB"
   beta_1: float = 0.9
@@ -153,19 +137,3 @@ class LAMBConfig(BaseOptimizerConfig):
   weight_decay_rate: float = 0.0
   exclude_from_weight_decay: Optional[List[str]] = None
   exclude_from_layer_adaptation: Optional[List[str]] = None
-
-
-@dataclasses.dataclass
-class EMAConfig(BaseOptimizerConfig):
-  """Exponential moving average optimizer config.
-
-  Attributes:
-    name: 'str', name of the optimizer.
-    average_decay: 'float', average decay value.
-    start_step: 'int', start step to apply moving average.
-    dynamic_decay: 'bool', whether to apply dynamic decay or not.
-  """
-  name: str = "ExponentialMovingAverage"
-  average_decay: float = 0.99
-  start_step: int = 0
-  dynamic_decay: bool = True
