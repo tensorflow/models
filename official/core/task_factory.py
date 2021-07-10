@@ -15,7 +15,7 @@
 # ==============================================================================
 """A global factory to register and access all registered tasks."""
 
-from official.core import registry
+from official.utils import registry
 
 _REGISTERED_TASK_CLS = {}
 

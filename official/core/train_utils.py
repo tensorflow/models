@@ -18,53 +18,36 @@
 import json
 import os
 import pprint
-from typing import Any, List, Optional
+from typing import Any
 
 from absl import logging
-import dataclasses
 import orbit
 import tensorflow as tf
 
 from official.core import base_task
 from official.core import base_trainer
-from official.core import config_definitions
 from official.core import exp_factory
 from official.modeling import hyperparams
+from official.modeling.hyperparams import config_definitions
 
 
-def create_trainer(params: config_definitions.ExperimentConfig,
-                   task: base_task.Task,
-                   train: bool,
-                   evaluate: bool,
-                   checkpoint_exporter: Any = None,
-                   model_dir: Optional[str] = None) -> base_trainer.Trainer:
+def create_trainer(
+    params: config_definitions.ExperimentConfig,
+    task: base_task.Task,
+    model_dir: str,
+    train: bool,
+    evaluate: bool,
+    checkpoint_exporter: Any = None):
   """Create trainer."""
   del model_dir
   logging.info('Running default trainer.')
-  model = task.build_model()
-  optimizer = base_trainer.create_optimizer(params.trainer, params.runtime)
   trainer = base_trainer.Trainer(
-      params,
-      task,
-      model=model,
-      optimizer=optimizer,
-      train=train,
-      evaluate=evaluate,
+      params, task, train=train, evaluate=evaluate,
       checkpoint_exporter=checkpoint_exporter)
   return trainer
 
 
-@dataclasses.dataclass
-class ParseConfigOptions:
-  """Use this dataclass instead of FLAGS to customize parse_configuration()."""
-  experiment: str
-  config_file: List[str]
-  tpu: str = ''
-  tf_data_service: str = ''
-  params_override: str = ''
-
-
-def parse_configuration(flags_obj, lock_return=True, print_return=True):
+def parse_configuration(flags_obj):
   """Parses ExperimentConfig from flags."""
 
   # 1. Get the default config from the registered experiment.
@@ -82,19 +65,15 @@ def parse_configuration(flags_obj, lock_return=True, print_return=True):
       'runtime': {
           'tpu': flags_obj.tpu,
       },
+      'task': {
+          'train_data': {
+              'tf_data_service_address': flags_obj.tf_data_service,
+          },
+          'validation_data': {
+              'tf_data_service_address': flags_obj.tf_data_service,
+          }
+      }
   })
-  if flags_obj.tf_data_service and isinstance(params.task,
-                                              config_definitions.TaskConfig):
-    params.override({
-        'task': {
-            'train_data': {
-                'tf_data_service_address': flags_obj.tf_data_service,
-            },
-            'validation_data': {
-                'tf_data_service_address': flags_obj.tf_data_service,
-            }
-        }
-    })
 
   # 4. Get the second level of override from `--params_override`.
   #    `--params_override` is typically used as a further override over the
@@ -106,13 +85,10 @@ def parse_configuration(flags_obj, lock_return=True, print_return=True):
         params, flags_obj.params_override, is_strict=True)
 
   params.validate()
-  if lock_return:
-    params.lock()
+  params.lock()
 
-  if print_return:
-    pp = pprint.PrettyPrinter()
-    logging.info('Final experiment parameters: %s',
-                 pp.pformat(params.as_dict()))
+  pp = pprint.PrettyPrinter()
+  logging.info('Final experiment parameters: %s', pp.pformat(params.as_dict()))
 
   return params
 
@@ -142,8 +118,8 @@ def read_global_step_from_checkpoint(ckpt_file_path):
                      'make sure that your pretrain model writes '
                      'global_step in its checkpoints.'.format(ckpt_file_path))
   global_step_restored = global_step.numpy()
-  logging.info('get global_step %d from checkpoint %s', global_step_restored,
-               ckpt_file_path)
+  logging.info('get global_step %d from checkpoint %s',
+               global_step_restored, ckpt_file_path)
   return global_step_restored
 
 
@@ -156,8 +132,8 @@ def write_json_summary(log_dir, global_step, eval_metrics):
     else:
       serializable_dict[name] = str(value)
   output_json = os.path.join(log_dir, 'metrics-{}.json'.format(global_step))
-  logging.info('Evaluation results at pretrain step %d: %s', global_step,
-               serializable_dict)
+  logging.info('Evaluation results at pretrain step %d: %s',
+               global_step, serializable_dict)
   with tf.io.gfile.GFile(output_json, 'w') as writer:
     writer.write(json.dumps(serializable_dict, indent=4) + '\n')
 
