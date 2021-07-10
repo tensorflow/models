@@ -14,6 +14,10 @@
 # ==============================================================================
 """Common TF utilities."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import six
 import tensorflow as tf
 
@@ -25,7 +29,8 @@ from official.modeling import activations
     None,
     "tf.keras.layers.Layer supports multiple positional args and kwargs as "
     "input tensors. pack/unpack inputs to override __call__ is no longer "
-    "needed.")
+    "needed."
+)
 def pack_inputs(inputs):
   """Pack a list of `inputs` tensors to a tuple.
 
@@ -50,7 +55,8 @@ def pack_inputs(inputs):
     None,
     "tf.keras.layers.Layer supports multiple positional args and kwargs as "
     "input tensors. pack/unpack inputs to override __call__ is no longer "
-    "needed.")
+    "needed."
+)
 def unpack_inputs(inputs):
   """unpack a tuple of `inputs` tensors to a tuple.
 
@@ -100,8 +106,6 @@ def get_activation(identifier):
         "gelu": activations.gelu,
         "simple_swish": activations.simple_swish,
         "hard_swish": activations.hard_swish,
-        "relu6": activations.relu6,
-        "hard_sigmoid": activations.hard_sigmoid,
         "identity": activations.identity,
     }
     identifier = str(identifier).lower()
