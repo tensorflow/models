@@ -25,7 +25,6 @@ import numpy as np
 import six
 from six.moves import range
 import tensorflow.compat.v1 as tf
-from google.protobuf import text_format
 
 from object_detection import eval_util
 from object_detection.core import standard_fields as fields
@@ -85,8 +84,6 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
     groundtruth_boxes = tf.constant([[0., 0., 1., 1.]])
     groundtruth_classes = tf.constant([1])
     groundtruth_instance_masks = tf.ones(shape=[1, 20, 20], dtype=tf.uint8)
-    original_image_spatial_shapes = tf.constant([[20, 20]], dtype=tf.int32)
-
     groundtruth_keypoints = tf.constant([[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]])
     if resized_groundtruth_masks:
       groundtruth_instance_masks = tf.ones(shape=[1, 10, 10], dtype=tf.uint8)
@@ -102,8 +99,6 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
       groundtruth_keypoints = tf.tile(
           tf.expand_dims(groundtruth_keypoints, 0),
           multiples=[batch_size, 1, 1])
-      original_image_spatial_shapes = tf.tile(original_image_spatial_shapes,
-                                              multiples=[batch_size, 1])
 
     detections = {
         detection_fields.detection_boxes: detection_boxes,
@@ -116,10 +111,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
         input_data_fields.groundtruth_boxes: groundtruth_boxes,
         input_data_fields.groundtruth_classes: groundtruth_classes,
         input_data_fields.groundtruth_keypoints: groundtruth_keypoints,
-        input_data_fields.groundtruth_instance_masks:
-            groundtruth_instance_masks,
-        input_data_fields.original_image_spatial_shape:
-            original_image_spatial_shapes
+        input_data_fields.groundtruth_instance_masks: groundtruth_instance_masks
     }
     if batch_size > 1:
       return eval_util.result_dict_for_batched_example(
@@ -247,8 +239,6 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
         eval_config)
     self.assertTrue(evaluator_options['coco_detection_metrics']
                     ['include_metrics_per_category'])
-    self.assertFalse(evaluator_options['coco_detection_metrics']
-                     ['skip_predictions_for_unlabeled_class'])
     self.assertTrue(
         evaluator_options['coco_mask_metrics']['include_metrics_per_category'])
     self.assertAlmostEqual(
@@ -263,7 +253,6 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
     eval_config.metrics_set.extend(
         ['coco_detection_metrics', 'precision_at_recall_detection_metrics'])
     eval_config.include_metrics_per_category = True
-    eval_config.skip_predictions_for_unlabeled_class = True
     eval_config.recall_lower_bound = 0.2
     eval_config.recall_upper_bound = 0.6
     categories = self._get_categories_list()
@@ -274,7 +263,6 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
                                          evaluator_options)
 
     self.assertTrue(evaluator[0]._include_metrics_per_category)
-    self.assertTrue(evaluator[0]._skip_predictions_for_unlabeled_class)
     self.assertAlmostEqual(evaluator[1]._recall_lower_bound,
                            eval_config.recall_lower_bound)
     self.assertAlmostEqual(evaluator[1]._recall_upper_bound,
@@ -413,48 +401,6 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllClose([[[[0., 0.], [100., 100.], [200., 200.]]],
                          [[[0., 0.], [75., 150.], [150., 300.]]]],
                         detection_keypoints)
-
-  def test_evaluator_options_from_eval_config_no_super_categories(self):
-    eval_config_text_proto = """
-      metrics_set: "coco_detection_metrics"
-      metrics_set: "coco_mask_metrics"
-      include_metrics_per_category: true
-      use_moving_averages: false
-      batch_size: 1;
-    """
-    eval_config = eval_pb2.EvalConfig()
-    text_format.Merge(eval_config_text_proto, eval_config)
-    evaluator_options = eval_util.evaluator_options_from_eval_config(
-        eval_config)
-    self.assertNotIn('super_categories', evaluator_options['coco_mask_metrics'])
-
-  def test_evaluator_options_from_eval_config_with_super_categories(self):
-    eval_config_text_proto = """
-      metrics_set: "coco_detection_metrics"
-      metrics_set: "coco_mask_metrics"
-      include_metrics_per_category: true
-      use_moving_averages: false
-      batch_size: 1;
-      super_categories {
-        key: "supercat1"
-        value: "a,b,c"
-      }
-      super_categories {
-        key: "supercat2"
-        value: "d,e,f"
-      }
-    """
-    eval_config = eval_pb2.EvalConfig()
-    text_format.Merge(eval_config_text_proto, eval_config)
-    evaluator_options = eval_util.evaluator_options_from_eval_config(
-        eval_config)
-    self.assertIn('super_categories', evaluator_options['coco_mask_metrics'])
-    super_categories = evaluator_options[
-        'coco_mask_metrics']['super_categories']
-    self.assertIn('supercat1', super_categories)
-    self.assertIn('supercat2', super_categories)
-    self.assertAllEqual(super_categories['supercat1'], ['a', 'b', 'c'])
-    self.assertAllEqual(super_categories['supercat2'], ['d', 'e', 'f'])
 
 
 if __name__ == '__main__':
