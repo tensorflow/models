@@ -222,13 +222,12 @@ class SentencePredictionTextDataLoader(data_loader.DataLoader):
     """Berts preprocess."""
     segments = [record[x] for x in self._text_fields]
     model_inputs = self._text_processor(segments)
-    if self._include_example_id:
-      model_inputs['example_id'] = record['example_id']
-    model_inputs[self._label_field] = record[self._label_field]
+    for key in record:
+      if key not in self._text_fields:
+        model_inputs[key] = record[key]
     return model_inputs
 
-  def _decode(self, record: tf.Tensor):
-    """Decodes a serialized tf.Example."""
+  def name_to_features_spec(self):
     name_to_features = {}
     for text_field in self._text_fields:
       name_to_features[text_field] = tf.io.FixedLenFeature([], tf.string)
@@ -237,8 +236,11 @@ class SentencePredictionTextDataLoader(data_loader.DataLoader):
     name_to_features[self._label_field] = tf.io.FixedLenFeature([], label_type)
     if self._include_example_id:
       name_to_features['example_id'] = tf.io.FixedLenFeature([], tf.int64)
-    example = tf.io.parse_single_example(record, name_to_features)
+    return name_to_features
 
+  def _decode(self, record: tf.Tensor):
+    """Decodes a serialized tf.Example."""
+    example = tf.io.parse_single_example(record, self.name_to_features_spec())
     # tf.Example only supports tf.int64, but the TPU only supports tf.int32.
     # So cast all int64 to int32.
     for name in example:
