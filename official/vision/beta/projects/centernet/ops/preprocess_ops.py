@@ -14,6 +14,8 @@
 
 import tensorflow as tf
 
+from official.vision.beta.projects.yolo.ops import box_ops
+
 LARGE_NUM = 1. / tf.keras.backend.epsilon()
 
 
@@ -144,17 +146,17 @@ def write_all(ta, index, values):
 @tf.function
 def draw_gaussian(hm_shape, blob, dtype, scaling_factor=1):
   """ Draws an instance of a 2D gaussian on a heatmap.
-  
-  A heatmap with shape hm_shape and of type dtype is generated with 
+
+  A heatmap with shape hm_shape and of type dtype is generated with
   a gaussian with a given center, radius, and scaling factor
 
   Args:
-    hm_shape: A `list` of `Tensor` of shape [3] that gives the height, width, 
+    hm_shape: A `list` of `Tensor` of shape [3] that gives the height, width,
       and number of channels in the heatmap
     blob: A `Tensor` of shape [4] that gives the channel number, x, y, and
       radius for the desired gaussian to be drawn onto
     dtype: The desired type of the heatmap
-    scaling_factor: A `int` that can be used to scale the magnitude of the 
+    scaling_factor: A `int` that can be used to scale the magnitude of the
       gaussian
   Returns:
     A `Tensor` with shape hm_shape and type dtype with a 2D gaussian
@@ -181,3 +183,57 @@ def draw_gaussian(hm_shape, blob, dtype, scaling_factor=1):
       gaussian_heatmap, heatmap_indices, gaussian * scaling_factor)
   
   return gaussian_heatmap
+
+
+def get_image_shape(image):
+  shape = tf.shape(image)
+  if tf.shape(shape)[0] == 4:
+    width = shape[2]
+    height = shape[1]
+  else:
+    width = shape[1]
+    height = shape[0]
+  return height, width
+
+
+def letter_box(image, boxes, xs=0.5, ys=0.5, target_dim=None):
+  height, width = get_image_shape(image)
+  clipper = tf.math.maximum(width, height)
+  if target_dim is None:
+    target_dim = clipper
+  
+  xs = tf.convert_to_tensor(xs)
+  ys = tf.convert_to_tensor(ys)
+  pad_width_p = clipper - width
+  pad_height_p = clipper - height
+  pad_height = tf.cast(tf.cast(pad_height_p, ys.dtype) * ys, tf.int32)
+  pad_width = tf.cast(tf.cast(pad_width_p, xs.dtype) * xs, tf.int32)
+  image = tf.image.pad_to_bounding_box(image, pad_height, pad_width,
+                                       clipper, clipper)
+  
+  boxes = box_ops.yxyx_to_xcycwh(boxes)
+  x, y, w, h = tf.split(boxes, 4, axis=-1)
+  
+  y *= tf.cast(height / clipper, y.dtype)
+  x *= tf.cast(width / clipper, x.dtype)
+  
+  y += tf.cast((pad_height / clipper), y.dtype)
+  x += tf.cast((pad_width / clipper), x.dtype)
+  
+  h *= tf.cast(height / clipper, h.dtype)
+  w *= tf.cast(width / clipper, w.dtype)
+  
+  boxes = tf.concat([x, y, w, h], axis=-1)
+  
+  boxes = box_ops.xcycwh_to_yxyx(boxes)
+  boxes = tf.where(h == 0, tf.zeros_like(boxes), boxes)
+  
+  image = tf.image.resize(image, (target_dim, target_dim))
+  
+  scale = target_dim / clipper
+  pt_width = tf.cast(tf.cast(pad_width, scale.dtype) * scale, tf.int32)
+  pt_height = tf.cast(tf.cast(pad_height, scale.dtype) * scale, tf.int32)
+  pt_width_p = tf.cast(tf.cast(pad_width_p, scale.dtype) * scale, tf.int32)
+  pt_height_p = tf.cast(tf.cast(pad_height_p, scale.dtype) * scale, tf.int32)
+  return image, boxes, [pt_height, pt_width, target_dim - pt_height_p,
+                        target_dim - pt_width_p]

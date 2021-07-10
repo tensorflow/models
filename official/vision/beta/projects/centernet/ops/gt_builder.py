@@ -14,7 +14,7 @@
 
 import tensorflow as tf
 
-from official.vision.beta.projects.centernet.ops import preprocessing_ops
+from official.vision.beta.projects.centernet.ops import preprocess_ops
 
 
 def build_heatmap_and_regressed_features(labels,
@@ -24,7 +24,6 @@ def build_heatmap_and_regressed_features(labels,
                                          max_num_instances=128,
                                          use_gaussian_bump=True,
                                          gaussian_rad=-1,
-                                         gaussian_iou=0.7,
                                          class_offset=1,
                                          dtype='float32'):
   """ Generates the ground truth labels for centernet.
@@ -89,8 +88,8 @@ def build_heatmap_and_regressed_features(labels,
   # Get relevant bounding box and class information from labels
   # only keep the first num_objects boxes and classes
   num_objects = labels['num_detections']
-  boxes = labels['bbox']
-  classes = labels['classes'] - class_offset
+  boxes = labels['bbox'][:num_objects]
+  classes = labels['classes'][:num_objects] - class_offset
   
   # Compute scaling factors for center/corner positions on heatmap
   input_size = tf.cast(input_size, dtype)
@@ -125,8 +124,8 @@ def build_heatmap_and_regressed_features(labels,
   
   # Offset computations to make up for discretization error
   # used for offset maps
-  # tl_offset_values = tf.stack([fxtl - xtl, fytl - ytl], axis=-1)
-  # br_offset_values = tf.stack([fxbr - xbr, fybr - ybr], axis=-1)
+  tl_offset_values = tf.stack([fxtl - xtl, fytl - ytl], axis=-1)
+  br_offset_values = tf.stack([fxbr - xbr, fybr - ybr], axis=-1)
   ct_offset_values = tf.stack([fxct - xct, fyct - yct], axis=-1)
   
   # Get the scaled box dimensions for computing the gaussian radius
@@ -140,13 +139,13 @@ def build_heatmap_and_regressed_features(labels,
   box_widths_heights = tf.stack([box_widths, box_heights], axis=-1)
   
   # Center/corner heatmaps
-  # tl_heatmap = tf.zeros((output_h, output_w, num_classes), dtype)
-  # br_heatmap = tf.zeros((output_h, output_w, num_classes), dtype)
+  tl_heatmap = tf.zeros((output_h, output_w, num_classes), dtype)
+  br_heatmap = tf.zeros((output_h, output_w, num_classes), dtype)
   ct_heatmap = tf.zeros((output_h, output_w, num_classes), dtype)
   
   # Maps for offset and size features for each instance of a box
-  # tl_offset = tf.zeros((max_num_instances, 2), dtype)
-  # br_offset = tf.zeros((max_num_instances, 2), dtype)
+  tl_offset = tf.zeros((max_num_instances, 2), dtype)
+  br_offset = tf.zeros((max_num_instances, 2), dtype)
   ct_offset = tf.zeros((max_num_instances, 2), dtype)
   size = tf.zeros((max_num_instances, 2), dtype)
   
@@ -159,62 +158,62 @@ def build_heatmap_and_regressed_features(labels,
     
     # First compute the desired gaussian radius
     if gaussian_rad == -1:
-      print(box_widths_heights)
-      radius = tf.map_fn(fn=lambda x: preprocessing_ops.gaussian_radius(x),
+      radius = tf.map_fn(fn=lambda x: preprocess_ops.gaussian_radius(x),
                          elems=tf.math.ceil(box_widths_heights))
-      print(radius)
       radius = tf.math.maximum(tf.math.floor(radius),
                                tf.cast(1.0, radius.dtype))
     else:
-      radius = tf.constant([gaussian_rad] * max_num_instances, dtype)
+      radius = tf.constant([gaussian_rad] * num_objects, dtype)
     # These blobs contain information needed to draw the gaussian
-    # tl_blobs = tf.stack([classes, xtl, ytl, radius], axis=-1)
-    # br_blobs = tf.stack([classes, xbr, ybr, radius], axis=-1)
+    tl_blobs = tf.stack([classes, xtl, ytl, radius], axis=-1)
+    br_blobs = tf.stack([classes, xbr, ybr, radius], axis=-1)
     ct_blobs = tf.stack([classes, xct, yct, radius], axis=-1)
     
     # Get individual gaussian contributions from each bounding box
-    # tl_gaussians = tf.map_fn(
-    #   fn=lambda x: preprocessing_ops.draw_gaussian(
-    #     tf.shape(tl_heatmap), x, dtype), elems=tl_blobs)
-    # br_gaussians = tf.map_fn(
-    #   fn=lambda x: preprocessing_ops.draw_gaussian(
-    #     tf.shape(br_heatmap), x, dtype), elems=br_blobs)
+    tl_gaussians = tf.map_fn(
+        fn=lambda x: preprocess_ops.draw_gaussian(
+            tf.shape(tl_heatmap), x, dtype), elems=tl_blobs)
+    br_gaussians = tf.map_fn(
+        fn=lambda x: preprocess_ops.draw_gaussian(
+            tf.shape(br_heatmap), x, dtype), elems=br_blobs)
     ct_gaussians = tf.map_fn(
-        fn=lambda x: preprocessing_ops.draw_gaussian(
+        fn=lambda x: preprocess_ops.draw_gaussian(
             tf.shape(ct_heatmap), x, dtype), elems=ct_blobs)
     
     # Combine contributions into single heatmaps
-    # tl_heatmap = tf.math.reduce_max(tl_gaussians, axis=0)
-    # br_heatmap = tf.math.reduce_max(br_gaussians, axis=0)
+    tl_heatmap = tf.math.reduce_max(tl_gaussians, axis=0)
+    br_heatmap = tf.math.reduce_max(br_gaussians, axis=0)
     ct_heatmap = tf.math.reduce_max(ct_gaussians, axis=0)
   
   else:
     # Instead of a gaussian, insert 1s in the center and corner heatmaps
-    # tl_hm_update_indices = tf.cast(
-    #   tf.stack([ytl, xtl, classes], axis=-1), tf.int32)
-    # br_hm_update_indices = tf.cast(
-    #   tf.stack([ybr, xbr, classes], axis=-1), tf.int32)
+    tl_hm_update_indices = tf.cast(
+        tf.stack([ytl, xtl, classes], axis=-1), tf.int32)
+    br_hm_update_indices = tf.cast(
+        tf.stack([ybr, xbr, classes], axis=-1), tf.int32)
     ct_hm_update_indices = tf.cast(
         tf.stack([yct, xct, classes], axis=-1), tf.int32)
     
-    # tl_heatmap = tf.tensor_scatter_nd_update(tl_heatmap,
-    #   tl_hm_update_indices, [1] * num_objects)
-    # br_heatmap = tf.tensor_scatter_nd_update(br_heatmap,
-    #   br_hm_update_indices, [1] * num_objects)
+    tl_heatmap = tf.tensor_scatter_nd_update(tl_heatmap,
+                                             tl_hm_update_indices,
+                                             [1] * num_objects)
+    br_heatmap = tf.tensor_scatter_nd_update(br_heatmap,
+                                             br_hm_update_indices,
+                                             [1] * num_objects)
     ct_heatmap = tf.tensor_scatter_nd_update(ct_heatmap,
                                              ct_hm_update_indices,
                                              [1] * num_objects)
   
   # Indices used to update offsets and sizes for valid box instances
-  update_indices = preprocessing_ops.cartesian_product(
+  update_indices = preprocess_ops.cartesian_product(
       tf.range(num_objects), tf.range(2))
   update_indices = tf.reshape(update_indices, shape=[num_objects, 2, 2])
   
   # Write the offsets of each box instance
-  # tl_offset = tf.tensor_scatter_nd_update(
-  #   tl_offset, update_indices, tl_offset_values)
-  # br_offset = tf.tensor_scatter_nd_update(
-  #   br_offset, update_indices, br_offset_values)
+  tl_offset = tf.tensor_scatter_nd_update(
+      tl_offset, update_indices, tl_offset_values)
+  br_offset = tf.tensor_scatter_nd_update(
+      br_offset, update_indices, br_offset_values)
   ct_offset = tf.tensor_scatter_nd_update(
       ct_offset, update_indices, ct_offset_values)
   
@@ -232,11 +231,11 @@ def build_heatmap_and_regressed_features(labels,
       box_indices, update_indices, box_index_values)
   
   labels = {
-      # 'tl_heatmaps': tl_heatmap,
-      # 'br_heatmaps': br_heatmap,
+      'tl_heatmaps': tl_heatmap,
+      'br_heatmaps': br_heatmap,
       'ct_heatmaps': ct_heatmap,
-      # 'tl_offset': tl_offset,
-      # 'br_offset': br_offset,
+      'tl_offset': tl_offset,
+      'br_offset': br_offset,
       'ct_offset': ct_offset,
       'size': size,
       'box_mask': box_mask,
