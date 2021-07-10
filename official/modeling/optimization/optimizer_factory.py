@@ -16,11 +16,10 @@
 """Optimizer factory class."""
 from typing import Union
 
-
 import tensorflow as tf
+
 import tensorflow_addons.optimizers as tfa_optimizers
 
-from official.modeling.optimization import ema_optimizer
 from official.modeling.optimization import lr_schedule
 from official.modeling.optimization.configs import optimization_config as opt_cfg
 from official.nlp import optimization as nlp_optimization
@@ -37,8 +36,7 @@ LR_CLS = {
     'stepwise': tf.keras.optimizers.schedules.PiecewiseConstantDecay,
     'polynomial': tf.keras.optimizers.schedules.PolynomialDecay,
     'exponential': tf.keras.optimizers.schedules.ExponentialDecay,
-    'cosine': tf.keras.experimental.CosineDecay,
-    'power': lr_schedule.DirectPowerDecay,
+    'cosine': tf.keras.experimental.CosineDecay
 }
 
 WARMUP_CLS = {
@@ -90,10 +88,7 @@ class OptimizerFactory(object):
     self._optimizer_config = config.optimizer.get()
     self._optimizer_type = config.optimizer.type
 
-    self._use_ema = config.ema is not None
-    self._ema_config = config.ema
-
-    if self._optimizer_config is None:
+    if self._optimizer_type is None:
       raise ValueError('Optimizer type must be specified')
 
     self._lr_config = config.learning_rate.get()
@@ -136,26 +131,15 @@ class OptimizerFactory(object):
     rate built using self.build_lr() is passed as an argument to this method.
 
     Args:
-      lr: A floating point value, or a
-        tf.keras.optimizers.schedules.LearningRateSchedule instance.
-
+      lr: A floating point value, or
+          a tf.keras.optimizers.schedules.LearningRateSchedule instance.
     Returns:
       tf.keras.optimizers.Optimizer instance.
     """
 
     optimizer_dict = self._optimizer_config.as_dict()
-    ## Delete clipnorm and clipvalue if None
-    if optimizer_dict['clipnorm'] is None:
-      del optimizer_dict['clipnorm']
-    if optimizer_dict['clipvalue'] is None:
-      del optimizer_dict['clipvalue']
-
     optimizer_dict['learning_rate'] = lr
 
     optimizer = OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
-
-    if self._use_ema:
-      optimizer = ema_optimizer.ExponentialMovingAverage(
-          optimizer, **self._ema_config.as_dict())
-
     return optimizer
+
