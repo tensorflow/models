@@ -22,10 +22,10 @@ from official.vision.beta.projects.volumetric_models.evaluation import segmentat
 
 class SegmentationMetricsTest(parameterized.TestCase, tf.test.TestCase):
 
-  @parameterized.parameters((1, 'generalized', 0.5, [0.74, 0.67]),
+  @parameterized.parameters((1, 'generalized', 0.5, [0.67, 0.67]),
                             (1, 'adaptive', 0.5, [0.93, 0.67]),
                             (2, None, 0.5, [0.67, 0.67, 0.67]),
-                            (3, 'generalized', 0.5, [0.7, 0.67, 0.67, 0.67]))
+                            (3, 'generalized', 0.5, [0.67, 0.67, 0.67, 0.67]))
   def test_forward_dice_score(self, num_classes, metric_type, output,
                               expected_score):
     metric = segmentation_metrics.DiceScore(

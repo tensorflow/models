@@ -63,6 +63,7 @@ class DiceScore:
       self._dice_scores_per_class = [
           tf.Variable(0.0) for _ in range(num_classes)
       ]
+      self._count_per_class = [tf.Variable(0.0) for _ in range(num_classes)]
 
     self.name = name
     self.dtype = dtype
@@ -87,15 +88,21 @@ class DiceScore:
               self._num_classes,
               y_true.get_shape()[-1]))
 
-    self._count.assign_add(1.)
-    self._dice_scores_overall.assign_add(1 -
-                                         self._dice_op_overall(y_pred, y_true))
-    if self._per_class_metric:
-      for class_id in range(self._num_classes):
-        self._dice_scores_per_class[class_id].assign_add(
-            1 -
-            self._dice_op_per_class(y_pred[..., class_id], y_true[...,
-                                                                  class_id]))
+    # If both y_pred and y_true are all 0s, we skip computing the metrics;
+    # otherwise the averaged metrics will be erroneously lower.
+    if tf.reduce_sum(y_true) != 0 or tf.reduce_sum(y_pred) != 0:
+      self._count.assign_add(1.)
+      self._dice_scores_overall.assign_add(
+          1 - self._dice_op_overall(y_pred, y_true))
+      if self._per_class_metric:
+        for class_id in range(self._num_classes):
+          if tf.reduce_sum(y_true[..., class_id]) != 0 or tf.reduce_sum(
+              y_pred[..., class_id]) != 0:
+            self._count_per_class[class_id].assign_add(1.)
+            self._dice_scores_per_class[class_id].assign_add(
+                1 - self._dice_op_per_class(y_pred[...,
+                                                   class_id], y_true[...,
+                                                                     class_id]))
 
   def result(self) -> tf.Tensor:
     """Computes and returns the metric.
@@ -114,7 +121,7 @@ class DiceScore:
       for class_id in range(self._num_classes):
         dice_scores.append(
             tf.math.divide_no_nan(self._dice_scores_per_class[class_id],
-                                  self._count))
+                                  self._count_per_class[class_id]))
       return tf.stack(dice_scores)
     else:
       return tf.math.divide_no_nan(self._dice_scores_overall, self._count)
