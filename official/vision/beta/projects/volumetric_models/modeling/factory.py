@@ -54,6 +54,7 @@ def build_segmentation_model_3d(
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
+      use_batch_normalization=head_config.use_batch_normalization,
       kernel_regularizer=l2_regularizer,
       output_logits=head_config.output_logits)
 

@@ -25,12 +25,15 @@ from official.vision.beta.projects.volumetric_models.modeling.heads import segme
 class SegmentationHead3DTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (1, 0),
-      (2, 1),
+      (1, 0, True),
+      (2, 1, False),
   )
-  def test_forward(self, level, num_convs):
+  def test_forward(self, level, num_convs, use_bn):
     head = segmentation_heads_3d.SegmentationHead3D(
-        num_classes=10, level=level, num_convs=num_convs)
+        num_classes=10,
+        level=level,
+        num_convs=num_convs,
+        use_batch_normalization=use_bn)
     backbone_features = {
         '1': np.random.rand(2, 128, 128, 128, 16),
         '2': np.random.rand(2, 64, 64, 64, 16),
