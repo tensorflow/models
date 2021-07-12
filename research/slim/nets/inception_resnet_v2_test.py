@@ -17,8 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from nets import inception
 
@@ -30,7 +30,7 @@ class InceptionTest(tf.test.TestCase):
     height, width = 299, 299
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, endpoints = inception.inception_resnet_v2(inputs, num_classes)
       self.assertTrue('AuxLogits' in endpoints)
       auxlogits = endpoints['AuxLogits']
@@ -47,7 +47,7 @@ class InceptionTest(tf.test.TestCase):
     height, width = 299, 299
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, endpoints = inception.inception_resnet_v2(inputs, num_classes,
                                                         create_aux_logits=False)
       self.assertTrue('AuxLogits' not in endpoints)
@@ -60,7 +60,7 @@ class InceptionTest(tf.test.TestCase):
     height, width = 299, 299
     num_classes = None
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       net, endpoints = inception.inception_resnet_v2(inputs, num_classes)
       self.assertTrue('AuxLogits' not in endpoints)
       self.assertTrue('Logits' not in endpoints)
@@ -73,7 +73,7 @@ class InceptionTest(tf.test.TestCase):
     height, width = 299, 299
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       _, end_points = inception.inception_resnet_v2(inputs, num_classes)
       self.assertTrue('Logits' in end_points)
       logits = end_points['Logits']
@@ -91,7 +91,7 @@ class InceptionTest(tf.test.TestCase):
     batch_size = 5
     height, width = 299, 299
 
-    inputs = tf.random_uniform((batch_size, height, width, 3))
+    inputs = tf.random.uniform((batch_size, height, width, 3))
     net, end_points = inception.inception_resnet_v2_base(inputs)
     self.assertTrue(net.op.name.startswith('InceptionResnetV2/Conv2d_7b_1x1'))
     self.assertListEqual(net.get_shape().as_list(),
@@ -111,19 +111,19 @@ class InceptionTest(tf.test.TestCase):
                  'PreAuxLogits', 'Mixed_7a', 'Conv2d_7b_1x1']
     for index, endpoint in enumerate(endpoints):
       with tf.Graph().as_default():
-        inputs = tf.random_uniform((batch_size, height, width, 3))
+        inputs = tf.random.uniform((batch_size, height, width, 3))
         out_tensor, end_points = inception.inception_resnet_v2_base(
             inputs, final_endpoint=endpoint)
         if endpoint != 'PreAuxLogits':
           self.assertTrue(out_tensor.op.name.startswith(
               'InceptionResnetV2/' + endpoint))
-        self.assertItemsEqual(endpoints[:index+1], end_points.keys())
+        self.assertItemsEqual(endpoints[:index + 1], end_points.keys())
 
   def testBuildAndCheckAllEndPointsUptoPreAuxLogits(self):
     batch_size = 5
     height, width = 299, 299
 
-    inputs = tf.random_uniform((batch_size, height, width, 3))
+    inputs = tf.random.uniform((batch_size, height, width, 3))
     _, end_points = inception.inception_resnet_v2_base(
         inputs, final_endpoint='PreAuxLogits')
     endpoints_shapes = {'Conv2d_1a_3x3': [5, 149, 149, 32],
@@ -149,7 +149,7 @@ class InceptionTest(tf.test.TestCase):
     batch_size = 5
     height, width = 299, 299
 
-    inputs = tf.random_uniform((batch_size, height, width, 3))
+    inputs = tf.random.uniform((batch_size, height, width, 3))
     _, end_points = inception.inception_resnet_v2_base(
         inputs, final_endpoint='PreAuxLogits', align_feature_maps=True)
     endpoints_shapes = {'Conv2d_1a_3x3': [5, 150, 150, 32],
@@ -175,7 +175,7 @@ class InceptionTest(tf.test.TestCase):
     batch_size = 5
     height, width = 299, 299
 
-    inputs = tf.random_uniform((batch_size, height, width, 3))
+    inputs = tf.random.uniform((batch_size, height, width, 3))
     _, end_points = inception.inception_resnet_v2_base(
         inputs, final_endpoint='PreAuxLogits', output_stride=8)
     endpoints_shapes = {'Conv2d_1a_3x3': [5, 149, 149, 32],
@@ -202,15 +202,17 @@ class InceptionTest(tf.test.TestCase):
     height, width = 299, 299
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       # Force all Variables to reside on the device.
       with tf.variable_scope('on_cpu'), tf.device('/cpu:0'):
         inception.inception_resnet_v2(inputs, num_classes)
       with tf.variable_scope('on_gpu'), tf.device('/gpu:0'):
         inception.inception_resnet_v2(inputs, num_classes)
-      for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='on_cpu'):
+      for v in tf.get_collection(
+          tf.GraphKeys.GLOBAL_VARIABLES, scope='on_cpu'):
         self.assertDeviceEqual(v.device, '/cpu:0')
-      for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='on_gpu'):
+      for v in tf.get_collection(
+          tf.GraphKeys.GLOBAL_VARIABLES, scope='on_gpu'):
         self.assertDeviceEqual(v.device, '/gpu:0')
 
   def testHalfSizeImages(self):
@@ -218,7 +220,7 @@ class InceptionTest(tf.test.TestCase):
     height, width = 150, 150
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, end_points = inception.inception_resnet_v2(inputs, num_classes)
       self.assertTrue(logits.op.name.startswith('InceptionResnetV2/Logits'))
       self.assertListEqual(logits.get_shape().as_list(),
@@ -232,7 +234,7 @@ class InceptionTest(tf.test.TestCase):
     height, width = 330, 400
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, end_points = inception.inception_resnet_v2(inputs, num_classes)
       self.assertTrue(logits.op.name.startswith('InceptionResnetV2/Logits'))
       self.assertListEqual(logits.get_shape().as_list(),
@@ -253,7 +255,7 @@ class InceptionTest(tf.test.TestCase):
       self.assertListEqual(logits.get_shape().as_list(),
                            [batch_size, num_classes])
       pre_pool = end_points['Conv2d_7b_1x1']
-      images = tf.random_uniform((batch_size, height, width, 3))
+      images = tf.random.uniform((batch_size, height, width, 3))
       sess.run(tf.global_variables_initializer())
       logits_out, pre_pool_out = sess.run([logits, pre_pool],
                                           {inputs: images.eval()})
@@ -270,7 +272,7 @@ class InceptionTest(tf.test.TestCase):
       self.assertTrue(logits.op.name.startswith('InceptionResnetV2/Logits'))
       self.assertListEqual(logits.get_shape().as_list(),
                            [None, num_classes])
-      images = tf.random_uniform((batch_size, height, width, 3))
+      images = tf.random.uniform((batch_size, height, width, 3))
       sess.run(tf.global_variables_initializer())
       output = sess.run(logits, {inputs: images.eval()})
       self.assertEquals(output.shape, (batch_size, num_classes))
@@ -280,11 +282,11 @@ class InceptionTest(tf.test.TestCase):
     height, width = 299, 299
     num_classes = 1000
     with self.test_session() as sess:
-      eval_inputs = tf.random_uniform((batch_size, height, width, 3))
+      eval_inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = inception.inception_resnet_v2(eval_inputs,
                                                 num_classes,
                                                 is_training=False)
-      predictions = tf.argmax(logits, 1)
+      predictions = tf.argmax(input=logits, axis=1)
       sess.run(tf.global_variables_initializer())
       output = sess.run(predictions)
       self.assertEquals(output.shape, (batch_size,))
@@ -295,14 +297,14 @@ class InceptionTest(tf.test.TestCase):
     height, width = 150, 150
     num_classes = 1000
     with self.test_session() as sess:
-      train_inputs = tf.random_uniform((train_batch_size, height, width, 3))
+      train_inputs = tf.random.uniform((train_batch_size, height, width, 3))
       inception.inception_resnet_v2(train_inputs, num_classes)
-      eval_inputs = tf.random_uniform((eval_batch_size, height, width, 3))
+      eval_inputs = tf.random.uniform((eval_batch_size, height, width, 3))
       logits, _ = inception.inception_resnet_v2(eval_inputs,
                                                 num_classes,
                                                 is_training=False,
                                                 reuse=True)
-      predictions = tf.argmax(logits, 1)
+      predictions = tf.argmax(input=logits, axis=1)
       sess.run(tf.global_variables_initializer())
       output = sess.run(predictions)
       self.assertEquals(output.shape, (eval_batch_size,))
@@ -311,7 +313,7 @@ class InceptionTest(tf.test.TestCase):
     height, width = 299, 299
     num_classes = 1000
     inputs = tf.placeholder(tf.float32, (1, height, width, 3))
-    with contrib_slim.arg_scope(inception.inception_resnet_v2_arg_scope()):
+    with slim.arg_scope(inception.inception_resnet_v2_arg_scope()):
       inception.inception_resnet_v2(inputs, num_classes, is_training=False)
 
     self.assertEqual(tf.global_variables('.*/BatchNorm/gamma:0$'), [])
@@ -320,12 +322,13 @@ class InceptionTest(tf.test.TestCase):
     height, width = 299, 299
     num_classes = 1000
     inputs = tf.placeholder(tf.float32, (1, height, width, 3))
-    with contrib_slim.arg_scope(
+    with slim.arg_scope(
         inception.inception_resnet_v2_arg_scope(batch_norm_scale=True)):
       inception.inception_resnet_v2(inputs, num_classes, is_training=False)
 
     gamma_names = set(
-        v.op.name for v in tf.global_variables('.*/BatchNorm/gamma:0$'))
+        v.op.name
+        for v in tf.global_variables('.*/BatchNorm/gamma:0$'))
     self.assertGreater(len(gamma_names), 0)
     for v in tf.global_variables('.*/BatchNorm/moving_mean:0$'):
       self.assertIn(v.op.name[:-len('moving_mean')] + 'gamma', gamma_names)

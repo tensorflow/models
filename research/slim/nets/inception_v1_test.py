@@ -19,12 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from nets import inception
-
-slim = contrib_slim
 
 
 class InceptionV1Test(tf.test.TestCase):
@@ -34,7 +32,7 @@ class InceptionV1Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
 
-    inputs = tf.random_uniform((batch_size, height, width, 3))
+    inputs = tf.random.uniform((batch_size, height, width, 3))
     logits, end_points = inception.inception_v1(inputs, num_classes)
     self.assertTrue(logits.op.name.startswith(
         'InceptionV1/Logits/SpatialSqueeze'))
@@ -49,7 +47,7 @@ class InceptionV1Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = None
 
-    inputs = tf.random_uniform((batch_size, height, width, 3))
+    inputs = tf.random.uniform((batch_size, height, width, 3))
     net, end_points = inception.inception_v1(inputs, num_classes)
     self.assertTrue(net.op.name.startswith('InceptionV1/Logits/AvgPool'))
     self.assertListEqual(net.get_shape().as_list(), [batch_size, 1, 1, 1024])
@@ -60,7 +58,7 @@ class InceptionV1Test(tf.test.TestCase):
     batch_size = 5
     height, width = 224, 224
 
-    inputs = tf.random_uniform((batch_size, height, width, 3))
+    inputs = tf.random.uniform((batch_size, height, width, 3))
     mixed_6c, end_points = inception.inception_v1_base(inputs)
     self.assertTrue(mixed_6c.op.name.startswith('InceptionV1/Mixed_5c'))
     self.assertListEqual(mixed_6c.get_shape().as_list(),
@@ -82,7 +80,7 @@ class InceptionV1Test(tf.test.TestCase):
                  'Mixed_5c']
     for index, endpoint in enumerate(endpoints):
       with tf.Graph().as_default():
-        inputs = tf.random_uniform((batch_size, height, width, 3))
+        inputs = tf.random.uniform((batch_size, height, width, 3))
         out_tensor, end_points = inception.inception_v1_base(
             inputs, final_endpoint=endpoint)
         self.assertTrue(out_tensor.op.name.startswith(
@@ -93,7 +91,7 @@ class InceptionV1Test(tf.test.TestCase):
     batch_size = 5
     height, width = 224, 224
 
-    inputs = tf.random_uniform((batch_size, height, width, 3))
+    inputs = tf.random.uniform((batch_size, height, width, 3))
     _, end_points = inception.inception_v1_base(inputs,
                                                 final_endpoint='Mixed_5c')
     endpoints_shapes = {
@@ -125,7 +123,7 @@ class InceptionV1Test(tf.test.TestCase):
   def testModelHasExpectedNumberOfParameters(self):
     batch_size = 5
     height, width = 224, 224
-    inputs = tf.random_uniform((batch_size, height, width, 3))
+    inputs = tf.random.uniform((batch_size, height, width, 3))
     with slim.arg_scope(inception.inception_v1_arg_scope()):
       inception.inception_v1_base(inputs)
     total_params, _ = slim.model_analyzer.analyze_vars(
@@ -136,7 +134,7 @@ class InceptionV1Test(tf.test.TestCase):
     batch_size = 5
     height, width = 112, 112
 
-    inputs = tf.random_uniform((batch_size, height, width, 3))
+    inputs = tf.random.uniform((batch_size, height, width, 3))
     mixed_5c, _ = inception.inception_v1_base(inputs)
     self.assertTrue(mixed_5c.op.name.startswith('InceptionV1/Mixed_5c'))
     self.assertListEqual(mixed_5c.get_shape().as_list(),
@@ -147,7 +145,7 @@ class InceptionV1Test(tf.test.TestCase):
     height, width = 28, 28
     channels = 192
 
-    inputs = tf.random_uniform((batch_size, height, width, channels))
+    inputs = tf.random.uniform((batch_size, height, width, channels))
     _, end_points = inception.inception_v1_base(
         inputs, include_root_block=False)
     endpoints_shapes = {
@@ -178,7 +176,8 @@ class InceptionV1Test(tf.test.TestCase):
     num_classes = 1000
     input_np = np.random.uniform(0, 1, (batch_size, height, width, 3))
     with self.test_session() as sess:
-      inputs = tf.placeholder(tf.float32, shape=(batch_size, None, None, 3))
+      inputs = tf.placeholder(
+          tf.float32, shape=(batch_size, None, None, 3))
       logits, end_points = inception.inception_v1(inputs, num_classes)
       self.assertTrue(logits.op.name.startswith('InceptionV1/Logits'))
       self.assertListEqual(logits.get_shape().as_list(),
@@ -196,7 +195,8 @@ class InceptionV1Test(tf.test.TestCase):
     num_classes = 1000
     input_np = np.random.uniform(0, 1, (batch_size, height, width, 3))
     with self.test_session() as sess:
-      inputs = tf.placeholder(tf.float32, shape=(batch_size, None, None, 3))
+      inputs = tf.placeholder(
+          tf.float32, shape=(batch_size, None, None, 3))
       logits, end_points = inception.inception_v1(inputs, num_classes,
                                                   global_pool=True)
       self.assertTrue(logits.op.name.startswith('InceptionV1/Logits'))
@@ -218,7 +218,7 @@ class InceptionV1Test(tf.test.TestCase):
     self.assertTrue(logits.op.name.startswith('InceptionV1/Logits'))
     self.assertListEqual(logits.get_shape().as_list(),
                          [None, num_classes])
-    images = tf.random_uniform((batch_size, height, width, 3))
+    images = tf.random.uniform((batch_size, height, width, 3))
 
     with self.test_session() as sess:
       sess.run(tf.global_variables_initializer())
@@ -230,10 +230,10 @@ class InceptionV1Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
 
-    eval_inputs = tf.random_uniform((batch_size, height, width, 3))
+    eval_inputs = tf.random.uniform((batch_size, height, width, 3))
     logits, _ = inception.inception_v1(eval_inputs, num_classes,
                                        is_training=False)
-    predictions = tf.argmax(logits, 1)
+    predictions = tf.argmax(input=logits, axis=1)
 
     with self.test_session() as sess:
       sess.run(tf.global_variables_initializer())
@@ -246,11 +246,11 @@ class InceptionV1Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
 
-    train_inputs = tf.random_uniform((train_batch_size, height, width, 3))
+    train_inputs = tf.random.uniform((train_batch_size, height, width, 3))
     inception.inception_v1(train_inputs, num_classes)
-    eval_inputs = tf.random_uniform((eval_batch_size, height, width, 3))
+    eval_inputs = tf.random.uniform((eval_batch_size, height, width, 3))
     logits, _ = inception.inception_v1(eval_inputs, num_classes, reuse=True)
-    predictions = tf.argmax(logits, 1)
+    predictions = tf.argmax(input=logits, axis=1)
 
     with self.test_session() as sess:
       sess.run(tf.global_variables_initializer())
@@ -259,7 +259,7 @@ class InceptionV1Test(tf.test.TestCase):
 
   def testLogitsNotSqueezed(self):
     num_classes = 25
-    images = tf.random_uniform([1, 224, 224, 3])
+    images = tf.random.uniform([1, 224, 224, 3])
     logits, _ = inception.inception_v1(images,
                                        num_classes=num_classes,
                                        spatial_squeeze=False)
@@ -287,7 +287,8 @@ class InceptionV1Test(tf.test.TestCase):
       inception.inception_v1(inputs, num_classes, is_training=False)
 
     gamma_names = set(
-        v.op.name for v in tf.global_variables('.*/BatchNorm/gamma:0$'))
+        v.op.name
+        for v in tf.global_variables('.*/BatchNorm/gamma:0$'))
     self.assertGreater(len(gamma_names), 0)
     for v in tf.global_variables('.*/BatchNorm/moving_mean:0$'):
       self.assertIn(v.op.name[:-len('moving_mean')] + 'gamma', gamma_names)

@@ -18,7 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import six
+import tensorflow.compat.v1 as tf
 
 from nets import i3d
 
@@ -31,7 +32,7 @@ class I3DTest(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
 
-    inputs = tf.random_uniform((batch_size, num_frames, height, width, 3))
+    inputs = tf.random.uniform((batch_size, num_frames, height, width, 3))
     logits, end_points = i3d.i3d(inputs, num_classes)
     self.assertTrue(logits.op.name.startswith('InceptionV1/Logits'))
     self.assertListEqual(logits.get_shape().as_list(),
@@ -45,7 +46,7 @@ class I3DTest(tf.test.TestCase):
     num_frames = 64
     height, width = 224, 224
 
-    inputs = tf.random_uniform((batch_size, num_frames, height, width, 3))
+    inputs = tf.random.uniform((batch_size, num_frames, height, width, 3))
     mixed_6c, end_points = i3d.i3d_base(inputs)
     self.assertTrue(mixed_6c.op.name.startswith('InceptionV1/Mixed_5c'))
     self.assertListEqual(mixed_6c.get_shape().as_list(),
@@ -55,7 +56,7 @@ class I3DTest(tf.test.TestCase):
                           'Mixed_3c', 'MaxPool_4a_3x3', 'Mixed_4b', 'Mixed_4c',
                           'Mixed_4d', 'Mixed_4e', 'Mixed_4f', 'MaxPool_5a_2x2',
                           'Mixed_5b', 'Mixed_5c']
-    self.assertItemsEqual(end_points.keys(), expected_endpoints)
+    self.assertItemsEqual(list(end_points.keys()), expected_endpoints)
 
   def testBuildOnlyUptoFinalEndpoint(self):
     batch_size = 5
@@ -68,7 +69,7 @@ class I3DTest(tf.test.TestCase):
                  'Mixed_5c']
     for index, endpoint in enumerate(endpoints):
       with tf.Graph().as_default():
-        inputs = tf.random_uniform((batch_size, num_frames, height, width, 3))
+        inputs = tf.random.uniform((batch_size, num_frames, height, width, 3))
         out_tensor, end_points = i3d.i3d_base(
             inputs, final_endpoint=endpoint)
         self.assertTrue(out_tensor.op.name.startswith(
@@ -80,7 +81,7 @@ class I3DTest(tf.test.TestCase):
     num_frames = 64
     height, width = 224, 224
 
-    inputs = tf.random_uniform((batch_size, num_frames, height, width, 3))
+    inputs = tf.random.uniform((batch_size, num_frames, height, width, 3))
     _, end_points = i3d.i3d_base(inputs,
                                  final_endpoint='Mixed_5c')
     endpoints_shapes = {'Conv2d_1a_7x7': [5, 32, 112, 112, 64],
@@ -100,8 +101,9 @@ class I3DTest(tf.test.TestCase):
                         'Mixed_5b': [5, 8, 7, 7, 832],
                         'Mixed_5c': [5, 8, 7, 7, 1024]}
 
-    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
-    for endpoint_name, expected_shape in endpoints_shapes.iteritems():
+    self.assertItemsEqual(
+        list(endpoints_shapes.keys()), list(end_points.keys()))
+    for endpoint_name, expected_shape in six.iteritems(endpoints_shapes):
       self.assertTrue(endpoint_name in end_points)
       self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
                            expected_shape)
@@ -111,7 +113,7 @@ class I3DTest(tf.test.TestCase):
     num_frames = 64
     height, width = 112, 112
 
-    inputs = tf.random_uniform((batch_size, num_frames, height, width, 3))
+    inputs = tf.random.uniform((batch_size, num_frames, height, width, 3))
     mixed_5c, _ = i3d.i3d_base(inputs)
     self.assertTrue(mixed_5c.op.name.startswith('InceptionV1/Mixed_5c'))
     self.assertListEqual(mixed_5c.get_shape().as_list(),
@@ -122,7 +124,7 @@ class I3DTest(tf.test.TestCase):
     num_frames = 10
     height, width = 224, 224
 
-    inputs = tf.random_uniform((batch_size, num_frames, height, width, 3))
+    inputs = tf.random.uniform((batch_size, num_frames, height, width, 3))
     mixed_5c, _ = i3d.i3d_base(inputs)
     self.assertTrue(mixed_5c.op.name.startswith('InceptionV1/Mixed_5c'))
     self.assertListEqual(mixed_5c.get_shape().as_list(),
@@ -134,10 +136,10 @@ class I3DTest(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
 
-    eval_inputs = tf.random_uniform((batch_size, num_frames, height, width, 3))
+    eval_inputs = tf.random.uniform((batch_size, num_frames, height, width, 3))
     logits, _ = i3d.i3d(eval_inputs, num_classes,
                         is_training=False)
-    predictions = tf.argmax(logits, 1)
+    predictions = tf.argmax(input=logits, axis=1)
 
     with self.test_session() as sess:
       sess.run(tf.global_variables_initializer())

@@ -21,7 +21,7 @@ python eval.py
 import tensorflow as tf
 from tensorflow.contrib import slim
 from tensorflow import app
-from tensorflow.python.platform import flags
+from tensorflow.compat.v1 import flags
 
 import data_provider
 import common_flags
@@ -45,8 +45,8 @@ flags.DEFINE_integer('number_of_steps', None,
 
 
 def main(_):
-  if not tf.gfile.Exists(FLAGS.eval_log_dir):
-    tf.gfile.MakeDirs(FLAGS.eval_log_dir)
+  if not tf.io.gfile.exists(FLAGS.eval_log_dir):
+    tf.io.gfile.makedirs(FLAGS.eval_log_dir)
 
   dataset = common_flags.create_dataset(split_name=FLAGS.split_name)
   model = common_flags.create_model(dataset.num_char_classes,
@@ -62,7 +62,7 @@ def main(_):
   eval_ops = model.create_summaries(
       data, endpoints, dataset.charset, is_training=False)
   slim.get_or_create_global_step()
-  session_config = tf.ConfigProto(device_count={"GPU": 0})
+  session_config = tf.compat.v1.ConfigProto(device_count={"GPU": 0})
   slim.evaluation.evaluation_loop(
       master=FLAGS.master,
       checkpoint_dir=FLAGS.train_log_dir,

@@ -14,7 +14,7 @@
 # ==============================================================================
 """Builder function for image resizing operations."""
 import functools
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import preprocessor
 from object_detection.protos import image_resizer_pb2
@@ -133,8 +133,21 @@ def build(image_resizer_config):
           'Invalid image resizer condition option for '
           'ConditionalShapeResizer: \'%s\'.'
           % conditional_shape_resize_config.condition)
-
     if not conditional_shape_resize_config.convert_to_grayscale:
+      return image_resizer_fn
+  elif image_resizer_oneof == 'pad_to_multiple_resizer':
+    pad_to_multiple_resizer_config = (
+        image_resizer_config.pad_to_multiple_resizer)
+
+    if pad_to_multiple_resizer_config.multiple < 0:
+      raise ValueError('`multiple` for pad_to_multiple_resizer should be > 0.')
+
+    else:
+      image_resizer_fn = functools.partial(
+          preprocessor.resize_pad_to_multiple,
+          multiple=pad_to_multiple_resizer_config.multiple)
+
+    if not pad_to_multiple_resizer_config.convert_to_grayscale:
       return image_resizer_fn
   else:
     raise ValueError(
@@ -149,16 +162,16 @@ def build(image_resizer_config):
         width] containing instance masks.
 
     Returns:
-    Note that the position of the resized_image_shape changes based on whether
-    masks are present.
-    resized_image: A 3D tensor of shape [new_height, new_width, 1],
-      where the image has been resized (with bilinear interpolation) so that
-      min(new_height, new_width) == min_dimension or
-      max(new_height, new_width) == max_dimension.
-    resized_masks: If masks is not None, also outputs masks. A 3D tensor of
-      shape [num_instances, new_height, new_width].
-    resized_image_shape: A 1D tensor of shape [3] containing shape of the
-      resized image.
+      Note that the position of the resized_image_shape changes based on whether
+      masks are present.
+      resized_image: A 3D tensor of shape [new_height, new_width, 1],
+        where the image has been resized (with bilinear interpolation) so that
+        min(new_height, new_width) == min_dimension or
+        max(new_height, new_width) == max_dimension.
+      resized_masks: If masks is not None, also outputs masks. A 3D tensor of
+        shape [num_instances, new_height, new_width].
+      resized_image_shape: A 1D tensor of shape [3] containing shape of the
+        resized image.
     """
     # image_resizer_fn returns [resized_image, resized_image_shape] if
     # mask==None, otherwise it returns

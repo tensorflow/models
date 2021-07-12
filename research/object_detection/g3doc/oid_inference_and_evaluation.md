@@ -113,10 +113,10 @@ computations on subsets of the validation and test sets.
 ## Inferring detections
 
 Inference requires a trained object detection model. In this tutorial we will
-use a model from the [detections model zoo](detection_model_zoo.md), which can
+use a model from the [detections model zoo](tf1_detection_zoo.md), which can
 be downloaded and unpacked by running the commands below. More information about
 the model, such as its architecture and how it was trained, is available in the
-[model zoo page](detection_model_zoo.md).
+[model zoo page](tf1_detection_zoo.md).
 
 ```bash
 # From tensorflow/models/research/oid
@@ -142,11 +142,11 @@ python -m object_detection/inference/infer_detections \
 
 Inference preserves all fields of the input TFExamples, and adds new fields to
 store the inferred detections. This allows [computing evaluation
-measures](#compute_evaluation_measures) on the output TFRecord alone, as ground
-truth boxes are preserved as well. Since measure computations don't require
-access to the images, `infer_detections` can optionally discard them with the
-`--discard_image_pixels` flag. Discarding the images drastically reduces the
-size of the output TFRecord.
+measures](#computing-evaluation-measures) on the output TFRecord alone, as
+groundtruth boxes are preserved as well. Since measure computations don't
+require access to the images, `infer_detections` can optionally discard them
+with the `--discard_image_pixels` flag. Discarding the images drastically
+reduces the size of the output TFRecord.
 
 ### Accelerating inference
 

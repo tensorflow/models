@@ -15,28 +15,37 @@
 
 """Hyperparameters for YAMNet."""
 
-# The following hyperparameters (except PATCH_HOP_SECONDS) were used to train YAMNet,
+from dataclasses import dataclass
+
+# The following hyperparameters (except patch_hop_seconds) were used to train YAMNet,
 # so expect some variability in performance if you change these. The patch hop can
 # be changed arbitrarily: a smaller hop should give you more patches from the same
 # clip and possibly better performance at a larger computational cost.
-SAMPLE_RATE = 16000
-STFT_WINDOW_SECONDS = 0.025
-STFT_HOP_SECONDS = 0.010
-MEL_BANDS = 64
-MEL_MIN_HZ = 125
-MEL_MAX_HZ = 7500
-LOG_OFFSET = 0.001
-PATCH_WINDOW_SECONDS = 0.96
-PATCH_HOP_SECONDS = 0.48
+@dataclass(frozen=True)  # Instances of this class are immutable.
+class Params:
+  sample_rate: float = 16000.0
+  stft_window_seconds: float = 0.025
+  stft_hop_seconds: float = 0.010
+  mel_bands: int = 64
+  mel_min_hz: float = 125.0
+  mel_max_hz: float = 7500.0
+  log_offset: float = 0.001
+  patch_window_seconds: float = 0.96
+  patch_hop_seconds: float = 0.48
 
-PATCH_FRAMES = int(round(PATCH_WINDOW_SECONDS / STFT_HOP_SECONDS))
-PATCH_BANDS = MEL_BANDS
-NUM_CLASSES = 521
-CONV_PADDING = 'same'
-BATCHNORM_CENTER = True
-BATCHNORM_SCALE = False
-BATCHNORM_EPSILON = 1e-4
-CLASSIFIER_ACTIVATION = 'sigmoid'
+  @property
+  def patch_frames(self):
+    return int(round(self.patch_window_seconds / self.stft_hop_seconds))
 
-FEATURES_LAYER_NAME = 'features'
-EXAMPLE_PREDICTIONS_LAYER_NAME = 'predictions'
+  @property
+  def patch_bands(self):
+    return self.mel_bands
+
+  num_classes: int = 521
+  conv_padding: str = 'same'
+  batchnorm_center: bool = True
+  batchnorm_scale: bool = False
+  batchnorm_epsilon: float = 1e-4
+  classifier_activation: str = 'sigmoid'
+
+  tflite_compatible: bool = False

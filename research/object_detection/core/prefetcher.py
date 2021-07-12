@@ -14,7 +14,7 @@
 # ==============================================================================
 
 """Provides functions to prefetch tensors to feed into models."""
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 def prefetch(tensor_dict, capacity):

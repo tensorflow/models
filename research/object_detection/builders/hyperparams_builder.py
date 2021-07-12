@@ -14,13 +14,18 @@
 # ==============================================================================
 
 """Builder function to construct tf-slim arg_scope for convolution, fc ops."""
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from object_detection.core import freezable_batch_norm
 from object_detection.protos import hyperparams_pb2
 from object_detection.utils import context_manager
+from object_detection.utils import tf_version
 
-slim = tf.contrib.slim
+# pylint: disable=g-import-not-at-top
+if tf_version.is_tf2():
+  from object_detection.core import freezable_sync_batch_norm
+# pylint: enable=g-import-not-at-top
 
 
 class KerasLayerHyperparams(object):
@@ -59,10 +64,16 @@ class KerasLayerHyperparams(object):
                        'hyperparams_pb.Hyperparams.')
 
     self._batch_norm_params = None
+    self._use_sync_batch_norm = False
     if hyperparams_config.HasField('batch_norm'):
       self._batch_norm_params = _build_keras_batch_norm_params(
           hyperparams_config.batch_norm)
+    elif hyperparams_config.HasField('sync_batch_norm'):
+      self._use_sync_batch_norm = True
+      self._batch_norm_params = _build_keras_batch_norm_params(
+          hyperparams_config.sync_batch_norm)
 
+    self._force_use_bias = hyperparams_config.force_use_bias
     self._activation_fn = _build_activation_fn(hyperparams_config.activation)
     # TODO(kaftan): Unclear if these kwargs apply to separable & depthwise conv
     # (Those might use depthwise_* instead of kernel_*)
@@ -78,6 +89,16 @@ class KerasLayerHyperparams(object):
 
   def use_batch_norm(self):
     return self._batch_norm_params is not None
+
+  def use_sync_batch_norm(self):
+    return self._use_sync_batch_norm
+
+  def force_use_bias(self):
+    return self._force_use_bias
+
+  def use_bias(self):
+    return (self._force_use_bias or not
+            (self.use_batch_norm() and self.batch_norm_params()['center']))
 
   def batch_norm_params(self, **overrides):
     """Returns a dict containing batchnorm layer construction hyperparameters.
@@ -124,10 +145,12 @@ class KerasLayerHyperparams(object):
       is False)
     """
     if self.use_batch_norm():
-      return freezable_batch_norm.FreezableBatchNorm(
-          training=training,
-          **self.batch_norm_params(**overrides)
-      )
+      if self._use_sync_batch_norm:
+        return freezable_sync_batch_norm.FreezableSyncBatchNorm(
+            training=training, **self.batch_norm_params(**overrides))
+      else:
+        return freezable_batch_norm.FreezableBatchNorm(
+            training=training, **self.batch_norm_params(**overrides))
     else:
       return tf.keras.layers.Lambda(tf.identity)
 
@@ -144,6 +167,20 @@ class KerasLayerHyperparams(object):
       return tf.keras.layers.Lambda(self._activation_fn, name=name)
     else:
       return tf.keras.layers.Lambda(tf.identity, name=name)
+
+  def get_regularizer_weight(self):
+    """Returns the l1 or l2 regularizer weight.
+
+    Returns: A float value corresponding to the l1 or l2 regularization weight,
+      or None if neither l1 or l2 regularization is defined.
+    """
+    regularizer = self._op_params['kernel_regularizer']
+    if hasattr(regularizer, 'l1'):
+      return float(regularizer.l1)
+    elif hasattr(regularizer, 'l2'):
+      return float(regularizer.l2)
+    else:
+      return None
 
   def params(self, include_activation=False, **overrides):
     """Returns a dict containing the layer construction hyperparameters to use.
@@ -167,10 +204,7 @@ class KerasLayerHyperparams(object):
     new_params['activation'] = None
     if include_activation:
       new_params['activation'] = self._activation_fn
-    if self.use_batch_norm() and self.batch_norm_params()['center']:
-      new_params['use_bias'] = False
-    else:
-      new_params['use_bias'] = True
+    new_params['use_bias'] = self.use_bias()
     new_params.update(**overrides)
     return new_params
 
@@ -209,6 +243,14 @@ def build(hyperparams_config, is_training):
     raise ValueError('hyperparams_config not of type '
                      'hyperparams_pb.Hyperparams.')
 
+  if hyperparams_config.force_use_bias:
+    raise ValueError('Hyperparams force_use_bias only supported by '
+                     'KerasLayerHyperparams.')
+
+  if hyperparams_config.HasField('sync_batch_norm'):
+    raise ValueError('Hyperparams sync_batch_norm only supported by '
+                     'KerasLayerHyperparams.')
+
   normalizer_fn = None
   batch_norm_params = None
   if hyperparams_config.HasField('batch_norm'):
@@ -216,7 +258,7 @@ def build(hyperparams_config, is_training):
     batch_norm_params = _build_batch_norm_params(
         hyperparams_config.batch_norm, is_training)
   if hyperparams_config.HasField('group_norm'):
-    normalizer_fn = tf.contrib.layers.group_norm
+    normalizer_fn = slim.group_norm
   affected_ops = [slim.conv2d, slim.separable_conv2d, slim.conv2d_transpose]
   if hyperparams_config.HasField('op') and (
       hyperparams_config.op == hyperparams_pb2.Hyperparams.FC):
@@ -256,6 +298,8 @@ def _build_activation_fn(activation_fn):
     return tf.nn.relu
   if activation_fn == hyperparams_pb2.Hyperparams.RELU_6:
     return tf.nn.relu6
+  if activation_fn == hyperparams_pb2.Hyperparams.SWISH:
+    return tf.nn.swish
   raise ValueError('Unknown activation function: {}'.format(activation_fn))
 
 
@@ -301,6 +345,8 @@ def _build_keras_regularizer(regularizer):
     # weight by a factor of 2
     return tf.keras.regularizers.l2(
         float(regularizer.l2_regularizer.weight * 0.5))
+  if regularizer_oneof is None:
+    return None
   raise ValueError('Unknown regularizer function: {}'.format(regularizer_oneof))
 
 
@@ -313,7 +359,7 @@ def _build_initializer(initializer, build_for_keras=False):
       operators. If false builds for Slim.
 
   Returns:
-    tf initializer.
+    tf initializer or string corresponding to the tf keras initializer name.
 
   Raises:
     ValueError: On unknown initializer.
@@ -369,6 +415,15 @@ def _build_initializer(initializer, build_for_keras=False):
           factor=initializer.variance_scaling_initializer.factor,
           mode=mode,
           uniform=initializer.variance_scaling_initializer.uniform)
+  if initializer_oneof == 'keras_initializer_by_name':
+    if build_for_keras:
+      return initializer.keras_initializer_by_name
+    else:
+      raise ValueError(
+          'Unsupported non-Keras usage of keras_initializer_by_name: {}'.format(
+              initializer.keras_initializer_by_name))
+  if initializer_oneof is None:
+    return None
   raise ValueError('Unknown initializer function: {}'.format(
       initializer_oneof))
 

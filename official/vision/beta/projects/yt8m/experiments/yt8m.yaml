@@ -1,0 +1,56 @@
+# yt8m config file
+task:
+  model:
+    cluster_size: 8192
+    hidden_size: 1024
+    add_batch_norm: true
+    sample_random_frames: true
+    is_training: true
+    activation: "sigmoid"
+    pooling_method: "max"
+    yt8m_agg_classifier_model: "MoeModel"
+  train_data:
+    name: 'yt8m'
+    split: 'train'
+    feature_sizes: !!python/tuple
+    - 1024
+    - 128
+    feature_names: !!python/tuple
+    - "rgb"
+    - "audio"
+    segment_size: 1
+    segment_labels: false
+    temporal_stride: 1
+    max_frames: 300
+    num_frames: 300
+    num_classes: 3862
+    num_devices: 1
+    input_path: 'gs://youtube8m-ml/2/frame/train/train*.tfrecord'
+    is_training: true
+    random_seed: 123
+  validation_data:
+    name: 'yt8m'
+    split: 'train'
+    feature_sizes: !!python/tuple
+    - 1024
+    - 128
+    feature_names: !!python/tuple
+    - "rgb"
+    - "audio"
+    segment_size: 1
+    segment_labels: true
+    temporal_stride: 1
+    max_frames: 300
+    num_frames: 300
+    num_classes: 3862
+    num_devices: 1
+    input_path: 'gs://youtube8m-ml/3/frame/validate/validate*.tfrecord'
+    is_training: false
+    random_seed: 123
+  losses:
+    name: 'binary_crossentropy'
+    from_logits: false
+    label_smoothing: 0.0
+  gradient_clip_norm: 1.0
+  num_readers: 8
+  top_k: 20

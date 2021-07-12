@@ -1,6 +1,7 @@
 # Description:
 #   Contains files for loading, training and evaluating TF-Slim-based models.
 # load("//devtools/python/blaze:python3.bzl", "py2and3_test")
+load("//devtools/python/blaze:pytype.bzl", "pytype_strict_binary")
 
 package(
     default_visibility = ["//visibility:public"],
@@ -36,8 +37,9 @@ sh_binary(
 py_binary(
     name = "build_imagenet_data",
     srcs = ["datasets/build_imagenet_data.py"],
-    python_version = "PY2",
+    python_version = "PY3",
     deps = [
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//numpy",
         "//third_party/py/six",
         # "//tensorflow",
@@ -58,8 +60,10 @@ py_library(
 py_library(
     name = "download_and_convert_flowers",
     srcs = ["datasets/download_and_convert_flowers.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":dataset_utils",
+        "//third_party/py/six",
         # "//tensorflow",
     ],
 )
@@ -78,10 +82,12 @@ py_library(
 py_library(
     name = "download_and_convert_visualwakewords_lib",
     srcs = ["datasets/download_and_convert_visualwakewords_lib.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":dataset_utils",
         "//third_party/py/PIL:pil",
         "//third_party/py/contextlib2",
+        "//third_party/py/six",
         # "//tensorflow",
     ],
 )
@@ -89,6 +95,7 @@ py_library(
 py_library(
     name = "download_and_convert_visualwakewords",
     srcs = ["datasets/download_and_convert_visualwakewords.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":download_and_convert_visualwakewords_lib",
         # "//tensorflow",
@@ -98,12 +105,13 @@ py_library(
 py_binary(
     name = "download_and_convert_data",
     srcs = ["download_and_convert_data.py"],
-    python_version = "PY2",
+    python_version = "PY3",
     deps = [
         ":download_and_convert_cifar10",
         ":download_and_convert_flowers",
         ":download_and_convert_mnist",
         ":download_and_convert_visualwakewords",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//tensorflow",
     ],
 )
@@ -114,7 +122,7 @@ py_library(
     deps = [
         ":dataset_utils",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -124,7 +132,7 @@ py_library(
     deps = [
         ":dataset_utils",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -135,7 +143,7 @@ py_library(
         ":dataset_utils",
         "//third_party/py/six",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -145,7 +153,7 @@ py_library(
     deps = [
         ":dataset_utils",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -155,7 +163,7 @@ py_library(
     deps = [
         ":dataset_utils",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -176,22 +184,20 @@ py_library(
     srcs = ["deployment/model_deploy.py"],
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "model_deploy_test",
     srcs = ["deployment/model_deploy_test.py"],
-    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":model_deploy",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//numpy",
         # "//tensorflow",
-        # "//tensorflow/contrib/framework:framework_py",
-        # "//tensorflow/contrib/layers:layers_py",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -200,7 +206,7 @@ py_library(
     srcs = ["preprocessing/cifarnet_preprocessing.py"],
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -218,7 +224,7 @@ py_library(
     srcs = ["preprocessing/lenet_preprocessing.py"],
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -227,7 +233,7 @@ py_library(
     srcs = ["preprocessing/vgg_preprocessing.py"],
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -239,7 +245,7 @@ py_library(
         ":inception_preprocessing",
         ":lenet_preprocessing",
         ":vgg_preprocessing",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -272,20 +278,20 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "alexnet_test",
     size = "medium",
     srcs = ["nets/alexnet_test.py"],
-    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":alexnet",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -294,7 +300,7 @@ py_library(
     srcs = ["nets/cifarnet.py"],
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -305,20 +311,19 @@ py_library(
         # "//numpy",
         "//third_party/py/six",
         # "//tensorflow",
-        # "//tensorflow/contrib/framework:framework_py",
-        # "//tensorflow/contrib/layers:layers_py",
-        # "//tensorflow/contrib/util:util_py",
+        "//third_party/py/tf_slim:slim",
+        # "//tensorflow/python:tensor_util",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "cyclegan_test",
     srcs = ["nets/cyclegan_test.py"],
-    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
         ":cyclegan",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//tensorflow",
     ],
 )
@@ -329,18 +334,18 @@ py_library(
     deps = [
         "//third_party/py/six",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "dcgan_test",
     srcs = ["nets/dcgan_test.py"],
-    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
         ":dcgan",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         "//third_party/py/six",
         # "//tensorflow",
     ],
@@ -354,20 +359,22 @@ py_library(
         ":i3d_utils",
         ":s3dg",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "i3d_test",
     size = "large",
     srcs = ["nets/i3d_test.py"],
-    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
         ":i3d",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
+        "//third_party/py/six",
         # "//tensorflow",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -378,8 +385,7 @@ py_library(
     deps = [
         # "//numpy",
         # "//tensorflow",
-        # "//tensorflow/contrib/framework:framework_py",
-        # "//tensorflow/contrib/layers:layers_py",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -402,7 +408,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -413,7 +419,7 @@ py_library(
     deps = [
         ":inception_utils",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -424,7 +430,7 @@ py_library(
     deps = [
         ":inception_utils",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -435,7 +441,7 @@ py_library(
     deps = [
         ":inception_utils",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -446,7 +452,7 @@ py_library(
     deps = [
         ":inception_utils",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -456,80 +462,80 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "inception_v1_test",
     size = "large",
     srcs = ["nets/inception_v1_test.py"],
-    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
         ":inception",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//numpy",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "inception_v2_test",
     size = "large",
     srcs = ["nets/inception_v2_test.py"],
-    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
         ":inception",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//numpy",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "inception_v3_test",
     size = "large",
     srcs = ["nets/inception_v3_test.py"],
-    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
         ":inception",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//numpy",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "inception_v4_test",
     size = "large",
     srcs = ["nets/inception_v4_test.py"],
-    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
         ":inception",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "inception_resnet_v2_test",
     size = "large",
     srcs = ["nets/inception_resnet_v2_test.py"],
-    python_version = "PY2",
-    shard_count = 3,
+    shard_count = 4,
     srcs_version = "PY2AND3",
     deps = [
         ":inception",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -538,7 +544,7 @@ py_library(
     srcs = ["nets/lenet.py"],
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -548,8 +554,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/layers:layers_py",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -562,7 +567,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -573,8 +578,7 @@ py_library(
     deps = [
         ":mobilenet_common",
         # "//tensorflow",
-        # "//tensorflow/contrib/layers:layers_py",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -586,29 +590,33 @@ py_library(
         ":mobilenet_common",
         # "//numpy",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "mobilenet_v2_test",
     srcs = ["nets/mobilenet/mobilenet_v2_test.py"],
-    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":mobilenet",
         ":mobilenet_common",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
+        "//third_party/py/six",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
 py_test(  # py2and3_test
     name = "mobilenet_v3_test",
     srcs = ["nets/mobilenet/mobilenet_v3_test.py"],
+    shard_count = 2,
     srcs_version = "PY2AND3",
     deps = [
         ":mobilenet",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
+        "//testing/pybase:parameterized",
         "//third_party/py/absl/testing:absltest",
         # "//tensorflow",
     ],
@@ -623,46 +631,49 @@ py_library(
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "mobilenet_v1_test",
     size = "large",
     srcs = ["nets/mobilenet_v1_test.py"],
-    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
         ":mobilenet_v1",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//numpy",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
 py_binary(
     name = "mobilenet_v1_train",
     srcs = ["nets/mobilenet_v1_train.py"],
-    python_version = "PY2",
+    python_version = "PY3",
     deps = [
         ":dataset_factory",
         ":mobilenet_v1",
         ":preprocessing_factory",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//tensorflow",
+        "//third_party/py/tf_slim:slim",
         # "//tensorflow/contrib/quantize:quantize_graph",
-        # "//tensorflow/contrib/slim",
     ],
 )
 
 py_binary(
     name = "mobilenet_v1_eval",
     srcs = ["nets/mobilenet_v1_eval.py"],
-    python_version = "PY2",
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":dataset_factory",
         ":mobilenet_v1",
         ":preprocessing_factory",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//tensorflow",
+        "//third_party/py/tf_slim:slim",
         # "//tensorflow/contrib/quantize:quantize_graph",
-        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -672,8 +683,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/framework:framework_py",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -684,36 +694,34 @@ py_library(
     deps = [
         ":nasnet_utils",
         # "//tensorflow",
-        # "//tensorflow/contrib/framework:framework_py",
-        # "//tensorflow/contrib/layers:layers_py",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
         # "//tensorflow/contrib/training:training_py",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "nasnet_utils_test",
     size = "medium",
     srcs = ["nets/nasnet/nasnet_utils_test.py"],
-    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":nasnet_utils",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//tensorflow",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "nasnet_test",
     size = "large",
     srcs = ["nets/nasnet/nasnet_test.py"],
-    python_version = "PY2",
     shard_count = 10,
     srcs_version = "PY2AND3",
     deps = [
         ":nasnet",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -725,23 +733,22 @@ py_library(
         ":nasnet",
         ":nasnet_utils",
         # "//tensorflow",
-        # "//tensorflow/contrib/framework:framework_py",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
         # "//tensorflow/contrib/training:training_py",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "pnasnet_test",
     size = "large",
     srcs = ["nets/nasnet/pnasnet_test.py"],
-    python_version = "PY2",
     shard_count = 4,
     srcs_version = "PY2AND3",
     deps = [
         ":pnasnet",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -751,20 +758,20 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "overfeat_test",
     size = "medium",
     srcs = ["nets/overfeat_test.py"],
-    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":overfeat",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -774,8 +781,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/framework:framework_py",
-        # "//tensorflow/contrib/layers:layers_py",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -785,8 +791,9 @@ py_test(  # py2and3_test
     srcs_version = "PY2AND3",
     deps = [
         ":pix2pix",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//tensorflow",
-        # "//tensorflow/contrib/framework:framework_py",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -796,7 +803,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -807,24 +814,24 @@ py_library(
     deps = [
         ":resnet_utils",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "resnet_v1_test",
     size = "medium",
     timeout = "long",
     srcs = ["nets/resnet_v1_test.py"],
-    python_version = "PY2",
     shard_count = 2,
     srcs_version = "PY2AND3",
     deps = [
         ":resnet_utils",
         ":resnet_v1",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//numpy",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -835,23 +842,23 @@ py_library(
     deps = [
         ":resnet_utils",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "resnet_v2_test",
     size = "medium",
     srcs = ["nets/resnet_v2_test.py"],
-    python_version = "PY2",
     shard_count = 2,
     srcs_version = "PY2AND3",
     deps = [
         ":resnet_utils",
         ":resnet_v2",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//numpy",
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -862,20 +869,20 @@ py_library(
     deps = [
         ":i3d_utils",
         # "//tensorflow",
-        # "//tensorflow/contrib/framework:framework_py",
-        # "//tensorflow/contrib/layers:layers_py",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "s3dg_test",
     size = "large",
     srcs = ["nets/s3dg_test.py"],
-    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
         ":s3dg",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
+        "//third_party/py/six",
         # "//tensorflow",
     ],
 )
@@ -886,20 +893,20 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "vgg_test",
     size = "medium",
     srcs = ["nets/vgg_test.py"],
-    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":vgg",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//tensorflow",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
@@ -908,34 +915,50 @@ py_library(
     srcs = ["nets/nets_factory.py"],
     deps = [
         ":nets",
-        # "//tensorflow/contrib/slim",
+        "//third_party/py/tf_slim:slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "nets_factory_test",
     size = "large",
     srcs = ["nets/nets_factory_test.py"],
-    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
         ":nets_factory",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//tensorflow",
+    ],
+)
+
+pytype_strict_binary(
+    name = "post_training_quantization",
+    srcs = ["nets/post_training_quantization.py"],
+    python_version = "PY3",
+    deps = [
+        ":nets_factory",
+        ":preprocessing_factory",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
+        "//third_party/py/absl:app",
+        "//third_party/py/absl/flags",
+        # "//tensorflow",
+        # "//tensorflow_datasets",
     ],
 )
 
 py_library(
     name = "train_image_classifier_lib",
     srcs = ["train_image_classifier.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":dataset_factory",
         ":model_deploy",
         ":nets_factory",
         ":preprocessing_factory",
         # "//tensorflow",
+        "//third_party/py/tf_slim:slim",
         # "//tensorflow/contrib/quantize:quantize_graph",
-        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -944,9 +967,10 @@ py_binary(
     srcs = ["train_image_classifier.py"],
     # WARNING: not supported in bazel; will be commented out by copybara.
     # paropts = ["--compress"],
-    python_version = "PY2",
+    python_version = "PY3",
     deps = [
         ":train_image_classifier_lib",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
     ],
 )
 
@@ -958,17 +982,18 @@ py_library(
         ":nets_factory",
         ":preprocessing_factory",
         # "//tensorflow",
+        "//third_party/py/tf_slim:slim",
         # "//tensorflow/contrib/quantize:quantize_graph",
-        # "//tensorflow/contrib/slim",
     ],
 )
 
 py_binary(
     name = "eval_image_classifier",
     srcs = ["eval_image_classifier.py"],
-    python_version = "PY2",
+    python_version = "PY3",
     deps = [
         ":eval_image_classifier_lib",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
     ],
 )
 
@@ -977,8 +1002,11 @@ py_binary(
     srcs = ["export_inference_graph.py"],
     # WARNING: not supported in bazel; will be commented out by copybara.
     # paropts = ["--compress"],
-    python_version = "PY2",
-    deps = [":export_inference_graph_lib"],
+    python_version = "PY3",
+    deps = [
+        ":export_inference_graph_lib",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
+    ],
 )
 
 py_library(
@@ -989,22 +1017,22 @@ py_library(
         ":nets_factory",
         # "//tensorflow",
         # "//tensorflow/contrib/quantize:quantize_graph",
-        # "//tensorflow/contrib/slim",
         # "//tensorflow/python:platform",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "export_inference_graph_test",
     size = "medium",
     srcs = ["export_inference_graph_test.py"],
-    python_version = "PY2",
+    python_version = "PY3",
     srcs_version = "PY2AND3",
     tags = [
         "manual",
     ],
     deps = [
         ":export_inference_graph_lib",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         # "//tensorflow",
         # "//tensorflow/python:platform",
     ],

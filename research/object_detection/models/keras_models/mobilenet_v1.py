@@ -19,7 +19,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import freezable_batch_norm
 from object_detection.models.keras_models import model_utils
@@ -118,7 +118,8 @@ class _LayersOverride(object):
     Args:
       filters: The number of filters to use for the convolution.
       kernel_size: The kernel size to specify the height and width of the 2D
-        convolution window.
+        convolution window. In this function, the kernel size is expected to
+        be pair of numbers and the numbers must be equal for this function.
       **kwargs: Keyword args specified by the Keras application for
         constructing the convolution.
 
@@ -126,7 +127,17 @@ class _LayersOverride(object):
       A one-arg callable that will either directly apply a Keras Conv2D layer to
       the input argument, or that will first pad the input then apply a Conv2D
       layer.
+
+    Raises:
+      ValueError: if kernel size is not a pair of equal
+        integers (representing a square kernel).
     """
+    if not isinstance(kernel_size, tuple):
+      raise ValueError('kernel is expected to be a tuple.')
+    if len(kernel_size) != 2:
+      raise ValueError('kernel is expected to be length two.')
+    if kernel_size[0] != kernel_size[1]:
+      raise ValueError('kernel is expected to be square.')
     layer_name = kwargs['name']
     if self._conv_defs:
       conv_filters = model_utils.get_conv_def(self._conv_defs, layer_name)
@@ -144,7 +155,7 @@ class _LayersOverride(object):
       kwargs['kernel_initializer'] = self.initializer
 
     kwargs['padding'] = 'same'
-    if self._use_explicit_padding and kernel_size > 1:
+    if self._use_explicit_padding and kernel_size[0] > 1:
       kwargs['padding'] = 'valid'
       def padded_conv(features):  # pylint: disable=invalid-name
         padded_features = self._FixedPaddingLayer(kernel_size)(features)

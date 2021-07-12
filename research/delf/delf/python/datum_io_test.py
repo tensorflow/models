@@ -20,10 +20,13 @@ from __future__ import print_function
 
 import os
 
+from absl import flags
 import numpy as np
 import tensorflow as tf
 
 from delf import datum_io
+
+FLAGS = flags.FLAGS
 
 
 class DatumIoTest(tf.test.TestCase):
@@ -69,8 +72,7 @@ class DatumIoTest(tf.test.TestCase):
   def testWriteAndReadToFile(self):
     data = np.array([[[-1.0, 125.0, -2.5], [14.5, 3.5, 0.0]],
                      [[20.0, 0.0, 30.0], [25.5, 36.0, 42.0]]])
-    tmpdir = tf.test.get_temp_dir()
-    filename = os.path.join(tmpdir, 'test.datum')
+    filename = os.path.join(FLAGS.test_tmpdir, 'test.datum')
     datum_io.WriteToFile(data, filename)
     data_read = datum_io.ReadFromFile(filename)
     self.assertAllEqual(data_read, data)
@@ -84,8 +86,7 @@ class DatumIoTest(tf.test.TestCase):
     data_2 = np.array(
         [[[255, 0, 5], [10, 300, 0]], [[20, 1, 100], [255, 360, 420]]],
         dtype='uint32')
-    tmpdir = tf.test.get_temp_dir()
-    filename = os.path.join(tmpdir, 'test.datum_pair')
+    filename = os.path.join(FLAGS.test_tmpdir, 'test.datum_pair')
     datum_io.WritePairToFile(data_1, data_2, filename)
     data_read_1, data_read_2 = datum_io.ReadPairFromFile(filename)
     self.assertAllEqual(data_read_1, data_1)

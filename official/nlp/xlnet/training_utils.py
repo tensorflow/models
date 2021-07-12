@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,26 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """XLNet training utils."""
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import os
 import re
+from typing import Any, Callable, Dict, Optional, Text
 
 from absl import logging
+import tensorflow as tf
+
+from official.nlp.bert import model_training_utils
+from official.nlp.xlnet import data_utils
 
 # pytype: disable=attribute-error
 # pylint: disable=g-bare-generic,unused-import
-import tensorflow as tf
-from typing import Any, Callable, Dict, Text, Optional
-
-from official.modeling import model_training_utils
-from official.nlp.xlnet import data_utils
-from official.nlp.xlnet import xlnet_modeling as modeling
 
 _MIN_SUMMARY_STEPS = 10
 
@@ -213,8 +208,8 @@ def train(
         if input_meta_data["mem_len"] > 0:
           for _ in range(input_meta_data["n_layer"]):
             zeros = tf.zeros([
-                input_meta_data["mem_len"],
                 input_meta_data["batch_size_per_core"],
+                input_meta_data["mem_len"],
                 input_meta_data["d_model"]
             ],
                              dtype=tf.float32)
@@ -222,16 +217,16 @@ def train(
         return mems
 
       if input_meta_data["mem_len"] > 0:
-        mem = strategy.experimental_run_v2(cache_fn)
+        mem = strategy.run(cache_fn)
         for _ in tf.range(steps):
-          mem = strategy.experimental_run_v2(
+          mem = strategy.run(
               _replicated_step, args=(
                   next(iterator),
                   mem,
               ))
       else:
         for _ in tf.range(steps):
-          strategy.experimental_run_v2(_replicated_step, args=(next(iterator),))
+          strategy.run(_replicated_step, args=(next(iterator),))
 
     if not run_eagerly:
       train_steps = tf.function(train_steps)

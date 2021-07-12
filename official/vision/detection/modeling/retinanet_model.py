@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,19 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Model defination for the RetinaNet Model."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
-import numpy as np
-from absl import logging
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
-from tensorflow.python.keras import backend
 from official.vision.detection.dataloader import mode_keys
 from official.vision.detection.evaluation import factory as eval_factory
 from official.vision.detection.modeling import base_model
@@ -44,27 +40,26 @@ class RetinanetModel(base_model.Model):
     # Architecture generators.
     self._backbone_fn = factory.backbone_generator(params)
     self._fpn_fn = factory.multilevel_features_generator(params)
-    self._head_fn = factory.retinanet_head_generator(params.retinanet_head)
+    self._head_fn = factory.retinanet_head_generator(params)
 
     # Loss function.
-    self._cls_loss_fn = losses.RetinanetClassLoss(params.retinanet_loss)
+    self._cls_loss_fn = losses.RetinanetClassLoss(
+        params.retinanet_loss, params.architecture.num_classes)
     self._box_loss_fn = losses.RetinanetBoxLoss(params.retinanet_loss)
     self._box_loss_weight = params.retinanet_loss.box_loss_weight
     self._keras_model = None
 
     # Predict function.
     self._generate_detections_fn = postprocess_ops.MultilevelDetectionGenerator(
+        params.architecture.min_level, params.architecture.max_level,
         params.postprocess)
 
-    self._l2_weight_decay = params.train.l2_weight_decay
     self._transpose_input = params.train.transpose_input
-    assert not self._transpose_input, 'Transpose input is not supportted.'
+    assert not self._transpose_input, 'Transpose input is not supported.'
     # Input layer.
-    input_shape = (
-        params.retinanet_parser.output_size +
-        [params.retinanet_parser.num_channels])
     self._input_layer = tf.keras.layers.Input(
-        shape=input_shape, name='',
+        shape=(None, None, params.retinanet_parser.num_channels),
+        name='',
         dtype=tf.bfloat16 if self._use_bfloat16 else tf.float32)
 
   def build_outputs(self, inputs, mode):
@@ -107,8 +102,7 @@ class RetinanetModel(base_model.Model):
                                    labels['box_targets'],
                                    labels['num_positives'])
       model_loss = cls_loss + self._box_loss_weight * box_loss
-      l2_regularization_loss = self.weight_decay_loss(self._l2_weight_decay,
-                                                      trainable_variables)
+      l2_regularization_loss = self.weight_decay_loss(trainable_variables)
       total_loss = model_loss + l2_regularization_loss
       return {
           'total_loss': total_loss,
@@ -122,18 +116,18 @@ class RetinanetModel(base_model.Model):
 
   def build_model(self, params, mode=None):
     if self._keras_model is None:
-      with backend.get_graph().as_default():
-        outputs = self.model_outputs(self._input_layer, mode)
+      outputs = self.model_outputs(self._input_layer, mode)
 
-        model = tf.keras.models.Model(
-            inputs=self._input_layer, outputs=outputs, name='retinanet')
-        assert model is not None, 'Fail to build tf.keras.Model.'
-        model.optimizer = self.build_optimizer()
-        self._keras_model = model
+      model = tf.keras.models.Model(
+          inputs=self._input_layer, outputs=outputs, name='retinanet')
+      assert model is not None, 'Fail to build tf.keras.Model.'
+      model.optimizer = self.build_optimizer()
+      self._keras_model = model
 
     return self._keras_model
 
   def post_processing(self, labels, outputs):
+    # TODO(yeqing): Moves the output related part into build_outputs.
     required_output_fields = ['cls_outputs', 'box_outputs']
     for field in required_output_fields:
       if field not in outputs:
@@ -145,8 +139,8 @@ class RetinanetModel(base_model.Model):
         raise ValueError('"%s" is missing in outputs, requried %s found %s',
                          field, required_label_fields, labels.keys())
     boxes, scores, classes, valid_detections = self._generate_detections_fn(
-        outputs['box_outputs'], outputs['cls_outputs'],
-        labels['anchor_boxes'], labels['image_info'][:, 1:2, :])
+        outputs['box_outputs'], outputs['cls_outputs'], labels['anchor_boxes'],
+        labels['image_info'][:, 1:2, :])
     # Discards the old output tensors to save memory. The `cls_outputs` and
     # `box_outputs` are pretty big and could potentiall lead to memory issue.
     outputs = {

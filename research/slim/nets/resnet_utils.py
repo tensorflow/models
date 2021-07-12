@@ -38,10 +38,8 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
-
-slim = contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 
 class Block(collections.namedtuple('Block', ['scope', 'unit_fn', 'args'])):
@@ -117,8 +115,9 @@ def conv2d_same(inputs, num_outputs, kernel_size, stride, rate=1, scope=None):
     pad_total = kernel_size_effective - 1
     pad_beg = pad_total // 2
     pad_end = pad_total - pad_beg
-    inputs = tf.pad(inputs,
-                    [[0, 0], [pad_beg, pad_end], [pad_beg, pad_end], [0, 0]])
+    inputs = tf.pad(
+        tensor=inputs,
+        paddings=[[0, 0], [pad_beg, pad_end], [pad_beg, pad_end], [0, 0]])
     return slim.conv2d(inputs, num_outputs, kernel_size, stride=stride,
                        rate=rate, padding='VALID', scope=scope)
 
@@ -220,13 +219,14 @@ def stack_blocks_dense(net, blocks, output_stride=None,
   return net
 
 
-def resnet_arg_scope(weight_decay=0.0001,
-                     batch_norm_decay=0.997,
-                     batch_norm_epsilon=1e-5,
-                     batch_norm_scale=True,
-                     activation_fn=tf.nn.relu,
-                     use_batch_norm=True,
-                     batch_norm_updates_collections=tf.GraphKeys.UPDATE_OPS):
+def resnet_arg_scope(
+    weight_decay=0.0001,
+    batch_norm_decay=0.997,
+    batch_norm_epsilon=1e-5,
+    batch_norm_scale=True,
+    activation_fn=tf.nn.relu,
+    use_batch_norm=True,
+    batch_norm_updates_collections=tf.GraphKeys.UPDATE_OPS):
   """Defines the default ResNet arg scope.
 
   TODO(gpapan): The batch-normalization related default values above are

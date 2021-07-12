@@ -19,13 +19,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
 import numpy as np
+import tensorflow.compat.v1 as tf
 
+from tensorflow.contrib import layers as contrib_layers
+from tensorflow.contrib import rnn as contrib_rnn
 from lstm_object_detection.lstm import rnn_decoder
 
 
-class MockRnnCell(tf.contrib.rnn.RNNCell):
+class MockRnnCell(contrib_rnn.RNNCell):
 
   def __init__(self, input_size, num_units):
     self._input_size = input_size
@@ -45,7 +47,7 @@ class MockRnnCell(tf.contrib.rnn.RNNCell):
 
   def pre_bottleneck(self, inputs, state, input_index):
     with tf.variable_scope('bottleneck_%d' % input_index, reuse=tf.AUTO_REUSE):
-      inputs = tf.contrib.layers.separable_conv2d(
+      inputs = contrib_layers.separable_conv2d(
           tf.concat([inputs, state], 3),
           self._input_size,
           self._filter_size,
@@ -177,8 +179,6 @@ class MultiInputRnnDecoderTest(tf.test.TestCase):
           (outputs, states, inputs_large, inputs_small, initial_state))
       outputs_results = results[0]
       states_results = results[1]
-      inputs_large_results = results[2]
-      inputs_small_results = results[3]
       initial_states_results = results[4]
       self.assertEqual(
           outputs_results[0].shape,
@@ -189,7 +189,7 @@ class MultiInputRnnDecoderTest(tf.test.TestCase):
                        (batch_size, width, height, num_units))
       # The first step should always update state.
       self.assertAllEqual(states_results[0][0],
-                              np.multiply(initial_states_results[0], 2))
+                          np.multiply(initial_states_results[0], 2))
       self.assertAllEqual(states_results[0][1], initial_states_results[1])
 
   def test_rnn_decoder_multiple_unroll(self):
@@ -227,8 +227,6 @@ class MultiInputRnnDecoderTest(tf.test.TestCase):
           (outputs, states, inputs_large, inputs_small, initial_state))
       outputs_results = results[0]
       states_results = results[1]
-      inputs_large_results = results[2]
-      inputs_small_results = results[3]
       initial_states_results = results[4]
 
       # The first step should always update state.
@@ -281,8 +279,6 @@ class MultiInputRnnDecoderTest(tf.test.TestCase):
           (outputs, states, inputs_large, inputs_small, initial_state))
       outputs_results = results[0]
       states_results = results[1]
-      inputs_large_results = results[2]
-      inputs_small_results = results[3]
       initial_states_results = results[4]
 
       for i in range(num_unroll):

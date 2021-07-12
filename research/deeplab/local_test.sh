@@ -19,7 +19,7 @@
 #
 # Usage:
 #   # From the tensorflow/models/research/deeplab directory.
-#   sh ./local_test.sh
+#   bash ./local_test.sh
 #
 #
 
@@ -37,12 +37,12 @@ CURRENT_DIR=$(pwd)
 WORK_DIR="${CURRENT_DIR}/deeplab"
 
 # Run model_test first to make sure the PYTHONPATH is correctly set.
-python "${WORK_DIR}"/model_test.py -v
+python "${WORK_DIR}"/model_test.py
 
 # Go to datasets folder and download PASCAL VOC 2012 segmentation dataset.
 DATASET_DIR="datasets"
 cd "${WORK_DIR}/${DATASET_DIR}"
-sh download_and_convert_voc2012.sh
+bash download_and_convert_voc2012.sh
 
 # Go back to original directory.
 cd "${CURRENT_DIR}"

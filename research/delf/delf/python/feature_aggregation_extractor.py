@@ -27,6 +27,7 @@ import tensorflow as tf
 
 from delf import aggregation_config_pb2
 
+_CLUSTER_CENTERS_VAR_NAME = "clusters"
 _NORM_SQUARED_TOLERANCE = 1e-12
 
 # Aliases for aggregation types.
@@ -39,7 +40,6 @@ class ExtractAggregatedRepresentation(object):
   """Class for extraction of aggregated local feature representation.
 
   Args:
-    sess: TensorFlow session to use.
     aggregation_config: AggregationConfig object defining type of aggregation to
       use.
 
@@ -47,68 +47,28 @@ class ExtractAggregatedRepresentation(object):
     ValueError: If aggregation type is invalid.
   """
 
-  def __init__(self, sess, aggregation_config):
-    self._sess = sess
+  def __init__(self, aggregation_config):
     self._codebook_size = aggregation_config.codebook_size
     self._feature_dimensionality = aggregation_config.feature_dimensionality
     self._aggregation_type = aggregation_config.aggregation_type
     self._feature_batch_size = aggregation_config.feature_batch_size
+    self._codebook_path = aggregation_config.codebook_path
+    self._use_regional_aggregation = aggregation_config.use_regional_aggregation
+    self._use_l2_normalization = aggregation_config.use_l2_normalization
+    self._num_assignments = aggregation_config.num_assignments
 
-    # Inputs to extraction function.
-    self._features = tf.compat.v1.placeholder(tf.float32, [None, None])
-    self._num_features_per_region = tf.compat.v1.placeholder(tf.int32, [None])
-
-    # Load codebook into graph.
-    codebook = tf.compat.v1.get_variable(
-        "codebook",
-        shape=[
-            aggregation_config.codebook_size,
-            aggregation_config.feature_dimensionality
-        ])
-    tf.compat.v1.train.init_from_checkpoint(
-        aggregation_config.codebook_path, {
-            tf.contrib.factorization.KMeansClustering.CLUSTER_CENTERS_VAR_NAME:
-                codebook
-        })
-
-    # Construct extraction graph based on desired options.
-    if self._aggregation_type == _VLAD:
-      # Feature visual words are unused in the case of VLAD, so just return
-      # dummy constant.
-      self._feature_visual_words = tf.constant(-1, dtype=tf.int32)
-      if aggregation_config.use_regional_aggregation:
-        self._aggregated_descriptors = self._ComputeRvlad(
-            self._features,
-            self._num_features_per_region,
-            codebook,
-            use_l2_normalization=aggregation_config.use_l2_normalization,
-            num_assignments=aggregation_config.num_assignments)
-      else:
-        self._aggregated_descriptors = self._ComputeVlad(
-            self._features,
-            codebook,
-            use_l2_normalization=aggregation_config.use_l2_normalization,
-            num_assignments=aggregation_config.num_assignments)
-    elif (self._aggregation_type == _ASMK or
-          self._aggregation_type == _ASMK_STAR):
-      if aggregation_config.use_regional_aggregation:
-        (self._aggregated_descriptors,
-         self._feature_visual_words) = self._ComputeRasmk(
-             self._features,
-             self._num_features_per_region,
-             codebook,
-             num_assignments=aggregation_config.num_assignments)
-      else:
-        (self._aggregated_descriptors,
-         self._feature_visual_words) = self._ComputeAsmk(
-             self._features,
-             codebook,
-             num_assignments=aggregation_config.num_assignments)
-    else:
+    if self._aggregation_type  not in [_VLAD, _ASMK, _ASMK_STAR]:
       raise ValueError("Invalid aggregation type: %d" % self._aggregation_type)
 
-    # Initialize variables in the TF graph.
-    sess.run(tf.compat.v1.global_variables_initializer())
+    # Load codebook
+    codebook = tf.Variable(
+        tf.zeros([self._codebook_size, self._feature_dimensionality],
+                 dtype=tf.float32),
+        name=_CLUSTER_CENTERS_VAR_NAME)
+    ckpt = tf.train.Checkpoint(codebook=codebook)
+    ckpt.restore(self._codebook_path)
+
+    self._codebook = codebook
 
   def Extract(self, features, num_features_per_region=None):
     """Extracts aggregated representation.
@@ -129,10 +89,13 @@ class ExtractAggregatedRepresentation(object):
     Raises:
       ValueError: If inputs are misconfigured.
     """
+    features = tf.cast(features, dtype=tf.float32)
+
     if num_features_per_region is None:
       # Use dummy value since it is unused.
       num_features_per_region = []
     else:
+      num_features_per_region = tf.cast(num_features_per_region, dtype=tf.int32)
       if len(num_features_per_region
             ) and sum(num_features_per_region) != features.shape[0]:
         raise ValueError(
@@ -140,12 +103,41 @@ class ExtractAggregatedRepresentation(object):
             "features.shape[0] are different: %d vs %d" %
             (sum(num_features_per_region), features.shape[0]))
 
-    aggregated_descriptors, feature_visual_words = self._sess.run(
-        [self._aggregated_descriptors, self._feature_visual_words],
-        feed_dict={
-            self._features: features,
-            self._num_features_per_region: num_features_per_region
-        })
+    # Extract features based on desired options.
+    if self._aggregation_type == _VLAD:
+      # Feature visual words are unused in the case of VLAD, so just return
+      # dummy constant.
+      feature_visual_words = tf.constant(-1, dtype=tf.int32)
+      if self._use_regional_aggregation:
+        aggregated_descriptors = self._ComputeRvlad(
+            features,
+            num_features_per_region,
+            self._codebook,
+            use_l2_normalization=self._use_l2_normalization,
+            num_assignments=self._num_assignments)
+      else:
+        aggregated_descriptors = self._ComputeVlad(
+            features,
+            self._codebook,
+            use_l2_normalization=self._use_l2_normalization,
+            num_assignments=self._num_assignments)
+    elif (self._aggregation_type == _ASMK or
+          self._aggregation_type == _ASMK_STAR):
+      if self._use_regional_aggregation:
+        (aggregated_descriptors,
+         feature_visual_words) = self._ComputeRasmk(
+             features,
+             num_features_per_region,
+             self._codebook,
+             num_assignments=self._num_assignments)
+      else:
+        (aggregated_descriptors,
+         feature_visual_words) = self._ComputeAsmk(
+             features,
+             self._codebook,
+             num_assignments=self._num_assignments)
+
+    feature_visual_words_output = feature_visual_words.numpy()
 
     # If using ASMK*/RASMK*, binarize the aggregated descriptors.
     if self._aggregation_type == _ASMK_STAR:
@@ -153,9 +145,11 @@ class ExtractAggregatedRepresentation(object):
           aggregated_descriptors, [-1, self._feature_dimensionality])
       packed_descriptors = np.packbits(
           reshaped_aggregated_descriptors > 0, axis=1)
-      aggregated_descriptors = np.reshape(packed_descriptors, [-1])
+      aggregated_descriptors_output = np.reshape(packed_descriptors, [-1])
+    else:
+      aggregated_descriptors_output = aggregated_descriptors.numpy()
 
-    return aggregated_descriptors, feature_visual_words
+    return aggregated_descriptors_output, feature_visual_words_output
 
   def _ComputeVlad(self,
                    features,
@@ -270,11 +264,12 @@ class ExtractAggregatedRepresentation(object):
           output_vlad: VLAD descriptor updated to take into account contribution
             from ind-th feature.
         """
-        return ind + 1, tf.compat.v1.tensor_scatter_add(
-            vlad, tf.expand_dims(selected_visual_words[ind], axis=1),
-            tf.tile(
-                tf.expand_dims(features[ind], axis=0), [num_assignments, 1]) -
-            tf.gather(codebook, selected_visual_words[ind]))
+        diff = tf.tile(
+            tf.expand_dims(features[ind],
+                           axis=0), [num_assignments, 1]) - tf.gather(
+                               codebook, selected_visual_words[ind])
+        return ind + 1, tf.tensor_scatter_nd_add(
+            vlad, tf.expand_dims(selected_visual_words[ind], axis=1), diff)
 
       ind_vlad = tf.constant(0, dtype=tf.int32)
       keep_going = lambda j, vlad: tf.less(j, num_features)

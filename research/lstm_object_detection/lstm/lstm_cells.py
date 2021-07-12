@@ -12,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """BottleneckConvLSTMCell implementation."""
+import functools
 
-import tensorflow as tf
-from tensorflow.contrib.framework.python.ops import variables
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
+
+from tensorflow.contrib import rnn as contrib_rnn
+from tensorflow.contrib.framework.python.ops import variables as contrib_variables
 import lstm_object_detection.lstm.utils as lstm_utils
 
-slim = tf.contrib.slim
 
-_batch_norm = tf.contrib.layers.batch_norm
-
-
-class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
+class BottleneckConvLSTMCell(contrib_rnn.RNNCell):
   """Basic LSTM recurrent network cell using separable convolutions.
 
   The implementation is based on:
@@ -58,15 +57,15 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
       num_units: int, The number of channels in the LSTM cell.
       forget_bias: float, The bias added to forget gates (see above).
       activation: Activation function of the inner states.
-      flatten_state: if True, state tensor will be flattened and stored as
-        a 2-d tensor. Use for exporting the model to tfmini.
+      flatten_state: if True, state tensor will be flattened and stored as a 2-d
+        tensor. Use for exporting the model to tfmini.
       clip_state: if True, clip state between [-6, 6].
-      output_bottleneck: if True, the cell bottleneck will be concatenated
-        to the cell output.
+      output_bottleneck: if True, the cell bottleneck will be concatenated to
+        the cell output.
       pre_bottleneck: if True, cell assumes that bottlenecking was performing
         before the function was called.
-      visualize_gates: if True, add histogram summaries of all gates
-        and outputs to tensorboard.
+      visualize_gates: if True, add histogram summaries of all gates and outputs
+        to tensorboard.
     """
     self._filter_size = list(filter_size)
     self._output_size = list(output_size)
@@ -84,13 +83,12 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
 
   @property
   def state_size(self):
-    return tf.contrib.rnn.LSTMStateTuple(self._output_size + [self._num_units],
-                                         self._output_size + [self._num_units])
+    return contrib_rnn.LSTMStateTuple(self._output_size + [self._num_units],
+                                      self._output_size + [self._num_units])
 
   @property
   def state_size_flat(self):
-    return tf.contrib.rnn.LSTMStateTuple([self._param_count],
-                                         [self._param_count])
+    return contrib_rnn.LSTMStateTuple([self._param_count], [self._param_count])
 
   @property
   def output_size(self):
@@ -103,6 +101,7 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
       inputs: Input tensor at the current timestep.
       state: Tuple of tensors, the state and output at the previous timestep.
       scope: Optional scope.
+
     Returns:
       A tuple where the first element is the LSTM output and the second is
       a LSTMStateTuple of the state at the current timestep.
@@ -122,7 +121,7 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
       if self._pre_bottleneck:
         bottleneck = inputs
       else:
-        bottleneck = tf.contrib.layers.separable_conv2d(
+        bottleneck = slim.separable_conv2d(
             tf.concat([inputs, h], 3),
             self._num_units,
             self._filter_size,
@@ -134,7 +133,7 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
         if self._viz_gates:
           slim.summaries.add_histogram_summary(bottleneck, 'bottleneck')
 
-      concat = tf.contrib.layers.separable_conv2d(
+      concat = slim.separable_conv2d(
           bottleneck,
           4 * self._num_units,
           self._filter_size,
@@ -165,7 +164,7 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
         new_c = tf.reshape(new_c, [-1, self._param_count])
         new_h = tf.reshape(new_h, [-1, self._param_count])
 
-      return output, tf.contrib.rnn.LSTMStateTuple(new_c, new_h)
+      return output, contrib_rnn.LSTMStateTuple(new_c, new_h)
 
   def init_state(self, state_name, batch_size, dtype, learned_state=False):
     """Creates an initial state compatible with this cell.
@@ -184,7 +183,8 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
         self.state_size_flat if self._flatten_state else self.state_size)
     # list of 2 zero tensors or variables tensors, depending on if
     # learned_state is true
-    ret_flat = [(variables.model_variable(
+    # pylint: disable=g-long-ternary,g-complex-comprehension
+    ret_flat = [(contrib_variables.model_variable(
         state_name + str(i),
         shape=s,
         dtype=dtype,
@@ -202,8 +202,7 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
       ]
     for s, r in zip(state_size, ret_flat):
       r.set_shape([None] + s)
-    return tf.contrib.framework.nest.pack_sequence_as(
-        structure=[1, 1], flat_sequence=ret_flat)
+    return tf.nest.pack_sequence_as(structure=[1, 1], flat_sequence=ret_flat)
 
   def pre_bottleneck(self, inputs, state, input_index):
     """Apply pre-bottleneck projection to inputs.
@@ -217,6 +216,7 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
       state: 4D Tensor with shape [batch_size x width x height x state_size].
       input_index: integer index indicating which base features the inputs
         correspoding to.
+
     Returns:
       inputs: pre-bottlenecked inputs.
     Raises:
@@ -227,12 +227,13 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
     # returns the state as a tuple. This should not be an issue since we
     # only need to modify state[1] during export, when state should be a
     # list.
-    if not len(inputs.shape) == 4:
+    if len(inputs.shape) != 4:
       raise ValueError('Expect rank 4 feature tensor.')
-    if not self._flatten_state and not len(state.shape) == 4:
+    if not self._flatten_state and len(state.shape) != 4:
       raise ValueError('Expect rank 4 state tensor.')
-    if self._flatten_state and not len(state.shape) == 2:
+    if self._flatten_state and len(state.shape) != 2:
       raise ValueError('Expect rank 2 state tensor when flatten_state is set.')
+
     with tf.name_scope(None):
       state = tf.identity(state, name='raw_inputs/init_lstm_h')
     if self._flatten_state:
@@ -242,7 +243,7 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
       state = tf.reshape(state, [batch_size, height, width, -1])
     with tf.variable_scope('conv_lstm_cell', reuse=tf.AUTO_REUSE):
       scope_name = 'bottleneck_%d' % input_index
-      inputs = tf.contrib.layers.separable_conv2d(
+      inputs = slim.separable_conv2d(
           tf.concat([inputs, state], 3),
           self.output_size[-1],
           self._filter_size,
@@ -257,7 +258,7 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
     return inputs
 
 
-class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
+class GroupedConvLSTMCell(contrib_rnn.RNNCell):
   """Basic LSTM recurrent network cell using separable convolutions.
 
   The implementation is based on: https://arxiv.org/abs/1903.10172.
@@ -286,7 +287,8 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
                output_bottleneck=False,
                pre_bottleneck=False,
                is_quantized=False,
-               visualize_gates=False):
+               visualize_gates=False,
+               conv_op_overrides=None):
     """Initialize the basic LSTM cell.
 
     Args:
@@ -297,21 +299,25 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
       forget_bias: float, The bias added to forget gates (see above).
       activation: Activation function of the inner states.
       use_batch_norm: if True, use batch norm after convolution
-      flatten_state: if True, state tensor will be flattened and stored as
-        a 2-d tensor. Use for exporting the model to tfmini
+      flatten_state: if True, state tensor will be flattened and stored as a 2-d
+        tensor. Use for exporting the model to tfmini
       groups: Number of groups to split the state into. Must evenly divide
         num_units.
       clip_state: if True, clips state between [-6, 6].
       scale_state: if True, scales state so that all values are under 6 at all
         times.
-      output_bottleneck: if True, the cell bottleneck will be concatenated
-        to the cell output.
+      output_bottleneck: if True, the cell bottleneck will be concatenated to
+        the cell output.
       pre_bottleneck: if True, cell assumes that bottlenecking was performing
         before the function was called.
       is_quantized: if True, the model is in quantize mode, which requires
         quantization friendly concat and separable_conv2d ops.
-      visualize_gates: if True, add histogram summaries of all gates
-        and outputs to tensorboard
+      visualize_gates: if True, add histogram summaries of all gates and outputs
+        to tensorboard
+      conv_op_overrides: A list of convolutional operations that override the
+        'bottleneck' and 'convolution' layers before lstm gates. If None, the
+        original implementation of seperable_conv will be used. The length of
+        the list should be two.
 
     Raises:
       ValueError: when both clip_state and scale_state are enabled.
@@ -337,16 +343,19 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
     self._is_quantized = is_quantized
     for dim in self._output_size:
       self._param_count *= dim
+    self._conv_op_overrides = conv_op_overrides
+    if self._conv_op_overrides and len(self._conv_op_overrides) != 2:
+      raise ValueError('Bottleneck and Convolutional layer should be overriden'
+                       'together')
 
   @property
   def state_size(self):
-    return tf.contrib.rnn.LSTMStateTuple(self._output_size + [self._num_units],
-                                         self._output_size + [self._num_units])
+    return contrib_rnn.LSTMStateTuple(self._output_size + [self._num_units],
+                                      self._output_size + [self._num_units])
 
   @property
   def state_size_flat(self):
-    return tf.contrib.rnn.LSTMStateTuple([self._param_count],
-                                         [self._param_count])
+    return contrib_rnn.LSTMStateTuple([self._param_count], [self._param_count])
 
   @property
   def output_size(self):
@@ -370,6 +379,7 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
       inputs: Input tensor at the current timestep.
       state: Tuple of tensors, the state at the previous timestep.
       scope: Optional scope.
+
     Returns:
       A tuple where the first element is the LSTM output and the second is
       a LSTMStateTuple of the state at the current timestep.
@@ -406,30 +416,37 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
         if self._pre_bottleneck:
           bottleneck = inputs_list[k]
         else:
+          if self._conv_op_overrides:
+            bottleneck_fn = self._conv_op_overrides[0]
+          else:
+            bottleneck_fn = functools.partial(
+                lstm_utils.quantizable_separable_conv2d,
+                kernel_size=self._filter_size,
+                activation_fn=self._activation)
           if self._use_batch_norm:
-            b_x = lstm_utils.quantizable_separable_conv2d(
-                inputs,
-                self._num_units / self._groups,
-                self._filter_size,
+            b_x = bottleneck_fn(
+                inputs=inputs,
+                num_outputs=self._num_units // self._groups,
                 is_quantized=self._is_quantized,
                 depth_multiplier=1,
-                activation_fn=None,
                 normalizer_fn=None,
                 scope='bottleneck_%d_x' % k)
-            b_h = lstm_utils.quantizable_separable_conv2d(
-                h_list[k],
-                self._num_units / self._groups,
-                self._filter_size,
+            b_h = bottleneck_fn(
+                inputs=h_list[k],
+                num_outputs=self._num_units // self._groups,
                 is_quantized=self._is_quantized,
                 depth_multiplier=1,
-                activation_fn=None,
                 normalizer_fn=None,
                 scope='bottleneck_%d_h' % k)
             b_x = slim.batch_norm(
-                b_x, scale=True, is_training=self._is_training,
+                b_x,
+                scale=True,
+                is_training=self._is_training,
                 scope='BatchNorm_%d_X' % k)
             b_h = slim.batch_norm(
-                b_h, scale=True, is_training=self._is_training,
+                b_h,
+                scale=True,
+                is_training=self._is_training,
                 scope='BatchNorm_%d_H' % k)
             bottleneck = b_x + b_h
           else:
@@ -439,27 +456,29 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
             bottleneck_concat = lstm_utils.quantizable_concat(
                 [inputs, h_list[k]],
                 axis=3,
-                is_training=self._is_training,
+                is_training=False,
                 is_quantized=self._is_quantized,
                 scope='bottleneck_%d/quantized_concat' % k)
-
-            bottleneck = lstm_utils.quantizable_separable_conv2d(
-                bottleneck_concat,
-                self._num_units / self._groups,
-                self._filter_size,
+            bottleneck = bottleneck_fn(
+                inputs=bottleneck_concat,
+                num_outputs=self._num_units // self._groups,
                 is_quantized=self._is_quantized,
                 depth_multiplier=1,
-                activation_fn=self._activation,
                 normalizer_fn=None,
                 scope='bottleneck_%d' % k)
 
-        concat = lstm_utils.quantizable_separable_conv2d(
-            bottleneck,
-            4 * self._num_units / self._groups,
-            self._filter_size,
+        if self._conv_op_overrides:
+          conv_fn = self._conv_op_overrides[1]
+        else:
+          conv_fn = functools.partial(
+              lstm_utils.quantizable_separable_conv2d,
+              kernel_size=self._filter_size,
+              activation_fn=None)
+        concat = conv_fn(
+            inputs=bottleneck,
+            num_outputs=4 * self._num_units // self._groups,
             is_quantized=self._is_quantized,
             depth_multiplier=1,
-            activation_fn=None,
             normalizer_fn=None,
             scope='concat_conv_%d' % k)
 
@@ -487,15 +506,6 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
             is_quantized=self._is_quantized,
             scope='forget_gate_%d/add_quant' % k)
         f_act = tf.sigmoid(f_add)
-        # The quantization range is fixed for the sigmoid to ensure that zero
-        # is exactly representable.
-        f_act = lstm_utils.quantize_op(
-            f_act,
-            is_training=False,
-            default_min=0,
-            default_max=1,
-            is_quantized=self._is_quantized,
-            scope='forget_gate_%d/act_quant' % k)
 
         a = c_list[k] * f_act
         a = lstm_utils.quantize_op(
@@ -505,24 +515,14 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
             scope='forget_gate_%d/mul_quant' % k)
 
         i_act = tf.sigmoid(i)
-        # The quantization range is fixed for the sigmoid to ensure that zero
-        # is exactly representable.
-        i_act = lstm_utils.quantize_op(
-            i_act,
-            is_training=False,
-            default_min=0,
-            default_max=1,
-            is_quantized=self._is_quantized,
-            scope='input_gate_%d/act_quant' % k)
 
         j_act = self._activation(j)
         # The quantization range is fixed for the relu6 to ensure that zero
         # is exactly representable.
-        j_act = lstm_utils.quantize_op(
+        j_act = lstm_utils.fixed_quantize_op(
             j_act,
-            is_training=False,
-            default_min=0,
-            default_max=6,
+            fixed_min=0.0,
+            fixed_max=6.0,
             is_quantized=self._is_quantized,
             scope='new_input_%d/act_quant' % k)
 
@@ -541,11 +541,10 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
         # to the concat have the same range, removing the need for rescaling.
         # The quantization ranges input to the relu6 are propagated to its
         # output. Any mismatch between these two ranges will cause an error.
-        new_c = lstm_utils.quantize_op(
+        new_c = lstm_utils.fixed_quantize_op(
             new_c,
-            is_training=False,
-            default_min=0,
-            default_max=6,
+            fixed_min=0.0,
+            fixed_max=6.0,
             is_quantized=self._is_quantized,
             scope='new_c_%d/add_quant' % k)
 
@@ -560,34 +559,23 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
         new_c_act = self._activation(new_c)
         # The quantization range is fixed for the relu6 to ensure that zero
         # is exactly representable.
-        new_c_act = lstm_utils.quantize_op(
+        new_c_act = lstm_utils.fixed_quantize_op(
             new_c_act,
-            is_training=False,
-            default_min=0,
-            default_max=6,
+            fixed_min=0.0,
+            fixed_max=6.0,
             is_quantized=self._is_quantized,
             scope='new_c_%d/act_quant' % k)
 
         o_act = tf.sigmoid(o)
-        # The quantization range is fixed for the sigmoid to ensure that zero
-        # is exactly representable.
-        o_act = lstm_utils.quantize_op(
-            o_act,
-            is_training=False,
-            default_min=0,
-            default_max=1,
-            is_quantized=self._is_quantized,
-            scope='output_%d/act_quant' % k)
 
         new_h = new_c_act * o_act
         # The quantization range is fixed since it is input to a concat.
         # A range of [0, 6] is used since |new_h| is a product of ranges [0, 6]
         # and [0, 1].
-        new_h_act = lstm_utils.quantize_op(
+        new_h_act = lstm_utils.fixed_quantize_op(
             new_h,
-            is_training=False,
-            default_min=0,
-            default_max=6,
+            fixed_min=0.0,
+            fixed_max=6.0,
             is_quantized=self._is_quantized,
             scope='new_h_%d/act_quant' % k)
 
@@ -632,7 +620,7 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
       with tf.name_scope(None):
         new_c = tf.identity(new_c, name='raw_outputs/lstm_c')
         new_h = tf.identity(new_h, name='raw_outputs/lstm_h')
-      states_and_output = tf.contrib.rnn.LSTMStateTuple(new_c, new_h)
+      states_and_output = contrib_rnn.LSTMStateTuple(new_c, new_h)
 
       return output, states_and_output
 
@@ -649,11 +637,12 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
     Returns:
       ret: the created initial state
     """
-    state_size = (self.state_size_flat if self._flatten_state
-                  else self.state_size)
+    state_size = (
+        self.state_size_flat if self._flatten_state else self.state_size)
     # list of 2 zero tensors or variables tensors,
     # depending on if learned_state is true
-    ret_flat = [(variables.model_variable(
+    # pylint: disable=g-long-ternary,g-complex-comprehension
+    ret_flat = [(contrib_variables.model_variable(
         state_name + str(i),
         shape=s,
         dtype=dtype,
@@ -668,8 +657,7 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
                   for tensor in ret_flat]
     for s, r in zip(state_size, ret_flat):
       r = tf.reshape(r, [-1] + s)
-    ret = tf.contrib.framework.nest.pack_sequence_as(
-        structure=[1, 1], flat_sequence=ret_flat)
+    ret = tf.nest.pack_sequence_as(structure=[1, 1], flat_sequence=ret_flat)
     return ret
 
   def pre_bottleneck(self, inputs, state, input_index):
@@ -684,6 +672,7 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
       state: 4D Tensor with shape [batch_size x width x height x state_size].
       input_index: integer index indicating which base features the inputs
         correspoding to.
+
     Returns:
       inputs: pre-bottlenecked inputs.
     Raises:
@@ -696,14 +685,16 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
     # list.
     if not self._pre_bottleneck:
       raise ValueError('Only applied when pre_bottleneck is set to true.')
-    if not len(inputs.shape) == 4:
+    if len(inputs.shape) != 4:
       raise ValueError('Expect a rank 4 feature tensor.')
-    if not self._flatten_state and not len(state.shape) == 4:
+    if not self._flatten_state and len(state.shape) != 4:
       raise ValueError('Expect rank 4 state tensor.')
-    if self._flatten_state and not len(state.shape) == 2:
+    if self._flatten_state and len(state.shape) != 2:
       raise ValueError('Expect rank 2 state tensor when flatten_state is set.')
+
     with tf.name_scope(None):
-      state = tf.identity(state, name='raw_inputs/init_lstm_h')
+      state = tf.identity(
+          state, name='raw_inputs/init_lstm_h_%d' % (input_index + 1))
     if self._flatten_state:
       batch_size = inputs.shape[0]
       height = inputs.shape[1]
@@ -739,6 +730,5 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
       # For exporting inference graph, we only mark the first timestep.
       with tf.name_scope(None):
         inputs = tf.identity(
-            inputs,
-            name='raw_outputs/base_endpoint_%d' % (input_index + 1))
+            inputs, name='raw_outputs/base_endpoint_%d' % (input_index + 1))
     return inputs

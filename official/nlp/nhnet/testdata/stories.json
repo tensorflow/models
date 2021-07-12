@@ -1,0 +1,29 @@
+[
+    {
+        "urls": [
+            "http://url_000.html",
+            "http://url_001.html"
+        ],
+        "label": "headline 0"
+    },
+    {
+        "urls": [
+            "http://url_000.html",
+            "http://url_001.html"
+        ],
+        "label": "headline 1"
+    },
+    {
+        "urls": [
+            "http://url_002.html",
+            "http://url_001.html"
+        ],
+        "label": "headline 2"
+    },
+    {
+        "urls": [
+            "http://url_003.html"
+        ],
+        "label": "headline 3"
+    }
+]

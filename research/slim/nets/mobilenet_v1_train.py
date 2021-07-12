@@ -18,15 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
+
 from tensorflow.contrib import quantize as contrib_quantize
-from tensorflow.contrib import slim as contrib_slim
 
 from datasets import dataset_factory
 from nets import mobilenet_v1
 from preprocessing import preprocessing_factory
-
-slim = contrib_slim
 
 flags = tf.app.flags
 
@@ -104,11 +103,10 @@ def imagenet_input(is_training):
 
   image = image_preprocessing_fn(image, FLAGS.image_size, FLAGS.image_size)
 
-  images, labels = tf.train.batch(
-      [image, label],
-      batch_size=FLAGS.batch_size,
-      num_threads=4,
-      capacity=5 * FLAGS.batch_size)
+  images, labels = tf.train.batch([image, label],
+                                  batch_size=FLAGS.batch_size,
+                                  num_threads=4,
+                                  capacity=5 * FLAGS.batch_size)
   labels = slim.one_hot_encoding(labels, FLAGS.num_classes)
   return images, labels
 
@@ -167,7 +165,8 @@ def get_checkpoint_init_fn():
   """Returns the checkpoint init_fn if the checkpoint is provided."""
   if FLAGS.fine_tune_checkpoint:
     variables_to_restore = slim.get_variables_to_restore()
-    global_step_reset = tf.assign(tf.train.get_or_create_global_step(), 0)
+    global_step_reset = tf.assign(
+        tf.train.get_or_create_global_step(), 0)
     # When restoring from a floating point model, the min/max values for
     # quantized weights and activations are not present.
     # We instruct slim to ignore variables that are missing during restoration

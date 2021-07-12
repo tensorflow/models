@@ -1,3 +1,0 @@
-[submodule "tensorflow"]
-	path = research/syntaxnet/tensorflow
-	url = https://github.com/tensorflow/tensorflow.git

@@ -19,16 +19,21 @@ This file provides a generic training method that can be used to train a
 DetectionModel.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import functools
-import tensorflow as tf
+import six
+from six.moves import range
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from object_detection.builders import optimizer_builder
 from object_detection.core import standard_fields as fields
 from object_detection.utils import ops as util_ops
 from object_detection.utils import variables_helper
 from deployment import model_deploy
-
-slim = tf.contrib.slim
 
 
 def create_input_queue(create_tensor_dict_fn):
@@ -197,7 +202,7 @@ def get_restore_checkpoint_ops(restore_checkpoints, detection_model,
     available_var_map = (
         variables_helper.get_variables_available_in_checkpoint(
             var_map, restore_checkpoint))
-    for var_name, var in available_var_map.iteritems():
+    for var_name, var in six.iteritems(available_var_map):
       if var in vars_restored:
         tf.logging.info('Variable %s contained in multiple checkpoints',
                      var.op.name)
@@ -209,7 +214,7 @@ def get_restore_checkpoint_ops(restore_checkpoints, detection_model,
     available_ema_var_map = {}
     ckpt_reader = tf.train.NewCheckpointReader(restore_checkpoint)
     ckpt_vars_to_shape_map = ckpt_reader.get_variable_to_shape_map()
-    for var_name, var in available_var_map.iteritems():
+    for var_name, var in six.iteritems(available_var_map):
       var_name_ema = var_name + '/ExponentialMovingAverage'
       if var_name_ema in ckpt_vars_to_shape_map:
         available_ema_var_map[var_name_ema] = var
@@ -217,7 +222,7 @@ def get_restore_checkpoint_ops(restore_checkpoints, detection_model,
         available_ema_var_map[var_name] = var
     available_var_map = available_ema_var_map
     init_saver = tf.train.Saver(available_var_map)
-    if available_var_map.keys():
+    if list(available_var_map.keys()):
       restorers.append(init_saver)
     else:
       tf.logging.info('WARNING: Checkpoint %s has no restorable variables',

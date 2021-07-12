@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,11 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 r"""Convert checkpoints created by Estimator (tf1) to be Keras compatible."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import numpy as np
 import tensorflow.compat.v1 as tf  # TF 1.x
@@ -47,12 +44,13 @@ BERT_V2_NAME_REPLACEMENTS = (
     ("embeddings/position_embeddings", "position_embedding/embeddings"),
     ("embeddings/LayerNorm", "embeddings/layer_norm"),
     ("attention/self", "self_attention"),
-    ("attention/output/dense", "self_attention_output"),
+    ("attention/output/dense", "self_attention/attention_output"),
     ("attention/output/LayerNorm", "self_attention_layer_norm"),
     ("intermediate/dense", "intermediate"),
     ("output/dense", "output"),
     ("output/LayerNorm", "output_layer_norm"),
     ("pooler/dense", "pooler_transform"),
+    ("cls/predictions", "bert/cls/predictions"),
     ("cls/predictions/output_bias", "cls/predictions/output_bias/bias"),
     ("cls/seq_relationship/output_bias", "predictions/transform/logits/bias"),
     ("cls/seq_relationship/output_weights",
@@ -94,9 +92,9 @@ def _get_permutation(name, permutations):
 
 def _get_new_shape(name, shape, num_heads):
   """Checks whether a variable requires reshape by pattern matching."""
-  if "self_attention_output/kernel" in name:
+  if "self_attention/attention_output/kernel" in name:
     return tuple([num_heads, shape[0] // num_heads, shape[1]])
-  if "self_attention_output/bias" in name:
+  if "self_attention/attention_output/bias" in name:
     return shape
 
   patterns = [
@@ -111,11 +109,20 @@ def _get_new_shape(name, shape, num_heads):
   return None
 
 
-def create_v2_checkpoint(model, src_checkpoint, output_path):
+def create_v2_checkpoint(model,
+                         src_checkpoint,
+                         output_path,
+                         checkpoint_model_name="model"):
   """Converts a name-based matched TF V1 checkpoint to TF V2 checkpoint."""
   # Uses streaming-restore in eager model to read V1 name-based checkpoints.
   model.load_weights(src_checkpoint).assert_existing_objects_matched()
-  checkpoint = tf.train.Checkpoint(model=model)
+  if hasattr(model, "checkpoint_items"):
+    checkpoint_items = model.checkpoint_items
+  else:
+    checkpoint_items = {}
+
+  checkpoint_items[checkpoint_model_name] = model
+  checkpoint = tf.train.Checkpoint(**checkpoint_items)
   checkpoint.save(output_path)
 
 
@@ -164,7 +171,6 @@ def convert(checkpoint_from_path,
         new_shape = _get_new_shape(new_var_name, tensor.shape, num_heads)
       if new_shape:
         tf.logging.info("Veriable %s has a shape change from %s to %s",
-
                         var_name, tensor.shape, new_shape)
         tensor = np.reshape(tensor, new_shape)
 
@@ -188,7 +194,7 @@ def convert(checkpoint_from_path,
     with tf.Session() as sess:
       sess.run(tf.global_variables_initializer())
       tf.logging.info("Writing checkpoint_to_path %s", checkpoint_to_path)
-      saver.save(sess, checkpoint_to_path)
+      saver.save(sess, checkpoint_to_path, write_meta_graph=False)
 
   tf.logging.info("Summary:")
   tf.logging.info("  Converted %d variable name(s).", len(new_variable_map))

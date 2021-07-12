@@ -15,7 +15,9 @@
 
 """Tests for graph_rewriter_builder."""
 import mock
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+from tensorflow.contrib import layers as contrib_layers
+from tensorflow.contrib import quantize as contrib_quantize
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
 from lstm_object_detection.builders import graph_rewriter_builder
@@ -27,9 +29,9 @@ class QuantizationBuilderTest(tf.test.TestCase):
 
   def testQuantizationBuilderSetsUpCorrectTrainArguments(self):
     with mock.patch.object(
-        tf.contrib.quantize,
+        contrib_quantize,
         'experimental_create_training_graph') as mock_quant_fn:
-      with mock.patch.object(tf.contrib.layers,
+      with mock.patch.object(contrib_layers,
                              'summarize_collection') as mock_summarize_col:
         graph_rewriter_proto = graph_rewriter_pb2.GraphRewriter()
         graph_rewriter_proto.quantization.delay = 10
@@ -44,9 +46,9 @@ class QuantizationBuilderTest(tf.test.TestCase):
         mock_summarize_col.assert_called_with('quant_vars')
 
   def testQuantizationBuilderSetsUpCorrectEvalArguments(self):
-    with mock.patch.object(tf.contrib.quantize,
+    with mock.patch.object(contrib_quantize,
                            'experimental_create_eval_graph') as mock_quant_fn:
-      with mock.patch.object(tf.contrib.layers,
+      with mock.patch.object(contrib_layers,
                              'summarize_collection') as mock_summarize_col:
         graph_rewriter_proto = graph_rewriter_pb2.GraphRewriter()
         graph_rewriter_proto.quantization.delay = 10

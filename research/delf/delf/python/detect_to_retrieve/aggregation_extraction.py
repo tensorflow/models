@@ -59,7 +59,7 @@ def _ReadMappingBasenameToBoxNames(input_path, index_image_names):
       strings (file names containing DELF features for boxes).
   """
   images_to_box_feature_files = {}
-  with tf.gfile.GFile(input_path, 'r') as f:
+  with tf.io.gfile.GFile(input_path, 'r') as f:
     reader = csv.DictReader(f)
     for row in reader:
       index_image_name = index_image_names[int(row['index_image_id'])]
@@ -101,7 +101,7 @@ def ExtractAggregatedRepresentationsToFiles(image_names, features_dir,
 
   # Parse AggregationConfig proto, and select output extension.
   config = aggregation_config_pb2.AggregationConfig()
-  with tf.gfile.GFile(aggregation_config_path, 'r') as f:
+  with tf.io.gfile.GFile(aggregation_config_path, 'r') as f:
     text_format.Merge(f.read(), config)
   output_extension = '.'
   if config.use_regional_aggregation:
@@ -121,74 +121,73 @@ def ExtractAggregatedRepresentationsToFiles(image_names, features_dir,
         mapping_path, image_names)
 
   # Create output directory if necessary.
-  if not tf.gfile.Exists(output_aggregation_dir):
-    tf.gfile.MakeDirs(output_aggregation_dir)
+  if not tf.io.gfile.exists(output_aggregation_dir):
+    tf.io.gfile.makedirs(output_aggregation_dir)
 
-  with tf.Session() as sess:
-    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-        sess, config)
+  extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+      config)
 
-    start = time.clock()
-    for i in range(num_images):
-      if i == 0:
-        print('Starting to extract aggregation from images...')
-      elif i % _STATUS_CHECK_ITERATIONS == 0:
-        elapsed = (time.clock() - start)
-        print('Processing image %d out of %d, last %d '
-              'images took %f seconds' %
-              (i, num_images, _STATUS_CHECK_ITERATIONS, elapsed))
-        start = time.clock()
+  start = time.time()
+  for i in range(num_images):
+    if i == 0:
+      print('Starting to extract aggregation from images...')
+    elif i % _STATUS_CHECK_ITERATIONS == 0:
+      elapsed = (time.time() - start)
+      print('Processing image %d out of %d, last %d '
+            'images took %f seconds' %
+            (i, num_images, _STATUS_CHECK_ITERATIONS, elapsed))
+      start = time.time()
 
-      image_name = image_names[i]
+    image_name = image_names[i]
 
-      # Compose output file name, skip extraction for this image if it already
-      # exists.
-      output_aggregation_filename = os.path.join(output_aggregation_dir,
-                                                 image_name + output_extension)
-      if tf.io.gfile.exists(output_aggregation_filename):
-        print('Skipping %s' % image_name)
-        continue
+    # Compose output file name, skip extraction for this image if it already
+    # exists.
+    output_aggregation_filename = os.path.join(output_aggregation_dir,
+                                               image_name + output_extension)
+    if tf.io.gfile.exists(output_aggregation_filename):
+      print('Skipping %s' % image_name)
+      continue
 
-      # Load DELF features.
-      if config.use_regional_aggregation:
-        if not mapping_path:
-          raise ValueError(
-              'Requested regional aggregation, but mapping_path was not '
-              'provided')
-        descriptors_list = []
-        num_features_per_box = []
-        for box_feature_file in images_to_box_feature_files[image_name]:
-          delf_filename = os.path.join(features_dir,
-                                       box_feature_file + _DELF_EXTENSION)
-          _, _, box_descriptors, _, _ = feature_io.ReadFromFile(delf_filename)
-          # If `box_descriptors` is empty, reshape it such that it can be
-          # concatenated with other descriptors.
-          if not box_descriptors.shape[0]:
-            box_descriptors = np.reshape(box_descriptors,
-                                         [0, config.feature_dimensionality])
-          descriptors_list.append(box_descriptors)
-          num_features_per_box.append(box_descriptors.shape[0])
+    # Load DELF features.
+    if config.use_regional_aggregation:
+      if not mapping_path:
+        raise ValueError(
+            'Requested regional aggregation, but mapping_path was not '
+            'provided')
+      descriptors_list = []
+      num_features_per_box = []
+      for box_feature_file in images_to_box_feature_files[image_name]:
+        delf_filename = os.path.join(features_dir,
+                                     box_feature_file + _DELF_EXTENSION)
+        _, _, box_descriptors, _, _ = feature_io.ReadFromFile(delf_filename)
+        # If `box_descriptors` is empty, reshape it such that it can be
+        # concatenated with other descriptors.
+        if not box_descriptors.shape[0]:
+          box_descriptors = np.reshape(box_descriptors,
+                                       [0, config.feature_dimensionality])
+        descriptors_list.append(box_descriptors)
+        num_features_per_box.append(box_descriptors.shape[0])
 
-        descriptors = np.concatenate(descriptors_list)
-      else:
-        input_delf_filename = os.path.join(features_dir,
-                                           image_name + _DELF_EXTENSION)
-        _, _, descriptors, _, _ = feature_io.ReadFromFile(input_delf_filename)
-        # If `descriptors` is empty, reshape it to avoid extraction failure.
-        if not descriptors.shape[0]:
-          descriptors = np.reshape(descriptors,
-                                   [0, config.feature_dimensionality])
-        num_features_per_box = None
+      descriptors = np.concatenate(descriptors_list)
+    else:
+      input_delf_filename = os.path.join(features_dir,
+                                         image_name + _DELF_EXTENSION)
+      _, _, descriptors, _, _ = feature_io.ReadFromFile(input_delf_filename)
+      # If `descriptors` is empty, reshape it to avoid extraction failure.
+      if not descriptors.shape[0]:
+        descriptors = np.reshape(descriptors,
+                                 [0, config.feature_dimensionality])
+      num_features_per_box = None
 
-      # Extract and save aggregation. If using VLAD, only
-      # `aggregated_descriptors` needs to be saved.
-      (aggregated_descriptors,
-       feature_visual_words) = extractor.Extract(descriptors,
-                                                 num_features_per_box)
-      if config.aggregation_type == _VLAD:
-        datum_io.WriteToFile(aggregated_descriptors,
-                             output_aggregation_filename)
-      else:
-        datum_io.WritePairToFile(aggregated_descriptors,
-                                 feature_visual_words.astype('uint32'),
-                                 output_aggregation_filename)
+    # Extract and save aggregation. If using VLAD, only
+    # `aggregated_descriptors` needs to be saved.
+    (aggregated_descriptors,
+     feature_visual_words) = extractor.Extract(descriptors,
+                                               num_features_per_box)
+    if config.aggregation_type == _VLAD:
+      datum_io.WriteToFile(aggregated_descriptors,
+                           output_aggregation_filename)
+    else:
+      datum_io.WritePairToFile(aggregated_descriptors,
+                               feature_visual_words.astype('uint32'),
+                               output_aggregation_filename)

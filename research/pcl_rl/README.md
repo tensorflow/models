@@ -1,3 +1,6 @@
+![TensorFlow Requirement: 1.x](https://img.shields.io/badge/TensorFlow%20Requirement-1.x-brightgreen)
+![TensorFlow 2 Not Supported](https://img.shields.io/badge/TensorFlow%202%20Not%20Supported-%E2%9C%95-red.svg)
+
 Code for several RL algorithms used in the following papers:
 * "Improving Policy Gradient by Exploring Under-appreciated Rewards" by
 Ofir Nachum, Mohammad Norouzi, and Dale Schuurmans.

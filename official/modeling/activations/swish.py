@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,12 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Customized Swish activation."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Customized Swish activation."""
 
 import tensorflow as tf
 
@@ -56,7 +52,8 @@ def hard_swish(features):
     The activation value.
   """
   features = tf.convert_to_tensor(features)
-  return features * tf.nn.relu6(features + tf.constant(3.)) * (1. / 6.)
+  fdtype = features.dtype
+  return features * tf.nn.relu6(features + tf.cast(3., fdtype)) * (1. / 6.)
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')

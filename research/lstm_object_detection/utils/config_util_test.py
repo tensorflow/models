@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
 from lstm_object_detection.protos import pipeline_pb2 as internal_pipeline_pb2

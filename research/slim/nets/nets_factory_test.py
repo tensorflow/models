@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from nets import nets_factory
 
@@ -36,8 +36,7 @@ class NetworksTest(tf.test.TestCase):
         # Most networks use 224 as their default_image_size
         image_size = getattr(net_fn, 'default_image_size', 224)
         if net not in ['i3d', 's3dg']:
-          inputs = tf.random_uniform(
-              (batch_size, image_size, image_size, 3))
+          inputs = tf.random.uniform((batch_size, image_size, image_size, 3))
           logits, end_points = net_fn(inputs)
           self.assertTrue(isinstance(logits, tf.Tensor))
           self.assertTrue(isinstance(end_points, dict))
@@ -53,8 +52,7 @@ class NetworksTest(tf.test.TestCase):
         # Most networks use 224 as their default_image_size
         image_size = getattr(net_fn, 'default_image_size', 224)
         if net not in ['i3d', 's3dg']:
-          inputs = tf.random_uniform(
-              (batch_size, image_size, image_size, 3))
+          inputs = tf.random.uniform((batch_size, image_size, image_size, 3))
           logits, end_points = net_fn(inputs)
           self.assertTrue(isinstance(logits, tf.Tensor))
           self.assertTrue(isinstance(end_points, dict))
@@ -69,8 +67,7 @@ class NetworksTest(tf.test.TestCase):
         net_fn = nets_factory.get_network_fn(net, num_classes=num_classes)
         # Most networks use 224 as their default_image_size
         image_size = getattr(net_fn, 'default_image_size', 224) // 2
-        inputs = tf.random_uniform(
-            (batch_size, 10, image_size, image_size, 3))
+        inputs = tf.random.uniform((batch_size, 10, image_size, image_size, 3))
         logits, end_points = net_fn(inputs)
         self.assertTrue(isinstance(logits, tf.Tensor))
         self.assertTrue(isinstance(end_points, dict))

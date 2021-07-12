@@ -19,7 +19,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 def int64_feature(value):
@@ -36,6 +36,10 @@ def bytes_feature(value):
 
 def bytes_list_feature(value):
   return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
+
+
+def float_feature(value):
+  return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
 
 
 def float_list_feature(value):

@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,13 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Utility functions used in XLNet model."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
+"""Utility functions used in XLNet model."""
 
 import json
 import os
@@ -38,12 +33,13 @@ def create_run_config(is_training, is_finetune, flags):
       clamp_len=flags.clamp_len)
 
   if not is_finetune:
-    kwargs.update(dict(
-        mem_len=flags.mem_len,
-        reuse_len=flags.reuse_len,
-        bi_data=flags.bi_data,
-        clamp_len=flags.clamp_len,
-        same_length=flags.same_length))
+    kwargs.update(
+        dict(
+            mem_len=flags.mem_len,
+            reuse_len=flags.reuse_len,
+            bi_data=flags.bi_data,
+            clamp_len=flags.clamp_len,
+            same_length=flags.same_length))
 
   return RunConfig(**kwargs)
 
@@ -80,8 +76,10 @@ class XLNetConfig(object):
 
     assert FLAGS is not None or json_path is not None or args_dict is not None
 
-    self.keys = ['n_layer', 'd_model', 'n_head', 'd_head', 'd_inner',
-                 'ff_activation', 'untie_r', 'n_token']
+    self.keys = [
+        'n_layer', 'd_model', 'n_head', 'd_head', 'd_inner', 'ff_activation',
+        'untie_r', 'n_token'
+    ]
 
     if FLAGS is not None:
       self.init_from_flags(FLAGS)
@@ -102,7 +100,7 @@ class XLNetConfig(object):
       setattr(self, key, getattr(flags, key))
 
   def init_from_json(self, json_path):
-    with tf.gfile.Open(json_path) as f:
+    with tf.io.gfile.GFile(json_path) as f:
       json_data = json.load(f)
       self.init_from_dict(json_data)
 
@@ -113,9 +111,9 @@ class XLNetConfig(object):
       json_data[key] = getattr(self, key)
 
     json_dir = os.path.dirname(json_path)
-    if not tf.gfile.Exists(json_dir):
-      tf.gfile.MakeDirs(json_dir)
-    with tf.gfile.Open(json_path, 'w') as f:
+    if not tf.io.gfile.exists(json_dir):
+      tf.io.gfile.makedirs(json_dir)
+    with tf.io.gfile.GFile(json_path, 'w') as f:
       json.dump(json_data, f, indent=4, sort_keys=True)
 
 
@@ -152,17 +150,17 @@ class RunConfig(object):
       init_method: str, the initialization scheme, either "normal" or "uniform".
       init_range: float, initialize the parameters with a uniform distribution
         in [-init_range, init_range]. Only effective when init="uniform".
-      init_std: float, initialize the parameters with a normal distribution
-        with mean 0 and stddev init_std. Only effective when init="normal".
+      init_std: float, initialize the parameters with a normal distribution with
+        mean 0 and stddev init_std. Only effective when init="normal".
       mem_len: int, the number of tokens to cache.
-      reuse_len: int, the number of tokens in the currect batch to be cached
-        and reused in the future.
-      bi_data: bool, whether to use bidirectional input pipeline.
-        Usually set to True during pretraining and False during finetuning.
-      clamp_len: int, clamp all relative distances larger than clamp_len.
-        -1 means no clamping.
-      same_length: bool, whether to use the same attention length
-                   for each token.
+      reuse_len: int, the number of tokens in the currect batch to be cached and
+        reused in the future.
+      bi_data: bool, whether to use bidirectional input pipeline. Usually set to
+        True during pretraining and False during finetuning.
+      clamp_len: int, clamp all relative distances larger than clamp_len. -1
+        means no clamping.
+      same_length: bool, whether to use the same attention length for each
+        token.
       use_cls_mask: bool, whether to introduce cls mask.
     """
 

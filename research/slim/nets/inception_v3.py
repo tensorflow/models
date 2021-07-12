@@ -18,13 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from nets import inception_utils
 
-slim = contrib_slim
-trunc_normal = lambda stddev: tf.truncated_normal_initializer(0.0, stddev)
+# pylint: disable=g-long-lambda
+trunc_normal = lambda stddev: tf.truncated_normal_initializer(
+    0.0, stddev)
 
 
 def inception_v3_base(inputs,
@@ -483,7 +484,8 @@ def inception_v3(inputs,
     raise ValueError('depth_multiplier is not greater than zero.')
   depth = lambda d: max(int(d * depth_multiplier), min_depth)
 
-  with tf.variable_scope(scope, 'InceptionV3', [inputs], reuse=reuse) as scope:
+  with tf.variable_scope(
+      scope, 'InceptionV3', [inputs], reuse=reuse) as scope:
     with slim.arg_scope([slim.batch_norm, slim.dropout],
                         is_training=is_training):
       net, end_points = inception_v3_base(
@@ -521,7 +523,8 @@ def inception_v3(inputs,
       with tf.variable_scope('Logits'):
         if global_pool:
           # Global average pooling.
-          net = tf.reduce_mean(net, [1, 2], keep_dims=True, name='GlobalPool')
+          net = tf.reduce_mean(
+              input_tensor=net, axis=[1, 2], keepdims=True, name='GlobalPool')
           end_points['global_pool'] = net
         else:
           # Pooling with a fixed kernel size.

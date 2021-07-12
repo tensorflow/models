@@ -23,10 +23,9 @@ from __future__ import division
 from __future__ import print_function
 
 from absl import flags
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
-from object_detection import model_hparams
 from object_detection import model_lib
 
 tf.flags.DEFINE_bool('use_tpu', True, 'Use TPUs rather than plain CPUs')
@@ -58,10 +57,6 @@ flags.DEFINE_string('mode', 'train',
 flags.DEFINE_integer('train_batch_size', None, 'Batch size for training. If '
                      'this is not provided, batch size is read from training '
                      'config.')
-
-flags.DEFINE_string(
-    'hparams_overrides', None, 'Comma-separated list of '
-    'hyperparameters to override defaults.')
 flags.DEFINE_integer('num_train_steps', None, 'Number of train steps.')
 flags.DEFINE_boolean('eval_training_data', False,
                      'If training data should be evaluated for this job.')
@@ -76,6 +71,11 @@ flags.DEFINE_string(
     'where event and checkpoint files will be written.')
 flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '
                     'file.')
+flags.DEFINE_integer(
+    'max_eval_retries', 0, 'If running continuous eval, the maximum number of '
+    'retries upon encountering tf.errors.InvalidArgumentError. If negative, '
+    'will always retry the evaluation.'
+)
 
 FLAGS = tf.flags.FLAGS
 
@@ -85,17 +85,15 @@ def main(unused_argv):
   flags.mark_flag_as_required('pipeline_config_path')
 
   tpu_cluster_resolver = (
-      tf.contrib.cluster_resolver.TPUClusterResolver(
-          tpu=[FLAGS.tpu_name],
-          zone=FLAGS.tpu_zone,
-          project=FLAGS.gcp_project))
+      tf.distribute.cluster_resolver.TPUClusterResolver(
+          tpu=[FLAGS.tpu_name], zone=FLAGS.tpu_zone, project=FLAGS.gcp_project))
   tpu_grpc_url = tpu_cluster_resolver.get_master()
 
-  config = tf.contrib.tpu.RunConfig(
+  config = tf.estimator.tpu.RunConfig(
       master=tpu_grpc_url,
       evaluation_master=tpu_grpc_url,
       model_dir=FLAGS.model_dir,
-      tpu_config=tf.contrib.tpu.TPUConfig(
+      tpu_config=tf.estimator.tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,
           num_shards=FLAGS.num_shards))
 
@@ -105,7 +103,6 @@ def main(unused_argv):
 
   train_and_eval_dict = model_lib.create_estimator_and_inputs(
       run_config=config,
-      hparams=model_hparams.create_hparams(FLAGS.hparams_overrides),
       pipeline_config_path=FLAGS.pipeline_config_path,
       train_steps=FLAGS.num_train_steps,
       sample_1_of_n_eval_examples=FLAGS.sample_1_of_n_eval_examples,
@@ -135,7 +132,7 @@ def main(unused_argv):
       # Currently only a single eval input is allowed.
       input_fn = eval_input_fns[0]
     model_lib.continuous_eval(estimator, FLAGS.model_dir, input_fn, train_steps,
-                              name)
+                              name, FLAGS.max_eval_retries)
 
 
 if __name__ == '__main__':

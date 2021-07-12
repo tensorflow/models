@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,18 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Common flags for importing hyperparameters."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
+"""Common flags for importing hyperparameters."""
 
 from absl import flags
 from official.utils.flags import core as flags_core
 
 FLAGS = flags.FLAGS
+
+
+def define_gin_flags():
+  """Define common gin configurable flags."""
+  flags.DEFINE_multi_string('gin_file', None,
+                            'List of paths to the config files.')
+  flags.DEFINE_multi_string(
+      'gin_param', None, 'Newline separated list of Gin parameter bindings.')
 
 
 def define_common_hparams_flags():
@@ -94,6 +97,7 @@ def initialize_common_flags():
 def strategy_flags_dict():
   """Returns TPU and/or GPU related flags in a dictionary."""
   return {
+      'distribution_strategy': FLAGS.strategy_type,
       # TPUStrategy related flags.
       'tpu': FLAGS.tpu,
       # MultiWorkerMirroredStrategy related flags.

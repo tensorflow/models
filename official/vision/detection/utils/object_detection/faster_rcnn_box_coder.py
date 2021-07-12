@@ -1,4 +1,4 @@
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
 
 """Faster RCNN box coder.
 
@@ -28,7 +27,7 @@ Faster RCNN box coder follows the coding schema described below:
   See http://arxiv.org/abs/1506.01497 for details.
 """
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.detection.utils.object_detection import box_coder
 from official.vision.detection.utils.object_detection import box_list
@@ -43,9 +42,9 @@ class FasterRcnnBoxCoder(box_coder.BoxCoder):
     """Constructor for FasterRcnnBoxCoder.
 
     Args:
-      scale_factors: List of 4 positive scalars to scale ty, tx, th and tw.
-        If set to None, does not perform scaling. For Faster RCNN,
-        the open-source implementation recommends using [10.0, 10.0, 5.0, 5.0].
+      scale_factors: List of 4 positive scalars to scale ty, tx, th and tw. If
+        set to None, does not perform scaling. For Faster RCNN, the open-source
+        implementation recommends using [10.0, 10.0, 5.0, 5.0].
     """
     if scale_factors:
       assert len(scale_factors) == 4

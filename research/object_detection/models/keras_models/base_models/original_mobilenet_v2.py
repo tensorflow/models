@@ -1,4 +1,3 @@
-
 # Copyright 2019 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -92,7 +91,7 @@ from __future__ import print_function
 
 import warnings
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 Model = tf.keras.Model
 Input = tf.keras.layers.Input
@@ -118,7 +117,7 @@ def _obtain_input_shape(
     require_flatten):
   """Internal utility to compute/validate an ImageNet model's input shape.
 
-  Arguments:
+  Args:
       input_shape: either None (will return the default network input shape),
           or a user-provided shape to be validated.
       default_size: default input width/height for the model.
@@ -199,7 +198,7 @@ def preprocess_input(x):
   the RGB values from [0, 255] to [-1, 1]. Note that this preprocessing
   function is different from `imagenet_utils.preprocess_input()`.
 
-  Arguments:
+  Args:
     x: a 4D numpy array consists of RGB values within [0, 255].
 
   Returns:
@@ -238,7 +237,7 @@ def mobilenet_v2(input_shape=None,
   model = load_model('mobilenet.h5', custom_objects={
                      'relu6': mobilenet.relu6})
 
-  Arguments:
+  Args:
     input_shape: optional shape tuple, to be specified if you would
       like to use a model with an input img resolution that is not
       (224, 224, 3).

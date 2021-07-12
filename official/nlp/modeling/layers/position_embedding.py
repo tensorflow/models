@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,115 +11,227 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Keras-based positional embedding layer."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
+"""Keras-based positional embedding layer."""
+# pylint: disable=g-classes-have-attributes
+import math
+from typing import Optional
 
 import tensorflow as tf
 
 from official.modeling import tf_utils
 
+Initializer = tf.keras.initializers.Initializer
+
 
 @tf.keras.utils.register_keras_serializable(package="Text")
-class PositionEmbedding(tf.keras.layers.Layer):
+class RelativePositionEmbedding(tf.keras.layers.Layer):
   """Creates a positional embedding.
 
-  This layer creates a positional embedding as described in "BERT: Pre-training
-  of Deep Bidirectional Transformers for Language Understanding"
-  (https://arxiv.org/abs/1810.04805).
+  This layer calculates the position encoding as a mix of sine and cosine
+  functions with geometrically increasing wavelengths. Defined and formulized in
+   "Attention is All You Need", section 3.5.
+  (https://arxiv.org/abs/1706.03762).
 
-  This layer can be set up to either create a statically shaped slice or a
-  dynamically shaped slice. If `use_dynamic_slicing` is True, the input tensor
-  can have a dynamic 1st dimension, while if `use_dynamic_slicing` is False the
-  input size must be fixed.
-
-  Attributes:
-    use_dynamic_slicing: Whether to use the dynamic slicing path.
-    max_sequence_length: The maximum size of the dynamic sequence. Only
-      applicable if `use_dynamic_slicing` is True.
-    initializer: The initializer to use for the embedding weights. Defaults to
-      "glorot_uniform".
+  Args:
+    hidden_size: Size of the hidden layer.
+    min_timescale: Minimum scale that will be applied at each position
+    max_timescale: Maximum scale that will be applied at each position.
   """
 
   def __init__(self,
-               initializer="glorot_uniform",
-               use_dynamic_slicing=False,
-               max_sequence_length=None,
+               hidden_size: int,
+               min_timescale: float = 1.0,
+               max_timescale: float = 1.0e4,
                **kwargs):
     # We need to have a default dtype of float32, since the inputs (which Keras
     # usually uses to infer the dtype) will always be int32.
+    # We compute the positional encoding in float32 even if the model uses
+    # float16, as many of the ops used, like log and exp, are numerically
+    # unstable in float16.
     if "dtype" not in kwargs:
       kwargs["dtype"] = "float32"
 
-    super(PositionEmbedding, self).__init__(**kwargs)
-    if use_dynamic_slicing and max_sequence_length is None:
-      raise ValueError(
-          "If `use_dynamic_slicing` is True, `max_sequence_length` must be set."
-      )
-    self._max_sequence_length = max_sequence_length
-    self._initializer = tf.keras.initializers.get(initializer)
-    self._use_dynamic_slicing = use_dynamic_slicing
+    super().__init__(**kwargs)
+    self._hidden_size = hidden_size
+    self._min_timescale = min_timescale
+    self._max_timescale = max_timescale
 
   def get_config(self):
     config = {
-        "max_sequence_length": self._max_sequence_length,
-        "initializer": tf.keras.initializers.serialize(self._initializer),
-        "use_dynamic_slicing": self._use_dynamic_slicing,
+        "hidden_size": self._hidden_size,
+        "min_timescale": self._min_timescale,
+        "max_timescale": self._max_timescale,
     }
-    base_config = super(PositionEmbedding, self).get_config()
+    base_config = super(RelativePositionEmbedding, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def build(self, input_shape):
-    """Implements build() for the layer."""
-    dimension_list = input_shape.as_list()
+  def call(self, inputs, length=None):
+    """Implements call() for the layer.
 
-    if len(dimension_list) != 3:
-      raise ValueError("PositionEmbedding expects a 3-dimensional input tensor "
-                       "of shape [batch, sequence, width]")
-    seq_length = dimension_list[1]
-    width = dimension_list[2]
+    Args:
+      inputs: An tensor whose second dimension will be used as `length`. If
+        `None`, the other `length` argument must be specified.
+      length: An optional integer specifying the number of positions. If both
+        `inputs` and `length` are spcified, `length` must be equal to the second
+        dimension of `inputs`.
 
-    # If we are not using dynamic slicing, we must assume that the sequence
-    # length is fixed and max_sequence_length should not be specified.
-    if not self._use_dynamic_slicing:
-      if seq_length is None:
+    Returns:
+      A tensor in shape of `(length, hidden_size)`.
+    """
+    if inputs is None and length is None:
+      raise ValueError("If inputs is None, `length` must be set in "
+                       "RelativePositionEmbedding().")
+    if inputs is not None:
+      input_shape = tf_utils.get_shape_list(inputs)
+      if length is not None and length != input_shape[1]:
         raise ValueError(
-            "PositionEmbedding must have `use_dynamic_slicing` set "
-            "to True (and max_sequence_length set) when the "
-            "sequence (1st) dimension of the input is None.")
-      if self._max_sequence_length is not None:
-        raise ValueError(
-            "When `use_dynamic_slicing` is False, max_sequence_length should "
-            "not be specified and we ought to use seq_length to get the "
-            "variable shape.")
-
-    if self._max_sequence_length is not None:
-      weight_sequence_length = self._max_sequence_length
-    else:
-      weight_sequence_length = seq_length
-
-    self._position_embeddings = self.add_weight(
-        "embeddings",
-        shape=[weight_sequence_length, width],
-        initializer=self._initializer)
-
-    super(PositionEmbedding, self).build(input_shape)
-
-  def call(self, inputs):
-    """Implements call() for the layer."""
-    if self._use_dynamic_slicing:
-      input_shape = tf_utils.get_shape_list(inputs, expected_rank=3)
-      seq_length = input_shape[1]
-      width = input_shape[2]
-
-      position_embeddings = tf.expand_dims(
-          tf.slice(self._position_embeddings, [0, 0], [seq_length, width]),
-          axis=0)
-    else:
-      position_embeddings = tf.expand_dims(self._position_embeddings, axis=0)
-
+            "If inputs is not None, `length` must equal to input_shape[1].")
+      length = input_shape[1]
+    position = tf.cast(tf.range(length), tf.float32)
+    num_timescales = self._hidden_size // 2
+    min_timescale, max_timescale = self._min_timescale, self._max_timescale
+    log_timescale_increment = (
+        math.log(float(max_timescale) / float(min_timescale)) /
+        (tf.cast(num_timescales, tf.float32) - 1))
+    inv_timescales = min_timescale * tf.exp(
+        tf.cast(tf.range(num_timescales), tf.float32) *
+        -log_timescale_increment)
+    scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(
+        inv_timescales, 0)
+    position_embeddings = tf.concat(
+        [tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
     return position_embeddings
+
+
+def _relative_position_bucket(relative_position,
+                              bidirectional=True,
+                              num_buckets=32,
+                              max_distance=128):
+  """Translate relative position to a bucket number for relative attention.
+
+  The relative position is defined as memory_position - query_position, i.e.
+  the distance in tokens from the attending position to the attended-to
+  position.
+
+  If `bidirectional=False`, then positive relative positions are invalid.
+
+  We use smaller buckets for small absolute relative_position and larger
+  buckets for larger absolute relative_positions.
+
+  All relative positions >=max_distance map to the same bucket.
+
+  All relative positions <=-max_distance map to the same bucket.
+
+  This should allow for more graceful generalization to longer sequences
+  than the model has been trained on.
+
+  Args:
+    relative_position: An int32 Tensor
+    bidirectional: A boolean - whether the attention is bidirectional
+    num_buckets: An integer
+    max_distance: An integer
+
+  Returns:
+    A Tensor with the same shape as relative_position, containing int32
+    values in the range [0, num_buckets)
+  """
+  ret = 0
+  n = -relative_position
+  if bidirectional:
+    num_buckets //= 2
+    ret += tf.cast(tf.math.less(n, 0), tf.int32) * num_buckets
+    n = tf.math.abs(n)
+  else:
+    n = tf.math.maximum(n, 0)
+  # now n is in the range [0, inf)
+  max_exact = num_buckets // 2
+  is_small = tf.math.less(n, max_exact)
+  val_if_large = max_exact + tf.dtypes.cast(
+      tf.math.log(tf.cast(n, tf.float32) / max_exact) /
+      math.log(max_distance / max_exact) * (num_buckets - max_exact),
+      tf.int32,
+  )
+  val_if_large = tf.math.minimum(val_if_large, num_buckets - 1)
+  ret += tf.where(is_small, n, val_if_large)
+  return ret
+
+
+@tf.keras.utils.register_keras_serializable(package="Text")
+class RelativePositionBias(tf.keras.layers.Layer):
+  """Relative position embedding via per-head bias in T5 style.
+
+  Reference implementation in MeshTF:
+  https://github.com/tensorflow/mesh/blob/master/mesh_tensorflow/transformer/transformer_layers.py#L1000
+
+  This layer implements the relative position bias used in "Exploring the Limits
+  of Transfer Learning with a Unified Text-to-Text Transformer"
+  (https://arxiv.org/abs/1910.10683)
+  """
+
+  def __init__(self,
+               num_heads: int,
+               relative_attention_num_buckets: int = 32,
+               relative_attention_max_distance: int = 128,
+               bidirectional: bool = True,
+               embeddings_initializer: Optional[Initializer] = None,
+               **kwargs):
+    super().__init__(**kwargs)
+    self.num_heads = num_heads
+    self.relative_attention_num_buckets = relative_attention_num_buckets
+    self.bidirectional = bidirectional
+    self.relative_attention_max_distance = relative_attention_max_distance
+    if embeddings_initializer:
+      self._embed_init = embeddings_initializer
+    else:
+      self._embed_init = tf.keras.initializers.TruncatedNormal(stddev=1.0)
+    with tf.name_scope(self.name):
+      self._relative_attention_bias = self.add_weight(
+          "rel_embedding",
+          shape=[self.relative_attention_num_buckets, self.num_heads],
+          initializer=self._embed_init,
+          dtype=self.dtype,
+          trainable=True)
+
+  def get_config(self):
+    config = {
+        "num_heads":
+            self.num_heads,
+        "relative_attention_num_buckets":
+            self.relative_attention_num_buckets,
+        "relative_attention_max_distance":
+            self.relative_attention_max_distance,
+        "bidirectional":
+            self.bidirectional,
+        "embeddings_initializer":
+            tf.keras.initializers.serialize(self._embed_init),
+    }
+    base_config = super().get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+  def call(self, query: tf.Tensor, key: tf.Tensor):
+    """Implements the forward pass.
+
+    Args:
+      query: query input tensor shape [batch, query length, hidden size].
+      key: key input tensor shape [batch, key length, hidden size].
+
+    Returns:
+      A tensor in shape of [batch, heads, query length, key length].
+    """
+    batch_size, qlen = tf_utils.get_shape_list(query)[:2]
+    klen = tf_utils.get_shape_list(key)[1]
+    context_position = tf.range(qlen)[:, None]
+    memory_position = tf.range(klen)[None, :]
+    relative_position = memory_position - context_position
+    rp_bucket = _relative_position_bucket(
+        relative_position,
+        bidirectional=self.bidirectional,
+        num_buckets=self.relative_attention_num_buckets,
+        max_distance=self.relative_attention_max_distance)
+    values = tf.nn.embedding_lookup(self._relative_attention_bias, rp_bucket)
+    values = tf.expand_dims(
+        tf.transpose(values, [2, 0, 1]),
+        axis=0)  # shape (1, num_heads, qlen, klen)
+    values = tf.tile(values, [batch_size, 1, 1, 1])
+    return values

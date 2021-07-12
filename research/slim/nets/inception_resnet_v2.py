@@ -25,10 +25,8 @@ from __future__ import division
 from __future__ import print_function
 
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
-
-slim = contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 
 def block35(net, scale=1.0, activation_fn=tf.nn.relu, scope=None, reuse=None):
@@ -320,8 +318,8 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
   """
   end_points = {}
 
-  with tf.variable_scope(scope, 'InceptionResnetV2', [inputs],
-                         reuse=reuse) as scope:
+  with tf.variable_scope(
+      scope, 'InceptionResnetV2', [inputs], reuse=reuse) as scope:
     with slim.arg_scope([slim.batch_norm, slim.dropout],
                         is_training=is_training):
 
@@ -349,7 +347,8 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
           net = slim.avg_pool2d(net, kernel_size, padding='VALID',
                                 scope='AvgPool_1a_8x8')
         else:
-          net = tf.reduce_mean(net, [1, 2], keep_dims=True, name='global_pool')
+          net = tf.reduce_mean(
+              input_tensor=net, axis=[1, 2], keepdims=True, name='global_pool')
         end_points['global_pool'] = net
         if not num_classes:
           return net, end_points

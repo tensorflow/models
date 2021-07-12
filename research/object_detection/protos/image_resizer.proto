@@ -10,6 +10,7 @@ message ImageResizer {
     FixedShapeResizer fixed_shape_resizer = 2;
     IdentityResizer identity_resizer = 3;
     ConditionalShapeResizer conditional_shape_resizer = 4;
+    PadToMultipleResizer pad_to_multiple_resizer = 5;
   }
 }
 
@@ -85,6 +86,21 @@ message ConditionalShapeResizer {
 
   // Desired method when resizing image.
   optional ResizeType resize_method = 3 [default = BILINEAR];
+
+  // Whether to also resize the image channels from 3 to 1 (RGB to grayscale).
+  optional bool convert_to_grayscale = 4 [default = false];
+
+}
+
+
+// An image resizer which resizes inputs by zero padding them such that their
+// spatial dimensions are divisible by a specified multiple. This is useful
+// when you want to concatenate or compare the input to an output of a
+// fully convolutional network.
+message PadToMultipleResizer {
+
+  // The multiple to which the spatial dimensions will be padded to.
+  optional int32 multiple = 1 [default = 1];
 
   // Whether to also resize the image channels from 3 to 1 (RGB to grayscale).
   optional bool convert_to_grayscale = 4 [default = false];

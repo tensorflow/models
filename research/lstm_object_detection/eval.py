@@ -25,7 +25,7 @@ This executable is used to evaluate DetectionModels. Example usage:
 
 import functools
 import os
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from google.protobuf import text_format
 from lstm_object_detection import evaluator
 from lstm_object_detection import model_builder

@@ -56,10 +56,9 @@ def _decode_raw_data_into_masks_and_boxes(segments, image_widths,
   """Decods binary segmentation masks into np.arrays and boxes.
 
   Args:
-    segments: pandas Series object containing either
-      None entries, or strings with
-      base64, zlib compressed, COCO RLE-encoded binary masks.
-      All masks are expected to be the same size.
+    segments: pandas Series object containing either None entries, or strings
+      with base64, zlib compressed, COCO RLE-encoded binary masks. All masks are
+      expected to be the same size.
     image_widths: pandas Series of mask widths.
     image_heights: pandas Series of mask heights.
 
@@ -136,15 +135,15 @@ def build_groundtruth_dictionary(data, class_label_map):
 
   dictionary = {
       standard_fields.InputDataFields.groundtruth_boxes:
-          data_location[['YMin', 'XMin', 'YMax', 'XMax']].as_matrix(),
+          data_location[['YMin', 'XMin', 'YMax',
+                         'XMax']].to_numpy().astype(float),
       standard_fields.InputDataFields.groundtruth_classes:
           data_location['LabelName'].map(lambda x: class_label_map[x]
-                                        ).as_matrix(),
+                                        ).to_numpy(),
       standard_fields.InputDataFields.groundtruth_group_of:
-          data_location['IsGroupOf'].as_matrix().astype(int),
+          data_location['IsGroupOf'].to_numpy().astype(int),
       standard_fields.InputDataFields.groundtruth_image_classes:
-          data_labels['LabelName'].map(lambda x: class_label_map[x]
-                                      ).as_matrix(),
+          data_labels['LabelName'].map(lambda x: class_label_map[x]).to_numpy(),
   }
 
   if 'Mask' in data_location:
@@ -179,9 +178,9 @@ def build_predictions_dictionary(data, class_label_map):
   """
   dictionary = {
       standard_fields.DetectionResultFields.detection_classes:
-          data['LabelName'].map(lambda x: class_label_map[x]).as_matrix(),
+          data['LabelName'].map(lambda x: class_label_map[x]).to_numpy(),
       standard_fields.DetectionResultFields.detection_scores:
-          data['Score'].as_matrix()
+          data['Score'].to_numpy().astype(float)
   }
 
   if 'Mask' in data:
@@ -192,6 +191,6 @@ def build_predictions_dictionary(data, class_label_map):
   else:
     dictionary[standard_fields.DetectionResultFields.detection_boxes] = data[[
         'YMin', 'XMin', 'YMax', 'XMax'
-    ]].as_matrix()
+    ]].to_numpy().astype(float)
 
   return dictionary

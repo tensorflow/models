@@ -18,7 +18,7 @@
 from __future__ import print_function
 from absl import flags
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 flags.DEFINE_string('model_path', None, 'Path to model.')
 FLAGS = flags.FLAGS

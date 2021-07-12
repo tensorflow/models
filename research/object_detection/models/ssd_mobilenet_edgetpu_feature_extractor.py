@@ -14,12 +14,8 @@
 # ==============================================================================
 """SSDFeatureExtractor for MobileNetEdgeTPU features."""
 
-import tensorflow as tf
-
 from object_detection.models import ssd_mobilenet_v3_feature_extractor
 from nets.mobilenet import mobilenet_v3
-
-slim = tf.contrib.slim
 
 
 class SSDMobileNetEdgeTPUFeatureExtractor(

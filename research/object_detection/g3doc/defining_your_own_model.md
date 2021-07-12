@@ -2,14 +2,14 @@
 
 In this section, we discuss some of the abstractions that we use
 for defining detection models. If you would like to define a new model
-architecture for detection and use it in the Tensorflow Detection API,
+architecture for detection and use it in the TensorFlow Detection API,
 then this section should also serve as a high level guide to the files that you
 will need to edit to get your new model working.
 
 ## DetectionModels (`object_detection/core/model.py`)
 
 In order to be trained, evaluated, and exported for serving  using our
-provided binaries, all models under the Tensorflow Object Detection API must
+provided binaries, all models under the TensorFlow Object Detection API must
 implement the `DetectionModel` interface (see the full definition in `object_detection/core/model.py`).  In particular,
 each of these models are responsible for implementing 5 functions:
 
@@ -20,7 +20,7 @@ each of these models are responsible for implementing 5 functions:
   postprocess functions.
 * `postprocess`: Convert predicted output tensors to final detections.
 * `loss`: Compute scalar loss tensors with respect to provided groundtruth.
-* `restore`: Load a checkpoint into the Tensorflow graph.
+* `restore`: Load a checkpoint into the TensorFlow graph.
 
 Given a `DetectionModel` at training time, we pass each image batch through
 the following sequence of functions to compute a loss which can be optimized via
@@ -87,7 +87,7 @@ functions:
 * `_extract_box_classifier_features`: Extract second stage Box Classifier
   features.
 * `restore_from_classification_checkpoint_fn`: Load a checkpoint into the
-  Tensorflow graph.
+  TensorFlow graph.
 
 See the `object_detection/models/faster_rcnn_resnet_v1_feature_extractor.py`
 definition as one example. Some remarks:

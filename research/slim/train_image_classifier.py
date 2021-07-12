@@ -18,16 +18,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
+
 from tensorflow.contrib import quantize as contrib_quantize
-from tensorflow.contrib import slim as contrib_slim
 
 from datasets import dataset_factory
 from deployment import model_deploy
 from nets import nets_factory
 from preprocessing import preprocessing_factory
-
-slim = contrib_slim
 
 tf.app.flags.DEFINE_string(
     'master', '', 'The address of the TensorFlow master to use.')
@@ -35,6 +34,10 @@ tf.app.flags.DEFINE_string(
 tf.app.flags.DEFINE_string(
     'train_dir', '/tmp/tfmodel/',
     'Directory where checkpoints and event logs are written to.')
+tf.app.flags.DEFINE_float(
+    'warmup_epochs', 0,
+    'Linearly warmup learning rate from 0 to learning_rate over this '
+    'many epochs.')
 
 tf.app.flags.DEFINE_integer('num_clones', 1,
                             'Number of model clones to deploy. Note For '
@@ -252,32 +255,41 @@ def _configure_learning_rate(num_samples_per_epoch, global_step):
   # Note: when num_clones is > 1, this will actually have each clone to go
   # over each epoch FLAGS.num_epochs_per_decay times. This is different
   # behavior from sync replicas and is expected to produce different results.
-  decay_steps = int(num_samples_per_epoch * FLAGS.num_epochs_per_decay /
-                    FLAGS.batch_size)
-
+  steps_per_epoch = num_samples_per_epoch / FLAGS.batch_size
   if FLAGS.sync_replicas:
-    decay_steps /= FLAGS.replicas_to_aggregate
+    steps_per_epoch /= FLAGS.replicas_to_aggregate
+
+  decay_steps = int(steps_per_epoch * FLAGS.num_epochs_per_decay)
 
   if FLAGS.learning_rate_decay_type == 'exponential':
-    return tf.train.exponential_decay(FLAGS.learning_rate,
-                                      global_step,
-                                      decay_steps,
-                                      FLAGS.learning_rate_decay_factor,
-                                      staircase=True,
-                                      name='exponential_decay_learning_rate')
+    learning_rate = tf.train.exponential_decay(
+        FLAGS.learning_rate,
+        global_step,
+        decay_steps,
+        FLAGS.learning_rate_decay_factor,
+        staircase=True,
+        name='exponential_decay_learning_rate')
   elif FLAGS.learning_rate_decay_type == 'fixed':
-    return tf.constant(FLAGS.learning_rate, name='fixed_learning_rate')
+    learning_rate = tf.constant(FLAGS.learning_rate, name='fixed_learning_rate')
   elif FLAGS.learning_rate_decay_type == 'polynomial':
-    return tf.train.polynomial_decay(FLAGS.learning_rate,
-                                     global_step,
-                                     decay_steps,
-                                     FLAGS.end_learning_rate,
-                                     power=1.0,
-                                     cycle=False,
-                                     name='polynomial_decay_learning_rate')
+    learning_rate = tf.train.polynomial_decay(
+        FLAGS.learning_rate,
+        global_step,
+        decay_steps,
+        FLAGS.end_learning_rate,
+        power=1.0,
+        cycle=False,
+        name='polynomial_decay_learning_rate')
   else:
     raise ValueError('learning_rate_decay_type [%s] was not recognized' %
                      FLAGS.learning_rate_decay_type)
+
+  if FLAGS.warmup_epochs:
+    warmup_lr = (
+        FLAGS.learning_rate * tf.cast(global_step, tf.float32) /
+        (steps_per_epoch * FLAGS.warmup_epochs))
+    learning_rate = tf.minimum(warmup_lr, learning_rate)
+  return learning_rate
 
 
 def _configure_optimizer(learning_rate):

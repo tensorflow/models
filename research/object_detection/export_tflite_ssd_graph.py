@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,7 +56,7 @@ else:
 
 Example Usage:
 --------------
-python object_detection/export_tflite_ssd_graph \
+python object_detection/export_tflite_ssd_graph.py \
     --pipeline_config_path path/to/ssd_mobilenet.config \
     --trained_checkpoint_prefix path/to/model.ckpt \
     --output_directory path/to/exported_model_directory
@@ -73,7 +74,7 @@ eval config.
 
 Example Usage (in which we change the NMS iou_threshold to be 0.5 and
 NMS score_threshold to be 0.0):
-python object_detection/export_tflite_ssd_graph \
+python object_detection/export_tflite_ssd_graph.py \
     --pipeline_config_path path/to/ssd_mobilenet.config \
     --trained_checkpoint_prefix path/to/model.ckpt \
     --output_directory path/to/exported_model_directory
@@ -91,7 +92,7 @@ python object_detection/export_tflite_ssd_graph \
        "
 """
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from google.protobuf import text_format
 from object_detection import export_tflite_ssd_graph_lib
 from object_detection.protos import pipeline_pb2

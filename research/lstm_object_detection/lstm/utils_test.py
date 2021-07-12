@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from lstm_object_detection.lstm import utils
 
 
@@ -73,12 +73,19 @@ class QuantizableUtilsTest(tf.test.TestCase):
     self._check_min_max_ema(tf.get_default_graph())
     self._check_min_max_vars(tf.get_default_graph())
 
-  def test_quantize_op_inferene(self):
+  def test_quantize_op_inference(self):
     inputs = tf.zeros([4, 10, 10, 128], dtype=tf.float32)
     outputs = utils.quantize_op(inputs, is_training=False)
     self.assertAllEqual(inputs.shape.as_list(), outputs.shape.as_list())
     self._check_no_min_max_ema(tf.get_default_graph())
     self._check_min_max_vars(tf.get_default_graph())
+
+  def test_fixed_quantize_op(self):
+    inputs = tf.zeros([4, 10, 10, 128], dtype=tf.float32)
+    outputs = utils.fixed_quantize_op(inputs)
+    self.assertAllEqual(inputs.shape.as_list(), outputs.shape.as_list())
+    self._check_no_min_max_ema(tf.get_default_graph())
+    self._check_no_min_max_vars(tf.get_default_graph())
 
   def _check_min_max_vars(self, graph):
     op_types = [op.type for op in graph.get_operations()]
@@ -89,6 +96,8 @@ class QuantizableUtilsTest(tf.test.TestCase):
     op_names = [op.name for op in graph.get_operations()]
     self.assertTrue(any('AssignMinEma' in name for name in op_names))
     self.assertTrue(any('AssignMaxEma' in name for name in op_names))
+    self.assertTrue(any('SafeQuantRangeMin' in name for name in op_names))
+    self.assertTrue(any('SafeQuantRangeMax' in name for name in op_names))
 
   def _check_no_min_max_vars(self, graph):
     op_types = [op.type for op in graph.get_operations()]
@@ -99,6 +108,8 @@ class QuantizableUtilsTest(tf.test.TestCase):
     op_names = [op.name for op in graph.get_operations()]
     self.assertFalse(any('AssignMinEma' in name for name in op_names))
     self.assertFalse(any('AssignMaxEma' in name for name in op_names))
+    self.assertFalse(any('SafeQuantRangeMin' in name for name in op_names))
+    self.assertFalse(any('SafeQuantRangeMax' in name for name in op_names))
 
 
 class QuantizableSeparableConv2dTest(tf.test.TestCase):

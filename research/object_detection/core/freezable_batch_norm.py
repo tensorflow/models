@@ -14,7 +14,7 @@
 # ==============================================================================
 
 """A freezable batch norm layer that uses Keras batch normalization."""
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 class FreezableBatchNorm(tf.keras.layers.BatchNormalization):
@@ -35,7 +35,7 @@ class FreezableBatchNorm(tf.keras.layers.BatchNormalization):
   i.e. applies a transformation that maintains the mean activation
   close to 0 and the activation standard deviation close to 1.
 
-  Arguments:
+  Args:
     training: If False, the layer will normalize using the moving average and
       std. dev, without updating the learned avg and std. dev.
       If None or True, the layer will follow the keras BatchNormalization layer

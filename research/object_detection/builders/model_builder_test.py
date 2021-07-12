@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,25 +13,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Tests for object_detection.models.model_builder."""
 
 from absl.testing import parameterized
-
-import tensorflow as tf
 
 from google.protobuf import text_format
 from object_detection.builders import model_builder
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.meta_architectures import rfcn_meta_arch
 from object_detection.meta_architectures import ssd_meta_arch
-from object_detection.models import ssd_resnet_v1_fpn_feature_extractor as ssd_resnet_v1_fpn
 from object_detection.protos import hyperparams_pb2
 from object_detection.protos import losses_pb2
 from object_detection.protos import model_pb2
+from object_detection.utils import test_case
 
 
-class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
+class ModelBuilderTest(test_case.TestCase, parameterized.TestCase):
+
+  def default_ssd_feature_extractor(self):
+    raise NotImplementedError
+
+  def default_faster_rcnn_feature_extractor(self):
+    raise NotImplementedError
+
+  def ssd_feature_extractors(self):
+    raise NotImplementedError
+
+  def get_override_base_feature_extractor_hyperparams(self, extractor_type):
+    raise NotImplementedError
+
+  def faster_rcnn_feature_extractors(self):
+    raise NotImplementedError
 
   def create_model(self, model_config, is_training=True):
     """Builds a DetectionModel based on the model config.
@@ -50,7 +63,6 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
     model_text_proto = """
       ssd {
         feature_extractor {
-          type: 'ssd_inception_v2'
           conv_hyperparams {
             regularizer {
                 l2_regularizer {
@@ -61,7 +73,6 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
                 }
               }
           }
-          override_base_feature_extractor_hyperparams: true
         }
         box_coder {
           faster_rcnn_box_coder {
@@ -113,6 +124,8 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
       }"""
     model_proto = model_pb2.DetectionModel()
     text_format.Merge(model_text_proto, model_proto)
+    model_proto.ssd.feature_extractor.type = (self.
+                                              default_ssd_feature_extractor())
     return model_proto
 
   def create_default_faster_rcnn_model_proto(self):
@@ -126,9 +139,6 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
             min_dimension: 600
             max_dimension: 1024
           }
-        }
-        feature_extractor {
-          type: 'faster_rcnn_resnet101'
         }
         first_stage_anchor_generator {
           grid_anchor_generator {
@@ -188,30 +198,26 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
       }"""
     model_proto = model_pb2.DetectionModel()
     text_format.Merge(model_text_proto, model_proto)
+    (model_proto.faster_rcnn.feature_extractor.type
+    ) = self.default_faster_rcnn_feature_extractor()
     return model_proto
 
   def test_create_ssd_models_from_config(self):
     model_proto = self.create_default_ssd_model_proto()
-    ssd_feature_extractor_map = {}
-    ssd_feature_extractor_map.update(
-        model_builder.SSD_FEATURE_EXTRACTOR_CLASS_MAP)
-    ssd_feature_extractor_map.update(
-        model_builder.SSD_KERAS_FEATURE_EXTRACTOR_CLASS_MAP)
-
-    for extractor_type, extractor_class in ssd_feature_extractor_map.items():
+    for extractor_type, extractor_class in self.ssd_feature_extractors().items(
+    ):
       model_proto.ssd.feature_extractor.type = extractor_type
+      model_proto.ssd.feature_extractor.override_base_feature_extractor_hyperparams = (
+          self.get_override_base_feature_extractor_hyperparams(extractor_type))
       model = model_builder.build(model_proto, is_training=True)
       self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
       self.assertIsInstance(model._feature_extractor, extractor_class)
 
   def test_create_ssd_fpn_model_from_config(self):
     model_proto = self.create_default_ssd_model_proto()
-    model_proto.ssd.feature_extractor.type = 'ssd_resnet101_v1_fpn'
     model_proto.ssd.feature_extractor.fpn.min_level = 3
     model_proto.ssd.feature_extractor.fpn.max_level = 7
     model = model_builder.build(model_proto, is_training=True)
-    self.assertIsInstance(model._feature_extractor,
-                          ssd_resnet_v1_fpn.SSDResnet101V1FpnFeatureExtractor)
     self.assertEqual(model._feature_extractor._fpn_min_level, 3)
     self.assertEqual(model._feature_extractor._fpn_max_level, 7)
 
@@ -238,8 +244,9 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
           'enable_mask_prediction': False
       },
   )
-  def test_create_faster_rcnn_models_from_config(
-      self, use_matmul_crop_and_resize, enable_mask_prediction):
+  def test_create_faster_rcnn_models_from_config(self,
+                                                 use_matmul_crop_and_resize,
+                                                 enable_mask_prediction):
     model_proto = self.create_default_faster_rcnn_model_proto()
     faster_rcnn_config = model_proto.faster_rcnn
     faster_rcnn_config.use_matmul_crop_and_resize = use_matmul_crop_and_resize
@@ -250,7 +257,7 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
       mask_predictor_config.predict_instance_masks = True
 
     for extractor_type, extractor_class in (
-        model_builder.FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP.items()):
+        self.faster_rcnn_feature_extractors().items()):
       faster_rcnn_config.feature_extractor.type = extractor_type
       model = model_builder.build(model_proto, is_training=True)
       self.assertIsInstance(model, faster_rcnn_meta_arch.FasterRCNNMetaArch)
@@ -270,52 +277,59 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
         model_proto.faster_rcnn.second_stage_box_predictor.rfcn_box_predictor)
     rfcn_predictor_config.conv_hyperparams.op = hyperparams_pb2.Hyperparams.CONV
     for extractor_type, extractor_class in (
-        model_builder.FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP.items()):
+        self.faster_rcnn_feature_extractors().items()):
       model_proto.faster_rcnn.feature_extractor.type = extractor_type
       model = model_builder.build(model_proto, is_training=True)
       self.assertIsInstance(model, rfcn_meta_arch.RFCNMetaArch)
       self.assertIsInstance(model._feature_extractor, extractor_class)
 
+  @parameterized.parameters(True, False)
+  def test_create_faster_rcnn_from_config_with_crop_feature(
+      self, output_final_box_features):
+    model_proto = self.create_default_faster_rcnn_model_proto()
+    model_proto.faster_rcnn.output_final_box_features = (
+        output_final_box_features)
+    _ = model_builder.build(model_proto, is_training=True)
+
   def test_invalid_model_config_proto(self):
     model_proto = ''
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'model_config not of type model_pb2.DetectionModel.'):
       model_builder.build(model_proto, is_training=True)
 
   def test_unknown_meta_architecture(self):
     model_proto = model_pb2.DetectionModel()
-    with self.assertRaisesRegexp(ValueError, 'Unknown meta architecture'):
+    with self.assertRaisesRegex(ValueError, 'Unknown meta architecture'):
       model_builder.build(model_proto, is_training=True)
 
   def test_unknown_ssd_feature_extractor(self):
     model_proto = self.create_default_ssd_model_proto()
     model_proto.ssd.feature_extractor.type = 'unknown_feature_extractor'
-    with self.assertRaisesRegexp(ValueError, 'Unknown ssd feature_extractor'):
+    with self.assertRaises(ValueError):
       model_builder.build(model_proto, is_training=True)
 
   def test_unknown_faster_rcnn_feature_extractor(self):
     model_proto = self.create_default_faster_rcnn_model_proto()
     model_proto.faster_rcnn.feature_extractor.type = 'unknown_feature_extractor'
-    with self.assertRaisesRegexp(ValueError,
-                                 'Unknown Faster R-CNN feature_extractor'):
+    with self.assertRaises(ValueError):
       model_builder.build(model_proto, is_training=True)
 
   def test_invalid_first_stage_nms_iou_threshold(self):
     model_proto = self.create_default_faster_rcnn_model_proto()
     model_proto.faster_rcnn.first_stage_nms_iou_threshold = 1.1
-    with self.assertRaisesRegexp(ValueError,
-                                 r'iou_threshold not in \[0, 1\.0\]'):
+    with self.assertRaisesRegex(ValueError,
+                                r'iou_threshold not in \[0, 1\.0\]'):
       model_builder.build(model_proto, is_training=True)
     model_proto.faster_rcnn.first_stage_nms_iou_threshold = -0.1
-    with self.assertRaisesRegexp(ValueError,
-                                 r'iou_threshold not in \[0, 1\.0\]'):
+    with self.assertRaisesRegex(ValueError,
+                                r'iou_threshold not in \[0, 1\.0\]'):
       model_builder.build(model_proto, is_training=True)
 
   def test_invalid_second_stage_batch_size(self):
     model_proto = self.create_default_faster_rcnn_model_proto()
     model_proto.faster_rcnn.first_stage_max_proposals = 1
     model_proto.faster_rcnn.second_stage_batch_size = 2
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'second_stage_batch_size should be no greater '
         'than first_stage_max_proposals.'):
       model_builder.build(model_proto, is_training=True)
@@ -323,8 +337,8 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
   def test_invalid_faster_rcnn_batchnorm_update(self):
     model_proto = self.create_default_faster_rcnn_model_proto()
     model_proto.faster_rcnn.inplace_batchnorm_update = True
-    with self.assertRaisesRegexp(ValueError,
-                                 'inplace batchnorm updates not supported'):
+    with self.assertRaisesRegex(ValueError,
+                                'inplace batchnorm updates not supported'):
       model_builder.build(model_proto, is_training=True)
 
   def test_create_experimental_model(self):
@@ -340,7 +354,3 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
     text_format.Merge(model_text_proto, model_proto)
 
     self.assertEqual(model_builder.build(model_proto, is_training=True), 42)
-
-
-if __name__ == '__main__':
-  tf.test.main()

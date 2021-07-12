@@ -184,7 +184,7 @@ def write_data(data_fname, data_dict, use_json=False, compression=None):
     os.makedirs(dir_name)
 
   if use_json:
-    the_file = open(data_fname,'w')
+    the_file = open(data_fname,'wb')
     json.dump(data_dict, the_file)
     the_file.close()
   else:

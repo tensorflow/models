@@ -18,12 +18,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
-slim = contrib_slim
-
-trunc_normal = lambda stddev: tf.truncated_normal_initializer(stddev=stddev)
+# pylint: disable=g-long-lambda
+trunc_normal = lambda stddev: tf.truncated_normal_initializer(
+    stddev=stddev)
 
 
 def cifarnet(images, num_classes=10, is_training=False,
@@ -82,12 +82,14 @@ def cifarnet(images, num_classes=10, is_training=False,
     end_points['fc4'] = net
     if not num_classes:
       return net, end_points
-    logits = slim.fully_connected(net, num_classes,
-                                  biases_initializer=tf.zeros_initializer(),
-                                  weights_initializer=trunc_normal(1/192.0),
-                                  weights_regularizer=None,
-                                  activation_fn=None,
-                                  scope='logits')
+    logits = slim.fully_connected(
+        net,
+        num_classes,
+        biases_initializer=tf.zeros_initializer(),
+        weights_initializer=trunc_normal(1 / 192.0),
+        weights_regularizer=None,
+        activation_fn=None,
+        scope='logits')
 
     end_points['Logits'] = logits
     end_points['Predictions'] = prediction_fn(logits, scope='Predictions')
@@ -107,7 +109,8 @@ def cifarnet_arg_scope(weight_decay=0.004):
   """
   with slim.arg_scope(
       [slim.conv2d],
-      weights_initializer=tf.truncated_normal_initializer(stddev=5e-2),
+      weights_initializer=tf.truncated_normal_initializer(
+          stddev=5e-2),
       activation_fn=tf.nn.relu):
     with slim.arg_scope(
         [slim.fully_connected],

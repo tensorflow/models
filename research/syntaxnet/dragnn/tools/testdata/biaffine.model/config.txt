@@ -1,4 +1,0 @@
-{
-  'train_corpus_path': 'TESTDATA/small.conll',
-  'tune_corpus_path': 'TESTDATA/small.conll',
-}

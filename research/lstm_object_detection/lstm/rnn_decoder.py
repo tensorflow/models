@@ -15,7 +15,7 @@
 
 """Custom RNN decoder."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import lstm_object_detection.lstm.utils as lstm_utils
 
 

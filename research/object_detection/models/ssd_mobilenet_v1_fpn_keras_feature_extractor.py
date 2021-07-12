@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +16,12 @@
 
 """SSD Keras-based MobilenetV1 FPN Feature Extractor."""
 
-import tensorflow as tf
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from six.moves import range
+import tensorflow.compat.v1 as tf
 
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import feature_map_generators
@@ -117,7 +123,7 @@ class SSDMobileNetV1FpnKerasFeatureExtractor(
         'Conv2d_3_pointwise', 'Conv2d_5_pointwise', 'Conv2d_11_pointwise',
         'Conv2d_13_pointwise'
     ]
-    self._mobilenet_v1 = None
+    self.classification_backbone = None
     self._fpn_features_generator = None
     self._coarse_feature_layers = []
 
@@ -141,7 +147,7 @@ class SSDMobileNetV1FpnKerasFeatureExtractor(
         name='conv_pw_11_relu').output
     conv2d_13_pointwise = full_mobilenet_v1.get_layer(
         name='conv_pw_13_relu').output
-    self._mobilenet_v1 = tf.keras.Model(
+    self.classification_backbone = tf.keras.Model(
         inputs=full_mobilenet_v1.inputs,
         outputs=[conv2d_3_pointwise, conv2d_5_pointwise,
                  conv2d_11_pointwise, conv2d_13_pointwise]
@@ -212,7 +218,7 @@ class SSDMobileNetV1FpnKerasFeatureExtractor(
     preprocessed_inputs = shape_utils.check_min_image_dim(
         33, preprocessed_inputs)
 
-    image_features = self._mobilenet_v1(
+    image_features = self.classification_backbone(
         ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple))
 
     feature_block_list = []
@@ -237,3 +243,14 @@ class SSDMobileNetV1FpnKerasFeatureExtractor(
         last_feature_map = layer(last_feature_map)
       feature_maps.append(last_feature_map)
     return feature_maps
+
+  def restore_from_classification_checkpoint_fn(self, feature_extractor_scope):
+    """Returns a map for restoring from an (object-based) checkpoint.
+
+    Args:
+      feature_extractor_scope: A scope name for the feature extractor (unused).
+
+    Returns:
+      A dict mapping keys to Keras models
+    """
+    return {'feature_extractor': self.classification_backbone}

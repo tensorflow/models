@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,8 +20,13 @@ Contains Mask prediction head classes for different meta architectures.
 All the mask prediction heads have a predict function that receives the
 `features` as the first argument and returns `mask_predictions`.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import math
-import tensorflow as tf
+from six.moves import range
+import tensorflow.compat.v1 as tf
 
 from object_detection.predictors.heads import head
 from object_detection.utils import ops
@@ -255,9 +261,9 @@ class MaskRCNNMaskHead(head.KerasHead):
     if self._convolve_then_upsample:
       # Replace Transposed Convolution with a Nearest Neighbor upsampling step
       # followed by 3x3 convolution.
-      height_scale = self._mask_height / shape_utils.get_dim_as_int(
+      height_scale = self._mask_height // shape_utils.get_dim_as_int(
           input_shapes[1])
-      width_scale = self._mask_width / shape_utils.get_dim_as_int(
+      width_scale = self._mask_width // shape_utils.get_dim_as_int(
           input_shapes[2])
       # pylint: disable=g-long-lambda
       self._mask_predictor_layers.append(tf.keras.layers.Lambda(

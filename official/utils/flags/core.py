@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,17 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Public interface for flag definition.
 
 See _example.py for detailed instructions on defining flags.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import sys
+
 from six.moves import shlex_quote
 
 from absl import app as absl_app
@@ -65,6 +62,7 @@ def register_key_flags_in_core(f):
   def core_fn(*args, **kwargs):
     key_flags = f(*args, **kwargs)
     [flags.declare_key_flag(fl) for fl in key_flags]  # pylint: disable=expression-not-assigned
+
   return core_fn
 
 
@@ -72,6 +70,7 @@ define_base = register_key_flags_in_core(_base.define_base)
 # We have define_base_eager for compatibility, since it used to be a separate
 # function from define_base.
 define_base_eager = define_base
+define_log_steps = register_key_flags_in_core(_benchmark.define_log_steps)
 define_benchmark = register_key_flags_in_core(_benchmark.define_benchmark)
 define_device = register_key_flags_in_core(_device.define_device)
 define_image = register_key_flags_in_core(_misc.define_image)
@@ -79,15 +78,14 @@ define_performance = register_key_flags_in_core(_performance.define_performance)
 define_distribution = register_key_flags_in_core(
     _distribution.define_distribution)
 
-
 help_wrap = _conventions.help_wrap
-
 
 get_num_gpus = _base.get_num_gpus
 get_tf_dtype = _performance.get_tf_dtype
 get_loss_scale = _performance.get_loss_scale
 DTYPE_MAP = _performance.DTYPE_MAP
 require_cloud_storage = _device.require_cloud_storage
+
 
 def _get_nondefault_flags_as_dict():
   """Returns the nondefault flags as a dict from flag name to value."""

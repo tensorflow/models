@@ -1,5 +1,4 @@
-# coding=utf-8
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# coding=utf-8
 """Utilities for pre-processing."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 import unicodedata
 
 import six
-
 
 SPIECE_UNDERLINE = '▁'
 
@@ -40,7 +36,7 @@ def printable_text(text):
   elif six.PY2:
     if isinstance(text, str):
       return text
-    elif isinstance(text, unicode):
+    elif isinstance(text, unicode):  # pylint: disable=undefined-variable
       return text.encode('utf-8')
     else:
       raise ValueError('Unsupported string type: %s' % (type(text)))
@@ -85,7 +81,7 @@ def encode_pieces(sp_model, text, return_unicode=True, sample=False):
   """Encodes pieces."""
   # return_unicode is used only for py2
 
-  if six.PY2 and isinstance(text, unicode):
+  if six.PY2 and isinstance(text, unicode):  # pylint: disable=undefined-variable
     text = text.encode('utf-8')
 
   if not sample:
@@ -95,8 +91,8 @@ def encode_pieces(sp_model, text, return_unicode=True, sample=False):
   new_pieces = []
   for piece in pieces:
     if len(piece) > 1 and piece[-1] == ',' and piece[-2].isdigit():
-      cur_pieces = sp_model.EncodeAsPieces(
-          piece[:-1].replace(SPIECE_UNDERLINE, ''))
+      cur_pieces = sp_model.EncodeAsPieces(piece[:-1].replace(
+          SPIECE_UNDERLINE, ''))
       if piece[0] != SPIECE_UNDERLINE and cur_pieces[0][0] == SPIECE_UNDERLINE:
         if len(cur_pieces[0]) == 1:
           cur_pieces = cur_pieces[1:]

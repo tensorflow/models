@@ -16,7 +16,7 @@
 """Tests for video_object_detection.metrics.coco_video_evaluation."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from lstm_object_detection.metrics import coco_evaluation_all_frames
 from object_detection.core import standard_fields
 

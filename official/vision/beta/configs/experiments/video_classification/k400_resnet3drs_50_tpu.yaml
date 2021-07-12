@@ -1,0 +1,99 @@
+# 3D ResNet-RS-50 video classification on Kinetics-400.
+#
+# --experiment_type=video_classification_kinetics400
+# Expected accuracy: 78.2% top-1 accuracy.
+runtime:
+  mixed_precision_dtype: bfloat16
+task:
+  losses:
+    l2_weight_decay: 0.00004
+    label_smoothing: 0.1
+    one_hot: true
+  model:
+    aggregate_endpoints: false
+    backbone:
+      resnet_3d_rs:
+        model_id: 50
+        stem_type: 'v1'
+        stem_conv_temporal_kernel_size: 5
+        stem_conv_temporal_stride: 2
+        stem_pool_temporal_stride: 1
+        stochastic_depth_drop_rate: 0.1
+        se_ratio: 0.25
+      type: resnet_3d_rs
+    dropout_rate: 0.5
+    model_type: video_classification
+    norm_activation:
+      activation: relu
+      norm_epsilon: 1.0e-05
+      norm_momentum: 0.0
+      use_sync_bn: false
+  train_data:
+    data_format: channels_last
+    drop_remainder: true
+    dtype: bfloat16
+    feature_shape: !!python/tuple
+    - 32
+    - 224
+    - 224
+    - 3
+    file_type: sstable
+    global_batch_size: 1024
+    is_training: true
+    min_image_size: 256
+    name: kinetics400
+    num_channels: 3
+    num_classes: 400
+    num_examples: 215570
+    num_test_clips: 1
+    num_test_crops: 1
+    one_hot: true
+    temporal_stride: 2
+    aug_max_area_ratio: 1.0
+    aug_max_aspect_ratio: 2.0
+    aug_min_area_ratio: 0.08
+    aug_min_aspect_ratio: 0.5
+  validation_data:
+    data_format: channels_last
+    drop_remainder: false
+    dtype: bfloat16
+    feature_shape: !!python/tuple
+    - 32
+    - 256
+    - 256
+    - 3
+    file_type: sstable
+    global_batch_size: 64
+    is_training: false
+    min_image_size: 256
+    name: kinetics400
+    num_channels: 3
+    num_classes: 400
+    num_examples: 17706
+    num_test_clips: 10
+    num_test_crops: 3
+    one_hot: true
+    temporal_stride: 2
+trainer:
+  checkpoint_interval: 210
+  max_to_keep: 3
+  optimizer_config:
+    ema:
+      average_decay: 0.9999
+      trainable_weights_only: false
+    learning_rate:
+      cosine:
+        decay_steps: 73682
+        initial_learning_rate: 0.8
+        name: CosineDecay
+      type: cosine
+    warmup:
+      linear:
+        name: linear
+        warmup_learning_rate: 0
+        warmup_steps: 1050
+      type: linear
+  train_steps: 73682
+  steps_per_loop: 500
+  summary_interval: 500
+  validation_interval: 500

@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Post-processing model outputs to generate detection."""
 
 from __future__ import absolute_import
@@ -19,7 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
-import tensorflow.compat.v2 as tf
+
+import tensorflow as tf
 
 from official.vision.detection.ops import nms
 from official.vision.detection.utils import box_utils
@@ -202,15 +203,14 @@ def _generate_detections_per_image(boxes,
         scores_i, k=tf.minimum(tf.shape(input=scores_i)[-1], pre_nms_num_boxes))
     boxes_i = tf.gather(boxes_i, indices)
 
-    (nmsed_indices_i,
-     nmsed_num_valid_i) = tf.image.non_max_suppression_padded(
-         tf.cast(boxes_i, tf.float32),
-         tf.cast(scores_i, tf.float32),
-         max_total_size,
-         iou_threshold=nms_iou_threshold,
-         score_threshold=score_threshold,
-         pad_to_max_output_size=True,
-         name='nms_detections_' + str(i))
+    (nmsed_indices_i, nmsed_num_valid_i) = tf.image.non_max_suppression_padded(
+        tf.cast(boxes_i, tf.float32),
+        tf.cast(scores_i, tf.float32),
+        max_total_size,
+        iou_threshold=nms_iou_threshold,
+        score_threshold=score_threshold,
+        pad_to_max_output_size=True,
+        name='nms_detections_' + str(i))
     nmsed_boxes_i = tf.gather(boxes_i, nmsed_indices_i)
     nmsed_scores_i = tf.gather(scores_i, nmsed_indices_i)
     # Sets scores of invalid boxes to -1.
@@ -235,11 +235,8 @@ def _generate_detections_per_image(boxes,
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 
-def _generate_detections_batched(boxes,
-                                 scores,
-                                 max_total_size,
-                                 nms_iou_threshold,
-                                 score_threshold):
+def _generate_detections_batched(boxes, scores, max_total_size,
+                                 nms_iou_threshold, score_threshold):
   """Generates detected boxes with scores and classes for one-stage detector.
 
   The function takes output of multi-level ConvNets and anchor boxes and
@@ -247,19 +244,20 @@ def _generate_detections_batched(boxes,
   supported on TPU currently.
 
   Args:
-    boxes: a tensor with shape [batch_size, N, num_classes, 4] or
-      [batch_size, N, 1, 4], which box predictions on all feature levels. The N
-      is the number of total anchors on all levels.
-    scores: a tensor with shape [batch_size, N, num_classes], which
-      stacks class probability on all feature levels. The N is the number of
-      total anchors on all levels. The num_classes is the number of classes
-      predicted by the model. Note that the class_outputs here is the raw score.
+    boxes: a tensor with shape [batch_size, N, num_classes, 4] or [batch_size,
+      N, 1, 4], which box predictions on all feature levels. The N is the number
+      of total anchors on all levels.
+    scores: a tensor with shape [batch_size, N, num_classes], which stacks class
+      probability on all feature levels. The N is the number of total anchors on
+      all levels. The num_classes is the number of classes predicted by the
+      model. Note that the class_outputs here is the raw score.
     max_total_size: a scalar representing maximum number of boxes retained over
       all classes.
     nms_iou_threshold: a float representing the threshold for deciding whether
       boxes overlap too much with respect to IOU.
     score_threshold: a float representing the threshold for deciding when to
       remove boxes based on score.
+
   Returns:
     nms_boxes: `float` Tensor of shape [batch_size, max_total_size, 4]
       representing top detected boxes in [y1, x1, y2, x2].
@@ -285,21 +283,24 @@ def _generate_detections_batched(boxes,
          max_total_size=max_total_size,
          iou_threshold=nms_iou_threshold,
          score_threshold=score_threshold,
-         pad_per_class=False,)
+         pad_per_class=False,
+     )
     # De-normalizes box cooridinates.
     nmsed_boxes *= normalizer
+  nmsed_classes = tf.cast(nmsed_classes, tf.int32)
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 
-class MultilevelDetectionGenerator(object):
+class MultilevelDetectionGenerator(tf.keras.layers.Layer):
   """Generates detected boxes with scores and classes for one-stage detector."""
 
-  def __init__(self, params):
+  def __init__(self, min_level, max_level, params):
+    self._min_level = min_level
+    self._max_level = max_level
     self._generate_detections = generate_detections_factory(params)
-    self._min_level = params.min_level
-    self._max_level = params.max_level
+    super(MultilevelDetectionGenerator, self).__init__(autocast=False)
 
-  def __call__(self, box_outputs, class_outputs, anchor_boxes, image_shape):
+  def call(self, box_outputs, class_outputs, anchor_boxes, image_shape):
     # Collects outputs from all levels into a list.
     boxes = []
     scores = []
@@ -337,13 +338,14 @@ class MultilevelDetectionGenerator(object):
     return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 
-class GenericDetectionGenerator(object):
+class GenericDetectionGenerator(tf.keras.layers.Layer):
   """Generates the final detected boxes with scores and classes."""
 
   def __init__(self, params):
+    super(GenericDetectionGenerator, self).__init__(autocast=False)
     self._generate_detections = generate_detections_factory(params)
 
-  def __call__(self, box_outputs, class_outputs, anchor_boxes, image_shape):
+  def call(self, box_outputs, class_outputs, anchor_boxes, image_shape):
     """Generate final detections.
 
     Args:
@@ -381,16 +383,13 @@ class GenericDetectionGenerator(object):
     box_outputs = tf.reshape(
         box_outputs,
         tf.stack([batch_size, num_locations, num_classes, 4], axis=-1))
-    box_outputs = tf.slice(
-        box_outputs, [0, 0, 1, 0], [-1, -1, -1, -1])
+    box_outputs = tf.slice(box_outputs, [0, 0, 1, 0], [-1, -1, -1, -1])
     anchor_boxes = tf.tile(
         tf.expand_dims(anchor_boxes, axis=2), [1, 1, num_classes - 1, 1])
-    box_outputs = tf.reshape(
-        box_outputs,
-        tf.stack([batch_size, num_detections, 4], axis=-1))
+    box_outputs = tf.reshape(box_outputs,
+                             tf.stack([batch_size, num_detections, 4], axis=-1))
     anchor_boxes = tf.reshape(
-        anchor_boxes,
-        tf.stack([batch_size, num_detections, 4], axis=-1))
+        anchor_boxes, tf.stack([batch_size, num_detections, 4], axis=-1))
 
     # Box decoding.
     decoded_boxes = box_utils.decode_boxes(
@@ -408,5 +407,91 @@ class GenericDetectionGenerator(object):
 
     # Adds 1 to offset the background class which has index 0.
     nmsed_classes += 1
+
+    return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
+
+
+class OlnDetectionGenerator(GenericDetectionGenerator):
+  """Generates the final detected boxes with scores and classes."""
+
+  def __call__(self, box_outputs, class_outputs, anchor_boxes, image_shape,
+               is_single_fg_score=False, keep_nms=True):
+    """Generate final detections for Object Localization Network (OLN).
+
+    Args:
+      box_outputs: a tensor of shape of [batch_size, K, num_classes * 4]
+        representing the class-specific box coordinates relative to anchors.
+      class_outputs: a tensor of shape of [batch_size, K, num_classes]
+        representing the class logits before applying score activiation.
+      anchor_boxes: a tensor of shape of [batch_size, K, 4] representing the
+        corresponding anchor boxes w.r.t `box_outputs`.
+      image_shape: a tensor of shape of [batch_size, 2] storing the image height
+        and width w.r.t. the scaled image, i.e. the same image space as
+        `box_outputs` and `anchor_boxes`.
+      is_single_fg_score: a Bool indicator of whether class_outputs includes the
+        background scores concatenated or not. By default, class_outputs is a
+        concatenation of both scores for the foreground and background. That is,
+        scores_without_bg=False.
+      keep_nms: a Bool indicator of whether to perform NMS or not.
+
+    Returns:
+      nms_boxes: `float` Tensor of shape [batch_size, max_total_size, 4]
+        representing top detected boxes in [y1, x1, y2, x2].
+      nms_scores: `float` Tensor of shape [batch_size, max_total_size]
+        representing sorted confidence scores for detected boxes. The values are
+        between [0, 1].
+      nms_classes: `int` Tensor of shape [batch_size, max_total_size]
+        representing classes for detected boxes.
+      valid_detections: `int` Tensor of shape [batch_size] only the top
+        `valid_detections` boxes are valid detections.
+    """
+    if is_single_fg_score:
+      # Concatenates dummy background scores.
+      dummy_bg_scores = tf.zeros_like(class_outputs)
+      class_outputs = tf.stack([dummy_bg_scores, class_outputs], -1)
+    else:
+      class_outputs = tf.nn.softmax(class_outputs, axis=-1)
+
+    # Removes the background class.
+    class_outputs_shape = tf.shape(class_outputs)
+    batch_size = class_outputs_shape[0]
+    num_locations = class_outputs_shape[1]
+    num_classes = class_outputs_shape[-1]
+    num_detections = num_locations * (num_classes - 1)
+
+    class_outputs = tf.slice(class_outputs, [0, 0, 1], [-1, -1, -1])
+    box_outputs = tf.reshape(
+        box_outputs,
+        tf.stack([batch_size, num_locations, num_classes, 4], axis=-1))
+    box_outputs = tf.slice(box_outputs, [0, 0, 1, 0], [-1, -1, -1, -1])
+    anchor_boxes = tf.tile(
+        tf.expand_dims(anchor_boxes, axis=2), [1, 1, num_classes - 1, 1])
+    box_outputs = tf.reshape(box_outputs,
+                             tf.stack([batch_size, num_detections, 4], axis=-1))
+    anchor_boxes = tf.reshape(
+        anchor_boxes, tf.stack([batch_size, num_detections, 4], axis=-1))
+
+    # Box decoding. For RPN outputs, box_outputs are all zeros.
+    decoded_boxes = box_utils.decode_boxes(
+        box_outputs, anchor_boxes, weights=[10.0, 10.0, 5.0, 5.0])
+
+    # Box clipping
+    decoded_boxes = box_utils.clip_boxes(decoded_boxes, image_shape)
+
+    decoded_boxes = tf.reshape(
+        decoded_boxes,
+        tf.stack([batch_size, num_locations, num_classes - 1, 4], axis=-1))
+
+    if keep_nms:
+      nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = (
+          self._generate_detections(decoded_boxes, class_outputs))
+      # Adds 1 to offset the background class which has index 0.
+      nmsed_classes += 1
+    else:
+      nmsed_boxes = decoded_boxes[:, :, 0, :]
+      nmsed_scores = class_outputs[:, :, 0]
+      nmsed_classes = tf.cast(tf.ones_like(nmsed_scores), tf.int32)
+      valid_detections = tf.cast(
+          tf.reduce_sum(tf.ones_like(nmsed_scores), axis=-1), tf.int32)
 
     return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections

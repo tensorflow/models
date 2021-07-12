@@ -38,7 +38,7 @@ def apply_with_random_selector(x, func, num_cases):
     The result of func(x, sel), where func receives the value of the
     selector as a python integer, but sel is sampled dynamically.
   """
-  sel = tf.random_uniform([], maxval=num_cases, dtype=tf.int32)
+  sel = tf.random.uniform([], maxval=num_cases, dtype=tf.int32)
   # Pass the real x only to one of the func calls.
   return control_flow_ops.merge([
       func(control_flow_ops.switch(x, tf.equal(sel, case))[1], case)
@@ -64,7 +64,7 @@ def distort_color(image, color_ordering=0, fast_mode=True, scope=None):
   Raises:
     ValueError: if color_ordering not in [0, 3]
   """
-  with tf.name_scope(scope, 'distort_color', [image]):
+  with tf.compat.v1.name_scope(scope, 'distort_color', [image]):
     if fast_mode:
       if color_ordering == 0:
         image = tf.image.random_brightness(image, max_delta=32. / 255.)
@@ -131,7 +131,7 @@ def distorted_bounding_box_crop(image,
   Returns:
     A tuple, a 3-D Tensor cropped_image and the distorted bbox
   """
-  with tf.name_scope(scope, 'distorted_bounding_box_crop', [image, bbox]):
+  with tf.compat.v1.name_scope(scope, 'distorted_bounding_box_crop', [image, bbox]):
     # Each bounding box has shape [1, num_boxes, box coords] and
     # the coordinates are ordered [ymin, xmin, ymax, xmax].
 
@@ -143,7 +143,7 @@ def distorted_bounding_box_crop(image,
     # bounding box. If no box is supplied, then we assume the bounding box is
     # the entire image.
     sample_distorted_bounding_box = tf.image.sample_distorted_bounding_box(
-        tf.shape(image),
+        image_size=tf.shape(input=image),
         bounding_boxes=bbox,
         min_object_covered=min_object_covered,
         aspect_ratio_range=aspect_ratio_range,
@@ -188,7 +188,7 @@ def preprocess_for_train(image,
   Returns:
     3-D float Tensor of distorted image used for training with range [-1, 1].
   """
-  with tf.name_scope(scope, 'distort_image', [image, height, width, bbox]):
+  with tf.compat.v1.name_scope(scope, 'distort_image', [image, height, width, bbox]):
     if bbox is None:
       bbox = tf.constant(
           [0.0, 0.0, 1.0, 1.0], dtype=tf.float32, shape=[1, 1, 4])
@@ -198,7 +198,7 @@ def preprocess_for_train(image,
     # the coordinates are ordered [ymin, xmin, ymax, xmax].
     image_with_box = tf.image.draw_bounding_boxes(
         tf.expand_dims(image, 0), bbox)
-    tf.summary.image('image_with_bounding_boxes', image_with_box)
+    tf.compat.v1.summary.image('image_with_bounding_boxes', image_with_box)
 
     distorted_image, distorted_bbox = distorted_bounding_box_crop(image, bbox)
     # Restore the shape since the dynamic slice based upon the bbox_size loses
@@ -206,8 +206,8 @@ def preprocess_for_train(image,
     distorted_image.set_shape([None, None, 3])
     image_with_distorted_box = tf.image.draw_bounding_boxes(
         tf.expand_dims(image, 0), distorted_bbox)
-    tf.summary.image('images_with_distorted_bounding_box',
-                     image_with_distorted_box)
+    tf.compat.v1.summary.image('images_with_distorted_bounding_box',
+                               image_with_distorted_box)
 
     # This resizing operation may distort the images because the aspect
     # ratio is not respected. We select a resize method in a round robin
@@ -218,11 +218,11 @@ def preprocess_for_train(image,
     num_resize_cases = 1 if fast_mode else 4
     distorted_image = apply_with_random_selector(
         distorted_image,
-        lambda x, method: tf.image.resize_images(x, [height, width], method=method),
+        lambda x, method: tf.image.resize(x, [height, width], method=method),
         num_cases=num_resize_cases)
 
-    tf.summary.image('cropped_resized_image',
-                     tf.expand_dims(distorted_image, 0))
+    tf.compat.v1.summary.image('cropped_resized_image',
+                               tf.expand_dims(distorted_image, 0))
 
     # Randomly flip the image horizontally.
     distorted_image = tf.image.random_flip_left_right(distorted_image)
@@ -233,8 +233,8 @@ def preprocess_for_train(image,
         lambda x, ordering: distort_color(x, ordering, fast_mode),
         num_cases=4)
 
-    tf.summary.image('final_distorted_image',
-                     tf.expand_dims(distorted_image, 0))
+    tf.compat.v1.summary.image('final_distorted_image',
+                               tf.expand_dims(distorted_image, 0))
     distorted_image = tf.subtract(distorted_image, 0.5)
     distorted_image = tf.multiply(distorted_image, 2.0)
     return distorted_image
@@ -265,7 +265,7 @@ def preprocess_for_eval(image,
   Returns:
     3-D float Tensor of prepared image.
   """
-  with tf.name_scope(scope, 'eval_image', [image, height, width]):
+  with tf.compat.v1.name_scope(scope, 'eval_image', [image, height, width]):
     if image.dtype != tf.float32:
       image = tf.image.convert_image_dtype(image, dtype=tf.float32)
     # Crop the central region of the image with an area containing 87.5% of
@@ -276,8 +276,8 @@ def preprocess_for_eval(image,
     if height and width:
       # Resize the image to the specified height and width.
       image = tf.expand_dims(image, 0)
-      image = tf.image.resize_bilinear(
-          image, [height, width], align_corners=False)
+      image = tf.image.resize(
+          image, [height, width], method=tf.image.ResizeMethod.BILINEAR)
       image = tf.squeeze(image, [0])
     image = tf.subtract(image, 0.5)
     image = tf.multiply(image, 2.0)

@@ -18,13 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from nets import inception_utils
 
-slim = contrib_slim
-trunc_normal = lambda stddev: tf.truncated_normal_initializer(0.0, stddev)
+# pylint: disable=g-long-lambda
+trunc_normal = lambda stddev: tf.truncated_normal_initializer(
+    0.0, stddev)
 
 
 def inception_v1_base(inputs,
@@ -313,14 +314,16 @@ def inception_v1(inputs,
       activation.
   """
   # Final pooling and prediction
-  with tf.variable_scope(scope, 'InceptionV1', [inputs], reuse=reuse) as scope:
+  with tf.variable_scope(
+      scope, 'InceptionV1', [inputs], reuse=reuse) as scope:
     with slim.arg_scope([slim.batch_norm, slim.dropout],
                         is_training=is_training):
       net, end_points = inception_v1_base(inputs, scope=scope)
       with tf.variable_scope('Logits'):
         if global_pool:
           # Global average pooling.
-          net = tf.reduce_mean(net, [1, 2], keep_dims=True, name='global_pool')
+          net = tf.reduce_mean(
+              input_tensor=net, axis=[1, 2], keepdims=True, name='global_pool')
           end_points['global_pool'] = net
         else:
           # Pooling with a fixed kernel size.

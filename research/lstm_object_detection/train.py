@@ -46,7 +46,7 @@ import functools
 import json
 import os
 from absl import flags
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from lstm_object_detection import model_builder
 from lstm_object_detection import trainer
 from lstm_object_detection.inputs import seq_dataset_builder

@@ -15,7 +15,7 @@
 
 """Tests for anchor_generators.flexible_grid_anchor_generator_test.py."""
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.anchor_generators import flexible_grid_anchor_generator as fg
 from object_detection.utils import test_case
@@ -24,52 +24,51 @@ from object_detection.utils import test_case
 class FlexibleGridAnchorGeneratorTest(test_case.TestCase):
 
   def test_construct_single_anchor(self):
-    anchor_strides = [(32, 32),]
-    anchor_offsets = [(16, 16),]
-    base_sizes = [(128.0,)]
-    aspect_ratios = [(1.0,)]
-    im_height = 64
-    im_width = 64
-    feature_map_shape_list = [(2, 2)]
+    def graph_fn():
+      anchor_strides = [(32, 32),]
+      anchor_offsets = [(16, 16),]
+      base_sizes = [(128.0,)]
+      aspect_ratios = [(1.0,)]
+      im_height = 64
+      im_width = 64
+      feature_map_shape_list = [(2, 2)]
+      anchor_generator = fg.FlexibleGridAnchorGenerator(
+          base_sizes, aspect_ratios, anchor_strides, anchor_offsets,
+          normalize_coordinates=False)
+      anchors_list = anchor_generator.generate(
+          feature_map_shape_list, im_height=im_height, im_width=im_width)
+      anchor_corners = anchors_list[0].get()
+      return anchor_corners
+    anchor_corners_out = self.execute(graph_fn, [])
     exp_anchor_corners = [[-48, -48, 80, 80],
                           [-48, -16, 80, 112],
                           [-16, -48, 112, 80],
                           [-16, -16, 112, 112]]
-    anchor_generator = fg.FlexibleGridAnchorGenerator(
-        base_sizes, aspect_ratios, anchor_strides, anchor_offsets,
-        normalize_coordinates=False)
-    anchors_list = anchor_generator.generate(
-        feature_map_shape_list, im_height=im_height, im_width=im_width)
-    anchor_corners = anchors_list[0].get()
-
-    with self.test_session():
-      anchor_corners_out = anchor_corners.eval()
-      self.assertAllClose(anchor_corners_out, exp_anchor_corners)
+    self.assertAllClose(anchor_corners_out, exp_anchor_corners)
 
   def test_construct_single_anchor_unit_dimensions(self):
-    anchor_strides = [(32, 32),]
-    anchor_offsets = [(16, 16),]
-    base_sizes = [(32.0,)]
-    aspect_ratios = [(1.0,)]
-    im_height = 1
-    im_width = 1
-    feature_map_shape_list = [(2, 2)]
+    def graph_fn():
+      anchor_strides = [(32, 32),]
+      anchor_offsets = [(16, 16),]
+      base_sizes = [(32.0,)]
+      aspect_ratios = [(1.0,)]
+      im_height = 1
+      im_width = 1
+      feature_map_shape_list = [(2, 2)]
+      anchor_generator = fg.FlexibleGridAnchorGenerator(
+          base_sizes, aspect_ratios, anchor_strides, anchor_offsets,
+          normalize_coordinates=False)
+      anchors_list = anchor_generator.generate(
+          feature_map_shape_list, im_height=im_height, im_width=im_width)
+      anchor_corners = anchors_list[0].get()
+      return anchor_corners
     # Positive offsets are produced.
     exp_anchor_corners = [[0, 0, 32, 32],
                           [0, 32, 32, 64],
                           [32, 0, 64, 32],
                           [32, 32, 64, 64]]
-
-    anchor_generator = fg.FlexibleGridAnchorGenerator(
-        base_sizes, aspect_ratios, anchor_strides, anchor_offsets,
-        normalize_coordinates=False)
-    anchors_list = anchor_generator.generate(
-        feature_map_shape_list, im_height=im_height, im_width=im_width)
-    anchor_corners = anchors_list[0].get()
-
-    with self.test_session():
-      anchor_corners_out = anchor_corners.eval()
-      self.assertAllClose(anchor_corners_out, exp_anchor_corners)
+    anchor_corners_out = self.execute(graph_fn, [])
+    self.assertAllClose(anchor_corners_out, exp_anchor_corners)
 
   def test_construct_normalized_anchors_fails_with_unit_dimensions(self):
     anchor_generator = fg.FlexibleGridAnchorGenerator(
@@ -80,27 +79,27 @@ class FlexibleGridAnchorGeneratorTest(test_case.TestCase):
           feature_map_shape_list=[(2, 2)], im_height=1, im_width=1)
 
   def test_construct_single_anchor_in_normalized_coordinates(self):
-    anchor_strides = [(32, 32),]
-    anchor_offsets = [(16, 16),]
-    base_sizes = [(128.0,)]
-    aspect_ratios = [(1.0,)]
-    im_height = 64
-    im_width = 128
-    feature_map_shape_list = [(2, 2)]
+    def graph_fn():
+      anchor_strides = [(32, 32),]
+      anchor_offsets = [(16, 16),]
+      base_sizes = [(128.0,)]
+      aspect_ratios = [(1.0,)]
+      im_height = 64
+      im_width = 128
+      feature_map_shape_list = [(2, 2)]
+      anchor_generator = fg.FlexibleGridAnchorGenerator(
+          base_sizes, aspect_ratios, anchor_strides, anchor_offsets,
+          normalize_coordinates=True)
+      anchors_list = anchor_generator.generate(
+          feature_map_shape_list, im_height=im_height, im_width=im_width)
+      anchor_corners = anchors_list[0].get()
+      return anchor_corners
     exp_anchor_corners = [[-48./64, -48./128, 80./64, 80./128],
                           [-48./64, -16./128, 80./64, 112./128],
                           [-16./64, -48./128, 112./64, 80./128],
                           [-16./64, -16./128, 112./64, 112./128]]
-    anchor_generator = fg.FlexibleGridAnchorGenerator(
-        base_sizes, aspect_ratios, anchor_strides, anchor_offsets,
-        normalize_coordinates=True)
-    anchors_list = anchor_generator.generate(
-        feature_map_shape_list, im_height=im_height, im_width=im_width)
-    anchor_corners = anchors_list[0].get()
-
-    with self.test_session():
-      anchor_corners_out = anchor_corners.eval()
-      self.assertAllClose(anchor_corners_out, exp_anchor_corners)
+    anchor_corners_out = self.execute(graph_fn, [])
+    self.assertAllClose(anchor_corners_out, exp_anchor_corners)
 
   def test_num_anchors_per_location(self):
     anchor_strides = [(32, 32), (64, 64)]
@@ -115,29 +114,28 @@ class FlexibleGridAnchorGeneratorTest(test_case.TestCase):
     self.assertEqual(anchor_generator.num_anchors_per_location(), [6, 6])
 
   def test_construct_single_anchor_dynamic_size(self):
-    anchor_strides = [(32, 32),]
-    anchor_offsets = [(0, 0),]
-    base_sizes = [(128.0,)]
-    aspect_ratios = [(1.0,)]
-    im_height = tf.constant(64)
-    im_width = tf.constant(64)
-    feature_map_shape_list = [(2, 2)]
+    def graph_fn():
+      anchor_strides = [(32, 32),]
+      anchor_offsets = [(0, 0),]
+      base_sizes = [(128.0,)]
+      aspect_ratios = [(1.0,)]
+      im_height = tf.constant(64)
+      im_width = tf.constant(64)
+      feature_map_shape_list = [(2, 2)]
+      anchor_generator = fg.FlexibleGridAnchorGenerator(
+          base_sizes, aspect_ratios, anchor_strides, anchor_offsets,
+          normalize_coordinates=False)
+      anchors_list = anchor_generator.generate(
+          feature_map_shape_list, im_height=im_height, im_width=im_width)
+      anchor_corners = anchors_list[0].get()
+      return anchor_corners
     # Zero offsets are used.
     exp_anchor_corners = [[-64, -64, 64, 64],
                           [-64, -32, 64, 96],
                           [-32, -64, 96, 64],
                           [-32, -32, 96, 96]]
-
-    anchor_generator = fg.FlexibleGridAnchorGenerator(
-        base_sizes, aspect_ratios, anchor_strides, anchor_offsets,
-        normalize_coordinates=False)
-    anchors_list = anchor_generator.generate(
-        feature_map_shape_list, im_height=im_height, im_width=im_width)
-    anchor_corners = anchors_list[0].get()
-
-    with self.test_session():
-      anchor_corners_out = anchor_corners.eval()
-      self.assertAllClose(anchor_corners_out, exp_anchor_corners)
+    anchor_corners_out = self.execute_cpu(graph_fn, [])
+    self.assertAllClose(anchor_corners_out, exp_anchor_corners)
 
   def test_construct_single_anchor_with_odd_input_dimension(self):
 

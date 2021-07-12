@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,26 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Keras-based einsum layer."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
+"""Keras-based einsum layer."""
+# pylint: disable=g-classes-have-attributes
 
 import tensorflow as tf
+
+from tensorflow.python.util import deprecation
 
 _CHR_IDX = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m"]
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
 class DenseEinsum(tf.keras.layers.Layer):
-  """A densely connected layer that uses tf.einsum as the backing computation.
+  """A densely connected layer that uses `tf.einsum` as the backing computation.
 
   This layer can perform einsum calculations of arbitrary dimensionality.
 
-  Attributes:
+  Args:
     output_shape: Positive integer or tuple, dimensionality of the output space.
     num_summed_dimensions: The number of dimensions to sum over. Standard 2D
       matmul should use 1, 3D matmul should use 2, and so forth.
@@ -57,6 +55,8 @@ class DenseEinsum(tf.keras.layers.Layer):
       `(batch_size, units)`.
   """
 
+  @deprecation.deprecated(None, "DenseEinsum is deprecated. Please use "
+                          "tf.keras.experimental.EinsumDense layer instead.")
   def __init__(self,
                output_shape,
                num_summed_dimensions=1,
@@ -143,22 +143,12 @@ class DenseEinsum(tf.keras.layers.Layer):
       self._bias = None
     super(DenseEinsum, self).build(input_shape)
 
-  def compute_output_shape(self, input_shape):
-    input_shape = tf.TensorShape(input_shape)
-    input_shape = input_shape.with_rank_at_least(self._num_summed_dimensions +
-                                                 1)
-    for i in range(self._num_summed_dimensions):
-      if tf.dimension_value(input_shape[-1 * i]) is None:
-        raise ValueError(
-            "The %s dimension of input_shape must be defined, but saw: %s" %
-            (-1 * i, input_shape))
-    return input_shape[:-1 * self._num_summed_dimensions].concatenate(
-        self._units)
-
   def get_config(self):
     config = {
         "output_shape":
             self._output_shape,
+        "num_summed_dimensions":
+            self._num_summed_dimensions,
         "activation":
             tf.keras.activations.serialize(self._activation),
         "use_bias":

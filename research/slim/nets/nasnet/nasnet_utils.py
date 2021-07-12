@@ -31,13 +31,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-from tensorflow.contrib import framework as contrib_framework
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
 
-arg_scope = contrib_framework.arg_scope
-slim = contrib_slim
+import tf_slim as slim
 
+arg_scope = slim.arg_scope
 DATA_FORMAT_NCHW = 'NCHW'
 DATA_FORMAT_NHWC = 'NHWC'
 INVALID = 'null'
@@ -56,14 +54,14 @@ def calc_reduction_layers(num_cells, num_reduction_layers):
   return reduction_layers
 
 
-@contrib_framework.add_arg_scope
+@slim.add_arg_scope
 def get_channel_index(data_format=INVALID):
   assert data_format != INVALID
   axis = 3 if data_format == 'NHWC' else 1
   return axis
 
 
-@contrib_framework.add_arg_scope
+@slim.add_arg_scope
 def get_channel_dim(shape, data_format=INVALID):
   assert data_format != INVALID
   assert len(shape) == 4
@@ -75,19 +73,19 @@ def get_channel_dim(shape, data_format=INVALID):
     raise ValueError('Not a valid data_format', data_format)
 
 
-@contrib_framework.add_arg_scope
+@slim.add_arg_scope
 def global_avg_pool(x, data_format=INVALID):
   """Average pool away the height and width spatial dimensions of x."""
   assert data_format != INVALID
   assert data_format in ['NHWC', 'NCHW']
   assert x.shape.ndims == 4
   if data_format == 'NHWC':
-    return tf.reduce_mean(x, [1, 2])
+    return tf.reduce_mean(input_tensor=x, axis=[1, 2])
   else:
-    return tf.reduce_mean(x, [2, 3])
+    return tf.reduce_mean(input_tensor=x, axis=[2, 3])
 
 
-@contrib_framework.add_arg_scope
+@slim.add_arg_scope
 def factorized_reduction(net, output_filters, stride, data_format=INVALID):
   """Reduces the shape of net without information loss due to striding."""
   assert data_format != INVALID
@@ -101,8 +99,12 @@ def factorized_reduction(net, output_filters, stride, data_format=INVALID):
     stride_spec = [1, 1, stride, stride]
 
   # Skip path 1
-  path1 = tf.nn.avg_pool(
-      net, [1, 1, 1, 1], stride_spec, 'VALID', data_format=data_format)
+  path1 = tf.nn.avg_pool2d(
+      net,
+      ksize=[1, 1, 1, 1],
+      strides=stride_spec,
+      padding='VALID',
+      data_format=data_format)
   path1 = slim.conv2d(path1, int(output_filters / 2), 1, scope='path1_conv')
 
   # Skip path 2
@@ -110,15 +112,18 @@ def factorized_reduction(net, output_filters, stride, data_format=INVALID):
   # include those 0's that were added.
   if data_format == 'NHWC':
     pad_arr = [[0, 0], [0, 1], [0, 1], [0, 0]]
-    path2 = tf.pad(net, pad_arr)[:, 1:, 1:, :]
+    path2 = tf.pad(tensor=net, paddings=pad_arr)[:, 1:, 1:, :]
     concat_axis = 3
   else:
     pad_arr = [[0, 0], [0, 0], [0, 1], [0, 1]]
-    path2 = tf.pad(net, pad_arr)[:, :, 1:, 1:]
+    path2 = tf.pad(tensor=net, paddings=pad_arr)[:, :, 1:, 1:]
     concat_axis = 1
-
-  path2 = tf.nn.avg_pool(
-      path2, [1, 1, 1, 1], stride_spec, 'VALID', data_format=data_format)
+  path2 = tf.nn.avg_pool2d(
+      path2,
+      ksize=[1, 1, 1, 1],
+      strides=stride_spec,
+      padding='VALID',
+      data_format=data_format)
 
   # If odd number of filters, add an additional one to the second path.
   final_filter_size = int(output_filters / 2) + int(output_filters % 2)
@@ -130,14 +135,14 @@ def factorized_reduction(net, output_filters, stride, data_format=INVALID):
   return final_path
 
 
-@contrib_framework.add_arg_scope
+@slim.add_arg_scope
 def drop_path(net, keep_prob, is_training=True):
   """Drops out a whole example hiddenstate with the specified probability."""
   if is_training:
-    batch_size = tf.shape(net)[0]
+    batch_size = tf.shape(input=net)[0]
     noise_shape = [batch_size, 1, 1, 1]
     random_tensor = keep_prob
-    random_tensor += tf.random_uniform(noise_shape, dtype=tf.float32)
+    random_tensor += tf.random.uniform(noise_shape, dtype=tf.float32)
     binary_tensor = tf.cast(tf.floor(random_tensor), net.dtype)
     keep_prob_inv = tf.cast(1.0 / keep_prob, net.dtype)
     net = net * keep_prob_inv * binary_tensor
@@ -423,7 +428,7 @@ class NasNetABaseCell(object):
     net = tf.concat(values=states_to_combine, axis=concat_axis)
     return net
 
-  @contrib_framework.add_arg_scope  # No public API. For internal use only.
+  @slim.add_arg_scope  # No public API. For internal use only.
   def _apply_drop_path(self, net, current_step=None,
                        use_summaries=False, drop_connect_version='v3'):
     """Apply drop_path regularization.

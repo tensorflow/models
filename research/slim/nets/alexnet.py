@@ -36,11 +36,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
-slim = contrib_slim
-trunc_normal = lambda stddev: tf.truncated_normal_initializer(0.0, stddev)
+# pylint: disable=g-long-lambda
+trunc_normal = lambda stddev: tf.truncated_normal_initializer(
+    0.0, stddev)
 
 
 def alexnet_v2_arg_scope(weight_decay=0.0005):
@@ -110,9 +111,10 @@ def alexnet_v2(inputs,
       net = slim.max_pool2d(net, [3, 3], 2, scope='pool5')
 
       # Use conv2d instead of fully_connected layers.
-      with slim.arg_scope([slim.conv2d],
-                          weights_initializer=trunc_normal(0.005),
-                          biases_initializer=tf.constant_initializer(0.1)):
+      with slim.arg_scope(
+          [slim.conv2d],
+          weights_initializer=trunc_normal(0.005),
+          biases_initializer=tf.constant_initializer(0.1)):
         net = slim.conv2d(net, 4096, [5, 5], padding='VALID',
                           scope='fc6')
         net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
@@ -122,16 +124,19 @@ def alexnet_v2(inputs,
         end_points = slim.utils.convert_collection_to_dict(
             end_points_collection)
         if global_pool:
-          net = tf.reduce_mean(net, [1, 2], keep_dims=True, name='global_pool')
+          net = tf.reduce_mean(
+              input_tensor=net, axis=[1, 2], keepdims=True, name='global_pool')
           end_points['global_pool'] = net
         if num_classes:
           net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
                              scope='dropout7')
-          net = slim.conv2d(net, num_classes, [1, 1],
-                            activation_fn=None,
-                            normalizer_fn=None,
-                            biases_initializer=tf.zeros_initializer(),
-                            scope='fc8')
+          net = slim.conv2d(
+              net,
+              num_classes, [1, 1],
+              activation_fn=None,
+              normalizer_fn=None,
+              biases_initializer=tf.zeros_initializer(),
+              scope='fc8')
           if spatial_squeeze:
             net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
           end_points[sc.name + '/fc8'] = net

@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 # pylint: disable=g-import-not-at-top
 # Checking TF version, because this module relies on TPUPartitionedCall
@@ -30,6 +30,8 @@ if int(major) < 1 or (int(major == 1) and int(minor) < 14):
 
 from tensorflow.python.framework import function
 from tensorflow.python.tpu import functional as tpu_functional
+from tensorflow.python.tpu import tpu
+from tensorflow.python.tpu.bfloat16 import bfloat16_scope
 from tensorflow.python.tpu.ops import tpu_ops
 from object_detection import exporter
 from object_detection.builders import model_builder
@@ -171,7 +173,7 @@ def build_graph(pipeline_config,
     # Dimshuffle: (b, c, h, w) -> (b, h, w, c)
     preprocessed_inputs = tf.transpose(preprocessed_inputs, perm=[0, 2, 3, 1])
     if use_bfloat16:
-      with tf.contrib.tpu.bfloat16_scope():
+      with bfloat16_scope():
         prediction_dict = detection_model.predict(preprocessed_inputs,
                                                   true_image_shapes)
     else:
@@ -188,8 +190,8 @@ def build_graph(pipeline_config,
 
   @function.Defun(capture_resource_var_by_value=False)
   def predict_tpu():
-    return tf.contrib.tpu.rewrite(predict_tpu_subgraph,
-                                  [preprocessed_inputs, true_image_shapes])
+    return tpu.rewrite(predict_tpu_subgraph,
+                       [preprocessed_inputs, true_image_shapes])
 
   prediction_outputs = tpu_functional.TPUPartitionedCall(
       args=predict_tpu.captured_inputs,

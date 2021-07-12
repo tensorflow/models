@@ -15,7 +15,7 @@
 
 """Tests for lstm_object_detection.tensorflow.model_builder."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from google.protobuf import text_format
 from lstm_object_detection import model_builder
 from lstm_object_detection.meta_architectures import lstm_ssd_meta_arch

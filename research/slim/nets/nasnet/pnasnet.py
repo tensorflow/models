@@ -22,16 +22,14 @@ from __future__ import division
 from __future__ import print_function
 
 import copy
-import tensorflow as tf
-from tensorflow.contrib import framework as contrib_framework
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 from tensorflow.contrib import training as contrib_training
 
 from nets.nasnet import nasnet
 from nets.nasnet import nasnet_utils
 
-arg_scope = contrib_framework.arg_scope
-slim = contrib_slim
+arg_scope = slim.arg_scope
 
 
 def large_imagenet_config():
@@ -176,11 +174,12 @@ def build_pnasnet_large(images,
   # pylint: enable=protected-access
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
-    tf.logging.info('A GPU is available on the machine, consider using NCHW '
-                    'data format for increased speed on GPU.')
+    tf.logging.info(
+        'A GPU is available on the machine, consider using NCHW '
+        'data format for increased speed on GPU.')
 
   if hparams.data_format == 'NCHW':
-    images = tf.transpose(images, [0, 3, 1, 2])
+    images = tf.transpose(a=images, perm=[0, 3, 1, 2])
 
   # Calculate the total number of cells in the network.
   # There is no distinction between reduction and normal cells in PNAS so the
@@ -224,11 +223,12 @@ def build_pnasnet_mobile(images,
   # pylint: enable=protected-access
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
-    tf.logging.info('A GPU is available on the machine, consider using NCHW '
-                    'data format for increased speed on GPU.')
+    tf.logging.info(
+        'A GPU is available on the machine, consider using NCHW '
+        'data format for increased speed on GPU.')
 
   if hparams.data_format == 'NCHW':
-    images = tf.transpose(images, [0, 3, 1, 2])
+    images = tf.transpose(a=images, perm=[0, 3, 1, 2])
 
   # Calculate the total number of cells in the network.
   # There is no distinction between reduction and normal cells in PNAS so the

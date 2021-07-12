@@ -15,13 +15,14 @@
 
 """Tests for post_processing_builder."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from google.protobuf import text_format
 from object_detection.builders import post_processing_builder
 from object_detection.protos import post_processing_pb2
+from object_detection.utils import test_case
 
 
-class PostProcessingBuilderTest(tf.test.TestCase):
+class PostProcessingBuilderTest(test_case.TestCase):
 
   def test_build_non_max_suppressor_with_correct_parameters(self):
     post_processing_text_proto = """
@@ -77,13 +78,12 @@ class PostProcessingBuilderTest(tf.test.TestCase):
     _, score_converter = post_processing_builder.build(
         post_processing_config)
     self.assertEqual(score_converter.__name__, 'identity_with_logit_scale')
-
-    inputs = tf.constant([1, 1], tf.float32)
-    outputs = score_converter(inputs)
-    with self.test_session() as sess:
-      converted_scores = sess.run(outputs)
-      expected_converted_scores = sess.run(inputs)
-      self.assertAllClose(converted_scores, expected_converted_scores)
+    def graph_fn():
+      inputs = tf.constant([1, 1], tf.float32)
+      outputs = score_converter(inputs)
+      return outputs
+    converted_scores = self.execute_cpu(graph_fn, [])
+    self.assertAllClose(converted_scores, [1, 1])
 
   def test_build_identity_score_converter_with_logit_scale(self):
     post_processing_text_proto = """
@@ -95,12 +95,12 @@ class PostProcessingBuilderTest(tf.test.TestCase):
     _, score_converter = post_processing_builder.build(post_processing_config)
     self.assertEqual(score_converter.__name__, 'identity_with_logit_scale')
 
-    inputs = tf.constant([1, 1], tf.float32)
-    outputs = score_converter(inputs)
-    with self.test_session() as sess:
-      converted_scores = sess.run(outputs)
-      expected_converted_scores = sess.run(tf.constant([.5, .5], tf.float32))
-      self.assertAllClose(converted_scores, expected_converted_scores)
+    def graph_fn():
+      inputs = tf.constant([1, 1], tf.float32)
+      outputs = score_converter(inputs)
+      return outputs
+    converted_scores = self.execute_cpu(graph_fn, [])
+    self.assertAllClose(converted_scores, [.5, .5])
 
   def test_build_sigmoid_score_converter(self):
     post_processing_text_proto = """
@@ -153,12 +153,12 @@ class PostProcessingBuilderTest(tf.test.TestCase):
     self.assertEqual(calibrated_score_conversion_fn.__name__,
                      'calibrate_with_function_approximation')
 
-    input_scores = tf.constant([1, 1], tf.float32)
-    outputs = calibrated_score_conversion_fn(input_scores)
-    with self.test_session() as sess:
-      calibrated_scores = sess.run(outputs)
-      expected_calibrated_scores = sess.run(tf.constant([0.5, 0.5], tf.float32))
-      self.assertAllClose(calibrated_scores, expected_calibrated_scores)
+    def graph_fn():
+      input_scores = tf.constant([1, 1], tf.float32)
+      outputs = calibrated_score_conversion_fn(input_scores)
+      return outputs
+    calibrated_scores = self.execute_cpu(graph_fn, [])
+    self.assertAllClose(calibrated_scores, [0.5, 0.5])
 
   def test_build_temperature_scaling_calibrator(self):
     post_processing_text_proto = """
@@ -174,12 +174,12 @@ class PostProcessingBuilderTest(tf.test.TestCase):
     self.assertEqual(calibrated_score_conversion_fn.__name__,
                      'calibrate_with_temperature_scaling_calibration')
 
-    input_scores = tf.constant([1, 1], tf.float32)
-    outputs = calibrated_score_conversion_fn(input_scores)
-    with self.test_session() as sess:
-      calibrated_scores = sess.run(outputs)
-      expected_calibrated_scores = sess.run(tf.constant([0.5, 0.5], tf.float32))
-      self.assertAllClose(calibrated_scores, expected_calibrated_scores)
+    def graph_fn():
+      input_scores = tf.constant([1, 1], tf.float32)
+      outputs = calibrated_score_conversion_fn(input_scores)
+      return outputs
+    calibrated_scores = self.execute_cpu(graph_fn, [])
+    self.assertAllClose(calibrated_scores, [0.5, 0.5])
 
 if __name__ == '__main__':
   tf.test.main()

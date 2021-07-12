@@ -1,5 +1,4 @@
-# coding=utf-8
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# coding=utf-8
 """Tokenization classes implementation.
 
 The file is forked from:
 https://github.com/google-research/bert/blob/master/tokenization.py.
 """
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 import re
@@ -32,7 +28,7 @@ import tensorflow as tf
 
 import sentencepiece as spm
 
-SPIECE_UNDERLINE = u"▁".encode("utf-8")
+SPIECE_UNDERLINE = "▁"
 
 
 def validate_case_matches_checkpoint(do_lower_case, init_checkpoint):
@@ -171,10 +167,11 @@ def whitespace_tokenize(text):
 class FullTokenizer(object):
   """Runs end-to-end tokenziation."""
 
-  def __init__(self, vocab_file, do_lower_case=True):
+  def __init__(self, vocab_file, do_lower_case=True, split_on_punc=True):
     self.vocab = load_vocab(vocab_file)
     self.inv_vocab = {v: k for k, v in self.vocab.items()}
-    self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case)
+    self.basic_tokenizer = BasicTokenizer(
+        do_lower_case=do_lower_case, split_on_punc=split_on_punc)
     self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab)
 
   def tokenize(self, text):
@@ -195,13 +192,17 @@ class FullTokenizer(object):
 class BasicTokenizer(object):
   """Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
 
-  def __init__(self, do_lower_case=True):
+  def __init__(self, do_lower_case=True, split_on_punc=True):
     """Constructs a BasicTokenizer.
 
     Args:
       do_lower_case: Whether to lower case the input.
+      split_on_punc: Whether to apply split on punctuations. By default BERT
+        starts a new token for punctuations. This makes detokenization difficult
+        for tasks like seq2seq decoding.
     """
     self.do_lower_case = do_lower_case
+    self.split_on_punc = split_on_punc
 
   def tokenize(self, text):
     """Tokenizes a piece of text."""
@@ -222,7 +223,10 @@ class BasicTokenizer(object):
       if self.do_lower_case:
         token = token.lower()
         token = self._run_strip_accents(token)
-      split_tokens.extend(self._run_split_on_punc(token))
+      if self.split_on_punc:
+        split_tokens.extend(self._run_split_on_punc(token))
+      else:
+        split_tokens.append(token)
 
     output_tokens = whitespace_tokenize(" ".join(split_tokens))
     return output_tokens
@@ -310,7 +314,7 @@ class BasicTokenizer(object):
 class WordpieceTokenizer(object):
   """Runs WordPiece tokenziation."""
 
-  def __init__(self, vocab, unk_token="[UNK]", max_input_chars_per_word=200):
+  def __init__(self, vocab, unk_token="[UNK]", max_input_chars_per_word=400):
     self.vocab = vocab
     self.unk_token = unk_token
     self.max_input_chars_per_word = max_input_chars_per_word
@@ -413,7 +417,7 @@ def preprocess_text(inputs, remove_space=True, lower=False):
   """Preprocesses data by removing extra space and normalize data.
 
   This method is used together with sentence piece tokenizer and is forked from:
-  https://github.com/google-research/google-research/blob/master/albert/tokenization.py
+  https://github.com/google-research/google-research/blob/e1f6fa00/albert/tokenization.py
 
   Args:
     inputs: The input text.
@@ -446,7 +450,7 @@ def encode_pieces(sp_model, text, sample=False):
   """Segements text into pieces.
 
   This method is used together with sentence piece tokenizer and is forked from:
-  https://github.com/google-research/google-research/blob/master/albert/tokenization.py
+  https://github.com/google-research/google-research/blob/e1f6fa00/albert/tokenization.py
 
 
   Args:
@@ -458,6 +462,9 @@ def encode_pieces(sp_model, text, sample=False):
   Returns:
     A list of token pieces.
   """
+  if six.PY2 and isinstance(text, six.text_type):
+    text = six.ensure_binary(text, "utf-8")
+
   if not sample:
     pieces = sp_model.EncodeAsPieces(text)
   else:
@@ -466,8 +473,8 @@ def encode_pieces(sp_model, text, sample=False):
   for piece in pieces:
     piece = printable_text(piece)
     if len(piece) > 1 and piece[-1] == "," and piece[-2].isdigit():
-      cur_pieces = sp_model.EncodeAsPieces(
-          six.ensure_binary(piece[:-1]).replace(SPIECE_UNDERLINE, b""))
+      cur_pieces = sp_model.EncodeAsPieces(piece[:-1].replace(
+          SPIECE_UNDERLINE, ""))
       if piece[0] != SPIECE_UNDERLINE and cur_pieces[0][0] == SPIECE_UNDERLINE:
         if len(cur_pieces[0]) == 1:
           cur_pieces = cur_pieces[1:]
@@ -485,7 +492,7 @@ def encode_ids(sp_model, text, sample=False):
   """Segments text and return token ids.
 
   This method is used together with sentence piece tokenizer and is forked from:
-  https://github.com/google-research/google-research/blob/master/albert/tokenization.py
+  https://github.com/google-research/google-research/blob/e1f6fa00/albert/tokenization.py
 
   Args:
     sp_model: A spm.SentencePieceProcessor object.
@@ -514,21 +521,21 @@ class FullSentencePieceTokenizer(object):
     Args:
       sp_model_file: The path to the sentence piece model file.
     """
-    self._sp_model = spm.SentencePieceProcessor()
-    self._sp_model.Load(sp_model_file)
+    self.sp_model = spm.SentencePieceProcessor()
+    self.sp_model.Load(sp_model_file)
     self.vocab = {
-        self._sp_model.IdToPiece(i): i
-        for i in six.moves.range(self._sp_model.GetPieceSize())
+        self.sp_model.IdToPiece(i): i
+        for i in six.moves.range(self.sp_model.GetPieceSize())
     }
 
   def tokenize(self, text):
     """Tokenizes text into pieces."""
-    return encode_pieces(self._sp_model, text)
+    return encode_pieces(self.sp_model, text)
 
   def convert_tokens_to_ids(self, tokens):
     """Converts a list of tokens to a list of ids."""
-    return [self._sp_model.PieceToId(printable_text(token)) for token in tokens]
+    return [self.sp_model.PieceToId(printable_text(token)) for token in tokens]
 
   def convert_ids_to_tokens(self, ids):
     """Converts a list of ids ot a list of tokens."""
-    return [self._sp_model.IdToPiece(id_) for id_ in ids]
+    return [self.sp_model.IdToPiece(id_) for id_ in ids]

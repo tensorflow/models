@@ -14,53 +14,56 @@
 # ==============================================================================
 
 """Tests for object_detection.core.box_list."""
-
-import tensorflow as tf
+import numpy as np
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import box_list
+from object_detection.utils import test_case
 
 
-class BoxListTest(tf.test.TestCase):
+class BoxListTest(test_case.TestCase):
   """Tests for BoxList class."""
 
   def test_num_boxes(self):
-    data = tf.constant([[0, 0, 1, 1], [1, 1, 2, 3], [3, 4, 5, 5]], tf.float32)
-    expected_num_boxes = 3
-
-    boxes = box_list.BoxList(data)
-    with self.test_session() as sess:
-      num_boxes_output = sess.run(boxes.num_boxes())
-      self.assertEquals(num_boxes_output, expected_num_boxes)
+    def graph_fn():
+      data = tf.constant([[0, 0, 1, 1], [1, 1, 2, 3], [3, 4, 5, 5]], tf.float32)
+      boxes = box_list.BoxList(data)
+      return boxes.num_boxes()
+    num_boxes_out = self.execute(graph_fn, [])
+    self.assertEqual(num_boxes_out, 3)
 
   def test_get_correct_center_coordinates_and_sizes(self):
-    boxes = [[10.0, 10.0, 20.0, 15.0], [0.2, 0.1, 0.5, 0.4]]
-    boxes = box_list.BoxList(tf.constant(boxes))
-    centers_sizes = boxes.get_center_coordinates_and_sizes()
+    boxes = np.array([[10.0, 10.0, 20.0, 15.0], [0.2, 0.1, 0.5, 0.4]],
+                     np.float32)
+    def graph_fn(boxes):
+      boxes = box_list.BoxList(boxes)
+      centers_sizes = boxes.get_center_coordinates_and_sizes()
+      return centers_sizes
+    centers_sizes_out = self.execute(graph_fn, [boxes])
     expected_centers_sizes = [[15, 0.35], [12.5, 0.25], [10, 0.3], [5, 0.3]]
-    with self.test_session() as sess:
-      centers_sizes_out = sess.run(centers_sizes)
-      self.assertAllClose(centers_sizes_out, expected_centers_sizes)
+    self.assertAllClose(centers_sizes_out, expected_centers_sizes)
 
   def test_create_box_list_with_dynamic_shape(self):
-    data = tf.constant([[0, 0, 1, 1], [1, 1, 2, 3], [3, 4, 5, 5]], tf.float32)
-    indices = tf.reshape(tf.where(tf.greater([1, 0, 1], 0)), [-1])
-    data = tf.gather(data, indices)
-    assert data.get_shape().as_list() == [None, 4]
-    expected_num_boxes = 2
-
-    boxes = box_list.BoxList(data)
-    with self.test_session() as sess:
-      num_boxes_output = sess.run(boxes.num_boxes())
-      self.assertEquals(num_boxes_output, expected_num_boxes)
+    def graph_fn():
+      data = tf.constant([[0, 0, 1, 1], [1, 1, 2, 3], [3, 4, 5, 5]], tf.float32)
+      indices = tf.reshape(tf.where(tf.greater([1, 0, 1], 0)), [-1])
+      data = tf.gather(data, indices)
+      assert data.get_shape().as_list() == [None, 4]
+      boxes = box_list.BoxList(data)
+      return boxes.num_boxes()
+    num_boxes = self.execute(graph_fn, [])
+    self.assertEqual(num_boxes, 2)
 
   def test_transpose_coordinates(self):
-    boxes = [[10.0, 10.0, 20.0, 15.0], [0.2, 0.1, 0.5, 0.4]]
-    boxes = box_list.BoxList(tf.constant(boxes))
-    boxes.transpose_coordinates()
+    boxes = np.array([[10.0, 10.0, 20.0, 15.0], [0.2, 0.1, 0.5, 0.4]],
+                     np.float32)
+    def graph_fn(boxes):
+      boxes = box_list.BoxList(boxes)
+      boxes.transpose_coordinates()
+      return boxes.get()
+    transpoded_boxes = self.execute(graph_fn, [boxes])
     expected_corners = [[10.0, 10.0, 15.0, 20.0], [0.1, 0.2, 0.4, 0.5]]
-    with self.test_session() as sess:
-      corners_out = sess.run(boxes.get())
-      self.assertAllClose(corners_out, expected_corners)
+    self.assertAllClose(transpoded_boxes, expected_corners)
 
   def test_box_list_invalid_inputs(self):
     data0 = tf.constant([[[0, 0, 1, 1], [3, 4, 5, 5]]], tf.float32)
@@ -77,49 +80,33 @@ class BoxListTest(tf.test.TestCase):
   def test_num_boxes_static(self):
     box_corners = [[10.0, 10.0, 20.0, 15.0], [0.2, 0.1, 0.5, 0.4]]
     boxes = box_list.BoxList(tf.constant(box_corners))
-    self.assertEquals(boxes.num_boxes_static(), 2)
-    self.assertEquals(type(boxes.num_boxes_static()), int)
-
-  def test_num_boxes_static_for_uninferrable_shape(self):
-    placeholder = tf.placeholder(tf.float32, shape=[None, 4])
-    boxes = box_list.BoxList(placeholder)
-    self.assertEquals(boxes.num_boxes_static(), None)
+    self.assertEqual(boxes.num_boxes_static(), 2)
+    self.assertEqual(type(boxes.num_boxes_static()), int)
 
   def test_as_tensor_dict(self):
-    boxlist = box_list.BoxList(
-        tf.constant([[0.1, 0.1, 0.4, 0.4], [0.1, 0.1, 0.5, 0.5]], tf.float32))
-    boxlist.add_field('classes', tf.constant([0, 1]))
-    boxlist.add_field('scores', tf.constant([0.75, 0.2]))
+    boxes = tf.constant([[0.1, 0.1, 0.4, 0.4], [0.1, 0.1, 0.5, 0.5]],
+                        tf.float32)
+    boxlist = box_list.BoxList(boxes)
+    classes = tf.constant([0, 1])
+    boxlist.add_field('classes', classes)
+    scores = tf.constant([0.75, 0.2])
+    boxlist.add_field('scores', scores)
     tensor_dict = boxlist.as_tensor_dict()
 
-    expected_boxes = [[0.1, 0.1, 0.4, 0.4], [0.1, 0.1, 0.5, 0.5]]
-    expected_classes = [0, 1]
-    expected_scores = [0.75, 0.2]
-
-    with self.test_session() as sess:
-      tensor_dict_out = sess.run(tensor_dict)
-      self.assertAllEqual(3, len(tensor_dict_out))
-      self.assertAllClose(expected_boxes, tensor_dict_out['boxes'])
-      self.assertAllEqual(expected_classes, tensor_dict_out['classes'])
-      self.assertAllClose(expected_scores, tensor_dict_out['scores'])
+    self.assertDictEqual(tensor_dict, {'scores': scores, 'classes': classes,
+                                       'boxes': boxes})
 
   def test_as_tensor_dict_with_features(self):
-    boxlist = box_list.BoxList(
-        tf.constant([[0.1, 0.1, 0.4, 0.4], [0.1, 0.1, 0.5, 0.5]], tf.float32))
-    boxlist.add_field('classes', tf.constant([0, 1]))
-    boxlist.add_field('scores', tf.constant([0.75, 0.2]))
-    tensor_dict = boxlist.as_tensor_dict(['boxes', 'classes', 'scores'])
+    boxes = tf.constant([[0.1, 0.1, 0.4, 0.4], [0.1, 0.1, 0.5, 0.5]],
+                        tf.float32)
+    boxlist = box_list.BoxList(boxes)
+    classes = tf.constant([0, 1])
+    boxlist.add_field('classes', classes)
+    scores = tf.constant([0.75, 0.2])
+    boxlist.add_field('scores', scores)
+    tensor_dict = boxlist.as_tensor_dict(['scores', 'classes'])
 
-    expected_boxes = [[0.1, 0.1, 0.4, 0.4], [0.1, 0.1, 0.5, 0.5]]
-    expected_classes = [0, 1]
-    expected_scores = [0.75, 0.2]
-
-    with self.test_session() as sess:
-      tensor_dict_out = sess.run(tensor_dict)
-      self.assertAllEqual(3, len(tensor_dict_out))
-      self.assertAllClose(expected_boxes, tensor_dict_out['boxes'])
-      self.assertAllEqual(expected_classes, tensor_dict_out['classes'])
-      self.assertAllClose(expected_scores, tensor_dict_out['scores'])
+    self.assertDictEqual(tensor_dict, {'scores': scores, 'classes': classes})
 
   def test_as_tensor_dict_missing_field(self):
     boxlist = box_list.BoxList(

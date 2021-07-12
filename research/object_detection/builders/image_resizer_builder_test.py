@@ -14,25 +14,27 @@
 # ==============================================================================
 """Tests for object_detection.builders.image_resizer_builder."""
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from google.protobuf import text_format
 from object_detection.builders import image_resizer_builder
 from object_detection.protos import image_resizer_pb2
+from object_detection.utils import test_case
 
 
-class ImageResizerBuilderTest(tf.test.TestCase):
+class ImageResizerBuilderTest(test_case.TestCase):
 
   def _shape_of_resized_random_image_given_text_proto(self, input_shape,
                                                       text_proto):
     image_resizer_config = image_resizer_pb2.ImageResizer()
     text_format.Merge(text_proto, image_resizer_config)
     image_resizer_fn = image_resizer_builder.build(image_resizer_config)
-    images = tf.cast(
-        tf.random_uniform(input_shape, minval=0, maxval=255, dtype=tf.int32),
-        dtype=tf.float32)
-    resized_images, _ = image_resizer_fn(images)
-    with self.test_session() as sess:
-      return sess.run(resized_images).shape
+    def graph_fn():
+      images = tf.cast(
+          tf.random_uniform(input_shape, minval=0, maxval=255, dtype=tf.int32),
+          dtype=tf.float32)
+      resized_images, _ = image_resizer_fn(images)
+      return resized_images
+    return self.execute_cpu(graph_fn, []).shape
 
   def test_build_keep_aspect_ratio_resizer_returns_expected_shape(self):
     image_resizer_text_proto = """
@@ -125,10 +127,10 @@ class ImageResizerBuilderTest(tf.test.TestCase):
     image_resizer_config = image_resizer_pb2.ImageResizer()
     text_format.Merge(text_proto, image_resizer_config)
     image_resizer_fn = image_resizer_builder.build(image_resizer_config)
-    image_placeholder = tf.placeholder(tf.uint8, [1, None, None, 3])
-    resized_image, _ = image_resizer_fn(image_placeholder)
-    with self.test_session() as sess:
-      return sess.run(resized_image, feed_dict={image_placeholder: image})
+    def graph_fn(image):
+      resized_image, _ = image_resizer_fn(image)
+      return resized_image
+    return self.execute_cpu(graph_fn, [image])
 
   def test_fixed_shape_resizer_nearest_neighbor_method(self):
     image_resizer_text_proto = """
@@ -210,6 +212,31 @@ class ImageResizerBuilderTest(tf.test.TestCase):
     """
     with self.assertRaises(ValueError):
       image_resizer_builder.build(invalid_image_resizer_text_proto)
+
+  def test_build_pad_to_multiple_resizer(self):
+    """Test building a pad_to_multiple_resizer from proto."""
+    image_resizer_text_proto = """
+      pad_to_multiple_resizer {
+        multiple: 32
+      }
+    """
+    input_shape = (60, 30, 3)
+    expected_output_shape = (64, 32, 3)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
+  def test_build_pad_to_multiple_resizer_invalid_multiple(self):
+    """Test that building a pad_to_multiple_resizer errors with invalid multiple."""
+
+    image_resizer_text_proto = """
+      pad_to_multiple_resizer {
+        multiple: -10
+      }
+    """
+
+    with self.assertRaises(ValueError):
+      image_resizer_builder.build(image_resizer_text_proto)
 
 
 if __name__ == '__main__':

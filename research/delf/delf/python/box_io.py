@@ -132,7 +132,7 @@ def ReadFromFile(file_path):
     scores: [N] float array with detection scores.
     class_indices: [N] int array with class indices.
   """
-  with tf.gfile.GFile(file_path, 'rb') as f:
+  with tf.io.gfile.GFile(file_path, 'rb') as f:
     return ParseFromString(f.read())
 
 
@@ -147,5 +147,5 @@ def WriteToFile(file_path, boxes, scores, class_indices):
     class_indices: [N] int array with class indices.
   """
   serialized_data = SerializeToString(boxes, scores, class_indices)
-  with tf.gfile.GFile(file_path, 'w') as f:
+  with tf.io.gfile.GFile(file_path, 'w') as f:
     f.write(serialized_data)

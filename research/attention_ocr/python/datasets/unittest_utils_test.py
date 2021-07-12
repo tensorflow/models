@@ -14,13 +14,13 @@
 # ==============================================================================
 
 """Tests for unittest_utils."""
-import StringIO
 
 import numpy as np
+import io
 from PIL import Image as PILImage
 import tensorflow as tf
 
-import unittest_utils
+from datasets import unittest_utils
 
 
 class UnittestUtilsTest(tf.test.TestCase):
@@ -30,13 +30,13 @@ class UnittestUtilsTest(tf.test.TestCase):
 
   def test_encoded_image_corresponds_to_numpy_array(self):
     image, encoded = unittest_utils.create_random_image('PNG', (20, 10, 3))
-    pil_image = PILImage.open(StringIO.StringIO(encoded))
+    pil_image = PILImage.open(io.BytesIO(encoded))
     self.assertAllEqual(image, np.array(pil_image))
 
   def test_created_example_has_correct_values(self):
     example_serialized = unittest_utils.create_serialized_example({
         'labels': [1, 2, 3],
-        'data': ['FAKE']
+        'data': [b'FAKE']
     })
     example = tf.train.Example()
     example.ParseFromString(example_serialized)

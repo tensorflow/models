@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Util functions for loading checkpoints. Especially for loading Tensorflow 1.x
+
+"""Util functions for loading checkpoints.
+
+Especially for loading Tensorflow 1.x
 checkpoint to Tensorflow 2.x (keras) model.
 """
 
@@ -20,18 +22,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 import re
+
 from absl import logging
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 
 def _build_assignment_map(keras_model,
-                         prefix='',
-                         skip_variables_regex=None,
-                         var_to_shape_map=None):
+                          prefix='',
+                          skip_variables_regex=None,
+                          var_to_shape_map=None):
   """Compute an assignment mapping for loading older checkpoints into a Keras
+
   model. Variable names are remapped from the original TPUEstimator model to
   the new Keras name.
 
@@ -48,12 +51,15 @@ def _build_assignment_map(keras_model,
   """
   assignment_map = {}
 
-
-  checkpoint_names = None
+  checkpoint_names = []
   if var_to_shape_map:
-    checkpoint_names = list(filter(
-        lambda x: not x.endswith('Momentum') and not x.endswith(
-            'global_step'), var_to_shape_map.keys()))
+    checkpoint_names = list(
+        filter(
+            lambda x: not x.endswith('Momentum') and not x.endswith(
+                'global_step'), var_to_shape_map.keys()))
+
+  logging.info('Number of variables in the checkpoint %d',
+               len(checkpoint_names))
 
   for var in keras_model.variables:
     var_name = var.name
@@ -84,7 +90,7 @@ def _build_assignment_map(keras_model,
       logging.info('Error removing the match_name: %s', match_names)
       logging.info('Exception: %s', e)
       raise
-  logging.info('Found variable in checkpoint: %d', len(assignment_map))
+  logging.info('Found matching variable in checkpoint: %d', len(assignment_map))
   return assignment_map
 
 
@@ -95,14 +101,15 @@ def _get_checkpoint_map(checkpoint_path):
 
 def make_restore_checkpoint_fn(checkpoint_path, prefix='', skip_regex=None):
   """Returns scaffold function to restore parameters from v1 checkpoint.
+
   Args:
     checkpoint_path: path of the checkpoint folder or file.
       Example 1: '/path/to/model_dir/'
       Example 2: '/path/to/model.ckpt-22500'
     prefix: prefix in the variable name to be remove for alignment with names in
       the checkpoint.
-    skip_regex: regular expression to math the names of variables that
-      do not need to be assign.
+    skip_regex: regular expression to math the names of variables that do not
+      need to be assign.
 
   Returns:
     Callable[tf.kears.Model] -> void. Fn to load v1 checkpoint to keras model.
@@ -125,7 +132,6 @@ def make_restore_checkpoint_fn(checkpoint_path, prefix='', skip_regex=None):
         var_to_shape_map=var_to_shape_map)
     if not vars_to_load:
       raise ValueError('Variables to load is empty.')
-    tf.compat.v1.train.init_from_checkpoint(checkpoint_path,
-                                            vars_to_load)
+    tf.compat.v1.train.init_from_checkpoint(checkpoint_path, vars_to_load)
 
   return _restore_checkpoint_fn

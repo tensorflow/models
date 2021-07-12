@@ -34,10 +34,10 @@ Example usage:
 import csv
 import os
 import re
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
+from object_detection import eval_util
 from object_detection.core import standard_fields
-from object_detection.legacy import evaluator
 from object_detection.metrics import tf_example_parser
 from object_detection.utils import config_util
 from object_detection.utils import label_map_util
@@ -94,7 +94,7 @@ def read_data_and_evaluate(input_config, eval_config):
     categories = label_map_util.create_categories_from_labelmap(
         input_config.label_map_path)
 
-    object_detection_evaluators = evaluator.get_evaluators(
+    object_detection_evaluators = eval_util.get_evaluators(
         eval_config, categories)
     # Support a single evaluator
     object_detection_evaluator = object_detection_evaluators[0]

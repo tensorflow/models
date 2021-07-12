@@ -17,14 +17,11 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from tensorflow.contrib import slim as contrib_slim
 
 from preprocessing import cifarnet_preprocessing
 from preprocessing import inception_preprocessing
 from preprocessing import lenet_preprocessing
 from preprocessing import vgg_preprocessing
-
-slim = contrib_slim
 
 
 def get_preprocessing(name, is_training=False, use_grayscale=False):
@@ -56,6 +53,12 @@ def get_preprocessing(name, is_training=False, use_grayscale=False):
       'mobilenet_v1': inception_preprocessing,
       'mobilenet_v2': inception_preprocessing,
       'mobilenet_v2_035': inception_preprocessing,
+      'mobilenet_v3_small': inception_preprocessing,
+      'mobilenet_v3_large': inception_preprocessing,
+      'mobilenet_v3_small_minimalistic': inception_preprocessing,
+      'mobilenet_v3_large_minimalistic': inception_preprocessing,
+      'mobilenet_edgetpu': inception_preprocessing,
+      'mobilenet_edgetpu_075': inception_preprocessing,
       'mobilenet_v2_140': inception_preprocessing,
       'nasnet_mobile': inception_preprocessing,
       'nasnet_large': inception_preprocessing,

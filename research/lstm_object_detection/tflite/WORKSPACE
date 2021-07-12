@@ -22,6 +22,12 @@ http_archive(
     strip_prefix = "abseil-cpp-a02f62f456f2c4a7ecf2be3104fe0c6e16fbad9a",
 )
 
+http_archive(
+    name = "rules_cc",
+    strip_prefix = "rules_cc-master",
+    urls = ["https://github.com/bazelbuild/rules_cc/archive/master.zip"],
+)
+
 # GoogleTest/GoogleMock framework. Used by most unit-tests.
 http_archive(
      name = "com_google_googletest",
@@ -90,6 +96,12 @@ http_archive(
     sha256 = "79d102c61e2a479a0b7e5fc167bcfaa4832a0c6aad4a75fa7da0480564931bcc",
 )
 
+#
+# http_archive(
+#     name = "com_google_protobuf",
+#     strip_prefix = "protobuf-master",
+#     urls = ["https://github.com/protocolbuffers/protobuf/archive/master.zip"],
+# )
 
 # Needed by TensorFlow
 http_archive(

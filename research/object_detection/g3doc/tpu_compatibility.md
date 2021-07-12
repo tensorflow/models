@@ -2,7 +2,7 @@
 
 [TOC]
 
-The Tensorflow Object Detection API supports TPU training for some models. To
+The TensorFlow Object Detection API supports TPU training for some models. To
 make models TPU compatible you need to make a few tweaks to the model config as
 mentioned below. We also provide several sample configs that you can use as a
 template.
@@ -11,7 +11,7 @@ template.
 
 ### Static shaped tensors
 
-TPU training currently requires all tensors in the Tensorflow Graph to have
+TPU training currently requires all tensors in the TensorFlow Graph to have
 static shapes. However, most of the sample configs in Object Detection API have
 a few different tensors that are dynamically shaped. Fortunately, we provide
 simple alternatives in the model configuration that modifies these tensors to
@@ -46,33 +46,23 @@ have static shape:
 
 *   **Groundtruth tensors with static shape** - Images in a typical detection
     dataset have variable number of groundtruth boxes and associated classes.
-    Setting `max_number_of_boxes` to a large enough number in the
-    `train_input_reader` and `eval_input_reader` pads the groundtruth tensors
-    with zeros to a static shape. Padded groundtruth tensors are correctly
-    handled internally within the model.
+    Setting `max_number_of_boxes` to a large enough number in `train_config`
+    pads the groundtruth tensors with zeros to a static shape. Padded
+    groundtruth tensors are correctly handled internally within the model.
 
     ```
-    train_input_reader: {
-      tf_record_input_reader {
-        input_path: "PATH_TO_BE_CONFIGURED/mscoco_train.record-?????-of-00100"
-      }
-      label_map_path: "PATH_TO_BE_CONFIGURED/mscoco_label_map.pbtxt"
+    train_config: {
+      fine_tune_checkpoint: "PATH_TO_BE_CONFIGURED/model.ckpt"
+      batch_size: 64
       max_number_of_boxes: 200
-    }
-
-    eval_input_reader: {
-      tf_record_input_reader {
-        input_path: "PATH_TO_BE_CONFIGURED/mscoco_val.record-?????-of-0010"
-      }
-      label_map_path: "PATH_TO_BE_CONFIGURED/mscoco_label_map.pbtxt"
-      max_number_of_boxes: 200
+      unpad_groundtruth_tensors: false
     }
     ```
 
 ### TPU friendly ops
 
 Although TPU supports a vast number of tensorflow ops, a few used in the
-Tensorflow Object Detection API are unsupported. We list such ops below and
+TensorFlow Object Detection API are unsupported. We list such ops below and
 recommend compatible substitutes.
 
 *   **Anchor sampling** - Typically we use hard example mining in standard SSD

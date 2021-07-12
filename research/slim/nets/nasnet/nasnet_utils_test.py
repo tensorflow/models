@@ -17,8 +17,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from nets.nasnet import nasnet_utils
 
@@ -56,6 +55,14 @@ class NasnetUtilsTest(tf.test.TestCase):
       output = nasnet_utils.global_avg_pool(
           inputs, data_format)
       self.assertEqual(output.shape, [5, 10])
+
+  def test_factorized_reduction(self):
+    data_format = 'NHWC'
+    output_shape = (5, 10, 20, 16)
+    inputs = tf.placeholder(tf.float32, (5, 10, 20, 10))
+    output = nasnet_utils.factorized_reduction(
+        inputs, 16, stride=1, data_format=data_format)
+    self.assertSequenceEqual(output_shape, output.shape.as_list())
 
 
 if __name__ == '__main__':

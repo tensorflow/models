@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,17 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Miscellaneous functions that can be called by models."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Miscellaneous functions that can be called by models."""
 
 import numbers
 
+from absl import logging
 import tensorflow as tf
+
 from tensorflow.python.util import nest
+# pylint:disable=logging-format-interpolation
 
 
 def past_stop_threshold(stop_threshold, eval_metric):
@@ -48,17 +47,19 @@ def past_stop_threshold(stop_threshold, eval_metric):
                      "must be a number.")
 
   if eval_metric >= stop_threshold:
-    tf.compat.v1.logging.info(
-        "Stop threshold of {} was passed with metric value {}.".format(
-            stop_threshold, eval_metric))
+    logging.info("Stop threshold of {} was passed with metric value {}.".format(
+        stop_threshold, eval_metric))
     return True
 
   return False
 
 
-def generate_synthetic_data(
-    input_shape, input_value=0, input_dtype=None, label_shape=None,
-    label_value=0, label_dtype=None):
+def generate_synthetic_data(input_shape,
+                            input_value=0,
+                            input_dtype=None,
+                            label_shape=None,
+                            label_value=0,
+                            label_dtype=None):
   """Create a repeating dataset with constant values.
 
   Args:
@@ -88,6 +89,6 @@ def generate_synthetic_data(
 
 def apply_clean(flags_obj):
   if flags_obj.clean and tf.io.gfile.exists(flags_obj.model_dir):
-    tf.compat.v1.logging.info("--clean flag set. Removing existing model dir:"
-                              " {}".format(flags_obj.model_dir))
+    logging.info("--clean flag set. Removing existing model dir:"
+                 " {}".format(flags_obj.model_dir))
     tf.io.gfile.rmtree(flags_obj.model_dir)

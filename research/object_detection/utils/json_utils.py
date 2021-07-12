@@ -18,7 +18,15 @@ json_utils wraps json.dump and json.dumps so that they can be used to safely
 control the precision of floats when writing to json strings or files.
 """
 import json
-from json import encoder
+import re
+
+
+def FormatFloat(json_str, float_digits):
+  pattern = re.compile(r'\d+\.\d+')
+  float_repr = '{:.' + '{}'.format(float_digits) + 'f}'
+  def MRound(match):
+    return float_repr.format(float(match.group()))
+  return re.sub(pattern, MRound, json_str)
 
 
 def Dump(obj, fid, float_digits=-1, **params):
@@ -30,13 +38,8 @@ def Dump(obj, fid, float_digits=-1, **params):
     float_digits: The number of digits of precision when writing floats out.
     **params: Additional parameters to pass to json.dumps.
   """
-  original_encoder = encoder.FLOAT_REPR
-  if float_digits >= 0:
-    encoder.FLOAT_REPR = lambda o: format(o, '.%df' % float_digits)
-  try:
-    json.dump(obj, fid, **params)
-  finally:
-    encoder.FLOAT_REPR = original_encoder
+  json_str = Dumps(obj, float_digits, **params)
+  fid.write(json_str)
 
 
 def Dumps(obj, float_digits=-1, **params):
@@ -50,18 +53,10 @@ def Dumps(obj, float_digits=-1, **params):
   Returns:
     output: JSON string representation of obj.
   """
-  original_encoder = encoder.FLOAT_REPR
-  original_c_make_encoder = encoder.c_make_encoder
-  if float_digits >= 0:
-    encoder.FLOAT_REPR = lambda o: format(o, '.%df' % float_digits)
-    encoder.c_make_encoder = None
-  try:
-    output = json.dumps(obj, **params)
-  finally:
-    encoder.FLOAT_REPR = original_encoder
-    encoder.c_make_encoder = original_c_make_encoder
-
-  return output
+  json_str = json.dumps(obj, **params)
+  if float_digits > -1:
+    json_str = FormatFloat(json_str, float_digits)
+  return json_str
 
 
 def PrettyParams(**params):

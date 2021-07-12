@@ -108,11 +108,8 @@ from __future__ import print_function
 from collections import namedtuple
 import functools
 
-import tensorflow as tf
-from tensorflow.contrib import layers as contrib_layers
-from tensorflow.contrib import slim as contrib_slim
-
-slim = contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 # Conv and DepthSepConv namedtuple define layers of the MobileNet architecture
 # Conv defines 3x3 convolution layers
@@ -158,12 +155,14 @@ def _fixed_padding(inputs, kernel_size, rate=1):
       input, either intact (if kernel_size == 1) or padded (if kernel_size > 1).
   """
   kernel_size_effective = [kernel_size[0] + (kernel_size[0] - 1) * (rate - 1),
-                           kernel_size[0] + (kernel_size[0] - 1) * (rate - 1)]
+                           kernel_size[1] + (kernel_size[1] - 1) * (rate - 1)]
   pad_total = [kernel_size_effective[0] - 1, kernel_size_effective[1] - 1]
   pad_beg = [pad_total[0] // 2, pad_total[1] // 2]
   pad_end = [pad_total[0] - pad_beg[0], pad_total[1] - pad_beg[1]]
-  padded_inputs = tf.pad(inputs, [[0, 0], [pad_beg[0], pad_end[0]],
-                                  [pad_beg[1], pad_end[1]], [0, 0]])
+  padded_inputs = tf.pad(
+      tensor=inputs,
+      paddings=[[0, 0], [pad_beg[0], pad_end[0]], [pad_beg[1], pad_end[1]],
+                [0, 0]])
   return padded_inputs
 
 
@@ -309,7 +308,7 @@ def mobilenet_v1(inputs,
                  min_depth=8,
                  depth_multiplier=1.0,
                  conv_defs=None,
-                 prediction_fn=contrib_layers.softmax,
+                 prediction_fn=slim.softmax,
                  spatial_squeeze=True,
                  reuse=None,
                  scope='MobilenetV1',
@@ -357,7 +356,8 @@ def mobilenet_v1(inputs,
     raise ValueError('Invalid input tensor rank, expected 4, was: %d' %
                      len(input_shape))
 
-  with tf.variable_scope(scope, 'MobilenetV1', [inputs], reuse=reuse) as scope:
+  with tf.variable_scope(
+      scope, 'MobilenetV1', [inputs], reuse=reuse) as scope:
     with slim.arg_scope([slim.batch_norm, slim.dropout],
                         is_training=is_training):
       net, end_points = mobilenet_v1_base(inputs, scope=scope,
@@ -367,7 +367,8 @@ def mobilenet_v1(inputs,
       with tf.variable_scope('Logits'):
         if global_pool:
           # Global average pooling.
-          net = tf.reduce_mean(net, [1, 2], keep_dims=True, name='global_pool')
+          net = tf.reduce_mean(
+              input_tensor=net, axis=[1, 2], keepdims=True, name='global_pool')
           end_points['global_pool'] = net
         else:
           # Pooling with a fixed kernel size.
@@ -463,7 +464,7 @@ def mobilenet_v1_arg_scope(
 
   # Set weight_decay for weights in Conv and DepthSepConv layers.
   weights_init = tf.truncated_normal_initializer(stddev=stddev)
-  regularizer = contrib_layers.l2_regularizer(weight_decay)
+  regularizer = slim.l2_regularizer(weight_decay)
   if regularize_depthwise:
     depthwise_regularizer = regularizer
   else:

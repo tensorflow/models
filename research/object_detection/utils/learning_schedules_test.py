@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import numpy as np
 from six.moves import range
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.utils import learning_schedules
 from object_detection.utils import test_case
@@ -48,6 +48,28 @@ class LearningSchedulesTest(test_case.TestCase):
     ]
 
     exp_rates = [.5, .5, 1, 1, 1, .1, .1, .1, .05]
+    self.assertAllClose(output_rates, exp_rates, rtol=1e-4)
+
+  def testExponentialDecayWithWarmup(self):
+    def graph_fn(global_step):
+      learning_rate_base = 1.0
+      learning_rate_decay_steps = 3
+      learning_rate_decay_factor = .1
+      warmup_learning_rate = .5
+      warmup_steps = 2
+      min_learning_rate = .05
+      learning_rate = learning_schedules.exponential_decay_with_warmup(
+          global_step, learning_rate_base, learning_rate_decay_steps,
+          learning_rate_decay_factor, warmup_learning_rate, warmup_steps,
+          min_learning_rate)
+      assert learning_rate.op.name.endswith('learning_rate')
+      return (learning_rate,)
+
+    output_rates = [
+        self.execute(graph_fn, [np.array(i).astype(np.int64)]) for i in range(9)
+    ]
+
+    exp_rates = [.5, .75, 1, 1, 1, .1, .1, .1, .05]
     self.assertAllClose(output_rates, exp_rates, rtol=1e-4)
 
   def testCosineDecayWithWarmup(self):

@@ -1,0 +1,58 @@
+runtime:
+  distribution_strategy: 'mirrored'
+  mixed_precision_dtype: 'float16'
+  loss_scale: 'dynamic'
+  num_gpus: 2
+task:
+  model:
+    num_classes: 1001
+    input_size: [256, 256, 3]
+    backbone:
+      type: 'darknet'
+      darknet:
+        model_id: 'darknet53'
+    norm_activation:
+      activation: 'mish'
+  losses:
+    l2_weight_decay: 0.0005
+    one_hot: true
+  train_data:
+    tfds_name: 'imagenet2012'
+    tfds_split: 'train'
+    tfds_data_dir: '~/tensorflow_datasets/'
+    is_training: true
+    global_batch_size: 16  # default = 128
+    dtype: 'float16'
+    shuffle_buffer_size: 100
+  validation_data:
+    tfds_name: 'imagenet2012'
+    tfds_split: 'validation'
+    tfds_data_dir: '~/tensorflow_datasets/'
+    is_training: true
+    global_batch_size: 16  # default = 128
+    dtype: 'float16'
+    drop_remainder: false
+    shuffle_buffer_size: 100
+trainer:
+  train_steps: 6400000  # epochs: 80, 800000 * 128/batchsize
+  validation_steps: 3200  # size of validation data, 400 * 128/batchsize
+  validation_interval: 10000  # 10000
+  steps_per_loop: 10000
+  summary_interval: 10000
+  checkpoint_interval: 10000
+  optimizer_config:
+    optimizer:
+      type: 'sgd'
+      sgd:
+        momentum: 0.9
+    learning_rate:
+      type: 'polynomial'
+      polynomial:
+        initial_learning_rate: 0.0125  # 0.1 * batchsize/128, default = 0.1
+        end_learning_rate: 0.0000125  # 0.0001 * batchsize/128, default = 0.0001
+        power: 4.0
+        decay_steps: 6392000  # 790000 * 128/batchsize,   default =  800000 - 1000 = 799000
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 8000  # 0 to 0.1 over 1000 * 128/batchsize, default = 128

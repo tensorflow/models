@@ -169,6 +169,10 @@ under tensorflow/models. Please refer to the LICENSE for details.
 
 ## Change Logs
 
+### March 26, 2020
+* Supported EdgeTPU-DeepLab and EdgeTPU-DeepLab-slim on Cityscapes.
+**Contributor**: Yun Long.
+
 ### November 20, 2019
 * Supported MobileNetV3 large and small model variants on Cityscapes.
 **Contributor**: Yukun Zhu.
@@ -242,7 +246,7 @@ PASCAL VOC 2012 and Cityscapes.
 ### March 5, 2018
 
 * First release of DeepLab in TensorFlow including deeper Xception network
-backbone. Included chekcpoints that have been pretrained on PASCAL VOC 2012
+backbone. Included checkpoints that have been pretrained on PASCAL VOC 2012
 and Cityscapes.
 
 ## References
@@ -312,6 +316,6 @@ and Cityscapes.
     Chenxi Liu, Barret Zoph, Maxim Neumann, Jonathon Shlens, Wei Hua, Li-Jia Li, Li Fei-Fei, Alan Yuille, Jonathan Huang, Kevin Murphy. <br />
     [[link]](https://arxiv.org/abs/1712.00559). In ECCV, 2018.
 
-16 **Searching for MobileNetV3**<br />
+16. **Searching for MobileNetV3**<br />
     Andrew Howard, Mark Sandler, Grace Chu, Liang-Chieh Chen, Bo Chen, Mingxing Tan, Weijun Wang, Yukun Zhu, Ruoming Pang, Vijay Vasudevan, Quoc V. Le, Hartwig Adam. <br />
     [[link]](https://arxiv.org/abs/1905.02244). In ICCV, 2019.

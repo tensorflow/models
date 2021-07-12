@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Data parser and processing for Mask R-CNN."""
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.detection.dataloader import anchor
 from official.vision.detection.dataloader import mode_keys as ModeKeys
@@ -185,12 +185,12 @@ class Parser(object):
     is_crowds = data['groundtruth_is_crowd']
     # Skips annotations with `is_crowd` = True.
     if self._skip_crowd_during_training and self._is_training:
-      num_groundtrtuhs = tf.shape(classes)[0]
-      with tf.control_dependencies([num_groundtrtuhs, is_crowds]):
+      num_groundtruths = tf.shape(classes)[0]
+      with tf.control_dependencies([num_groundtruths, is_crowds]):
         indices = tf.cond(
             tf.greater(tf.size(is_crowds), 0),
             lambda: tf.where(tf.logical_not(is_crowds))[:, 0],
-            lambda: tf.cast(tf.range(num_groundtrtuhs), tf.int64))
+            lambda: tf.cast(tf.range(num_groundtruths), tf.int64))
       classes = tf.gather(classes, indices)
       boxes = tf.gather(boxes, indices)
       if self._include_mask:
@@ -275,6 +275,10 @@ class Parser(object):
     if self._use_bfloat16:
       image = tf.cast(image, dtype=tf.bfloat16)
 
+    inputs = {
+        'image': image,
+        'image_info': image_info,
+    }
     # Packs labels for model_fn outputs.
     labels = {
         'anchor_boxes': input_anchor.multilevel_boxes,
@@ -282,15 +286,16 @@ class Parser(object):
         'rpn_score_targets': rpn_score_targets,
         'rpn_box_targets': rpn_box_targets,
     }
-    labels['gt_boxes'] = input_utils.pad_to_fixed_size(
-        boxes, self._max_num_instances, -1)
-    labels['gt_classes'] = input_utils.pad_to_fixed_size(
+    inputs['gt_boxes'] = input_utils.pad_to_fixed_size(boxes,
+                                                       self._max_num_instances,
+                                                       -1)
+    inputs['gt_classes'] = input_utils.pad_to_fixed_size(
         classes, self._max_num_instances, -1)
     if self._include_mask:
-      labels['gt_masks'] = input_utils.pad_to_fixed_size(
+      inputs['gt_masks'] = input_utils.pad_to_fixed_size(
           masks, self._max_num_instances, -1)
 
-    return image, labels
+    return inputs, labels
 
   def _parse_eval_data(self, data):
     """Parses data for evaluation."""
@@ -349,8 +354,6 @@ class Parser(object):
         (image_height, image_width))
 
     labels = {
-        'source_id': dataloader_utils.process_source_id(data['source_id']),
-        'anchor_boxes': input_anchor.multilevel_boxes,
         'image_info': image_info,
     }
 
@@ -372,6 +375,11 @@ class Parser(object):
           groundtruths['source_id'])
       groundtruths = dataloader_utils.pad_groundtruths_to_fixed_size(
           groundtruths, self._max_num_instances)
+      # TODO(yeqing):  Remove the `groundtrtuh` layer key (no longer needed).
       labels['groundtruths'] = groundtruths
+    inputs = {
+        'image': image,
+        'image_info': image_info,
+    }
 
-    return image, labels
+    return inputs, labels

@@ -16,10 +16,8 @@
 import contextlib
 import functools
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
-
-slim = contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 
 def _fixed_padding(inputs, kernel_size, rate=1):
@@ -78,6 +76,7 @@ def _split_divisible(num, num_ways, divisible_by=8):
 
 @contextlib.contextmanager
 def _v1_compatible_scope_naming(scope):
+  """v1 compatible scope naming."""
   if scope is None:  # Create uniqified separable blocks.
     with tf.variable_scope(None, default_name='separable') as s, \
          tf.name_scope(s.original_name_scope):
@@ -413,6 +412,11 @@ def squeeze_excite(input_tensor,
                    pool=None):
   """Squeeze excite block for Mobilenet V3.
 
+  If the squeeze_input_tensor - or the input_tensor if squeeze_input_tensor is
+  None - contains variable dimensions (Nonetype in tensor shape), perform
+  average pooling (as the first step in the squeeze operation) by calling
+  reduce_mean across the H/W of the input tensor.
+
   Args:
     input_tensor: input tensor to apply SE block to.
     divisible_by: ensures all inner dimensions are divisible by this number.
@@ -441,10 +445,13 @@ def squeeze_excite(input_tensor,
     squeeze_channels = _make_divisible(
         input_channels / squeeze_factor, divisor=divisible_by)
 
-    pooled = tf.nn.avg_pool(squeeze_input_tensor,
-                            (1, pool_height, pool_width, 1),
-                            strides=(1, stride, stride, 1),
-                            padding='VALID')
+    if pool is None:
+      pooled = tf.reduce_mean(squeeze_input_tensor, axis=[1, 2], keepdims=True)
+    else:
+      pooled = tf.nn.avg_pool(
+          squeeze_input_tensor, (1, pool_height, pool_width, 1),
+          strides=(1, stride, stride, 1),
+          padding='VALID')
     squeeze = slim.conv2d(
         pooled,
         kernel_size=(1, 1),

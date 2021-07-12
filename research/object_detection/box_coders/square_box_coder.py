@@ -32,7 +32,7 @@ coder when the objects being detected tend to be square (e.g. faces) and when
 the input images are not distorted via resizing.
 """
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import box_coder
 from object_detection.core import box_list

@@ -47,9 +47,9 @@ Usage:
 from __future__ import print_function
 
 import numpy as np
-from scipy.io import wavfile
 import six
-import tensorflow as tf
+import soundfile
+import tensorflow.compat.v1 as tf
 
 import vggish_input
 import vggish_params
@@ -88,12 +88,12 @@ def main(_):
     num_secs = 5
     freq = 1000
     sr = 44100
-    t = np.linspace(0, num_secs, int(num_secs * sr))
+    t = np.arange(0, num_secs, 1 / sr)
     x = np.sin(2 * np.pi * freq * t)
     # Convert to signed 16-bit samples.
     samples = np.clip(x * 32768, -32768, 32767).astype(np.int16)
     wav_file = six.BytesIO()
-    wavfile.write(wav_file, sr, samples)
+    soundfile.write(wav_file, samples, sr, format='WAV', subtype='PCM_16')
     wav_file.seek(0)
   examples_batch = vggish_input.wavfile_to_examples(wav_file)
   print(examples_batch)

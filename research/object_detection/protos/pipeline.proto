@@ -10,7 +10,7 @@ import "object_detection/protos/train.proto";
 
 // Convenience message for configuring a training and eval pipeline. Allows all
 // of the pipeline parameters to be configured from one file.
-// Next id: 7
+// Next id: 8
 message TrainEvalPipelineConfig {
   optional DetectionModel model = 1;
   optional TrainConfig train_config = 2;

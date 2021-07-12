@@ -16,7 +16,7 @@
 
 import numpy as np
 import numpy.testing as np_testing
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import standard_fields as fields
 from object_detection.metrics import tf_example_parser
@@ -34,7 +34,7 @@ class TfExampleDecoderTest(tf.test.TestCase):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
   def testParseDetectionsAndGT(self):
-    source_id = 'abc.jpg'
+    source_id = b'abc.jpg'
     # y_min, x_min, y_max, x_max
     object_bb = np.array([[0.0, 0.5, 0.3], [0.0, 0.1, 0.6], [1.0, 0.6, 0.8],
                           [1.0, 0.6, 0.7]]).transpose()
@@ -129,7 +129,7 @@ class TfExampleDecoderTest(tf.test.TestCase):
         results_dict[fields.InputDataFields.groundtruth_image_classes])
 
   def testParseString(self):
-    string_val = 'abc'
+    string_val = b'abc'
     features = {'string': self._BytesFeature(string_val)}
     example = tf.train.Example(features=tf.train.Features(feature=features))
 
