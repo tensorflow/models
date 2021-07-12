@@ -34,6 +34,7 @@ class SegmentationHead3D(tf.keras.layers.Layer):
                use_sync_bn: bool = False,
                norm_momentum: float = 0.99,
                norm_epsilon: float = 0.001,
+               use_batch_normalization: bool = False,
                kernel_regularizer: tf.keras.regularizers.Regularizer = None,
                bias_regularizer: tf.keras.regularizers.Regularizer = None,
                output_logits: bool = True,
@@ -57,6 +58,8 @@ class SegmentationHead3D(tf.keras.layers.Layer):
       norm_momentum: `float`, the momentum parameter of the normalization
         layers.
       norm_epsilon: `float`, the epsilon parameter of the normalization layers.
+      use_batch_normalization: A bool of whether to use batch normalization or
+        not.
       kernel_regularizer: `tf.keras.regularizers.Regularizer` object for layer
         kernel.
       bias_regularizer: `tf.keras.regularizers.Regularizer` object for bias.
@@ -76,6 +79,7 @@ class SegmentationHead3D(tf.keras.layers.Layer):
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
         'norm_epsilon': norm_epsilon,
+        'use_batch_normalization': use_batch_normalization,
         'kernel_regularizer': kernel_regularizer,
         'bias_regularizer': bias_regularizer,
         'output_logits': output_logits
@@ -119,7 +123,8 @@ class SegmentationHead3D(tf.keras.layers.Layer):
               filters=self._config_dict['num_filters'],
               **conv_kwargs))
       norm_name = 'segmentation_head_norm_{}'.format(i)
-      self._norms.append(bn_op(name=norm_name, **bn_kwargs))
+      if self._config_dict['use_batch_normalization']:
+        self._norms.append(bn_op(name=norm_name, **bn_kwargs))
 
     self._classifier = conv_op(
         name='segmentation_output',
@@ -154,9 +159,10 @@ class SegmentationHead3D(tf.keras.layers.Layer):
     """
     x = decoder_output[str(self._config_dict['level'])]
 
-    for conv, norm in zip(self._convs, self._norms):
+    for i, conv in enumerate(self._convs):
       x = conv(x)
-      x = norm(x)
+      if self._norms:
+        x = self._norms[i](x)
       x = self._activation(x)
 
     x = tf.keras.layers.UpSampling3D(size=self._config_dict['upsample_factor'])(

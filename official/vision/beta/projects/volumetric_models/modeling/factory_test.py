@@ -26,12 +26,14 @@ from official.vision.beta.projects.volumetric_models.modeling import factory
 
 class SegmentationModelBuilderTest(parameterized.TestCase, tf.test.TestCase):
 
-  @parameterized.parameters(((128, 128, 128), 5e-5), ((64, 64, 64), None))
-  def test_unet3d_builder(self, input_size, weight_decay):
+  @parameterized.parameters(((128, 128, 128), 5e-5, True),
+                            ((64, 64, 64), None, False))
+  def test_unet3d_builder(self, input_size, weight_decay, use_bn):
     num_classes = 3
     input_specs = tf.keras.layers.InputSpec(
         shape=[None, input_size[0], input_size[1], input_size[2], 3])
     model_config = exp_cfg.SemanticSegmentationModel3D(num_classes=num_classes)
+    model_config.head.use_batch_normalization = use_bn
     l2_regularizer = (
         tf.keras.regularizers.l2(weight_decay) if weight_decay else None)
     model = factory.build_segmentation_model_3d(

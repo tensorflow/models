@@ -56,6 +56,7 @@ class SegmentationHead3D(hyperparams.Config):
   num_filters: int = 256
   upsample_factor: int = 1
   output_logits: bool = True
+  use_batch_normalization: bool = True
 
 
 @dataclasses.dataclass
