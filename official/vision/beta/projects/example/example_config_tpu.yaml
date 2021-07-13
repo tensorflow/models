@@ -1,0 +1,35 @@
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  model:
+    num_classes: 1001
+    input_size: [128, 128, 3]
+  train_data:
+    input_path: 'imagenet-2012-tfrecord/train*'
+    is_training: true
+    global_batch_size: 4096
+    dtype: 'bfloat16'
+  validation_data:
+    input_path: 'imagenet-2012-tfrecord/valid*'
+    is_training: false
+    global_batch_size: 4096
+    dtype: 'bfloat16'
+    drop_remainder: false
+trainer:
+  train_steps: 62400
+  validation_steps: 13
+  validation_interval: 312
+  steps_per_loop: 312
+  summary_interval: 312
+  checkpoint_interval: 312
+  optimizer_config:
+    optimizer:
+      type: 'sgd'
+      sgd:
+        momentum: 0.9
+    learning_rate:
+      type: 'stepwise'
+      stepwise:
+        boundaries: [18750, 37500, 50000]
+        values: [0.1, 0.01, 0.001, 0.0001]
