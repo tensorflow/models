@@ -1,11 +1,11 @@
 """
 Usage:
-  # From tensorflow/models/
+  # In local folder
   # Create train data:
-  python generate_tfrecord.py --csv_input=images/train_labels.csv --image_dir=images/train --output_path=train.record
+  python generate_tfrecord.py --csv_input=CSGO_images\train_labels.csv --image_dir=CSGO_images\train --output_path=CSGO_images\train.record
 
   # Create test data:
-  python generate_tfrecord.py --csv_input=images/test_labels.csv  --image_dir=images/test --output_path=test.record
+  python generate_tfrecord.py --csv_input=CSGO_images\test_labels.csv --image_dir=CSGO_images\test --output_path=CSGO_images\test.record
 """
 from __future__ import division
 from __future__ import print_function
@@ -29,18 +29,78 @@ FLAGS = flags.FLAGS
 
 # TO-DO replace this with label map
 def class_text_to_int(row_label):
-    if row_label == 'nine':
+    if row_label == 'A':
         return 1
-    elif row_label == 'ten':
+    if row_label == 'B':
         return 2
-    elif row_label == 'jack':
+    if row_label == 'C':
         return 3
-    elif row_label == 'queen':
+    if row_label == 'D':
         return 4
-    elif row_label == 'king':
+    if row_label == 'E':
         return 5
-    elif row_label == 'ace':
+    if row_label == 'F':
         return 6
+    if row_label == 'G':
+        return 7
+    if row_label == 'H':
+        return 8
+    if row_label == 'I':
+        return 9
+    if row_label == 'J':
+        return 10
+    if row_label == 'K':
+        return 11
+    if row_label == 'L':
+        return 12
+    if row_label == 'M':
+        return 13
+    if row_label == 'N':
+        return 14
+    if row_label == 'O':
+        return 15
+    if row_label == 'P':
+        return 16
+    if row_label == 'Q':
+        return 17
+    if row_label == 'R':
+        return 18
+    if row_label == 'S':
+        return 19
+    if row_label == 'T':
+        return 20
+    if row_label == 'U':
+        return 21
+    if row_label == 'V':
+        return 22
+    if row_label == 'W':
+        return 23
+    if row_label == 'X':
+        return 24
+    if row_label == 'Y':
+        return 25
+    if row_label == 'Z':
+        return 26
+    if row_label == '0':
+        return 27
+    if row_label == '1':
+        return 28
+    if row_label == '2':
+        return 29
+    if row_label == '3':
+        return 30
+    if row_label == '4':
+        return 31
+    if row_label == '5':
+        return 32
+    if row_label == '6':
+        return 33
+    if row_label == '7':
+        return 34
+    if row_label == '8':
+        return 35
+    if row_label == '9':
+        return 36
     else:
         None
 
