@@ -20,6 +20,7 @@ import sys
 
 from absl.testing import parameterized
 import numpy as np
+import orbit
 import portpicker
 import tensorflow as tf
 
@@ -111,15 +112,14 @@ class MockAsyncTrainer(trainer_lib._AsyncTrainer):
         aggregation=tf.VariableAggregation.ONLY_FIRST_REPLICA)
 
     train_dataset = self.distribute_dataset(dataset_fn)
-    trainer_lib.orbit.StandardTrainer.__init__(
-        self, train_dataset, options=trainer_lib.orbit.StandardTrainerOptions())
+    orbit.StandardTrainer.__init__(
+        self, train_dataset, options=orbit.StandardTrainerOptions())
 
-    eval_dataset = self.distribute_dataset(dataset_fn)
-    trainer_lib.orbit.StandardEvaluator.__init__(
+    validation_dataset = self.distribute_dataset(dataset_fn)
+    orbit.StandardEvaluator.__init__(
         self,
-        eval_dataset,
-        options=trainer_lib.orbit.StandardEvaluatorOptions(
-            use_tf_while_loop=True))
+        validation_dataset,
+        options=orbit.StandardEvaluatorOptions(use_tf_while_loop=True))
 
   def train_loop_begin(self):
     self.global_step.assign(0)
@@ -185,6 +185,30 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
       self.assertIn('training_loss', logs)
       self.assertIn('learning_rate', logs)
 
+  @combinations.generate(all_strategy_combinations())
+  def test_trainer_passing_datasets(self, distribution):
+    with distribution.scope():
+      task = mock_task.MockTask(self._config)
+      train_dataset = orbit.utils.make_distributed_dataset(
+          distribution, task.build_inputs, self._config.task.train_data)
+      validation_dataset = orbit.utils.make_distributed_dataset(
+          distribution, task.build_inputs, self._config.task.validation_data)
+      self._config.task.train_data = None
+      self._config.task.validation_data = None
+      trainer = trainer_lib.Trainer(
+          self._config,
+          task,
+          model=task.build_model(),
+          optimizer=task.create_optimizer(self._config.trainer.optimizer_config,
+                                          self._config.runtime),
+          train_dataset=train_dataset,
+          validation_dataset=validation_dataset)
+    logs = trainer.train(tf.convert_to_tensor(5, dtype=tf.int32))
+    self.assertIn('training_loss', logs)
+    self.assertIn('learning_rate', logs)
+    logs = trainer.evaluate(tf.convert_to_tensor(5, dtype=tf.int32))
+    self.assertIn('validation_loss', logs)
+
   def test_base_async_trainer(self):
     if TPU_TEST or GPU_TEST:
       self.skipTest('Aysnc training is not available on GPU/GPU.')
@@ -204,7 +228,7 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_async_trainer_train(self):
     if TPU_TEST or GPU_TEST:
-      self.skipTest('Aysnc training is not available on GPU/GPU.')
+      self.skipTest('Aysnc training is not available on GPU/TPU.')
     num_workers = 3
     num_ps = 2
     cluster_resolver = create_in_process_cluster(num_workers, num_ps)
@@ -279,13 +303,16 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
                 },
             })))
     trainer = self.create_test_trainer(config)
-    if mixed_precision_dtype != 'float16':
-      self.assertIsInstance(trainer.optimizer, tf.keras.optimizers.SGD)
-    elif mixed_precision_dtype == 'float16' and loss_scale is None:
-      self.assertIsInstance(trainer.optimizer, tf.keras.optimizers.SGD)
-    else:
+    if mixed_precision_dtype == 'float16':
       self.assertIsInstance(trainer.optimizer,
                             tf.keras.mixed_precision.LossScaleOptimizer)
+      if loss_scale in (None, 'dynamic'):
+        self.assertTrue(trainer.optimizer.dynamic)
+      else:
+        self.assertFalse(trainer.optimizer.dynamic)
+        self.assertEqual(trainer.optimizer.initial_scale, loss_scale)
+    else:
+      self.assertIsInstance(trainer.optimizer, tf.keras.optimizers.SGD)
 
     metrics = trainer.train(tf.convert_to_tensor(5, dtype=tf.int32))
     self.assertIn('training_loss', metrics)

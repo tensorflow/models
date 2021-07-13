@@ -2896,6 +2896,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
           _feature_extractor_for_proposal_features=
           self._feature_extractor_for_proposal_features)
       return {'model': fake_model}
+    elif fine_tune_checkpoint_type == 'full':
+      return {'model': self}
     else:
       raise ValueError('Not supported fine_tune_checkpoint_type: {}'.format(
           fine_tune_checkpoint_type))

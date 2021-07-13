@@ -72,7 +72,7 @@ trainer:
       type: 'cosine'
       cosine:
         initial_learning_rate: 0.6  #  0.3 × BatchSize / 256
-        decay_steps: 43200  # train_steps - warmup_steps
+        decay_steps: 48000
     warmup:
       type: 'linear'
       linear:

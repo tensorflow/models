@@ -39,7 +39,8 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
                channel_means=(0., 0., 0.),
                channel_stds=(1., 1., 1.),
                bgr_ordering=False,
-               use_separable_conv=False):
+               use_separable_conv=False,
+               upsampling_interpolation='nearest'):
     """Intializes the feature extractor.
 
     Args:
@@ -52,6 +53,9 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
         [blue, red, green] order.
       use_separable_conv: If set to True, all convolutional layers in the FPN
         network will be replaced by separable convolutions.
+      upsampling_interpolation: A string (one of 'nearest' or 'bilinear')
+        indicating which interpolation method to use for the upsampling ops in
+        the FPN.
     """
 
     super(CenterNetMobileNetV2FPNFeatureExtractor, self).__init__(
@@ -84,7 +88,8 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
     for i, num_filters in enumerate(num_filters_list):
       level_ind = len(num_filters_list) - 1 - i
       # Upsample.
-      upsample_op = tf.keras.layers.UpSampling2D(2, interpolation='nearest')
+      upsample_op = tf.keras.layers.UpSampling2D(
+          2, interpolation=upsampling_interpolation)
       top_down = upsample_op(top_down)
 
       # Residual (skip-connection) from bottom-up pathway.
@@ -120,14 +125,8 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
     self._base_model.load_weights(path)
 
   @property
-  def supported_sub_model_types(self):
-    return ['classification']
-
-  def get_sub_model(self, sub_model_type):
-    if sub_model_type == 'classification':
-      return self._base_model
-    else:
-      ValueError('Sub model type "{}" not supported.'.format(sub_model_type))
+  def classification_backbone(self):
+    return self._base_model
 
   def call(self, inputs):
     return [self._feature_extractor_model(inputs)]
@@ -144,7 +143,8 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
 
 
 def mobilenet_v2_fpn(channel_means, channel_stds, bgr_ordering,
-                     use_separable_conv=False, depth_multiplier=1.0, **kwargs):
+                     use_separable_conv=False, depth_multiplier=1.0,
+                     upsampling_interpolation='nearest', **kwargs):
   """The MobileNetV2+FPN backbone for CenterNet."""
   del kwargs
 
@@ -159,4 +159,5 @@ def mobilenet_v2_fpn(channel_means, channel_stds, bgr_ordering,
       channel_means=channel_means,
       channel_stds=channel_stds,
       bgr_ordering=bgr_ordering,
-      use_separable_conv=use_separable_conv)
+      use_separable_conv=use_separable_conv,
+      upsampling_interpolation=upsampling_interpolation)

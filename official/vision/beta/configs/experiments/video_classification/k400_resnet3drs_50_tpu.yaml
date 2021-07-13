@@ -80,6 +80,7 @@ trainer:
   optimizer_config:
     ema:
       average_decay: 0.9999
+      trainable_weights_only: false
     learning_rate:
       cosine:
         decay_steps: 73682

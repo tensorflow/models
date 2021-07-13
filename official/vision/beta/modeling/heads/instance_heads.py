@@ -33,6 +33,7 @@ class DetectionHead(tf.keras.layers.Layer):
       use_separable_conv: bool = False,
       num_fcs: int = 2,
       fc_dims: int = 1024,
+      class_agnostic_bbox_pred: bool = False,
       activation: str = 'relu',
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
@@ -54,6 +55,8 @@ class DetectionHead(tf.keras.layers.Layer):
         the predictions.
       fc_dims: An `int` number that represents the number of dimension of the FC
         layers.
+      class_agnostic_bbox_pred: `bool`, indicating whether bboxes should be
+        predicted for every class or not.
       activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
       use_sync_bn: A `bool` that indicates whether to use synchronized batch
@@ -73,6 +76,7 @@ class DetectionHead(tf.keras.layers.Layer):
         'use_separable_conv': use_separable_conv,
         'num_fcs': num_fcs,
         'fc_dims': fc_dims,
+        'class_agnostic_bbox_pred': class_agnostic_bbox_pred,
         'activation': activation,
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
@@ -155,8 +159,11 @@ class DetectionHead(tf.keras.layers.Layer):
         kernel_regularizer=self._config_dict['kernel_regularizer'],
         bias_regularizer=self._config_dict['bias_regularizer'],
         name='detection-scores')
+
+    num_box_outputs = (4 if self._config_dict['class_agnostic_bbox_pred'] else
+                       self._config_dict['num_classes'] * 4)
     self._box_regressor = tf.keras.layers.Dense(
-        units=self._config_dict['num_classes'] * 4,
+        units=num_box_outputs,
         kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.001),
         bias_initializer=tf.zeros_initializer(),
         kernel_regularizer=self._config_dict['kernel_regularizer'],

@@ -36,6 +36,7 @@ class ImageSegmentationConfigTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(config.task.model,
                           exp_cfg.SemanticSegmentationModel)
     self.assertIsInstance(config.task.train_data, exp_cfg.DataConfig)
+    config.validate()
     config.task.train_data.is_training = None
     with self.assertRaises(KeyError):
       config.validate()

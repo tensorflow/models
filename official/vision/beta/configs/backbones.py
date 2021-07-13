@@ -67,6 +67,8 @@ class SpineNet(hyperparams.Config):
   """SpineNet config."""
   model_id: str = '49'
   stochastic_depth_drop_rate: float = 0.0
+  min_level: int = 3
+  max_level: int = 7
 
 
 @dataclasses.dataclass
@@ -76,6 +78,13 @@ class SpineNetMobile(hyperparams.Config):
   stochastic_depth_drop_rate: float = 0.0
   se_ratio: float = 0.2
   expand_ratio: int = 6
+  min_level: int = 3
+  max_level: int = 7
+  # If use_keras_upsampling_2d is True, model uses UpSampling2D keras layer
+  # instead of optimized custom TF op. It makes model be more keras style. We
+  # set this flag to True when we apply QAT from model optimization toolkit
+  # that requires the model should use keras layers.
+  use_keras_upsampling_2d: bool = False
 
 
 @dataclasses.dataclass

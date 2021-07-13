@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Progressive distillation for MobileBERT student model."""
+from typing import List, Optional
+
 from absl import logging
 import dataclasses
 import orbit
@@ -45,6 +47,14 @@ class LayerWiseDistillConfig(base_config.Config):
   if_transfer_attention: bool = True
   attention_distill_factor: float = 1.0
   if_freeze_previous_layers: bool = False
+
+  # The ids of teacher layers that will be mapped to the student model.
+  # For example, if you want to compress a 24 layer teacher to a 6 layer
+  # student, you can set it to [3, 7, 11, 15, 19, 23] (the index starts from 0).
+  # If `None`, we assume teacher and student have the same number of layers,
+  # and each layer of teacher model will be mapped to student's corresponding
+  # layer.
+  transfer_teacher_layers: Optional[List[int]] = None
 
 
 @dataclasses.dataclass
@@ -120,6 +130,23 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
     self._the_only_train_dataset = None
     self._the_only_eval_dataset = None
 
+    layer_wise_config = self._progressive_config.layer_wise_distill_config
+    transfer_teacher_layers = layer_wise_config.transfer_teacher_layers
+    num_teacher_layers = (
+        self._task_config.teacher_model.encoder.mobilebert.num_blocks)
+    num_student_layers = (
+        self._task_config.student_model.encoder.mobilebert.num_blocks)
+    if transfer_teacher_layers and len(
+        transfer_teacher_layers) != num_student_layers:
+      raise ValueError('The number of `transfer_teacher_layers` %s does not '
+                       'match the number of student layers. %d' %
+                       (transfer_teacher_layers, num_student_layers))
+    if not transfer_teacher_layers and (num_teacher_layers !=
+                                        num_student_layers):
+      raise ValueError('`transfer_teacher_layers` is not specified, and the '
+                       'number of teacher layers does not match '
+                       'the number of student layers.')
+
     ratio = progressive.pretrain_distill_config.distill_ground_truth_ratio
     if ratio < 0 or ratio > 1:
       raise ValueError('distill_ground_truth_ratio has to be within [0, 1].')
@@ -169,7 +196,7 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
   # override policies.ProgressivePolicy
   def num_stages(self):
     # One stage for each layer, plus additional stage for pre-training
-    return self._task_config.teacher_model.encoder.mobilebert.num_blocks + 1
+    return self._task_config.student_model.encoder.mobilebert.num_blocks + 1
 
   # override policies.ProgressivePolicy
   def num_steps(self, stage_id) -> int:
@@ -247,9 +274,16 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
           encoder=student_encoder, target_layer_id=stage_id)
       student_output_feature, student_attention_score = student_sub_encoder(
           inputs)
+
+      if layer_wise_config.transfer_teacher_layers:
+        teacher_layer_id = layer_wise_config.transfer_teacher_layers[stage_id]
+      else:
+        teacher_layer_id = stage_id
+
       teacher_sub_encoder = build_sub_encoder(
           encoder=self._teacher_pretrainer.encoder_network,
-          target_layer_id=stage_id)
+          target_layer_id=teacher_layer_id)
+
       teacher_output_feature, teacher_attention_score = teacher_sub_encoder(
           inputs)
 

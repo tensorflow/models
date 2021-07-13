@@ -1,0 +1,35 @@
+runtime:
+  distribution_strategy: 'tpu'
+task:
+  model:
+    bottom_mlp: [512, 256, 64]
+    embedding_dim: 64
+    num_dense_features: 13
+    top_mlp: [1024, 1024, 512, 256, 1]
+    interaction: 'cross'
+    vocab_sizes: [39884406, 39043, 17289, 7420, 20263, 3, 7120, 1543, 63, 38532951, 2953546, 403346,
+                  10, 2208, 11938, 155, 4, 976, 14, 39979771, 25641295, 39664984, 585935, 12972,
+                  108, 36]
+  train_data:
+    global_batch_size: 16384
+    input_path: path_to_training_data_dir/*
+    is_training: true
+    num_shards_per_host: 4
+    sharding: true
+  validation_data:
+    global_batch_size: 16384
+    input_path: path_to_eval_data_dir/*
+    is_training: false
+    sharding: false
+trainer:
+  checkpoint_interval: 85352
+  eval_tf_function: true
+  eval_tf_while_loop: false
+  max_to_keep: 5
+  train_steps: 256054
+  train_tf_function: true
+  train_tf_while_loop: true
+  use_orbit: true
+  validation_interval: 85352
+  validation_steps: 5440
+  validation_summary_subdir: 'validation'

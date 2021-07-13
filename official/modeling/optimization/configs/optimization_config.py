@@ -40,6 +40,8 @@ class OptimizerConfig(oneof.OneOfConfig):
     lamb: lamb optimizer.
     rmsprop: rmsprop optimizer.
     lars: lars optimizer.
+    adagrad: adagrad optimizer.
+    slide: slide optimizer.
   """
   type: Optional[str] = None
   sgd: opt_cfg.SGDConfig = opt_cfg.SGDConfig()
@@ -48,6 +50,9 @@ class OptimizerConfig(oneof.OneOfConfig):
   lamb: opt_cfg.LAMBConfig = opt_cfg.LAMBConfig()
   rmsprop: opt_cfg.RMSPropConfig = opt_cfg.RMSPropConfig()
   lars: opt_cfg.LARSConfig = opt_cfg.LARSConfig()
+  adagrad: opt_cfg.AdagradConfig = opt_cfg.AdagradConfig()
+  slide: opt_cfg.SLIDEConfig = opt_cfg.SLIDEConfig()
+  adafactor: opt_cfg.AdafactorConfig = opt_cfg.AdafactorConfig()
 
 
 @dataclasses.dataclass
@@ -55,7 +60,7 @@ class LrConfig(oneof.OneOfConfig):
   """Configuration for lr schedule.
 
   Attributes:
-    type: 'str', type of lr schedule to be used, on the of fields below.
+    type: 'str', type of lr schedule to be used, one of the fields below.
     constant: constant learning rate config.
     stepwise: stepwise learning rate config.
     exponential: exponential learning rate config.
@@ -84,7 +89,7 @@ class WarmupConfig(oneof.OneOfConfig):
   """Configuration for lr schedule.
 
   Attributes:
-    type: 'str', type of warmup schedule to be used, on the of fields below.
+    type: 'str', type of warmup schedule to be used, one of the fields below.
     linear: linear warmup config.
     polynomial: polynomial warmup config.
   """
@@ -99,8 +104,8 @@ class OptimizationConfig(base_config.Config):
 
   Attributes:
     optimizer: optimizer oneof config.
-    ema: optional exponential moving average optimizer config, if specified,
-      ema optimizer will be used.
+    ema: optional exponential moving average optimizer config, if specified, ema
+      optimizer will be used.
     learning_rate: learning rate oneof config.
     warmup: warmup oneof config.
   """

@@ -122,7 +122,8 @@ def _extract_predictions_and_losses(model,
         [input_dict[fields.InputDataFields.groundtruth_boxes]],
         [tf.one_hot(input_dict[fields.InputDataFields.groundtruth_classes]
                     - label_id_offset, depth=model.num_classes)],
-        groundtruth_masks_list, groundtruth_keypoints_list)
+        groundtruth_masks_list=groundtruth_masks_list,
+        groundtruth_keypoints_list=groundtruth_keypoints_list)
     losses_dict.update(model.loss(prediction_dict, true_image_shapes))
 
   result_dict = eval_util.result_dict_for_single_example(

@@ -13,13 +13,14 @@
 # limitations under the License.
 
 """Optimizer factory class."""
-from typing import Callable, Union
-
+from typing import Callable, Optional, Union
 
 import gin
 import tensorflow as tf
 import tensorflow_addons.optimizers as tfa_optimizers
 
+from official.modeling.optimization import slide_optimizer
+from official.modeling.optimization import adafactor_optimizer
 from official.modeling.optimization import ema_optimizer
 from official.modeling.optimization import lars_optimizer
 from official.modeling.optimization import lr_schedule
@@ -33,13 +34,16 @@ OPTIMIZERS_CLS = {
     'lamb': tfa_optimizers.LAMB,
     'rmsprop': tf.keras.optimizers.RMSprop,
     'lars': lars_optimizer.LARS,
+    'adagrad': tf.keras.optimizers.Adagrad,
+    'slide': slide_optimizer.SLIDE,
+    'adafactor': adafactor_optimizer.Adafactor,
 }
 
 LR_CLS = {
-    'stepwise': tf.keras.optimizers.schedules.PiecewiseConstantDecay,
-    'polynomial': tf.keras.optimizers.schedules.PolynomialDecay,
-    'exponential': tf.keras.optimizers.schedules.ExponentialDecay,
-    'cosine': tf.keras.experimental.CosineDecay,
+    'stepwise': lr_schedule.PiecewiseConstantDecayWithOffset,
+    'polynomial': lr_schedule.PolynomialDecayWithOffset,
+    'exponential': lr_schedule.ExponentialDecayWithOffset,
+    'cosine': lr_schedule.CosineDecayWithOffset,
     'power': lr_schedule.DirectPowerDecay,
     'power_linear': lr_schedule.PowerAndLinearDecay,
     'power_with_offset': lr_schedule.PowerDecayWithOffset,
@@ -134,8 +138,8 @@ class OptimizerFactory:
   def build_optimizer(
       self,
       lr: Union[tf.keras.optimizers.schedules.LearningRateSchedule, float],
-      postprocessor: Callable[[tf.keras.optimizers.Optimizer],
-                              tf.keras.optimizers.Optimizer] = None):
+      postprocessor: Optional[Callable[[tf.keras.optimizers.Optimizer],
+                                       tf.keras.optimizers.Optimizer]] = None):
     """Build optimizer.
 
     Builds optimizer from config. It takes learning rate as input, and builds

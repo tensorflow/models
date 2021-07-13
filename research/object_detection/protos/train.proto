@@ -40,12 +40,26 @@ message TrainConfig {
   // extractor variables trained outside of object detection.
   optional string fine_tune_checkpoint = 7 [default=""];
 
-  // Type of checkpoint to restore variables from, e.g. 'classification'
-  // 'detection', `fine_tune`, `full`. Controls which variables are restored
-  // from the pre-trained checkpoint. For meta architecture specific valid
-  // values of this parameter, see the restore_map (TF1) or
+  // This option controls how variables are restored from the (pre-trained)
+  // fine_tune_checkpoint. For TF2 models, 3 different types are supported:
+  //   1. "classification": Restores only the classification backbone part of
+  //        the feature extractor. This option is typically used when you want
+  //        to train a detection model starting from a pre-trained image
+  //        classification model, e.g. a ResNet model pre-trained on ImageNet.
+  //   2. "detection": Restores the entire feature extractor. The only parts
+  //        of the full detection model that are not restored are the box and
+  //        class prediction heads. This option is typically used when you want
+  //        to use a pre-trained detection model and train on a new dataset or
+  //        task which requires different box and class prediction heads.
+  //   3. "full": Restores the entire detection model, including the
+  //        feature extractor, its classification backbone, and the prediction
+  //        heads. This option should only be used when the pre-training and
+  //        fine-tuning tasks are the same. Otherwise, the model's parameters
+  //        may have incompatible shapes, which will cause errors when
+  //        attempting to restore the checkpoint.
+  // For more details about this parameter, see the restore_map (TF1) or
   // restore_from_object (TF2) function documentation in the
-  // /meta_architectures/*meta_arch.py files
+  // /meta_architectures/*meta_arch.py files.
   optional string fine_tune_checkpoint_type = 22 [default=""];
 
   // Either "v1" or "v2". If v1, restores the checkpoint using the tensorflow

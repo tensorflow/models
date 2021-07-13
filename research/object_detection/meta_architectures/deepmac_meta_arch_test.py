@@ -100,7 +100,9 @@ def build_meta_arch(predict_full_resolution_masks=False, use_dice_loss=False):
       use_instance_embedding=True,
       num_init_channels=8,
       predict_full_resolution_masks=predict_full_resolution_masks,
-      postprocess_crop_size=128
+      postprocess_crop_size=128,
+      max_roi_jitter_ratio=0.0,
+      roi_jitter_mode='random'
   )
 
   object_detection_params = center_net_meta_arch.ObjectDetectionParams(

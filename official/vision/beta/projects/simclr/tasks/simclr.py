@@ -110,7 +110,8 @@ class SimCLRPretrainTask(base_task.Task):
     # Build backbone
     backbone = backbones.factory.build_backbone(
         input_specs=input_specs,
-        model_config=model_config,
+        backbone_config=model_config.backbone,
+        norm_activation_config=model_config.norm_activation,
         l2_regularizer=l2_regularizer)
 
     # Build projection head
@@ -414,7 +415,8 @@ class SimCLRFinetuneTask(base_task.Task):
 
     backbone = backbones.factory.build_backbone(
         input_specs=input_specs,
-        model_config=model_config,
+        backbone_config=model_config.backbone,
+        norm_activation_config=model_config.norm_activation,
         l2_regularizer=l2_regularizer)
 
     norm_activation_config = model_config.norm_activation

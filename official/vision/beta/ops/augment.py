@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""AutoAugment and RandAugment policies for enhanced image preprocessing.
+"""AutoAugment and RandAugment policies for enhanced image/video preprocessing.
 
 AutoAugment Reference: https://arxiv.org/abs/1805.09501
 RandAugment Reference: https://arxiv.org/abs/1909.13719
 """
 import math
-from typing import Any, List, Optional, Text, Tuple, Iterable
+from typing import Any, List, Iterable, Optional, Text, Tuple
 
 import numpy as np
 import tensorflow as tf
@@ -265,8 +265,8 @@ def cutout(image: tf.Tensor, pad_size: int, replace: int = 0) -> tf.Tensor:
   """Apply cutout (https://arxiv.org/abs/1708.04552) to image.
 
   This operation applies a (2*pad_size x 2*pad_size) mask of zeros to
-  a random location within `img`. The pixel values filled in will be of the
-  value `replace`. The located where the mask will be applied is randomly
+  a random location within `image`. The pixel values filled in will be of the
+  value `replace`. The location where the mask will be applied is randomly
   chosen uniformly over the whole image.
 
   Args:
@@ -279,6 +279,12 @@ def cutout(image: tf.Tensor, pad_size: int, replace: int = 0) -> tf.Tensor:
   Returns:
     An image Tensor that is of type uint8.
   """
+  if image.shape.rank not in [3, 4]:
+    raise ValueError('Bad image rank: {}'.format(image.shape.rank))
+
+  if image.shape.rank == 4:
+    return cutout_video(image, replace=replace)
+
   image_height = tf.shape(image)[0]
   image_width = tf.shape(image)[1]
 
@@ -311,7 +317,86 @@ def cutout(image: tf.Tensor, pad_size: int, replace: int = 0) -> tf.Tensor:
   return image
 
 
+def cutout_video(image: tf.Tensor, replace: int = 0) -> tf.Tensor:
+  """Apply cutout (https://arxiv.org/abs/1708.04552) to a video.
+
+  This operation applies a random size 3D mask of zeros to a random location
+  within `image`. The mask is padded The pixel values filled in will be of the
+  value `replace`. The location where the mask will be applied is randomly
+  chosen uniformly over the whole image. The size of the mask is randomly
+  sampled uniformly from [0.25*height, 0.5*height], [0.25*width, 0.5*width],
+  and [1, 0.25*depth], which represent the height, width, and number of frames
+  of the input video tensor respectively.
+
+  Args:
+    image: A video Tensor of type uint8.
+    replace: What pixel value to fill in the image in the area that has the
+      cutout mask applied to it.
+
+  Returns:
+    An video Tensor that is of type uint8.
+  """
+  image_depth = tf.shape(image)[0]
+  image_height = tf.shape(image)[1]
+  image_width = tf.shape(image)[2]
+
+  # Sample the center location in the image where the zero mask will be applied.
+  cutout_center_height = tf.random.uniform(
+      shape=[], minval=0, maxval=image_height, dtype=tf.int32)
+
+  cutout_center_width = tf.random.uniform(
+      shape=[], minval=0, maxval=image_width, dtype=tf.int32)
+
+  cutout_center_depth = tf.random.uniform(
+      shape=[], minval=0, maxval=image_depth, dtype=tf.int32)
+
+  pad_size_height = tf.random.uniform(
+      shape=[],
+      minval=tf.maximum(1, tf.cast(image_height / 4, tf.int32)),
+      maxval=tf.maximum(2, tf.cast(image_height / 2, tf.int32)),
+      dtype=tf.int32)
+  pad_size_width = tf.random.uniform(
+      shape=[],
+      minval=tf.maximum(1, tf.cast(image_width / 4, tf.int32)),
+      maxval=tf.maximum(2, tf.cast(image_width / 2, tf.int32)),
+      dtype=tf.int32)
+  pad_size_depth = tf.random.uniform(
+      shape=[],
+      minval=1,
+      maxval=tf.maximum(2, tf.cast(image_depth / 4, tf.int32)),
+      dtype=tf.int32)
+
+  lower_pad = tf.maximum(0, cutout_center_height - pad_size_height)
+  upper_pad = tf.maximum(
+      0, image_height - cutout_center_height - pad_size_height)
+  left_pad = tf.maximum(0, cutout_center_width - pad_size_width)
+  right_pad = tf.maximum(0, image_width - cutout_center_width - pad_size_width)
+  back_pad = tf.maximum(0, cutout_center_depth - pad_size_depth)
+  forward_pad = tf.maximum(
+      0, image_depth - cutout_center_depth - pad_size_depth)
+
+  cutout_shape = [
+      image_depth - (back_pad + forward_pad),
+      image_height - (lower_pad + upper_pad),
+      image_width - (left_pad + right_pad),
+  ]
+  padding_dims = [[back_pad, forward_pad],
+                  [lower_pad, upper_pad],
+                  [left_pad, right_pad]]
+  mask = tf.pad(
+      tf.zeros(cutout_shape, dtype=image.dtype),
+      padding_dims,
+      constant_values=1)
+  mask = tf.expand_dims(mask, -1)
+  mask = tf.tile(mask, [1, 1, 1, 3])
+  image = tf.where(
+      tf.equal(mask, 0),
+      tf.ones_like(image, dtype=image.dtype) * replace, image)
+  return image
+
+
 def solarize(image: tf.Tensor, threshold: int = 128) -> tf.Tensor:
+  """Solarize the input image(s)."""
   # For each pixel in the image, select the pixel
   # if the value is less than the threshold.
   # Otherwise, subtract 255 from the pixel.
@@ -321,6 +406,7 @@ def solarize(image: tf.Tensor, threshold: int = 128) -> tf.Tensor:
 def solarize_add(image: tf.Tensor,
                  addition: int = 0,
                  threshold: int = 128) -> tf.Tensor:
+  """Additive solarize the input image(s)."""
   # For each pixel in the image less than threshold
   # we add 'addition' amount to it and then clip the
   # pixel value to be between 0 and 255. The value
@@ -437,10 +523,11 @@ def autocontrast(image: tf.Tensor) -> tf.Tensor:
 
   # Assumes RGB for now.  Scales each channel independently
   # and then stacks the result.
-  s1 = scale_channel(image[:, :, 0])
-  s2 = scale_channel(image[:, :, 1])
-  s3 = scale_channel(image[:, :, 2])
-  image = tf.stack([s1, s2, s3], 2)
+  s1 = scale_channel(image[..., 0])
+  s2 = scale_channel(image[..., 1])
+  s3 = scale_channel(image[..., 2])
+  image = tf.stack([s1, s2, s3], -1)
+
   return image
 
 
@@ -451,22 +538,39 @@ def sharpness(image: tf.Tensor, factor: float) -> tf.Tensor:
   # Make image 4D for conv operation.
   image = tf.expand_dims(image, 0)
   # SMOOTH PIL Kernel.
-  kernel = tf.constant([[1, 1, 1], [1, 5, 1], [1, 1, 1]],
-                       dtype=tf.float32,
-                       shape=[3, 3, 1, 1]) / 13.
-  # Tile across channel dimension.
-  kernel = tf.tile(kernel, [1, 1, 3, 1])
-  strides = [1, 1, 1, 1]
-  degenerate = tf.nn.depthwise_conv2d(
-      image, kernel, strides, padding='VALID', dilations=[1, 1])
+  if orig_image.shape.rank == 3:
+    kernel = tf.constant([[1, 1, 1], [1, 5, 1], [1, 1, 1]],
+                         dtype=tf.float32,
+                         shape=[3, 3, 1, 1]) / 13.
+    # Tile across channel dimension.
+    kernel = tf.tile(kernel, [1, 1, 3, 1])
+    strides = [1, 1, 1, 1]
+    degenerate = tf.nn.depthwise_conv2d(
+        image, kernel, strides, padding='VALID', dilations=[1, 1])
+  elif orig_image.shape.rank == 4:
+    kernel = tf.constant([[1, 1, 1], [1, 5, 1], [1, 1, 1]],
+                         dtype=tf.float32,
+                         shape=[1, 3, 3, 1, 1]) / 13.
+    strides = [1, 1, 1, 1, 1]
+    # Run the kernel across each channel
+    channels = tf.split(image, 3, axis=-1)
+    degenerates = [
+        tf.nn.conv3d(channel, kernel, strides, padding='VALID',
+                     dilations=[1, 1, 1, 1, 1])
+        for channel in channels
+    ]
+    degenerate = tf.concat(degenerates, -1)
+  else:
+    raise ValueError('Bad image rank: {}'.format(image.shape.rank))
   degenerate = tf.clip_by_value(degenerate, 0.0, 255.0)
   degenerate = tf.squeeze(tf.cast(degenerate, tf.uint8), [0])
 
   # For the borders of the resulting image, fill in the values of the
   # original image.
   mask = tf.ones_like(degenerate)
-  padded_mask = tf.pad(mask, [[1, 1], [1, 1], [0, 0]])
-  padded_degenerate = tf.pad(degenerate, [[1, 1], [1, 1], [0, 0]])
+  paddings = [[0, 0]] * (orig_image.shape.rank - 3)
+  padded_mask = tf.pad(mask, paddings + [[1, 1], [1, 1], [0, 0]])
+  padded_degenerate = tf.pad(degenerate, paddings + [[1, 1], [1, 1], [0, 0]])
   result = tf.where(tf.equal(padded_mask, 1), padded_degenerate, orig_image)
 
   # Blend the final result.
@@ -478,7 +582,7 @@ def equalize(image: tf.Tensor) -> tf.Tensor:
 
   def scale_channel(im, c):
     """Scale the data in the channel to implement equalize."""
-    im = tf.cast(im[:, :, c], tf.int32)
+    im = tf.cast(im[..., c], tf.int32)
     # Compute the histogram of the image channel.
     histo = tf.histogram_fixed_width(im, [0, 255], nbins=256)
 
@@ -510,7 +614,7 @@ def equalize(image: tf.Tensor) -> tf.Tensor:
   s1 = scale_channel(image, 0)
   s2 = scale_channel(image, 1)
   s3 = scale_channel(image, 2)
-  image = tf.stack([s1, s2, s3], 2)
+  image = tf.stack([s1, s2, s3], -1)
   return image
 
 
@@ -523,8 +627,8 @@ def invert(image: tf.Tensor) -> tf.Tensor:
 def wrap(image: tf.Tensor) -> tf.Tensor:
   """Returns 'image' with an extra channel set to all 1s."""
   shape = tf.shape(image)
-  extended_channel = tf.ones([shape[0], shape[1], 1], image.dtype)
-  extended = tf.concat([image, extended_channel], axis=2)
+  extended_channel = tf.expand_dims(tf.ones(shape[:-1], image.dtype), -1)
+  extended = tf.concat([image, extended_channel], axis=-1)
   return extended
 
 
@@ -548,10 +652,10 @@ def unwrap(image: tf.Tensor, replace: int) -> tf.Tensor:
   """
   image_shape = tf.shape(image)
   # Flatten the spatial dimensions.
-  flattened_image = tf.reshape(image, [-1, image_shape[2]])
+  flattened_image = tf.reshape(image, [-1, image_shape[-1]])
 
   # Find all pixels where the last channel is zero.
-  alpha_channel = tf.expand_dims(flattened_image[:, 3], axis=-1)
+  alpha_channel = tf.expand_dims(flattened_image[..., 3], axis=-1)
 
   replace = tf.concat([replace, tf.ones([1], image.dtype)], 0)
 
@@ -562,7 +666,10 @@ def unwrap(image: tf.Tensor, replace: int) -> tf.Tensor:
       flattened_image)
 
   image = tf.reshape(flattened_image, image_shape)
-  image = tf.slice(image, [0, 0, 0], [image_shape[0], image_shape[1], 3])
+  image = tf.slice(
+      image,
+      [0] * image.shape.rank,
+      tf.concat([image_shape[:-1], [3]], -1))
   return image
 
 
@@ -717,7 +824,8 @@ class ImageAugment(object):
     """Given an image tensor, returns a distorted image with the same shape.
 
     Args:
-      image: `Tensor` of shape [height, width, 3] representing an image.
+      image: `Tensor` of shape [height, width, 3] or
+      [num_frames, height, width, 3] representing an image or image sequence.
 
     Returns:
       The augmented version of `image`.
@@ -880,10 +988,6 @@ class AutoAugment(ImageAugment):
       the policy.
     """
 
-    # TODO(dankondratyuk): tensorflow_addons defines custom ops, which
-    # for some reason are not included when building/linking
-    # This results in the error, "Op type not registered
-    # 'Addons>ImageProjectiveTransformV2' in binary" when running on borg TPUs
     policy = [
         [('Equalize', 0.8, 1), ('ShearY', 0.8, 4)],
         [('Color', 0.4, 9), ('Equalize', 0.6, 3)],
@@ -1079,7 +1183,8 @@ class RandAugment(ImageAugment):
                num_layers: int = 2,
                magnitude: float = 10.,
                cutout_const: float = 40.,
-               translate_const: float = 100.):
+               translate_const: float = 100.,
+               prob_to_apply: Optional[float] = None):
     """Applies the RandAugment policy to images.
 
     Args:
@@ -1091,6 +1196,8 @@ class RandAugment(ImageAugment):
         [5, 10].
       cutout_const: multiplier for applying cutout.
       translate_const: multiplier for applying translation.
+      prob_to_apply: The probability to apply the selected augmentation at each
+        layer.
     """
     super(RandAugment, self).__init__()
 
@@ -1098,6 +1205,8 @@ class RandAugment(ImageAugment):
     self.magnitude = float(magnitude)
     self.cutout_const = float(cutout_const)
     self.translate_const = float(translate_const)
+    self.prob_to_apply = (
+        float(prob_to_apply) if prob_to_apply is not None else None)
     self.available_ops = [
         'AutoContrast', 'Equalize', 'Invert', 'Rotate', 'Posterize', 'Solarize',
         'Color', 'Contrast', 'Brightness', 'Sharpness', 'ShearX', 'ShearY',
@@ -1122,6 +1231,8 @@ class RandAugment(ImageAugment):
     replace_value = [128] * 3
     min_prob, max_prob = 0.2, 0.8
 
+    aug_image = image
+
     for _ in range(self.num_layers):
       op_to_select = tf.random.uniform([],
                                        maxval=len(self.available_ops) + 1,
@@ -1143,10 +1254,16 @@ class RandAugment(ImageAugment):
                 image, *selected_args)))
         # pylint:enable=g-long-lambda
 
-      image = tf.switch_case(
+      aug_image = tf.switch_case(
           branch_index=op_to_select,
           branch_fns=branch_fns,
           default=lambda: tf.identity(image))
+
+      if self.prob_to_apply is not None:
+        aug_image = tf.cond(
+            tf.random.uniform(shape=[], dtype=tf.float32) < self.prob_to_apply,
+            lambda: tf.identity(aug_image), lambda: tf.identity(image))
+      image = aug_image
 
     image = tf.cast(image, dtype=input_image_type)
     return image

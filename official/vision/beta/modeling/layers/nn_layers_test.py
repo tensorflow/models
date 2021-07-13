@@ -24,6 +24,15 @@ from official.vision.beta.modeling.layers import nn_layers
 
 class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
 
+  def setUp(self):
+    super().setUp()
+    nn_layers.LEGACY_PADDING = False
+
+  def test_hard_swish(self):
+    activation = tf.keras.layers.Activation('hard_swish')
+    output = activation(tf.constant([-3, -1.5, 0, 3]))
+    self.assertAllEqual(output, [0., -0.375, 0., 3.])
+
   def test_scale(self):
     scale = nn_layers.Scale(initializer=tf.keras.initializers.constant(10.))
     output = scale(3.)
@@ -48,8 +57,8 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
         initializer='ones', cache_encoding=True)
 
     inputs = tf.ones([1, 4, 1, 1, 3])
-    outputs = pos_encoding(inputs)
-    outputs_cached = pos_encoding_cached(inputs)
+    outputs, _ = pos_encoding(inputs)
+    outputs_cached, _ = pos_encoding_cached(inputs)
 
     expected = tf.constant(
         [[[[[1.0000000, 1.0000000, 2.0000000]]],
@@ -70,7 +79,7 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
     pos_encoding = nn_layers.PositionalEncoding(initializer='ones')
 
     inputs = tf.ones([1, 4, 1, 1, 3], dtype=tf.bfloat16)
-    outputs = pos_encoding(inputs)
+    outputs, _ = pos_encoding(inputs)
 
     expected = tf.constant(
         [[[[[1.0000000, 1.0000000, 2.0000000]]],
@@ -91,6 +100,31 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertEqual(outputs.shape, expected.shape)
     self.assertAllEqual(outputs, expected)
+
+  def test_positional_encoding_stream(self):
+    pos_encoding = nn_layers.PositionalEncoding(
+        initializer='ones', cache_encoding=False)
+
+    inputs = tf.range(4, dtype=tf.float32) + 1.
+    inputs = tf.reshape(inputs, [1, 4, 1, 1, 1])
+    inputs = tf.tile(inputs, [1, 1, 1, 1, 3])
+    expected, _ = pos_encoding(inputs)
+
+    for num_splits in [1, 2, 4]:
+      frames = tf.split(inputs, num_splits, axis=1)
+      states = {}
+      predicted = []
+      for frame in frames:
+        output, states = pos_encoding(frame, states=states)
+        predicted.append(output)
+      predicted = tf.concat(predicted, axis=1)
+
+      self.assertEqual(predicted.shape, expected.shape)
+      self.assertAllClose(predicted, expected)
+      self.assertAllClose(predicted, [[[[[1.0000000, 1.0000000, 2.0000000]]],
+                                       [[[2.8414710, 2.0021544, 2.5403023]]],
+                                       [[[3.9092975, 3.0043090, 2.5838532]]],
+                                       [[[4.1411200, 4.0064630, 3.0100074]]]]])
 
   def test_global_average_pool_keras(self):
     pool = nn_layers.GlobalAveragePool3D(keepdims=False)
@@ -249,14 +283,14 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
     predicted = conv3d(padded_inputs)
 
     expected = tf.constant(
-        [[[[[12., 12., 12.],
+        [[[[[27., 27., 27.],
             [18., 18., 18.]],
            [[18., 18., 18.],
-            [27., 27., 27.]]],
-          [[[24., 24., 24.],
+            [12., 12., 12.]]],
+          [[[54., 54., 54.],
             [36., 36., 36.]],
            [[36., 36., 36.],
-            [54., 54., 54.]]]]])
+            [24., 24., 24.]]]]])
 
     self.assertEqual(predicted.shape, expected.shape)
     self.assertAllClose(predicted, expected)
@@ -286,14 +320,17 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
     predicted = conv3d(padded_inputs)
 
     expected = tf.constant(
-        [[[[[4.0, 4.0, 4.0],
+        [[[[[9.0, 9.0, 9.0],
             [6.0, 6.0, 6.0]],
            [[6.0, 6.0, 6.0],
-            [9.0, 9.0, 9.0]]],
-          [[[8.0, 8.0, 8.0],
+            [4.0, 4.0, 4.0]]],
+          [[[18.0, 18.0, 18.0],
             [12., 12., 12.]],
            [[12., 12., 12.],
-            [18., 18., 18.]]]]])
+            [8., 8., 8.]]]]])
+
+    output_shape = conv3d._spatial_output_shape([4, 4, 4])
+    self.assertAllClose(output_shape, [2, 2, 2])
 
     self.assertEqual(predicted.shape, expected.shape)
     self.assertAllClose(predicted, expected)
@@ -303,6 +340,75 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertEqual(predicted.shape, expected.shape)
     self.assertAllClose(predicted, expected)
+
+  def test_conv3d_causal_padding_2d(self):
+    """Test to ensure causal padding works like standard padding."""
+    conv3d = nn_layers.Conv3D(
+        filters=1,
+        kernel_size=(1, 3, 3),
+        strides=(1, 2, 2),
+        padding='causal',
+        use_buffered_input=False,
+        kernel_initializer='ones',
+        use_bias=False,
+    )
+
+    keras_conv3d = tf.keras.layers.Conv3D(
+        filters=1,
+        kernel_size=(1, 3, 3),
+        strides=(1, 2, 2),
+        padding='same',
+        kernel_initializer='ones',
+        use_bias=False,
+    )
+
+    inputs = tf.ones([1, 1, 4, 4, 1])
+
+    predicted = conv3d(inputs)
+    expected = keras_conv3d(inputs)
+
+    self.assertEqual(predicted.shape, expected.shape)
+    self.assertAllClose(predicted, expected)
+
+    self.assertAllClose(predicted,
+                        [[[[[9.],
+                            [6.]],
+                           [[6.],
+                            [4.]]]]])
+
+  def test_conv3d_causal_padding_1d(self):
+    """Test to ensure causal padding works like standard padding."""
+    conv3d = nn_layers.Conv3D(
+        filters=1,
+        kernel_size=(3, 1, 1),
+        strides=(2, 1, 1),
+        padding='causal',
+        use_buffered_input=False,
+        kernel_initializer='ones',
+        use_bias=False,
+    )
+
+    keras_conv1d = tf.keras.layers.Conv1D(
+        filters=1,
+        kernel_size=3,
+        strides=2,
+        padding='causal',
+        kernel_initializer='ones',
+        use_bias=False,
+    )
+
+    inputs = tf.ones([1, 4, 1, 1, 1])
+
+    predicted = conv3d(inputs)
+    expected = keras_conv1d(tf.squeeze(inputs, axis=[2, 3]))
+    expected = tf.reshape(expected, [1, 2, 1, 1, 1])
+
+    self.assertEqual(predicted.shape, expected.shape)
+    self.assertAllClose(predicted, expected)
+
+    self.assertAllClose(predicted,
+                        [[[[[1.]]],
+                          [[[3.]]]]])
 
 if __name__ == '__main__':
   tf.test.main()

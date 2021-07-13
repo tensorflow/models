@@ -132,6 +132,9 @@ class IouSimilarity:
     Output shape:
       [M, N], or [B, M, N]
     """
+    boxes_1 = tf.cast(boxes_1, tf.float32)
+    boxes_2 = tf.cast(boxes_2, tf.float32)
+
     boxes_1_rank = len(boxes_1.shape)
     boxes_2_rank = len(boxes_2.shape)
     if boxes_1_rank < 2 or boxes_1_rank > 3:

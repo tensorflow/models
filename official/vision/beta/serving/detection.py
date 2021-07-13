@@ -20,6 +20,7 @@ import tensorflow as tf
 from official.vision.beta import configs
 from official.vision.beta.modeling import factory
 from official.vision.beta.ops import anchor
+from official.vision.beta.ops import box_ops
 from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.serving import export_base
 
@@ -34,9 +35,9 @@ class DetectionModule(export_base.ExportModule):
   def _build_model(self):
 
     if self._batch_size is None:
-      ValueError("batch_size can't be None for detection models")
+      raise ValueError('batch_size cannot be None for detection models.')
     if not self.params.task.model.detection_generator.use_batched_nms:
-      ValueError('Only batched_nms is supported.')
+      raise ValueError('Only batched_nms is supported.')
     input_specs = tf.keras.layers.InputSpec(shape=[self._batch_size] +
                                             self._input_image_size + [3])
 
@@ -120,20 +121,52 @@ class DetectionModule(export_base.ExportModule):
 
     input_image_shape = image_info[:, 1, :]
 
+    # To overcome keras.Model extra limitation to save a model with layers that
+    # have multiple inputs, we use `model.call` here to trigger the forward
+    # path. Note that, this disables some keras magics happens in `__call__`.
     detections = self.model.call(
         images=images,
         image_shape=input_image_shape,
         anchor_boxes=anchor_boxes,
         training=False)
 
-    final_outputs = {
-        'detection_boxes': detections['detection_boxes'],
-        'detection_scores': detections['detection_scores'],
-        'detection_classes': detections['detection_classes'],
-        'num_detections': detections['num_detections'],
-        'image_info': image_info
-    }
+    if self.params.task.model.detection_generator.apply_nms:
+      # For RetinaNet model, apply export_config.
+      # TODO(huizhongc): Add export_config to fasterrcnn and maskrcnn as needed.
+      if isinstance(self.params.task.model, configs.retinanet.RetinaNet):
+        export_config = self.params.task.export_config
+        # Normalize detection box coordinates to [0, 1].
+        if export_config.output_normalized_coordinates:
+          detection_boxes = (
+              detections['detection_boxes'] /
+              tf.tile(image_info[:, 2:3, :], [1, 1, 2]))
+          detections['detection_boxes'] = box_ops.normalize_boxes(
+              detection_boxes, image_info[:, 0:1, :])
+
+        # Cast num_detections and detection_classes to float. This allows the
+        # model inference to work on chain (go/chain) as chain requires floating
+        # point outputs.
+        if export_config.cast_num_detections_to_float:
+          detections['num_detections'] = tf.cast(
+              detections['num_detections'], dtype=tf.float32)
+        if export_config.cast_detection_classes_to_float:
+          detections['detection_classes'] = tf.cast(
+              detections['detection_classes'], dtype=tf.float32)
+
+      final_outputs = {
+          'detection_boxes': detections['detection_boxes'],
+          'detection_scores': detections['detection_scores'],
+          'detection_classes': detections['detection_classes'],
+          'num_detections': detections['num_detections']
+      }
+    else:
+      final_outputs = {
+          'decoded_boxes': detections['decoded_boxes'],
+          'decoded_box_scores': detections['decoded_box_scores']
+      }
+
     if 'detection_masks' in detections.keys():
       final_outputs['detection_masks'] = detections['detection_masks']
 
+    final_outputs.update({'image_info': image_info})
     return final_outputs

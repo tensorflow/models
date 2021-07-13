@@ -118,6 +118,20 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(outputs['num_detections'].numpy(),
                         expected_outputs['num_detections'].numpy())
 
+  def test_build_model_fail_with_none_batch_size(self):
+    params = exp_factory.get_exp_config('retinanet_resnetfpn_coco')
+    with self.assertRaisesRegex(
+        ValueError, 'batch_size cannot be None for detection models.'):
+      detection.DetectionModule(
+          params, batch_size=None, input_image_size=[640, 640])
+
+  def test_build_model_fail_with_batched_nms_false(self):
+    params = exp_factory.get_exp_config('retinanet_resnetfpn_coco')
+    params.task.model.detection_generator.use_batched_nms = False
+    with self.assertRaisesRegex(ValueError, 'Only batched_nms is supported.'):
+      detection.DetectionModule(
+          params, batch_size=1, input_image_size=[640, 640])
+
 
 if __name__ == '__main__':
   tf.test.main()

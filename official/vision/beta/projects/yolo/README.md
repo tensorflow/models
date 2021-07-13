@@ -1,3 +1,6 @@
+DISCLAIMER: this YOLO implementation is still under development. No support will
+be provided during the development phase.
+
 # YOLO Object Detectors, You Only Look Once
 
 [![Paper](http://img.shields.io/badge/Paper-arXiv.1804.02767-B3181B?logo=arXiv)](https://arxiv.org/abs/1804.02767)
@@ -74,3 +77,5 @@ head could be connected to a new, more powerful backbone if a person chose to.
 
 [![TensorFlow 2.2](https://img.shields.io/badge/TensorFlow-2.2-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.2.0)
 [![Python 3.8](https://img.shields.io/badge/Python-3.8-3776AB)](https://www.python.org/downloads/release/python-380/)
+
+

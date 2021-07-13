@@ -22,6 +22,7 @@ from typing import Any, List, Optional, Tuple
 from absl import logging
 import tensorflow as tf
 
+from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
@@ -392,8 +393,10 @@ class SpineNet(tf.keras.Model):
               block_spec.level))
         if (block_spec.level < self._min_level or
             block_spec.level > self._max_level):
-          raise ValueError('Output level is out of range [{}, {}]'.format(
-              self._min_level, self._max_level))
+          logging.warning(
+              'SpineNet output level out of range [min_level, max_level] = '
+              '[%s, %s] will not be used for further processing.',
+              self._min_level, self._max_level)
         endpoints[str(block_spec.level)] = x
 
     return endpoints
@@ -527,12 +530,12 @@ class SpineNet(tf.keras.Model):
 @factory.register_backbone_builder('spinenet')
 def build_spinenet(
     input_specs: tf.keras.layers.InputSpec,
-    model_config,
+    backbone_config: hyperparams.Config,
+    norm_activation_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds SpineNet backbone from a config."""
-  backbone_type = model_config.backbone.type
-  backbone_cfg = model_config.backbone.get()
-  norm_activation_config = model_config.norm_activation
+  backbone_type = backbone_config.type
+  backbone_cfg = backbone_config.get()
   assert backbone_type == 'spinenet', (f'Inconsistent backbone type '
                                        f'{backbone_type}')
 
@@ -544,8 +547,8 @@ def build_spinenet(
 
   return SpineNet(
       input_specs=input_specs,
-      min_level=model_config.min_level,
-      max_level=model_config.max_level,
+      min_level=backbone_cfg.min_level,
+      max_level=backbone_cfg.max_level,
       endpoints_num_filters=scaling_params['endpoints_num_filters'],
       resample_alpha=scaling_params['resample_alpha'],
       block_repeats=scaling_params['block_repeats'],

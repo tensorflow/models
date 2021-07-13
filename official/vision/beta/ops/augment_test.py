@@ -145,6 +145,44 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertEqual((224, 224, 3), image.shape)
 
+  def test_autoaugment_video(self):
+    """Smoke test with video to be sure there are no syntax errors."""
+    image = tf.zeros((2, 224, 224, 3), dtype=tf.uint8)
+
+    for policy in self.AVAILABLE_POLICIES:
+      augmenter = augment.AutoAugment(augmentation_name=policy)
+      aug_image = augmenter.distort(image)
+
+      self.assertEqual((2, 224, 224, 3), aug_image.shape)
+
+  def test_randaug_video(self):
+    """Smoke test with video to be sure there are no syntax errors."""
+    image = tf.zeros((2, 224, 224, 3), dtype=tf.uint8)
+
+    augmenter = augment.RandAugment()
+    aug_image = augmenter.distort(image)
+
+    self.assertEqual((2, 224, 224, 3), aug_image.shape)
+
+  def test_all_policy_ops_video(self):
+    """Smoke test to be sure all video augmentation functions can execute."""
+
+    prob = 1
+    magnitude = 10
+    replace_value = [128] * 3
+    cutout_const = 100
+    translate_const = 250
+
+    image = tf.ones((2, 224, 224, 3), dtype=tf.uint8)
+
+    for op_name in augment.NAME_TO_FUNC:
+      func, _, args = augment._parse_policy_info(op_name, prob, magnitude,
+                                                 replace_value, cutout_const,
+                                                 translate_const)
+      image = func(image, *args)
+
+    self.assertEqual((2, 224, 224, 3), image.shape)
+
   def _generate_test_policy(self):
     """Generate a test policy at random."""
     op_list = list(augment.NAME_TO_FUNC.keys())

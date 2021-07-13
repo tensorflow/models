@@ -20,9 +20,11 @@ import tensorflow as tf
 from official.modeling import activations
 from official.nlp import keras_nlp
 from official.nlp.modeling import layers
-from official.nlp.projects.bigbird import attention
 from official.nlp.projects.bigbird import recompute_grad
 from official.nlp.projects.bigbird import recomputing_dropout
+
+
+_MAX_SEQ_LEN = 4096
 
 
 class RecomputeTransformerLayer(layers.TransformerScaffold):
@@ -86,7 +88,7 @@ class BigBirdEncoder(tf.keras.Model):
                hidden_size=768,
                num_layers=12,
                num_attention_heads=12,
-               max_position_embeddings=attention.MAX_SEQ_LEN,
+               max_position_embeddings=_MAX_SEQ_LEN,
                type_vocab_size=16,
                intermediate_size=3072,
                block_size=64,
@@ -177,8 +179,8 @@ class BigBirdEncoder(tf.keras.Model):
 
     self._transformer_layers = []
     data = embeddings
-    masks = attention.BigBirdMasks(block_size=block_size)(
-        tf.cast(mask, embeddings.dtype))
+    masks = layers.BigBirdMasks(block_size=block_size)(
+        data, mask)
     encoder_outputs = []
     attn_head_dim = hidden_size // num_attention_heads
     for i in range(num_layers):
@@ -186,7 +188,7 @@ class BigBirdEncoder(tf.keras.Model):
           num_attention_heads,
           intermediate_size,
           activation,
-          attention_cls=attention.BigBirdAttention,
+          attention_cls=layers.BigBirdAttention,
           attention_cfg=dict(
               num_heads=num_attention_heads,
               key_dim=attn_head_dim,

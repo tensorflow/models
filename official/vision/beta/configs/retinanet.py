@@ -18,13 +18,14 @@
 import os
 from typing import List, Optional
 import dataclasses
+
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.vision.beta.configs import backbones
 from official.vision.beta.configs import common
 from official.vision.beta.configs import decoders
+from official.vision.beta.configs import backbones
 
 
 # pylint: disable=missing-class-docstring
@@ -105,6 +106,7 @@ class RetinaNetHead(hyperparams.Config):
 
 @dataclasses.dataclass
 class DetectionGenerator(hyperparams.Config):
+  apply_nms: bool = True
   pre_nms_top_k: int = 5000
   pre_nms_score_threshold: float = 0.05
   nms_iou_threshold: float = 0.5
@@ -129,6 +131,13 @@ class RetinaNet(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class ExportConfig(hyperparams.Config):
+  output_normalized_coordinates: bool = False
+  cast_num_detections_to_float: bool = False
+  cast_detection_classes_to_float: bool = False
+
+
+@dataclasses.dataclass
 class RetinaNetTask(cfg.TaskConfig):
   model: RetinaNet = RetinaNet()
   train_data: DataConfig = DataConfig(is_training=True)
@@ -138,6 +147,7 @@ class RetinaNetTask(cfg.TaskConfig):
   init_checkpoint_modules: str = 'all'  # all or backbone
   annotation_file: Optional[str] = None
   per_category_metrics: bool = False
+  export_config: ExportConfig = ExportConfig()
 
 
 @exp_factory.register_config_factory('retinanet')
@@ -173,6 +183,7 @@ def retinanet_resnetfpn_coco() -> cfg.ExperimentConfig:
           model=RetinaNet(
               num_classes=91,
               input_size=[640, 640, 3],
+              norm_activation=common.NormActivation(use_sync_bn=False),
               min_level=3,
               max_level=7),
           losses=Losses(l2_weight_decay=1e-4),
@@ -181,7 +192,7 @@ def retinanet_resnetfpn_coco() -> cfg.ExperimentConfig:
               is_training=True,
               global_batch_size=train_batch_size,
               parser=Parser(
-                  aug_rand_hflip=True, aug_scale_min=0.5, aug_scale_max=2.0)),
+                  aug_rand_hflip=True, aug_scale_min=0.8, aug_scale_max=1.2)),
           validation_data=DataConfig(
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
               is_training=False,
@@ -246,7 +257,10 @@ def retinanet_spinenet_coco() -> cfg.ExperimentConfig:
               backbone=backbones.Backbone(
                   type='spinenet',
                   spinenet=backbones.SpineNet(
-                      model_id='49', stochastic_depth_drop_rate=0.2)),
+                      model_id='49',
+                      stochastic_depth_drop_rate=0.2,
+                      min_level=3,
+                      max_level=7)),
               decoder=decoders.Decoder(
                   type='identity', identity=decoders.Identity()),
               anchor=Anchor(anchor_size=3),
@@ -304,7 +318,9 @@ def retinanet_spinenet_coco() -> cfg.ExperimentConfig:
           })),
       restrictions=[
           'task.train_data.is_training != None',
-          'task.validation_data.is_training != None'
+          'task.validation_data.is_training != None',
+          'task.model.min_level == task.model.backbone.spinenet.min_level',
+          'task.model.max_level == task.model.backbone.spinenet.max_level',
       ])
 
   return config
@@ -327,7 +343,11 @@ def retinanet_spinenet_mobile_coco() -> cfg.ExperimentConfig:
               backbone=backbones.Backbone(
                   type='spinenet_mobile',
                   spinenet_mobile=backbones.SpineNetMobile(
-                      model_id='49', stochastic_depth_drop_rate=0.2)),
+                      model_id='49',
+                      stochastic_depth_drop_rate=0.2,
+                      min_level=3,
+                      max_level=7,
+                      use_keras_upsampling_2d=False)),
               decoder=decoders.Decoder(
                   type='identity', identity=decoders.Identity()),
               head=RetinaNetHead(num_filters=48, use_separable_conv=True),
@@ -386,7 +406,9 @@ def retinanet_spinenet_mobile_coco() -> cfg.ExperimentConfig:
           })),
       restrictions=[
           'task.train_data.is_training != None',
-          'task.validation_data.is_training != None'
+          'task.validation_data.is_training != None',
+          'task.model.min_level == task.model.backbone.spinenet_mobile.min_level',
+          'task.model.max_level == task.model.backbone.spinenet_mobile.max_level',
       ])
 
   return config

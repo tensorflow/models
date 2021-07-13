@@ -26,4 +26,7 @@
 *   [shapemask](vision/detection): An object detection and instance segmentation model using shape priors. See [Tensorboard.dev training metrics](https://tensorboard.dev/experiment/ZbXgVoc6Rf6mBRlPj0JpLA).
 
 ## Recommendation
+*   [dlrm](recommendation/ranking): [Deep Learning Recommendation Model for
+Personalization and Recommendation Systems](https://arxiv.org/abs/1906.00091).
+*   [dcn v2](recommendation/ranking): [Improved Deep & Cross Network and Practical Lessons for Web-scale Learning to Rank Systems](https://arxiv.org/abs/2008.13535).
 *   [ncf](recommendation): Neural Collaborative Filtering. See [Tensorboard.dev training metrics](https://tensorboard.dev/experiment/0k3gKjZlR1ewkVTRyLB6IQ).

@@ -16,6 +16,8 @@
 
 import tensorflow.compat.v1 as tf
 
+from object_detection.core import box_list
+from object_detection.core import box_list_ops
 from object_detection.utils import shape_utils
 
 
@@ -289,11 +291,38 @@ def get_valid_keypoint_mask_for_class(keypoint_coordinates,
   return mask, keypoints_nan_to_zeros
 
 
-def blackout_pixel_weights_by_box_regions(height, width, boxes, blackout):
-  """Blackout the pixel weights in the target box regions.
+def blackout_pixel_weights_by_box_regions(height, width, boxes, blackout,
+                                          weights=None,
+                                          boxes_scale=1.0):
+  """Apply weights at pixel locations.
 
   This function is used to generate the pixel weight mask (usually in the output
   image dimension). The mask is to ignore some regions when computing loss.
+
+  Weights are applied as follows:
+  - Any region outside of a box gets the default weight 1.0
+  - Any box for which an explicit weight is specifed gets that weight. If
+    multiple boxes overlap, the maximum of the weights is applied.
+  - Any box for which blackout=True is specified will get a weight of 0.0,
+    regardless of whether an equivalent non-zero weight is specified. Also, the
+    blackout region takes precedence over other boxes which may overlap with
+    non-zero weight.
+
+    Example:
+    height = 4
+    width = 4
+    boxes = [[0., 0., 2., 2.],
+             [0., 0., 4., 2.],
+             [3., 0., 4., 4.]]
+    blackout = [False, False, True]
+    weights = [4.0, 3.0, 2.0]
+    blackout_pixel_weights_by_box_regions(height, width, boxes, blackout,
+                                          weights)
+    >> [[4.0, 4.0, 1.0, 1.0],
+        [4.0, 4.0, 1.0, 1.0],
+        [3.0, 3.0, 1.0, 1.0],
+        [0.0, 0.0, 0.0, 0.0]]
+
 
   Args:
     height: int, height of the (output) image.
@@ -302,10 +331,19 @@ def blackout_pixel_weights_by_box_regions(height, width, boxes, blackout):
       coordinates of the four corners of the boxes.
     blackout: A boolean tensor with shape [num_instances] indicating whether to
       blackout (zero-out) the weights within the box regions.
+    weights: An optional float32 tensor with shape [num_instances] indicating
+      a value to apply in each box region. Note that if blackout=True for a
+      given box, the weight will be zero. If None, all weights are assumed to be
+      1.
+    boxes_scale: The amount to scale the height/width of the boxes before
+      constructing the blackout regions. This is often useful to guarantee that
+      the proper weight fully covers the object boxes/masks during supervision,
+      as shifting might occur during image resizing, network stride, etc.
 
   Returns:
     A float tensor with shape [height, width] where all values within the
-    regions of the blackout boxes are 0.0 and 1.0 else where.
+    regions of the blackout boxes are 0.0 and 1.0 (or weights if supplied)
+    elsewhere.
   """
   num_instances, _ = shape_utils.combined_static_and_dynamic_shape(boxes)
   # If no annotation instance is provided, return all ones (instead of
@@ -316,6 +354,10 @@ def blackout_pixel_weights_by_box_regions(height, width, boxes, blackout):
   (y_grid, x_grid) = image_shape_to_grids(height, width)
   y_grid = tf.expand_dims(y_grid, axis=0)
   x_grid = tf.expand_dims(x_grid, axis=0)
+  boxlist = box_list.BoxList(boxes)
+  boxlist = box_list_ops.scale_height_width(
+      boxlist, y_scale=boxes_scale, x_scale=boxes_scale)
+  boxes = boxlist.get()
   y_min = tf.expand_dims(boxes[:, 0:1], axis=-1)
   x_min = tf.expand_dims(boxes[:, 1:2], axis=-1)
   y_max = tf.expand_dims(boxes[:, 2:3], axis=-1)
@@ -323,22 +365,36 @@ def blackout_pixel_weights_by_box_regions(height, width, boxes, blackout):
 
   # Make the mask with all 1.0 in the box regions.
   # Shape: [num_instances, height, width]
-  in_boxes = tf.cast(
-      tf.logical_and(
-          tf.logical_and(y_grid >= y_min, y_grid <= y_max),
-          tf.logical_and(x_grid >= x_min, x_grid <= x_max)),
-      dtype=tf.float32)
+  in_boxes = tf.math.logical_and(
+      tf.math.logical_and(y_grid >= y_min, y_grid < y_max),
+      tf.math.logical_and(x_grid >= x_min, x_grid < x_max))
 
-  # Shape: [num_instances, height, width]
-  blackout = tf.tile(
-      tf.expand_dims(tf.expand_dims(blackout, axis=-1), axis=-1),
-      [1, height, width])
+  if weights is None:
+    weights = tf.ones_like(blackout, dtype=tf.float32)
 
-  # Select only the boxes specified by blackout.
-  selected_in_boxes = tf.where(blackout, in_boxes, tf.zeros_like(in_boxes))
-  out_boxes = tf.reduce_max(selected_in_boxes, axis=0)
-  out_boxes = tf.ones_like(out_boxes) - out_boxes
-  return out_boxes
+  # Compute a [height, width] tensor with the maximum weight in each box, and
+  # 0.0 elsewhere.
+  weights_tiled = tf.tile(
+      weights[:, tf.newaxis, tf.newaxis], [1, height, width])
+  weights_3d = tf.where(in_boxes, weights_tiled,
+                        tf.zeros_like(weights_tiled))
+  weights_2d = tf.math.maximum(
+      tf.math.reduce_max(weights_3d, axis=0), 0.0)
+
+  # Add 1.0 to all regions outside a box.
+  weights_2d = tf.where(
+      tf.math.reduce_any(in_boxes, axis=0),
+      weights_2d,
+      tf.ones_like(weights_2d))
+
+  # Now enforce that blackout regions all have zero weights.
+  keep_region = tf.cast(tf.math.logical_not(blackout), tf.float32)
+  keep_region_tiled = tf.tile(
+      keep_region[:, tf.newaxis, tf.newaxis], [1, height, width])
+  keep_region_3d = tf.where(in_boxes, keep_region_tiled,
+                            tf.ones_like(keep_region_tiled))
+  keep_region_2d = tf.math.reduce_min(keep_region_3d, axis=0)
+  return weights_2d * keep_region_2d
 
 
 def _get_yx_indices_offset_by_radius(radius):

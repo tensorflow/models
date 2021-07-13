@@ -25,7 +25,7 @@ from official.vision.beta.configs import retinanet as exp_cfg
 from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import retinanet_input
 from official.vision.beta.dataloaders import tf_example_decoder
-from official.vision.beta.dataloaders import tfds_detection_decoders
+from official.vision.beta.dataloaders import tfds_factory
 from official.vision.beta.dataloaders import tf_example_label_map_decoder
 from official.vision.beta.evaluation import coco_evaluator
 from official.vision.beta.modeling import factory
@@ -90,11 +90,7 @@ class RetinaNetTask(base_task.Task):
     """Build input dataset."""
 
     if params.tfds_name:
-      if params.tfds_name in tfds_detection_decoders.TFDS_ID_TO_DECODER_MAP:
-        decoder = tfds_detection_decoders.TFDS_ID_TO_DECODER_MAP[
-            params.tfds_name]()
-      else:
-        raise ValueError('TFDS {} is not supported'.format(params.tfds_name))
+      decoder = tfds_factory.get_detection_decoder(params.tfds_name)
     else:
       decoder_cfg = params.decoder.get()
       if params.decoder.type == 'simple_decoder':
@@ -133,12 +129,54 @@ class RetinaNetTask(base_task.Task):
 
     return dataset
 
+  def build_attribute_loss(self,
+                           attribute_heads: List[exp_cfg.AttributeHead],
+                           outputs: Mapping[str, Any],
+                           labels: Mapping[str, Any],
+                           box_sample_weight: tf.Tensor) -> float:
+    """Computes attribute loss.
+
+    Args:
+      attribute_heads: a list of attribute head configs.
+      outputs: RetinaNet model outputs.
+      labels: RetinaNet labels.
+      box_sample_weight: normalized bounding box sample weights.
+
+    Returns:
+      Attribute loss of all attribute heads.
+    """
+    attribute_loss = 0.0
+    for head in attribute_heads:
+      if head.name not in labels['attribute_targets']:
+        raise ValueError(f'Attribute {head.name} not found in label targets.')
+      if head.name not in outputs['attribute_outputs']:
+        raise ValueError(f'Attribute {head.name} not found in model outputs.')
+
+      y_true_att = keras_cv.losses.multi_level_flatten(
+          labels['attribute_targets'][head.name], last_dim=head.size)
+      y_pred_att = keras_cv.losses.multi_level_flatten(
+          outputs['attribute_outputs'][head.name], last_dim=head.size)
+      if head.type == 'regression':
+        att_loss_fn = tf.keras.losses.Huber(
+            1.0, reduction=tf.keras.losses.Reduction.SUM)
+        att_loss = att_loss_fn(
+            y_true=y_true_att,
+            y_pred=y_pred_att,
+            sample_weight=box_sample_weight)
+      else:
+        raise ValueError(f'Attribute type {head.type} not supported.')
+      attribute_loss += att_loss
+
+    return attribute_loss
+
   def build_losses(self,
                    outputs: Mapping[str, Any],
                    labels: Mapping[str, Any],
                    aux_losses: Optional[Any] = None):
     """Build RetinaNet losses."""
     params = self.task_config
+    attribute_heads = self.task_config.model.head.attribute_heads
+
     cls_loss_fn = keras_cv.losses.FocalLoss(
         alpha=params.losses.focal_loss_alpha,
         gamma=params.losses.focal_loss_gamma,
@@ -169,6 +207,10 @@ class RetinaNetTask(base_task.Task):
         y_true=y_true_box, y_pred=y_pred_box, sample_weight=box_sample_weight)
 
     model_loss = cls_loss + params.losses.box_loss_weight * box_loss
+
+    if attribute_heads:
+      model_loss += self.build_attribute_loss(attribute_heads, outputs, labels,
+                                              box_sample_weight)
 
     total_loss = model_loss
     if aux_losses:

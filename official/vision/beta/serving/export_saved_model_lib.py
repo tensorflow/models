@@ -27,6 +27,7 @@ from official.vision.beta import configs
 from official.vision.beta.serving import detection
 from official.vision.beta.serving import image_classification
 from official.vision.beta.serving import semantic_segmentation
+from official.vision.beta.serving import video_classification
 
 
 def export_inference_graph(
@@ -39,7 +40,8 @@ def export_inference_graph(
     num_channels: Optional[int] = 3,
     export_module: Optional[export_base.ExportModule] = None,
     export_checkpoint_subdir: Optional[str] = None,
-    export_saved_model_subdir: Optional[str] = None):
+    export_saved_model_subdir: Optional[str] = None,
+    save_options: Optional[tf.saved_model.SaveOptions] = None):
   """Exports inference graph for the model specified in the exp config.
 
   Saved model is stored at export_dir/saved_model, checkpoint is saved
@@ -60,13 +62,14 @@ def export_inference_graph(
       to store checkpoint.
     export_saved_model_subdir: Optional subdirectory under export_dir
       to store saved model.
+    save_options: `SaveOptions` for `tf.saved_model.save`.
   """
 
   if export_checkpoint_subdir:
     output_checkpoint_directory = os.path.join(
         export_dir, export_checkpoint_subdir)
   else:
-    output_checkpoint_directory = export_dir
+    output_checkpoint_directory = None
 
   if export_saved_model_subdir:
     output_saved_model_directory = os.path.join(
@@ -97,6 +100,13 @@ def export_inference_graph(
           batch_size=batch_size,
           input_image_size=input_image_size,
           num_channels=num_channels)
+    elif isinstance(params.task,
+                    configs.video_classification.VideoClassificationTask):
+      export_module = video_classification.VideoClassificationModule(
+          params=params,
+          batch_size=batch_size,
+          input_image_size=input_image_size,
+          num_channels=num_channels)
     else:
       raise ValueError('Export module not implemented for {} task.'.format(
           type(params.task)))
@@ -106,8 +116,10 @@ def export_inference_graph(
       function_keys=[input_type],
       export_savedmodel_dir=output_saved_model_directory,
       checkpoint_path=checkpoint_path,
-      timestamped=False)
+      timestamped=False,
+      save_options=save_options)
 
-  ckpt = tf.train.Checkpoint(model=export_module.model)
-  ckpt.save(os.path.join(output_checkpoint_directory, 'ckpt'))
+  if output_checkpoint_directory:
+    ckpt = tf.train.Checkpoint(model=export_module.model)
+    ckpt.save(os.path.join(output_checkpoint_directory, 'ckpt'))
   train_utils.serialize_config(params, export_dir)

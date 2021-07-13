@@ -77,6 +77,9 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
       parameter is originally added for ELECTRA model which needs to tie the
       generator embeddings with the discriminator embeddings.
     dict_outputs: Whether to use a dictionary as the model outputs.
+    norm_first: Whether to normalize inputs to attention and intermediate
+      dense layers. If set False, output of attention and intermediate dense
+      layers is normalized.
   """
 
   def __init__(self,
@@ -97,6 +100,7 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
                embedding_width=None,
                embedding_layer=None,
                dict_outputs=False,
+               norm_first=False,
                **kwargs):
 
     # b/164516224
@@ -120,7 +124,8 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
         initializer=initializer,
         output_range=output_range,
         embedding_width=embedding_width,
-        embedding_layer=embedding_layer)
+        embedding_layer=embedding_layer,
+        norm_first=norm_first)
 
     self._embedding_layer_instance = embedding_layer
 

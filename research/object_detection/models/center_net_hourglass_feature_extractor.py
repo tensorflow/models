@@ -62,16 +62,6 @@ class CenterNetHourglassFeatureExtractor(
     """Ther number of feature outputs returned by the feature extractor."""
     return self._network.num_hourglasses
 
-  @property
-  def supported_sub_model_types(self):
-    return ['detection']
-
-  def get_sub_model(self, sub_model_type):
-    if sub_model_type == 'detection':
-      return self._network
-    else:
-      ValueError('Sub model type "{}" not supported.'.format(sub_model_type))
-
 
 def hourglass_10(channel_means, channel_stds, bgr_ordering, **kwargs):
   """The Hourglass-10 backbone for CenterNet."""

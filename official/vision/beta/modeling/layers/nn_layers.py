@@ -26,6 +26,10 @@ from official.modeling import tf_utils
 States = Dict[str, tf.Tensor]
 Activation = Union[str, Callable]
 
+# TODO(dankondratyuk): keep legacy padding until new checkpoints are trained.
+# Otherwise, accuracy will be affected.
+LEGACY_PADDING = True
+
 
 def make_divisible(value: float,
                    divisor: int,
@@ -66,6 +70,23 @@ def round_filters(filters: int,
 
   logging.info('round_filter input=%s output=%s', orig_f, new_filters)
   return int(new_filters)
+
+
+def hard_swish(x: tf.Tensor) -> tf.Tensor:
+  """A Swish6/H-Swish activation function.
+
+  Reference: Section 5.2 of Howard et al. "Searching for MobileNet V3."
+  https://arxiv.org/pdf/1905.02244.pdf
+
+  Args:
+    x: the input tensor.
+
+  Returns:
+    The activation output.
+  """
+  return x * tf.nn.relu6(x + 3.) * (1. / 6.)
+
+tf.keras.utils.get_custom_objects().update({'hard_swish': hard_swish})
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -132,8 +153,7 @@ class SqueezeExcitation(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     num_reduced_filters = make_divisible(
-        max(1, int(self._in_filters * self._se_ratio)),
-        divisor=self._divisible_by)
+        self._in_filters * self._se_ratio, divisor=self._divisible_by)
 
     self._se_reduce = tf.keras.layers.Conv2D(
         filters=num_reduced_filters,
@@ -282,9 +302,6 @@ class Scale(tf.keras.layers.Layer):
 
   This is useful for applying ReZero to layers, which improves convergence
   speed. This implements the paper:
-
-  Thomas Bachlechner, Bodhisattwa Prasad Majumder, Huanru Henry Mao,
-  Garrison W. Cottrell, Julian McAuley.
   ReZero is All You Need: Fast Convergence at Large Depth.
   (https://arxiv.org/pdf/2003.04887.pdf).
   """
@@ -372,6 +389,7 @@ class PositionalEncoding(tf.keras.layers.Layer):
   def __init__(self,
                initializer: tf.keras.initializers.Initializer = 'zeros',
                cache_encoding: bool = False,
+               state_prefix: Optional[str] = None,
                **kwargs):
     """Initializes positional encoding.
 
@@ -381,6 +399,7 @@ class PositionalEncoding(tf.keras.layers.Layer):
         after calling build. Otherwise, rebuild the tensor for every call.
         Setting this to False can be useful when we want to input a variable
         number of frames, so the positional encoding tensor can change shape.
+      state_prefix: a prefix string to identify states.
       **kwargs: Additional keyword arguments to be passed to this layer.
 
     Returns:
@@ -391,33 +410,43 @@ class PositionalEncoding(tf.keras.layers.Layer):
     self._cache_encoding = cache_encoding
     self._pos_encoding = None
     self._rezero = Scale(initializer=initializer, name='rezero')
+    state_prefix = state_prefix if state_prefix is not None else ''
+    self._state_prefix = state_prefix
+    self._frame_count_name = f'{state_prefix}/pos_enc_frame_count'
 
   def get_config(self):
     """Returns a dictionary containing the config used for initialization."""
     config = {
         'initializer': self._initializer,
         'cache_encoding': self._cache_encoding,
+        'state_prefix': self._state_prefix,
     }
     base_config = super(PositionalEncoding, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def _positional_encoding(self,
-                           num_positions: int,
-                           hidden_size: int,
-                           dtype: tf.DType = tf.float32):
+                           num_positions: Union[int, tf.Tensor],
+                           hidden_size: Union[int, tf.Tensor],
+                           start_position: Union[int, tf.Tensor] = 0,
+                           dtype: str = 'float32') -> tf.Tensor:
     """Creates a sequence of sinusoidal positional encoding vectors.
 
     Args:
-      num_positions: An `int` of number of positions (frames).
-      hidden_size: An `int` of number of channels used for the hidden vectors.
-      dtype: The dtype of the output tensor.
+      num_positions: the total number of positions (frames).
+      hidden_size: the number of channels used for the hidden vectors.
+      start_position: the start position.
+      dtype: the dtype of the output tensor.
 
     Returns:
       The positional encoding tensor with shape [num_positions, hidden_size].
     """
+    if isinstance(start_position, tf.Tensor) and start_position.shape.rank == 1:
+      start_position = start_position[0]
+
     # Calling `tf.range` with `dtype=tf.bfloat16` results in an error,
     # so we cast afterward.
-    positions = tf.cast(tf.range(num_positions)[:, tf.newaxis], dtype)
+    positions = tf.range(start_position, start_position + num_positions)
+    positions = tf.cast(positions, dtype)[:, tf.newaxis]
     idx = tf.range(hidden_size)[tf.newaxis, :]
 
     power = tf.cast(2 * (idx // 2), dtype)
@@ -431,11 +460,24 @@ class PositionalEncoding(tf.keras.layers.Layer):
 
     return pos_encoding
 
-  def _get_pos_encoding(self, input_shape):
-    """Calculates the positional encoding from the input shape."""
+  def _get_pos_encoding(self,
+                        input_shape: tf.Tensor,
+                        frame_count: int = 0) -> tf.Tensor:
+    """Calculates the positional encoding from the input shape.
+
+    Args:
+      input_shape: the shape of the input.
+      frame_count: a count of frames that indicates the index of the first
+        frame.
+
+    Returns:
+      The positional encoding tensor with shape [num_positions, hidden_size].
+
+    """
     frames = input_shape[1]
     channels = input_shape[-1]
-    pos_encoding = self._positional_encoding(frames, channels, dtype=self.dtype)
+    pos_encoding = self._positional_encoding(
+        frames, channels, start_position=frame_count, dtype=self.dtype)
     pos_encoding = tf.reshape(pos_encoding, [1, frames, 1, 1, channels])
     return pos_encoding
 
@@ -456,16 +498,46 @@ class PositionalEncoding(tf.keras.layers.Layer):
 
     super(PositionalEncoding, self).build(input_shape)
 
-  def call(self, inputs):
-    """Calls the layer with the given inputs."""
+  def call(
+      self,
+      inputs: tf.Tensor,
+      states: Optional[States] = None,
+      output_states: bool = True,
+  ) -> Union[tf.Tensor, Tuple[tf.Tensor, States]]:
+    """Calls the layer with the given inputs.
+
+    Args:
+      inputs: An input `tf.Tensor`.
+      states: A `dict` of states such that, if any of the keys match for this
+        layer, will overwrite the contents of the buffer(s). Expected keys
+        include `state_prefix + '/pos_enc_frame_count'`.
+      output_states: A `bool`. If True, returns the output tensor and output
+        states. Returns just the output tensor otherwise.
+
+    Returns:
+      An output `tf.Tensor` (and optionally the states if `output_states=True`).
+
+    Raises:
+      ValueError: If using 'channels_first' data format.
+    """
+    states = dict(states) if states is not None else {}
+
+    # Keep a count of frames encountered across input iterations in
+    # num_frames to be able to accurately update the positional encoding.
+    num_frames = tf.shape(inputs)[1]
+    frame_count = tf.cast(states.get(self._frame_count_name, [0]), tf.int32)
+    states[self._frame_count_name] = frame_count + num_frames
+
     if self._cache_encoding:
       pos_encoding = self._pos_encoding
     else:
-      pos_encoding = self._get_pos_encoding(tf.shape(inputs))
+      pos_encoding = self._get_pos_encoding(
+          tf.shape(inputs), frame_count=frame_count)
     pos_encoding = tf.cast(pos_encoding, inputs.dtype)
-    pos_encoding = tf.stop_gradient(pos_encoding)
     pos_encoding = self._rezero(pos_encoding)
-    return inputs + pos_encoding
+    outputs = inputs + pos_encoding
+
+    return (outputs, states) if output_states else outputs
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -481,6 +553,7 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
   def __init__(self,
                keepdims: bool = False,
                causal: bool = False,
+               state_prefix: Optional[str] = None,
                **kwargs):
     """Initializes a global average pool layer.
 
@@ -488,6 +561,7 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
       keepdims: A `bool`. If True, keep the averaged dimensions.
       causal: A `bool` of whether to run in causal mode with a cumulative sum
         across frames.
+      state_prefix: a prefix string to identify states.
       **kwargs: Additional keyword arguments to be passed to this layer.
 
     Returns:
@@ -497,28 +571,21 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
 
     self._keepdims = keepdims
     self._causal = causal
+    state_prefix = state_prefix if state_prefix is not None else ''
+    self._state_prefix = state_prefix
 
-    self._frame_count = None
+    self._state_name = f'{state_prefix}/pool_buffer'
+    self._frame_count_name = f'{state_prefix}/pool_frame_count'
 
   def get_config(self):
     """Returns a dictionary containing the config used for initialization."""
     config = {
         'keepdims': self._keepdims,
         'causal': self._causal,
+        'state_prefix': self._state_prefix,
     }
     base_config = super(GlobalAveragePool3D, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
-
-  def build(self, input_shape):
-    """Builds the layer with the given input shape."""
-    # Here we define strings that will uniquely reference the buffer states
-    # in the TF graph. These will be used for passing in a mapping of states
-    # for streaming mode. To do this, we can use a name scope.
-    with tf.name_scope('buffer') as state_name:
-      self._state_name = state_name
-      self._frame_count_name = state_name + '_frame_count'
-
-    super(GlobalAveragePool3D, self).build(input_shape)
 
   def call(self,
            inputs: tf.Tensor,
@@ -531,6 +598,8 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
       inputs: An input `tf.Tensor`.
       states: A `dict` of states such that, if any of the keys match for this
         layer, will overwrite the contents of the buffer(s).
+        Expected keys include `state_prefix + '/pool_buffer'` and
+        `state_prefix + '/pool_frame_count'`.
       output_states: A `bool`. If True, returns the output tensor and output
         states. Returns just the output tensor otherwise.
 
@@ -562,7 +631,8 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
     # num_frames to be able to accurately take a cumulative average across
     # all frames when running in streaming mode
     num_frames = tf.shape(inputs)[1]
-    frame_count = states.get(self._frame_count_name, 0)
+    frame_count = states.get(self._frame_count_name, tf.constant([0]))
+    frame_count = tf.cast(frame_count, tf.int32)
     states[self._frame_count_name] = frame_count + num_frames
 
     if self._causal:
@@ -657,9 +727,10 @@ class CausalConvMixin:
     self._use_buffered_input = variable
 
   def _compute_buffered_causal_padding(self,
-                                       inputs: Optional[tf.Tensor] = None,
+                                       inputs: tf.Tensor,
                                        use_buffered_input: bool = False,
-                                       time_axis: int = 1) -> List[List[int]]:
+                                       time_axis: int = 1,
+                                       ) -> List[List[int]]:
     """Calculates padding for 'causal' option for conv layers.
 
     Args:
@@ -671,7 +742,7 @@ class CausalConvMixin:
     Returns:
       A list of paddings for `tf.pad`.
     """
-    del inputs
+    input_shape = tf.shape(inputs)[1:-1]
 
     if tf.keras.backend.image_data_format() == 'channels_first':
       raise ValueError('"channels_first" mode is unsupported.')
@@ -681,7 +752,14 @@ class CausalConvMixin:
          (self.kernel_size[i] - 1) * (self.dilation_rate[i] - 1))
         for i in range(self.rank)
     ]
-    pad_total = [kernel_size_effective[i] - 1 for i in range(self.rank)]
+    if LEGACY_PADDING:
+      # Apply legacy padding that does not take into account spatial strides
+      pad_total = [kernel_size_effective[i] - 1 for i in range(self.rank)]
+    else:
+      pad_total = [kernel_size_effective[0] - 1]
+      for i in range(1, self.rank):
+        overlap = (input_shape[i] - 1) % self.strides[i] + 1
+        pad_total.append(tf.maximum(kernel_size_effective[i] - overlap, 0))
     pad_beg = [pad_total[i] // 2 for i in range(self.rank)]
     pad_end = [pad_total[i] - pad_beg[i] for i in range(self.rank)]
     padding = [[pad_beg[i], pad_end[i]] for i in range(self.rank)]
@@ -714,7 +792,8 @@ class CausalConvMixin:
     # across time should be the input shape minus any padding, assuming
     # the stride across time is 1.
     if self._use_buffered_input and spatial_output_shape[0] is not None:
-      padding = self._compute_buffered_causal_padding(use_buffered_input=False)
+      padding = self._compute_buffered_causal_padding(
+          tf.zeros([1] + spatial_output_shape + [1]), use_buffered_input=False)
       spatial_output_shape[0] -= sum(padding[1])
     return spatial_output_shape
 
@@ -862,15 +941,13 @@ class Conv3D(tf.keras.layers.Conv3D, CausalConvMixin):
     base_config = super(Conv3D, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def build(self, input_shape):
-    """Builds the layer with the given input shape."""
-    super(Conv3D, self).build(input_shape)
-
-    # TODO(b/177662019): tf.nn.conv3d with depthwise kernels on CPU
-    # in eager mode may produce incorrect output or cause a segfault.
-    # To avoid this issue, compile the op to TF graph using tf.function.
-    self._convolution_op = tf.function(
-        self._convolution_op, experimental_compile=True)
+  def call(self, inputs):
+    """Call the layer with the given inputs."""
+    # Note: tf.nn.conv3d with depthwise kernels on CPU is currently only
+    # supported when compiling with TF graph (XLA) using tf.function, so it
+    # is compiled by default here (b/186463870).
+    conv_fn = tf.function(super(Conv3D, self).call, jit_compile=True)
+    return conv_fn(inputs)
 
   def _compute_causal_padding(self, inputs):
     """Computes causal padding dimensions for the given inputs."""

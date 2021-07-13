@@ -241,6 +241,9 @@ class ParseConfigOptions:
 def parse_configuration(flags_obj, lock_return=True, print_return=True):
   """Parses ExperimentConfig from flags."""
 
+  if flags_obj.experiment is None:
+    raise ValueError('The flag --experiment must be specified.')
+
   # 1. Get the default config from the registered experiment.
   params = exp_factory.get_exp_config(flags_obj.experiment)
 
@@ -285,7 +288,7 @@ def parse_configuration(flags_obj, lock_return=True, print_return=True):
 
   if print_return:
     pp = pprint.PrettyPrinter()
-    logging.info('Final experiment parameters: %s',
+    logging.info('Final experiment parameters:\n%s',
                  pp.pformat(params.as_dict()))
 
   return params
@@ -294,6 +297,8 @@ def parse_configuration(flags_obj, lock_return=True, print_return=True):
 def serialize_config(params: config_definitions.ExperimentConfig,
                      model_dir: str):
   """Serializes and saves the experiment config."""
+  if model_dir is None:
+    raise ValueError('model_dir must be specified, but got None')
   params_save_path = os.path.join(model_dir, 'params.yaml')
   logging.info('Saving experiment configuration to %s', params_save_path)
   tf.io.gfile.makedirs(model_dir)
@@ -367,3 +372,24 @@ def remove_ckpts(model_dir):
   file_to_remove = os.path.join(model_dir, 'checkpoint')
   if tf.io.gfile.exists(file_to_remove):
     tf.io.gfile.remove(file_to_remove)
+
+
+def try_count_params(model: tf.keras.Model):
+  """Count the number of parameters if model is possible.
+
+  Args:
+    model: Try to count the number of params in this model.
+
+  Returns:
+    The number of parameters or None.
+  """
+  if hasattr(model, 'count_params'):
+    try:
+      return model.count_params()
+    except ValueError:
+      logging.info('Number of trainable params unknown, because the build() '
+                   'methods in keras layers were not called. This is probably '
+                   'because the model was not feed any input, e.g., the max '
+                   'train step already reached before this run.')
+      return None
+  return None

@@ -108,6 +108,7 @@ def get_activation(identifier, use_keras_layer=False):
           "linear": "linear",
           "identity": "linear",
           "swish": "swish",
+          "sigmoid": "sigmoid",
           "relu6": tf.nn.relu6,
       }
       if identifier in keras_layer_allowlist:

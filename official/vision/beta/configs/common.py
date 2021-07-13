@@ -31,6 +31,7 @@ class RandAugment(hyperparams.Config):
   magnitude: float = 10
   cutout_const: float = 40
   translate_const: float = 10
+  prob_to_apply: Optional[float] = None
 
 
 @dataclasses.dataclass
@@ -68,7 +69,15 @@ class PseudoLabelDataConfig(cfg.DataConfig):
   """Psuedo Label input config for training."""
   input_path: str = ''
   data_ratio: float = 1.0  # Per-batch ratio of pseudo-labeled to labeled data.
+  is_training: bool = True
+  dtype: str = 'float32'
+  shuffle_buffer_size: int = 10000
+  cycle_length: int = 10
   aug_rand_hflip: bool = True
   aug_type: Optional[
       Augmentation] = None  # Choose from AutoAugment and RandAugment.
   file_type: str = 'tfrecord'
+
+  # Keep for backward compatibility.
+  aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'.
+  randaug_magnitude: Optional[int] = 10
