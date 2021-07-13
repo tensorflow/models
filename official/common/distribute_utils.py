@@ -102,8 +102,10 @@ def get_distribution_strategy(distribution_strategy="mirrored",
     distribution_strategy: a string specifying which distribution strategy to
       use. Accepted values are "off", "one_device", "mirrored",
       "parameter_server", "multi_worker_mirrored", and "tpu" -- case
-      insensitive. "off" means not to use Distribution Strategy; "tpu" means to
-      use TPUStrategy using `tpu_address`.
+      insensitive. "tpu" means to use TPUStrategy using `tpu_address`.
+      "off" means to use the default strategy which is obtained from
+      tf.distribute.get_strategy (for details on the default strategy, see
+      https://www.tensorflow.org/guide/distributed_training#default_strategy).
     num_gpus: Number of GPUs to run this model.
     all_reduce_alg: Optional. Specifies which algorithm to use when performing
       all-reduce. For `MirroredStrategy`, valid values are "nccl" and
@@ -141,7 +143,8 @@ def get_distribution_strategy(distribution_strategy="mirrored",
     if num_gpus > 1:
       raise ValueError("When {} GPUs are specified, distribution_strategy "
                        "flag cannot be set to `off`.".format(num_gpus))
-    return None
+    # Return the default distribution strategy.
+    return tf.distribute.get_strategy()
 
   if distribution_strategy == "tpu":
     # When tpu_address is an empty string, we communicate with local TPUs.

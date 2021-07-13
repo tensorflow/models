@@ -131,6 +131,37 @@ class MovinetModelTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(predicted.shape, expected.shape)
     self.assertAllClose(predicted, expected, 1e-5, 1e-5)
 
+  def test_movinet_classifier_mobile(self):
+    """Test if the model can run with mobile parameters."""
+    tf.keras.backend.set_image_data_format('channels_last')
+
+    backbone = movinet.Movinet(
+        model_id='a0',
+        causal=True,
+        use_external_states=True,
+        conv_type='2plus1d',
+        se_type='2plus3d',
+        activation='hard_swish',
+        gating_activation='hard_sigmoid'
+    )
+    model = movinet_model.MovinetClassifier(
+        backbone, num_classes=600, output_states=True)
+
+    inputs = tf.ones([1, 8, 172, 172, 3])
+
+    init_states = model.init_states(tf.shape(inputs))
+    expected, _ = model({**init_states, 'image': inputs})
+
+    frames = tf.split(inputs, inputs.shape[1], axis=1)
+
+    states = init_states
+    for frame in frames:
+      output, states = model({**states, 'image': frame})
+    predicted = output
+
+    self.assertEqual(predicted.shape, expected.shape)
+    self.assertAllClose(predicted, expected, 1e-5, 1e-5)
+
   def test_serialize_deserialize(self):
     """Validate the classification network can be serialized and deserialized."""
 

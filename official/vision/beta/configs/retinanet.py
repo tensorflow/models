@@ -131,6 +131,13 @@ class RetinaNet(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class ExportConfig(hyperparams.Config):
+  output_normalized_coordinates: bool = False
+  cast_num_detections_to_float: bool = False
+  cast_detection_classes_to_float: bool = False
+
+
+@dataclasses.dataclass
 class RetinaNetTask(cfg.TaskConfig):
   model: RetinaNet = RetinaNet()
   train_data: DataConfig = DataConfig(is_training=True)
@@ -140,6 +147,7 @@ class RetinaNetTask(cfg.TaskConfig):
   init_checkpoint_modules: str = 'all'  # all or backbone
   annotation_file: Optional[str] = None
   per_category_metrics: bool = False
+  export_config: ExportConfig = ExportConfig()
 
 
 @exp_factory.register_config_factory('retinanet')
@@ -338,7 +346,8 @@ def retinanet_spinenet_mobile_coco() -> cfg.ExperimentConfig:
                       model_id='49',
                       stochastic_depth_drop_rate=0.2,
                       min_level=3,
-                      max_level=7)),
+                      max_level=7,
+                      use_keras_upsampling_2d=False)),
               decoder=decoders.Decoder(
                   type='identity', identity=decoders.Identity()),
               head=RetinaNetHead(num_filters=48, use_separable_conv=True),

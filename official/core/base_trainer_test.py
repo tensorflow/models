@@ -303,13 +303,16 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
                 },
             })))
     trainer = self.create_test_trainer(config)
-    if mixed_precision_dtype != 'float16':
-      self.assertIsInstance(trainer.optimizer, tf.keras.optimizers.SGD)
-    elif mixed_precision_dtype == 'float16' and loss_scale is None:
-      self.assertIsInstance(trainer.optimizer, tf.keras.optimizers.SGD)
-    else:
+    if mixed_precision_dtype == 'float16':
       self.assertIsInstance(trainer.optimizer,
                             tf.keras.mixed_precision.LossScaleOptimizer)
+      if loss_scale in (None, 'dynamic'):
+        self.assertTrue(trainer.optimizer.dynamic)
+      else:
+        self.assertFalse(trainer.optimizer.dynamic)
+        self.assertEqual(trainer.optimizer.initial_scale, loss_scale)
+    else:
+      self.assertIsInstance(trainer.optimizer, tf.keras.optimizers.SGD)
 
     metrics = trainer.train(tf.convert_to_tensor(5, dtype=tf.int32))
     self.assertIn('training_loss', metrics)

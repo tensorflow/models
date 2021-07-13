@@ -20,6 +20,7 @@ import tensorflow as tf
 from official.vision.beta import configs
 from official.vision.beta.modeling import factory
 from official.vision.beta.ops import anchor
+from official.vision.beta.ops import box_ops
 from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.serving import export_base
 
@@ -130,6 +131,28 @@ class DetectionModule(export_base.ExportModule):
         training=False)
 
     if self.params.task.model.detection_generator.apply_nms:
+      # For RetinaNet model, apply export_config.
+      # TODO(huizhongc): Add export_config to fasterrcnn and maskrcnn as needed.
+      if isinstance(self.params.task.model, configs.retinanet.RetinaNet):
+        export_config = self.params.task.export_config
+        # Normalize detection box coordinates to [0, 1].
+        if export_config.output_normalized_coordinates:
+          detection_boxes = (
+              detections['detection_boxes'] /
+              tf.tile(image_info[:, 2:3, :], [1, 1, 2]))
+          detections['detection_boxes'] = box_ops.normalize_boxes(
+              detection_boxes, image_info[:, 0:1, :])
+
+        # Cast num_detections and detection_classes to float. This allows the
+        # model inference to work on chain (go/chain) as chain requires floating
+        # point outputs.
+        if export_config.cast_num_detections_to_float:
+          detections['num_detections'] = tf.cast(
+              detections['num_detections'], dtype=tf.float32)
+        if export_config.cast_detection_classes_to_float:
+          detections['detection_classes'] = tf.cast(
+              detections['detection_classes'], dtype=tf.float32)
+
       final_outputs = {
           'detection_boxes': detections['detection_boxes'],
           'detection_scores': detections['detection_scores'],
@@ -139,9 +162,7 @@ class DetectionModule(export_base.ExportModule):
     else:
       final_outputs = {
           'decoded_boxes': detections['decoded_boxes'],
-          'decoded_box_scores': detections['decoded_box_scores'],
-          'cls_outputs': detections['cls_outputs'],
-          'box_outputs': detections['box_outputs']
+          'decoded_box_scores': detections['decoded_box_scores']
       }
 
     if 'detection_masks' in detections.keys():

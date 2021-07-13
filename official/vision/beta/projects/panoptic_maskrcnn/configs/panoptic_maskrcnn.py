@@ -12,6 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Helper functions for running models in a distributed setting."""
-# pylint: disable=wildcard-import
-from official.common.distribute_utils import *
+"""Panoptic Mask R-CNN configuration definition."""
+
+import dataclasses
+
+from official.vision.beta.configs import maskrcnn
+from official.vision.beta.configs import semantic_segmentation
+
+
+@dataclasses.dataclass
+class PanopticMaskRCNN(maskrcnn.MaskRCNN):
+  """Panoptic Mask R-CNN model config."""
+  segmentation_model: semantic_segmentation.SemanticSegmentationModel = (
+      semantic_segmentation.SemanticSegmentationModel(num_classes=2))
+  shared_backbone: bool = True
+  shared_decoder: bool = True

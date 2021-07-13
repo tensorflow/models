@@ -20,6 +20,7 @@ import tensorflow as tf
 import tensorflow_addons.optimizers as tfa_optimizers
 
 from official.modeling.optimization import slide_optimizer
+from official.modeling.optimization import adafactor_optimizer
 from official.modeling.optimization import ema_optimizer
 from official.modeling.optimization import lars_optimizer
 from official.modeling.optimization import lr_schedule
@@ -34,14 +35,15 @@ OPTIMIZERS_CLS = {
     'rmsprop': tf.keras.optimizers.RMSprop,
     'lars': lars_optimizer.LARS,
     'adagrad': tf.keras.optimizers.Adagrad,
-    'slide': slide_optimizer.SLIDE
+    'slide': slide_optimizer.SLIDE,
+    'adafactor': adafactor_optimizer.Adafactor,
 }
 
 LR_CLS = {
-    'stepwise': tf.keras.optimizers.schedules.PiecewiseConstantDecay,
-    'polynomial': tf.keras.optimizers.schedules.PolynomialDecay,
-    'exponential': tf.keras.optimizers.schedules.ExponentialDecay,
-    'cosine': tf.keras.experimental.CosineDecay,
+    'stepwise': lr_schedule.PiecewiseConstantDecayWithOffset,
+    'polynomial': lr_schedule.PolynomialDecayWithOffset,
+    'exponential': lr_schedule.ExponentialDecayWithOffset,
+    'cosine': lr_schedule.CosineDecayWithOffset,
     'power': lr_schedule.DirectPowerDecay,
     'power_linear': lr_schedule.PowerAndLinearDecay,
     'power_with_offset': lr_schedule.PowerDecayWithOffset,

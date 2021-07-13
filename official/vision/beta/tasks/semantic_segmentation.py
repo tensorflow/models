@@ -23,7 +23,7 @@ from official.core import task_factory
 from official.vision.beta.configs import semantic_segmentation as exp_cfg
 from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import segmentation_input
-from official.vision.beta.dataloaders import tfds_segmentation_decoders
+from official.vision.beta.dataloaders import tfds_factory
 from official.vision.beta.evaluation import segmentation_metrics
 from official.vision.beta.losses import segmentation_losses
 from official.vision.beta.modeling import factory
@@ -87,11 +87,7 @@ class SemanticSegmentationTask(base_task.Task):
     ignore_label = self.task_config.losses.ignore_label
 
     if params.tfds_name:
-      if params.tfds_name in tfds_segmentation_decoders.TFDS_ID_TO_DECODER_MAP:
-        decoder = tfds_segmentation_decoders.TFDS_ID_TO_DECODER_MAP[
-            params.tfds_name]()
-      else:
-        raise ValueError('TFDS {} is not supported'.format(params.tfds_name))
+      decoder = tfds_factory.get_segmentation_decoder(params.tfds_name)
     else:
       decoder = segmentation_input.Decoder()
 
