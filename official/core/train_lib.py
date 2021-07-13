@@ -105,6 +105,7 @@ def run_experiment(
       (save_summary) else None,
       summary_interval=params.trainer.summary_interval if
       (save_summary) else None,
+      train_actions=actions.get_train_actions(params, trainer, model_dir),
       eval_actions=actions.get_eval_actions(params, trainer, model_dir))
 
   logging.info('Starts to execute mode: %s', mode)
