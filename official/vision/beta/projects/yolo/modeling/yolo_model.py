@@ -1,16 +1,13 @@
-from official.core import registry
+from official.core import registry # pylint: disable=unused-import
 import tensorflow as tf
 import tensorflow.keras as ks
 from typing import *
 
-from yolo.configs import yolo
-
-from official.vision.beta.modeling.backbones import factory
-from yolo.modeling.backbones.darknet import build_darknet
-from yolo.modeling.backbones.darknet import Darknet
-from yolo.modeling.decoders.yolo_decoder import YoloDecoder
-from yolo.modeling.heads.yolo_head import YoloHead
-from yolo.modeling.layers.detection_generator import YoloLayer
+from official.vision.beta.projects.yolo.modeling.backbones.darknet import \
+    Darknet
+from official.vision.beta.projects.yolo.modeling.decoders.yolo_decoder import \
+    YoloDecoder
+from official.vision.beta.projects.yolo.modeling.heads.yolo_head import YoloHead
 
 # static base Yolo Models that do not require configuration
 # similar to a backbone model id.
@@ -19,52 +16,50 @@ from yolo.modeling.layers.detection_generator import YoloLayer
 # the structure is as follows. model version, {v3, v4, v#, ... etc}
 # the model config type {regular, tiny, small, large, ... etc}
 YOLO_MODELS = {
-    "v4":
-        dict(
-            regular=dict(
-                embed_spp=False,
-                use_fpn=True,
-                max_level_process_len=None,
-                path_process_len=6),
-            tiny=dict(
-                embed_spp=False,
-                use_fpn=False,
-                max_level_process_len=2,
-                path_process_len=1),
-            csp=dict(
-                embed_spp=False,
-                use_fpn=True,
-                max_level_process_len=None,
-                csp_stack=5,
-                fpn_depth=5,
-                path_process_len=6),
-            csp_large=dict(
-                embed_spp=False,
-                use_fpn=True,
-                max_level_process_len=None,
-                csp_stack=7,
-                fpn_depth=7,
-                path_process_len=8,
-                fpn_filter_scale=2),
-        ),
-    "v3":
-        dict(
-            regular=dict(
-                embed_spp=False,
-                use_fpn=False,
-                max_level_process_len=None,
-                path_process_len=6),
-            tiny=dict(
-                embed_spp=False,
-                use_fpn=False,
-                max_level_process_len=2,
-                path_process_len=1),
-            spp=dict(
-                embed_spp=True,
-                use_fpn=False,
-                max_level_process_len=2,
-                path_process_len=1),
-        ),
+  "v4" : dict(
+    regular = dict(
+      embed_spp=False,
+      use_fpn=True,
+      max_level_process_len=None,
+      path_process_len=6),
+    tiny = dict(
+      embed_spp=False,
+      use_fpn=False,
+      max_level_process_len=2,
+      path_process_len=1),
+    csp = dict(
+      embed_spp=False,
+      use_fpn=True,
+      max_level_process_len=None,
+      csp_stack=5,
+      fpn_depth=5,
+      path_process_len=6),
+    csp_large=dict(
+      embed_spp=False,
+      use_fpn=True,
+      max_level_process_len=None,
+      csp_stack=7,
+      fpn_depth=7,
+      path_process_len=8,
+      fpn_filter_scale=2),
+  ),
+  "v3" : dict(
+    regular = dict(
+      embed_spp=False,
+      use_fpn=False,
+      max_level_process_len=None,
+      path_process_len=6),
+    tiny = dict(
+      embed_spp=False,
+      use_fpn=False,
+      max_level_process_len=2,
+      path_process_len=1),
+    spp = dict(
+      embed_spp=True,
+      use_fpn=False,
+      max_level_process_len=2,
+      path_process_len=1),
+  ),
 }
 
 
