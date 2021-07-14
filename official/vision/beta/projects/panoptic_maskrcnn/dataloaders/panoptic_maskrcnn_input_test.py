@@ -74,7 +74,7 @@ class PanopticMaskRCNNInputTest(tf.test.TestCase, parameterized.TestCase):
             is_training=is_training))
 
     dataset = reader.read(input_context=None).take(1)
-    image, labels = tf.data.Dataset.get_single_element(dataset)
+    image, labels = dataset.get_single_element()
 
     if is_training:
       segmentation_mask = labels['gt_segmentation_mask']
