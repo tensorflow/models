@@ -109,9 +109,9 @@ class PanopticMaskRCNNTaskTest(tf.test.TestCase, parameterized.TestCase):
       self.assertIn('segmentation_mean_iou', results)
 
   @parameterized.parameters(
-      ('all',),
-      ('backbone',),
-      ('segmentation_backbone',),
+      (['all'],),
+      (['backbone'],),
+      (['segmentation_backbone'],),
       (['backbone', 'segmentation_backbone'],))
   def test_model_initializing(self, init_checkpoint_modules):
     tf.keras.backend.clear_session()
@@ -134,7 +134,13 @@ class PanopticMaskRCNNTaskTest(tf.test.TestCase, parameterized.TestCase):
     ckpt_save_dir = self.create_tempdir().full_path
     ckpt.save(os.path.join(ckpt_save_dir, 'ckpt'))
 
-    task._task_config.init_checkpoint = ckpt_save_dir
+    if init_checkpoint_modules == ['all']:
+      task._task_config.init_checkpoint = ckpt_save_dir
+    if 'backbone' in init_checkpoint_modules:
+      task._task_config.backbone_init_checkpoint = ckpt_save_dir
+    if 'segmentation_backbone' in init_checkpoint_modules:
+      task._task_config.segmentation_backbone_init_checkpoint = ckpt_save_dir
+
     task._task_config.init_checkpoint_modules = init_checkpoint_modules
     task.initialize(model)
 
