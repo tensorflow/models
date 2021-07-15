@@ -74,13 +74,13 @@ class Yolo(ks.Model):
                **kwargs):
     """Detection initialization function.
     Args:
-      backbone: `tf.keras.Model` a backbone network.
-      decoder: `tf.keras.Model` a decoder network.
-      head: `RetinaNetHead`, the RetinaNet head.
-      filter: the detection generator.
+      backbone: `tf.keras.Model`, a backbone network.
+      decoder: `tf.keras.Model`, a decoder network.
+      head: `YoloHead`, the YOLO head.
+      filter: `tf.keras.Model`, the detection generator.
       **kwargs: keyword arguments to be passed.
     """
-    super(Yolo, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
     self._config_dict = {
         'backbone': backbone,
@@ -94,7 +94,6 @@ class Yolo(ks.Model):
     self._decoder = decoder
     self._head = head
     self._filter = filter
-    return
 
   def call(self, inputs, training=False):
     maps = self._backbone(inputs)
