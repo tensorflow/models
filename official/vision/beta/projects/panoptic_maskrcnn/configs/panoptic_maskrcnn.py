@@ -14,7 +14,7 @@
 
 """Panoptic Mask R-CNN configuration definition."""
 import os
-from typing import List
+from typing import List, Optional
 
 import dataclasses
 
@@ -67,7 +67,10 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   segmentation_evaluation: semantic_segmentation.Evaluation = \
       semantic_segmentation.Evaluation()
   losses: Losses = Losses()
-
+  backbone_init_checkpoint: Optional[str] = None
+  segmentation_backbone_init_checkpoint: Optional[str] = None
+  init_checkpoint_modules: Optional[List[str]] = dataclasses.field(
+      default_factory=list)
 
 COCO_INPUT_PATH_BASE = 'coco'
 
@@ -83,8 +86,8 @@ def panoptic_maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
   config = cfg.ExperimentConfig(
       runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
       task=PanopticMaskRCNNTask(
-          init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/resnet50_imagenet/ckpt-28080',  # pylint: disable=line-too-long
-          init_checkpoint_modules='backbone',
+          backbone_init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/resnet50_imagenet/ckpt-28080',  # pylint: disable=line-too-long
+          init_checkpoint_modules=['backbone'],
           model=PanopticMaskRCNN(
               num_classes=91, input_size=[1024, 1024, 3]),
           losses=Losses(l2_weight_decay=0.00004),

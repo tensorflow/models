@@ -64,42 +64,43 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
 
   def initialize(self, model: tf.keras.Model):
     """Loading pretrained checkpoint."""
-    if not self.task_config.init_checkpoint:
+    def _get_checkpoint_path(checkpoint_dir_or_file):
+      if tf.io.gfile.isdir(checkpoint_dir_or_file):
+        checkpoint_path = tf.train.latest_checkpoint(
+            checkpoint_dir_or_file)
+      return checkpoint_path
+  
+    if not self.task_config.init_checkpoint_modules:
       return
 
-    if not isinstance(self._task_config.init_checkpoint, (list, tuple)):
-      self._task_config.init_checkpoint = [self._task_config.init_checkpoint]
-
-    if not isinstance(self._task_config.init_checkpoint_modules, (list, tuple)):
-      self._task_config.init_checkpoint_modules = \
-        [self._task_config.init_checkpoint_modules]
-
-    for ckpt_dir_or_file, init_module in zip(
-        self.task_config.init_checkpoint,
-        self.task_config.init_checkpoint_modules):
-
-      if tf.io.gfile.isdir(ckpt_dir_or_file):
-        ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
-
+    for init_module in self.task_config.init_checkpoint_modules:
       # Restoring checkpoint.
       if init_module == 'all':
+        checkpoint_path = _get_checkpoint_path(
+            self.task_config.init_checkpoint)
         ckpt = tf.train.Checkpoint(**model.checkpoint_items)
-        status = ckpt.restore(ckpt_dir_or_file)
+        status = ckpt.restore(checkpoint_path)
         status.assert_consumed()
+
       elif init_module == 'backbone':
+        checkpoint_path = _get_checkpoint_path(
+            self.task_config.backbone_init_checkpoint)
         ckpt = tf.train.Checkpoint(backbone=model.backbone)
-        status = ckpt.restore(ckpt_dir_or_file)
+        status = ckpt.restore(checkpoint_path)
         status.expect_partial().assert_existing_objects_matched()
+
       elif init_module == 'segmentation_backbone':
+        checkpoint_path = _get_checkpoint_path(
+            self.task_config.segmentation_backbone_init_checkpoint)
         ckpt = tf.train.Checkpoint(backbone=model.segmentation_backbone)
-        status = ckpt.restore(ckpt_dir_or_file)
+        status = ckpt.restore(checkpoint_path)
         status.expect_partial().assert_existing_objects_matched()
       else:
         raise ValueError(
             "Only 'all', 'backbone' and/or 'segmentation' can be used to "
-            "initialize the model.")
+            "initialize the model, but got %s", init_module)
       logging.info('Finished loading pretrained checkpoint from %s for %s',
-                   ckpt_dir_or_file, init_module)
+                   checkpoint_path, init_module)
 
 
   def build_inputs(self,
