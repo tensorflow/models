@@ -21,7 +21,8 @@ REQUIRED_PACKAGES = [
     'lvis',
     'scipy',
     'pandas',
-    'tf-models-official'
+    'google-cloud-bigquery==1.21.0',
+    'tf-models-official',
 ]
 
 setup(
