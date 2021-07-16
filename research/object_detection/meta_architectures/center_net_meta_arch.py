@@ -2455,6 +2455,24 @@ class CenterNetMetaArch(model.DetectionModel):
 
     super(CenterNetMetaArch, self).__init__(num_classes)
 
+  def set_trainability_by_layer_traversal(self, trainable):
+    """Sets trainability layer by layer.
+
+    The commonly-seen `model.trainable = False` method does not traverse
+    the children layer. For example, if the parent is not trainable, we won't
+    be able to set individual layers as trainable/non-trainable differentially.
+
+    Args:
+      trainable: (bool) Setting this for the model layer by layer except for
+        the parent itself.
+    """
+    for layer in self._flatten_layers(include_self=False):
+      layer.trainable = trainable
+
+  @property
+  def prediction_head_dict(self):
+    return self._prediction_head_dict
+
   @property
   def batched_prediction_tensor_names(self):
     if not self._batched_prediction_tensor_names:
