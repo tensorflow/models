@@ -28,7 +28,7 @@ class PanopticMaskRCNNConfigTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.parameters(
       ('panoptic_maskrcnn_resnetfpn_coco',),
   )
-  def test_maskrcnn_configs(self, config_name):
+  def test_panoptic_maskrcnn_configs(self, config_name):
     config = exp_factory.get_exp_config(config_name)
     self.assertIsInstance(config, cfg.ExperimentConfig)
     self.assertIsInstance(config.task, exp_cfg.PanopticMaskRCNNTask)

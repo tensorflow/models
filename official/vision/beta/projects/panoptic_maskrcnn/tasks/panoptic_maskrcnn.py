@@ -97,8 +97,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         status.expect_partial().assert_existing_objects_matched()
       else:
         raise ValueError(
-            "Only 'all', 'backbone' and/or 'segmentation' can be used to "
-            "initialize the model, but got %s", init_module)
+            "Only 'all', 'backbone' and/or 'segmentation_backbone' can be used "
+            "to initialize the model, but got %s", init_module)
       logging.info('Finished loading pretrained checkpoint from %s for %s',
                    checkpoint_path, init_module)
 
