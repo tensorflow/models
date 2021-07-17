@@ -136,7 +136,7 @@ class CriteoTsvReader:
     num_replicas = ctx.num_replicas_in_sync if ctx else 1
 
     if params.is_training:
-      dataset_size = 10000 * batch_size * num_replicas
+      dataset_size = 1000 * batch_size * num_replicas
     else:
       dataset_size = 1000 * batch_size * num_replicas
     dense_tensor = tf.random.uniform(
@@ -169,6 +169,7 @@ class CriteoTsvReader:
                   'sparse_features': sparse_tensor_elements}, label_tensor
 
     dataset = tf.data.Dataset.from_tensor_slices(input_elem)
+    dataset = dataset.cache()
     if params.is_training:
       dataset = dataset.repeat()
 
