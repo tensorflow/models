@@ -48,9 +48,7 @@ class CenterNetModel(tf.keras.Model):
   def checkpoint_items(
       self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
-    items = dict(backbone=self.backbone,
-                 head=self.head,
-                 detection_generator=self.detection_generator)
+    items = dict(backbone=self.backbone, head=self.head)
     
     return items
   

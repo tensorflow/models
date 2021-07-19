@@ -269,7 +269,7 @@ class HourglassBlock(tf.keras.layers.Layer):
 
 
 @tf.keras.utils.register_keras_serializable(package='centernet')
-class CenterNetDecoderConv(tf.keras.layers.Layer):
+class CenterNetHeadConv(tf.keras.layers.Layer):
   """
   Convolution block for the CenterNet head. This is used to generate
   both the confidence heatmaps and other regressed predictions such as 
@@ -288,7 +288,7 @@ class CenterNetDecoderConv(tf.keras.layers.Layer):
         convolution layer
       name: `string`, layer name
     """
-    super(CenterNetDecoderConv, self).__init__(name=name, **kwargs)
+    super(CenterNetHeadConv, self).__init__(name=name, **kwargs)
     self._output_filters = output_filters
     self._bias_init = bias_init
   
@@ -308,7 +308,7 @@ class CenterNetDecoderConv(tf.keras.layers.Layer):
         kernel_size=(1, 1),
         padding='valid',
         bias_initializer=tf.constant_initializer(self._bias_init))
-    super(CenterNetDecoderConv, self).build(input_shape)
+    super(CenterNetHeadConv, self).build(input_shape)
   
   def call(self, x, training=None):
     x = self.conv1(x)
@@ -321,5 +321,5 @@ class CenterNetDecoderConv(tf.keras.layers.Layer):
         'output_filters': self._output_filters,
         'bias_init': self._bias_init,
     }
-    config.update(super(CenterNetDecoderConv, self).get_config())
+    config.update(super(CenterNetHeadConv, self).get_config())
     return config

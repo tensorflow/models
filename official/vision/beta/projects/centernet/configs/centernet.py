@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,67 +15,12 @@
 """CenterNet configuration definition."""
 # Import libraries
 import dataclasses
-from typing import ClassVar, Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
 from official.vision.beta.projects.centernet.configs import backbones
 from official.core import exp_factory
 from official.modeling import hyperparams, optimization
 from official.modeling.hyperparams import config_definitions as cfg
-from official.vision.beta.configs import common
-
-
-# default param classes
-@dataclasses.dataclass
-class ModelConfig(hyperparams.Config):
-  
-  @property
-  def input_size(self):
-    if self._input_size is None:
-      return [None, None, 3]
-    else:
-      return self._input_size
-  
-  @input_size.setter
-  def input_size(self, input_size):
-    self._input_size = input_size
-  
-  @property
-  def backbone(self):
-    if isinstance(self.base, str):
-      # TODO: remove the automatic activation setter
-      # self.norm_activation.activation = Yolo._DEFAULTS[self.base].activation
-      return CenterNet._DEFAULTS[self.base].backbone
-    else:
-      return self.base.backbone
-  
-  @backbone.setter
-  def backbone(self, val):
-    self.base.backbone = val
-  
-  @property
-  def decoder(self):
-    if isinstance(self.base, str):
-      return CenterNet._DEFAULTS[self.base].decoder
-    else:
-      return self.base.decoder
-  
-  @decoder.setter
-  def decoder(self, val):
-    self.base.decoder = val
-  
-  @property
-  def odapi_weights_file(self):
-    if isinstance(self.base, str):
-      return CenterNet._DEFAULTS[self.base].odapi_weights
-    else:
-      return self.base.odapi_weights
-  
-  @property
-  def extremenet_weights_file(self):
-    if isinstance(self.base, str):
-      return CenterNet._DEFAULTS[self.base].extremenet_weights
-    else:
-      return self.base.extremenet_weights
 
 
 @dataclasses.dataclass
@@ -114,7 +58,7 @@ class Parser(hyperparams.Config):
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
   """Input config for training."""
-  input_path: str = 'gs://tensorflow2/coco_records/val/2017*'
+  input_path: str = ''
   tfds_name: str = None  # 'coco'
   tfds_split: str = None  # 'train' #'val'
   global_batch_size: int = 32
@@ -161,12 +105,13 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
-class CenterNetDecoder(hyperparams.Config):
+class CenterNetHead(hyperparams.Config):
   heatmap_bias: float = -2.19
+  num_inputs: int = 2
 
 
 @dataclasses.dataclass
-class CenterNetLayer(hyperparams.Config):
+class CenterNetDetectionGenerator(hyperparams.Config):
   max_detections: int = 100
   peak_error: float = 1e-6
   peak_extract_kernel_size: int = 3
@@ -189,9 +134,9 @@ class CenterNetDetection(hyperparams.Config):
 @dataclasses.dataclass
 class CenterNetSubTasks(hyperparams.Config):
   detection: CenterNetDetection = CenterNetDetection()
-  # kp_detection: bool = False
   segmentation: bool = False
-  # pose: bool = False
+  pose: bool = False
+  # kp_detection: bool = False
   # reid: bool = False
   # temporal: bool = False
 
@@ -199,7 +144,7 @@ class CenterNetSubTasks(hyperparams.Config):
 @dataclasses.dataclass
 class CenterNetBase(hyperparams.OneOfConfig):
   backbone: backbones.Backbone = backbones.Backbone(type='hourglass')
-  decoder: CenterNetDecoder = CenterNetDecoder()
+  head: CenterNetHead = CenterNetHead()
   odapi_weights: str = 'D:\\weights\centernet_hg104_512x512_coco17_tpu-8\checkpoint'
   extremenet_weights: str = 'D:\\weights\extremenet'
   backbone_name: str = 'hourglass104_512'
@@ -207,11 +152,11 @@ class CenterNetBase(hyperparams.OneOfConfig):
 
 
 @dataclasses.dataclass
-class CenterNet(ModelConfig):
+class CenterNet(hyperparams.Config):
   base: Union[str, CenterNetBase] = CenterNetBase()
   num_classes: int = 90
-  _input_size: Optional[List[int]] = None
-  filter: CenterNetLayer = CenterNetLayer()
+  input_size: List[int] = dataclasses.field(default_factory=list)
+  detection_generator: CenterNetDetectionGenerator = CenterNetDetectionGenerator()
 
 
 @dataclasses.dataclass
@@ -268,12 +213,12 @@ class CenterNetTask(cfg.TaskConfig):
     if self.subtasks.segmentation:
       lengths['seg_heatmaps'] = self.model.num_classes
     
-    # if self.subtasks.pose:
-    #   lengths.update({
-    #     'pose_heatmaps': 17,
-    #     'joint_locs': 17 * 2,
-    #     'joint_offset': 2
-    #   })
+    if self.subtasks.pose:
+      lengths.update({
+          'pose_heatmaps': 17,
+          'joint_locs': 17 * 2,
+          'joint_offset': 2
+      })
     
     return lengths
 

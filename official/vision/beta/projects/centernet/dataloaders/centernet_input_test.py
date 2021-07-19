@@ -37,7 +37,7 @@ def pad_max_instances(value, instances, pad_value=0, pad_axis=0):
 
 class CenterNetInputTest(tf.test.TestCase, parameterized.TestCase):
   def check_labels_correct(self, boxes, classes, output_size, input_size):
-    parser = CenterNetParser()
+    parser = CenterNetParser(dtype=tf.bfloat16)
     num_dets = len(boxes)
     boxes = tf.constant(boxes, dtype=tf.float32)
     classes = tf.constant(classes, dtype=tf.float32)

@@ -237,3 +237,17 @@ def letter_box(image, boxes, xs=0.5, ys=0.5, target_dim=None):
   pt_height_p = tf.cast(tf.cast(pad_height_p, scale.dtype) * scale, tf.int32)
   return image, boxes, [pt_height, pt_width, target_dim - pt_height_p,
                         target_dim - pt_width_p]
+
+
+def pad_max_instances(value, instances, pad_value=0, pad_axis=0):
+  shape = tf.shape(value)
+  if pad_axis < 0:
+    pad_axis = tf.shape(shape)[0] + pad_axis
+  dim1 = shape[pad_axis]
+  take = tf.math.reduce_min([instances, dim1])
+  value, _ = tf.split(value, [take, -1], axis=pad_axis)  # value[:instances, ...]
+  pad = tf.convert_to_tensor([tf.math.reduce_max([instances - dim1, 0])])
+  nshape = tf.concat([shape[:pad_axis], pad, shape[(pad_axis + 1):]], axis=0)
+  pad_tensor = tf.fill(nshape, tf.cast(pad_value, dtype=value.dtype))
+  value = tf.concat([value, pad_tensor], axis=pad_axis)
+  return value

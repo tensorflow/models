@@ -61,7 +61,7 @@ class CenterNetHead(tf.keras.Model):
     
     for key in self._task_outputs:
       outputs[key] = [
-          nn_blocks.CenterNetDecoderConv(
+          nn_blocks.CenterNetHeadConv(
               output_filters=self._task_outputs[key],
               bias_init=self._heatmap_bias if 'heatmaps' in key else 0,
               name=key + str(i),
