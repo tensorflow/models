@@ -89,10 +89,19 @@ def _run_benchmark():
 
 
 class Resnet50KerasCoreBenchmark(perfzero_benchmark.PerfZeroBenchmark):
+  """Resnet50 Keras core benchmarks."""
 
   def benchmark_1_gpu(self):
     wall_time = _run_benchmark()
     self.report_benchmark(iters=-1, wall_time=wall_time)
+
+  def benchmark_1_gpu_avg_3(self):
+    num_trials = 3
+    wall_times = []
+    for _ in range(num_trials):
+      wall_times.append(_run_benchmark())
+    avg_wall_time = sum(wall_times) / float(len(wall_times))
+    self.report_benchmark(iters=-1, wall_time=avg_wall_time)
 
 
 if __name__ == "__main__":
