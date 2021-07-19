@@ -446,6 +446,10 @@ message CenterNet {
     // The mode for jitterting box ROIs. See RandomJitterBoxes in
     // preprocessor.proto for more details
     optional RandomJitterBoxes.JitterMode jitter_mode = 15 [default=DEFAULT];
+
+    // Weight for the box consistency loss as described in the BoxInst paper
+    // https://arxiv.org/abs/2012.02310
+    optional float box_consistency_loss_weight = 16 [default=0.0];
   }
 
   optional DeepMACMaskEstimation deepmac_mask_estimation = 14;
