@@ -90,14 +90,15 @@ class SimCLRModel(tf.keras.Model):
 
     if training and self._mode == PRETRAIN:
       num_transforms = 2
+      # Split channels, and optionally apply extra batched augmentation.
+      # (bsz, h, w, c*num_transforms) -> [(bsz, h, w, c), ....]
+      features_list = tf.split(
+          inputs, num_or_size_splits=num_transforms, axis=-1)
+      # (num_transforms * bsz, h, w, c)
+      features = tf.concat(features_list, 0)
     else:
       num_transforms = 1
-
-    # Split channels, and optionally apply extra batched augmentation.
-    # (bsz, h, w, c*num_transforms) -> [(bsz, h, w, c), ....]
-    features_list = tf.split(inputs, num_or_size_splits=num_transforms, axis=-1)
-    # (num_transforms * bsz, h, w, c)
-    features = tf.concat(features_list, 0)
+      features = inputs
 
     # Base network forward pass.
     endpoints = self._backbone(features, training=training)
