@@ -138,6 +138,11 @@ def run_experiment(
     logging.info('Number of trainable params in model: %f Millions.',
                  num_params / 10.**6)
 
+  flops = train_utils.try_count_flops(trainer.model)
+  if flops is not None:
+    logging.info('FLOPs (multi-adds) in model: %f Billions.',
+                 flops / 10.**9 / 2)
+
   if run_post_eval:
     with distribution_strategy.scope():
       return trainer.model, trainer.evaluate(
