@@ -28,6 +28,26 @@ python3 export_saved_model.py \
   --checkpoint_path=""
 ```
 
+Export for TF Lite example:
+
+```shell
+python3 export_saved_model.py \
+  --model_id=a0 \
+  --causal=True \
+  --conv_type=2plus1d \
+  --se_type=2plus3d \
+  --activation=hard_swish \
+  --gating_activation=hard_sigmoid \
+  --use_positional_encoding=False \
+  --num_classes=600 \
+  --batch_size=1 \
+  --num_frames=1 \  # Use a single frame for streaming mode
+  --image_size=172 \  # Input resolution for the model
+  --bundle_input_init_states_fn=False \
+  --checkpoint_path=/path/to/checkpoint \
+  --export_path=/tmp/movinet_a0_stream
+```
+
 To use an exported saved_model, refer to export_saved_model_test.py.
 """
 
@@ -79,6 +99,10 @@ flags.DEFINE_integer(
 flags.DEFINE_integer(
     'image_size', None,
     'The resolution of the input. Set to None for dynamic input.')
+flags.DEFINE_bool(
+    'bundle_input_init_states_fn', True,
+    'Add init_states as a function signature to the saved model.'
+    'This is not necessary if the input shape is static (e.g., for TF Lite).')
 flags.DEFINE_string(
     'checkpoint_path', '',
     'Checkpoint path to load. Leave blank for default initialization.')
@@ -97,24 +121,33 @@ def main(_) -> None:
 
   # Use dimensions of 1 except the channels to export faster,
   # since we only really need the last dimension to build and get the output
-  # states. These dimensions will be set to `None` once the model is built.
+  # states. These dimensions can be set to `None` once the model is built.
   input_shape = [1 if s is None else s for s in input_specs.shape]
 
+  activation = FLAGS.activation
+  if activation == 'swish':
+    # Override swish activation implementation to remove custom gradients
+    activation = 'simple_swish'
+
   backbone = movinet.Movinet(
-      FLAGS.model_id,
+      model_id=FLAGS.model_id,
       causal=FLAGS.causal,
+      use_positional_encoding=FLAGS.use_positional_encoding,
       conv_type=FLAGS.conv_type,
-      use_external_states=FLAGS.causal,
-      input_specs=input_specs,
-      activation=FLAGS.activation,
-      gating_activation=FLAGS.gating_activation,
       se_type=FLAGS.se_type,
-      use_positional_encoding=FLAGS.use_positional_encoding)
+      input_specs=input_specs,
+      activation=activation,
+      gating_activation=FLAGS.gating_activation,
+      use_sync_bn=False,
+      use_external_states=FLAGS.causal)
   model = movinet_model.MovinetClassifier(
       backbone,
       num_classes=FLAGS.num_classes,
       output_states=FLAGS.causal,
-      input_specs=dict(image=input_specs))
+      input_specs=dict(image=input_specs),
+      # TODO(dankondratyuk): currently set to swish, but will need to
+      # re-train to use other activations.
+      activation='simple_swish')
   model.build(input_shape)
 
   # Compile model to generate some internal Keras variables.
@@ -131,7 +164,7 @@ def main(_) -> None:
     # with the full output state shapes.
     input_image = tf.ones(input_shape)
     _, states = model({**model.init_states(input_shape), 'image': input_image})
-    _, states = model({**states, 'image': input_image})
+    _ = model({**states, 'image': input_image})
 
     # Create a function to explicitly set the names of the outputs
     def predict(inputs):
@@ -153,7 +186,10 @@ def main(_) -> None:
     init_states_fn = init_states_fn.get_concrete_function(
         tf.TensorSpec([5], dtype=tf.int32))
 
-    signatures = {'call': predict_fn, 'init_states': init_states_fn}
+    if FLAGS.bundle_input_init_states_fn:
+      signatures = {'call': predict_fn, 'init_states': init_states_fn}
+    else:
+      signatures = predict_fn
 
     tf.keras.models.save_model(
         model, FLAGS.export_path, signatures=signatures)

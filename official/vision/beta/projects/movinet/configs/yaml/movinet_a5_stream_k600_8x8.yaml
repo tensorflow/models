@@ -15,6 +15,11 @@ task:
       movinet:
         model_id: 'a5'
         causal: true
+        # Note: we train with '3d_2plus1d', but convert to '2plus1d' for inference
+        conv_type: '3d_2plus1d'
+        se_type: '2plus3d'
+        activation: 'hard_swish'
+        gating_activation: 'hard_sigmoid'
         use_positional_encoding: true
         stochastic_depth_drop_rate: 0.2
     norm_activation:
@@ -42,7 +47,8 @@ task:
   validation_data:
     name: kinetics600
     feature_shape: !!python/tuple
-    - 120
+    # Evaluate on 115 frames instead of 120, as the model will get OOM on TPU
+    - 115
     - 320
     - 320
     - 3
