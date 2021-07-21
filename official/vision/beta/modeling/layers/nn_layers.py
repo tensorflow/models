@@ -26,10 +26,6 @@ from official.modeling import tf_utils
 States = Dict[str, tf.Tensor]
 Activation = Union[str, Callable]
 
-# TODO(dankondratyuk): keep legacy padding until new checkpoints are trained.
-# Otherwise, accuracy will be affected.
-LEGACY_PADDING = True
-
 
 def make_divisible(value: float,
                    divisor: int,
@@ -87,6 +83,22 @@ def hard_swish(x: tf.Tensor) -> tf.Tensor:
   return x * tf.nn.relu6(x + 3.) * (1. / 6.)
 
 tf.keras.utils.get_custom_objects().update({'hard_swish': hard_swish})
+
+
+def simple_swish(x: tf.Tensor) -> tf.Tensor:
+  """A swish/silu activation function without custom gradients.
+
+  Useful for exporting to SavedModel to avoid custom gradient warnings.
+
+  Args:
+    x: the input tensor.
+
+  Returns:
+    The activation output.
+  """
+  return x * tf.math.sigmoid(x)
+
+tf.keras.utils.get_custom_objects().update({'simple_swish': simple_swish})
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -752,14 +764,10 @@ class CausalConvMixin:
          (self.kernel_size[i] - 1) * (self.dilation_rate[i] - 1))
         for i in range(self.rank)
     ]
-    if LEGACY_PADDING:
-      # Apply legacy padding that does not take into account spatial strides
-      pad_total = [kernel_size_effective[i] - 1 for i in range(self.rank)]
-    else:
-      pad_total = [kernel_size_effective[0] - 1]
-      for i in range(1, self.rank):
-        overlap = (input_shape[i] - 1) % self.strides[i] + 1
-        pad_total.append(tf.maximum(kernel_size_effective[i] - overlap, 0))
+    pad_total = [kernel_size_effective[0] - 1]
+    for i in range(1, self.rank):
+      overlap = (input_shape[i] - 1) % self.strides[i] + 1
+      pad_total.append(tf.maximum(kernel_size_effective[i] - overlap, 0))
     pad_beg = [pad_total[i] // 2 for i in range(self.rank)]
     pad_end = [pad_total[i] - pad_beg[i] for i in range(self.rank)]
     padding = [[pad_beg[i], pad_end[i]] for i in range(self.rank)]

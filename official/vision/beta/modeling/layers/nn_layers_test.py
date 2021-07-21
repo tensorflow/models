@@ -24,10 +24,6 @@ from official.vision.beta.modeling.layers import nn_layers
 
 class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
 
-  def setUp(self):
-    super().setUp()
-    nn_layers.LEGACY_PADDING = False
-
   def test_hard_swish(self):
     activation = tf.keras.layers.Activation('hard_swish')
     output = activation(tf.constant([-3, -1.5, 0, 3]))

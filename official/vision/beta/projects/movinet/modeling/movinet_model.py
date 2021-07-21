@@ -36,6 +36,7 @@ class MovinetClassifier(tf.keras.Model):
       backbone: tf.keras.Model,
       num_classes: int,
       input_specs: Optional[Mapping[str, tf.keras.layers.InputSpec]] = None,
+      activation: str = 'swish',
       dropout_rate: float = 0.0,
       kernel_initializer: str = 'HeNormal',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
@@ -48,6 +49,7 @@ class MovinetClassifier(tf.keras.Model):
       backbone: A 3d backbone network.
       num_classes: Number of classes in classification task.
       input_specs: Specs of the input tensor.
+      activation: name of the main activation function.
       dropout_rate: Rate for dropout regularization.
       kernel_initializer: Kernel initializer for the final dense layer.
       kernel_regularizer: Kernel regularizer.
@@ -65,6 +67,7 @@ class MovinetClassifier(tf.keras.Model):
 
     self._num_classes = num_classes
     self._input_specs = input_specs
+    self._activation = activation
     self._dropout_rate = dropout_rate
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
@@ -151,7 +154,8 @@ class MovinetClassifier(tf.keras.Model):
         dropout_rate=self._dropout_rate,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
-        conv_type=backbone.conv_type)(
+        conv_type=backbone.conv_type,
+        activation=self._activation)(
             x)
 
     outputs = (x, states) if self._output_states else x
@@ -180,6 +184,7 @@ class MovinetClassifier(tf.keras.Model):
   def get_config(self):
     config = {
         'backbone': self._backbone,
+        'activation': self._activation,
         'num_classes': self._num_classes,
         'input_specs': self._input_specs,
         'dropout_rate': self._dropout_rate,
@@ -226,6 +231,7 @@ def build_movinet_model(
       num_classes=num_classes,
       kernel_regularizer=l2_regularizer,
       input_specs=input_specs_dict,
+      activation=model_config.activation,
       dropout_rate=model_config.dropout_rate,
       output_states=model_config.output_states)
 
