@@ -21,7 +21,11 @@ REQUIRED_PACKAGES = [
     'lvis',
     'scipy',
     'pandas',
-    'tf-models-official'
+    # tensorflow 2.5.0 requires grpcio~=1.34.0.
+    # tf-models-official (which requires google-could-bigquery)  ends
+    # up installing the latest grpcio which causes problems later.
+    'google-cloud-bigquery==1.21.0',
+    'tf-models-official',
 ]
 
 setup(

@@ -24,17 +24,16 @@ from official.vision.beta.modeling.backbones import spinenet
 class SpineNetTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (128, 0.65, 1, 0.5, 128),
-      (256, 1.0, 1, 0.5, 256),
-      (384, 1.0, 2, 0.5, 256),
-      (512, 1.0, 3, 1.0, 256),
-      (640, 1.3, 4, 1.0, 384),
+      (128, 0.65, 1, 0.5, 128, 4, 6),
+      (256, 1.0, 1, 0.5, 256, 3, 6),
+      (384, 1.0, 2, 0.5, 256, 4, 7),
+      (512, 1.0, 3, 1.0, 256, 3, 7),
+      (640, 1.3, 4, 1.0, 384, 3, 7),
   )
   def test_network_creation(self, input_size, filter_size_scale, block_repeats,
-                            resample_alpha, endpoints_num_filters):
+                            resample_alpha, endpoints_num_filters, min_level,
+                            max_level):
     """Test creation of SpineNet models."""
-    min_level = 3
-    max_level = 7
 
     tf.keras.backend.set_image_data_format('channels_last')
 

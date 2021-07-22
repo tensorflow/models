@@ -97,7 +97,6 @@ class ProjectionHead(tf.keras.layers.Layer):
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
-        'use_normalization': self._use_normalization,
         'norm_momentum': self._norm_momentum,
         'norm_epsilon': self._norm_epsilon
     }

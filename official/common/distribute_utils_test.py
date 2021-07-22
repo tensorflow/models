@@ -43,7 +43,7 @@ class GetDistributionStrategyTest(tf.test.TestCase):
 
   def test_no_strategy(self):
     ds = distribute_utils.get_distribution_strategy('off')
-    self.assertIsNone(ds)
+    self.assertIs(ds, tf.distribute.get_strategy())
 
   def test_invalid_strategy(self):
     with self.assertRaisesRegexp(

@@ -33,121 +33,6 @@ def _check_if_tf_text_installed():
                       "'tensorflow-text-nightly'.")
 
 
-def _iterative_vectorized_fair_share(capacity: tf.Tensor,
-                                     limit: Union[int, tf.Tensor]):
-  """Iterative algorithm for max min fairness algorithm.
-
-  Reference: https://en.wikipedia.org/wiki/Max-min_fairness
-
-  The idea is for each example with some number of segments and a limit of
-  total segment length allowed, we grant each segment a fair share of the
-  limit. For example, if every segment has the same length, no work to do.
-  If one segment has below average length, its share will be spilt to others
-  fairly. In this way, the longest segment will be the shortest among all
-  potential capacity assignments.
-
-  Args:
-    capacity: A rank-2 Tensor of #Segments x Batch.
-    limit: The largest permissible number of tokens in total across one example.
-
-  Returns:
-    A rank-2 Tensor with new segment capacity assignment such that
-      the total number of tokens in each example does not exceed the `limit`.
-  """
-  # Firstly, we calculate the lower bound of the capacity assignment.
-  per_seg_limit = limit // capacity.shape[0]
-  limit_mask = tf.ones(capacity.shape, dtype=tf.int64) * per_seg_limit
-  lower_bound = tf.minimum(capacity, limit_mask)
-
-  # This step makes up the capacity that already statisfy the capacity limit.
-  remaining_cap_sum = limit - tf.math.reduce_sum(lower_bound, axis=0)
-  remaining_cap_mat = capacity - lower_bound
-  new_cap = lower_bound + remaining_cap_mat * tf.cast(
-      tf.math.reduce_sum(remaining_cap_mat, axis=0) <= remaining_cap_sum,
-      tf.int64)
-
-  # Process iteratively. This step is O(#segments), see analysis below.
-  while True:
-    remaining_limit = limit - tf.math.reduce_sum(new_cap, axis=0)
-    remaining_cap = capacity - new_cap
-    masked_remaining_slots = tf.cast(remaining_cap > 0, tf.int64)
-    remaining_cap_col_slots = tf.reduce_sum(masked_remaining_slots, axis=0)
-    masked_remaining_limit = tf.cast(remaining_cap_col_slots > 0,
-                                     tf.int64) * remaining_limit
-    # Total remaining segment limit is different for each example.
-    per_seg_limit = masked_remaining_limit // (
-        tf.cast(remaining_cap_col_slots <= 0, tf.int64) +
-        remaining_cap_col_slots)  # +1 to make sure 0/0 = 0
-
-    # Note that for each step, there is at least one more segment being
-    # fulfilled or the loop is finished.
-    # The idea is, if remaining per example limit > smallest among segments,
-    # the smallest segment ask is fullfilled. Otherwise, all remaining segments
-    # are truncated, the assignment is finished.
-    if tf.math.reduce_sum(per_seg_limit) > 0:
-      remaining_slots_mat = tf.cast(remaining_cap > 0, tf.int64)
-      new_cap = new_cap + remaining_slots_mat * per_seg_limit
-    else:
-      # Leftover assignment of limit that is smaller than #slots.
-      new_remained_assignment_mask = tf.cast(
-          (tf.cumsum(masked_remaining_slots, axis=0) <= masked_remaining_limit)
-          & (masked_remaining_slots > 0), tf.int64)
-      new_cap = new_cap + new_remained_assignment_mask
-      break
-  return new_cap
-
-
-def round_robin_truncate_inputs(
-    inputs: Union[tf.RaggedTensor, List[tf.RaggedTensor]],
-    limit: Union[int, tf.Tensor],
-) -> Union[tf.RaggedTensor, List[tf.RaggedTensor]]:
-  """Truncates a list of batched segments to fit a per-example length limit.
-
-  Available space is assigned one token at a time in a round-robin fashion
-  to the inputs that still need some, until the limit is reached.
-  (Or equivalently: the longest input is truncated by one token until the total
-  length of inputs fits the limit.) Examples that fit the limit as passed in
-  remain unchanged.
-
-  Args:
-    inputs: A list of rank-2 RaggedTensors. The i-th example is given by
-      the i-th row in each list element, that is, `inputs[:][i, :]`.
-    limit: The largest permissible number of tokens in total across one example.
-
-  Returns:
-    A list of rank-2 RaggedTensors at corresponding indices with the inputs,
-      in which the rows of each RaggedTensor have been truncated such that
-      the total number of tokens in each example does not exceed the `limit`.
-  """
-  if not isinstance(inputs, (list, tuple)):
-    return round_robin_truncate_inputs([inputs], limit)[0]
-  limit = tf.cast(limit, tf.int64)
-  if not all(rt.shape.rank == 2 for rt in inputs):
-    raise ValueError("All inputs must have shape [batch_size, (items)]")
-  if len(inputs) == 1:
-    return [_truncate_row_lengths(inputs[0], limit)]
-  elif len(inputs) == 2:
-    size_a, size_b = [rt.row_lengths() for rt in inputs]
-    # Here's a brain-twister: This does round-robin assignment of quota
-    # to both inputs until the limit is reached. Hint: consider separately
-    # the cases of zero, one, or two inputs exceeding half the limit.
-    floor_half = limit // 2
-    ceil_half = limit - floor_half
-    quota_a = tf.minimum(size_a, ceil_half + tf.nn.relu(floor_half - size_b))
-    quota_b = tf.minimum(size_b, floor_half + tf.nn.relu(ceil_half - size_a))
-    return [_truncate_row_lengths(inputs[0], quota_a),
-            _truncate_row_lengths(inputs[1], quota_b)]
-  else:
-    # Note that we don't merge with the 2 input case because the full algorithm
-    # is more expensive.
-    capacity = tf.stack([rt.row_lengths() for rt in inputs])  # #Segments x B
-    new_capacity = _iterative_vectorized_fair_share(capacity, limit)
-    return [
-        _truncate_row_lengths(inputs[i], new_capacity[i])
-        for i in range(capacity.shape[0])
-    ]
-
-
 def _truncate_row_lengths(ragged_tensor: tf.RaggedTensor,
                           new_lengths: tf.Tensor) -> tf.RaggedTensor:
   """Truncates the rows of `ragged_tensor` to the given row lengths."""
@@ -675,8 +560,8 @@ class BertPackInputs(tf.keras.layers.Layer):
     # fall back to some ad-hoc truncation.
     num_special_tokens = len(inputs) + 1
     if truncator == "round_robin":
-      trimmed_segments = round_robin_truncate_inputs(
-          inputs, seq_length - num_special_tokens)
+      trimmed_segments = text.RoundRobinTrimmer(seq_length -
+                                                num_special_tokens).trim(inputs)
     elif truncator == "waterfall":
       trimmed_segments = text.WaterfallTrimmer(
           seq_length - num_special_tokens).trim(inputs)

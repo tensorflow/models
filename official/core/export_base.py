@@ -82,7 +82,7 @@ def export(export_module: ExportModule,
     The savedmodel directory path.
   """
   ckpt_dir_or_file = checkpoint_path
-  if tf.io.gfile.isdir(ckpt_dir_or_file):
+  if ckpt_dir_or_file is not None and tf.io.gfile.isdir(ckpt_dir_or_file):
     ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
   if ckpt_dir_or_file:
     checkpoint = tf.train.Checkpoint(model=export_module.model)

@@ -1205,7 +1205,8 @@ class RandAugment(ImageAugment):
     self.magnitude = float(magnitude)
     self.cutout_const = float(cutout_const)
     self.translate_const = float(translate_const)
-    self.prob_to_apply = prob_to_apply
+    self.prob_to_apply = (
+        float(prob_to_apply) if prob_to_apply is not None else None)
     self.available_ops = [
         'AutoContrast', 'Equalize', 'Invert', 'Rotate', 'Posterize', 'Solarize',
         'Color', 'Contrast', 'Brightness', 'Sharpness', 'ShearX', 'ShearY',

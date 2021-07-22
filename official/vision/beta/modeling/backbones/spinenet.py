@@ -393,8 +393,10 @@ class SpineNet(tf.keras.Model):
               block_spec.level))
         if (block_spec.level < self._min_level or
             block_spec.level > self._max_level):
-          raise ValueError('Output level is out of range [{}, {}]'.format(
-              self._min_level, self._max_level))
+          logging.warning(
+              'SpineNet output level out of range [min_level, max_level] = '
+              '[%s, %s] will not be used for further processing.',
+              self._min_level, self._max_level)
         endpoints[str(block_spec.level)] = x
 
     return endpoints

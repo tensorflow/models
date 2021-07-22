@@ -66,4 +66,5 @@ def main(_):
 
 if __name__ == '__main__':
   tfm_flags.define_flags()
+  flags.mark_flags_as_required(['experiment', 'mode', 'model_dir'])
   app.run(main)

@@ -52,6 +52,7 @@ class OptimizerConfig(oneof.OneOfConfig):
   lars: opt_cfg.LARSConfig = opt_cfg.LARSConfig()
   adagrad: opt_cfg.AdagradConfig = opt_cfg.AdagradConfig()
   slide: opt_cfg.SLIDEConfig = opt_cfg.SLIDEConfig()
+  adafactor: opt_cfg.AdafactorConfig = opt_cfg.AdafactorConfig()
 
 
 @dataclasses.dataclass

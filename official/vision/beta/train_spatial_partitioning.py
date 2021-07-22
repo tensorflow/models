@@ -14,6 +14,7 @@
 
 # Lint as: python3
 """TensorFlow Model Garden Vision training driver with spatial partitioning."""
+from typing import Sequence
 
 from absl import app
 from absl import flags
@@ -33,19 +34,34 @@ from official.modeling import performance
 FLAGS = flags.FLAGS
 
 
-def get_computation_shape_for_model_parallelism(input_partition_dims):
-  """Return computation shape to be used for TPUStrategy spatial partition."""
+def get_computation_shape_for_model_parallelism(
+    input_partition_dims: Sequence[int]) -> Sequence[int]:
+  """Returns computation shape to be used for TPUStrategy spatial partition.
+
+  Args:
+    input_partition_dims: The number of partitions along each dimension.
+
+  Returns:
+    A list of integers specifying the computation shape.
+
+  Raises:
+    ValueError: If the number of logical devices is not supported.
+  """
   num_logical_devices = np.prod(input_partition_dims)
   if num_logical_devices == 1:
     return [1, 1, 1, 1]
-  if num_logical_devices == 2:
+  elif num_logical_devices == 2:
     return [1, 1, 1, 2]
-  if num_logical_devices == 4:
+  elif num_logical_devices == 4:
     return [1, 2, 1, 2]
-  if num_logical_devices == 8:
+  elif num_logical_devices == 8:
     return [2, 2, 1, 2]
-  if num_logical_devices == 16:
+  elif num_logical_devices == 16:
     return [4, 2, 1, 2]
+  else:
+    raise ValueError(
+        'The number of logical devices %d is not supported. Supported numbers '
+        'are 1, 2, 4, 8, 16' % num_logical_devices)
 
 
 def create_distribution_strategy(distribution_strategy,

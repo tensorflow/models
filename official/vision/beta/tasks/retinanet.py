@@ -25,7 +25,7 @@ from official.vision.beta.configs import retinanet as exp_cfg
 from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import retinanet_input
 from official.vision.beta.dataloaders import tf_example_decoder
-from official.vision.beta.dataloaders import tfds_detection_decoders
+from official.vision.beta.dataloaders import tfds_factory
 from official.vision.beta.dataloaders import tf_example_label_map_decoder
 from official.vision.beta.evaluation import coco_evaluator
 from official.vision.beta.modeling import factory
@@ -90,11 +90,7 @@ class RetinaNetTask(base_task.Task):
     """Build input dataset."""
 
     if params.tfds_name:
-      if params.tfds_name in tfds_detection_decoders.TFDS_ID_TO_DECODER_MAP:
-        decoder = tfds_detection_decoders.TFDS_ID_TO_DECODER_MAP[
-            params.tfds_name]()
-      else:
-        raise ValueError('TFDS {} is not supported'.format(params.tfds_name))
+      decoder = tfds_factory.get_detection_decoder(params.tfds_name)
     else:
       decoder_cfg = params.decoder.get()
       if params.decoder.type == 'simple_decoder':

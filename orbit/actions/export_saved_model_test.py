@@ -105,6 +105,23 @@ class ExportSavedModelTest(tf.test.TestCase):
         _id_sorted_file_base_names(directory.full_path),
         ['basename-200', 'basename-1000'])
 
+  def test_export_file_manager_managed_files(self):
+    directory = self.create_tempdir()
+    directory.create_file('basename-5')
+    directory.create_file('basename-10')
+    directory.create_file('basename-50')
+    directory.create_file('basename-1000')
+    directory.create_file('basename-9')
+    directory.create_file('basename-10-suffix')
+    base_name = os.path.join(directory.full_path, 'basename')
+    manager = actions.ExportFileManager(base_name, max_to_keep=3)
+    self.assertLen(manager.managed_files, 5)
+    self.assertEqual(manager.next_name(), f'{base_name}-1001')
+    manager.clean_up()
+    self.assertEqual(
+        manager.managed_files,
+        [f'{base_name}-10', f'{base_name}-50', f'{base_name}-1000'])
+
   def test_export_saved_model(self):
     directory = self.create_tempdir()
     base_name = os.path.join(directory.full_path, 'basename')

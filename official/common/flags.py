@@ -18,9 +18,27 @@ from absl import flags
 
 
 def define_flags():
-  """Defines flags."""
+  """Defines flags.
+
+  All flags are defined as optional, but in practice most models use some of
+  these flags and so mark_flags_as_required() should be called after calling
+  this function. Typically, 'experiment', 'mode', and 'model_dir' are required.
+  For example:
+
+  ```
+  from absl import flags
+  from official.common import flags as tfm_flags  # pylint: disable=line-too-long
+  ...
+  tfm_flags.define_flags()
+  flags.mark_flags_as_required(['experiment', 'mode', 'model_dir'])
+  ```
+
+  The reason all flags are optional is because unit tests often do not set or
+  use any of the flags.
+  """
   flags.DEFINE_string(
-      'experiment', default=None, help='The experiment type registered.')
+      'experiment', default=None, help=
+      'The experiment type registered, specifying an ExperimentConfig.')
 
   flags.DEFINE_enum(
       'mode',

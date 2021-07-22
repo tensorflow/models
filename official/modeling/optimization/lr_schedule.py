@@ -19,6 +19,75 @@ from typing import Mapping, Any, Union, Optional
 import tensorflow as tf
 
 
+def _make_offset_wrapper(new_class_name: str, base_lr_class):
+  """Generates a offset wrapper of learning rate schedule.
+
+  It will returns a subclass of the the `base_lr_class`, the subclass takes an
+  `offset` argument in the constructor. When the new class instance is called,
+  the behavior is:
+    new_class_object(step) = base_lr_class_object(step - offset)
+
+  Example:
+    CosineDecayWithOffset = _make_offset_wrapper(
+                     'CosineDecayWithOffset', tf.keras.experimental.CosineDecay)
+    # Use the lr:
+    lr = CosineDecayWithOffset(offset=100, initial_learning_rate=0.1,
+                               decay_steps=1000)
+    lr(101) # equals to tf.keras.experimental.CosineDecay(...)(101-100)
+
+  Args:
+    new_class_name: the name of the new class.
+    base_lr_class: the base learning rate schedule class. Should be subclass of
+      tf.keras.optimizers.schedules.LearningRateSchedule
+
+  Returns:
+    A new class (subclass of the base_lr_class) that can take an offset.
+  """
+  assert issubclass(base_lr_class,
+                    tf.keras.optimizers.schedules.LearningRateSchedule), (
+                        "base_lr_class should be subclass of keras "
+                        f"LearningRateSchedule, got {base_lr_class}")
+
+  # pylint: disable=protected-access,pointless-statement
+  def offset_learning_rate_init(self, offset=0, **kwargs):
+    """Construct learning rate schedule object.
+
+    When this object is called, its behavior is
+       self.__call__(step) == base_lr_class.__call__(step - offset)
+    Args:
+      self: this object.
+      offset: The offset when computing the learning rate schedule.
+      **kwargs: Pass through to base learning rate class constructor.
+    """
+    base_lr_class.__init__(self, **kwargs)
+    self._offset = offset
+
+  def offset_learning_rate_call(self, step):
+    step = tf.cast(step - self._offset, tf.float32)
+    return base_lr_class.__call__(self, step)
+
+  # pylint: enable=protected-access,pointless-statement
+
+  return type(
+      new_class_name, (base_lr_class,), {
+          "base_lr_class": base_lr_class,
+          "__init__": offset_learning_rate_init,
+          "__call__": offset_learning_rate_call
+      })
+
+
+PiecewiseConstantDecayWithOffset = _make_offset_wrapper(
+    "PiecewiseConstantDecayWithOffset",
+    tf.keras.optimizers.schedules.PiecewiseConstantDecay)
+PolynomialDecayWithOffset = _make_offset_wrapper(
+    "PolynomialDecayWithOffset", tf.keras.optimizers.schedules.PolynomialDecay)
+ExponentialDecayWithOffset = _make_offset_wrapper(
+    "ExponentialDecayWithOffset",
+    tf.keras.optimizers.schedules.ExponentialDecay)
+CosineDecayWithOffset = _make_offset_wrapper("CosineDecayWithOffset",
+                                             tf.keras.experimental.CosineDecay)
+
+
 class LinearWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
   """Linear warmup schedule."""
 

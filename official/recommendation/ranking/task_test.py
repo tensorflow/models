@@ -18,8 +18,8 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from official.core import exp_factory
-from official.recommendation.ranking import data_pipeline
 from official.recommendation.ranking import task
+from official.recommendation.ranking.data import data_pipeline
 
 
 class TaskTest(parameterized.TestCase, tf.test.TestCase):
@@ -34,6 +34,8 @@ class TaskTest(parameterized.TestCase, tf.test.TestCase):
     params.task.train_data.global_batch_size = 16
     params.task.validation_data.global_batch_size = 16
     params.task.model.vocab_sizes = [40, 12, 11, 13, 2, 5]
+    params.task.model.embedding_dim = 8
+    params.task.model.bottom_mlp = [64, 32, 8]
     params.task.use_synthetic_data = True
     params.task.model.num_dense_features = 5
 

@@ -26,6 +26,10 @@ from official.modeling import tf_utils
 States = Dict[str, tf.Tensor]
 Activation = Union[str, Callable]
 
+# TODO(dankondratyuk): keep legacy padding until new checkpoints are trained.
+# Otherwise, accuracy will be affected.
+LEGACY_PADDING = True
+
 
 def make_divisible(value: float,
                    divisor: int,
@@ -66,6 +70,23 @@ def round_filters(filters: int,
 
   logging.info('round_filter input=%s output=%s', orig_f, new_filters)
   return int(new_filters)
+
+
+def hard_swish(x: tf.Tensor) -> tf.Tensor:
+  """A Swish6/H-Swish activation function.
+
+  Reference: Section 5.2 of Howard et al. "Searching for MobileNet V3."
+  https://arxiv.org/pdf/1905.02244.pdf
+
+  Args:
+    x: the input tensor.
+
+  Returns:
+    The activation output.
+  """
+  return x * tf.nn.relu6(x + 3.) * (1. / 6.)
+
+tf.keras.utils.get_custom_objects().update({'hard_swish': hard_swish})
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -706,9 +727,10 @@ class CausalConvMixin:
     self._use_buffered_input = variable
 
   def _compute_buffered_causal_padding(self,
-                                       inputs: Optional[tf.Tensor] = None,
+                                       inputs: tf.Tensor,
                                        use_buffered_input: bool = False,
-                                       time_axis: int = 1) -> List[List[int]]:
+                                       time_axis: int = 1,
+                                       ) -> List[List[int]]:
     """Calculates padding for 'causal' option for conv layers.
 
     Args:
@@ -720,7 +742,7 @@ class CausalConvMixin:
     Returns:
       A list of paddings for `tf.pad`.
     """
-    del inputs
+    input_shape = tf.shape(inputs)[1:-1]
 
     if tf.keras.backend.image_data_format() == 'channels_first':
       raise ValueError('"channels_first" mode is unsupported.')
@@ -730,7 +752,14 @@ class CausalConvMixin:
          (self.kernel_size[i] - 1) * (self.dilation_rate[i] - 1))
         for i in range(self.rank)
     ]
-    pad_total = [kernel_size_effective[i] - 1 for i in range(self.rank)]
+    if LEGACY_PADDING:
+      # Apply legacy padding that does not take into account spatial strides
+      pad_total = [kernel_size_effective[i] - 1 for i in range(self.rank)]
+    else:
+      pad_total = [kernel_size_effective[0] - 1]
+      for i in range(1, self.rank):
+        overlap = (input_shape[i] - 1) % self.strides[i] + 1
+        pad_total.append(tf.maximum(kernel_size_effective[i] - overlap, 0))
     pad_beg = [pad_total[i] // 2 for i in range(self.rank)]
     pad_end = [pad_total[i] - pad_beg[i] for i in range(self.rank)]
     padding = [[pad_beg[i], pad_end[i]] for i in range(self.rank)]
@@ -763,7 +792,8 @@ class CausalConvMixin:
     # across time should be the input shape minus any padding, assuming
     # the stride across time is 1.
     if self._use_buffered_input and spatial_output_shape[0] is not None:
-      padding = self._compute_buffered_causal_padding(use_buffered_input=False)
+      padding = self._compute_buffered_causal_padding(
+          tf.zeros([1] + spatial_output_shape + [1]), use_buffered_input=False)
       spatial_output_shape[0] -= sum(padding[1])
     return spatial_output_shape
 
@@ -911,15 +941,13 @@ class Conv3D(tf.keras.layers.Conv3D, CausalConvMixin):
     base_config = super(Conv3D, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def build(self, input_shape):
-    """Builds the layer with the given input shape."""
-    super(Conv3D, self).build(input_shape)
-
-    # TODO(b/177662019): tf.nn.conv3d with depthwise kernels on CPU
-    # in eager mode may produce incorrect output or cause a segfault.
-    # To avoid this issue, compile the op to TF graph using tf.function.
-    self._convolution_op = tf.function(
-        self._convolution_op, experimental_compile=True)
+  def call(self, inputs):
+    """Call the layer with the given inputs."""
+    # Note: tf.nn.conv3d with depthwise kernels on CPU is currently only
+    # supported when compiling with TF graph (XLA) using tf.function, so it
+    # is compiled by default here (b/186463870).
+    conv_fn = tf.function(super(Conv3D, self).call, jit_compile=True)
+    return conv_fn(inputs)
 
   def _compute_causal_padding(self, inputs):
     """Computes causal padding dimensions for the given inputs."""

@@ -20,15 +20,14 @@ from absl import app
 from absl import flags
 from absl import logging
 
-import orbit
 import tensorflow as tf
 
+from official.common import distribute_utils
 from official.core import base_trainer
 from official.core import train_lib
 from official.core import train_utils
 from official.recommendation.ranking import common
 from official.recommendation.ranking.task import RankingTask
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 
 FLAGS = flags.FLAGS
@@ -86,7 +85,7 @@ def main(_) -> None:
 
   enable_tensorboard = params.trainer.callbacks.enable_tensorboard
 
-  strategy = distribution_utils.get_distribution_strategy(
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=params.runtime.distribution_strategy,
       all_reduce_alg=params.runtime.all_reduce_alg,
       num_gpus=params.runtime.num_gpus,
@@ -94,6 +93,21 @@ def main(_) -> None:
 
   with strategy.scope():
     model = task.build_model()
+
+  def get_dataset_fn(params):
+    return lambda input_context: task.build_inputs(params, input_context)
+
+  train_dataset = None
+  if 'train' in mode:
+    train_dataset = strategy.distribute_datasets_from_function(
+        get_dataset_fn(params.task.train_data),
+        options=tf.distribute.InputOptions(experimental_fetch_to_device=False))
+
+  validation_dataset = None
+  if 'eval' in mode:
+    validation_dataset = strategy.distribute_datasets_from_function(
+        get_dataset_fn(params.task.validation_data),
+        options=tf.distribute.InputOptions(experimental_fetch_to_device=False))
 
   if params.trainer.use_orbit:
     with strategy.scope():
@@ -106,6 +120,8 @@ def main(_) -> None:
           optimizer=model.optimizer,
           train='train' in mode,
           evaluate='eval' in mode,
+          train_dataset=train_dataset,
+          validation_dataset=validation_dataset,
           checkpoint_exporter=checkpoint_exporter)
 
     train_lib.run_experiment(
@@ -117,16 +133,6 @@ def main(_) -> None:
         trainer=trainer)
 
   else:  # Compile/fit
-    train_dataset = None
-    if 'train' in mode:
-      train_dataset = orbit.utils.make_distributed_dataset(
-          strategy, task.build_inputs, params.task.train_data)
-
-    eval_dataset = None
-    if 'eval' in mode:
-      eval_dataset = orbit.utils.make_distributed_dataset(
-          strategy, task.build_inputs, params.task.validation_data)
-
     checkpoint = tf.train.Checkpoint(model=model, optimizer=model.optimizer)
 
     latest_checkpoint = tf.train.latest_checkpoint(model_dir)
@@ -169,7 +175,7 @@ def main(_) -> None:
           initial_epoch=initial_epoch,
           epochs=num_epochs,
           steps_per_epoch=params.trainer.validation_interval,
-          validation_data=eval_dataset,
+          validation_data=validation_dataset,
           validation_steps=eval_steps,
           callbacks=callbacks,
       )
@@ -177,7 +183,7 @@ def main(_) -> None:
       logging.info('Train history: %s', history.history)
     elif mode == 'eval':
       logging.info('Evaluation started')
-      validation_output = model.evaluate(eval_dataset, steps=eval_steps)
+      validation_output = model.evaluate(validation_dataset, steps=eval_steps)
       logging.info('Evaluation output: %s', validation_output)
     else:
       raise NotImplementedError('The mode is not implemented: %s' % mode)

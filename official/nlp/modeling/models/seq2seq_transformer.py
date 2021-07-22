@@ -111,13 +111,15 @@ class Seq2SeqTransformer(tf.keras.Model):
 
   def _embedding_linear(self, embedding_matrix, x):
     """Uses embeddings as linear transformation weights."""
+    embedding_matrix = tf.cast(embedding_matrix, dtype=self.compute_dtype)
+    x = tf.cast(x, dtype=self.compute_dtype)
     batch_size = tf.shape(x)[0]
     length = tf.shape(x)[1]
     hidden_size = tf.shape(x)[2]
     vocab_size = tf.shape(embedding_matrix)[0]
 
     x = tf.reshape(x, [-1, hidden_size])
-    logits = tf.matmul(x, tf.cast(embedding_matrix, x.dtype), transpose_b=True)
+    logits = tf.matmul(x, embedding_matrix, transpose_b=True)
 
     return tf.reshape(logits, [batch_size, length, vocab_size])
 

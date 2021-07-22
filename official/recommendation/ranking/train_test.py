@@ -40,6 +40,8 @@ def _get_params_override(vocab_sizes,
       'task': {
           'model': {
               'vocab_sizes': vocab_sizes,
+              'embedding_dim': [8] * len(vocab_sizes),
+              'bottom_mlp': [64, 32, 8],
               'interaction': interaction,
           },
           'train_data': {
