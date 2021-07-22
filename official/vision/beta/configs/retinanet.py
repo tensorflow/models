@@ -326,9 +326,9 @@ def retinanet_spinenet_coco() -> cfg.ExperimentConfig:
   return config
 
 
-@exp_factory.register_config_factory('retinanet_spinenet_mobile_coco')
+@exp_factory.register_config_factory('retinanet_mobile_coco')
 def retinanet_spinenet_mobile_coco() -> cfg.ExperimentConfig:
-  """COCO object detection with RetinaNet using Mobile SpineNet backbone."""
+  """COCO object detection with mobile RetinaNet."""
   train_batch_size = 256
   eval_batch_size = 8
   steps_per_epoch = COCO_TRAIN_EXAMPLES // train_batch_size
@@ -407,8 +407,6 @@ def retinanet_spinenet_mobile_coco() -> cfg.ExperimentConfig:
       restrictions=[
           'task.train_data.is_training != None',
           'task.validation_data.is_training != None',
-          'task.model.min_level == task.model.backbone.spinenet_mobile.min_level',
-          'task.model.max_level == task.model.backbone.spinenet_mobile.max_level',
       ])
 
   return config
