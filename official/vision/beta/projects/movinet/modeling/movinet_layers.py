@@ -1078,7 +1078,6 @@ class MovinetBlock(tf.keras.layers.Layer):
         se_ratio * expand_filters * se_multiplier, divisor=8)
     self._out_filters = out_filters
     self._expand_filters = expand_filters
-    self._kernel_size = kernel_size
     self._causal = causal
     self._activation = activation
     self._gating_activation = gating_activation
