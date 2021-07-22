@@ -28,7 +28,7 @@ class RetinaNetConfigTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.parameters(
       ('retinanet_resnetfpn_coco',),
       ('retinanet_spinenet_coco',),
-      ('retinanet_spinenet_mobile_coco',),
+      ('retinanet_mobile_coco',),
   )
   def test_retinanet_configs(self, config_name):
     config = exp_factory.get_exp_config(config_name)
