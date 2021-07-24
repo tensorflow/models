@@ -59,10 +59,7 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
     else:
       raise ValueError("The tasks argument has an invalid type: %s" %
                        type(tasks))
-    self._task_eval_steps = task_eval_steps or {}
-    self._task_eval_steps = dict([
-        (name, self._task_eval_steps.get(name, None)) for name in self.tasks
-    ])
+    self.task_eval_steps = task_eval_steps or {}
     self._task_weights = task_weights or {}
     self._task_weights = dict([
         (name, self._task_weights.get(name, 1.0)) for name in self.tasks
@@ -74,9 +71,9 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
     task_eval_steps = {}
     task_weights = {}
     for task_routine in config.task_routines:
-      task_name = task_routine.task_name
+      task_name = task_routine.task_name or task_routine.task_config.name
       tasks[task_name] = task_factory.get_task(
-          task_routine.task_config, logging_dir=logging_dir)
+          task_routine.task_config, logging_dir=logging_dir, name=task_name)
       task_eval_steps[task_name] = task_routine.eval_steps
       task_weights[task_name] = task_routine.task_weight
     return cls(
@@ -85,9 +82,6 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
   @property
   def tasks(self):
     return self._tasks
-
-  def task_eval_steps(self, task_name):
-    return self._task_eval_steps[task_name]
 
   def task_weight(self, task_name):
     return self._task_weights[task_name]

@@ -239,9 +239,10 @@ class TrainerConfig(base_config.Config):
 @dataclasses.dataclass
 class TaskConfig(base_config.Config):
   init_checkpoint: str = ""
-  model: base_config.Config = None
+  model: Optional[base_config.Config] = None
   train_data: DataConfig = DataConfig()
   validation_data: DataConfig = DataConfig()
+  name: Optional[str] = None
 
 
 @dataclasses.dataclass

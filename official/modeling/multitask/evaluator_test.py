@@ -22,7 +22,6 @@ from tensorflow.python.distribute import strategy_combinations
 from official.core import base_task
 from official.core import config_definitions as cfg
 from official.modeling.multitask import evaluator
-from official.modeling.multitask import multitask
 
 
 def all_strategy_combinations():
@@ -89,9 +88,7 @@ class MockTask(base_task.Task):
           np.concatenate([np.expand_dims(v.numpy(), axis=0) for v in value]))
     return state
 
-  def reduce_aggregated_logs(self,
-                             aggregated_logs,
-                             global_step=None):
+  def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     for k, v in aggregated_logs.items():
       aggregated_logs[k] = np.sum(np.stack(v, axis=0))
     return aggregated_logs
@@ -106,10 +103,9 @@ class EvaluatorTest(tf.test.TestCase, parameterized.TestCase):
           MockTask(params=cfg.TaskConfig(), name="bar"),
           MockTask(params=cfg.TaskConfig(), name="foo")
       ]
-      test_multitask = multitask.MultiTask(tasks=tasks)
       model = MockModel()
       test_evaluator = evaluator.MultiTaskEvaluator(
-          task=test_multitask, model=model)
+          eval_tasks=tasks, model=model)
       results = test_evaluator.evaluate(tf.convert_to_tensor(1, dtype=tf.int32))
     self.assertContainsSubset(["validation_loss", "acc"], results["bar"].keys())
     self.assertContainsSubset(["validation_loss", "acc"], results["foo"].keys())
@@ -123,10 +119,9 @@ class EvaluatorTest(tf.test.TestCase, parameterized.TestCase):
           MockTask(params=cfg.TaskConfig(), name="bar"),
           MockTask(params=cfg.TaskConfig(), name="foo")
       ]
-      test_multitask = multitask.MultiTask(tasks=tasks)
       model = MockModel()
       test_evaluator = evaluator.MultiTaskEvaluator(
-          task=test_multitask, model=model)
+          eval_tasks=tasks, model=model)
       results = test_evaluator.evaluate(tf.convert_to_tensor(5, dtype=tf.int32))
     self.assertEqual(results["bar"]["counter"],
                      5. * distribution.num_replicas_in_sync)
