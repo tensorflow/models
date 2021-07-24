@@ -230,6 +230,10 @@ class Hourglass(tf.keras.Model):
     return config
   
   @property
+  def num_hourglasses(self):
+    return self._num_hourglasses
+  
+  @property
   def output_specs(self):
     return self._output_specs
 

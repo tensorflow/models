@@ -18,46 +18,29 @@ from absl.testing import parameterized
 from official.vision.beta.projects.centernet.dataloaders.centernet_input import \
   CenterNetParser
 from official.vision.beta.projects.centernet.ops import gt_builder
-
-
-def pad_max_instances(value, instances, pad_value=0, pad_axis=0):
-  shape = tf.shape(value)
-  if pad_axis < 0:
-    pad_axis = tf.shape(shape)[0] + pad_axis
-  dim1 = shape[pad_axis]
-  take = tf.math.reduce_min([instances, dim1])
-  value, _ = tf.split(
-      value, [take, -1], axis=pad_axis)  # value[:instances, ...]
-  pad = tf.convert_to_tensor([tf.math.reduce_max([instances - dim1, 0])])
-  nshape = tf.concat([shape[:pad_axis], pad, shape[(pad_axis + 1):]], axis=0)
-  pad_tensor = tf.fill(nshape, tf.cast(pad_value, dtype=value.dtype))
-  value = tf.concat([value, pad_tensor], axis=pad_axis)
-  return value
+from official.vision.beta.projects.centernet.ops import preprocess_ops
 
 
 class CenterNetInputTest(tf.test.TestCase, parameterized.TestCase):
   def check_labels_correct(self, boxes, classes, output_size, input_size):
     parser = CenterNetParser(dtype=tf.bfloat16)
-    num_dets = len(boxes)
+    num_detections = len(boxes)
     boxes = tf.constant(boxes, dtype=tf.float32)
     classes = tf.constant(classes, dtype=tf.float32)
     
-    boxes = pad_max_instances(boxes, 128, 0)
-    classes = pad_max_instances(classes, 128, -1)
+    boxes = preprocess_ops.pad_max_instances(boxes, 128, 0)
+    classes = preprocess_ops.pad_max_instances(classes, 128, -1)
     
     labels = gt_builder.build_heatmap_and_regressed_features(
         labels={
             'bbox': boxes,
-            'num_detections': num_dets,
+            'num_detections': num_detections,
             'classes': classes
         },
-        output_size=output_size, input_size=input_size)
+        output_size=output_size,
+        input_size=input_size)
     
-    tl_heatmaps = labels['tl_heatmaps']
-    br_heatmaps = labels['br_heatmaps']
     ct_heatmaps = labels['ct_heatmaps']
-    tl_offset = labels['tl_offset']
-    br_offset = labels['br_offset']
     ct_offset = labels['ct_offset']
     size = labels['size']
     box_mask = labels['box_mask']
@@ -69,20 +52,14 @@ class CenterNetInputTest(tf.test.TestCase, parameterized.TestCase):
     width_ratio = output_size[1] / input_size[1]
     
     # Shape checks
-    self.assertEqual(tl_heatmaps.shape, (output_size[0], output_size[1], 90))
-    self.assertEqual(br_heatmaps.shape, (output_size[0], output_size[1], 90))
     self.assertEqual(ct_heatmaps.shape, (output_size[0], output_size[1], 90))
     
-    self.assertEqual(tl_offset.shape, (parser._max_num_instances, 2))
-    self.assertEqual(br_offset.shape, (parser._max_num_instances, 2))
     self.assertEqual(ct_offset.shape, (parser._max_num_instances, 2))
     
     self.assertEqual(size.shape, (parser._max_num_instances, 2))
     self.assertEqual(box_mask.shape, (parser._max_num_instances))
     self.assertEqual(box_indices.shape, (parser._max_num_instances, 2))
     
-    self.assertAllInRange(tl_heatmaps, 0, 1)
-    self.assertAllInRange(br_heatmaps, 0, 1)
     self.assertAllInRange(ct_heatmaps, 0, 1)
     
     for i in range(len(boxes)):
@@ -122,8 +99,10 @@ class CenterNetInputTest(tf.test.TestCase, parameterized.TestCase):
     classes = (1, 2, 3)
     sizes = [512, 512]
     
-    self.check_labels_correct(boxes=boxes, classes=classes,
-                              output_size=sizes, input_size=sizes)
+    self.check_labels_correct(boxes=boxes,
+                              classes=classes,
+                              output_size=sizes,
+                              input_size=sizes)
   
   def test_generate_heatmap_scale_1(self):
     boxes = [
@@ -135,8 +114,10 @@ class CenterNetInputTest(tf.test.TestCase, parameterized.TestCase):
     output_size = [128, 128]
     input_size = [512, 512]
     
-    self.check_labels_correct(boxes=boxes, classes=classes,
-                              output_size=output_size, input_size=input_size)
+    self.check_labels_correct(boxes=boxes,
+                              classes=classes,
+                              output_size=output_size,
+                              input_size=input_size)
   
   def test_generate_heatmap_scale_2(self):
     boxes = [
@@ -148,8 +129,10 @@ class CenterNetInputTest(tf.test.TestCase, parameterized.TestCase):
     output_size = [128, 128]
     input_size = [1024, 1024]
     
-    self.check_labels_correct(boxes=boxes, classes=classes,
-                              output_size=output_size, input_size=input_size)
+    self.check_labels_correct(boxes=boxes,
+                              classes=classes,
+                              output_size=output_size,
+                              input_size=input_size)
 
 
 if __name__ == '__main__':

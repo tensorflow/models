@@ -15,11 +15,11 @@
 import tensorflow as tf
 
 
-def _to_float32(x):
+def to_float32(x):
   return tf.cast(x, tf.float32)
 
 
-def _get_shape(tensor, num_dims):
+def get_shape(tensor, num_dims):
   assert len(tensor.shape.as_list()) == num_dims
   return combined_static_and_dynamic_shape(tensor)
 
@@ -44,8 +44,8 @@ def combined_static_and_dynamic_shape(tensor):
   return combined_shape
 
 
-def _flatten_spatial_dimensions(batch_images):
-  batch_size, height, width, channels = _get_shape(batch_images, 4)
+def flatten_spatial_dimensions(batch_images):
+  batch_size, height, width, channels = get_shape(batch_images, 4)
   return tf.reshape(batch_images, [batch_size, height * width,
                                    channels])
 

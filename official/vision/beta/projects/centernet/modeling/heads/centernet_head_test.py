@@ -21,7 +21,7 @@ from official.vision.beta.projects.centernet.modeling.heads import \
   centernet_head
 
 
-class CenterNetDecoderTest(tf.test.TestCase, parameterized.TestCase):
+class CenterNetHeadTest(tf.test.TestCase, parameterized.TestCase):
   
   def test_decoder_shape(self):
     task_config = {

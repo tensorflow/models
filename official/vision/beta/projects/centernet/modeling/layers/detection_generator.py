@@ -121,7 +121,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
       net_down_scale: An integer that specifies 
 
     call Returns:
-      Dictionary with keys 'bbox', 'classes', 'confidence', and 'num_dets'
+      Dictionary with keys 'bbox', 'classes', 'confidence', and 'num_detections'
       storing each bounding box in [y_min, x_min, y_max, x_max] format, 
       its respective class and confidence score, and the number of detections
       made.
@@ -371,7 +371,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
         'bbox': boxes,
         'classes': classes,
         'confidence': scores,
-        'num_dets': num_det
+        'num_detections': num_det
     }
   
   def get_config(self) -> Mapping[str, Any]:

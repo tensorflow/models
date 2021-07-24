@@ -33,16 +33,15 @@ class CenterNetModel(tf.keras.Model):
   
   def call(self,
            inputs: tf.Tensor,
-           training: bool = None) -> Mapping[str, tf.Tensor]:
+           training: bool = None,
+           **kwargs) -> Mapping[str, tf.Tensor]:
     features = self._backbone(inputs)
     raw_outputs = self._head(features)
-    
-    if training:
-      return {"raw_output": raw_outputs}
-    else:
+    model_outputs = {"raw_output": raw_outputs}
+    if not training:
       predictions = self._detection_generator(raw_outputs)
-      predictions.update({"raw_output": raw_outputs})
-      return predictions
+      model_outputs.update(predictions)
+    return model_outputs
   
   @property
   def checkpoint_items(
@@ -73,5 +72,5 @@ class CenterNetModel(tf.keras.Model):
     return config_dict
   
   @classmethod
-  def from_config(cls, config):
+  def from_config(cls, config, custom_objects=None):
     return cls(**config)
