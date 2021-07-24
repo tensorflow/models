@@ -24,10 +24,10 @@ from official.vision.beta.configs import retinanet as retinanet_cfg
 from official.vision.beta.configs import semantic_segmentation as segmentation_cfg
 from official.vision.beta.modeling import backbones
 from official.vision.beta.modeling import classification_model
+from official.vision.beta.modeling import decoders
 from official.vision.beta.modeling import maskrcnn_model
 from official.vision.beta.modeling import retinanet_model
 from official.vision.beta.modeling import segmentation_model
-from official.vision.beta.modeling.decoders import factory as decoder_factory
 from official.vision.beta.modeling.heads import dense_prediction_heads
 from official.vision.beta.modeling.heads import instance_heads
 from official.vision.beta.modeling.heads import segmentation_heads
@@ -78,7 +78,7 @@ def build_maskrcnn(
       l2_regularizer=l2_regularizer)
   backbone(tf.keras.Input(input_specs.shape[1:]))
 
-  decoder = decoder_factory.build_decoder(
+  decoder = decoders.factory.build_decoder(
       input_specs=backbone.output_specs,
       model_config=model_config,
       l2_regularizer=l2_regularizer)
@@ -253,7 +253,7 @@ def build_retinanet(
       l2_regularizer=l2_regularizer)
   backbone(tf.keras.Input(input_specs.shape[1:]))
 
-  decoder = decoder_factory.build_decoder(
+  decoder = decoders.factory.build_decoder(
       input_specs=backbone.output_specs,
       model_config=model_config,
       l2_regularizer=l2_regularizer)
@@ -313,7 +313,7 @@ def build_segmentation_model(
       norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
 
-  decoder = decoder_factory.build_decoder(
+  decoder = decoders.factory.build_decoder(
       input_specs=backbone.output_specs,
       model_config=model_config,
       l2_regularizer=l2_regularizer)
