@@ -13,12 +13,16 @@
 # limitations under the License.
 
 """Contains definitions of NAS-FPN."""
-from typing import Any, Mapping, List, Tuple, Optional
+
+from typing import Any, List, Mapping, Optional, Tuple
 
 # Import libraries
+
 from absl import logging
 import tensorflow as tf
 
+from official.modeling import hyperparams
+from official.vision.beta.modeling.decoders import factory
 from official.vision.beta.ops import spatial_transform_ops
 
 
@@ -316,3 +320,45 @@ class NASFPN(tf.keras.Model):
   def output_specs(self) -> Mapping[str, tf.TensorShape]:
     """A dict of {level: TensorShape} pairs for the model output."""
     return self._output_specs
+
+
+@factory.register_decoder_builder('nasfpn')
+def build_nasfpn_decoder(
+    input_specs: Mapping[str, tf.TensorShape],
+    model_config: hyperparams.Config,
+    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
+) -> tf.keras.Model:
+  """Builds NASFPN decoder from a config.
+
+  Args:
+    input_specs: A `dict` of input specifications. A dictionary consists of
+      {level: TensorShape} from a backbone.
+    model_config: A OneOfConfig. Model config.
+    l2_regularizer: A `tf.keras.regularizers.Regularizer` instance. Default to
+      None.
+
+  Returns:
+    A `tf.keras.Model` instance of the NASFPN decoder.
+
+  Raises:
+    ValueError: If the model_config.decoder.type is not `nasfpn`.
+  """
+  decoder_type = model_config.decoder.type
+  decoder_cfg = model_config.decoder.get()
+  if decoder_type != 'nasfpn':
+    raise ValueError(f'Inconsistent decoder type {decoder_type}. '
+                     'Need to be `nasfpn`.')
+
+  norm_activation_config = model_config.norm_activation
+  return NASFPN(
+      input_specs=input_specs,
+      min_level=model_config.min_level,
+      max_level=model_config.max_level,
+      num_filters=decoder_cfg.num_filters,
+      num_repeats=decoder_cfg.num_repeats,
+      use_separable_conv=decoder_cfg.use_separable_conv,
+      activation=norm_activation_config.activation,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      kernel_regularizer=l2_regularizer)
