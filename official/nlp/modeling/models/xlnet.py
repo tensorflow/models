@@ -171,6 +171,7 @@ class XLNetClassifier(tf.keras.Model):
       Defaults to a RandomNormal initializer.
     summary_type: Method used to summarize a sequence into a compact vector.
     dropout_rate: The dropout probability of the cls head.
+    head_name: Name of the classification head.
   """
 
   def __init__(
@@ -180,6 +181,7 @@ class XLNetClassifier(tf.keras.Model):
       initializer: tf.keras.initializers.Initializer = 'random_normal',
       summary_type: str = 'last',
       dropout_rate: float = 0.1,
+      head_name: str = 'sentence_prediction',
       **kwargs):
     super().__init__(**kwargs)
     self._network = network
@@ -192,6 +194,7 @@ class XLNetClassifier(tf.keras.Model):
         'num_classes': num_classes,
         'summary_type': summary_type,
         'dropout_rate': dropout_rate,
+        'head_name': head_name,
     }
 
     if summary_type == 'last':
@@ -207,7 +210,7 @@ class XLNetClassifier(tf.keras.Model):
         initializer=initializer,
         dropout_rate=dropout_rate,
         cls_token_idx=cls_token_idx,
-        name='sentence_prediction')
+        name=head_name)
 
   def call(self, inputs: Mapping[str, Any]):
     input_ids = inputs['input_word_ids']
