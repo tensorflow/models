@@ -45,10 +45,11 @@ class BertClassifier(tf.keras.Model):
     dropout_rate: The dropout probability of the cls head.
     use_encoder_pooler: Whether to use the pooler layer pre-defined inside the
       encoder.
+    head_name: Name of the classification head.
     cls_head: (Optional) The layer instance to use for the classifier head.
       It should take in the output from network and produce the final logits.
       If set, the arguments ('num_classes', 'initializer', 'dropout_rate',
-      'use_encoder_pooler') will be ignored.
+      'use_encoder_pooler', 'head_name') will be ignored.
   """
 
   def __init__(self,
@@ -57,9 +58,11 @@ class BertClassifier(tf.keras.Model):
                initializer='glorot_uniform',
                dropout_rate=0.1,
                use_encoder_pooler=True,
+               head_name='sentence_prediction',
                cls_head=None,
                **kwargs):
     self.num_classes = num_classes
+    self.head_name = head_name
     self.initializer = initializer
     self.use_encoder_pooler = use_encoder_pooler
 
@@ -92,7 +95,7 @@ class BertClassifier(tf.keras.Model):
           num_classes=num_classes,
           initializer=initializer,
           dropout_rate=dropout_rate,
-          name='sentence_prediction')
+          name=head_name)
 
     predictions = classifier(cls_inputs)
 
@@ -137,6 +140,7 @@ class BertClassifier(tf.keras.Model):
     return {
         'network': self._network,
         'num_classes': self.num_classes,
+        'head_name': self.head_name,
         'initializer': self.initializer,
         'use_encoder_pooler': self.use_encoder_pooler,
         'cls_head': self._cls_head,
