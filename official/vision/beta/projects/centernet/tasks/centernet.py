@@ -15,7 +15,7 @@
 # Lint as: python3
 
 """Centernet task definition."""
-from typing import Any, Optional, List, Tuple, Mapping
+from typing import Any, Optional, List, Tuple
 from absl import logging
 
 import tensorflow as tf
@@ -38,6 +38,10 @@ from official.vision.beta.projects.centernet.modeling.heads import centernet_hea
 from official.vision.beta.projects.centernet.modeling.layers import \
   detection_generator
 from official.vision.beta.projects.centernet.modeling import centernet_model
+from official.vision.beta.projects.centernet.utils.checkpoints import \
+  load_weights
+from official.vision.beta.projects.centernet.utils.checkpoints import \
+  read_checkpoints
 
 
 @task_factory.register_task_cls(exp_cfg.CenterNetTask)
@@ -87,7 +91,7 @@ class CenterNetTask(base_task.Task):
     input_specs = tf.keras.layers.InputSpec(
         shape=[None] + model_config.input_size)
     
-    l2_weight_decay = self.task_config.loss.l2_weight_decay
+    l2_weight_decay = self.task_config.weight_decay
     # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
@@ -135,17 +139,37 @@ class CenterNetTask(base_task.Task):
       ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
     
     # Restoring checkpoint.
-    if self.task_config.init_checkpoint_modules == 'all':
-      ckpt = tf.train.Checkpoint(**model.checkpoint_items)
-      status = ckpt.restore(ckpt_dir_or_file)
-      status.assert_consumed()
-    elif self.task_config.init_checkpoint_modules == 'backbone':
-      ckpt = tf.train.Checkpoint(backbone=model.backbone)
-      status = ckpt.restore(ckpt_dir_or_file)
-      status.expect_partial().assert_existing_objects_matched()
+    if self.task_config.init_checkpoint_source == 'TFVision':
+      if self.task_config.init_checkpoint_modules == 'all':
+        ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+        status = ckpt.restore(ckpt_dir_or_file)
+        status.assert_consumed()
+      elif self.task_config.init_checkpoint_modules == 'backbone':
+        ckpt = tf.train.Checkpoint(backbone=model.backbone)
+        status = ckpt.restore(ckpt_dir_or_file)
+        status.expect_partial().assert_existing_objects_matched()
+      else:
+        raise ValueError(
+            "Only 'all' or 'backbone' can be used to initialize the model.")
+    elif self.task_config.init_checkpoint_source == 'ODAPI':
+      weights_dict, _ = read_checkpoints.get_ckpt_weights_as_dict(
+          ckpt_dir_or_file)
+      load_weights.load_weights_model(
+          model=model,
+          weights_dict=weights_dict,
+          backbone_name=self.task_config.checkpoint_backbone_name,
+          head_name=self.task_config.checkpoint_head_name)
+    elif self.task_config.init_checkpoint_source == 'Extremenet':
+      weights_dict, _ = read_checkpoints.get_ckpt_weights_as_dict(
+          ckpt_dir_or_file)
+      load_weights.load_weights_model(
+          model=model,
+          weights_dict=weights_dict['feature_extractor'],
+          backbone_name=self.task_config.checkpoint_backbone_name,
+          head_name=self.task_config.checkpoint_head_name)
     else:
-      raise ValueError(
-          "Only 'all' or 'backbone' can be used to initialize the model.")
+      raise ValueError("Only support checkpoint sources of "
+                       "TFVision, ODAPI and Extremenet.")
     
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)

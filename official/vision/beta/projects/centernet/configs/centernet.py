@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+
 """CenterNet configuration definition."""
 # Import libraries
+import os
 import dataclasses
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from official.vision.beta.projects.centernet.configs import backbones
 from official.core import exp_factory
@@ -158,12 +160,11 @@ class CenterNetTask(cfg.TaskConfig):
   # Load checkpoints
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: str = 'all'
-  # Load weights from ODAPI or Extremenet
+  init_checkpoint_source: str = 'TFVision'  # ODAPI, Extremenet or TFVision
   annotation_file: Optional[str] = None
-  load_odapi_weights: bool = True
-  load_extremenet_weights: bool = False
-  odapi_weights: Optional[str] = None
-  extremenet_weights: Optional[str] = None
+  # For checkpoints from ODAPI or Extremenet
+  checkpoint_backbone_name = 'hourglass104_512'
+  checkpoint_head_name = 'detection_2d'
   
   def get_output_length_dict(self):
     lengths = {}
@@ -189,13 +190,15 @@ class CenterNetTask(cfg.TaskConfig):
             'orientation': 8
         })
     
-    if self.subtasks.segmentation:
-      lengths['seg_heatmaps'] = self.model.num_classes
-    
     return lengths
 
 
-@exp_factory.register_config_factory('centernet_custom')
+COCO_INPUT_PATH_BASE = 'coco'
+COCO_TRAIN_EXAMPLES = 118287
+COCO_VAL_EXAMPLES = 5000
+
+
+@exp_factory.register_config_factory('centernet_hourglass_coco')
 def centernet_custom() -> cfg.ExperimentConfig:
   """COCO object detection with CenterNet."""
   train_batch_size = 1
@@ -204,20 +207,23 @@ def centernet_custom() -> cfg.ExperimentConfig:
   num_batches = int(1200000 * 64 / train_batch_size)
   
   config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(mixed_precision_dtype='float32'),
       task=CenterNetTask(
+          annotation_file=os.path.join(COCO_INPUT_PATH_BASE,
+                                       'instances_val2017.json'),
           model=CenterNetModel(),
-          train_data=DataConfig(  # input_path=os.path.join(
-              # COCO_INPUT_PATH_BASE, 'train*'),
+          train_data=DataConfig(
+              input_path=os.path.join(COCO_INPUT_PATH_BASE, 'train*'),
               is_training=True,
               global_batch_size=train_batch_size,
               parser=Parser(),
               shuffle_buffer_size=2),
           validation_data=DataConfig(
-              # input_path=os.path.join(COCO_INPUT_PATH_BASE,
-              #                        'val*'),
+              input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
               is_training=False,
               global_batch_size=eval_batch_size,
-              shuffle_buffer_size=2)),
+              shuffle_buffer_size=2),
+      ),
       trainer=cfg.TrainerConfig(
           steps_per_loop=2000,
           summary_interval=8000,
