@@ -1,5 +1,8 @@
 # Image Classification
 
+**Warning:** the features in the `image_classification/` folder have been fully
+intergrated into vision/beta. Please use the [new code base](../beta/README.md).
+
 This folder contains TF 2.0 model examples for image classification:
 
 * [MNIST](#mnist)

@@ -15,13 +15,15 @@
 """TFM common training driver library."""
 # pytype: disable=attribute-error
 import os
-from typing import Any, Mapping, Tuple, Optional
+from typing import Any, Mapping, Optional, Tuple
 
 # Import libraries
+
 from absl import logging
 import orbit
 import tensorflow as tf
 
+from official.core import actions
 from official.core import base_task
 from official.core import base_trainer
 from official.core import config_definitions
@@ -38,7 +40,8 @@ def run_experiment(
     model_dir: str,
     run_post_eval: bool = False,
     save_summary: bool = True,
-    trainer: Optional[base_trainer.Trainer] = None
+    trainer: Optional[base_trainer.Trainer] = None,
+    controller_cls=orbit.Controller
 ) -> Tuple[tf.keras.Model, Mapping[str, Any]]:
   """Runs train/eval configured by the experiment params.
 
@@ -54,6 +57,8 @@ def run_experiment(
     save_summary: Whether to save train and validation summary.
     trainer: the base_trainer.Trainer instance. It should be created within the
       strategy.scope().
+    controller_cls: The controller class to manage the train and eval process.
+      Must be a orbit.Controller subclass.
 
   Returns:
     A 2-tuple of (model, eval_logs).
@@ -73,6 +78,8 @@ def run_experiment(
               params, model_dir))
 
   if trainer.checkpoint:
+    if model_dir is None:
+      raise ValueError('model_dir must be specified, but got None')
     checkpoint_manager = tf.train.CheckpointManager(
         trainer.checkpoint,
         directory=model_dir,
@@ -85,7 +92,7 @@ def run_experiment(
   else:
     checkpoint_manager = None
 
-  controller = orbit.Controller(
+  controller = controller_cls(
       strategy=distribution_strategy,
       trainer=trainer if 'train' in mode else None,
       evaluator=trainer,
@@ -97,7 +104,9 @@ def run_experiment(
                                     params.trainer.validation_summary_subdir) if
       (save_summary) else None,
       summary_interval=params.trainer.summary_interval if
-      (save_summary) else None)
+      (save_summary) else None,
+      train_actions=actions.get_train_actions(params, trainer, model_dir),
+      eval_actions=actions.get_eval_actions(params, trainer, model_dir))
 
   logging.info('Starts to execute mode: %s', mode)
   with distribution_strategy.scope():
@@ -128,6 +137,11 @@ def run_experiment(
   if num_params is not None:
     logging.info('Number of trainable params in model: %f Millions.',
                  num_params / 10.**6)
+
+  flops = train_utils.try_count_flops(trainer.model)
+  if flops is not None:
+    logging.info('FLOPs (multi-adds) in model: %f Billions.',
+                 flops / 10.**9 / 2)
 
   if run_post_eval:
     with distribution_strategy.scope():

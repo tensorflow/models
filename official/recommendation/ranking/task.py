@@ -15,7 +15,7 @@
 """Task for the Ranking model."""
 
 import math
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import tensorflow as tf
 import tensorflow_recommenders as tfrs
@@ -23,36 +23,49 @@ import tensorflow_recommenders as tfrs
 from official.core import base_task
 from official.core import config_definitions
 from official.recommendation.ranking import common
-from official.recommendation.ranking import data_pipeline
 from official.recommendation.ranking.configs import config
-
+from official.recommendation.ranking.data import data_pipeline
 
 RuntimeConfig = config_definitions.RuntimeConfig
 
 
 def _get_tpu_embedding_feature_config(
     vocab_sizes: List[int],
-    embedding_dim: int,
+    embedding_dim: Union[int, List[int]],
     table_name_prefix: str = 'embedding_table'
 ) -> Dict[str, tf.tpu.experimental.embedding.FeatureConfig]:
   """Returns TPU embedding feature config.
 
+  i'th table config will have vocab size of vocab_sizes[i] and embedding
+  dimension of embedding_dim if embedding_dim is an int or embedding_dim[i] if
+  embedding_dim is a list).
   Args:
     vocab_sizes: List of sizes of categories/id's in the table.
-    embedding_dim: Embedding dimension.
+    embedding_dim: An integer or a list of embedding table dimensions.
     table_name_prefix: a prefix for embedding tables.
   Returns:
     A dictionary of feature_name, FeatureConfig pairs.
   """
+  if isinstance(embedding_dim, List):
+    if len(vocab_sizes) != len(embedding_dim):
+      raise ValueError(
+          f'length of vocab_sizes: {len(vocab_sizes)} is not equal to the '
+          f'length of embedding_dim: {len(embedding_dim)}')
+  elif isinstance(embedding_dim, int):
+    embedding_dim = [embedding_dim] * len(vocab_sizes)
+  else:
+    raise ValueError('embedding_dim is not either a list or an int, got '
+                     f'{type(embedding_dim)}')
+
   feature_config = {}
 
   for i, vocab_size in enumerate(vocab_sizes):
     table_config = tf.tpu.experimental.embedding.TableConfig(
         vocabulary_size=vocab_size,
-        dim=embedding_dim,
+        dim=embedding_dim[i],
         combiner='mean',
         initializer=tf.initializers.TruncatedNormal(
-            mean=0.0, stddev=1 / math.sqrt(embedding_dim)),
+            mean=0.0, stddev=1 / math.sqrt(embedding_dim[i])),
         name=table_name_prefix + '_%s' % i)
     feature_config[str(i)] = tf.tpu.experimental.embedding.FeatureConfig(
         table=table_config)
@@ -72,7 +85,7 @@ class RankingTask(base_task.Task):
     """Task initialization.
 
     Args:
-      params: the RannkingModel task configuration instance.
+      params: the RankingModel task configuration instance.
       optimizer_config: Optimizer configuration instance.
       logging_dir: a string pointing to where the model, summaries etc. will be
         saved.
@@ -125,15 +138,18 @@ class RankingTask(base_task.Task):
         self.optimizer_config.embedding_optimizer)
     embedding_optimizer.learning_rate = lr_callable
 
-    emb_feature_config = _get_tpu_embedding_feature_config(
-        vocab_sizes=self.task_config.model.vocab_sizes,
-        embedding_dim=self.task_config.model.embedding_dim)
+    feature_config = _get_tpu_embedding_feature_config(
+        embedding_dim=self.task_config.model.embedding_dim,
+        vocab_sizes=self.task_config.model.vocab_sizes)
 
-    tpu_embedding = tfrs.layers.embedding.TPUEmbedding(
-        emb_feature_config, embedding_optimizer)
+    embedding_layer = tfrs.experimental.layers.embedding.PartialTPUEmbedding(
+        feature_config=feature_config,
+        optimizer=embedding_optimizer,
+        size_threshold=self.task_config.model.size_threshold)
 
     if self.task_config.model.interaction == 'dot':
-      feature_interaction = tfrs.layers.feature_interaction.DotInteraction()
+      feature_interaction = tfrs.layers.feature_interaction.DotInteraction(
+          skip_gather=True)
     elif self.task_config.model.interaction == 'cross':
       feature_interaction = tf.keras.Sequential([
           tf.keras.layers.Concatenate(),
@@ -145,7 +161,7 @@ class RankingTask(base_task.Task):
           f'is not supported it must be either \'dot\' or \'cross\'.')
 
     model = tfrs.experimental.models.Ranking(
-        embedding_layer=tpu_embedding,
+        embedding_layer=embedding_layer,
         bottom_stack=tfrs.layers.blocks.MLP(
             units=self.task_config.model.bottom_mlp, final_activation='relu'),
         feature_interaction=feature_interaction,
@@ -184,3 +200,5 @@ class RankingTask(base_task.Task):
   @property
   def optimizer_config(self) -> config.OptimizationConfig:
     return self._optimizer_config
+
+

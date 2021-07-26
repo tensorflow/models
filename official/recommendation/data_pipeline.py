@@ -29,17 +29,16 @@ import timeit
 import traceback
 import typing
 
+from absl import logging
 import numpy as np
-import six
 from six.moves import queue
 import tensorflow as tf
-from absl import logging
 
+from tensorflow.python.tpu.datasets import StreamingFilesDataset
 from official.recommendation import constants as rconst
 from official.recommendation import movielens
 from official.recommendation import popen_helper
 from official.recommendation import stat_utils
-from tensorflow.python.tpu.datasets import StreamingFilesDataset
 
 SUMMARY_TEMPLATE = """General:
 {spacer}Num users: {num_users}
@@ -119,6 +118,7 @@ class DatasetManager(object):
     """Convert NumPy arrays into a TFRecords entry."""
 
     def create_int_feature(values):
+      values = np.squeeze(values)
       return tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
 
     feature_dict = {

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Ranking Model configuration definition."""
-from typing import Optional, List
+from typing import Optional, List, Union
 import dataclasses
 
 from official.core import exp_factory
@@ -59,7 +59,13 @@ class ModelConfig(hyperparams.Config):
     num_dense_features: Number of dense features.
     vocab_sizes: Vocab sizes for each of the sparse features. The order agrees
       with the order of the input data.
-    embedding_dim: Embedding dimension.
+    embedding_dim: An integer or a list of embedding table dimensions.
+      If it's an integer then all tables will have the same embedding dimension.
+      If it's a list then the length should match with `vocab_sizes`.
+    size_threshold: A threshold for table sizes below which a keras
+        embedding layer is used, and above which a TPU embedding layer is used.
+        If it's -1 then only keras embedding layer will be used for all tables,
+        if 0 only then only TPU embedding layer will be used.
     bottom_mlp: The sizes of hidden layers for bottom MLP applied to dense
       features.
     top_mlp: The sizes of hidden layers for top MLP.
@@ -68,7 +74,8 @@ class ModelConfig(hyperparams.Config):
   """
   num_dense_features: int = 13
   vocab_sizes: List[int] = dataclasses.field(default_factory=list)
-  embedding_dim: int = 8
+  embedding_dim: Union[int, List[int]] = 8
+  size_threshold: int = 50_000
   bottom_mlp: List[int] = dataclasses.field(default_factory=list)
   top_mlp: List[int] = dataclasses.field(default_factory=list)
   interaction: str = 'dot'
@@ -188,7 +195,7 @@ def default_config() -> Config:
       runtime=cfg.RuntimeConfig(),
       task=Task(
           model=ModelConfig(
-              embedding_dim=4,
+              embedding_dim=8,
               vocab_sizes=vocab_sizes,
               bottom_mlp=[64, 32, 4],
               top_mlp=[64, 32, 1]),

@@ -75,6 +75,7 @@ ResNet-RS-350 | 320x320    | 164.3   | 84.2  | 96.9  | [config](https://github.c
 
 backbone     | resolution | epochs | FLOPs (B) | params (M) | box AP | download
 ------------ | :--------: | -----: | --------: | ---------: | -----: | -------:
+MobileNetv2 | 256x256    | 600    | -       | 2.27       | 23.5   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_mobilenetv2_tpu.yaml) |
 Mobile SpineNet-49  | 384x384    | 600    | 1.0      | 2.32       | 28.1   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet49_mobile_tpu.yaml) |
 
 

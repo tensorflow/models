@@ -30,3 +30,18 @@ If you want to contribute, please review the [contribution guidelines](https://g
 ## License
 
 [Apache License 2.0](LICENSE)
+
+## Citing TensorFlow Model Garden
+
+If you use TensorFlow Model Garden in your research, please cite this repository.
+
+```
+@misc{tensorflowmodelgarden2020,
+  author = {Hongkun Yu and Chen Chen and Xianzhi Du and Yeqing Li and
+            Abdullah Rashwan and Le Hou and Pengchong Jin and Fan Yang and
+            Frederick Liu and Jaeyoun Kim and Jing Li},
+  title = {{TensorFlow Model Garden}},
+  howpublished = {\url{https://github.com/tensorflow/models}},
+  year = {2020}
+}
+```

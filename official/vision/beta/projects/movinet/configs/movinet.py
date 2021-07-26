@@ -44,6 +44,13 @@ class Movinet(hyperparams.Config):
   # 2plus1d: (2+1)D convolution with Conv2D (2D reshaping)
   # 3d_2plus1d: (2+1)D convolution with Conv3D (no 2D reshaping)
   conv_type: str = '3d'
+  # Choose from ['3d', '2d', '2plus3d']
+  # 3d: default 3D global average pooling.
+  # 2d: 2D global average pooling.
+  # 2plus3d: concatenation of 2D and 3D global average pooling.
+  se_type: str = '3d'
+  activation: str = 'swish'
+  gating_activation: str = 'sigmoid'
   stochastic_depth_drop_rate: float = 0.2
   use_external_states: bool = False
 
@@ -123,6 +130,7 @@ class MovinetModel(video_classification.VideoClassificationModel):
       norm_momentum=0.99,
       norm_epsilon=1e-3,
       use_sync_bn=True)
+  activation: str = 'swish'
   output_states: bool = False
 
 

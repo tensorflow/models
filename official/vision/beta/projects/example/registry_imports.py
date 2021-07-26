@@ -12,6 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Helper functions for running models in a distributed setting."""
-# pylint: disable=wildcard-import
-from official.common.distribute_utils import *
+"""All necessary imports for registration.
+
+Custom models, task, configs, etc need to be imported to registry so they can be
+picked up by the trainer. They can be included in this file so you do not need
+to handle each file separately.
+"""
+
+# pylint: disable=unused-import
+from official.common import registry_imports
+from official.vision.beta.projects.example import example_config
+from official.vision.beta.projects.example import example_input
+from official.vision.beta.projects.example import example_model
+from official.vision.beta.projects.example import example_task

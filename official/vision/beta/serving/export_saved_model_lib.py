@@ -27,6 +27,7 @@ from official.vision.beta import configs
 from official.vision.beta.serving import detection
 from official.vision.beta.serving import image_classification
 from official.vision.beta.serving import semantic_segmentation
+from official.vision.beta.serving import video_classification
 
 
 def export_inference_graph(
@@ -68,7 +69,7 @@ def export_inference_graph(
     output_checkpoint_directory = os.path.join(
         export_dir, export_checkpoint_subdir)
   else:
-    output_checkpoint_directory = export_dir
+    output_checkpoint_directory = None
 
   if export_saved_model_subdir:
     output_saved_model_directory = os.path.join(
@@ -99,6 +100,13 @@ def export_inference_graph(
           batch_size=batch_size,
           input_image_size=input_image_size,
           num_channels=num_channels)
+    elif isinstance(params.task,
+                    configs.video_classification.VideoClassificationTask):
+      export_module = video_classification.VideoClassificationModule(
+          params=params,
+          batch_size=batch_size,
+          input_image_size=input_image_size,
+          num_channels=num_channels)
     else:
       raise ValueError('Export module not implemented for {} task.'.format(
           type(params.task)))
@@ -111,6 +119,7 @@ def export_inference_graph(
       timestamped=False,
       save_options=save_options)
 
-  ckpt = tf.train.Checkpoint(model=export_module.model)
-  ckpt.save(os.path.join(output_checkpoint_directory, 'ckpt'))
+  if output_checkpoint_directory:
+    ckpt = tf.train.Checkpoint(model=export_module.model)
+    ckpt.save(os.path.join(output_checkpoint_directory, 'ckpt'))
   train_utils.serialize_config(params, export_dir)

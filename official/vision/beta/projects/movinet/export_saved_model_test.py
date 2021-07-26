@@ -48,7 +48,7 @@ class ExportSavedModelTest(tf.test.TestCase):
     example_input = tf.ones([1, 8, 172, 172, 3])
     outputs = model(example_input)
 
-    self.assertEqual(outputs.shape, [1, 600])
+    self.assertAllEqual(outputs.shape, [1, 600])
 
   def test_movinet_export_a0_stream_with_tfhub(self):
     saved_model_path = self.get_temp_dir()
@@ -94,9 +94,55 @@ class ExportSavedModelTest(tf.test.TestCase):
     for frame in frames:
       outputs, states = model({**states, 'image': frame})
 
-    self.assertEqual(outputs.shape, [1, 600])
+    self.assertAllEqual(outputs.shape, [1, 600])
     self.assertNotEmpty(states)
     self.assertAllClose(outputs, expected_outputs, 1e-5, 1e-5)
+
+  def test_movinet_export_a0_stream_with_tflite(self):
+    saved_model_path = self.get_temp_dir()
+
+    FLAGS.export_path = saved_model_path
+    FLAGS.model_id = 'a0'
+    FLAGS.causal = True
+    FLAGS.conv_type = '2plus1d'
+    FLAGS.se_type = '2plus3d'
+    FLAGS.activation = 'hard_swish'
+    FLAGS.gating_activation = 'hard_sigmoid'
+    FLAGS.use_positional_encoding = False
+    FLAGS.num_classes = 600
+    FLAGS.batch_size = 1
+    FLAGS.num_frames = 1
+    FLAGS.image_size = 172
+    FLAGS.bundle_input_init_states_fn = False
+
+    export_saved_model.main('unused_args')
+
+    converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_path)
+    tflite_model = converter.convert()
+
+    interpreter = tf.lite.Interpreter(model_content=tflite_model)
+    signature = interpreter.get_signature_runner()
+
+    def state_name(name: str) -> str:
+      return name[len('serving_default_'):-len(':0')]
+
+    init_states = {
+        state_name(x['name']): tf.zeros(x['shape'], dtype=x['dtype'])
+        for x in interpreter.get_input_details()
+    }
+    del init_states['image']
+
+    video = tf.ones([1, 8, 172, 172, 3])
+    clips = tf.split(video, video.shape[1], axis=1)
+
+    states = init_states
+    for clip in clips:
+      outputs = signature(**states, image=clip)
+      logits = outputs.pop('logits')
+      states = outputs
+
+    self.assertAllEqual(logits.shape, [1, 600])
+    self.assertNotEmpty(states)
 
 if __name__ == '__main__':
   tf.test.main()

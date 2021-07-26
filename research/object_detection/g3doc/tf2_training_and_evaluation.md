@@ -187,21 +187,28 @@ evaluation jobs for a few iterations [locally on their own machines](#local).
 
 ### Training with multiple GPUs
 
-A user can start a training job on Cloud AI Platform using the following
-command:
+A user can start a training job on Cloud AI Platform following the instruction
+https://cloud.google.com/ai-platform/training/docs/custom-containers-training.
 
 ```bash
+git clone https://github.com/tensorflow/models.git
+
 # From the tensorflow/models/research/ directory
-cp object_detection/packages/tf2/setup.py .
+cp object_detection/dockerfiles/tf2_ai_platform/Dockerfile .
+
+docker build -t gcr.io/${DOCKER_IMAGE_URI} .
+
+docker push gcr.io/${DOCKER_IMAGE_URI}
+```
+
+```bash
 gcloud ai-platform jobs submit training object_detection_`date +%m_%d_%Y_%H_%M_%S` \
-    --runtime-version 2.1 \
-    --python-version 3.6 \
     --job-dir=gs://${MODEL_DIR} \
-    --package-path ./object_detection \
-    --module-name object_detection.model_main_tf2 \
     --region us-central1 \
     --master-machine-type n1-highcpu-16 \
     --master-accelerator count=8,type=nvidia-tesla-v100 \
+    --master-image-uri gcr.io/${DOCKER_IMAGE_URI} \
+    --scale-tier CUSTOM \
     -- \
     --model_dir=gs://${MODEL_DIR} \
     --pipeline_config_path=gs://${PIPELINE_CONFIG_PATH}
@@ -210,15 +217,16 @@ gcloud ai-platform jobs submit training object_detection_`date +%m_%d_%Y_%H_%M_%
 Where `gs://${MODEL_DIR}` specifies the directory on Google Cloud Storage where
 the training checkpoints and events will be written to and
 `gs://${PIPELINE_CONFIG_PATH}` points to the pipeline configuration stored on
-Google Cloud Storage.
+Google Cloud Storage, and `gcr.io/${DOCKER_IMAGE_URI}` points to the docker
+image stored in Google Container Registry.
 
 Users can monitor the progress of their training job on the
 [ML Engine Dashboard](https://console.cloud.google.com/ai-platform/jobs).
 
 ### Training with TPU
 
-Launching a training job with a TPU compatible pipeline config requires using a
-similar command:
+Launching a training job with a TPU compatible pipeline config requires using
+the following command:
 
 ```bash
 # From the tensorflow/models/research/ directory
@@ -246,16 +254,11 @@ Evaluation jobs run on a single machine. Run the following command to start the
 evaluation job:
 
 ```bash
-# From the tensorflow/models/research/ directory
-cp object_detection/packages/tf2/setup.py .
 gcloud ai-platform jobs submit training object_detection_eval_`date +%m_%d_%Y_%H_%M_%S` \
-    --runtime-version 2.1 \
-    --python-version 3.6 \
     --job-dir=gs://${MODEL_DIR} \
-    --package-path ./object_detection \
-    --module-name object_detection.model_main_tf2 \
     --region us-central1 \
     --scale-tier BASIC_GPU \
+    --master-image-uri gcr.io/${DOCKER_IMAGE_URI} \
     -- \
     --model_dir=gs://${MODEL_DIR} \
     --pipeline_config_path=gs://${PIPELINE_CONFIG_PATH} \
@@ -264,8 +267,9 @@ gcloud ai-platform jobs submit training object_detection_eval_`date +%m_%d_%Y_%H
 
 where `gs://${MODEL_DIR}` points to the directory on Google Cloud Storage where
 training checkpoints are saved and `gs://{PIPELINE_CONFIG_PATH}` points to where
-the model configuration file stored on Google Cloud Storage. Evaluation events
-are written to `gs://${MODEL_DIR}/eval`
+the model configuration file stored on Google Cloud Storage, and
+`gcr.io/${DOCKER_IMAGE_URI}` points to the docker image stored in Google
+Container Registry. Evaluation events are written to `gs://${MODEL_DIR}/eval`
 
 Typically one starts an evaluation job concurrently with the training job. Note
 that we do not support running evaluation on TPU.

@@ -43,6 +43,9 @@ S12: KernelSize = (1, 2, 2)
 S22: KernelSize = (2, 2, 2)
 S21: KernelSize = (2, 1, 1)
 
+# Type for a state container (map)
+TensorMap = Mapping[str, tf.Tensor]
+
 
 @dataclasses.dataclass
 class BlockSpec:
@@ -307,8 +310,10 @@ class Movinet(tf.keras.Model):
                causal: bool = False,
                use_positional_encoding: bool = False,
                conv_type: str = '3d',
+               se_type: str = '3d',
                input_specs: Optional[tf.keras.layers.InputSpec] = None,
                activation: str = 'swish',
+               gating_activation: str = 'sigmoid',
                use_sync_bn: bool = True,
                norm_momentum: float = 0.99,
                norm_epsilon: float = 0.001,
@@ -317,6 +322,7 @@ class Movinet(tf.keras.Model):
                bias_regularizer: Optional[str] = None,
                stochastic_depth_drop_rate: float = 0.,
                use_external_states: bool = False,
+               output_states: bool = True,
                **kwargs):
     """MoViNet initialization function.
 
@@ -332,8 +338,13 @@ class Movinet(tf.keras.Model):
         3x3 followed by 5x1 conv). '3d_2plus1d' uses (2+1)D convolution with
         Conv3D and no 2D reshaping (e.g., a 5x3x3 kernel becomes 1x3x3 followed
         by 5x1x1 conv).
+      se_type: '3d', '2d', or '2plus3d'. '3d' uses the default 3D
+          spatiotemporal global average pooling for squeeze excitation. '2d'
+          uses 2D spatial global average pooling  on each frame. '2plus3d'
+          concatenates both 3D and 2D global average pooling.
       input_specs: the model input spec to use.
-      activation: name of the activation function.
+      activation: name of the main activation function.
+      gating_activation: gating activation to use in squeeze excitation layers.
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: normalization momentum for the moving average.
       norm_epsilon: small float added to variance to avoid dividing by
@@ -346,6 +357,10 @@ class Movinet(tf.keras.Model):
       stochastic_depth_drop_rate: the base rate for stochastic depth.
       use_external_states: if True, expects states to be passed as additional
         input.
+      output_states: if True, output intermediate states that can be used to run
+          the model in streaming mode. Inputting the output states of the
+          previous input clip with the current input clip will utilize a stream
+          buffer for streaming video.
       **kwargs: keyword arguments to be passed.
     """
     block_specs = BLOCK_SPECS[model_id]
@@ -354,15 +369,19 @@ class Movinet(tf.keras.Model):
 
     if conv_type not in ('3d', '2plus1d', '3d_2plus1d'):
       raise ValueError('Unknown conv type: {}'.format(conv_type))
+    if se_type not in ('3d', '2d', '2plus3d'):
+      raise ValueError('Unknown squeeze excitation type: {}'.format(se_type))
 
     self._model_id = model_id
     self._block_specs = block_specs
     self._causal = causal
     self._use_positional_encoding = use_positional_encoding
     self._conv_type = conv_type
+    self._se_type = se_type
     self._input_specs = input_specs
     self._use_sync_bn = use_sync_bn
     self._activation = activation
+    self._gating_activation = gating_activation
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     if use_sync_bn:
@@ -374,6 +393,7 @@ class Movinet(tf.keras.Model):
     self._bias_regularizer = bias_regularizer
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
     self._use_external_states = use_external_states
+    self._output_states = output_states
 
     if self._use_external_states and not self._causal:
       raise ValueError('External states should be used with causal mode.')
@@ -400,8 +420,7 @@ class Movinet(tf.keras.Model):
       self,
       input_specs: tf.keras.layers.InputSpec,
       state_specs: Optional[Mapping[str, tf.keras.layers.InputSpec]] = None,
-  ) -> Tuple[Mapping[str, tf.keras.Input], Tuple[Mapping[str, tf.Tensor],
-                                                 Mapping[str, tf.Tensor]]]:
+  ) -> Tuple[TensorMap, Union[TensorMap, Tuple[TensorMap, TensorMap]]]:
     """Builds the model network.
 
     Args:
@@ -412,7 +431,7 @@ class Movinet(tf.keras.Model):
     Returns:
       Inputs and outputs as a tuple. Inputs are expected to be a dict with
       base input and states. Outputs are expected to be a dict of endpoints
-      and output states.
+      and (optional) output states.
     """
     state_specs = state_specs if state_specs is not None else {}
 
@@ -475,10 +494,12 @@ class Movinet(tf.keras.Model):
               strides=strides,
               causal=self._causal,
               activation=self._activation,
+              gating_activation=self._gating_activation,
               stochastic_depth_drop_rate=stochastic_depth_drop_rate,
               conv_type=self._conv_type,
-              use_positional_encoding=self._use_positional_encoding and
-              self._causal,
+              se_type=self._se_type,
+              use_positional_encoding=
+              self._use_positional_encoding and self._causal,
               kernel_initializer=self._kernel_initializer,
               kernel_regularizer=self._kernel_regularizer,
               batch_norm_layer=self._norm,
@@ -506,7 +527,7 @@ class Movinet(tf.keras.Model):
       else:
         raise ValueError('Unknown block type {}'.format(block))
 
-    outputs = (endpoints, states)
+    outputs = (endpoints, states) if self._output_states else endpoints
 
     return inputs, outputs
 
@@ -666,6 +687,8 @@ class Movinet(tf.keras.Model):
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
         'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
+        'use_external_states': self._use_external_states,
+        'output_states': self._output_states,
     }
     return config_dict
 
@@ -691,8 +714,10 @@ def build_movinet(
       causal=backbone_cfg.causal,
       use_positional_encoding=backbone_cfg.use_positional_encoding,
       conv_type=backbone_cfg.conv_type,
+      se_type=backbone_cfg.se_type,
       input_specs=input_specs,
-      activation=norm_activation_config.activation,
+      activation=backbone_cfg.activation,
+      gating_activation=backbone_cfg.gating_activation,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,

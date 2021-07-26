@@ -15,7 +15,7 @@
 """Multitask training driver library."""
 # pytype: disable=attribute-error
 import os
-from typing import Optional
+from typing import List, Optional
 from absl import logging
 import orbit
 import tensorflow as tf
@@ -69,9 +69,11 @@ def run_experiment(*, distribution_strategy: tf.distribute.Strategy,
     trainer = TRAINERS[params.trainer.trainer_type](
         **kwargs) if is_training else None
     if is_eval:
+      eval_steps = task.task_eval_steps
       evaluator = evaluator_lib.MultiTaskEvaluator(
-          task=task,
+          eval_tasks=task.tasks.values(),
           model=model,
+          eval_steps=eval_steps,
           global_step=trainer.global_step if is_training else None,
           checkpoint_exporter=train_utils.maybe_create_best_ckpt_exporter(
               params, model_dir))
@@ -137,7 +139,7 @@ def run_experiment_with_multitask_eval(
     *,
     distribution_strategy: tf.distribute.Strategy,
     train_task: base_task.Task,
-    eval_tasks: multitask.MultiTask,
+    eval_tasks: List[base_task.Task],
     mode: str,
     params: configs.MultiEvalExperimentConfig,
     model_dir: str,
@@ -149,7 +151,7 @@ def run_experiment_with_multitask_eval(
   Args:
     distribution_strategy: A distribution distribution_strategy.
     train_task: A base_task.Task instance.
-    eval_tasks: A multitask.MultiTask with evaluation tasks.
+    eval_tasks: A list of evaluation tasks.
     mode: A 'str', specifying the mode. Can be 'train', 'eval', 'train_and_eval'
       or 'continuous_eval'.
     params: MultiEvalExperimentConfig instance.
@@ -173,8 +175,8 @@ def run_experiment_with_multitask_eval(
           config=params,
           task=train_task,
           model=train_task.build_model(),
-          optimizer=train_task.create_optimizer(
-              params.trainer.optimizer_config, params.runtime),
+          optimizer=train_task.create_optimizer(params.trainer.optimizer_config,
+                                                params.runtime),
           train=True,
           evaluate=False)
     else:
@@ -182,10 +184,14 @@ def run_experiment_with_multitask_eval(
     model = trainer.model if trainer else train_task.build_model()
 
     if is_eval:
+      eval_steps = dict([(task_routine.task_config.name,
+                          task_routine.eval_steps)
+                         for task_routine in params.eval_tasks])
       evaluator = evaluator_lib.MultiTaskEvaluator(
-          task=eval_tasks,
+          eval_tasks=eval_tasks,
           model=model,
           global_step=trainer.global_step if is_training else None,
+          eval_steps=eval_steps,
           checkpoint_exporter=train_utils.maybe_create_best_ckpt_exporter(
               params, model_dir))
     else:

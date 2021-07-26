@@ -1,4 +1,4 @@
-# --experiment_type=retinanet_spinenet_mobile_coco
+# --experiment_type=retinanet_mobile_coco
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
@@ -47,7 +47,7 @@ trainer:
   optimizer_config:
     learning_rate:
       stepwise:
-        boundaries: [265650, 272580]
+        boundaries: [263340, 272580]
         values: [0.32, 0.032, 0.0032]
       type: 'stepwise'
     warmup:

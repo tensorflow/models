@@ -187,8 +187,9 @@ message CenterNet {
     // vicinity of each regressed keypoint.
     optional float candidate_search_scale = 15 [default = 0.3];
 
-    // One of ['min_distance', 'score_distance_ratio'] indicating how to select
-    // the keypoint candidate.
+    // One of ['min_distance', 'score_distance_ratio',
+    // 'score_scaled_distance_ratio', 'gaussian_weighted'] indicating how to
+    // select the keypoint candidate.
     optional string candidate_ranking_mode = 16 [default = "min_distance"];
 
     // The score distance ratio offset, only used if candidate_ranking_mode is
@@ -196,6 +197,28 @@ message CenterNet {
     // distance ratio, defined as:
     // keypoint_score / (distance + score_distance_offset)
     optional float score_distance_offset = 22 [default = 1.0];
+
+    // A scalar used to multiply the bounding box size to be used as the offset
+    // in the score-to-distance-ratio formula. Only applicable when the
+    // candidate_ranking_mode is score_scaled_distance_ratio.
+    // The keypoint candidates are ranked using the formula:
+    //   ranking_score = score / (distance + offset)
+    // where 'score' is the keypoint heatmap scores, 'distance' is the distance
+    // between the heatmap peak location and the regressed joint location,
+    // 'offset' is a function of the predicted bounding box:
+    //   offset = max(bbox height, bbox width) * score_distance_multiplier
+    optional float score_distance_multiplier = 28 [default = 0.1];
+
+    // A scalar used to multiply the Gaussian standard deviation to control the
+    // Gaussian kernel which is used to weight the candidates. Only applicable
+    // when the candidate_ranking_mode is gaussian_weighted.
+    // The keypoint candidates are ranked using the formula:
+    //   scores * exp((-distances^2) / (2 * sigma^2))
+    // where 'distances' is the distance between the heatmap peak location and
+    // the regressed joint location and 'sigma' is the Gaussian standard
+    // deviation used in generating the Gaussian heatmap target multiplied by the
+    // 'std_dev_multiplier'.
+    optional float std_dev_multiplier = 29 [default = 1.0];
 
     // The radius (in the unit of output pixel) around heatmap peak to assign
     // the offset targets. If set 0, then the offset target will only be
@@ -237,6 +260,11 @@ message CenterNet {
     // where o is the object score, s_i is the score for keypoint i, and k is
     // the number of keypoints for that class.
     optional bool rescore_instances = 24 [default = false];
+
+    // A scalar used when "rescore_instances" is set to True. The detection
+    // score of an instance is set to be the average score among those keypoints
+    // with scores higher than the threshold.
+    optional float rescoring_threshold = 30 [default = 0.0];
 
     // Parameters to determine the architecture of the keypoint heatmap
     // prediction head.
@@ -418,6 +446,10 @@ message CenterNet {
     // The mode for jitterting box ROIs. See RandomJitterBoxes in
     // preprocessor.proto for more details
     optional RandomJitterBoxes.JitterMode jitter_mode = 15 [default=DEFAULT];
+
+    // Weight for the box consistency loss as described in the BoxInst paper
+    // https://arxiv.org/abs/2012.02310
+    optional float box_consistency_loss_weight = 16 [default=0.0];
   }
 
   optional DeepMACMaskEstimation deepmac_mask_estimation = 14;
@@ -465,4 +497,5 @@ message CenterNetFeatureExtractor {
   // can be on of 'nearest' or 'bilinear'.
   optional string upsampling_interpolation = 11 [default = 'nearest'];
 }
+
 

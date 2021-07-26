@@ -16,7 +16,6 @@
 
 from typing import Any, List, Mapping, Optional, Union
 
-# Import libraries
 import tensorflow as tf
 
 from official.vision.beta.ops import anchor
@@ -147,14 +146,18 @@ class MaskRCNNModel(tf.keras.Model):
     model_outputs = {}
 
     # Feature extraction.
-    features = self.backbone(images)
+    backbone_features = self.backbone(images)
     if self.decoder:
-      features = self.decoder(features)
+      features = self.decoder(backbone_features)
+    else:
+      features = backbone_features
 
     # Region proposal network.
     rpn_scores, rpn_boxes = self.rpn_head(features)
 
     model_outputs.update({
+        'backbone_features': backbone_features,
+        'decoder_features': features,
         'rpn_boxes': rpn_boxes,
         'rpn_scores': rpn_scores
     })

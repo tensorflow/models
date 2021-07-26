@@ -12,80 +12,124 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
-"""Contains the factory method to create decoders."""
+"""Decoder registers and factory method.
 
-from typing import Mapping, Optional
+One can register a new decoder model by the following two steps:
+
+1 Import the factory and register the build in the decoder file.
+2 Import the decoder class and add a build in __init__.py.
+
+```
+# my_decoder.py
+
+from modeling.decoders import factory
+
+class MyDecoder():
+  ...
+
+@factory.register_decoder_builder('my_decoder')
+def build_my_decoder():
+  return MyDecoder()
+
+# decoders/__init__.py adds import
+from modeling.decoders.my_decoder import MyDecoder
+```
+
+If one wants the MyDecoder class to be used only by those binary
+then don't imported the decoder module in decoders/__init__.py, but import it
+in place that uses it.
+"""
+from typing import Any, Callable, Mapping, Optional, Union
 
 # Import libraries
 
 import tensorflow as tf
 
+from official.core import registry
 from official.modeling import hyperparams
-from official.vision.beta.modeling import decoders
+
+_REGISTERED_DECODER_CLS = {}
+
+
+def register_decoder_builder(key: str) -> Callable[..., Any]:
+  """Decorates a builder of decoder class.
+
+  The builder should be a Callable (a class or a function).
+  This decorator supports registration of decoder builder as follows:
+
+  ```
+  class MyDecoder(tf.keras.Model):
+    pass
+
+  @register_decoder_builder('mydecoder')
+  def builder(input_specs, config, l2_reg):
+    return MyDecoder(...)
+
+  # Builds a MyDecoder object.
+  my_decoder = build_decoder_3d(input_specs, config, l2_reg)
+  ```
+
+  Args:
+    key: A `str` of key to look up the builder.
+
+  Returns:
+    A callable for using as class decorator that registers the decorated class
+    for creation from an instance of task_config_cls.
+  """
+  return registry.register(_REGISTERED_DECODER_CLS, key)
+
+
+@register_decoder_builder('identity')
+def build_identity(
+    input_specs: Optional[Mapping[str, tf.TensorShape]] = None,
+    model_config: Optional[hyperparams.Config] = None,
+    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None) -> None:
+  """Builds identity decoder from a config.
+
+  All the input arguments are not used by identity decoder but kept here to
+  ensure the interface is consistent.
+
+  Args:
+    input_specs: A `dict` of input specifications. A dictionary consists of
+      {level: TensorShape} from a backbone.
+    model_config: A `OneOfConfig` of model config.
+    l2_regularizer: A `tf.keras.regularizers.Regularizer` object. Default to
+      None.
+
+  Returns:
+    An instance of the identity decoder.
+  """
+  del input_specs, model_config, l2_regularizer  # Unused by identity decoder.
 
 
 def build_decoder(
     input_specs: Mapping[str, tf.TensorShape],
     model_config: hyperparams.Config,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
-) -> tf.keras.Model:
+    l2_regularizer: tf.keras.regularizers.Regularizer = None,
+    **kwargs) -> Union[None, tf.keras.Model, tf.keras.layers.Layer]:
   """Builds decoder from a config.
+
+  A decoder can be a keras.Model, a keras.layers.Layer, or None. If it is not
+  None, the decoder will take features from the backbone as input and generate
+  decoded feature maps. If it is None, such as an identity decoder, the decoder
+  is skipped and features from the backbone are regarded as model output.
 
   Args:
     input_specs: A `dict` of input specifications. A dictionary consists of
       {level: TensorShape} from a backbone.
-    model_config: A OneOfConfig. Model config.
-    l2_regularizer: A `tf.keras.regularizers.Regularizer` instance. Default to
+    model_config: A `OneOfConfig` of model config.
+    l2_regularizer: A `tf.keras.regularizers.Regularizer` object. Default to
       None.
+    **kwargs: Additional keyword args to be passed to decoder builder.
 
   Returns:
-    A `tf.keras.Model` instance of the decoder.
+    An instance of the decoder.
   """
-  decoder_type = model_config.decoder.type
-  decoder_cfg = model_config.decoder.get()
-  norm_activation_config = model_config.norm_activation
+  decoder_builder = registry.lookup(_REGISTERED_DECODER_CLS,
+                                    model_config.decoder.type)
 
-  if decoder_type == 'identity':
-    decoder = None
-  elif decoder_type == 'fpn':
-    decoder = decoders.FPN(
-        input_specs=input_specs,
-        min_level=model_config.min_level,
-        max_level=model_config.max_level,
-        num_filters=decoder_cfg.num_filters,
-        use_separable_conv=decoder_cfg.use_separable_conv,
-        activation=norm_activation_config.activation,
-        use_sync_bn=norm_activation_config.use_sync_bn,
-        norm_momentum=norm_activation_config.norm_momentum,
-        norm_epsilon=norm_activation_config.norm_epsilon,
-        kernel_regularizer=l2_regularizer)
-  elif decoder_type == 'nasfpn':
-    decoder = decoders.NASFPN(
-        input_specs=input_specs,
-        min_level=model_config.min_level,
-        max_level=model_config.max_level,
-        num_filters=decoder_cfg.num_filters,
-        num_repeats=decoder_cfg.num_repeats,
-        use_separable_conv=decoder_cfg.use_separable_conv,
-        activation=norm_activation_config.activation,
-        use_sync_bn=norm_activation_config.use_sync_bn,
-        norm_momentum=norm_activation_config.norm_momentum,
-        norm_epsilon=norm_activation_config.norm_epsilon,
-        kernel_regularizer=l2_regularizer)
-  elif decoder_type == 'aspp':
-    decoder = decoders.ASPP(
-        level=decoder_cfg.level,
-        dilation_rates=decoder_cfg.dilation_rates,
-        num_filters=decoder_cfg.num_filters,
-        pool_kernel_size=decoder_cfg.pool_kernel_size,
-        dropout_rate=decoder_cfg.dropout_rate,
-        use_sync_bn=norm_activation_config.use_sync_bn,
-        norm_momentum=norm_activation_config.norm_momentum,
-        norm_epsilon=norm_activation_config.norm_epsilon,
-        activation=norm_activation_config.activation,
-        kernel_regularizer=l2_regularizer)
-  else:
-    raise ValueError('Decoder {!r} not implement'.format(decoder_type))
-
-  return decoder
+  return decoder_builder(
+      input_specs=input_specs,
+      model_config=model_config,
+      l2_regularizer=l2_regularizer,
+      **kwargs)

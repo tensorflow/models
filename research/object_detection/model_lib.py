@@ -448,9 +448,8 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
     tf.keras.backend.set_learning_phase(is_training)
     # Set policy for mixed-precision training with Keras-based models.
     if use_tpu and train_config.use_bfloat16:
-      from tensorflow.python.keras.engine import base_layer_utils  # pylint: disable=g-import-not-at-top
       # Enable v2 behavior, as `mixed_bfloat16` is only supported in TF 2.0.
-      base_layer_utils.enable_v2_dtype_behavior()
+      tf.keras.layers.enable_v2_dtype_behavior()
       tf2.keras.mixed_precision.set_global_policy('mixed_bfloat16')
     detection_model = detection_model_fn(
         is_training=is_training, add_summaries=(not use_tpu))
