@@ -55,7 +55,6 @@ class BASNetLoss:
     total_loss = total_loss / len(levels)
 
     return total_loss
-    
 
   def _iou_loss(self, sigmoids, labels):
     total_iou_loss = 0
@@ -66,7 +65,3 @@ class BASNetLoss:
     total_iou_loss += 1-IoU
 
     return total_iou_loss
-
-
-
-

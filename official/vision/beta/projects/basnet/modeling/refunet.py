@@ -13,7 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 
-# Import libraries
 import tensorflow as tf
 from official.vision.beta.projects.basnet.modeling.layers import nn_blocks
 

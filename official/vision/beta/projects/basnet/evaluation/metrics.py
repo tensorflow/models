@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""
+"""Evaluation metrics for BASNet.
 
 The MAE and maxFscore implementations are a modified version of
 https://github.com/xuebinqin/Binary-Segmentation-Evaluation-Tool

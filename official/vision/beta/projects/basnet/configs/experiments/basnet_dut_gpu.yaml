@@ -3,7 +3,7 @@ runtime:
   mixed_precision_dtype: 'float32'
   num_gpus: 8
 task:
-  init_checkpoint: '/home/gunho1123/ckpt/ckpt_encoder_wbias01'
+  init_checkpoint: 'gs://cloud-basnet-checkpoints/basnet_encoder_imagenet/ckpt-340306'
   init_checkpoint_modules: 'backbone'
   train_data:
     dtype: 'float32'
