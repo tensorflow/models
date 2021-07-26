@@ -50,6 +50,34 @@ def yxyx_to_xywh(boxes):
   return new_boxes
 
 
+def yxyx_to_cycxhw(boxes):
+  """Converts box corner coordinates to center plus height and width terms.
+
+  Args:
+    boxes: a `Tensor` with last dimension of 4, representing the coordinates of
+      boxes in ymin, xmin, ymax, xmax order.
+
+  Returns:
+    boxes: a `Tensor` with the same shape as the inputted boxes, in the format
+      of cy, cx, height, width.
+
+  Raises:
+    ValueError: if the last dimension of boxes is not 4.
+  """
+  if boxes.shape[-1] != 4:
+    raise ValueError('Last dimension of boxes must be 4 but is {:d}'.format(
+        boxes.shape[-1]))
+
+  boxes_ycenter = (boxes[..., 0] + boxes[..., 2]) / 2
+  boxes_xcenter = (boxes[..., 1] + boxes[..., 3]) / 2
+  boxes_height = boxes[..., 2] - boxes[..., 0]
+  boxes_width = boxes[..., 3] - boxes[..., 1]
+
+  new_boxes = tf.stack(
+      [boxes_ycenter, boxes_xcenter, boxes_height, boxes_width], axis=-1)
+  return new_boxes
+
+
 def jitter_boxes(boxes, noise_scale=0.025):
   """Jitter the box coordinates by some noise distribution.
 
