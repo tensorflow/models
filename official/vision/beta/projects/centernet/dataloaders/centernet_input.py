@@ -36,6 +36,13 @@ class CenterNetParser(parser.Parser):
                image_h: int = 512,
                max_num_instances: int = 128,
                bgr_ordering: bool = True,
+               aug_rand_hflip=True,
+               aug_scale_min=1.0,
+               aug_scale_max=1.0,
+               aug_rand_saturation=False,
+               aug_rand_brightness=False,
+               aug_rand_zoom=False,
+               aug_rand_hue=False,
                channel_means: List[float] = CHANNEL_MEANS,
                channel_stds: List[float] = CHANNEL_STDS,
                dtype: str = 'float32'):
@@ -47,6 +54,18 @@ class CenterNetParser(parser.Parser):
         in an image.
       bgr_ordering: `bool`, if set will change the channel ordering to be in the
         [blue, red, green] order.
+      aug_rand_hflip: `bool`, if True, augment training with random horizontal
+        flip.
+      aug_scale_min: `float`, the minimum scale applied to `output_size` for
+        data augmentation during training.
+      aug_scale_max: `float`, the maximum scale applied to `output_size` for
+        data augmentation during training.
+      aug_rand_saturation: `bool`, if True, augment training with random
+        saturation.
+      aug_rand_brightness: `bool`, if True, augment training with random
+        brightness.
+      aug_rand_zoom: `bool`, if True, augment training with random zoom.
+      aug_rand_hue: `bool`, if True, augment training with random hue.
       channel_means: A tuple of floats, denoting the mean of each channel
         which will be subtracted from it.
       channel_stds: A tuple of floats, denoting the standard deviation of each
@@ -70,6 +89,15 @@ class CenterNetParser(parser.Parser):
       raise Exception(
           'Unsupported datatype used in parser only '
           '{float16, bfloat16, or float32}')
+    
+    # Data augmentation.
+    self._aug_rand_hflip = aug_rand_hflip
+    self._aug_scale_min = aug_scale_min
+    self._aug_scale_max = aug_scale_max
+    self._aug_rand_saturation = aug_rand_saturation
+    self._aug_rand_brightness = aug_rand_brightness
+    self._aug_rand_zoom = aug_rand_zoom
+    self._aug_rand_hue = aug_rand_hue
   
   def _build_label(self,
                    image,
@@ -125,6 +153,9 @@ class CenterNetParser(parser.Parser):
   
   def _parse_train_data(self, data):
     """Generates images and labels that are usable for model training.
+    
+    We use random flip, random scaling (between 0.6 to 1.3), cropping,
+    and color jittering as data augmentation
 
     Args:
         data: the decoded tensor dictionary from TfExampleDecoder.
@@ -140,6 +171,33 @@ class CenterNetParser(parser.Parser):
     
     image, boxes, info = centernet_preprocess_ops.letter_box(
         image=image, boxes=boxes, xs=0.5, ys=0.5, target_dim=self._image_w)
+    
+    if self._aug_rand_hflip:
+      image, boxes, _ = preprocess_ops.random_horizontal_flip(image, boxes)
+    
+    # Resizes and crops image.
+    image, image_info = preprocess_ops.resize_and_crop_image(
+        image,
+        [self._image_w, self._image_h],
+        padded_size=[self._image_w, self._image_h],
+        aug_scale_min=self._aug_scale_min,
+        aug_scale_max=self._aug_scale_max)
+    
+    # Resizes and crops boxes.
+    image_scale = image_info[2, :]
+    offset = image_info[3, :]
+    boxes = preprocess_ops.resize_and_crop_boxes(boxes, image_scale,
+                                                 image_info[1, :], offset)
+    
+    # Color and lighting jittering
+    if self._aug_rand_brightness:
+      image = tf.image.random_brightness(
+          image=image, max_delta=.1)  # Brightness
+    if self._aug_rand_saturation:
+      image = tf.image.random_saturation(
+          image=image, lower=0.75, upper=1.25)  # Saturation
+    if self._aug_rand_hue:
+      image = tf.image.random_hue(image=image, max_delta=.3)  # Hue
     
     image, labels = self._build_label(
         image=image,
