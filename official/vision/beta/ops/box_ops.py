@@ -78,6 +78,32 @@ def yxyx_to_cycxhw(boxes):
   return new_boxes
 
 
+def cycxhw_to_yxyx(boxes):
+  """Converts box center coordinates plus height and width terms to corner.
+
+  Args:
+    boxes: a numpy array whose last dimension is 4 representing the coordinates
+      of boxes in cy, cx, height, width order.
+
+  Returns:
+    boxes: a numpy array whose shape is the same as `boxes` in new format.
+
+  Raises:
+    ValueError: If the last dimension of boxes is not 4.
+  """
+  if boxes.shape[-1] != 4:
+    raise ValueError(
+        'boxes.shape[-1] is {:d}, but must be 4.'.format(boxes.shape[-1]))
+
+  boxes_ymin = boxes[..., 0] - boxes[..., 2] / 2
+  boxes_xmin = boxes[..., 1] - boxes[..., 3] / 2
+  boxes_ymax = boxes[..., 0] + boxes[..., 2] / 2
+  boxes_xmax = boxes[..., 1] + boxes[..., 3] / 2
+  new_boxes = tf.stack([
+      boxes_ymin, boxes_xmin, boxes_ymax, boxes_xmax], axis=-1)
+  return new_boxes
+
+
 def jitter_boxes(boxes, noise_scale=0.025):
   """Jitter the box coordinates by some noise distribution.
 
