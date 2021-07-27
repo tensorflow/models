@@ -139,7 +139,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         max_num_instances=params.parser.max_num_instances,
         mask_crop_size=params.parser.mask_crop_size,
         segmentation_resize_eval_groundtruth=params.parser
-        .resize_eval_segmentation_groundtruth,
+        .segmentation_resize_eval_groundtruth,
         segmentation_groundtruth_padded_size=params.parser
         .segmentation_groundtruth_padded_size,
         segmentation_ignore_label=params.parser.segmentation_ignore_label)
@@ -227,7 +227,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
           per_category_metrics=self.task_config.per_category_metrics)
 
       rescale_predictions = (not self.task_config.validation_data.parser
-                             .resize_eval_segmentation_groundtruth)
+                             .segmentation_resize_eval_groundtruth)
       self.segmentation_perclass_iou_metric = segmentation_metrics.PerClassIoU(
           name='per_class_iou',
           num_classes=self.task_config.model.num_classes,

@@ -28,11 +28,11 @@ from official.vision.beta.configs import semantic_segmentation
 
 @dataclasses.dataclass
 class Parser(maskrcnn.Parser):
-  # If resize_eval_segmentation_groundtruth is set to False, original image
+  # If segmentation_resize_eval_groundtruth is set to False, original image
   # sizes are used for eval. In that case,
   # segmentation_groundtruth_padded_size has to be specified too to allow for
   # batching the variable input sizes of images.
-  resize_eval_segmentation_groundtruth: bool = True
+  segmentation_resize_eval_groundtruth: bool = True
   segmentation_groundtruth_padded_size: List[int] = dataclasses.field(
       default_factory=list)
   segmentation_ignore_label: int = 255
