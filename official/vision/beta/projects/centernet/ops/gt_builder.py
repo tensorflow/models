@@ -34,12 +34,13 @@ def build_heatmap_and_regressed_features(labels,
   generated.
 
   Args:
-    labels: A dictionary of COCO ground truth labels with at minimum the following fields:
-      bbox: A `Tensor` of shape [max_num_instances, num_boxes, 4], where the last dimension
-        corresponds to the top left x, top left y, bottom right x, and
-        bottom left y coordinates of the bounding box
-      classes: A `Tensor` of shape [max_num_instances, num_boxes] that contains the class of each
-        box, given in the same order as the boxes
+    labels: A dictionary of COCO ground truth labels with at minimum the
+      following fields:
+    bbox: A `Tensor` of shape [max_num_instances, num_boxes, 4], where the
+      last dimension corresponds to the top left x, top left y, bottom right x,
+      and bottom left y coordinates of the bounding box
+    classes: A `Tensor` of shape [max_num_instances, num_boxes] that contains the class of each
+      box, given in the same order as the boxes
       num_detections: A `Tensor` or int that gives the number of objects in the image
     output_size: A `list` of length 2 containing the desired output height
       and width of the heatmaps

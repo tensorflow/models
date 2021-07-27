@@ -139,9 +139,9 @@ class CenterNetParser(parser.Parser):
     
     labels = {
         'source_id': utils.process_source_id(data['source_id']),
-        'bbox': tf.cast(boxes, self._dtype),
-        'classes': tf.cast(classes, self._dtype),
-        'area': tf.cast(area, self._dtype),
+        'bbox': boxes,
+        'classes': classes,
+        'area': area,
         'is_crowd': is_crowd,
         'width': width,
         'height': height,
@@ -178,8 +178,8 @@ class CenterNetParser(parser.Parser):
     # Resizes and crops image.
     image, image_info = preprocess_ops.resize_and_crop_image(
         image,
-        [self._image_w, self._image_h],
-        padded_size=[self._image_w, self._image_h],
+        [self._image_h, self._image_w],
+        padded_size=[self._image_h, self._image_w],
         aug_scale_min=self._aug_scale_min,
         aug_scale_max=self._aug_scale_max)
     

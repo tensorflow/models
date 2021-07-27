@@ -48,8 +48,6 @@ class DataDecoder(hyperparams.OneOfConfig):
 # dataset parser
 @dataclasses.dataclass
 class Parser(hyperparams.Config):
-  image_w: int = 512
-  image_h: int = 512
   max_num_instances: int = 128
   bgr_ordering: bool = True
   channel_means: List[int] = dataclasses.field(
@@ -90,7 +88,6 @@ class SegmentationLoss(hyperparams.Config):
 class Losses(hyperparams.Config):
   detection: DetectionLoss = DetectionLoss()
   segmentation: SegmentationLoss = SegmentationLoss()
-  output_dims: int = 128
   use_gaussian_bump: bool = True
   gaussian_rad: int = -1
   gaussian_iou: float = 0.7

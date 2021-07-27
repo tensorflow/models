@@ -67,8 +67,8 @@ class CenterNetTask(base_task.Task):
             params.decoder.type))
     
     parser = centernet_input.CenterNetParser(
-        image_w=params.parser.image_w,
-        image_h=params.parser.image_h,
+        image_w=self.task_config.model.input_size[1],
+        image_h=self.task_config.model.input_size[0],
         max_num_instances=params.parser.max_num_instances,
         bgr_ordering=params.parser.bgr_ordering,
         channel_means=params.parser.channel_means,

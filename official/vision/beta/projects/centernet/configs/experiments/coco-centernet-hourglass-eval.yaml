@@ -5,19 +5,16 @@ runtime:
   num_gpus: 1
 task:
   model:
-    base: 
-      backbone:
-        type: hourglass
-      decoder:
-        heatmap_bias: -2.19
-      odapi_weights: 'D:\\weights\centernet_hg104_512x512_coco17_tpu-8/checkpoint'
-      # odapi_weights: '/home/cam2tensorflow/centernet_hg104_512x512_coco17_tpu-8/checkpoint'
-      # extremenet_weights: 'D:\\weights\extremenet'
-      backbone_name: hourglass104_512
-      decoder_name: detection_2d
     num_classes: 90
-    _input_size: [512, 512, 3] # null
-    filter:
+    input_size: [512, 512, 3] # null
+    backbone:
+      type: hourglass
+      hourglass:
+        model_id: 52
+        num_hourglasses: 2
+    head:
+      heatmap_bias: -2.19
+    detection_generator:
       max_detections: 100
       peak_error: 0.000001
       peak_extract_kernel_size: 3
@@ -25,33 +22,11 @@ task:
       center_thresh: 0.1
       iou_thresh: 0.4
       class_offset: 1
-  validation_data:
-    # input_path: 'gs://tensorflow2/coco_records/val/2017*'
-    tfds_data_dir: 'D:\\Datasets'
-    tfds_name: coco/2017
-    tfds_split: validation
-    global_batch_size: 8
-    tfds_download: true
-    dtype: float16
-    is_training: false
-    drop_remainder: true
-    parser:
-      image_h: 512
-      image_w: 512
-      num_classes: 90
-      max_num_instances: 128
-      use_gaussian_bump: true
-      gaussian_rad: -1
-      gaussian_iou: 0.7
-      output_dims: 128
-      dtype: float32
-    shuffle_buffer_size: 10000
   subtasks:
     detection:
       use_centers: true
       use_corners: false
       predict_3d: false
-    segmentation: false
   losses:
     detection:
       detection_weight: 1.0
@@ -59,13 +34,29 @@ task:
       corner_push_weight: 0.1
       offset_weight: 1.0
     segmentation:
+    use_gaussian_bump: true
+    gaussian_rad: -1
+    gaussian_iou: 0.7
   per_category_metrics: false
   weight_decay: 0.0005
-  init_checkpoint: ''
-  annotation_file: null
   gradient_clip_norm: 0.0
-  load_odapi_weights: true
-  load_extremenet_weights: false
+  init_checkpoint: 'gs://tf_datasets_miracle/checkpoints/centernet_hg104_512x512_coco17_tpu-8/checkpoint'
+  init_checkpoint_source: 'ODAPI'
+  annotation_file: null
+  checkpoint_backbone_name: 'hourglass104_512'
+  checkpoint_head_name: 'detection_2d'
+  validation_data:
+    tfds_name: 'coco/2017'
+    tfds_split: 'validation'
+    drop_remainder: true
+    dtype: 'float16'
+    global_batch_size: 8
+    input_path: ''
+    is_training: false
+    parser:
+      num_classes: 90
+      max_num_instances: 128
+    shuffle_buffer_size: 10000
 trainer:
   train_steps: 10000 # 160 epochs at 64 batchsize -> 500500 * 64/16
   validation_steps: 625 # 5063 #625
@@ -78,13 +69,11 @@ trainer:
       type: stepwise
       stepwise:
         boundaries: [800000, 900000] # [400000, 450000]
-        name: PiecewiseConstantDecay
         values: [0.00065, 0.000065, 0.0000065] #[0.0013, 0.00013, 0.000013]
     optimizer:
       type: sgd
       sgd:
         momentum: 0.949
-        name: SGD
     warmup:
       type: 'linear'
       linear:
