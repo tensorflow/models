@@ -53,9 +53,8 @@ class PanopticMaskRCNN(maskrcnn.MaskRCNN):
 
 @dataclasses.dataclass
 class Losses(maskrcnn.Losses):
-  segmentation_loss: semantic_segmentation.Losses = \
-      semantic_segmentation.Losses()
-  segmentation_weight: float = 0.5
+  segmentation_loss: semantic_segmentation.Losses = semantic_segmentation.Losses()  # pylint: disable=line-too-long
+  semantic_segmentation_weight: float = 1.0
 
 
 @dataclasses.dataclass
