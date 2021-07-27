@@ -24,10 +24,10 @@ from official.modeling import optimization
 from official.vision.beta.configs import maskrcnn
 from official.vision.beta.configs import semantic_segmentation
 
-# pylint: disable=missing-class-docstring
 
 @dataclasses.dataclass
 class Parser(maskrcnn.Parser):
+  """Config for data parsers"""
   # If segmentation_resize_eval_groundtruth is set to False, original image
   # sizes are used for eval. In that case,
   # segmentation_groundtruth_padded_size has to be specified too to allow for
@@ -53,12 +53,14 @@ class PanopticMaskRCNN(maskrcnn.MaskRCNN):
 
 @dataclasses.dataclass
 class Losses(maskrcnn.Losses):
+  """Panoptic Mask R-CNN loss config"""
   segmentation_loss: semantic_segmentation.Losses = semantic_segmentation.Losses()  # pylint: disable=line-too-long
   semantic_segmentation_weight: float = 1.0
 
 
 @dataclasses.dataclass
 class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
+  """Panoptic Mask R-CNN task config"""
   model: PanopticMaskRCNN = PanopticMaskRCNN()
   train_data: DataConfig = DataConfig(is_training=True)
   validation_data: DataConfig = DataConfig(is_training=False,
