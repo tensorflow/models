@@ -47,12 +47,10 @@ class Parser(maskrcnn.Parser):
       default_factory=list)
   segmentation_ignore_label: int = 255
 
-
 @dataclasses.dataclass
 class DataConfig(maskrcnn.DataConfig):
   """Input config for training."""
   parser: Parser = Parser()
-
 
 @dataclasses.dataclass
 class PanopticMaskRCNN(maskrcnn.MaskRCNN):
