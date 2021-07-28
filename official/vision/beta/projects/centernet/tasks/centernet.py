@@ -143,11 +143,12 @@ class CenterNetTask(base_task.Task):
       return
     
     ckpt_dir_or_file = self.task_config.init_checkpoint
-    if tf.io.gfile.isdir(ckpt_dir_or_file):
-      ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
     
     # Restoring checkpoint.
     if self.task_config.init_checkpoint_source == 'TFVision':
+      if tf.io.gfile.isdir(ckpt_dir_or_file):
+        ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
+        
       if self.task_config.init_checkpoint_modules == 'all':
         ckpt = tf.train.Checkpoint(**model.checkpoint_items)
         status = ckpt.restore(ckpt_dir_or_file)
