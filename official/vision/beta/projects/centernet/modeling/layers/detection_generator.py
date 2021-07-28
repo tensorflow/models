@@ -98,11 +98,11 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
                peak_error: float = 1e-6,
                peak_extract_kernel_size: int = 3,
                class_offset: int = 1,
-               net_down_scale: int = 4,
-               input_image_dims: int = 512,
                use_nms: bool = False,
                nms_pre_thresh: float = 0.1,
                nms_thresh: float = 0.4,
+               net_down_scale: int = 4,
+               input_image_dims: int = 512,
                **kwargs):
     """
     Args:

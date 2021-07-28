@@ -205,12 +205,21 @@ if __name__ == '__main__':
       num_inputs=backbone.num_hourglasses,
       heatmap_bias=task_config.model.head.heatmap_bias)
   
+  backbone_output_spec = backbone.output_specs[0]
+  print(backbone_output_spec)
+  if len(backbone_output_spec) == 4:
+    bb_output_height = backbone_output_spec[1]
+  elif len(backbone_output_spec) == 3:
+    bb_output_height = backbone_output_spec[0]
+  else:
+    raise ValueError
+  net_down_scale = input_specs.shape[1] / bb_output_height
   detect_generator_obj = detection_generator.CenterNetDetectionGenerator(
       max_detections=model_config.detection_generator.max_detections,
       peak_error=model_config.detection_generator.peak_error,
       peak_extract_kernel_size=model_config.detection_generator.peak_extract_kernel_size,
       class_offset=model_config.detection_generator.class_offset,
-      net_down_scale=model_config.detection_generator.net_down_scale,
+      net_down_scale=net_down_scale,
       input_image_dims=512,
       use_nms=model_config.detection_generator.use_nms,
       nms_pre_thresh=model_config.detection_generator.nms_pre_thresh,

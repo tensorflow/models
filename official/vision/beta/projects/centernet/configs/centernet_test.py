@@ -42,7 +42,7 @@ from official.vision.beta.projects.centernet.configs import centernet as exp_cfg
 
 class CenterNetConfigTest(tf.test.TestCase, parameterized.TestCase):
   
-  @parameterized.parameters(('centernet_custom',))
+  @parameterized.parameters(('centernet_hourglass_coco',))
   def test_centernet_configs(self, config_name):
     config = exp_factory.get_exp_config(config_name)
     self.assertIsInstance(config, cfg.ExperimentConfig)

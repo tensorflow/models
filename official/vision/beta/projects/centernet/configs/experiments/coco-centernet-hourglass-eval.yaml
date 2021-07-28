@@ -19,8 +19,8 @@ task:
       peak_error: 0.000001
       peak_extract_kernel_size: 3
       use_nms: false
-      center_thresh: 0.1
-      iou_thresh: 0.4
+      nms_pre_thresh: 0.1
+      nms_thresh: 0.4
       class_offset: 1
   subtasks:
     detection:
