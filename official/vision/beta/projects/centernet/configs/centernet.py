@@ -160,8 +160,8 @@ class CenterNetTask(cfg.TaskConfig):
   init_checkpoint_source: str = 'TFVision'  # ODAPI, Extremenet or TFVision
   annotation_file: Optional[str] = None
   # For checkpoints from ODAPI or Extremenet
-  checkpoint_backbone_name = 'hourglass104_512'
-  checkpoint_head_name = 'detection_2d'
+  checkpoint_backbone_name: str = 'hourglass104_512'
+  checkpoint_head_name: str = 'detection_2d'
   
   def get_output_length_dict(self):
     lengths = {}
