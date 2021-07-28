@@ -387,7 +387,7 @@ class CenterNetTask(base_task.Task):
     
     logs = {self.loss: losses['total_loss']}
     
-    image_size = self.task_config.model.input_size
+    image_size = self.task_config.model.input_size[0:-1]
     
     labels['boxes'] = box_ops.denormalize_boxes(
         tf.cast(labels['bbox'], tf.float32), image_size)
