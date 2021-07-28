@@ -112,11 +112,15 @@ class PanopticMaskRCNNTaskTest(tf.test.TestCase, parameterized.TestCase):
       (['all'],),
       (['backbone'],),
       (['segmentation_backbone'],),
-      (['backbone', 'segmentation_backbone'],))
+      (['segmentation_decoder'],),
+      (['backbone', 'segmentation_backbone'],),
+      (['segmentation_backbone', 'segmentation_decoder'],))
   def test_model_initializing(self, init_checkpoint_modules):
     tf.keras.backend.clear_session()
+
     shared_backbone = (not 'segmentation_backbone' in init_checkpoint_modules)
-    shared_decoder = shared_backbone
+    shared_decoder = (not 'segmentation_decoder' in init_checkpoint_modules and
+                      shared_backbone)
 
     task_config = cfg.PanopticMaskRCNNTask(
         model=cfg.PanopticMaskRCNN(
@@ -134,12 +138,12 @@ class PanopticMaskRCNNTaskTest(tf.test.TestCase, parameterized.TestCase):
     ckpt_save_dir = self.create_tempdir().full_path
     ckpt.save(os.path.join(ckpt_save_dir, 'ckpt'))
 
-    if init_checkpoint_modules == ['all']:
+    if (init_checkpoint_modules == ['all'] or
+        'backbone' in init_checkpoint_modules):
       task._task_config.init_checkpoint = ckpt_save_dir
-    if 'backbone' in init_checkpoint_modules:
-      task._task_config.backbone_init_checkpoint = ckpt_save_dir
-    if 'segmentation_backbone' in init_checkpoint_modules:
-      task._task_config.segmentation_backbone_init_checkpoint = ckpt_save_dir
+    if ('segmentation_backbone' in init_checkpoint_modules or
+        'segmentation_decoder' in init_checkpoint_modules):
+      task._task_config.segmentation_init_checkpoint = ckpt_save_dir
 
     task._task_config.init_checkpoint_modules = init_checkpoint_modules
     task.initialize(model)

@@ -26,10 +26,8 @@ from official.vision.beta.evaluation import segmentation_metrics
 from official.vision.beta.losses import segmentation_losses
 from official.vision.beta.tasks import maskrcnn
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import factory
-from official.vision.beta.projects.panoptic_maskrcnn.configs \
-    import panoptic_maskrcnn as exp_cfg
-from official.vision.beta.projects.panoptic_maskrcnn.dataloaders \
-    import panoptic_maskrcnn_input
+from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_maskrcnn as exp_cfg
+from official.vision.beta.projects.panoptic_maskrcnn.dataloaders import panoptic_maskrcnn_input
 
 
 @task_factory.register_task_cls(exp_cfg.PanopticMaskRCNNTask)
@@ -63,6 +61,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
 
   def initialize(self, model: tf.keras.Model):
     """Loading pretrained checkpoint."""
+
     def _get_checkpoint_path(checkpoint_dir_or_file):
       if tf.io.gfile.isdir(checkpoint_dir_or_file):
         checkpoint_path = tf.train.latest_checkpoint(
@@ -83,21 +82,32 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
 
       elif init_module == 'backbone':
         checkpoint_path = _get_checkpoint_path(
-            self.task_config.backbone_init_checkpoint)
+            self.task_config.init_checkpoint)
         ckpt = tf.train.Checkpoint(backbone=model.backbone)
         status = ckpt.restore(checkpoint_path)
         status.expect_partial().assert_existing_objects_matched()
 
       elif init_module == 'segmentation_backbone':
         checkpoint_path = _get_checkpoint_path(
-            self.task_config.segmentation_backbone_init_checkpoint)
-        ckpt = tf.train.Checkpoint(backbone=model.segmentation_backbone)
+            self.task_config.segmentation_init_checkpoint)
+        ckpt = tf.train.Checkpoint(
+            segmentation_backbone=model.segmentation_backbone)
         status = ckpt.restore(checkpoint_path)
         status.expect_partial().assert_existing_objects_matched()
+
+      elif init_module == 'segmentation_decoder':
+        checkpoint_path = _get_checkpoint_path(
+            self.task_config.segmentation_init_checkpoint)
+        ckpt = tf.train.Checkpoint(
+            segmentation_decoder=model.segmentation_decoder)
+        status = ckpt.restore(checkpoint_path)
+        status.expect_partial().assert_existing_objects_matched()
+
       else:
         raise ValueError(
-            "Only 'all', 'backbone' and/or 'segmentation_backbone' can be used "
-            "to initialize the model, but got %s", init_module)
+            "Only 'all', 'backbone', 'segmentation_backbone' and/or "
+            "segmentation_backbone' can be used to initialize the model, but "
+            "got %s", init_module)
       logging.info('Finished loading pretrained checkpoint from %s for %s',
                    checkpoint_path, init_module)
 
@@ -169,6 +179,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         segmentation_loss_params.ignore_label,
         use_groundtruth_dimension=use_groundtruth_dimension,
         top_k_percent_pixels=segmentation_loss_params.top_k_percent_pixels)
+    semantic_segmentation_weight = params.semantic_segmentation_weight
 
     losses = super(PanopticMaskRCNNTask, self).build_losses(
         outputs=outputs,
@@ -180,7 +191,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         labels['gt_segmentation_mask'])
 
     model_loss = (
-        maskrcnn_loss + params.segmentation_weight * segmentation_loss)
+        maskrcnn_loss + semantic_segmentation_weight * segmentation_loss)
 
     total_loss = model_loss
     if aux_losses:
