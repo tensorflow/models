@@ -81,16 +81,18 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   init_checkpoint_modules: Optional[List[str]] = dataclasses.field(
       default_factory=list)
 
-COCO_INPUT_PATH_BASE = 'coco'
 
+COCO_INPUT_PATH_BASE = 'coco'
+COCO_TRAIN_EXAMPLES = 118287
+COCO_VAL_EXAMPLES = 5000
 
 @exp_factory.register_config_factory('panoptic_maskrcnn_resnetfpn_coco')
 def panoptic_maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
   """COCO panoptic segmentation with Panoptic Mask R-CNN."""
-  steps_per_epoch = 500
-  coco_val_samples = 5000
   train_batch_size = 64
   eval_batch_size = 8
+  steps_per_epoch = COCO_TRAIN_EXAMPLES // train_batch_size
+  validation_steps = COCO_VAL_EXAMPLES // eval_batch_size
 
   config = cfg.ExperimentConfig(
       runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
@@ -115,7 +117,7 @@ def panoptic_maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
                                        'instances_val2017.json')),
       trainer=cfg.TrainerConfig(
           train_steps=22500,
-          validation_steps=coco_val_samples // eval_batch_size,
+          validation_steps=validation_steps,
           validation_interval=steps_per_epoch,
           steps_per_loop=steps_per_epoch,
           summary_interval=steps_per_epoch,
