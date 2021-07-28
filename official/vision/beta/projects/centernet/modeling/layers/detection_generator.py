@@ -323,7 +323,8 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
     
     shape = tf.shape(ct_heatmaps)
     
-    batch_size, height, width, num_channels = shape[0:4]
+    batch_size, height, width, num_channels = \
+      shape[0], shape[1], shape[2], shape[3]
     
     # Process heatmaps using 3x3 max pool and applying sigmoid
     peaks = self.process_heatmap(
