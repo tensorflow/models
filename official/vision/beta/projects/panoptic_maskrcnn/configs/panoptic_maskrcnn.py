@@ -27,7 +27,7 @@ from official.vision.beta.configs import semantic_segmentation
 
 @dataclasses.dataclass
 class Parser(maskrcnn.Parser):
-  """Config for data parsers"""
+  """Panoptic Mask R-CNN parser config."""
   # If segmentation_resize_eval_groundtruth is set to False, original image
   # sizes are used for eval. In that case,
   # segmentation_groundtruth_padded_size has to be specified too to allow for
@@ -53,14 +53,14 @@ class PanopticMaskRCNN(maskrcnn.MaskRCNN):
 
 @dataclasses.dataclass
 class Losses(maskrcnn.Losses):
-  """Panoptic Mask R-CNN loss config"""
+  """Panoptic Mask R-CNN loss config."""
   segmentation_loss: semantic_segmentation.Losses = semantic_segmentation.Losses()  # pylint: disable=line-too-long
   semantic_segmentation_weight: float = 1.0
 
 
 @dataclasses.dataclass
 class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
-  """Panoptic Mask R-CNN task config"""
+  """Panoptic Mask R-CNN task config."""
   model: PanopticMaskRCNN = PanopticMaskRCNN()
   train_data: DataConfig = DataConfig(is_training=True)
   validation_data: DataConfig = DataConfig(is_training=False,
@@ -68,8 +68,16 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   segmentation_evaluation: semantic_segmentation.Evaluation = \
       semantic_segmentation.Evaluation()
   losses: Losses = Losses()
-  backbone_init_checkpoint: Optional[str] = None
-  segmentation_backbone_init_checkpoint: Optional[str] = None
+  init_checkpoint: Optional[str] = None
+  segmentation_init_checkpoint: Optional[str] = None
+
+  # 'init_checkpoint_modules' controls the modules that need to be initialized
+  # from checkpoint paths given by 'init_checkpoint' and/or
+  # 'segmentation_init_checkpoint. Support modules:
+  # 'backbone': Initialize MaskRCNN backbone
+  # 'segmentation_backbone': Initialize segmentation backbone
+  # 'segmentation_decoder': Initialize segmentation decoder
+  # 'all': Initialize all modules
   init_checkpoint_modules: Optional[List[str]] = dataclasses.field(
       default_factory=list)
 
@@ -87,7 +95,7 @@ def panoptic_maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
   config = cfg.ExperimentConfig(
       runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
       task=PanopticMaskRCNNTask(
-          backbone_init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/resnet50_imagenet/ckpt-28080',  # pylint: disable=line-too-long
+          init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/resnet50_imagenet/ckpt-28080',  # pylint: disable=line-too-long
           init_checkpoint_modules=['backbone'],
           model=PanopticMaskRCNN(
               num_classes=91, input_size=[1024, 1024, 3]),
