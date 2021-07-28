@@ -54,7 +54,12 @@ class PanopticMaskRCNN(maskrcnn.MaskRCNN):
 @dataclasses.dataclass
 class Losses(maskrcnn.Losses):
   """Panoptic Mask R-CNN loss config."""
-  segmentation_loss: semantic_segmentation.Losses = semantic_segmentation.Losses()  # pylint: disable=line-too-long
+  semantic_segmentation_label_smoothing: float = 0.0
+  semantic_segmentation_ignore_label: int = 255
+  semantic_segmentation_class_weights: List[float] = dataclasses.field(
+      default_factory=list)
+  semantic_segmentation_use_groundtruth_dimension: bool = True
+  semantic_segmentation_top_k_percent_pixels: float = 1.0
   semantic_segmentation_weight: float = 1.0
 
 

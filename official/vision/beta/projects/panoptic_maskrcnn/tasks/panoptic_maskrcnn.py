@@ -169,16 +169,16 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
                    aux_losses: Optional[Any] = None):
     """Build Panoptic Mask R-CNN losses."""
     params = self.task_config.losses
-    segmentation_loss_params = params.segmentation_loss
+    
     use_groundtruth_dimension = \
-        segmentation_loss_params.use_groundtruth_dimension
+        params.semantic_segmentation_use_groundtruth_dimension
 
     segmentation_loss_fn = segmentation_losses.SegmentationLoss(
-        segmentation_loss_params.label_smoothing,
-        segmentation_loss_params.class_weights,
-        segmentation_loss_params.ignore_label,
+        label_smoothing=params.semantic_segmentation_label_smoothing,
+        class_weights=params.semantic_segmentation_class_weights,
+        ignore_label=params.semantic_segmentation_ignore_label,
         use_groundtruth_dimension=use_groundtruth_dimension,
-        top_k_percent_pixels=segmentation_loss_params.top_k_percent_pixels)
+        top_k_percent_pixels=params.semantic_segmentation_top_k_percent_pixels)
     semantic_segmentation_weight = params.semantic_segmentation_weight
 
     losses = super(PanopticMaskRCNNTask, self).build_losses(
