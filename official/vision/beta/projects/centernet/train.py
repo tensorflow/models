@@ -25,7 +25,7 @@ from official.core import task_factory
 from official.core import train_lib
 from official.core import train_utils
 from official.modeling import performance
-from official.vision.beta.projects.yolo.common import registry_imports  # pylint: disable=unused-import
+from official.vision.beta.projects.centernet.common import registry_imports  # pylint: disable=unused-import
 
 FLAGS = flags.FLAGS
 
