@@ -50,6 +50,13 @@ class DataDecoder(hyperparams.OneOfConfig):
 class Parser(hyperparams.Config):
   max_num_instances: int = 128
   bgr_ordering: bool = True
+  aug_rand_hflip: bool = True
+  aug_scale_min: float = 1.0
+  aug_scale_max: float = 1.0
+  aug_rand_saturation: bool = False
+  aug_rand_brightness: bool = False
+  aug_rand_zoom: bool = False
+  aug_rand_hue: bool = False
   channel_means: List[int] = dataclasses.field(
       default_factory=lambda: [104.01362025, 114.03422265, 119.9165958])
   channel_stds: List[int] = dataclasses.field(

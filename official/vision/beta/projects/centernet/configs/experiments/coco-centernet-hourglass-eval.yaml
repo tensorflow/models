@@ -54,7 +54,6 @@ task:
     input_path: ''
     is_training: false
     parser:
-      num_classes: 90
       max_num_instances: 128
     shuffle_buffer_size: 10000
 trainer:
