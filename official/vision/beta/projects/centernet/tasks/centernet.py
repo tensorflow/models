@@ -369,7 +369,7 @@ class CenterNetTask(base_task.Task):
                       inputs: Tuple[Any, Any],
                       model: tf.keras.Model,
                       metrics: Optional[List[Any]] = None):
-    """Validatation step.
+    """Validation step.
 
     Args:
       inputs: a dictionary of input tensors.
@@ -387,7 +387,7 @@ class CenterNetTask(base_task.Task):
     
     logs = {self.loss: losses['total_loss']}
     
-    image_size = self.task_config.model_config.input_size
+    image_size = self.task_config.model.input_size
     
     labels['boxes'] = box_ops.denormalize_boxes(
         tf.cast(labels['bbox'], tf.float32), image_size)
