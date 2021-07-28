@@ -49,21 +49,9 @@ def build_heatmap_and_regressed_features(labels,
   
   Returns:
     Dictionary of labels with the following fields:
-      'tl_heatmaps': A `Tensor` of shape [output_h, output_w, num_classes],
-        heatmap with splatted gaussians centered at the positions and channels
-        corresponding to the top left location and class of the object
-      'br_heatmaps': `Tensor` of shape [output_h, output_w, num_classes],
-        heatmap with splatted gaussians centered at the positions and channels
-        corresponding to the bottom right location and class of the object
       'ct_heatmaps': Tensor of shape [output_h, output_w, num_classes],
         heatmap with splatted gaussians centered at the positions and channels
         corresponding to the center location and class of the object
-      'tl_offset': `Tensor` of shape [max_num_instances, 2], where the first
-        num_boxes entries contain the x-offset and y-offset of the top-left
-        corner of an object. All other entires are 0
-      'br_offset': `Tensor` of shape [max_num_instances, 2], where the first
-        num_boxes entries contain the x-offset and y-offset of the
-        bottom-right corner of an object. All other entires are 0
       'ct_offset': `Tensor` of shape [max_num_instances, 2], where the first
         num_boxes entries contain the x-offset and y-offset of the center of
         an object. All other entires are 0
@@ -92,7 +80,7 @@ def build_heatmap_and_regressed_features(labels,
   # only keep the first num_objects boxes and classes
   num_objects = labels['num_detections']
   boxes = labels['bbox'][:num_objects]
-  classes = labels['classes'][:num_objects] - class_offset
+  classes = tf.cast(labels['classes'][:num_objects] - class_offset, dtype)
   
   # Compute scaling factors for center/corner positions on heatmap
   input_size = tf.cast(input_size, dtype)

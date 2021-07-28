@@ -139,9 +139,9 @@ class CenterNetParser(parser.Parser):
     
     labels = {
         'source_id': utils.process_source_id(data['source_id']),
-        'bbox': tf.cast(boxes, self._dtype),
-        'classes': tf.cast(classes, self._dtype),
-        'area': tf.cast(area, self._dtype),
+        'bbox': boxes,
+        'classes': classes,
+        'area': area,
         'is_crowd': is_crowd,
         'width': width,
         'height': height,
