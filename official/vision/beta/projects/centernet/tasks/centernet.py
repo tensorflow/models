@@ -191,7 +191,7 @@ class CenterNetTask(base_task.Task):
     gt_label = tf.map_fn(
         fn=lambda x: gt_builder.build_heatmap_and_regressed_features(
             labels=x,
-            output_size=outputs['ct_heatmaps'].get_shape()[1:3],
+            output_size=outputs['ct_heatmaps'][0].get_shape()[1:3],
             input_size=self.task_config.model.input_size[0:2],
             num_classes=self.task_config.model.num_classes,
             max_num_instances=self.task_config.model.parser.max_num_instances,
