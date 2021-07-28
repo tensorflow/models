@@ -186,6 +186,16 @@ class CenterNetTask(cfg.TaskConfig):
             'ct_heatmaps': self.model.num_classes,
             'ct_offset': 2,
         })
+        if not self.subtasks.detection.use_corners:
+          lengths['ct_size'] = 2
+
+      if self.subtasks.detection.use_corners:
+        lengths.update({
+          'tl_heatmaps': self.model.num_classes,
+          'tl_offset': 2,
+          'br_heatmaps': self.model.num_classes,
+          'br_offset': 2
+        })
       
       if self.subtasks.detection.predict_3d:
         lengths.update({
