@@ -69,7 +69,7 @@ class CenterNetTask(base_task.Task):
     parser = centernet_input.CenterNetParser(
         image_w=self.task_config.model.input_size[1],
         image_h=self.task_config.model.input_size[0],
-        max_num_instances=params.parser.max_num_instances,
+        max_num_instances=self.task_config.model.max_num_instances,
         bgr_ordering=params.parser.bgr_ordering,
         channel_means=params.parser.channel_means,
         channel_stds=params.parser.channel_stds,
@@ -194,7 +194,7 @@ class CenterNetTask(base_task.Task):
             output_size=outputs['ct_heatmaps'][0].get_shape()[1:3],
             input_size=self.task_config.model.input_size[0:2],
             num_classes=self.task_config.model.num_classes,
-            max_num_instances=self.task_config.model.parser.max_num_instances,
+            max_num_instances=self.task_config.model.max_num_instances,
             use_gaussian_bump=self.task_config.losses.use_gaussian_bump,
             gaussian_rad=self.task_config.losses.gaussian_rad,
             gaussian_iou=self.task_config.losses.gaussian_iou,

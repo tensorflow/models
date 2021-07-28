@@ -6,6 +6,7 @@ runtime:
 task:
   model:
     num_classes: 90
+    max_num_instances: 128
     input_size: [512, 512, 3] # null
     backbone:
       type: hourglass
@@ -53,8 +54,6 @@ task:
     global_batch_size: 8
     input_path: ''
     is_training: false
-    parser:
-      max_num_instances: 128
     shuffle_buffer_size: 10000
 trainer:
   train_steps: 10000 # 160 epochs at 64 batchsize -> 500500 * 64/16

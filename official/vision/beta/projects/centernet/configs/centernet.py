@@ -48,7 +48,6 @@ class DataDecoder(hyperparams.OneOfConfig):
 # dataset parser
 @dataclasses.dataclass
 class Parser(hyperparams.Config):
-  max_num_instances: int = 128
   bgr_ordering: bool = True
   aug_rand_hflip: bool = True
   aug_scale_min: float = 1.0
@@ -122,6 +121,7 @@ class CenterNetDetectionGenerator(hyperparams.Config):
 @dataclasses.dataclass
 class CenterNetModel(hyperparams.Config):
   num_classes: int = 90
+  max_num_instances: int = 128
   input_size: List[int] = dataclasses.field(default_factory=list)
   backbone: backbones.Backbone = backbones.Backbone(
       type='hourglass', hourglass=backbones.Hourglass(model_id=52))
