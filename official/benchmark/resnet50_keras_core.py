@@ -103,6 +103,13 @@ class Resnet50KerasCoreBenchmark(perfzero_benchmark.PerfZeroBenchmark):
     avg_wall_time = sum(wall_times) / float(len(wall_times))
     self.report_benchmark(iters=-1, wall_time=avg_wall_time)
 
+  def benchmark_1_gpu_max_3(self):
+    num_trials = 3
+    wall_times = []
+    for _ in range(num_trials):
+      wall_times.append(_run_benchmark())
+    max_wall_time = max(wall_times)
+    self.report_benchmark(iters=-1, wall_time=max_wall_time)
 
 if __name__ == "__main__":
   tf.test.main()
