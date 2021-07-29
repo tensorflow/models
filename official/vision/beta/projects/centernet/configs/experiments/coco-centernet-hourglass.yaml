@@ -43,7 +43,7 @@ task:
   gradient_clip_norm: 0.0
   init_checkpoint: 'centernet_hg104_512x512_coco17_tpu-8/checkpoint'
   init_checkpoint_source: 'ODAPI'
-  annotation_file: null
+  annotation_file: 'coco/instances_val2017.json'
   checkpoint_backbone_name: 'hourglass104_512'
   checkpoint_head_name: 'detection_2d'
   train_data:
