@@ -89,8 +89,7 @@ def _get_ngrams_with_counter(segment, max_order):
 
   Args:
     segment: text segment from which n-grams will be extracted.
-    max_order: maximum length in tokens of the n-grams returned by this
-        methods.
+    max_order: maximum length in tokens of the n-grams returned by this methods.
 
   Returns:
     The Counter containing all n-grams upto max_order in segment
@@ -104,15 +103,17 @@ def _get_ngrams_with_counter(segment, max_order):
   return ngram_counts
 
 
-def compute_bleu(reference_corpus, translation_corpus, max_order=4,
+def compute_bleu(reference_corpus,
+                 translation_corpus,
+                 max_order=4,
                  use_bp=True):
   """Computes BLEU score of translated segments against one or more references.
 
   Args:
-    reference_corpus: list of references for each translation. Each
-        reference should be tokenized into a list of tokens.
-    translation_corpus: list of translations to score. Each translation
-        should be tokenized into a list of tokens.
+    reference_corpus: list of references for each translation. Each reference
+      should be tokenized into a list of tokens.
+    translation_corpus: list of translations to score. Each translation should
+      be tokenized into a list of tokens.
     max_order: Maximum n-gram order to use when computing BLEU score.
     use_bp: boolean, whether to apply brevity penalty.
 
@@ -134,15 +135,14 @@ def compute_bleu(reference_corpus, translation_corpus, max_order=4,
     ref_ngram_counts = _get_ngrams_with_counter(references, max_order)
     translation_ngram_counts = _get_ngrams_with_counter(translations, max_order)
 
-    overlap = dict((ngram,
-                    min(count, translation_ngram_counts[ngram]))
+    overlap = dict((ngram, min(count, translation_ngram_counts[ngram]))
                    for ngram, count in ref_ngram_counts.items())
 
     for ngram in overlap:
       matches_by_order[len(ngram) - 1] += overlap[ngram]
     for ngram in translation_ngram_counts:
-      possible_matches_by_order[len(ngram) - 1] += translation_ngram_counts[
-          ngram]
+      possible_matches_by_order[len(ngram) -
+                                1] += translation_ngram_counts[ngram]
 
   precisions = [0] * max_order
   smooth = 1.0
@@ -151,8 +151,8 @@ def compute_bleu(reference_corpus, translation_corpus, max_order=4,
     if possible_matches_by_order[i] > 0:
       precisions[i] = float(matches_by_order[i]) / possible_matches_by_order[i]
       if matches_by_order[i] > 0:
-        precisions[i] = float(matches_by_order[i]) / possible_matches_by_order[
-            i]
+        precisions[i] = float(
+            matches_by_order[i]) / possible_matches_by_order[i]
       else:
         smooth *= 2
         precisions[i] = 1.0 / (smooth * possible_matches_by_order[i])
@@ -165,7 +165,8 @@ def compute_bleu(reference_corpus, translation_corpus, max_order=4,
 
   if use_bp:
     ratio = translation_length / reference_length
-    bp = math.exp(1 - 1. / ratio) if ratio < 1.0 else 1.0
+    bp = 0. if ratio < 1e-6 else math.exp(1 -
+                                          1. / ratio) if ratio < 1.0 else 1.0
   bleu = geo_mean * bp
   return np.float32(bleu)
 
