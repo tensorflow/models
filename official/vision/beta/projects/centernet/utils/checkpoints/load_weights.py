@@ -234,3 +234,4 @@ if __name__ == '__main__':
   weights_dict, _ = read_checkpoints.get_ckpt_weights_as_dict(CKPT_PATH)
   load_weights_model(model, weights_dict, 'hourglass104_512', 'detection_2d')
   print(model.backbone.summary())
+  print(model.head.output_specs)

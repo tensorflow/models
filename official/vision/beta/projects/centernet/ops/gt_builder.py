@@ -207,18 +207,34 @@ if __name__ == '__main__':
   
   boxes = preprocess_ops.pad_max_instances(boxes, 128, 0)
   classes = preprocess_ops.pad_max_instances(classes, 128, -1)
+  
+  boxes = tf.stack([boxes, boxes], axis=0)
+  classes = tf.stack([classes, classes], axis=0)
+  
   print('boxes shape:', boxes.get_shape())
   print('classes shape:', classes.get_shape())
   
   print("testing new build heatmaps function: ")
   a = time.time()
-  labels = build_heatmap_and_regressed_features(
-      labels={
+  
+  gt_label = tf.map_fn(
+      fn=lambda x: build_heatmap_and_regressed_features(
+          labels=x,
+          output_size=[128, 128],
+          input_size=[512, 512]),
+      elems={
           'bbox': boxes,
-          'num_detections': 3,
+          'num_detections': tf.constant([3, 3]),
           'classes': classes
       },
-      output_size=[128, 128], input_size=[512, 512]
+      dtype={
+          'ct_heatmaps': tf.float32,
+          'ct_offset': tf.float32,
+          'size': tf.float32,
+          'box_mask': tf.int32,
+          'box_indices': tf.int32
+      }
   )
+  print(gt_label)
   b = time.time()
   print("Time taken: {} ms".format((b - a) * 1000))
