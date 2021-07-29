@@ -164,9 +164,8 @@ class CenterNetParser(parser.Parser):
         images: the image tensor.
         labels: a dict of Tensors that contains labels.
     """
-    # FIXME: This is a copy of parse eval data
-    # TODO: Add data augmentation
-    image = data['image'] / 255.
+
+    image = data['image'] / 255
     boxes = data['groundtruth_boxes']
     
     if self._aug_rand_hflip:
