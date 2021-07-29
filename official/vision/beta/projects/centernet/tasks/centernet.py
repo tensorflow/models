@@ -400,6 +400,7 @@ class CenterNetTask(base_task.Task):
         'detection_classes': outputs['classes'],
         'num_detections': outputs['num_detections'],
         'source_id': labels['source_id'],
+        'image_info': labels['image_info']
     }
     
     logs.update({self.coco_metric.name: (labels, coco_model_outputs)})

@@ -102,7 +102,7 @@ class CenterNetParser(parser.Parser):
   def _build_label(self,
                    image,
                    boxes,
-                   info,
+                   image_info,
                    data):
     
     imshape = image.get_shape().as_list()
@@ -145,7 +145,7 @@ class CenterNetParser(parser.Parser):
         'is_crowd': is_crowd,
         'width': width,
         'height': height,
-        'info': info,
+        'image_info': image_info,
         'num_detections': tf.shape(data['groundtruth_classes'])[0]
     }
     
@@ -168,9 +168,6 @@ class CenterNetParser(parser.Parser):
     # TODO: Add data augmentation
     image = data['image'] / 255.
     boxes = data['groundtruth_boxes']
-    
-    image, boxes, info = centernet_preprocess_ops.letter_box(
-        image=image, boxes=boxes, xs=0.5, ys=0.5, target_dim=self._image_w)
     
     if self._aug_rand_hflip:
       image, boxes, _ = preprocess_ops.random_horizontal_flip(image, boxes)
@@ -202,7 +199,7 @@ class CenterNetParser(parser.Parser):
     image, labels = self._build_label(
         image=image,
         boxes=boxes,
-        info=info,
+        image_info=image_info,
         data=data
     )
     
@@ -232,13 +229,25 @@ class CenterNetParser(parser.Parser):
         offset=self._channel_means,
         scale=self._channel_stds)
     
-    image, boxes, info = centernet_preprocess_ops.letter_box(
-        image=image, boxes=boxes, xs=0.5, ys=0.5, target_dim=self._image_w)
+    # Resizes and crops image.
+    image, image_info = preprocess_ops.resize_and_crop_image(
+        image,
+        [self._image_h, self._image_w],
+        padded_size=[self._image_h, self._image_w],
+        aug_scale_min=1.0,
+        aug_scale_max=1.0)
+    image_height, image_width, _ = image.get_shape().as_list()
+    
+    # Resizes and crops boxes.
+    image_scale = image_info[2, :]
+    offset = image_info[3, :]
+    boxes = preprocess_ops.resize_and_crop_boxes(boxes, image_scale,
+                                                 image_info[1, :], offset)
     
     image, labels = self._build_label(
         image=image,
         boxes=boxes,
-        info=info,
+        image_info=image_info,
         data=data
     )
     

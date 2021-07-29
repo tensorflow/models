@@ -192,3 +192,33 @@ def build_heatmap_and_regressed_features(labels,
       'box_indices': box_indices
   }
   return labels
+
+
+if __name__ == '__main__':
+  import time
+  
+  boxes = tf.constant([
+      (10, 300, 15, 370),  # center (y, x) = (12, 335)
+      (100, 300, 150, 370),  # center (y, x) = (125, 335)
+      (15, 100, 200, 170),  # center (y, x) = (107, 135)
+  ], dtype=tf.float32)
+  
+  classes = tf.constant((1, 1, 1), dtype=tf.float32)
+  
+  boxes = preprocess_ops.pad_max_instances(boxes, 128, 0)
+  classes = preprocess_ops.pad_max_instances(classes, 128, -1)
+  print('boxes shape:', boxes.get_shape())
+  print('classes shape:', classes.get_shape())
+  
+  print("testing new build heatmaps function: ")
+  a = time.time()
+  labels = build_heatmap_and_regressed_features(
+      labels={
+          'bbox': boxes,
+          'num_detections': 3,
+          'classes': classes
+      },
+      output_size=[128, 128], input_size=[512, 512]
+  )
+  b = time.time()
+  print("Time taken: {} ms".format((b - a) * 1000))
