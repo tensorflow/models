@@ -77,7 +77,7 @@ class Yolo(ks.Model):
       backbone: `tf.keras.Model`, a backbone network.
       decoder: `tf.keras.Model`, a decoder network.
       head: `YoloHead`, the YOLO head.
-      filter: `tf.keras.Model`, the detection generator.
+      detection_generator: `tf.keras.Model`, the detection generator.
       **kwargs: keyword arguments to be passed.
     """
     super().__init__(**kwargs)
@@ -86,14 +86,14 @@ class Yolo(ks.Model):
         'backbone': backbone,
         'decoder': decoder,
         'head': head,
-        'filter': filter
+        'detection_generator': detection_generator
     }
 
     # model components
     self._backbone = backbone
     self._decoder = decoder
     self._head = head
-    self._filter = filter
+    self._detection_generator = detection_generator
 
   def call(self, inputs, training=False):
     maps = self._backbone(inputs)
@@ -103,7 +103,7 @@ class Yolo(ks.Model):
       return {"raw_output": raw_predictions}
     else:
       # Post-processing.
-      predictions = self._filter(raw_predictions)
+      predictions = self._detection_generator(raw_predictions)
       predictions.update({"raw_output": raw_predictions})
       return predictions
 
@@ -120,8 +120,8 @@ class Yolo(ks.Model):
     return self._head
 
   @property
-  def filter(self):
-    return self._filter
+  def detection_generator(self):
+    return self._detection_generator
 
   def get_config(self):
     return self._config_dict
