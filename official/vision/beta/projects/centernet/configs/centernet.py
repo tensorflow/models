@@ -212,7 +212,7 @@ COCO_VAL_EXAMPLES = 5000
 
 
 @exp_factory.register_config_factory('centernet_hourglass_coco')
-def centernet_custom() -> cfg.ExperimentConfig:
+def centernet_hourglass_coco() -> cfg.ExperimentConfig:
   """COCO object detection with CenterNet."""
   train_batch_size = 1
   eval_batch_size = 1
@@ -220,7 +220,6 @@ def centernet_custom() -> cfg.ExperimentConfig:
   num_batches = int(1200000 * 64 / train_batch_size)
   
   config = cfg.ExperimentConfig(
-      runtime=cfg.RuntimeConfig(mixed_precision_dtype='float32'),
       task=CenterNetTask(
           annotation_file=os.path.join(COCO_INPUT_PATH_BASE,
                                        'instances_val2017.json'),

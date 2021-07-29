@@ -200,7 +200,7 @@ class CenterNetTask(base_task.Task):
             gaussian_iou=self.task_config.losses.gaussian_iou,
             class_offset=self.task_config.losses.class_offset),
         elems=labels,
-        dtype={
+        fn_output_signature={
             'ct_heatmaps': tf.float32,
             'ct_offset': tf.float32,
             'size': tf.float32,
