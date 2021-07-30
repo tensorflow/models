@@ -136,7 +136,7 @@ class Parser(maskrcnn_input.Parser):
         segmentation_groundtruth_padded_size is None):
       raise ValueError(
           'segmentation_groundtruth_padded_size ([height, width]) needs to be'
-          'specified when resize_eval_segmentation_groundtruth is False.')
+          'specified when segmentation_resize_eval_groundtruth is False.')
     self._segmentation_groundtruth_padded_size = segmentation_groundtruth_padded_size
     self._segmentation_ignore_label = segmentation_ignore_label
 
