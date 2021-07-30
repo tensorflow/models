@@ -15,10 +15,9 @@
 # Lint as: python3
 """Mask R-CNN configuration definition."""
 
+import dataclasses
 import os
 from typing import List, Optional
-
-import dataclasses
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -79,6 +78,8 @@ class DataConfig(cfg.DataConfig):
   shuffle_buffer_size: int = 10000
   file_type: str = 'tfrecord'
   drop_remainder: bool = True
+  # Number of examples in the data set, it's used to create the annotation file.
+  num_examples: int = -1
 
 
 @dataclasses.dataclass

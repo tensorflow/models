@@ -18,6 +18,7 @@ import copy
 import json
 
 # Import libraries
+
 from absl import logging
 import numpy as np
 from PIL import Image
@@ -26,6 +27,7 @@ from pycocotools import mask as mask_api
 import six
 import tensorflow as tf
 
+from official.common import dataset_fn
 from official.vision.beta.dataloaders import tf_example_decoder
 from official.vision.beta.ops import box_ops
 from official.vision.beta.ops import mask_ops
@@ -240,10 +242,20 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
               (boxes[j, k, 3] - boxes[j, k, 1]) *
               (boxes[j, k, 2] - boxes[j, k, 0]))
         if 'masks' in groundtruths:
-          mask = Image.open(six.BytesIO(groundtruths['masks'][i][j, k]))
-          width, height = mask.size
-          np_mask = (
-              np.array(mask.getdata()).reshape(height, width).astype(np.uint8))
+          if isinstance(groundtruths['masks'][i][j, k], tf.Tensor):
+            mask = Image.open(
+                six.BytesIO(groundtruths['masks'][i][j, k].numpy()))
+            width, height = mask.size
+            np_mask = (
+                np.array(mask.getdata()).reshape(height,
+                                                 width).astype(np.uint8))
+          else:
+            mask = Image.open(
+                six.BytesIO(groundtruths['masks'][i][j, k]))
+            width, height = mask.size
+            np_mask = (
+                np.array(mask.getdata()).reshape(height,
+                                                 width).astype(np.uint8))
           np_mask[np_mask > 0] = 255
           encoded_mask = mask_api.encode(np.asfortranarray(np_mask))
           ann['segmentation'] = encoded_mask
@@ -271,11 +283,11 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
 class COCOGroundtruthGenerator:
   """Generates the groundtruth annotations from a single example."""
 
-  def __init__(self, file_pattern, num_examples, include_mask):
+  def __init__(self, file_pattern, file_type, num_examples, include_mask):
     self._file_pattern = file_pattern
     self._num_examples = num_examples
     self._include_mask = include_mask
-    self._dataset_fn = tf.data.TFRecordDataset
+    self._dataset_fn = dataset_fn.pick_dataset_fn(file_type)
 
   def _parse_single_example(self, example):
     """Parses a single serialized tf.Example proto.
@@ -308,7 +320,7 @@ class COCOGroundtruthGenerator:
     boxes = box_ops.denormalize_boxes(
         decoded_tensors['groundtruth_boxes'], image_size)
     groundtruths = {
-        'source_id': tf.string_to_number(
+        'source_id': tf.strings.to_number(
             decoded_tensors['source_id'], out_type=tf.int64),
         'height': decoded_tensors['height'],
         'width': decoded_tensors['width'],
@@ -344,12 +356,13 @@ class COCOGroundtruthGenerator:
 
 
 def scan_and_generator_annotation_file(file_pattern: str,
+                                       file_type: str,
                                        num_samples: int,
                                        include_mask: bool,
                                        annotation_file: str):
   """Scans and generate the COCO-style annotation JSON file given a dataset."""
   groundtruth_generator = COCOGroundtruthGenerator(
-      file_pattern, num_samples, include_mask)
+      file_pattern, file_type, num_samples, include_mask)
   generate_annotation_file(groundtruth_generator, annotation_file)
 
 
