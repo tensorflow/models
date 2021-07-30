@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """RetinaNet task definition."""
+import os
 from typing import Any, Optional, List, Tuple, Mapping
 
 from absl import logging
@@ -26,6 +27,7 @@ from official.vision.beta.dataloaders import maskrcnn_input
 from official.vision.beta.dataloaders import tf_example_decoder
 from official.vision.beta.dataloaders import tf_example_label_map_decoder
 from official.vision.beta.evaluation import coco_evaluator
+from official.vision.beta.evaluation import coco_utils
 from official.vision.beta.losses import maskrcnn_losses
 from official.vision.beta.modeling import factory
 
@@ -259,10 +261,33 @@ class MaskRCNNTask(base_task.Task):
         metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
 
     else:
-      self.coco_metric = coco_evaluator.COCOEvaluator(
-          annotation_file=self._task_config.annotation_file,
-          include_mask=self._task_config.model.include_mask,
-          per_category_metrics=self._task_config.per_category_metrics)
+      if self._task_config.annotation_file:
+        self.coco_metric = coco_evaluator.COCOEvaluator(
+            annotation_file=self._task_config.annotation_file,
+            include_mask=self._task_config.model.include_mask,
+            per_category_metrics=self._task_config.per_category_metrics)
+      else:
+        annotation_path = os.path.join(self._logging_dir, 'annotation.json')
+        if tf.io.gfile.exists(annotation_path):
+          logging.info(
+              'annotation.json file exists, skipping creating the annotation'
+              ' file.')
+        else:
+          if self._task_config.validation_data.num_examples <= 0:
+            logging.info('validation_data.num_examples needs to be > 0')
+          if not self._task_config.validation_data.input_path:
+            logging.info('Can not create annotation file for tfds.')
+          logging.info(
+              'Creating coco-style annotation file: %s', annotation_path)
+          coco_utils.scan_and_generator_annotation_file(
+              self._task_config.validation_data.input_path,
+              self._task_config.validation_data.file_type,
+              self._task_config.validation_data.num_examples,
+              self.task_config.model.include_mask, annotation_path)
+        self.coco_metric = coco_evaluator.COCOEvaluator(
+            annotation_file=annotation_path,
+            include_mask=self._task_config.model.include_mask,
+            per_category_metrics=self._task_config.per_category_metrics)
 
     return metrics
 
