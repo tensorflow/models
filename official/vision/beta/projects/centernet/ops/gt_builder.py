@@ -36,16 +36,27 @@ def build_heatmap_and_regressed_features(labels,
   Args:
     labels: A dictionary of COCO ground truth labels with at minimum the
       following fields:
-    bbox: A `Tensor` of shape [max_num_instances, num_boxes, 4], where the
-      last dimension corresponds to the top left x, top left y, bottom right x,
-      and bottom left y coordinates of the bounding box
-    classes: A `Tensor` of shape [max_num_instances, num_boxes] that contains the class of each
-      box, given in the same order as the boxes
-      num_detections: A `Tensor` or int that gives the number of objects in the image
+      bbox: A `Tensor` of shape [max_num_instances, num_boxes, 4], where the
+        last dimension corresponds to the top left x, top left y, bottom right x,
+        and bottom left y coordinates of the bounding box
+      classes: A `Tensor` of shape [max_num_instances, num_boxes] that contains
+        the class of each box, given in the same order as the boxes
+      num_detections: A `Tensor` or int that gives the number of objects
     output_size: A `list` of length 2 containing the desired output height
       and width of the heatmaps
     input_size: A `list` of length 2 the expected input height and width of
       the image
+    num_classes: A `Tensor` or `int` for the number of classes.
+    max_num_instances: An `int` number of maximum number of instances in an image.
+    use_gaussian_bump: A `boolean` indicating whether or not to splat a
+      gaussian onto the heatmaps. If set to False, a value of 1 is placed at
+      the would-be center of the gaussian.
+    gaussian_rad: A `int` for the desired radius of the gaussian. If this
+      value is set to -1, then the radius is computed using gaussian_iou.
+    gaussian_iou: A `float` number for the minimum desired IOU used when
+      determining the gaussian radius of center locations in the heatmap.
+    class_offset: A `int` for subtracting a value from the ground truth classes
+    dtype: `str`, data type. One of {`bfloat16`, `float32`, `float16`}.
   
   Returns:
     Dictionary of labels with the following fields:
@@ -141,7 +152,7 @@ def build_heatmap_and_regressed_features(labels,
       radius = tf.math.maximum(tf.math.floor(radius),
                                tf.cast(1.0, radius.dtype))
     else:
-      radius = tf.constant([gaussian_rad] * num_objects, dtype)
+      radius = tf.constant([gaussian_rad] * max_num_instances, dtype)
     # These blobs contain information needed to draw the gaussian
     ct_blobs = tf.stack([classes, xct, yct, radius], axis=-1)
     
@@ -235,6 +246,5 @@ if __name__ == '__main__':
           'box_indices': tf.int32
       }
   )
-  print(gt_label)
   b = time.time()
   print("Time taken: {} ms".format((b - a) * 1000))
