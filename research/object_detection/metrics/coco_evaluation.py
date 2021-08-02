@@ -477,6 +477,18 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
       for category_dict in self._categories:
         metric_names.append('DetectionBoxes_PerformanceByCategory/mAP/' +
                             category_dict['name'])
+        if self._all_metrics_per_category:
+            metric_names.append('DetectionBoxes_Precision mAP (large) ByCategory/' + category_dict['name'])
+            metric_names.append('DetectionBoxes_Precision mAP (medium) ByCategory/' + category_dict['name'])
+            metric_names.append('DetectionBoxes_Precision mAP (small) ByCategory/' + category_dict['name'])
+            metric_names.append('DetectionBoxes_Precision mAP@.50IOU ByCategory/' + category_dict['name'])
+            metric_names.append('DetectionBoxes_Precision mAP@.75IOU ByCategory/' + category_dict['name'])
+            metric_names.append('DetectionBoxes_Recall AR@1 ByCategory/' + category_dict['name'])
+            metric_names.append('DetectionBoxes_Recall AR@10 ByCategory/' + category_dict['name'])
+            metric_names.append('DetectionBoxes_Recall AR@100 (large) ByCategory/' + category_dict['name'])
+            metric_names.append('DetectionBoxes_Recall AR@100 (medium) ByCategory/' + category_dict['name'])
+            metric_names.append('DetectionBoxes_Recall AR@100 (small) ByCategory/' + category_dict['name'])
+            metric_names.append('DetectionBoxes_Recall AR@100 ByCategory/' + category_dict['name'])
 
     def first_value_func():
       self._metrics = self.evaluate()
