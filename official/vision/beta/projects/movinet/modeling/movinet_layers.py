@@ -265,7 +265,7 @@ class ConvBlock(tf.keras.layers.Layer):
       tf.keras.regularizers.L2(KERNEL_WEIGHT_DECAY),
       use_batch_norm: bool = True,
       batch_norm_layer: tf.keras.layers.Layer =
-      tf.keras.layers.experimental.SyncBatchNormalization,
+      tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       activation: Optional[Any] = None,
@@ -547,8 +547,8 @@ class StreamConvBlock(ConvBlock):
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = tf.keras
       .regularizers.L2(KERNEL_WEIGHT_DECAY),
       use_batch_norm: bool = True,
-      batch_norm_layer: tf.keras.layers.Layer = tf.keras.layers.experimental
-      .SyncBatchNormalization,
+      batch_norm_layer: tf.keras.layers.Layer =
+      tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       activation: Optional[Any] = None,
@@ -915,7 +915,7 @@ class SkipBlock(tf.keras.layers.Layer):
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] =
       tf.keras.regularizers.L2(KERNEL_WEIGHT_DECAY),
       batch_norm_layer: tf.keras.layers.Layer =
-      tf.keras.layers.experimental.SyncBatchNormalization,
+      tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       **kwargs):
@@ -1031,8 +1031,8 @@ class MovinetBlock(tf.keras.layers.Layer):
       kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = tf.keras
       .regularizers.L2(KERNEL_WEIGHT_DECAY),
-      batch_norm_layer: tf.keras.layers.Layer = tf.keras.layers.experimental
-      .SyncBatchNormalization,
+      batch_norm_layer: tf.keras.layers.Layer =
+      tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       state_prefix: Optional[str] = None,
@@ -1078,7 +1078,6 @@ class MovinetBlock(tf.keras.layers.Layer):
         se_ratio * expand_filters * se_multiplier, divisor=8)
     self._out_filters = out_filters
     self._expand_filters = expand_filters
-    self._kernel_size = kernel_size
     self._causal = causal
     self._activation = activation
     self._gating_activation = gating_activation
@@ -1232,8 +1231,8 @@ class Stem(tf.keras.layers.Layer):
       kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = tf.keras
       .regularizers.L2(KERNEL_WEIGHT_DECAY),
-      batch_norm_layer: tf.keras.layers.Layer = tf.keras.layers.experimental
-      .SyncBatchNormalization,
+      batch_norm_layer: tf.keras.layers.Layer =
+      tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       state_prefix: Optional[str] = None,
@@ -1340,8 +1339,8 @@ class Head(tf.keras.layers.Layer):
       kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = tf.keras
       .regularizers.L2(KERNEL_WEIGHT_DECAY),
-      batch_norm_layer: tf.keras.layers.Layer = tf.keras.layers.experimental
-      .SyncBatchNormalization,
+      batch_norm_layer: tf.keras.layers.Layer =
+      tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       state_prefix: Optional[str] = None,
@@ -1470,6 +1469,7 @@ class ClassifierHead(tf.keras.layers.Layer):
     self._num_classes = num_classes
     self._dropout_rate = dropout_rate
     self._conv_type = conv_type
+    self._activation = activation
     self._output_activation = output_activation
     self._max_pool_predictions = max_pool_predictions
     self._kernel_initializer = kernel_initializer
@@ -1509,6 +1509,7 @@ class ClassifierHead(tf.keras.layers.Layer):
         'num_classes': self._num_classes,
         'dropout_rate': self._dropout_rate,
         'conv_type': self._conv_type,
+        'activation': self._activation,
         'output_activation': self._output_activation,
         'max_pool_predictions': self._max_pool_predictions,
         'kernel_initializer': self._kernel_initializer,

@@ -130,7 +130,7 @@ class SpineNet(tf.keras.Model):
   def __init__(
       self,
       input_specs: tf.keras.layers.InputSpec = tf.keras.layers.InputSpec(
-          shape=[None, 640, 640, 3]),
+          shape=[None, None, None, 3]),
       min_level: int = 3,
       max_level: int = 7,
       block_specs: List[BlockSpec] = build_block_specs(),
@@ -214,8 +214,11 @@ class SpineNet(tf.keras.Model):
     inputs = tf.keras.Input(shape=input_specs.shape[1:])
 
     net = self._build_stem(inputs=inputs)
-    net = self._build_scale_permuted_network(
-        net=net, input_width=input_specs.shape[2])
+    input_width = input_specs.shape[2]
+    if input_width is None:
+      max_stride = max(map(lambda b: b.level, block_specs))
+      input_width = 2 ** max_stride
+    net = self._build_scale_permuted_network(net=net, input_width=input_width)
     endpoints = self._build_endpoints(net=net)
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}

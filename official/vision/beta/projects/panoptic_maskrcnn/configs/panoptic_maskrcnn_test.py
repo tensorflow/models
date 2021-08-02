@@ -12,29 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for retinanet."""
+"""Tests for panoptic maskrcnn config."""
 # pylint: disable=unused-import
 from absl.testing import parameterized
 import tensorflow as tf
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
-from official.vision import beta
-from official.vision.beta.configs import retinanet as exp_cfg
+from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_maskrcnn as exp_cfg
 
 
-class RetinaNetConfigTest(tf.test.TestCase, parameterized.TestCase):
+class PanopticMaskRCNNConfigTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(
-      ('retinanet_resnetfpn_coco',),
-      ('retinanet_spinenet_coco',),
-      ('retinanet_mobile_coco',),
+      ('panoptic_maskrcnn_resnetfpn_coco',),
   )
-  def test_retinanet_configs(self, config_name):
+  def test_panoptic_maskrcnn_configs(self, config_name):
     config = exp_factory.get_exp_config(config_name)
     self.assertIsInstance(config, cfg.ExperimentConfig)
-    self.assertIsInstance(config.task, exp_cfg.RetinaNetTask)
-    self.assertIsInstance(config.task.model, exp_cfg.RetinaNet)
+    self.assertIsInstance(config.task, exp_cfg.PanopticMaskRCNNTask)
+    self.assertIsInstance(config.task.model, exp_cfg.PanopticMaskRCNN)
     self.assertIsInstance(config.task.train_data, exp_cfg.DataConfig)
     config.validate()
     config.task.train_data.is_training = None

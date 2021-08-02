@@ -15,6 +15,11 @@ task:
       movinet:
         model_id: 'a1'
         causal: true
+        # Note: we train with '3d_2plus1d', but convert to '2plus1d' for inference
+        conv_type: '3d_2plus1d'
+        se_type: '2plus3d'
+        activation: 'hard_swish'
+        gating_activation: 'hard_sigmoid'
         stochastic_depth_drop_rate: 0.2
     norm_activation:
       use_sync_bn: true

@@ -23,6 +23,7 @@ from official.modeling import hyperparams
 
 @dataclasses.dataclass
 class TaskRoutine(hyperparams.Config):
+  # TODO(hongkuny): deprecate the task_name once we migrated client code.
   task_name: str = ""
   task_config: cfg.TaskConfig = None
   eval_steps: Optional[int] = None
@@ -76,4 +77,4 @@ class MultiEvalExperimentConfig(cfg.ExperimentConfig):
   Attributes:
     eval_tasks: individual evaluation tasks.
   """
-  eval_tasks: MultiTaskConfig = MultiTaskConfig()
+  eval_tasks: Tuple[TaskRoutine, ...] = ()

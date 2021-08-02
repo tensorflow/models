@@ -130,6 +130,7 @@ class MovinetModel(video_classification.VideoClassificationModel):
       norm_momentum=0.99,
       norm_epsilon=1e-3,
       use_sync_bn=True)
+  activation: str = 'swish'
   output_states: bool = False
 
 

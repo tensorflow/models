@@ -1,4 +1,5 @@
 # --experiment_type=retinanet_mobile_coco
+# COCO AP 23.5%
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
@@ -11,22 +12,24 @@ task:
       aspect_ratios: [0.5, 1.0, 2.0]
       num_scales: 3
     backbone:
-      spinenet_mobile:
-        stochastic_depth_drop_rate: 0.2
-        model_id: '49XS'
-        se_ratio: 0.2
-      type: 'spinenet_mobile'
+      mobilenet:
+        model_id: 'MobileNetV2'
+        filter_size_scale: 1.0
+      type: 'mobilenet'
     decoder:
-      type: 'identity'
+      type: 'fpn'
+      fpn:
+        num_filters: 128
+        use_separable_conv: true
     head:
       num_convs: 4
-      num_filters: 24
+      num_filters: 128
       use_separable_conv: true
     input_size: [256, 256, 3]
     max_level: 7
     min_level: 3
     norm_activation:
-      activation: 'swish'
+      activation: 'relu6'
       norm_epsilon: 0.001
       norm_momentum: 0.99
       use_sync_bn: true
@@ -43,7 +46,6 @@ task:
     global_batch_size: 8
     is_training: false
 trainer:
-  checkpoint_interval: 462
   optimizer_config:
     learning_rate:
       stepwise:

@@ -23,20 +23,18 @@ import os
 import pickle
 import time
 import timeit
-
-# pylint: disable=wrong-import-order
+import typing
+from typing import Dict, Text, Tuple
 
 from absl import logging
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-import typing
-from typing import Dict, Text, Tuple
-# pylint: enable=wrong-import-order
 
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import movielens
+
 
 _EXPECTED_CACHE_KEYS = (rconst.TRAIN_USER_KEY, rconst.TRAIN_ITEM_KEY,
                         rconst.EVAL_USER_KEY, rconst.EVAL_ITEM_KEY,
@@ -196,7 +194,7 @@ def _filter_index_sort(raw_rating_path: Text,
 
     logging.info("Writing raw data cache.")
     with tf.io.gfile.GFile(cache_path, "wb") as f:
-      pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+      pickle.dump(data, f, protocol=4)
 
   # TODO(robieta): MLPerf cache clear.
   return data, valid_cache

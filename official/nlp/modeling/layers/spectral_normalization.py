@@ -106,16 +106,19 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
 
   def call(self, inputs, *, training=None):
     training = self.do_power_iteration if training is None else training
-    u_update_op, v_update_op, w_update_op = self.update_weights(
-        training=training)
-    output = self.layer(inputs)
-    w_restore_op = self.restore_weights()
+    if training:
+      u_update_op, v_update_op, w_update_op = self.update_weights(
+          training=training)
+      output = self.layer(inputs)
+      w_restore_op = self.restore_weights()
 
-    # Register update ops.
-    self.add_update(u_update_op)
-    self.add_update(v_update_op)
-    self.add_update(w_update_op)
-    self.add_update(w_restore_op)
+      # Register update ops.
+      self.add_update(u_update_op)
+      self.add_update(v_update_op)
+      self.add_update(w_update_op)
+      self.add_update(w_restore_op)
+    else:
+      output = self.layer(inputs)
 
     return output
 

@@ -100,7 +100,6 @@ class ElectraPretrainerTest(keras_parameterized.TestCase):
         discriminator_network=test_discriminator_network,
         vocab_size=100,
         num_classes=2,
-        sequence_length=3,
         num_token_predictions=2)
 
     # Create a set of 2-dimensional data tensors to feed into the model.
@@ -138,7 +137,6 @@ class ElectraPretrainerTest(keras_parameterized.TestCase):
         discriminator_network=test_discriminator_network,
         vocab_size=100,
         num_classes=2,
-        sequence_length=3,
         num_token_predictions=2)
 
     # Create another BERT trainer via serialization and deserialization.

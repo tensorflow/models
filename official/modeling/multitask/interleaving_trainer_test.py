@@ -60,6 +60,7 @@ class InterleavingTrainerTest(tf.test.TestCase, parameterized.TestCase):
                                 results["bar"].keys())
       self.assertContainsSubset(["training_loss", "foo_acc"],
                                 results["foo"].keys())
+      self.assertNotIn("total_loss", results)
 
   @combinations.generate(all_strategy_combinations())
   def test_trainer_with_configs(self, distribution):

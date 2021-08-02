@@ -16,14 +16,14 @@
 
 The evaluator implements the Orbit `AbstractEvaluator` interface.
 """
-from typing import Optional, Union
+from typing import Dict, List, Optional, Union
 import gin
 import orbit
 import tensorflow as tf
 
+from official.core import base_task
 from official.core import train_utils
 from official.modeling.multitask import base_model
-from official.modeling.multitask import multitask
 
 
 @gin.configurable
@@ -32,37 +32,39 @@ class MultiTaskEvaluator(orbit.AbstractEvaluator):
 
   def __init__(
       self,
-      task: multitask.MultiTask,
+      eval_tasks: List[base_task.Task],
       model: Union[tf.keras.Model, base_model.MultiTaskBaseModel],
       global_step: Optional[tf.Variable] = None,
+      eval_steps: Optional[Dict[str, int]] = None,
       checkpoint_exporter: Optional[train_utils.BestCheckpointExporter] = None):
     """Initialize common trainer for TensorFlow models.
 
     Args:
-      task: A multitask.MultiTask instance.
+      eval_tasks: A list of tasks to evaluate.
       model: tf.keras.Model instance.
       global_step: the global step variable.
+      eval_steps: a dictionary of steps to run eval keyed by task names.
       checkpoint_exporter: an object that has the `maybe_export_checkpoint`
         interface.
     """
     # Gets the current distribution strategy. If not inside any strategy scope,
     # it gets a single-replica no-op strategy.
     self._strategy = tf.distribute.get_strategy()
-    self._task = task
+    self._tasks = eval_tasks
     self._model = model
     self._global_step = global_step or orbit.utils.create_global_step()
     self._checkpoint_exporter = checkpoint_exporter
     self._checkpoint = tf.train.Checkpoint(
-        global_step=self.global_step,
-        model=self.model)
+        global_step=self.global_step, model=self.model)
 
     self._validation_losses = None
     self._validation_metrics = None
 
     # Builds per-task datasets.
     self.eval_datasets = {}
-    for name, task in self.task.tasks.items():
-      self.eval_datasets[name] = orbit.utils.make_distributed_dataset(
+    self.eval_steps = eval_steps or {}
+    for task in self.tasks:
+      self.eval_datasets[task.name] = orbit.utils.make_distributed_dataset(
           self.strategy, task.build_inputs, task.task_config.validation_data)
 
     # Builds per-task validation loops.
@@ -89,8 +91,7 @@ class MultiTaskEvaluator(orbit.AbstractEvaluator):
       return orbit.utils.create_loop_fn(eval_step_fn)
 
     self.task_fns = {
-        name: get_function(name, task)
-        for name, task in self.task.tasks.items()
+        task.name: get_function(task.name, task) for task in self.tasks
     }
 
   @property
@@ -98,8 +99,8 @@ class MultiTaskEvaluator(orbit.AbstractEvaluator):
     return self._strategy
 
   @property
-  def task(self):
-    return self._task
+  def tasks(self):
+    return self._tasks
 
   @property
   def model(self):
@@ -115,8 +116,8 @@ class MultiTaskEvaluator(orbit.AbstractEvaluator):
     if self._validation_losses is None:
       # Builds the per-task metrics and losses.
       self._validation_losses = {}
-      for name in self.task.tasks:
-        self._validation_losses[name] = tf.keras.metrics.Mean(
+      for task in self.tasks:
+        self._validation_losses[task.name] = tf.keras.metrics.Mean(
             "validation_loss", dtype=tf.float32)
     return self._validation_losses
 
@@ -126,8 +127,8 @@ class MultiTaskEvaluator(orbit.AbstractEvaluator):
     if self._validation_metrics is None:
       # Builds the per-task metrics and losses.
       self._validation_metrics = {}
-      for name, task in self.task.tasks.items():
-        self._validation_metrics[name] = task.build_metrics(training=False)
+      for task in self.tasks:
+        self._validation_metrics[task.name] = task.build_metrics(training=False)
     return self._validation_metrics
 
   @property
@@ -145,12 +146,12 @@ class MultiTaskEvaluator(orbit.AbstractEvaluator):
     results = {}
     eval_iters = tf.nest.map_structure(iter, self.eval_datasets)
 
-    for name, task_eval_loop in self.task_fns.items():
+    for task in self.tasks:
       outputs = None
+      name = task.name
       eval_iter = eval_iters[name]
-      task = self.task.tasks[name]
-      task_eval_steps = self.task.task_eval_steps(name) or num_steps
-      outputs = task_eval_loop(
+      task_eval_steps = self.eval_steps.get(name, None) or num_steps
+      outputs = self.task_fns[name](
           eval_iter,
           task_eval_steps,
           state=outputs,

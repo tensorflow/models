@@ -33,6 +33,22 @@ def generate_fake_input(batch_size=1, seq_len=5, vocab_size=10000, seed=0):
   return fake_input
 
 
+class EdgeTPUNoNormTest(tf.test.TestCase):
+
+  def test_no_norm(self):
+    layer = mobile_bert_layers.NoNormClipped()
+    feature = tf.random.uniform(
+        [2, 3, 4], minval=-8, maxval=8, dtype=tf.float32)
+    output = layer(feature)
+    output_shape = output.shape.as_list()
+    expected_shape = [2, 3, 4]
+    self.assertListEqual(output_shape, expected_shape, msg=None)
+    output_min = tf.reduce_min(output)
+    output_max = tf.reduce_max(output)
+    self.assertGreaterEqual(6.0, output_max)
+    self.assertLessEqual(-6.0, output_min)
+
+
 class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_embedding_layer_with_token_type(self):

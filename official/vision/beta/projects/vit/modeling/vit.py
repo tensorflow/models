@@ -59,6 +59,12 @@ VIT_SPECS = {
             patch_size=14,
             transformer=dict(mlp_dim=5120, num_heads=16, num_layers=32),
         ),
+    'vit-g14':
+        dict(
+            hidden_size=1664,
+            patch_size=14,
+            transformer=dict(mlp_dim=8192, num_heads=16, num_layers=48),
+        ),
 }
 
 

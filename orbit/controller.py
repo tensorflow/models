@@ -446,14 +446,13 @@ class Controller:
           f"{num_steps}. Old value was {current_step}, expected updated value "
           f"to be {expected_step}, but it was {self.global_step.numpy()}.")
       logging.warning(message)
-      return
 
     train_output = train_output or {}
     for action in self.train_actions:
       action(train_output)
     train_output = tf.nest.map_structure(utils.get_value, train_output)
 
-    current_step = expected_step
+    current_step = self.global_step.numpy()
     steps_per_second = self.step_timer.steps_per_second()
     _log(f"train | step: {current_step: 6d} | "
          f"steps/sec: {steps_per_second: 6.1f} | "
