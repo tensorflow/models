@@ -51,7 +51,6 @@ class CenterNetHeadTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(outputs['ct_size'][0].shape, (2, 128, 128, 2))
     
     # Weight initialization tests
-    tf.print("\n\n{}\n\n".format(head.layers))
     hm_bias_vector = np.asarray(head.layers[2].weights[-1])
     off_bias_vector = np.asarray(head.layers[4].weights[-1])
     size_bias_vector = np.asarray(head.layers[6].weights[-1])

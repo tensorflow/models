@@ -75,7 +75,7 @@ class CenterNetHead(tf.keras.Model):
     }
     
     super().__init__(inputs=inputs, outputs=outputs,
-                     name='CenterNetDecoder', **kwargs)
+                     name='CenterNetHead', **kwargs)
   
   def get_config(self) -> Mapping[str, Any]:
     config = {

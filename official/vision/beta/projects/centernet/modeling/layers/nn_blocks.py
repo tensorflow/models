@@ -84,6 +84,7 @@ def _make_repeated_residual_blocks(
     blocks.append(nn_blocks.ResidualBlock(
         filters=residual_channels,
         strides=stride,
+        use_explicit_padding=True,
         use_projection=skip_conv,
         use_sync_bn=use_sync_bn,
         norm_momentum=norm_momentum,
@@ -105,6 +106,7 @@ def _make_repeated_residual_blocks(
   blocks.append(nn_blocks.ResidualBlock(
       filters=out_channels,
       strides=stride,
+      use_explicit_padding=True,
       use_projection=skip_conv,
       use_sync_bn=use_sync_bn,
       norm_momentum=norm_momentum,
