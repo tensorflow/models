@@ -133,6 +133,7 @@ class Hourglass(tf.keras.Model):
     x_downsampled = nn_blocks.ResidualBlock(
         filters=inp_filters,
         use_projection=True,
+        use_explicit_padding=True,
         strides=prelayer_strides,
         bias_regularizer=self._bias_regularizer,
         kernel_initializer=self._kernel_initializer,
@@ -199,6 +200,7 @@ class Hourglass(tf.keras.Model):
         x_downsampled = nn_blocks.ResidualBlock(
             filters=inp_filters,
             use_projection=False,
+            use_explicit_padding=True,
             strides=1,
             bias_regularizer=self._bias_regularizer,
             kernel_initializer=self._kernel_initializer,
