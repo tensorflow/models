@@ -70,6 +70,7 @@ class LrConfig(oneof.OneOfConfig):
     power_linear: learning rate config of step^power followed by
       step^power*linear.
     power_with_offset: power decay with a step offset.
+    step_cosine_with_offset: Step cosine with a step offset.
   """
   type: Optional[str] = None
   constant: lr_cfg.ConstantLrConfig = lr_cfg.ConstantLrConfig()
@@ -82,6 +83,8 @@ class LrConfig(oneof.OneOfConfig):
       lr_cfg.PowerAndLinearDecayLrConfig())
   power_with_offset: lr_cfg.PowerDecayWithOffsetLrConfig = (
       lr_cfg.PowerDecayWithOffsetLrConfig())
+  step_cosine_with_offset: lr_cfg.StepCosineLrConfig = (
+      lr_cfg.StepCosineLrConfig())
 
 
 @dataclasses.dataclass

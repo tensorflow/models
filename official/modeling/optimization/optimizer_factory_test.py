@@ -394,5 +394,38 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     for step, value in expected_lr_step_values:
       self.assertAlmostEqual(lr(step).numpy(), value)
 
+  def test_step_cosine_lr_schedule_with_warmup(self):
+    params = {
+        'optimizer': {
+            'type': 'sgd',
+            'sgd': {
+                'momentum': 0.9
+            }
+        },
+        'learning_rate': {
+            'type': 'step_cosine_with_offset',
+            'step_cosine_with_offset': {
+                'values': (0.0001, 0.00005),
+                'boundaries': (0, 500000),
+                'offset': 10000,
+            }
+        },
+        'warmup': {
+            'type': 'linear',
+            'linear': {
+                'warmup_steps': 10000,
+                'warmup_learning_rate': 0.0
+            }
+        }
+    }
+    expected_lr_step_values = [[0, 0.0], [5000, 1e-4/2.0], [10000, 1e-4],
+                               [20000, 9.994863e-05], [499999, 5e-05]]
+    opt_config = optimization_config.OptimizationConfig(params)
+    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
+    lr = opt_factory.build_learning_rate()
+
+    for step, value in expected_lr_step_values:
+      self.assertAlmostEqual(lr(step).numpy(), value)
+
 if __name__ == '__main__':
   tf.test.main()
