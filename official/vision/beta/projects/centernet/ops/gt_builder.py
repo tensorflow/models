@@ -172,9 +172,9 @@ def build_heatmap_and_regressed_features(labels: Dict,
     ct_blobs = tf.stack([classes, xct, yct, radius], axis=-1)
     
     # Get individual gaussian contributions from each bounding box
-    ct_heatmap_shape = tf.shape(ct_heatmap)
     ct_gaussians = tf.map_fn(
-        fn=lambda x: preprocess_ops.draw_gaussian(ct_heatmap_shape, x, dtype),
+        fn=lambda x: preprocess_ops.draw_gaussian(
+            tf.shape(ct_heatmap), x, dtype),
         elems=ct_blobs)
     
     # Combine contributions into single heatmaps
