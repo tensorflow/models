@@ -50,6 +50,7 @@ class ASPP(hyperparams.Config):
   dilation_rates: List[int] = dataclasses.field(default_factory=list)
   dropout_rate: float = 0.0
   num_filters: int = 256
+  use_depthwise_convolution: bool = False
   pool_kernel_size: Optional[List[int]] = None  # Use global average pooling.
 
 

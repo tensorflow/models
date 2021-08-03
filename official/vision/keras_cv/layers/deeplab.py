@@ -21,9 +21,11 @@ import tensorflow as tf
 class SpatialPyramidPooling(tf.keras.layers.Layer):
   """Implements the Atrous Spatial Pyramid Pooling.
 
-  Reference:
+  References:
     [Rethinking Atrous Convolution for Semantic Image Segmentation](
       https://arxiv.org/pdf/1706.05587.pdf)
+    [Encoder-Decoder with Atrous Separable Convolution for Semantic Image
+    Segmentation](https://arxiv.org/pdf/1802.02611.pdf)
   """
 
   def __init__(
@@ -39,6 +41,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
       kernel_initializer='glorot_uniform',
       kernel_regularizer=None,
       interpolation='bilinear',
+      use_depthwise_convolution=False,
       **kwargs):
     """Initializes `SpatialPyramidPooling`.
 
@@ -60,6 +63,10 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
       kernel_regularizer: Kernel regularizer for conv layers. Defaults to None.
       interpolation: The interpolation method for upsampling. Defaults to
         `bilinear`.
+      use_depthwise_convolution: Allows spatial pooling to be separable
+         depthwise convolusions. [Encoder-Decoder with Atrous Separable
+         Convolution for Semantic Image Segmentation](
+         https://arxiv.org/pdf/1802.02611.pdf)
       **kwargs: Other keyword arguments for the layer.
     """
     super(SpatialPyramidPooling, self).__init__(**kwargs)
@@ -76,6 +83,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
     self.interpolation = interpolation
     self.input_spec = tf.keras.layers.InputSpec(ndim=4)
     self.pool_kernel_size = pool_kernel_size
+    self.use_depthwise_convolution = use_depthwise_convolution
 
   def build(self, input_shape):
     height = input_shape[1]
@@ -109,9 +117,20 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
     self.aspp_layers.append(conv_sequential)
 
     for dilation_rate in self.dilation_rates:
-      conv_sequential = tf.keras.Sequential([
+      leading_layers = []
+      kernel_size = (3, 3)
+      if self.use_depthwise_convolution:
+        leading_layers += [
+            tf.keras.layers.DepthwiseConv2D(
+                depth_multiplier=1, kernel_size=kernel_size,
+                padding='same', depthwise_regularizer=self.kernel_regularizer,
+                depthwise_initializer=self.kernel_initializer,
+                dilation_rate=dilation_rate, use_bias=False)
+        ]
+        kernel_size = (1, 1)
+      conv_sequential = tf.keras.Sequential(leading_layers + [
           tf.keras.layers.Conv2D(
-              filters=self.output_channels, kernel_size=(3, 3),
+              filters=self.output_channels, kernel_size=kernel_size,
               padding='same', kernel_regularizer=self.kernel_regularizer,
               kernel_initializer=self.kernel_initializer,
               dilation_rate=dilation_rate, use_bias=False),
