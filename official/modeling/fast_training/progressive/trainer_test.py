@@ -24,8 +24,8 @@ from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
 from official.core import config_definitions as cfg
 from official.modeling import optimization
-from official.modeling.progressive import policies
-from official.modeling.progressive import trainer as trainer_lib
+from official.modeling.fast_training.progressive import policies
+from official.modeling.fast_training.progressive import trainer as trainer_lib
 from official.nlp.configs import bert
 from official.utils.testing import mock_task
 

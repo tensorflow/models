@@ -31,9 +31,9 @@ from official.core import config_definitions as cfg
 from official.core import task_factory
 from official.modeling import optimization
 from official.modeling.hyperparams import params_dict
-from official.modeling.progressive import policies
-from official.modeling.progressive import train_lib
-from official.modeling.progressive import trainer as prog_trainer_lib
+from official.modeling.fast_training.progressive import policies
+from official.modeling.fast_training.progressive import train_lib
+from official.modeling.fast_training.progressive import trainer as prog_trainer_lib
 from official.utils.testing import mock_task
 
 FLAGS = flags.FLAGS

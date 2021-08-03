@@ -29,7 +29,7 @@ import tensorflow as tf
 from official.core import base_task
 from official.core import config_definitions
 from official.core import train_lib as base_train_lib
-from official.modeling.progressive import trainer as prog_trainer_lib
+from official.modeling.fast_training.progressive import trainer as prog_trainer_lib
 
 
 def run_experiment(distribution_strategy: tf.distribute.Strategy,

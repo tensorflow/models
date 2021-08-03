@@ -28,8 +28,8 @@ from official.core import train_utils
 from official.modeling import hyperparams
 from official.modeling import optimization
 from official.modeling import performance
-from official.modeling.progressive import train_lib
-from official.modeling.progressive import trainer as prog_trainer_lib
+from official.modeling.fast_training.progressive import train_lib
+from official.modeling.fast_training.progressive import trainer as prog_trainer_lib
 from official.nlp.data import pretrain_dataloader
 from official.nlp.projects.mobilebert import distillation
 
