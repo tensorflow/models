@@ -38,10 +38,10 @@ def build_heatmap_and_regressed_features(labels: Dict,
   Args:
     labels: A dictionary of COCO ground truth labels with at minimum the
       following fields:
-      bbox: A `Tensor` of shape [max_num_instances, num_boxes, 4], where the
+      bbox: A `Tensor` of shape [max_num_instances, 4], where the
         last dimension corresponds to the top left x, top left y, bottom right x,
         and bottom left y coordinates of the bounding box
-      classes: A `Tensor` of shape [max_num_instances, num_boxes] that contains
+      classes: A `Tensor` of shape [max_num_instances] that contains
         the class of each box, given in the same order as the boxes
       num_detections: A `Tensor` or int that gives the number of objects
     output_size: A `list` of length 2 containing the desired output height
@@ -92,7 +92,9 @@ def build_heatmap_and_regressed_features(labels: Dict,
   # Get relevant bounding box and class information from labels
   # only keep the first num_objects boxes and classes
   num_objects = labels['num_detections']
-  boxes = labels['bbox'][:num_objects]
+  # shape of labels['bbox'] is [max_num_instances, 4]
+  boxes = tf.cast(labels['bbox'][:num_objects], dtype)
+  # shape of labels['classes'] is [max_num_instances, 4]
   classes = tf.cast(labels['classes'][:num_objects] - class_offset, dtype)
   
   # Compute scaling factors for center/corner positions on heatmap
@@ -105,24 +107,29 @@ def build_heatmap_and_regressed_features(labels: Dict,
   height_ratio = output_h / input_h
   
   # Original box coordinates
+  # [num_objects, ]
   ytl, ybr = boxes[..., 0], boxes[..., 2]
   xtl, xbr = boxes[..., 1], boxes[..., 3]
   yct = (ytl + ybr) / 2
   xct = (xtl + xbr) / 2
   
   # Scaled box coordinates (could be floating point)
+  # [num_objects, ]
   fxct = xct * width_ratio
   fyct = yct * height_ratio
   
   # Floor the scaled box coordinates to be placed on heatmaps
+  # [num_objects, ]
   xct = tf.math.floor(fxct)
   yct = tf.math.floor(fyct)
   
   # Offset computations to make up for discretization error
   # used for offset maps
+  # [num_objects, 2]
   ct_offset_values = tf.stack([fxct - xct, fyct - yct], axis=-1)
   
   # Get the scaled box dimensions for computing the gaussian radius
+  # [num_objects, ]
   box_widths = boxes[..., 3] - boxes[..., 1]
   box_heights = boxes[..., 2] - boxes[..., 0]
   
@@ -130,17 +137,23 @@ def build_heatmap_and_regressed_features(labels: Dict,
   box_heights = box_heights * height_ratio
   
   # Used for size map
+  # [num_objects, 2]
   box_widths_heights = tf.stack([box_widths, box_heights], axis=-1)
   
   # Center/corner heatmaps
+  # [output_h, output_w, num_classes]
   ct_heatmap = tf.zeros((output_h, output_w, num_classes), dtype)
   
   # Maps for offset and size features for each instance of a box
+  # [max_num_instances, 2]
   ct_offset = tf.zeros((max_num_instances, 2), dtype)
+  # [max_num_instances, 2]
   size = tf.zeros((max_num_instances, 2), dtype)
   
   # Mask for valid box instances and their center indices in the heatmap
+  # [max_num_instances, ]
   box_mask = tf.zeros((max_num_instances), tf.int32)
+  # [max_num_instances, 2]
   box_indices = tf.zeros((max_num_instances, 2), tf.int32)
   
   if use_gaussian_bump:
@@ -148,11 +161,10 @@ def build_heatmap_and_regressed_features(labels: Dict,
     
     # First compute the desired gaussian radius
     if gaussian_rad == -1:
-      radius = tf.map_fn(fn=lambda x: preprocess_ops.gaussian_radius(
-          x, gaussian_iou),
-                         elems=tf.math.ceil(box_widths_heights))
-      radius = tf.math.maximum(tf.math.floor(radius),
-                               tf.cast(1.0, radius.dtype))
+      radius = tf.map_fn(
+          fn=lambda x: preprocess_ops.gaussian_radius(x, gaussian_iou),
+          elems=tf.math.ceil(box_widths_heights))
+      radius = tf.math.maximum(tf.math.floor(radius), tf.cast(1.0, radius.dtype))
     else:
       radius = tf.constant([gaussian_rad] * max_num_instances, dtype)
       radius = radius[:num_objects]
@@ -160,15 +172,17 @@ def build_heatmap_and_regressed_features(labels: Dict,
     ct_blobs = tf.stack([classes, xct, yct, radius], axis=-1)
     
     # Get individual gaussian contributions from each bounding box
+    ct_heatmap_shape = tf.shape(ct_heatmap)
     ct_gaussians = tf.map_fn(
-        fn=lambda x: preprocess_ops.draw_gaussian(
-            tf.shape(ct_heatmap), x, dtype), elems=ct_blobs)
+        fn=lambda x: preprocess_ops.draw_gaussian(ct_heatmap_shape, x, dtype),
+        elems=ct_blobs)
     
     # Combine contributions into single heatmaps
     ct_heatmap = tf.math.reduce_max(ct_gaussians, axis=0)
   
   else:
     # Instead of a gaussian, insert 1s in the center and corner heatmaps
+    # [num_objects, 3]
     ct_hm_update_indices = tf.cast(
         tf.stack([yct, xct, classes], axis=-1), tf.int32)
     
@@ -179,6 +193,7 @@ def build_heatmap_and_regressed_features(labels: Dict,
   # Indices used to update offsets and sizes for valid box instances
   update_indices = preprocess_ops.cartesian_product(
       tf.range(num_objects), tf.range(2))
+  # [num_objects, 2, 2]
   update_indices = tf.reshape(update_indices, shape=[num_objects, 2, 2])
   
   # Write the offsets of each box instance
@@ -186,7 +201,8 @@ def build_heatmap_and_regressed_features(labels: Dict,
       ct_offset, update_indices, ct_offset_values)
   
   # Write the size of each bounding box
-  size = tf.tensor_scatter_nd_update(size, update_indices, box_widths_heights)
+  size = tf.tensor_scatter_nd_update(
+      size, update_indices, box_widths_heights)
   
   # Initially the mask is zeros, so now we unmask each valid box instance
   mask_indices = tf.expand_dims(tf.range(num_objects), -1)
@@ -198,10 +214,15 @@ def build_heatmap_and_regressed_features(labels: Dict,
   box_indices = tf.tensor_scatter_nd_update(
       box_indices, update_indices, box_index_values)
   labels = {
+      # [output_h, output_w, num_classes]
       'ct_heatmaps': ct_heatmap,
+      # [max_num_instances, 2]
       'ct_offset': ct_offset,
+      # [max_num_instances, 2]
       'size': size,
+      # [max_num_instances, ]
       'box_mask': box_mask,
+      # [max_num_instances, 2]
       'box_indices': box_indices
   }
   return labels
@@ -249,4 +270,6 @@ if __name__ == '__main__':
       }
   )
   b = time.time()
+  for item in gt_label:
+    print(item, gt_label[item].shape)
   print("Time taken: {} ms".format((b - a) * 1000))

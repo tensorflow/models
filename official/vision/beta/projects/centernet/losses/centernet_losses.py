@@ -140,7 +140,7 @@ class L1LocalizationLoss(tf.keras.losses.Loss):
   When used in a per-pixel manner, each pixel should be given as an anchor.
   """
   
-  def __call__(self, y_true, y_pred, sample_weight=None):
+  def call(self, y_true, y_pred, sample_weight=None):
     """Compute loss function.
     Args:
       y_true: A float tensor of shape [batch_size, num_anchors]
@@ -158,5 +158,3 @@ class L1LocalizationLoss(tf.keras.losses.Loss):
         sample_weight=sample_weight,
         reduction=self._get_reduction()
     )
-  
-  call = __call__

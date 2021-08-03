@@ -67,8 +67,8 @@ class CenterNetTask(base_task.Task):
             params.decoder.type))
     
     parser = centernet_input.CenterNetParser(
-        image_w=self.task_config.model.input_size[1],
         image_h=self.task_config.model.input_size[0],
+        image_w=self.task_config.model.input_size[1],
         max_num_instances=self.task_config.model.max_num_instances,
         bgr_ordering=params.parser.bgr_ordering,
         channel_means=params.parser.channel_means,
@@ -109,7 +109,7 @@ class CenterNetTask(base_task.Task):
         input_specs=backbone.output_specs,
         task_outputs=task_outputs,
         num_inputs=backbone.num_hourglasses,
-        heatmap_bias=self.task_config.model.head.heatmap_bias)
+        heatmap_bias=model_config.head.heatmap_bias)
     
     backbone_output_spec = backbone.output_specs[0]
     if len(backbone_output_spec) == 4:
@@ -191,8 +191,8 @@ class CenterNetTask(base_task.Task):
     gt_label = tf.map_fn(
         fn=lambda x: gt_builder.build_heatmap_and_regressed_features(
             labels=x,
-            output_size=outputs['ct_heatmaps'][0].get_shape()[1:3],
             input_size=self.task_config.model.input_size[0:2],
+            output_size=outputs['ct_heatmaps'][0].get_shape()[1:3],
             num_classes=self.task_config.model.num_classes,
             max_num_instances=self.task_config.model.max_num_instances,
             use_gaussian_bump=self.task_config.losses.use_gaussian_bump,
@@ -336,7 +336,7 @@ class CenterNetTask(base_task.Task):
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
       if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
-        scaled_loss = optimizer.get_scaled_loss(losses['total_loss'])
+        scaled_loss = optimizer.get_scaled_loss(scaled_loss)
     
     # compute the gradient
     tvars = model.trainable_variables
@@ -350,7 +350,7 @@ class CenterNetTask(base_task.Task):
       gradients, _ = tf.clip_by_global_norm(gradients,
                                             self.task_config.gradient_clip_norm)
     
-    optimizer.apply_gradients(zip(gradients, tvars))
+    optimizer.apply_gradients(list(zip(gradients, tvars)))
     
     logs = {self.loss: losses['total_loss']}
     
