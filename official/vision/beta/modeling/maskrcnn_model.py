@@ -14,7 +14,7 @@
 
 """Mask R-CNN model."""
 
-from typing import Any, List, Mapping, Optional, Union
+from typing import Any, List, Mapping, Optional, Tuple, Union
 
 import tensorflow as tf
 
@@ -143,6 +143,34 @@ class MaskRCNNModel(tf.keras.Model):
            gt_classes: Optional[tf.Tensor] = None,
            gt_masks: Optional[tf.Tensor] = None,
            training: Optional[bool] = None) -> Mapping[str, tf.Tensor]:
+
+    model_outputs, intermediate_outputs = self._call_box_outputs(
+        images=images, image_shape=image_shape, anchor_boxes=anchor_boxes,
+        gt_boxes=gt_boxes, gt_classes=gt_classes, training=training)
+    if not self._include_mask:
+      return model_outputs
+
+    model_mask_outputs = self._call_mask_outputs(
+        model_box_outputs=model_outputs,
+        features=intermediate_outputs['features'],
+        current_rois=intermediate_outputs['current_rois'],
+        matched_gt_indices=intermediate_outputs['matched_gt_indices'],
+        matched_gt_boxes=intermediate_outputs['matched_gt_boxes'],
+        matched_gt_classes=intermediate_outputs['matched_gt_classes'],
+        gt_masks=gt_masks,
+        training=training)
+    model_outputs.update(model_mask_outputs)
+    return model_outputs
+
+  def _call_box_outputs(
+      self, images: tf.Tensor,
+      image_shape: tf.Tensor,
+      anchor_boxes: Optional[Mapping[str, tf.Tensor]] = None,
+      gt_boxes: Optional[tf.Tensor] = None,
+      gt_classes: Optional[tf.Tensor] = None,
+      training: Optional[bool] = None) -> Tuple[
+          Mapping[str, tf.Tensor], Mapping[str, tf.Tensor]]:
+    """Implementation of the Faster-RCNN logic for boxes."""
     model_outputs = {}
 
     # Feature extraction.
@@ -239,9 +267,28 @@ class MaskRCNNModel(tf.keras.Model):
             'decoded_box_scores': detections['decoded_box_scores']
         })
 
-    if not self._include_mask:
-      return model_outputs
+    intermediate_outputs = {
+        'matched_gt_boxes': matched_gt_boxes,
+        'matched_gt_indices': matched_gt_indices,
+        'matched_gt_classes': matched_gt_classes,
+        'features': features,
+        'current_rois': current_rois,
+    }
+    return (model_outputs, intermediate_outputs)
 
+  def _call_mask_outputs(
+      self,
+      model_box_outputs: Mapping[str, tf.Tensor],
+      features: tf.Tensor,
+      current_rois: tf.Tensor,
+      matched_gt_indices: tf.Tensor,
+      matched_gt_boxes: tf.Tensor,
+      matched_gt_classes: tf.Tensor,
+      gt_masks: tf.Tensor,
+      training: Optional[bool] = None) -> Mapping[str, tf.Tensor]:
+    """Implementation of Mask-RCNN mask prediction logic."""
+
+    model_outputs = dict(model_box_outputs)
     if training:
       current_rois, roi_classes, roi_masks = self.mask_sampler(
           current_rois, matched_gt_boxes, matched_gt_classes,

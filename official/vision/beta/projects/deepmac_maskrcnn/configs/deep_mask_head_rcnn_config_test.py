@@ -25,6 +25,10 @@ class DeepMaskHeadRcnnConfigTest(tf.test.TestCase):
     config = deep_mask_head_rcnn.deep_mask_head_rcnn_resnetfpn_coco()
     self.assertIsInstance(config.task, deep_mask_head_rcnn.DeepMaskHeadRCNNTask)
 
+  def test_config_spinenet(self):
+    config = deep_mask_head_rcnn.deep_mask_head_rcnn_spinenet_coco()
+    self.assertIsInstance(config.task, deep_mask_head_rcnn.DeepMaskHeadRCNNTask)
+
 
 if __name__ == '__main__':
   tf.test.main()
