@@ -287,6 +287,12 @@ class SimCLRPretrainTask(base_task.Task):
 
   def train_step(self, inputs, model, optimizer, metrics=None):
     features, labels = inputs
+
+    # To do a sanity check that we absolutely use no labels when pretraining, we
+    # can set the labels here to zero.
+    if self.task_config.train_data.input_set_label_to_zero:
+      labels *= 0
+
     if (self.task_config.model.supervised_head is not None and
         self.task_config.evaluation.one_hot):
       num_classes = self.task_config.model.supervised_head.num_classes

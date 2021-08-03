@@ -29,6 +29,7 @@ from official.vision.beta.projects.simclr.modeling import simclr_model
 @dataclasses.dataclass
 class SimCLRMTHeadConfig(hyperparams.Config):
   """Per-task specific configs."""
+  task_name: str = 'task_name'
   # Supervised head is required for finetune, but optional for pretrain.
   supervised_head: simclr_configs.SupervisedHead = simclr_configs.SupervisedHead(
       num_classes=1001)
@@ -57,14 +58,17 @@ def multitask_simclr() -> multitask_configs.MultiTaskExperimentConfig:
   return multitask_configs.MultiTaskExperimentConfig(
       task=multitask_configs.MultiTaskConfig(
           model=SimCLRMTModelConfig(
-              heads=(SimCLRMTHeadConfig(mode=simclr_model.PRETRAIN),
-                     SimCLRMTHeadConfig(mode=simclr_model.FINETUNE))),
+              heads=(SimCLRMTHeadConfig(
+                  task_name='pretrain_simclr', mode=simclr_model.PRETRAIN),
+                     SimCLRMTHeadConfig(
+                         task_name='finetune_simclr',
+                         mode=simclr_model.FINETUNE))),
           task_routines=(multitask_configs.TaskRoutine(
-              task_name=simclr_model.PRETRAIN,
+              task_name='pretrain_simclr',
               task_config=simclr_configs.SimCLRPretrainTask(),
               task_weight=2.0),
                          multitask_configs.TaskRoutine(
-                             task_name=simclr_model.FINETUNE,
+                             task_name='finetune_simclr',
                              task_config=simclr_configs.SimCLRFinetuneTask(),
                              task_weight=1.0))),
       trainer=multitask_configs.MultiTaskTrainerConfig())
