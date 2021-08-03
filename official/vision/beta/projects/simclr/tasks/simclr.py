@@ -12,21 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
 """Image SimCLR task definition.
 
 SimCLR training two different modes:
@@ -39,7 +24,6 @@ the task definition:
 - training loss
 - projection_head and/or supervised_head
 """
-
 from typing import Dict, Optional
 
 from absl import logging
@@ -67,7 +51,8 @@ RuntimeConfig = config_definitions.RuntimeConfig
 class SimCLRPretrainTask(base_task.Task):
   """A task for image classification."""
 
-  def create_optimizer(self, optimizer_config: OptimizationConfig,
+  def create_optimizer(self,
+                       optimizer_config: OptimizationConfig,
                        runtime_config: Optional[RuntimeConfig] = None):
     """Creates an TF optimizer from configurations.
 
@@ -78,8 +63,8 @@ class SimCLRPretrainTask(base_task.Task):
     Returns:
       A tf.optimizers.Optimizer object.
     """
-    if (optimizer_config.optimizer.type == 'lars'
-        and self.task_config.loss.l2_weight_decay > 0.0):
+    if (optimizer_config.optimizer.type == 'lars' and
+        self.task_config.loss.l2_weight_decay > 0.0):
       raise ValueError('The l2_weight_decay cannot be used together with lars '
                        'optimizer. Please set it to 0.')
 
@@ -97,15 +82,16 @@ class SimCLRPretrainTask(base_task.Task):
 
   def build_model(self):
     model_config = self.task_config.model
-    input_specs = tf.keras.layers.InputSpec(
-        shape=[None] + model_config.input_size)
+    input_specs = tf.keras.layers.InputSpec(shape=[None] +
+                                            model_config.input_size)
 
     l2_weight_decay = self.task_config.loss.l2_weight_decay
     # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
-    l2_regularizer = (tf.keras.regularizers.l2(
-        l2_weight_decay / 2.0) if l2_weight_decay else None)
+    l2_regularizer = (
+        tf.keras.regularizers.l2(l2_weight_decay /
+                                 2.0) if l2_weight_decay else None)
 
     # Build backbone
     backbone = backbones.factory.build_backbone(
@@ -220,8 +206,7 @@ class SimCLRPretrainTask(base_task.Task):
     projection_outputs = model_outputs[simclr_model.PROJECTION_OUTPUT_KEY]
     projection1, projection2 = tf.split(projection_outputs, 2, 0)
     contrast_loss, (contrast_logits, contrast_labels) = con_losses_obj(
-        projection1=projection1,
-        projection2=projection2)
+        projection1=projection1, projection2=projection2)
 
     contrast_accuracy = tf.equal(
         tf.argmax(contrast_labels, axis=1), tf.argmax(contrast_logits, axis=1))
@@ -253,8 +238,8 @@ class SimCLRPretrainTask(base_task.Task):
                                                                         outputs)
       sup_loss = tf.reduce_mean(sup_loss)
 
-      label_acc = tf.equal(tf.argmax(labels, axis=1),
-                           tf.argmax(outputs, axis=1))
+      label_acc = tf.equal(
+          tf.argmax(labels, axis=1), tf.argmax(outputs, axis=1))
       label_acc = tf.reduce_mean(tf.cast(label_acc, tf.float32))
 
       model_loss = contrast_loss + sup_loss
@@ -278,10 +263,7 @@ class SimCLRPretrainTask(base_task.Task):
     if training:
       metrics = []
       metric_names = [
-          'total_loss',
-          'contrast_loss',
-          'contrast_accuracy',
-          'contrast_entropy'
+          'total_loss', 'contrast_loss', 'contrast_accuracy', 'contrast_entropy'
       ]
       if self.task_config.model.supervised_head:
         metric_names.extend(['supervised_loss', 'accuracy'])
@@ -293,18 +275,20 @@ class SimCLRPretrainTask(base_task.Task):
         metrics = [
             tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
             tf.keras.metrics.TopKCategoricalAccuracy(
-                k=k, name='top_{}_accuracy'.format(k))]
+                k=k, name='top_{}_accuracy'.format(k))
+        ]
       else:
         metrics = [
             tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
             tf.keras.metrics.SparseTopKCategoricalAccuracy(
-                k=k, name='top_{}_accuracy'.format(k))]
+                k=k, name='top_{}_accuracy'.format(k))
+        ]
     return metrics
 
   def train_step(self, inputs, model, optimizer, metrics=None):
     features, labels = inputs
-    if (self.task_config.model.supervised_head is not None
-        and self.task_config.evaluation.one_hot):
+    if (self.task_config.model.supervised_head is not None and
+        self.task_config.evaluation.one_hot):
       num_classes = self.task_config.model.supervised_head.num_classes
       labels = tf.one_hot(labels, num_classes)
 
@@ -313,8 +297,7 @@ class SimCLRPretrainTask(base_task.Task):
       outputs = model(features, training=True)
       # Casting output layer as float32 is necessary when mixed_precision is
       # mixed_float16 or mixed_bfloat16 to ensure output is casted as float32.
-      outputs = tf.nest.map_structure(
-          lambda x: tf.cast(x, tf.float32), outputs)
+      outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
 
       # Computes per-replica loss.
       losses = self.build_losses(
@@ -373,7 +356,8 @@ class SimCLRPretrainTask(base_task.Task):
 class SimCLRFinetuneTask(base_task.Task):
   """A task for image classification."""
 
-  def create_optimizer(self, optimizer_config: OptimizationConfig,
+  def create_optimizer(self,
+                       optimizer_config: OptimizationConfig,
                        runtime_config: Optional[RuntimeConfig] = None):
     """Creates an TF optimizer from configurations.
 
@@ -384,8 +368,8 @@ class SimCLRFinetuneTask(base_task.Task):
     Returns:
       A tf.optimizers.Optimizer object.
     """
-    if (optimizer_config.optimizer.type == 'lars'
-        and self.task_config.loss.l2_weight_decay > 0.0):
+    if (optimizer_config.optimizer.type == 'lars' and
+        self.task_config.loss.l2_weight_decay > 0.0):
       raise ValueError('The l2_weight_decay cannot be used together with lars '
                        'optimizer. Please set it to 0.')
 
@@ -403,15 +387,16 @@ class SimCLRFinetuneTask(base_task.Task):
 
   def build_model(self):
     model_config = self.task_config.model
-    input_specs = tf.keras.layers.InputSpec(
-        shape=[None] + model_config.input_size)
+    input_specs = tf.keras.layers.InputSpec(shape=[None] +
+                                            model_config.input_size)
 
     l2_weight_decay = self.task_config.loss.l2_weight_decay
     # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
-    l2_regularizer = (tf.keras.regularizers.l2(
-        l2_weight_decay / 2.0) if l2_weight_decay else None)
+    l2_regularizer = (
+        tf.keras.regularizers.l2(l2_weight_decay /
+                                 2.0) if l2_weight_decay else None)
 
     backbone = backbones.factory.build_backbone(
         input_specs=input_specs,
@@ -467,8 +452,8 @@ class SimCLRFinetuneTask(base_task.Task):
       status = ckpt.restore(ckpt_dir_or_file)
       status.assert_consumed()
     elif self.task_config.init_checkpoint_modules == 'backbone_projection':
-      ckpt = tf.train.Checkpoint(backbone=model.backbone,
-                                 projection_head=model.projection_head)
+      ckpt = tf.train.Checkpoint(
+          backbone=model.backbone, projection_head=model.projection_head)
       status = ckpt.restore(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     elif self.task_config.init_checkpoint_modules == 'backbone':
@@ -542,12 +527,14 @@ class SimCLRFinetuneTask(base_task.Task):
       metrics = [
           tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
           tf.keras.metrics.TopKCategoricalAccuracy(
-              k=k, name='top_{}_accuracy'.format(k))]
+              k=k, name='top_{}_accuracy'.format(k))
+      ]
     else:
       metrics = [
           tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
           tf.keras.metrics.SparseTopKCategoricalAccuracy(
-              k=k, name='top_{}_accuracy'.format(k))]
+              k=k, name='top_{}_accuracy'.format(k))
+      ]
     return metrics
 
   def train_step(self, inputs, model, optimizer, metrics=None):
@@ -577,16 +564,14 @@ class SimCLRFinetuneTask(base_task.Task):
 
       # Computes per-replica loss.
       loss = self.build_losses(
-          model_outputs=outputs,
-          labels=labels, aux_losses=model.losses)
+          model_outputs=outputs, labels=labels, aux_losses=model.losses)
       # Scales loss as the default gradients allreduce performs sum inside the
       # optimizer.
       scaled_loss = loss / num_replicas
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(
-          optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
@@ -596,8 +581,7 @@ class SimCLRFinetuneTask(base_task.Task):
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient before apply_gradients when LossScaleOptimizer is
     # used.
-    if isinstance(
-        optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
@@ -626,11 +610,11 @@ class SimCLRFinetuneTask(base_task.Task):
       num_classes = self.task_config.model.supervised_head.num_classes
       labels = tf.one_hot(labels, num_classes)
 
-    outputs = self.inference_step(
-        features, model)[simclr_model.SUPERVISED_OUTPUT_KEY]
+    outputs = self.inference_step(features,
+                                  model)[simclr_model.SUPERVISED_OUTPUT_KEY]
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
-    loss = self.build_losses(model_outputs=outputs,
-                             labels=labels, aux_losses=model.losses)
+    loss = self.build_losses(
+        model_outputs=outputs, labels=labels, aux_losses=model.losses)
 
     logs = {self.loss: loss}
     if metrics:
