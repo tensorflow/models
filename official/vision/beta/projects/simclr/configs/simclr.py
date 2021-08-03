@@ -14,9 +14,8 @@
 
 """SimCLR configurations."""
 import dataclasses
-import os.path
+import os
 from typing import List, Optional
-
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -58,6 +57,9 @@ class DataConfig(cfg.DataConfig):
   # simclr specific configs
   parser: Parser = Parser()
   decoder: Decoder = Decoder()
+  # Useful when doing a sanity check that we absolutely use no labels while
+  # pretrain by setting labels to zeros (default = False, keep original labels)
+  input_set_label_to_zero: bool = False
 
 
 @dataclasses.dataclass

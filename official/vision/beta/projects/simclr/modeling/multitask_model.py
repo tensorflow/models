@@ -84,7 +84,7 @@ class SimCLRMTModel(base_model.MultiTaskBaseModel):
       else:
         supervised_head = None
 
-      tasks[model_config.mode] = simclr_model.SimCLRModel(
+      tasks[model_config.task_name] = simclr_model.SimCLRModel(
           input_specs=self._input_specs,
           backbone=self._backbone,
           projection_head=projection_head,

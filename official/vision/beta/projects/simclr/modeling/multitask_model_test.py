@@ -29,11 +29,13 @@ class MultitaskModelTest(tf.test.TestCase):
     ckpt_dir = self.get_temp_dir()
     config = multitask_config.SimCLRMTModelConfig(
         input_size=[64, 64, 3],
-        heads=(multitask_config.SimCLRMTHeadConfig(mode=simclr_model.PRETRAIN),
-               multitask_config.SimCLRMTHeadConfig(mode=simclr_model.FINETUNE)))
+        heads=(multitask_config.SimCLRMTHeadConfig(
+            mode=simclr_model.PRETRAIN, task_name='pretrain_simclr'),
+               multitask_config.SimCLRMTHeadConfig(
+                   mode=simclr_model.FINETUNE, task_name='finetune_simclr')))
     model = multitask_model.SimCLRMTModel(config)
-    self.assertIn(simclr_model.PRETRAIN, model.sub_tasks)
-    self.assertIn(simclr_model.FINETUNE, model.sub_tasks)
+    self.assertIn('pretrain_simclr', model.sub_tasks)
+    self.assertIn('finetune_simclr', model.sub_tasks)
     ckpt = tf.train.Checkpoint(backbone=model._backbone)
     ckpt.save(os.path.join(ckpt_dir, 'ckpt'))
     model.initialize()
