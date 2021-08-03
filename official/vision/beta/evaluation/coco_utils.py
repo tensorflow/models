@@ -131,7 +131,6 @@ def convert_predictions_to_coco_annotations(predictions):
   """
   coco_predictions = []
   num_batches = len(predictions['source_id'])
-  batch_size = predictions['source_id'][0].shape[0]
   max_num_detections = predictions['detection_classes'][0].shape[1]
   use_outer_box = 'detection_outer_boxes' in predictions
   for i in range(num_batches):
@@ -144,6 +143,7 @@ def convert_predictions_to_coco_annotations(predictions):
     else:
       mask_boxes = predictions['detection_boxes']
 
+    batch_size = predictions['source_id'][i].shape[0]
     for j in range(batch_size):
       if 'detection_masks' in predictions:
         image_masks = mask_ops.paste_instance_masks(
@@ -211,9 +211,9 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
 
   gt_annotations = []
   num_batches = len(groundtruths['source_id'])
-  batch_size = groundtruths['source_id'][0].shape[0]
   for i in range(num_batches):
     max_num_instances = groundtruths['classes'][i].shape[1]
+    batch_size = groundtruths['source_id'][i].shape[0]
     for j in range(batch_size):
       num_instances = groundtruths['num_detections'][i][j]
       if num_instances > max_num_instances:
