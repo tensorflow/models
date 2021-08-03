@@ -22,7 +22,7 @@ import tensorflow as tf
 from official.core import config_definitions as cfg
 from official.modeling import optimization
 from official.modeling import tf_utils
-from official.modeling.progressive import trainer as prog_trainer_lib
+from official.modeling.fast_training.progressive import trainer as prog_trainer_lib
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
 from official.nlp.data import pretrain_dataloader

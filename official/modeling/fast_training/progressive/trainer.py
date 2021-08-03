@@ -18,21 +18,21 @@ The trainer implements the Orbit `StandardTrainable` and
 `StandardEvaluable` interfaces. Trainers inside this project should be
 interchangable and independent on model architectures and tasks.
 """
+
+import dataclasses
 import os
 from typing import Any, Optional
 
 # Import libraries
 from absl import logging
-
-import dataclasses
 import gin
 import orbit
 import tensorflow as tf
 from official.core import base_task
 from official.core import base_trainer as trainer_lib
 from official.core import config_definitions
-from official.modeling.progressive import policies
-from official.modeling.progressive import utils
+from official.modeling.fast_training.progressive import policies
+from official.modeling.fast_training.progressive import utils
 
 ExperimentConfig = config_definitions.ExperimentConfig
 
