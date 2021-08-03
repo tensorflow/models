@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List, Dict
+
 import tensorflow as tf
 
 from official.vision.beta.projects.centernet.ops import preprocess_ops
 
 
-def build_heatmap_and_regressed_features(labels,
-                                         output_size,
-                                         input_size,
-                                         num_classes=90,
-                                         max_num_instances=128,
-                                         use_gaussian_bump=True,
-                                         gaussian_rad=-1,
-                                         gaussian_iou=0.7,
-                                         class_offset=1,
+def build_heatmap_and_regressed_features(labels: Dict,
+                                         output_size: List[int],
+                                         input_size: List[int],
+                                         num_classes: int = 90,
+                                         max_num_instances: int = 128,
+                                         use_gaussian_bump: bool = True,
+                                         gaussian_rad: int = -1,
+                                         gaussian_iou: float = 0.7,
+                                         class_offset: int = 1,
                                          dtype='float32'):
   """ Generates the ground truth labels for centernet.
   
@@ -153,6 +155,7 @@ def build_heatmap_and_regressed_features(labels,
                                tf.cast(1.0, radius.dtype))
     else:
       radius = tf.constant([gaussian_rad] * max_num_instances, dtype)
+      radius = radius[:num_objects]
     # These blobs contain information needed to draw the gaussian
     ct_blobs = tf.stack([classes, xct, yct, radius], axis=-1)
     
@@ -194,7 +197,6 @@ def build_heatmap_and_regressed_features(labels,
   box_index_values = tf.cast(tf.stack([yct, xct], axis=-1), dtype=tf.int32)
   box_indices = tf.tensor_scatter_nd_update(
       box_indices, update_indices, box_index_values)
-  
   labels = {
       'ct_heatmaps': ct_heatmap,
       'ct_offset': ct_offset,

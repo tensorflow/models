@@ -44,7 +44,7 @@ class CenterNetHeadTest(tf.test.TestCase, parameterized.TestCase):
     
     # Output shape tests
     outputs = head([np.zeros((2, 128, 128, 256), dtype=np.float32),
-                       np.zeros((2, 128, 128, 256), dtype=np.float32)])
+                    np.zeros((2, 128, 128, 256), dtype=np.float32)])
     self.assertLen(outputs, 3)
     self.assertEqual(outputs['ct_heatmaps'][0].shape, (2, 128, 128, 90))
     self.assertEqual(outputs['ct_offset'][0].shape, (2, 128, 128, 2))

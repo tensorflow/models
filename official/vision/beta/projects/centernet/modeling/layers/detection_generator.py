@@ -49,7 +49,7 @@ def get_row_col_channel_indices_from_flattened_indices(indices: int,
   col_indices = (indices // num_channels) - row_indices * num_cols
   channel_indices_temp = indices // num_channels
   channel_indices = indices - channel_indices_temp * num_channels
-  
+
   return row_indices, col_indices, channel_indices
 
 
@@ -87,7 +87,7 @@ def multi_range(limit: tf.Tensor,
 class CenterNetDetectionGenerator(tf.keras.layers.Layer):
   """ CenterNet Detection Generator
 
-  Parses predictions from the CenterNet decoder into the final bounding boxes, 
+  Parses predictions from the CenterNet head into the final bounding boxes,
   confidences, and classes. This class contains repurposed methods from the 
   TensorFlow Object Detection API
   in: https://github.com/tensorflow/models/blob/master/research/object_detection/meta_architectures/center_net_meta_arch.py
@@ -254,8 +254,8 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
     Returns:
       boxes: A Tensor with shape [batch_size, num_boxes, 4] that contains the
         bounding box coordinates in [y_min, x_min, y_max, x_max] format.
-      detection_classes: A Tensor with shape [batch_size, 100] that gives the 
-        class prediction for each box.
+      detection_classes: A Tensor with shape [batch_size, num_boxes] that
+        gives the class prediction for each box.
       num_detections: Number of non-zero confidence detections made.
     """
     # TF Lite does not support tf.gather with batch_dims > 0, so we need to use
@@ -332,6 +332,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
         kernel_size=self._peak_extract_kernel_size)
     
     # Get top scores along with their x, y, and class
+    # Each has size [batch_size, k]
     scores, y_indices, x_indices, channel_indices = self.get_top_k_peaks(
         feature_map_peaks=peaks,
         batch_size=batch_size,
