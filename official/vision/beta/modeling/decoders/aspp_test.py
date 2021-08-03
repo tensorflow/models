@@ -70,6 +70,7 @@ class ASPPTest(parameterized.TestCase, tf.test.TestCase):
         kernel_regularizer=None,
         interpolation='bilinear',
         dropout_rate=0.2,
+        use_depthwise_convolution='false',
     )
     network = aspp.ASPP(**kwargs)
 

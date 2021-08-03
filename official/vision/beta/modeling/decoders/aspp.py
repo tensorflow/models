@@ -42,6 +42,7 @@ class ASPP(tf.keras.layers.Layer):
       kernel_initializer: str = 'VarianceScaling',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       interpolation: str = 'bilinear',
+      use_depthwise_convolution: bool = False,
       **kwargs):
     """Initializes an Atrous Spatial Pyramid Pooling (ASPP) layer.
 
@@ -64,6 +65,8 @@ class ASPP(tf.keras.layers.Layer):
       interpolation: A `str` of interpolation method. It should be one of
         `bilinear`, `nearest`, `bicubic`, `area`, `lanczos3`, `lanczos5`,
         `gaussian`, or `mitchellcubic`.
+      use_depthwise_convolution: If True depthwise separable convolutions will
+        be added to the Atrous spatial pyramid pooling.
       **kwargs: Additional keyword arguments to be passed.
     """
     super(ASPP, self).__init__(**kwargs)
@@ -80,6 +83,7 @@ class ASPP(tf.keras.layers.Layer):
         'kernel_initializer': kernel_initializer,
         'kernel_regularizer': kernel_regularizer,
         'interpolation': interpolation,
+        'use_depthwise_convolution': use_depthwise_convolution,
     }
 
   def build(self, input_shape):
@@ -100,7 +104,9 @@ class ASPP(tf.keras.layers.Layer):
         dropout=self._config_dict['dropout_rate'],
         kernel_initializer=self._config_dict['kernel_initializer'],
         kernel_regularizer=self._config_dict['kernel_regularizer'],
-        interpolation=self._config_dict['interpolation'])
+        interpolation=self._config_dict['interpolation'],
+        use_depthwise_convolution=self._config_dict['use_depthwise_convolution']
+    )
 
   def call(self, inputs: Mapping[str, tf.Tensor]) -> Mapping[str, tf.Tensor]:
     """Calls the Atrous Spatial Pyramid Pooling (ASPP) layer on an input.
