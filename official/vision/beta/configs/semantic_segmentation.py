@@ -60,6 +60,7 @@ class SegmentationHead(hyperparams.Config):
   level: int = 3
   num_convs: int = 2
   num_filters: int = 256
+  use_depthwise_convolution: bool = False
   prediction_kernel_size: int = 1
   upsample_factor: int = 1
   feature_fusion: Optional[str] = None  # None, deeplabv3plus, or pyramid_fusion
