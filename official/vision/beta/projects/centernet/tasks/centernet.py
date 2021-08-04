@@ -246,7 +246,7 @@ class CenterNetTask(base_task.Task):
       total_center_loss += object_center_loss_fn(
           pred_flattened_ct_heatmap,
           true_flattened_ct_heatmap,
-          valid_anchor_weights)
+          sample_weight=valid_anchor_weights)
     
     center_loss = tf.reduce_sum(total_center_loss) / float(
         len(pred_ct_heatmap_list) * num_boxes)
