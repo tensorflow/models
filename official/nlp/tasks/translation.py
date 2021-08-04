@@ -13,11 +13,11 @@
 # limitations under the License.
 
 """Defines the translation task."""
+import dataclasses
 import os
 from typing import Optional
 
 from absl import logging
-import dataclasses
 import sacrebleu
 import tensorflow as tf
 import tensorflow_text as tftxt
