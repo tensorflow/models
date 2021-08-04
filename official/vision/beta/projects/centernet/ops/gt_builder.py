@@ -156,39 +156,41 @@ def build_heatmap_and_regressed_features(labels: Dict,
   # [max_num_instances, 2]
   box_indices = tf.zeros((max_num_instances, 2), tf.int32)
   
-  if use_gaussian_bump:
-    # Need to gaussians around the centers and corners of the objects
+  if num_objects > 0:
+    if use_gaussian_bump:
+      # Need to gaussians around the centers and corners of the objects
+      
+      # First compute the desired gaussian radius
+      if gaussian_rad == -1:
+        radius = tf.map_fn(
+            fn=lambda x: preprocess_ops.gaussian_radius(x, gaussian_iou),
+            elems=tf.math.ceil(box_widths_heights))
+        radius = tf.math.maximum(tf.math.floor(radius),
+                                 tf.cast(1.0, radius.dtype))
+      else:
+        radius = tf.constant([gaussian_rad] * max_num_instances, dtype)
+        radius = radius[:num_objects]
+      # These blobs contain information needed to draw the gaussian
+      ct_blobs = tf.stack([classes, xct, yct, radius], axis=-1)
+      
+      # Get individual gaussian contributions from each bounding box
+      ct_gaussians = tf.map_fn(
+          fn=lambda x: preprocess_ops.draw_gaussian(
+              tf.shape(ct_heatmap), x, dtype),
+          elems=ct_blobs)
+      
+      # Combine contributions into single heatmaps
+      ct_heatmap = tf.math.reduce_max(ct_gaussians, axis=0)
     
-    # First compute the desired gaussian radius
-    if gaussian_rad == -1:
-      radius = tf.map_fn(
-          fn=lambda x: preprocess_ops.gaussian_radius(x, gaussian_iou),
-          elems=tf.math.ceil(box_widths_heights))
-      radius = tf.math.maximum(tf.math.floor(radius), tf.cast(1.0, radius.dtype))
     else:
-      radius = tf.constant([gaussian_rad] * max_num_instances, dtype)
-      radius = radius[:num_objects]
-    # These blobs contain information needed to draw the gaussian
-    ct_blobs = tf.stack([classes, xct, yct, radius], axis=-1)
-    
-    # Get individual gaussian contributions from each bounding box
-    ct_gaussians = tf.map_fn(
-        fn=lambda x: preprocess_ops.draw_gaussian(
-            tf.shape(ct_heatmap), x, dtype),
-        elems=ct_blobs)
-    
-    # Combine contributions into single heatmaps
-    ct_heatmap = tf.math.reduce_max(ct_gaussians, axis=0)
-  
-  else:
-    # Instead of a gaussian, insert 1s in the center and corner heatmaps
-    # [num_objects, 3]
-    ct_hm_update_indices = tf.cast(
-        tf.stack([yct, xct, classes], axis=-1), tf.int32)
-    
-    ct_heatmap = tf.tensor_scatter_nd_update(ct_heatmap,
-                                             ct_hm_update_indices,
-                                             [1] * num_objects)
+      # Instead of a gaussian, insert 1s in the center and corner heatmaps
+      # [num_objects, 3]
+      ct_hm_update_indices = tf.cast(
+          tf.stack([yct, xct, classes], axis=-1), tf.int32)
+      
+      ct_heatmap = tf.tensor_scatter_nd_update(ct_heatmap,
+                                               ct_hm_update_indices,
+                                               [1] * num_objects)
   
   # Indices used to update offsets and sizes for valid box instances
   update_indices = preprocess_ops.cartesian_product(
@@ -272,7 +274,4 @@ if __name__ == '__main__':
   b = time.time()
   for item in gt_label:
     print(item, gt_label[item].shape)
-  print(tf.reduce_max(gt_label['ct_heatmaps']))
-  print(tf.reduce_min(gt_label['ct_heatmaps']))
-  print(tf.reduce_sum(gt_label['ct_heatmaps']))
   print("Time taken: {} ms".format((b - a) * 1000))
