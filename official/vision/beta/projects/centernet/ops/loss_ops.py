@@ -138,3 +138,76 @@ def add_batch_to_indices(indices):
   batch_range = tf.reshape(batch_range, shape=(batch_size, num_instances, 1))
   
   return tf.concat([indices, batch_range], axis=-1)
+
+
+def get_valid_anchor_weights_in_flattened_image(true_image_shapes, height,
+                                                width):
+  """Computes valid anchor weights for an image assuming pixels will be flattened.
+
+  This function is useful when we only want to penalize valid areas in the
+  image in the case when padding is used. The function assumes that the loss
+  function will be applied after flattening the spatial dimensions and returns
+  anchor weights accordingly.
+
+  Args:
+    true_image_shapes: An integer tensor of shape [batch_size, 3] representing
+      the true image shape (without padding) for each sample in the batch.
+    height: height of the prediction from the network.
+    width: width of the prediction from the network.
+
+  Returns:
+    valid_anchor_weights: a float tensor of shape [batch_size, height * width]
+    with 1s in locations where the spatial coordinates fall within the height
+    and width in true_image_shapes.
+  """
+  
+  indices = tf.reshape(tf.range(height * width), [1, -1])
+  batch_size = tf.shape(true_image_shapes)[0]
+  batch_indices = tf.ones((batch_size, 1), dtype=tf.int32) * indices
+  
+  y_coords, x_coords, _ = get_row_col_channel_indices_from_flattened_indices(
+      batch_indices, width, 1)
+  
+  max_y, max_x = true_image_shapes[:, 0], true_image_shapes[:, 1]
+  max_x = to_float32(tf.expand_dims(max_x, 1))
+  max_y = to_float32(tf.expand_dims(max_y, 1))
+  
+  x_coords = to_float32(x_coords)
+  y_coords = to_float32(y_coords)
+  
+  valid_mask = tf.math.logical_and(x_coords < max_x, y_coords < max_y)
+  
+  return to_float32(valid_mask)
+
+
+def get_row_col_channel_indices_from_flattened_indices(indices: int,
+                                                       num_cols: int,
+                                                       num_channels: int):
+  """ Computes row, column and channel indices from flattened indices.
+
+  NOTE: Repurposed from Google OD API.
+
+  Args:
+    indices: An `int` tensor of any shape holding the indices in the flattened
+      space.
+    num_cols: `int`, number of columns in the image (width).
+    num_channels: `int`, number of channels in the image.
+
+  Returns:
+    row_indices: The row indices corresponding to each of the input indices.
+      Same shape as indices.
+    col_indices: The column indices corresponding to each of the input indices.
+      Same shape as indices.
+    channel_indices. The channel indices corresponding to each of the input
+      indices.
+  """
+  # Avoid using mod operator to make the ops more easy to be compatible with
+  # different environments, e.g. WASM.
+  
+  # all inputs and outputs are dtype int32
+  row_indices = (indices // num_channels) // num_cols
+  col_indices = (indices // num_channels) - row_indices * num_cols
+  channel_indices_temp = indices // num_channels
+  channel_indices = indices - channel_indices_temp * num_channels
+  
+  return row_indices, col_indices, channel_indices

@@ -146,6 +146,7 @@ class CenterNetParser(parser.Parser):
         'width': width,
         'height': height,
         'image_info': image_info,
+        'true_image_shapes': image_info[0, :] + imshape[-1],
         'num_detections': tf.shape(data['groundtruth_classes'])[0]
     }
     

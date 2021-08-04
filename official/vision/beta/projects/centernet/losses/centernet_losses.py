@@ -93,7 +93,7 @@ class PenaltyReducedLogisticFocalLoss(tf.keras.losses.Loss):
     super(PenaltyReducedLogisticFocalLoss, self).__init__(reduction=reduction,
                                                           name=name)
   
-  def call(self, y_true, y_pred):
+  def call(self, y_true, y_pred, weights):
     """Compute loss function.
     In all input tensors, `num_anchors` is the total number of pixels in the
     the output space.
@@ -105,6 +105,9 @@ class PenaltyReducedLogisticFocalLoss(tf.keras.losses.Loss):
         num_classes] representing a tensor with the 'splatted' keypoints,
         possibly using a gaussian kernel. This function assumes that
         the target is bounded between [0, 1].
+      weights: a float tensor of shape, either [batch_size, num_anchors,
+        num_classes] or [batch_size, num_anchors, 1]. If the shape is
+        [batch_size, num_anchors, 1], all the classses are equally weighted.
     Returns:
       loss: a float tensor of shape [batch_size, num_anchors, num_classes]
         representing the value of the loss function.
@@ -123,7 +126,7 @@ class PenaltyReducedLogisticFocalLoss(tf.keras.losses.Loss):
                      tf.math.log(1 - prediction_tensor))
     
     loss = -tf.where(is_present_tensor, positive_loss, negative_loss)
-    return loss
+    return loss * weights
   
   def get_config(self):
     """Returns the config dictionary for a `Loss` instance."""

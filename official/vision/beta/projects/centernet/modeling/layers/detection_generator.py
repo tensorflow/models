@@ -17,70 +17,8 @@ from typing import Mapping, Any
 
 import tensorflow as tf
 
+from official.vision.beta.projects.centernet.ops import loss_ops
 from official.vision.beta.projects.centernet.ops.nms_ops import nms
-
-
-def get_row_col_channel_indices_from_flattened_indices(indices: int,
-                                                       num_cols: int,
-                                                       num_channels: int):
-  """ Computes row, column and channel indices from flattened indices.
-
-  NOTE: Repurposed from Google OD API.
-
-  Args:
-    indices: An `int` tensor of any shape holding the indices in the flattened
-      space.
-    num_cols: `int`, number of columns in the image (width).
-    num_channels: `int`, number of channels in the image.
-
-  Returns:
-    row_indices: The row indices corresponding to each of the input indices.
-      Same shape as indices.
-    col_indices: The column indices corresponding to each of the input indices.
-      Same shape as indices.
-    channel_indices. The channel indices corresponding to each of the input
-      indices.
-  """
-  # Avoid using mod operator to make the ops more easy to be compatible with
-  # different environments, e.g. WASM.
-  
-  # all inputs and outputs are dtype int32
-  row_indices = (indices // num_channels) // num_cols
-  col_indices = (indices // num_channels) - row_indices * num_cols
-  channel_indices_temp = indices // num_channels
-  channel_indices = indices - channel_indices_temp * num_channels
-
-  return row_indices, col_indices, channel_indices
-
-
-def multi_range(limit: tf.Tensor,
-                value_repetitions: int = 1,
-                range_repetitions: int = 1,
-                dtype: tf.dtypes = tf.int32):
-  """ Creates a sequence with optional value duplication and range repetition.
-
-  As an example (see the Args section for more details),
-  _multi_range(limit=2, value_repetitions=3, range_repetitions=4) returns:
-  [0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1]
-  NOTE: Repurposed from Google OD API.
-
-  Args:
-    limit: A 0-D Tensor (scalar). Upper limit of sequence, exclusive.
-    value_repetitions: `int`. The number of times a value in the sequence is
-      repeated. With value_repetitions=3, the result is [0, 0, 0, 1, 1, 1, ..].
-    range_repetitions: `int`. The number of times the range is repeated. With
-      range_repetitions=3, the result is [0, 1, 2, .., 0, 1, 2, ..].
-    dtype: The type of the elements of the resulting tensor.
-
-  Returns:
-    A 1-D tensor of type `dtype` and size
-      [`limit` * `value_repetitions` * `range_repetitions`] that contains the
-      specified range with given repetitions.
-  """
-  return tf.reshape(
-      tf.tile(
-          tf.expand_dims(tf.range(limit, dtype=dtype), axis=-1),
-          multiples=[range_repetitions, value_repetitions]), [-1])
 
 
 @tf.keras.utils.register_keras_serializable(package='centernet')
@@ -222,7 +160,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
     # Get x, y and channel indices corresponding to the top indices in the flat
     # array.
     y_indices, x_indices, channel_indices = (
-        get_row_col_channel_indices_from_flattened_indices(
+        loss_ops.get_row_col_channel_indices_from_flattened_indices(
             top_indices, width, num_classes))
     
     return top_scores, y_indices, x_indices, channel_indices
@@ -267,7 +205,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
     
     # combined indices dtype=int32
     combined_indices = tf.stack([
-        multi_range(batch_size, value_repetitions=num_boxes),
+        loss_ops.multi_range(batch_size, value_repetitions=num_boxes),
         tf.reshape(y_indices, [-1]),
         tf.reshape(x_indices, [-1])
     ], axis=1)

@@ -118,13 +118,13 @@ class CenterNetTask(base_task.Task):
       bb_output_height = backbone_output_spec[0]
     else:
       raise ValueError
-    net_down_scale = model_config.input_size[0] / bb_output_height
+    self._net_down_scale = model_config.input_size[0] / bb_output_height
     detect_generator_obj = detection_generator.CenterNetDetectionGenerator(
         max_detections=model_config.detection_generator.max_detections,
         peak_error=model_config.detection_generator.peak_error,
         peak_extract_kernel_size=model_config.detection_generator.peak_extract_kernel_size,
         class_offset=model_config.detection_generator.class_offset,
-        net_down_scale=net_down_scale,
+        net_down_scale=self._net_down_scale,
         input_image_dims=model_config.input_size[0],
         use_nms=model_config.detection_generator.use_nms,
         nms_pre_thresh=model_config.detection_generator.nms_pre_thresh,
@@ -188,11 +188,14 @@ class CenterNetTask(base_task.Task):
                    labels,
                    aux_losses=None):
     
+    input_size = self.task_config.model.input_size[0:2]
+    output_size = outputs['ct_heatmaps'][0].get_shape()[1:3]
+    
     gt_label = tf.map_fn(
         fn=lambda x: gt_builder.build_heatmap_and_regressed_features(
             labels=x,
-            input_size=self.task_config.model.input_size[0:2],
-            output_size=outputs['ct_heatmaps'][0].get_shape()[1:3],
+            input_size=input_size,
+            output_size=output_size,
             num_classes=self.task_config.model.num_classes,
             max_num_instances=self.task_config.model.max_num_instances,
             use_gaussian_bump=self.task_config.losses.use_gaussian_bump,
@@ -225,6 +228,11 @@ class CenterNetTask(base_task.Task):
         loss_ops.get_num_instances_from_weights(gt_label['box_mask']))
     
     # Calculate center heatmap loss
+    output_true_image_shapes = tf.math.ceil(
+        tf.cast(labels['true_image_shapes'], tf.float32) / self._net_down_scale)
+    valid_anchor_weights = loss_ops.get_valid_anchor_weights_in_flattened_image(
+        output_true_image_shapes, output_size[0], output_size[1])
+    valid_anchor_weights = tf.expand_dims(valid_anchor_weights, 2)
     pred_ct_heatmap_list = outputs['ct_heatmaps']
     true_flattened_ct_heatmap = loss_ops.flatten_spatial_dimensions(
         gt_label['ct_heatmaps'])
@@ -236,7 +244,9 @@ class CenterNetTask(base_task.Task):
           ct_heatmap)
       pred_flattened_ct_heatmap = tf.cast(pred_flattened_ct_heatmap, tf.float32)
       total_center_loss += object_center_loss_fn(
-          pred_flattened_ct_heatmap, true_flattened_ct_heatmap)
+          pred_flattened_ct_heatmap,
+          true_flattened_ct_heatmap,
+          valid_anchor_weights)
     
     center_loss = tf.reduce_sum(total_center_loss) / float(
         len(pred_ct_heatmap_list) * num_boxes)
