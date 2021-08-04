@@ -244,8 +244,8 @@ class CenterNetTask(base_task.Task):
           ct_heatmap)
       pred_flattened_ct_heatmap = tf.cast(pred_flattened_ct_heatmap, tf.float32)
       total_center_loss += object_center_loss_fn(
-          pred_flattened_ct_heatmap,
-          true_flattened_ct_heatmap,
+          y_true=true_flattened_ct_heatmap,
+          y_pred=pred_flattened_ct_heatmap,
           sample_weight=valid_anchor_weights)
     
     center_loss = tf.reduce_sum(total_center_loss) / float(
@@ -264,7 +264,8 @@ class CenterNetTask(base_task.Task):
       pred_scale = tf.cast(pred_scale, tf.float32)
       # Only apply loss for boxes that appear in the ground truth
       total_scale_loss += tf.reduce_sum(
-          localization_loss_fn(pred_scale, true_scale), axis=-1) * box_mask
+          localization_loss_fn(y_true=true_scale,y_pred=pred_scale),
+          axis=-1) * box_mask
     
     scale_loss = tf.reduce_sum(total_scale_loss) / float(
         len(pred_scale_list) * num_boxes)
@@ -282,7 +283,8 @@ class CenterNetTask(base_task.Task):
       pred_offset = tf.cast(pred_offset, tf.float32)
       # Only apply loss for boxes that appear in the ground truth
       total_offset_loss += tf.reduce_sum(
-          localization_loss_fn(pred_offset, true_offset), axis=-1) * box_mask
+          localization_loss_fn(y_true=true_offset, y_pred=pred_offset),
+          axis=-1) * box_mask
     
     offset_loss = tf.reduce_sum(total_offset_loss) / float(
         len(pred_offset_list) * num_boxes)
