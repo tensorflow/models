@@ -26,13 +26,12 @@ class L1LocalizationLossTest(tf.test.TestCase):
   
   def test_returns_correct_loss(self):
     def graph_fn():
-      loss = centernet_losses.L1LocalizationLoss(
-        reduction=tf.keras.losses.Reduction.NONE)
+      loss = centernet_losses.L1LocalizationLoss()
       pred = [[0.1, 0.2], [0.7, 0.5]]
       target = [[0.9, 1.0], [0.1, 0.4]]
       
       weights = [[1.0, 0.0], [1.0, 1.0]]
-      return loss(pred, target, weights)
+      return loss(pred, target, weights=weights)
     
     computed_value = graph_fn()
     self.assertAllClose(computed_value, [[0.8, 0.0], [0.6, 0.1]], rtol=1e-6)
@@ -69,8 +68,8 @@ class PenaltyReducedLogisticFocalLossTest(tf.test.TestCase):
           [[1.0], [1.0]],
       ])
       loss = centernet_losses.PenaltyReducedLogisticFocalLoss(
-          alpha=2.0, beta=0.5, reduction=tf.keras.losses.Reduction.NONE)
-      computed_value = loss(target, prediction, weights)
+          alpha=2.0, beta=0.5)
+      computed_value = loss(prediction, target, weights=weights)
       return computed_value
     
     computed_value = graph_fn(self._prediction, self._target)
@@ -99,9 +98,9 @@ class PenaltyReducedLogisticFocalLossTest(tf.test.TestCase):
       ])
       
       loss = centernet_losses.PenaltyReducedLogisticFocalLoss(
-          alpha=2.0, beta=0.5, reduction=tf.keras.losses.Reduction.NONE)
+          alpha=2.0, beta=0.5)
       
-      computed_value = loss(target, prediction, weights)
+      computed_value = loss(prediction, target, weights=weights)
       return computed_value
     
     computed_value = graph_fn(self._prediction, self._target)

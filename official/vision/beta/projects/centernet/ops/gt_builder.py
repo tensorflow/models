@@ -273,4 +273,6 @@ if __name__ == '__main__':
   for item in gt_label:
     print(item, gt_label[item].shape)
   print(tf.reduce_max(gt_label['ct_heatmaps']))
+  print(tf.reduce_min(gt_label['ct_heatmaps']))
+  print(tf.reduce_sum(gt_label['ct_heatmaps']))
   print("Time taken: {} ms".format((b - a) * 1000))

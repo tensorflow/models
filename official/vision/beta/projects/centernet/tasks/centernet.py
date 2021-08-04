@@ -215,10 +215,8 @@ class CenterNetTask(base_task.Task):
     losses = {}
     
     # Create loss functions
-    object_center_loss_fn = centernet_losses.PenaltyReducedLogisticFocalLoss(
-        reduction=tf.keras.losses.Reduction.NONE)
-    localization_loss_fn = centernet_losses.L1LocalizationLoss(
-        reduction=tf.keras.losses.Reduction.NONE)
+    object_center_loss_fn = centernet_losses.PenaltyReducedLogisticFocalLoss()
+    localization_loss_fn = centernet_losses.L1LocalizationLoss()
     
     # Set up box indices so that they have a batch element as well
     box_indices = loss_ops.add_batch_to_indices(gt_label['box_indices'])
@@ -244,9 +242,9 @@ class CenterNetTask(base_task.Task):
           ct_heatmap)
       pred_flattened_ct_heatmap = tf.cast(pred_flattened_ct_heatmap, tf.float32)
       total_center_loss += object_center_loss_fn(
-          y_true=true_flattened_ct_heatmap,
-          y_pred=pred_flattened_ct_heatmap,
-          sample_weight=valid_anchor_weights)
+          target_tensor=true_flattened_ct_heatmap,
+          prediction_tensor=pred_flattened_ct_heatmap,
+          weights=valid_anchor_weights)
     
     center_loss = tf.reduce_sum(total_center_loss) / float(
         len(pred_ct_heatmap_list) * num_boxes)
@@ -264,7 +262,8 @@ class CenterNetTask(base_task.Task):
       pred_scale = tf.cast(pred_scale, tf.float32)
       # Only apply loss for boxes that appear in the ground truth
       total_scale_loss += tf.reduce_sum(
-          localization_loss_fn(y_true=true_scale,y_pred=pred_scale),
+          localization_loss_fn(target_tensor=true_scale,
+                               prediction_tensor=pred_scale),
           axis=-1) * box_mask
     
     scale_loss = tf.reduce_sum(total_scale_loss) / float(
@@ -283,7 +282,8 @@ class CenterNetTask(base_task.Task):
       pred_offset = tf.cast(pred_offset, tf.float32)
       # Only apply loss for boxes that appear in the ground truth
       total_offset_loss += tf.reduce_sum(
-          localization_loss_fn(y_true=true_offset, y_pred=pred_offset),
+          localization_loss_fn(target_tensor=true_offset,
+                               prediction_tensor=pred_offset),
           axis=-1) * box_mask
     
     offset_loss = tf.reduce_sum(total_offset_loss) / float(
