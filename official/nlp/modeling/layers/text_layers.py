@@ -22,9 +22,6 @@ try:
   import tensorflow_text as text  # pylint: disable=g-import-not-at-top
 except ImportError:
   text = None
-except tf.errors.NotFoundError as e:
-  logging.warn("Encountered error when importing tensorflow_text: %s", e)
-  text = None
 
 
 def _check_if_tf_text_installed():
