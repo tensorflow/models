@@ -76,7 +76,7 @@ def build_maskrcnn(
       backbone_config=model_config.backbone,
       norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
-  backbone(tf.keras.Input(input_specs.shape[1:]))
+  backbone_features = backbone(tf.keras.Input(input_specs.shape[1:]))
 
   decoder = decoders.factory.build_decoder(
       input_specs=backbone.output_specs,
@@ -119,6 +119,13 @@ def build_maskrcnn(
       norm_epsilon=norm_activation_config.norm_epsilon,
       kernel_regularizer=l2_regularizer,
       name='detection_head')
+
+  # Build backbone, decoder and region proposal network:
+
+  if decoder:
+    decoder_features = decoder(backbone_features)
+    rpn_head(decoder_features)
+
   if roi_sampler_config.cascade_iou_thresholds:
     detection_head_cascade = [detection_head]
     for cascade_num in range(len(roi_sampler_config.cascade_iou_thresholds)):
