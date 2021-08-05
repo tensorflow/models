@@ -87,8 +87,6 @@ def run_experiment(
         step_counter=trainer.global_step,
         checkpoint_interval=params.trainer.checkpoint_interval,
         init_fn=trainer.initialize)
-    # Adds recovery handling.
-    trainer.add_recovery(params.trainer, checkpoint_manager=checkpoint_manager)
   else:
     checkpoint_manager = None
 
@@ -105,7 +103,8 @@ def run_experiment(
       (save_summary) else None,
       summary_interval=params.trainer.summary_interval if
       (save_summary) else None,
-      train_actions=actions.get_train_actions(params, trainer, model_dir),
+      train_actions=actions.get_train_actions(
+          params, trainer, model_dir, checkpoint_manager=checkpoint_manager),
       eval_actions=actions.get_eval_actions(params, trainer, model_dir))
 
   logging.info('Starts to execute mode: %s', mode)

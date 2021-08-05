@@ -19,7 +19,6 @@ import os
 import sys
 
 from absl.testing import parameterized
-import numpy as np
 import orbit
 import portpicker
 import tensorflow as tf
@@ -336,61 +335,6 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
     trainer.evaluate(tf.convert_to_tensor(1, dtype=tf.int32))
     self.assertTrue(
         tf.io.gfile.exists(os.path.join(model_dir, 'best_ckpt', 'info.json')))
-
-  def test_recovery(self):
-    config = cfg.ExperimentConfig(
-        trainer=cfg.TrainerConfig(
-            loss_upper_bound=0.5,
-            recovery_max_trials=2,
-            optimizer_config=cfg.OptimizationConfig({
-                'optimizer': {
-                    'type': 'sgd'
-                },
-                'learning_rate': {
-                    'type': 'constant'
-                }
-            })))
-    model_dir = self.get_temp_dir()
-    trainer = self.create_test_trainer(config, model_dir=model_dir)
-    checkpoint_manager = tf.train.CheckpointManager(
-        trainer.checkpoint, self.get_temp_dir(), max_to_keep=2)
-    checkpoint_manager.save()
-    trainer.add_recovery(config.trainer, checkpoint_manager=checkpoint_manager)
-    before_weights = trainer.model.get_weights()
-    _ = trainer.train(tf.convert_to_tensor(1, dtype=tf.int32))
-    # The training loss is 1.0 and upper_bound is 0.5, so the recover happens.
-    after_weights = trainer.model.get_weights()
-    for left, right in zip(before_weights, after_weights):
-      self.assertAllEqual(left, right)
-
-    # Let's the loss be NaN and max_trials = 0 to see RuntimeError.
-    config = cfg.ExperimentConfig(
-        trainer=cfg.TrainerConfig(
-            recovery_max_trials=0,
-            optimizer_config=cfg.OptimizationConfig({
-                'optimizer': {
-                    'type': 'sgd'
-                },
-                'learning_rate': {
-                    'type': 'constant'
-                }
-            })))
-    task = mock_task.MockTask(config.task, logging_dir=model_dir)
-
-    def build_losses(labels, model_outputs, aux_losses=None):
-      del labels, model_outputs
-      return tf.constant([np.nan], tf.float32) + aux_losses
-
-    task.build_losses = build_losses
-    trainer = trainer_lib.Trainer(
-        config,
-        task,
-        model=task.build_model(),
-        optimizer=task.create_optimizer(config.trainer.optimizer_config,
-                                        config.runtime))
-    trainer.add_recovery(config.trainer, checkpoint_manager=checkpoint_manager)
-    with self.assertRaises(RuntimeError):
-      _ = trainer.train(tf.convert_to_tensor(2, dtype=tf.int32))
 
   def test_model_with_compiled_loss(self):
     task = mock_task.MockTask()
