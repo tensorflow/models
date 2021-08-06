@@ -54,8 +54,15 @@ class MultiTaskEvaluator(orbit.AbstractEvaluator):
     self._model = model
     self._global_step = global_step or orbit.utils.create_global_step()
     self._checkpoint_exporter = checkpoint_exporter
+    if hasattr(self.model, "checkpoint_items"):
+      checkpoint_items = self.model.checkpoint_items
+    else:
+      checkpoint_items = {}
+
     self._checkpoint = tf.train.Checkpoint(
-        global_step=self.global_step, model=self.model)
+        model=self.model,
+        global_step=self.global_step,
+        **checkpoint_items)
 
     self._validation_losses = None
     self._validation_metrics = None
