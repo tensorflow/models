@@ -36,8 +36,6 @@ class DetectionModule(export_base.ExportModule):
 
     if self._batch_size is None:
       raise ValueError('batch_size cannot be None for detection models.')
-    if not self.params.task.model.detection_generator.use_batched_nms:
-      raise ValueError('Only batched_nms is supported.')
     input_specs = tf.keras.layers.InputSpec(shape=[self._batch_size] +
                                             self._input_image_size + [3])
 
