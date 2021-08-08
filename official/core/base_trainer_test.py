@@ -14,6 +14,7 @@
 
 """Tests for tensorflow_models.core.trainers.trainer."""
 # pylint: disable=g-direct-tensorflow-import
+import gc
 import multiprocessing
 import os
 import sys
@@ -163,6 +164,13 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
                     'type': 'constant'
                 }
             })))
+
+  def tearDown(self):
+    gc.collect()
+    # This will only contain uncollectable garbage, i.e. reference cycles
+    # involving objects with __del__ defined.
+    self.assertEmpty(gc.garbage)
+    super().tearDown()
 
   def create_test_trainer(self, config, model_dir=None, task=None):
     task = task or mock_task.MockTask(config.task, logging_dir=model_dir)
