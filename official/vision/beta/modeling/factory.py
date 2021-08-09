@@ -333,6 +333,7 @@ def build_segmentation_model(
       num_convs=head_config.num_convs,
       prediction_kernel_size=head_config.prediction_kernel_size,
       num_filters=head_config.num_filters,
+      use_depthwise_convolution=head_config.use_depthwise_convolution,
       upsample_factor=head_config.upsample_factor,
       feature_fusion=head_config.feature_fusion,
       low_level=head_config.low_level,
