@@ -30,6 +30,8 @@ class Darknet(hyperparams.Config):
   width_scale: float = 1.0
   depth_scale: float = 1.0
   dilate: bool = False
+  min_level: int = 3
+  max_level: int = 5
 
 
 @dataclasses.dataclass
