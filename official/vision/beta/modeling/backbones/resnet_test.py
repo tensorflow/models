@@ -28,6 +28,7 @@ from official.vision.beta.modeling.backbones import resnet
 class ResNetTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
+      (128, 10, 1),
       (128, 18, 1),
       (128, 34, 1),
       (128, 50, 4),
@@ -38,6 +39,7 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
                             endpoint_filter_scale):
     """Test creation of ResNet family models."""
     resnet_params = {
+        10: 4915904,
         18: 11190464,
         34: 21306048,
         50: 23561152,
