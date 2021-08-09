@@ -173,6 +173,7 @@ def build_aspp_decoder(
       level=decoder_cfg.level,
       dilation_rates=decoder_cfg.dilation_rates,
       num_filters=decoder_cfg.num_filters,
+      use_depthwise_convolution=decoder_cfg.use_depthwise_convolution,
       pool_kernel_size=decoder_cfg.pool_kernel_size,
       dropout_rate=decoder_cfg.dropout_rate,
       use_sync_bn=norm_activation_config.use_sync_bn,
