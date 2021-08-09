@@ -67,7 +67,7 @@ class Parser(parser.Parser):
       max_level: `int` number of maximum level of the output feature pyramid.
       masks: a `Tensor`, `List` or `numpy.ndarray` for anchor masks.
       max_process_size: an `int` for maximum image width and height.
-      min_process_size: an `int` for minimum image width and height ,
+      min_process_size: an `int` for minimum image width and height.
       max_num_instances: an `int` number of maximum number of instances in an
         image.
       random_flip: a `bool` if True, augment training with random horizontal

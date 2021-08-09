@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""box_ops tests."""
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -27,10 +28,8 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
     expected_shape = np.array([num_boxes, 4])
     xywh_box = box_ops.yxyx_to_xcycwh(boxes)
     yxyx_box = box_ops.xcycwh_to_yxyx(boxes)
-    xyxy_box = box_ops.xcycwh_to_xyxy(boxes)
     self.assertAllEqual(tf.shape(xywh_box).numpy(), expected_shape)
     self.assertAllEqual(tf.shape(yxyx_box).numpy(), expected_shape)
-    self.assertAllEqual(tf.shape(xyxy_box).numpy(), expected_shape)
 
   @parameterized.parameters((1), (5), (7))
   def test_ious(self, num_boxes):
@@ -50,7 +49,6 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertArrayNear(giou, expected_iou, 0.001)
     self.assertArrayNear(ciou, expected_iou, 0.001)
     self.assertArrayNear(diou, expected_iou, 0.001)
-
 
 if __name__ == '__main__':
   tf.test.main()
