@@ -40,9 +40,6 @@ class YoloLayer(ks.Model):
     """
     parameters for the loss functions used at each detection head output
 
-scale_anchors: `int` for how much to scale this level to get the orginal
-  input shape
-
     Args:
       masks: `List[int]` for the output level that this specific model output
         level.
@@ -59,18 +56,23 @@ scale_anchors: `int` for how much to scale this level to get the orginal
       max_delta: gradient clipping to apply to the box loss.
       loss_type: `str` for the typeof iou loss to use with in {ciou, diou,
         giou, iou}.
-
+      use_tie_breaker: TODO unused?
       iou_normalizer: `float` for how much to scale the loss on the IOU or the
         boxes.
       cls_normalizer: `float` for how much to scale the loss on the classes.
       obj_normalizer: `float` for how much to scale loss on the detection map.
-      objectness_smooth: `float` for how much to smooth the loss on the
-        detection map.
       use_scaled_loss: `bool` for whether to use the scaled loss
         or the traditional loss.
-
+      darknet: `bool` for whether to use the DarkNet or PyTorch loss function
+        implementation.
+      pre_nms_points: `int` number of top candidate detections per class before
+        NMS.
       label_smoothing: `float` for how much to smooth the loss on the classes.
-      new_cords: `bool` for which scaling type to use.
+      max_boxes: `int` for the maximum number of boxes retained over all
+        classes.
+      new_cords: `bool` for using the ScaledYOLOv4 coordinates.
+      path_scale: `dict` for the size of the input tensors. Defaults to
+        precalulated values from the `mask`.
       scale_xy: dictionary `float` values inidcating how far each pixel can see
         outside of its containment of 1.0. a value of 1.2 indicates there is a
         20% extended radius around each pixel that this specific pixel can
@@ -78,11 +80,9 @@ scale_anchors: `int` for how much to scale this level to get the orginal
         to 1 + value/2, this value is set in the yolo filter, and resused here.
         there should be one value for scale_xy for each level from min_level to
         max_level.
-      nms_type: "greedy",
-      nms_thresh: 0.6,
-      iou_thresh: 0.213,
-      name=None,
-
+      nms_type: `str` for which non max suppression to use.
+      objectness_smooth: `float` for how much to smooth the loss on the
+        detection map.
 
     Return:
       loss: `float` for the actual loss.
