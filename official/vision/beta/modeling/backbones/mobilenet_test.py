@@ -158,10 +158,10 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         ('MobileNetV3Small', 0.75): 1026552,
         ('MobileNetV3EdgeTPU', 1.0): 2849312,
         ('MobileNetV3EdgeTPU', 0.75): 1737288,
-        ('MobileNetMultiAVG', 1.0): 3700576,
-        ('MobileNetMultiAVG', 0.75): 2345864,
-        ('MobileNetMultiMAX', 1.0): 3170720,
-        ('MobileNetMultiMAX', 0.75): 2041976,
+        ('MobileNetMultiAVG', 1.0): 3704416,
+        ('MobileNetMultiAVG', 0.75): 2349704,
+        ('MobileNetMultiMAX', 1.0): 3174560,
+        ('MobileNetMultiMAX', 0.75): 2045816,
     }
 
     input_size = 224
