@@ -263,13 +263,8 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
       category_mask.append(results['category_mask'])
       instance_mask.append(results['instance_mask'])
 
-    if len(category_mask) == 1:
-      category_mask = tf.expand_dims(category_mask[0], axis=0)
-      instance_mask = tf.expand_dims(instance_mask[0], axis=0)
-
-    else:
-      category_mask = tf.concat(category_mask, axis=0)
-      instance_mask = tf.concat(instance_mask, axis=0)
+    category_mask = tf.stack(category_mask, axis=0)
+    instance_mask = tf.stack(instance_mask, axis=0)
 
     outputs = {
         'category_mask': tf.cast(category_mask, dtype=tf.int32),
