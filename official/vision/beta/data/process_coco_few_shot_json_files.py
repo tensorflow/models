@@ -53,7 +53,7 @@ CATEGORIES = ['airplane', 'apple', 'backpack', 'banana', 'baseball bat',
               'traffic light', 'train', 'truck', 'tv', 'umbrella', 'vase',
               'wine glass', 'zebra']
 SEEDS = list(range(10))
-SHOTS = [10, 30]
+SHOTS = [1, 3, 5, 10, 30]
 
 FILE_SUFFIXES = collections.defaultdict(list)
 for _seed, _shots in itertools.product(SEEDS, SHOTS):
