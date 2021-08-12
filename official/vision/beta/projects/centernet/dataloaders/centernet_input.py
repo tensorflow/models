@@ -166,8 +166,17 @@ class CenterNetParser(parser.Parser):
         labels: a dict of Tensors that contains labels.
     """
 
-    image = data['image'] / 255
+    image = tf.cast(data['image'], dtype=tf.float32)
     boxes = data['groundtruth_boxes']
+
+    if self._bgr_ordering:
+      red, green, blue = tf.unstack(image, num=3, axis=2)
+      image = tf.stack([blue, green, red], axis=2)
+
+    image = preprocess_ops.normalize_image(
+        image=image,
+        offset=self._channel_means,
+        scale=self._channel_stds)
     
     if self._aug_rand_hflip:
       image, boxes, _ = preprocess_ops.random_horizontal_flip(image, boxes)
