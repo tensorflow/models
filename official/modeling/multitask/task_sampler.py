@@ -78,7 +78,10 @@ class ProportionalTaskSampler(TaskSampler):
 
 
 class AnnealingTaskSampler(TaskSampler):
-  """Sample tasks according to task weights as well as training progress."""
+  """Sample tasks according to task weights as well as training progress.
+
+  See http://proceedings.mlr.press/v97/stickland19a/stickland19a.pdf
+  """
 
   def __init__(self,
                task_weights: Dict[Text, Union[float, int]],
