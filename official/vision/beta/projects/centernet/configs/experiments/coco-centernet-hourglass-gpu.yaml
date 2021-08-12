@@ -30,7 +30,7 @@ task:
       predict_3d: false
   losses:
     detection:
-      detection_weight: 1.0
+      object_center_weight: 1.0
       offset_weight: 1.0
       scale_weight: 0.1
     segmentation:
