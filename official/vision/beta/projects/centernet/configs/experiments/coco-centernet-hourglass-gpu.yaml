@@ -69,7 +69,7 @@ trainer:
       type: stepwise
       stepwise:
         boundaries: [438900, 452760]
-        values: [0.00065, 0.000065, 0.0000065]
+        values: [0.16, 0.016, 0.0016]
     optimizer:
       type: sgd
       sgd:
@@ -77,4 +77,5 @@ trainer:
     warmup:
       type: 'linear'
       linear:
-        warmup_steps: 1000 #learning rate rises from 0 to 0.0013 over 1000 steps
+        warmup_learning_rate: 0.00335
+        warmup_steps: 2000

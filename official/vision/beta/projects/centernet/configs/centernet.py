@@ -237,7 +237,7 @@ def centernet_hourglass_coco() -> cfg.ExperimentConfig:
           steps_per_loop=steps_per_epoch,
           summary_interval=steps_per_epoch,
           checkpoint_interval=steps_per_epoch,
-          train_steps=500 * steps_per_epoch,
+          train_steps=600 * steps_per_epoch,
           validation_steps=COCO_VAL_EXAMPLES // eval_batch_size,
           validation_interval=steps_per_epoch,
           optimizer_config=optimization.OptimizationConfig({
@@ -251,20 +251,20 @@ def centernet_hourglass_coco() -> cfg.ExperimentConfig:
                   'type': 'stepwise',
                   'stepwise': {
                       'boundaries': [
-                          steps_per_epoch * 475, steps_per_epoch * 490
+                          575 * steps_per_epoch, 590 * steps_per_epoch
                       ],
                       'values': [
-                          0.00261 * train_batch_size / 64,
-                          0.000261 * train_batch_size / 64,
-                          0.0000261 * train_batch_size / 64
-                      ]
+                          0.32 * train_batch_size / 256.0,
+                          0.032 * train_batch_size / 256.0,
+                          0.0032 * train_batch_size / 256.0
+                      ],
                   }
               },
               'warmup': {
                   'type': 'linear',
                   'linear': {
-                      'warmup_steps': 1000,
-                      'warmup_learning_rate': 0
+                      'warmup_steps': 2000,
+                      'warmup_learning_rate': 0.0067
                   }
               }
           })),
