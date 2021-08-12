@@ -16,7 +16,6 @@
 
 # Import libraries
 import abc
-import six
 
 import tensorflow as tf
 
@@ -67,7 +66,7 @@ def absolute_difference(
         reduction=reduction)
 
 
-class Loss(six.with_metaclass(abc.ABCMeta, object)):
+class Loss(abc.ABC):
   """Abstract base class for loss functions."""
   
   def __call__(self,
@@ -99,7 +98,8 @@ class Loss(six.with_metaclass(abc.ABCMeta, object)):
     Returns:
       loss: a tensor representing the value of the loss function.
     """
-    with tf.name_scope('centernet_loss'):
+    scope = self.__class__.__name__ if scope is None else scope
+    with tf.name_scope(scope):
       if ignore_nan_targets:
         target_tensor = tf.where(tf.math.is_nan(target_tensor),
                                  prediction_tensor,

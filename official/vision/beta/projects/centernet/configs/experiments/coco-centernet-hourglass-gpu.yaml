@@ -2,7 +2,7 @@ runtime:
   distribution_strategy: 'mirrored'
   mixed_precision_dtype: 'float16'
   loss_scale: 'dynamic'
-  num_gpus: 1
+  num_gpus: 8
 task:
   model:
     num_classes: 90
@@ -31,9 +31,8 @@ task:
   losses:
     detection:
       detection_weight: 1.0
-      corner_pull_weight: 0.1
-      corner_push_weight: 0.1
       offset_weight: 1.0
+      scale_weight: 0.1
     segmentation:
     use_gaussian_bump: true
     gaussian_rad: -1
@@ -41,34 +40,40 @@ task:
   per_category_metrics: false
   weight_decay: 0.0005
   gradient_clip_norm: 0.0
-  init_checkpoint: 'centernet_hg104_512x512_coco17_tpu-8/checkpoint'
-  init_checkpoint_source: 'ODAPI'
   annotation_file: 'coco/instances_val2017.json'
-  checkpoint_backbone_name: 'hourglass104_512'
-  checkpoint_head_name: 'detection_2d'
+  train_data:
+    input_path: 'coco/train*'
+    drop_remainder: true
+    dtype: 'float16'
+    global_batch_size: 128
+    is_training: true
+    parser:
+      aug_rand_hflip: true
+      aug_scale_min: 0.6
+      aug_scale_max: 1.3
   validation_data:
     input_path: 'coco/val*'
     drop_remainder: false
     dtype: 'float16'
-    global_batch_size: 8
+    global_batch_size: 16
     is_training: false
 trainer:
-  train_steps: 10000 # 160 epochs at 64 batchsize -> 500500 * 64/16
-  validation_steps: 625 # 5063 #625
-  steps_per_loop: 10000
-  validation_interval: 1
-  summary_interval: 10000
-  checkpoint_interval: 10000
+  train_steps: 462000 # 500 epochs
+  validation_steps: 312 # 5000 / 16
+  steps_per_loop: 924 # 118287 / 128
+  validation_interval: 924
+  summary_interval: 924
+  checkpoint_interval: 924
   optimizer_config:
     learning_rate:
       type: stepwise
       stepwise:
-        boundaries: [800000, 900000] # [400000, 450000]
-        values: [0.00065, 0.000065, 0.0000065] #[0.0013, 0.00013, 0.000013]
+        boundaries: [438900, 452760]
+        values: [0.00065, 0.000065, 0.0000065]
     optimizer:
       type: sgd
       sgd:
-        momentum: 0.949
+        momentum: 0.9
     warmup:
       type: 'linear'
       linear:

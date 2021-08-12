@@ -109,25 +109,61 @@ def multi_range(limit,
           multiples=[range_repetitions, value_repetitions]), [-1])
 
 
+def combined_static_and_dynamic_shape(tensor):
+  """Returns a list containing static and dynamic values for the dimensions.
+
+  Returns a list of static and dynamic values for shape dimensions. This is
+  useful to preserve static shapes when available in reshape operation.
+
+  Args:
+    tensor: A tensor of any type.
+
+  Returns:
+    A list of size tensor.shape.ndims containing integers or a scalar tensor.
+  """
+  static_tensor_shape = tensor.shape.as_list()
+  dynamic_tensor_shape = tf.shape(tensor)
+  combined_shape = []
+  for index, dim in enumerate(static_tensor_shape):
+    if dim is not None:
+      combined_shape.append(dim)
+    else:
+      combined_shape.append(dynamic_tensor_shape[index])
+  return combined_shape
+
+
 def get_batch_predictions_from_indices(batch_predictions, indices):
   """Gets the values of predictions in a batch at the given indices.
+
   The indices are expected to come from the offset targets generation functions
   in this library. The returned value is intended to be used inside a loss
   function.
+
   Args:
     batch_predictions: A tensor of shape [batch_size, height, width, channels]
       or [batch_size, height, width, class, channels] for class-specific
       features (e.g. keypoint joint offsets).
     indices: A tensor of shape [num_instances, 3] for single class features or
       [num_instances, 4] for multiple classes features.
+
   Returns:
     values: A tensor of shape [num_instances, channels] holding the predicted
       values at the given indices.
   """
-  # indices right now is shape (8, 128, 2), we need to make it (8, 128, 3), where
-  # the last dimension corresponds to the batch it belongs t
-  
-  return tf.gather_nd(batch_predictions, indices)
+  # Note, gather_nd (and its gradient scatter_nd) runs significantly slower (on
+  # TPU) than gather with flattened inputs, so reshape the tensor, flatten the
+  # indices, and run gather.
+  shape = combined_static_and_dynamic_shape(batch_predictions)
+
+  # [B, H, W, C] -> [H*W, W, 1] or [B, H, W, N, C] -> [H*W*N, W*N, N, 1]
+  rev_cum_interior_indices = tf.reverse(tf.math.cumprod(shape[-2:0:-1]), [0])
+  rev_cum_interior_indices = tf.concat([rev_cum_interior_indices, [1]], axis=0)
+
+  # Compute flattened indices and gather.
+  flattened_inds = tf.linalg.matmul(
+      indices, rev_cum_interior_indices[:, tf.newaxis])[:, 0]
+  batch_predictions_2d = tf.reshape(batch_predictions, [-1, shape[-1]])
+  return tf.gather(batch_predictions_2d, flattened_inds, axis=0)
 
 
 def add_batch_to_indices(indices):

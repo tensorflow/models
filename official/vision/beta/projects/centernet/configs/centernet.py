@@ -78,10 +78,8 @@ class DataConfig(cfg.DataConfig):
 
 @dataclasses.dataclass
 class DetectionLoss(hyperparams.Config):
-  detection_weight: float = 1.0
-  corner_pull_weight: float = 0.1  # alpha
-  corner_push_weight: float = 0.1  # beta
-  offset_weight: float = 1.0  # gamma
+  object_center_weight: float = 1.0
+  offset_weight: float = 1.0
   scale_weight: float = 0.1
 
 
@@ -214,10 +212,9 @@ COCO_VAL_EXAMPLES = 5000
 @exp_factory.register_config_factory('centernet_hourglass_coco')
 def centernet_hourglass_coco() -> cfg.ExperimentConfig:
   """COCO object detection with CenterNet."""
-  train_batch_size = 1
-  eval_batch_size = 1
-  base_default = 1200000
-  num_batches = int(1200000 * 64 / train_batch_size)
+  train_batch_size = 256
+  eval_batch_size = 8
+  steps_per_epoch = COCO_TRAIN_EXAMPLES // train_batch_size
   
   config = cfg.ExperimentConfig(
       task=CenterNetTask(
@@ -237,12 +234,12 @@ def centernet_hourglass_coco() -> cfg.ExperimentConfig:
               shuffle_buffer_size=2),
       ),
       trainer=cfg.TrainerConfig(
-          steps_per_loop=2000,
-          summary_interval=8000,
-          checkpoint_interval=10000,
-          train_steps=num_batches,
-          validation_steps=625,
-          validation_interval=10,
+          steps_per_loop=steps_per_epoch,
+          summary_interval=steps_per_epoch,
+          checkpoint_interval=steps_per_epoch,
+          train_steps=500 * steps_per_epoch,
+          validation_steps=COCO_VAL_EXAMPLES // eval_batch_size,
+          validation_interval=steps_per_epoch,
           optimizer_config=optimization.OptimizationConfig({
               'optimizer': {
                   'type': 'sgd',
@@ -254,8 +251,7 @@ def centernet_hourglass_coco() -> cfg.ExperimentConfig:
                   'type': 'stepwise',
                   'stepwise': {
                       'boundaries': [
-                          int(400000 / base_default * num_batches),
-                          int(450000 / base_default * num_batches)
+                          steps_per_epoch * 475, steps_per_epoch * 490
                       ],
                       'values': [
                           0.00261 * train_batch_size / 64,
@@ -267,7 +263,7 @@ def centernet_hourglass_coco() -> cfg.ExperimentConfig:
               'warmup': {
                   'type': 'linear',
                   'linear': {
-                      'warmup_steps': 1000 * 64 // num_batches,
+                      'warmup_steps': 1000,
                       'warmup_learning_rate': 0
                   }
               }

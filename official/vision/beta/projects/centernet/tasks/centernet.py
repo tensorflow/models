@@ -118,17 +118,18 @@ class CenterNetTask(base_task.Task):
       bb_output_height = backbone_output_spec[0]
     else:
       raise ValueError
-    self._net_down_scale = model_config.input_size[0] / bb_output_height
+    self._net_down_scale = int(model_config.input_size[0] / bb_output_height)
+    dg_config = model_config.detection_generator
     detect_generator_obj = detection_generator.CenterNetDetectionGenerator(
-        max_detections=model_config.detection_generator.max_detections,
-        peak_error=model_config.detection_generator.peak_error,
-        peak_extract_kernel_size=model_config.detection_generator.peak_extract_kernel_size,
-        class_offset=model_config.detection_generator.class_offset,
+        max_detections=dg_config.max_detections,
+        peak_error=dg_config.peak_error,
+        peak_extract_kernel_size=dg_config.peak_extract_kernel_size,
+        class_offset=dg_config.class_offset,
         net_down_scale=self._net_down_scale,
         input_image_dims=model_config.input_size[0],
-        use_nms=model_config.detection_generator.use_nms,
-        nms_pre_thresh=model_config.detection_generator.nms_pre_thresh,
-        nms_thresh=model_config.detection_generator.nms_thresh)
+        use_nms=dg_config.use_nms,
+        nms_pre_thresh=dg_config.nms_pre_thresh,
+        nms_thresh=dg_config.nms_thresh)
     
     model = centernet_model.CenterNetModel(
         backbone=backbone,
@@ -231,15 +232,15 @@ class CenterNetTask(base_task.Task):
     valid_anchor_weights = loss_ops.get_valid_anchor_weights_in_flattened_image(
         output_true_image_shapes, output_size[0], output_size[1])
     valid_anchor_weights = tf.expand_dims(valid_anchor_weights, 2)
+    
     pred_ct_heatmap_list = outputs['ct_heatmaps']
     true_flattened_ct_heatmap = loss_ops.flatten_spatial_dimensions(
         gt_label['ct_heatmaps'])
-    
     true_flattened_ct_heatmap = tf.cast(true_flattened_ct_heatmap, tf.float32)
+    
     total_center_loss = 0.0
     for ct_heatmap in pred_ct_heatmap_list:
-      pred_flattened_ct_heatmap = loss_ops.flatten_spatial_dimensions(
-          ct_heatmap)
+      pred_flattened_ct_heatmap = loss_ops.flatten_spatial_dimensions(ct_heatmap)
       pred_flattened_ct_heatmap = tf.cast(pred_flattened_ct_heatmap, tf.float32)
       total_center_loss += object_center_loss_fn(
           target_tensor=true_flattened_ct_heatmap,
@@ -252,8 +253,7 @@ class CenterNetTask(base_task.Task):
     
     # Calculate scale loss
     pred_scale_list = outputs['ct_size']
-    true_scale = gt_label['size']
-    true_scale = tf.cast(true_scale, tf.float32)
+    true_scale = tf.cast(gt_label['size'], tf.float32)
     
     total_scale_loss = 0.0
     for scale_map in pred_scale_list:
@@ -272,8 +272,7 @@ class CenterNetTask(base_task.Task):
     
     # Calculate offset loss
     pred_offset_list = outputs['ct_offset']
-    true_offset = gt_label['ct_offset']
-    true_offset = tf.cast(true_offset, tf.float32)
+    true_offset = tf.cast(gt_label['ct_offset'], tf.float32)
     
     total_offset_loss = 0.0
     for offset_map in pred_offset_list:
@@ -292,7 +291,7 @@ class CenterNetTask(base_task.Task):
     
     # Aggregate and finalize loss
     loss_weights = self.task_config.losses.detection
-    total_loss = (center_loss +
+    total_loss = (loss_weights.object_center_weight * center_loss +
                   loss_weights.scale_weight * scale_loss +
                   loss_weights.offset_weight * offset_loss)
     
@@ -306,7 +305,8 @@ class CenterNetTask(base_task.Task):
       metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
     
     if not training:
-      if self.task_config.validation_data.tfds_name and self.task_config.annotation_file:
+      if (self.task_config.validation_data.tfds_name
+          and self.task_config.annotation_file):
         raise ValueError(
             "Can't evaluate using annotation file when TFDS is used.")
       self.coco_metric = coco_evaluator.COCOEvaluator(
@@ -339,8 +339,7 @@ class CenterNetTask(base_task.Task):
       outputs = model(features, training=True)
       # Casting output layer as float32 is necessary when mixed_precision is
       # mixed_float16 or mixed_bfloat16 to ensure output is casted as float32.
-      outputs = tf.nest.map_structure(
-          lambda x: tf.cast(x, tf.float32), outputs)
+      outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
       
       losses = self.build_losses(outputs['raw_output'], labels)
       
@@ -371,10 +370,6 @@ class CenterNetTask(base_task.Task):
         m.update_state(losses[m.name])
         logs.update({m.name: m.result()})
     
-    tf.print(logs, end='\n')
-    ret = '\033[F' * (len(logs.keys()) + 1)
-    tf.print(ret, end='\n')
-    
     return logs
   
   def validation_step(self,
@@ -395,6 +390,7 @@ class CenterNetTask(base_task.Task):
     
     outputs = model(features, training=False)
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
+    
     losses = self.build_losses(outputs['raw_output'], labels)
     
     logs = {self.loss: losses['total_loss']}
