@@ -3742,10 +3742,20 @@ class CenterNetMetaArch(model.DetectionModel):
     """
     object_center_prob = tf.nn.sigmoid(prediction_dict[OBJECT_CENTER][-1])
 
-    # Mask object centers by true_image_shape. [batch, h, w, 1]
-    object_center_mask = mask_from_true_image_shape(
-        _get_shape(object_center_prob, 4), true_image_shapes)
-    object_center_prob *= object_center_mask
+    if true_image_shapes is None:
+      # If true_image_shapes is not provided, we assume the whole image is valid
+      # and infer the true_image_shapes from the object_center_prob shape.
+      batch_size, strided_height, strided_width, _ = _get_shape(
+          object_center_prob, 4)
+      true_image_shapes = tf.stack(
+          [strided_height * self._stride, strided_width * self._stride,
+           tf.constant(len(self._feature_extractor._channel_means))])   # pylint: disable=protected-access
+      true_image_shapes = tf.stack([true_image_shapes] * batch_size, axis=0)
+    else:
+      # Mask object centers by true_image_shape. [batch, h, w, 1]
+      object_center_mask = mask_from_true_image_shape(
+          _get_shape(object_center_prob, 4), true_image_shapes)
+      object_center_prob *= object_center_mask
 
     # Get x, y and channel indices corresponding to the top indices in the class
     # center predictions.
