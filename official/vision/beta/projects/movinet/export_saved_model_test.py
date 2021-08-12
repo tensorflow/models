@@ -99,6 +99,8 @@ class ExportSavedModelTest(tf.test.TestCase):
     self.assertAllClose(outputs, expected_outputs, 1e-5, 1e-5)
 
   def test_movinet_export_a0_stream_with_tflite(self):
+    self.skipTest('b/195800800')
+
     saved_model_path = self.get_temp_dir()
 
     FLAGS.export_path = saved_model_path
