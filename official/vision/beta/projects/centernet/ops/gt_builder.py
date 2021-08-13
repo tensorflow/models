@@ -192,29 +192,29 @@ def build_heatmap_and_regressed_features(labels: Dict,
                                                ct_hm_update_indices,
                                                [1] * num_objects)
   
-  # Indices used to update offsets and sizes for valid box instances
-  update_indices = preprocess_ops.cartesian_product(
-      tf.range(num_objects), tf.range(2))
-  # [num_objects, 2, 2]
-  update_indices = tf.reshape(update_indices, shape=[num_objects, 2, 2])
-  
-  # Write the offsets of each box instance
-  ct_offset = tf.tensor_scatter_nd_update(
-      ct_offset, update_indices, ct_offset_values)
-  
-  # Write the size of each bounding box
-  size = tf.tensor_scatter_nd_update(
-      size, update_indices, box_widths_heights)
-  
-  # Initially the mask is zeros, so now we unmask each valid box instance
-  mask_indices = tf.expand_dims(tf.range(num_objects), -1)
-  mask_values = tf.repeat(1, num_objects)
-  box_mask = tf.tensor_scatter_nd_update(box_mask, mask_indices, mask_values)
-  
-  # Write the y and x coordinate of each box center in the heatmap
-  box_index_values = tf.cast(tf.stack([yct, xct], axis=-1), dtype=tf.int32)
-  box_indices = tf.tensor_scatter_nd_update(
-      box_indices, update_indices, box_index_values)
+    # Indices used to update offsets and sizes for valid box instances
+    update_indices = preprocess_ops.cartesian_product(
+        tf.range(num_objects), tf.range(2))
+    # [num_objects, 2, 2]
+    update_indices = tf.reshape(update_indices, shape=[num_objects, 2, 2])
+    
+    # Write the offsets of each box instance
+    ct_offset = tf.tensor_scatter_nd_update(
+        ct_offset, update_indices, ct_offset_values)
+    
+    # Write the size of each bounding box
+    size = tf.tensor_scatter_nd_update(
+        size, update_indices, box_widths_heights)
+    
+    # Initially the mask is zeros, so now we unmask each valid box instance
+    mask_indices = tf.expand_dims(tf.range(num_objects), -1)
+    mask_values = tf.repeat(1, num_objects)
+    box_mask = tf.tensor_scatter_nd_update(box_mask, mask_indices, mask_values)
+    
+    # Write the y and x coordinate of each box center in the heatmap
+    box_index_values = tf.cast(tf.stack([yct, xct], axis=-1), dtype=tf.int32)
+    box_indices = tf.tensor_scatter_nd_update(
+        box_indices, update_indices, box_index_values)
   labels = {
       # [output_h, output_w, num_classes]
       'ct_heatmaps': ct_heatmap,

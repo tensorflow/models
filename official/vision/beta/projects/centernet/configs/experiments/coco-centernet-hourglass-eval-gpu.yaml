@@ -39,7 +39,7 @@ task:
     gaussian_iou: 0.7
   per_category_metrics: false
   weight_decay: 0.0005
-  gradient_clip_norm: 0.0
+  gradient_clip_norm: 10.0
   init_checkpoint: 'centernet_hg104_512x512_coco17_tpu-8/checkpoint'
   init_checkpoint_source: 'ODAPI'
   annotation_file: 'coco/instances_val2017.json'

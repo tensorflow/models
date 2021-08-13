@@ -295,6 +295,9 @@ class CenterNetTask(base_task.Task):
                   loss_weights.scale_weight * scale_loss +
                   loss_weights.offset_weight * offset_loss)
     
+    if aux_losses:
+      total_loss += tf.add_n(aux_losses)
+    
     losses['total_loss'] = total_loss
     return losses
   

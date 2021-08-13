@@ -39,7 +39,7 @@ task:
     gaussian_iou: 0.7
   per_category_metrics: false
   weight_decay: 0.0005
-  gradient_clip_norm: 0.0
+  gradient_clip_norm: 10.0
   annotation_file: 'coco/instances_val2017.json'
   train_data:
     input_path: 'coco/train*'
@@ -68,8 +68,8 @@ trainer:
     learning_rate:
       type: stepwise
       stepwise:
-        boundaries: [438900, 452760]
-        values: [0.16, 0.016, 0.0016]
+        boundaries: [300300, 392700]
+        values: [0.001, 0.0001, 0.00001]
     optimizer:
       type: sgd
       sgd:
@@ -77,5 +77,4 @@ trainer:
     warmup:
       type: 'linear'
       linear:
-        warmup_learning_rate: 0.00335
         warmup_steps: 2000
