@@ -35,11 +35,11 @@ class MoViNetTest(parameterized.TestCase, tf.test.TestCase):
     endpoints, states = network(inputs)
 
     self.assertAllEqual(endpoints['stem'].shape, [1, 8, 64, 64, 8])
-    self.assertAllEqual(endpoints['b0/l0'].shape, [1, 8, 32, 32, 8])
-    self.assertAllEqual(endpoints['b1/l0'].shape, [1, 8, 16, 16, 32])
-    self.assertAllEqual(endpoints['b2/l0'].shape, [1, 8, 8, 8, 56])
-    self.assertAllEqual(endpoints['b3/l0'].shape, [1, 8, 8, 8, 56])
-    self.assertAllEqual(endpoints['b4/l0'].shape, [1, 8, 4, 4, 104])
+    self.assertAllEqual(endpoints['block0_layer0'].shape, [1, 8, 32, 32, 8])
+    self.assertAllEqual(endpoints['block1_layer0'].shape, [1, 8, 16, 16, 32])
+    self.assertAllEqual(endpoints['block2_layer0'].shape, [1, 8, 8, 8, 56])
+    self.assertAllEqual(endpoints['block3_layer0'].shape, [1, 8, 8, 8, 56])
+    self.assertAllEqual(endpoints['block4_layer0'].shape, [1, 8, 4, 4, 104])
     self.assertAllEqual(endpoints['head'].shape, [1, 1, 1, 1, 480])
 
     self.assertNotEmpty(states)
@@ -59,11 +59,11 @@ class MoViNetTest(parameterized.TestCase, tf.test.TestCase):
     endpoints, new_states = backbone({**init_states, 'image': inputs})
 
     self.assertAllEqual(endpoints['stem'].shape, [1, 8, 64, 64, 8])
-    self.assertAllEqual(endpoints['b0/l0'].shape, [1, 8, 32, 32, 8])
-    self.assertAllEqual(endpoints['b1/l0'].shape, [1, 8, 16, 16, 32])
-    self.assertAllEqual(endpoints['b2/l0'].shape, [1, 8, 8, 8, 56])
-    self.assertAllEqual(endpoints['b3/l0'].shape, [1, 8, 8, 8, 56])
-    self.assertAllEqual(endpoints['b4/l0'].shape, [1, 8, 4, 4, 104])
+    self.assertAllEqual(endpoints['block0_layer0'].shape, [1, 8, 32, 32, 8])
+    self.assertAllEqual(endpoints['block1_layer0'].shape, [1, 8, 16, 16, 32])
+    self.assertAllEqual(endpoints['block2_layer0'].shape, [1, 8, 8, 8, 56])
+    self.assertAllEqual(endpoints['block3_layer0'].shape, [1, 8, 8, 8, 56])
+    self.assertAllEqual(endpoints['block4_layer0'].shape, [1, 8, 4, 4, 104])
     self.assertAllEqual(endpoints['head'].shape, [1, 1, 1, 1, 480])
 
     self.assertNotEmpty(init_states)

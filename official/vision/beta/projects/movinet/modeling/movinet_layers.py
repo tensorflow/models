@@ -478,7 +478,7 @@ class StreamBuffer(tf.keras.layers.Layer):
 
     state_prefix = state_prefix if state_prefix is not None else ''
     self._state_prefix = state_prefix
-    self._state_name = f'{state_prefix}/stream_buffer'
+    self._state_name = f'{state_prefix}_stream_buffer'
     self._buffer_size = buffer_size
 
   def get_config(self):
@@ -501,7 +501,7 @@ class StreamBuffer(tf.keras.layers.Layer):
       inputs: the input tensor.
       states: a dict of states such that, if any of the keys match for this
           layer, will overwrite the contents of the buffer(s).
-          Expected keys include `state_prefix + '/stream_buffer'`.
+          Expected keys include `state_prefix + '_stream_buffer'`.
 
     Returns:
       the output tensor and states
