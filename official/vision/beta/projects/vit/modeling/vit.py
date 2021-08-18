@@ -17,10 +17,9 @@
 import tensorflow as tf
 
 from official.modeling import activations
-from official.nlp import keras_nlp
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_layers
-from official.vision.beta.projects.vit.modeling.layers import TransformerEncoderBlock
+from official.vision.beta.projects.vit.modeling.layers import StochsticDepthTransformerEncoderBlock
 
 layers = tf.keras.layers
 
@@ -150,7 +149,7 @@ class Encoder(tf.keras.layers.Layer):
     # Set layer norm epsilons to 1e-6 to be consistent with JAX implementation.
     # https://flax.readthedocs.io/en/latest/_autosummary/flax.nn.LayerNorm.html
     for i in range(self._num_layers):
-      encoder_layer = TransformerEncoderBlock(
+      encoder_layer = StochsticDepthTransformerEncoderBlock(
           inner_activation=activations.gelu,
           num_attention_heads=self._num_heads,
           inner_dim=self._mlp_dim,
