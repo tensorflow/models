@@ -16,6 +16,7 @@
 # pylint: disable=g-classes-have-attributes
 import collections
 import tensorflow as tf
+from tensorflow.python.util import deprecation
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
@@ -39,6 +40,8 @@ class Classification(tf.keras.Model):
       `predictions`.
   """
 
+  @deprecation.deprecated(None, 'Classification as a network is deprecated. '
+                          'Please use the layers.ClassificationHead instead.')
   def __init__(self,
                input_width,
                num_classes,
