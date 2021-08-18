@@ -212,6 +212,44 @@ class PowerDecayWithOffsetLrConfig(base_config.Config):
 
 
 @dataclasses.dataclass
+class StepCosineLrConfig(base_config.Config):
+  """Configuration for stepwise learning rate decay.
+
+  This class is a container for the piecewise cosine learning rate scheduling
+  configs. It will configure an instance of StepConsineDecayWithOffset keras
+  learning rate schedule.
+
+    ```python
+    boundaries: [100000, 110000]
+    values: [1.0, 0.5]
+    lr_decayed_fn = (
+    lr_schedule.StepConsineDecayWithOffset(
+        boundaries,
+        values))
+    ```
+    from 0 to 100000 step, it will cosine decay from 1.0 to 0.5
+    from 100000 to 110000 step, it cosine decay from 0.5 to 0.0
+
+  Attributes:
+    name: The name of the learning rate schedule. Defaults to PiecewiseConstant.
+    boundaries: A list of ints of strictly increasing entries. Defaults to None.
+    values: A list of floats that specifies the values for the intervals defined
+      by `boundaries`. It should have one more element than `boundaries`.
+            The learning rate is computed as follows:
+              [0, boundaries[0]] -> cosine from values[0] to values[1]
+              [boundaries[0], boundaries[1]]     -> values[1] to values[2]
+              ...
+              [boundaries[n-1], boundaries[n]]   -> values[n] to values[n+1]
+              [boundaries[n], end]               -> values[n+1] to 0.
+    offset: An int. The offset applied to steps. Defaults to 0.
+  """
+  name: str = 'StepConsineDecayWithOffset'
+  boundaries: Optional[List[int]] = None
+  values: Optional[List[float]] = None
+  offset: int = 0
+
+
+@dataclasses.dataclass
 class LinearWarmupConfig(base_config.Config):
   """Configuration for linear warmup schedule config.
 

@@ -121,7 +121,7 @@ class ExportSavedModelTest(tf.test.TestCase):
     tflite_model = converter.convert()
 
     interpreter = tf.lite.Interpreter(model_content=tflite_model)
-    signature = interpreter.get_signature_runner()
+    runner = interpreter.get_signature_runner('serving_default')
 
     def state_name(name: str) -> str:
       return name[len('serving_default_'):-len(':0')]
@@ -137,7 +137,7 @@ class ExportSavedModelTest(tf.test.TestCase):
 
     states = init_states
     for clip in clips:
-      outputs = signature(**states, image=clip)
+      outputs = runner(**states, image=clip)
       logits = outputs.pop('logits')
       states = outputs
 

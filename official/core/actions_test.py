@@ -17,6 +17,8 @@
 import os
 
 from absl.testing import parameterized
+import numpy as np
+import orbit
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
@@ -35,17 +37,14 @@ class TestModel(tf.Module):
     return self.value
 
 
-def all_strategy_combinations():
-  return combinations.combine(
-      distribution=[
-          strategy_combinations.cloud_tpu_strategy,
-          strategy_combinations.one_device_strategy_gpu,
-      ],)
-
-
 class ActionsTest(tf.test.TestCase, parameterized.TestCase):
 
-  @combinations.generate(all_strategy_combinations())
+  @combinations.generate(
+      combinations.combine(
+          distribution=[
+              strategy_combinations.cloud_tpu_strategy,
+              strategy_combinations.one_device_strategy_gpu,
+          ],))
   def test_ema_checkpointing(self, distribution):
     with distribution.scope():
       directory = self.create_tempdir()
@@ -75,6 +74,33 @@ class ActionsTest(tf.test.TestCase, parameterized.TestCase):
 
       # Checks model.value is 0 after swapping.
       self.assertEqual(model(), 0)
+
+  @combinations.generate(
+      combinations.combine(
+          distribution=[
+              strategy_combinations.default_strategy,
+              strategy_combinations.cloud_tpu_strategy,
+              strategy_combinations.one_device_strategy_gpu,
+          ],))
+  def test_recovery_condition(self, distribution):
+    with distribution.scope():
+      global_step = orbit.utils.create_global_step()
+      recover_condition = actions.RecoveryCondition(
+          global_step, loss_upper_bound=0.5, recovery_max_trials=2)
+      outputs = {'training_loss': 0.6}
+      self.assertTrue(recover_condition(outputs))
+      self.assertTrue(recover_condition(outputs))
+      with self.assertRaises(RuntimeError):
+        recover_condition(outputs)
+
+      global_step = orbit.utils.create_global_step()
+      recover_condition = actions.RecoveryCondition(
+          global_step, loss_upper_bound=0.5, recovery_max_trials=2)
+      outputs = {'training_loss': tf.constant([np.nan], tf.float32)}
+      self.assertTrue(recover_condition(outputs))
+      self.assertTrue(recover_condition(outputs))
+      with self.assertRaises(RuntimeError):
+        recover_condition(outputs)
 
 
 if __name__ == '__main__':

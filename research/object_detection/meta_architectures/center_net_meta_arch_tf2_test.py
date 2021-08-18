@@ -2056,10 +2056,11 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
                                    cnma.TEMPORAL_OFFSET)])
 
   @parameterized.parameters(
-      {'target_class_id': 1},
-      {'target_class_id': 2},
+      {'target_class_id': 1, 'with_true_image_shape': True},
+      {'target_class_id': 2, 'with_true_image_shape': True},
+      {'target_class_id': 1, 'with_true_image_shape': False},
   )
-  def test_postprocess(self, target_class_id):
+  def test_postprocess(self, target_class_id, with_true_image_shape):
     """Test the postprocess function."""
     model = build_center_net_meta_arch()
     max_detection = model._center_params.max_box_predictions
@@ -2140,8 +2141,11 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
     }
 
     def graph_fn():
-      detections = model.postprocess(prediction_dict,
-                                     tf.constant([[128, 128, 3]]))
+      if with_true_image_shape:
+        detections = model.postprocess(prediction_dict,
+                                       tf.constant([[128, 128, 3]]))
+      else:
+        detections = model.postprocess(prediction_dict, None)
       return detections
 
     detections = self.execute_cpu(graph_fn, [])

@@ -44,6 +44,8 @@ class SentencePredictionDataConfig(cfg.DataConfig):
   # Maps the key in TfExample to feature name.
   # E.g 'label_ids' to 'next_sentence_labels'
   label_name: Optional[Tuple[str, str]] = None
+  # Either tfrecord, sstable, or recordio.
+  file_type: str = 'tfrecord'
 
 
 @data_loader_factory.register_data_loader_cls(SentencePredictionDataConfig)
@@ -111,7 +113,10 @@ class SentencePredictionDataLoader(data_loader.DataLoader):
   def load(self, input_context: Optional[tf.distribute.InputContext] = None):
     """Returns a tf.dataset.Dataset."""
     reader = input_reader.InputReader(
-        params=self._params, decoder_fn=self._decode, parser_fn=self._parse)
+        dataset_fn=dataset_fn.pick_dataset_fn(self._params.file_type),
+        params=self._params,
+        decoder_fn=self._decode,
+        parser_fn=self._parse)
     return reader.read(input_context)
 
 
@@ -168,7 +173,8 @@ class TextProcessor(tf.Module):
           vocab_file=vocab_file, lower_case=lower_case)
     elif tokenization == 'SentencePiece':
       self._tokenizer = modeling.layers.SentencepieceTokenizer(
-          model_file_path=vocab_file, lower_case=lower_case,
+          model_file_path=vocab_file,
+          lower_case=lower_case,
           strip_diacritics=True)  # Strip diacritics to follow ALBERT model
     else:
       raise ValueError('Unsupported tokenization: %s' % tokenization)

@@ -87,11 +87,15 @@ def lookup(registered_collection, reg_key):
     for h_idx, entry_name in enumerate(hierarchy):
       if entry_name not in collection:
         raise LookupError(
-            "collection path {} at position {} never registered.".format(
-                entry_name, h_idx))
+            f"collection path {entry_name} at position {h_idx} is never "
+            f"registered. Please make sure the {entry_name} and its library is "
+            "imported and linked to the trainer binary.")
       collection = collection[entry_name]
     return collection
   else:
     if reg_key not in registered_collection:
-      raise LookupError("registration key {} never registered.".format(reg_key))
+      raise LookupError(
+          f"registration key {reg_key} is never "
+          f"registered. Please make sure the {reg_key} and its library is "
+          "imported and linked to the trainer binary.")
     return registered_collection[reg_key]

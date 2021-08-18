@@ -47,6 +47,7 @@ LR_CLS = {
     'power': lr_schedule.DirectPowerDecay,
     'power_linear': lr_schedule.PowerAndLinearDecay,
     'power_with_offset': lr_schedule.PowerDecayWithOffset,
+    'step_cosine_with_offset': lr_schedule.StepConsineDecayWithOffset,
 }
 
 WARMUP_CLS = {

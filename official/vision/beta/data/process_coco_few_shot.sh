@@ -15,7 +15,7 @@ done
 
 cocosplit_url="dl.yf.io/fs-det/datasets/cocosplit"
 wget --recursive --no-parent -q --show-progress --progress=bar:force:noscroll \
-    -P "${tmp_dir}" -A "trainvalno5k.json,5k.json,*10shot*.json,*30shot*.json" \
+    -P "${tmp_dir}" -A "trainvalno5k.json,5k.json,*1shot*.json,*3shot*.json,*5shot*.json,*10shot*.json,*30shot*.json" \
     "http://${cocosplit_url}/"
 mv "${tmp_dir}/${cocosplit_url}/"* "${tmp_dir}"
 rm -rf "${tmp_dir}/${cocosplit_url}/"
@@ -24,7 +24,7 @@ python process_coco_few_shot_json_files.py \
     --logtostderr --workdir="${tmp_dir}"
 
 for seed in {0..9}; do
-  for shots in 10 30; do
+  for shots in 1 3 5 10 30; do
     python create_coco_tf_record.py \
         --logtostderr \
         --image_dir="${base_image_dir}/train2014" \

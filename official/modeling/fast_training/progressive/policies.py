@@ -19,13 +19,20 @@ abstract methods to handle each training stage.
 """
 
 import abc
+import dataclasses
 from typing import Any, Mapping
 from absl import logging
-import dataclasses
 import six
 import tensorflow as tf
+
+from tensorflow.python.eager import monitoring
+from official.modeling.fast_training.progressive import utils
 from official.modeling.hyperparams import base_config
-from official.modeling.progressive import utils
+
+
+_progressive_policy_creation_counter = monitoring.Counter(
+    '/tensorflow/training/fast_training/progressive_policy_creation',
+    'Counter for the number of ProgressivePolicy creations.')
 
 
 @dataclasses.dataclass
@@ -68,6 +75,8 @@ class ProgressivePolicy:
     self._volatiles.reassign_trackable(
         optimizer=self.get_optimizer(stage_id),
         model=self.get_model(stage_id, old_model=None))
+
+    _progressive_policy_creation_counter.get_cell().increase_by(1)
 
   def compute_stage_id(self, global_step: int) -> int:
     for stage_id in range(self.num_stages()):

@@ -13,18 +13,18 @@
 # limitations under the License.
 
 """Progressive distillation for MobileBERT student model."""
+import dataclasses
 from typing import List, Optional
 
 from absl import logging
-import dataclasses
 import orbit
 import tensorflow as tf
 from official.core import base_task
 from official.core import config_definitions as cfg
 from official.modeling import optimization
 from official.modeling import tf_utils
+from official.modeling.fast_training.progressive import policies
 from official.modeling.hyperparams import base_config
-from official.modeling.progressive import policies
 from official.nlp import keras_nlp
 from official.nlp.configs import bert
 from official.nlp.configs import encoders

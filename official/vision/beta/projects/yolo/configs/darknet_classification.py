@@ -15,9 +15,8 @@
 # Lint as: python3
 """Image classification with darknet configs."""
 
-from typing import List, Optional
-
 import dataclasses
+from typing import List, Optional
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory

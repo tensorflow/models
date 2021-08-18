@@ -1,11 +1,25 @@
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Yolo box ops."""
+import math
 import tensorflow as tf
 from official.vision.beta.projects.yolo.ops import math_ops
-import math
 
 
 def yxyx_to_xcycwh(box: tf.Tensor):
-  """Converts boxes from ymin, xmin, ymax, xmax to x_center, y_center, width,
-  height.
+  """Converts boxes from yxyx to x_center, y_center, width, height.
 
   Args:
     box: any `Tensor` whose last dimension is 4 representing the coordinates of
@@ -26,9 +40,7 @@ def yxyx_to_xcycwh(box: tf.Tensor):
 
 @tf.custom_gradient
 def _xcycwh_to_yxyx(box: tf.Tensor, scale):
-  """Private function called by xcycwh_to_yxyx to allow custom gradients
-  with defaults.
-  """
+  """Private function to allow custom gradients with defaults."""
   with tf.name_scope('xcycwh_to_yxyx'):
     xy, wh = tf.split(box, 2, axis=-1)
     xy_min = xy - wh / 2
@@ -38,7 +50,7 @@ def _xcycwh_to_yxyx(box: tf.Tensor, scale):
     box = tf.concat([y_min, x_min, y_max, x_max], axis=-1)
 
     def delta(dbox):
-      #y_min = top, x_min = left, y_max = bottom, x_max = right
+      # y_min = top, x_min = left, y_max = bottom, x_max = right
       dt, dl, db, dr = tf.split(dbox, 4, axis=-1)
       dx = dl + dr
       dy = dt + db
@@ -52,12 +64,12 @@ def _xcycwh_to_yxyx(box: tf.Tensor, scale):
 
 
 def xcycwh_to_yxyx(box: tf.Tensor, darknet=False):
-  """Converts boxes from x_center, y_center, width, height to ymin, xmin, ymax,
-  xmax.
+  """Converts boxes from x_center, y_center, width, height to yxyx format.
 
   Args:
     box: any `Tensor` whose last dimension is 4 representing the coordinates of
       boxes in x_center, y_center, width, height.
+    darknet: `bool`, if True a scale of 1.0 is used.
 
   Returns:
     box: a `Tensor` whose shape is the same as `box` in new format.
@@ -105,8 +117,7 @@ def intersect_and_union(box1, box2, yxyx=False):
 
 
 def smallest_encompassing_box(box1, box2, yxyx=False):
-  """Calculates the smallest box that encompasses both that encomapasses both
-  box1 and box2.
+  """Calculates the smallest box that encompasses box1 and box2.
 
   Args:
     box1: any `Tensor` whose last dimension is 4 representing the coordinates of
@@ -194,7 +205,7 @@ def compute_giou(box1, box2, yxyx=False, darknet=False):
     boxc = smallest_encompassing_box(box1, box2, yxyx=yxyx)
     if yxyx:
       boxc = yxyx_to_xcycwh(boxc)
-    cxcy, cwch = tf.split(boxc, 2, axis=-1)
+    _, cwch = tf.split(boxc, 2, axis=-1)
     c = tf.math.reduce_prod(cwch, axis=-1)
 
     # compute giou
@@ -239,9 +250,9 @@ def compute_diou(box1, box2, beta=1.0, yxyx=False, darknet=False):
       box1 = yxyx_to_xcycwh(box1)
       box2 = yxyx_to_xcycwh(box2)
 
-    b1xy, b1wh = tf.split(box1, 2, axis=-1)
-    b2xy, b2wh = tf.split(box2, 2, axis=-1)
-    bcxy, bcwh = tf.split(boxc, 2, axis=-1)
+    b1xy, _ = tf.split(box1, 2, axis=-1)
+    b2xy, _ = tf.split(box2, 2, axis=-1)
+    _, bcwh = tf.split(boxc, 2, axis=-1)
 
     center_dist = tf.reduce_sum((b1xy - b2xy)**2, axis=-1)
     c_diag = tf.reduce_sum(bcwh**2, axis=-1)
@@ -276,8 +287,8 @@ def compute_ciou(box1, box2, yxyx=False, darknet=False):
       box1 = yxyx_to_xcycwh(box1)
       box2 = yxyx_to_xcycwh(box2)
 
-    b1x, b1y, b1w, b1h = tf.split(box1, 4, axis=-1)
-    b2x, b2y, b2w, b2h = tf.split(box1, 4, axis=-1)
+    _, _, b1w, b1h = tf.split(box1, 4, axis=-1)
+    _, _, b2w, b2h = tf.split(box1, 4, axis=-1)
 
     # computer aspect ratio consistency
     terma = tf.cast(math_ops.divide_no_nan(b1w, b1h), tf.float32)
@@ -292,13 +303,13 @@ def compute_ciou(box1, box2, yxyx=False, darknet=False):
   return iou, ciou
 
 
-# equal to bbox_overlap but far more versitile
 def aggregated_comparitive_iou(boxes1,
                                boxes2=None,
                                iou_type=0,
                                beta=0.6):
-  """Calculates the intersection over union between every box in boxes1 and
-  every box in boxes2.
+  """Calculates the IOU between two set of boxes.
+
+  Similar to bbox_overlap but far more versitile.
 
   Args:
     boxes1: a `Tensor` of shape [batch size, N, 4] representing the coordinates
@@ -322,11 +333,11 @@ def aggregated_comparitive_iou(boxes1,
   else:
     boxes2 = tf.transpose(boxes1, perm=(0, 2, 1, 3))
 
-  if iou_type == 0:  #diou
+  if iou_type == 0:  # diou
     _, iou = compute_diou(boxes1, boxes2, beta=beta, yxyx=True)
-  elif iou_type == 1:  #giou
+  elif iou_type == 1:  # giou
     _, iou = compute_giou(boxes1, boxes2, yxyx=True)
-  elif iou_type == 2:  #ciou
+  elif iou_type == 2:  # ciou
     _, iou = compute_ciou(boxes1, boxes2, yxyx=True)
   else:
     iou = compute_iou(boxes1, boxes2, yxyx=True)

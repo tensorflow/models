@@ -26,7 +26,7 @@ from official.common import flags as tfm_flags
 from official.core import task_factory
 from official.core import train_utils
 from official.modeling import performance
-from official.modeling.progressive import train_lib
+from official.modeling.fast_training.progressive import train_lib
 
 FLAGS = flags.FLAGS
 

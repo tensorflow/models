@@ -32,6 +32,12 @@ layers = tf.keras.layers
 # Each element in the block configuration is in the following format:
 # (block_fn, num_filters, block_repeats)
 RESNET_SPECS = {
+    10: [
+        ('residual', 64, 1),
+        ('residual', 128, 1),
+        ('residual', 256, 1),
+        ('residual', 512, 1),
+    ],
     18: [
         ('residual', 64, 2),
         ('residual', 128, 2),
