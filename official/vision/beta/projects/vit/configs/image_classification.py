@@ -81,7 +81,7 @@ task_factory.register_task_cls(ImageClassificationTask)(
     image_classification.ImageClassificationTask)
 
 
-@exp_factory.register_config_factory('deit_imagenet_pretrain_nodistillation')
+@exp_factory.register_config_factory('deit_imagenet_pretrain')
 def image_classification_imagenet_deit_pretrain() -> cfg.ExperimentConfig:
   """Image classification on imagenet with vision transformer."""
   train_batch_size = 4096  # originally was 1024 but 4096 better for tpu v3-32
