@@ -27,6 +27,7 @@ from official.core import config_definitions
 from official.core import task_factory
 from official.core import train_utils
 from official.modeling import performance
+from official.modeling.fast_training import stage_lib
 
 
 def run_benchmark(
@@ -132,3 +133,54 @@ def run_benchmark(
             startup_time=startup_time))
 
     return benchmark_data
+
+
+def run_fast_training_benchmark(
+    execution_mode: str,
+    params: config_definitions.ExperimentConfig,
+    model_dir: str,
+    distribution_strategy: tf.distribute.Strategy = None
+) -> Mapping[str, Any]:
+  """Runs benchmark for a fast training experiment.
+
+  This benchmark tests and only tests the binary
+  tensorflow_models/official/modeling/fast_training/train.py
+
+  Args:
+    execution_mode: A 'str', specifying the mode. Can be 'accuracy',
+      'performance', or 'tflite_accuracy'.
+    params: ExperimentConfig instance.
+    model_dir: A 'str', a path to store model checkpoints and summaries.
+    distribution_strategy: A tf.distribute.Strategy to use. If specified,
+     it will be used instead of inferring the strategy from params.
+
+  Returns:
+    benchmark_data: returns benchmark data in dict format.
+
+  Raises:
+    NotImplementedError: If try to use unsupported setup.
+  """
+  if execution_mode == 'performance':
+    logging.warn('Fast training benchmark does not support execution_mode == '
+                 'performance. This benchmark run will be skipped..')
+    return dict(examples_per_second=0.0,
+                wall_time=0.0,
+                startup_time=0.0)
+
+  strategy = distribution_strategy or distribute_utils.get_distribution_strategy(
+      distribution_strategy=params.runtime.distribution_strategy,
+      all_reduce_alg=params.runtime.all_reduce_alg,
+      num_gpus=params.runtime.num_gpus,
+      tpu_address=params.runtime.tpu)
+
+  first_loop_start_time = time.time()
+  _, eval_logs = stage_lib.run_progressive_experiment(
+      distribution_strategy=strategy,
+      mode='train',
+      params=params,
+      model_dir=model_dir,
+      run_post_eval=True)
+  wall_time = time.time() - first_loop_start_time
+
+  return dict(metrics=eval_logs, wall_time=wall_time,
+              startup_time=0.0, examples_per_second=0.0)

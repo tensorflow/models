@@ -17,6 +17,7 @@
 # pylint: disable=g-direct-tensorflow-import
 
 from absl.testing import parameterized
+import gin
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
@@ -83,6 +84,44 @@ class BenchmarkLibTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIn('startup_time', benchmark_data)
 
     if execution_mode == 'accuracy':
+      self.assertIn('metrics', benchmark_data)
+
+  @combinations.generate(
+      combinations.combine(
+          distribution=[
+              strategy_combinations.default_strategy,
+              strategy_combinations.cloud_tpu_strategy,
+              strategy_combinations.one_device_strategy_gpu,
+          ],
+          execution_mode=['performance', 'accuracy'],
+      ))
+  def test_fast_training_benchmark(self, distribution, execution_mode):
+
+    model_dir = self.get_temp_dir()
+    with gin.unlock_config():
+      gin.parse_config_files_and_bindings(
+          None,
+          "get_initialize_fn.stacking_pattern = 'dense_{:layer_id}/'\n"
+          "StageParamProgressor.stage_overrides = ("
+          "    {'trainer': {'train_steps': 1}},"
+          "    {'trainer': {'train_steps': 2}},"
+          ")")
+    params = exp_factory.get_exp_config('mock')
+    params = hyperparams.override_params_dict(
+        params, self._test_config, is_strict=True)
+
+    benchmark_data = benchmark_lib.run_fast_training_benchmark(execution_mode,
+                                                               params,
+                                                               model_dir,
+                                                               distribution)
+
+    if execution_mode == 'performance':
+      self.assertEqual(dict(examples_per_second=0.0,
+                            wall_time=0.0,
+                            startup_time=0.0),
+                       benchmark_data)
+    else:
+      self.assertIn('wall_time', benchmark_data)
       self.assertIn('metrics', benchmark_data)
 
 if __name__ == '__main__':

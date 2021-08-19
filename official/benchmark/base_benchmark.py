@@ -21,6 +21,7 @@ import pprint
 # Import libraries
 
 from absl import logging
+import gin
 import tensorflow as tf
 
 from tensorflow.python.platform import benchmark  # pylint: disable=unused-import
@@ -46,13 +47,15 @@ def _get_benchmark_params(benchmark_models, eval_tflite=False):
         benchmark_params = (
             benchmark_name,  # First arg is used by ParameterizedBenchmark.
             benchmark_name,
+            params.get('benchmark_function') or benchmark_lib.run_benchmark,
             params['experiment_type'],
             execution_mode,
             params['platform'],
             params['precision'],
             params['metric_bounds'],
             params.get('config_files') or [],
-            params.get('params_override') or None)
+            params.get('params_override') or None,
+            params.get('gin_file') or [])
         parameterized_benchmark_params.append(benchmark_params)
   return parameterized_benchmark_params
 
@@ -103,13 +106,19 @@ class BaseBenchmark(  # pylint: disable=undefined-variable
 
   def benchmark(self,
                 benchmark_name,
+                benchmark_function,
                 experiment_type,
                 execution_mode,
                 platform,
                 precision,
                 metric_bounds,
                 config_files,
-                params_override):
+                params_override,
+                gin_file):
+
+    with gin.unlock_config():
+      gin.parse_config_files_and_bindings(
+          [config_utils.get_config_path(g) for g in gin_file], None)
 
     params = exp_factory.get_exp_config(experiment_type)
 
@@ -145,7 +154,7 @@ class BaseBenchmark(  # pylint: disable=undefined-variable
     logging.info('Final experiment parameters: %s',
                  pp.pformat(params.as_dict()))
 
-    benchmark_data = benchmark_lib.run_benchmark(
+    benchmark_data = benchmark_function(
         execution_mode, params, self._get_model_dir(benchmark_name))
 
     metrics = []
