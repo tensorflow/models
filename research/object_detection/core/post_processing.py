@@ -973,18 +973,14 @@ def batch_multiclass_non_max_suppression(boxes,
       classes as inferred from scores.shape.
   """
   if use_combined_nms:
-    if change_coordinate_frame:
-      raise ValueError(
-          'change_coordinate_frame (normalizing coordinates'
-          ' relative to clip_window) is not supported by combined_nms.')
-    if num_valid_boxes is not None:
-      raise ValueError('num_valid_boxes is not supported by combined_nms.')
     if masks is not None:
       raise ValueError('masks is not supported by combined_nms.')
     if soft_nms_sigma != 0.0:
       raise ValueError('Soft NMS is not supported by combined_nms.')
     if use_class_agnostic_nms:
       raise ValueError('class-agnostic NMS is not supported by combined_nms.')
+    if num_valid_boxes is not None:
+      tf.logging.warning('num_valid_boxes is not supported by combined_nms.')
     if clip_window is not None:
       tf.logging.warning(
           'clip_window is not supported by combined_nms unless it is'
@@ -998,6 +994,15 @@ def batch_multiclass_non_max_suppression(boxes,
       tf.logging.warning(
           'max_classes_per_detection is not configurable by combined_nms.')
 
+    if change_coordinate_frame:
+      with tf.name_scope(scope, 'ChangeCoordinateFrame'):
+        shift = tf.stack([clip_window[:, 0], clip_window[:, 1],
+                          clip_window[:, 0], clip_window[:, 1]], axis=1)
+        y_scale = 1.0 / (clip_window[:, 2] - clip_window[:, 0])
+        x_scale = 1.0 / (clip_window[:, 3] - clip_window[:, 1])
+        scale = tf.stack([y_scale, x_scale, y_scale, x_scale], axis=1)
+        boxes = (boxes - shift) * scale
+
     with tf.name_scope(scope, 'CombinedNonMaxSuppression'):
       (batch_nmsed_boxes, batch_nmsed_scores, batch_nmsed_classes,
        batch_num_detections) = tf.image.combined_non_max_suppression(
@@ -1010,8 +1015,8 @@ def batch_multiclass_non_max_suppression(boxes,
            pad_per_class=use_static_shapes)
       # Not supported by combined_non_max_suppression.
       batch_nmsed_masks = None
-      # Not supported by combined_non_max_suppression.
-      batch_nmsed_additional_fields = None
+      # Pass through any additional_fields.
+      batch_nmsed_additional_fields = additional_fields
       return (batch_nmsed_boxes, batch_nmsed_scores, batch_nmsed_classes,
               batch_nmsed_masks, batch_nmsed_additional_fields,
               batch_num_detections)
