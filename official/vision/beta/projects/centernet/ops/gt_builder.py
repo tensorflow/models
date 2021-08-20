@@ -95,7 +95,7 @@ def build_heatmap_and_regressed_features(labels: Dict,
   # shape of labels['bbox'] is [max_num_instances, 4]
   # [ymin, xmin, ymax, xmax]
   boxes = tf.cast(labels['bbox'], dtype)[:num_objects]
-  # shape of labels['classes'] is [max_num_instances, 4]
+  # shape of labels['classes'] is [max_num_instances, ]
   classes = tf.cast(labels['classes'] - class_offset, dtype)[:num_objects]
   
   # Compute scaling factors for center/corner positions on heatmap

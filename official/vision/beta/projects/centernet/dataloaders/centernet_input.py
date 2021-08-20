@@ -18,6 +18,7 @@ import tensorflow as tf
 from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.projects.centernet.ops import \
   preprocess_ops as centernet_preprocess_ops
+from official.vision.beta.ops import box_ops
 from official.vision.beta.dataloaders import parser, utils
 
 from typing import List
@@ -178,6 +179,10 @@ class CenterNetParser(parser.Parser):
         offset=self._channel_means,
         scale=self._channel_stds)
     
+    image_shape = tf.shape(input=image)[0:2]
+    # Converts boxes from normalized coordinates to pixel coordinates.
+    boxes = box_ops.denormalize_boxes(boxes, image_shape)
+    
     if self._aug_rand_hflip:
       image, boxes, _ = preprocess_ops.random_horizontal_flip(image, boxes)
     
@@ -237,6 +242,10 @@ class CenterNetParser(parser.Parser):
         image=image,
         offset=self._channel_means,
         scale=self._channel_stds)
+    
+    image_shape = tf.shape(input=image)[0:2]
+    # Converts boxes from normalized coordinates to pixel coordinates.
+    boxes = box_ops.denormalize_boxes(boxes, image_shape)
     
     # Resizes and crops image.
     image, image_info = preprocess_ops.resize_and_crop_image(
