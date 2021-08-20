@@ -125,7 +125,7 @@ def get_batch_predictions_from_indices(batch_predictions, indices):
       values at the given indices.
   """
   # indices right now is shape (8, 128, 2), we need to make it (8, 128, 3), where
-  # the last dimension corresponds to the batch it belongs t
+  # the first dimension corresponds to the batch it belongs to
   
   return tf.gather_nd(batch_predictions, indices)
 
@@ -137,7 +137,7 @@ def add_batch_to_indices(indices):
   batch_range = multi_range(limit=batch_size, value_repetitions=num_instances)
   batch_range = tf.reshape(batch_range, shape=(batch_size, num_instances, 1))
   
-  return tf.concat([indices, batch_range], axis=-1)
+  return tf.concat([batch_range, indices], axis=-1)
 
 
 def get_valid_anchor_weights_in_flattened_image(true_image_shapes, height,

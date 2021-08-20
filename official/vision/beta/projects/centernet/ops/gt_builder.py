@@ -238,6 +238,7 @@ def build_heatmap_and_regressed_features(labels: Dict,
 
 if __name__ == '__main__':
   import time
+  from official.vision.beta.projects.centernet.ops import loss_ops
   
   boxes = tf.constant([
       (10, 300, 15, 370),  # center (y, x) = (12, 335)
@@ -281,3 +282,4 @@ if __name__ == '__main__':
   for item in gt_label:
     print(item, gt_label[item].shape)
   print("Time taken: {} ms".format((b - a) * 1000))
+  print(loss_ops.add_batch_to_indices(gt_label['box_indices']))
