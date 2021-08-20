@@ -108,28 +108,6 @@ def multi_range(limit,
           tf.expand_dims(tf.range(limit, dtype=dtype), axis=-1),
           multiples=[range_repetitions, value_repetitions]), [-1])
 
-def combined_static_and_dynamic_shape(tensor):
-  """Returns a list containing static and dynamic values for the dimensions.
-
-  Returns a list of static and dynamic values for shape dimensions. This is
-  useful to preserve static shapes when available in reshape operation.
-
-  Args:
-    tensor: A tensor of any type.
-
-  Returns:
-    A list of size tensor.shape.ndims containing integers or a scalar tensor.
-  """
-  static_tensor_shape = tensor.shape.as_list()
-  dynamic_tensor_shape = tf.shape(tensor)
-  combined_shape = []
-  for index, dim in enumerate(static_tensor_shape):
-    if dim is not None:
-      combined_shape.append(dim)
-    else:
-      combined_shape.append(dynamic_tensor_shape[index])
-  return combined_shape
-
 
 def get_batch_predictions_from_indices(batch_predictions, indices):
   """Gets the values of predictions in a batch at the given indices.

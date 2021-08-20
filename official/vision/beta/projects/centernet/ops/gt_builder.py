@@ -27,7 +27,7 @@ def build_heatmap_and_regressed_features(labels: Dict,
                                          use_gaussian_bump: bool = True,
                                          gaussian_rad: int = -1,
                                          gaussian_iou: float = 0.7,
-                                         class_offset: int = 1,
+                                         class_offset: int = 0,
                                          dtype='float32'):
   """ Generates the ground truth labels for centernet.
   
@@ -93,9 +93,10 @@ def build_heatmap_and_regressed_features(labels: Dict,
   # only keep the first num_objects boxes and classes
   num_objects = labels['num_detections']
   # shape of labels['bbox'] is [max_num_instances, 4]
-  boxes = tf.cast(labels['bbox'][:num_objects], dtype)
+  # [ymin, xmin, ymax, xmax]
+  boxes = tf.cast(labels['bbox'], dtype)[:num_objects]
   # shape of labels['classes'] is [max_num_instances, 4]
-  classes = tf.cast(labels['classes'][:num_objects] - class_offset, dtype)
+  classes = tf.cast(labels['classes'] - class_offset, dtype)[:num_objects]
   
   # Compute scaling factors for center/corner positions on heatmap
   input_size = tf.cast(input_size, dtype)
@@ -115,18 +116,19 @@ def build_heatmap_and_regressed_features(labels: Dict,
   
   # Scaled box coordinates (could be floating point)
   # [num_objects, ]
-  fxct = xct * width_ratio
-  fyct = yct * height_ratio
+  scale_xct = xct * width_ratio
+  scale_yct = yct * height_ratio
   
   # Floor the scaled box coordinates to be placed on heatmaps
   # [num_objects, ]
-  xct = tf.math.floor(fxct)
-  yct = tf.math.floor(fyct)
+  scale_xct_floor = tf.math.floor(scale_xct)
+  scale_yct_floor = tf.math.floor(scale_yct)
   
   # Offset computations to make up for discretization error
   # used for offset maps
   # [num_objects, 2]
-  ct_offset_values = tf.stack([fxct - xct, fyct - yct], axis=-1)
+  ct_offset_values = tf.stack([scale_yct - scale_yct_floor,
+                               scale_xct - scale_xct_floor], axis=-1)
   
   # Get the scaled box dimensions for computing the gaussian radius
   # [num_objects, ]
@@ -138,7 +140,7 @@ def build_heatmap_and_regressed_features(labels: Dict,
   
   # Used for size map
   # [num_objects, 2]
-  box_widths_heights = tf.stack([box_widths, box_heights], axis=-1)
+  box_heights_widths = tf.stack([box_heights, box_widths], axis=-1)
   
   # Center/corner heatmaps
   # [output_h, output_w, num_classes]
@@ -164,14 +166,15 @@ def build_heatmap_and_regressed_features(labels: Dict,
       if gaussian_rad == -1:
         radius = tf.map_fn(
             fn=lambda x: preprocess_ops.gaussian_radius(x, gaussian_iou),
-            elems=tf.math.ceil(box_widths_heights))
+            elems=tf.math.ceil(box_heights_widths))
         radius = tf.math.maximum(tf.math.floor(radius),
                                  tf.cast(1.0, radius.dtype))
       else:
         radius = tf.constant([gaussian_rad] * max_num_instances, dtype)
         radius = radius[:num_objects]
       # These blobs contain information needed to draw the gaussian
-      ct_blobs = tf.stack([classes, xct, yct, radius], axis=-1)
+      ct_blobs = tf.stack([classes, scale_yct_floor, scale_xct_floor, radius],
+                          axis=-1)
       
       # Get individual gaussian contributions from each bounding box
       ct_gaussians = tf.map_fn(
@@ -186,7 +189,8 @@ def build_heatmap_and_regressed_features(labels: Dict,
       # Instead of a gaussian, insert 1s in the center and corner heatmaps
       # [num_objects, 3]
       ct_hm_update_indices = tf.cast(
-          tf.stack([yct, xct, classes], axis=-1), tf.int32)
+          tf.stack([scale_yct_floor, scale_xct_floor, classes], axis=-1),
+          tf.int32)
       
       ct_heatmap = tf.tensor_scatter_nd_update(ct_heatmap,
                                                ct_hm_update_indices,
@@ -204,7 +208,7 @@ def build_heatmap_and_regressed_features(labels: Dict,
     
     # Write the size of each bounding box
     size = tf.tensor_scatter_nd_update(
-        size, update_indices, box_widths_heights)
+        size, update_indices, box_heights_widths)
     
     # Initially the mask is zeros, so now we unmask each valid box instance
     mask_indices = tf.expand_dims(tf.range(num_objects), -1)
@@ -212,7 +216,9 @@ def build_heatmap_and_regressed_features(labels: Dict,
     box_mask = tf.tensor_scatter_nd_update(box_mask, mask_indices, mask_values)
     
     # Write the y and x coordinate of each box center in the heatmap
-    box_index_values = tf.cast(tf.stack([yct, xct], axis=-1), dtype=tf.int32)
+    box_index_values = tf.cast(
+        tf.stack([scale_yct_floor, scale_xct_floor], axis=-1),
+        dtype=tf.int32)
     box_indices = tf.tensor_scatter_nd_update(
         box_indices, update_indices, box_index_values)
   labels = {

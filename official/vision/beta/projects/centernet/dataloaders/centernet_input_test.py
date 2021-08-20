@@ -29,7 +29,7 @@ class CenterNetInputTest(tf.test.TestCase, parameterized.TestCase):
     classes = tf.constant(classes, dtype=tf.float32)
     
     boxes = preprocess_ops.pad_max_instances(boxes, 128, 0)
-    classes = preprocess_ops.pad_max_instances(classes, 128, -1)
+    classes = preprocess_ops.pad_max_instances(classes, 128, 0)
     
     labels = gt_builder.build_heatmap_and_regressed_features(
         labels={
@@ -65,8 +65,9 @@ class CenterNetInputTest(tf.test.TestCase, parameterized.TestCase):
     for i in range(len(boxes)):
       # Check sizes
       self.assertAllEqual(size[i],
-                          [(boxes[i][3] - boxes[i][1]) * width_ratio,
-                           (boxes[i][2] - boxes[i][0]) * height_ratio])
+                          [(boxes[i][2] - boxes[i][0]) * height_ratio,
+                           (boxes[i][3] - boxes[i][1]) * width_ratio,
+                           ])
       
       # Check box indices
       y = tf.math.floor((boxes[i][0] + boxes[i][2]) / 2 * height_ratio)
@@ -76,7 +77,7 @@ class CenterNetInputTest(tf.test.TestCase, parameterized.TestCase):
       # check offsets
       true_y = (boxes[i][0] + boxes[i][2]) / 2 * height_ratio
       true_x = (boxes[i][1] + boxes[i][3]) / 2 * width_ratio
-      self.assertAllEqual(ct_offset[i], [true_x - x, true_y - y])
+      self.assertAllEqual(ct_offset[i], [true_y - y, true_x - x])
     
     for i in range(len(boxes), parser._max_num_instances):
       # Make sure rest are zero

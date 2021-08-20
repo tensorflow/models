@@ -119,7 +119,7 @@ class CenterNetParser(parser.Parser):
     classes = data['groundtruth_classes']
     cshape = classes.get_shape().as_list()
     classes = centernet_preprocess_ops.pad_max_instances(
-        classes, self._max_num_instances, -1)
+        classes, self._max_num_instances, 0)
     cshape[0] = self._max_num_instances
     classes.set_shape(cshape)
     

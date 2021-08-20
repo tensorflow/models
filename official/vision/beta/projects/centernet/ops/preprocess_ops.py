@@ -147,7 +147,7 @@ def draw_gaussian(hm_shape, blob, dtype, scaling_factor=1):
   Args:
     hm_shape: A `list` of `Tensor` of shape [3] that gives the height, width,
       and number of channels in the heatmap
-    blob: A `Tensor` of shape [4] that gives the channel number, x, y, and
+    blob: A `Tensor` of shape [4] that gives the channel number, y, x, and
       radius for the desired gaussian to be drawn onto
     dtype: The desired type of the heatmap
     scaling_factor: A `int` that can be used to scale the magnitude of the
@@ -158,7 +158,7 @@ def draw_gaussian(hm_shape, blob, dtype, scaling_factor=1):
   gaussian_heatmap = tf.zeros(shape=hm_shape, dtype=dtype)
   
   blob = tf.cast(blob, tf.int32)
-  obj_class, x, y, radius = blob[0], blob[1], blob[2], blob[3]
+  obj_class, y, x, radius = blob[0], blob[1], blob[2], blob[3]
   
   height, width = hm_shape[0], hm_shape[1]
   
