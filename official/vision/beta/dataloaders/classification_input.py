@@ -191,15 +191,15 @@ class Parser(parser.Parser):
     if self._aug_rand_hflip:
       image = tf.image.random_flip_left_right(image)
 
-    # Resizes image.
-    image = tf.image.resize(
-        image, self._output_size, method=tf.image.ResizeMethod.BILINEAR)
-    image.set_shape([self._output_size[0], self._output_size[1], 3])
-
     # Color jitter.
     if self._color_jitter > 0:
       image = preprocess_ops.color_jitter(
           image, self._color_jitter, self._color_jitter, self._color_jitter)
+
+    # Resizes image.
+    image = tf.image.resize(
+        image, self._output_size, method=tf.image.ResizeMethod.BILINEAR)
+    image.set_shape([self._output_size[0], self._output_size[1], 3])
 
     # Apply autoaug or randaug.
     if self._augmenter is not None:
