@@ -1358,8 +1358,8 @@ class RandomErasing(ImageAugment):
       tf.Tensor: The augmented version of `image`.
     """
     uniform_random = tf.random.uniform(shape=[], minval=0., maxval=1.0)
-    mirror_cond = tf.less(uniform_random, .5)
-    tf.cond(mirror_cond, lambda: self._erase(image), lambda: image)
+    mirror_cond = tf.less(uniform_random, self._probability)
+    image = tf.cond(mirror_cond, lambda: self._erase(image), lambda: image)
     return image
 
   @tf.function
@@ -1399,7 +1399,7 @@ class RandomErasing(ImageAugment):
                 dtype=tf.int32)
             
             image = _fill_rectangle(image, center_width, center_height,
-                                half_width, half_height, replace=None)
+                                    half_width, half_height, replace=None)
 
             is_trial_successfull = True
 

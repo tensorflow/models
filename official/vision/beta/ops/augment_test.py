@@ -263,7 +263,7 @@ class RandomErasingTest(tf.test.TestCase, parameterized.TestCase):
     aug_image = augmenter.distort(image)
 
     self.assertEqual((224, 224, 3), aug_image.shape)
-    self.assertLess(0, tf.reduce_max(aug_image.shape))
+    self.assertNotEqual(0, tf.reduce_max(aug_image))
 
 
 class MixupAndCutmixTest(tf.test.TestCase, parameterized.TestCase):
