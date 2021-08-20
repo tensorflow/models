@@ -225,6 +225,17 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
     _ = preprocess_ops.random_crop_image_v2(
         image_bytes, tf.constant([input_height, input_width, 3], tf.int32))
 
+  @parameterized.parameters(
+      (400, 600, 0), (400, 600, 0.4), (600, 400, 1.4)
+  )
+  def testColorJitter(self, input_height, input_width, color_jitter):
+    image = tf.convert_to_tensor(
+        np.random.rand(input_height, input_width, 3))
+    jittered_image = preprocess_ops.color_jitter(
+        image, color_jitter, color_jitter, color_jitter)
+    assert jittered_image.shape == image.shape
+
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -566,7 +566,7 @@ def color_jitter(image: tf.Tensor, brightness: Optional[float] = 0.,
   """Applies color jitter to an image, similarly to torchvision`s ColorJitter.
 
   Args:
-    image (tf.Tensor): Of shape [height, width, 3] representing an image.
+    image (tf.Tensor): Of shape [height, width, 3] and type uint8.
     brightness (float, optional): Magnitude for brightness jitter.
       Defaults to 0.
     contrast (float, optional): Magnitude for contrast jitter. Defaults to 0.
@@ -575,8 +575,9 @@ def color_jitter(image: tf.Tensor, brightness: Optional[float] = 0.,
     seed (int, optional): Random seed. Defaults to None.
 
   Returns:
-    tf.Tensor: The augmented version of `image`.
+    tf.Tensor: The augmented `image` of type uint8.
   """
+  image = tf.cast(image, dtype=tf.uint8)
   image = random_brightness(image, brightness, seed=seed)
   image = random_contrast(image, contrast, seed=seed)
   image = random_saturation(image, saturation, seed=seed)
@@ -588,17 +589,17 @@ def random_brightness(image: tf.Tensor, brightness: Optional[float] = 0.,
   """Jitters brightness of an image, similarly to torchvision`s ColorJitter.
 
   Args:
-      image (tf.Tensor): Of shape [height, width, 3] representing an image.
+      image (tf.Tensor): Of shape [height, width, 3] and type uint8.
       brightness (float, optional): Magnitude for brightness jitter.
       Defaults to 0.
       seed (int, optional): Random seed. Defaults to None.
 
   Returns:
-      tf.Tensor: The augmented version of `image`.
+      tf.Tensor: The augmented `image` of type uint8.
   """
-  assert brightness >= 0 and brightness <= 1., '`brightness` must be in [0, 1]'
+  assert brightness >= 0, '`brightness` must be positive'
   brightness = tf.random.uniform(
-      [], max(0, 1 - brightness), 1 + brightness, seed=seed)
+      [], max(0, 1 - brightness), 1 + brightness, seed=seed, dtype=tf.float32)
   return augment.brightness(image, brightness)
 
 
@@ -607,17 +608,17 @@ def random_contrast(image: tf.Tensor, contrast: Optional[float] = 0.,
   """Jitters contrast of an image, similarly to torchvision`s ColorJitter.
 
   Args:
-      image (tf.Tensor): Of shape [height, width, 3] representing an image.
+      image (tf.Tensor): Of shape [height, width, 3] and type uint8.
       contrast (float, optional): Magnitude for contrast jitter.
       Defaults to 0.
       seed (int, optional): Random seed. Defaults to None.
 
   Returns:
-      tf.Tensor: The augmented version of `image`.
+      tf.Tensor: The augmented `image` of type uint8.
   """
-  assert contrast >= 0 and contrast <= 1., '`contrast` must be in [0, 1]'
+  assert contrast >= 0, '`contrast` must be positive'
   contrast = tf.random.uniform(
-      [], max(0, 1 - contrast), 1 + contrast, seed=seed)
+      [], max(0, 1 - contrast), 1 + contrast, seed=seed, dtype=tf.float32)
   return augment.contrast(image, contrast)
 
 
@@ -626,15 +627,16 @@ def random_saturation(image: tf.Tensor, saturation: Optional[float] = 0.,
   """Jitters saturation of an image, similarly to torchvision`s ColorJitter.
 
   Args:
-      image (tf.Tensor): Of shape [height, width, 3] representing an image.
+      image (tf.Tensor): Of shape [height, width, 3] and type uint8.
       saturation (float, optional): Magnitude for saturation jitter.
       Defaults to 0.
       seed (int, optional): Random seed. Defaults to None.
 
   Returns:
-      tf.Tensor: The augmented version of `image`.
+      tf.Tensor: The augmented `image` of type uint8.
   """
-  assert saturation >= 0 and saturation <= 1., '`saturation` must be in [0, 1]'
+  assert saturation >= 0, '`saturation` must be positive'
   saturation = tf.random.uniform(
-      [], max(0, 1 - saturation), 1 + saturation, seed=seed)
-  return augment.blend(tf.image.rgb_to_grayscale(image), image, saturation)
+      [], max(0, 1 - saturation), 1 + saturation, seed=seed, dtype=tf.float32)
+  return augment.blend(
+    tf.repeat(tf.image.rgb_to_grayscale(image), 3, axis=-1), image, saturation)

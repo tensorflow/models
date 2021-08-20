@@ -1359,7 +1359,7 @@ class RandomErasing(ImageAugment):
     """
     uniform_random = tf.random.uniform(shape=[], minval=0., maxval=1.0)
     mirror_cond = tf.less(uniform_random, .5)
-    tf.cond(mirror_cond, self._erase, lambda: image)
+    tf.cond(mirror_cond, lambda: self._erase(image), lambda: image)
     return image
 
   @tf.function
@@ -1374,31 +1374,34 @@ class RandomErasing(ImageAugment):
     area = tf.cast(image_width * image_height, tf.float32)
 
     for _ in range(count):
+      # Work around since break is not supported in tf.function
+      is_trial_successfull = False
       for _ in range(self._trials):
-        erase_area = tf.random.uniform(shape=[],
-                                       minval=area * self._min_area,
-                                       maxval=area * self._max_area)
-        aspect_ratio = tf.math.exp(tf.random.uniform(
-            shape=[], minval=self._min_log_aspect,
-            maxval=self._max_log_aspect))
+        if not is_trial_successfull:
+          erase_area = tf.random.uniform(shape=[],
+                                        minval=area * self._min_area,
+                                        maxval=area * self._max_area)
+          aspect_ratio = tf.math.exp(tf.random.uniform(
+              shape=[], minval=self._min_log_aspect,
+              maxval=self._max_log_aspect))
 
-        half_height = tf.cast(tf.math.round(tf.math.sqrt(
-            erase_area * aspect_ratio) / 2), dtype=tf.int32)
-        half_width = tf.cast(tf.math.round(tf.math.sqrt(
-            erase_area / aspect_ratio) / 2), dtype=tf.int32)
+          half_height = tf.cast(tf.math.round(tf.math.sqrt(
+              erase_area * aspect_ratio) / 2), dtype=tf.int32)
+          half_width = tf.cast(tf.math.round(tf.math.sqrt(
+              erase_area / aspect_ratio) / 2), dtype=tf.int32)
 
-        if 2 * half_height < image_height and 2 * half_width < image_width:
-          center_height = tf.random.uniform(
-              shape=[], minval=0, maxval=int(image_height - 2 * half_height),
-              dtype=tf.int32)
-          center_width = tf.random.uniform(
-              shape=[], minval=0, maxval=int(image_width - 2 * half_width),
-              dtype=tf.int32)
+          if 2 * half_height < image_height and 2 * half_width < image_width:
+            center_height = tf.random.uniform(
+                shape=[], minval=0, maxval=int(image_height - 2 * half_height),
+                dtype=tf.int32)
+            center_width = tf.random.uniform(
+                shape=[], minval=0, maxval=int(image_width - 2 * half_width),
+                dtype=tf.int32)
+            
+            image = _fill_rectangle(image, center_width, center_height,
+                                half_width, half_height, replace=None)
 
-          image = _fill_rectangle(image, center_width, center_height,
-                                  half_width, half_height, replace=None)
-
-          break
+            is_trial_successfull = True
 
     return image
 

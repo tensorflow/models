@@ -31,6 +31,7 @@ class RandAugment(hyperparams.Config):
   magnitude: float = 10
   cutout_const: float = 40
   translate_const: float = 10
+  magnitude_std: float = 0.0
   prob_to_apply: Optional[float] = None
   exclude_ops: List[str] = dataclasses.field(default_factory=list)
 

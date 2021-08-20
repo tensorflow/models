@@ -196,6 +196,11 @@ class Parser(parser.Parser):
         image, self._output_size, method=tf.image.ResizeMethod.BILINEAR)
     image.set_shape([self._output_size[0], self._output_size[1], 3])
 
+    # Color jitter.
+    if self._color_jitter > 0:
+      image = preprocess_ops.color_jitter(
+          image, self._color_jitter, self._color_jitter, self._color_jitter)
+
     # Apply autoaug or randaug.
     if self._augmenter is not None:
       image = self._augmenter.distort(image)
@@ -204,6 +209,10 @@ class Parser(parser.Parser):
     image = preprocess_ops.normalize_image(image,
                                            offset=MEAN_RGB,
                                            scale=STDDEV_RGB)
+
+    # Random erasing after the image has been normalized
+    if self._random_erasing is not None:
+      image = self._random_erasing.distort(image)
 
     # Convert image to self._dtype.
     image = tf.image.convert_image_dtype(image, self._dtype)
@@ -231,19 +240,10 @@ class Parser(parser.Parser):
         image, self._output_size, method=tf.image.ResizeMethod.BILINEAR)
     image.set_shape([self._output_size[0], self._output_size[1], 3])
 
-    # Color jitter.
-    if self._color_jitter > 0:
-      image = preprocess_ops.color_jitter(
-          image, self._color_jitter, self._color_jitter, self._color_jitter)
-
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(image,
                                            offset=MEAN_RGB,
                                            scale=STDDEV_RGB)
-
-    # Random erasing after the image has been normalized
-    if self._random_erasing is not None:
-      image = self._random_erasing.distort(image)
 
     # Convert image to self._dtype.
     image = tf.image.convert_image_dtype(image, self._dtype)
