@@ -93,6 +93,7 @@ class Losses(hyperparams.Config):
   detection: DetectionLoss = DetectionLoss()
   segmentation: SegmentationLoss = SegmentationLoss()
   use_gaussian_bump: bool = True
+  use_odapi_gaussian: bool = False
   gaussian_rad: int = -1
   gaussian_iou: float = 0.7
   class_offset: int = 1

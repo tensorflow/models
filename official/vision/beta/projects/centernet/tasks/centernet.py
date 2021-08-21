@@ -200,6 +200,7 @@ class CenterNetTask(base_task.Task):
             num_classes=self.task_config.model.num_classes,
             max_num_instances=self.task_config.model.max_num_instances,
             use_gaussian_bump=self.task_config.losses.use_gaussian_bump,
+            use_odapi_gaussian=self.task_config.use_odapi_gaussian,
             gaussian_rad=self.task_config.losses.gaussian_rad,
             gaussian_iou=self.task_config.losses.gaussian_iou,
             class_offset=self.task_config.losses.class_offset),

@@ -20,7 +20,12 @@ from official.vision.beta.ops import preprocess_ops
 
 
 class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
-  def check_labels_correct(self, boxes, classes, output_size, input_size):
+  def check_labels_correct(self,
+                           boxes,
+                           classes,
+                           output_size,
+                           input_size,
+                           use_odapi=False):
     max_num_instances = 128
     num_detections = len(boxes)
     boxes = tf.constant(boxes, dtype=tf.float32)
@@ -38,7 +43,8 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
             'classes': classes
         },
         output_size=output_size,
-        input_size=input_size)
+        input_size=input_size,
+        use_odapi_gaussian=use_odapi)
     
     ct_heatmaps = labels['ct_heatmaps']
     ct_offset = labels['ct_offset']
@@ -57,7 +63,7 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(ct_offset.shape, (max_num_instances, 2))
     
     self.assertEqual(size.shape, (max_num_instances, 2))
-    self.assertEqual(box_mask.shape, (max_num_instances, ))
+    self.assertEqual(box_mask.shape, (max_num_instances,))
     self.assertEqual(box_indices.shape, (max_num_instances, 2))
     
     self.assertAllInRange(ct_heatmaps, 0, 1)
@@ -91,7 +97,8 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(tf.cast(box_mask[:3], tf.int32),
                         tf.repeat(1, repeats=3))
   
-  def test_generate_heatmap_no_scale(self):
+  @parameterized.parameters(True, False)
+  def test_generate_targets_no_scale(self, use_odapi):
     boxes = [
         (10, 300, 15, 370),
         (100, 300, 150, 370),
@@ -103,9 +110,11 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
     self.check_labels_correct(boxes=boxes,
                               classes=classes,
                               output_size=sizes,
-                              input_size=sizes)
+                              input_size=sizes,
+                              use_odapi=use_odapi)
   
-  def test_generate_heatmap_scale_1(self):
+  @parameterized.parameters(True, False)
+  def test_generate_targets_stride_4(self, use_odapi):
     boxes = [
         (10, 300, 15, 370),
         (100, 300, 150, 370),
@@ -118,9 +127,11 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
     self.check_labels_correct(boxes=boxes,
                               classes=classes,
                               output_size=output_size,
-                              input_size=input_size)
+                              input_size=input_size,
+                              use_odapi=use_odapi)
   
-  def test_generate_heatmap_scale_2(self):
+  @parameterized.parameters(True, False)
+  def test_generate_targets_stride_8(self, use_odapi):
     boxes = [
         (10, 300, 15, 370),
         (100, 300, 150, 370),
@@ -133,7 +144,65 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
     self.check_labels_correct(boxes=boxes,
                               classes=classes,
                               output_size=output_size,
-                              input_size=input_size)
+                              input_size=input_size,
+                              use_odapi=use_odapi)
+  
+  @parameterized.parameters(True, False)
+  def test_batch_generate_targets(self, use_odapi):
+    
+    input_size = [512, 512]
+    output_size = [128, 128]
+    max_num_instances = 128
+    
+    boxes = tf.constant([
+        (10, 300, 15, 370),  # center (y, x) = (12, 335)
+        (100, 300, 150, 370),  # center (y, x) = (125, 335)
+        (15, 100, 200, 170),  # center (y, x) = (107, 135)
+    ], dtype=tf.float32)
+    
+    classes = tf.constant((1, 1, 1), dtype=tf.float32)
+    
+    boxes = preprocess_ops.clip_or_pad_to_fixed_size(
+        boxes, max_num_instances, 0)
+    classes = preprocess_ops.clip_or_pad_to_fixed_size(
+        classes, max_num_instances, -1)
+    
+    boxes = tf.stack([boxes, boxes], axis=0)
+    classes = tf.stack([classes, classes], axis=0)
+    
+    labels = tf.map_fn(
+        fn=lambda x: target_assigner.assign_centernet_targets(
+            labels=x,
+            output_size=output_size,
+            input_size=input_size,
+            use_odapi_gaussian=use_odapi),
+        elems={
+            'bbox': boxes,
+            'num_detections': tf.constant([3, 3]),
+            'classes': classes
+        },
+        dtype={
+            'ct_heatmaps': tf.float32,
+            'ct_offset': tf.float32,
+            'size': tf.float32,
+            'box_mask': tf.int32,
+            'box_indices': tf.int32
+        }
+    )
+    
+    ct_heatmaps = labels['ct_heatmaps']
+    ct_offset = labels['ct_offset']
+    size = labels['size']
+    box_mask = labels['box_mask']
+    box_indices = labels['box_indices']
+    
+    self.assertEqual(ct_heatmaps.shape, (2, output_size[0], output_size[1], 90))
+    
+    self.assertEqual(ct_offset.shape, (2, max_num_instances, 2))
+    
+    self.assertEqual(size.shape, (2, max_num_instances, 2))
+    self.assertEqual(box_mask.shape, (2, max_num_instances))
+    self.assertEqual(box_indices.shape, (2, max_num_instances, 2))
 
 
 if __name__ == '__main__':

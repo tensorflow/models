@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Generate targets (center, scale, offsets,...) for centernet"""
+
 from typing import List, Dict
 
 import tensorflow as tf
+from official.vision.beta.projects.centernet.ops import target_assigner_odapi
 
 
-def _smallest_positive_root(a, b, c):
+def smallest_positive_root(a, b, c):
   """Returns the smallest positive root of a quadratic equation."""
   
   discriminant = tf.sqrt(b ** 2 - 4 * a * c)
@@ -90,7 +93,7 @@ def gaussian_radius(det_size, min_overlap=0.7) -> int:
   a1 = 1
   b1 = -(height + width)
   c1 = width * height * (1 - min_overlap) / (1 + min_overlap)
-  r1 = _smallest_positive_root(a1, b1, c1)
+  r1 = smallest_positive_root(a1, b1, c1)
   
   # Case where detection is smaller than ground truth and completely contained
   # in it.
@@ -98,7 +101,7 @@ def gaussian_radius(det_size, min_overlap=0.7) -> int:
   a2 = 4
   b2 = -2 * (height + width)
   c2 = (1 - min_overlap) * width * height
-  r2 = _smallest_positive_root(a2, b2, c2)
+  r2 = smallest_positive_root(a2, b2, c2)
   
   # Case where ground truth is smaller than detection and completely contained
   # in it.
@@ -106,13 +109,13 @@ def gaussian_radius(det_size, min_overlap=0.7) -> int:
   a3 = 4 * min_overlap
   b3 = 2 * min_overlap * (height + width)
   c3 = (min_overlap - 1) * width * height
-  r3 = _smallest_positive_root(a3, b3, c3)
+  r3 = smallest_positive_root(a3, b3, c3)
   # TODO discuss whether to return scalar or tensor
   
   return tf.reduce_min([r1, r2, r3], axis=0)
 
 
-def _gaussian_penalty(radius: int, dtype=tf.float32) -> tf.Tensor:
+def gaussian_penalty(radius: int, dtype=tf.float32) -> tf.Tensor:
   """
   This represents the penalty reduction around a point.
   Params:
@@ -165,7 +168,7 @@ def draw_gaussian(hm_shape, blob, dtype, scaling_factor=1):
   top = tf.math.minimum(y, radius)
   bottom = tf.math.minimum(height - y, radius + 1)
   
-  gaussian = _gaussian_penalty(radius=radius, dtype=dtype)
+  gaussian = gaussian_penalty(radius=radius, dtype=dtype)
   gaussian = gaussian[radius - top:radius + bottom, radius - left:radius + right]
   gaussian = tf.reshape(gaussian, [-1])
   
@@ -183,6 +186,7 @@ def assign_centernet_targets(labels: Dict,
                              num_classes: int = 90,
                              max_num_instances: int = 128,
                              use_gaussian_bump: bool = True,
+                             use_odapi_gaussian: bool = False,
                              gaussian_rad: int = -1,
                              gaussian_iou: float = 0.7,
                              class_offset: int = 0,
@@ -211,6 +215,8 @@ def assign_centernet_targets(labels: Dict,
     use_gaussian_bump: A `boolean` indicating whether or not to splat a
       gaussian onto the heatmaps. If set to False, a value of 1 is placed at
       the would-be center of the gaussian.
+    use_odapi_gaussian: a `boolean` indicating whether ot not to use center
+      target generating logic from ODAPI.
     gaussian_rad: A `int` for the desired radius of the gaussian. If this
       value is set to -1, then the radius is computed using gaussian_iou.
     gaussian_iou: A `float` number for the minimum desired IOU used when
@@ -312,37 +318,47 @@ def assign_centernet_targets(labels: Dict,
   
   # Mask for valid box instances and their center indices in the heatmap
   # [max_num_instances, ]
-  box_mask = tf.zeros((max_num_instances, ), tf.int32)
+  box_mask = tf.zeros((max_num_instances,), tf.int32)
   # [max_num_instances, 2]
   box_indices = tf.zeros((max_num_instances, 2), tf.int32)
   
   if num_objects > 0:
     if use_gaussian_bump:
       # Need to gaussians around the centers and corners of the objects
-      
-      # First compute the desired gaussian radius
-      if gaussian_rad == -1:
-        radius = tf.map_fn(
-            fn=lambda x: gaussian_radius(x, gaussian_iou),
-            elems=tf.math.ceil(box_heights_widths))
-        radius = tf.math.maximum(tf.math.floor(radius),
-                                 tf.cast(1.0, radius.dtype))
+      if not use_odapi_gaussian:
+        # First compute the desired gaussian radius
+        if gaussian_rad == -1:
+          radius = tf.map_fn(
+              fn=lambda x: gaussian_radius(x, gaussian_iou),
+              elems=tf.math.ceil(box_heights_widths))
+          radius = tf.math.maximum(tf.math.floor(radius),
+                                   tf.cast(1.0, radius.dtype))
+        else:
+          radius = tf.constant([gaussian_rad] * max_num_instances, dtype)
+          radius = radius[:num_objects]
+        # These blobs contain information needed to draw the gaussian
+        ct_blobs = tf.stack([classes, scale_yct_floor, scale_xct_floor, radius],
+                            axis=-1)
+        
+        # Get individual gaussian contributions from each bounding box
+        ct_gaussians = tf.map_fn(
+            fn=lambda x: draw_gaussian(
+                tf.shape(ct_heatmap), x, dtype),
+            elems=ct_blobs)
+        
+        # Combine contributions into single heatmaps
+        ct_heatmap = tf.math.reduce_max(ct_gaussians, axis=0)
       else:
-        radius = tf.constant([gaussian_rad] * max_num_instances, dtype)
-        radius = radius[:num_objects]
-      # These blobs contain information needed to draw the gaussian
-      ct_blobs = tf.stack([classes, scale_yct_floor, scale_xct_floor, radius],
-                          axis=-1)
-      
-      # Get individual gaussian contributions from each bounding box
-      ct_gaussians = tf.map_fn(
-          fn=lambda x: draw_gaussian(
-              tf.shape(ct_heatmap), x, dtype),
-          elems=ct_blobs)
-      
-      # Combine contributions into single heatmaps
-      ct_heatmap = tf.math.reduce_max(ct_gaussians, axis=0)
-    
+        ct_heatmap = target_assigner_odapi.assign_center_targets_odapi(
+            out_height=output_h,
+            out_width=output_w,
+            y_center=scale_yct_floor,
+            x_center=scale_xct_floor,
+            boxes_height=box_heights,
+            boxes_width=box_widths,
+            channel_onehot=tf.one_hot(tf.cast(classes, tf.int32), num_classes),
+            gaussian_iou=gaussian_iou
+        )
     else:
       # Instead of a gaussian, insert 1s in the center and corner heatmaps
       # [num_objects, 3]
@@ -392,51 +408,3 @@ def assign_centernet_targets(labels: Dict,
       'box_indices': box_indices
   }
   return labels
-
-
-if __name__ == '__main__':
-  import time
-  from official.vision.beta.ops import preprocess_ops
-  
-  boxes = tf.constant([
-      (10, 300, 15, 370),  # center (y, x) = (12, 335)
-      (100, 300, 150, 370),  # center (y, x) = (125, 335)
-      (15, 100, 200, 170),  # center (y, x) = (107, 135)
-  ], dtype=tf.float32)
-  
-  classes = tf.constant((1, 1, 1), dtype=tf.float32)
-  
-  boxes = preprocess_ops.clip_or_pad_to_fixed_size(boxes, 128, 0)
-  classes = preprocess_ops.clip_or_pad_to_fixed_size(classes, 128, -1)
-  
-  boxes = tf.stack([boxes, boxes], axis=0)
-  classes = tf.stack([classes, classes], axis=0)
-  
-  print('boxes shape:', boxes.get_shape())
-  print('classes shape:', classes.get_shape())
-  
-  print("testing new build heatmaps function: ")
-  a = time.time()
-  
-  gt_label = tf.map_fn(
-      fn=lambda x: assign_centernet_targets(
-          labels=x,
-          output_size=[128, 128],
-          input_size=[512, 512]),
-      elems={
-          'bbox': boxes,
-          'num_detections': tf.constant([3, 3]),
-          'classes': classes
-      },
-      dtype={
-          'ct_heatmaps': tf.float32,
-          'ct_offset': tf.float32,
-          'size': tf.float32,
-          'box_mask': tf.int32,
-          'box_indices': tf.int32
-      }
-  )
-  b = time.time()
-  for item in gt_label:
-    print(item, gt_label[item].shape)
-  print("Time taken: {} ms".format((b - a) * 1000))
