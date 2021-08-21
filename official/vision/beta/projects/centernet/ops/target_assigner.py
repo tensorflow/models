@@ -153,6 +153,7 @@ def draw_gaussian(hm_shape, blob, dtype, scaling_factor=1):
     dtype: The desired type of the heatmap
     scaling_factor: A `int` that can be used to scale the magnitude of the
       gaussian
+  
   Returns:
     A `Tensor` with shape hm_shape and type dtype with a 2D gaussian
   """
@@ -187,7 +188,7 @@ def assign_center_targets(y_center: tf.Tensor,
                           gaussian_rad: int,
                           gaussian_iou: float,
                           output_shape: Tuple[int, int, int]):
-  """
+  """Computes the object center heatmap target.
   
   Args:
     y_center: A 1D tensor with shape [num_instances] representing the

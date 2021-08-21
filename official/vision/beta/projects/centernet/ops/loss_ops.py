@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Operations for compute losses for centernet."""
+
 import tensorflow as tf
 
 

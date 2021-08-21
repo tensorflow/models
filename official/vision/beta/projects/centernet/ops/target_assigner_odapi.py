@@ -131,7 +131,7 @@ def assign_center_targets_odapi(out_height: int,
                                 boxes_width: tf.Tensor,
                                 channel_onehot: tf.Tensor,
                                 gaussian_iou: float):
-  """Computes the standard deviation of the Gaussian kernel from box size.
+  """Computes the object center heatmap target based on ODAPI implementation.
 
   Args:
     out_height: int, height of output to the model. This is used to

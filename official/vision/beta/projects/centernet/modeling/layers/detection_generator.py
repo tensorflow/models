@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
+"""Detection generator for centernet."""
+
 from typing import Mapping, Any
 
 import tensorflow as tf
@@ -28,7 +29,8 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
   Parses predictions from the CenterNet head into the final bounding boxes,
   confidences, and classes. This class contains repurposed methods from the 
   TensorFlow Object Detection API
-  in: https://github.com/tensorflow/models/blob/master/research/object_detection/meta_architectures/center_net_meta_arch.py
+  in: https://github.com/tensorflow/models/blob/master/research/object_detection
+  /meta_architectures/center_net_meta_arch.py
   """
   
   def __init__(self,

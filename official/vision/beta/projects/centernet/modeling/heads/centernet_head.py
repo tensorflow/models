@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
+"""Contains the definitions of head for CenterNet."""
 
-"""Contains the definitions of decoder for CenterNet."""
 from typing import Any, Mapping, List
 
 import tensorflow as tf
@@ -25,7 +24,7 @@ from official.vision.beta.projects.centernet.modeling.layers import nn_blocks
 @tf.keras.utils.register_keras_serializable(package='centernet')
 class CenterNetHead(tf.keras.Model):
   """
-  CenterNet Decoder
+  CenterNet Head.
   """
   
   def __init__(self,

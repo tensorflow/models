@@ -14,6 +14,7 @@
 # ==============================================================================
 
 """CenterNet configuration definition."""
+
 # Import libraries
 import os
 import dataclasses

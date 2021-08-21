@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""nms computation."""
+
 import tensorflow as tf
 
 from official.vision.beta.projects.yolo.ops import box_ops

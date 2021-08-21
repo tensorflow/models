@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Test for centernet detection model."""
+
 from absl.testing import parameterized
 
 import tensorflow as tf

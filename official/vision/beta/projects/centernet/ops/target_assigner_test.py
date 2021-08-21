@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tensorflow as tf
+"""Tests for targets generations of centernet."""
+
 from absl.testing import parameterized
+
+import tensorflow as tf
 
 from official.vision.beta.projects.centernet.ops import target_assigner
 from official.vision.beta.ops import preprocess_ops

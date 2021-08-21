@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Centernet detection models"""
+
 from typing import Mapping, Union, Any
 
 import tensorflow as tf
