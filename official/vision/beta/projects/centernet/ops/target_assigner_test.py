@@ -15,23 +15,23 @@
 import tensorflow as tf
 from absl.testing import parameterized
 
-from official.vision.beta.projects.centernet.dataloaders.centernet_input import \
-  CenterNetParser
-from official.vision.beta.projects.centernet.ops import gt_builder
-from official.vision.beta.projects.centernet.ops import preprocess_ops
+from official.vision.beta.projects.centernet.ops import target_assigner
+from official.vision.beta.ops import preprocess_ops
 
 
-class CenterNetInputTest(tf.test.TestCase, parameterized.TestCase):
+class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
   def check_labels_correct(self, boxes, classes, output_size, input_size):
-    parser = CenterNetParser(dtype=tf.bfloat16)
+    max_num_instances = 128
     num_detections = len(boxes)
     boxes = tf.constant(boxes, dtype=tf.float32)
     classes = tf.constant(classes, dtype=tf.float32)
     
-    boxes = preprocess_ops.pad_max_instances(boxes, 128, 0)
-    classes = preprocess_ops.pad_max_instances(classes, 128, 0)
+    boxes = preprocess_ops.clip_or_pad_to_fixed_size(
+        boxes, max_num_instances, 0)
+    classes = preprocess_ops.clip_or_pad_to_fixed_size(
+        classes, max_num_instances, 0)
     
-    labels = gt_builder.build_heatmap_and_regressed_features(
+    labels = target_assigner.assign_centernet_targets(
         labels={
             'bbox': boxes,
             'num_detections': num_detections,
@@ -54,11 +54,11 @@ class CenterNetInputTest(tf.test.TestCase, parameterized.TestCase):
     # Shape checks
     self.assertEqual(ct_heatmaps.shape, (output_size[0], output_size[1], 90))
     
-    self.assertEqual(ct_offset.shape, (parser._max_num_instances, 2))
+    self.assertEqual(ct_offset.shape, (max_num_instances, 2))
     
-    self.assertEqual(size.shape, (parser._max_num_instances, 2))
-    self.assertEqual(box_mask.shape, (parser._max_num_instances))
-    self.assertEqual(box_indices.shape, (parser._max_num_instances, 2))
+    self.assertEqual(size.shape, (max_num_instances, 2))
+    self.assertEqual(box_mask.shape, (max_num_instances, ))
+    self.assertEqual(box_indices.shape, (max_num_instances, 2))
     
     self.assertAllInRange(ct_heatmaps, 0, 1)
     
@@ -79,7 +79,7 @@ class CenterNetInputTest(tf.test.TestCase, parameterized.TestCase):
       true_x = (boxes[i][1] + boxes[i][3]) / 2 * width_ratio
       self.assertAllEqual(ct_offset[i], [true_y - y, true_x - x])
     
-    for i in range(len(boxes), parser._max_num_instances):
+    for i in range(len(boxes), max_num_instances):
       # Make sure rest are zero
       self.assertAllEqual(size[i], [0, 0])
       self.assertAllEqual(box_indices[i], [0, 0])
@@ -87,7 +87,7 @@ class CenterNetInputTest(tf.test.TestCase, parameterized.TestCase):
     
     # Check mask indices
     self.assertAllEqual(tf.cast(box_mask[3:], tf.int32),
-                        tf.repeat(0, repeats=parser._max_num_instances - 3))
+                        tf.repeat(0, repeats=max_num_instances - 3))
     self.assertAllEqual(tf.cast(box_mask[:3], tf.int32),
                         tf.repeat(1, repeats=3))
   

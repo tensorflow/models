@@ -33,7 +33,7 @@ from official.vision.beta.projects.centernet.configs import centernet as exp_cfg
 from official.vision.beta.projects.centernet.dataloaders import centernet_input
 from official.vision.beta.projects.centernet.losses import centernet_losses
 from official.vision.beta.projects.centernet.ops import loss_ops
-from official.vision.beta.projects.centernet.ops import gt_builder
+from official.vision.beta.projects.centernet.ops import target_assigner
 from official.vision.beta.projects.centernet.modeling.heads import centernet_head
 from official.vision.beta.projects.centernet.modeling.layers import \
   detection_generator
@@ -193,7 +193,7 @@ class CenterNetTask(base_task.Task):
     output_size = outputs['ct_heatmaps'][0].get_shape()[1:3]
     
     gt_label = tf.map_fn(
-        fn=lambda x: gt_builder.build_heatmap_and_regressed_features(
+        fn=lambda x: target_assigner.assign_centernet_targets(
             labels=x,
             input_size=input_size,
             output_size=output_size,

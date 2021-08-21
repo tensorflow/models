@@ -19,7 +19,7 @@ from official.vision.beta.projects.yolo.ops import box_ops
 NMS_TILE_SIZE = 512
 
 
-def aggregated_comparitive_iou(boxes1, boxes2=None, iou_type=0, xyxy=True):
+def aggregated_comparative_iou(boxes1, boxes2=None, iou_type=0, xyxy=True):
   k = tf.shape(boxes1)[-2]
   
   boxes1 = tf.expand_dims(boxes1, axis=-2)
@@ -65,7 +65,7 @@ def segment_nms(boxes, classes, confidence, k, iou_thresh):
   mask_y = tf.tile(tf.expand_dims(mrange, axis=-1), [1, k])
   mask_diag = tf.expand_dims(mask_x > mask_y, axis=0)
   
-  iou = aggregated_comparitive_iou(boxes, iou_type=0)
+  iou = aggregated_comparative_iou(boxes, iou_type=0)
   
   # duplicate boxes
   iou_mask = iou >= iou_thresh

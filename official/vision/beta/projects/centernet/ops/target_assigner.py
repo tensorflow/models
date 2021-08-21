@@ -16,19 +16,177 @@ from typing import List, Dict
 
 import tensorflow as tf
 
-from official.vision.beta.projects.centernet.ops import preprocess_ops
+
+def _smallest_positive_root(a, b, c):
+  """Returns the smallest positive root of a quadratic equation."""
+  
+  discriminant = tf.sqrt(b ** 2 - 4 * a * c)
+  
+  # TODO(vighneshb) We are currently using the slightly incorrect
+  # CenterNet implementation. The commented lines implement the fixed version
+  # in https://github.com/princeton-vl/CornerNet. Change the implementation
+  # after verifying it has no negative impact.
+  # root1 = (-b - discriminant) / (2 * a)
+  # root2 = (-b + discriminant) / (2 * a)
+  
+  # return tf.where(tf.less(root1, 0), root2, root1)
+  
+  return (-b + discriminant) / (2.0)
 
 
-def build_heatmap_and_regressed_features(labels: Dict,
-                                         output_size: List[int],
-                                         input_size: List[int],
-                                         num_classes: int = 90,
-                                         max_num_instances: int = 128,
-                                         use_gaussian_bump: bool = True,
-                                         gaussian_rad: int = -1,
-                                         gaussian_iou: float = 0.7,
-                                         class_offset: int = 0,
-                                         dtype='float32'):
+@tf.function
+def cartesian_product(*tensors, repeat=1):
+  """
+  Equivalent of itertools.product except for TensorFlow tensors.
+
+  Example:
+    cartesian_product(tf.range(3), tf.range(4))
+
+    array([[0, 0],
+       [0, 1],
+       [0, 2],
+       [0, 3],
+       [1, 0],
+       [1, 1],
+       [1, 2],
+       [1, 3],
+       [2, 0],
+       [2, 1],
+       [2, 2],
+       [2, 3]], dtype=int32)>
+
+  Params:
+    tensors (list[tf.Tensor]): a list of 1D tensors to compute the product of
+    repeat (int): number of times to repeat the tensors
+      (https://docs.python.org/3/library/itertools.html#itertools.product)
+
+  Returns:
+    An nD tensor where n is the number of tensors
+  """
+  tensors = tensors * repeat
+  return tf.reshape(tf.transpose(tf.stack(tf.meshgrid(*tensors, indexing='ij')),
+                                 [*[i + 1 for i in range(len(tensors))], 0]),
+                    (-1, len(tensors)))
+
+
+def gaussian_radius(det_size, min_overlap=0.7) -> int:
+  """
+    Given a bounding box size, returns a lower bound on how far apart the
+    corners of another bounding box can lie while still maintaining the given
+    minimum overlap, or IoU. Modified from implementation found in
+    https://github.com/tensorflow/models/blob/master/research/object_detection/core/target_assigner.py.
+
+    Params:
+        det_size (tuple): tuple of integers representing height and width
+        min_overlap (tf.float32): minimum IoU desired
+    Returns:
+        int representing desired gaussian radius
+    """
+  height, width = det_size[0], det_size[1]
+  
+  # Case where detected box is offset from ground truth and no box completely
+  # contains the other.
+  
+  a1 = 1
+  b1 = -(height + width)
+  c1 = width * height * (1 - min_overlap) / (1 + min_overlap)
+  r1 = _smallest_positive_root(a1, b1, c1)
+  
+  # Case where detection is smaller than ground truth and completely contained
+  # in it.
+  
+  a2 = 4
+  b2 = -2 * (height + width)
+  c2 = (1 - min_overlap) * width * height
+  r2 = _smallest_positive_root(a2, b2, c2)
+  
+  # Case where ground truth is smaller than detection and completely contained
+  # in it.
+  
+  a3 = 4 * min_overlap
+  b3 = 2 * min_overlap * (height + width)
+  c3 = (min_overlap - 1) * width * height
+  r3 = _smallest_positive_root(a3, b3, c3)
+  # TODO discuss whether to return scalar or tensor
+  
+  return tf.reduce_min([r1, r2, r3], axis=0)
+
+
+def _gaussian_penalty(radius: int, dtype=tf.float32) -> tf.Tensor:
+  """
+  This represents the penalty reduction around a point.
+  Params:
+      radius (int): integer for radius of penalty reduction
+      type (tf.dtypes.DType): datatype of returned tensor
+  Returns:
+      tf.Tensor of shape (2 * radius + 1, 2 * radius + 1).
+  """
+  width = 2 * radius + 1
+  sigma = tf.cast(radius / 3, dtype=dtype)
+  
+  range_width = tf.range(width)
+  range_width = tf.cast(range_width - tf.expand_dims(radius, axis=-1),
+                        dtype=dtype)
+  
+  x = tf.expand_dims(range_width, axis=-1)
+  y = tf.expand_dims(range_width, axis=-2)
+  
+  exponent = ((-1 * (x ** 2) - (y ** 2)) / (2 * sigma ** 2))
+  return tf.math.exp(exponent)
+
+
+@tf.function
+def draw_gaussian(hm_shape, blob, dtype, scaling_factor=1):
+  """ Draws an instance of a 2D gaussian on a heatmap.
+
+  A heatmap with shape hm_shape and of type dtype is generated with
+  a gaussian with a given center, radius, and scaling factor
+
+  Args:
+    hm_shape: A `list` of `Tensor` of shape [3] that gives the height, width,
+      and number of channels in the heatmap
+    blob: A `Tensor` of shape [4] that gives the channel number, y, x, and
+      radius for the desired gaussian to be drawn onto
+    dtype: The desired type of the heatmap
+    scaling_factor: A `int` that can be used to scale the magnitude of the
+      gaussian
+  Returns:
+    A `Tensor` with shape hm_shape and type dtype with a 2D gaussian
+  """
+  gaussian_heatmap = tf.zeros(shape=hm_shape, dtype=dtype)
+  
+  blob = tf.cast(blob, tf.int32)
+  obj_class, y, x, radius = blob[0], blob[1], blob[2], blob[3]
+  
+  height, width = hm_shape[0], hm_shape[1]
+  
+  left = tf.math.minimum(x, radius)
+  right = tf.math.minimum(width - x, radius + 1)
+  top = tf.math.minimum(y, radius)
+  bottom = tf.math.minimum(height - y, radius + 1)
+  
+  gaussian = _gaussian_penalty(radius=radius, dtype=dtype)
+  gaussian = gaussian[radius - top:radius + bottom, radius - left:radius + right]
+  gaussian = tf.reshape(gaussian, [-1])
+  
+  heatmap_indices = cartesian_product(
+      tf.range(y - top, y + bottom), tf.range(x - left, x + right), [obj_class])
+  gaussian_heatmap = tf.tensor_scatter_nd_update(
+      gaussian_heatmap, heatmap_indices, gaussian * scaling_factor)
+  
+  return gaussian_heatmap
+
+
+def assign_centernet_targets(labels: Dict,
+                             output_size: List[int],
+                             input_size: List[int],
+                             num_classes: int = 90,
+                             max_num_instances: int = 128,
+                             use_gaussian_bump: bool = True,
+                             gaussian_rad: int = -1,
+                             gaussian_iou: float = 0.7,
+                             class_offset: int = 0,
+                             dtype='float32'):
   """ Generates the ground truth labels for centernet.
   
   Ground truth labels are generated by splatting gaussians on heatmaps for
@@ -154,7 +312,7 @@ def build_heatmap_and_regressed_features(labels: Dict,
   
   # Mask for valid box instances and their center indices in the heatmap
   # [max_num_instances, ]
-  box_mask = tf.zeros((max_num_instances), tf.int32)
+  box_mask = tf.zeros((max_num_instances, ), tf.int32)
   # [max_num_instances, 2]
   box_indices = tf.zeros((max_num_instances, 2), tf.int32)
   
@@ -165,7 +323,7 @@ def build_heatmap_and_regressed_features(labels: Dict,
       # First compute the desired gaussian radius
       if gaussian_rad == -1:
         radius = tf.map_fn(
-            fn=lambda x: preprocess_ops.gaussian_radius(x, gaussian_iou),
+            fn=lambda x: gaussian_radius(x, gaussian_iou),
             elems=tf.math.ceil(box_heights_widths))
         radius = tf.math.maximum(tf.math.floor(radius),
                                  tf.cast(1.0, radius.dtype))
@@ -178,7 +336,7 @@ def build_heatmap_and_regressed_features(labels: Dict,
       
       # Get individual gaussian contributions from each bounding box
       ct_gaussians = tf.map_fn(
-          fn=lambda x: preprocess_ops.draw_gaussian(
+          fn=lambda x: draw_gaussian(
               tf.shape(ct_heatmap), x, dtype),
           elems=ct_blobs)
       
@@ -195,9 +353,9 @@ def build_heatmap_and_regressed_features(labels: Dict,
       ct_heatmap = tf.tensor_scatter_nd_update(ct_heatmap,
                                                ct_hm_update_indices,
                                                [1] * num_objects)
-  
+    
     # Indices used to update offsets and sizes for valid box instances
-    update_indices = preprocess_ops.cartesian_product(
+    update_indices = cartesian_product(
         tf.range(num_objects), tf.range(2))
     # [num_objects, 2, 2]
     update_indices = tf.reshape(update_indices, shape=[num_objects, 2, 2])
@@ -238,7 +396,7 @@ def build_heatmap_and_regressed_features(labels: Dict,
 
 if __name__ == '__main__':
   import time
-  from official.vision.beta.projects.centernet.ops import loss_ops
+  from official.vision.beta.ops import preprocess_ops
   
   boxes = tf.constant([
       (10, 300, 15, 370),  # center (y, x) = (12, 335)
@@ -248,8 +406,8 @@ if __name__ == '__main__':
   
   classes = tf.constant((1, 1, 1), dtype=tf.float32)
   
-  boxes = preprocess_ops.pad_max_instances(boxes, 128, 0)
-  classes = preprocess_ops.pad_max_instances(classes, 128, -1)
+  boxes = preprocess_ops.clip_or_pad_to_fixed_size(boxes, 128, 0)
+  classes = preprocess_ops.clip_or_pad_to_fixed_size(classes, 128, -1)
   
   boxes = tf.stack([boxes, boxes], axis=0)
   classes = tf.stack([classes, classes], axis=0)
@@ -261,7 +419,7 @@ if __name__ == '__main__':
   a = time.time()
   
   gt_label = tf.map_fn(
-      fn=lambda x: build_heatmap_and_regressed_features(
+      fn=lambda x: assign_centernet_targets(
           labels=x,
           output_size=[128, 128],
           input_size=[512, 512]),
@@ -282,4 +440,3 @@ if __name__ == '__main__':
   for item in gt_label:
     print(item, gt_label[item].shape)
   print("Time taken: {} ms".format((b - a) * 1000))
-  print(loss_ops.add_batch_to_indices(gt_label['box_indices']))

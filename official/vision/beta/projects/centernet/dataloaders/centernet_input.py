@@ -16,8 +16,6 @@
 import tensorflow as tf
 
 from official.vision.beta.ops import preprocess_ops
-from official.vision.beta.projects.centernet.ops import \
-  preprocess_ops as centernet_preprocess_ops
 from official.vision.beta.ops import box_ops
 from official.vision.beta.dataloaders import parser, utils
 
@@ -112,28 +110,28 @@ class CenterNetParser(parser.Parser):
     image.set_shape(imshape)
     
     bshape = boxes.get_shape().as_list()
-    boxes = centernet_preprocess_ops.pad_max_instances(
+    boxes = preprocess_ops.clip_or_pad_to_fixed_size(
         boxes, self._max_num_instances, 0)
     bshape[0] = self._max_num_instances
     boxes.set_shape(bshape)
     
     classes = data['groundtruth_classes']
     cshape = classes.get_shape().as_list()
-    classes = centernet_preprocess_ops.pad_max_instances(
+    classes = preprocess_ops.clip_or_pad_to_fixed_size(
         classes, self._max_num_instances, 0)
     cshape[0] = self._max_num_instances
     classes.set_shape(cshape)
     
     area = data['groundtruth_area']
     ashape = area.get_shape().as_list()
-    area = centernet_preprocess_ops.pad_max_instances(
+    area = preprocess_ops.clip_or_pad_to_fixed_size(
         area, self._max_num_instances, 0)
     ashape[0] = self._max_num_instances
     area.set_shape(ashape)
     
     is_crowd = data['groundtruth_is_crowd']
     ishape = is_crowd.get_shape().as_list()
-    is_crowd = centernet_preprocess_ops.pad_max_instances(
+    is_crowd = preprocess_ops.clip_or_pad_to_fixed_size(
         tf.cast(is_crowd, tf.int32), self._max_num_instances, 0)
     ishape[0] = self._max_num_instances
     is_crowd.set_shape(ishape)
