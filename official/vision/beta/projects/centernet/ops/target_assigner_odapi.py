@@ -123,16 +123,14 @@ def compute_std_dev_from_box_size(boxes_height, boxes_width, min_overlap):
 
 
 @tf.function
-def assign_center_targets_odapi(
-    out_height: int,
-    out_width: int,
-    y_center: tf.Tensor,
-    x_center: tf.Tensor,
-    boxes_height: tf.Tensor,
-    boxes_width: tf.Tensor,
-    channel_onehot: tf.Tensor,
-    gaussian_iou: float
-):
+def assign_center_targets_odapi(out_height: int,
+                                out_width: int,
+                                y_center: tf.Tensor,
+                                x_center: tf.Tensor,
+                                boxes_height: tf.Tensor,
+                                boxes_width: tf.Tensor,
+                                channel_onehot: tf.Tensor,
+                                gaussian_iou: float):
   """Computes the standard deviation of the Gaussian kernel from box size.
 
   Args:
@@ -154,7 +152,7 @@ def assign_center_targets_odapi(
       penalized.
 
   Returns:
-    heatmap: A Tensor of size [batch_size, output_height, output_width,
+    heatmap: A Tensor of size [output_height, output_width,
       num_classes] representing the per class center heatmap. output_height
       and output_width are computed by dividing the input height and width by
       the stride specified during initialization.

@@ -14,7 +14,7 @@
 
 """Generate targets (center, scale, offsets,...) for centernet"""
 
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 import tensorflow as tf
 from official.vision.beta.projects.centernet.ops import target_assigner_odapi
@@ -180,6 +180,62 @@ def draw_gaussian(hm_shape, blob, dtype, scaling_factor=1):
   return gaussian_heatmap
 
 
+def assign_center_targets(y_center: tf.Tensor,
+                          x_center: tf.Tensor,
+                          box_heights_widths: tf.Tensor,
+                          classes: tf.Tensor,
+                          gaussian_rad: int,
+                          gaussian_iou: float,
+                          output_shape: Tuple[int, int, int]):
+  """
+  
+  Args:
+    y_center: A 1D tensor with shape [num_instances] representing the
+      y-coordinates of the instances in the output space coordinates.
+    x_center: A 1D tensor with shape [num_instances] representing the
+      x-coordinates of the instances in the output space coordinates.
+    box_heights_widths: A 1D tensor with shape [num_instances， 2] representing
+    the height and width of each box.
+    classes: A 1D tensor with shape [num_instances] representing the class
+      labels for each point
+    gaussian_rad: A `int` for the desired radius of the gaussian. If this
+      value is set to -1, then the radius is computed using gaussian_iou.
+    gaussian_iou: A `float` number for the minimum desired IOU used when
+      determining the gaussian radius of center locations in the heatmap.
+    output_shape: A `tuple` indicating the output shape of [output_height,
+      output_width, num_classes]
+
+  Returns:
+    heatmap: A Tensor of size [output_height, output_width, num_classes]
+      representing the per class center heatmap. output_height and output_width
+      are computed by dividing the input height and width by the stride
+      specified during initialization.
+  """
+  num_objects = classes.get_shape()[0]
+  # First compute the desired gaussian radius
+  if gaussian_rad == -1:
+    radius = tf.map_fn(
+        fn=lambda x: gaussian_radius(x, gaussian_iou),
+        elems=tf.math.ceil(box_heights_widths))
+    radius = tf.math.maximum(tf.math.floor(radius),
+                             tf.cast(1.0, radius.dtype))
+  else:
+    radius = tf.constant([gaussian_rad] * num_objects, box_heights_widths.dtype)
+  # These blobs contain information needed to draw the gaussian
+  ct_blobs = tf.stack([classes, y_center, x_center, radius],
+                      axis=-1)
+  
+  # Get individual gaussian contributions from each bounding box
+  ct_gaussians = tf.map_fn(
+      fn=lambda x: draw_gaussian(
+          output_shape, x, box_heights_widths.dtype),
+      elems=ct_blobs)
+  
+  # Combine contributions into single heatmaps
+  ct_heatmap = tf.math.reduce_max(ct_gaussians, axis=0)
+  return ct_heatmap
+
+
 def assign_centernet_targets(labels: Dict,
                              output_size: List[int],
                              input_size: List[int],
@@ -263,8 +319,8 @@ def assign_centernet_targets(labels: Dict,
   classes = tf.cast(labels['classes'] - class_offset, dtype)[:num_objects]
   
   # Compute scaling factors for center/corner positions on heatmap
-  input_size = tf.cast(input_size, dtype)
-  output_size = tf.cast(output_size, dtype)
+  # input_size = tf.cast(input_size, dtype)
+  # output_size = tf.cast(output_size, dtype)
   input_h, input_w = input_size[0], input_size[1]
   output_h, output_w = output_size[0], output_size[1]
   
@@ -326,28 +382,14 @@ def assign_centernet_targets(labels: Dict,
     if use_gaussian_bump:
       # Need to gaussians around the centers and corners of the objects
       if not use_odapi_gaussian:
-        # First compute the desired gaussian radius
-        if gaussian_rad == -1:
-          radius = tf.map_fn(
-              fn=lambda x: gaussian_radius(x, gaussian_iou),
-              elems=tf.math.ceil(box_heights_widths))
-          radius = tf.math.maximum(tf.math.floor(radius),
-                                   tf.cast(1.0, radius.dtype))
-        else:
-          radius = tf.constant([gaussian_rad] * max_num_instances, dtype)
-          radius = radius[:num_objects]
-        # These blobs contain information needed to draw the gaussian
-        ct_blobs = tf.stack([classes, scale_yct_floor, scale_xct_floor, radius],
-                            axis=-1)
-        
-        # Get individual gaussian contributions from each bounding box
-        ct_gaussians = tf.map_fn(
-            fn=lambda x: draw_gaussian(
-                tf.shape(ct_heatmap), x, dtype),
-            elems=ct_blobs)
-        
-        # Combine contributions into single heatmaps
-        ct_heatmap = tf.math.reduce_max(ct_gaussians, axis=0)
+        ct_heatmap = assign_center_targets(
+            box_heights_widths=box_heights_widths,
+            classes=classes,
+            y_center=scale_yct_floor,
+            x_center=scale_xct_floor,
+            gaussian_rad=gaussian_rad,
+            gaussian_iou=gaussian_iou,
+            output_shape=(output_h, output_w, num_classes))
       else:
         ct_heatmap = target_assigner_odapi.assign_center_targets_odapi(
             out_height=output_h,
@@ -357,8 +399,7 @@ def assign_centernet_targets(labels: Dict,
             boxes_height=box_heights,
             boxes_width=box_widths,
             channel_onehot=tf.one_hot(tf.cast(classes, tf.int32), num_classes),
-            gaussian_iou=gaussian_iou
-        )
+            gaussian_iou=gaussian_iou)
     else:
       # Instead of a gaussian, insert 1s in the center and corner heatmaps
       # [num_objects, 3]
@@ -395,6 +436,7 @@ def assign_centernet_targets(labels: Dict,
         dtype=tf.int32)
     box_indices = tf.tensor_scatter_nd_update(
         box_indices, update_indices, box_index_values)
+  
   labels = {
       # [output_h, output_w, num_classes]
       'ct_heatmaps': ct_heatmap,
