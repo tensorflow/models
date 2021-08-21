@@ -41,6 +41,7 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
   def __init__(
       self,
       output_size: List[int],
+      max_num_detections: int,
       stuff_classes_offset: int,
       mask_binarize_threshold: float = 0.5,
       score_threshold: float = 0.05,
@@ -70,6 +71,7 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
 
     """
     self._output_size = output_size
+    self._max_num_detections = max_num_detections
     self._stuff_classes_offset = stuff_classes_offset
     self._mask_binarize_threshold = mask_binarize_threshold
     self._score_threshold = score_threshold
@@ -79,6 +81,7 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
 
     self._config_dict = {
         'output_size': output_size,
+        'max_num_detections': max_num_detections,
         'stuff_classes_offset': stuff_classes_offset,
         'mask_binarize_threshold': mask_binarize_threshold,
         'score_threshold': score_threshold,
@@ -88,40 +91,34 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
     }
     super(PanopticSegmentationGenerator, self).__init__(**kwargs)
 
-  def _paste_masks(self, boxes, masks, num_detections):
-    pasted_masks = []
+  def _paste_mask(self, box, mask):
+    pasted_mask = tf.ones(self._output_size + [1]) * self._void_class_label
 
-    for idx in range(num_detections):
-      pasted_mask = tf.ones(self._output_size + [1]) * self._void_class_label
-      mask = masks[idx]
-      box = boxes[idx]
+    ymin = box[0]
+    xmin = box[1]
+    ymax = tf.clip_by_value(box[2] + 1, 0, self._output_size[0])
+    xmax = tf.clip_by_value(box[3] + 1, 0, self._output_size[1])
+    box_height = ymax - ymin
+    box_width = xmax - xmin
 
-      ymin = box[0]
-      xmin = box[1]
-      ymax = tf.clip_by_value(box[2] + 1, 0, self._output_size[0])
-      xmax = tf.clip_by_value(box[3] + 1, 0, self._output_size[1])
-      box_height = ymax - ymin
-      box_width = xmax - xmin
+    # resize mask to match the shape of the instance bounding box
+    resized_mask = tf.image.resize(
+        mask,
+        size=(box_height, box_width),
+        method='nearest')
 
-      # resize mask to match the shape of the instance bounding box
-      resized_mask = tf.image.resize(
-          mask,
-          size=(box_height, box_width),
-          method='nearest')
+    # paste resized mask on a blank mask that matches image shape
+    pasted_mask = tf.raw_ops.TensorStridedSliceUpdate(
+        input=pasted_mask,
+        begin=[ymin, xmin],
+        end=[ymax, xmax],
+        strides=[1, 1],
+        value=resized_mask)
 
-      # paste resized mask on a blank mask that matches image shape
-      pasted_mask = tf.raw_ops.TensorStridedSliceUpdate(
-          input=pasted_mask,
-          begin=[ymin, xmin],
-          end=[ymax, xmax],
-          strides=[1, 1],
-          value=resized_mask)
-      pasted_masks.append(pasted_mask)
-
-    return tf.stack(pasted_masks, axis=0)
+    return pasted_mask
 
   def _generate_panoptic_masks(self, boxes, scores, classes, detections_masks,
-                               segmentation_mask, num_detections):
+                               segmentation_mask):
     '''Generates panoptic masks for a single image
 
     This function implements the following steps to merge instance and semantic
@@ -144,12 +141,8 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
           [num_rois, mask_height, mask_width, 1], representing the cropped mask
           for each object.
         segmentation_mask: A `tf.Tensor` of shape [height, width], representing
-          the semantic segmentation output.   
-        num_detections: A `int` representing the number of valid instance
-          detections.
+          the semantic segmentation output.
     '''
-    masks = self._paste_masks(boxes, detections_masks, num_detections)
-
     # Offset stuff class predictions
     segmentation_mask = tf.where(
         tf.logical_or(
@@ -172,7 +165,7 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
     loop_end_idx = tf.where(sorted_scores > self._score_threshold)[-1, 0] + 1
     loop_end_idx = tf.minimum(
         tf.cast(loop_end_idx, dtype=tf.int32),
-        num_detections)
+        self._max_num_detections)
 
     # add things segmentation to panoptic masks
     for i in range(loop_end_idx):
@@ -180,11 +173,15 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
       # the overlaps are resolved based on confidence score
       instance_idx = sorted_indices[i]
 
+      pasted_mask = self._paste_mask(
+          box=boxes[instance_idx],
+          mask=detections_masks[instance_idx])
+
       class_id = tf.cast(classes[instance_idx], dtype=tf.float32)
 
       # convert sigmoid scores to binary values
       binary_mask = tf.greater(
-          masks[instance_idx], self._mask_binarize_threshold)
+          pasted_mask, self._mask_binarize_threshold)
 
       # filter empty instance masks
       if not tf.reduce_sum(tf.cast(binary_mask, tf.float32)) > 0:
@@ -228,7 +225,6 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
   def call(self, inputs):
     detections = inputs
 
-    num_detections = detections['num_detections']
     batched_scores = detections['detection_scores']
     batched_classes = detections['detection_classes']
     batched_boxes = tf.cast(detections['detection_boxes'], dtype=tf.int32)
@@ -257,8 +253,7 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
           scores=batched_scores[idx],
           classes=batched_classes[idx],
           detections_masks=batched_detections_masks[idx],
-          segmentation_mask=batched_segmentation_masks[idx],
-          num_detections=num_detections[idx])
+          segmentation_mask=batched_segmentation_masks[idx])
 
       category_mask.append(results['category_mask'])
       instance_mask.append(results['instance_mask'])

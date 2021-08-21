@@ -93,9 +93,11 @@ def build_panoptic_maskrcnn(
       norm_epsilon=norm_activation_config.norm_epsilon,
       kernel_regularizer=l2_regularizer)
 
+  max_num_detections = model_config.detection_generator.max_num_detections
   panoptic_segmentation_generator_obj = \
       panoptic_segmentation_generator.PanopticSegmentationGenerator(
           output_size=postprocessing_config.output_size,
+          max_num_detections=max_num_detections,
           stuff_classes_offset=postprocessing_config.stuff_classes_offset,
           mask_binarize_threshold=postprocessing_config.mask_binarize_threshold,
           score_threshold=postprocessing_config.score_threshold,

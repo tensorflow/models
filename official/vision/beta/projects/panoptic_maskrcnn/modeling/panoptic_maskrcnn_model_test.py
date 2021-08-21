@@ -100,7 +100,9 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
     detection_generator_obj = detection_generator.DetectionGenerator()
     panoptic_segmentation_generator_obj = \
         panoptic_segmentation_generator.PanopticSegmentationGenerator(
-            output_size=[image_size, image_size], stuff_classes_offset=90)
+            output_size=[image_size, image_size],
+            max_num_detections=100,
+            stuff_classes_offset=90)
     mask_head = instance_heads.MaskHead(
         num_classes=num_classes, upsample_factor=2)
     mask_sampler_obj = mask_sampler.MaskSampler(
@@ -228,7 +230,9 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
       detection_generator_obj = detection_generator.DetectionGenerator()
       panoptic_segmentation_generator_obj = \
           panoptic_segmentation_generator.PanopticSegmentationGenerator(
-              output_size=list(image_size), stuff_classes_offset=90)
+              output_size=list(image_size),
+              max_num_detections=100,
+              stuff_classes_offset=90)
       mask_head = instance_heads.MaskHead(
           num_classes=num_classes, upsample_factor=2)
       mask_sampler_obj = mask_sampler.MaskSampler(
@@ -338,7 +342,9 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
     detection_generator_obj = detection_generator.DetectionGenerator()
     panoptic_segmentation_generator_obj = \
         panoptic_segmentation_generator.PanopticSegmentationGenerator(
-            output_size=[None, None], stuff_classes_offset=90)
+            output_size=[None, None],
+            max_num_detections=100,
+            stuff_classes_offset=90)
     segmentation_resnet_model_id = 101
     segmentation_output_stride = 16
     aspp_dilation_rates = [6, 12, 18]
@@ -416,7 +422,9 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
     detection_generator_obj = detection_generator.DetectionGenerator()
     panoptic_segmentation_generator_obj = \
         panoptic_segmentation_generator.PanopticSegmentationGenerator(
-            output_size=[None, None], stuff_classes_offset=90)
+            output_size=[None, None],
+            max_num_detections=100,
+            stuff_classes_offset=90)
     segmentation_resnet_model_id = 101
     segmentation_output_stride = 16
     aspp_dilation_rates = [6, 12, 18]

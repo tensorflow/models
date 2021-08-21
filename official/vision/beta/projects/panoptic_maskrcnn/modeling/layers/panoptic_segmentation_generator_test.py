@@ -17,6 +17,8 @@
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.distribute import combinations
+from tensorflow.python.distribute import strategy_combinations
 
 from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import panoptic_segmentation_generator
 
@@ -29,6 +31,7 @@ class PanopticSegmentationGeneratorTest(
   def test_serialize_deserialize(self):
     config = {
         'output_size': [640, 640],
+        'max_num_detections': 100,
         'stuff_classes_offset': 90,
         'mask_binarize_threshold': 0.5,
         'score_threshold': 0.005,
@@ -46,8 +49,13 @@ class PanopticSegmentationGeneratorTest(
 
     self.assertAllEqual(generator.get_config(), new_generator.get_config())
 
-
-  def test_outputs(self):
+  @combinations.generate(
+      combinations.combine(
+          strategy=[
+              strategy_combinations.cloud_tpu_strategy,
+              strategy_combinations.one_device_strategy_gpu,
+          ]))
+  def test_outputs(self, strategy):
 
     # 0 represents the void class label
     thing_class_ids = [0, 1, 2, 3, 4]
@@ -65,6 +73,7 @@ class PanopticSegmentationGeneratorTest(
 
     config = {
         'output_size': [640, 640],
+        'max_num_detections': 100,
         'stuff_classes_offset': 3,
         'mask_binarize_threshold': 0.5,
         'score_threshold': 0.005,
@@ -106,18 +115,26 @@ class PanopticSegmentationGeneratorTest(
         'segmentation_outputs': segmentation_mask_one_hot
         }
 
-    outputs = generator(inputs=inputs)
+    def _run(inputs):
+      return generator(inputs=inputs)
+
+    @tf.function
+    def _distributed_run(inputs):
+      outputs = strategy.run(_run, args=((inputs,)))
+      return strategy.gather(outputs, axis=0)
+
+    outputs = _distributed_run(inputs)
 
     self.assertIn('category_mask', outputs)
     self.assertIn('instance_mask', outputs)
 
     self.assertAllEqual(
-        outputs['category_mask'].get_shape().as_list(),
-        [1] + config['output_size'])
+        outputs['category_mask'][0].get_shape().as_list(),
+        config['output_size'])
 
     self.assertAllEqual(
-        outputs['instance_mask'].get_shape().as_list(),
-        [1] + config['output_size'])
+        outputs['instance_mask'][0].get_shape().as_list(),
+        config['output_size'])
 
     for category_id in np.unique(outputs['category_mask']):
       self.assertIn(category_id, all_class_ids)
