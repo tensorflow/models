@@ -49,6 +49,11 @@ class Config(params_dict.ParamsDict):
   default_params: dataclasses.InitVar[Optional[Mapping[str, Any]]] = None
   restrictions: dataclasses.InitVar[Optional[List[str]]] = None
 
+  def __post_init__(self, default_params, restrictions):
+    super().__init__(
+        default_params=default_params,
+        restrictions=restrictions)
+
   @classmethod
   def _isvalidsequence(cls, v):
     """Check if the input values are valid sequences.
@@ -139,13 +144,6 @@ class Config(params_dict.ParamsDict):
               element_type if issubclass(element_type, params_dict.ParamsDict)
               else subconfig_type)
     return subconfig_type
-
-  def __post_init__(self, default_params, restrictions, *args, **kwargs):
-    super().__init__(
-        default_params=default_params,
-        restrictions=restrictions,
-        *args,
-        **kwargs)
 
   def _set(self, k, v):
     """Overrides same method in ParamsDict.
