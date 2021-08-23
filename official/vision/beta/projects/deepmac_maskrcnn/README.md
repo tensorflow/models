@@ -82,6 +82,8 @@ $ python3 -m official.vision.beta.projects.deepmac_maskrcnn.train \
 ```
 
 `CONFIG_FILE` can be any file in the `configs/experiments` directory.
+When using SpineNet models, please specify
+`--experiment=deep_mask_head_rcnn_spinenet_coco`
 
 **Note:** The default eval batch size of 32 discards some samples during
 validation. For accurate vaidation statistics, launch a dedicated eval job on

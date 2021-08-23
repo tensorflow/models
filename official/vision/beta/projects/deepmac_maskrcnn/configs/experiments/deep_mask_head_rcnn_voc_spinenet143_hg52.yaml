@@ -1,0 +1,56 @@
+# Expect to reach: box mAP: 49.3%, mask mAP: 43.4% on COCO
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  allowed_mask_class_ids: [1, 2, 3, 4, 5, 6, 7, 9, 16, 17, 18, 19, 20, 21, 44, 62, 63, 64, 67, 72]
+  per_category_metrics: true
+  init_checkpoint: null
+  train_data:
+    global_batch_size: 256
+    parser:
+      aug_rand_hflip: true
+      aug_scale_min: 0.1
+      aug_scale_max: 2.0
+  losses:
+    l2_weight_decay: 0.00004
+  model:
+    mask_head:
+      class_agnostic: true
+      convnet_variant: 'hourglass52'
+      num_filters: 64
+    mask_roi_aligner:
+      crop_size: 32
+    use_gt_boxes_for_masks: true
+    anchor:
+      anchor_size: 4.0
+      num_scales: 3
+    min_level: 3
+    max_level: 7
+    input_size: [1280, 1280, 3]
+    backbone:
+      spinenet:
+        stochastic_depth_drop_rate: 0.2
+        model_id: '143'
+      type: 'spinenet'
+    decoder:
+      type: 'identity'
+    norm_activation:
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+    detection_generator:
+      pre_nms_top_k: 1000
+trainer:
+  train_steps: 231000
+  optimizer_config:
+    learning_rate:
+      type: 'stepwise'
+      stepwise:
+        boundaries: [219450, 226380]
+        values: [0.32, 0.032, 0.0032]
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 2000
+        warmup_learning_rate: 0.0067
