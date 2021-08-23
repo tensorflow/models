@@ -95,11 +95,12 @@ In the following table, we report the Mask mAP of our models on the non-VOC
 classes when only training with masks for the VOC calsses. Performance is
 measured on the `coco-val2017` set.
 
-Backbone   | Mask head    | Config name                              | Mask mAP
-:--------- | :----------- | :--------------------------------------- | -------:
-ResNet-50  | Default      | `deep_mask_head_rcnn_voc_r50.yaml`       | 25.9
-ResNet-50  | Hourglass-52 | `deep_mask_head_rcnn_voc_r50_hg52.yaml`  | 33.1
-ResNet-101 | Hourglass-52 | `deep_mask_head_rcnn_voc_r101_hg52.yaml` | 34.4
+Backbone     | Mask head    | Config name                                     | Mask mAP
+:------------| :----------- | :-----------------------------------------------| -------:
+ResNet-50    | Default      | `deep_mask_head_rcnn_voc_r50.yaml`              | 25.9
+ResNet-50    | Hourglass-52 | `deep_mask_head_rcnn_voc_r50_hg52.yaml`         | 33.1
+ResNet-101   | Hourglass-52 | `deep_mask_head_rcnn_voc_r101_hg52.yaml`        | 34.4
+SpienNet-143 | Hourglass-52 | `deep_mask_head_rcnn_voc_spinenet143_hg52.yaml` | 38.7
 
 ## See also
 
