@@ -14,10 +14,9 @@
 
 # Lint as: python3
 """Image classification configuration definition."""
+import dataclasses
 import os
 from typing import List, Optional
-
-import dataclasses
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -44,6 +43,7 @@ class DataConfig(cfg.DataConfig):
   image_field_key: str = 'image/encoded'
   label_field_key: str = 'image/class/label'
   decode_jpeg_only: bool = True
+  decoder: Optional[common.DataDecoder] = common.DataDecoder()
 
   # Keep for backward compatibility.
   aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'.

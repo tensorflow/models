@@ -15,9 +15,9 @@
 # Lint as: python3
 """RetinaNet configuration definition."""
 
+import dataclasses
 import os
 from typing import List, Optional
-import dataclasses
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -29,22 +29,22 @@ from official.vision.beta.configs import backbones
 
 
 # pylint: disable=missing-class-docstring
+# Keep for backward compatibility.
 @dataclasses.dataclass
-class TfExampleDecoder(hyperparams.Config):
-  regenerate_source_id: bool = False
+class TfExampleDecoder(common.TfExampleDecoder):
+  """A simple TF Example decoder config."""
 
 
+# Keep for backward compatibility.
 @dataclasses.dataclass
-class TfExampleDecoderLabelMap(hyperparams.Config):
-  regenerate_source_id: bool = False
-  label_map: str = ''
+class TfExampleDecoderLabelMap(common.TfExampleDecoderLabelMap):
+  """TF Example decoder with label map config."""
 
 
+# Keep for backward compatibility.
 @dataclasses.dataclass
-class DataDecoder(hyperparams.OneOfConfig):
-  type: Optional[str] = 'simple_decoder'
-  simple_decoder: TfExampleDecoder = TfExampleDecoder()
-  label_map_decoder: TfExampleDecoderLabelMap = TfExampleDecoderLabelMap()
+class DataDecoder(common.DataDecoder):
+  """Data decoder config."""
 
 
 @dataclasses.dataclass
@@ -67,7 +67,7 @@ class DataConfig(cfg.DataConfig):
   global_batch_size: int = 0
   is_training: bool = False
   dtype: str = 'bfloat16'
-  decoder: DataDecoder = DataDecoder()
+  decoder: common.DataDecoder = common.DataDecoder()
   parser: Parser = Parser()
   shuffle_buffer_size: int = 10000
   file_type: str = 'tfrecord'
