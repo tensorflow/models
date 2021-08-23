@@ -30,26 +30,6 @@ from official.vision.beta.configs import backbones
 
 # pylint: disable=missing-class-docstring
 @dataclasses.dataclass
-class TfExampleDecoder(hyperparams.Config):
-  regenerate_source_id: bool = False
-  mask_binarize_threshold: Optional[float] = None
-
-
-@dataclasses.dataclass
-class TfExampleDecoderLabelMap(hyperparams.Config):
-  regenerate_source_id: bool = False
-  mask_binarize_threshold: Optional[float] = None
-  label_map: str = ''
-
-
-@dataclasses.dataclass
-class DataDecoder(hyperparams.OneOfConfig):
-  type: Optional[str] = 'simple_decoder'
-  simple_decoder: TfExampleDecoder = TfExampleDecoder()
-  label_map_decoder: TfExampleDecoderLabelMap = TfExampleDecoderLabelMap()
-
-
-@dataclasses.dataclass
 class Parser(hyperparams.Config):
   num_channels: int = 3
   match_threshold: float = 0.5
@@ -73,7 +53,7 @@ class DataConfig(cfg.DataConfig):
   global_batch_size: int = 0
   is_training: bool = False
   dtype: str = 'bfloat16'
-  decoder: DataDecoder = DataDecoder()
+  decoder: common.DataDecoder = common.DataDecoder()
   parser: Parser = Parser()
   shuffle_buffer_size: int = 10000
   file_type: str = 'tfrecord'

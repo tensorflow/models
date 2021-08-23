@@ -14,10 +14,10 @@
 
 # Lint as: python3
 """Semantic segmentation configuration definition."""
+import dataclasses
 import os
 from typing import List, Optional, Union
 
-import dataclasses
 import numpy as np
 
 from official.core import exp_factory
@@ -52,6 +52,7 @@ class DataConfig(cfg.DataConfig):
   aug_rand_hflip: bool = True
   drop_remainder: bool = True
   file_type: str = 'tfrecord'
+  decoder: Optional[common.DataDecoder] = common.DataDecoder()
 
 
 @dataclasses.dataclass
