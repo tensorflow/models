@@ -22,6 +22,7 @@ from official.vision.beta.modeling.layers import nn_blocks
 
 
 def _apply_blocks(inputs, blocks):
+  """Apply blocks to inputs."""
   net = inputs
   
   for block in blocks:
@@ -43,7 +44,7 @@ def _make_repeated_residual_blocks(
     kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
     bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
 ):
-  """Stack Residual blocks one after the other..
+  """Stack Residual blocks one after the other.
   
   Args:
     reps: `int` for desired number of residual blocks
@@ -64,6 +65,9 @@ def _make_repeated_residual_blocks(
       Conv2D. Default to None.
     bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
       Default to None.
+      
+  Returns:
+    blocks: A list of residual blocks to be applied in sequence.
   """
   blocks = []
   

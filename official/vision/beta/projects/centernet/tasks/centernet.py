@@ -398,15 +398,8 @@ class CenterNetTask(base_task.Task):
     
     logs = {self.loss: losses['total_loss']}
     
-    image_size = self.task_config.model.input_size[0:-1]
-    
-    labels['boxes'] = box_ops.denormalize_boxes(
-        tf.cast(labels['bbox'], tf.float32), image_size)
-    del labels['bbox']
-    
     coco_model_outputs = {
-        'detection_boxes': box_ops.denormalize_boxes(
-            tf.cast(outputs['bbox'], tf.float32), image_size),
+        'detection_boxes': outputs['boxes'],
         'detection_scores': outputs['confidence'],
         'detection_classes': outputs['classes'],
         'num_detections': outputs['num_detections'],

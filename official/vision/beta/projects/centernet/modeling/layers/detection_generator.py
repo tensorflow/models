@@ -20,7 +20,7 @@ import tensorflow as tf
 
 from official.vision.beta.projects.centernet.ops import loss_ops
 from official.vision.beta.projects.centernet.ops.nms_ops import nms
-
+from official.vision.beta.ops import box_ops
 
 @tf.keras.utils.register_keras_serializable(package='centernet')
 class CenterNetDetectionGenerator(tf.keras.layers.Layer):
@@ -308,9 +308,11 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
                              nms_thresh=0.4)
     
     num_det = tf.reduce_sum(tf.cast(scores > 0, dtype=tf.int32), axis=1)
+    box_ops.denormalize_boxes(
+        boxes, [self._input_image_dims, self._input_image_dims])
     
     return {
-        'bbox': boxes,
+        'boxes': boxes,
         'classes': classes,
         'confidence': scores,
         'num_detections': num_det

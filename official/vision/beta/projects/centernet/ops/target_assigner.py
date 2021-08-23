@@ -313,9 +313,9 @@ def assign_centernet_targets(labels: Dict,
   # Get relevant bounding box and class information from labels
   # only keep the first num_objects boxes and classes
   num_objects = labels['num_detections']
-  # shape of labels['bbox'] is [max_num_instances, 4]
+  # shape of labels['boxes'] is [max_num_instances, 4]
   # [ymin, xmin, ymax, xmax]
-  boxes = tf.cast(labels['bbox'], dtype)[:num_objects]
+  boxes = tf.cast(labels['boxes'], dtype)[:num_objects]
   # shape of labels['classes'] is [max_num_instances, ]
   classes = tf.cast(labels['classes'] - class_offset, dtype)[:num_objects]
   

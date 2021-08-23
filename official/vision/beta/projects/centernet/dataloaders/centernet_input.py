@@ -139,7 +139,7 @@ class CenterNetParser(parser.Parser):
     
     labels = {
         'source_id': utils.process_source_id(data['source_id']),
-        'bbox': boxes,
+        'boxes': boxes,
         'classes': classes,
         'area': area,
         'is_crowd': is_crowd,
