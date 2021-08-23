@@ -23,7 +23,6 @@ from official.core import base_task
 from official.core import input_reader
 from official.core import task_factory
 from official.vision.beta.evaluation import coco_evaluator
-from official.vision.beta.ops import box_ops
 from official.vision.beta.dataloaders import tf_example_decoder
 from official.vision.beta.dataloaders import tf_example_label_map_decoder
 from official.vision.beta.dataloaders import tfds_factory
@@ -205,11 +204,22 @@ class CenterNetTask(base_task.Task):
             class_offset=self.task_config.losses.class_offset),
         elems=labels,
         fn_output_signature={
-            'ct_heatmaps': tf.float32,
-            'ct_offset': tf.float32,
-            'size': tf.float32,
-            'box_mask': tf.int32,
-            'box_indices': tf.int32
+            'ct_heatmaps': tf.TensorSpec(
+                shape=[output_size[0], output_size[1],
+                       self.task_config.model.num_classes],
+                dtype=tf.float32),
+            'ct_offset': tf.TensorSpec(
+                shape=[self.task_config.model.max_num_instances, 2],
+                dtype=tf.float32),
+            'size': tf.TensorSpec(
+                shape=[self.task_config.model.max_num_instances, 2],
+                dtype=tf.float32),
+            'box_mask': tf.TensorSpec(
+                shape=[self.task_config.model.max_num_instances],
+                dtype=tf.int32),
+            'box_indices': tf.TensorSpec(
+                shape=[self.task_config.model.max_num_instances, 2],
+                dtype=tf.int32),
         }
     )
     
