@@ -25,29 +25,32 @@ limitations under the License.
 #include "tf_ops/projection_util.h"  // seq_flow_lite
 #include "tflite_ops/tf_tflite_diff_test_util.h"  // seq_flow_lite
 
-namespace tflite {
+namespace seq_flow_lite {
 
 namespace ops {
 namespace custom {
 
 namespace {
 
+using ::seq_flow_lite::testing::AttrValue;
+using ::seq_flow_lite::testing::FloatTensor;
+using ::seq_flow_lite::testing::IntTensor;
+using ::seq_flow_lite::testing::OpEquivTestCase;
+using ::seq_flow_lite::testing::StringTensor;
+using ::seq_flow_lite::testing::TensorflowTfLiteOpTest;
 using ::testing::ElementsAreArray;
-using ::tflite::testing::AttrValue;
-using ::tflite::testing::FloatTensor;
-using ::tflite::testing::IntTensor;
-using ::tflite::testing::OpEquivTestCase;
-using ::tflite::testing::StringTensor;
-using ::tflite::testing::TensorflowTfLiteOpTest;
+using ::tflite::TensorType_FLOAT32;
+using ::tflite::TensorType_STRING;
+using ::tflite::TensorType_UINT8;
 
-class SequenceStringProjectionModel : public SingleOpModel {
+class SequenceStringProjectionModel : public ::tflite::SingleOpModel {
  public:
   explicit SequenceStringProjectionModel(
       bool split_on_space, int max_splits, int word_novelty_bits,
-      int doc_size_levels, bool add_eos_tag, TensorType output_type,
+      int doc_size_levels, bool add_eos_tag, ::tflite::TensorType output_type,
       const std::string& token_separators = "",
       bool normalize_repetition = false, float add_first_cap = 0.0,
-      float add_all_caps = 0.0, const string& hashtype = kMurmurHash) {
+      float add_all_caps = 0.0, const std::string& hashtype = kMurmurHash) {
     flexbuffers::Builder fbb;
     fbb.Map([&] {
       fbb.Int("feature_size", 4);
@@ -798,11 +801,11 @@ INSTANTIATE_TEST_SUITE_P(
     SequenceStringProjectionTests, SequenceStringProjectionTest,
     ::testing::ValuesIn(SequenceStringProjectionTestCases()));
 
-class SequenceStringProjectionV2Model : public SingleOpModel {
+class SequenceStringProjectionV2Model : public ::tflite::SingleOpModel {
  public:
   explicit SequenceStringProjectionV2Model(
       std::vector<std::vector<int>> input_shapes,
-      const string& hashtype = kMurmurHash) {
+      const std::string& hashtype = kMurmurHash) {
     flexbuffers::Builder fbb;
     fbb.Map([&] {
       fbb.Int("feature_size", 4);
@@ -827,6 +830,7 @@ class SequenceStringProjectionV2Model : public SingleOpModel {
         << "Cannot allocate tensors";
     return SingleOpModel::InvokeUnchecked();
   }
+  std::vector<int> GetOutputShape() { return GetTensorShape(output_); }
 
  private:
   int input_;
@@ -882,6 +886,15 @@ TEST(SequenceStringProjectionV2Test, RegularInputUint8) {
   // OK
   SequenceStringProjectionV2Model m({{1, 2}});
   m.Invoke({"hello", "world"}, kTfLiteOk);
+}
+
+TEST(SequenceStringProjectionV2Test, NumberProjectionsForMultipleInputs) {
+  SequenceStringProjectionV2Model m({{1, 2}});
+  std::vector<std::string> input = {"hello", "world"};
+  m.Invoke(input, kTfLiteOk);
+  EXPECT_EQ(m.GetOutputShape()[1], input.size());
+  m.Invoke(input, kTfLiteOk);
+  EXPECT_EQ(m.GetOutputShape()[1], input.size());
 }
 
 class SequenceStringProjectionV2Test : public TensorflowTfLiteOpTest {
@@ -986,7 +999,7 @@ INSTANTIATE_TEST_SUITE_P(
 }  // namespace
 }  // namespace custom
 }  // namespace ops
-}  // namespace tflite
+}  // namespace seq_flow_lite
 
 int main(int argc, char** argv) {
   // On Linux, add: absl::SetFlag(&FLAGS_logtostderr, true);

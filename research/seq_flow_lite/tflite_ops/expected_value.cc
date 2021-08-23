@@ -18,7 +18,7 @@ limitations under the License.
 
 #include "tflite_ops/quantization_util.h"  // seq_flow_lite
 
-namespace tflite {
+namespace seq_flow_lite {
 namespace ops {
 namespace custom {
 
@@ -156,4 +156,4 @@ TfLiteRegistration* Register_EXPECTED_VALUE() {
 
 }  // namespace custom
 }  // namespace ops
-}  // namespace tflite
+}  // namespace seq_flow_lite

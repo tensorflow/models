@@ -12,16 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#include "tf_ops/projection_normalizer_util.h"  // seq_flow_lite
-#include "tf_ops/projection_tokenizer_util.h"  // seq_flow_lite
-#include "tf_ops/projection_util.h"  // seq_flow_lite
-#include "tf_ops/text_distorter.h"  // seq_flow_lite
 #include "absl/container/flat_hash_map.h"
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/shape_inference.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
+#include "tf_ops/projection_normalizer_util.h"  // seq_flow_lite
+#include "tf_ops/projection_tokenizer_util.h"  // seq_flow_lite
+#include "tf_ops/projection_util.h"  // seq_flow_lite
+#include "tf_ops/text_distorter.h"  // seq_flow_lite
 
 using ::tensorflow::int32;
 using ::tensorflow::int64;
@@ -51,10 +51,11 @@ float* AllocateTensor(OpKernelContext* ctx, const std::string& tensor_name,
   return &tensor->flat<float>()(0);
 }
 
+// OpKernel for the sequence string projection op.
 class SequenceStringProjectionOp : public OpKernel {
  public:
   explicit SequenceStringProjectionOp(OpKernelConstruction* context)
-      : OpKernel(context) {
+      : OpKernel(context), philox_(171), generator_(&philox_) {
     OP_REQUIRES_OK(context, context->GetAttr("feature_size", &feature_size_));
     std::string hashtype;
     OP_REQUIRES_OK(context, context->GetAttr("hashtype", &hashtype));
@@ -159,7 +160,10 @@ class SequenceStringProjectionOp : public OpKernel {
       }
       const int64 seq_len =
           static_cast<int64>(bos_tag_ + words.size() + eos_tag_);
-      CHECK_GT(seq_len, 0);
+      CHECK_GT(seq_len, 0)
+          << "Projection models expect input text to have at-least one valid "
+             "token. If empty text is a valid input for your model, please set "
+             "add_bos_tag to true.";
       max_seq_len = std::max(max_seq_len, seq_len);
       words_batches.emplace_back(std::move(words));
     }
@@ -208,7 +212,7 @@ class SequenceStringProjectionOp : public OpKernel {
           CHECK_EQ(eos_tag_, 1);
           word = kEndTokenTSP;
         }
-        hasher_->GetHashCodes(word, &hash_codes);
+        hasher_->GetHashCodes(word, hash_codes);
         for (int hindex = 0, k = 0; hindex < hash_codes.size(); hindex++) {
           auto hash = hash_codes[hindex];
           for (int kmax = std::min(k + increment, feature_size_); k < kmax;) {
@@ -229,7 +233,7 @@ class SequenceStringProjectionOp : public OpKernel {
               doc_size_feature;
         }
         if (add_first_cap_feature_ > 0.0f) {
-          if (text_distorter_->BernouilleSample(add_first_cap_feature_)) {
+          if (generator_.RandFloat() <= add_first_cap_feature_) {
             projection[offset0 + feature_size_ - kFirstCapOffset] =
                 first_cap ? 1.0 : -1.0;
           } else {
@@ -237,7 +241,7 @@ class SequenceStringProjectionOp : public OpKernel {
           }
         }
         if (add_all_caps_feature_ > 0.0f) {
-          if (text_distorter_->BernouilleSample(add_all_caps_feature_)) {
+          if (generator_.RandFloat() <= add_all_caps_feature_) {
             projection[offset0 + feature_size_ - kAllCapsOffset] =
                 all_caps ? 1.0 : -1.0;
           } else {
@@ -252,21 +256,49 @@ class SequenceStringProjectionOp : public OpKernel {
   }
 
  private:
+  // Objects used for random number generator.
+  tensorflow::random::PhiloxRandom philox_;
+  tensorflow::random::SimplePhilox generator_;
+
+  // Dimensionality of the ternary vector for each token in the text.
   int32 feature_size_;
+  // An object used to hash tokens in the text.
   std::unique_ptr<Hasher> hasher_;
+  // An object used for distorting text before projection.
   std::unique_ptr<TextDistorter> text_distorter_;
+  // An object used for manipulating unicode in the text. It performs tasks such
+  // as retaining only whitelisted unicodes in the text tokens and lowercasing
+  // them.
   std::unique_ptr<ProjectionUnicodeHandler> unicode_handler_;
+  // An object used for normalizing tokens in the text. This performs tasks
+  // such as identifying repeated characters and replace them with a single
+  // instance.
   std::unique_ptr<ProjectionNormalizer> projection_normalizer_;
+  // Character whitelist used by the projection operator.
   std::string vocabulary_;
+  // Size of the character whitelist.
   int vocabulary_size_;
+  // Maximum number of splits allowed in the text. The number of tokens in text
+  // post segmentation will be utmost max_splits_ + 1.
   int32 max_splits_;
+  // A flag that indicates how to segment text. When true text is segmented by
+  // space. Otherwise it is segmented on unicode boundaries.
   bool split_on_space_;
+  // When true include an end of sentence token in the projection.
   int eos_tag_;
+  // When true include a begin of sentence token in the projection.
   int bos_tag_;
+  // Number of bits used to capture word novelty. See tensorflow op
+  // documentation below for details.
   int word_novelty_bits_;
+  // Number of levels used to capture document size. See tensorflow op
+  // documentation below for details.
   int doc_size_levels_;
+  // Distance between levels used for word novelty.
   float word_novelty_offset_;
+  // Adds boolean feature to indicate first_cap text with the below probability.
   float add_first_cap_feature_;
+  // Adds boolean feature to indicate all_cap text with the below probability.
   float add_all_caps_feature_;
 };
 

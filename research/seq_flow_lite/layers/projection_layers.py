@@ -25,7 +25,7 @@ from tf_ops import sequence_string_projection_op_v2 as sspv2 # import seq_flow_l
 class ProjectionLayer(base_layers.BaseLayer):
   """Base class for encoders."""
 
-  def __init__(self, model_config, mode):
+  def __init__(self, model_config, mode, **kwargs):
     """Create projection."""
 
     def _get_params(varname, default_value=None):
@@ -50,7 +50,7 @@ class ProjectionLayer(base_layers.BaseLayer):
     if mode == base_layers.TRAIN:
       _get_params("distortion_probability", 0.0)
     parameters = base_layers.Parameters(mode, self.quantize)
-    super(ProjectionLayer, self).__init__(parameters=parameters)
+    super(ProjectionLayer, self).__init__(parameters=parameters, **kwargs)
 
   def call(self, inputs):
     projection, _, seq_length = ssp.sequence_string_projection(
@@ -74,15 +74,14 @@ class ProjectionLayer(base_layers.BaseLayer):
       batch_size = self.get_batch_dimension(inputs)
       projection = tf.reshape(projection,
                               [batch_size, self.max_seq_len, self.feature_size])
-    if self.mode in modes:
-      projection = self.qrange_tanh(projection)
+    projection = self.qrange_tanh(projection)
     return projection, seq_length
 
 
 class ProjectionLayerPreSegmented(base_layers.BaseLayer):
   """Base class for encoders."""
 
-  def __init__(self, model_config, mode):
+  def __init__(self, model_config, mode, **kwargs):
     """Create projection."""
 
     def _get_params(varname, default_value=None):
@@ -101,11 +100,13 @@ class ProjectionLayerPreSegmented(base_layers.BaseLayer):
     if mode == base_layers.TRAIN:
       _get_params("distortion_probability", 0.0)
     parameters = base_layers.Parameters(mode, self.quantize)
-    super(ProjectionLayerPreSegmented, self).__init__(parameters=parameters)
+    super(ProjectionLayerPreSegmented, self).__init__(
+        parameters=parameters, **kwargs)
 
-  def call(self, inputs, sequence_length):
+  def call(self, inputs):
+    tokens, sequence_length = inputs
     projection = sspv2.sequence_string_projection_v2(
-        input=inputs,
+        input=tokens,
         sequence_length=sequence_length,
         feature_size=self.feature_size,
         distortion_probability=self.distortion_probability,

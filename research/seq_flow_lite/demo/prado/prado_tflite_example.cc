@@ -48,9 +48,9 @@ std::unique_ptr<tflite::Interpreter> CreateInterpreter(
   tflite::ops::builtin::BuiltinOpResolver resolver;
   resolver.AddCustom(
       "SEQUENCE_STRING_PROJECTION",
-      tflite::ops::custom::Register_SEQUENCE_STRING_PROJECTION());
+      ::seq_flow_lite::ops::custom::Register_SEQUENCE_STRING_PROJECTION());
   resolver.AddCustom("ExpectedValueOp",
-                     tflite::ops::custom::Register_EXPECTED_VALUE());
+                     ::seq_flow_lite::ops::custom::Register_EXPECTED_VALUE());
   tflite::InterpreterBuilder(model, resolver,
                              /*error_reporter=*/nullptr)(&interpreter);
   if (!interpreter) {
@@ -105,7 +105,7 @@ std::vector<float> InvokeModel(
   const size_t num_classes = output_dims[kClassOutputClassIndex];
   for (int i = 0; i < num_classes; ++i) {
     // Find class probability or log probability for the class index
-    classes.push_back(tflite::PodDequantize(*class_output, i));
+    classes.push_back(::seq_flow_lite::PodDequantize(*class_output, i));
   }
   return classes;
 }

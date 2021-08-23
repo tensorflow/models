@@ -40,6 +40,8 @@ constexpr char kEndTokenTSP[] = "<EOS>";
 constexpr float kMappingTable[4] = {0, 1, -1, 0};
 constexpr int kIncrement = 32;
 
+// Version 2 OpKernel for the sequence string projection op.
+// Template T can be int32 or int64.
 template <typename T>
 class SequenceStringProjectionOpV2 : public OpKernel {
  public:
@@ -136,7 +138,7 @@ class SequenceStringProjectionOpV2 : public OpKernel {
         } else {
           word = kEndTokenTSP;
         }
-        hasher_->GetHashCodes(word, &hash_codes);
+        hasher_->GetHashCodes(word, hash_codes);
         for (int hindex = 0, k = 0; hindex < hash_codes.size(); hindex++) {
           auto hash = hash_codes[hindex];
           for (int kmax = std::min(k + kIncrement, feature_size_); k < kmax;) {
@@ -153,13 +155,25 @@ class SequenceStringProjectionOpV2 : public OpKernel {
   }
 
  private:
+  // Dimensionality of the ternary vector for each token in the text.
   int32 feature_size_;
+  // An object used to hash tokens in the text.
   std::unique_ptr<Hasher> hasher_;
+  // An object used for distorting text before projection.
   std::unique_ptr<TextDistorter> text_distorter_;
+  // An object used for manipulating unicode in the text. It performs tasks such
+  // as retaining only whitelisted unicodes in the text tokens and lowercasing
+  // them.
   std::unique_ptr<ProjectionUnicodeHandler> unicode_handler_;
+  // An object used for normalizing tokens in the text. This performs tasks
+  // such as identifying repeated characters and replace them with a single
+  // instance.
   std::unique_ptr<ProjectionNormalizer> projection_normalizer_;
+  // Character whitelist used by the projection operator.
   std::string vocabulary_;
+  // When true include an end of sentence token in the projection.
   int eos_tag_;
+  // When true include a begin of sentence token in the projection.
   int bos_tag_;
 };
 

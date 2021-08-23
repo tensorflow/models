@@ -38,6 +38,7 @@ class PaddedMaskedVarLenConv(conv_layers.EncoderQConvolutionVarLen):
     assert bool(ngram is None) != bool(skip_bigram is None)
     self.kwidth = ngram if ngram is not None else (skip_bigram + 2)
     mask = [1] * self.kwidth
+    self.skipgram = skip_bigram is not None
     if skip_bigram is not None:
       mask[1], mask[skip_bigram] = 0, 0
     self.mask = np.array(mask, dtype="float32").reshape((1, self.kwidth, 1, 1))
@@ -56,10 +57,10 @@ class PaddedMaskedVarLenConv(conv_layers.EncoderQConvolutionVarLen):
       return result * mask + (1 - mask) * self.invalid_value
     return result
 
-  def add_qweight(self, shape, num_bits=8):
-    weight = super(PaddedMaskedVarLenConv, self).add_qweight(
-        shape=shape, num_bits=num_bits)
-    return weight * tf.convert_to_tensor(self.mask)
+  def quantize_parameter(self, weight, num_bits=8):
+    weight = super(PaddedMaskedVarLenConv, self).quantize_parameter(
+        weight, num_bits=num_bits)
+    return weight * tf.convert_to_tensor(self.mask) if self.skipgram else weight
 
 
 class AttentionPoolReduce(base_layers.BaseLayer):
@@ -97,8 +98,8 @@ class AttentionPoolReduce(base_layers.BaseLayer):
 class Encoder(tf.keras.layers.Layer):
   """A PRADO keras model."""
 
-  def __init__(self, config, mode):
-    super(Encoder, self).__init__()
+  def __init__(self, config, mode, **kwargs):
+    super(Encoder, self).__init__(**kwargs)
 
     def _get_params(varname, default_value=None):
       value = config[varname] if varname in config else default_value
@@ -118,7 +119,7 @@ class Encoder(tf.keras.layers.Layer):
     _get_params("skip1bigram_channels", 0)
     _get_params("skip2bigram_channels", 0)
     _get_params("network_regularizer_scale", 1e-4)
-    _get_params("keep_prob", 0.5)
+    _get_params("keep_prob", 1.0)
     self.num_classes = len(self.labels)
 
     self.parameters = base_layers.Parameters(
@@ -129,7 +130,6 @@ class Encoder(tf.keras.layers.Layer):
         units=self.embedding_size, rank=3, parameters=self.parameters)
     self.attention_fc = dense_layers.BaseQDenseVarLen(
         units=self.embedding_size, rank=3, parameters=self.parameters)
-    self.dropout = tf.keras.layers.Dropout(rate=(1 - self.keep_prob))
 
     self.parameters = copy.copy(self.parameters)
     self.parameters.regularizer_scale = self.network_regularizer_scale
@@ -161,8 +161,8 @@ class Encoder(tf.keras.layers.Layer):
 
   def _apply_fc_dropout(self, layer, inputs, mask, inverse_normalizer):
     outputs = layer(inputs, mask, inverse_normalizer)
-    if self.parameters.mode == base_layers.TRAIN:
-      return self.dropout(outputs)
+    if self.parameters.mode == base_layers.TRAIN and self.keep_prob < 1.0:
+      return tf.nn.dropout(outputs, rate=(1 - self.keep_prob))
     return outputs
 
   def call(self, projection, seq_length):
@@ -178,14 +178,17 @@ class Encoder(tf.keras.layers.Layer):
         layer(values_in, attention_in, maskr3, inverse_normalizer)
         for layer in self.attention_pool_layers
     ]
+
+    assert tensors, "no ngram channels have been configured"
+
     pre_logits = self.concat_quantizer(tensors)
     return self.final_fc(pre_logits)
 
 
 class Model(Encoder):
 
-  def __init__(self, config, mode):
-    super(Model, self).__init__(config, mode)
+  def __init__(self, config, mode, **kwargs):
+    super(Model, self).__init__(config, mode, **kwargs)
     self.projection = projection_layers.ProjectionLayer(config, mode)
 
   def call(self, inputs):
