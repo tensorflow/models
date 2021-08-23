@@ -15,7 +15,7 @@
 # Lint as: python3
 """Contains definitions of Darknet Backbone Networks.
 
-These models are inspired by ResNet and CSPNet.
+   The models are inspired by ResNet and CSPNet.
 
 Residual networks (ResNets) were proposed in:
 [1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
@@ -42,8 +42,6 @@ import tensorflow as tf
 from official.modeling import hyperparams
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
-
-# builder required classes
 
 class BlockConfig:
   """Class to store layer config to make code more readable."""
@@ -667,8 +665,7 @@ def build_darknet(
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds darknet."""
 
-  backbone_cfg = model_config.backbone.get()
-  norm_activation_config = model_config.norm_activation
+  backbone_cfg = backbone_config.backbone.get()
 
   model = Darknet(
       model_id=backbone_cfg.model_id,

@@ -23,9 +23,6 @@ from official.vision.beta.ops import spatial_transform_ops
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class Identity(tf.keras.layers.Layer):
 
-  def __init__(self, **kwargs):
-    super().__init__(**kwargs)
-
   def call(self, inputs):
     return inputs
 
@@ -642,11 +639,6 @@ class CSPRoute(tf.keras.layers.Layer):
     x = self._conv3(inputs)
     return (x, y)
 
-    self._conv2 = ConvBN(
-        filters=self._filters // self._filter_scale,
-        kernel_size=(1, 1),
-        strides=(1, 1),
-        **dark_conv_args)
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class CSPConnect(tf.keras.layers.Layer):
@@ -683,8 +675,8 @@ class CSPConnect(tf.keras.layers.Layer):
     """Initializer for CSPConnect block.
 
     Args:
-      filters: integer for output depth, or the number of features to learn
-      filter_scale: integer dicating (filters//2) or the number of filters in
+      filters: integer for output depth, or the number of features to learn.
+      filter_scale: integer dictating (filters//2) or the number of filters in
         the partial feature stack.
       drop_final: `bool`, whether to drop final conv layer.
       drop_first: `bool`, whether to drop first conv layer.
@@ -807,7 +799,7 @@ class CSPStack(tf.keras.layers.Layer):
       model_to_wrap: callable Model or a list of callable objects that will
         process the output of CSPRoute, and be input into CSPConnect.
         list will be called sequentially.
-      filter_scale: integer dicating (filters//2) or the number of filters in
+      filter_scale: integer dictating (filters//2) or the number of filters in
         the partial feature stack.
       activation: string for activation function to use in layer.
       kernel_initializer: string to indicate which function to use to initialize

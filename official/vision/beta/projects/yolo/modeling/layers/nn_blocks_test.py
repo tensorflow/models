@@ -16,8 +16,6 @@
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
-import numpy as np
-from absl.testing import parameterized
 
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
@@ -62,6 +60,7 @@ class CSPConnectTest(tf.test.TestCase, parameterized.TestCase):
       grad_loss = loss(x_hat, y)
     grad = tape.gradient(grad_loss, test_layer.trainable_variables)
     optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
+
     self.assertNotIn(None, grad)
 
 
@@ -72,7 +71,7 @@ class CSPRouteTest(tf.test.TestCase, parameterized.TestCase):
   def test_pass_through(self, width, height, filters, mod):
     x = tf.keras.Input(shape=(width, height, filters))
     test_layer = nn_blocks.CSPRoute(filters=filters, filter_scale=mod)
-    outx, px = test_layer(x)
+    outx, _ = test_layer(x)
     print(outx)
     print(outx.shape.as_list())
     self.assertAllEqual(
