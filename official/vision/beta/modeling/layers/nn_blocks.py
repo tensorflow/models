@@ -54,6 +54,17 @@ def _maybe_downsample(x: tf.Tensor,
   return x + 0.
 
 
+def _get_padding_for_kernel_size(kernel_size):
+  """Compute padding size given kernel size."""
+  if kernel_size == 7:
+    return (3, 3)
+  elif kernel_size == 3:
+    return (1, 1)
+  else:
+    raise ValueError('Padding for kernel size {} not known.'.format(
+        kernel_size))
+
+
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class Conv2DBNBlock(tf.keras.layers.Layer):
   """A convolution block with batch normalization."""
@@ -149,7 +160,10 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     if self._use_explicit_padding and self._kernel_size > 1:
-      self._pad = nn_layers.FixedPadding((self._kernel_size, self._kernel_size))
+      padding_size = _get_padding_for_kernel_size(self._kernel_size)
+      self._pad = tf.keras.layers.ZeroPadding2D(padding_size)
+    else:
+      self._pad = nn_layers.IdentityLayer()
     self._conv0 = tf.keras.layers.Conv2D(
         filters=self._filters,
         kernel_size=self._kernel_size,
@@ -170,8 +184,7 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
     super(Conv2DBNBlock, self).build(input_shape)
 
   def call(self, inputs, training=None):
-    if self._use_explicit_padding and self._kernel_size > 1:
-      inputs = self._pad(inputs)
+    inputs = self._pad(inputs)
     x = self._conv0(inputs)
     if self._use_normalization:
       x = self._norm0(x)
@@ -277,8 +290,10 @@ class ResidualBlock(tf.keras.layers.Layer):
           trainable=self._bn_trainable)
 
     if self._use_explicit_padding:
-      self._pad = nn_layers.FixedPadding((3, 3))
+      self._pad = tf.keras.layers.ZeroPadding2D(padding=(1, 1))
       conv1_padding = 'valid'
+    else:
+      self._pad = nn_layers.IdentityLayer()
     self._conv1 = tf.keras.layers.Conv2D(
         filters=self._filters,
         kernel_size=3,
@@ -355,8 +370,7 @@ class ResidualBlock(tf.keras.layers.Layer):
       shortcut = self._shortcut(shortcut)
       shortcut = self._norm0(shortcut)
 
-    if self._use_explicit_padding:
-      inputs = self._pad(inputs)
+    inputs = self._pad(inputs)
     x = self._conv1(inputs)
     x = self._norm1(x)
     x = self._activation_fn(x)
