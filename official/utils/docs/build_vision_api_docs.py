@@ -46,16 +46,12 @@ flags.DEFINE_bool('search_hints', True,
 flags.DEFINE_string('site_path', 'tfvision/api_docs/python',
                     'Path prefix in the _toc.yaml')
 
-flags.DEFINE_bool('gen_report', False,
-                  'Generate an API report containing the health of the '
-                  'docstrings of the public API.')
-
 PROJECT_SHORT_NAME = 'tfvision'
 PROJECT_FULL_NAME = 'TensorFlow Official Models - Vision Modeling Library'
 
 
-def gen_api_docs(code_url_prefix, site_path, output_dir, gen_report,
-                 project_short_name, project_full_name, search_hints):
+def gen_api_docs(code_url_prefix, site_path, output_dir, project_short_name,
+                 project_full_name, search_hints):
   """Generates api docs for the tensorflow docs package."""
   build_api_docs_lib.hide_module_model_and_layer_methods()
 
@@ -66,7 +62,6 @@ def gen_api_docs(code_url_prefix, site_path, output_dir, gen_report,
       code_url_prefix=code_url_prefix,
       search_hints=search_hints,
       site_path=site_path,
-      gen_report=gen_report,
       callbacks=[public_api.explicit_package_contents_filter],
   )
 
@@ -82,7 +77,6 @@ def main(argv):
       code_url_prefix=FLAGS.code_url_prefix,
       site_path=FLAGS.site_path,
       output_dir=FLAGS.output_dir,
-      gen_report=FLAGS.gen_report,
       project_short_name=PROJECT_SHORT_NAME,
       project_full_name=PROJECT_FULL_NAME,
       search_hints=FLAGS.search_hints)
