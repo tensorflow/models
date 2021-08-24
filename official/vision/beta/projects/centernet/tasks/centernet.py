@@ -33,13 +33,10 @@ from official.vision.beta.projects.centernet.losses import centernet_losses
 from official.vision.beta.projects.centernet.ops import loss_ops
 from official.vision.beta.projects.centernet.ops import target_assigner
 from official.vision.beta.projects.centernet.modeling.heads import centernet_head
-from official.vision.beta.projects.centernet.modeling.layers import \
-  detection_generator
+from official.vision.beta.projects.centernet.modeling.layers import detection_generator
 from official.vision.beta.projects.centernet.modeling import centernet_model
-from official.vision.beta.projects.centernet.utils.checkpoints import \
-  load_weights
-from official.vision.beta.projects.centernet.utils.checkpoints import \
-  read_checkpoints
+from official.vision.beta.projects.centernet.utils.checkpoints import load_weights
+from official.vision.beta.projects.centernet.utils.checkpoints import read_checkpoints
 
 
 @task_factory.register_task_cls(exp_cfg.CenterNetTask)
@@ -84,7 +81,7 @@ class CenterNetTask(base_task.Task):
     return dataset
   
   def build_model(self):
-    """get an instance of CenterNet"""
+    """get an instance of CenterNet."""
     model_config = self.task_config.model
     input_specs = tf.keras.layers.InputSpec(
         shape=[None] + model_config.input_size)
@@ -186,7 +183,7 @@ class CenterNetTask(base_task.Task):
                    outputs,
                    labels,
                    aux_losses=None):
-    
+    """Build losses."""
     input_size = self.task_config.model.input_size[0:2]
     output_size = outputs['ct_heatmaps'][0].get_shape()[1:3]
     

@@ -12,36 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for Centernet nn_blocks."""
+"""Tests for Centernet nn_blocks.
+
+It is a literal translation of the PyTorch implementation.
+"""
 
 import numpy as np
 import tensorflow as tf
 from absl.testing import parameterized
 
-from official.vision.beta.projects.centernet.modeling.layers import \
-  nn_blocks as cn_nn_blocks
+from official.vision.beta.projects.centernet.modeling.layers import nn_blocks as cn_nn_blocks
 from official.vision.beta.modeling.layers import nn_blocks
 
 
 class HourglassBlockPyTorch(tf.keras.layers.Layer):
-  """
-  An CornerNet-style implementation of the hourglass block used in the
-  Hourglass-104 backbone.
-  
-  The following is a literal translation of the PyTorch implementation
-  https://github.com/xingyizhou/CenterNet/blob/master/src/lib/models/networks/large_hourglass.py
-  """
+  """An CornerNet-style implementation of the hourglass block."""
   
   def __init__(self, dims, modules, k=0, **kwargs):
-    """
-    Initializes a block for the hourglass backbone. The first k entries of dims
-    and modules are ignored.
-
+    """An CornerNet-style implementation of the hourglass block.
+      
     Args:
       dims: input sizes of residual blocks
       modules: number of repetitions of the residual blocks in each hourglass
         upsampling and downsampling
       k: recursive parameter
+      **kwargs: Additional keyword arguments to be passed.
     """
     super(HourglassBlockPyTorch).__init__()
     
@@ -70,14 +65,13 @@ class HourglassBlockPyTorch(tf.keras.layers.Layer):
     self.up1 = self.make_up_layer(3, curr_dim, curr_dim, curr_mod, **kwargs)
     self.max1 = tf.keras.layers.MaxPool2D(strides=2)
     self.low1 = self.make_hg_layer(3, curr_dim, next_dim, curr_mod, **kwargs)
-    self.low2 = type(self)(
-        dims, modules, k=k + 1, **kwargs
-    ) if self.n - k > 1 else \
-      self.make_low_layer(
-          3, next_dim, next_dim, next_mod, **kwargs
-      )
-    self.low3 = self.make_hg_layer_revr(3, next_dim, curr_dim, curr_mod,
-                                        **kwargs)
+    if self.n - k > 1:
+      self.low2 = type(self)(dims, modules, k=k + 1, **kwargs)
+    else:
+      self.low2 = self.make_low_layer(
+          3, next_dim, next_dim, next_mod, **kwargs)
+    self.low3 = self.make_hg_layer_revr(
+        3, next_dim, curr_dim, curr_mod, **kwargs)
     self.up2 = tf.keras.layers.UpSampling2D(2)
     self.merge = tf.keras.layers.Add()
     
@@ -93,7 +87,8 @@ class HourglassBlockPyTorch(tf.keras.layers.Layer):
     return self.merge([up1, up2])
   
   def make_layer(self, k, inp_dim, out_dim, modules, **kwargs):
-    layers = [nn_blocks.ResidualBlock(out_dim, 1, use_projection=True, **kwargs)]
+    layers = [
+        nn_blocks.ResidualBlock(out_dim, 1, use_projection=True, **kwargs)]
     for _ in range(1, modules):
       layers.append(nn_blocks.ResidualBlock(out_dim, 1, **kwargs))
     return tf.keras.Sequential(layers)
@@ -133,9 +128,9 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     rep_sizes = [2, 2, 2, 2, 2, 4]
     
     hg_test_input_shape = (1, 512, 512, 256)
-    bb_test_input_shape = (1, 512, 512, 3)
+    # bb_test_input_shape = (1, 512, 512, 3)
     x_hg = tf.ones(shape=hg_test_input_shape)
-    x_bb = tf.ones(shape=bb_test_input_shape)
+    # x_bb = tf.ones(shape=bb_test_input_shape)
     
     hg = cn_nn_blocks.HourglassBlock(
         channel_dims_per_stage=filter_sizes,

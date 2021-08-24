@@ -125,10 +125,7 @@ def _make_repeated_residual_blocks(
 
 @tf.keras.utils.register_keras_serializable(package='centernet')
 class HourglassBlock(tf.keras.layers.Layer):
-  """
-  Hourglass module: an encoder-decoder block which recursively
-  defines the hourglass network.
-  """
+  """Hourglass module: an encoder-decoder block."""
   
   def __init__(
       self,
@@ -142,7 +139,8 @@ class HourglassBlock(tf.keras.layers.Layer):
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       **kwargs):
-    """
+    """Initialize Hourglass module.
+    
     Args:
       channel_dims_per_stage: List[int], list of filter sizes for Residual
         blocks. the output channels dimensions of stages in
@@ -160,11 +158,12 @@ class HourglassBlock(tf.keras.layers.Layer):
       use_sync_bn: A `bool`, if True, use synchronized batch normalization.
       norm_momentum: `float`, momentum for the batch normalization layers.
       norm_epsilon: `float`, epsilon for the batch normalization layers.
-      kernel_initializer: A `str` for kernel initializer of convolutional layers.
+      kernel_initializer: A `str` for kernel initializer of conv layers.
       kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
       bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
+      **kwargs: Additional keyword arguments to be passed.
     """
     super(HourglassBlock, self).__init__(**kwargs)
     
@@ -277,23 +276,21 @@ class HourglassBlock(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='centernet')
 class CenterNetHeadConv(tf.keras.layers.Layer):
-  """
-  Convolution block for the CenterNet head. This is used to generate
-  both the confidence heatmaps and other regressed predictions such as 
-  center offsets, object size, etc.
-  """
-  
+  """Convolution block for the CenterNet head."""
+
   def __init__(self,
                output_filters: int,
                bias_init: float,
                name: str,
                **kwargs):
-    """
+    """Initialize CenterNet head.
+
     Args:
       output_filters: `int`, channel depth of layer output
       bias_init: `float`, value to initialize the bias vector for the final
         convolution layer
       name: `string`, layer name
+      **kwargs: Additional keyword arguments to be passed.
     """
     super(CenterNetHeadConv, self).__init__(name=name, **kwargs)
     self._output_filters = output_filters

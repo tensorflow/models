@@ -13,20 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 
-"""
-This file contains functions used to load the ODAPI CenterNet checkpoint 
-weights into CenterNet model. 
-"""
-
-import tensorflow as tf
+"""Functions used to load the ODAPI CenterNet checkpoint."""
 
 from official.vision.beta.modeling.layers import nn_blocks
-from official.vision.beta.projects.centernet.configs import centernet
-from official.vision.beta.projects.centernet.modeling.layers import \
-  nn_blocks as cn_nn_blocks
+from official.vision.beta.projects.centernet.modeling.layers import nn_blocks as cn_nn_blocks
 from official.vision.beta.projects.centernet.utils.checkpoints import config_data
-from official.vision.beta.projects.centernet.utils.checkpoints import \
-  config_classes
+from official.vision.beta.projects.centernet.utils.checkpoints import config_classes
 
 Conv2DBNCFG = config_classes.Conv2DBNCFG
 HeadConvCFG = config_classes.HeadConvCFG
@@ -44,8 +36,9 @@ def get_backbone_layer_cfgs(weights_dict, backbone_name):
   each building block in the backbone.
 
   Args:
-    weights_dict: Dictionary that stores the backbone model weights
-    backbone_name: String, indicating the desired backbone configuration
+    weights_dict: Dictionary that stores the backbone model weights.
+    backbone_name: String, indicating the desired backbone configuration.
+
   Returns:
     A list containing the config classe of the backbone building block
   """
@@ -57,16 +50,17 @@ def get_backbone_layer_cfgs(weights_dict, backbone_name):
 
 
 def load_weights_backbone(backbone, weights_dict, backbone_name):
-  """ Loads the weights defined in the weights_dict into the backbone.
+  """Loads the weights defined in the weights_dict into the backbone.
 
-  This function loads the backbone weights by first fetching the necesary
+  This function loads the backbone weights by first fetching the necessary
   config classes for the backbone, then loads them in one by one for 
   each layer that has weights associated with it.
 
   Args:
-    backbone: keras.Model backbone
-    weights_dict: Dictionary that stores the backbone model weights
-    backbone_name: String, indicating the desired backbone configuration
+    backbone: keras.Model backbone.
+    weights_dict: Dictionary that stores the backbone model weights.
+    backbone_name: String, indicating the desired backbone configuration.
+
   Returns:
     Number of weights loaded in 
   """
@@ -100,8 +94,9 @@ def get_head_layer_cfgs(weights_dict, head_name):
   each building block in the head.
 
   Args:
-    weights_dict: Dictionary that stores the decoder model weights
-    head_name: String, indicating the desired head configuration
+    weights_dict: Dictionary that stores the decoder model weights.
+    head_name: String, indicating the desired head configuration.
+
   Returns:
     A list containing the config classes of the backbone building block
   """
@@ -119,9 +114,10 @@ def load_weights_head(head, weights_dict, head_name):
   each layer that has weights associated with it.
 
   Args:
-    head: keras.Model head
-    weights_dict: Dictionary that stores the decoder model weights
-    head_name: String, indicating the desired head configuration
+    head: keras.Model head.
+    weights_dict: Dictionary that stores the decoder model weights.
+    head_name: String, indicating the desired head configuration.
+
   Returns:
     Number of weights loaded in 
   """
@@ -146,13 +142,16 @@ def load_weights_head(head, weights_dict, head_name):
 
 
 def load_weights_model(model, weights_dict, backbone_name, head_name):
-  """ Loads weights into the model.
+  """Loads weights into the model.
 
   Args:
-    model: keras.Model to load weights into
-    weights_dict: Dictionary that stores the weights of the model
-    backbone_name: String, indicating the desired backbone configuration
-    head_name: String, indicating the desired head configuration
+    model: keras.Model to load weights into.
+    weights_dict: Dictionary that stores the weights of the model.
+    backbone_name: String, indicating the desired backbone configuration.
+    head_name: String, indicating the desired head configuration.
+
+  Returns:
+
   """
   print("Loading model weights\n")
   n_weights = 0

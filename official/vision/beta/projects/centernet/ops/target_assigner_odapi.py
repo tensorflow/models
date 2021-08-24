@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Migrated functions for generating target centers
-for centernet based on ODAPI"""
+"""Generating target centers for centernet based on ODAPI"""
 
 import tensorflow as tf
 

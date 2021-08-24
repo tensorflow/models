@@ -23,9 +23,7 @@ from official.vision.beta.projects.centernet.modeling.layers import nn_blocks
 
 @tf.keras.utils.register_keras_serializable(package='centernet')
 class CenterNetHead(tf.keras.Model):
-  """
-  CenterNet Head.
-  """
+  """CenterNet Head."""
   
   def __init__(self,
                input_specs: List[tf.TensorShape],
@@ -33,7 +31,8 @@ class CenterNetHead(tf.keras.Model):
                heatmap_bias: float = -2.19,
                num_inputs: int = 2,
                **kwargs):
-    """
+    """CenterNet Head Initialization.
+    
     Args:
       input_specs: A `list` of input specifications.
       task_outputs: A `dict`, with key-value pairs denoting the names of the
@@ -44,8 +43,9 @@ class CenterNetHead(tf.keras.Model):
       num_inputs: `int`, indicates number of output branches from
         multiple backbone modules. For example, hourglass-104 has two
         hourglass-52 modules.
+      **kwargs: Additional keyword arguments to be passed.
 
-    call Returns:
+    Returns:
       dictionary where the keys-value pairs denote the names of the output
       and the respective output tensor
     """

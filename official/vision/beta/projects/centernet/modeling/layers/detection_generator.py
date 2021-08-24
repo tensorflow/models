@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Detection generator for centernet."""
+"""Detection generator for centernet.
+
+Parses predictions from the CenterNet head into the final bounding boxes,
+confidences, and classes. This class contains repurposed methods from the
+TensorFlow Object Detection API
+in: https://github.com/tensorflow/models/blob/master/research/object_detection
+/meta_architectures/center_net_meta_arch.py
+"""
 
 from typing import Mapping, Any
 
@@ -25,16 +32,11 @@ from official.vision.beta.ops import box_ops
 
 @tf.keras.utils.register_keras_serializable(package='centernet')
 class CenterNetDetectionGenerator(tf.keras.layers.Layer):
-  """ CenterNet Detection Generator
-
-  Parses predictions from the CenterNet head into the final bounding boxes,
-  confidences, and classes. This class contains repurposed methods from the 
-  TensorFlow Object Detection API
-  in: https://github.com/tensorflow/models/blob/master/research/object_detection
-  /meta_architectures/center_net_meta_arch.py
-  """
+  """CenterNet Detection Generator."""
   
   def __init__(self,
+               input_image_dims: int = 512,
+               net_down_scale: int = 4,
                max_detections: int = 100,
                peak_error: float = 1e-6,
                peak_extract_kernel_size: int = 3,
@@ -42,26 +44,27 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
                use_nms: bool = False,
                nms_pre_thresh: float = 0.1,
                nms_thresh: float = 0.4,
-               net_down_scale: int = 4,
-               input_image_dims: int = 512,
                **kwargs):
-    """
+    """Initialize CenterNet Detection Generator.
+    
     Args:
-      max_detections: An integer specifying the maximum number of bounding
+      input_image_dims: An `int` that specifies the input image size.
+      net_down_scale: An `int` that specifies stride of the output.
+      max_detections: An `int` specifying the maximum number of bounding
         boxes generated. This is an upper bound, so the number of generated
         boxes may be less than this due to thresholding/non-maximum suppression.
-      peak_error: A float for determining non-valid heatmap locations to mask.
-      peak_extract_kernel_size: An integer indicating the kernel size used when
+      peak_error: A `float` for determining non-valid heatmap locations to mask.
+      peak_extract_kernel_size: An `int` indicating the kernel size used when
         performing max-pool over the heatmaps to detect valid center locations
         from its neighbors. From the paper, set this to 3 to detect valid.
         locations that have responses greater than its 8-connected neighbors
-      use_nms: Boolean for whether or not to use non-maximum suppression to
+      use_nms: A `bool` for whether or not to use non-maximum suppression to
         filter the bounding boxes.
-      class_offset: An integer indicating to add an offset to the class 
+      class_offset: An `int` indicating to add an offset to the class
         prediction if the dataset labels have been shifted.
-      net_down_scale: An integer that specifies 
+      **kwargs: Additional keyword arguments to be passed.
 
-    call Returns:
+    Returns:
       Dictionary with keys 'bbox', 'classes', 'confidence', and 'num_detections'
       storing each bounding box in [y_min, x_min, y_max, x_max] format, 
       its respective class and confidence score, and the number of detections
@@ -88,7 +91,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
   def process_heatmap(self,
                       feature_map: tf.Tensor,
                       kernel_size: int) -> tf.Tensor:
-    """ Processes the heatmap into peaks for box selection.
+    """Processes the heatmap into peaks for box selection.
 
     Given a heatmap, this function first masks out nearby heatmap locations of
     the same class using max-pooling such that, ideally, only one center for the
@@ -130,7 +133,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
                       width: int,
                       num_classes: int,
                       k: int = 100):
-    """ Gets the scores and indices of the top-k peaks from the feature map
+    """ Gets the scores and indices of the top-k peaks from the feature map.
 
     This function flattens the feature map in order to retrieve the top-k
     peaks, then computes the x, y, and class indices for those scores.

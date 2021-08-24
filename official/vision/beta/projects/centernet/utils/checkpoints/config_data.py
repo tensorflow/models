@@ -18,8 +18,7 @@
 from dataclasses import dataclass, field
 from typing import Dict
 
-from official.vision.beta.projects.centernet.utils.checkpoints import \
-  config_classes
+from official.vision.beta.projects.centernet.utils.checkpoints import config_classes
 
 Conv2DBNCFG = config_classes.Conv2DBNCFG
 HeadConvCFG = config_classes.HeadConvCFG

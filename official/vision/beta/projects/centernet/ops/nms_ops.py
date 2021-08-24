@@ -21,7 +21,8 @@ from official.vision.beta.projects.yolo.ops import box_ops
 NMS_TILE_SIZE = 512
 
 
-def aggregated_comparative_iou(boxes1, boxes2=None, iou_type=0, xyxy=True):
+# pylint: disable=missing-function-docstring
+def aggregated_comparative_iou(boxes1, boxes2=None, iou_type=0):
   k = tf.shape(boxes1)[-2]
   
   boxes1 = tf.expand_dims(boxes1, axis=-2)
@@ -43,6 +44,7 @@ def aggregated_comparative_iou(boxes1, boxes2=None, iou_type=0, xyxy=True):
   return iou
 
 
+# pylint: disable=missing-function-docstring
 def sort_drop(objectness, box, classificationsi, k):
   objectness, ind = tf.math.top_k(objectness, k=k)
   
@@ -60,6 +62,7 @@ def sort_drop(objectness, box, classificationsi, k):
   return objectness, box, classifications
 
 
+# pylint: disable=missing-function-docstring
 def segment_nms(boxes, classes, confidence, k, iou_thresh):
   mrange = tf.range(k)
   mask_x = tf.tile(
@@ -95,6 +98,7 @@ def segment_nms(boxes, classes, confidence, k, iou_thresh):
   return boxes, classes, confidence
 
 
+# pylint: disable=missing-function-docstring
 def nms(boxes,
         classes,
         confidence,

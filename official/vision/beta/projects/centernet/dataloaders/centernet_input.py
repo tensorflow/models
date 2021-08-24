@@ -27,9 +27,7 @@ CHANNEL_STDS = [73.6027665, 69.89082075, 70.9150767]
 
 
 class CenterNetParser(parser.Parser):
-  """ Parser to parse an image and its annotations
-  into a dictionary of tensors.
-  """
+  """Parse an image and its annotations into a dictionary of tensors."""
   
   def __init__(self,
                image_w: int = 512,
@@ -47,6 +45,7 @@ class CenterNetParser(parser.Parser):
                channel_stds: List[float] = CHANNEL_STDS,
                dtype: str = 'float32'):
     """Initializes parameters for parsing annotations in the dataset.
+
     Args:
       image_w: A `Tensor` or `int` for width of input image.
       image_h: A `Tensor` or `int` for height of input image.

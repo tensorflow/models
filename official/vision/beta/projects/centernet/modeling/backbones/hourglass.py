@@ -20,8 +20,7 @@ import tensorflow as tf
 
 from official.modeling import hyperparams
 from official.vision.beta.modeling.backbones import factory
-from official.vision.beta.projects.centernet.modeling.layers import \
-  nn_blocks as cn_nn_blocks
+from official.vision.beta.projects.centernet.modeling.layers import nn_blocks as cn_nn_blocks
 from official.vision.beta.modeling.layers import nn_blocks
 
 HOURGLASS_SPECS = {
@@ -50,9 +49,7 @@ HOURGLASS_SPECS = {
 
 @tf.keras.utils.register_keras_serializable(package='centernet')
 class Hourglass(tf.keras.Model):
-  """
-  CenterNet Hourglass backbone
-  """
+  """CenterNet Hourglass backbone."""
   
   def __init__(
       self,
@@ -69,7 +66,8 @@ class Hourglass(tf.keras.Model):
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       **kwargs):
-    """
+    """Initialize Hourglass backbone.
+    
     Args:
       model_id: An `int` of the scale of Hourglass backbone model.
       input_channel_dims: `int`, number of filters used to downsample the

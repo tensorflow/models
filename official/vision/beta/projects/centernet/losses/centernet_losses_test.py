@@ -39,9 +39,7 @@ class L1LocalizationLossTest(tf.test.TestCase):
 
 
 class PenaltyReducedLogisticFocalLossTest(tf.test.TestCase):
-  """Testing loss function from Equation (1) in [1].
-  [1]: https://arxiv.org/abs/1904.07850
-  """
+  """Testing loss function."""
   
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)

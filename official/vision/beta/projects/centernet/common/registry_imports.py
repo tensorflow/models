@@ -18,6 +18,5 @@
 from official.common import registry_imports
 from official.vision.beta.projects.centernet.modeling.backbones import hourglass
 from official.vision.beta.projects.centernet.configs import centernet
-from official.vision.beta.projects.centernet.tasks import \
-  centernet as centernet_task
+from official.vision.beta.projects.centernet.tasks import centernet as centernet_task
 from official.vision.beta.projects.centernet.modeling import centernet_model

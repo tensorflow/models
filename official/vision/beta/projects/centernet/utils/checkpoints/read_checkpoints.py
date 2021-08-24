@@ -13,10 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""
-This file contains functions used to convert a TF checkpoint into a dictionary, 
-which streamlines the way of loading weights from one model to another.
-"""
+"""Functions used to convert a TF checkpoint into a dictionary."""
 
 import numpy as np
 import tensorflow as tf
@@ -30,9 +27,9 @@ def update_weights_dict(weights_dict, variable_key, value):
   them by submodules. 
 
   Args:
-    weights_dict: Dictionary to store weights
-    variable_key: String, name of the variable assocaited with the value
-    value: An ndarray that stores the weights assocaited to the variable key
+    weights_dict: Dictionary to store weights.
+    variable_key: String, name of the variable assocaited with the value.
+    value: An ndarray that stores the weights assocaited to the variable key.
   """
   current_dict = weights_dict
   variable_key_list = variable_key.split('/')
@@ -54,6 +51,7 @@ def get_ckpt_weights_as_dict(ckpt_path):
 
   Args:
     ckpt_path: String, indicating filepath of the TF checkpoint
+
   Returns:
     Dictionary where the checkpoint weights are stored
     Number of weights read
@@ -80,7 +78,7 @@ def get_ckpt_weights_as_dict(ckpt_path):
 
 
 def write_dict_as_tree(dictionary, filename, spaces=0):
-  """ Writes nested dictionary keys to a file.
+  """Writes nested dictionary keys to a file.
 
   Given a dictionary that contains nested dictionaries, this function
   writes the name of the keys recursively to a specified file as a tree 
@@ -101,7 +99,7 @@ def write_dict_as_tree(dictionary, filename, spaces=0):
 
 
 def print_layer_weights_and_shape(layer):
-  """ Prints variables information corresponding to a Keras layer.
+  """Prints variables information corresponding to a Keras layer.
 
   This function prints the name and the shape of its associated weights
   of all variables (trainable and untrainable) in a Keras layer.

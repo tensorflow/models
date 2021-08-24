@@ -13,7 +13,8 @@
 # limitations under the License.
 # ==============================================================================
 
-"""
+"""Layer config for parsing ODAPI checkpoint.
+
 This file contains the layers (Config objects) that are used for parsing the
 ODAPI checkpoint weights for CenterNet. 
 
@@ -31,19 +32,24 @@ import tensorflow as tf
 
 class Config(ABC):
   def get_weights(self):
-    """
-    This function generates the weights needed to be loaded into the layer. 
-    """
+    """Generates the weights needed to be loaded into the layer."""
     raise NotImplementedError
   
   def load_weights(self, layer: tf.keras.layers.Layer) -> int:
-    """
+    """Assign weights to layer.
+    
     Given a layer, this function retrieves the weights for that layer in an
     appropriate format and order, and loads them into the layer. Additionally,
     the number of weights loaded are returned.
     
-    If the weights are in an
-    incorrect format, a ValueError will be raised by set_weights().
+    If the weights are in an incorrect format, a ValueError
+    will be raised by set_weights().
+    
+    Args:
+      layer: A `tf.keras.layers.Layer`.
+
+    Returns:
+
     """
     weights = self.get_weights()
     layer.set_weights(weights)

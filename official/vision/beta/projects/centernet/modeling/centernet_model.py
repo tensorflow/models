@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Centernet detection models"""
+"""Centernet detection models."""
 
 from typing import Mapping, Union, Any
 
@@ -20,12 +20,21 @@ import tensorflow as tf
 
 
 class CenterNetModel(tf.keras.Model):
+  """CenterNet Model."""
   
   def __init__(self,
                backbone: tf.keras.Model,
                head: tf.keras.Model,
                detection_generator: tf.keras.layers.Layer,
                **kwargs):
+    """CenterNet Model.
+
+    Args:
+      backbone: a backbone network.
+      head: a projection head for centernet.
+      detection_generator: a detection generator for centernet.
+      **kwargs: keyword arguments to be passed.
+    """
     super(CenterNetModel, self).__init__(**kwargs)
     # model components
     self._backbone = backbone

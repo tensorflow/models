@@ -38,8 +38,7 @@ from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.vision.beta.projects.centernet.configs import centernet as exp_cfg
 
-from official.vision.beta.projects.simclr.common import \
-  registry_imports  # pylint: disable=unused-import
+from official.vision.beta.projects.simclr.common import registry_imports  # pylint: disable=unused-import
 
 
 class CenterNetConfigTest(tf.test.TestCase, parameterized.TestCase):

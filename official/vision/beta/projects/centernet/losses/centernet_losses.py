@@ -28,6 +28,7 @@ def absolute_difference(
     sample_weight=None,
     reduction=tf.keras.losses.Reduction.NONE):
   """Adds an Absolute Difference loss to the training procedure.
+  
   `weights` acts as a coefficient for the loss. If a scalar is provided, then
   the loss is simply scaled by the given value. If `weights` is a `Tensor` of
   shape `[batch_size]`, then the total loss for each sample of the batch is
@@ -35,6 +36,7 @@ def absolute_difference(
   of `weights` matches the shape of `predictions`, then the loss of each
   measurable element of `predictions` is scaled by the corresponding value of
   `weights`.
+  
   Args:
     labels: The ground truth output tensor, same dimensions as 'predictions'.
     predictions: The predicted outputs.
@@ -43,6 +45,7 @@ def absolute_difference(
       must be either `1`, or the same as the corresponding `losses`
       dimension).
     reduction: Type of reduction to apply to loss.
+
   Returns:
     Weighted loss float `Tensor`. If `reduction` is `NONE`, this has the same
     shape as `labels`; otherwise, it is scalar.
@@ -51,6 +54,7 @@ def absolute_difference(
       `labels` or if the shape of `weights` is invalid or if `labels`
       or `predictions` is None.
   """
+  
   if labels is None:
     raise ValueError("labels must not be None.")
   if predictions is None:
@@ -141,17 +145,16 @@ class Loss(abc.ABC):
 
 
 class PenaltyReducedLogisticFocalLoss(Loss):
-  """Penalty-reduced pixelwise logistic regression with focal loss.
-
-  The loss is defined in Equation (1) of the Objects as Points[1] paper.
-  Although the loss is defined per-pixel in the output space, this class
-  assumes that each pixel is an anchor to be compatible with the base class.
-
-  [1]: https://arxiv.org/abs/1904.07850
-  """
+  """Penalty-reduced pixelwise logistic regression with focal loss."""
   
   def __init__(self, alpha=2.0, beta=4.0, sigmoid_clip_value=1e-4):
     """Constructor.
+
+    The loss is defined in Equation (1) of the Objects as Points[1] paper.
+    Although the loss is defined per-pixel in the output space, this class
+    assumes that each pixel is an anchor to be compatible with the base class.
+  
+    [1]: https://arxiv.org/abs/1904.07850
 
     Args:
       alpha: Focussing parameter of the focal loss. Increasing this will
@@ -184,7 +187,6 @@ class PenaltyReducedLogisticFocalLoss(Loss):
         num_classes] or [batch_size, num_anchors, 1]. If the shape is
         [batch_size, num_anchors, 1], all the classses are equally weighted.
 
-
     Returns:
       loss: a float tensor of shape [batch_size, num_anchors, num_classes]
         representing the value of the loss function.
@@ -206,12 +208,12 @@ class PenaltyReducedLogisticFocalLoss(Loss):
 
 
 class L1LocalizationLoss(Loss):
-  """L1 loss or absolute difference.
-  When used in a per-pixel manner, each pixel should be given as an anchor.
-  """
+  """L1 loss or absolute difference."""
   
   def _compute_loss(self, prediction_tensor, target_tensor, weights=1.0):
     """Compute loss function.
+
+    When used in a per-pixel manner, each pixel should be given as an anchor.
 
     Args:
       prediction_tensor: A float tensor of shape [batch_size, num_anchors]

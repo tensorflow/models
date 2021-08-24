@@ -28,10 +28,13 @@ def get_shape(tensor, num_dims):
 
 def combined_static_and_dynamic_shape(tensor):
   """Returns a list containing static and dynamic values for the dimensions.
+
   Returns a list of static and dynamic values for shape dimensions. This is
   useful to preserve static shapes when available in reshape operation.
+  
   Args:
     tensor: A tensor of any type.
+  
   Returns:
     A list of size tensor.shape.ndims containing integers or a scalar tensor.
   """
@@ -47,6 +50,7 @@ def combined_static_and_dynamic_shape(tensor):
 
 
 def flatten_spatial_dimensions(batch_images):
+  # pylint: disable=unbalanced-tuple-unpacking
   batch_size, height, width, channels = get_shape(batch_images, 4)
   return tf.reshape(batch_images, [batch_size, height * width,
                                    channels])
@@ -54,19 +58,19 @@ def flatten_spatial_dimensions(batch_images):
 
 def get_num_instances_from_weights(groundtruth_weights_list):
   """Computes the number of instances/boxes from the weights in a batch.
+
   Args:
     groundtruth_weights_list: A list of float tensors with shape
       [max_num_instances] representing whether there is an actual instance in
       the image (with non-zero value) or is padded to match the
       max_num_instances (with value 0.0). The list represents the batch
       dimension.
+
   Returns:
     A scalar integer tensor incidating how many instances/boxes are in the
     images in the batch. Note that this function is usually used to normalize
     the loss so the minimum return value is 1 to avoid weird behavior.
   """
-  # num_instances = tf.reduce_sum(
-  #     [tf.math.count_nonzero(w) for w in groundtruth_weights_list])
   
   # This can execute in graph mode
   groundtruth_weights_list = tf.convert_to_tensor(
@@ -85,7 +89,7 @@ def multi_range(limit,
                 value_repetitions=1,
                 range_repetitions=1,
                 dtype=tf.int32):
-  """ Creates a sequence with optional value duplication and range repetition.
+  """Creates a sequence with optional value duplication and range repetition.
 
   As an example (see the Args section for more details),
   _multi_range(limit=2, value_repetitions=3, range_repetitions=4) returns:
@@ -113,21 +117,22 @@ def multi_range(limit,
 
 def get_batch_predictions_from_indices(batch_predictions, indices):
   """Gets the values of predictions in a batch at the given indices.
+
   The indices are expected to come from the offset targets generation functions
   in this library. The returned value is intended to be used inside a loss
   function.
+
   Args:
     batch_predictions: A tensor of shape [batch_size, height, width, channels]
       or [batch_size, height, width, class, channels] for class-specific
       features (e.g. keypoint joint offsets).
     indices: A tensor of shape [num_instances, 3] for single class features or
       [num_instances, 4] for multiple classes features.
+
   Returns:
     values: A tensor of shape [num_instances, channels] holding the predicted
       values at the given indices.
   """
-  # indices right now is shape (8, 128, 2), we need to make it (8, 128, 3), where
-  # the first dimension corresponds to the batch it belongs to
   
   return tf.gather_nd(batch_predictions, indices)
 
@@ -144,7 +149,7 @@ def add_batch_to_indices(indices):
 
 def get_valid_anchor_weights_in_flattened_image(true_image_shapes, height,
                                                 width):
-  """Computes valid anchor weights for an image assuming pixels will be flattened.
+  """Computes valid anchor weights for an image assuming pixels to be flattened.
 
   This function is useful when we only want to penalize valid areas in the
   image in the case when padding is used. The function assumes that the loss
@@ -185,7 +190,7 @@ def get_valid_anchor_weights_in_flattened_image(true_image_shapes, height,
 def get_row_col_channel_indices_from_flattened_indices(indices: int,
                                                        num_cols: int,
                                                        num_channels: int):
-  """ Computes row, column and channel indices from flattened indices.
+  """Computes row, column and channel indices from flattened indices.
 
   NOTE: Repurposed from Google OD API.
 
