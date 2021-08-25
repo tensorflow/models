@@ -68,6 +68,9 @@ Note that the dataset is large (~1TB).
 
 ### Preprocess the data
 
+Follow the instructions in [Data Preprocessing](data/preprocessing) to
+preprocess the Criteo Terabyte dataset.
+
 Data preprocessing steps are summarized below.
 
 Integer feature processing steps, sequentially:
