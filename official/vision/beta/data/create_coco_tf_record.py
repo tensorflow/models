@@ -350,7 +350,8 @@ def _load_panoptic_annotations(panoptic_annotations_file):
     image_id = image['id']
     if image_id not in img_to_panoptic_annotation:
       missing_annotation_count += 1
-  logging.info('%d images are missing captions.', missing_annotation_count)
+  logging.info(
+      '%d images are missing panoptic annotations.', missing_annotation_count)
 
   return img_to_panoptic_annotation, is_category_thing
 
