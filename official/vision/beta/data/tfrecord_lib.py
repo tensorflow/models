@@ -99,9 +99,12 @@ def image_info_to_feature_dict(height, width, filename, image_id,
       'image/format': convert_to_feature(encoded_format.encode('utf8')),
   }
 
+def read_image(image_path):
+  pil_image = Image.open(image_path)
+  return np.asarray(pil_image)
 
-def encode_binary_mask_as_png(binary_mask):
-  pil_image = Image.fromarray(binary_mask)
+def encode_mask_as_png(mask):
+  pil_image = Image.fromarray(mask)
   output_io = io.BytesIO()
   pil_image.save(output_io, format='PNG')
   return output_io.getvalue()
