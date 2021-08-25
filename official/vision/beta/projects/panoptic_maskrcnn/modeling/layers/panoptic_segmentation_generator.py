@@ -92,7 +92,8 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
     super(PanopticSegmentationGenerator, self).__init__(**kwargs)
 
   def _paste_mask(self, box, mask):
-    pasted_mask = tf.ones(self._output_size + [1]) * self._void_class_label
+    pasted_mask = tf.ones(
+        self._output_size + [1], dtype=mask.dtype) * self._void_class_label
 
     ymin = box[0]
     xmin = box[1]
