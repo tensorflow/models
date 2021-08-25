@@ -66,6 +66,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
       return
 
     def _get_checkpoint_path(checkpoint_dir_or_file):
+      checkpoint_path = checkpoint_dir_or_file
       if tf.io.gfile.isdir(checkpoint_dir_or_file):
         checkpoint_path = tf.train.latest_checkpoint(
             checkpoint_dir_or_file)
