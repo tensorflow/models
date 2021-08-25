@@ -56,11 +56,11 @@ def flatten_spatial_dimensions(batch_images):
                                    channels])
 
 
-def get_num_instances_from_weights(groundtruth_weights_list):
+def get_num_instances_from_weights(gt_weights_list):
   """Computes the number of instances/boxes from the weights in a batch.
 
   Args:
-    groundtruth_weights_list: A list of float tensors with shape
+    gt_weights_list: A list of float tensors with shape
       [max_num_instances] representing whether there is an actual instance in
       the image (with non-zero value) or is padded to match the
       max_num_instances (with value 0.0). The list represents the batch
@@ -73,12 +73,11 @@ def get_num_instances_from_weights(groundtruth_weights_list):
   """
   
   # This can execute in graph mode
-  groundtruth_weights_list = tf.convert_to_tensor(
-      groundtruth_weights_list, dtype=groundtruth_weights_list[0].dtype)
+  gt_weights_list = tf.convert_to_tensor(
+      gt_weights_list, dtype=gt_weights_list[0].dtype)
   num_instances = tf.map_fn(
-      fn=lambda x: tf.math.count_nonzero(x, dtype=groundtruth_weights_list[
-        0].dtype),
-      elems=groundtruth_weights_list)
+      fn=lambda x: tf.math.count_nonzero(x, dtype=gt_weights_list[0].dtype),
+      elems=gt_weights_list)
   
   num_instances = tf.reduce_sum(num_instances)
   num_instances = tf.maximum(num_instances, 1)
@@ -218,3 +217,20 @@ def get_row_col_channel_indices_from_flattened_indices(indices: int,
   channel_indices = indices - channel_indices_temp * num_channels
   
   return row_indices, col_indices, channel_indices
+
+
+def smallest_positive_root(a, b, c):
+  """Returns the smallest positive root of a quadratic equation."""
+  
+  discriminant = tf.sqrt(b ** 2 - 4 * a * c)
+  
+  # TODO(vighneshb) We are currently using the slightly incorrect
+  # CenterNet implementation. The commented lines implement the fixed version
+  # in https://github.com/princeton-vl/CornerNet. Change the implementation
+  # after verifying it has no negative impact.
+  # root1 = (-b - discriminant) / (2 * a)
+  # root2 = (-b + discriminant) / (2 * a)
+  
+  # return tf.where(tf.less(root1, 0), root2, root1)
+  
+  return (-b + discriminant) / (2.0)

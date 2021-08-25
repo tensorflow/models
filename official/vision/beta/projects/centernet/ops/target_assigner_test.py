@@ -23,6 +23,7 @@ from official.vision.beta.ops import preprocess_ops
 
 
 class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
+
   def check_labels_correct(self,
                            boxes,
                            classes,
@@ -38,10 +39,11 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
         boxes, max_num_instances, 0)
     classes = preprocess_ops.clip_or_pad_to_fixed_size(
         classes, max_num_instances, 0)
-    
+
+    # pylint: disable=g-long-lambda
     labels = target_assigner.assign_centernet_targets(
         labels={
-            'bbox': boxes,
+            'boxes': boxes,
             'num_detections': num_detections,
             'classes': classes
         },
@@ -180,7 +182,7 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
             input_size=input_size,
             use_odapi_gaussian=use_odapi),
         elems={
-            'bbox': boxes,
+            'boxes': boxes,
             'num_detections': tf.constant([3, 3]),
             'classes': classes
         },

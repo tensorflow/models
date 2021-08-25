@@ -18,12 +18,13 @@ import tensorflow as tf
 
 from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.ops import box_ops
-from official.vision.beta.dataloaders import parser, utils
+from official.vision.beta.dataloaders import parser
+from official.vision.beta.dataloaders import utils
 
-from typing import List
+from typing import Tuple
 
-CHANNEL_MEANS = [104.01362025, 114.03422265, 119.9165958]
-CHANNEL_STDS = [73.6027665, 69.89082075, 70.9150767]
+CHANNEL_MEANS = (104.01362025, 114.03422265, 119.9165958)
+CHANNEL_STDS = (73.6027665, 69.89082075, 70.9150767)
 
 
 class CenterNetParser(parser.Parser):
@@ -41,8 +42,8 @@ class CenterNetParser(parser.Parser):
                aug_rand_brightness=False,
                aug_rand_zoom=False,
                aug_rand_hue=False,
-               channel_means: List[float] = CHANNEL_MEANS,
-               channel_stds: List[float] = CHANNEL_STDS,
+               channel_means: Tuple[float, float, float] = CHANNEL_MEANS,
+               channel_stds: Tuple[float, float, float] = CHANNEL_STDS,
                dtype: str = 'float32'):
     """Initializes parameters for parsing annotations in the dataset.
 
@@ -70,6 +71,9 @@ class CenterNetParser(parser.Parser):
       channel_stds: A tuple of floats, denoting the standard deviation of each
         channel. Each channel will be divided by its standard deviation value.
       dtype: `str`, data type. One of {`bfloat16`, `float32`, `float16`}.
+    
+    Raises:
+      Exception: if datatype is not supported.
     """
     self._image_w = image_w
     self._image_h = image_h
@@ -252,7 +256,6 @@ class CenterNetParser(parser.Parser):
         padded_size=[self._image_h, self._image_w],
         aug_scale_min=1.0,
         aug_scale_max=1.0)
-    image_height, image_width, _ = image.get_shape().as_list()
     
     # Resizes and crops boxes.
     image_scale = image_info[2, :]

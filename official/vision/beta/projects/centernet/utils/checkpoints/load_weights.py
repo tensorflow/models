@@ -155,14 +155,12 @@ def load_weights_model(model, weights_dict, backbone_name, head_name):
   """
   print("Loading model weights\n")
   n_weights = 0
-  n_weights += load_weights_backbone(model.backbone,
-                                     weights_dict['model']['_feature_extractor'][
-                                       '_network'],
-                                     backbone_name)
-  
+  n_weights += load_weights_backbone(
+      model.backbone, weights_dict["model"]["_feature_extractor"]["_network"],
+      backbone_name)
+
   n_weights += load_weights_head(model.head,
-                                 weights_dict['model'][
-                                   '_prediction_head_dict'],
+                                 weights_dict["model"]["_prediction_head_dict"],
                                  head_name)
   print("Successfully loaded {} model weights.\n".format(n_weights))
   return model

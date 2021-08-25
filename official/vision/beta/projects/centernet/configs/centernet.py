@@ -46,9 +46,9 @@ class DataDecoder(hyperparams.OneOfConfig):
   label_map_decoder: TfExampleDecoderLabelMap = TfExampleDecoderLabelMap()
 
 
-# dataset parser
 @dataclasses.dataclass
 class Parser(hyperparams.Config):
+  """Config for parser."""
   bgr_ordering: bool = True
   aug_rand_hflip: bool = True
   aug_scale_min: float = 1.0
@@ -57,9 +57,9 @@ class Parser(hyperparams.Config):
   aug_rand_brightness: bool = False
   aug_rand_zoom: bool = False
   aug_rand_hue: bool = False
-  channel_means: List[int] = dataclasses.field(
+  channel_means: List[float] = dataclasses.field(
       default_factory=lambda: [104.01362025, 114.03422265, 119.9165958])
-  channel_stds: List[int] = dataclasses.field(
+  channel_stds: List[float] = dataclasses.field(
       default_factory=lambda: [73.6027665, 69.89082075, 70.9150767])
 
 
@@ -120,12 +120,14 @@ class CenterNetDetectionGenerator(hyperparams.Config):
 
 @dataclasses.dataclass
 class CenterNetModel(hyperparams.Config):
+  """Config for centernet model."""
   num_classes: int = 90
   max_num_instances: int = 128
   input_size: List[int] = dataclasses.field(default_factory=list)
   backbone: backbones.Backbone = backbones.Backbone(
       type='hourglass', hourglass=backbones.Hourglass(model_id=52))
   head: CenterNetHead = CenterNetHead()
+  # pylint: disable=line-too-long
   detection_generator: CenterNetDetectionGenerator = CenterNetDetectionGenerator()
   norm_activation: common.NormActivation = common.NormActivation(
       norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)
@@ -152,6 +154,7 @@ class CenterNetSubTasks(hyperparams.Config):
 
 @dataclasses.dataclass
 class CenterNetTask(cfg.TaskConfig):
+  """Config for centernet task."""
   model: CenterNetModel = CenterNetModel()
   train_data: DataConfig = DataConfig(is_training=True)
   validation_data: DataConfig = DataConfig(is_training=False)
@@ -171,16 +174,17 @@ class CenterNetTask(cfg.TaskConfig):
   
   def get_output_length_dict(self):
     lengths = {}
-    assert self.subtasks.detection is not None or self.subtasks.kp_detection \
-           or self.subtasks.segmentation, "You must specify at least one " \
-                                          "subtask to CenterNet"
+    sub_task_check = (
+        self.subtasks.detection is not None
+        or self.subtasks.kp_detection or
+        self.subtasks.segmentation)
+    assert sub_task_check, 'You must specify at least one subtask to CenterNet'
     
     if self.subtasks.detection:
-      # TODO: locations of the ground truths will also be passed in from the
-      # data pipeline which need to be mapped accordingly
-      assert (self.subtasks.detection.use_centers and
-              not self.subtasks.detection.use_corners,
-              "Use corner is not supported currently.")
+      detection_task_check = (
+          self.subtasks.detection.use_centers and
+          not self.subtasks.detection.use_corners)
+      assert detection_task_check, 'Use corner is not supported currently.'
       if self.subtasks.detection.use_centers:
         lengths.update({
             'ct_heatmaps': self.model.num_classes,
@@ -191,10 +195,10 @@ class CenterNetTask(cfg.TaskConfig):
 
       if self.subtasks.detection.use_corners:
         lengths.update({
-          'tl_heatmaps': self.model.num_classes,
-          'tl_offset': 2,
-          'br_heatmaps': self.model.num_classes,
-          'br_offset': 2
+            'tl_heatmaps': self.model.num_classes,
+            'tl_offset': 2,
+            'br_heatmaps': self.model.num_classes,
+            'br_offset': 2
         })
       
       if self.subtasks.detection.predict_3d:

@@ -26,7 +26,7 @@ from typing import Mapping, Any
 import tensorflow as tf
 
 from official.vision.beta.projects.centernet.ops import loss_ops
-from official.vision.beta.projects.centernet.ops.nms_ops import nms
+from official.vision.beta.projects.centernet.ops import nms_ops
 from official.vision.beta.ops import box_ops
 
 
@@ -45,7 +45,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
                nms_pre_thresh: float = 0.1,
                nms_thresh: float = 0.4,
                **kwargs):
-    """Initialize CenterNet Detection Generator.
+    """
     
     Args:
       input_image_dims: An `int` that specifies the input image size.
@@ -58,18 +58,15 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
         performing max-pool over the heatmaps to detect valid center locations
         from its neighbors. From the paper, set this to 3 to detect valid.
         locations that have responses greater than its 8-connected neighbors
-      use_nms: A `bool` for whether or not to use non-maximum suppression to
-        filter the bounding boxes.
       class_offset: An `int` indicating to add an offset to the class
         prediction if the dataset labels have been shifted.
+      use_nms: A `bool` for whether or not to use non-maximum suppression to
+        filter the bounding boxes.
+      nms_pre_thresh: A `float` for pre-nms threshold.
+      nms_thresh: A `float` for nms threshold.
       **kwargs: Additional keyword arguments to be passed.
-
-    Returns:
-      Dictionary with keys 'bbox', 'classes', 'confidence', and 'num_detections'
-      storing each bounding box in [y_min, x_min, y_max, x_max] format, 
-      its respective class and confidence score, and the number of detections
-      made.
     """
+
     super(CenterNetDetectionGenerator, self).__init__(**kwargs)
     
     # Object center selection parameters
@@ -133,7 +130,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
                       width: int,
                       num_classes: int,
                       k: int = 100):
-    """ Gets the scores and indices of the top-k peaks from the feature map.
+    """Gets the scores and indices of the top-k peaks from the feature map.
 
     This function flattens the feature map in order to retrieve the top-k
     peaks, then computes the x, y, and class indices for those scores.
@@ -149,7 +146,8 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
       k: `int`` that controls how many peaks to select.
     
     Returns:
-      top_scores: A Tensor with shape [batch_size, k] containing the top-k scores.
+      top_scores: A Tensor with shape [batch_size, k]
+        containing the top-k scores.
       y_indices: A Tensor with shape [batch_size, k] containing the top-k 
         y-indices corresponding to top_scores.
       x_indices: A Tensor with shape [batch_size, k] containing the top-k 
@@ -178,7 +176,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
                 height_width_predictions: tf.Tensor,
                 offset_predictions: tf.Tensor,
                 num_boxes: int):
-    """ Organizes prediction information into the final bounding boxes.
+    """Organizes prediction information into the final bounding boxes.
 
     NOTE: Repurposed from Google OD API.
 
@@ -267,8 +265,8 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
     
     shape = tf.shape(ct_heatmaps)
     
-    batch_size, height, width, num_channels = \
-      shape[0], shape[1], shape[2], shape[3]
+    height, width = shape[1], shape[2]
+    batch_size, num_channels = shape[0], shape[3]
     
     # Process heatmaps using 3x3 max pool and applying sigmoid
     peaks = self.process_heatmap(
@@ -303,7 +301,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
                                         tf.stack([y_indices, x_indices], -1),
                                         batch_dims=1)
       
-      boxes, _, scores = nms(boxes=boxes,
+      boxes, _, scores = nms_ops.nms(boxes=boxes,
                              classes=multi_class_scores,
                              confidence=scores,
                              k=self._max_detections,

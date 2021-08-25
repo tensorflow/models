@@ -18,24 +18,7 @@ from typing import List, Dict, Tuple
 
 import tensorflow as tf
 from official.vision.beta.projects.centernet.ops import target_assigner_odapi
-
-
-def smallest_positive_root(a, b, c):
-  """Returns the smallest positive root of a quadratic equation."""
-  
-  discriminant = tf.sqrt(b ** 2 - 4 * a * c)
-  
-  # TODO(vighneshb) We are currently using the slightly incorrect
-  # CenterNet implementation. The commented lines implement the fixed version
-  # in https://github.com/princeton-vl/CornerNet. Change the implementation
-  # after verifying it has no negative impact.
-  # root1 = (-b - discriminant) / (2 * a)
-  # root2 = (-b + discriminant) / (2 * a)
-  
-  # return tf.where(tf.less(root1, 0), root2, root1)
-  
-  return (-b + discriminant) / (2.0)
-
+from official.vision.beta.projects.centernet.ops import loss_ops
 
 @tf.function
 def cartesian_product(*tensors, repeat: int = 1) -> tf.Tensor:
@@ -104,7 +87,7 @@ def gaussian_radius(det_size, min_overlap=0.7) -> int:
   a1 = 1
   b1 = -(height + width)
   c1 = width * height * (1 - min_overlap) / (1 + min_overlap)
-  r1 = smallest_positive_root(a1, b1, c1)
+  r1 = loss_ops.smallest_positive_root(a1, b1, c1)
   
   # Case where detection is smaller than ground truth and completely contained
   # in it.
@@ -112,7 +95,7 @@ def gaussian_radius(det_size, min_overlap=0.7) -> int:
   a2 = 4
   b2 = -2 * (height + width)
   c2 = (1 - min_overlap) * width * height
-  r2 = smallest_positive_root(a2, b2, c2)
+  r2 = loss_ops.smallest_positive_root(a2, b2, c2)
   
   # Case where ground truth is smaller than detection and completely contained
   # in it.
@@ -120,8 +103,7 @@ def gaussian_radius(det_size, min_overlap=0.7) -> int:
   a3 = 4 * min_overlap
   b3 = 2 * min_overlap * (height + width)
   c3 = (min_overlap - 1) * width * height
-  r3 = smallest_positive_root(a3, b3, c3)
-  # TODO discuss whether to return scalar or tensor
+  r3 = loss_ops.smallest_positive_root(a3, b3, c3)
   
   return tf.reduce_min([r1, r2, r3], axis=0)
 
@@ -240,8 +222,7 @@ def assign_center_targets(y_center: tf.Tensor,
   
   # Get individual gaussian contributions from each bounding box
   ct_gaussians = tf.map_fn(
-      fn=lambda x: draw_gaussian(
-          output_shape, x, box_heights_widths.dtype),
+      fn=lambda x: draw_gaussian(output_shape, x, box_heights_widths.dtype),
       elems=ct_blobs)
   
   # Combine contributions into single heatmaps
@@ -249,7 +230,7 @@ def assign_center_targets(y_center: tf.Tensor,
   return ct_heatmap
 
 
-def assign_centernet_targets(labels: Dict,
+def assign_centernet_targets(labels: Dict[str, tf.Tensor],
                              output_size: List[int],
                              input_size: List[int],
                              num_classes: int = 90,
@@ -269,18 +250,18 @@ def assign_centernet_targets(labels: Dict,
   Args:
     labels: A dictionary of COCO ground truth labels with at minimum the
       following fields:
-      bbox: A `Tensor` of shape [max_num_instances, 4], where the
-        last dimension corresponds to the top left x, top left y, bottom right x,
-        and bottom left y coordinates of the bounding box
-      classes: A `Tensor` of shape [max_num_instances] that contains
+      "bbox" A `Tensor` of shape [max_num_instances, 4], where the
+        last dimension corresponds to the top left x, top left y,
+        bottom right x, and bottom left y coordinates of the bounding box
+      "classes" A `Tensor` of shape [max_num_instances] that contains
         the class of each box, given in the same order as the boxes
-      num_detections: A `Tensor` or int that gives the number of objects
+      "num_detections" A `Tensor` or int that gives the number of objects
     output_size: A `list` of length 2 containing the desired output height
       and width of the heatmaps
     input_size: A `list` of length 2 the expected input height and width of
       the image
     num_classes: A `Tensor` or `int` for the number of classes.
-    max_num_instances: An `int` number of maximum number of instances in an image.
+    max_num_instances: An `int` for maximum number of instances in an image.
     use_gaussian_bump: A `boolean` indicating whether or not to splat a
       gaussian onto the heatmaps. If set to False, a value of 1 is placed at
       the would-be center of the gaussian.
@@ -310,7 +291,10 @@ def assign_centernet_targets(labels: Dict,
         num_boxes entries contain the y-center and x-center of a valid box.
         These are used to extract the regressed box features from the
         prediction when computing the loss
-    """
+        
+  Raises:
+    Exception: if datatype is not supported.
+  """
   if dtype == 'float16':
     dtype = tf.float16
   elif dtype == 'bfloat16':

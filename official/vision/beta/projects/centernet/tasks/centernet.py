@@ -41,6 +41,7 @@ from official.vision.beta.projects.centernet.utils.checkpoints import read_check
 
 @task_factory.register_task_cls(exp_cfg.CenterNetTask)
 class CenterNetTask(base_task.Task):
+  """Task definition for centernet."""
   
   def build_inputs(self,
                    params: exp_cfg.DataConfig,
@@ -173,8 +174,8 @@ class CenterNetTask(base_task.Task):
           backbone_name=self.task_config.checkpoint_backbone_name,
           head_name=self.task_config.checkpoint_head_name)
     else:
-      raise ValueError("Only support checkpoint sources of "
-                       "TFVision, ODAPI and Extremenet.")
+      raise ValueError('Only support checkpoint sources of '
+                       'TFVision, ODAPI and Extremenet.')
     
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
@@ -247,7 +248,8 @@ class CenterNetTask(base_task.Task):
     
     total_center_loss = 0.0
     for ct_heatmap in pred_ct_heatmap_list:
-      pred_flattened_ct_heatmap = loss_ops.flatten_spatial_dimensions(ct_heatmap)
+      pred_flattened_ct_heatmap = loss_ops.flatten_spatial_dimensions(
+          ct_heatmap)
       pred_flattened_ct_heatmap = tf.cast(pred_flattened_ct_heatmap, tf.float32)
       total_center_loss += object_center_loss_fn(
           target_tensor=true_flattened_ct_heatmap,

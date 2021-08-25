@@ -15,8 +15,10 @@
 
 """Configurations for loading checkpoints."""
 
-from dataclasses import dataclass, field
-from typing import Dict
+import dataclasses
+from typing import Dict, Optional
+
+import numpy as np
 
 from official.vision.beta.projects.centernet.utils.checkpoints import config_classes
 
@@ -26,11 +28,16 @@ ResidualBlockCFG = config_classes.ResidualBlockCFG
 HourglassCFG = config_classes.HourglassCFG
 
 
-@dataclass
+@dataclasses.dataclass
 class BackboneConfigData:
-  weights_dict: Dict = field(repr=False, default=None)
-  
+  """Backbone Config."""
+
+  weights_dict: Optional[Dict[str, np.ndarray]] = dataclasses.field(
+      repr=False, default=None)
+
   def get_cfg_list(self, name):
+    """Get list of block configs for the module."""
+
     if name == 'hourglass104_512':
       return [
           # Downsampling Layers
@@ -38,7 +45,7 @@ class BackboneConfigData:
               weights_dict=self.weights_dict['downsample_input']['conv_block']),
           ResidualBlockCFG(
               weights_dict=self.weights_dict['downsample_input'][
-                'residual_block']),
+                  'residual_block']),
           # Hourglass
           HourglassCFG(
               weights_dict=self.weights_dict['hourglass_network']['0']),
@@ -57,7 +64,7 @@ class BackboneConfigData:
           Conv2DBNCFG(
               weights_dict=self.weights_dict['output_conv']['1']),
       ]
-    
+
     elif name == 'extremenet':
       return [
           # Downsampling Layers
@@ -65,7 +72,7 @@ class BackboneConfigData:
               weights_dict=self.weights_dict['downsample_input']['conv_block']),
           ResidualBlockCFG(
               weights_dict=self.weights_dict['downsample_input'][
-                'residual_block']),
+                  'residual_block']),
           # Hourglass
           HourglassCFG(
               weights_dict=self.weights_dict['hourglass_network']['0']),
@@ -86,10 +93,13 @@ class BackboneConfigData:
       ]
 
 
-@dataclass
+@dataclasses.dataclass
 class HeadConfigData:
-  weights_dict: Dict = field(repr=False, default=None)
-  
+  """Head Config."""
+
+  weights_dict: Optional[Dict[str, np.ndarray]] = dataclasses.field(
+      repr=False, default=None)
+
   def get_cfg_list(self, name):
     if name == 'detection_2d':
       return [

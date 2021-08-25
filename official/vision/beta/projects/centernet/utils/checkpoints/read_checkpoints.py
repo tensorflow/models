@@ -67,8 +67,8 @@ def get_ckpt_weights_as_dict(ckpt_path):
   n_read = 0
   
   for key in variable_keys:
-    shape = shape_from_key[key]
-    dtype = dtype_from_key[key]
+    # shape = shape_from_key[key]
+    # dtype = dtype_from_key[key]
     value = reader.get_tensor(key)
     n_read += tf.size(value)
     update_weights_dict(weights_dict, key, value)
@@ -89,7 +89,7 @@ def write_dict_as_tree(dictionary, filename, spaces=0):
     spaces: Optional; Number of spaces to insert before writing 
       the dictionary key names
   """
-  if type(dictionary) is dict:
+  if isinstance(dictionary, dict):
     mode = "w" if spaces == 0 else "a"
     for key in dictionary.keys():
       with open(filename, mode) as fp:

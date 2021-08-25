@@ -17,7 +17,6 @@
 import tensorflow as tf
 
 from official.vision.beta.projects.centernet.ops import loss_ops
-from official.vision.beta.projects.centernet.ops import target_assigner
 
 
 def image_shape_to_grids(height: int, width: int):
@@ -75,21 +74,21 @@ def max_distance_for_overlap(height, width, min_iou):
   # Case where detected box is offset from ground truth and no box completely
   # contains the other.
   
-  distance_detection_offset = target_assigner.smallest_positive_root(
+  distance_detection_offset = loss_ops.smallest_positive_root(
       a=1, b=-(height + width),
       c=width * height * ((1 - min_iou) / (1 + min_iou))
   )
   
   # Case where detection is smaller than ground truth and completely contained
   # in it.
-  distance_detection_in_gt = target_assigner.smallest_positive_root(
+  distance_detection_in_gt = loss_ops.smallest_positive_root(
       a=4, b=-2 * (height + width),
       c=(1 - min_iou) * width * height
   )
   
   # Case where ground truth is smaller than detection and completely contained
   # in it.
-  distance_gt_in_detection = target_assigner.smallest_positive_root(
+  distance_gt_in_detection = loss_ops.smallest_positive_root(
       a=4 * min_iou, b=(2 * min_iou) * (width + height),
       c=(min_iou - 1) * width * height
   )

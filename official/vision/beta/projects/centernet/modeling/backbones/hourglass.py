@@ -80,7 +80,7 @@ class Hourglass(tf.keras.Model):
       use_sync_bn: If True, use synchronized batch normalization.
       norm_momentum: `float`, momentum for the batch normalization layers.
       norm_epsilon: `float`, epsilon for the batch normalization layers.
-      kernel_initializer: A `str` for kernel initializer of convolutional layers.
+      kernel_initializer: A `str` for kernel initializer of conv layers.
       kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
       bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
@@ -262,4 +262,5 @@ def build_hourglass(
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
-      kernel_regularizer=l2_regularizer, )
+      kernel_regularizer=l2_regularizer,
+  )

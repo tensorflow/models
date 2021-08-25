@@ -47,7 +47,7 @@ class CenterNetModel(tf.keras.Model):
            **kwargs) -> Mapping[str, tf.Tensor]:
     features = self._backbone(inputs)
     raw_outputs = self._head(features)
-    model_outputs = {"raw_output": raw_outputs}
+    model_outputs = {'raw_output': raw_outputs}
     if not training:
       predictions = self._detection_generator(raw_outputs)
       model_outputs.update(predictions)

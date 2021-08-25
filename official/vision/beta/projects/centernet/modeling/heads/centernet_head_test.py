@@ -19,8 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.projects.centernet.modeling.heads import \
-  centernet_head
+from official.vision.beta.projects.centernet.modeling.heads import centernet_head
 
 
 class CenterNetHeadTest(tf.test.TestCase, parameterized.TestCase):

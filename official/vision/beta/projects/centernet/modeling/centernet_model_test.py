@@ -55,15 +55,16 @@ class CenterNetTest(parameterized.TestCase, tf.test.TestCase):
     )
     
     outputs = model(tf.zeros((5, 512, 512, 3)))
-    self.assertEqual(len(outputs['raw_output']), 3)
-    self.assertEqual(len(outputs['raw_output']['ct_heatmaps']), 2)
-    self.assertEqual(len(outputs['raw_output']['ct_offset']), 2)
-    self.assertEqual(len(outputs['raw_output']['ct_size']), 2)
+    self.assertLen(outputs['raw_output'], 3)
+    self.assertLen(outputs['raw_output']['ct_heatmaps'], 2)
+    self.assertLen(outputs['raw_output']['ct_offset'], 2)
+    self.assertLen(outputs['raw_output']['ct_size'], 2)
     self.assertEqual(outputs['raw_output']['ct_heatmaps'][0].shape,
                      (5, 128, 128, 90))
     self.assertEqual(outputs['raw_output']['ct_offset'][0].shape,
                      (5, 128, 128, 2))
-    self.assertEqual(outputs['raw_output']['ct_size'][0].shape, (5, 128, 128, 2))
+    self.assertEqual(outputs['raw_output']['ct_size'][0].shape,
+                     (5, 128, 128, 2))
 
 
 if __name__ == '__main__':
