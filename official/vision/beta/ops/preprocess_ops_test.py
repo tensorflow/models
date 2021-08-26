@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """Tests for preprocess_ops.py."""
 
 import io
@@ -42,7 +41,7 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
       ([12, 2], 10),
       ([13, 2, 3], 10),
   )
-  def testPadToFixedSize(self, input_shape, output_size):
+  def test_pad_to_fixed_size(self, input_shape, output_size):
     # Copies input shape to padding shape.
     clip_shape = input_shape[:]
     clip_shape[0] = min(output_size, clip_shape[0])
@@ -63,16 +62,11 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
       (100, 256, 128, 256, 32, 1.0, 1.0, 128, 256),
       (200, 512, 200, 128, 32, 0.25, 0.25, 224, 128),
   )
-  def testResizeAndCropImageRectangluarCase(self,
-                                            input_height,
-                                            input_width,
-                                            desired_height,
-                                            desired_width,
-                                            stride,
-                                            scale_y,
-                                            scale_x,
-                                            output_height,
-                                            output_width):
+  def test_resize_and_crop_image_rectangluar_case(self, input_height,
+                                                  input_width, desired_height,
+                                                  desired_width, stride,
+                                                  scale_y, scale_x,
+                                                  output_height, output_width):
     image = tf.convert_to_tensor(
         np.random.rand(input_height, input_width, 3))
 
@@ -98,16 +92,10 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
       (100, 200, 220, 220, 32, 1.1, 1.1, 224, 224),
       (512, 512, 1024, 1024, 32, 2.0, 2.0, 1024, 1024),
   )
-  def testResizeAndCropImageSquareCase(self,
-                                       input_height,
-                                       input_width,
-                                       desired_height,
-                                       desired_width,
-                                       stride,
-                                       scale_y,
-                                       scale_x,
-                                       output_height,
-                                       output_width):
+  def test_resize_and_crop_image_square_case(self, input_height, input_width,
+                                             desired_height, desired_width,
+                                             stride, scale_y, scale_x,
+                                             output_height, output_width):
     image = tf.convert_to_tensor(
         np.random.rand(input_height, input_width, 3))
 
@@ -135,18 +123,10 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
       (100, 200, 80, 100, 32, 0.5, 0.5, 50, 100, 96, 128),
       (200, 100, 80, 100, 32, 0.5, 0.5, 100, 50, 128, 96),
   )
-  def testResizeAndCropImageV2(self,
-                               input_height,
-                               input_width,
-                               short_side,
-                               long_side,
-                               stride,
-                               scale_y,
-                               scale_x,
-                               desired_height,
-                               desired_width,
-                               output_height,
-                               output_width):
+  def test_resize_and_crop_image_v2(self, input_height, input_width, short_side,
+                                    long_side, stride, scale_y, scale_x,
+                                    desired_height, desired_width,
+                                    output_height, output_width):
     image = tf.convert_to_tensor(
         np.random.rand(input_height, input_width, 3))
     image_shape = tf.shape(image)[0:2]
@@ -176,9 +156,7 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(
       (400, 600), (600, 400),
   )
-  def testCenterCropImage(self,
-                          input_height,
-                          input_width):
+  def test_center_crop_image(self, input_height, input_width):
     image = tf.convert_to_tensor(
         np.random.rand(input_height, input_width, 3))
     cropped_image = preprocess_ops.center_crop_image(image)
@@ -188,9 +166,7 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(
       (400, 600), (600, 400),
   )
-  def testCenterCropImageV2(self,
-                            input_height,
-                            input_width):
+  def test_center_crop_image_v2(self, input_height, input_width):
     image_bytes = tf.constant(
         _encode_image(
             np.uint8(np.random.rand(input_height, input_width, 3) * 255),
@@ -204,9 +180,7 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(
       (400, 600), (600, 400),
   )
-  def testRandomCropImage(self,
-                          input_height,
-                          input_width):
+  def test_random_crop_image(self, input_height, input_width):
     image = tf.convert_to_tensor(
         np.random.rand(input_height, input_width, 3))
     _ = preprocess_ops.random_crop_image(image)
@@ -214,9 +188,7 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(
       (400, 600), (600, 400),
   )
-  def testRandomCropImageV2(self,
-                            input_height,
-                            input_width):
+  def test_random_crop_image_v2(self, input_height, input_width):
     image_bytes = tf.constant(
         _encode_image(
             np.uint8(np.random.rand(input_height, input_width, 3) * 255),
@@ -224,6 +196,21 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
         dtype=tf.string)
     _ = preprocess_ops.random_crop_image_v2(
         image_bytes, tf.constant([input_height, input_width, 3], tf.int32))
+
+  @parameterized.parameters((640, 640, 20), (1280, 1280, 30))
+  def test_random_crop(self, input_height, input_width, num_boxes):
+    image = tf.convert_to_tensor(np.random.rand(input_height, input_width, 3))
+    boxes_height = np.random.randint(0, input_height, size=(num_boxes, 1))
+    top = np.random.randint(0, high=(input_height - boxes_height))
+    down = top + boxes_height
+    boxes_width = np.random.randint(0, input_width, size=(num_boxes, 1))
+    left = np.random.randint(0, high=(input_width - boxes_width))
+    right = left + boxes_width
+    boxes = tf.constant(
+        np.concatenate([top, left, down, right], axis=-1), tf.float32)
+    labels = tf.constant(
+        np.random.randint(low=0, high=num_boxes, size=(num_boxes,)), tf.int64)
+    _ = preprocess_ops.random_crop(image, boxes, labels)
 
 
 if __name__ == '__main__':
