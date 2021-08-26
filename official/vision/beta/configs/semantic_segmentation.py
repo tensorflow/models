@@ -121,7 +121,7 @@ class SemanticSegmentationTask(cfg.TaskConfig):
 def semantic_segmentation() -> cfg.ExperimentConfig:
   """Semantic segmentation general."""
   return cfg.ExperimentConfig(
-      task=SemanticSegmentationModel(),
+      task=SemanticSegmentationTask(),
       trainer=cfg.TrainerConfig(),
       restrictions=[
           'task.train_data.is_training != None',
