@@ -22,6 +22,7 @@ from official.modeling import hyperparams
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.projects.centernet.modeling.layers import nn_blocks as cn_nn_blocks
 from official.vision.beta.modeling.layers import nn_blocks
+from official.vision.beta.modeling.backbones import mobilenet
 
 HOURGLASS_SPECS = {
     10: {
@@ -117,7 +118,7 @@ class Hourglass(tf.keras.Model):
       prelayer_kernel_size = 3
       prelayer_strides = 1
     
-    x_downsampled = nn_blocks.Conv2DBNBlock(
+    x_downsampled = mobilenet.Conv2DBNBlock(
         filters=self._input_channel_dims,
         kernel_size=prelayer_kernel_size,
         strides=prelayer_strides,
@@ -150,7 +151,7 @@ class Hourglass(tf.keras.Model):
           blocks_per_stage=self._blocks_per_stage,
       )(x_downsampled)
       
-      x_hg = nn_blocks.Conv2DBNBlock(
+      x_hg = mobilenet.Conv2DBNBlock(
           filters=inp_filters,
           kernel_size=3,
           strides=1,
@@ -168,7 +169,7 @@ class Hourglass(tf.keras.Model):
       
       # Intermediate conv and residual layers between hourglasses
       if i < num_hourglasses - 1:
-        inter_hg_conv1 = nn_blocks.Conv2DBNBlock(
+        inter_hg_conv1 = mobilenet.Conv2DBNBlock(
             filters=inp_filters,
             kernel_size=1,
             strides=1,
@@ -181,7 +182,7 @@ class Hourglass(tf.keras.Model):
             norm_epsilon=self._norm_epsilon
         )(x_downsampled)
         
-        inter_hg_conv2 = nn_blocks.Conv2DBNBlock(
+        inter_hg_conv2 = mobilenet.Conv2DBNBlock(
             filters=inp_filters,
             kernel_size=1,
             strides=1,
