@@ -23,13 +23,12 @@ from official.vision.beta.ops import preprocess_ops
 
 
 class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
-
+  
   def check_labels_correct(self,
                            boxes,
                            classes,
                            output_size,
-                           input_size,
-                           use_odapi=False):
+                           input_size):
     max_num_instances = 128
     num_detections = len(boxes)
     boxes = tf.constant(boxes, dtype=tf.float32)
@@ -39,7 +38,7 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
         boxes, max_num_instances, 0)
     classes = preprocess_ops.clip_or_pad_to_fixed_size(
         classes, max_num_instances, 0)
-
+    
     # pylint: disable=g-long-lambda
     labels = target_assigner.assign_centernet_targets(
         labels={
@@ -48,8 +47,7 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
             'classes': classes
         },
         output_size=output_size,
-        input_size=input_size,
-        use_odapi_gaussian=use_odapi)
+        input_size=input_size)
     
     ct_heatmaps = labels['ct_heatmaps']
     ct_offset = labels['ct_offset']
@@ -102,8 +100,7 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(tf.cast(box_mask[:3], tf.int32),
                         tf.repeat(1, repeats=3))
   
-  @parameterized.parameters(True, False)
-  def test_generate_targets_no_scale(self, use_odapi):
+  def test_generate_targets_no_scale(self):
     boxes = [
         (10, 300, 15, 370),
         (100, 300, 150, 370),
@@ -115,11 +112,9 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
     self.check_labels_correct(boxes=boxes,
                               classes=classes,
                               output_size=sizes,
-                              input_size=sizes,
-                              use_odapi=use_odapi)
+                              input_size=sizes)
   
-  @parameterized.parameters(True, False)
-  def test_generate_targets_stride_4(self, use_odapi):
+  def test_generate_targets_stride_4(self):
     boxes = [
         (10, 300, 15, 370),
         (100, 300, 150, 370),
@@ -132,11 +127,9 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
     self.check_labels_correct(boxes=boxes,
                               classes=classes,
                               output_size=output_size,
-                              input_size=input_size,
-                              use_odapi=use_odapi)
+                              input_size=input_size)
   
-  @parameterized.parameters(True, False)
-  def test_generate_targets_stride_8(self, use_odapi):
+  def test_generate_targets_stride_8(self):
     boxes = [
         (10, 300, 15, 370),
         (100, 300, 150, 370),
@@ -149,11 +142,9 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
     self.check_labels_correct(boxes=boxes,
                               classes=classes,
                               output_size=output_size,
-                              input_size=input_size,
-                              use_odapi=use_odapi)
+                              input_size=input_size)
   
-  @parameterized.parameters(True, False)
-  def test_batch_generate_targets(self, use_odapi):
+  def test_batch_generate_targets(self):
     
     input_size = [512, 512]
     output_size = [128, 128]
@@ -170,17 +161,17 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
     boxes = preprocess_ops.clip_or_pad_to_fixed_size(
         boxes, max_num_instances, 0)
     classes = preprocess_ops.clip_or_pad_to_fixed_size(
-        classes, max_num_instances, -1)
+        classes, max_num_instances, 0)
     
     boxes = tf.stack([boxes, boxes], axis=0)
     classes = tf.stack([classes, classes], axis=0)
-    
+
+    # pylint: disable=g-long-lambda
     labels = tf.map_fn(
         fn=lambda x: target_assigner.assign_centernet_targets(
             labels=x,
             output_size=output_size,
-            input_size=input_size,
-            use_odapi_gaussian=use_odapi),
+            input_size=input_size),
         elems={
             'boxes': boxes,
             'num_detections': tf.constant([3, 3]),

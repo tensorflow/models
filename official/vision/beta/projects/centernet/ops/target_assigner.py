@@ -14,11 +14,11 @@
 
 """Generate targets (center, scale, offsets,...) for centernet."""
 
-from typing import List, Dict, Tuple
+from typing import List, Dict
 
 import tensorflow as tf
-from official.vision.beta.projects.centernet.ops import target_assigner_odapi
 from official.vision.beta.projects.centernet.ops import loss_ops
+
 
 @tf.function
 def cartesian_product(*tensors, repeat: int = 1) -> tf.Tensor:
@@ -39,7 +39,7 @@ def cartesian_product(*tensors, repeat: int = 1) -> tf.Tensor:
        [2, 1],
        [2, 2],
        [2, 3]], dtype=int32)>
-  
+
   Args:
     *tensors: a list of 1D tensors to compute the product of
     repeat: an `int` number of times to repeat the tensors
@@ -53,21 +53,45 @@ def cartesian_product(*tensors, repeat: int = 1) -> tf.Tensor:
                     (-1, len(tensors)))
 
 
-def gaussian_radius(det_size, min_overlap=0.7) -> int:
-  """Compute desired gaussian radius.
-
-  Given a bounding box size, returns a lower bound on how far apart the
-  corners of another bounding box can lie while still maintaining the given
-  minimum overlap, or IoU.
+def image_shape_to_grids(height: int, width: int):
+  """Computes xy-grids given the shape of the image.
 
   Args:
-    det_size: tuple of `int` representing height and width.
-    min_overlap: `float` for minimum IoU desired.
+    height: The height of the image.
+    width: The width of the image.
 
   Returns:
-    int representing desired gaussian radius
+    A tuple of two tensors:
+      y_grid: A float tensor with shape [height, width] representing the
+        y-coordinate of each pixel grid.
+      x_grid: A float tensor with shape [height, width] representing the
+        x-coordinate of each pixel grid.
   """
-  height, width = det_size[0], det_size[1]
+  out_height = tf.cast(height, tf.float32)
+  out_width = tf.cast(width, tf.float32)
+  x_range = tf.range(out_width, dtype=tf.float32)
+  y_range = tf.range(out_height, dtype=tf.float32)
+  x_grid, y_grid = tf.meshgrid(x_range, y_range, indexing='xy')
+  return (y_grid, x_grid)
+
+
+def max_distance_for_overlap(height, width, min_iou):
+  """Computes how far apart bbox corners can lie while maintaining the iou.
+
+  Given a bounding box size, this function returns a lower bound on how far
+  apart the corners of another box can lie while still maintaining the given
+  IoU. The implementation is based on the `gaussian_radius` function in the
+  Objects as Points github repo: https://github.com/xingyizhou/CenterNet
+
+  Args:
+    height: A 1-D float Tensor representing height of the ground truth boxes.
+    width: A 1-D float Tensor representing width of the ground truth boxes.
+    min_iou: A float representing the minimum IoU desired.
+
+  Returns:
+   distance: A 1-D Tensor of distances, of the same length as the input
+     height and width tensors.
+  """
   
   # Given that the detected box is displaced at a distance `d`, the exact
   # IoU value will depend on the angle at which each corner is displaced.
@@ -76,158 +100,125 @@ def gaussian_radius(det_size, min_overlap=0.7) -> int:
   # what is actually realizable and ensures that any box with corners less
   # than `d` distance apart will always have an IoU greater than or equal
   # to `min_iou`
-
+  
   # The following 3 cases can be worked on geometrically and come down to
   # solving a quadratic inequality. In each case, to ensure `min_iou` we use
   # the smallest positive root of the equation.
-
+  
   # Case where detected box is offset from ground truth and no box completely
   # contains the other.
   
-  a1 = 1
-  b1 = -(height + width)
-  c1 = width * height * (1 - min_overlap) / (1 + min_overlap)
-  r1 = loss_ops.smallest_positive_root(a1, b1, c1)
+  distance_detection_offset = loss_ops.smallest_positive_root(
+      a=1, b=-(height + width),
+      c=width * height * ((1 - min_iou) / (1 + min_iou))
+  )
   
   # Case where detection is smaller than ground truth and completely contained
   # in it.
-  
-  a2 = 4
-  b2 = -2 * (height + width)
-  c2 = (1 - min_overlap) * width * height
-  r2 = loss_ops.smallest_positive_root(a2, b2, c2)
+  distance_detection_in_gt = loss_ops.smallest_positive_root(
+      a=4, b=-2 * (height + width),
+      c=(1 - min_iou) * width * height
+  )
   
   # Case where ground truth is smaller than detection and completely contained
   # in it.
+  distance_gt_in_detection = loss_ops.smallest_positive_root(
+      a=4 * min_iou, b=(2 * min_iou) * (width + height),
+      c=(min_iou - 1) * width * height
+  )
   
-  a3 = 4 * min_overlap
-  b3 = 2 * min_overlap * (height + width)
-  c3 = (min_overlap - 1) * width * height
-  r3 = loss_ops.smallest_positive_root(a3, b3, c3)
-  
-  return tf.reduce_min([r1, r2, r3], axis=0)
+  return tf.reduce_min([distance_detection_offset,
+                        distance_gt_in_detection,
+                        distance_detection_in_gt], axis=0)
 
 
-def gaussian_penalty(radius: int, dtype=tf.float32) -> tf.Tensor:
-  """This represents the penalty reduction around a point.
+def compute_std_dev_from_box_size(boxes_height, boxes_width, min_overlap):
+  """Computes the standard deviation of the Gaussian kernel from box size.
 
   Args:
-    radius: An `int` for radius of penalty reduction.
-    dtype: datatype of returned tensor.
+    boxes_height: A 1D tensor with shape [num_instances] representing the height
+      of each box.
+    boxes_width: A 1D tensor with shape [num_instances] representing the width
+      of each box.
+    min_overlap: The minimum IOU overlap that boxes need to have to not be
+      penalized.
 
   Returns:
-    tf.Tensor of shape (2 * radius + 1, 2 * radius + 1).
+    A 1D tensor with shape [num_instances] representing the computed Gaussian
+    sigma for each of the box.
   """
-  width = 2 * radius + 1
-  sigma = tf.cast(radius / 3, dtype=dtype)
-  
-  range_width = tf.range(width)
-  range_width = tf.cast(range_width - tf.expand_dims(radius, axis=-1),
-                        dtype=dtype)
-  
-  x = tf.expand_dims(range_width, axis=-1)
-  y = tf.expand_dims(range_width, axis=-2)
-  
-  exponent = ((-1 * (x ** 2) - (y ** 2)) / (2 * sigma ** 2))
-  return tf.math.exp(exponent)
+  # We are dividing by 3 so that points closer than the computed
+  # distance have a >99% CDF.
+  sigma = max_distance_for_overlap(boxes_height, boxes_width, min_overlap)
+  sigma = (2 * tf.math.maximum(tf.math.floor(sigma), 0.0) + 1) / 6.0
+  return sigma
 
 
 @tf.function
-def draw_gaussian(hm_shape, blob, dtype, scaling_factor=1):
-  """Draws an instance of a 2D gaussian on a heatmap.
-
-  A heatmap with shape hm_shape and of type dtype is generated with
-  a gaussian with a given center, radius, and scaling factor
-
-  Args:
-    hm_shape: A `list` of `Tensor` of shape [3] that gives the height, width,
-      and number of channels in the heatmap
-    blob: A `Tensor` of shape [4] that gives the channel number, y, x, and
-      radius for the desired gaussian to be drawn onto
-    dtype: The desired type of the heatmap
-    scaling_factor: A `int` that can be used to scale the magnitude of the
-      gaussian
-  
-  Returns:
-    A `Tensor` with shape hm_shape and type dtype with a 2D gaussian
-  """
-  gaussian_heatmap = tf.zeros(shape=hm_shape, dtype=dtype)
-  
-  blob = tf.cast(blob, tf.int32)
-  obj_class, y, x, radius = blob[0], blob[1], blob[2], blob[3]
-  
-  height, width = hm_shape[0], hm_shape[1]
-  
-  left = tf.math.minimum(x, radius)
-  right = tf.math.minimum(width - x, radius + 1)
-  top = tf.math.minimum(y, radius)
-  bottom = tf.math.minimum(height - y, radius + 1)
-  
-  gaussian = gaussian_penalty(radius=radius, dtype=dtype)
-  gaussian = gaussian[radius - top:radius + bottom, radius - left:radius + right]
-  gaussian = tf.reshape(gaussian, [-1])
-  
-  heatmap_indices = cartesian_product(
-      tf.range(y - top, y + bottom), tf.range(x - left, x + right), [obj_class])
-  gaussian_heatmap = tf.tensor_scatter_nd_update(
-      gaussian_heatmap, heatmap_indices, gaussian * scaling_factor)
-  
-  return gaussian_heatmap
-
-
-def assign_center_targets(y_center: tf.Tensor,
+def assign_center_targets(out_height: int,
+                          out_width: int,
+                          y_center: tf.Tensor,
                           x_center: tf.Tensor,
-                          box_heights_widths: tf.Tensor,
-                          classes: tf.Tensor,
-                          gaussian_rad: int,
-                          gaussian_iou: float,
-                          output_shape: Tuple[int, int, int]):
-  """Computes the object center heatmap target.
-  
+                          boxes_height: tf.Tensor,
+                          boxes_width: tf.Tensor,
+                          channel_onehot: tf.Tensor,
+                          gaussian_iou: float):
+  """Computes the object center heatmap target based on ODAPI implementation.
+
   Args:
+    out_height: int, height of output to the model. This is used to
+      determine the height of the output.
+    out_width: int, width of the output to the model. This is used to
+      determine the width of the output.
     y_center: A 1D tensor with shape [num_instances] representing the
       y-coordinates of the instances in the output space coordinates.
     x_center: A 1D tensor with shape [num_instances] representing the
       x-coordinates of the instances in the output space coordinates.
-    box_heights_widths: A 1D tensor with shape [num_instances， 2] representing
-    the height and width of each box.
-    classes: A 1D tensor with shape [num_instances] representing the class
-      labels for each point
-    gaussian_rad: A `int` for the desired radius of the gaussian. If this
-      value is set to -1, then the radius is computed using gaussian_iou.
-    gaussian_iou: A `float` number for the minimum desired IOU used when
-      determining the gaussian radius of center locations in the heatmap.
-    output_shape: A `tuple` indicating the output shape of [output_height,
-      output_width, num_classes]
+    boxes_height: A 1D tensor with shape [num_instances] representing the height
+      of each box.
+    boxes_width: A 1D tensor with shape [num_instances] representing the width
+      of each box.
+    channel_onehot: A 2D tensor with shape [num_instances, num_channels]
+      representing the one-hot encoded channel labels for each point.
+    gaussian_iou: The minimum IOU overlap that boxes need to have to not be
+      penalized.
 
   Returns:
-    heatmap: A Tensor of size [output_height, output_width, num_classes]
-      representing the per class center heatmap. output_height and output_width
-      are computed by dividing the input height and width by the stride
-      specified during initialization.
+    heatmap: A Tensor of size [output_height, output_width,
+      num_classes] representing the per class center heatmap. output_height
+      and output_width are computed by dividing the input height and width by
+      the stride specified during initialization.
   """
-  num_objects = classes.get_shape()[0]
-  # First compute the desired gaussian radius
-  if gaussian_rad == -1:
-    radius = tf.map_fn(
-        fn=lambda x: gaussian_radius(x, gaussian_iou),
-        elems=tf.math.ceil(box_heights_widths))
-    radius = tf.math.maximum(tf.math.floor(radius),
-                             tf.cast(1.0, radius.dtype))
-  else:
-    radius = tf.constant([gaussian_rad] * num_objects, box_heights_widths.dtype)
-  # These blobs contain information needed to draw the gaussian
-  ct_blobs = tf.stack([classes, y_center, x_center, radius],
-                      axis=-1)
+  (y_grid, x_grid) = image_shape_to_grids(out_height, out_width)
   
-  # Get individual gaussian contributions from each bounding box
-  ct_gaussians = tf.map_fn(
-      fn=lambda x: draw_gaussian(output_shape, x, box_heights_widths.dtype),
-      elems=ct_blobs)
+  sigma = compute_std_dev_from_box_size(boxes_height, boxes_width,
+                                        gaussian_iou)
   
-  # Combine contributions into single heatmaps
-  ct_heatmap = tf.math.reduce_max(ct_gaussians, axis=0)
-  return ct_heatmap
+  num_instances, num_channels = (
+      loss_ops.combined_static_and_dynamic_shape(channel_onehot))
+  
+  x_grid = tf.expand_dims(x_grid, 2)
+  y_grid = tf.expand_dims(y_grid, 2)
+  # The raw center coordinates in the output space.
+  x_diff = x_grid - tf.math.floor(x_center)
+  y_diff = y_grid - tf.math.floor(y_center)
+  squared_distance = x_diff ** 2 + y_diff ** 2
+  
+  gaussian_map = tf.exp(-squared_distance / (2 * sigma * sigma))
+  
+  reshaped_gaussian_map = tf.expand_dims(gaussian_map, axis=-1)
+  reshaped_channel_onehot = tf.reshape(channel_onehot,
+                                       (1, 1, num_instances, num_channels))
+  gaussian_per_box_per_class_map = (
+      reshaped_gaussian_map * reshaped_channel_onehot)
+  
+  # Take maximum along the "instance" dimension so that all per-instance
+  # heatmaps of the same class are merged together.
+  heatmap = tf.reduce_max(gaussian_per_box_per_class_map, axis=2)
+  
+  # Maximum of an empty tensor is -inf, the following is to avoid that.
+  heatmap = tf.maximum(heatmap, 0)
+  return heatmap
 
 
 def assign_centernet_targets(labels: Dict[str, tf.Tensor],
@@ -235,9 +226,6 @@ def assign_centernet_targets(labels: Dict[str, tf.Tensor],
                              input_size: List[int],
                              num_classes: int = 90,
                              max_num_instances: int = 128,
-                             use_gaussian_bump: bool = True,
-                             use_odapi_gaussian: bool = False,
-                             gaussian_rad: int = -1,
                              gaussian_iou: float = 0.7,
                              class_offset: int = 0,
                              dtype='float32'):
@@ -262,13 +250,6 @@ def assign_centernet_targets(labels: Dict[str, tf.Tensor],
       the image
     num_classes: A `Tensor` or `int` for the number of classes.
     max_num_instances: An `int` for maximum number of instances in an image.
-    use_gaussian_bump: A `boolean` indicating whether or not to splat a
-      gaussian onto the heatmaps. If set to False, a value of 1 is placed at
-      the would-be center of the gaussian.
-    use_odapi_gaussian: a `boolean` indicating whether ot not to use center
-      target generating logic from ODAPI.
-    gaussian_rad: A `int` for the desired radius of the gaussian. If this
-      value is set to -1, then the radius is computed using gaussian_iou.
     gaussian_iou: A `float` number for the minimum desired IOU used when
       determining the gaussian radius of center locations in the heatmap.
     class_offset: A `int` for subtracting a value from the ground truth classes
@@ -311,9 +292,9 @@ def assign_centernet_targets(labels: Dict[str, tf.Tensor],
   num_objects = labels['num_detections']
   # shape of labels['boxes'] is [max_num_instances, 4]
   # [ymin, xmin, ymax, xmax]
-  boxes = tf.cast(labels['boxes'], dtype)[:num_objects]
+  boxes = tf.cast(labels['boxes'], dtype)
   # shape of labels['classes'] is [max_num_instances, ]
-  classes = tf.cast(labels['classes'] - class_offset, dtype)[:num_objects]
+  classes = tf.cast(labels['classes'] - class_offset, dtype)
   
   # Compute scaling factors for center/corner positions on heatmap
   # input_size = tf.cast(input_size, dtype)
@@ -376,58 +357,35 @@ def assign_centernet_targets(labels: Dict[str, tf.Tensor],
   box_indices = tf.zeros((max_num_instances, 2), tf.int32)
   
   if num_objects > 0:
-    if use_gaussian_bump:
-      # Need to gaussians around the centers and corners of the objects
-      if not use_odapi_gaussian:
-        ct_heatmap = assign_center_targets(
-            box_heights_widths=box_heights_widths,
-            classes=classes,
-            y_center=scale_yct_floor,
-            x_center=scale_xct_floor,
-            gaussian_rad=gaussian_rad,
-            gaussian_iou=gaussian_iou,
-            output_shape=(output_h, output_w, num_classes))
-      else:
-        ct_heatmap = target_assigner_odapi.assign_center_targets_odapi(
-            out_height=output_h,
-            out_width=output_w,
-            y_center=scale_yct_floor,
-            x_center=scale_xct_floor,
-            boxes_height=box_heights,
-            boxes_width=box_widths,
-            channel_onehot=tf.one_hot(tf.cast(classes, tf.int32),
-                                      num_classes, off_value=0.),
-            gaussian_iou=gaussian_iou)
-    else:
-      # Instead of a gaussian, insert 1s in the center and corner heatmaps
-      # [num_objects, 3]
-      ct_hm_update_indices = tf.cast(
-          tf.stack([scale_yct_floor, scale_xct_floor, classes], axis=-1),
-          tf.int32)
-      
-      ct_heatmap = tf.tensor_scatter_nd_update(ct_heatmap,
-                                               ct_hm_update_indices,
-                                               [1] * num_objects)
+    # Need to gaussians around the centers and corners of the objects
+    ct_heatmap = assign_center_targets(
+        out_height=output_h,
+        out_width=output_w,
+        y_center=scale_yct_floor[:num_objects],
+        x_center=scale_xct_floor[:num_objects],
+        boxes_height=box_heights[:num_objects],
+        boxes_width=box_widths[:num_objects],
+        channel_onehot=tf.one_hot(tf.cast(classes[:num_objects], tf.int32),
+                                  num_classes, off_value=0.),
+        gaussian_iou=gaussian_iou)
     
     # Indices used to update offsets and sizes for valid box instances
     update_indices = cartesian_product(
-        tf.range(num_objects), tf.range(2))
+        tf.range(max_num_instances), tf.range(2))
     # [num_objects, 2, 2]
-    update_indices = tf.reshape(update_indices, shape=[num_objects, 2, 2])
-    
+    update_indices = tf.reshape(update_indices, shape=[max_num_instances, 2, 2])
+
     # Write the offsets of each box instance
     ct_offset = tf.tensor_scatter_nd_update(
         ct_offset, update_indices, ct_offset_values)
-    
+
     # Write the size of each bounding box
     size = tf.tensor_scatter_nd_update(
         size, update_indices, box_heights_widths)
-    
+
     # Initially the mask is zeros, so now we unmask each valid box instance
-    mask_indices = tf.expand_dims(tf.range(num_objects), -1)
-    mask_values = tf.repeat(1, num_objects)
-    box_mask = tf.tensor_scatter_nd_update(box_mask, mask_indices, mask_values)
-    
+    box_mask = tf.where(tf.range(max_num_instances) < num_objects, 1, 0)
+
     # Write the y and x coordinate of each box center in the heatmap
     box_index_values = tf.cast(
         tf.stack([scale_yct_floor, scale_xct_floor], axis=-1),

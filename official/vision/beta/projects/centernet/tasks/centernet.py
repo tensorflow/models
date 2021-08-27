@@ -186,7 +186,7 @@ class CenterNetTask(base_task.Task):
                    aux_losses=None):
     """Build losses."""
     input_size = self.task_config.model.input_size[0:2]
-    output_size = outputs['ct_heatmaps'][0].get_shape()[1:3]
+    output_size = outputs['ct_heatmaps'][0].get_shape().as_list()[1:3]
     
     gt_label = tf.map_fn(
         fn=lambda x: target_assigner.assign_centernet_targets(
@@ -195,9 +195,6 @@ class CenterNetTask(base_task.Task):
             output_size=output_size,
             num_classes=self.task_config.model.num_classes,
             max_num_instances=self.task_config.model.max_num_instances,
-            use_gaussian_bump=self.task_config.losses.use_gaussian_bump,
-            use_odapi_gaussian=self.task_config.losses.use_odapi_gaussian,
-            gaussian_rad=self.task_config.losses.gaussian_rad,
             gaussian_iou=self.task_config.losses.gaussian_iou,
             class_offset=self.task_config.losses.class_offset),
         elems=labels,

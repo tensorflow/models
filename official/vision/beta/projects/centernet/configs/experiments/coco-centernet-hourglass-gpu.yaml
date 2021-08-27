@@ -34,8 +34,6 @@ task:
       offset_weight: 1.0
       scale_weight: 0.1
     segmentation:
-    use_gaussian_bump: true
-    gaussian_rad: -1
     gaussian_iou: 0.7
   per_category_metrics: false
   weight_decay: 0.0005
