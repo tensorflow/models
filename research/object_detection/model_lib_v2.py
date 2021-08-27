@@ -210,7 +210,8 @@ def eager_train_step(detection_model,
                      optimizer,
                      add_regularization_loss=True,
                      clip_gradients_value=None,
-                     num_replicas=1.0):
+                     num_replicas=1.0,
+                     callbacks=None):
   """Process a single training batch.
 
   This method computes the loss for the model on a single training batch,
@@ -315,7 +316,8 @@ def eager_train_step(detection_model,
     gradients, _ = tf.clip_by_global_norm(gradients, clip_gradients_value)
   optimizer.apply_gradients(zip(gradients, trainable_variables))
 
-  return losses_dict
+  # return losses_dict  (original)
+  return total_loss,losses_dict,learning_rate,global_step
 
 
 def validate_tf_v2_checkpoint_restore_map(checkpoint_restore_map):
@@ -626,7 +628,7 @@ def train_loop(
                 step=global_step,
                 data=features[fields.InputDataFields.image],
                 max_outputs=3)
-          losses_dict = eager_train_step(
+          loss,ld,lr,gs = eager_train_step(
               detection_model,
               features,
               labels,
@@ -634,9 +636,11 @@ def train_loop(
               optimizer,
               add_regularization_loss=add_regularization_loss,
               clip_gradients_value=clip_gradients_value,
-              num_replicas=strategy.num_replicas_in_sync)
+              num_replicas=strategy.num_replicas_in_sync,
+              callbacks=kwargs['callbacks'])
           global_step.assign_add(1)
-          return losses_dict
+          # return losses_dict
+          return loss,ld,lr,gs
 
         def _sample_and_train(strategy, train_step_fn, data_iterator):
           features, labels = data_iterator.next()
@@ -675,7 +679,10 @@ def train_loop(
         for _ in range(global_step.value(), train_steps,
                        num_steps_per_iteration):
 
-          losses_dict = _dist_train_step(train_input_iter)
+          #losses_dict = _dist_train_step(train_input_iter)
+          tf.config.experimental_run_functions_eagerly(True)
+          loss = _dist_train_step(train_input_iter)
+          tf.config.experimental_run_functions_eagerly(False)
 
           time_taken = time.time() - last_step_time
           last_step_time = time.time()
