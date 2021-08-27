@@ -638,5 +638,11 @@ def random_saturation(image: tf.Tensor, saturation: Optional[float] = 0.,
   assert saturation >= 0, '`saturation` must be positive'
   saturation = tf.random.uniform(
       [], max(0, 1 - saturation), 1 + saturation, seed=seed, dtype=tf.float32)
-  return augment.blend(
-    tf.repeat(tf.image.rgb_to_grayscale(image), 3, axis=-1), image, saturation)
+  return _saturation(image, saturation)
+
+  
+def _saturation(image: tf.Tensor, 
+                saturation: Optional[float] = 0.) -> tf.Tensor:
+  return augment.blend(tf.repeat(tf.image.rgb_to_grayscale(image), 3, axis=-1),
+                       image,
+                       saturation)
