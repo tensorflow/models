@@ -715,7 +715,7 @@ class MobileNet(tf.keras.Model):
       intermediate_endpoints = {}
       if block_def.block_fn == 'convbn':
 
-        net = nn_blocks.Conv2DBNBlock(
+        net = Conv2DBNBlock(
             filters=block_def.filters,
             kernel_size=block_def.kernel_size,
             strides=block_def.strides,
