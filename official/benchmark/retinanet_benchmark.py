@@ -287,7 +287,7 @@ class DetectionBenchmarkReal(DetectionAccuracy):
     params['train']['iterations_per_loop'] = 500
     FLAGS.model_dir = self._get_model_dir('real_benchmark_4x4_tpu_coco')
     FLAGS.strategy_type = 'tpu'
-    self._run_and_report_benchmark(params, do_eval=False, warmup=0)
+    self._run_and_report_benchmark(params, do_eval=False, warmup=1)
 
   @flagsaver.flagsaver
   def benchmark_2x2_tpu_coco_mlir(self):
