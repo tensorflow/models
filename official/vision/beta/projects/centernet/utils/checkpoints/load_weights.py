@@ -16,6 +16,7 @@
 """Functions used to load the ODAPI CenterNet checkpoint."""
 
 from official.vision.beta.modeling.layers import nn_blocks
+from official.vision.beta.modeling.backbones import mobilenet
 from official.vision.beta.projects.centernet.modeling.layers import nn_blocks as cn_nn_blocks
 from official.vision.beta.projects.centernet.utils.checkpoints import config_data
 from official.vision.beta.projects.centernet.utils.checkpoints import config_classes
@@ -73,7 +74,7 @@ def load_weights_backbone(backbone, weights_dict, backbone_name):
   for i in range(len(backbone_layers)):
     layer = backbone_layers[i]
     if isinstance(layer,
-                  (nn_blocks.Conv2DBNBlock,
+                  (mobilenet.Conv2DBNBlock,
                    cn_nn_blocks.HourglassBlock,
                    nn_blocks.ResidualBlock)):
       n_weights = cfg.load_weights(layer)
