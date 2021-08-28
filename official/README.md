@@ -82,9 +82,9 @@ built from the
 as tagged branches or [downloadable releases](https://github.com/tensorflow/models/releases).
 * Model repository version numbers match the target TensorFlow release,
 such that
-[release v2.2.0](https://github.com/tensorflow/models/releases/tag/v2.2.0)
+[release v2.5.0](https://github.com/tensorflow/models/releases/tag/v2.5.0)
 are compatible with
-[TensorFlow v2.2.0](https://github.com/tensorflow/tensorflow/releases/tag/v2.2.0).
+[TensorFlow v2.5.0](https://github.com/tensorflow/tensorflow/releases/tag/v2.5.0).
 
 Please follow the below steps before running models in this repository.
 
@@ -97,6 +97,11 @@ upgrade your TensorFlow to [the latest TensorFlow 2](https://www.tensorflow.org/
 ```shell
 pip3 install tf-nightly
 ```
+
+* Python 3.7+
+
+Our integration tests run with Python 3.7. Although Python 3.6 should work, we
+don't recommend earlier versions.
 
 ### Installation
 
