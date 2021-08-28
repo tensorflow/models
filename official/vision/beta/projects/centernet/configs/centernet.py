@@ -127,7 +127,7 @@ class CenterNetModel(hyperparams.Config):
   # pylint: disable=line-too-long
   detection_generator: CenterNetDetectionGenerator = CenterNetDetectionGenerator()
   norm_activation: common.NormActivation = common.NormActivation(
-      norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)
+      norm_momentum=0.1, norm_epsilon=1e-5, use_sync_bn=True)
 
 
 @dataclasses.dataclass
@@ -167,7 +167,7 @@ class CenterNetTask(cfg.TaskConfig):
   annotation_file: Optional[str] = None
   # For checkpoints from ODAPI or Extremenet
   checkpoint_backbone_name: str = 'hourglass104_512'
-  checkpoint_head_name: str = 'detection_2d'
+  checkpoint_head_name: Optional[str] = None
   
   def get_output_length_dict(self):
     lengths = {}
@@ -245,9 +245,9 @@ def centernet_hourglass_coco() -> cfg.ExperimentConfig:
           validation_interval=steps_per_epoch,
           optimizer_config=optimization.OptimizationConfig({
               'optimizer': {
-                  'type': 'sgd',
-                  'sgd': {
-                      'momentum': 0.9
+                  'type': 'adam',
+                  'adam': {
+                      'epsilon': 1e-7
                   }
               },
               'learning_rate': {

@@ -170,7 +170,7 @@ class CenterNetTask(base_task.Task):
           ckpt_dir_or_file)
       load_weights.load_weights_model(
           model=model,
-          weights_dict=weights_dict['feature_extractor'],
+          weights_dict=weights_dict,
           backbone_name=self.task_config.checkpoint_backbone_name,
           head_name=self.task_config.checkpoint_head_name)
     else:
