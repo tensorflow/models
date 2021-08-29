@@ -135,7 +135,8 @@ class CenterNetParser(parser.Parser):
             classes, self._max_num_instances, -1),
         'image_info': image_info,
         'true_image_shapes': tf.concat([image_info[0, :],
-                                        tf.constant([imshape[-1], ])],
+                                        tf.constant([imshape[-1], ],
+                                                    dtype=tf.float32)],
                                        axis=0),
         'groundtruths': groundtruths
     }
