@@ -43,8 +43,10 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
     labels = target_assigner.assign_centernet_targets(
         labels={
             'boxes': boxes,
-            'num_detections': num_detections,
-            'classes': classes
+            'classes': classes,
+            'groundtruths': {
+                'num_detections': num_detections,
+            }
         },
         output_size=output_size,
         input_size=input_size)
@@ -174,8 +176,10 @@ class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):
             input_size=input_size),
         elems={
             'boxes': boxes,
-            'num_detections': tf.constant([3, 3]),
-            'classes': classes
+            'classes': classes,
+            'groundtruths': {
+                'num_detections': tf.constant([3, 3]),
+            }
         },
         dtype={
             'ct_heatmaps': tf.float32,

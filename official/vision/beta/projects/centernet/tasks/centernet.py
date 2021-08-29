@@ -409,11 +409,12 @@ class CenterNetTask(base_task.Task):
         'detection_scores': outputs['confidence'],
         'detection_classes': outputs['classes'],
         'num_detections': outputs['num_detections'],
-        'source_id': labels['source_id'],
+        'source_id': labels['groundtruths']['source_id'],
         'image_info': labels['image_info']
     }
     
-    logs.update({self.coco_metric.name: (labels, coco_model_outputs)})
+    logs.update({self.coco_metric.name: (labels['groundtruths'],
+                                         coco_model_outputs)})
     
     if metrics:
       for m in metrics:

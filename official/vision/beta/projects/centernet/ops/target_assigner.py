@@ -289,7 +289,7 @@ def assign_centernet_targets(labels: Dict[str, tf.Tensor],
   
   # Get relevant bounding box and class information from labels
   # only keep the first num_objects boxes and classes
-  num_objects = labels['num_detections']
+  num_objects = labels['groundtruths']['num_detections']
   # shape of labels['boxes'] is [max_num_instances, 4]
   # [ymin, xmin, ymax, xmax]
   boxes = tf.cast(labels['boxes'], dtype)
@@ -393,7 +393,7 @@ def assign_centernet_targets(labels: Dict[str, tf.Tensor],
     box_indices = tf.tensor_scatter_nd_update(
         box_indices, update_indices, box_index_values)
   
-  labels = {
+  ct_labels = {
       # [output_h, output_w, num_classes]
       'ct_heatmaps': ct_heatmap,
       # [max_num_instances, 2]
@@ -405,4 +405,4 @@ def assign_centernet_targets(labels: Dict[str, tf.Tensor],
       # [max_num_instances, 2]
       'box_indices': box_indices
   }
-  return labels
+  return ct_labels
