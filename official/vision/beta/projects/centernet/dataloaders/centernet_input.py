@@ -117,7 +117,8 @@ class CenterNetParser(parser.Parser):
         'height': data['height'],
         'width': data['width'],
         'num_detections': tf.shape(data['groundtruth_classes'])[0],
-        'boxes': boxes,
+        'boxes': box_ops.denormalize_boxes(
+            data['groundtruth_boxes'], tf.shape(input=data['image'])[0:2]),
         'classes': data['groundtruth_classes'],
         'areas': data['groundtruth_area'],
         'is_crowds': tf.cast(data['groundtruth_is_crowd'], tf.int32),
