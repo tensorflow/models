@@ -270,11 +270,6 @@ def _generate_detections_batched(boxes, scores, max_total_size,
       `valid_detections` boxes are valid detections.
   """
   with tf.name_scope('generate_detections'):
-    # TODO(tsungyi): Removes normalization/denomalization once the
-    # tf.image.combined_non_max_suppression is coordinate system agnostic.
-    # Normalizes maximum box cooridinates to 1.
-    normalizer = tf.reduce_max(boxes)
-    boxes /= normalizer
     (nmsed_boxes, nmsed_scores, nmsed_classes,
      valid_detections) = tf.image.combined_non_max_suppression(
          boxes,
@@ -284,9 +279,7 @@ def _generate_detections_batched(boxes, scores, max_total_size,
          iou_threshold=nms_iou_threshold,
          score_threshold=score_threshold,
          pad_per_class=False,
-     )
-    # De-normalizes box cooridinates.
-    nmsed_boxes *= normalizer
+         clip_boxes=False)
   nmsed_classes = tf.cast(nmsed_classes, tf.int32)
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
