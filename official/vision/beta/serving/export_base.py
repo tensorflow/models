@@ -104,6 +104,10 @@ class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):
     return self.serve(inputs)
 
   @tf.function
+  def inference_for_tflite(self, inputs: tf.Tensor) -> Mapping[str, tf.Tensor]:
+    return self.serve(inputs)
+
+  @tf.function
   def inference_from_image_bytes(self, inputs: tf.Tensor):
     with tf.device('cpu:0'):
       images = tf.nest.map_structure(
@@ -174,6 +178,13 @@ class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):
         signatures[
             def_name] = self.inference_from_tf_example.get_concrete_function(
                 input_signature)
+      elif key == 'tflite':
+        input_signature = tf.TensorSpec(
+            shape=[self._batch_size] + self._input_image_size +
+            [self._num_channels],
+            dtype=tf.float32)
+        signatures[def_name] = self.inference_for_tflite.get_concrete_function(
+            input_signature)
       else:
         raise ValueError('Unrecognized `input_type`')
     return signatures
