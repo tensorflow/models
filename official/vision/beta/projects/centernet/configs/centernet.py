@@ -55,7 +55,6 @@ class Parser(hyperparams.Config):
   aug_scale_max: float = 1.0
   aug_rand_saturation: bool = False
   aug_rand_brightness: bool = False
-  aug_rand_zoom: bool = False
   aug_rand_hue: bool = False
   channel_means: List[float] = dataclasses.field(
       default_factory=lambda: [104.01362025, 114.03422265, 119.9165958])

@@ -40,7 +40,6 @@ class CenterNetParser(parser.Parser):
                aug_scale_max=1.0,
                aug_rand_saturation=False,
                aug_rand_brightness=False,
-               aug_rand_zoom=False,
                aug_rand_hue=False,
                channel_means: Tuple[float, float, float] = CHANNEL_MEANS,
                channel_stds: Tuple[float, float, float] = CHANNEL_STDS,
@@ -64,7 +63,6 @@ class CenterNetParser(parser.Parser):
         saturation.
       aug_rand_brightness: `bool`, if True, augment training with random
         brightness.
-      aug_rand_zoom: `bool`, if True, augment training with random zoom.
       aug_rand_hue: `bool`, if True, augment training with random hue.
       channel_means: A tuple of floats, denoting the mean of each channel
         which will be subtracted from it.
@@ -99,7 +97,6 @@ class CenterNetParser(parser.Parser):
     self._aug_scale_max = aug_scale_max
     self._aug_rand_saturation = aug_rand_saturation
     self._aug_rand_brightness = aug_rand_brightness
-    self._aug_rand_zoom = aug_rand_zoom
     self._aug_rand_hue = aug_rand_hue
   
   def _build_label(self,
@@ -201,12 +198,12 @@ class CenterNetParser(parser.Parser):
     # Color and lighting jittering
     if self._aug_rand_brightness:
       image = tf.image.random_brightness(
-          image=image, max_delta=.1)  # Brightness
+          image=image, max_delta=.2)  # Brightness
     if self._aug_rand_saturation:
       image = tf.image.random_saturation(
-          image=image, lower=0.75, upper=1.25)  # Saturation
+          image=image, lower=0.8, upper=1.25)  # Saturation
     if self._aug_rand_hue:
-      image = tf.image.random_hue(image=image, max_delta=.3)  # Hue
+      image = tf.image.random_hue(image=image, max_delta=.02)  # Hue
     
     image, labels = self._build_label(
         image=image,
