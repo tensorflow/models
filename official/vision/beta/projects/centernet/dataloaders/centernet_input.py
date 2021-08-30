@@ -41,6 +41,7 @@ class CenterNetParser(parser.Parser):
                aug_rand_saturation=False,
                aug_rand_brightness=False,
                aug_rand_hue=False,
+               aug_rand_contrast=False,
                channel_means: Tuple[float, float, float] = CHANNEL_MEANS,
                channel_stds: Tuple[float, float, float] = CHANNEL_STDS,
                dtype: str = 'float32'):
@@ -64,6 +65,7 @@ class CenterNetParser(parser.Parser):
       aug_rand_brightness: `bool`, if True, augment training with random
         brightness.
       aug_rand_hue: `bool`, if True, augment training with random hue.
+      aug_rand_hue: `bool`, if True, augment training with random contrast.
       channel_means: A tuple of floats, denoting the mean of each channel
         which will be subtracted from it.
       channel_stds: A tuple of floats, denoting the standard deviation of each
@@ -98,6 +100,7 @@ class CenterNetParser(parser.Parser):
     self._aug_rand_saturation = aug_rand_saturation
     self._aug_rand_brightness = aug_rand_brightness
     self._aug_rand_hue = aug_rand_hue
+    self._aug_rand_contrast = aug_rand_contrast
   
   def _build_label(self,
                    image,
@@ -196,14 +199,18 @@ class CenterNetParser(parser.Parser):
     classes = tf.gather(classes, indices)
     
     # Color and lighting jittering
-    if self._aug_rand_brightness:
-      image = tf.image.random_brightness(
-          image=image, max_delta=.2)  # Brightness
+    if self._aug_rand_hue:
+      image = tf.image.random_hue(
+          image=image, max_delta=.02)
+    if self._aug_rand_contrast:
+      image = tf.image.random_contrast(
+          image=image, lower=0.8, upper=1.25)
     if self._aug_rand_saturation:
       image = tf.image.random_saturation(
-          image=image, lower=0.8, upper=1.25)  # Saturation
-    if self._aug_rand_hue:
-      image = tf.image.random_hue(image=image, max_delta=.02)  # Hue
+          image=image, lower=0.8, upper=1.25)
+    if self._aug_rand_brightness:
+      image = tf.image.random_brightness(
+          image=image, max_delta=.2)
     
     image, labels = self._build_label(
         image=image,

@@ -18,7 +18,7 @@
 # Import libraries
 import os
 import dataclasses
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from official.vision.beta.projects.centernet.configs import backbones
 from official.core import exp_factory
@@ -56,10 +56,11 @@ class Parser(hyperparams.Config):
   aug_rand_saturation: bool = False
   aug_rand_brightness: bool = False
   aug_rand_hue: bool = False
-  channel_means: List[float] = dataclasses.field(
-      default_factory=lambda: [104.01362025, 114.03422265, 119.9165958])
-  channel_stds: List[float] = dataclasses.field(
-      default_factory=lambda: [73.6027665, 69.89082075, 70.9150767])
+  aug_rand_contrast: bool = False
+  channel_means: Tuple[float, float, float] = dataclasses.field(
+      default_factory=lambda: (104.01362025, 114.03422265, 119.9165958))
+  channel_stds: Tuple[float, float, float] = dataclasses.field(
+      default_factory=lambda: (73.6027665, 69.89082075, 70.9150767))
 
 
 @dataclasses.dataclass

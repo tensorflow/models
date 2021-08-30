@@ -69,6 +69,13 @@ class CenterNetTask(base_task.Task):
         bgr_ordering=params.parser.bgr_ordering,
         channel_means=params.parser.channel_means,
         channel_stds=params.parser.channel_stds,
+        aug_rand_hflip=params.parser.aug_rand_hflip,
+        aug_scale_min=params.parser.aug_scale_min,
+        aug_scale_max=params.parser.aug_scale_max,
+        aug_rand_hue=params.parser.aug_rand_hue,
+        aug_rand_brightness=params.parser.aug_rand_brightness,
+        aug_rand_contrast=params.parser.aug_rand_contrast,
+        aug_rand_saturation=params.parser.aug_rand_contrast,
         dtype=params.dtype)
     
     reader = input_reader.InputReader(
