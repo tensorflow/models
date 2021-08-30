@@ -103,13 +103,11 @@ class CenterNetParser(parser.Parser):
     self._aug_rand_contrast = aug_rand_contrast
   
   def _build_label(self,
-                   image,
+                   imshape,
                    boxes,
                    classes,
                    image_info,
                    data):
-    
-    imshape = image.get_shape().as_list()
     
     # Sets up groundtruth data for evaluation.
     groundtruths = {
@@ -142,7 +140,7 @@ class CenterNetParser(parser.Parser):
         'groundtruths': groundtruths
     }
     
-    return image, labels
+    return labels
   
   def _parse_train_data(self, data):
     """Generates images and labels that are usable for model training.
@@ -161,15 +159,6 @@ class CenterNetParser(parser.Parser):
     image = tf.cast(data['image'], dtype=tf.float32)
     boxes = data['groundtruth_boxes']
     classes = data['groundtruth_classes']
-    
-    if self._bgr_ordering:
-      red, green, blue = tf.unstack(image, num=3, axis=2)
-      image = tf.stack([blue, green, red], axis=2)
-    
-    image = preprocess_ops.normalize_image(
-        image=image,
-        offset=self._channel_means,
-        scale=self._channel_stds)
     
     image_shape = tf.shape(input=image)[0:2]
     
@@ -212,12 +201,21 @@ class CenterNetParser(parser.Parser):
       image = tf.image.random_brightness(
           image=image, max_delta=.2)
     
-    image, labels = self._build_label(
-        image=image,
+    labels = self._build_label(
+        imshape=image.get_shape().as_list(),
         boxes=boxes,
         classes=classes,
         image_info=image_info,
         data=data)
+    
+    if self._bgr_ordering:
+      red, green, blue = tf.unstack(image, num=3, axis=2)
+      image = tf.stack([blue, green, red], axis=2)
+
+    image = preprocess_ops.normalize_image(
+        image=image,
+        offset=self._channel_means,
+        scale=self._channel_stds)
     
     image = tf.cast(image, self._dtype)
     
@@ -236,15 +234,6 @@ class CenterNetParser(parser.Parser):
     image = tf.cast(data['image'], dtype=tf.float32)
     boxes = data['groundtruth_boxes']
     classes = data['groundtruth_classes']
-    
-    if self._bgr_ordering:
-      red, green, blue = tf.unstack(image, num=3, axis=2)
-      image = tf.stack([blue, green, red], axis=2)
-    
-    image = preprocess_ops.normalize_image(
-        image=image,
-        offset=self._channel_means,
-        scale=self._channel_stds)
     
     image_shape = tf.shape(input=image)[0:2]
     # Converts boxes from normalized coordinates to pixel coordinates.
@@ -269,12 +258,21 @@ class CenterNetParser(parser.Parser):
     boxes = tf.gather(boxes, indices)
     classes = tf.gather(classes, indices)
     
-    image, labels = self._build_label(
-        image=image,
+    labels = self._build_label(
+        imshape=image.get_shape().as_list(),
         boxes=boxes,
         classes=classes,
         image_info=image_info,
         data=data)
+
+    if self._bgr_ordering:
+      red, green, blue = tf.unstack(image, num=3, axis=2)
+      image = tf.stack([blue, green, red], axis=2)
+
+    image = preprocess_ops.normalize_image(
+        image=image,
+        offset=self._channel_means,
+        scale=self._channel_stds)
     
     image = tf.cast(image, self._dtype)
     
