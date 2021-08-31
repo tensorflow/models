@@ -228,16 +228,14 @@ class TeamsPretrainer(tf.keras.Model):
     num_discriminator_task_agnostic_layers: Number of layers shared between
       multi-word selection and random token detection discriminators.
     vocab_size: Size of generator output vocabulary
-    num_classes: Number of classes to predict from the classification network
-      for the generator network (not used now)
+    candidate_size: Candidate size for multi-word selection task,
+      including the correct word.
     mlm_activation: The activation (if any) to use in the masked LM and
       classification networks. If None, no activation will be used.
     mlm_initializer: The initializer (if any) to use in the masked LM and
       classification networks. Defaults to a Glorot uniform initializer.
     output_type: The output style for this network. Can be either `logits` or
       `predictions`.
-    disallow_correct: Whether to disallow the generator to generate the exact
-      same token in the original sentence
   """
 
   def __init__(self,
@@ -311,12 +309,15 @@ class TeamsPretrainer(tf.keras.Model):
       outputs: A dict of pretrainer model outputs, including
         (1) lm_outputs: A `[batch_size, num_token_predictions, vocab_size]`
         tensor indicating logits on masked positions.
-        (2) sentence_outputs: A `[batch_size, num_classes]` tensor indicating
-        logits for nsp task.
-        (3) disc_logits: A `[batch_size, sequence_length]` tensor indicating
+        (2) disc_rtd_logits: A `[batch_size, sequence_length]` tensor indicating
         logits for discriminator replaced token detection task.
-        (4) disc_label: A `[batch_size, sequence_length]` tensor indicating
+        (3) disc_rtd_label: A `[batch_size, sequence_length]` tensor indicating
         target labels for discriminator replaced token detection task.
+        (4) disc_mws_logits: A `[batch_size, num_token_predictions,
+        candidate_size]` tensor indicating logits for discriminator multi-word
+        selection task.
+        (5) disc_mws_labels: A `[batch_size, num_token_predictions]` tensor
+        indicating target labels for discriminator multi-word selection task.
     """
     input_word_ids = inputs['input_word_ids']
     input_mask = inputs['input_mask']
@@ -326,9 +327,6 @@ class TeamsPretrainer(tf.keras.Model):
     # Runs generator.
     sequence_output = self.generator_network(
         [input_word_ids, input_mask, input_type_ids])['sequence_output']
-    # The generator encoder network may get outputs from all layers.
-    if isinstance(sequence_output, list):
-      sequence_output = sequence_output[-1]
 
     lm_outputs = self.masked_lm(sequence_output, masked_lm_positions)
 
@@ -353,11 +351,14 @@ class TeamsPretrainer(tf.keras.Model):
     disc_mws_logits = self.discriminator_mws_head(mws_sequence_outputs[-1],
                                                   masked_lm_positions,
                                                   disc_mws_candidates)
+    disc_mws_label = tf.zeros_like(masked_lm_positions, dtype=tf.int32)
+
     outputs = {
         'lm_outputs': lm_outputs,
         'disc_rtd_logits': disc_rtd_logits,
         'disc_rtd_label': disc_rtd_label,
         'disc_mws_logits': disc_mws_logits,
+        'disc_mws_label': disc_mws_label,
     }
 
     return outputs
@@ -408,7 +409,7 @@ class TeamsPretrainer(tf.keras.Model):
   @property
   def checkpoint_items(self):
     """Returns a dictionary of items to be additionally checkpointed."""
-    items = dict(encoder=self.discriminator_network)
+    items = dict(encoder=self.discriminator_mws_network)
     return items
 
   def get_config(self):
@@ -419,7 +420,7 @@ class TeamsPretrainer(tf.keras.Model):
     return cls(**config)
 
 
-def sample_k_from_softmax(logits, k=5, disallow=None, use_topk=False):
+def sample_k_from_softmax(logits, k, disallow=None, use_topk=False):
   """Implement softmax sampling using gumbel softmax trick to select k items.
 
   Args:
@@ -429,8 +430,8 @@ def sample_k_from_softmax(logits, k=5, disallow=None, use_topk=False):
     disallow: If `None`, we directly sample tokens from the logits. Otherwise,
       this is a tensor of size [batch_size, num_token_predictions, vocab_size]
       indicating the true word id in each masked position.
-    use_topk: Whether to use tf.nn.top_k or using approximate iterative approach
-      which is faster.
+    use_topk: Whether to use tf.nn.top_k or using iterative approach where the
+      latter is empirically faster.
 
   Returns:
     sampled_tokens: A [batch_size, num_token_predictions, k] tensor indicating
