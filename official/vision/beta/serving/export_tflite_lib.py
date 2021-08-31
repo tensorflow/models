@@ -13,10 +13,10 @@
 # limitations under the License.
 
 """Library to facilitate TFLite model conversion."""
-
 import functools
 from typing import Iterator, List, Optional
 
+from absl import logging
 import tensorflow as tf
 
 from official.core import config_definitions as cfg
@@ -45,6 +45,7 @@ def create_representative_dataset(
   # Ensure batch size is 1 for TFLite model.
   params.task.train_data.global_batch_size = 1
   params.task.train_data.dtype = 'float32'
+  logging.info('Task config: %s', params.task.as_dict())
   return task.build_inputs(params=params.task.train_data)
 
 

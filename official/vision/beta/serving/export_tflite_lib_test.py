@@ -54,6 +54,7 @@ class ExportTfliteLibTest(tf.test.TestCase, parameterized.TestCase):
   def test_export_tflite(self, experiment, quant_type, input_image_size):
     params = exp_factory.get_exp_config(experiment)
     params.task.validation_data.input_path = self._test_tfrecord_file
+    params.task.train_data.input_path = self._test_tfrecord_file
     temp_dir = self.get_temp_dir()
     module = image_classification_serving.ClassificationModule(
         params=params, batch_size=1, input_image_size=input_image_size)
@@ -66,7 +67,7 @@ class ExportTfliteLibTest(tf.test.TestCase, parameterized.TestCase):
         saved_model_dir=os.path.join(temp_dir, 'saved_model'),
         quant_type=quant_type,
         params=params,
-        calibration_steps=20)
+        calibration_steps=5)
 
     self.assertIsInstance(tflite_model, bytes)
 
