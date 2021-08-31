@@ -3,10 +3,7 @@ import tensorflow as tf
 import tensorflow.keras as ks
 import tensorflow.keras.backend as K
 
-# from official.vision.beta.projects.yolo.ops import loss_utils
 from official.vision.beta.projects.yolo.ops import box_ops
-# from official.vision.beta.projects.yolo.losses import yolo_loss
-# from official.vision.beta.projects.yolo.ops import nms_ops
 
 
 @ks.utils.register_keras_serializable(package='yolo')
@@ -152,9 +149,6 @@ class YoloLayer(ks.Model):
     return
 
   def get_generators(self, anchors, path_scale, path_key):
-    # anchor_generator = loss_utils.GridGenerator(
-    #     anchors, scale_anchors=path_scale)
-    # return anchor_generator
     return None
 
   def rm_nan_inf(self, x, val=0.0):
@@ -183,10 +177,6 @@ class YoloLayer(ks.Model):
     # in shape [1, height, width, 2]
     centers, anchors = generator(height, width, batchsize, dtype=data.dtype)
 
-    # # tempcode
-    # centers /= tf.cast([width, height], centers.dtype)
-    # anchors /= tf.cast([width, height], anchors.dtype)
-
     # split the yolo detections into boxes, object score map, classes
     boxes, obns_scores, class_scores = tf.split(
         data, [4, 1, self._classes], axis=-1)
@@ -195,17 +185,7 @@ class YoloLayer(ks.Model):
     classes = class_scores.get_shape().as_list()[
         -1]  #tf.shape(class_scores)[-1]
 
-    # # configurable to use the new coordinates in scaled Yolo v4 or not
-    # if not self._new_cords[key]:
-    #   # coordinates from scaled yolov4
-    #   _, _, boxes = yolo_loss.get_predicted_box(
-    #       tf.cast(height, data.dtype), tf.cast(width, data.dtype), boxes,
-    #       anchors, centers, scale_xy)
-    # else:
-    #   # coordinates from regular yolov3 - v4
-    #   _, _, boxes = yolo_loss.get_predicted_box_newcords(
-    #       tf.cast(height, data.dtype), tf.cast(width, data.dtype), boxes,
-    #       anchors, centers, scale_xy)
+    # configurable to use the new coordinates in scaled Yolo v4 or not
     boxes = None
 
     # convert boxes from yolo(x, y, w. h) to tensorflow(ymin, xmin, ymax, xmax)
@@ -251,54 +231,20 @@ class YoloLayer(ks.Model):
     object_scores = K.concatenate(object_scores, axis=1)
     class_scores = K.concatenate(class_scores, axis=1)
 
-    # # apply nms
-    # if self._nms_type == 7:
-    #   boxes, class_scores, object_scores = nms_ops.non_max_suppression2(
-    #       boxes,
-    #       class_scores,
-    #       object_scores,
-    #       self._max_boxes,
-    #       pre_nms_thresh = self._thresh,
-    #       nms_thresh = self._nms_thresh,
-    #       prenms_top_k=self._pre_nms_points)
-    # elif self._nms_type == 6:
-    #   boxes, class_scores, object_scores = nms_ops.nms(
-    #       boxes,
-    #       class_scores,
-    #       object_scores,
-    #       self._max_boxes,
-    #       self._thresh,
-    #       self._nms_thresh,
-    #       prenms_top_k=self._pre_nms_points)
-    # elif self._nms_type == 1:
-    #   # greedy NMS
-    #   boxes = tf.cast(boxes, dtype=tf.float32)
-    #   class_scores = tf.cast(class_scores, dtype=tf.float32)
-    #   nms_items = tf.image.combined_non_max_suppression(
-    #       tf.expand_dims(boxes, axis=-2),
-    #       class_scores,
-    #       self._pre_nms_points,
-    #       self._max_boxes,
-    #       iou_threshold=self._nms_thresh,
-    #       score_threshold=self._thresh)
-    #   # cast the boxes and predicitons abck to original datatype
-    #   boxes = tf.cast(nms_items.nmsed_boxes, object_scores.dtype)
-    #   class_scores = tf.cast(nms_items.nmsed_classes, object_scores.dtype)
-    #   object_scores = tf.cast(nms_items.nmsed_scores, object_scores.dtype)
-    #
-    # else:
-    #   boxes = tf.cast(boxes, dtype=tf.float32)
-    #   class_scores = tf.cast(class_scores, dtype=tf.float32)
-    #   boxes, confidence, classes, valid = self._nms.complete_nms(
-    #       tf.expand_dims(boxes, axis=-2),
-    #       class_scores,
-    #       pre_nms_top_k=self._pre_nms_points,
-    #       max_num_detections=self._max_boxes,
-    #       nms_iou_threshold=self._nms_thresh,
-    #       pre_nms_score_threshold=self._thresh)
-    #   boxes = tf.cast(boxes, object_scores.dtype)
-    #   class_scores = tf.cast(classes, object_scores.dtype)
-    #   object_scores = tf.cast(confidence, object_scores.dtype)
+    # greedy NMS
+    boxes = tf.cast(boxes, dtype=tf.float32)
+    class_scores = tf.cast(class_scores, dtype=tf.float32)
+    nms_items = tf.image.combined_non_max_suppression(
+        tf.expand_dims(boxes, axis=-2),
+        class_scores,
+        self._pre_nms_points,
+        self._max_boxes,
+        iou_threshold=self._nms_thresh,
+        score_threshold=self._thresh)
+    # cast the boxes and predicitons abck to original datatype
+    boxes = tf.cast(nms_items.nmsed_boxes, object_scores.dtype)
+    class_scores = tf.cast(nms_items.nmsed_classes, object_scores.dtype)
+    object_scores = tf.cast(nms_items.nmsed_scores, object_scores.dtype)
 
     # compute the number of valid detections
     num_detections = tf.math.reduce_sum(tf.math.ceil(object_scores), axis=-1)
@@ -318,27 +264,6 @@ class YoloLayer(ks.Model):
     Done in the detection generator because all parameters are the same
     across both loss and detection generator
     """
-    # loss_dict = {}
-    # for key in self._keys:
-    #   loss_dict[key] = yolo_loss.Yolo_Loss(
-    #       classes=self._classes,
-    #       anchors=self._anchors,
-    #       darknet=self._darknet,
-    #       truth_thresh=self._truth_thresh[key],
-    #       ignore_thresh=self._ignore_thresh[key],
-    #       loss_type=self._loss_type[key],
-    #       iou_normalizer=self._iou_normalizer[key],
-    #       cls_normalizer=self._cls_normalizer[key],
-    #       obj_normalizer=self._obj_normalizer[key],
-    #       new_cords=self._new_cords[key],
-    #       objectness_smooth=self._objectness_smooth[key],
-    #       use_scaled_loss=self._use_scaled_loss,
-    #       label_smoothing=self._label_smoothing,
-    #       mask=self._masks[key],
-    #       max_delta=self._max_delta[key],
-    #       scale_anchors=self._path_scale[key],
-    #       scale_x_y=self._scale_xy[key])
-    # return loss_dict
     return None
 
   def get_config(self):
