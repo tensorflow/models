@@ -17,7 +17,7 @@
 
 import dataclasses
 import os
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -201,7 +201,8 @@ class MaskRCNNTask(cfg.TaskConfig):
                                            drop_remainder=False)
   losses: Losses = Losses()
   init_checkpoint: Optional[str] = None
-  init_checkpoint_modules: str = 'all'  # all or backbone
+  init_checkpoint_modules: Union[
+      str, List[str]] = 'all'  # all, backbone, and/or decoder
   annotation_file: Optional[str] = None
   per_category_metrics: bool = False
   # If set, we only use masks for the specified class IDs.
