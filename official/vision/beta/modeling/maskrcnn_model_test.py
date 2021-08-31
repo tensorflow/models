@@ -384,7 +384,7 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
     ckpt.save(os.path.join(save_dir, 'ckpt'))
 
     partial_ckpt = tf.train.Checkpoint(backbone=backbone)
-    partial_ckpt.restore(tf.train.latest_checkpoint(
+    partial_ckpt.read(tf.train.latest_checkpoint(
         save_dir)).expect_partial().assert_existing_objects_matched()
 
     if include_mask:

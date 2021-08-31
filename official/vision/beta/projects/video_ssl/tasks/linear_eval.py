@@ -41,7 +41,7 @@ class VideoSSLEvalTask(video_classification.VideoClassificationTask):
     # Restoring checkpoint.
     if self.task_config.init_checkpoint_modules == 'backbone':
       ckpt = tf.train.Checkpoint(backbone=model.backbone)
-      ckpt.restore(ckpt_dir_or_file)
+      ckpt.read(ckpt_dir_or_file)
     else:
       raise NotImplementedError
 

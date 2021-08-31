@@ -150,11 +150,11 @@ class SimCLRPretrainTask(base_task.Task):
     # Restoring checkpoint.
     if self.task_config.init_checkpoint_modules == 'all':
       ckpt = tf.train.Checkpoint(**model.checkpoint_items)
-      status = ckpt.restore(ckpt_dir_or_file)
-      status.assert_consumed()
+      status = ckpt.read(ckpt_dir_or_file)
+      status.expect_partial().assert_existing_objects_matched()
     elif self.task_config.init_checkpoint_modules == 'backbone':
       ckpt = tf.train.Checkpoint(backbone=model.backbone)
-      status = ckpt.restore(ckpt_dir_or_file)
+      status = ckpt.read(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     else:
       assert "Only 'all' or 'backbone' can be used to initialize the model."
@@ -455,16 +455,16 @@ class SimCLRFinetuneTask(base_task.Task):
     # Restoring checkpoint.
     if self.task_config.init_checkpoint_modules == 'all':
       ckpt = tf.train.Checkpoint(**model.checkpoint_items)
-      status = ckpt.restore(ckpt_dir_or_file)
-      status.assert_consumed()
+      status = ckpt.read(ckpt_dir_or_file)
+      status.expect_partial().assert_existing_objects_matched()
     elif self.task_config.init_checkpoint_modules == 'backbone_projection':
       ckpt = tf.train.Checkpoint(
           backbone=model.backbone, projection_head=model.projection_head)
-      status = ckpt.restore(ckpt_dir_or_file)
+      status = ckpt.read(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     elif self.task_config.init_checkpoint_modules == 'backbone':
       ckpt = tf.train.Checkpoint(backbone=model.backbone)
-      status = ckpt.restore(ckpt_dir_or_file)
+      status = ckpt.read(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     else:
       assert "Only 'all' or 'backbone' can be used to initialize the model."
