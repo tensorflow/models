@@ -807,6 +807,77 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
     np.testing.assert_allclose(expected_keypoint_candidates, keypoint_cands)
     np.testing.assert_allclose(expected_keypoint_scores, keypoint_scores)
 
+  @parameterized.parameters({'provide_keypoint_score': True},
+                            {'provide_keypoint_score': False})
+  def test_prediction_to_multi_instance_keypoints(self, provide_keypoint_score):
+    image_size = (9, 9)
+    keypoint_heatmap_np = np.zeros((1, image_size[0], image_size[1], 3, 4),
+                                   dtype=np.float32)
+    # Instance 0.
+    keypoint_heatmap_np[0, 1, 1, 0, 0] = 0.9
+    keypoint_heatmap_np[0, 1, 7, 0, 1] = 0.9
+    keypoint_heatmap_np[0, 7, 1, 0, 2] = 0.9
+    keypoint_heatmap_np[0, 7, 7, 0, 3] = 0.9
+    # Instance 1.
+    keypoint_heatmap_np[0, 2, 2, 1, 0] = 0.8
+    keypoint_heatmap_np[0, 2, 8, 1, 1] = 0.8
+    keypoint_heatmap_np[0, 8, 2, 1, 2] = 0.8
+    keypoint_heatmap_np[0, 8, 8, 1, 3] = 0.8
+
+    keypoint_offset_np = np.zeros((1, image_size[0], image_size[1], 8),
+                                  dtype=np.float32)
+    keypoint_offset_np[0, 1, 1] = [0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    keypoint_offset_np[0, 1, 7] = [0.0, 0.0, 0.5, -0.5, 0.0, 0.0, 0.0, 0.0]
+    keypoint_offset_np[0, 7, 1] = [0.0, 0.0, 0.0, 0.0, -0.5, 0.5, 0.0, 0.0]
+    keypoint_offset_np[0, 7, 7] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5, -0.5]
+    keypoint_offset_np[0, 2, 2] = [0.3, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    keypoint_offset_np[0, 2, 8] = [0.0, 0.0, 0.3, -0.3, 0.0, 0.0, 0.0, 0.0]
+    keypoint_offset_np[0, 8, 2] = [0.0, 0.0, 0.0, 0.0, -0.3, 0.3, 0.0, 0.0]
+    keypoint_offset_np[0, 8, 8] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.3, -0.3]
+
+    def graph_fn():
+      keypoint_heatmap = tf.constant(keypoint_heatmap_np, dtype=tf.float32)
+      keypoint_offset = tf.constant(keypoint_offset_np, dtype=tf.float32)
+
+      if provide_keypoint_score:
+        (keypoint_cands, keypoint_scores) = (
+            cnma.prediction_tensors_to_multi_instance_kpts(
+                keypoint_heatmap,
+                keypoint_offset,
+                tf.reduce_max(keypoint_heatmap, axis=3)))
+      else:
+        (keypoint_cands, keypoint_scores) = (
+            cnma.prediction_tensors_to_multi_instance_kpts(
+                keypoint_heatmap,
+                keypoint_offset))
+
+      return keypoint_cands, keypoint_scores
+
+    (keypoint_cands, keypoint_scores) = self.execute(graph_fn, [])
+
+    expected_keypoint_candidates_0 = [
+        [1.5, 1.5],  # top-left
+        [1.5, 6.5],  # top-right
+        [6.5, 1.5],  # bottom-left
+        [6.5, 6.5],  # bottom-right
+    ]
+    expected_keypoint_scores_0 = [0.9, 0.9, 0.9, 0.9]
+    expected_keypoint_candidates_1 = [
+        [2.3, 2.3],  # top-left
+        [2.3, 7.7],  # top-right
+        [7.7, 2.3],  # bottom-left
+        [7.7, 7.7],  # bottom-right
+    ]
+    expected_keypoint_scores_1 = [0.8, 0.8, 0.8, 0.8]
+    np.testing.assert_allclose(
+        expected_keypoint_candidates_0, keypoint_cands[0, 0, :, :])
+    np.testing.assert_allclose(
+        expected_keypoint_candidates_1, keypoint_cands[0, 1, :, :])
+    np.testing.assert_allclose(
+        expected_keypoint_scores_0, keypoint_scores[0, 0, :])
+    np.testing.assert_allclose(
+        expected_keypoint_scores_1, keypoint_scores[0, 1, :])
+
   def test_keypoint_candidate_prediction_per_keypoints(self):
     keypoint_heatmap_np = np.zeros((2, 3, 3, 2), dtype=np.float32)
     keypoint_heatmap_np[0, 0, 0, 0] = 1.0
@@ -1644,7 +1715,8 @@ def get_fake_kp_params(num_candidates_per_keypoint=100,
                        predict_depth=False,
                        per_keypoint_depth=False,
                        peak_radius=0,
-                       candidate_ranking_mode='min_distance'):
+                       candidate_ranking_mode='min_distance',
+                       argmax_postprocessing=False):
   """Returns the fake keypoint estimation parameter namedtuple."""
   return cnma.KeypointEstimationParams(
       task_name=_TASK_NAME,
@@ -1660,7 +1732,8 @@ def get_fake_kp_params(num_candidates_per_keypoint=100,
       predict_depth=predict_depth,
       per_keypoint_depth=per_keypoint_depth,
       offset_peak_radius=peak_radius,
-      candidate_ranking_mode=candidate_ranking_mode)
+      candidate_ranking_mode=candidate_ranking_mode,
+      argmax_postprocessing=argmax_postprocessing)
 
 
 def get_fake_mask_params():
@@ -1715,7 +1788,8 @@ def build_center_net_meta_arch(build_resnet=False,
                                per_keypoint_depth=False,
                                peak_radius=0,
                                keypoint_only=False,
-                               candidate_ranking_mode='min_distance'):
+                               candidate_ranking_mode='min_distance',
+                               argmax_postprocessing=False):
   """Builds the CenterNet meta architecture."""
   if build_resnet:
     feature_extractor = (
@@ -1762,7 +1836,8 @@ def build_center_net_meta_arch(build_resnet=False,
                 get_fake_kp_params(num_candidates_per_keypoint,
                                    per_keypoint_offset, predict_depth,
                                    per_keypoint_depth, peak_radius,
-                                   candidate_ranking_mode)
+                                   candidate_ranking_mode,
+                                   argmax_postprocessing)
         },
         non_max_suppression_fn=non_max_suppression_fn)
   elif detection_only:
@@ -1790,7 +1865,8 @@ def build_center_net_meta_arch(build_resnet=False,
                 get_fake_kp_params(num_candidates_per_keypoint,
                                    per_keypoint_offset, predict_depth,
                                    per_keypoint_depth, peak_radius,
-                                   candidate_ranking_mode)
+                                   candidate_ranking_mode,
+                                   argmax_postprocessing)
         },
         non_max_suppression_fn=non_max_suppression_fn)
   else:
@@ -2324,17 +2400,32 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllClose(expected_multiclass_scores,
                         detections['detection_multiclass_scores'][0][0])
 
-  def test_postprocess_single_class(self):
+  @parameterized.parameters(
+      {
+          'candidate_ranking_mode': 'min_distance',
+          'argmax_postprocessing': False
+      },
+      {
+          'candidate_ranking_mode': 'gaussian_weighted_const',
+          'argmax_postprocessing': True
+      })
+  def test_postprocess_single_class(self, candidate_ranking_mode,
+                                    argmax_postprocessing):
     """Test the postprocess function."""
-    model = build_center_net_meta_arch(num_classes=1)
+    model = build_center_net_meta_arch(
+        num_classes=1, max_box_predictions=5, per_keypoint_offset=True,
+        candidate_ranking_mode=candidate_ranking_mode,
+        argmax_postprocessing=argmax_postprocessing)
     max_detection = model._center_params.max_box_predictions
     num_keypoints = len(model._kp_params_dict[_TASK_NAME].keypoint_indices)
 
     class_center = np.zeros((1, 32, 32, 1), dtype=np.float32)
     height_width = np.zeros((1, 32, 32, 2), dtype=np.float32)
     offset = np.zeros((1, 32, 32, 2), dtype=np.float32)
-    keypoint_heatmaps = np.zeros((1, 32, 32, num_keypoints), dtype=np.float32)
-    keypoint_offsets = np.zeros((1, 32, 32, 2), dtype=np.float32)
+    keypoint_heatmaps = np.ones(
+        (1, 32, 32, num_keypoints), dtype=np.float32) * _logit(0.01)
+    keypoint_offsets = np.zeros(
+        (1, 32, 32, num_keypoints * 2), dtype=np.float32)
     keypoint_regression = np.random.randn(1, 32, 32, num_keypoints * 2)
 
     class_probs = np.zeros(1)
@@ -2387,6 +2478,9 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(detections['num_detections'], [5])
     self.assertAllEqual([1, max_detection, num_keypoints, 2],
                         detections['detection_keypoints'].shape)
+    self.assertAllClose(
+        [[0.4375, 0.4375], [0.4375, 0.5625], [0.5625, 0.4375]],
+        detections['detection_keypoints'][0, 0, 0:3, :])
     self.assertAllEqual([1, max_detection, num_keypoints],
                         detections['detection_keypoint_scores'].shape)
 

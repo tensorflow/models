@@ -126,6 +126,8 @@ class ModelBuilderTF2Test(
       score_distance_multiplier: 11.0
       std_dev_multiplier: 2.8
       rescoring_threshold: 0.5
+      gaussian_denom_ratio: 0.3
+      argmax_postprocessing: True
     """
     if customize_head_params:
       task_proto_txt += """
@@ -158,6 +160,7 @@ class ModelBuilderTF2Test(
           beta: 4.0
         }
       }
+      peak_max_pool_kernel_size: 5
     """
     if customize_head_params:
       proto_txt += """
@@ -319,6 +322,7 @@ class ModelBuilderTF2Test(
     else:
       self.assertEqual(model._center_params.center_head_num_filters, [256])
       self.assertEqual(model._center_params.center_head_kernel_sizes, [3])
+    self.assertEqual(model._center_params.peak_max_pool_kernel_size, 5)
 
     # Check object detection related parameters.
     self.assertAlmostEqual(model._od_params.offset_loss_weight, 0.1)
@@ -376,6 +380,8 @@ class ModelBuilderTF2Test(
       self.assertEqual(kp_params.heatmap_head_kernel_sizes, [3])
       self.assertEqual(kp_params.offset_head_num_filters, [256])
       self.assertEqual(kp_params.offset_head_kernel_sizes, [3])
+    self.assertAlmostEqual(kp_params.gaussian_denom_ratio, 0.3)
+    self.assertEqual(kp_params.argmax_postprocessing, True)
 
     # Check mask related parameters.
     self.assertAlmostEqual(model._mask_params.task_loss_weight, 0.7)
