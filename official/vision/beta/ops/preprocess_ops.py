@@ -197,8 +197,8 @@ def resize_and_crop_image(image,
         image_size,
         tf.constant(desired_size, dtype=tf.float32),
         image_scale,
-        tf.cast(offset, tf.float32)],
-        non_pad_output_size)
+        tf.cast(offset, tf.float32),
+        non_pad_output_size])
     return output_image, image_info
 
 
