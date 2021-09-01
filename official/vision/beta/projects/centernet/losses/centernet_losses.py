@@ -119,7 +119,7 @@ class PenaltyReducedLogisticFocalLoss(Loss):
     self._sigmoid_clip_value = sigmoid_clip_value
     super(PenaltyReducedLogisticFocalLoss, self).__init__()
   
-  def _compute_loss(self, prediction_tensor, target_tensor, weights):
+  def _compute_loss(self, prediction_tensor, target_tensor, weights=1.0):
     """Compute loss function.
 
     In all input tensors, `num_anchors` is the total number of pixels in the

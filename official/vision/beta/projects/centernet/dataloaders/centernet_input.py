@@ -31,8 +31,8 @@ class CenterNetParser(parser.Parser):
   """Parse an image and its annotations into a dictionary of tensors."""
   
   def __init__(self,
-               image_w: int = 512,
-               image_h: int = 512,
+               output_width: int = 512,
+               output_height: int = 512,
                max_num_instances: int = 128,
                bgr_ordering: bool = True,
                aug_rand_hflip=True,
@@ -48,8 +48,8 @@ class CenterNetParser(parser.Parser):
     """Initializes parameters for parsing annotations in the dataset.
 
     Args:
-      image_w: A `Tensor` or `int` for width of input image.
-      image_h: A `Tensor` or `int` for height of input image.
+      output_width: A `Tensor` or `int` for width of output image.
+      output_height: A `Tensor` or `int` for height of output image.
       max_num_instances: An `int` number of maximum number of instances
         in an image.
       bgr_ordering: `bool`, if set will change the channel ordering to be in the
@@ -75,8 +75,8 @@ class CenterNetParser(parser.Parser):
     Raises:
       Exception: if datatype is not supported.
     """
-    self._image_w = image_w
-    self._image_h = image_h
+    self._output_width = output_width
+    self._output_height = output_height
     self._max_num_instances = max_num_instances
     self._bgr_ordering = bgr_ordering
     self._channel_means = channel_means
@@ -133,7 +133,7 @@ class CenterNetParser(parser.Parser):
         'classes': preprocess_ops.clip_or_pad_to_fixed_size(
             classes, self._max_num_instances, -1),
         'image_info': image_info,
-        'true_image_shapes': tf.concat([image_info[0, :],
+        'true_image_shapes': tf.concat([image_info[4, :],
                                         tf.constant([imshape[-1], ],
                                                     dtype=tf.float32)],
                                        axis=0),
@@ -171,8 +171,8 @@ class CenterNetParser(parser.Parser):
     # Resizes and crops image.
     image, image_info = preprocess_ops.resize_and_crop_image(
         image,
-        [self._image_h, self._image_w],
-        padded_size=[self._image_h, self._image_w],
+        [self._output_height, self._output_width],
+        padded_size=[self._output_height, self._output_width],
         aug_scale_min=self._aug_scale_min,
         aug_scale_max=self._aug_scale_max)
     
@@ -242,8 +242,8 @@ class CenterNetParser(parser.Parser):
     # Resizes and crops image.
     image, image_info = preprocess_ops.resize_and_crop_image(
         image,
-        [self._image_h, self._image_w],
-        padded_size=[self._image_h, self._image_w],
+        [self._output_height, self._output_width],
+        padded_size=[self._output_height, self._output_width],
         aug_scale_min=1.0,
         aug_scale_max=1.0)
     
