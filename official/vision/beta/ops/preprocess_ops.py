@@ -189,7 +189,7 @@ def resize_and_crop_image(image,
           offset[0]:offset[0] + desired_size[0],
           offset[1]:offset[1] + desired_size[1], :]
 
-    non_pad_output_size = tf.shape(scaled_image)[0:2]
+    non_pad_output_size = tf.cast(tf.shape(scaled_image)[0:2], tf.float32)
     output_image = tf.image.pad_to_bounding_box(
         scaled_image, 0, 0, padded_size[0], padded_size[1])
 
