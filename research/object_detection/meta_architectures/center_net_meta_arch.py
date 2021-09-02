@@ -2898,16 +2898,12 @@ class CenterNetMetaArch(model.DetectionModel):
       self.track_reid_classification_net = tf.keras.Sequential()
       for _ in range(self._track_params.num_fc_layers - 1):
         self.track_reid_classification_net.add(
-            tf.keras.layers.Dense(self._track_params.reid_embed_size,
-                                  input_shape=(
-                                      self._track_params.reid_embed_size,)))
+            tf.keras.layers.Dense(self._track_params.reid_embed_size))
         self.track_reid_classification_net.add(
             tf.keras.layers.BatchNormalization())
         self.track_reid_classification_net.add(tf.keras.layers.ReLU())
       self.track_reid_classification_net.add(
-          tf.keras.layers.Dense(self._track_params.num_track_ids,
-                                input_shape=(
-                                    self._track_params.reid_embed_size,)))
+          tf.keras.layers.Dense(self._track_params.num_track_ids))
     if self._temporal_offset_params is not None:
       prediction_heads[TEMPORAL_OFFSET] = self._make_prediction_net_list(
           num_feature_outputs, NUM_OFFSET_CHANNELS, name='temporal_offset',
