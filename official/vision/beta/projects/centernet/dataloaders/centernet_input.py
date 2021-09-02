@@ -20,6 +20,8 @@ from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.ops import box_ops
 from official.vision.beta.dataloaders import parser
 from official.vision.beta.dataloaders import utils
+from official.vision.beta.projects.centernet.ops import \
+  preprocess_ops as cn_preprocess_ops
 
 from typing import Tuple
 
@@ -42,6 +44,7 @@ class CenterNetParser(parser.Parser):
                aug_rand_brightness=False,
                aug_rand_hue=False,
                aug_rand_contrast=False,
+               odapi_preprocess=False,
                channel_means: Tuple[float, float, float] = CHANNEL_MEANS,
                channel_stds: Tuple[float, float, float] = CHANNEL_STDS,
                dtype: str = 'float32'):
@@ -64,6 +67,7 @@ class CenterNetParser(parser.Parser):
         saturation.
       aug_rand_brightness: `bool`, if True, augment training with random
         brightness.
+      odapi_preprocess: `bool`, if Ture, use OD API preprocessing.
       aug_rand_hue: `bool`, if True, augment training with random hue.
       aug_rand_hue: `bool`, if True, augment training with random contrast.
       channel_means: A tuple of floats, denoting the mean of each channel
@@ -101,9 +105,10 @@ class CenterNetParser(parser.Parser):
     self._aug_rand_brightness = aug_rand_brightness
     self._aug_rand_hue = aug_rand_hue
     self._aug_rand_contrast = aug_rand_contrast
+    self._odapi_preprocess = odapi_preprocess
   
   def _build_label(self,
-                   imshape,
+                   true_image_shapes,
                    boxes,
                    classes,
                    image_info,
@@ -133,10 +138,7 @@ class CenterNetParser(parser.Parser):
         'classes': preprocess_ops.clip_or_pad_to_fixed_size(
             classes, self._max_num_instances, -1),
         'image_info': image_info,
-        'true_image_shapes': tf.concat([image_info[4, :],
-                                        tf.constant([imshape[-1], ],
-                                                    dtype=tf.float32)],
-                                       axis=0),
+        'true_image_shapes': true_image_shapes,
         'groundtruths': groundtruths
     }
     
@@ -165,28 +167,6 @@ class CenterNetParser(parser.Parser):
     if self._aug_rand_hflip:
       image, boxes, _ = preprocess_ops.random_horizontal_flip(image, boxes)
     
-    # Converts boxes from normalized coordinates to pixel coordinates.
-    boxes = box_ops.denormalize_boxes(boxes, image_shape)
-    
-    # Resizes and crops image.
-    image, image_info = preprocess_ops.resize_and_crop_image(
-        image,
-        [self._output_height, self._output_width],
-        padded_size=[self._output_height, self._output_width],
-        aug_scale_min=self._aug_scale_min,
-        aug_scale_max=self._aug_scale_max)
-    
-    # Resizes and crops boxes.
-    image_scale = image_info[2, :]
-    offset = image_info[3, :]
-    boxes = preprocess_ops.resize_and_crop_boxes(boxes, image_scale,
-                                                 image_info[1, :], offset)
-    
-    # Filters out ground truth boxes that are all zeros.
-    indices = box_ops.get_non_empty_box_indices(boxes)
-    boxes = tf.gather(boxes, indices)
-    classes = tf.gather(classes, indices)
-    
     # Color and lighting jittering
     if self._aug_rand_hue:
       image = tf.image.random_hue(
@@ -201,8 +181,59 @@ class CenterNetParser(parser.Parser):
       image = tf.image.random_brightness(
           image=image, max_delta=.2)
     
+    if not self._odapi_preprocess:
+      # Converts boxes from normalized coordinates to pixel coordinates.
+      boxes = box_ops.denormalize_boxes(boxes, image_shape)
+      
+      # Resizes and crops image.
+      image, image_info = preprocess_ops.resize_and_crop_image(
+          image,
+          [self._output_height, self._output_width],
+          padded_size=[self._output_height, self._output_width],
+          aug_scale_min=self._aug_scale_min,
+          aug_scale_max=self._aug_scale_max)
+      true_image_shapes = tf.concat(
+          [image_info[4, :], tf.constant([3., ])], axis=0)
+      
+      # Resizes and crops boxes.
+      image_scale = image_info[2, :]
+      offset = image_info[3, :]
+      boxes = preprocess_ops.resize_and_crop_boxes(boxes, image_scale,
+                                                   image_info[1, :], offset)
+      
+      # Filters out ground truth boxes that are all zeros.
+      indices = box_ops.get_non_empty_box_indices(boxes)
+      boxes = tf.gather(boxes, indices)
+      classes = tf.gather(classes, indices)
+    else:
+      sc_image, boxes, classes = cn_preprocess_ops.random_square_crop_by_scale(
+          image=image,
+          boxes=boxes,
+          labels=classes,
+          scale_min=self._aug_scale_min,
+          scale_max=self._aug_scale_max)
+      
+      image, true_image_shapes = cn_preprocess_ops.resize_to_range(
+          image=sc_image,
+          min_dimension=self._output_width,
+          max_dimension=self._output_width,
+          pad_to_max_dimension=True)
+      true_image_shapes = tf.cast(true_image_shapes, tf.float32)
+      
+      boxes = box_ops.denormalize_boxes(
+          boxes, [self._output_height, self._output_width])
+      
+      image_info = tf.stack([
+          tf.cast(image_shape, dtype=tf.float32),
+          tf.constant([self._output_height, self._output_width],
+                      dtype=tf.float32),
+          tf.shape(sc_image) / image_shape,
+          tf.constant([0., 0.]),
+          true_image_shapes
+      ])
+    
     labels = self._build_label(
-        imshape=image.get_shape().as_list(),
+        true_image_shapes=true_image_shapes,
         boxes=boxes,
         classes=classes,
         image_info=image_info,
@@ -211,7 +242,7 @@ class CenterNetParser(parser.Parser):
     if self._bgr_ordering:
       red, green, blue = tf.unstack(image, num=3, axis=2)
       image = tf.stack([blue, green, red], axis=2)
-
+    
     image = preprocess_ops.normalize_image(
         image=image,
         offset=self._channel_means,
@@ -246,6 +277,8 @@ class CenterNetParser(parser.Parser):
         padded_size=[self._output_height, self._output_width],
         aug_scale_min=1.0,
         aug_scale_max=1.0)
+    true_image_shapes = tf.concat(
+        [image_info[4, :], tf.constant([3., ])], axis=0)
     
     # Resizes and crops boxes.
     image_scale = image_info[2, :]
@@ -259,16 +292,16 @@ class CenterNetParser(parser.Parser):
     classes = tf.gather(classes, indices)
     
     labels = self._build_label(
-        imshape=image.get_shape().as_list(),
+        true_image_shapes=true_image_shapes,
         boxes=boxes,
         classes=classes,
         image_info=image_info,
         data=data)
-
+    
     if self._bgr_ordering:
       red, green, blue = tf.unstack(image, num=3, axis=2)
       image = tf.stack([blue, green, red], axis=2)
-
+    
     image = preprocess_ops.normalize_image(
         image=image,
         offset=self._channel_means,
