@@ -36,7 +36,8 @@ class DeepMACParams(
         'allowed_masked_classes_ids', 'mask_size', 'mask_num_subsamples',
         'use_xy', 'network_type', 'use_instance_embedding', 'num_init_channels',
         'predict_full_resolution_masks', 'postprocess_crop_size',
-        'max_roi_jitter_ratio', 'roi_jitter_mode', 'box_consistency_loss_weight'
+        'max_roi_jitter_ratio', 'roi_jitter_mode',
+        'box_consistency_loss_weight',
     ])):
   """Class holding the DeepMAC network configutration."""
 
@@ -124,6 +125,9 @@ def _get_deepmac_network_by_type(name, num_init_channels, mask_size=None):
     if not mask_size:
       raise ValueError('Mask size must be set.')
     return FullyConnectedMaskHead(num_init_channels, mask_size)
+
+  elif name == 'embedding_distance_probability':
+    return tf.keras.layers.Lambda(lambda x: x)
 
   elif name.startswith('resnet'):
     return ResNetMaskNetwork(name, num_init_channels)
@@ -262,6 +266,25 @@ def fill_boxes(boxes, height, width):
   return tf.cast(filled_boxes, tf.float32)
 
 
+def embedding_distance_to_probability(x, y):
+  """Compute probability based on pixel-wise embedding distance.
+
+  Args:
+    x: [num_instances, height, width, dimension] float tensor input.
+    y: [num_instances, height, width, dimension] or
+      [num_instances, 1, 1, dimension] float tensor input. When the height
+      and width dimensions are 1, TF will broadcast it.
+
+  Returns:
+    dist: [num_instances, height, width, 1] A float tensor returning
+      the per-pixel probability. Pixels whose embeddings are close in
+      euclidean distance get a probability of close to 1.
+  """
+  diff = x - y
+  squared_dist = tf.reduce_sum(diff * diff, axis=3, keepdims=True)
+  return tf.exp(-squared_dist)
+
+
 class ResNetMaskNetwork(tf.keras.layers.Layer):
   """A small wrapper around ResNet blocks to predict masks."""
 
@@ -366,8 +389,18 @@ class MaskHeadNetwork(tf.keras.layers.Layer):
         network_type, num_init_channels, mask_size)
     self._use_instance_embedding = use_instance_embedding
 
-    self.project_out = tf.keras.layers.Conv2D(
-        filters=1, kernel_size=1, activation=None)
+    self._network_type = network_type
+
+    if (self._use_instance_embedding and
+        (self._network_type == 'embedding_distance_probability')):
+      raise ValueError(('Cannot feed instance embedding to mask head when '
+                        'computing distance from instance embedding.'))
+
+    if network_type == 'embedding_distance_probability':
+      self.project_out = tf.keras.layers.Lambda(lambda x: x)
+    else:
+      self.project_out = tf.keras.layers.Conv2D(
+          filters=1, kernel_size=1, activation=None)
 
   def __call__(self, instance_embedding, pixel_embedding, training):
     """Returns mask logits given object center and spatial embeddings.
@@ -388,10 +421,9 @@ class MaskHeadNetwork(tf.keras.layers.Layer):
     height = tf.shape(pixel_embedding)[1]
     width = tf.shape(pixel_embedding)[2]
 
-    instance_embedding = instance_embedding[:, tf.newaxis, tf.newaxis, :]
-    instance_embedding = tf.tile(instance_embedding, [1, height, width, 1])
-
     if self._use_instance_embedding:
+      instance_embedding = instance_embedding[:, tf.newaxis, tf.newaxis, :]
+      instance_embedding = tf.tile(instance_embedding, [1, height, width, 1])
       inputs = tf.concat([pixel_embedding, instance_embedding], axis=3)
     else:
       inputs = pixel_embedding
@@ -399,6 +431,10 @@ class MaskHeadNetwork(tf.keras.layers.Layer):
     out = self._net(inputs)
     if isinstance(out, list):
       out = out[-1]
+
+    if self._network_type == 'embedding_distance_probability':
+      instance_embedding = instance_embedding[:, tf.newaxis, tf.newaxis, :]
+      out = embedding_distance_to_probability(instance_embedding, out)
 
     if out.shape[-1] > 1:
       out = self.project_out(out)
@@ -465,6 +501,25 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
 
     if self._deepmac_params.mask_num_subsamples > 0:
       raise ValueError('Subsampling masks is currently not supported.')
+
+    if self._deepmac_params.network_type == 'embedding_distance_probability':
+      if self._deepmac_params.use_xy:
+        raise ValueError(
+            'Cannot use x/y coordinates when using embedding distance.')
+
+      pixel_embedding_dim = self._deepmac_params.pixel_embedding_dim
+      dim = self._deepmac_params.dim
+      if dim != pixel_embedding_dim:
+        raise ValueError(
+            'When using embedding distance mask head, '
+            f'pixel_embedding_dim({pixel_embedding_dim}) '
+            f'must be same as dim({dim}).')
+
+      loss = self._deepmac_params.classification_loss
+      if ((not isinstance(loss, losses.WeightedDiceClassificationLoss))
+          or (not loss.is_prediction_probability)):
+        raise ValueError('Only dice loss with is_prediction_probability=true '
+                         'is supported with embedding distance mask head.')
 
     super(DeepMACMetaArch, self).__init__(
         is_training=is_training, add_summaries=add_summaries,
@@ -909,7 +964,10 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
       mask_logits = crop_masks_within_boxes(
           mask_logits, boxes, self._deepmac_params.postprocess_crop_size)
 
-    masks_prob = tf.nn.sigmoid(mask_logits)
+    if self._deepmac_params.network_type == 'embedding_distance_probability':
+      masks_prob = mask_logits
+    else:
+      masks_prob = tf.nn.sigmoid(mask_logits)
 
     return masks_prob
 
