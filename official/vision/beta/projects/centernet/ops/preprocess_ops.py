@@ -277,7 +277,7 @@ def resize_to_range(image,
         image, tf.stack([max_dimension, min_dimension]), method=method,
         preserve_aspect_ratio=True)
 
-  with tf.name_scope('ResizeToRange', values=[image, min_dimension]):
+  with tf.name_scope('ResizeToRange'):
     if image.get_shape().is_fully_defined():
       if image.get_shape()[0] < image.get_shape()[1]:
         new_image = _resize_landscape_image(image)
