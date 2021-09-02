@@ -122,6 +122,17 @@ def panoptic_maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
   steps_per_epoch = _COCO_TRAIN_EXAMPLES // train_batch_size
   validation_steps = _COCO_VAL_EXAMPLES // eval_batch_size
 
+
+  # coco panoptic dataset has category ids ranging from [0-200] inclusive.
+  # 0 is not used and represents the background class
+  # ids 1-91 represent thing categories (91)
+  # ids 92-200 represent stuff categories (109)
+  # for the segmentation task, we continue using id=0 for the background
+  # and map all thing categories to id=1, the remaining 109 stuff categories
+  # are shifted by an offset=90 given by num_thing classes - 1. This shifting
+  # will make all the stuff categories begin from id=2 and end at id=110
+  num_semantic_segmentation_classes = 111
+
   config = cfg.ExperimentConfig(
       runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
       task=PanopticMaskRCNNTask(
@@ -133,7 +144,7 @@ def panoptic_maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
                   output_size=[1024, 1024],
                   stuff_classes_offset=90),
               segmentation_model=SEGMENTATION_MODEL(
-                  num_classes=110,
+                  num_classes=num_semantic_segmentation_classes,
                   head=SEGMENTATION_HEAD(level=3))),
           losses=Losses(l2_weight_decay=0.00004),
           train_data=DataConfig(
