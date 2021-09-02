@@ -218,7 +218,7 @@ def assign_center_targets(out_height: int,
   
   # Maximum of an empty tensor is -inf, the following is to avoid that.
   heatmap = tf.maximum(heatmap, 0)
-  return heatmap
+  return tf.stop_gradient(heatmap)
 
 
 def assign_centernet_targets(labels: Dict[str, tf.Tensor],
