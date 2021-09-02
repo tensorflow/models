@@ -57,6 +57,7 @@ class Parser(hyperparams.Config):
   aug_rand_brightness: bool = False
   aug_rand_hue: bool = False
   aug_rand_contrast: bool = False
+  odapi_preprocess: bool = False
   channel_means: Tuple[float, float, float] = dataclasses.field(
       default_factory=lambda: (104.01362025, 114.03422265, 119.9165958))
   channel_stds: Tuple[float, float, float] = dataclasses.field(

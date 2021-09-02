@@ -76,6 +76,7 @@ class CenterNetTask(base_task.Task):
         aug_rand_brightness=params.parser.aug_rand_brightness,
         aug_rand_contrast=params.parser.aug_rand_contrast,
         aug_rand_saturation=params.parser.aug_rand_saturation,
+        odapi_preprocess=params.parser.odapi_preprocess,
         dtype=params.dtype)
     
     reader = input_reader.InputReader(
