@@ -227,7 +227,7 @@ class CenterNetParser(parser.Parser):
           tf.cast(image_shape, dtype=tf.float32),
           tf.constant([self._output_height, self._output_width],
                       dtype=tf.float32),
-          tf.shape(sc_image)[0:2] / image_shape,
+          tf.cast(tf.shape(sc_image)[0:2] / image_shape, dtype=tf.float32),
           tf.constant([0., 0.]),
           true_image_shapes[0:2]
       ])
