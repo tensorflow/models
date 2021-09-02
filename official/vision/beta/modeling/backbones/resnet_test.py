@@ -135,6 +135,7 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
         kernel_initializer='VarianceScaling',
         kernel_regularizer=None,
         bias_regularizer=None,
+        bn_trainable=True
     )
     network = resnet.ResNet(**kwargs)
 
