@@ -54,9 +54,12 @@ depth, label smoothing and dropout.
 
 ### Common Settings and Notes
 
-* We provide models based on two detection frameworks, [RetinaNet](https://arxiv.org/abs/1708.02002)
-  or [Mask R-CNN](https://arxiv.org/abs/1703.06870), and two backbones, [ResNet-FPN](https://arxiv.org/abs/1612.03144)
-  or [SpineNet](https://arxiv.org/abs/1912.05027).
+* We provide models adopting [ResNet-FPN](https://arxiv.org/abs/1612.03144) and
+  [SpineNet](https://arxiv.org/abs/1912.05027) backbones  based on detection frameworks:
+  * [RetinaNet](https://arxiv.org/abs/1708.02002) and [RetinaNet-RS](https://arxiv.org/abs/2107.00057)
+  * [Mask R-CNN](https://arxiv.org/abs/1703.06870)
+  * [Cascade RCNN](https://arxiv.org/abs/1712.00726) and [Cascade RCNN-RS](https://arxiv.org/abs/2107.00057)
+
 * Models are all trained on COCO train2017 and evaluated on COCO val2017.
 * Training details:
   * Models finetuned from ImageNet pretrained checkpoints adopt the 12 or 36
@@ -99,13 +102,22 @@ depth, label smoothing and dropout.
 
 ### Instance Segmentation Baselines
 
-#### Mask R-CNN (ImageNet pretrained)
-
 #### Mask R-CNN (Trained from scratch)
 
 | Backbone     | Resolution    | Epochs  | FLOPs (B)  | Params (M) | Box AP | Mask AP | Download |
 | ------------ |:-------------:| -------:|-----------:|-----------:|-------:|--------:|---------:|
-| SpineNet-49  | 640x640       |  350    | 215.7      | 40.8       | 42.6   | 37.9    | config   |
+ResNet50-FPN | 640x640    | 350    | 227.7     | 46.3       | 42.3   | 37.6    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/r50fpn_640_coco_scratch_tpu4x4.yaml) |
+| SpineNet-49  | 640x640       |  350    | 215.7      | 40.8       | 42.6   | 37.9    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet49_mrcnn_tpu.yaml) |
+SpineNet-96  | 1024x1024  | 500    | 315.0     | 55.2       | 48.1   | 42.4    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet96_mrcnn_tpu.yaml) |
+SpineNet-143 | 1280x1280  | 500    | 498.8     | 79.2       | 49.3   | 43.4    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet143_mrcnn_tpu.yaml) |
+
+
+#### Cascade RCNN-RS (Trained from scratch)
+
+backbone     | resolution | epochs | params (M) | box AP | mask AP | download
+------------ | :--------: | -----: | ---------: | -----: | ------: | -------:
+SpineNet-49  | 640x640    | 500    | 56.4       | 46.4   | 40.0    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet49_cascadercnn_tpu.yaml)|
+SpineNet-143 | 1280x1280  | 500    | 94.9       | 51.9   | 45.0    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet143_cascadercnn_tpu.yaml)|
 
 ## Semantic Segmentation
 
@@ -131,7 +143,7 @@ depth, label smoothing and dropout.
 
 ### Common Settings and Notes
 
-* We provide models for video classification with two backbones: 
+* We provide models for video classification with two backbones:
   [SlowOnly](https://arxiv.org/abs/1812.03982) and 3D-ResNet (R3D) used in
   [Spatiotemporal Contrastive Video Representation Learning](https://arxiv.org/abs/2008.03800).
 * Training and evaluation details:
