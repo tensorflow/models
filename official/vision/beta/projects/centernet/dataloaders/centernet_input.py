@@ -20,7 +20,7 @@ from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.ops import box_ops
 from official.vision.beta.dataloaders import parser
 from official.vision.beta.dataloaders import utils
-from official.vision.beta.projects.centernet.ops import preprocess_ops as cn_preprocess_ops
+from official.vision.beta.projects.centernet.ops import preprocess_ops as cn_prep_ops
 from official.vision.beta.projects.centernet.ops import box_list
 from official.vision.beta.projects.centernet.ops import box_list_ops
 
@@ -203,14 +203,14 @@ class CenterNetParser(parser.Parser):
                                                    image_info[1, :], offset)
 
     else:
-      sc_image, boxes, classes = cn_preprocess_ops.random_square_crop_by_scale(
+      sc_image, sc_boxes, classes = cn_prep_ops.random_square_crop_by_scale(
           image=image,
           boxes=boxes,
           labels=classes,
           scale_min=self._aug_scale_min,
           scale_max=self._aug_scale_max)
       
-      image, unpad_image_shapes = cn_preprocess_ops.resize_to_range(
+      image, unpad_image_shapes = cn_prep_ops.resize_to_range(
           image=sc_image,
           min_dimension=self._output_width,
           max_dimension=self._output_width,
@@ -218,21 +218,20 @@ class CenterNetParser(parser.Parser):
       unpad_image_shapes = tf.cast(unpad_image_shapes, tf.float32)
       
       preprocessed_shape = tf.shape(image)
-      new_height, new_width = preprocessed_shape[1], preprocessed_shape[2]
+      new_height, new_width = preprocessed_shape[0], preprocessed_shape[1]
       im_box = tf.stack([
           0.0, 0.0,
           tf.cast(new_height, tf.float32) / unpad_image_shapes[0],
           tf.cast(new_width, tf.float32) / unpad_image_shapes[1]
       ])
-      boxlist = box_list.BoxList(boxes)
+      boxlist = box_list.BoxList(sc_boxes)
       realigned_bboxes = box_list_ops.change_coordinate_frame(boxlist, im_box)
 
-      realigned_boxes_tensor = realigned_bboxes.get()
-      valid_boxes_tensor = box_list_ops.assert_or_prune_invalid_boxes(
-          realigned_boxes_tensor)
+      valid_boxes = box_list_ops.assert_or_prune_invalid_boxes(
+          realigned_bboxes.get())
       
       boxes = box_list_ops.to_absolute_coordinates(
-          boxlist=box_list.BoxList(valid_boxes_tensor),
+          boxlist=box_list.BoxList(valid_boxes),
           height=self._output_height,
           width=self._output_width).get()
       
