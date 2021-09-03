@@ -110,8 +110,6 @@ def image_classification_imagenet_deit_pretrain() -> cfg.ExperimentConfig:
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'train*'),
               is_training=True,
               global_batch_size=train_batch_size,
-              color_jitter=0.4,
-              random_erasing=common.RandomErasing(),
               aug_type=common.Augmentation(
                   type='randaug', randaug=common.RandAugment(
                       magnitude=9, exclude_ops=['Cutout'])),
