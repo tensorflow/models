@@ -112,7 +112,7 @@ class CenterNetParser(parser.Parser):
                    boxes,
                    classes,
                    image_info,
-                   unpad_image_shapes,
+                   unpad_image_shape,
                    data):
     
     # Sets up groundtruth data for evaluation.
@@ -139,7 +139,7 @@ class CenterNetParser(parser.Parser):
         'classes': preprocess_ops.clip_or_pad_to_fixed_size(
             classes, self._max_num_instances, -1),
         'image_info': image_info,
-        'unpad_image_shapes': unpad_image_shapes,
+        'unpad_image_shapes': unpad_image_shape,
         'groundtruths': groundtruths
     }
     
@@ -168,21 +168,22 @@ class CenterNetParser(parser.Parser):
     if self._aug_rand_hflip:
       image, boxes, _ = preprocess_ops.random_horizontal_flip(image, boxes)
     
-    # Color and lighting jittering
-    if self._aug_rand_hue:
-      image = tf.image.random_hue(
-          image=image, max_delta=.02)
-    if self._aug_rand_contrast:
-      image = tf.image.random_contrast(
-          image=image, lower=0.8, upper=1.25)
-    if self._aug_rand_saturation:
-      image = tf.image.random_saturation(
-          image=image, lower=0.8, upper=1.25)
-    if self._aug_rand_brightness:
-      image = tf.image.random_brightness(
-          image=image, max_delta=.2)
-    
+    # Image augmentation
     if not self._odapi_augmentation:
+      # Color and lighting jittering
+      if self._aug_rand_hue:
+        image = tf.image.random_hue(
+            image=image, max_delta=.02)
+      if self._aug_rand_contrast:
+        image = tf.image.random_contrast(
+            image=image, lower=0.8, upper=1.25)
+      if self._aug_rand_saturation:
+        image = tf.image.random_saturation(
+            image=image, lower=0.8, upper=1.25)
+      if self._aug_rand_brightness:
+        image = tf.image.random_brightness(
+            image=image, max_delta=.2)
+      image = tf.clip_by_value(image, 255.)
       # Converts boxes from normalized coordinates to pixel coordinates.
       boxes = box_ops.denormalize_boxes(boxes, image_shape)
       
@@ -193,7 +194,7 @@ class CenterNetParser(parser.Parser):
           padded_size=[self._output_height, self._output_width],
           aug_scale_min=self._aug_scale_min,
           aug_scale_max=self._aug_scale_max)
-      unpad_image_shapes = tf.concat(
+      unpad_image_shape = tf.concat(
           [image_info[4, :], tf.constant([3., ])], axis=0)
       
       # Resizes and crops boxes.
@@ -203,6 +204,20 @@ class CenterNetParser(parser.Parser):
                                                    image_info[1, :], offset)
 
     else:
+      # Color and lighting jittering
+      if self._aug_rand_hue:
+        image = cn_prep_ops.random_adjust_hue(
+            image=image, max_delta=.02)
+      if self._aug_rand_contrast:
+        image = cn_prep_ops.random_adjust_contrast(
+            image=image, min_delta=0.8, max_delta=1.25)
+      if self._aug_rand_saturation:
+        image = cn_prep_ops.random_adjust_saturation(
+            image=image, min_delta=0.8, max_delta=1.25)
+      if self._aug_rand_brightness:
+        image = cn_prep_ops.random_adjust_brightness(
+            image=image, max_delta=.2)
+
       sc_image, sc_boxes, classes = cn_prep_ops.random_square_crop_by_scale(
           image=image,
           boxes=boxes,
@@ -210,22 +225,23 @@ class CenterNetParser(parser.Parser):
           scale_min=self._aug_scale_min,
           scale_max=self._aug_scale_max)
       
-      image, unpad_image_shapes = cn_prep_ops.resize_to_range(
+      image, unpad_image_shape = cn_prep_ops.resize_to_range(
           image=sc_image,
           min_dimension=self._output_width,
           max_dimension=self._output_width,
           pad_to_max_dimension=True)
-      unpad_image_shapes = tf.cast(unpad_image_shapes, tf.float32)
+      preprocessed_shape = tf.cast(tf.shape(image), tf.float32)
+      unpad_image_shape = tf.cast(unpad_image_shape, tf.float32)
       
-      preprocessed_shape = tf.shape(image)
-      new_height, new_width = preprocessed_shape[0], preprocessed_shape[1]
       im_box = tf.stack([
-          0.0, 0.0,
-          tf.cast(new_height, tf.float32) / unpad_image_shapes[0],
-          tf.cast(new_width, tf.float32) / unpad_image_shapes[1]
+          0.0,
+          0.0,
+          preprocessed_shape[0] / unpad_image_shape[0],
+          preprocessed_shape[1] / unpad_image_shape[1]
       ])
-      boxlist = box_list.BoxList(sc_boxes)
-      realigned_bboxes = box_list_ops.change_coordinate_frame(boxlist, im_box)
+      realigned_bboxes = box_list_ops.change_coordinate_frame(
+          boxlist=box_list.BoxList(sc_boxes),
+          window=im_box)
 
       valid_boxes = box_list_ops.assert_or_prune_invalid_boxes(
           realigned_bboxes.get())
@@ -241,7 +257,7 @@ class CenterNetParser(parser.Parser):
                       dtype=tf.float32),
           tf.cast(tf.shape(sc_image)[0:2] / image_shape, dtype=tf.float32),
           tf.constant([0., 0.]),
-          unpad_image_shapes[0:2]
+          unpad_image_shape[0:2]
       ])
 
     # Filters out ground truth boxes that are all zeros.
@@ -250,7 +266,7 @@ class CenterNetParser(parser.Parser):
     classes = tf.gather(classes, indices)
     
     labels = self._build_label(
-        unpad_image_shapes=unpad_image_shapes,
+        unpad_image_shape=unpad_image_shape,
         boxes=boxes,
         classes=classes,
         image_info=image_info,
@@ -294,7 +310,7 @@ class CenterNetParser(parser.Parser):
         padded_size=[self._output_height, self._output_width],
         aug_scale_min=1.0,
         aug_scale_max=1.0)
-    unpad_image_shapes = tf.concat(
+    unpad_image_shape = tf.concat(
         [image_info[4, :], tf.constant([3., ])], axis=0)
     
     # Resizes and crops boxes.
@@ -309,7 +325,7 @@ class CenterNetParser(parser.Parser):
     classes = tf.gather(classes, indices)
     
     labels = self._build_label(
-        unpad_image_shapes=unpad_image_shapes,
+        unpad_image_shape=unpad_image_shape,
         boxes=boxes,
         classes=classes,
         image_info=image_info,

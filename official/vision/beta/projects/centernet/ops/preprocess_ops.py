@@ -14,6 +14,8 @@
 
 """Preprocessing ops imported from OD API."""
 
+import functools
+
 import tensorflow as tf
 
 from official.vision.beta.projects.centernet.ops import box_list
@@ -267,19 +269,19 @@ def resize_to_range(image,
   """
   if len(image.get_shape()) != 3:
     raise ValueError('Image should be 3D tensor')
-
+  
   def _resize_landscape_image(image):
     # resize a landscape image
     return tf.image.resize(
         image, tf.stack([min_dimension, max_dimension]), method=method,
         preserve_aspect_ratio=True)
-
+  
   def _resize_portrait_image(image):
     # resize a portrait image
     return tf.image.resize(
         image, tf.stack([max_dimension, min_dimension]), method=method,
         preserve_aspect_ratio=True)
-
+  
   with tf.name_scope('ResizeToRange'):
     if image.get_shape().is_fully_defined():
       if image.get_shape()[0] < image.get_shape()[1]:
@@ -293,7 +295,7 @@ def resize_to_range(image,
           lambda: _resize_landscape_image(image),
           lambda: _resize_portrait_image(image))
       new_size = tf.shape(new_image)
-
+    
     if pad_to_max_dimension:
       channels = tf.unstack(new_image, axis=2)
       if len(channels) != len(per_channel_pad_value):
@@ -309,7 +311,7 @@ def resize_to_range(image,
           ],
           axis=2)
       new_image.set_shape([max_dimension, max_dimension, len(channels)])
-
+    
     result = [new_image, new_size]
     if masks is not None:
       new_masks = tf.expand_dims(masks, 3)
@@ -322,5 +324,173 @@ def resize_to_range(image,
             new_masks, 0, 0, max_dimension, max_dimension)
       new_masks = tf.squeeze(new_masks, 3)
       result.append(new_masks)
-
+    
     return result
+
+
+def _augment_only_rgb_channels(image, augment_function):
+  """Augments only the RGB slice of an image with additional channels."""
+  rgb_slice = image[:, :, :3]
+  augmented_rgb_slice = augment_function(rgb_slice)
+  image = tf.concat([augmented_rgb_slice, image[:, :, 3:]], -1)
+  return image
+
+
+def random_adjust_brightness(image,
+                             max_delta=0.2,
+                             seed=None,
+                             preprocess_vars_cache=None):
+  """Randomly adjusts brightness.
+
+  Makes sure the output image is still between 0 and 255.
+
+  Args:
+    image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
+           with pixel values varying between [0, 255].
+    max_delta: how much to change the brightness. A value between [0, 1).
+    seed: random seed.
+    preprocess_vars_cache: PreprocessorCache object that records previously
+                           performed augmentations. Updated in-place. If this
+                           function is called multiple times with the same
+                           non-null cache, it will perform deterministically.
+
+  Returns:
+    image: image which is the same shape as input image.
+  """
+  with tf.name_scope('RandomAdjustBrightness'):
+    generator_func = functools.partial(tf.random.uniform, [],
+                                       -max_delta, max_delta, seed=seed)
+    delta = _get_or_create_preprocess_rand_vars(
+        generator_func,
+        'adjust_brightness',
+        preprocess_vars_cache)
+    
+    def _adjust_brightness(image):
+      image = tf.image.adjust_brightness(image / 255, delta) * 255
+      image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
+      return image
+    
+    image = _augment_only_rgb_channels(image, _adjust_brightness)
+    return image
+
+
+def random_adjust_contrast(image,
+                           min_delta=0.8,
+                           max_delta=1.25,
+                           seed=None,
+                           preprocess_vars_cache=None):
+  """Randomly adjusts contrast.
+
+  Makes sure the output image is still between 0 and 255.
+
+  Args:
+    image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
+           with pixel values varying between [0, 255].
+    min_delta: see max_delta.
+    max_delta: how much to change the contrast. Contrast will change with a
+               value between min_delta and max_delta. This value will be
+               multiplied to the current contrast of the image.
+    seed: random seed.
+    preprocess_vars_cache: PreprocessorCache object that records previously
+                           performed augmentations. Updated in-place. If this
+                           function is called multiple times with the same
+                           non-null cache, it will perform deterministically.
+
+  Returns:
+    image: image which is the same shape as input image.
+  """
+  with tf.name_scope('RandomAdjustContrast'):
+    generator_func = functools.partial(tf.random.uniform, [],
+                                       min_delta, max_delta, seed=seed)
+    contrast_factor = _get_or_create_preprocess_rand_vars(
+        generator_func,
+        'adjust_contrast',
+        preprocess_vars_cache)
+    
+    def _adjust_contrast(image):
+      image = tf.image.adjust_contrast(image / 255, contrast_factor) * 255
+      image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
+      return image
+    
+    image = _augment_only_rgb_channels(image, _adjust_contrast)
+    return image
+
+
+def random_adjust_hue(image,
+                      max_delta=0.02,
+                      seed=None,
+                      preprocess_vars_cache=None):
+  """Randomly adjusts hue.
+
+  Makes sure the output image is still between 0 and 255.
+
+  Args:
+    image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
+           with pixel values varying between [0, 255].
+    max_delta: change hue randomly with a value between 0 and max_delta.
+    seed: random seed.
+    preprocess_vars_cache: PreprocessorCache object that records previously
+                           performed augmentations. Updated in-place. If this
+                           function is called multiple times with the same
+                           non-null cache, it will perform deterministically.
+
+  Returns:
+    image: image which is the same shape as input image.
+  """
+  with tf.name_scope('RandomAdjustHue'):
+    generator_func = functools.partial(tf.random.uniform, [],
+                                       -max_delta, max_delta, seed=seed)
+    delta = _get_or_create_preprocess_rand_vars(
+        generator_func,
+        'adjust_hue',
+        preprocess_vars_cache)
+    
+    def _adjust_hue(image):
+      image = tf.image.adjust_hue(image / 255, delta) * 255
+      image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
+      return image
+    
+    image = _augment_only_rgb_channels(image, _adjust_hue)
+    return image
+
+
+def random_adjust_saturation(image,
+                             min_delta=0.8,
+                             max_delta=1.25,
+                             seed=None,
+                             preprocess_vars_cache=None):
+  """Randomly adjusts saturation.
+
+  Makes sure the output image is still between 0 and 255.
+
+  Args:
+    image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
+           with pixel values varying between [0, 255].
+    min_delta: see max_delta.
+    max_delta: how much to change the saturation. Saturation will change with a
+               value between min_delta and max_delta. This value will be
+               multiplied to the current saturation of the image.
+    seed: random seed.
+    preprocess_vars_cache: PreprocessorCache object that records previously
+                           performed augmentations. Updated in-place. If this
+                           function is called multiple times with the same
+                           non-null cache, it will perform deterministically.
+
+  Returns:
+    image: image which is the same shape as input image.
+  """
+  with tf.name_scope('RandomAdjustSaturation'):
+    generator_func = functools.partial(tf.random.uniform, [],
+                                       min_delta, max_delta, seed=seed)
+    saturation_factor = _get_or_create_preprocess_rand_vars(
+        generator_func,
+        'adjust_saturation',
+        preprocess_vars_cache)
+    
+    def _adjust_saturation(image):
+      image = tf.image.adjust_saturation(image / 255, saturation_factor) * 255
+      image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
+      return image
+    
+    image = _augment_only_rgb_channels(image, _adjust_saturation)
+    return image
