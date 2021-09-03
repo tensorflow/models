@@ -231,6 +231,10 @@ message WeightedDiceClassificationLoss {
   // If set, we square the probabilities in the denominator term used for
   // normalization.
   optional bool squared_normalization = 1 [default=false];
+
+  // Whether or not the input prediction to the loss function is a
+  // probability. If not, the input is to be interpreted as logit
+  optional bool is_prediction_probability = 2 [default=false];
 }
 
 

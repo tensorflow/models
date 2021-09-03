@@ -81,6 +81,7 @@ setup(
         'official.pip_package*',
         'official.benchmark*',
         'official.colab*',
+        'official.recommendation.ranking.data.preprocessing*',
     ]),
     exclude_package_data={
         '': ['*_test.py',],

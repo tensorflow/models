@@ -12,3 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Setup configuration for criteo dataset preprocessing.
+
+This is used while running Tensorflow transform on Cloud Dataflow.
+"""
+
+import setuptools
+
+version = "0.1.0"
+
+if __name__ == "__main__":
+  setuptools.setup(
+      name="criteo_preprocessing",
+      version=version,
+      install_requires=["tensorflow-transform"],
+      packages=setuptools.find_packages(),
+  )

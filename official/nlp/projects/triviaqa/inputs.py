@@ -48,15 +48,15 @@ def _flatten_dims(tensor: tf.Tensor,
     rank = tensor.shape.rank
     if rank is None:
       raise ValueError('Static rank of `tensor` must be known.')
-    if first_dim < 0:
+    if first_dim < 0:  # pytype: disable=unsupported-operands
       first_dim += rank
-    if first_dim < 0 or first_dim >= rank:
+    if first_dim < 0 or first_dim >= rank:  # pytype: disable=unsupported-operands
       raise ValueError('`first_dim` out of bounds for `tensor` rank.')
-    if last_dim < 0:
+    if last_dim < 0:  # pytype: disable=unsupported-operands
       last_dim += rank
-    if last_dim < 0 or last_dim >= rank:
+    if last_dim < 0 or last_dim >= rank:  # pytype: disable=unsupported-operands
       raise ValueError('`last_dim` out of bounds for `tensor` rank.')
-    if first_dim > last_dim:
+    if first_dim > last_dim:  # pytype: disable=unsupported-operands
       raise ValueError('`first_dim` must not be larger than `last_dim`.')
 
     # Try to calculate static flattened dim size if all input sizes to flatten

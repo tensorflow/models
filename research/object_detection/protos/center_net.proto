@@ -111,6 +111,10 @@ message CenterNet {
     // Parameters to determine the architecture of the object center prediction
     // head.
     optional PredictionHeadParams center_head_params = 8;
+
+    // Max pool kernel size to use to pull off peak score locations in a
+    // neighborhood for the object detection heatmap.
+    optional int32 peak_max_pool_kernel_size = 9 [default = 3];
   }
   optional ObjectCenterParams object_center_params = 5;
 
@@ -265,6 +269,16 @@ message CenterNet {
     // score of an instance is set to be the average score among those keypoints
     // with scores higher than the threshold.
     optional float rescoring_threshold = 30 [default = 0.0];
+
+    // The ratio used to multiply the output feature map size to determine the
+    // denominator in the Gaussian formula. Only applicable when the
+    // candidate_ranking_mode is set to be 'gaussian_weighted_const'.
+    optional float gaussian_denom_ratio = 31 [default = 0.1];
+
+    // Whether to use the keypoint postprocessing logic that replaces topk op
+    // with argmax. Usually used when exporting the model for predicting
+    // keypoints of multiple instances in the browser.
+    optional bool argmax_postprocessing = 32 [default = false];
 
     // Parameters to determine the architecture of the keypoint heatmap
     // prediction head.

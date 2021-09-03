@@ -12,3 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Tasks package definition."""
+
+from official.vision.beta.projects.video_ssl.tasks import linear_eval
+from official.vision.beta.projects.video_ssl.tasks import pretrain

@@ -127,6 +127,7 @@ class ResNet(tf.keras.Model):
       kernel_initializer: str = 'VarianceScaling',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bn_trainable: bool = True,
       **kwargs):
     """Initializes a ResNet model.
 
@@ -153,6 +154,8 @@ class ResNet(tf.keras.Model):
         Conv2D. Default to None.
       bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
+      bn_trainable: A `bool` that indicates whether batch norm layers should be
+        trainable. Default to True.
       **kwargs: Additional keyword arguments to be passed.
     """
     self._model_id = model_id
@@ -174,6 +177,7 @@ class ResNet(tf.keras.Model):
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
+    self._bn_trainable = bn_trainable
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       bn_axis = -1
@@ -195,7 +199,10 @@ class ResNet(tf.keras.Model):
           bias_regularizer=self._bias_regularizer)(
               inputs)
       x = self._norm(
-          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+          axis=bn_axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          trainable=bn_trainable)(
               x)
       x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
     elif stem_type == 'v1':
@@ -210,7 +217,10 @@ class ResNet(tf.keras.Model):
           bias_regularizer=self._bias_regularizer)(
               inputs)
       x = self._norm(
-          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+          axis=bn_axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          trainable=bn_trainable)(
               x)
       x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
       x = layers.Conv2D(
@@ -224,7 +234,10 @@ class ResNet(tf.keras.Model):
           bias_regularizer=self._bias_regularizer)(
               x)
       x = self._norm(
-          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+          axis=bn_axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          trainable=bn_trainable)(
               x)
       x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
       x = layers.Conv2D(
@@ -238,7 +251,10 @@ class ResNet(tf.keras.Model):
           bias_regularizer=self._bias_regularizer)(
               x)
       x = self._norm(
-          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+          axis=bn_axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          trainable=bn_trainable)(
               x)
       x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
     else:
@@ -256,7 +272,10 @@ class ResNet(tf.keras.Model):
           bias_regularizer=self._bias_regularizer)(
               x)
       x = self._norm(
-          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+          axis=bn_axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          trainable=bn_trainable)(
               x)
       x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
     else:
@@ -324,7 +343,8 @@ class ResNet(tf.keras.Model):
         activation=self._activation,
         use_sync_bn=self._use_sync_bn,
         norm_momentum=self._norm_momentum,
-        norm_epsilon=self._norm_epsilon)(
+        norm_epsilon=self._norm_epsilon,
+        bn_trainable=self._bn_trainable)(
             inputs)
 
     for _ in range(1, block_repeats):
@@ -341,7 +361,8 @@ class ResNet(tf.keras.Model):
           activation=self._activation,
           use_sync_bn=self._use_sync_bn,
           norm_momentum=self._norm_momentum,
-          norm_epsilon=self._norm_epsilon)(
+          norm_epsilon=self._norm_epsilon,
+          bn_trainable=self._bn_trainable)(
               x)
 
     return tf.keras.layers.Activation('linear', name=name)(x)
@@ -362,6 +383,7 @@ class ResNet(tf.keras.Model):
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
+        'bn_trainable': self._bn_trainable
     }
     return config_dict
 
@@ -400,4 +422,5 @@ def build_resnet(
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
-      kernel_regularizer=l2_regularizer)
+      kernel_regularizer=l2_regularizer,
+      bn_trainable=backbone_cfg.bn_trainable)

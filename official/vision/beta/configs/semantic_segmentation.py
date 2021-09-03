@@ -14,10 +14,10 @@
 
 # Lint as: python3
 """Semantic segmentation configuration definition."""
+import dataclasses
 import os
 from typing import List, Optional, Union
 
-import dataclasses
 import numpy as np
 
 from official.core import exp_factory
@@ -50,8 +50,10 @@ class DataConfig(cfg.DataConfig):
   aug_scale_min: float = 1.0
   aug_scale_max: float = 1.0
   aug_rand_hflip: bool = True
+  aug_policy: Optional[str] = None
   drop_remainder: bool = True
   file_type: str = 'tfrecord'
+  decoder: Optional[common.DataDecoder] = common.DataDecoder()
 
 
 @dataclasses.dataclass
@@ -120,7 +122,7 @@ class SemanticSegmentationTask(cfg.TaskConfig):
 def semantic_segmentation() -> cfg.ExperimentConfig:
   """Semantic segmentation general."""
   return cfg.ExperimentConfig(
-      task=SemanticSegmentationModel(),
+      task=SemanticSegmentationTask(),
       trainer=cfg.TrainerConfig(),
       restrictions=[
           'task.train_data.is_training != None',

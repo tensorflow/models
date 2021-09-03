@@ -15,13 +15,42 @@
 # Lint as: python3
 """Common configurations."""
 
-from typing import Optional, List
-# Import libraries
-
 import dataclasses
+from typing import Optional
+
+# Import libraries
 
 from official.core import config_definitions as cfg
 from official.modeling import hyperparams
+
+
+@dataclasses.dataclass
+class TfExampleDecoder(hyperparams.Config):
+  """A simple TF Example decoder config."""
+  regenerate_source_id: bool = False
+  mask_binarize_threshold: Optional[float] = None
+
+
+@dataclasses.dataclass
+class TfExampleDecoderLabelMap(hyperparams.Config):
+  """TF Example decoder with label map config."""
+  regenerate_source_id: bool = False
+  mask_binarize_threshold: Optional[float] = None
+  label_map: str = ''
+
+
+@dataclasses.dataclass
+class DataDecoder(hyperparams.OneOfConfig):
+  """Data decoder config.
+
+  Attributes:
+    type: 'str', type of data decoder be used, one of the fields below.
+    simple_decoder: simple TF Example decoder config.
+    label_map_decoder: TF Example decoder with label map config.
+  """
+  type: Optional[str] = 'simple_decoder'
+  simple_decoder: TfExampleDecoder = TfExampleDecoder()
+  label_map_decoder: TfExampleDecoderLabelMap = TfExampleDecoderLabelMap()
 
 
 @dataclasses.dataclass

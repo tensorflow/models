@@ -15,9 +15,9 @@
 # Lint as: python3
 """RetinaNet configuration definition."""
 
-import os
-from typing import List, Optional
 import dataclasses
+import os
+from typing import List, Optional, Union
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -29,22 +29,22 @@ from official.vision.beta.configs import backbones
 
 
 # pylint: disable=missing-class-docstring
+# Keep for backward compatibility.
 @dataclasses.dataclass
-class TfExampleDecoder(hyperparams.Config):
-  regenerate_source_id: bool = False
+class TfExampleDecoder(common.TfExampleDecoder):
+  """A simple TF Example decoder config."""
 
 
+# Keep for backward compatibility.
 @dataclasses.dataclass
-class TfExampleDecoderLabelMap(hyperparams.Config):
-  regenerate_source_id: bool = False
-  label_map: str = ''
+class TfExampleDecoderLabelMap(common.TfExampleDecoderLabelMap):
+  """TF Example decoder with label map config."""
 
 
+# Keep for backward compatibility.
 @dataclasses.dataclass
-class DataDecoder(hyperparams.OneOfConfig):
-  type: Optional[str] = 'simple_decoder'
-  simple_decoder: TfExampleDecoder = TfExampleDecoder()
-  label_map_decoder: TfExampleDecoderLabelMap = TfExampleDecoderLabelMap()
+class DataDecoder(common.DataDecoder):
+  """Data decoder config."""
 
 
 @dataclasses.dataclass
@@ -55,6 +55,7 @@ class Parser(hyperparams.Config):
   aug_rand_hflip: bool = False
   aug_scale_min: float = 1.0
   aug_scale_max: float = 1.0
+  aug_policy: Optional[str] = None
   skip_crowd_during_training: bool = True
   max_num_instances: int = 100
 
@@ -66,7 +67,7 @@ class DataConfig(cfg.DataConfig):
   global_batch_size: int = 0
   is_training: bool = False
   dtype: str = 'bfloat16'
-  decoder: DataDecoder = DataDecoder()
+  decoder: common.DataDecoder = common.DataDecoder()
   parser: Parser = Parser()
   shuffle_buffer_size: int = 10000
   file_type: str = 'tfrecord'
@@ -144,7 +145,8 @@ class RetinaNetTask(cfg.TaskConfig):
   validation_data: DataConfig = DataConfig(is_training=False)
   losses: Losses = Losses()
   init_checkpoint: Optional[str] = None
-  init_checkpoint_modules: str = 'all'  # all or backbone
+  init_checkpoint_modules: Union[
+      str, List[str]] = 'all'  # all, backbone, and/or decoder
   annotation_file: Optional[str] = None
   per_category_metrics: bool = False
   export_config: ExportConfig = ExportConfig()

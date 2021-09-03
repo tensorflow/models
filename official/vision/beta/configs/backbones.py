@@ -32,6 +32,7 @@ class ResNet(hyperparams.Config):
   stochastic_depth_drop_rate: float = 0.0
   resnetd_shortcut: bool = False
   replace_stem_max_pool: bool = False
+  bn_trainable: bool = True
 
 
 @dataclasses.dataclass

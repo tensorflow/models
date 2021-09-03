@@ -61,7 +61,10 @@ class MockMaskNet(tf.keras.layers.Layer):
 
 
 def build_meta_arch(predict_full_resolution_masks=False, use_dice_loss=False,
-                    mask_num_subsamples=-1):
+                    use_instance_embedding=True, mask_num_subsamples=-1,
+                    network_type='hourglass10', use_xy=True,
+                    pixel_embedding_dim=2,
+                    dice_loss_prediction_probability=False):
   """Builds the DeepMAC meta architecture."""
 
   feature_extractor = DummyFeatureExtractor(
@@ -84,7 +87,9 @@ def build_meta_arch(predict_full_resolution_masks=False, use_dice_loss=False,
       use_labeled_classes=False)
 
   if use_dice_loss:
-    classification_loss = losses.WeightedDiceClassificationLoss(False)
+    classification_loss = losses.WeightedDiceClassificationLoss(
+        squared_normalization=False,
+        is_prediction_probability=dice_loss_prediction_probability)
   else:
     classification_loss = losses.WeightedSigmoidClassificationLoss()
 
@@ -92,13 +97,13 @@ def build_meta_arch(predict_full_resolution_masks=False, use_dice_loss=False,
       classification_loss=classification_loss,
       dim=8,
       task_loss_weight=1.0,
-      pixel_embedding_dim=2,
+      pixel_embedding_dim=pixel_embedding_dim,
       allowed_masked_classes_ids=[],
       mask_size=16,
       mask_num_subsamples=mask_num_subsamples,
-      use_xy=True,
-      network_type='hourglass10',
-      use_instance_embedding=True,
+      use_xy=use_xy,
+      network_type=network_type,
+      use_instance_embedding=use_instance_embedding,
       num_init_channels=8,
       predict_full_resolution_masks=predict_full_resolution_masks,
       postprocess_crop_size=128,
@@ -125,7 +130,7 @@ def build_meta_arch(predict_full_resolution_masks=False, use_dice_loss=False,
 
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
-class DeepMACUtilsTest(tf.test.TestCase):
+class DeepMACUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_subsample_trivial(self):
     """Test subsampling masks."""
@@ -169,12 +174,22 @@ class DeepMACUtilsTest(tf.test.TestCase):
         features, boxes, 32)
     self.assertEqual(output.shape, (5, 32, 32, 7))
 
+  def test_embedding_distance_prob_shape(self):
+    dist = deepmac_meta_arch.embedding_distance_to_probability(
+        tf.ones((4, 32, 32, 8)), tf.zeros((4, 32, 32, 8)))
+    self.assertEqual(dist.shape, (4, 32, 32, 1))
+
+  @parameterized.parameters([1e-20, 1e20])
+  def test_embedding_distance_prob_value(self, value):
+    dist = deepmac_meta_arch.embedding_distance_to_probability(
+        tf.zeros((1, 1, 1, 8)), value + tf.zeros((1, 1, 1, 8))).numpy()
+    max_float = np.finfo(dist.dtype).max
+    self.assertLess(dist.max(), max_float)
+    self.assertGreater(dist.max(), -max_float)
+
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
-class DeepMACMetaArchTest(tf.test.TestCase):
-
-  def setUp(self):  # pylint:disable=g-missing-super-call
-    self.model = build_meta_arch()
+class DeepMACMaskHeadTest(tf.test.TestCase):
 
   def test_mask_network(self):
     net = deepmac_meta_arch.MaskHeadNetwork('hourglass10', 8)
@@ -202,6 +217,38 @@ class DeepMACMetaArchTest(tf.test.TestCase):
 
     out = call_func(tf.zeros((2, 4)), tf.zeros((2, 32, 32, 16)), training=True)
     self.assertEqual(out.shape, (2, 32, 32))
+
+  def test_mask_network_embedding_distance_zero_dist(self):
+
+    net = deepmac_meta_arch.MaskHeadNetwork(
+        'embedding_distance_probability', num_init_channels=8,
+        use_instance_embedding=False)
+    call_func = tf.function(net.__call__)
+
+    out = call_func(tf.zeros((2, 7)), tf.zeros((2, 32, 32, 7)), training=True)
+    self.assertEqual(out.shape, (2, 32, 32))
+    self.assertAllGreater(out.numpy(), -np.inf)
+    self.assertAllLess(out.numpy(), np.inf)
+
+  def test_mask_network_embedding_distance_small_dist(self):
+
+    net = deepmac_meta_arch.MaskHeadNetwork(
+        'embedding_distance_probability', num_init_channels=-1,
+        use_instance_embedding=False)
+    call_func = tf.function(net.__call__)
+
+    out = call_func(1e6 + tf.zeros((2, 7)),
+                    tf.zeros((2, 32, 32, 7)), training=True)
+    self.assertEqual(out.shape, (2, 32, 32))
+    self.assertAllGreater(out.numpy(), -np.inf)
+    self.assertAllLess(out.numpy(), np.inf)
+
+
+@unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
+class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
+
+  def setUp(self):  # pylint:disable=g-missing-super-call
+    self.model = build_meta_arch()
 
   def test_get_mask_head_input(self):
 
@@ -349,6 +396,37 @@ class DeepMACMetaArchTest(tf.test.TestCase):
     prob = tf.nn.sigmoid(0.9).numpy()
     self.assertAllClose(masks, prob * np.ones((2, 3, 16, 16)))
 
+  def test_postprocess_emb_dist(self):
+
+    model = build_meta_arch(network_type='embedding_distance_probability',
+                            use_instance_embedding=False,
+                            use_xy=False, pixel_embedding_dim=8,
+                            use_dice_loss=True,
+                            dice_loss_prediction_probability=True)
+    boxes = np.zeros((2, 3, 4), dtype=np.float32)
+    boxes[:, :, [0, 2]] = 0.0
+    boxes[:, :, [1, 3]] = 8.0
+    boxes = tf.constant(boxes)
+
+    masks = model._postprocess_masks(
+        boxes, tf.zeros((2, 32, 32, 2)), tf.zeros((2, 32, 32, 2)))
+    self.assertEqual(masks.shape, (2, 3, 16, 16))
+
+  def test_postprocess_emb_dist_fullres(self):
+
+    model = build_meta_arch(network_type='embedding_distance_probability',
+                            predict_full_resolution_masks=True,
+                            use_instance_embedding=False,
+                            pixel_embedding_dim=8, use_xy=False,
+                            use_dice_loss=True,
+                            dice_loss_prediction_probability=True)
+    boxes = np.zeros((2, 3, 4), dtype=np.float32)
+    boxes = tf.constant(boxes)
+
+    masks = model._postprocess_masks(
+        boxes, tf.zeros((2, 32, 32, 2)), tf.zeros((2, 32, 32, 2)))
+    self.assertEqual(masks.shape, (2, 3, 128, 128))
+
   def test_postprocess_no_crop_resize_shape(self):
 
     model = build_meta_arch(predict_full_resolution_masks=True)
@@ -494,7 +572,7 @@ class FullyConnectedMaskHeadTest(tf.test.TestCase):
 class ResNetMaskHeadTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(['resnet4', 'resnet8', 'resnet20'])
-  def test_pass(self, name):
+  def test_forward(self, name):
     net = deepmac_meta_arch.ResNetMaskNetwork(name, 8)
     out = net(tf.zeros((3, 32, 32, 16)))
     self.assertEqual(out.shape[:3], (3, 32, 32))

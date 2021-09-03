@@ -96,15 +96,18 @@ class MaskRCNNTask(base_task.Task):
     # Restoring checkpoint.
     if self.task_config.init_checkpoint_modules == 'all':
       ckpt = tf.train.Checkpoint(**model.checkpoint_items)
-      status = ckpt.restore(ckpt_dir_or_file)
-      status.assert_consumed()
-    elif self.task_config.init_checkpoint_modules == 'backbone':
-      ckpt = tf.train.Checkpoint(backbone=model.backbone)
-      status = ckpt.restore(ckpt_dir_or_file)
+      status = ckpt.read(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     else:
-      raise ValueError(
-          "Only 'all' or 'backbone' can be used to initialize the model.")
+      ckpt_items = {}
+      if 'backbone' in self.task_config.init_checkpoint_modules:
+        ckpt_items.update(backbone=model.backbone)
+      if 'decoder' in self.task_config.init_checkpoint_modules:
+        ckpt_items.update(decoder=model.decoder)
+
+      ckpt = tf.train.Checkpoint(**ckpt_items)
+      status = ckpt.read(ckpt_dir_or_file)
+      status.expect_partial().assert_existing_objects_matched()
 
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)

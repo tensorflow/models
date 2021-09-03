@@ -948,7 +948,8 @@ def merge_boxes_with_multiple_labels(boxes,
 
 
 def nearest_neighbor_upsampling(input_tensor, scale=None, height_scale=None,
-                                width_scale=None):
+                                width_scale=None,
+                                name='nearest_neighbor_upsampling'):
   """Nearest neighbor upsampling implementation.
 
   Nearest neighbor upsampling function that maps input tensor with shape
@@ -965,6 +966,7 @@ def nearest_neighbor_upsampling(input_tensor, scale=None, height_scale=None,
       option when provided overrides `scale` option.
     width_scale: An integer multiple to scale the width of input image. This
       option when provided overrides `scale` option.
+    name: A name for the operation (optional).
   Returns:
     data_up: A float32 tensor of size
       [batch, height_in*scale, width_in*scale, channels].
@@ -976,13 +978,13 @@ def nearest_neighbor_upsampling(input_tensor, scale=None, height_scale=None,
   if not scale and (height_scale is None or width_scale is None):
     raise ValueError('Provide either `scale` or `height_scale` and'
                      ' `width_scale`.')
-  with tf.name_scope('nearest_neighbor_upsampling'):
+  with tf.name_scope(name):
     h_scale = scale if height_scale is None else height_scale
     w_scale = scale if width_scale is None else width_scale
     (batch_size, height, width,
      channels) = shape_utils.combined_static_and_dynamic_shape(input_tensor)
-    output_tensor = tf.stack([input_tensor] * w_scale, axis=3)
-    output_tensor = tf.stack([output_tensor] * h_scale, axis=2)
+    output_tensor = tf.stack([input_tensor] * w_scale, axis=3, name='w_stack')
+    output_tensor = tf.stack([output_tensor] * h_scale, axis=2, name='h_stack')
     return tf.reshape(output_tensor,
                       [batch_size, height * h_scale, width * w_scale, channels])
 

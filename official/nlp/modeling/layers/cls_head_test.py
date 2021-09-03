@@ -39,6 +39,8 @@ class ClassificationHeadTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(output, [[0., 0.], [0., 0.]])
     self.assertSameElements(test_layer.checkpoint_items.keys(),
                             ["pooler_dense"])
+    outputs = test_layer(features, only_project=True)
+    self.assertEqual(outputs.shape, (2, 5))
 
   def test_layer_serialization(self):
     layer = cls_head.ClassificationHead(10, 2)
@@ -70,6 +72,9 @@ class MultiClsHeadsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(outputs["bar"], [[0., 0., 0.], [0., 0., 0.]])
     self.assertSameElements(test_layer.checkpoint_items.keys(),
                             ["pooler_dense", "foo", "bar"])
+
+    outputs = test_layer(features, only_project=True)
+    self.assertEqual(outputs.shape, (2, 5))
 
   def test_layer_serialization(self):
     cls_list = [("foo", 2), ("bar", 3)]

@@ -59,19 +59,33 @@ class ClassificationHead(tf.keras.layers.Layer):
           activation=self.activation,
           kernel_initializer=self.initializer,
           name="pooler_dense")
-      self.dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
+    self.dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
 
     self.out_proj = tf.keras.layers.Dense(
         units=num_classes, kernel_initializer=self.initializer, name="logits")
 
-  def call(self, features):
+  def call(self, features: tf.Tensor, only_project: bool = False):
+    """Implements call().
+
+    Args:
+      features: a rank-3 Tensor when self.inner_dim is specified, otherwise
+        it is a rank-2 Tensor.
+      only_project: a boolean. If True, we return the intermediate Tensor
+        before projecting to class logits.
+
+    Returns:
+      a Tensor, if only_project is True, shape= [batch size, hidden size].
+      If only_project is False, shape= [batch size, num classes].
+    """
     if not self.inner_dim:
       x = features
     else:
       x = features[:, self.cls_token_idx, :]  # take <CLS> token.
       x = self.dense(x)
-      x = self.dropout(x)
 
+    if only_project:
+      return x
+    x = self.dropout(x)
     x = self.out_proj(x)
     return x
 
@@ -134,7 +148,7 @@ class MultiClsHeads(tf.keras.layers.Layer):
           activation=self.activation,
           kernel_initializer=self.initializer,
           name="pooler_dense")
-      self.dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
+    self.dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
     self.out_projs = []
     for name, num_classes in cls_list:
       self.out_projs.append(
@@ -142,13 +156,28 @@ class MultiClsHeads(tf.keras.layers.Layer):
               units=num_classes, kernel_initializer=self.initializer,
               name=name))
 
-  def call(self, features):
+  def call(self, features: tf.Tensor, only_project: bool = False):
+    """Implements call().
+
+    Args:
+      features: a rank-3 Tensor when self.inner_dim is specified, otherwise
+        it is a rank-2 Tensor.
+      only_project: a boolean. If True, we return the intermediate Tensor
+        before projecting to class logits.
+
+    Returns:
+      If only_project is True, a Tensor with shape= [batch size, hidden size].
+      If only_project is False, a dictionary of Tensors.
+    """
     if not self.inner_dim:
       x = features
     else:
       x = features[:, self.cls_token_idx, :]  # take <CLS> token.
       x = self.dense(x)
-      x = self.dropout(x)
+
+    if only_project:
+      return x
+    x = self.dropout(x)
 
     outputs = {}
     for proj_layer in self.out_projs:

@@ -175,7 +175,7 @@ def _convert_index(index, pos, m=None, is_start=True):
     front -= 1
   assert index[front] is not None or index[rear] is not None
   if index[front] is None:
-    if index[rear] >= 1:
+    if index[rear] >= 1:  # pytype: disable=unsupported-operands
       if is_start:
         return 0
       else:
