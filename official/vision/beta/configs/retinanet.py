@@ -113,6 +113,7 @@ class DetectionGenerator(hyperparams.Config):
   nms_iou_threshold: float = 0.5
   max_num_detections: int = 100
   use_batched_nms: bool = False
+  use_cpu_nms: bool = False
 
 
 @dataclasses.dataclass
