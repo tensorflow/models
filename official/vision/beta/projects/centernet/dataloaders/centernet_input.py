@@ -21,6 +21,8 @@ from official.vision.beta.ops import box_ops
 from official.vision.beta.dataloaders import parser
 from official.vision.beta.dataloaders import utils
 from official.vision.beta.projects.centernet.ops import preprocess_ops as cn_preprocess_ops
+from official.vision.beta.projects.centernet.ops import box_list
+from official.vision.beta.projects.centernet.ops import box_list_ops
 
 from typing import Tuple
 
@@ -215,8 +217,22 @@ class CenterNetParser(parser.Parser):
           pad_to_max_dimension=True)
       unpad_image_shapes = tf.cast(unpad_image_shapes, tf.float32)
       
-      boxes = box_ops.denormalize_boxes(
-          boxes, [self._output_height, self._output_width])
+      preprocessed_shape = tf.shape(image)
+      new_height, new_width = preprocessed_shape[1], preprocessed_shape[2]
+      im_box = tf.stack([
+          0.0, 0.0,
+          tf.cast(new_height, tf.float32) / unpad_image_shapes[0, 0],
+          tf.cast(new_width, tf.float32) / unpad_image_shapes[0, 1]
+      ])
+      boxlist = box_list.BoxList(boxes)
+      realigned_bboxes = box_list_ops.change_coordinate_frame(boxlist, im_box)
+
+      realigned_boxes_tensor = realigned_bboxes.get()
+      valid_boxes_tensor = box_list_ops.assert_or_prune_invalid_boxes(
+          realigned_boxes_tensor)
+      
+      boxes = box_list_ops.to_absolute_coordinates(
+          valid_boxes_tensor, self._output_height, self._output_width)
       
       image_info = tf.stack([
           tf.cast(image_shape, dtype=tf.float32),

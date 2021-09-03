@@ -242,3 +242,109 @@ def clip_to_window(boxlist, window, filter_nonoverlapping=True):
           tf.reshape(tf.where(tf.greater(areas, 0.0)), [-1]), tf.int32)
       clipped = gather(clipped, nonzero_area_indices)
     return clipped
+
+
+def height_width(boxlist):
+  """Computes height and width of boxes in boxlist.
+
+  Args:
+    boxlist: BoxList holding N boxes
+
+  Returns:
+    Height: A tensor with shape [N] representing box heights.
+    Width: A tensor with shape [N] representing box widths.
+  """
+  with tf.name_scope('HeightWidth'):
+    y_min, x_min, y_max, x_max = tf.split(
+        value=boxlist.get(), num_or_size_splits=4, axis=1)
+    return tf.squeeze(y_max - y_min, [1]), tf.squeeze(x_max - x_min, [1])
+
+
+def prune_small_boxes(boxlist, min_side):
+  """Prunes small boxes in the boxlist which have a side smaller than min_side.
+
+  Args:
+    boxlist: BoxList holding N boxes.
+    min_side: Minimum width AND height of box to survive pruning.
+
+  Returns:
+    A pruned boxlist.
+  """
+  with tf.name_scope('PruneSmallBoxes'):
+    height, width = height_width(boxlist)
+    is_valid = tf.logical_and(tf.greater_equal(width, min_side),
+                              tf.greater_equal(height, min_side))
+    return gather(boxlist, tf.reshape(tf.where(is_valid), [-1]))
+
+
+def assert_or_prune_invalid_boxes(boxes):
+  """Makes sure boxes have valid sizes (ymax >= ymin, xmax >= xmin).
+
+  When the hardware supports assertions, the function raises an error when
+  boxes have an invalid size. If assertions are not supported (e.g. on TPU),
+  boxes with invalid sizes are filtered out.
+
+  Args:
+    boxes: float tensor of shape [num_boxes, 4]
+
+  Returns:
+    boxes: float tensor of shape [num_valid_boxes, 4] with invalid boxes
+      filtered out.
+
+  Raises:
+    tf.errors.InvalidArgumentError: When we detect boxes with invalid size.
+      This is not supported on TPUs.
+  """
+  
+  ymin, xmin, ymax, xmax = tf.split(
+      boxes, num_or_size_splits=4, axis=1)
+  
+  height_check = tf.Assert(tf.reduce_all(ymax >= ymin), [ymin, ymax])
+  width_check = tf.Assert(tf.reduce_all(xmax >= xmin), [xmin, xmax])
+  
+  with tf.control_dependencies([height_check, width_check]):
+    boxes_tensor = tf.concat([ymin, xmin, ymax, xmax], axis=1)
+    boxlist = box_list.BoxList(boxes_tensor)
+    boxlist = prune_small_boxes(boxlist, 0)
+  
+  return boxlist.get()
+
+
+def to_absolute_coordinates(boxlist,
+                            height,
+                            width,
+                            check_range=True,
+                            maximum_normalized_coordinate=1.1):
+  """Converts normalized box coordinates to absolute pixel coordinates.
+
+  This function raises an assertion failed error when the maximum box coordinate
+  value is larger than maximum_normalized_coordinate (in which case coordinates
+  are already absolute).
+
+  Args:
+    boxlist: BoxList with coordinates in range [0, 1].
+    height: Maximum value for height of absolute box coordinates.
+    width: Maximum value for width of absolute box coordinates.
+    check_range: If True, checks if the coordinates are normalized or not.
+    maximum_normalized_coordinate: Maximum coordinate value to be considered
+      as normalized, default to 1.1.
+
+  Returns:
+    boxlist with absolute coordinates in terms of the image size.
+
+  """
+  with tf.name_scope('ToAbsoluteCoordinates'):
+    height = tf.cast(height, tf.float32)
+    width = tf.cast(width, tf.float32)
+    
+    # Ensure range of input boxes is correct.
+    if check_range:
+      box_maximum = tf.reduce_max(boxlist.get())
+      max_assert = tf.Assert(
+          tf.greater_equal(maximum_normalized_coordinate, box_maximum),
+          ['maximum box coordinate value is larger '
+           'than %f: ' % maximum_normalized_coordinate, box_maximum])
+      with tf.control_dependencies([max_assert]):
+        width = tf.identity(width)
+    
+    return scale(boxlist, height, width)
