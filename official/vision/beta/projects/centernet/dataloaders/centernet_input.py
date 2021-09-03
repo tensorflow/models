@@ -234,7 +234,7 @@ class CenterNetParser(parser.Parser):
       boxes = box_list_ops.to_absolute_coordinates(
           boxlist=box_list.BoxList(valid_boxes_tensor),
           height=self._output_height,
-          width=self._output_width)
+          width=self._output_width).get()
       
       image_info = tf.stack([
           tf.cast(image_shape, dtype=tf.float32),
