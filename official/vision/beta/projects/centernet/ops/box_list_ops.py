@@ -17,7 +17,7 @@
 import tensorflow as tf
 
 from official.vision.beta.projects.centernet.ops import box_list
-from official.vision.beta.projects.centernet.ops import loss_ops
+from official.vision.beta.ops import sampling_ops
 
 
 def _copy_extra_fields(boxlist_to_copy_to, boxlist_to_copy_from):
@@ -42,7 +42,6 @@ def scale(boxlist, y_scale, x_scale):
     boxlist: BoxList holding N boxes
     y_scale: (float) scalar tensor
     x_scale: (float) scalar tensor
-    scope: name scope.
 
   Returns:
     boxlist: BoxList holding N boxes
@@ -66,7 +65,6 @@ def area(boxlist):
 
   Args:
     boxlist: BoxList holding N boxes
-    scope: name scope.
 
   Returns:
     a tensor with shape [N] representing box areas.
@@ -109,22 +107,19 @@ def change_coordinate_frame(boxlist, window):
 def matmul_gather_on_zeroth_axis(params, indices):
   """Matrix multiplication based implementation of tf.gather on zeroth axis.
 
-  TODO(rathodv, jonathanhuang): enable sparse matmul option.
-
   Args:
     params: A float32 Tensor. The tensor from which to gather values.
       Must be at least rank 1.
     indices: A Tensor. Must be one of the following types: int32, int64.
       Must be in range [0, params.shape[0])
-    scope: A name for the operation (optional).
 
   Returns:
     A Tensor. Has the same type as params. Values from params gathered
     from indices given by indices, with shape indices.shape + params.shape[1:].
   """
   with tf.name_scope('MatMulGather'):
-    params_shape = loss_ops.combined_static_and_dynamic_shape(params)
-    indices_shape = loss_ops.combined_static_and_dynamic_shape(indices)
+    params_shape = sampling_ops.combined_static_and_dynamic_shape(params)
+    indices_shape = sampling_ops.combined_static_and_dynamic_shape(indices)
     params2d = tf.reshape(params, [params_shape[0], -1])
     indicator_matrix = tf.one_hot(indices, params_shape[0])
     gathered_result_flattened = tf.matmul(indicator_matrix, params2d)
@@ -146,13 +141,13 @@ def gather(boxlist, indices, fields=None, use_static_shapes=False):
     fields: (optional) list of fields to also gather from.  If None (default),
       all fields are gathered from.  Pass an empty fields list to only gather
       the box coordinates.
-    scope: name scope.
     use_static_shapes: Whether to use an implementation with static shape
       gurantees.
 
   Returns:
     subboxlist: a BoxList corresponding to the subset of the input BoxList
     specified by indices
+  
   Raises:
     ValueError: if specified field is not contained in boxlist or if the
       indices are not of type int32
@@ -188,7 +183,6 @@ def prune_completely_outside_window(boxlist, window):
     boxlist: a BoxList holding M_in boxes.
     window: a float tensor of shape [4] representing [ymin, xmin, ymax, xmax]
       of the window
-    scope: name scope.
 
   Returns:
     pruned_boxlist: a new BoxList with all bounding boxes partially or fully in
@@ -222,11 +216,11 @@ def clip_to_window(boxlist, window, filter_nonoverlapping=True):
       window to which the op should clip boxes.
     filter_nonoverlapping: whether to filter out boxes that do not overlap at
       all with the window.
-    scope: name scope.
 
   Returns:
     a BoxList holding M_out boxes where M_out <= M_in
   """
+  
   with tf.name_scope('ClipToWindow'):
     y_min, x_min, y_max, x_max = tf.split(
         value=boxlist.get(), num_or_size_splits=4, axis=1)

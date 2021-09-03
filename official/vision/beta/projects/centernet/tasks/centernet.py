@@ -76,7 +76,7 @@ class CenterNetTask(base_task.Task):
         aug_rand_brightness=params.parser.aug_rand_brightness,
         aug_rand_contrast=params.parser.aug_rand_contrast,
         aug_rand_saturation=params.parser.aug_rand_saturation,
-        odapi_preprocess=params.parser.odapi_preprocess,
+        odapi_augmentation=params.parser.odapi_augmentation,
         dtype=params.dtype)
     
     reader = input_reader.InputReader(
@@ -236,14 +236,16 @@ class CenterNetTask(base_task.Task):
     box_indices = loss_ops.add_batch_to_indices(gt_label['box_indices'])
     
     box_mask = tf.cast(gt_label['box_mask'], dtype=tf.float32)
-    num_boxes = loss_ops.to_float32(
-        loss_ops.get_num_instances_from_weights(gt_label['box_mask']))
+    num_boxes = tf.cast(
+        loss_ops.get_num_instances_from_weights(gt_label['box_mask']),
+        dtype=tf.float32)
     
     # Calculate center heatmap loss
-    output_true_image_shapes = tf.math.ceil(
-        tf.cast(labels['true_image_shapes'], tf.float32) / self._net_down_scale)
+    output_unpad_image_shapes = tf.math.ceil(
+        tf.cast(labels['unpad_image_shapes'],
+                tf.float32) / self._net_down_scale)
     valid_anchor_weights = loss_ops.get_valid_anchor_weights_in_flattened_image(
-        output_true_image_shapes, output_size[0], output_size[1])
+        output_unpad_image_shapes, output_size[0], output_size[1])
     valid_anchor_weights = tf.expand_dims(valid_anchor_weights, 2)
     
     pred_ct_heatmap_list = outputs['ct_heatmaps']

@@ -36,7 +36,20 @@ Some other notes:
 
 import tensorflow as tf
 
-from official.vision.beta.projects.centernet.ops import shape_utils
+
+def _get_dim_as_int(dim):
+  """Utility to get v1 or v2 TensorShape dim as an int.
+
+  Args:
+    dim: The TensorShape dimension to get as an int
+
+  Returns:
+    None or an int.
+  """
+  try:
+    return dim.value
+  except AttributeError:
+    return dim
 
 
 class BoxList(object):
@@ -76,7 +89,7 @@ class BoxList(object):
       Number of boxes held in collection (integer) or None if this is not
         inferrable at graph construction time.
     """
-    return shape_utils.get_dim_as_int(self.data['boxes'].get_shape()[0])
+    return _get_dim_as_int(self.data['boxes'].get_shape()[0])
   
   def get_all_fields(self):
     """Returns all fields."""

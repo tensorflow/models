@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Preprocessing ops."""
+"""Preprocessing ops imported from OD API."""
 
 import tensorflow as tf
 
@@ -38,6 +38,7 @@ def _get_or_create_preprocess_rand_vars(generator_func,
                            function is called multiple times with the same
                            non-null cache, it will perform deterministically.
     key: identifier for the variable stored.
+  
   Returns:
     The generated tensor.
   """
@@ -67,6 +68,8 @@ def _random_integer(minval, maxval, seed):
 
 
 def _get_crop_border(border, size):
+  """Get the border of cropping."""
+  
   border = tf.cast(border, tf.float32)
   size = tf.cast(size, tf.float32)
   
@@ -307,7 +310,7 @@ def resize_to_range(image,
           axis=2)
       new_image.set_shape([max_dimension, max_dimension, len(channels)])
 
-    result = [new_image]
+    result = [new_image, new_size]
     if masks is not None:
       new_masks = tf.expand_dims(masks, 3)
       new_masks = tf.image.resize(
@@ -320,5 +323,4 @@ def resize_to_range(image,
       new_masks = tf.squeeze(new_masks, 3)
       result.append(new_masks)
 
-    result.append(new_size)
     return result

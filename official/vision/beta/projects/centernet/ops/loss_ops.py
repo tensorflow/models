@@ -12,48 +12,63 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Operations for compute losses for centernet."""
+"""Operations for computing losses of centernet."""
 
 import tensorflow as tf
 
-
-def to_float32(x):
-  return tf.cast(x, tf.float32)
+from official.vision.beta.ops import sampling_ops
 
 
-def get_shape(tensor, num_dims):
+def _get_shape(tensor, num_dims):
   assert len(tensor.shape.as_list()) == num_dims
-  return combined_static_and_dynamic_shape(tensor)
-
-
-def combined_static_and_dynamic_shape(tensor):
-  """Returns a list containing static and dynamic values for the dimensions.
-
-  Returns a list of static and dynamic values for shape dimensions. This is
-  useful to preserve static shapes when available in reshape operation.
-  
-  Args:
-    tensor: A tensor of any type.
-  
-  Returns:
-    A list of size tensor.shape.ndims containing integers or a scalar tensor.
-  """
-  static_tensor_shape = tensor.shape.as_list()
-  dynamic_tensor_shape = tf.shape(tensor)
-  combined_shape = []
-  for index, dim in enumerate(static_tensor_shape):
-    if dim is not None:
-      combined_shape.append(dim)
-    else:
-      combined_shape.append(dynamic_tensor_shape[index])
-  return combined_shape
+  return sampling_ops.combined_static_and_dynamic_shape(tensor)
 
 
 def flatten_spatial_dimensions(batch_images):
   # pylint: disable=unbalanced-tuple-unpacking
-  batch_size, height, width, channels = get_shape(batch_images, 4)
+  batch_size, height, width, channels = _get_shape(batch_images, 4)
   return tf.reshape(batch_images, [batch_size, height * width,
                                    channels])
+
+
+def multi_range(limit,
+                value_repetitions=1,
+                range_repetitions=1,
+                dtype=tf.int32):
+  """Creates a sequence with optional value duplication and range repetition.
+
+  As an example (see the Args section for more details),
+  _multi_range(limit=2, value_repetitions=3, range_repetitions=4) returns:
+  [0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1]
+  NOTE: Repurposed from Google OD API.
+
+  Args:
+    limit: A 0-D Tensor (scalar). Upper limit of sequence, exclusive.
+    value_repetitions: Integer. The number of times a value in the sequence is
+      repeated. With value_repetitions=3, the result is [0, 0, 0, 1, 1, 1, ..].
+    range_repetitions: Integer. The number of times the range is repeated. With
+      range_repetitions=3, the result is [0, 1, 2, .., 0, 1, 2, ..].
+    dtype: The type of the elements of the resulting tensor.
+
+  Returns:
+    A 1-D tensor of type `dtype` and size
+      [`limit` * `value_repetitions` * `range_repetitions`] that contains the
+      specified range with given repetitions.
+  """
+  return tf.reshape(
+      tf.tile(
+          tf.expand_dims(tf.range(limit, dtype=dtype), axis=-1),
+          multiples=[range_repetitions, value_repetitions]), [-1])
+
+
+def add_batch_to_indices(indices):
+  shape = tf.shape(indices)
+  batch_size = shape[0]
+  num_instances = shape[1]
+  batch_range = multi_range(limit=batch_size, value_repetitions=num_instances)
+  batch_range = tf.reshape(batch_range, shape=(batch_size, num_instances, 1))
+  
+  return tf.concat([batch_range, indices], axis=-1)
 
 
 def get_num_instances_from_weights(gt_weights_list):
@@ -84,36 +99,6 @@ def get_num_instances_from_weights(gt_weights_list):
   return num_instances
 
 
-def multi_range(limit,
-                value_repetitions=1,
-                range_repetitions=1,
-                dtype=tf.int32):
-  """Creates a sequence with optional value duplication and range repetition.
-
-  As an example (see the Args section for more details),
-  _multi_range(limit=2, value_repetitions=3, range_repetitions=4) returns:
-  [0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1]
-  NOTE: Repurposed from Google OD API.
-
-  Args:
-    limit: A 0-D Tensor (scalar). Upper limit of sequence, exclusive.
-    value_repetitions: Integer. The number of times a value in the sequence is
-      repeated. With value_repetitions=3, the result is [0, 0, 0, 1, 1, 1, ..].
-    range_repetitions: Integer. The number of times the range is repeated. With
-      range_repetitions=3, the result is [0, 1, 2, .., 0, 1, 2, ..].
-    dtype: The type of the elements of the resulting tensor.
-  
-  Returns:
-    A 1-D tensor of type `dtype` and size
-      [`limit` * `value_repetitions` * `range_repetitions`] that contains the
-      specified range with given repetitions.
-  """
-  return tf.reshape(
-      tf.tile(
-          tf.expand_dims(tf.range(limit, dtype=dtype), axis=-1),
-          multiples=[range_repetitions, value_repetitions]), [-1])
-
-
 def get_batch_predictions_from_indices(batch_predictions, indices):
   """Gets the values of predictions in a batch at the given indices.
 
@@ -134,16 +119,6 @@ def get_batch_predictions_from_indices(batch_predictions, indices):
   """
   
   return tf.gather_nd(batch_predictions, indices)
-
-
-def add_batch_to_indices(indices):
-  shape = tf.shape(indices)
-  batch_size = shape[0]
-  num_instances = shape[1]
-  batch_range = multi_range(limit=batch_size, value_repetitions=num_instances)
-  batch_range = tf.reshape(batch_range, shape=(batch_size, num_instances, 1))
-  
-  return tf.concat([batch_range, indices], axis=-1)
 
 
 def get_valid_anchor_weights_in_flattened_image(true_image_shapes, height,
@@ -175,15 +150,15 @@ def get_valid_anchor_weights_in_flattened_image(true_image_shapes, height,
       batch_indices, width, 1)
   
   max_y, max_x = true_image_shapes[:, 0], true_image_shapes[:, 1]
-  max_x = to_float32(tf.expand_dims(max_x, 1))
-  max_y = to_float32(tf.expand_dims(max_y, 1))
+  max_x = tf.cast(tf.expand_dims(max_x, 1), tf.float32)
+  max_y = tf.cast(tf.expand_dims(max_y, 1), tf.float32)
   
-  x_coords = to_float32(x_coords)
-  y_coords = to_float32(y_coords)
+  x_coords = tf.cast(x_coords, tf.float32)
+  y_coords = tf.cast(y_coords, tf.float32)
   
   valid_mask = tf.math.logical_and(x_coords < max_x, y_coords < max_y)
   
-  return to_float32(valid_mask)
+  return tf.cast(valid_mask, tf.float32)
 
 
 def get_row_col_channel_indices_from_flattened_indices(indices: int,
@@ -217,20 +192,3 @@ def get_row_col_channel_indices_from_flattened_indices(indices: int,
   channel_indices = indices - channel_indices_temp * num_channels
   
   return row_indices, col_indices, channel_indices
-
-
-def smallest_positive_root(a, b, c):
-  """Returns the smallest positive root of a quadratic equation."""
-  
-  discriminant = tf.sqrt(b ** 2 - 4 * a * c)
-  
-  # TODO(vighneshb) We are currently using the slightly incorrect
-  # CenterNet implementation. The commented lines implement the fixed version
-  # in https://github.com/princeton-vl/CornerNet. Change the implementation
-  # after verifying it has no negative impact.
-  # root1 = (-b - discriminant) / (2 * a)
-  # root2 = (-b + discriminant) / (2 * a)
-  
-  # return tf.where(tf.less(root1, 0), root2, root1)
-  
-  return (-b + discriminant) / (2.0)

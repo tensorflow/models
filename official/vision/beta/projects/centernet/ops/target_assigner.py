@@ -17,7 +17,25 @@
 from typing import List, Dict
 
 import tensorflow as tf
-from official.vision.beta.projects.centernet.ops import loss_ops
+
+from official.vision.beta.ops import sampling_ops
+
+
+def smallest_positive_root(a, b, c):
+  """Returns the smallest positive root of a quadratic equation."""
+  
+  discriminant = tf.sqrt(b ** 2 - 4 * a * c)
+  
+  # TODO(vighneshb) We are currently using the slightly incorrect
+  # CenterNet implementation. The commented lines implement the fixed version
+  # in https://github.com/princeton-vl/CornerNet. Change the implementation
+  # after verifying it has no negative impact.
+  # root1 = (-b - discriminant) / (2 * a)
+  # root2 = (-b + discriminant) / (2 * a)
+  
+  # return tf.where(tf.less(root1, 0), root2, root1)
+  
+  return (-b + discriminant) / (2.0)
 
 
 @tf.function
@@ -108,21 +126,21 @@ def max_distance_for_overlap(height, width, min_iou):
   # Case where detected box is offset from ground truth and no box completely
   # contains the other.
   
-  distance_detection_offset = loss_ops.smallest_positive_root(
+  distance_detection_offset = smallest_positive_root(
       a=1, b=-(height + width),
       c=width * height * ((1 - min_iou) / (1 + min_iou))
   )
   
   # Case where detection is smaller than ground truth and completely contained
   # in it.
-  distance_detection_in_gt = loss_ops.smallest_positive_root(
+  distance_detection_in_gt = smallest_positive_root(
       a=4, b=-2 * (height + width),
       c=(1 - min_iou) * width * height
   )
   
   # Case where ground truth is smaller than detection and completely contained
   # in it.
-  distance_gt_in_detection = loss_ops.smallest_positive_root(
+  distance_gt_in_detection = smallest_positive_root(
       a=4 * min_iou, b=(2 * min_iou) * (width + height),
       c=(min_iou - 1) * width * height
   )
@@ -195,7 +213,7 @@ def assign_center_targets(out_height: int,
                                         gaussian_iou)
   
   num_instances, num_channels = (
-      loss_ops.combined_static_and_dynamic_shape(channel_onehot))
+      sampling_ops.combined_static_and_dynamic_shape(channel_onehot))
   
   x_grid = tf.expand_dims(x_grid, 2)
   y_grid = tf.expand_dims(y_grid, 2)
@@ -374,18 +392,18 @@ def assign_centernet_targets(labels: Dict[str, tf.Tensor],
         tf.range(max_num_instances), tf.range(2))
     # [num_objects, 2, 2]
     update_indices = tf.reshape(update_indices, shape=[max_num_instances, 2, 2])
-
+    
     # Write the offsets of each box instance
     ct_offset = tf.tensor_scatter_nd_update(
         ct_offset, update_indices, ct_offset_values)
-
+    
     # Write the size of each bounding box
     size = tf.tensor_scatter_nd_update(
         size, update_indices, box_heights_widths)
-
+    
     # Initially the mask is zeros, so now we unmask each valid box instance
     box_mask = tf.where(tf.range(max_num_instances) < num_objects, 1, 0)
-
+    
     # Write the y and x coordinate of each box center in the heatmap
     box_index_values = tf.cast(
         tf.stack([scale_yct_floor, scale_xct_floor], axis=-1),
