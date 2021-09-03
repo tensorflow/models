@@ -128,6 +128,7 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
         resnetd_shortcut=False,
         replace_stem_max_pool=False,
         init_stochastic_depth_rate=0.0,
+        scale_stem=True,
         use_sync_bn=False,
         activation='relu',
         norm_momentum=0.99,
@@ -135,8 +136,7 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
         kernel_initializer='VarianceScaling',
         kernel_regularizer=None,
         bias_regularizer=None,
-        bn_trainable=True
-    )
+        bn_trainable=True)
     network = resnet.ResNet(**kwargs)
 
     expected_config = dict(kwargs)
