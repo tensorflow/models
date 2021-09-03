@@ -183,7 +183,7 @@ class CenterNetParser(parser.Parser):
       if self._aug_rand_brightness:
         image = tf.image.random_brightness(
             image=image, max_delta=.2)
-      image = tf.clip_by_value(image, 255.)
+      image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
       # Converts boxes from normalized coordinates to pixel coordinates.
       boxes = box_ops.denormalize_boxes(boxes, image_shape)
       
