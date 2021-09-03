@@ -221,8 +221,8 @@ class CenterNetParser(parser.Parser):
       new_height, new_width = preprocessed_shape[1], preprocessed_shape[2]
       im_box = tf.stack([
           0.0, 0.0,
-          tf.cast(new_height, tf.float32) / unpad_image_shapes[0, 0],
-          tf.cast(new_width, tf.float32) / unpad_image_shapes[0, 1]
+          tf.cast(new_height, tf.float32) / unpad_image_shapes[0],
+          tf.cast(new_width, tf.float32) / unpad_image_shapes[1]
       ])
       boxlist = box_list.BoxList(boxes)
       realigned_bboxes = box_list_ops.change_coordinate_frame(boxlist, im_box)
