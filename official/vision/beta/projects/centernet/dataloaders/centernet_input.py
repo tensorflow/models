@@ -232,7 +232,9 @@ class CenterNetParser(parser.Parser):
           realigned_boxes_tensor)
       
       boxes = box_list_ops.to_absolute_coordinates(
-          valid_boxes_tensor, self._output_height, self._output_width)
+          boxlist=box_list.BoxList(valid_boxes_tensor),
+          height=self._output_height,
+          width=self._output_width)
       
       image_info = tf.stack([
           tf.cast(image_shape, dtype=tf.float32),
