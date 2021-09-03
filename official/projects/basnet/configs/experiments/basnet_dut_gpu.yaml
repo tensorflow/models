@@ -1,0 +1,10 @@
+runtime:
+  distribution_strategy: 'mirrored'
+  mixed_precision_dtype: 'float32'
+  num_gpus: 8
+task:
+  train_data:
+    dtype: 'float32'
+  validation_data:
+    resize_eval_groundtruth: true
+    dtype: 'float32'
