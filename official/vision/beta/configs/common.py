@@ -16,7 +16,7 @@
 """Common configurations."""
 
 import dataclasses
-from typing import Optional
+from typing import List, Optional
 
 # Import libraries
 
