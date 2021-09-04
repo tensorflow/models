@@ -174,9 +174,6 @@ class BoxList(object):
   def get_center_coordinates_and_sizes(self):
     """Computes the center coordinates, height and width of the boxes.
 
-    Args:
-      scope: name scope of the function.
-
     Returns:
       a list of 4 1-D tensors [ycenter, xcenter, height, width].
     """
@@ -190,11 +187,7 @@ class BoxList(object):
       return [ycenter, xcenter, height, width]
   
   def transpose_coordinates(self):
-    """Transpose the coordinate representation in a boxlist.
-
-    Args:
-      scope: name scope of the function.
-    """
+    """Transpose the coordinate representation in a boxlist."""
     with tf.name_scope('transpose_coordinates'):
       y_min, x_min, y_max, x_max = tf.split(
           value=self.get(), num_or_size_splits=4, axis=1)

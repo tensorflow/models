@@ -68,9 +68,9 @@ class CenterNetParser(parser.Parser):
         saturation.
       aug_rand_brightness: `bool`, if True, augment training with random
         brightness.
-      odapi_augmentation: `bool`, if Ture, use OD API preprocessing.
       aug_rand_hue: `bool`, if True, augment training with random hue.
-      aug_rand_hue: `bool`, if True, augment training with random contrast.
+      aug_rand_contrast: `bool`, if True, augment training with random contrast.
+      odapi_augmentation: `bool`, if Ture, use OD API preprocessing.
       channel_means: A tuple of floats, denoting the mean of each channel
         which will be subtracted from it.
       channel_stds: A tuple of floats, denoting the standard deviation of each
@@ -194,8 +194,7 @@ class CenterNetParser(parser.Parser):
           padded_size=[self._output_height, self._output_width],
           aug_scale_min=self._aug_scale_min,
           aug_scale_max=self._aug_scale_max)
-      unpad_image_shape = tf.concat(
-          [image_info[4, :], tf.constant([3., ])], axis=0)
+      unpad_image_shape = tf.cast(tf.shape(image), tf.float32)
       
       # Resizes and crops boxes.
       image_scale = image_info[2, :]
@@ -256,8 +255,7 @@ class CenterNetParser(parser.Parser):
           tf.constant([self._output_height, self._output_width],
                       dtype=tf.float32),
           tf.cast(tf.shape(sc_image)[0:2] / image_shape, dtype=tf.float32),
-          tf.constant([0., 0.]),
-          unpad_image_shape[0:2]
+          tf.constant([0., 0.])
       ])
 
     # Filters out ground truth boxes that are all zeros.
@@ -310,8 +308,7 @@ class CenterNetParser(parser.Parser):
         padded_size=[self._output_height, self._output_width],
         aug_scale_min=1.0,
         aug_scale_max=1.0)
-    unpad_image_shape = tf.concat(
-        [image_info[4, :], tf.constant([3., ])], axis=0)
+    unpad_image_shape = tf.cast(tf.shape(image), tf.float32)
     
     # Resizes and crops boxes.
     image_scale = image_info[2, :]

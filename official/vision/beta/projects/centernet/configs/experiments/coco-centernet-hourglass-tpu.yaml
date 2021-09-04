@@ -1,8 +1,6 @@
 runtime:
-  distribution_strategy: 'mirrored'
-  mixed_precision_dtype: 'float16'
-  loss_scale: 'dynamic'
-  num_gpus: 8
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
 task:
   model:
     num_classes: 90
@@ -46,8 +44,8 @@ task:
   train_data:
     input_path: 'coco/train*'
     drop_remainder: true
-    dtype: 'float16'
-    global_batch_size: 64
+    dtype: 'bfloat16'
+    global_batch_size: 128
     is_training: true
     parser:
       aug_rand_hflip: true
@@ -61,22 +59,22 @@ task:
   validation_data:
     input_path: 'coco/val*'
     drop_remainder: false
-    dtype: 'float16'
+    dtype: 'bfloat16'
     global_batch_size: 16
     is_training: false
 trainer:
-  train_steps: 280000
-  validation_steps: 312 # 5000 / 16
-  steps_per_loop: 1848 # 118287 / 128
-  validation_interval: 1848
-  summary_interval: 1848
-  checkpoint_interval: 1848
+  train_steps: 140000
+  validation_steps: 78 # 5000 / 16
+  steps_per_loop: 924 # 118287 / 128
+  validation_interval: 924
+  summary_interval: 924
+  checkpoint_interval: 924
   optimizer_config:
     learning_rate:
       type: 'cosine'
       cosine:
         initial_learning_rate: 0.0001
-        decay_steps: 280000
+        decay_steps: 140000
     optimizer:
       type: adam
       adam:

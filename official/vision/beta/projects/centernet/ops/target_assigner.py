@@ -324,30 +324,30 @@ def assign_centernet_targets(labels: Dict[str, tf.Tensor],
   height_ratio = output_h / input_h
   
   # Original box coordinates
-  # [num_objects, ]
+  # [max_num_instances, ]
   ytl, ybr = boxes[..., 0], boxes[..., 2]
   xtl, xbr = boxes[..., 1], boxes[..., 3]
   yct = (ytl + ybr) / 2
   xct = (xtl + xbr) / 2
   
   # Scaled box coordinates (could be floating point)
-  # [num_objects, ]
+  # [max_num_instances, ]
   scale_xct = xct * width_ratio
   scale_yct = yct * height_ratio
   
   # Floor the scaled box coordinates to be placed on heatmaps
-  # [num_objects, ]
+  # [max_num_instances, ]
   scale_xct_floor = tf.math.floor(scale_xct)
   scale_yct_floor = tf.math.floor(scale_yct)
   
   # Offset computations to make up for discretization error
   # used for offset maps
-  # [num_objects, 2]
+  # [max_num_instances, 2]
   ct_offset_values = tf.stack([scale_yct - scale_yct_floor,
                                scale_xct - scale_xct_floor], axis=-1)
   
   # Get the scaled box dimensions for computing the gaussian radius
-  # [num_objects, ]
+  # [max_num_instances, ]
   box_widths = boxes[..., 3] - boxes[..., 1]
   box_heights = boxes[..., 2] - boxes[..., 0]
   
@@ -355,7 +355,7 @@ def assign_centernet_targets(labels: Dict[str, tf.Tensor],
   box_heights = box_heights * height_ratio
   
   # Used for size map
-  # [num_objects, 2]
+  # [max_num_instances, 2]
   box_heights_widths = tf.stack([box_heights, box_widths], axis=-1)
   
   # Center/corner heatmaps
@@ -390,7 +390,7 @@ def assign_centernet_targets(labels: Dict[str, tf.Tensor],
     # Indices used to update offsets and sizes for valid box instances
     update_indices = cartesian_product(
         tf.range(max_num_instances), tf.range(2))
-    # [num_objects, 2, 2]
+    # [max_num_instances, 2, 2]
     update_indices = tf.reshape(update_indices, shape=[max_num_instances, 2, 2])
     
     # Write the offsets of each box instance

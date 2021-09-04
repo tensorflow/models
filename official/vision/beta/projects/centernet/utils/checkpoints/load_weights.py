@@ -78,8 +78,7 @@ def load_weights_backbone(backbone, weights_dict, backbone_name):
                    cn_nn_blocks.HourglassBlock,
                    nn_blocks.ResidualBlock)):
       n_weights = cfg.load_weights(layer)
-      print(
-        "Loading weights for: {}, weights loaded: {}".format(cfg, n_weights))
+      print("Loading weights for: {}, weights loaded: {}".format(cfg, n_weights))
       n_weights_total += n_weights
       if len(cfgs) == 0:
         print("{} Weights have been loaded for {} / {} layers\n".format(
@@ -133,8 +132,7 @@ def load_weights_head(head, weights_dict, head_name):
     layer = head_layers[i]
     if isinstance(layer, cn_nn_blocks.CenterNetHeadConv):
       n_weights = cfg.load_weights(layer)
-      print(
-        "Loading weights for: {}, weights loaded: {}".format(cfg, n_weights))
+      print("Loading weights for: {}, weights loaded: {}".format(cfg, n_weights))
       n_weights_total += n_weights
       if len(cfgs) == 0:
         print("{} Weights have been loaded for {} / {} layers\n".format(
