@@ -15,9 +15,7 @@
 
 """Functions used to load the ODAPI CenterNet checkpoint."""
 
-from official.vision.beta.modeling.layers import nn_blocks
-from official.vision.beta.modeling.backbones import mobilenet
-from official.vision.beta.projects.centernet.modeling.layers import nn_blocks as cn_nn_blocks
+from official.vision.beta.projects.centernet.modeling.layers import nn_blocks
 from official.vision.beta.projects.centernet.utils.checkpoints import config_data
 from official.vision.beta.projects.centernet.utils.checkpoints import config_classes
 
@@ -74,9 +72,9 @@ def load_weights_backbone(backbone, weights_dict, backbone_name):
   for i in range(len(backbone_layers)):
     layer = backbone_layers[i]
     if isinstance(layer,
-                  (mobilenet.Conv2DBNBlock,
-                   cn_nn_blocks.HourglassBlock,
-                   nn_blocks.ResidualBlock)):
+                  (nn_blocks.Conv2DBNEPBlock,
+                   nn_blocks.HourglassBlock,
+                   nn_blocks.ResidualEPBlock)):
       n_weights = cfg.load_weights(layer)
       print("Loading weights for: {}, weights loaded: {}".format(cfg, n_weights))
       n_weights_total += n_weights
@@ -130,7 +128,7 @@ def load_weights_head(head, weights_dict, head_name):
   cfg = cfgs.pop(0)
   for i in range(len(head_layers)):
     layer = head_layers[i]
-    if isinstance(layer, cn_nn_blocks.CenterNetHeadConv):
+    if isinstance(layer, nn_blocks.CenterNetHeadConv):
       n_weights = cfg.load_weights(layer)
       print("Loading weights for: {}, weights loaded: {}".format(cfg, n_weights))
       n_weights_total += n_weights

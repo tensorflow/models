@@ -21,8 +21,7 @@ import numpy as np
 import tensorflow as tf
 from absl.testing import parameterized
 
-from official.vision.beta.projects.centernet.modeling.layers import nn_blocks as cn_nn_blocks
-from official.vision.beta.modeling.layers import nn_blocks
+from official.vision.beta.projects.centernet.modeling.layers import nn_blocks
 
 
 class HourglassBlockPyTorch(tf.keras.layers.Layer):
@@ -88,18 +87,18 @@ class HourglassBlockPyTorch(tf.keras.layers.Layer):
   
   def make_layer(self, k, inp_dim, out_dim, modules, **kwargs):
     layers = [
-        nn_blocks.ResidualBlock(out_dim, 1, use_projection=True, **kwargs)]
+        nn_blocks.ResidualEPBlock(out_dim, 1, use_projection=True, **kwargs)]
     for _ in range(1, modules):
-      layers.append(nn_blocks.ResidualBlock(out_dim, 1, **kwargs))
+      layers.append(nn_blocks.ResidualEPBlock(out_dim, 1, **kwargs))
     return tf.keras.Sequential(layers)
   
   def make_layer_revr(self, k, inp_dim, out_dim, modules, **kwargs):
     layers = []
     for _ in range(modules - 1):
       layers.append(
-          nn_blocks.ResidualBlock(inp_dim, 1, **kwargs))  # inp_dim is not a bug
+          nn_blocks.ResidualEPBlock(inp_dim, 1, **kwargs))  # inp_dim is not a bug
     layers.append(
-        nn_blocks.ResidualBlock(out_dim, 1, use_projection=True, **kwargs))
+        nn_blocks.ResidualEPBlock(out_dim, 1, use_projection=True, **kwargs))
     return tf.keras.Sequential(layers)
   
   def make_up_layer(self, k, inp_dim, out_dim, modules, **kwargs):
@@ -120,7 +119,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
   def test_hourglass_block(self):
     dims = [256, 256, 384, 384, 384, 512]
     modules = [2, 2, 2, 2, 2, 4]
-    model = cn_nn_blocks.HourglassBlock(dims, modules)
+    model = nn_blocks.HourglassBlock(dims, modules)
     test_input = tf.keras.Input((512, 512, 256))
     _ = model(test_input)
     
@@ -132,7 +131,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     x_hg = tf.ones(shape=hg_test_input_shape)
     # x_bb = tf.ones(shape=bb_test_input_shape)
     
-    hg = cn_nn_blocks.HourglassBlock(
+    hg = nn_blocks.HourglassBlock(
         channel_dims_per_stage=filter_sizes,
         blocks_per_stage=rep_sizes)
     
@@ -143,7 +142,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
         'Hourglass module output shape and expected shape differ')
     
     # ODAPI Test
-    layer = cn_nn_blocks.HourglassBlock(
+    layer = nn_blocks.HourglassBlock(
         blocks_per_stage=[2, 3, 4, 5, 6],
         channel_dims_per_stage=[4, 6, 8, 10, 12])
     output = layer(np.zeros((2, 64, 64, 4), dtype=np.float32))

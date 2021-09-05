@@ -30,6 +30,7 @@ layers = tf.keras.layers
 
 #  pylint: disable=pointless-string-statement
 
+
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class Conv2DBNBlock(tf.keras.layers.Layer):
   """A convolution block with batch normalization."""
@@ -40,7 +41,6 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
       kernel_size: int = 3,
       strides: int = 1,
       use_bias: bool = False,
-      use_explicit_padding: bool = False,
       activation: str = 'relu6',
       kernel_initializer: str = 'VarianceScaling',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
@@ -60,9 +60,6 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
       strides: An `int` of block stride. If greater than 1, this block will
         ultimately downsample the input.
       use_bias: If True, use bias in the convolution layer.
-      use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
-        inputs so that the output dimensions are the same as if 'SAME' padding
-        were used.
       activation: A `str` name of the activation function.
       kernel_initializer: A `str` for kernel initializer of convolutional
         layers.
@@ -82,7 +79,6 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
     self._strides = strides
     self._activation = activation
     self._use_bias = use_bias
-    self._use_explicit_padding = use_explicit_padding
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
@@ -95,10 +91,6 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
       self._norm = tf.keras.layers.experimental.SyncBatchNormalization
     else:
       self._norm = tf.keras.layers.BatchNormalization
-    if use_explicit_padding and kernel_size > 1:
-      self._padding = 'VALID'
-    else:
-      self._padding = 'SAME'
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -110,7 +102,6 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
         'strides': self._strides,
         'kernel_size': self._kernel_size,
         'use_bias': self._use_bias,
-        'use_explicit_padding': self._use_explicit_padding,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
@@ -124,16 +115,11 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
     return dict(list(base_config.items()) + list(config.items()))
 
   def build(self, input_shape):
-    if self._use_explicit_padding and self._kernel_size > 1:
-      padding_size = nn_blocks._get_padding_for_kernel_size(self._kernel_size)
-      self._pad = tf.keras.layers.ZeroPadding2D(padding_size)
-    else:
-      self._pad = nn_layers.IdentityLayer()
     self._conv0 = tf.keras.layers.Conv2D(
         filters=self._filters,
         kernel_size=self._kernel_size,
         strides=self._strides,
-        padding=self._padding,
+        padding='same',
         use_bias=self._use_bias,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
@@ -149,7 +135,6 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
     super(Conv2DBNBlock, self).build(input_shape)
 
   def call(self, inputs, training=None):
-    inputs = self._pad(inputs)
     x = self._conv0(inputs)
     if self._use_normalization:
       x = self._norm0(x)
