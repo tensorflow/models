@@ -19,7 +19,7 @@ import numpy as np
 import tensorflow as tf
 
 
-def waveform_to_log_mel_spectrogram_patches(waveform, params):
+def waveform_to_log_mel_spectrogram(waveform, params):
   """Compute log mel spectrogram patches of a 1-D waveform."""
   with tf.name_scope('log_mel_features'):
     # waveform has shape [<# samples>]
@@ -47,12 +47,13 @@ def waveform_to_log_mel_spectrogram_patches(waveform, params):
     # magnitude_spectrogram has shape [<# STFT frames>, num_spectrogram_bins]
 
     # Convert spectrogram into log mel spectrogram.
-    linear_to_mel_weight_matrix = tf.signal.linear_to_mel_weight_matrix(
-        num_mel_bins=params.mel_bands,
-        num_spectrogram_bins=num_spectrogram_bins,
-        sample_rate=params.sample_rate,
-        lower_edge_hertz=params.mel_min_hz,
-        upper_edge_hertz=params.mel_max_hz)
+    with tf.init_scope():
+      linear_to_mel_weight_matrix = tf.signal.linear_to_mel_weight_matrix(
+          num_mel_bins=params.mel_bands,
+          num_spectrogram_bins=num_spectrogram_bins,
+          sample_rate=params.sample_rate,
+          lower_edge_hertz=params.mel_min_hz,
+          upper_edge_hertz=params.mel_max_hz)
     mel_spectrogram = tf.matmul(
       magnitude_spectrogram, linear_to_mel_weight_matrix)
     log_mel_spectrogram = tf.math.log(mel_spectrogram + params.log_offset)
@@ -65,18 +66,15 @@ def waveform_to_log_mel_spectrogram_patches(waveform, params):
     spectrogram_hop_length_samples = int(
       round(params.sample_rate * params.stft_hop_seconds))
     spectrogram_sample_rate = params.sample_rate / spectrogram_hop_length_samples
-    patch_window_length_samples = int(
-      round(spectrogram_sample_rate * params.patch_window_seconds))
-    patch_hop_length_samples = int(
-      round(spectrogram_sample_rate * params.patch_hop_seconds))
-    features = tf.signal.frame(
-        signal=log_mel_spectrogram,
-        frame_length=patch_window_length_samples,
-        frame_step=patch_hop_length_samples,
-        axis=0)
-    # features has shape [<# patches>, <# STFT frames in an patch>, params.mel_bands]
 
-    return log_mel_spectrogram, features
+    return log_mel_spectrogram
+
+
+def waveform_to_patches(waveforms, params):
+  return tf.signal.frame(waveforms,
+                         frame_length=params.min_num_samples,
+                         frame_step=params.patch_hop_samples,
+                         pad_end=False)
 
 
 def pad_waveform(waveform, params):
@@ -84,27 +82,24 @@ def pad_waveform(waveform, params):
   # In order to produce one patch of log mel spectrogram input to YAMNet, we
   # need at least one patch window length of waveform plus enough extra samples
   # to complete the final STFT analysis window.
-  min_waveform_seconds = (
-      params.patch_window_seconds +
-      params.stft_window_seconds - params.stft_hop_seconds)
-  min_num_samples = tf.cast(min_waveform_seconds * params.sample_rate, tf.int32)
-  num_samples = tf.shape(waveform)[0]
-  num_padding_samples = tf.maximum(0, min_num_samples - num_samples)
+  num_samples = tf.shape(waveform)[-1]
+  num_padding_samples = tf.maximum(0, params.min_num_samples - num_samples)
 
   # In addition, there might be enough waveform for one or more additional
   # patches formed by hopping forward. If there are more samples than one patch,
   # round up to an integral number of hops.
-  num_samples = tf.maximum(num_samples, min_num_samples)
-  num_samples_after_first_patch = num_samples - min_num_samples
-  hop_samples = tf.cast(params.patch_hop_seconds * params.sample_rate, tf.int32)
+  num_samples = tf.maximum(num_samples, params.min_num_samples)
+  num_samples_after_first_patch = num_samples - params.min_num_samples
   num_hops_after_first_patch = tf.cast(tf.math.ceil(
           tf.cast(num_samples_after_first_patch, tf.float32) /
-          tf.cast(hop_samples, tf.float32)), tf.int32)
+          tf.cast(params.patch_hop_samples, tf.float32)), tf.int32)
   num_padding_samples += (
-      hop_samples * num_hops_after_first_patch - num_samples_after_first_patch)
+      params.patch_hop_samples * num_hops_after_first_patch - num_samples_after_first_patch)
 
-  padded_waveform = tf.pad(waveform, [[0, num_padding_samples]],
-                           mode='CONSTANT', constant_values=0.0)
+  pads = [[0, 0] for n in range(len(waveform.shape))]
+  pads[-1][-1] = num_padding_samples
+  padded_waveform = tf.pad(waveform, pads, mode='CONSTANT', constant_values=0.0)
+
   return padded_waveform
 
 
@@ -141,14 +136,14 @@ def _tflite_stft_magnitude(signal, frame_length, frame_step, fft_length):
         name='imaginary_dft_matrix')
     signal_frame_length = tf.shape(framed_signal)[-1]
     half_pad = (fft_length - signal_frame_length) // 2
+
+    # Don't add any padding in the batch or frame dimensions.
+    pads = [[0, 0] for n in range(len(framed_signal.shape))]
+    # Pad before and after the signal within each frame.
+    pads[-1] = [half_pad, fft_length - signal_frame_length - half_pad]
     padded_frames = tf.pad(
         framed_signal,
-        [
-            # Don't add any padding in the frame dimension.
-            [0, 0],
-            # Pad before and after the signal within each frame.
-            [half_pad, fft_length - signal_frame_length - half_pad]
-        ],
+        pads,
         mode='CONSTANT',
         constant_values=0.0)
     real_stft = tf.matmul(padded_frames, real_dft_matrix)

@@ -23,21 +23,25 @@ Assumes that it will be run in the yamnet source directory from where it loads
 the class map. Skips an export if the corresponding directory already exists.
 """
 
+import distutils.version
 import os
+import pathlib
 import sys
 import tempfile
 import time
 
 import numpy as np
 import tensorflow as tf
-assert tf.version.VERSION >= '2.0.0', (
-    'Need at least TF 2.0, you have TF v{}'.format(tf.version.VERSION))
+assert distutils.version.LooseVersion(tf.__version__) >= '2.0.0', (
+    f'Need at least TF 2.0, you have TF v{tf.__version__}')
+
 import tensorflow_hub as tfhub
 from tensorflowjs.converters import tf_saved_model_conversion_v2 as tfjs_saved_model_converter
 
 import params as yamnet_params
-import yamnet
+import yamnet as yamnet_lib
 
+HERE = pathlib.Path(__file__).parent
 
 def log(msg):
   print('\n=====\n{} | {}\n=====\n'.format(time.asctime(), msg), flush=True)
@@ -45,23 +49,51 @@ def log(msg):
 
 class YAMNet(tf.Module):
   "''A TF2 Module wrapper around YAMNet."""
-  def __init__(self, weights_path, params):
+  def __init__(self, params):
     super().__init__()
-    self._yamnet = yamnet.yamnet_frames_model(params)
-    self._yamnet.load_weights(weights_path)
+    self._yamnet = yamnet_lib.YAMNetWaves(params)
     self._class_map_asset = tf.saved_model.Asset('yamnet_class_map.csv')
 
-  @tf.function
+    # Define export signatures
+    self.single = self.__call__.get_concrete_function(
+        tf.TensorSpec(shape=[None], dtype=tf.float32),
+        training=False)
+    self.__call__.get_concrete_function(
+        tf.TensorSpec(shape=[None], dtype=tf.float32),
+        training=True)
+
+    self.batched = self.__call__.get_concrete_function(
+        tf.TensorSpec(shape=[None, None], dtype=tf.float32),
+        training=False)
+    self.__call__.get_concrete_function(
+        tf.TensorSpec(shape=[None, None], dtype=tf.float32),
+        training=True)
+
+  @tf.function(input_signature=[])
   def class_map_path(self):
     return self._class_map_asset.asset_path
 
-  @tf.function(input_signature=(tf.TensorSpec(shape=[None], dtype=tf.float32),))
-  def __call__(self, waveform):
-    return self._yamnet(waveform)
+  def load_weights(self, weights_path):
+    self._yamnet.load_weights(weights_path)
+
+  @tf.function
+  def __call__(self, waveform,
+               as_dict=False,
+               returns=('predictions', 'embeddings', 'log_mel_spectrogram'),
+               training=False):
+    outputs = self._yamnet(waveform, training)
+
+    if as_dict:
+      outputs = {name:outputs[name] for name in returns}
+    else:
+      outputs = [outputs[name] for name in returns]
+
+    return outputs
+
 
 
 def check_model(model_fn, class_map_path, params):
-  yamnet_classes = yamnet.class_names(class_map_path)
+  yamnet_classes = yamnet_lib.class_names(class_map_path)
 
   """Applies yamnet_test's sanity checks to an instance of YAMNet."""
   def clip_test(waveform, expected_class_name, top_n=10):
@@ -100,13 +132,22 @@ def make_tf2_export(weights_path, export_dir):
   # Create a TF2 Module wrapper around YAMNet.
   log('Building and checking TF2 Module ...')
   params = yamnet_params.Params()
-  yamnet = YAMNet(weights_path, params)
+  yamnet = YAMNet(params)
+  yamnet.load_weights(weights_path)
+
+  # Smoke test
+  yamnet(tf.zeros([100000]))
+  yamnet(tf.zeros([10, 100000]))
   check_model(yamnet, yamnet.class_map_path(), params)
+
   log('Done')
 
   # Make TF2 SavedModel export.
   log('Making TF2 SavedModel export ...')
-  tf.saved_model.save(yamnet, export_dir)
+  # Rebuild the model to drop the extra signatures added by the tests.
+  yamnet = YAMNet(params)
+  yamnet.load_weights(weights_path)
+  tf.saved_model.save(yamnet, export_dir, signatures=yamnet.single)
   log('Done')
 
   # Check export with TF-Hub in TF2.
@@ -135,15 +176,23 @@ def make_tflite_export(weights_path, export_dir):
   # Create a TF-Lite compatible Module wrapper around YAMNet.
   log('Building and checking TF-Lite Module ...')
   params = yamnet_params.Params(tflite_compatible=True)
-  yamnet = YAMNet(weights_path, params)
+  yamnet = YAMNet(params)
+
+  yamnet.load_weights(weights_path)
   check_model(yamnet, yamnet.class_map_path(), params)
   log('Done')
+
+  # Rebuild the model to drop the extra signatures added by the tests.
+  yamnet = YAMNet(params)
+  yamnet.load_weights(weights_path)
 
   # Make TF-Lite SavedModel export.
   log('Making TF-Lite SavedModel export ...')
   saved_model_dir = os.path.join(export_dir, 'saved_model')
   os.makedirs(saved_model_dir)
-  tf.saved_model.save(yamnet, saved_model_dir)
+  tf.saved_model.save(yamnet, saved_model_dir,
+                      signatures={
+                          'serving_default': yamnet.single})
   log('Done')
 
   # Check that the export can be loaded and works.
@@ -164,18 +213,14 @@ def make_tflite_export(weights_path, export_dir):
   # Check the TF-Lite export.
   log('Checking TF-Lite model ...')
   interpreter = tf.lite.Interpreter(tflite_model_path)
-  audio_input_index = interpreter.get_input_details()[0]['index']
-  scores_output_index = interpreter.get_output_details()[0]['index']
-  embeddings_output_index = interpreter.get_output_details()[1]['index']
-  spectrogram_output_index = interpreter.get_output_details()[2]['index']
+  runner = interpreter.get_signature_runner('serving_default')
   def run_model(waveform):
-    interpreter.resize_tensor_input(audio_input_index, [len(waveform)], strict=True)
-    interpreter.allocate_tensors()
-    interpreter.set_tensor(audio_input_index, waveform)
-    interpreter.invoke()
-    return (interpreter.get_tensor(scores_output_index),
-            interpreter.get_tensor(embeddings_output_index),
-            interpreter.get_tensor(spectrogram_output_index))
+    results = runner(waveform=waveform)
+    predictions = results['output_0']
+    embeddings = results['output_1']
+    log_mel_spectrogram =results['output_2']
+    return predictions, embeddings, log_mel_spectrogram
+
   check_model(run_model, 'yamnet_class_map.csv', params)
   log('Done')
 
@@ -196,10 +241,7 @@ def make_tfjs_export(tflite_saved_model_dir, export_dir):
   log('Done')
 
 
-def main(args):
-  weights_path = args[0]
-  output_dir = args[1]
-
+def main(weights_path, output_dir):
   tf2_export_dir = os.path.join(output_dir, 'tf2')
   make_tf2_export(weights_path, tf2_export_dir)
 
@@ -209,5 +251,18 @@ def main(args):
   tfjs_export_dir = os.path.join(output_dir, 'tfjs')
   make_tfjs_export(tflite_saved_model_dir, tfjs_export_dir)
 
+
 if __name__ == '__main__':
-  main(sys.argv[1:])
+  args = sys.argv[1:]
+  if len(args) == 1:
+    output_dir = args[0]
+    weights_path = tf.keras.utils.get_file(
+        fname='yamnet.h5',
+        origin='https://storage.googleapis.com/audioset/yamnet.h5',
+        cache_dir=HERE, cache_subdir='.')
+  elif len(args) == 2:
+    output_dir, weight_paths = args
+  else:
+    raise ValueError("Export expects 1 or 2 arguments [output_dir] "
+                     "or [weight_path, output_dir]")
+  main(weights_path, output_dir)
