@@ -665,8 +665,7 @@ def build_darknet(
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds darknet."""
 
-  backbone_cfg = backbone_config.backbone.get()
-
+  backbone_cfg = backbone_config.get()
   model = Darknet(
       model_id=backbone_cfg.model_id,
       min_level=backbone_cfg.min_level,

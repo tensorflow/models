@@ -1,13 +1,12 @@
-"""Contains common building blocks for yolo neural networks."""
+"""Contains common building blocks for yolo neural networtf.keras."""
 import tensorflow as tf
-import tensorflow.keras as ks
 import tensorflow.keras.backend as K
 
 from official.vision.beta.projects.yolo.ops import box_ops
 
 
-@ks.utils.register_keras_serializable(package='yolo')
-class YoloLayer(ks.Model):
+@tf.keras.utils.register_keras_serializable(package='yolo')
+class YoloLayer(tf.keras.Model):
 
   def __init__(self,
                masks,
@@ -133,9 +132,6 @@ class YoloLayer(ks.Model):
     }
 
     self._nms_type = self._nms_types[nms_type]
-
-    if self._nms_type >= 2 and self._nms_type <= 5:
-      self._nms = nms_ops.TiledNMS(iou_type=nms_type)
 
     self._scale_xy = scale_xy or {key: 1.0 for key, _ in masks.items()}
 

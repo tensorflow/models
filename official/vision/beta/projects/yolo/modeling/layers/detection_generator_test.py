@@ -15,16 +15,13 @@
 # ==============================================================================
 """Tests for yolo."""
 
-# Import libraries
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
-# from official.vision.beta.projects.yolo.modeling.backbones import darknet
 from official.vision.beta.projects.yolo.modeling.layers import detection_generator as dg
-
 
 class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
 
@@ -61,6 +58,6 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  from yolo.utils.run_utils import prep_gpu
-  prep_gpu()
+  # from yolo.utils.run_utils import prep_gpu
+  # prep_gpu()
   tf.test.main()

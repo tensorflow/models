@@ -65,7 +65,6 @@ def build_yolo_decoder(input_specs, model_config: yolo.Yolo, l2_regularization):
       kernel_regularizer=l2_regularization)
 
   base_model.update(base_dict)
-  print(base_model)
 
   model = YoloDecoder(input_specs, **base_model)
 
@@ -74,14 +73,14 @@ def build_yolo_decoder(input_specs, model_config: yolo.Yolo, l2_regularization):
 
 def build_yolo_filter(model_config: yolo.Yolo, decoder: YoloDecoder, masks,
                       xy_scales, path_scales):
-
   def _build(values):
-    print(values)
+    """Used to make model cfg shorter when different FPN lvls require 
+    different hyper paramters while others do not. The term all will 
+    blanket set the same hyper paramter for all FPN levels."""
     if "all" in values and values["all"] is not None:
       for key in values:
         if key != 'all':
           values[key] = values["all"]
-    print(values)
     return values
 
   model = YoloLayer(
@@ -125,12 +124,7 @@ def build_yolo_head(input_specs, model_config: yolo.Yolo, l2_regularization):
 
 def build_yolo(input_specs, model_config, l2_regularization, masks, xy_scales,
                path_scales):
-  print(model_config.as_dict())
-  print(input_specs)
-  print(l2_regularization)
 
-  # backbone = factory.build_backbone(input_specs, model_config,
-  #                                   l2_regularization)
   backbone = build_darknet(input_specs, model_config,
                                     l2_regularization)
   decoder = build_yolo_decoder(backbone.output_specs, model_config,
