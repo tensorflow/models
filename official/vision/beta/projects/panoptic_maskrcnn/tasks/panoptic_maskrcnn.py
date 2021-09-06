@@ -121,7 +121,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
     if params.decoder.type == 'simple_decoder':
       decoder = panoptic_maskrcnn_input.TfExampleDecoder(
           regenerate_source_id=decoder_cfg.regenerate_source_id,
-          mask_binarize_threshold=decoder_cfg.mask_binarize_threshold)
+          mask_binarize_threshold=decoder_cfg.mask_binarize_threshold,
+          include_eval_masks=decoder_cfg.include_eval_masks)
     else:
       raise ValueError('Unknown decoder type: {}!'.format(params.decoder.type))
 
@@ -147,7 +148,9 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         .segmentation_resize_eval_groundtruth,
         segmentation_groundtruth_padded_size=params.parser
         .segmentation_groundtruth_padded_size,
-        segmentation_ignore_label=params.parser.segmentation_ignore_label)
+        segmentation_ignore_label=params.parser.segmentation_ignore_label,
+        panoptic_ignore_label=params.parse.panoptic_ignore_label,
+        include_eval_masks=params.parser.include_eval_masks)
 
     reader = input_reader_factory.input_reader_generator(
         params,
