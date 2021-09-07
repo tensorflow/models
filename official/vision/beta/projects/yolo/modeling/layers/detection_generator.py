@@ -51,7 +51,6 @@ class YoloLayer(tf.keras.Model):
       max_delta: gradient clipping to apply to the box loss.
       loss_type: `str` for the typeof iou loss to use with in {ciou, diou,
         giou, iou}.
-      use_tie_breaker: TODO unused?
       iou_normalizer: `float` for how much to scale the loss on the IOU or the
         boxes.
       cls_normalizer: `float` for how much to scale the loss on the classes.
