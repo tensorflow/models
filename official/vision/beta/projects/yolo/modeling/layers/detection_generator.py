@@ -79,6 +79,8 @@ class YoloLayer(tf.keras.Model):
       nms_type: `str` for which non max suppression to use.
       objectness_smooth: `float` for how much to smooth the loss on the
         detection map.
+      kwargs**: `Dict` constining additional inputs used for the initialization 
+        of the Keras Model. 
 
     Return:
       loss: `float` for the actual loss.

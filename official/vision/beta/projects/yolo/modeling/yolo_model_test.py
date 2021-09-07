@@ -15,10 +15,8 @@
 # Lint as: python3
 """Tests for Yolo models."""
 
-from official.vision.beta.projects.yolo.modeling.backbones.darknet import \
-    Darknet
-from official.vision.beta.projects.yolo.modeling.decoders.yolo_decoder import \
-    YoloDecoder
+from official.vision.beta.projects.yolo.modeling.backbones.darknet import Darknet
+from official.vision.beta.projects.yolo.modeling.decoders.yolo_decoder import YoloDecoder
 from official.vision.beta.projects.yolo.modeling.heads.yolo_head import YoloHead
 from official.vision.beta.projects.yolo.modeling import yolo_model
 

@@ -38,14 +38,14 @@ def build_yolo_decoder(input_specs, model_config: yolo.Yolo, l2_regularization):
 
   if model_config.decoder.version not in yolo_model.YOLO_MODELS.keys():
     raise Exception(
-        "unsupported model version please select from {v3, v4}, \n\n \
+        "unsupported model version please select from {v3, v4}, \
         or specify a custom decoder config using YoloDecoder in you yaml")
 
   if model_config.decoder.type not in yolo_model.YOLO_MODELS[
       model_config.decoder.version].keys():
     raise Exception("unsupported model type please select from \
         {yolo_model.YOLO_MODELS[model_config.decoder.version].keys()},\
-        \n\n or specify a custom decoder config using YoloDecoder in you yaml")
+        or specify a custom decoder config using YoloDecoder in you yaml")
 
   base_model = yolo_model.YOLO_MODELS[model_config.decoder.version][
       model_config.decoder.type]
@@ -74,9 +74,26 @@ def build_yolo_decoder(input_specs, model_config: yolo.Yolo, l2_regularization):
 def build_yolo_filter(model_config: yolo.Yolo, decoder: YoloDecoder, masks,
                       xy_scales, path_scales):
   def _build(values):
-    """Used to make model cfg shorter when different FPN lvls require 
+    """Used to make model config shorter when different FPN levels require 
     different hyper paramters while others do not. The term all will 
-    blanket set the same hyper paramter for all FPN levels."""
+    blanket set the same hyper paramter for all FPN levels.
+    
+    Example: 
+      cls_normalizer: 
+        'all': 0.3
+      obj_normalizer: 
+        '5': 0.28 
+        '4': 0.70
+        '3': 2.80
+
+    Under normal use cases the config is extended by 3x because the values for 
+    levels 3, 4, and 5 need to be specified individually. Using this function 
+    allows us to specify the value "all" to indicate that all fpn levels will 
+    use the same value. 
+
+    An exmaple config can be found at: 
+    official/vision/beta/projects/yolo/configs/experiments/yolov4-csp/640.yaml
+    """
     if "all" in values and values["all"] is not None:
       for key in values:
         if key != 'all':
