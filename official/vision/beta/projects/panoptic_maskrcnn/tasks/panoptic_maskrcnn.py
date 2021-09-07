@@ -149,7 +149,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         segmentation_groundtruth_padded_size=params.parser
         .segmentation_groundtruth_padded_size,
         segmentation_ignore_label=params.parser.segmentation_ignore_label,
-        panoptic_ignore_label=params.parse.panoptic_ignore_label,
+        panoptic_ignore_label=params.parser.panoptic_ignore_label,
         include_eval_masks=params.parser.include_eval_masks)
 
     reader = input_reader_factory.input_reader_generator(
