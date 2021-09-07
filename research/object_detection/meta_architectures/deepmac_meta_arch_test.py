@@ -174,22 +174,41 @@ class DeepMACUtilsTest(tf.test.TestCase, parameterized.TestCase):
         features, boxes, 32)
     self.assertEqual(output.shape, (5, 32, 32, 7))
 
-  def test_embedding_distance_prob_shape(self):
-    dist = deepmac_meta_arch.embedding_distance_to_probability(
+  def test_embedding_projection_prob_shape(self):
+    dist = deepmac_meta_arch.embedding_projection(
         tf.ones((4, 32, 32, 8)), tf.zeros((4, 32, 32, 8)))
     self.assertEqual(dist.shape, (4, 32, 32, 1))
 
   @parameterized.parameters([1e-20, 1e20])
-  def test_embedding_distance_prob_value(self, value):
-    dist = deepmac_meta_arch.embedding_distance_to_probability(
+  def test_embedding_projection_value(self, value):
+    dist = deepmac_meta_arch.embedding_projection(
         tf.zeros((1, 1, 1, 8)), value + tf.zeros((1, 1, 1, 8))).numpy()
     max_float = np.finfo(dist.dtype).max
     self.assertLess(dist.max(), max_float)
     self.assertGreater(dist.max(), -max_float)
 
+  @parameterized.named_parameters(
+      [('no_conv_shortcut', (False,)),
+       ('conv_shortcut', (True,))]
+      )
+  def test_res_dense_block(self, conv_shortcut):
+
+    net = deepmac_meta_arch.DenseResidualBlock(32, conv_shortcut)
+    out = net(tf.zeros((2, 32)))
+    self.assertEqual(out.shape, (2, 32))
+
+  @parameterized.parameters(
+      [4, 8, 20]
+  )
+  def test_dense_resnet(self, num_layers):
+
+    net = deepmac_meta_arch.DenseResNet(num_layers, 16, 8)
+    out = net(tf.zeros((2, 24)))
+    self.assertEqual(out.shape, (2, 8))
+
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
-class DeepMACMaskHeadTest(tf.test.TestCase):
+class DeepMACMaskHeadTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_mask_network(self):
     net = deepmac_meta_arch.MaskHeadNetwork('hourglass10', 8)
@@ -218,10 +237,10 @@ class DeepMACMaskHeadTest(tf.test.TestCase):
     out = call_func(tf.zeros((2, 4)), tf.zeros((2, 32, 32, 16)), training=True)
     self.assertEqual(out.shape, (2, 32, 32))
 
-  def test_mask_network_embedding_distance_zero_dist(self):
+  def test_mask_network_embedding_projection_zero(self):
 
     net = deepmac_meta_arch.MaskHeadNetwork(
-        'embedding_distance_probability', num_init_channels=8,
+        'embedding_projection', num_init_channels=8,
         use_instance_embedding=False)
     call_func = tf.function(net.__call__)
 
@@ -230,10 +249,10 @@ class DeepMACMaskHeadTest(tf.test.TestCase):
     self.assertAllGreater(out.numpy(), -np.inf)
     self.assertAllLess(out.numpy(), np.inf)
 
-  def test_mask_network_embedding_distance_small_dist(self):
+  def test_mask_network_embedding_projection_small(self):
 
     net = deepmac_meta_arch.MaskHeadNetwork(
-        'embedding_distance_probability', num_init_channels=-1,
+        'embedding_projection', num_init_channels=-1,
         use_instance_embedding=False)
     call_func = tf.function(net.__call__)
 
@@ -396,9 +415,9 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     prob = tf.nn.sigmoid(0.9).numpy()
     self.assertAllClose(masks, prob * np.ones((2, 3, 16, 16)))
 
-  def test_postprocess_emb_dist(self):
+  def test_postprocess_emb_proj(self):
 
-    model = build_meta_arch(network_type='embedding_distance_probability',
+    model = build_meta_arch(network_type='embedding_projection',
                             use_instance_embedding=False,
                             use_xy=False, pixel_embedding_dim=8,
                             use_dice_loss=True,
@@ -412,14 +431,13 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
         boxes, tf.zeros((2, 32, 32, 2)), tf.zeros((2, 32, 32, 2)))
     self.assertEqual(masks.shape, (2, 3, 16, 16))
 
-  def test_postprocess_emb_dist_fullres(self):
+  def test_postprocess_emb_proj_fullres(self):
 
-    model = build_meta_arch(network_type='embedding_distance_probability',
+    model = build_meta_arch(network_type='embedding_projection',
                             predict_full_resolution_masks=True,
                             use_instance_embedding=False,
                             pixel_embedding_dim=8, use_xy=False,
-                            use_dice_loss=True,
-                            dice_loss_prediction_probability=True)
+                            use_dice_loss=True)
     boxes = np.zeros((2, 3, 4), dtype=np.float32)
     boxes = tf.constant(boxes)
 
