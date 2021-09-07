@@ -18,7 +18,6 @@ class YoloLayer(tf.keras.Model):
                nms_thresh=0.6,
                max_delta=10.0,
                loss_type='ciou',
-               use_tie_breaker=True,
                iou_normalizer=1.0,
                cls_normalizer=1.0,
                obj_normalizer=1.0,
@@ -109,7 +108,6 @@ class YoloLayer(tf.keras.Model):
     self._max_delta = max_delta
     self._classes = classes
     self._loss_type = loss_type
-    self._use_tie_breaker = use_tie_breaker
 
     self._use_scaled_loss = use_scaled_loss
     self._darknet = darknet
