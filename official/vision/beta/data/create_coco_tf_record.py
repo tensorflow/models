@@ -98,10 +98,13 @@ def generate_coco_panoptics_masks(segments_info, mask_path,
   # refer https://cocodataset.org/#format-data
   segments_encoded_mask = (r + g * 256 + b * (256**2)).squeeze()
 
-  semantic_segmentation_mask = np.ones_like(segments_encoded_mask) * _VOID_LABEL
+  semantic_segmentation_mask = np.ones_like(
+      segments_encoded_mask, dtype=np.uint8) * _VOID_LABEL
   if include_panoptic_eval_masks:
-    category_mask = np.ones_like(segments_encoded_mask) * _VOID_LABEL
-    instance_mask = np.ones_like(segments_encoded_mask) * _VOID_INSTANCE_ID
+    category_mask = np.ones_like(
+        segments_encoded_mask, dtype=np.uint8) * _VOID_LABEL
+    instance_mask = np.ones_like(
+        segments_encoded_mask, dtype=np.uint8) * _VOID_INSTANCE_ID
 
   for idx, segment in enumerate(segments_info):
     segment_id = segment['id']
