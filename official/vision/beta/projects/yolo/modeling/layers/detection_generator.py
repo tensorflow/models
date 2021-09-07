@@ -178,7 +178,7 @@ class YoloLayer(tf.keras.Model):
 
     # determine the number of classes
     classes = class_scores.get_shape().as_list()[
-        -1]  #tf.shape(class_scores)[-1]
+        -1]  
 
     # configurable to use the new coordinates in scaled Yolo v4 or not
     boxes = None
