@@ -21,7 +21,6 @@ from typing import List, Optional
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import optimization
-from official.vision.beta.configs import common
 from official.vision.beta.configs import maskrcnn
 from official.vision.beta.configs import semantic_segmentation
 
@@ -52,14 +51,14 @@ class Parser(maskrcnn.Parser):
   include_eval_masks: bool = True
 
 @dataclasses.dataclass
-class TfExampleDecoder(common.TfExampleDecoder):
+class TfExampleDecoder(maskrcnn.TfExampleDecoder):
   """A simple TF Example decoder config."""
   # Setting this to true will enable decoding category_mask and instance_mask
   include_eval_masks: bool = True
 
 
 @dataclasses.dataclass
-class DataDecoder(common.DataDecoder):
+class DataDecoder(maskrcnn.DataDecoder):
   """Data decoder config."""
   simple_decoder: TfExampleDecoder = TfExampleDecoder()
 
