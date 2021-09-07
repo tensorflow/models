@@ -44,7 +44,7 @@ def log(msg):
 
 
 class YAMNet(tf.Module):
-  "''A TF2 Module wrapper around YAMNet."""
+  """A TF2 Module wrapper around YAMNet."""
   def __init__(self, weights_path, params):
     super().__init__()
     self._yamnet = yamnet.yamnet_frames_model(params)
@@ -165,9 +165,12 @@ def make_tflite_export(weights_path, export_dir):
   log('Checking TF-Lite model ...')
   interpreter = tf.lite.Interpreter(tflite_model_path)
   audio_input_index = interpreter.get_input_details()[0]['index']
-  scores_output_index = interpreter.get_output_details()[0]['index']
-  embeddings_output_index = interpreter.get_output_details()[1]['index']
-  spectrogram_output_index = interpreter.get_output_details()[2]['index']
+  output_details = interpreter.get_output_details()
+  names_to_indices = {detail['name']: detail['index'] for detail in output_details}
+  # These are the signature names that come from .. somewhere.
+  scores_output_index = names_to_indices['StatefulPartitionedCall:0']
+  embeddings_output_index = names_to_indices['StatefulPartitionedCall:1']
+  spectrogram_output_index = names_to_indices['StatefulPartitionedCall:2']
   def run_model(waveform):
     interpreter.resize_tensor_input(audio_input_index, [len(waveform)], strict=True)
     interpreter.allocate_tensors()
