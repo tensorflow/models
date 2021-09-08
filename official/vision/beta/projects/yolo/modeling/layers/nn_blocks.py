@@ -14,7 +14,6 @@
 
 # Lint as: python3
 """Contains common building blocks for yolo neural networks."""
-
 from typing import Callable, List
 import tensorflow as tf
 from official.modeling import tf_utils
@@ -549,7 +548,7 @@ class CSPRoute(tf.keras.layers.Layer):
 
     Args:
       filters: integer for output depth, or the number of features to learn
-      filter_scale: integer dicating (filters//2) or the number of filters in
+      filter_scale: integer dictating (filters//2) or the number of filters in
         the partial feature stack.
       activation: string for activation function to use in layer.
       kernel_initializer: string to indicate which function to use to
@@ -676,8 +675,8 @@ class CSPConnect(tf.keras.layers.Layer):
     """Initializer for CSPConnect block.
 
     Args:
-      filters: integer for output depth, or the number of features to learn
-      filter_scale: integer dicating (filters//2) or the number of filters in
+      filters: integer for output depth, or the number of features to learn.
+      filter_scale: integer dictating (filters//2) or the number of filters in
         the partial feature stack.
       drop_final: `bool`, whether to drop final conv layer.
       drop_first: `bool`, whether to drop first conv layer.
@@ -801,7 +800,7 @@ class CSPStack(tf.keras.layers.Layer):
       model_to_wrap: callable Model or a list of callable objects that will
         process the output of CSPRoute, and be input into CSPConnect.
         list will be called sequentially.
-      filter_scale: integer dicating (filters//2) or the number of filters in
+      filter_scale: integer dictating (filters//2) or the number of filters in
         the partial feature stack.
       activation: string for activation function to use in layer.
       kernel_initializer: string to indicate which function to use to initialize
