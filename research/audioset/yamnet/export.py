@@ -69,7 +69,7 @@ def check_model(model_fn, class_map_path, params):
 
   """Applies yamnet_test's sanity checks to an instance of YAMNet."""
   def clip_test(waveform, expected_class_name, top_n=10):
-    results = model_fn(waveform)
+    results = model_fn(waveform=waveform)
     predictions = results['predictions']
     embeddings = results['embeddings']
     log_mel_spectrogram = results['log_mel_spectrogram']
@@ -114,8 +114,8 @@ def make_tf2_export(weights_path, export_dir):
   # Make TF2 SavedModel export.
   log('Making TF2 SavedModel export ...')
   tf.saved_model.save(
-    yamnet, export_dir,
-    signatures={'serving_default': yamnet.__call__.get_concrete_function()})
+      yamnet, export_dir,
+      signatures={'serving_default': yamnet.__call__.get_concrete_function()})
   log('Done')
 
   # Check export with TF-Hub in TF2.
@@ -153,8 +153,8 @@ def make_tflite_export(weights_path, export_dir):
   saved_model_dir = os.path.join(export_dir, 'saved_model')
   os.makedirs(saved_model_dir)
   tf.saved_model.save(
-    yamnet, saved_model_dir,
-    signatures={'serving_default': yamnet.__call__.get_concrete_function()})
+      yamnet, saved_model_dir,
+      signatures={'serving_default': yamnet.__call__.get_concrete_function()})
   log('Done')
 
   # Check that the export can be loaded and works.
@@ -166,7 +166,7 @@ def make_tflite_export(weights_path, export_dir):
   # Make a TF-Lite model from the SavedModel.
   log('Making TF-Lite model ...')
   tflite_converter = tf.lite.TFLiteConverter.from_saved_model(
-    saved_model_dir, signature_keys=['serving_default'])
+      saved_model_dir, signature_keys=['serving_default'])
   tflite_model = tflite_converter.convert()
   tflite_model_path = os.path.join(export_dir, 'yamnet.tflite')
   with open(tflite_model_path, 'wb') as f:
@@ -177,11 +177,7 @@ def make_tflite_export(weights_path, export_dir):
   log('Checking TF-Lite model ...')
   interpreter = tf.lite.Interpreter(tflite_model_path)
   runner = interpreter.get_signature_runner('serving_default')
-  def run_model(waveform):
-    # Signature provides the desired dict of results with entries for
-    # 'predictions', 'embeddings', and 'log_mel_spectrogram'.
-    return runner(waveform=waveform)
-  check_model(run_model, 'yamnet_class_map.csv', params)
+  check_model(runner, 'yamnet_class_map.csv', params)
   log('Done')
 
   return saved_model_dir
