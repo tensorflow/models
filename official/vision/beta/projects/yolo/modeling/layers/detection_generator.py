@@ -170,18 +170,16 @@ class YoloLayer(tf.keras.Model):
 
     # use the grid generator to get the formatted anchor boxes and grid points
     # in shape [1, height, width, 2]
-    centers, anchors = generator(height, width, batchsize, dtype=data.dtype)
+    # centers, anchors = generator(height, width, batchsize, dtype=data.dtype)
 
     # split the yolo detections into boxes, object score map, classes
     boxes, obns_scores, class_scores = tf.split(
         data, [4, 1, self._classes], axis=-1)
 
     # determine the number of classes
-    classes = class_scores.get_shape().as_list()[
-        -1]  
+    classes = class_scores.get_shape().as_list()[-1]  
 
     # configurable to use the new coordinates in scaled Yolo v4 or not
-    boxes = None
 
     # convert boxes from yolo(x, y, w. h) to tensorflow(ymin, xmin, ymax, xmax)
     boxes = box_ops.xcycwh_to_yxyx(boxes)
