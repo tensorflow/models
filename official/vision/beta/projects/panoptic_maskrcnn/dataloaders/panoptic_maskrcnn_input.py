@@ -25,18 +25,18 @@ class TfExampleDecoder(tf_example_decoder.TfExampleDecoder):
   """Tensorflow Example proto decoder."""
 
   def __init__(self, regenerate_source_id, 
-               mask_binarize_threshold, include_eval_masks):
+               mask_binarize_threshold, include_panoptic_masks):
     super(TfExampleDecoder, self).__init__(
         include_mask=True,
         regenerate_source_id=regenerate_source_id,
         mask_binarize_threshold=None)
 
-    self._include_eval_masks = include_eval_masks
+    self._include_panoptic_masks= include_panoptic_masks
     keys_to_features = {
         'image/segmentation/class/encoded':
             tf.io.FixedLenFeature((), tf.string, default_value='')}
 
-    if include_eval_masks:
+    if include_panoptic_masks:
       keys_to_features.update({
           'image/panoptic/category_mask':
               tf.io.FixedLenFeature((), tf.string, default_value=''),
@@ -54,7 +54,7 @@ class TfExampleDecoder(tf_example_decoder.TfExampleDecoder):
     segmentation_mask.set_shape([None, None, 1])
     decoded_tensors.update({'groundtruth_segmentation_mask': segmentation_mask})
 
-    if self._include_eval_masks:
+    if self._include_panoptic_masks:
       category_mask = tf.io.decode_image(
           parsed_tensors['image/panoptic/category_mask'],
           channels=1)
@@ -96,7 +96,7 @@ class Parser(maskrcnn_input.Parser):
                segmentation_groundtruth_padded_size=None,
                segmentation_ignore_label=255,
                panoptic_ignore_label=0,
-               include_eval_masks=True,
+               include_panoptic_masks=True,
                dtype='float32'):
     """Initializes parameters for parsing annotations in the dataset.
 
@@ -138,7 +138,7 @@ class Parser(maskrcnn_input.Parser):
         used for training and evaluation.
       panoptic_ignore_label: `int` the pixels with ignore label will not be
         used by the PQ evaluator.
-      include_eval_masks: `bool`, if True, category_mask and instance_mask will
+      include_panoptic_masks: `bool`, if True, category_mask and instance_mask will
         be parsed. Set this to true if PQ evaluator is enabled.
       dtype: `str`, data type. One of {`bfloat16`, `float32`, `float16`}.
     """
@@ -172,7 +172,7 @@ class Parser(maskrcnn_input.Parser):
     self._segmentation_groundtruth_padded_size = segmentation_groundtruth_padded_size
     self._segmentation_ignore_label = segmentation_ignore_label
     self._panoptic_ignore_label = panoptic_ignore_label
-    self._include_eval_masks = include_eval_masks
+    self._include_panoptic_masks= include_panoptic_masks
 
   def _parse_train_data(self, data):
     """Parses data for training.
@@ -322,7 +322,7 @@ class Parser(maskrcnn_input.Parser):
         'gt_segmentation_mask': segmentation_mask,
         'gt_segmentation_valid_mask': segmentation_valid_mask})
 
-    if self._include_eval_masks:
+    if self._include_panoptic_masks:
       panoptic_category_mask = _process_mask(
           data['groundtruth_panoptic_category_mask'],
           self._panoptic_ignore_label, image_info)

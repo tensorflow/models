@@ -48,13 +48,13 @@ class Parser(maskrcnn.Parser):
   segmentation_ignore_label: int = 255
   panoptic_ignore_label: int = 0
   # Setting this to true will enable parsing category_mask and instance_mask
-  include_eval_masks: bool = True
+  include_panoptic_masks: bool = True
 
 @dataclasses.dataclass
 class TfExampleDecoder(maskrcnn.TfExampleDecoder):
   """A simple TF Example decoder config."""
   # Setting this to true will enable decoding category_mask and instance_mask
-  include_eval_masks: bool = True
+  include_panoptic_masks: bool = True
 
 
 @dataclasses.dataclass
