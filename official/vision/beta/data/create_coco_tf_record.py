@@ -59,8 +59,8 @@ flags.DEFINE_string('caption_annotations_file', '', 'File containing image '
                     'captions.')
 flags.DEFINE_string('panoptic_annotations_file', '', 'File containing panoptic '
                     'annotations.')
-flags.DEFINE_string('panoptic_masks_dir', '', 'Directory containing panoptic '
-                    'masks.')
+flags.DEFINE_string('panoptic_masks_dir', '',
+                    'Directory containing panoptic masks annotations.')
 flags.DEFINE_boolean(
     'include_panoptic_eval_masks', False, 'Whether to include category and '
     'instance masks in the result. These are required to run the PQ evaluator '
