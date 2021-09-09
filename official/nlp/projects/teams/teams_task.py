@@ -49,7 +49,7 @@ def _get_generator_hidden_layers(discriminator_network, num_hidden_layers,
 
 def _build_pretrainer(
     config: teams.TeamsPretrainerConfig) -> teams_pretrainer.TeamsPretrainer:
-  """Instantiates ElectraPretrainer from the config."""
+  """Instantiates TeamsPretrainer from the config."""
   generator_encoder_cfg = config.generator
   discriminator_encoder_cfg = config.discriminator
   discriminator_network = teams.get_encoder(discriminator_encoder_cfg)
