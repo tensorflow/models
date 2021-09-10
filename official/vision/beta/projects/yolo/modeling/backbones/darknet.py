@@ -103,11 +103,11 @@ class LayerBuilder:
 
   def __init__(self):
     self._layer_dict = {
-        'ConvBN': (nn_blocks.ConvBN, self.conv_bn_config_todict),
+        'ConvBN': (nn_blocks.ConvBN, self.ConvBN_config_todict),
         'MaxPool': (tf.keras.layers.MaxPool2D, self.maxpool_config_todict)
     }
 
-  def conv_bn_config_todict(self, config, kwargs):
+  def ConvBN_config_todict(self, config, kwargs):
     dictvals = {
         'filters': config.filters,
         'kernel_size': config.kernel_size,
@@ -140,7 +140,7 @@ class LayerBuilder:
 LISTNAMES = [
     'default_layer_name', 'level_type', 'number_of_layers_in_level',
     'bottleneck', 'filters', 'kernal_size', 'pool_size', 'strides', 'padding',
-    'default_activation', 'route', 'dilation', 'level/name', 'is_output'
+    'default_activation', 'route', 'dialation', 'level/name', 'is_output'
 ]
 
 CSPDARKNET53 = {
@@ -384,13 +384,13 @@ class Darknet(tf.keras.Model):
       max_level=5,
       width_scale=1.0,
       depth_scale=1.0,
-      csp_level_mod=(),
+      csp_level_mod=[],
       activation=None,
       use_sync_bn=False,
       norm_momentum=0.99,
       norm_epsilon=0.001,
       dilate=False,
-      kernel_initializer='glorot_uniform',
+      kernel_initializer='VarianceScaling',
       kernel_regularizer=None,
       bias_regularizer=None,
       **kwargs):
@@ -461,23 +461,23 @@ class Darknet(tf.keras.Model):
 
       if config.stack is None:
         x = self._build_block(
-            stack_outputs[config.route], config, name=f'{config.layer}_{i}')
+            stack_outputs[config.route], config, name=f"{config.layer}_{i}")
         stack_outputs.append(x)
       elif config.stack == 'residual':
         x = self._residual_stack(
-            stack_outputs[config.route], config, name=f'{config.layer}_{i}')
+            stack_outputs[config.route], config, name=f"{config.layer}_{i}")
         stack_outputs.append(x)
       elif config.stack == 'csp':
         x = self._csp_stack(
-            stack_outputs[config.route], config, name=f'{config.layer}_{i}')
+            stack_outputs[config.route], config, name=f"{config.layer}_{i}")
         stack_outputs.append(x)
       elif config.stack == 'csp_tiny':
         x_pass, x = self._csp_tiny_stack(
-            stack_outputs[config.route], config, name=f'{config.layer}_{i}')
+            stack_outputs[config.route], config, name=f"{config.layer}_{i}")
         stack_outputs.append(x_pass)
       elif config.stack == 'tiny':
         x = self._tiny_stack(
-            stack_outputs[config.route], config, name=f'{config.layer}_{i}')
+            stack_outputs[config.route], config, name=f"{config.layer}_{i}")
         stack_outputs.append(x)
       if (config.is_output and self._min_size is None):
         endpoints[str(config.output_name)] = x
@@ -504,13 +504,15 @@ class Darknet(tf.keras.Model):
       residual_filter_scale = 1
       scale_filters = 2
     self._default_dict['activation'] = self._get_activation(config.activation)
-    self._default_dict['name'] = f'{name}_csp_down'
+    self._default_dict['name'] = f"{name}_csp_down"
     if self._dilate:
       self._default_dict['dilation_rate'] = config.dilation_rate
+      degrid = int(tf.math.log(float(config.dilation_rate)) / tf.math.log(2.))
     else:
       self._default_dict['dilation_rate'] = 1
+      degrid = 0
 
-    # swap/add dilation
+    # swap/add dialation
     x, x_route = nn_blocks.CSPRoute(
         filters=config.filters,
         filter_scale=csp_filter_scale,
@@ -518,9 +520,9 @@ class Darknet(tf.keras.Model):
         **self._default_dict)(
             inputs)
 
-    dilated_reps = config.repetitions - self._default_dict['dilation_rate'] // 2
+    dilated_reps = config.repetitions - degrid
     for i in range(dilated_reps):
-      self._default_dict['name'] = f'{name}_{i}'
+      self._default_dict['name'] = f"{name}_{i}"
       x = nn_blocks.DarkResidual(
           filters=config.filters // scale_filters,
           filter_scale=residual_filter_scale,
@@ -528,17 +530,17 @@ class Darknet(tf.keras.Model):
               x)
 
     for i in range(dilated_reps, config.repetitions):
+      self._default_dict['dilation_rate'] = max(
+          1, self._default_dict['dilation_rate'] // 2)
       self._default_dict[
-          'dilation_rate'] = self._default_dict['dilation_rate'] // 2
-      self._default_dict[
-          'name'] = f"{name}_{i}_degridded_{self._default_dict['dilation_rate']}"
+          'name'] = f"{name}_{i}_degrided_{self._default_dict['dilation_rate']}"
       x = nn_blocks.DarkResidual(
           filters=config.filters // scale_filters,
           filter_scale=residual_filter_scale,
           **self._default_dict)(
               x)
 
-    self._default_dict['name'] = f'{name}_csp_connect'
+    self._default_dict['name'] = f"{name}_csp_connect"
     output = nn_blocks.CSPConnect(
         filters=config.filters,
         filter_scale=csp_filter_scale,
@@ -549,7 +551,7 @@ class Darknet(tf.keras.Model):
 
   def _csp_tiny_stack(self, inputs, config, name):
     self._default_dict['activation'] = self._get_activation(config.activation)
-    self._default_dict['name'] = f'{name}_csp_tiny'
+    self._default_dict['name'] = f"{name}_csp_tiny"
     x, x_route = nn_blocks.CSPTiny(
         filters=config.filters, **self._default_dict)(
             inputs)
@@ -563,10 +565,10 @@ class Darknet(tf.keras.Model):
         strides=config.strides,
         padding='same',
         data_format=None,
-        name=f'{name}_tiny/pool')(
+        name=f"{name}_tiny/pool")(
             inputs)
     self._default_dict['activation'] = self._get_activation(config.activation)
-    self._default_dict['name'] = f'{name}_tiny/conv'
+    self._default_dict['name'] = f"{name}_tiny/conv"
     x = nn_blocks.ConvBN(
         filters=config.filters,
         kernel_size=(3, 3),
@@ -580,7 +582,7 @@ class Darknet(tf.keras.Model):
 
   def _residual_stack(self, inputs, config, name):
     self._default_dict['activation'] = self._get_activation(config.activation)
-    self._default_dict['name'] = f'{name}_residual_down'
+    self._default_dict['name'] = f"{name}_residual_down"
     if self._dilate:
       self._default_dict['dilation_rate'] = config.dilation_rate
       if config.repetitions < 8:
@@ -592,10 +594,10 @@ class Darknet(tf.keras.Model):
         filters=config.filters, downsample=True, **self._default_dict)(
             inputs)
 
-    dilated_reps = config.repetitions - (
-        self._default_dict['dilation_rate'] // 2) - 1
+    dilated_reps = config.repetitions - self._default_dict[
+        'dilation_rate'] // 2 - 1
     for i in range(dilated_reps):
-      self._default_dict['name'] = f'{name}_{i}'
+      self._default_dict['name'] = f"{name}_{i}"
       x = nn_blocks.DarkResidual(
           filters=config.filters, **self._default_dict)(
               x)
@@ -604,7 +606,7 @@ class Darknet(tf.keras.Model):
       self._default_dict[
           'dilation_rate'] = self._default_dict['dilation_rate'] // 2
       self._default_dict[
-          'name'] = f"{name}_{i}_degridded_{self._default_dict['dilation_rate']}"
+          'name'] = f"{name}_{i}_degrided_{self._default_dict['dilation_rate']}"
       x = nn_blocks.DarkResidual(
           filters=config.filters, **self._default_dict)(
               x)
@@ -619,7 +621,7 @@ class Darknet(tf.keras.Model):
     i = 0
     self._default_dict['activation'] = self._get_activation(config.activation)
     while i < config.repetitions:
-      self._default_dict['name'] = f'{name}_{i}'
+      self._default_dict['name'] = f"{name}_{i}"
       layer = self._registry(config, self._default_dict)
       x = layer(x)
       i += 1
