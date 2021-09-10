@@ -177,7 +177,7 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
         for predictions.
     """
     (loss, box_loss, conf_loss, class_loss, mean_loss, iou, pred_conf, ind_mask,
-     grid_mask) = self.call(true_counts, inds, y_true, boxes, classes, y_pred)
+     grid_mask) = self._compute_loss(true_counts, inds, y_true, boxes, classes, y_pred)
 
     # Temporary metrics
     box_loss = tf.stop_gradient(0.05 * box_loss / self._iou_normalizer)
@@ -185,9 +185,10 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
     # Metric compute using done here to save time and resources.
     sigmoid_conf = tf.stop_gradient(tf.sigmoid(pred_conf))
     iou = tf.stop_gradient(iou)
-    avg_iou = loss_utils.avgiou(
+    avg_iou = loss_utils.average_iou(
         loss_utils.apply_mask(tf.squeeze(ind_mask, axis=-1), iou))
-    avg_obj = loss_utils.avgiou(tf.squeeze(sigmoid_conf, axis=-1) * grid_mask)
+    avg_obj = loss_utils.average_iou(
+                    tf.squeeze(sigmoid_conf, axis=-1) * grid_mask)
     return (loss, box_loss, conf_loss, class_loss, mean_loss,
             tf.stop_gradient(avg_iou), tf.stop_gradient(avg_obj))
 
@@ -198,13 +199,14 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
     ...
 
   @abc.abstractmethod
-  def call():
+  def _compute_loss(self, true_counts, inds, y_true, boxes, classes, y_pred):
     """The actual logic to apply to the raw model for optimization."""
     ...
 
   def post_path_aggregation(self, loss, ground_truths, predictions):
     """This method allows for post processing of a loss value after the loss
-    has been aggregateda across all the FPN levels."""
+    has been aggregateda across all the FPN levels. The default behavior is to 
+    pass the loss through with no alterations."""
     return loss
 
   @abc.abstractmethod
@@ -215,6 +217,12 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
 
 @tf.custom_gradient
 def grad_sigmoid(values):
+  """
+  This function scales the gradient as if a signmoid was applied to the 
+  model output. This is used in the Darknet Loss when the choosen box type 
+  is the scaled coordinate type. This function is used to match the propagated 
+  gradient to match that of the Darkent Yolov4 model. 
+  """
   # This is an identity operation that will
   # allow us to add some steps to the back propagation.
   def delta(dy):
@@ -244,7 +252,7 @@ class DarknetLoss(YoloLossBase):
           iou_type="iou", any=True, min_conf=0.25)
     return
 
-  def call(self, true_counts, inds, y_true, boxes, classes, y_pred):
+  def _compute_loss(self, true_counts, inds, y_true, boxes, classes, y_pred):
     """Per FPN path loss computation logic."""
     if self._box_type == "scaled":
       # Darknet Model Propagates a sigmoid once in back prop so we replicate
@@ -326,7 +334,7 @@ class DarknetLoss(YoloLossBase):
 
     # Compute the sigmoid binary cross entropy for the class maps.
     class_loss = tf.reduce_mean(
-        loss_utils.sigmoid_BCE(
+        loss_utils.sigmoid_bce(
             tf.expand_dims(true_class, axis=-1),
             tf.expand_dims(pred_class, axis=-1), self._label_smoothing),
         axis=-1)
@@ -347,7 +355,7 @@ class DarknetLoss(YoloLossBase):
 
     # Compute the sigmoid binary cross entropy for the confidence maps.
     bce = tf.reduce_mean(
-        loss_utils.sigmoid_BCE(
+        loss_utils.sigmoid_bce(
             tf.expand_dims(true_conf, axis=-1), pred_conf, 0.0),
         axis=-1)
 
@@ -394,7 +402,7 @@ class ScaledLoss(YoloLossBase):
           iou_type=self._loss_type, any=False, min_conf=0.25)
     return
 
-  def call(self, true_counts, inds, y_true, boxes, classes, y_pred):
+  def _compute_loss(self, true_counts, inds, y_true, boxes, classes, y_pred):
     """Per FPN path loss computation logic."""
     # Generate shape constants.
     shape = tf.shape(true_counts)
@@ -501,21 +509,23 @@ class ScaledLoss(YoloLossBase):
             ind_mask, grid_mask)
 
   def post_path_aggregation(self, loss, ground_truths, predictions):
+    """By default the model will have about 3 FPN levels {3, 4, 5}, on 
+    larger model that have more like 4 or 5 FPN levels the loss needs to 
+    be scaled such that the total update is scaled to the same effective 
+    magintude as the model with 3 FPN levels. This helps to prevent gradient 
+    explosions."""
     scale = tf.stop_gradient(3 / len(list(predictions.keys())))
     return loss * scale
 
   def cross_replica_aggregation(self, loss, num_replicas_in_sync):
-    """this method is not specific to each loss path, but each loss type"""
+    """In the scaled loss, the loss is aggregated across replicas via the 
+    sum."""
     return loss
 
 
-LOSSES = {"darknet": DarknetLoss, "scaled": ScaledLoss}
 class YoloLoss(object):
   """This class implements the aggregated loss across paths for the YOLO 
-  model. The class implements the YOLO loss as a factory in order to allow 
-  selection and implementation of new versions of the YOLO loss as the model 
-  is updated in the future. 
-  """
+  model."""
 
   def __init__(self,
                keys,
@@ -582,6 +592,8 @@ class YoloLoss(object):
       update_on_repeat: `bool` for whether to replace with the newest or 
         the best value when an index is consumed by multiple objects. 
     """
+    LOSSES = {"darknet": DarknetLoss, "scaled": ScaledLoss}
+
     if use_scaled_loss:
       loss_type = "scaled"
     else:

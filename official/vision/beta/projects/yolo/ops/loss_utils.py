@@ -18,7 +18,7 @@ import numpy as np
 from official.vision.beta.projects.yolo.ops import (box_ops, math_ops)
 
 @tf.custom_gradient
-def sigmoid_BCE(y, x_prime, label_smoothing):
+def sigmoid_bce(y, x_prime, label_smoothing):
   """Applies the Sigmoid Cross Entropy Loss Using the same derivative as that 
   found in the Darknet C library. The derivative of this method is not the same 
   as the standard binary cross entropy with logits function.
@@ -144,7 +144,7 @@ def build_grid(indexes, truths, preds, ind_mask, update=False, grid=None):
   return grid
 
 
-class GridGenerator(object):
+class GridGenerator:
   """Grid generator that generates anchor grids that will be used 
   in to decode the predicted boxes."""
 
@@ -216,7 +216,7 @@ class GridGenerator(object):
 
 
 TILE_SIZE = 50
-class PairWiseSearch(object):
+class PairWiseSearch:
   """This method applies a pairwise search between the ground truth 
   and the labels. The goal is to indicate the locations where the 
   predictions overlap with ground truth for dynamic ground 
@@ -367,7 +367,7 @@ class PairWiseSearch(object):
             tf.stop_gradient(max_iou), tf.stop_gradient(mask))
 
 
-def avgiou(iou):
+def average_iou(iou):
   """Computes the average intersection over union without counting locations
   where the iou is zero.
  

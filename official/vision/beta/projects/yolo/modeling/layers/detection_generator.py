@@ -72,8 +72,10 @@ class YoloLayer(tf.keras.Model):
       obj_normalizer: `float` for how much to scale loss on the detection map.
       use_scaled_loss: `bool` for whether to use the scaled loss
         or the traditional loss.
-      darknet: `bool` for whether to use the DarkNet or PyTorch loss function
-        implementation.
+      update_on_repeat: `bool` indicating how you would like to handle repeated 
+        indexes in a given [j, i] index. Setting this to True will give more 
+        consistent MAP, setting it to falls will improve recall by 1-2% but will 
+        sacrifice some MAP.  
       pre_nms_points: `int` number of top candidate detections per class before
         NMS.
       label_smoothing: `float` for how much to smooth the loss on the classes.

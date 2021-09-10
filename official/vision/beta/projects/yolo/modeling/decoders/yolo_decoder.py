@@ -22,7 +22,7 @@ from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class _IdentityRoute(tf.keras.layers.Layer):
 
-  def call(self, inputs):  # pylint: disable=arguments-differ
+  def call(self, inputs):
     return None, inputs
 
 
