@@ -39,10 +39,16 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
     anchors = [[12.0, 19.0], [31.0, 46.0], [96.0, 54.0], [46.0, 114.0],
                [133.0, 127.0], [79.0, 225.0], [301.0, 150.0], [172.0, 286.0],
                [348.0, 340.0]]
-    layer = dg.YoloLayer(masks, anchors, classes, max_boxes=10)
+    box_type = {key:"scaled" for key in masks.keys()}
+
+    layer = dg.YoloLayer(masks, 
+                         anchors, 
+                         classes, 
+                         box_type = box_type, 
+                         max_boxes=10)
 
     inputs = {}
-    for key in input_shape:
+    for key in input_shape.keys():
       inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
 
     endpoints = layer(inputs)
