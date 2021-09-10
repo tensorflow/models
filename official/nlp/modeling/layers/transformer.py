@@ -232,6 +232,9 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
     else:
       self._cross_attention_cls = attention.MultiHeadAttention
 
+  def _maybe_build(self, inputs):
+    super()._maybe_build(inputs[:1])
+
   def build(self, input_shape):
     target_tensor_shape = tf.TensorShape(input_shape[0])
     if len(target_tensor_shape.as_list()) != 3:
@@ -370,22 +373,57 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         self.intermediate_dense, self.output_dense, self.output_layer_norm
     ]
 
-  def call(self, inputs, cache=None, decode_loop_step=None):
-    if self.multi_channel_cross_attention:
-      if len(inputs) != 5:
+  def _parse_inputs(self, inputs, multi_channel_cross_attention):
+    if multi_channel_cross_attention:
+      if len(inputs) < 5:
         raise ValueError(
-            "TransformerDecoderBlock must have 5 inputs, when it uses "
+            "TransformerDecoderBlock must have at least 5 inputs, when it uses "
             "multi_channel_cross_attention. But it got: %d" % len(inputs))
-    elif len(inputs) != 4:
-      raise ValueError(
-          "TransformerDecoderBlock must have 4 inputs, but it got: %d" %
-          len(inputs))
-    input_tensor, memory, attention_mask, self_attention_mask = inputs[:4]
+      elif len(inputs) == 5:
+        input_tensor, memory, attention_mask, self_attention_mask, context_attention_weights = inputs
+        input_pos_embed = None
+        memory_pos_embed = None
+      elif len(inputs) == 6:
+        input_tensor, memory, attention_mask, self_attention_mask, context_attention_weights, input_pos_embed = inputs
+        memory_pos_embed = None
+      else:
+        input_tensor, memory, attention_mask, self_attention_mask, context_attention_weights, input_pos_embed, memory_pos_embed = inputs[:
+                                                                                                                                         7]
+    else:
+      context_attention_weights = None
+      if len(inputs) < 4:
+        raise ValueError(
+            "TransformerDecoderBlock must have at leaset 4 inputs, but it "
+            "got: %d" % len(inputs))
+      elif len(inputs) == 4:
+        input_tensor, memory, attention_mask, self_attention_mask = inputs
+        input_pos_embed = None
+        memory_pos_embed = None
+      elif len(inputs) == 5:
+        input_tensor, memory, attention_mask, self_attention_mask, input_pos_embed = inputs
+        memory_pos_embed = None
+      else:
+        input_tensor, memory, attention_mask, self_attention_mask, input_pos_embed, memory_pos_embed = inputs[:
+                                                                                                              6]
+
+    return input_tensor, memory, attention_mask, self_attention_mask, context_attention_weights, input_pos_embed, memory_pos_embed
+
+  def call(self, inputs, cache=None, decode_loop_step=None):
+    input_tensor, memory, attention_mask, self_attention_mask, context_attention_weights, input_pos_embed, memory_pos_embed = self._parse_inputs(
+        inputs, self.multi_channel_cross_attention)
+
     source_tensor = input_tensor
     if self._norm_first:
       input_tensor = self.self_attention_layer_norm(input_tensor)
+    if input_pos_embed is None:
+      self_attn_query = input_tensor
+      self_attn_key = input_tensor
+    else:
+      self_attn_query = input_tensor + input_pos_embed
+      self_attn_key = input_tensor + input_pos_embed
     self_attention_output, cache = self.self_attention(
-        query=input_tensor,
+        query=self_attn_query,
+        key=self_attn_key,
         value=input_tensor,
         attention_mask=self_attention_mask,
         cache=cache,
@@ -400,13 +438,22 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
       source_self_attention_output = self_attention_output
       self_attention_output = self.encdec_attention_layer_norm(
           self_attention_output)
+    if input_pos_embed is None:
+      cross_attn_query = self_attention_output
+    else:
+      cross_attn_query = self_attention_output + input_pos_embed
+    if memory_pos_embed is None:
+      cross_attn_key = memory
+    else:
+      cross_attn_key = memory + memory_pos_embed
     cross_attn_inputs = dict(
-        query=self_attention_output,
+        query=cross_attn_query,
+        key=cross_attn_key,
         value=memory,
         attention_mask=attention_mask)
     if self.multi_channel_cross_attention:
       # Accesses the 5-th input tensor for the doc-attention probabilities.
-      cross_attn_inputs["context_attention_weights"] = inputs[-1]
+      cross_attn_inputs["context_attention_weights"] = context_attention_weights
     attention_output = self.encdec_attention(**cross_attn_inputs)
     attention_output = self.encdec_attention_dropout(attention_output)
     if self._norm_first:

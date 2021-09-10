@@ -116,6 +116,9 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
       self._attention_initializer = self._kernel_initializer
     self._attention_axes = attention_axes
 
+  def _maybe_build(self, inputs):
+    super()._maybe_build(inputs[:1])
+
   def build(self, input_shape):
     if isinstance(input_shape, tf.TensorShape):
       input_tensor_shape = input_shape
@@ -247,6 +250,9 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         [`query tensor`, `key value tensor`, `attention mask`] to have separate
           input streams for the query, and key/value to the multi-head
           attention.
+        [`query tensor`, `key value tensor`, `attention mask`, `pos_embed`] to
+          have an additional pos_embed that is added to the query and key of
+          every self-attention layer.
 
     Returns:
       An output tensor with the same dimensions as input/query tensor.
@@ -255,13 +261,18 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
       if len(inputs) == 2:
         input_tensor, attention_mask = inputs
         key_value = None
+        pos_embed = None
       elif len(inputs) == 3:
         input_tensor, key_value, attention_mask = inputs
+        pos_embed = None
+      elif len(inputs) == 4:
+        input_tensor, key_value, attention_mask, pos_embed = inputs
       else:
         raise ValueError("Unexpected inputs to %s with length at %d" %
                          (self.__class__, len(inputs)))
     else:
-      input_tensor, key_value, attention_mask = (inputs, None, None)
+      input_tensor, key_value, attention_mask, pos_embed = (inputs, None, None,
+                                                            None)
 
     if self._output_range:
       if self._norm_first:
@@ -282,8 +293,14 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
 
     if key_value is None:
       key_value = input_tensor
+    if pos_embed is None:
+      query = target_tensor
+      key = key_value
+    else:
+      query = target_tensor + pos_embed
+      key = key_value + pos_embed
     attention_output = self._attention_layer(
-        query=target_tensor, value=key_value, attention_mask=attention_mask)
+        query=query, key=key, value=key_value, attention_mask=attention_mask)
     attention_output = self._attention_dropout(attention_output)
     if self._norm_first:
       attention_output = source_tensor + attention_output
