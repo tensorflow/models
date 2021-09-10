@@ -425,7 +425,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
     base_config = super(TransformerEncoder, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def call(self, encoder_inputs, attention_mask=None, pos_embed=None):
+  def call(self, encoder_inputs, attention_mask=None):
     """Return the output of the encoder.
 
     Args:
@@ -433,17 +433,14 @@ class TransformerEncoder(tf.keras.layers.Layer):
         hidden_size)`.
       attention_mask: A mask for the encoder self-attention layer with shape
         `(batch_size, input_length, input_length)`.
-      pos_embed: A tensor or a float that is added to the query and key of every
-        self-attention layer. Defaults to None.
 
     Returns:
       Output of encoder which is a `float32` tensor with shape
         `(batch_size, input_length, hidden_size)`.
     """
-
     for layer_idx in range(self.num_layers):
       encoder_inputs = self.encoder_layers[layer_idx](
-          [encoder_inputs, encoder_inputs, attention_mask, pos_embed])
+          [encoder_inputs, attention_mask])
 
     output_tensor = encoder_inputs
     output_tensor = self.output_normalization(output_tensor)
@@ -522,7 +519,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
               attention_initializer=attention_initializer(input_shape[2]),
               name=("layer_%d" % i)))
     self.output_normalization = tf.keras.layers.LayerNormalization(
-        epsilon=self._norm_epsilon, dtype="float32")
+        epsilon=1e-6, dtype="float32")
     super(TransformerDecoder, self).build(input_shape)
 
   def get_config(self):
@@ -548,9 +545,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
            cross_attention_mask=None,
            cache=None,
            decode_loop_step=None,
-           return_all_decoder_outputs=False,
-           input_pos_embed=None,
-           memory_pos_embed=None):
+           return_all_decoder_outputs=False):
     """Return the output of the decoder layer stacks.
 
     Args:
@@ -570,10 +565,6 @@ class TransformerDecoder(tf.keras.layers.Layer):
       return_all_decoder_outputs: Return all decoder layer outputs.
         Note that the outputs are layer normed.
         This is useful when introducing per layer auxiliary loss.
-      input_pos_embed: A tensor or float that is added to the target embedding
-        in every self-attention and cross-attention layer. Defaults to None.
-      memory_pos_embed: A tensor or float that is added to the memory embedding
-        in every cross-attention layer. Defaults to None.
 
     Returns:
       Output of decoder.
@@ -584,8 +575,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
     decoder_outputs = []
     for layer_idx in range(self.num_layers):
       transformer_inputs = [
-          output_tensor, memory, cross_attention_mask, self_attention_mask,
-          input_pos_embed, memory_pos_embed
+          output_tensor, memory, cross_attention_mask, self_attention_mask
       ]
       # Gets the cache for decoding.
       if cache is None:
