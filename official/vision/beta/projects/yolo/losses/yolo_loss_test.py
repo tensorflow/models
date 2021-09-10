@@ -24,7 +24,11 @@ from official.vision.beta.projects.yolo.losses import yolo_loss
 
 class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
 
-  def test_loss_init(self):
+  @parameterized.parameters(
+      (True),
+      (False),
+  )
+  def test_loss_init(self, scaled):
     """Test creation of YOLO family models."""
 
     def inpdict(input_shape, dtype = tf.float32):
@@ -66,7 +70,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
       scale_xys = {key: 2.0 for key in keys},
       max_deltas = {key: 30.0 for key in keys},
       label_smoothing=0.0,
-      use_scaled_loss=True,
+      use_scaled_loss=scaled,
       update_on_repeat=True
     )
 
