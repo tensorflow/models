@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Feature Pyramid Network and Path Aggregation variants used in YOLO"""
+"""Feature Pyramid Network and Path Aggregation variants used in YOLO."""
 
 import tensorflow as tf
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
@@ -206,7 +206,7 @@ class YoloPAN(tf.keras.layers.Layer):
         by zero.
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       fpn_input: `bool`, for whether the input into this fucntion is an FPN or
         a backbone.
       fpn_filter_scale: `int`, scaling factor for the FPN filters.
@@ -381,7 +381,7 @@ class YoloDecoder(tf.keras.Model):
     """Yolo Decoder initialization function. 
     
     A unified model that ties all decoder components into a conditionally build 
-    YOLO decder.
+    YOLO decoder.
 
     Args:
       input_specs: `dict[str, tf.InputSpec]`: input specs of each of the inputs
@@ -403,7 +403,7 @@ class YoloDecoder(tf.keras.Model):
         zero.
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       **kwargs: keyword arguments to be passed.
     """
 
