@@ -48,7 +48,7 @@ class ConvBN(tf.keras.layers.Layer):
                strides=(1, 1),
                padding='same',
                dilation_rate=(1, 1),
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -97,7 +97,14 @@ class ConvBN(tf.keras.layers.Layer):
     self._strides = strides
     self._padding = padding
     self._dilation_rate = dilation_rate
-    self._kernel_initializer = kernel_initializer
+
+    if kernel_initializer == "VarianceScaling":
+      # to match pytorch initialization method
+      self._kernel_initializer = tf.keras.initializers.VarianceScaling(
+          scale=1 / 3, mode='fan_in', distribution='uniform')
+    else:
+      self._kernel_initializer = kernel_initializer
+
     self._bias_initializer = bias_initializer
     self._kernel_regularizer = kernel_regularizer
 
@@ -194,7 +201,7 @@ class DarkResidual(tf.keras.layers.Layer):
                filters=1,
                filter_scale=2,
                dilation_rate=1,
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                kernel_regularizer=None,
                bias_regularizer=None,
@@ -366,7 +373,7 @@ class CSPTiny(tf.keras.layers.Layer):
 
   def __init__(self,
                filters=1,
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -532,7 +539,7 @@ class CSPRoute(tf.keras.layers.Layer):
                filters,
                filter_scale=2,
                activation='mish',
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -661,7 +668,7 @@ class CSPConnect(tf.keras.layers.Layer):
                drop_first=False,
                activation='mish',
                kernel_size=(1, 1),
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -783,7 +790,7 @@ class CSPStack(tf.keras.layers.Layer):
                model_to_wrap=None,
                filter_scale=2,
                activation='mish',
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -796,7 +803,6 @@ class CSPStack(tf.keras.layers.Layer):
     """CSPStack layer initializer.
 
     Args:
-      filters: integer for output depth, or the number of features to learn.
       model_to_wrap: callable Model or a list of callable objects that will
         process the output of CSPRoute, and be input into CSPConnect.
         list will be called sequentially.
@@ -884,7 +890,7 @@ class PathAggregationBlock(tf.keras.layers.Layer):
   def __init__(self,
                filters=1,
                drop_final=True,
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -1120,7 +1126,7 @@ class SAM(tf.keras.layers.Layer):
                strides=(1, 1),
                padding='same',
                dilation_rate=(1, 1),
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -1192,7 +1198,7 @@ class CAM(tf.keras.layers.Layer):
 
   def __init__(self,
                reduction_ratio=1.0,
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -1285,7 +1291,7 @@ class CBAM(tf.keras.layers.Layer):
                strides=(1, 1),
                padding='same',
                dilation_rate=(1, 1),
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -1363,7 +1369,7 @@ class DarkRouteProcess(tf.keras.layers.Layer):
       insert_cbam=False,
       csp_stack=0,
       csp_scale=2,
-      kernel_initializer='glorot_uniform',
+      kernel_initializer='VarianceScaling',
       bias_initializer='zeros',
       bias_regularizer=None,
       kernel_regularizer=None,
