@@ -125,7 +125,7 @@ class YoloHead(tf.keras.layers.Layer):
   def num_boxes(self):
     if self._min_level is None or self._max_level is None:
       raise Exception(
-          'model has to be built before number of boxes can be determined')
+          'Model has to be built before number of boxes can be determined.')
     return (self._max_level - self._min_level + 1) * self._boxes_per_level
 
   @property
