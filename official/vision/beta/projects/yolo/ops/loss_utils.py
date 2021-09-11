@@ -19,9 +19,11 @@ from official.vision.beta.projects.yolo.ops import (box_ops, math_ops)
 
 @tf.custom_gradient
 def sigmoid_bce(y, x_prime, label_smoothing):
-  """Applies the Sigmoid Cross Entropy Loss Using the same derivative as that 
-  found in the Darknet C library. The derivative of this method is not the same 
-  as the standard binary cross entropy with logits function.
+  """Applies the Sigmoid Cross Entropy Loss.
+  
+  Implements the same derivative as that found in the Darknet C library. 
+  The derivative of this method is not the same as the standard binary cross 
+  entropy with logits function.
  
   The BCE with logits function equation is as follows: 
     x = 1 / (1 + exp(-x_prime))
@@ -67,11 +69,12 @@ def sigmoid_bce(y, x_prime, label_smoothing):
 
 
 def apply_mask(mask, x, value=0):
-  """This function is used for gradient masking. The YOLO loss function makes 
-  extensive use of dynamically shaped tensors. To allow this use case on the 
-  TPU while preserving the gradient correctly for back propagation we use this 
-  masking function to use a tf.where operation to hard set masked location to 
-  have a gradient and a value of zero. 
+  """This function is used for gradient masking. 
+  
+  The YOLO loss function makes extensive use of dynamically shaped tensors. 
+  To allow this use case on the TPU while preserving the gradient correctly 
+  for back propagation we use this masking function to use a tf.where operation 
+  to hard set masked location to have a gradient and a value of zero. 
 
   Args: 
     mask: A `Tensor` with the same shape as x used to select values of 
@@ -87,9 +90,11 @@ def apply_mask(mask, x, value=0):
 
 
 def build_grid(indexes, truths, preds, ind_mask, update=False, grid=None):
-  """This function is used to broadcast all the indexes to the correct
-  ground truth mask, used for iou detection map in the scaled loss and
-  the classification mask in the darknet loss.
+  """This function is used to broadcast elements into the output shape. 
+
+  This function is used to broadcasts a list of truths into the correct index 
+  in the output shape. This is used for the ground truth map construction in 
+  the scaled loss and the classification map in the darknet loss.
   
   Args:
     indexes: A `Tensor` for the indexes
@@ -145,11 +150,10 @@ def build_grid(indexes, truths, preds, ind_mask, update=False, grid=None):
 
 
 class GridGenerator:
-  """Grid generator that generates anchor grids that will be used 
-  in to decode the predicted boxes."""
+  """Grid generator that generates anchor grids for box decoding."""
 
   def __init__(self, anchors, masks=None, scale_anchors=None):
-    """Initialize Grid Generator
+    """Initialize Grid Generator.
  
     Args:
       anchors: A `List[List[int]]` for the anchor boxes that are used in the 
@@ -173,8 +177,7 @@ class GridGenerator:
     return
 
   def _build_grid_points(self, lwidth, lheight, anchors, dtype):
-    """Generate a grid that is used to detemine the relative centers 
-    of the bounding boxs. """
+    """Generate a grid of fixed grid edges for box center decoding."""
     with tf.name_scope('center_grid'):
       y = tf.range(0, lheight)
       x = tf.range(0, lwidth)
@@ -189,7 +192,7 @@ class GridGenerator:
     return x_y
 
   def _build_anchor_grid(self, anchors, dtype):
-    """Get the transformed anchor boxes for each dimention. """
+    """Get the transformed anchor boxes for each dimention."""
     with tf.name_scope('anchor_grid'):
       num = tf.shape(anchors)[0]
       anchors = tf.cast(anchors, dtype=dtype)
@@ -217,10 +220,10 @@ class GridGenerator:
 
 TILE_SIZE = 50
 class PairWiseSearch:
-  """This method applies a pairwise search between the ground truth 
-  and the labels. The goal is to indicate the locations where the 
-  predictions overlap with ground truth for dynamic ground 
-  truth constructions."""
+  """Apply a pairwise search between the ground truth and the labels. 
+  
+  The goal is to indicate the locations where the predictions overlap with 
+  ground truth for dynamic ground truth associations."""
 
   def __init__(self,
                iou_type='iou',
@@ -554,9 +557,10 @@ def get_predicted_box(width,
                       darknet=False,
                       box_type="original",
                       max_delta=np.inf):
-  """Decodes the predicted boxes from the model format to a usable 
-  [x, y, w, h] format for use in the loss function as well as for use 
-  within the detection generator.   
+  """Decodes the predicted boxes from the model format to a usable format. 
+
+  This function decodes the model outputs into the [x, y, w, h] format for 
+  use in the loss function as well as for use within the detection generator.   
  
   Args: 
     width: A `float` scalar indicating the width of the prediction layer.

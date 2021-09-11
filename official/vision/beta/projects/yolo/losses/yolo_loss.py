@@ -22,9 +22,11 @@ from official.vision.beta.projects.yolo.ops import (loss_utils,
 
 
 class YoloLossBase(object, metaclass=abc.ABCMeta):
-  """Parameters for the YOLO loss functions used at each detection  
-  generator. This base class implements the base functionality required to 
-  implement a Yolo Loss function"""
+  """Parameters for the YOLO loss functions used at each detection generator. 
+  
+  This base class implements the base functionality required to implement a Yolo 
+  Loss function.
+  """
 
   def __init__(self,
                classes,
@@ -110,8 +112,7 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
     self._build_per_path_attributes()
 
   def box_loss(self, true_box, pred_box, darknet=False):
-    """Calls the iou functions and uses it to compute the loss this op is 
-    the same regardless of Yolo Loss version"""
+    """Call iou function and use it to compute the loss for the box maps."""
     if self._loss_type == "giou":
       iou, liou = box_ops.compute_giou(true_box, pred_box)
     elif self._loss_type == "ciou":
@@ -129,8 +130,7 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
                                true_conf,
                                smoothed,
                                scale=None):
-    """Completes a search of all predictions against all the ground truths to 
-    dynamically associate ground truths with predictions."""
+    """Search of all groundtruths to associate groundtruths to predictions."""
 
     # Search all predictions against ground truths to find mathcing boxes for
     # each pixel.
@@ -159,8 +159,7 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
     return true_conf, obj_mask
 
   def __call__(self, true_counts, inds, y_true, boxes, classes, y_pred):
-    """Call function to compute the loss and return the total loss as 
-    well as the loss for each detection mask on a given FPN level. 
+    """Call function to compute the loss and a set of metrics per FPN level.
     
     Args: 
       true_counts: `Tensor` of shape [batchsize, height, width, num_anchors] 
@@ -208,8 +207,7 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def _build_per_path_attributes(self):
-    """Additional initialization required specifically for each unique YOLO 
-    loss version"""
+    """Additional initialization required for each YOLO loss version"""
     ...
 
   @abc.abstractmethod
@@ -218,9 +216,20 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
     ...
 
   def post_path_aggregation(self, loss, ground_truths, predictions):
-    """This method allows for post processing of a loss value after the loss
-    has been aggregateda across all the FPN levels. The default behavior is to 
-    pass the loss through with no alterations."""
+    """This method allows for post processing of a loss value. 
+    
+    After the loss has been aggregated across all the FPN levels some post
+    proceessing may need to occur to poroperly scale the loss. The default 
+    behavior is to pass the loss through with no alterations.
+    
+    Args: 
+      loss: `tf.float` scalar for the actual loss.
+      ground_truths: `Dict` holding all the ground truth tensors.
+      predictions: `Dict` holding all the predicted values.
+
+    Returns: 
+      loss: `tf.float` scalar for the scaled loss.
+    """
     return loss
 
   @abc.abstractmethod
@@ -231,11 +240,12 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
 
 @tf.custom_gradient
 def grad_sigmoid(values):
-  """This function scales the gradient as if a signmoid was applied to the 
-  model output. This is used in the Darknet Loss when the choosen box type 
-  is the scaled coordinate type. This function is used to match the propagated 
-  gradient to match that of the Darkent Yolov4 model. This is an Identity 
-  operation that allows us to add some estra steps to the back propagation. 
+  """This function scales the gradient as if a signmoid was applied.
+  
+  This is used in the Darknet Loss when the choosen box type is the scaled 
+  coordinate type. This function is used to match the propagated gradient to 
+  match that of the Darkent Yolov4 model. This is an Identity operation that 
+  allows us to add some extra steps to the back propagation. 
   """
   def delta(dy):
     t = tf.math.sigmoid(values)
@@ -396,7 +406,7 @@ class DarknetLoss(YoloLossBase):
 
 
 class ScaledLoss(YoloLossBase):
-  """This class implements the full logic for the scaled Yolo models. """
+  """This class implements the full logic for the scaled Yolo models."""
 
   def _build_per_path_attributes(self):
     """Paramterization of pair wise search and grid generators.
@@ -520,11 +530,22 @@ class ScaledLoss(YoloLossBase):
             ind_mask, grid_mask)
 
   def post_path_aggregation(self, loss, ground_truths, predictions):
-    """By default the model will have about 3 FPN levels {3, 4, 5}, on 
+    """This method allows for post processing of a loss value. 
+    
+    By default the model will have about 3 FPN levels {3, 4, 5}, on 
     larger model that have more like 4 or 5 FPN levels the loss needs to 
     be scaled such that the total update is scaled to the same effective 
     magintude as the model with 3 FPN levels. This helps to prevent gradient 
-    explosions."""
+    explosions.
+    
+    Args: 
+      loss: `tf.float` scalar for the actual loss.
+      ground_truths: `Dict` holding all the ground truth tensors.
+      predictions: `Dict` holding all the predicted values.
+
+    Returns: 
+      loss: `tf.float` scalar for the scaled loss.
+    """
     scale = tf.stop_gradient(3 / len(list(predictions.keys())))
     return loss * scale
 
