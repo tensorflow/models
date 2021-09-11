@@ -207,7 +207,7 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def _build_per_path_attributes(self):
-    """Additional initialization required for each YOLO loss version"""
+    """Additional initialization required for each YOLO loss version."""
     ...
 
   @abc.abstractmethod
@@ -401,7 +401,7 @@ class DarknetLoss(YoloLossBase):
             ind_mask, grid_mask)
 
   def cross_replica_aggregation(self, loss, num_replicas_in_sync):
-    """this method is not specific to each loss path, but each loss type"""
+    """This method is not specific to each loss path, but each loss type."""
     return loss / num_replicas_in_sync
 
 
