@@ -236,8 +236,7 @@ def grad_sigmoid(values):
 
 
 class DarknetLoss(YoloLossBase):
-  """This class implements the full logic for the standard Yolo models 
-  encompassing Yolov3, Yolov4, and Yolo-Tiny."""
+  """This class implements the full logic for the standard Yolo models."""
 
   def _build_per_path_attributes(self):
     """Paramterization of pair wise search and grid generators for box 
@@ -253,7 +252,8 @@ class DarknetLoss(YoloLossBase):
     return
 
   def _compute_loss(self, true_counts, inds, y_true, boxes, classes, y_pred):
-    """Per FPN path loss computation logic."""
+    """Per FPN path loss computation logic used for Yolov3, Yolov4, and 
+    Yolo-Tiny."""
     if self._box_type == "scaled":
       # Darknet Model Propagates a sigmoid once in back prop so we replicate
       # that behaviour
@@ -386,8 +386,7 @@ class DarknetLoss(YoloLossBase):
 
 
 class ScaledLoss(YoloLossBase):
-  """This class implements the full logic for the scaled Yolo models 
-  encompassing Yolov4-csp, Yolov4-Large, and Yolov5."""
+  """This class implements the full logic for the scaled Yolo models. """
 
   def _build_per_path_attributes(self):
     """Paramterization of pair wise search and grid generators for box 
@@ -403,7 +402,8 @@ class ScaledLoss(YoloLossBase):
     return
 
   def _compute_loss(self, true_counts, inds, y_true, boxes, classes, y_pred):
-    """Per FPN path loss computation logic."""
+    """Per FPN path loss computation logic Yolov4-csp, Yolov4-Large, and 
+    Yolov5."""
     # Generate shape constants.
     shape = tf.shape(true_counts)
     batch_size, width, height, num = shape[0], shape[1], shape[2], shape[3]
