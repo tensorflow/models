@@ -1,3 +1,17 @@
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Yolo Loss function."""
 import tensorflow as tf
 from collections import defaultdict
 import abc
@@ -217,18 +231,13 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
 
 @tf.custom_gradient
 def grad_sigmoid(values):
-  """
-  This function scales the gradient as if a signmoid was applied to the 
+  """This function scales the gradient as if a signmoid was applied to the 
   model output. This is used in the Darknet Loss when the choosen box type 
   is the scaled coordinate type. This function is used to match the propagated 
-  gradient to match that of the Darkent Yolov4 model. 
+  gradient to match that of the Darkent Yolov4 model. This is an Identity 
+  operation that allows us to add some estra steps to the back propagation. 
   """
-  # This is an identity operation that will
-  # allow us to add some steps to the back propagation.
   def delta(dy):
-    # Darknet only propagtes sigmoids for the boxes
-    # under some conditions, so we need this to selectively
-    # add the sigmoid to the chain rule
     t = tf.math.sigmoid(values)
     return dy * t * (1 - t)
 
@@ -239,8 +248,10 @@ class DarknetLoss(YoloLossBase):
   """This class implements the full logic for the standard Yolo models."""
 
   def _build_per_path_attributes(self):
-    """Paramterization of pair wise search and grid generators for box 
-    decoding and dynamic ground truth association."""
+    """Paramterization of pair wise search and grid generators.
+    
+    Objects created here are used for box decoding and dynamic ground truth 
+    association."""
     self._anchor_generator = loss_utils.GridGenerator(
         masks=self._masks,
         anchors=self._anchors,
@@ -252,8 +263,7 @@ class DarknetLoss(YoloLossBase):
     return
 
   def _compute_loss(self, true_counts, inds, y_true, boxes, classes, y_pred):
-    """Per FPN path loss computation logic used for Yolov3, Yolov4, and 
-    Yolo-Tiny."""
+    """Per FPN path loss logic used for Yolov3, Yolov4, and Yolo-Tiny."""
     if self._box_type == "scaled":
       # Darknet Model Propagates a sigmoid once in back prop so we replicate
       # that behaviour
@@ -389,8 +399,10 @@ class ScaledLoss(YoloLossBase):
   """This class implements the full logic for the scaled Yolo models. """
 
   def _build_per_path_attributes(self):
-    """Paramterization of pair wise search and grid generators for box 
-    decoding and dynamic ground truth association."""
+    """Paramterization of pair wise search and grid generators.
+    
+    Objects created here are used for box decoding and dynamic ground truth 
+    association."""
     self._anchor_generator = loss_utils.GridGenerator(
         masks=self._masks,
         anchors=self._anchors,
@@ -402,8 +414,7 @@ class ScaledLoss(YoloLossBase):
     return
 
   def _compute_loss(self, true_counts, inds, y_true, boxes, classes, y_pred):
-    """Per FPN path loss computation logic Yolov4-csp, Yolov4-Large, and 
-    Yolov5."""
+    """Per FPN path loss logic for Yolov4-csp, Yolov4-Large, and Yolov5."""
     # Generate shape constants.
     shape = tf.shape(true_counts)
     batch_size, width, height, num = shape[0], shape[1], shape[2], shape[3]
@@ -518,14 +529,12 @@ class ScaledLoss(YoloLossBase):
     return loss * scale
 
   def cross_replica_aggregation(self, loss, num_replicas_in_sync):
-    """In the scaled loss, the loss is aggregated across replicas via the 
-    sum."""
+    """In the scaled loss, take the sum of the loss across replicas."""
     return loss
 
 
-class YoloLoss(object):
-  """This class implements the aggregated loss across paths for the YOLO 
-  model."""
+class YoloLoss:
+  """This class implements the aggregated loss across YOLO model FPN levels."""
 
   def __init__(self,
                keys,
