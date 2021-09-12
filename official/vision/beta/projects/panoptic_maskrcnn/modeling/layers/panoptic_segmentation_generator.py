@@ -163,46 +163,52 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
 
     # filter instances with low confidence
     sorted_scores = tf.sort(scores, direction='DESCENDING')
-    loop_end_idx = tf.where(sorted_scores > self._score_threshold)[-1, 0] + 1
-    loop_end_idx = tf.minimum(
-        tf.cast(loop_end_idx, dtype=tf.int32),
-        self._max_num_detections)
 
-    # add things segmentation to panoptic masks
-    for i in range(loop_end_idx):
-      # we process instances in decending order, which will make sure
-      # the overlaps are resolved based on confidence score
-      instance_idx = sorted_indices[i]
+    valid_indices = tf.where(sorted_scores > self._score_threshold)
 
-      pasted_mask = self._paste_mask(
-          box=boxes[instance_idx],
-          mask=detections_masks[instance_idx])
+    # if no instance has sufficient confidence score, skip merging
+    # instance segmentation masks
+    if tf.shape(valid_indices)[0] > 0:
+      loop_end_idx = valid_indices[-1, 0] + 1
+      loop_end_idx = tf.minimum(
+          tf.cast(loop_end_idx, dtype=tf.int32),
+          self._max_num_detections)
 
-      class_id = tf.cast(classes[instance_idx], dtype=tf.float32)
+      # add things segmentation to panoptic masks
+      for i in range(loop_end_idx):
+        # we process instances in decending order, which will make sure
+        # the overlaps are resolved based on confidence score
+        instance_idx = sorted_indices[i]
 
-      # convert sigmoid scores to binary values
-      binary_mask = tf.greater(
-          pasted_mask, self._mask_binarize_threshold)
+        pasted_mask = self._paste_mask(
+            box=boxes[instance_idx],
+            mask=detections_masks[instance_idx])
 
-      # filter empty instance masks
-      if not tf.reduce_sum(tf.cast(binary_mask, tf.float32)) > 0:
-        continue
+        class_id = tf.cast(classes[instance_idx], dtype=tf.float32)
 
-      # fill empty regions in category_mask represented by
-      # void_class_label with class_id of the instance.
-      category_mask = tf.where(
-          tf.logical_and(
-              binary_mask, tf.equal(category_mask, self._void_class_label)),
-          tf.ones_like(category_mask) * class_id, category_mask)
+        # convert sigmoid scores to binary values
+        binary_mask = tf.greater(
+            pasted_mask, self._mask_binarize_threshold)
 
-      # fill empty regions in the instance_mask represented by
-      # void_instance_id with the id of the instance, starting from 1
-      instance_mask = tf.where(
-          tf.logical_and(
-              binary_mask,
-              tf.equal(instance_mask, self._void_instance_id)),
-          tf.ones_like(instance_mask) *
-          tf.cast(instance_idx + 1, tf.float32), instance_mask)
+        # filter empty instance masks
+        if not tf.reduce_sum(tf.cast(binary_mask, tf.float32)) > 0:
+          continue
+
+        # fill empty regions in category_mask represented by
+        # void_class_label with class_id of the instance.
+        category_mask = tf.where(
+            tf.logical_and(
+                binary_mask, tf.equal(category_mask, self._void_class_label)),
+            tf.ones_like(category_mask) * class_id, category_mask)
+
+        # fill empty regions in the instance_mask represented by
+        # void_instance_id with the id of the instance, starting from 1
+        instance_mask = tf.where(
+            tf.logical_and(
+                binary_mask,
+                tf.equal(instance_mask, self._void_instance_id)),
+            tf.ones_like(instance_mask) *
+            tf.cast(instance_idx + 1, tf.float32), instance_mask)
 
     # add stuff segmentation labels to empty regions of category_mask.
     # we ignore the pixels labelled as "things", since we get them from
