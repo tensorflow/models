@@ -272,7 +272,7 @@ class YoloLayer(tf.keras.Model):
 
   @property
   def losses(self):
-    """ Generates a dictionary of losses to apply to each path 
+    """Generates a dictionary of losses to apply to each path 
     
     Done in the detection generator because all parameters are the same 
     across both loss and detection generator
