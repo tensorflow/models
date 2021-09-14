@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Contains common building blocks for yolo neural networks."""
-from typing import Callable, List
 import tensorflow as tf
 from official.modeling import tf_utils
 from official.vision.beta.ops import spatial_transform_ops
@@ -48,7 +46,7 @@ class ConvBN(tf.keras.layers.Layer):
                strides=(1, 1),
                padding='same',
                dilation_rate=(1, 1),
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -97,7 +95,14 @@ class ConvBN(tf.keras.layers.Layer):
     self._strides = strides
     self._padding = padding
     self._dilation_rate = dilation_rate
-    self._kernel_initializer = kernel_initializer
+
+    if kernel_initializer == 'VarianceScaling':
+      # to match pytorch initialization method
+      self._kernel_initializer = tf.keras.initializers.VarianceScaling(
+          scale=1 / 3, mode='fan_in', distribution='uniform')
+    else:
+      self._kernel_initializer = kernel_initializer
+
     self._bias_initializer = bias_initializer
     self._kernel_regularizer = kernel_regularizer
 
@@ -194,7 +199,7 @@ class DarkResidual(tf.keras.layers.Layer):
                filters=1,
                filter_scale=2,
                dilation_rate=1,
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                kernel_regularizer=None,
                bias_regularizer=None,
@@ -366,7 +371,7 @@ class CSPTiny(tf.keras.layers.Layer):
 
   def __init__(self,
                filters=1,
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -532,7 +537,7 @@ class CSPRoute(tf.keras.layers.Layer):
                filters,
                filter_scale=2,
                activation='mish',
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -661,7 +666,7 @@ class CSPConnect(tf.keras.layers.Layer):
                drop_first=False,
                activation='mish',
                kernel_size=(1, 1),
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -761,122 +766,6 @@ class CSPConnect(tf.keras.layers.Layer):
     return x
 
 
-class CSPStack(tf.keras.layers.Layer):
-  """CSP Stack layer.
-
-  CSP full stack, combines the route and the connect in case you dont want to
-  jsut quickly wrap an existing callable or list of layers to
-  make it a cross stage partial. Added for ease of use. you should be able
-  to wrap any layer stack with a CSP independent of wether it belongs
-  to the Darknet family. if filter_scale = 2, then the blocks in the stack
-  passed into the the CSP stack should also have filters = filters/filter_scale
-  Cross Stage Partial networks (CSPNets) were proposed in:
-
-  [1] Chien-Yao Wang, Hong-Yuan Mark Liao, I-Hau Yeh, Yueh-Hua Wu,
-        Ping-Yang Chen, Jun-Wei Hsieh
-      CSPNet: A New Backbone that can Enhance Learning Capability of CNN.
-        arXiv:1911.11929
-  """
-
-  def __init__(self,
-               filters,
-               model_to_wrap=None,
-               filter_scale=2,
-               activation='mish',
-               kernel_initializer='glorot_uniform',
-               bias_initializer='zeros',
-               bias_regularizer=None,
-               kernel_regularizer=None,
-               downsample=True,
-               use_bn=True,
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               **kwargs):
-    """CSPStack layer initializer.
-
-    Args:
-      filters: integer for output depth, or the number of features to learn.
-      model_to_wrap: callable Model or a list of callable objects that will
-        process the output of CSPRoute, and be input into CSPConnect.
-        list will be called sequentially.
-      filter_scale: integer dictating (filters//2) or the number of filters in
-        the partial feature stack.
-      activation: string for activation function to use in layer.
-      kernel_initializer: string to indicate which function to use to initialize
-        weights.
-      bias_initializer: string to indicate which function to use to initialize
-        bias.
-      bias_regularizer: string to indicate which function to use to regularizer
-        bias.
-      kernel_regularizer: string to indicate which function to use to
-        regularizer weights.
-      downsample: down_sample the input.
-      use_bn: boolean for whether to use batch normalization.
-      use_sync_bn: boolean for whether sync batch normalization statistics
-        of all batch norm layers to the models global statistics
-        (across all input batches).
-      norm_momentum: float for moment to use for batch normalization.
-      norm_epsilon: float for batch normalization epsilon.
-      **kwargs: Keyword Arguments.
-
-    Raises:
-      TypeError: model_to_wrap is not a layer or a list of layers
-    """
-
-    super().__init__(**kwargs)
-    # layer params
-    self._filters = filters
-    self._filter_scale = filter_scale
-    self._activation = activation
-    self._downsample = downsample
-
-    # convoultion params
-    self._kernel_initializer = kernel_initializer
-    self._bias_initializer = bias_initializer
-    self._kernel_regularizer = kernel_regularizer
-    self._bias_regularizer = bias_regularizer
-    self._use_bn = use_bn
-    self._use_sync_bn = use_sync_bn
-    self._norm_momentum = norm_momentum
-    self._norm_epsilon = norm_epsilon
-
-    if model_to_wrap is None:
-      self._model_to_wrap = []
-    elif isinstance(model_to_wrap, Callable):
-      self._model_to_wrap = [model_to_wrap]
-    elif isinstance(model_to_wrap, List):
-      self._model_to_wrap = model_to_wrap
-    else:
-      raise TypeError(
-          'the input to the CSPStack must be a list of layers that we can' +
-          'iterate through, or \n a callable')
-
-  def build(self, input_shape):
-    dark_conv_args = {
-        'filters': self._filters,
-        'filter_scale': self._filter_scale,
-        'activation': self._activation,
-        'kernel_initializer': self._kernel_initializer,
-        'bias_initializer': self._bias_initializer,
-        'bias_regularizer': self._bias_regularizer,
-        'use_bn': self._use_bn,
-        'use_sync_bn': self._use_sync_bn,
-        'norm_momentum': self._norm_momentum,
-        'norm_epsilon': self._norm_epsilon,
-        'kernel_regularizer': self._kernel_regularizer,
-    }
-    self._route = CSPRoute(downsample=self._downsample, **dark_conv_args)
-    self._connect = CSPConnect(**dark_conv_args)
-
-  def call(self, inputs, training=None):
-    x, x_route = self._route(inputs)
-    for layer in self._model_to_wrap:
-      x = layer(x)
-    x = self._connect([x, x_route])
-    return x
-
-
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class PathAggregationBlock(tf.keras.layers.Layer):
   """Path Aggregation block."""
@@ -884,7 +773,7 @@ class PathAggregationBlock(tf.keras.layers.Layer):
   def __init__(self,
                filters=1,
                drop_final=True,
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -1120,7 +1009,7 @@ class SAM(tf.keras.layers.Layer):
                strides=(1, 1),
                padding='same',
                dilation_rate=(1, 1),
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -1192,7 +1081,7 @@ class CAM(tf.keras.layers.Layer):
 
   def __init__(self,
                reduction_ratio=1.0,
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -1285,7 +1174,7 @@ class CBAM(tf.keras.layers.Layer):
                strides=(1, 1),
                padding='same',
                dilation_rate=(1, 1),
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                bias_initializer='zeros',
                bias_regularizer=None,
                kernel_regularizer=None,
@@ -1354,27 +1243,26 @@ class DarkRouteProcess(tf.keras.layers.Layer):
                           insert_spp = False)(x)
   """
 
-  def __init__(
-      self,
-      filters=2,
-      repetitions=2,
-      insert_spp=False,
-      insert_sam=False,
-      insert_cbam=False,
-      csp_stack=0,
-      csp_scale=2,
-      kernel_initializer='glorot_uniform',
-      bias_initializer='zeros',
-      bias_regularizer=None,
-      kernel_regularizer=None,
-      use_sync_bn=False,
-      norm_momentum=0.99,
-      norm_epsilon=0.001,
-      block_invert=False,
-      activation='leaky',
-      leaky_alpha=0.1,
-      spp_keys=None,
-      **kwargs):
+  def __init__(self,
+               filters=2,
+               repetitions=2,
+               insert_spp=False,
+               insert_sam=False,
+               insert_cbam=False,
+               csp_stack=0,
+               csp_scale=2,
+               kernel_initializer='VarianceScaling',
+               bias_initializer='zeros',
+               bias_regularizer=None,
+               kernel_regularizer=None,
+               use_sync_bn=False,
+               norm_momentum=0.99,
+               norm_epsilon=0.001,
+               block_invert=False,
+               activation='leaky',
+               leaky_alpha=0.1,
+               spp_keys=None,
+               **kwargs):
     """DarkRouteProcess initializer.
 
     Args:
