@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Contains definitions of Darknet Backbone Networks.
 
    The models are inspired by ResNet and CSPNet.
@@ -390,7 +389,7 @@ class Darknet(tf.keras.Model):
       norm_momentum=0.99,
       norm_epsilon=0.001,
       dilate=False,
-      kernel_initializer='glorot_uniform',
+      kernel_initializer='VarianceScaling',
       kernel_regularizer=None,
       bias_regularizer=None,
       **kwargs):
@@ -507,10 +506,12 @@ class Darknet(tf.keras.Model):
     self._default_dict['name'] = f'{name}_csp_down'
     if self._dilate:
       self._default_dict['dilation_rate'] = config.dilation_rate
+      degrid = int(tf.math.log(float(config.dilation_rate)) / tf.math.log(2.))
     else:
       self._default_dict['dilation_rate'] = 1
+      degrid = 0
 
-    # swap/add dilation
+    # swap/add dialation
     x, x_route = nn_blocks.CSPRoute(
         filters=config.filters,
         filter_scale=csp_filter_scale,
@@ -518,7 +519,7 @@ class Darknet(tf.keras.Model):
         **self._default_dict)(
             inputs)
 
-    dilated_reps = config.repetitions - self._default_dict['dilation_rate'] // 2
+    dilated_reps = config.repetitions - degrid
     for i in range(dilated_reps):
       self._default_dict['name'] = f'{name}_{i}'
       x = nn_blocks.DarkResidual(
@@ -528,8 +529,8 @@ class Darknet(tf.keras.Model):
               x)
 
     for i in range(dilated_reps, config.repetitions):
-      self._default_dict[
-          'dilation_rate'] = self._default_dict['dilation_rate'] // 2
+      self._default_dict['dilation_rate'] = max(
+          1, self._default_dict['dilation_rate'] // 2)
       self._default_dict[
           'name'] = f"{name}_{i}_degridded_{self._default_dict['dilation_rate']}"
       x = nn_blocks.DarkResidual(
@@ -592,8 +593,8 @@ class Darknet(tf.keras.Model):
         filters=config.filters, downsample=True, **self._default_dict)(
             inputs)
 
-    dilated_reps = config.repetitions - (
-        self._default_dict['dilation_rate'] // 2) - 1
+    dilated_reps = config.repetitions - self._default_dict[
+        'dilation_rate'] // 2 - 1
     for i in range(dilated_reps):
       self._default_dict['name'] = f'{name}_{i}'
       x = nn_blocks.DarkResidual(
@@ -661,12 +662,13 @@ class Darknet(tf.keras.Model):
 @factory.register_backbone_builder('darknet')
 def build_darknet(
     input_specs: tf.keras.layers.InputSpec,
-    backbone_config: hyperparams.Config,
+    backbone_cfg: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds darknet."""
 
-  backbone_cfg = backbone_config.get()
+  backbone_cfg = backbone_cfg.get()
+
   model = Darknet(
       model_id=backbone_cfg.model_id,
       min_level=backbone_cfg.min_level,
