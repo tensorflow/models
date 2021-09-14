@@ -60,7 +60,7 @@ class EncoderQConvolution(base_layers.BaseLayer):
     assert len(input_shapes) == self.rank
     self.in_filters = input_shapes[-1]
     shape = self.ksize + [self.in_filters, self.out_filters]
-    self.filters = self.add_qweight(shape=shape)
+    self.filters = self.add_weight_wrapper(shape=shape)
     if self.bias:
       self.b = self.add_bias(shape=[self.out_filters])
 
@@ -70,7 +70,7 @@ class EncoderQConvolution(base_layers.BaseLayer):
   def _conv_r4(self, inputs, normalize_method):
     outputs = tf.nn.conv2d(
         inputs,
-        self.filters,
+        self.quantize_parameter(self.filters),
         strides=self.strides,
         padding=self.padding,
         dilations=self.dilations)

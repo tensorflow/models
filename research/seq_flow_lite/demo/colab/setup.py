@@ -44,7 +44,7 @@ class _BazelBuildCommand(setuptools.Command):
 setuptools.setup(
     name='seq_flow_lite',
     version='0.1',
-    packages=['tf_ops'],
+    packages=['tf_ops', 'tflite_ops'],
     package_data={'': ['*.so']},
     cmdclass={
         'build': _BuildCommand,

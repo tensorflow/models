@@ -17,7 +17,7 @@ limitations under the License.
 
 #include "tensorflow/lite/kernels/register.h"
 
-namespace tflite {
+namespace seq_flow_lite {
 namespace ops {
 namespace custom {
 
@@ -25,6 +25,6 @@ TfLiteRegistration* Register_EXPECTED_VALUE();
 
 }  // namespace custom
 }  // namespace ops
-}  // namespace tflite
+}  // namespace seq_flow_lite
 
 #endif  // TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TFLITE_OPS_EXPECTED_VALUE_H_

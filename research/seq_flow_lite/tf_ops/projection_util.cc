@@ -25,25 +25,28 @@ limitations under the License.
 namespace {
 constexpr int kInvalid = -1;
 constexpr char kSpace = ' ';
-}  // namespace
 
+// A HashEngine that uses MurmurHash to convert text to hashcodes.
 class MurmurHash : public HashEngine {
  public:
-  void GetHashCodes(const std::string& word, std::vector<uint64_t>* hash_codes,
-                    int feature_size) override {
+  std::vector<uint64_t> GetHashCodes(const std::string& word,
+                                     int feature_size) override {
+    std::vector<uint64_t> hash_codes;
+    hash_codes.reserve(2 * (feature_size / 64 + 1));
     uint64_t hash_low = 0;
     uint64_t hash_high = 0;
     for (int i = 0; i < feature_size; i += 64) {
       if (i == 0) {
-        auto hash = MurmurHash128(word.c_str(), word.size());
+        auto hash = MurmurHash128(word.data(), word.size());
         hash_low = hash.first;
         hash_high = hash.second;
       } else {
         GetMoreBits(hash_low, hash_high, &hash_low, &hash_high);
       }
-      hash_codes->push_back(hash_low);
-      hash_codes->push_back(hash_high);
+      hash_codes.push_back(hash_low);
+      hash_codes.push_back(hash_high);
     }
+    return hash_codes;
   }
 
  private:
@@ -78,7 +81,7 @@ class MurmurHash : public HashEngine {
   std::pair<uint64_t, uint64_t> MurmurHash128(const char* buf,
                                               const size_t len) {
     // Initialize the hashing value.
-    uint64_t hash = len * kMul;
+    uint64_t hash1 = len * kMul;
     // hash2 will be xored by hash during the hash computation iterations.
     // In the end we use an alternative mixture multiplier for mixing
     // the bits in hash2.
@@ -90,34 +93,38 @@ class MurmurHash : public HashEngine {
 
     for (const char* p = buf; p != end; p += 8) {
       // Manually unrolling this loop 2x did not help on Intel Core 2.
-      hash = MurmurStep(hash, Load64VariableLength(p, 8));
-      hash2 ^= hash;
+      hash1 = MurmurStep(hash1, Load64VariableLength(p, 8));
+      hash2 ^= hash1;
     }
     if ((len & 0x7) != 0) {
       const uint64_t data = Load64VariableLength(end, len & 0x7);
-      hash ^= data;
-      hash *= kMul;
-      hash2 ^= hash;
+      hash1 ^= data;
+      hash1 *= kMul;
+      hash2 ^= hash1;
     }
-    hash = ShiftMix(hash) * kMul;
-    hash2 ^= hash;
-    hash = ShiftMix(hash);
+    hash1 = ShiftMix(hash1) * kMul;
+    hash2 ^= hash1;
+    hash1 = ShiftMix(hash1);
 
     // mul2 is a prime just above golden ratio. mul2 is used to ensure that the
     // impact of the last few bytes is different to the upper and lower 64 bits.
     hash2 = ShiftMix(hash2 * kMul2) * kMul2;
 
-    return std::make_pair(hash, hash2);
+    return {hash1, hash2};
   }
 };
 
+// A HashEngine that uses a prefix and suffix preserving hash to convert text
+// to hashcodes.
 class XFixHash : public HashEngine {
  public:
   explicit XFixHash(int bits_per_char)
       : bits_per_char_(bits_per_char), bit_mask_((1ULL << bits_per_char) - 1) {}
 
-  void GetHashCodes(const std::string& word, std::vector<uint64_t>* hash_codes,
-                    int feature_size) override {
+  std::vector<uint64_t> GetHashCodes(const std::string& word,
+                                     int feature_size) override {
+    std::vector<uint64_t> hash_codes;
+    hash_codes.reserve(2 * (feature_size / 64 + 1));
     auto token_ptr = reinterpret_cast<const uint8_t*>(word.c_str());
     size_t token_size = word.size();
     int token_idx = 0;
@@ -134,9 +141,10 @@ class XFixHash : public HashEngine {
         hash_low = (hash_low << bits_per_char_) | (frhash & bit_mask_);
         hash_high = (hash_high << bits_per_char_) | (brhash & bit_mask_);
       }
-      hash_codes->push_back(hash_low);
-      hash_codes->push_back(hash_high);
+      hash_codes.push_back(hash_low);
+      hash_codes.push_back(hash_high);
     }
+    return hash_codes;
   }
 
  private:
@@ -146,6 +154,8 @@ class XFixHash : public HashEngine {
   const uint64_t bit_mask_;
 };
 
+// A HashEngine that performs a position preserving unicode level hashing to
+// convert text to hashcodes.
 class UnicodeHash : public HashEngine {
  public:
   // bits_per_unicode should be a divisor of 64.
@@ -154,8 +164,10 @@ class UnicodeHash : public HashEngine {
         bit_mask_(((1ULL << bits_per_unicode) - 1) << (64 - bits_per_unicode)) {
   }
 
-  void GetHashCodes(const std::string& word, std::vector<uint64_t>* hash_codes,
-                    int feature_size) override {
+  std::vector<uint64_t> GetHashCodes(const std::string& word,
+                                     int feature_size) override {
+    std::vector<uint64_t> hash_codes;
+    hash_codes.reserve(2 * (feature_size / 64 + 1));
     auto word_ptr = word.c_str();
     int utflength = utflen(const_cast<char*>(word_ptr));
     // Both `feature_size` and `bits_per_unicode` are bit lengths.
@@ -187,8 +199,9 @@ class UnicodeHash : public HashEngine {
           hash = hash >> bits_per_unicode_;
         }
       }
-      hash_codes->push_back(hash);
+      hash_codes.push_back(hash);
     }
+    return hash_codes;
   }
 
  private:
@@ -196,6 +209,8 @@ class UnicodeHash : public HashEngine {
   const int bits_per_unicode_;
   const uint64_t bit_mask_;
 };
+
+}  // namespace
 
 bool Hasher::SupportedHashType(const std::string& hash_type) {
   std::unordered_set<std::string> supported({kMurmurHash, kUnicodeHash8,
@@ -225,7 +240,7 @@ Hasher* Hasher::CreateHasher(int feature_size, const std::string& hash_type) {
 
 Hasher::Hasher(int feature_size, HashEngine* hash_engine)
     : feature_size_(feature_size), hash_engine_(hash_engine) {
-  hash_engine_->GetHashCodes(empty_string_, &null_hash_codes_, feature_size_);
+  null_hash_codes_ = hash_engine_->GetHashCodes(empty_string_, feature_size_);
 }
 
 std::string ProjectionUnicodeHandler::LowerCaseUTF8WithSupportedUnicodes(

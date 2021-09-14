@@ -93,8 +93,8 @@ py_binary(
         # Expect numpy installed
         # package TFLite flex delegate
         # package TFLite interpreter
-        "@org_tflite_support//tensorflow_lite_support/custom_ops/kernel:ngrams_op_resolver",
-        "@org_tflite_support//tensorflow_lite_support/custom_ops/kernel:whitespace_tokenizer_op_resolver",
+        "@org_tflite_support//tensorflow_lite_support/custom_ops/kernel:_pywrap_ngrams_op_resolver",
+        "@org_tflite_support//tensorflow_lite_support/custom_ops/kernel:_pywrap_whitespace_tokenizer_op_resolver",
         # Expect tensorflow text installed
     ],
 )
