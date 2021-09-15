@@ -1,0 +1,80 @@
+task:
+  model:
+    cls_heads: [{activation: tanh, cls_token_idx: 0, dropout_rate: 0.1, inner_dim: 768,
+        name: next_sentence, num_classes: 2}]
+    generator_encoder:
+      bert:
+        attention_dropout_rate: 0.1
+        dropout_rate: 0.1
+        embedding_size: 768
+        hidden_activation: gelu
+        hidden_size: 256
+        initializer_range: 0.02
+        intermediate_size: 1024
+        max_position_embeddings: 512
+        num_attention_heads: 4
+        num_layers: 12
+        type_vocab_size: 2
+        vocab_size: 30522
+    num_masked_tokens: 76
+    sequence_length: 512
+    num_classes: 2
+    discriminator_encoder:
+      bert:
+        attention_dropout_rate: 0.1
+        dropout_rate: 0.1
+        embedding_size: 768
+        hidden_activation: gelu
+        hidden_size: 768
+        initializer_range: 0.02
+        intermediate_size: 3072
+        max_position_embeddings: 512
+        num_attention_heads: 12
+        num_layers: 12
+        type_vocab_size: 2
+        vocab_size: 30522
+    discriminator_loss_weight: 50.0
+    disallow_correct: false
+    tie_embeddings: true
+  train_data:
+    drop_remainder: true
+    global_batch_size: 256
+    input_path: ''
+    is_training: true
+    max_predictions_per_seq: 76
+    seq_length: 512
+    use_next_sentence_label: false
+    use_position_id: false
+  validation_data:
+    drop_remainder: true
+    global_batch_size: 256
+    input_path: ''
+    is_training: false
+    max_predictions_per_seq: 76
+    seq_length: 512
+    use_next_sentence_label: false
+    use_position_id: false
+trainer:
+  checkpoint_interval: 6000
+  max_to_keep: 50
+  optimizer_config:
+    learning_rate:
+      polynomial:
+        cycle: false
+        decay_steps: 1000000
+        end_learning_rate: 0.0
+        initial_learning_rate: 0.0002
+        power: 1.0
+      type: polynomial
+    optimizer:
+      type: adamw
+    warmup:
+      polynomial:
+        power: 1
+        warmup_steps: 10000
+      type: polynomial
+  steps_per_loop: 1000
+  summary_interval: 1000
+  train_steps: 1000000
+  validation_interval: 100
+  validation_steps: 64
