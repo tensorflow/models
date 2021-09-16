@@ -93,23 +93,6 @@ class ClassificationNetworkTest(parameterized.TestCase, tf.test.TestCase):
   def test_mobilenet_network_creation(self, mobilenet_model_id,
                                       filter_size_scale):
     """Test for creation of a MobileNet classifier."""
-    mobilenet_params = {
-        ('MobileNetV1', 1.0): 4254889,
-        ('MobileNetV1', 0.75): 2602745,
-        ('MobileNetV2', 1.0): 3540265,
-        ('MobileNetV2', 0.75): 2664345,
-        ('MobileNetV3Large', 1.0): 5508713,
-        ('MobileNetV3Large', 0.75): 4013897,
-        ('MobileNetV3Small', 1.0): 2555993,
-        ('MobileNetV3Small', 0.75): 2052577,
-        ('MobileNetV3EdgeTPU', 1.0): 4131593,
-        ('MobileNetV3EdgeTPU', 0.75): 3019569,
-        ('MobileNetMultiAVG', 1.0): 4982857,
-        ('MobileNetMultiAVG', 0.75): 3628145,
-        ('MobileNetMultiMAX', 1.0): 4453001,
-        ('MobileNetMultiMAX', 0.75): 3324257,
-    }
-
     inputs = np.random.rand(2, 224, 224, 3)
 
     tf.keras.backend.set_image_data_format('channels_last')
@@ -123,8 +106,6 @@ class ClassificationNetworkTest(parameterized.TestCase, tf.test.TestCase):
         num_classes=num_classes,
         dropout_rate=0.2,
     )
-    self.assertEqual(model.count_params(),
-                     mobilenet_params[(mobilenet_model_id, filter_size_scale)])
 
     logits = model(inputs)
     self.assertAllEqual([2, num_classes], logits.numpy().shape)

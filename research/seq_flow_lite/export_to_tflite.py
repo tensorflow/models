@@ -30,6 +30,8 @@ from utils import tflite_utils # import seq_flow_lite module
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string("output_dir", None, "The output or model directory.")
+flags.DEFINE_enum("output", "sigmoid", ["logits", "sigmoid", "softmax"],
+                  "Specification of the output tensor.")
 
 
 def load_runner_config():
@@ -51,12 +53,20 @@ def main(_):
       encoder = model.Encoder(model_config, base_layers.TFLITE)
       projection, seq_lengh = prxlayer(text)
       logits = encoder(projection, seq_lengh)
+      if FLAGS.output == "logits":
+        outputs = logits
+      elif FLAGS.output == "sigmoid":
+        outputs = tf.math.sigmoid(logits)
+      else:
+        assert FLAGS.output == "softmax", "Unexpected output"
+        outputs = tf.nn.softmax(logits)
 
       session.run(tf.global_variables_initializer())
       session.run(tf.local_variables_initializer())
       saver = tf.train.Saver()
       saver.restore(session, tf.train.latest_checkpoint(FLAGS.output_dir))
-      tflite_fb = tflite_utils.generate_tflite(session, graph, [text], [logits])
+      tflite_fb = tflite_utils.generate_tflite(session, graph, [text],
+                                               [outputs])
       output_file_name = os.path.join(FLAGS.output_dir, "tflite.fb")
       with tf.gfile.Open(output_file_name, "wb") as f:
         f.write(tflite_fb)

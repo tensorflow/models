@@ -96,15 +96,18 @@ class MaskRCNNTask(base_task.Task):
     # Restoring checkpoint.
     if self.task_config.init_checkpoint_modules == 'all':
       ckpt = tf.train.Checkpoint(**model.checkpoint_items)
-      status = ckpt.restore(ckpt_dir_or_file)
-      status.assert_consumed()
-    elif self.task_config.init_checkpoint_modules == 'backbone':
-      ckpt = tf.train.Checkpoint(backbone=model.backbone)
-      status = ckpt.restore(ckpt_dir_or_file)
+      status = ckpt.read(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     else:
-      raise ValueError(
-          "Only 'all' or 'backbone' can be used to initialize the model.")
+      ckpt_items = {}
+      if 'backbone' in self.task_config.init_checkpoint_modules:
+        ckpt_items.update(backbone=model.backbone)
+      if 'decoder' in self.task_config.init_checkpoint_modules:
+        ckpt_items.update(decoder=model.decoder)
+
+      ckpt = tf.train.Checkpoint(**ckpt_items)
+      status = ckpt.read(ckpt_dir_or_file)
+      status.expect_partial().assert_existing_objects_matched()
 
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
@@ -261,12 +264,15 @@ class MaskRCNNTask(base_task.Task):
         metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
 
     else:
-      if self._task_config.annotation_file:
+      if (not self._task_config.model.include_mask
+         ) or self._task_config.annotation_file:
         self.coco_metric = coco_evaluator.COCOEvaluator(
             annotation_file=self._task_config.annotation_file,
             include_mask=self._task_config.model.include_mask,
             per_category_metrics=self._task_config.per_category_metrics)
       else:
+        # Builds COCO-style annotation file if include_mask is True, and
+        # annotation_file isn't provided.
         annotation_path = os.path.join(self._logging_dir, 'annotation.json')
         if tf.io.gfile.exists(annotation_path):
           logging.info(

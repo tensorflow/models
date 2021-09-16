@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Contains definitions of generators to generate the final detections."""
+import contextlib
 from typing import List, Optional, Mapping
 # Import libraries
 import tensorflow as tf
@@ -404,6 +405,7 @@ class DetectionGenerator(tf.keras.layers.Layer):
                nms_iou_threshold: float = 0.5,
                max_num_detections: int = 100,
                use_batched_nms: bool = False,
+               use_cpu_nms: bool = False,
                **kwargs):
     """Initializes a detection generator.
 
@@ -420,6 +422,7 @@ class DetectionGenerator(tf.keras.layers.Layer):
         generate.
       use_batched_nms: A `bool` of whether or not use
         `tf.image.combined_non_max_suppression`.
+      use_cpu_nms: A `bool` of whether or not enforce NMS to run on CPU.
       **kwargs: Additional keyword arguments passed to Layer.
     """
     self._config_dict = {
@@ -429,6 +432,7 @@ class DetectionGenerator(tf.keras.layers.Layer):
         'nms_iou_threshold': nms_iou_threshold,
         'max_num_detections': max_num_detections,
         'use_batched_nms': use_batched_nms,
+        'use_cpu_nms': use_cpu_nms,
     }
     super(DetectionGenerator, self).__init__(**kwargs)
 
@@ -513,23 +517,30 @@ class DetectionGenerator(tf.keras.layers.Layer):
           'decoded_box_scores': box_scores,
       }
 
-    if self._config_dict['use_batched_nms']:
-      nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = (
-          _generate_detections_batched(
-              decoded_boxes,
-              box_scores,
-              self._config_dict['pre_nms_score_threshold'],
-              self._config_dict['nms_iou_threshold'],
-              self._config_dict['max_num_detections']))
+    # Optionally force the NMS be run on CPU.
+    if self._config_dict['use_cpu_nms']:
+      nms_context = tf.device('cpu:0')
     else:
-      nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = (
-          _generate_detections_v2(
-              decoded_boxes,
-              box_scores,
-              self._config_dict['pre_nms_top_k'],
-              self._config_dict['pre_nms_score_threshold'],
-              self._config_dict['nms_iou_threshold'],
-              self._config_dict['max_num_detections']))
+      nms_context = contextlib.nullcontext()
+
+    with nms_context:
+      if self._config_dict['use_batched_nms']:
+        (nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections) = (
+            _generate_detections_batched(
+                decoded_boxes, box_scores,
+                self._config_dict['pre_nms_score_threshold'],
+                self._config_dict['nms_iou_threshold'],
+                self._config_dict['max_num_detections']))
+      else:
+        (nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections, _) = (
+            _generate_detections_v1(
+                decoded_boxes,
+                box_scores,
+                pre_nms_top_k=self._config_dict['pre_nms_top_k'],
+                pre_nms_score_threshold=self
+                ._config_dict['pre_nms_score_threshold'],
+                nms_iou_threshold=self._config_dict['nms_iou_threshold'],
+                max_num_detections=self._config_dict['max_num_detections']))
 
     # Adds 1 to offset the background class which has index 0.
     nmsed_classes += 1
@@ -560,6 +571,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
                nms_iou_threshold: float = 0.5,
                max_num_detections: int = 100,
                use_batched_nms: bool = False,
+               use_cpu_nms: bool = False,
                **kwargs):
     """Initializes a multi-level detection generator.
 
@@ -576,6 +588,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         generate.
       use_batched_nms: A `bool` of whether or not use
         `tf.image.combined_non_max_suppression`.
+      use_cpu_nms: A `bool` of whether or not enforce NMS to run on CPU.
       **kwargs: Additional keyword arguments passed to Layer.
     """
     self._config_dict = {
@@ -585,6 +598,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         'nms_iou_threshold': nms_iou_threshold,
         'max_num_detections': max_num_detections,
         'use_batched_nms': use_batched_nms,
+        'use_cpu_nms': use_cpu_nms,
     }
     super(MultilevelDetectionGenerator, self).__init__(**kwargs)
 
@@ -710,39 +724,38 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
           'decoded_box_attributes': attributes,
       }
 
-    if self._config_dict['use_batched_nms']:
-      if raw_attributes:
-        raise ValueError('Attribute learning is not supported for batched NMS.')
-
-      nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = (
-          _generate_detections_batched(
-              boxes,
-              scores,
-              self._config_dict['pre_nms_score_threshold'],
-              self._config_dict['nms_iou_threshold'],
-              self._config_dict['max_num_detections']))
-      # Set `nmsed_attributes` to None for batched NMS.
-      nmsed_attributes = {}
+    # Optionally force the NMS to run on CPU.
+    if self._config_dict['use_cpu_nms']:
+      nms_context = tf.device('cpu:0')
     else:
-      if raw_attributes:
-        nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections, nmsed_attributes = (
-            _generate_detections_v1(
-                boxes,
-                scores,
-                attributes=attributes if raw_attributes else None,
-                pre_nms_top_k=self._config_dict['pre_nms_top_k'],
-                pre_nms_score_threshold=self
-                ._config_dict['pre_nms_score_threshold'],
-                nms_iou_threshold=self._config_dict['nms_iou_threshold'],
-                max_num_detections=self._config_dict['max_num_detections']))
-      else:
-        nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = (
-            _generate_detections_v2(
-                boxes, scores, self._config_dict['pre_nms_top_k'],
-                self._config_dict['pre_nms_score_threshold'],
+      nms_context = contextlib.nullcontext()
+
+    with nms_context:
+      if self._config_dict['use_batched_nms']:
+        if raw_attributes:
+          raise ValueError(
+              'Attribute learning is not supported for batched NMS.')
+
+        (nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections) = (
+            _generate_detections_batched(
+                boxes, scores, self._config_dict['pre_nms_score_threshold'],
                 self._config_dict['nms_iou_threshold'],
                 self._config_dict['max_num_detections']))
+        # Set `nmsed_attributes` to None for batched NMS.
         nmsed_attributes = {}
+      else:
+        (nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections,
+         nmsed_attributes) = (
+             _generate_detections_v1(
+                 boxes,
+                 scores,
+                 attributes=attributes if raw_attributes else None,
+                 pre_nms_top_k=self._config_dict['pre_nms_top_k'],
+                 pre_nms_score_threshold=self
+                 ._config_dict['pre_nms_score_threshold'],
+                 nms_iou_threshold=self._config_dict['nms_iou_threshold'],
+                 max_num_detections=self._config_dict['max_num_detections']))
+
     # Adds 1 to offset the background class which has index 0.
     nmsed_classes += 1
 

@@ -43,11 +43,9 @@ class SelectTopKScoresTest(tf.test.TestCase):
 class DetectionGeneratorTest(
     parameterized.TestCase, tf.test.TestCase):
 
-  @parameterized.parameters(
-      (True),
-      (False),
-  )
-  def testDetectionsOutputShape(self, use_batched_nms):
+  @parameterized.product(
+      use_batched_nms=[True, False], use_cpu_nms=[True, False])
+  def testDetectionsOutputShape(self, use_batched_nms, use_cpu_nms):
     max_num_detections = 100
     num_classes = 4
     pre_nms_top_k = 5000
@@ -60,6 +58,7 @@ class DetectionGeneratorTest(
         'nms_iou_threshold': 0.5,
         'max_num_detections': max_num_detections,
         'use_batched_nms': use_batched_nms,
+        'use_cpu_nms': use_cpu_nms,
     }
     generator = detection_generator.DetectionGenerator(**kwargs)
 
@@ -99,6 +98,7 @@ class DetectionGeneratorTest(
         'nms_iou_threshold': 0.5,
         'max_num_detections': 10,
         'use_batched_nms': False,
+        'use_cpu_nms': False,
     }
     generator = detection_generator.DetectionGenerator(**kwargs)
 
@@ -116,16 +116,20 @@ class MultilevelDetectionGeneratorTest(
     parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (True, False),
-      (False, False),
-      (False, True),
+      (True, False, True),
+      (True, False, False),
+      (False, False, True),
+      (False, False, False),
+      (False, True, True),
+      (False, True, False),
   )
-  def testDetectionsOutputShape(self, use_batched_nms, has_att_heads):
+  def testDetectionsOutputShape(self, use_batched_nms, has_att_heads,
+                                use_cpu_nms):
     min_level = 4
     max_level = 6
     num_scales = 2
     max_num_detections = 100
-    aspect_ratios = [1.0, 2.0,]
+    aspect_ratios = [1.0, 2.0]
     anchor_scale = 2.0
     output_size = [64, 64]
     num_classes = 4
@@ -139,6 +143,7 @@ class MultilevelDetectionGeneratorTest(
         'nms_iou_threshold': 0.5,
         'max_num_detections': max_num_detections,
         'use_batched_nms': use_batched_nms,
+        'use_cpu_nms': use_cpu_nms,
     }
 
     input_anchor = anchor.build_anchor_generator(min_level, max_level,
@@ -219,6 +224,7 @@ class MultilevelDetectionGeneratorTest(
         'nms_iou_threshold': 0.5,
         'max_num_detections': 10,
         'use_batched_nms': False,
+        'use_cpu_nms': False,
     }
     generator = detection_generator.MultilevelDetectionGenerator(**kwargs)
 

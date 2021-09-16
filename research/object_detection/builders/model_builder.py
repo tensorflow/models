@@ -916,7 +916,9 @@ def keypoint_proto_to_params(kp_config, keypoint_map_dict):
       regress_head_kernel_sizes=regress_head_kernel_sizes,
       score_distance_multiplier=kp_config.score_distance_multiplier,
       std_dev_multiplier=kp_config.std_dev_multiplier,
-      rescoring_threshold=kp_config.rescoring_threshold)
+      rescoring_threshold=kp_config.rescoring_threshold,
+      gaussian_denom_ratio=kp_config.gaussian_denom_ratio,
+      argmax_postprocessing=kp_config.argmax_postprocessing)
 
 
 def object_detection_proto_to_params(od_config):
@@ -981,7 +983,8 @@ def object_center_proto_to_params(oc_config):
       use_labeled_classes=oc_config.use_labeled_classes,
       keypoint_weights_for_center=keypoint_weights_for_center,
       center_head_num_filters=center_head_num_filters,
-      center_head_kernel_sizes=center_head_kernel_sizes)
+      center_head_kernel_sizes=center_head_kernel_sizes,
+      peak_max_pool_kernel_size=oc_config.peak_max_pool_kernel_size)
 
 
 def mask_proto_to_params(mask_config):

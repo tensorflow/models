@@ -22,6 +22,7 @@ from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
+from official.vision.beta.configs import common
 from official.vision.beta.configs import maskrcnn
 from official.vision.beta.configs import semantic_segmentation
 
@@ -47,14 +48,31 @@ class Parser(maskrcnn.Parser):
   segmentation_groundtruth_padded_size: List[int] = dataclasses.field(
       default_factory=list)
   segmentation_ignore_label: int = 255
+  panoptic_ignore_label: int = 0
+  # Setting this to true will enable parsing category_mask and instance_mask.
+  include_panoptic_masks: bool = True
+
+
+@dataclasses.dataclass
+class TfExampleDecoder(common.TfExampleDecoder):
+  """A simple TF Example decoder config."""
+  # Setting this to true will enable decoding category_mask and instance_mask.
+  include_panoptic_masks: bool = True
+
+
+@dataclasses.dataclass
+class DataDecoder(common.DataDecoder):
+  """Data decoder config."""
+  simple_decoder: TfExampleDecoder = TfExampleDecoder()
+
 
 @dataclasses.dataclass
 class DataConfig(maskrcnn.DataConfig):
   """Input config for training."""
+  decoder: DataDecoder = DataDecoder()
   parser: Parser = Parser()
 
 
-# @dataclasses.dataclass
 @dataclasses.dataclass
 class PanopticSegmentationGenerator(hyperparams.Config):
   output_size: List[int] = dataclasses.field(

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Feature Pyramid Network and Path Aggregation variants used in YOLO."""
 
 import tensorflow as tf
@@ -39,7 +38,7 @@ class YoloFPN(tf.keras.layers.Layer):
                use_sync_bn=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
@@ -184,7 +183,7 @@ class YoloPAN(tf.keras.layers.Layer):
                use_sync_bn=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
                bias_regularizer=None,
                fpn_input=True,
@@ -206,7 +205,7 @@ class YoloPAN(tf.keras.layers.Layer):
         by zero.
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       fpn_input: `bool`, for whether the input into this fucntion is an FPN or
         a backbone.
       fpn_filter_scale: `int`, scaling factor for the FPN filters.
@@ -374,7 +373,7 @@ class YoloDecoder(tf.keras.Model):
                use_sync_bn=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
@@ -389,8 +388,8 @@ class YoloDecoder(tf.keras.Model):
       use_fpn: `bool`, use the FPN found in the YoloV4 model.
       use_spatial_attention: `bool`, use the spatial attention module.
       csp_stack: `bool`, CSPize the FPN.
-      fpn_depth: `int`, number of layers ot use in each FPN path
-        if you choose to use an FPN.
+      fpn_depth: `int`, number of layers ot use in each FPN path if you choose
+        to use an FPN.
       fpn_filter_scale: `int`, scaling factor for the FPN filters.
       path_process_len: `int`, number of layers ot use in each Decoder path.
       max_level_process_len: `int`, number of layers ot use in the largest

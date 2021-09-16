@@ -52,6 +52,7 @@ In the near future, we will add:
 | [Mask R-CNN](vision/beta/MODEL_GARDEN.md) | [Mask R-CNN](https://arxiv.org/abs/1703.06870) |
 | [ShapeMask](vision/detection) | [ShapeMask: Learning to Segment Novel Objects by Refining Shape Priors](https://arxiv.org/abs/1904.03239) |
 | [SpineNet](vision/beta/MODEL_GARDEN.md) | [SpineNet: Learning Scale-Permuted Backbone for Recognition and Localization](https://arxiv.org/abs/1912.05027) |
+| [Cascade RCNN-RS and RetinaNet-RS](vision/beta/MODEL_GARDEN.md) | [Simple Training Strategies and Model Scaling for Object Detection](https://arxiv.org/abs/2107.00057)|
 
 ### Natural Language Processing
 
@@ -82,9 +83,9 @@ built from the
 as tagged branches or [downloadable releases](https://github.com/tensorflow/models/releases).
 * Model repository version numbers match the target TensorFlow release,
 such that
-[release v2.2.0](https://github.com/tensorflow/models/releases/tag/v2.2.0)
+[release v2.5.0](https://github.com/tensorflow/models/releases/tag/v2.5.0)
 are compatible with
-[TensorFlow v2.2.0](https://github.com/tensorflow/tensorflow/releases/tag/v2.2.0).
+[TensorFlow v2.5.0](https://github.com/tensorflow/tensorflow/releases/tag/v2.5.0).
 
 Please follow the below steps before running models in this repository.
 
@@ -97,6 +98,11 @@ upgrade your TensorFlow to [the latest TensorFlow 2](https://www.tensorflow.org/
 ```shell
 pip3 install tf-nightly
 ```
+
+* Python 3.7+
+
+Our integration tests run with Python 3.7. Although Python 3.6 should work, we
+don't recommend earlier versions.
 
 ### Installation
 

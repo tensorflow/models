@@ -91,10 +91,10 @@ class TestEvaluatorWithOutputsAggregation(standard_runner.StandardEvaluator):
     super().__init__(eval_dataset=dataset, options=options)
 
   def eval_begin(self):
-    return tf.constant((0.0,))
+    return {"logits": tf.constant((0.0,))}
 
   def eval_reduce(self, state, step_outputs):
-    state = tf.concat([state, step_outputs], 0)
+    state["logits"] = tf.concat([state["logits"], step_outputs], 0)
     return state
 
   def eval_step(self, iterator):
@@ -107,7 +107,7 @@ class TestEvaluatorWithOutputsAggregation(standard_runner.StandardEvaluator):
         self.strategy.run(replica_step, args=(next(iterator),)))
 
   def eval_end(self, outputs):
-    return tf.reduce_sum(outputs)
+    return tf.reduce_sum(outputs["logits"])
 
 
 class StandardRunnerTest(parameterized.TestCase):

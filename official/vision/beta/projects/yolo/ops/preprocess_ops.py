@@ -194,11 +194,11 @@ def get_best_anchor(y_true, anchors, width=1, height=1):
   """Gets the correct anchor that is assoiciated with each box using IOU.
 
   Args:
-    y_true: tf.Tensor[] for the list of bounding boxes in the yolo format
+    y_true: `tf.Tensor[]` for the list of bounding boxes in the yolo format.
     anchors: list or tensor for the anchor boxes to be used in prediction
-      found via Kmeans
-    width: int for the image width
-    height: int for the image height
+      found via Kmeans.
+    width: int for the image width.
+    height: int for the image height.
 
   Returns:
     tf.Tensor: y_true with the anchor associated with each ground truth
@@ -263,7 +263,7 @@ def build_grided_gt(y_true, mask, size, dtype, use_tie_breaker):
 
   Args:
     y_true: tf.Tensor[] ground truth
-      [box coords[0:4], classes_onehot[0:-1], best_fit_anchor_box]
+      [box coords[0:4], classes_onehot[0:-1], best_fit_anchor_box].
     mask: list of the anchor boxes choresponding to the output,
       ex. [1, 2, 3] tells this layer to predict only the first 3
       anchors in the total.
@@ -273,7 +273,7 @@ def build_grided_gt(y_true, mask, size, dtype, use_tie_breaker):
     use_tie_breaker: boolean value for wether or not to use the tie_breaker.
 
   Returns:
-    tf.Tensor[] of shape [size, size, #of_anchors, 4, 1, num_classes]
+    tf.Tensor[] of shape [size, size, #of_anchors, 4, 1, num_classes].
   """
   # unpack required components from the input ground truth
   boxes = tf.cast(y_true['bbox'], dtype)
@@ -391,18 +391,18 @@ def build_batch_grided_gt(y_true, mask, size, dtype, use_tie_breaker):
 
   Args:
     y_true: tf.Tensor[] ground truth
-      [batch, box coords[0:4], classes_onehot[0:-1], best_fit_anchor_box]
+      [batch, box coords[0:4], classes_onehot[0:-1], best_fit_anchor_box].
     mask: list of the anchor boxes choresponding to the output,
       ex. [1, 2, 3] tells this layer to predict only the first 3 anchors
       in the total.
     size: the dimensions of this output, for regular, it progresses from
-      13, to 26, to 52
-    dtype: expected output datatype
-    use_tie_breaker: boolean value for wether or not to use the tie
-      breaker
+      13, to 26, to 52.
+    dtype: expected output datatype.
+    use_tie_breaker: boolean value for whether or not to use the tie
+      breaker.
 
   Returns:
-    tf.Tensor[] of shape [batch, size, size, #of_anchors, 4, 1, num_classes]
+    tf.Tensor[] of shape [batch, size, size, #of_anchors, 4, 1, num_classes].
   """
   # unpack required components from the input ground truth
   boxes = tf.cast(y_true['bbox'], dtype)
@@ -521,4 +521,3 @@ def build_batch_grided_gt(y_true, mask, size, dtype, use_tie_breaker):
     update = update.stack()
     full = tf.tensor_scatter_nd_update(full, update_index, update)
   return full
-

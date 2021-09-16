@@ -13,11 +13,11 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Mask R-CNN configuration definition."""
+"""R-CNN(-RS) configuration definition."""
 
 import dataclasses
 import os
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -29,26 +29,6 @@ from official.vision.beta.configs import backbones
 
 
 # pylint: disable=missing-class-docstring
-@dataclasses.dataclass
-class TfExampleDecoder(hyperparams.Config):
-  regenerate_source_id: bool = False
-  mask_binarize_threshold: Optional[float] = None
-
-
-@dataclasses.dataclass
-class TfExampleDecoderLabelMap(hyperparams.Config):
-  regenerate_source_id: bool = False
-  mask_binarize_threshold: Optional[float] = None
-  label_map: str = ''
-
-
-@dataclasses.dataclass
-class DataDecoder(hyperparams.OneOfConfig):
-  type: Optional[str] = 'simple_decoder'
-  simple_decoder: TfExampleDecoder = TfExampleDecoder()
-  label_map_decoder: TfExampleDecoderLabelMap = TfExampleDecoderLabelMap()
-
-
 @dataclasses.dataclass
 class Parser(hyperparams.Config):
   num_channels: int = 3
@@ -73,7 +53,7 @@ class DataConfig(cfg.DataConfig):
   global_batch_size: int = 0
   is_training: bool = False
   dtype: str = 'bfloat16'
-  decoder: DataDecoder = DataDecoder()
+  decoder: common.DataDecoder = common.DataDecoder()
   parser: Parser = Parser()
   shuffle_buffer_size: int = 10000
   file_type: str = 'tfrecord'
@@ -152,6 +132,7 @@ class DetectionGenerator(hyperparams.Config):
   nms_iou_threshold: float = 0.5
   max_num_detections: int = 100
   use_batched_nms: bool = False
+  use_cpu_nms: bool = False
 
 
 @dataclasses.dataclass
@@ -221,7 +202,8 @@ class MaskRCNNTask(cfg.TaskConfig):
                                            drop_remainder=False)
   losses: Losses = Losses()
   init_checkpoint: Optional[str] = None
-  init_checkpoint_modules: str = 'all'  # all or backbone
+  init_checkpoint_modules: Union[
+      str, List[str]] = 'all'  # all, backbone, and/or decoder
   annotation_file: Optional[str] = None
   per_category_metrics: bool = False
   # If set, we only use masks for the specified class IDs.
@@ -450,7 +432,7 @@ def maskrcnn_spinenet_coco() -> cfg.ExperimentConfig:
 
 @exp_factory.register_config_factory('cascadercnn_spinenet_coco')
 def cascadercnn_spinenet_coco() -> cfg.ExperimentConfig:
-  """COCO object detection with Cascade R-CNN with SpineNet backbone."""
+  """COCO object detection with Cascade RCNN-RS with SpineNet backbone."""
   steps_per_epoch = 463
   coco_val_samples = 5000
   train_batch_size = 256

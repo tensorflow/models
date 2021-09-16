@@ -47,7 +47,7 @@ class BaseQDense(base_layers.BaseLayer):
       assert input_shapes[1] == 1 or input_shapes[2] == 1
     self.in_units = input_shapes[-1]
     shape = [self.in_units, self.units]
-    self.w = self.add_qweight(shape=shape)
+    self.w = self.add_weight_wrapper(shape=shape)
     if self.bias:
       self.b = self.add_bias(shape=[self.units])
 
@@ -55,7 +55,7 @@ class BaseQDense(base_layers.BaseLayer):
     self.normalization = normalization_layers.BatchNormalization(**kwargs)
 
   def _dense_r2(self, inputs, normalize_method):
-    outputs = tf.matmul(inputs, self.w)
+    outputs = tf.matmul(inputs, self.quantize_parameter(self.w))
     if self.bias:
       outputs = tf.nn.bias_add(outputs, self.b)
     if self.normalize:
@@ -98,7 +98,9 @@ class BaseQDenseVarLen(BaseQDense):
     self.normalization = normalization_layers.VarLenBatchNormalization(
         rank=2, **kwargs)
 
-  def call(self, inputs, mask, inverse_normalizer):
+  def call(self, inputs, mask, inverse_normalizer=None):
+    if inverse_normalizer is None:
+      inverse_normalizer = self.inverse_normalizer(mask)
 
     def normalize_method(tensor):
       maskr2 = tf.reshape(mask, [-1, 1])

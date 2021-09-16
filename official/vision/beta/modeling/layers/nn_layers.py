@@ -165,7 +165,8 @@ class SqueezeExcitation(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     num_reduced_filters = make_divisible(
-        self._in_filters * self._se_ratio, divisor=self._divisible_by)
+        max(1, int(self._in_filters * self._se_ratio)),
+        divisor=self._divisible_by)
 
     self._se_reduce = tf.keras.layers.Conv2D(
         filters=num_reduced_filters,
@@ -424,7 +425,7 @@ class PositionalEncoding(tf.keras.layers.Layer):
     self._rezero = Scale(initializer=initializer, name='rezero')
     state_prefix = state_prefix if state_prefix is not None else ''
     self._state_prefix = state_prefix
-    self._frame_count_name = f'{state_prefix}/pos_enc_frame_count'
+    self._frame_count_name = f'{state_prefix}_pos_enc_frame_count'
 
   def get_config(self):
     """Returns a dictionary containing the config used for initialization."""
@@ -522,7 +523,7 @@ class PositionalEncoding(tf.keras.layers.Layer):
       inputs: An input `tf.Tensor`.
       states: A `dict` of states such that, if any of the keys match for this
         layer, will overwrite the contents of the buffer(s). Expected keys
-        include `state_prefix + '/pos_enc_frame_count'`.
+        include `state_prefix + '_pos_enc_frame_count'`.
       output_states: A `bool`. If True, returns the output tensor and output
         states. Returns just the output tensor otherwise.
 
@@ -586,8 +587,8 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
     state_prefix = state_prefix if state_prefix is not None else ''
     self._state_prefix = state_prefix
 
-    self._state_name = f'{state_prefix}/pool_buffer'
-    self._frame_count_name = f'{state_prefix}/pool_frame_count'
+    self._state_name = f'{state_prefix}_pool_buffer'
+    self._frame_count_name = f'{state_prefix}_pool_frame_count'
 
   def get_config(self):
     """Returns a dictionary containing the config used for initialization."""
@@ -610,8 +611,8 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
       inputs: An input `tf.Tensor`.
       states: A `dict` of states such that, if any of the keys match for this
         layer, will overwrite the contents of the buffer(s).
-        Expected keys include `state_prefix + '/pool_buffer'` and
-        `state_prefix + '/pool_frame_count'`.
+        Expected keys include `state_prefix + '__pool_buffer'` and
+        `state_prefix + '__pool_frame_count'`.
       output_states: A `bool`. If True, returns the output tensor and output
         states. Returns just the output tensor otherwise.
 

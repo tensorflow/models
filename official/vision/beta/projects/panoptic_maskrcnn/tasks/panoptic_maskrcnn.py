@@ -78,14 +78,14 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         checkpoint_path = _get_checkpoint_path(
             self.task_config.init_checkpoint)
         ckpt = tf.train.Checkpoint(**model.checkpoint_items)
-        status = ckpt.restore(checkpoint_path)
-        status.assert_consumed()
+        status = ckpt.read(checkpoint_path)
+        status.expect_partial().assert_existing_objects_matched()
 
       elif init_module == 'backbone':
         checkpoint_path = _get_checkpoint_path(
             self.task_config.init_checkpoint)
         ckpt = tf.train.Checkpoint(backbone=model.backbone)
-        status = ckpt.restore(checkpoint_path)
+        status = ckpt.read(checkpoint_path)
         status.expect_partial().assert_existing_objects_matched()
 
       elif init_module == 'segmentation_backbone':
@@ -93,7 +93,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
             self.task_config.segmentation_init_checkpoint)
         ckpt = tf.train.Checkpoint(
             segmentation_backbone=model.segmentation_backbone)
-        status = ckpt.restore(checkpoint_path)
+        status = ckpt.read(checkpoint_path)
         status.expect_partial().assert_existing_objects_matched()
 
       elif init_module == 'segmentation_decoder':
@@ -101,7 +101,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
             self.task_config.segmentation_init_checkpoint)
         ckpt = tf.train.Checkpoint(
             segmentation_decoder=model.segmentation_decoder)
-        status = ckpt.restore(checkpoint_path)
+        status = ckpt.read(checkpoint_path)
         status.expect_partial().assert_existing_objects_matched()
 
       else:
@@ -122,7 +122,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
     if params.decoder.type == 'simple_decoder':
       decoder = panoptic_maskrcnn_input.TfExampleDecoder(
           regenerate_source_id=decoder_cfg.regenerate_source_id,
-          mask_binarize_threshold=decoder_cfg.mask_binarize_threshold)
+          mask_binarize_threshold=decoder_cfg.mask_binarize_threshold,
+          include_panoptic_masks=decoder_cfg.include_panoptic_masks)
     else:
       raise ValueError('Unknown decoder type: {}!'.format(params.decoder.type))
 
@@ -148,7 +149,9 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         .segmentation_resize_eval_groundtruth,
         segmentation_groundtruth_padded_size=params.parser
         .segmentation_groundtruth_padded_size,
-        segmentation_ignore_label=params.parser.segmentation_ignore_label)
+        segmentation_ignore_label=params.parser.segmentation_ignore_label,
+        panoptic_ignore_label=params.parser.panoptic_ignore_label,
+        include_panoptic_masks=params.parser.include_panoptic_masks)
 
     reader = input_reader_factory.input_reader_generator(
         params,

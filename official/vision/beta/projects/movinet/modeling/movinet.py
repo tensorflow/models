@@ -17,10 +17,10 @@
 
 Reference: https://arxiv.org/pdf/2103.11511.pdf
 """
+import dataclasses
 import math
 from typing import Dict, Mapping, Optional, Sequence, Tuple, Union
 
-import dataclasses
 import tensorflow as tf
 
 from official.modeling import hyperparams
@@ -454,7 +454,7 @@ class Movinet(tf.keras.Model):
     stochastic_depth_idx = 1
     for block_idx, block in enumerate(self._block_specs):
       if isinstance(block, StemSpec):
-        x, states = movinet_layers.Stem(
+        layer_obj = movinet_layers.Stem(
             block.filters,
             block.kernel_size,
             block.strides,
@@ -466,9 +466,9 @@ class Movinet(tf.keras.Model):
             batch_norm_layer=self._norm,
             batch_norm_momentum=self._norm_momentum,
             batch_norm_epsilon=self._norm_epsilon,
-            state_prefix='state/stem',
-            name='stem')(
-                x, states=states)
+            state_prefix='state_stem',
+            name='stem')
+        x, states = layer_obj(x, states=states)
         endpoints['stem'] = x
       elif isinstance(block, MovinetBlockSpec):
         if not (len(block.expand_filters) == len(block.kernel_sizes) ==
@@ -486,8 +486,8 @@ class Movinet(tf.keras.Model):
               self._stochastic_depth_drop_rate * stochastic_depth_idx /
               num_layers)
           expand_filters, kernel_size, strides = layer
-          name = f'b{block_idx-1}/l{layer_idx}'
-          x, states = movinet_layers.MovinetBlock(
+          name = f'block{block_idx-1}_layer{layer_idx}'
+          layer_obj = movinet_layers.MovinetBlock(
               block.base_filters,
               expand_filters,
               kernel_size=kernel_size,
@@ -505,13 +505,14 @@ class Movinet(tf.keras.Model):
               batch_norm_layer=self._norm,
               batch_norm_momentum=self._norm_momentum,
               batch_norm_epsilon=self._norm_epsilon,
-              state_prefix=f'state/{name}',
-              name=name)(
-                  x, states=states)
+              state_prefix=f'state_{name}',
+              name=name)
+          x, states = layer_obj(x, states=states)
+
           endpoints[name] = x
           stochastic_depth_idx += 1
       elif isinstance(block, HeadSpec):
-        x, states = movinet_layers.Head(
+        layer_obj = movinet_layers.Head(
             project_filters=block.project_filters,
             conv_type=self._conv_type,
             activation=self._activation,
@@ -520,9 +521,9 @@ class Movinet(tf.keras.Model):
             batch_norm_layer=self._norm,
             batch_norm_momentum=self._norm_momentum,
             batch_norm_epsilon=self._norm_epsilon,
-            state_prefix='state/head',
-            name='head')(
-                x, states=states)
+            state_prefix='state_head',
+            name='head')
+        x, states = layer_obj(x, states=states)
         endpoints['head'] = x
       else:
         raise ValueError('Unknown block type {}'.format(block))
@@ -567,7 +568,7 @@ class Movinet(tf.keras.Model):
     for block_idx, block in enumerate(block_specs):
       if isinstance(block, StemSpec):
         if block.kernel_size[0] > 1:
-          states['state/stem/stream_buffer'] = (
+          states['state_stem_stream_buffer'] = (
               input_shape[0],
               input_shape[1],
               divide_resolution(input_shape[2], num_downsamples),
@@ -590,8 +591,10 @@ class Movinet(tf.keras.Model):
               self._conv_type in ['2plus1d', '3d_2plus1d']):
             num_downsamples += 1
 
+          prefix = f'state_block{block_idx}_layer{layer_idx}'
+
           if kernel_size[0] > 1:
-            states[f'state/b{block_idx}/l{layer_idx}/stream_buffer'] = (
+            states[f'{prefix}_stream_buffer'] = (
                 input_shape[0],
                 kernel_size[0] - 1,
                 divide_resolution(input_shape[2], num_downsamples),
@@ -599,13 +602,13 @@ class Movinet(tf.keras.Model):
                 expand_filters,
             )
 
-          states[f'state/b{block_idx}/l{layer_idx}/pool_buffer'] = (
+          states[f'{prefix}_pool_buffer'] = (
               input_shape[0], 1, 1, 1, expand_filters,
           )
-          states[f'state/b{block_idx}/l{layer_idx}/pool_frame_count'] = (1,)
+          states[f'{prefix}_pool_frame_count'] = (1,)
 
           if use_positional_encoding:
-            name = f'state/b{block_idx}/l{layer_idx}/pos_enc_frame_count'
+            name = f'{prefix}_pos_enc_frame_count'
             states[name] = (1,)
 
           if strides[1] != strides[2]:
@@ -618,10 +621,10 @@ class Movinet(tf.keras.Model):
               self._conv_type not in ['2plus1d', '3d_2plus1d']):
             num_downsamples += 1
       elif isinstance(block, HeadSpec):
-        states['state/head/pool_buffer'] = (
+        states['state_head_pool_buffer'] = (
             input_shape[0], 1, 1, 1, block.project_filters,
         )
-        states['state/head/pool_frame_count'] = (1,)
+        states['state_head_pool_frame_count'] = (1,)
 
     return states
 

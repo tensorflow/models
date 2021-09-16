@@ -36,7 +36,8 @@ class DeepMACParams(
         'allowed_masked_classes_ids', 'mask_size', 'mask_num_subsamples',
         'use_xy', 'network_type', 'use_instance_embedding', 'num_init_channels',
         'predict_full_resolution_masks', 'postprocess_crop_size',
-        'max_roi_jitter_ratio', 'roi_jitter_mode', 'box_consistency_loss_weight'
+        'max_roi_jitter_ratio', 'roi_jitter_mode',
+        'box_consistency_loss_weight',
     ])):
   """Class holding the DeepMAC network configutration."""
 
@@ -124,6 +125,9 @@ def _get_deepmac_network_by_type(name, num_init_channels, mask_size=None):
     if not mask_size:
       raise ValueError('Mask size must be set.')
     return FullyConnectedMaskHead(num_init_channels, mask_size)
+
+  elif name == 'embedding_projection':
+    return tf.keras.layers.Lambda(lambda x: x)
 
   elif name.startswith('resnet'):
     return ResNetMaskNetwork(name, num_init_channels)
@@ -262,6 +266,24 @@ def fill_boxes(boxes, height, width):
   return tf.cast(filled_boxes, tf.float32)
 
 
+def embedding_projection(x, y):
+  """Compute dot product between two given embeddings.
+
+  Args:
+    x: [num_instances, height, width, dimension] float tensor input.
+    y: [num_instances, height, width, dimension] or
+      [num_instances, 1, 1, dimension] float tensor input. When the height
+      and width dimensions are 1, TF will broadcast it.
+
+  Returns:
+    dist: [num_instances, height, width, 1] A float tensor returning
+      the per-pixel embedding projection.
+  """
+
+  dot = tf.reduce_sum(x * y, axis=3, keepdims=True)
+  return  dot
+
+
 class ResNetMaskNetwork(tf.keras.layers.Layer):
   """A small wrapper around ResNet blocks to predict masks."""
 
@@ -341,6 +363,92 @@ class FullyConnectedMaskHead(tf.keras.layers.Layer):
                       [num_instances, self.mask_size, self.mask_size, 1])
 
 
+class DenseResidualBlock(tf.keras.layers.Layer):
+  """Residual block for 1D inputs.
+
+  This class implemented the pre-activation version of the ResNet block.
+  """
+
+  def __init__(self, hidden_size, use_shortcut_linear):
+    """Residual Block for 1D inputs.
+
+    Args:
+      hidden_size: size of the hidden layer.
+      use_shortcut_linear: bool, whether or not to use a linear layer for
+        shortcut.
+    """
+
+    super(DenseResidualBlock, self).__init__()
+
+    self.bn_0 = tf.keras.layers.experimental.SyncBatchNormalization(axis=-1)
+    self.bn_1 = tf.keras.layers.experimental.SyncBatchNormalization(axis=-1)
+
+    self.fc_0 = tf.keras.layers.Dense(
+        hidden_size, activation=None)
+    self.fc_1 = tf.keras.layers.Dense(
+        hidden_size, activation=None, kernel_initializer='zeros')
+
+    self.activation = tf.keras.layers.Activation('relu')
+
+    if use_shortcut_linear:
+      self.shortcut = tf.keras.layers.Dense(
+          hidden_size, activation=None, use_bias=False)
+    else:
+      self.shortcut = tf.keras.layers.Lambda(lambda x: x)
+
+  def __call__(self, inputs):
+    """Layer's forward pass.
+
+    Args:
+      inputs: input tensor.
+
+    Returns:
+      Tensor after residual block w/ CondBatchNorm.
+    """
+    out = self.fc_0(self.activation(self.bn_0(inputs)))
+    residual_inp = self.fc_1(self.activation(self.bn_1(out)))
+
+    skip = self.shortcut(inputs)
+
+    return residual_inp + skip
+
+
+class DenseResNet(tf.keras.layers.Layer):
+  """Resnet with dense layers."""
+
+  def __init__(self, num_layers, hidden_size, output_size):
+    """Resnet with dense layers.
+
+    Args:
+      num_layers: int, the number of layers.
+      hidden_size: size of the hidden layer.
+      output_size: size of the output.
+    """
+
+    super(DenseResNet, self).__init__()
+
+    self.input_proj = DenseResidualBlock(hidden_size, use_shortcut_linear=True)
+    if num_layers < 4:
+      raise ValueError(
+          'Cannot construct a DenseResNet with less than 4 layers')
+
+    num_blocks = (num_layers - 2) // 2
+
+    if ((num_blocks * 2) + 2) != num_layers:
+      raise ValueError(('DenseResNet depth has to be of the form (2n + 2). '
+                        f'Found {num_layers}'))
+
+    self._num_blocks = num_blocks
+    blocks = [DenseResidualBlock(hidden_size, use_shortcut_linear=False)
+              for _ in range(num_blocks)]
+    self.resnet = tf.keras.Sequential(blocks)
+    self.out_conv = tf.keras.layers.Dense(output_size)
+
+  def __call__(self, inputs):
+    net = self.input_proj(inputs)
+    return self.out_conv(self.resnet(net))
+
+
 class MaskHeadNetwork(tf.keras.layers.Layer):
   """Mask head class for DeepMAC."""
 
@@ -366,8 +474,18 @@ class MaskHeadNetwork(tf.keras.layers.Layer):
         network_type, num_init_channels, mask_size)
     self._use_instance_embedding = use_instance_embedding
 
-    self.project_out = tf.keras.layers.Conv2D(
-        filters=1, kernel_size=1, activation=None)
+    self._network_type = network_type
+
+    if (self._use_instance_embedding and
+        (self._network_type == 'embedding_projection')):
+      raise ValueError(('Cannot feed instance embedding to mask head when '
+                        'computing embedding projection.'))
+
+    if network_type == 'embedding_projection':
+      self.project_out = tf.keras.layers.Lambda(lambda x: x)
+    else:
+      self.project_out = tf.keras.layers.Conv2D(
+          filters=1, kernel_size=1, activation=None)
 
   def __call__(self, instance_embedding, pixel_embedding, training):
     """Returns mask logits given object center and spatial embeddings.
@@ -388,10 +506,9 @@ class MaskHeadNetwork(tf.keras.layers.Layer):
     height = tf.shape(pixel_embedding)[1]
     width = tf.shape(pixel_embedding)[2]
 
-    instance_embedding = instance_embedding[:, tf.newaxis, tf.newaxis, :]
-    instance_embedding = tf.tile(instance_embedding, [1, height, width, 1])
-
     if self._use_instance_embedding:
+      instance_embedding = instance_embedding[:, tf.newaxis, tf.newaxis, :]
+      instance_embedding = tf.tile(instance_embedding, [1, height, width, 1])
       inputs = tf.concat([pixel_embedding, instance_embedding], axis=3)
     else:
       inputs = pixel_embedding
@@ -399,6 +516,10 @@ class MaskHeadNetwork(tf.keras.layers.Layer):
     out = self._net(inputs)
     if isinstance(out, list):
       out = out[-1]
+
+    if self._network_type == 'embedding_projection':
+      instance_embedding = instance_embedding[:, tf.newaxis, tf.newaxis, :]
+      out = embedding_projection(instance_embedding, out)
 
     if out.shape[-1] > 1:
       out = self.project_out(out)
@@ -465,6 +586,21 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
 
     if self._deepmac_params.mask_num_subsamples > 0:
       raise ValueError('Subsampling masks is currently not supported.')
+
+    if self._deepmac_params.network_type == 'embedding_projection':
+      if self._deepmac_params.use_xy:
+        raise ValueError(
+            'Cannot use x/y coordinates when using embedding projection.')
+
+      pixel_embedding_dim = self._deepmac_params.pixel_embedding_dim
+      dim = self._deepmac_params.dim
+      if dim != pixel_embedding_dim:
+        raise ValueError(
+            'When using embedding projection mask head, '
+            f'pixel_embedding_dim({pixel_embedding_dim}) '
+            f'must be same as dim({dim}).')
+
+      loss = self._deepmac_params.classification_loss
 
     super(DeepMACMetaArch, self).__init__(
         is_training=is_training, add_summaries=add_summaries,

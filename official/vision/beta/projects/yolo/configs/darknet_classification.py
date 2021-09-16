@@ -15,9 +15,8 @@
 # Lint as: python3
 """Image classification with darknet configs."""
 
-from typing import List, Optional
-
 import dataclasses
+from typing import List, Optional
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -35,7 +34,7 @@ class ImageClassificationModel(hyperparams.Config):
       type='darknet', darknet=backbones.Darknet())
   dropout_rate: float = 0.0
   norm_activation: common.NormActivation = common.NormActivation()
-  # Adds a BatchNormalization layer pre-GlobalAveragePooling in classification
+  # Adds a Batch Normalization layer pre-GlobalAveragePooling in classification.
   add_head_batch_norm: bool = False
 
 

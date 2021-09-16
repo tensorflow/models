@@ -961,7 +961,8 @@ class CenterNetCenterHeatmapTargetAssigner(object):
                                        width,
                                        gt_boxes_list,
                                        gt_classes_list,
-                                       gt_weights_list=None):
+                                       gt_weights_list=None,
+                                       maximum_normalized_coordinate=1.1):
     """Computes the object center heatmap target.
 
     Args:
@@ -977,6 +978,9 @@ class CenterNetCenterHeatmapTargetAssigner(object):
         in the gt_boxes_list.
       gt_weights_list: A list of float tensors with shape [num_boxes]
         representing the weight of each groundtruth detection box.
+      maximum_normalized_coordinate: Maximum coordinate value to be considered
+        as normalized, default to 1.1. This is used to check bounds during
+        converting normalized coordinates to absolute coordinates.
 
     Returns:
       heatmap: A Tensor of size [batch_size, output_height, output_width,
@@ -1002,7 +1006,8 @@ class CenterNetCenterHeatmapTargetAssigner(object):
       boxes = box_list_ops.to_absolute_coordinates(
           boxes,
           tf.maximum(height // self._stride, 1),
-          tf.maximum(width // self._stride, 1))
+          tf.maximum(width // self._stride, 1),
+          maximum_normalized_coordinate=maximum_normalized_coordinate)
       # Get the box center coordinates. Each returned tensors have the shape of
       # [num_instances]
       (y_center, x_center, boxes_height,

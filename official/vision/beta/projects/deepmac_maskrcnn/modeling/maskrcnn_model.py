@@ -14,12 +14,14 @@
 
 """Mask R-CNN model."""
 
+from typing import List, Mapping, Optional, Union
+
 # Import libraries
 
 from absl import logging
 import tensorflow as tf
 
-from official.vision.beta.ops import box_ops
+from official.vision.beta.modeling import maskrcnn_model
 
 
 def resize_as(source, size):
@@ -30,21 +32,30 @@ def resize_as(source, size):
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
-class DeepMaskRCNNModel(tf.keras.Model):
+class DeepMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
   """The Mask R-CNN model."""
 
   def __init__(self,
-               backbone,
-               decoder,
-               rpn_head,
-               detection_head,
-               roi_generator,
-               roi_sampler,
-               roi_aligner,
-               detection_generator,
-               mask_head=None,
-               mask_sampler=None,
-               mask_roi_aligner=None,
+               backbone: tf.keras.Model,
+               decoder: tf.keras.Model,
+               rpn_head: tf.keras.layers.Layer,
+               detection_head: Union[tf.keras.layers.Layer,
+                                     List[tf.keras.layers.Layer]],
+               roi_generator: tf.keras.layers.Layer,
+               roi_sampler: Union[tf.keras.layers.Layer,
+                                  List[tf.keras.layers.Layer]],
+               roi_aligner: tf.keras.layers.Layer,
+               detection_generator: tf.keras.layers.Layer,
+               mask_head: Optional[tf.keras.layers.Layer] = None,
+               mask_sampler: Optional[tf.keras.layers.Layer] = None,
+               mask_roi_aligner: Optional[tf.keras.layers.Layer] = None,
+               class_agnostic_bbox_pred: bool = False,
+               cascade_class_ensemble: bool = False,
+               min_level: Optional[int] = None,
+               max_level: Optional[int] = None,
+               num_scales: Optional[int] = None,
+               aspect_ratios: Optional[List[float]] = None,
+               anchor_size: Optional[float] = None,
                use_gt_boxes_for_masks=False,
                **kwargs):
     """Initializes the Mask R-CNN model.
@@ -53,122 +64,99 @@ class DeepMaskRCNNModel(tf.keras.Model):
       backbone: `tf.keras.Model`, the backbone network.
       decoder: `tf.keras.Model`, the decoder network.
       rpn_head: the RPN head.
-      detection_head: the detection head.
+      detection_head: the detection head or a list of heads.
       roi_generator: the ROI generator.
-      roi_sampler: the ROI sampler.
+      roi_sampler: a single ROI sampler or a list of ROI samplers for cascade
+        detection heads.
       roi_aligner: the ROI aligner.
       detection_generator: the detection generator.
       mask_head: the mask head.
       mask_sampler: the mask sampler.
       mask_roi_aligner: the ROI alginer for mask prediction.
-      use_gt_boxes_for_masks: bool, if set, crop using groundtruth boxes
-        instead of proposals for training mask head
+      class_agnostic_bbox_pred: if True, perform class agnostic bounding box
+        prediction. Needs to be `True` for Cascade RCNN models.
+      cascade_class_ensemble: if True, ensemble classification scores over all
+        detection heads.
+      min_level: Minimum level in output feature maps.
+      max_level: Maximum level in output feature maps.
+      num_scales: A number representing intermediate scales added on each level.
+        For instances, num_scales=2 adds one additional intermediate anchor
+        scales [2^0, 2^0.5] on each level.
+      aspect_ratios: A list representing the aspect raito anchors added on each
+        level. The number indicates the ratio of width to height. For instances,
+        aspect_ratios=[1.0, 2.0, 0.5] adds three anchors on each scale level.
+      anchor_size: A number representing the scale of size of the base anchor to
+        the feature stride 2^level.
+      use_gt_boxes_for_masks: bool, if set, crop using groundtruth boxes instead
+        of proposals for training mask head
       **kwargs: keyword arguments to be passed.
     """
-    super(DeepMaskRCNNModel, self).__init__(**kwargs)
-    self._config_dict = {
-        'backbone': backbone,
-        'decoder': decoder,
-        'rpn_head': rpn_head,
-        'detection_head': detection_head,
-        'roi_generator': roi_generator,
-        'roi_sampler': roi_sampler,
-        'roi_aligner': roi_aligner,
-        'detection_generator': detection_generator,
-        'mask_head': mask_head,
-        'mask_sampler': mask_sampler,
-        'mask_roi_aligner': mask_roi_aligner,
-        'use_gt_boxes_for_masks': use_gt_boxes_for_masks
-    }
-    self.backbone = backbone
-    self.decoder = decoder
-    self.rpn_head = rpn_head
-    self.detection_head = detection_head
-    self.roi_generator = roi_generator
-    self.roi_sampler = roi_sampler
-    self.roi_aligner = roi_aligner
-    self.detection_generator = detection_generator
-    self._include_mask = mask_head is not None
-    self.mask_head = mask_head
-    if self._include_mask and mask_sampler is None:
-      raise ValueError('`mask_sampler` is not provided in Mask R-CNN.')
-    self.mask_sampler = mask_sampler
-    if self._include_mask and mask_roi_aligner is None:
-      raise ValueError('`mask_roi_aligner` is not provided in Mask R-CNN.')
-    self.mask_roi_aligner = mask_roi_aligner
+    super(DeepMaskRCNNModel, self).__init__(
+        backbone=backbone,
+        decoder=decoder,
+        rpn_head=rpn_head,
+        detection_head=detection_head,
+        roi_generator=roi_generator,
+        roi_sampler=roi_sampler,
+        roi_aligner=roi_aligner,
+        detection_generator=detection_generator,
+        mask_head=mask_head,
+        mask_sampler=mask_sampler,
+        mask_roi_aligner=mask_roi_aligner,
+        class_agnostic_bbox_pred=class_agnostic_bbox_pred,
+        cascade_class_ensemble=cascade_class_ensemble,
+        min_level=min_level,
+        max_level=max_level,
+        num_scales=num_scales,
+        aspect_ratios=aspect_ratios,
+        anchor_size=anchor_size,
+        **kwargs)
+
+    self._config_dict['use_gt_boxes_for_masks'] = use_gt_boxes_for_masks
 
   def call(self,
-           images,
-           image_shape,
-           anchor_boxes=None,
-           gt_boxes=None,
-           gt_classes=None,
-           gt_masks=None,
-           training=None):
-    model_outputs = {}
+           images: tf.Tensor,
+           image_shape: tf.Tensor,
+           anchor_boxes: Optional[Mapping[str, tf.Tensor]] = None,
+           gt_boxes: Optional[tf.Tensor] = None,
+           gt_classes: Optional[tf.Tensor] = None,
+           gt_masks: Optional[tf.Tensor] = None,
+           training: Optional[bool] = None) -> Mapping[str, tf.Tensor]:
 
-    # Feature extraction.
-    features = self.backbone(images)
-    if self.decoder:
-      features = self.decoder(features)
-
-    # Region proposal network.
-    rpn_scores, rpn_boxes = self.rpn_head(features)
-
-    model_outputs.update({
-        'rpn_boxes': rpn_boxes,
-        'rpn_scores': rpn_scores
-    })
-
-    # Generate RoIs.
-    rois, _ = self.roi_generator(
-        rpn_boxes, rpn_scores, anchor_boxes, image_shape, training)
-
-    if training:
-      rois = tf.stop_gradient(rois)
-
-      rois, matched_gt_boxes, matched_gt_classes, matched_gt_indices = (
-          self.roi_sampler(rois, gt_boxes, gt_classes))
-      # Assign target for the 2nd stage classification.
-      box_targets = box_ops.encode_boxes(
-          matched_gt_boxes, rois, weights=[10.0, 10.0, 5.0, 5.0])
-      # If the target is background, the box target is set to all 0s.
-      box_targets = tf.where(
-          tf.tile(
-              tf.expand_dims(tf.equal(matched_gt_classes, 0), axis=-1),
-              [1, 1, 4]),
-          tf.zeros_like(box_targets),
-          box_targets)
-      model_outputs.update({
-          'class_targets': matched_gt_classes,
-          'box_targets': box_targets,
-      })
-
-    # RoI align.
-    roi_features = self.roi_aligner(features, rois)
-
-    # Detection head.
-    raw_scores, raw_boxes = self.detection_head(roi_features)
-
-    if training:
-      model_outputs.update({
-          'class_outputs': raw_scores,
-          'box_outputs': raw_boxes,
-      })
-    else:
-      # Post-processing.
-      detections = self.detection_generator(
-          raw_boxes, raw_scores, rois, image_shape)
-      model_outputs.update({
-          'detection_boxes': detections['detection_boxes'],
-          'detection_scores': detections['detection_scores'],
-          'detection_classes': detections['detection_classes'],
-          'num_detections': detections['num_detections'],
-      })
-
+    model_outputs, intermediate_outputs = self._call_box_outputs(
+        images=images, image_shape=image_shape, anchor_boxes=anchor_boxes,
+        gt_boxes=gt_boxes, gt_classes=gt_classes, training=training)
     if not self._include_mask:
       return model_outputs
 
+    model_mask_outputs = self._call_mask_outputs(
+        model_box_outputs=model_outputs,
+        features=intermediate_outputs['features'],
+        current_rois=intermediate_outputs['current_rois'],
+        matched_gt_indices=intermediate_outputs['matched_gt_indices'],
+        matched_gt_boxes=intermediate_outputs['matched_gt_boxes'],
+        matched_gt_classes=intermediate_outputs['matched_gt_classes'],
+        gt_masks=gt_masks,
+        gt_classes=gt_classes,
+        gt_boxes=gt_boxes,
+        training=training)
+    model_outputs.update(model_mask_outputs)
+    return model_outputs
+
+  def _call_mask_outputs(
+      self,
+      model_box_outputs: Mapping[str, tf.Tensor],
+      features: tf.Tensor,
+      current_rois: tf.Tensor,
+      matched_gt_indices: tf.Tensor,
+      matched_gt_boxes: tf.Tensor,
+      matched_gt_classes: tf.Tensor,
+      gt_masks: tf.Tensor,
+      gt_classes: tf.Tensor,
+      gt_boxes: tf.Tensor,
+      training: Optional[bool] = None) -> Mapping[str, tf.Tensor]:
+
+    model_outputs = dict(model_box_outputs)
     if training:
       if self._config_dict['use_gt_boxes_for_masks']:
         mask_size = (
@@ -184,11 +172,8 @@ class DeepMaskRCNNModel(tf.keras.Model):
         })
       else:
         rois, roi_classes, roi_masks = self.mask_sampler(
-            rois,
-            matched_gt_boxes,
-            matched_gt_classes,
-            matched_gt_indices,
-            gt_masks)
+            current_rois, matched_gt_boxes, matched_gt_classes,
+            matched_gt_indices, gt_masks)
         roi_masks = tf.stop_gradient(roi_masks)
         model_outputs.update({
             'mask_class_targets': roi_classes,
@@ -219,24 +204,3 @@ class DeepMaskRCNNModel(tf.keras.Model):
           'detection_masks': tf.math.sigmoid(raw_masks),
       })
     return model_outputs
-
-  @property
-  def checkpoint_items(self):
-    """Returns a dictionary of items to be additionally checkpointed."""
-    items = dict(
-        backbone=self.backbone,
-        rpn_head=self.rpn_head,
-        detection_head=self.detection_head)
-    if self.decoder is not None:
-      items.update(decoder=self.decoder)
-    if self._include_mask:
-      items.update(mask_head=self.mask_head)
-
-    return items
-
-  def get_config(self):
-    return self._config_dict
-
-  @classmethod
-  def from_config(cls, config):
-    return cls(**config)

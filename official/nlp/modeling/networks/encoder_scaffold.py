@@ -74,9 +74,12 @@ class EncoderScaffold(tf.keras.Model):
       standard pretraining.
     num_hidden_instances: The number of times to instantiate and/or invoke the
       hidden_cls.
-    hidden_cls: The class or instance to encode the input data. If `hidden_cls`
-      is not set, a KerasBERT transformer layer will be used as the encoder
-      class.
+    hidden_cls: Three types of input are supported: (1) class (2) instance
+      (3) list of classes or instances, to encode the input data. If
+      `hidden_cls` is not set, a KerasBERT transformer layer will be used as the
+      encoder class. If `hidden_cls` is a list of classes or instances, these
+      classes (instances) are sequentially instantiated (invoked) on top of
+      embedding layer. Mixing classes and instances in the list is allowed.
     hidden_cfg: A dict of kwargs to pass to the hidden_cls, if it needs to be
       instantiated. If hidden_cls is not set, a config dict must be passed to
       `hidden_cfg` with the following values:
@@ -192,15 +195,26 @@ class EncoderScaffold(tf.keras.Model):
     layer_output_data = []
     hidden_layers = []
     hidden_cfg = hidden_cfg if hidden_cfg else {}
+
+    if isinstance(hidden_cls, list) and len(hidden_cls) != num_hidden_instances:
+      raise RuntimeError(
+          ('When input hidden_cls to EncoderScaffold %s is a list, it must '
+           'contain classes or instances with size specified by '
+           'num_hidden_instances, got %d vs %d.') % self.name, len(hidden_cls),
+          num_hidden_instances)
     for i in range(num_hidden_instances):
-      if inspect.isclass(hidden_cls):
+      if isinstance(hidden_cls, list):
+        cur_hidden_cls = hidden_cls[i]
+      else:
+        cur_hidden_cls = hidden_cls
+      if inspect.isclass(cur_hidden_cls):
         if hidden_cfg and 'attention_cfg' in hidden_cfg and (
             layer_idx_as_attention_seed):
           hidden_cfg = copy.deepcopy(hidden_cfg)
           hidden_cfg['attention_cfg']['seed'] = i
-        layer = hidden_cls(**hidden_cfg)
+        layer = cur_hidden_cls(**hidden_cfg)
       else:
-        layer = hidden_cls
+        layer = cur_hidden_cls
       data = layer([data, attention_mask])
       layer_output_data.append(data)
       hidden_layers.append(layer)
@@ -346,6 +360,15 @@ class EncoderScaffold(tf.keras.Model):
                           'serialization is not yet supported.') % self.name)
     else:
       return self._embedding_data
+
+  @property
+  def embedding_network(self):
+    if self._embedding_network is None:
+      raise RuntimeError(
+          ('The EncoderScaffold %s does not have a reference '
+           'to the embedding network. This is required when you '
+           'pass a custom embedding network to the scaffold.') % self.name)
+    return self._embedding_network
 
   @property
   def hidden_layers(self):

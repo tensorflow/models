@@ -58,6 +58,14 @@ flags.DEFINE_string(
     'annotations - boxes and instance masks.')
 flags.DEFINE_string('caption_annotations_file', '', 'File containing image '
                     'captions.')
+flags.DEFINE_string('panoptic_annotations_file', '', 'File containing panoptic '
+                    'annotations.')
+flags.DEFINE_string('panoptic_masks_dir', '',
+                    'Directory containing panoptic masks annotations.')
+flags.DEFINE_boolean(
+    'include_panoptic_masks', False, 'Whether to include category and '
+    'instance masks in the result. These are required to run the PQ evaluator '
+    'default: False.')
 flags.DEFINE_string('output_file_prefix', '/tmp/train', 'Path to output file')
 flags.DEFINE_integer('num_shards', 32, 'Number of shards for output file.')
 
@@ -65,6 +73,11 @@ FLAGS = flags.FLAGS
 
 logger = tf.get_logger()
 logger.setLevel(logging.INFO)
+
+_VOID_LABEL = 0
+_VOID_INSTANCE_ID = 0
+_THING_CLASS_ID = 1
+_STUFF_CLASSES_OFFSET = 90
 
 
 def coco_segmentation_to_mask_png(segmentation, height, width, is_crowd):
@@ -74,12 +87,79 @@ def coco_segmentation_to_mask_png(segmentation, height, width, is_crowd):
   if not is_crowd:
     binary_mask = np.amax(binary_mask, axis=2)
 
-  return tfrecord_lib.encode_binary_mask_as_png(binary_mask)
+  return tfrecord_lib.encode_mask_as_png(binary_mask)
+
+
+def generate_coco_panoptics_masks(segments_info, mask_path,
+                                  include_panoptic_masks,
+                                  is_category_thing):
+  """Creates masks for panoptic segmentation task.
+
+  Args:
+    segments_info: a list of dicts, where each dict has keys: [u'id',
+      u'category_id', u'area', u'bbox', u'iscrowd'], detailing information for
+      each segment in the panoptic mask.
+    mask_path: path to the panoptic mask.
+    include_panoptic_masks: bool, when set to True, category and instance
+      masks are included in the outputs. Set this to True, when using
+      the Panoptic Quality evaluator.
+    is_category_thing: a dict with category ids as keys and, 0/1 as values to
+      represent "stuff" and "things" classes respectively.
+
+  Returns:
+    A dict with with keys: [u'semantic_segmentation_mask', u'category_mask',
+      u'instance_mask']. The dict contains 'category_mask' and 'instance_mask'
+      only if `include_panoptic_eval_masks` is set to True.
+  """
+  rgb_mask = tfrecord_lib.read_image(mask_path)
+  r, g, b = np.split(rgb_mask, 3, axis=-1)
+
+  # decode rgb encoded panoptic mask to get segments ids
+  # refer https://cocodataset.org/#format-data
+  segments_encoded_mask = (r + g * 256 + b * (256**2)).squeeze()
+
+  semantic_segmentation_mask = np.ones_like(
+      segments_encoded_mask, dtype=np.uint8) * _VOID_LABEL
+  if include_panoptic_masks:
+    category_mask = np.ones_like(
+        segments_encoded_mask, dtype=np.uint8) * _VOID_LABEL
+    instance_mask = np.ones_like(
+        segments_encoded_mask, dtype=np.uint8) * _VOID_INSTANCE_ID
+
+  for idx, segment in enumerate(segments_info):
+    segment_id = segment['id']
+    category_id = segment['category_id']
+
+    if is_category_thing[category_id]:
+      encoded_category_id = _THING_CLASS_ID
+      instance_id = idx + 1
+    else:
+      encoded_category_id = category_id - _STUFF_CLASSES_OFFSET
+      instance_id = _VOID_INSTANCE_ID
+
+    segment_mask = (segments_encoded_mask == segment_id)
+    semantic_segmentation_mask[segment_mask] = encoded_category_id
+
+    if include_panoptic_masks:
+      category_mask[segment_mask] = category_id
+      instance_mask[segment_mask] = instance_id
+
+  outputs = {
+      'semantic_segmentation_mask': tfrecord_lib.encode_mask_as_png(
+          semantic_segmentation_mask)
+      }
+
+  if include_panoptic_masks:
+    outputs.update({
+        'category_mask': tfrecord_lib.encode_mask_as_png(category_mask),
+        'instance_mask': tfrecord_lib.encode_mask_as_png(instance_mask)
+        })
+  return outputs
 
 
 def coco_annotations_to_lists(bbox_annotations, id_to_name_map,
                               image_height, image_width, include_masks):
-  """Convert COCO annotations to feature lists."""
+  """Converts COCO annotations to feature lists."""
 
   data = dict((k, list()) for k in
               ['xmin', 'xmax', 'ymin', 'ymax', 'is_crowd',
@@ -160,9 +240,13 @@ def encode_caption_annotations(caption_annotations):
 
 def create_tf_example(image,
                       image_dirs,
+                      panoptic_masks_dir=None,
                       bbox_annotations=None,
                       id_to_name_map=None,
                       caption_annotations=None,
+                      panoptic_annotation=None,
+                      is_category_thing=None,
+                      include_panoptic_masks=False,
                       include_masks=False):
   """Converts image and annotations to a tf.Example proto.
 
@@ -170,6 +254,7 @@ def create_tf_example(image,
     image: dict with keys: [u'license', u'file_name', u'coco_url', u'height',
       u'width', u'date_captured', u'flickr_url', u'id']
     image_dirs: list of directories containing the image files.
+    panoptic_masks_dir: `str` of the panoptic masks directory.
     bbox_annotations:
       list of dicts with keys: [u'segmentation', u'area', u'iscrowd',
         u'image_id', u'bbox', u'category_id', u'id'] Notice that bounding box
@@ -182,6 +267,11 @@ def create_tf_example(image,
     id_to_name_map: a dict mapping category IDs to string names.
     caption_annotations:
       list of dict with keys: [u'id', u'image_id', u'str'].
+    panoptic_annotation: dict with keys: [u'image_id', u'file_name',
+      u'segments_info']. Where the value for segments_info is a list of dicts,
+      with each dict containing information for a single segment in the mask.
+    is_category_thing: `bool`, whether it is a category thing.
+    include_panoptic_masks: `bool`, whether to include panoptic masks.
     include_masks: Whether to include instance segmentations masks
       (PNG encoded) in the result. default: False.
 
@@ -233,6 +323,26 @@ def create_tf_example(image,
     encoded_captions = encode_caption_annotations(caption_annotations)
     feature_dict.update(
         {'image/caption': tfrecord_lib.convert_to_feature(encoded_captions)})
+
+  if panoptic_annotation:
+    segments_info = panoptic_annotation['segments_info']
+    panoptic_mask_filename = os.path.join(
+        panoptic_masks_dir,
+        panoptic_annotation['file_name'])
+    encoded_panoptic_masks = generate_coco_panoptics_masks(
+        segments_info, panoptic_mask_filename, include_panoptic_masks,
+        is_category_thing)
+    feature_dict.update(
+        {'image/segmentation/class/encoded': tfrecord_lib.convert_to_feature(
+            encoded_panoptic_masks['semantic_segmentation_mask'])})
+
+    if include_panoptic_masks:
+      feature_dict.update({
+          'image/panoptic/category_mask': tfrecord_lib.convert_to_feature(
+              encoded_panoptic_masks['category_mask']),
+          'image/panoptic/instance_mask': tfrecord_lib.convert_to_feature(
+              encoded_panoptic_masks['instance_mask'])
+            })
 
   example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
   return example, num_annotations_skipped
@@ -287,6 +397,33 @@ def _load_caption_annotations(caption_annotations_file):
   return img_to_caption_annotation
 
 
+def _load_panoptic_annotations(panoptic_annotations_file):
+  """Loads panoptic annotation from file."""
+  with tf.io.gfile.GFile(panoptic_annotations_file, 'r') as fid:
+    panoptic_annotations = json.load(fid)
+
+  img_to_panoptic_annotation = dict()
+  logging.info('Building panoptic index.')
+  for annotation in panoptic_annotations['annotations']:
+    image_id = annotation['image_id']
+    img_to_panoptic_annotation[image_id] = annotation
+
+  is_category_thing = dict()
+  for category_info in panoptic_annotations['categories']:
+    is_category_thing[category_info['id']] = category_info['isthing'] == 1
+
+  missing_annotation_count = 0
+  images = panoptic_annotations['images']
+  for image in images:
+    image_id = image['id']
+    if image_id not in img_to_panoptic_annotation:
+      missing_annotation_count += 1
+  logging.info(
+      '%d images are missing panoptic annotations.', missing_annotation_count)
+
+  return img_to_panoptic_annotation, is_category_thing
+
+
 def _load_images_info(images_info_file):
   with tf.io.gfile.GFile(images_info_file, 'r') as fid:
     info_dict = json.load(fid)
@@ -294,11 +431,15 @@ def _load_images_info(images_info_file):
 
 
 def generate_annotations(images, image_dirs,
+                         panoptic_masks_dir=None,
                          img_to_obj_annotation=None,
-                         img_to_caption_annotation=None, id_to_name_map=None,
+                         img_to_caption_annotation=None,
+                         img_to_panoptic_annotation=None,
+                         is_category_thing=None,
+                         id_to_name_map=None,
+                         include_panoptic_masks=False,
                          include_masks=False):
   """Generator for COCO annotations."""
-
   for image in images:
     object_annotation = (img_to_obj_annotation.get(image['id'], None) if
                          img_to_obj_annotation else None)
@@ -306,8 +447,11 @@ def generate_annotations(images, image_dirs,
     caption_annotaion = (img_to_caption_annotation.get(image['id'], None) if
                          img_to_caption_annotation else None)
 
-    yield (image, image_dirs, object_annotation, id_to_name_map,
-           caption_annotaion, include_masks)
+    panoptic_annotation = (img_to_panoptic_annotation.get(image['id'], None) if
+                           img_to_panoptic_annotation else None)
+    yield (image, image_dirs, panoptic_masks_dir, object_annotation,
+           id_to_name_map, caption_annotaion, panoptic_annotation,
+           is_category_thing, include_panoptic_masks, include_masks)
 
 
 def _create_tf_record_from_coco_annotations(images_info_file,
@@ -316,6 +460,9 @@ def _create_tf_record_from_coco_annotations(images_info_file,
                                             num_shards,
                                             object_annotations_file=None,
                                             caption_annotations_file=None,
+                                            panoptic_masks_dir=None,
+                                            panoptic_annotations_file=None,
+                                            include_panoptic_masks=False,
                                             include_masks=False):
   """Loads COCO annotation json files and converts to tf.Record format.
 
@@ -331,6 +478,10 @@ def _create_tf_record_from_coco_annotations(images_info_file,
     num_shards: Number of output files to create.
     object_annotations_file: JSON file containing bounding box annotations.
     caption_annotations_file: JSON file containing caption annotations.
+    panoptic_masks_dir: Directory containing panoptic masks.
+    panoptic_annotations_file: JSON file containing panoptic annotations.
+    include_panoptic_masks: Whether to include 'category_mask'
+      and 'instance_mask', which is required by the panoptic quality evaluator.
     include_masks: Whether to include instance segmentations masks
       (PNG encoded) in the result. default: False.
   """
@@ -342,16 +493,29 @@ def _create_tf_record_from_coco_annotations(images_info_file,
   img_to_obj_annotation = None
   img_to_caption_annotation = None
   id_to_name_map = None
+  img_to_panoptic_annotation = None
+  is_category_thing = None
   if object_annotations_file:
     img_to_obj_annotation, id_to_name_map = (
         _load_object_annotations(object_annotations_file))
   if caption_annotations_file:
     img_to_caption_annotation = (
         _load_caption_annotations(caption_annotations_file))
+  if panoptic_annotations_file:
+    img_to_panoptic_annotation, is_category_thing = (
+        _load_panoptic_annotations(panoptic_annotations_file))
 
   coco_annotations_iter = generate_annotations(
-      images, image_dirs, img_to_obj_annotation, img_to_caption_annotation,
-      id_to_name_map=id_to_name_map, include_masks=include_masks)
+      images=images,
+      image_dirs=image_dirs,
+      panoptic_masks_dir=panoptic_masks_dir,
+      img_to_obj_annotation=img_to_obj_annotation,
+      img_to_caption_annotation=img_to_caption_annotation,
+      img_to_panoptic_annotation=img_to_panoptic_annotation,
+      is_category_thing=is_category_thing,
+      id_to_name_map=id_to_name_map,
+      include_panoptic_masks=include_panoptic_masks,
+      include_masks=include_masks)
 
   num_skipped = tfrecord_lib.write_tf_record_dataset(
       output_path, coco_annotations_iter, create_tf_example, num_shards)
@@ -380,6 +544,9 @@ def main(_):
                                           FLAGS.num_shards,
                                           FLAGS.object_annotations_file,
                                           FLAGS.caption_annotations_file,
+                                          FLAGS.panoptic_masks_dir,
+                                          FLAGS.panoptic_annotations_file,
+                                          FLAGS.include_panoptic_masks,
                                           FLAGS.include_masks)
 
 

@@ -370,6 +370,7 @@ class Trainer(_AsyncTrainer):
     """Accesses the training checkpoint."""
     return self._checkpoint
 
+  # TODO(yejiayu): Remove this once all deps are fixed.
   def add_recovery(self, params: TrainerConfig,
                    checkpoint_manager: tf.train.CheckpointManager):
     if params.recovery_max_trials >= 0:
@@ -382,11 +383,6 @@ class Trainer(_AsyncTrainer):
   def train_loop_end(self):
     """See base class."""
     self.join()
-    # Checks if the model numeric status is stable and conducts the checkpoint
-    # recovery accordingly.
-    if self._recovery:
-      self._recovery.maybe_recover(self.train_loss.result().numpy(),
-                                   self.global_step.numpy())
     logs = {}
     for metric in self.train_metrics + [self.train_loss]:
       logs[metric.name] = metric.result()

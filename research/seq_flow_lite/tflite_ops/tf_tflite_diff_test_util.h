@@ -25,7 +25,7 @@ limitations under the License.
 #include "tensorflow/core/kernels/ops_testutil.h"
 #include "tensorflow/lite/kernels/test_util.h"
 
-namespace tflite {
+namespace seq_flow_lite {
 namespace testing {
 
 // Convenience constructors.
@@ -144,6 +144,6 @@ class TensorflowTfLiteOpTest
 };
 
 }  // namespace testing
-}  // namespace tflite
+}  // namespace seq_flow_lite
 
 #endif  // TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TFLITE_OPS_TF_TFLITE_DIFF_TEST_UTIL_H_

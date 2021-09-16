@@ -10,15 +10,6 @@ package(
     ],
 )
 
-py_library(
-    name = "text_projection",
-    srcs = ["text_projection.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":sequence_string_projection_op_py",
-    ],
-)
-
 cc_library(
     name = "sequence_string_projection_op",
     srcs = [
@@ -30,7 +21,6 @@ cc_library(
         ":projection_util",
         ":text_distorter",
         "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/random",
         "@tensorflow_includes//:includes",
         "@tensorflow_solib//:framework_lib",
     ],
@@ -71,11 +61,9 @@ cc_library(
     srcs = ["text_distorter.cc"],
     hdrs = ["text_distorter.h"],
     deps = [
-        "@com_google_absl//absl/strings",
         "@icu4c",
         "@tensorflow_includes//:includes",
         "@tensorflow_solib//:framework_lib",
-        "@utf_archive//:utf",
     ],
 )
 
@@ -102,7 +90,6 @@ cc_library(
         "@tensorflow_includes//:includes",
         "@tensorflow_solib//:framework_lib",
         "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/random",
     ],
     alwayslink = 1,
 )

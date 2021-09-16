@@ -12,26 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
 """SimCLR configurations."""
+import dataclasses
 import os
 from typing import List, Optional
-
-import dataclasses
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -73,6 +57,9 @@ class DataConfig(cfg.DataConfig):
   # simclr specific configs
   parser: Parser = Parser()
   decoder: Decoder = Decoder()
+  # Useful when doing a sanity check that we absolutely use no labels while
+  # pretrain by setting labels to zeros (default = False, keep original labels)
+  input_set_label_to_zero: bool = False
 
 
 @dataclasses.dataclass
@@ -115,9 +102,7 @@ class SimCLRModel(hyperparams.Config):
   backbone: backbones.Backbone = backbones.Backbone(
       type='resnet', resnet=backbones.ResNet())
   projection_head: ProjectionHead = ProjectionHead(
-      proj_output_dim=128,
-      num_proj_layers=3,
-      ft_proj_idx=1)
+      proj_output_dim=128, num_proj_layers=3, ft_proj_idx=1)
   supervised_head: SupervisedHead = SupervisedHead(num_classes=1001)
   norm_activation: common.NormActivation = common.NormActivation(
       norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)
@@ -201,9 +186,7 @@ def simclr_pretraining_imagenet() -> cfg.ExperimentConfig:
               backbone=backbones.Backbone(
                   type='resnet', resnet=backbones.ResNet(model_id=50)),
               projection_head=ProjectionHead(
-                  proj_output_dim=128,
-                  num_proj_layers=3,
-                  ft_proj_idx=1),
+                  proj_output_dim=128, num_proj_layers=3, ft_proj_idx=1),
               supervised_head=SupervisedHead(num_classes=1001),
               norm_activation=common.NormActivation(
                   norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=True)),
@@ -233,10 +216,13 @@ def simclr_pretraining_imagenet() -> cfg.ExperimentConfig:
               'optimizer': {
                   'type': 'lars',
                   'lars': {
-                      'momentum': 0.9,
-                      'weight_decay_rate': 0.000001,
+                      'momentum':
+                          0.9,
+                      'weight_decay_rate':
+                          0.000001,
                       'exclude_from_weight_decay': [
-                          'batch_normalization', 'bias']
+                          'batch_normalization', 'bias'
+                      ]
                   }
               },
               'learning_rate': {
@@ -278,11 +264,8 @@ def simclr_finetuning_imagenet() -> cfg.ExperimentConfig:
               backbone=backbones.Backbone(
                   type='resnet', resnet=backbones.ResNet(model_id=50)),
               projection_head=ProjectionHead(
-                  proj_output_dim=128,
-                  num_proj_layers=3,
-                  ft_proj_idx=1),
-              supervised_head=SupervisedHead(
-                  num_classes=1001, zero_init=True),
+                  proj_output_dim=128, num_proj_layers=3, ft_proj_idx=1),
+              supervised_head=SupervisedHead(num_classes=1001, zero_init=True),
               norm_activation=common.NormActivation(
                   norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)),
           loss=ClassificationLosses(),
@@ -311,10 +294,13 @@ def simclr_finetuning_imagenet() -> cfg.ExperimentConfig:
               'optimizer': {
                   'type': 'lars',
                   'lars': {
-                      'momentum': 0.9,
-                      'weight_decay_rate': 0.0,
+                      'momentum':
+                          0.9,
+                      'weight_decay_rate':
+                          0.0,
                       'exclude_from_weight_decay': [
-                          'batch_normalization', 'bias']
+                          'batch_normalization', 'bias'
+                      ]
                   }
               },
               'learning_rate': {

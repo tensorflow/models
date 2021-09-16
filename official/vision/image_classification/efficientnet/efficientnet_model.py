@@ -424,7 +424,6 @@ def efficientnet(image_input: tf.keras.layers.Input, config: ModelConfig):
   return x
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
 class EfficientNet(tf.keras.Model):
   """Wrapper class for an EfficientNet Keras model.
 

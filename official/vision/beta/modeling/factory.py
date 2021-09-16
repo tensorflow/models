@@ -76,7 +76,7 @@ def build_maskrcnn(
       backbone_config=model_config.backbone,
       norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
-  backbone(tf.keras.Input(input_specs.shape[1:]))
+  backbone_features = backbone(tf.keras.Input(input_specs.shape[1:]))
 
   decoder = decoders.factory.build_decoder(
       input_specs=backbone.output_specs,
@@ -119,6 +119,13 @@ def build_maskrcnn(
       norm_epsilon=norm_activation_config.norm_epsilon,
       kernel_regularizer=l2_regularizer,
       name='detection_head')
+
+  # Build backbone, decoder and region proposal network:
+
+  if decoder:
+    decoder_features = decoder(backbone_features)
+    rpn_head(decoder_features)
+
   if roi_sampler_config.cascade_iou_thresholds:
     detection_head_cascade = [detection_head]
     for cascade_num in range(len(roi_sampler_config.cascade_iou_thresholds)):
@@ -189,7 +196,8 @@ def build_maskrcnn(
       pre_nms_score_threshold=generator_config.pre_nms_score_threshold,
       nms_iou_threshold=generator_config.nms_iou_threshold,
       max_num_detections=generator_config.max_num_detections,
-      use_batched_nms=generator_config.use_batched_nms)
+      use_batched_nms=generator_config.use_batched_nms,
+      use_cpu_nms=generator_config.use_cpu_nms)
 
   if model_config.include_mask:
     mask_head = instance_heads.MaskHead(
@@ -286,7 +294,8 @@ def build_retinanet(
       pre_nms_score_threshold=generator_config.pre_nms_score_threshold,
       nms_iou_threshold=generator_config.nms_iou_threshold,
       max_num_detections=generator_config.max_num_detections,
-      use_batched_nms=generator_config.use_batched_nms)
+      use_batched_nms=generator_config.use_batched_nms,
+      use_cpu_nms=generator_config.use_cpu_nms)
 
   model = retinanet_model.RetinaNetModel(
       backbone,
@@ -326,6 +335,7 @@ def build_segmentation_model(
       num_convs=head_config.num_convs,
       prediction_kernel_size=head_config.prediction_kernel_size,
       num_filters=head_config.num_filters,
+      use_depthwise_convolution=head_config.use_depthwise_convolution,
       upsample_factor=head_config.upsample_factor,
       feature_fusion=head_config.feature_fusion,
       low_level=head_config.low_level,
