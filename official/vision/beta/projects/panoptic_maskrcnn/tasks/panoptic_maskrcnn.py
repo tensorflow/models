@@ -249,8 +249,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
       
       if self.task_config.evaluate_panoptic_quality:
         assert (
-            self.task_config.validation_data.parser.include_eval_masks,
-            '`include_eval_masks` should be set to True when computing '
+            self.task_config.validation_data.parser.include_panoptic_masks,
+            '`include_panoptic_masks` should be set to True when computing '
             'panoptic quality')
         pq_config = self.task_config.panoptic_quality_evaluator
         self.panoptic_quality_metric = \
