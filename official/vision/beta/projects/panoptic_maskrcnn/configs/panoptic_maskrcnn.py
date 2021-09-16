@@ -93,6 +93,7 @@ class PanopticMaskRCNN(maskrcnn.MaskRCNN):
   include_mask = True
   shared_backbone: bool = True
   shared_decoder: bool = True
+  generate_panoptic_masks: bool = True
   panoptic_segmentation_generator: PanopticSegmentationGenerator = \
       PanopticSegmentationGenerator()
 
@@ -108,6 +109,16 @@ class Losses(maskrcnn.Losses):
   semantic_segmentation_top_k_percent_pixels: float = 1.0
   semantic_segmentation_weight: float = 1.0
 
+
+@dataclasses.dataclass
+class PanopticQualityEvaluator(hyperparams.Config):
+  """Panoptic Quality Evaluator config."""
+  num_categories: int = 2
+  ignored_label: int = 0
+  max_instances_per_category: int = 100
+  offset: int = 256 * 256 * 256
+  is_thing: List[float] = dataclasses.field(
+      default_factory=list)
 
 @dataclasses.dataclass
 class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
@@ -130,7 +141,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   # 'all': Initialize all modules
   init_checkpoint_modules: Optional[List[str]] = dataclasses.field(
       default_factory=list)
-
+  evaluate_panoptic_quality: bool = True
+  panoptic_quality_evaluator: PanopticQualityEvaluator = PanopticQualityEvaluator()  # pylint: disable=line-too-long
 
 @exp_factory.register_config_factory('panoptic_maskrcnn_resnetfpn_coco')
 def panoptic_maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
@@ -149,7 +161,13 @@ def panoptic_maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
   # and map all thing categories to id=1, the remaining 109 stuff categories
   # are shifted by an offset=90 given by num_thing classes - 1. This shifting
   # will make all the stuff categories begin from id=2 and end at id=110
+  num_panoptic_categories = 201
+  num_thing_categories = 91
   num_semantic_segmentation_classes = 111
+
+  is_thing = [False]
+  for idx in range(1, num_panoptic_categories):
+    is_thing.append(True if idx <= num_thing_categories else False)
 
   config = cfg.ExperimentConfig(
       runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
@@ -177,7 +195,11 @@ def panoptic_maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
               global_batch_size=eval_batch_size,
               drop_remainder=False),
           annotation_file=os.path.join(_COCO_INPUT_PATH_BASE,
-                                       'instances_val2017.json')),
+                                       'instances_val2017.json'),
+          panoptic_quality_evaluator=PanopticQualityEvaluator(
+              num_categories=num_panoptic_categories,
+              ignored_label=0,
+              is_thing=is_thing)),
       trainer=cfg.TrainerConfig(
           train_steps=22500,
           validation_steps=validation_steps,

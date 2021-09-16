@@ -52,6 +52,7 @@ class PanopticSegmentationGeneratorTest(
   @combinations.generate(
       combinations.combine(
           strategy=[
+              strategy_combinations.default_strategy,
               strategy_combinations.cloud_tpu_strategy,
               strategy_combinations.one_device_strategy_gpu,
           ]))

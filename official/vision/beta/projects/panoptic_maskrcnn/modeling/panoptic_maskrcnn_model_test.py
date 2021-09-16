@@ -174,9 +174,10 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
           shared_backbone=[True, False],
           shared_decoder=[True, False],
           training=[True, False],
-      ))
+          generate_panoptic_masks=[True, False]))
   def test_forward(self, strategy, training,
-                   shared_backbone, shared_decoder):
+                   shared_backbone, shared_decoder,
+                   generate_panoptic_masks):
     num_classes = 3
     min_level = 3
     max_level = 4
@@ -228,11 +229,16 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
       roi_sampler_cascade.append(roi_sampler_obj)
       roi_aligner_obj = roi_aligner.MultilevelROIAligner()
       detection_generator_obj = detection_generator.DetectionGenerator()
-      panoptic_segmentation_generator_obj = \
-          panoptic_segmentation_generator.PanopticSegmentationGenerator(
-              output_size=list(image_size),
-              max_num_detections=100,
-              stuff_classes_offset=90)
+      
+      if generate_panoptic_masks:
+        panoptic_segmentation_generator_obj = \
+            panoptic_segmentation_generator.PanopticSegmentationGenerator(
+                output_size=list(image_size),
+                max_num_detections=100,
+                stuff_classes_offset=90)
+      else:
+        panoptic_segmentation_generator_obj = None
+      
       mask_head = instance_heads.MaskHead(
           num_classes=num_classes, upsample_factor=2)
       mask_sampler_obj = mask_sampler.MaskSampler(
@@ -311,19 +317,23 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
       self.assertIn('num_detections', results)
       self.assertIn('detection_masks', results)
       self.assertIn('segmentation_outputs', results)
-      self.assertIn('panoptic_outputs', results)
-      self.assertIn('category_mask', results['panoptic_outputs'])
-      self.assertIn('instance_mask', results['panoptic_outputs'])
 
       self.assertAllEqual(
           [2, image_size[0] // (2**level), image_size[1] // (2**level), 2],
           results['segmentation_outputs'].numpy().shape)
-      self.assertAllEqual(
-          [2, image_size[0], image_size[1]],
-          results['panoptic_outputs']['category_mask'].numpy().shape)
-      self.assertAllEqual(
-          [2, image_size[0], image_size[1]],
-          results['panoptic_outputs']['instance_mask'].numpy().shape)
+
+      if generate_panoptic_masks:
+        self.assertIn('panoptic_outputs', results)
+        self.assertIn('category_mask', results['panoptic_outputs'])
+        self.assertIn('instance_mask', results['panoptic_outputs'])
+        self.assertAllEqual(
+            [2, image_size[0], image_size[1]],
+            results['panoptic_outputs']['category_mask'].numpy().shape)
+        self.assertAllEqual(
+            [2, image_size[0], image_size[1]],
+            results['panoptic_outputs']['instance_mask'].numpy().shape)
+      else:
+        self.assertNotIn('panoptic_outputs', results)
 
   @combinations.generate(
       combinations.combine(

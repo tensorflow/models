@@ -93,17 +93,21 @@ def build_panoptic_maskrcnn(
       norm_epsilon=norm_activation_config.norm_epsilon,
       kernel_regularizer=l2_regularizer)
 
-  max_num_detections = model_config.detection_generator.max_num_detections
-  panoptic_segmentation_generator_obj = \
-      panoptic_segmentation_generator.PanopticSegmentationGenerator(
-          output_size=postprocessing_config.output_size,
-          max_num_detections=max_num_detections,
-          stuff_classes_offset=postprocessing_config.stuff_classes_offset,
-          mask_binarize_threshold=postprocessing_config.mask_binarize_threshold,
-          score_threshold=postprocessing_config.score_threshold,
-          things_class_label=postprocessing_config.things_class_label,
-          void_class_label=postprocessing_config.void_class_label,
-          void_instance_id=postprocessing_config.void_instance_id)
+  if model_config.generate_panoptic_masks:
+    max_num_detections = model_config.detection_generator.max_num_detections
+    mask_binarize_threshold = postprocessing_config.mask_binarize_threshold
+    panoptic_segmentation_generator_obj = \
+        panoptic_segmentation_generator.PanopticSegmentationGenerator(
+            output_size=postprocessing_config.output_size,
+            max_num_detections=max_num_detections,
+            stuff_classes_offset=postprocessing_config.stuff_classes_offset,
+            mask_binarize_threshold=mask_binarize_threshold,
+            score_threshold=postprocessing_config.score_threshold,
+            things_class_label=postprocessing_config.things_class_label,
+            void_class_label=postprocessing_config.void_class_label,
+            void_instance_id=postprocessing_config.void_instance_id)
+  else:
+    panoptic_segmentation_generator_obj = None
 
   # Combines maskrcnn, and segmentation models to build panoptic segmentation
   # model.

@@ -25,32 +25,33 @@ from official.vision.beta.modeling import maskrcnn_model
 class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
   """The Panoptic Segmentation model."""
 
-  def __init__(self,
-               backbone: tf.keras.Model,
-               decoder: tf.keras.Model,
-               rpn_head: tf.keras.layers.Layer,
-               detection_head: Union[tf.keras.layers.Layer,
-                                     List[tf.keras.layers.Layer]],
-               roi_generator: tf.keras.layers.Layer,
-               roi_sampler: Union[tf.keras.layers.Layer,
-                                  List[tf.keras.layers.Layer]],
-               roi_aligner: tf.keras.layers.Layer,
-               detection_generator: tf.keras.layers.Layer,
-               panoptic_segmentation_generator: tf.keras.layers.Layer,
-               mask_head: Optional[tf.keras.layers.Layer] = None,
-               mask_sampler: Optional[tf.keras.layers.Layer] = None,
-               mask_roi_aligner: Optional[tf.keras.layers.Layer] = None,
-               segmentation_backbone: Optional[tf.keras.Model] = None,
-               segmentation_decoder: Optional[tf.keras.Model] = None,
-               segmentation_head: tf.keras.layers.Layer = None,
-               class_agnostic_bbox_pred: bool = False,
-               cascade_class_ensemble: bool = False,
-               min_level: Optional[int] = None,
-               max_level: Optional[int] = None,
-               num_scales: Optional[int] = None,
-               aspect_ratios: Optional[List[float]] = None,
-               anchor_size: Optional[float] = None,
-               **kwargs):
+  def __init__(
+      self,
+      backbone: tf.keras.Model,
+      decoder: tf.keras.Model,
+      rpn_head: tf.keras.layers.Layer,
+      detection_head: Union[tf.keras.layers.Layer,
+                            List[tf.keras.layers.Layer]],
+      roi_generator: tf.keras.layers.Layer,
+      roi_sampler: Union[tf.keras.layers.Layer,
+                         List[tf.keras.layers.Layer]],
+      roi_aligner: tf.keras.layers.Layer,
+      detection_generator: tf.keras.layers.Layer,
+      panoptic_segmentation_generator: Optional[tf.keras.layers.Layer] = None,
+      mask_head: Optional[tf.keras.layers.Layer] = None,
+      mask_sampler: Optional[tf.keras.layers.Layer] = None,
+      mask_roi_aligner: Optional[tf.keras.layers.Layer] = None,
+      segmentation_backbone: Optional[tf.keras.Model] = None,
+      segmentation_decoder: Optional[tf.keras.Model] = None,
+      segmentation_head: tf.keras.layers.Layer = None,
+      class_agnostic_bbox_pred: bool = False,
+      cascade_class_ensemble: bool = False,
+      min_level: Optional[int] = None,
+      max_level: Optional[int] = None,
+      num_scales: Optional[int] = None,
+      aspect_ratios: Optional[List[float]] = None,
+      anchor_size: Optional[float] = None,
+      **kwargs):
     """Initializes the Panoptic Mask R-CNN model.
 
     Args:
@@ -120,9 +121,12 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
     self._config_dict.update({
         'segmentation_backbone': segmentation_backbone,
         'segmentation_decoder': segmentation_decoder,
-        'segmentation_head': segmentation_head,
-        'panoptic_segmentation_generator': panoptic_segmentation_generator
+        'segmentation_head': segmentation_head
     })
+
+    if panoptic_segmentation_generator is not None:
+      self._config_dict.update(
+          {'panoptic_segmentation_generator': panoptic_segmentation_generator})
 
     if not self._include_mask:
       raise ValueError(
@@ -172,11 +176,9 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
         'segmentation_outputs': segmentation_outputs,
     })
 
-    if not training:
+    if not training and self.panoptic_segmentation_generator is not None:
       panoptic_outputs = self.panoptic_segmentation_generator(model_outputs)
-      model_outputs.update({
-          'panoptic_outputs': panoptic_outputs
-      })
+      model_outputs.update({'panoptic_outputs': panoptic_outputs})
 
     return model_outputs
 
