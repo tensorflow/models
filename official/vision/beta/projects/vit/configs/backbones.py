@@ -42,6 +42,8 @@ class VisionTransformer(hyperparams.Config):
   hidden_size: int = 1
   patch_size: int = 16
   transformer: Transformer = Transformer()
+  init_stochastic_depth_rate: float = 0.0
+  original_init: bool = True
 
 
 @dataclasses.dataclass

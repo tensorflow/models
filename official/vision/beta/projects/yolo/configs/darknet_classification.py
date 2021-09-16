@@ -58,7 +58,7 @@ class ImageClassificationTask(cfg.TaskConfig):
 
 
 @exp_factory.register_config_factory('darknet_classification')
-def image_classification() -> cfg.ExperimentConfig:
+def darknet_classification() -> cfg.ExperimentConfig:
   """Image classification general."""
   return cfg.ExperimentConfig(
       task=ImageClassificationTask(),

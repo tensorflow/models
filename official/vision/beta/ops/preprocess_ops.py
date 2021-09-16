@@ -15,11 +15,12 @@
 """Preprocessing ops."""
 
 import math
+from typing import Optional
 from six.moves import range
 import tensorflow as tf
 
+from official.vision.beta.ops import augment
 from official.vision.beta.ops import box_ops
-
 
 CENTER_CROP_FRACTION = 0.875
 
@@ -555,6 +556,107 @@ def random_horizontal_flip(image, normalized_boxes=None, masks=None, seed=1):
           lambda: masks)
 
     return image, normalized_boxes, masks
+
+
+def color_jitter(image: tf.Tensor,
+                 brightness: Optional[float] = 0.,
+                 contrast: Optional[float] = 0.,
+                 saturation: Optional[float] = 0.,
+                 seed: Optional[int] = None) -> tf.Tensor:
+  """Applies color jitter to an image, similarly to torchvision`s ColorJitter.
+
+  Args:
+    image (tf.Tensor): Of shape [height, width, 3] and type uint8.
+    brightness (float, optional): Magnitude for brightness jitter. Defaults to
+      0.
+    contrast (float, optional): Magnitude for contrast jitter. Defaults to 0.
+    saturation (float, optional): Magnitude for saturation jitter. Defaults to
+      0.
+    seed (int, optional): Random seed. Defaults to None.
+
+  Returns:
+    tf.Tensor: The augmented `image` of type uint8.
+  """
+  image = tf.cast(image, dtype=tf.uint8)
+  image = random_brightness(image, brightness, seed=seed)
+  image = random_contrast(image, contrast, seed=seed)
+  image = random_saturation(image, saturation, seed=seed)
+  return image
+
+
+def random_brightness(image: tf.Tensor,
+                      brightness: float = 0.,
+                      seed: Optional[int] = None) -> tf.Tensor:
+  """Jitters brightness of an image.
+
+  Args:
+      image (tf.Tensor): Of shape [height, width, 3] and type uint8.
+      brightness (float, optional): Magnitude for brightness jitter. Defaults to
+        0.
+      seed (int, optional): Random seed. Defaults to None.
+
+  Returns:
+      tf.Tensor: The augmented `image` of type uint8.
+  """
+  assert brightness >= 0, '`brightness` must be positive'
+  brightness = tf.random.uniform([],
+                                 max(0, 1 - brightness),
+                                 1 + brightness,
+                                 seed=seed,
+                                 dtype=tf.float32)
+  return augment.brightness(image, brightness)
+
+
+def random_contrast(image: tf.Tensor,
+                    contrast: float = 0.,
+                    seed: Optional[int] = None) -> tf.Tensor:
+  """Jitters contrast of an image, similarly to torchvision`s ColorJitter.
+
+  Args:
+      image (tf.Tensor): Of shape [height, width, 3] and type uint8.
+      contrast (float, optional): Magnitude for contrast jitter. Defaults to 0.
+      seed (int, optional): Random seed. Defaults to None.
+
+  Returns:
+      tf.Tensor: The augmented `image` of type uint8.
+  """
+  assert contrast >= 0, '`contrast` must be positive'
+  contrast = tf.random.uniform([],
+                               max(0, 1 - contrast),
+                               1 + contrast,
+                               seed=seed,
+                               dtype=tf.float32)
+  return augment.contrast(image, contrast)
+
+
+def random_saturation(image: tf.Tensor,
+                      saturation: float = 0.,
+                      seed: Optional[int] = None) -> tf.Tensor:
+  """Jitters saturation of an image, similarly to torchvision`s ColorJitter.
+
+  Args:
+      image (tf.Tensor): Of shape [height, width, 3] and type uint8.
+      saturation (float, optional): Magnitude for saturation jitter. Defaults to
+        0.
+      seed (int, optional): Random seed. Defaults to None.
+
+  Returns:
+      tf.Tensor: The augmented `image` of type uint8.
+  """
+  assert saturation >= 0, '`saturation` must be positive'
+  saturation = tf.random.uniform([],
+                                 max(0, 1 - saturation),
+                                 1 + saturation,
+                                 seed=seed,
+                                 dtype=tf.float32)
+  return _saturation(image, saturation)
+
+
+def _saturation(image: tf.Tensor,
+                saturation: Optional[float] = 0.) -> tf.Tensor:
+  return augment.blend(
+      tf.repeat(tf.image.rgb_to_grayscale(image), 3, axis=-1), image,
+      saturation)
 
 
 def random_crop_image_with_boxes_and_labels(img, boxes, labels, min_scale,
