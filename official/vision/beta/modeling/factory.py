@@ -56,6 +56,7 @@ def build_classification_model(
       num_classes=model_config.num_classes,
       input_specs=input_specs,
       dropout_rate=model_config.dropout_rate,
+      kernel_initializer=model_config.kernel_initializer,
       kernel_regularizer=l2_regularizer,
       add_head_batch_norm=model_config.add_head_batch_norm,
       use_sync_bn=norm_activation_config.use_sync_bn,

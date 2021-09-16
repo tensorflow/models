@@ -17,17 +17,24 @@
 import tensorflow as tf
 
 from official.modeling import activations
-from official.nlp import keras_nlp
 from official.vision.beta.modeling.backbones import factory
+from official.vision.beta.modeling.layers import nn_layers
+from official.vision.beta.projects.vit.modeling import nn_blocks
 
 layers = tf.keras.layers
 
 VIT_SPECS = {
-    'vit-testing':
+    'vit-ti16':
         dict(
-            hidden_size=1,
+            hidden_size=192,
             patch_size=16,
-            transformer=dict(mlp_dim=1, num_heads=1, num_layers=1),
+            transformer=dict(mlp_dim=768, num_heads=3, num_layers=12),
+        ),
+    'vit-s16':
+        dict(
+            hidden_size=384,
+            patch_size=16,
+            transformer=dict(mlp_dim=1536, num_heads=6, num_layers=12),
         ),
     'vit-b16':
         dict(
@@ -112,6 +119,8 @@ class Encoder(tf.keras.layers.Layer):
                attention_dropout_rate=0.1,
                kernel_regularizer=None,
                inputs_positions=None,
+               init_stochastic_depth_rate=0.0,
+               kernel_initializer='glorot_uniform',
                **kwargs):
     super().__init__(**kwargs)
     self._num_layers = num_layers
@@ -121,6 +130,8 @@ class Encoder(tf.keras.layers.Layer):
     self._attention_dropout_rate = attention_dropout_rate
     self._kernel_regularizer = kernel_regularizer
     self._inputs_positions = inputs_positions
+    self._init_stochastic_depth_rate = init_stochastic_depth_rate
+    self._kernel_initializer = kernel_initializer
 
   def build(self, input_shape):
     self._pos_embed = AddPositionEmbs(
@@ -131,15 +142,18 @@ class Encoder(tf.keras.layers.Layer):
     self._encoder_layers = []
     # Set layer norm epsilons to 1e-6 to be consistent with JAX implementation.
     # https://flax.readthedocs.io/en/latest/_autosummary/flax.nn.LayerNorm.html
-    for _ in range(self._num_layers):
-      encoder_layer = keras_nlp.layers.TransformerEncoderBlock(
+    for i in range(self._num_layers):
+      encoder_layer = nn_blocks.TransformerEncoderBlock(
           inner_activation=activations.gelu,
           num_attention_heads=self._num_heads,
           inner_dim=self._mlp_dim,
           output_dropout=self._dropout_rate,
           attention_dropout=self._attention_dropout_rate,
           kernel_regularizer=self._kernel_regularizer,
+          kernel_initializer=self._kernel_initializer,
           norm_first=True,
+          stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
+              self._init_stochastic_depth_rate, i + 1, self._num_layers),
           norm_epsilon=1e-6)
       self._encoder_layers.append(encoder_layer)
     self._norm = layers.LayerNormalization(epsilon=1e-6)
@@ -164,12 +178,14 @@ class VisionTransformer(tf.keras.Model):
                num_layers=12,
                attention_dropout_rate=0.0,
                dropout_rate=0.1,
+               init_stochastic_depth_rate=0.0,
                input_specs=layers.InputSpec(shape=[None, None, None, 3]),
                patch_size=16,
                hidden_size=768,
                representation_size=0,
                classifier='token',
-               kernel_regularizer=None):
+               kernel_regularizer=None,
+               original_init=True):
     """VisionTransformer initialization function."""
     inputs = tf.keras.Input(shape=input_specs.shape[1:])
 
@@ -178,7 +194,8 @@ class VisionTransformer(tf.keras.Model):
         kernel_size=patch_size,
         strides=patch_size,
         padding='valid',
-        kernel_regularizer=kernel_regularizer)(
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer='lecun_normal' if original_init else 'he_uniform')(
             inputs)
     if tf.keras.backend.image_data_format() == 'channels_last':
       rows_axis, cols_axis = (1, 2)
@@ -203,7 +220,10 @@ class VisionTransformer(tf.keras.Model):
         num_heads=num_heads,
         dropout_rate=dropout_rate,
         attention_dropout_rate=attention_dropout_rate,
-        kernel_regularizer=kernel_regularizer)(
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer='glorot_uniform' if original_init else dict(
+            class_name='TruncatedNormal', config=dict(stddev=.02)),
+        init_stochastic_depth_rate=init_stochastic_depth_rate)(
             x)
 
     if classifier == 'token':
@@ -215,7 +235,8 @@ class VisionTransformer(tf.keras.Model):
       x = tf.keras.layers.Dense(
           representation_size,
           kernel_regularizer=kernel_regularizer,
-          name='pre_logits')(
+          name='pre_logits',
+          kernel_initializer='lecun_normal' if original_init else 'he_uniform')(
               x)
       x = tf.nn.tanh(x)
     else:
@@ -247,9 +268,11 @@ def build_vit(input_specs,
       num_layers=backbone_cfg.transformer.num_layers,
       attention_dropout_rate=backbone_cfg.transformer.attention_dropout_rate,
       dropout_rate=backbone_cfg.transformer.dropout_rate,
+      init_stochastic_depth_rate=backbone_cfg.init_stochastic_depth_rate,
       input_specs=input_specs,
       patch_size=backbone_cfg.patch_size,
       hidden_size=backbone_cfg.hidden_size,
       representation_size=backbone_cfg.representation_size,
       classifier=backbone_cfg.classifier,
-      kernel_regularizer=l2_regularizer)
+      kernel_regularizer=l2_regularizer,
+      original_init=backbone_cfg.original_init)
