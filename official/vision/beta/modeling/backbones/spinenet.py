@@ -87,6 +87,13 @@ SCALING_MAP = {
         'resample_alpha': 1.0,
         'block_repeats': 3,
     },
+    # SpineNet-143 with 1.3x filter_size_scale.
+    '143L': {
+        'endpoints_num_filters': 256,
+        'filter_size_scale': 1.3,
+        'resample_alpha': 1.0,
+        'block_repeats': 3,
+    },
     '190': {
         'endpoints_num_filters': 512,
         'filter_size_scale': 1.3,
