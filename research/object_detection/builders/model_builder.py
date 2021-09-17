@@ -1182,13 +1182,24 @@ def _build_center_net_feature_extractor(feature_extractor_config, is_training):
           list(feature_extractor_config.channel_stds),
       'bgr_ordering':
           feature_extractor_config.bgr_ordering,
-      'depth_multiplier':
-          feature_extractor_config.depth_multiplier,
-      'use_separable_conv':
-          use_separable_conv,
-      'upsampling_interpolation':
-          feature_extractor_config.upsampling_interpolation,
   }
+  if feature_extractor_config.HasField('depth_multiplier'):
+    kwargs.update({
+        'depth_multiplier': feature_extractor_config.depth_multiplier,
+    })
+  if feature_extractor_config.HasField('use_separable_conv'):
+    kwargs.update({
+        'use_separable_conv': use_separable_conv,
+    })
+  if feature_extractor_config.HasField('upsampling_interpolation'):
+    kwargs.update({
+        'upsampling_interpolation':
+            feature_extractor_config.upsampling_interpolation,
+    })
+  if feature_extractor_config.HasField('use_depthwise'):
+    kwargs.update({
+        'use_depthwise': feature_extractor_config.use_depthwise,
+    })
 
 
   return CENTER_NET_EXTRACTOR_FUNCTION_MAP[feature_extractor_config.type](
