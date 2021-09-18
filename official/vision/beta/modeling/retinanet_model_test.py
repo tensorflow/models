@@ -147,8 +147,10 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
           ],
           training=[True, False],
           has_att_heads=[True, False],
+          output_intermediate_features=[True, False],
       ))
-  def test_forward(self, strategy, image_size, training, has_att_heads):
+  def test_forward(self, strategy, image_size, training, has_att_heads,
+                   output_intermediate_features):
     """Test for creation of a R50-FPN RetinaNet."""
     tf.keras.backend.set_image_data_format('channels_last')
     num_classes = 3
@@ -202,6 +204,7 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
           images,
           image_shape,
           anchor_boxes,
+          output_intermediate_features=output_intermediate_features,
           training=training)
 
     if training:
@@ -247,6 +250,19 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
         self.assertAllEqual(
             [2, 10, 1],
             model_outputs['detection_attributes']['depth'].numpy().shape)
+    if output_intermediate_features:
+      for l in range(2, 6):
+        self.assertIn('backbone_{}'.format(l), model_outputs)
+        self.assertAllEqual([
+            2, image_size[0] // 2**l, image_size[1] // 2**l,
+            backbone.output_specs[str(l)].as_list()[-1]
+        ], model_outputs['backbone_{}'.format(l)].numpy().shape)
+      for l in range(min_level, max_level + 1):
+        self.assertIn('decoder_{}'.format(l), model_outputs)
+        self.assertAllEqual([
+            2, image_size[0] // 2**l, image_size[1] // 2**l,
+            decoder.output_specs[str(l)].as_list()[-1]
+        ], model_outputs['decoder_{}'.format(l)].numpy().shape)
 
   def test_serialize_deserialize(self):
     """Validate the network can be serialized and deserialized."""
