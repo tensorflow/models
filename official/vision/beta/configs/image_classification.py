@@ -119,7 +119,6 @@ def image_classification_imagenet() -> cfg.ExperimentConfig:
   eval_batch_size = 4096
   steps_per_epoch = IMAGENET_TRAIN_EXAMPLES // train_batch_size
   config = cfg.ExperimentConfig(
-      runtime=cfg.RuntimeConfig(enable_xla=True),
       task=ImageClassificationTask(
           model=ImageClassificationModel(
               num_classes=1001,
