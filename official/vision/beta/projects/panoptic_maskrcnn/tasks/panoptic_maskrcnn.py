@@ -209,8 +209,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
       tf.keras.metrics.Metric]:
     """Build detection metrics."""
     metrics = []
-    num_segmentation_classes = \
-        self.task_config.model.segmentation_model.num_classes
+    num_segmentation_classes = self.task_config.model.segmentation_model.num_classes
     if training:
       metric_names = [
           'total_loss',
@@ -253,13 +252,12 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
             '`include_panoptic_masks` should be set to True when computing '
             'panoptic quality')
         pq_config = self.task_config.panoptic_quality_evaluator
-        self.panoptic_quality_metric = \
-            panoptic_quality_evaluator.PanopticQualityEvaluator(
-                num_categories=pq_config.num_categories,
-                ignored_label=pq_config.ignored_label,
-                max_instances_per_category=pq_config.max_instances_per_category,
-                offset=pq_config.offset,
-                is_thing=pq_config.is_thing)
+        self.panoptic_quality_metric = panoptic_quality_evaluator.PanopticQualityEvaluator(
+            num_categories=pq_config.num_categories,
+            ignored_label=pq_config.ignored_label,
+            max_instances_per_category=pq_config.max_instances_per_category,
+            offset=pq_config.offset,
+            is_thing=pq_config.is_thing)
 
     return metrics
 
