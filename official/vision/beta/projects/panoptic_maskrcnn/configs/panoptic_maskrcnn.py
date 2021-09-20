@@ -141,7 +141,6 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   # 'all': Initialize all modules
   init_checkpoint_modules: Optional[List[str]] = dataclasses.field(
       default_factory=list)
-  evaluate_panoptic_quality: bool = True
   panoptic_quality_evaluator: PanopticQualityEvaluator = PanopticQualityEvaluator()  # pylint: disable=line-too-long
 
 @exp_factory.register_config_factory('panoptic_maskrcnn_resnetfpn_coco')
