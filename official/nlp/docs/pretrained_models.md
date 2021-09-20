@@ -70,3 +70,26 @@ Model                            | Configuration            | Training Data     
 BERT-base talking heads + ggelu  | uncased_L-12_H-768_A-12  | Wiki + Books   | [talkheads_ggelu_base](https://tfhub.dev/tensorflow/talkheads_ggelu_bert_en_base/1)   | BERT-base trained with [talking heads attention](https://arxiv.org/abs/2003.02436) and [gated GeLU](https://arxiv.org/abs/2002.05202).
 BERT-large talking heads + ggelu | uncased_L-24_H-1024_A-16 | Wiki + Books  | [talkheads_ggelu_large](https://tfhub.dev/tensorflow/talkheads_ggelu_bert_en_large/1) | BERT-large trained with [talking heads attention](https://arxiv.org/abs/2003.02436) and [gated GeLU](https://arxiv.org/abs/2002.05202).
 LAMBERT-large uncased English    | uncased_L-24_H-1024_A-16 | Wiki + Books  | [lambert](https://tfhub.dev/tensorflow/lambert_en_uncased_L-24_H-1024_A-16/1)         | BERT trained with LAMB and techniques from RoBERTa.
+
+## ALBERT
+
+The academic paper that describes ALBERT in detail and provides full results on
+a number of tasks can be found here: https://arxiv.org/abs/1909.11942.
+
+We released both checkpoints and tf.hub modules as the pretrained models for
+fine-tuning. They are TF 2.x compatible and are converted from the ALBERT v2
+checkpoints released in the TF 1.x official ALBERT repository
+[google-research/albert](https://github.com/google-research/albert)
+in order to be consistent with the ALBERT paper.
+
+Our current released checkpoints are exactly the same as the TF 1.x official
+ALBERT repository.
+
+### Checkpoints
+
+Model                                    | Training Data | Checkpoint & Vocabulary | TF-HUB SavedModels
+---------------------------------------- | ------------: | ----------------------: | ------:
+ALBERT-base English               |  Wiki + Books  | [`ALBERT Base`](https://storage.googleapis.com/tf_model_garden/nlp/albert/albert_base.tar.gz) | https://tfhub.dev/tensorflow/albert_en_base/3
+ALBERT-large English               |  Wiki + Books  | [`ALBERT Large`](https://storage.googleapis.com/tf_model_garden/nlp/albert/albert_large.tar.gz) | https://tfhub.dev/tensorflow/albert_en_large/3
+ALBERT-xlarge English               |  Wiki + Books  | [`ALBERT XLarge`](https://storage.googleapis.com/tf_model_garden/nlp/albert/albert_xlarge.tar.gz) | https://tfhub.dev/tensorflow/albert_en_xlarge/3
+ALBERT-xxlarge English               |  Wiki + Books  | [`ALBERT XXLarge`](https://storage.googleapis.com/tf_model_garden/nlp/albert/albert_xxlarge.tar.gz) | https://tfhub.dev/tensorflow/albert_en_xxlarge/3

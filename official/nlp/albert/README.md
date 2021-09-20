@@ -1,5 +1,8 @@
 # ALBERT (ALBERT: A Lite BERT for Self-supervised Learning of Language Representations)
 
+**WARNING**: We are on the way to deprecate this directory.
+We will add documentation in `nlp/docs` to use the new code in `nlp/modeling`.
+
 The academic paper which describes ALBERT in detail and provides full results on
 a number of tasks can be found here: https://arxiv.org/abs/1909.11942.
 
