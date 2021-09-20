@@ -12,7 +12,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
-"""Tasks package definition."""
-
-from official.vision.beta.projects.panoptic_maskrcnn.tasks import panoptic_maskrcnn
