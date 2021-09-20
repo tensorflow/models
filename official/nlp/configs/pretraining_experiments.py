@@ -51,7 +51,6 @@ _TRAINER = cfg.TrainerConfig(
 def bert_pretraining() -> cfg.ExperimentConfig:
   """BERT pretraining experiment."""
   config = cfg.ExperimentConfig(
-      runtime=cfg.RuntimeConfig(enable_xla=True),
       task=masked_lm.MaskedLMConfig(
           train_data=pretrain_dataloader.BertPretrainDataConfig(),
           validation_data=pretrain_dataloader.BertPretrainDataConfig(
@@ -71,7 +70,6 @@ def bert_dynamic() -> cfg.ExperimentConfig:
   TPU needs to run with tf.data service with round-robin behavior.
   """
   config = cfg.ExperimentConfig(
-      runtime=cfg.RuntimeConfig(enable_xla=True),
       task=masked_lm.MaskedLMConfig(
           train_data=pretrain_dynamic_dataloader.BertPretrainDataConfig(),
           validation_data=pretrain_dataloader.BertPretrainDataConfig(
