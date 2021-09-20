@@ -44,8 +44,8 @@ class DetectionGeneratorTest(
     parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.product(
-      use_batched_nms=[True, False], use_cpu_nms=[True, False])
-  def testDetectionsOutputShape(self, use_batched_nms, use_cpu_nms):
+      nms_version=['batched', 'v1', 'v2'], use_cpu_nms=[True, False])
+  def testDetectionsOutputShape(self, nms_version, use_cpu_nms):
     max_num_detections = 100
     num_classes = 4
     pre_nms_top_k = 5000
@@ -57,7 +57,7 @@ class DetectionGeneratorTest(
         'pre_nms_score_threshold': pre_nms_score_threshold,
         'nms_iou_threshold': 0.5,
         'max_num_detections': max_num_detections,
-        'use_batched_nms': use_batched_nms,
+        'nms_version': nms_version,
         'use_cpu_nms': use_cpu_nms,
     }
     generator = detection_generator.DetectionGenerator(**kwargs)
@@ -97,7 +97,7 @@ class DetectionGeneratorTest(
         'pre_nms_score_threshold': 0.1,
         'nms_iou_threshold': 0.5,
         'max_num_detections': 10,
-        'use_batched_nms': False,
+        'nms_version': 'v2',
         'use_cpu_nms': False,
     }
     generator = detection_generator.DetectionGenerator(**kwargs)
@@ -116,15 +116,14 @@ class MultilevelDetectionGeneratorTest(
     parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (True, False, True),
-      (True, False, False),
-      (False, False, True),
-      (False, False, False),
-      (False, True, True),
-      (False, True, False),
+      ('batched', False, True),
+      ('batched', False, False),
+      ('v2', False, True),
+      ('v2', False, False),
+      ('v1', True, True),
+      ('v1', True, False),
   )
-  def testDetectionsOutputShape(self, use_batched_nms, has_att_heads,
-                                use_cpu_nms):
+  def testDetectionsOutputShape(self, nms_version, has_att_heads, use_cpu_nms):
     min_level = 4
     max_level = 6
     num_scales = 2
@@ -142,7 +141,7 @@ class MultilevelDetectionGeneratorTest(
         'pre_nms_score_threshold': pre_nms_score_threshold,
         'nms_iou_threshold': 0.5,
         'max_num_detections': max_num_detections,
-        'use_batched_nms': use_batched_nms,
+        'nms_version': nms_version,
         'use_cpu_nms': use_cpu_nms,
     }
 
@@ -223,7 +222,7 @@ class MultilevelDetectionGeneratorTest(
         'pre_nms_score_threshold': 0.1,
         'nms_iou_threshold': 0.5,
         'max_num_detections': 10,
-        'use_batched_nms': False,
+        'nms_version': 'v2',
         'use_cpu_nms': False,
     }
     generator = detection_generator.MultilevelDetectionGenerator(**kwargs)
