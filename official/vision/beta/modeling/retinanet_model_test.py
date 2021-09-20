@@ -193,7 +193,7 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
           attribute_heads=attribute_heads,
           num_anchors_per_location=num_anchors_per_location)
       generator = detection_generator.MultilevelDetectionGenerator(
-          max_num_detections=10)
+          max_num_detections=10, nms_version='v1')
       model = retinanet_model.RetinaNetModel(
           backbone=backbone,
           decoder=decoder,

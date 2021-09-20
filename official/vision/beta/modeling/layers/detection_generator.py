@@ -404,7 +404,7 @@ class DetectionGenerator(tf.keras.layers.Layer):
                pre_nms_score_threshold: float = 0.05,
                nms_iou_threshold: float = 0.5,
                max_num_detections: int = 100,
-               use_batched_nms: bool = False,
+               nms_version: str = 'v2',
                use_cpu_nms: bool = False,
                **kwargs):
     """Initializes a detection generator.
@@ -420,8 +420,7 @@ class DetectionGenerator(tf.keras.layers.Layer):
       nms_iou_threshold: A `float` in [0, 1], the NMS IoU threshold.
       max_num_detections: An `int` of the final number of total detections to
         generate.
-      use_batched_nms: A `bool` of whether or not use
-        `tf.image.combined_non_max_suppression`.
+      nms_version: A string of `batched`, `v1` or `v2` specifies NMS version.
       use_cpu_nms: A `bool` of whether or not enforce NMS to run on CPU.
       **kwargs: Additional keyword arguments passed to Layer.
     """
@@ -431,7 +430,7 @@ class DetectionGenerator(tf.keras.layers.Layer):
         'pre_nms_score_threshold': pre_nms_score_threshold,
         'nms_iou_threshold': nms_iou_threshold,
         'max_num_detections': max_num_detections,
-        'use_batched_nms': use_batched_nms,
+        'nms_version': nms_version,
         'use_cpu_nms': use_cpu_nms,
     }
     super(DetectionGenerator, self).__init__(**kwargs)
@@ -524,14 +523,14 @@ class DetectionGenerator(tf.keras.layers.Layer):
       nms_context = contextlib.nullcontext()
 
     with nms_context:
-      if self._config_dict['use_batched_nms']:
+      if self._config_dict['nms_version'] == 'batched':
         (nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections) = (
             _generate_detections_batched(
                 decoded_boxes, box_scores,
                 self._config_dict['pre_nms_score_threshold'],
                 self._config_dict['nms_iou_threshold'],
                 self._config_dict['max_num_detections']))
-      else:
+      elif self._config_dict['nms_version'] == 'v1':
         (nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections, _) = (
             _generate_detections_v1(
                 decoded_boxes,
@@ -541,6 +540,19 @@ class DetectionGenerator(tf.keras.layers.Layer):
                 ._config_dict['pre_nms_score_threshold'],
                 nms_iou_threshold=self._config_dict['nms_iou_threshold'],
                 max_num_detections=self._config_dict['max_num_detections']))
+      elif self._config_dict['nms_version'] == 'v2':
+        (nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections) = (
+            _generate_detections_v2(
+                decoded_boxes,
+                box_scores,
+                pre_nms_top_k=self._config_dict['pre_nms_top_k'],
+                pre_nms_score_threshold=self
+                ._config_dict['pre_nms_score_threshold'],
+                nms_iou_threshold=self._config_dict['nms_iou_threshold'],
+                max_num_detections=self._config_dict['max_num_detections']))
+      else:
+        raise ValueError('NMS version {} not supported.'.format(
+            self._config_dict['nms_version']))
 
     # Adds 1 to offset the background class which has index 0.
     nmsed_classes += 1
@@ -570,7 +582,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
                pre_nms_score_threshold: float = 0.05,
                nms_iou_threshold: float = 0.5,
                max_num_detections: int = 100,
-               use_batched_nms: bool = False,
+               nms_version: str = 'v1',
                use_cpu_nms: bool = False,
                **kwargs):
     """Initializes a multi-level detection generator.
@@ -586,8 +598,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
       nms_iou_threshold: A `float` in [0, 1], the NMS IoU threshold.
       max_num_detections: An `int` of the final number of total detections to
         generate.
-      use_batched_nms: A `bool` of whether or not use
-        `tf.image.combined_non_max_suppression`.
+      nms_version: A string of `batched`, `v1` or `v2` specifies NMS version
       use_cpu_nms: A `bool` of whether or not enforce NMS to run on CPU.
       **kwargs: Additional keyword arguments passed to Layer.
     """
@@ -597,7 +608,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         'pre_nms_score_threshold': pre_nms_score_threshold,
         'nms_iou_threshold': nms_iou_threshold,
         'max_num_detections': max_num_detections,
-        'use_batched_nms': use_batched_nms,
+        'nms_version': nms_version,
         'use_cpu_nms': use_cpu_nms,
     }
     super(MultilevelDetectionGenerator, self).__init__(**kwargs)
@@ -731,11 +742,11 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
       nms_context = contextlib.nullcontext()
 
     with nms_context:
-      if self._config_dict['use_batched_nms']:
-        if raw_attributes:
-          raise ValueError(
-              'Attribute learning is not supported for batched NMS.')
-
+      if raw_attributes and (self._config_dict['nms_version'] != 'v1'):
+        raise ValueError(
+            'Attribute learning is only supported for NMSv1 but NMS {} is used.'
+            .format(self._config_dict['nms_version']))
+      if self._config_dict['nms_version'] == 'batched':
         (nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections) = (
             _generate_detections_batched(
                 boxes, scores, self._config_dict['pre_nms_score_threshold'],
@@ -743,7 +754,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
                 self._config_dict['max_num_detections']))
         # Set `nmsed_attributes` to None for batched NMS.
         nmsed_attributes = {}
-      else:
+      elif self._config_dict['nms_version'] == 'v1':
         (nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections,
          nmsed_attributes) = (
              _generate_detections_v1(
@@ -755,6 +766,21 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
                  ._config_dict['pre_nms_score_threshold'],
                  nms_iou_threshold=self._config_dict['nms_iou_threshold'],
                  max_num_detections=self._config_dict['max_num_detections']))
+      elif self._config_dict['nms_version'] == 'v2':
+        (nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections) = (
+            _generate_detections_v2(
+                boxes,
+                scores,
+                pre_nms_top_k=self._config_dict['pre_nms_top_k'],
+                pre_nms_score_threshold=self
+                ._config_dict['pre_nms_score_threshold'],
+                nms_iou_threshold=self._config_dict['nms_iou_threshold'],
+                max_num_detections=self._config_dict['max_num_detections']))
+        # Set `nmsed_attributes` to None for v2.
+        nmsed_attributes = {}
+      else:
+        raise ValueError('NMS version {} not supported.'.format(
+            self._config_dict['nms_version']))
 
     # Adds 1 to offset the background class which has index 0.
     nmsed_classes += 1
