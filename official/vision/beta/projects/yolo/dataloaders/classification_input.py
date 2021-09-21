@@ -19,25 +19,16 @@ class Parser(parser.Parser):
                scale=[128, 448],
                dtype='float32'):
     """Initializes parameters for parsing annotations in the dataset.
+
     Args:
       output_size: `Tensor` or `list` for [height, width] of output image. The
         output_size should be divided by the largest feature stride 2^max_level.
       num_classes: `float`, number of classes.
-      aug_rand_saturation: `bool`, if True, augment training with random
-        saturation.
-      aug_rand_brightness: `bool`, if True, augment training with random
-        brightness.
-      aug_rand_zoom: `bool`, if True, augment training with random
-        zoom.
-      aug_rand_rotate: `bool`, if True, augment training with random
-        rotate.
-      aug_rand_hue: `bool`, if True, augment training with random
-        hue.
-      aug_rand_aspect: `bool`, if True, augment training with random
-        aspect.
-      scale: 'list', `Tensor` or `list` for [low, high] of the bounds of the 
-        random scale.
-      seed: an `int` for the seed used by tf.random
+      aug_policy: An optional Augmentation object to choose from AutoAugment and
+        RandAugment.
+      scale: A `List[int]`, minimum and maximum image shape range.
+      dtype: `str`, cast output image in dtype. It can be 'float32', 'float16',
+        or 'bfloat16'.
     """
     self._output_size = output_size
     if aug_policy:
