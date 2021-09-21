@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """Build video classification models."""
-from typing import Any, Mapping, Optional, Union
+from typing import Any, Mapping, Optional, Union, List, Text
+
 import tensorflow as tf
 
 layers = tf.keras.layers
@@ -33,6 +34,7 @@ class VideoClassificationModel(tf.keras.Model):
       kernel_initializer: str = 'random_uniform',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      require_endpoints: Optional[List[Text]] = None,
       **kwargs):
     """Video Classification initialization function.
 
@@ -48,6 +50,8 @@ class VideoClassificationModel(tf.keras.Model):
         None.
       bias_regularizer: tf.keras.regularizers.Regularizer object. Default to
         None.
+      require_endpoints: the required endpoints for prediction. If None or
+        empty, then only uses the final endpoint.
       **kwargs: keyword arguments to be passed.
     """
     if not input_specs:
@@ -64,6 +68,7 @@ class VideoClassificationModel(tf.keras.Model):
         'kernel_initializer': kernel_initializer,
         'kernel_regularizer': kernel_regularizer,
         'bias_regularizer': bias_regularizer,
+        'require_endpoints': require_endpoints,
     }
     self._input_specs = input_specs
     self._kernel_regularizer = kernel_regularizer
@@ -82,8 +87,18 @@ class VideoClassificationModel(tf.keras.Model):
         pooled_feats.append(x_pool)
       x = tf.concat(pooled_feats, axis=1)
     else:
-      x = endpoints[max(endpoints.keys())]
-      x = tf.keras.layers.GlobalAveragePooling3D()(x)
+      if not require_endpoints:
+        # Uses the last endpoint for prediction.
+        x = endpoints[max(endpoints.keys())]
+        x = tf.keras.layers.GlobalAveragePooling3D()(x)
+      else:
+        # Concats all the required endpoints for prediction.
+        outputs = []
+        for name in require_endpoints:
+          x = endpoints[name]
+          x = tf.keras.layers.GlobalAveragePooling3D()(x)
+          outputs.append(x)
+        x = tf.concat(outputs, axis=1)
 
     x = tf.keras.layers.Dropout(dropout_rate)(x)
     x = tf.keras.layers.Dense(
