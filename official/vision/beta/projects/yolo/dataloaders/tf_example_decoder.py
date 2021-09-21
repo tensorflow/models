@@ -25,27 +25,28 @@ def _coco91_to_80(classif, box, areas, iscrowds):
   """Function used to reduce COCO 91 to COCO 80, or to convert from the 2017 
   foramt to the 2014 format"""
   # Vector where index i coralates to the class at index[i].
-  x = [
+  class_ids = [
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
       23, 24, 25, 27, 28, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
       44, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,
       63, 64, 65, 67, 70, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85,
       86, 87, 88, 89, 90
   ]
-  no = tf.expand_dims(tf.convert_to_tensor(x), axis=0)
+  new_classes = tf.expand_dims(tf.convert_to_tensor(class_ids), axis=0)
 
   # Resahpe the classes to in order to build a class mask.
-  ce = tf.expand_dims(classif, axis=-1)
+  classes = tf.expand_dims(classif, axis=-1)
 
   # One hot the classificiations to match the 80 class format.
-  ind = ce == tf.cast(no, ce.dtype)
+  ind = classes == tf.cast(new_classes, classes.dtype)
 
   # Select the max values.
-  co = tf.reshape(tf.math.argmax(tf.cast(ind, tf.float32), axis=-1), [-1])
+  selected_class = tf.reshape(
+    tf.math.argmax(tf.cast(ind, tf.float32), axis=-1), [-1])
   ind = tf.where(tf.reduce_any(ind, axis=-1))
 
   # Gather the valuable instances.
-  classif = tf.gather_nd(co, ind)
+  classif = tf.gather_nd(selected_class, ind)
   box = tf.gather_nd(box, ind)
   areas = tf.gather_nd(areas, ind)
   iscrowds = tf.gather_nd(iscrowds, ind)
