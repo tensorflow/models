@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Lint as: python3
 """Feature Pyramid Network and Path Aggregation variants used in YOLO."""
 
 import tensorflow as tf
@@ -21,7 +22,7 @@ from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class _IdentityRoute(tf.keras.layers.Layer):
 
-  def call(self, inputs):
+  def call(self, inputs):  # pylint: disable=arguments-differ
     return None, inputs
 
 
@@ -36,6 +37,7 @@ class YoloFPN(tf.keras.layers.Layer):
                activation='leaky',
                fpn_filter_scale=1,
                use_sync_bn=False,
+               use_separable_conv=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
                kernel_initializer='VarianceScaling',
@@ -66,6 +68,7 @@ class YoloFPN(tf.keras.layers.Layer):
 
     self._activation = activation
     self._use_sync_bn = use_sync_bn
+    self._use_separable_conv = use_separable_conv
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     self._kernel_initializer = kernel_initializer
@@ -78,6 +81,7 @@ class YoloFPN(tf.keras.layers.Layer):
     self._base_config = dict(
         activation=self._activation,
         use_sync_bn=self._use_sync_bn,
+        use_separable_conv=self._use_separable_conv,
         kernel_regularizer=self._kernel_regularizer,
         kernel_initializer=self._kernel_initializer,
         bias_regularizer=self._bias_regularizer,
@@ -171,7 +175,7 @@ class YoloFPN(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class YoloPAN(tf.keras.layers.Layer):
-  """YOLO Path Aggregation Network."""
+  """YOLO Path Aggregation Network"""
 
   def __init__(self,
                path_process_len=6,
@@ -181,6 +185,7 @@ class YoloPAN(tf.keras.layers.Layer):
                csp_stack=False,
                activation='leaky',
                use_sync_bn=False,
+               use_separable_conv=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
                kernel_initializer='VarianceScaling',
@@ -220,6 +225,7 @@ class YoloPAN(tf.keras.layers.Layer):
 
     self._activation = activation
     self._use_sync_bn = use_sync_bn
+    self._use_separable_conv = use_separable_conv
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     self._kernel_initializer = kernel_initializer
@@ -236,6 +242,7 @@ class YoloPAN(tf.keras.layers.Layer):
     self._base_config = dict(
         activation=self._activation,
         use_sync_bn=self._use_sync_bn,
+        use_separable_conv=self._use_separable_conv,
         kernel_regularizer=self._kernel_regularizer,
         kernel_initializer=self._kernel_initializer,
         bias_regularizer=self._bias_regularizer,
@@ -322,7 +329,7 @@ class YoloPAN(tf.keras.layers.Layer):
 
     Args:
       minimum_depth: `int` depth of the smallest branch of the FPN.
-      inputs: `dict[str, tf.InputSpec]` of the shape of input args as a
+      inputs: `dict[str, tf.InputSpec]` of the shape of input args as a 
         dictionary of lists.
 
     Returns:
@@ -371,15 +378,16 @@ class YoloDecoder(tf.keras.Model):
                embed_spp=False,
                activation='leaky',
                use_sync_bn=False,
+               use_separable_conv=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
                kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
-    """Yolo Decoder initialization function.
-
-    A unified model that ties all decoder components into a conditionally build
+    """Yolo Decoder initialization function. 
+    
+    A unified model that ties all decoder components into a conditionally build 
     YOLO decoder.
 
     Args:
@@ -388,8 +396,8 @@ class YoloDecoder(tf.keras.Model):
       use_fpn: `bool`, use the FPN found in the YoloV4 model.
       use_spatial_attention: `bool`, use the spatial attention module.
       csp_stack: `bool`, CSPize the FPN.
-      fpn_depth: `int`, number of layers ot use in each FPN path if you choose
-        to use an FPN.
+      fpn_depth: `int`, number of layers ot use in each FPN path
+        if you choose to use an FPN.
       fpn_filter_scale: `int`, scaling factor for the FPN filters.
       path_process_len: `int`, number of layers ot use in each Decoder path.
       max_level_process_len: `int`, number of layers ot use in the largest
@@ -415,6 +423,7 @@ class YoloDecoder(tf.keras.Model):
 
     self._activation = activation
     self._use_sync_bn = use_sync_bn
+    self._use_separable_conv = use_separable_conv
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     self._kernel_initializer = kernel_initializer
@@ -426,6 +435,7 @@ class YoloDecoder(tf.keras.Model):
         csp_stack=csp_stack,
         activation=self._activation,
         use_sync_bn=self._use_sync_bn,
+        use_separable_conv=self._use_separable_conv,
         fpn_filter_scale=fpn_filter_scale,
         norm_momentum=self._norm_momentum,
         norm_epsilon=self._norm_epsilon,
