@@ -79,7 +79,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
         '4': [1, 300, 3],
         '5': [1, 300, 3]
     }, tf.int32)
-    truths = inpdict({'3': [1, 300, 8], '4': [1, 300, 8], '5': [1, 300, 8]})
+    truths = inpdict({'3': [1, 300, 6], '4': [1, 300, 6], '5': [1, 300, 6]})
     boxes = tf.ones([1, 300, 4], dtype=tf.float32)
     classes = tf.ones([1, 300], dtype=tf.float32)
 
