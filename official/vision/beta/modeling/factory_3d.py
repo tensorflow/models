@@ -98,5 +98,6 @@ def build_video_classification_model(
       input_specs=input_specs_dict,
       dropout_rate=model_config.dropout_rate,
       aggregate_endpoints=model_config.aggregate_endpoints,
-      kernel_regularizer=l2_regularizer)
+      kernel_regularizer=l2_regularizer,
+      require_endpoints=model_config.require_endpoints)
   return model
