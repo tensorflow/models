@@ -1,25 +1,12 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-"""Mosaic data aug for YOLO."""
 import random
 import tensorflow as tf
 import tensorflow_addons as tfa
 
 from official.vision.beta.projects.yolo.ops import preprocessing_ops
 from official.vision.beta.ops import box_ops
+from official.vision.beta.ops import preprocess_ops
 
-class Mosaic(object):
+class Mosaic:
   """Stitch together sets of 4 images to generate samples with more boxes."""
 
   def __init__(self,
@@ -36,6 +23,7 @@ class Mosaic(object):
                aug_rand_perspective=0.0,
                aug_rand_translate=0.0,
                random_pad=False,
+               random_flip=False, 
                area_thresh=0.1,
                seed=None):
     """Initializes parameters for mosaic.
@@ -91,6 +79,7 @@ class Mosaic(object):
     self._aug_rand_translate = aug_rand_translate
     self._aug_rand_angle = aug_rand_angle
     self._aug_rand_perspective = aug_rand_perspective
+    self._random_flip = random_flip
 
     self._deterministic = seed != None
     self._seed = seed if seed is not None else random.randint(0, 2**30)
@@ -116,6 +105,12 @@ class Mosaic(object):
           [self._output_size[1] * 2, self._output_size[0] * 2, 3])
     return cut, ishape
 
+  def _select_ind(self, inds, *args):
+    items = []
+    for item in args:
+      items.append(tf.gather(item, inds))
+    return items
+
   def _augment_image(self,
                      image,
                      boxes,
@@ -126,13 +121,16 @@ class Mosaic(object):
                      ys=0.0,
                      cut=None):
     """Process a single image prior to the application of patching."""
-    # Randomly flip the image horizontally.
-    letter_box = self._letter_box
+    if self._random_flip:
+      # Randomly flip the image horizontally.
+      image, boxes, _ = preprocess_ops.random_horizontal_flip(
+          image, boxes, seed=self._seed)
 
+    #augment the image without resizing
     image, infos, crop_points = preprocessing_ops.resize_and_jitter_image(
         image, [self._output_size[0], self._output_size[1]],
         random_pad=False,
-        letter_box=letter_box,
+        letter_box=self._letter_box,
         jitter=self._random_crop,
         shiftx=xs,
         shifty=ys,
@@ -147,9 +145,7 @@ class Mosaic(object):
         shuffle_boxes=False,
         augment=True,
         seed=self._seed)
-    classes = tf.gather(classes, inds)
-    is_crowd = tf.gather(is_crowd, inds)
-    area = tf.gather(area, inds)
+    classes, is_crowd, area = self._select_ind(inds, classes, is_crowd, area)
     return image, boxes, classes, is_crowd, area, crop_points
 
   def _mosaic_crop_image(self, image, boxes, classes, is_crowd, area):
@@ -173,7 +169,11 @@ class Mosaic(object):
       boxes = box_ops.denormalize_boxes(boxes, shape[:2])
       boxes = boxes + tf.cast([ch, cw, ch, cw], boxes.dtype)
       boxes = box_ops.clip_boxes(boxes, shape[:2])
+      inds = box_ops.get_non_empty_box_indices(boxes)
+
       boxes = box_ops.normalize_boxes(boxes, shape[:2])
+      boxes, classes, is_crowd, area = self._select_ind(inds, boxes, classes, is_crowd, area)
+
 
     # warp and scale the fully stitched sample 
     image, _, affine = preprocessing_ops.affine_warp_image(
@@ -190,15 +190,9 @@ class Mosaic(object):
 
     # clip and clean boxes
     boxes, inds = preprocessing_ops.apply_infos(
-        boxes,
-        None,
-        affine=affine,
-        area_thresh=self._area_thresh,
-        augment=True,
+        boxes, None, affine=affine, area_thresh=self._area_thresh, 
         seed=self._seed)
-    classes = tf.gather(classes, inds)
-    is_crowd = tf.gather(is_crowd, inds)
-    area = tf.gather(area, inds)
+    classes, is_crowd, area = self._select_ind(inds, classes, is_crowd, area)
     return image, boxes, classes, is_crowd, area, area
 
   def scale_boxes(self, patch, ishape, boxes, classes, xs, ys):
@@ -224,8 +218,6 @@ class Mosaic(object):
         sample['image'], sample['groundtruth_boxes'],
         sample['groundtruth_classes'], sample['groundtruth_is_crowd'],
         sample['groundtruth_area'], shiftx, shifty, cut)
-    if cut is None and ishape is None:
-      cut, ishape = self._generate_cut()
 
     (boxes, classes) = self.scale_boxes(image, ishape, boxes, classes,
                                         1 - shiftx, 1 - shifty)
@@ -235,7 +227,6 @@ class Mosaic(object):
     sample['groundtruth_classes'] = classes
     sample['groundtruth_is_crowd'] = is_crowd
     sample['groundtruth_area'] = area
-    sample['cut'] = cut
     sample['shiftx'] = shiftx
     sample['shifty'] = shifty
     sample['crop_points'] = crop_points
@@ -284,7 +275,9 @@ class Mosaic(object):
     sample['num_detections'] = tf.shape(sample['groundtruth_boxes'])[1]
     sample['is_mosaic'] = tf.cast(1.0, tf.bool)
 
-    del sample['shiftx'], sample['shifty'], sample['crop_points'], sample['cut']
+    del sample['shiftx']
+    del sample['shifty']
+    del sample['crop_points']
     return sample
 
   def _mosaic(self, one, two, three, four):
@@ -349,6 +342,7 @@ class Mosaic(object):
   def _apply(self, dataset):
     """Apply mosaic to an input dataset."""
     determ = self._deterministic
+    dataset = dataset.prefetch(tf.data.AUTOTUNE)
     one = dataset.shuffle(100, seed=self._seed, reshuffle_each_iteration=True)
     two = dataset.shuffle(
         100, seed=self._seed + 1, reshuffle_each_iteration=True)

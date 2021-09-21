@@ -1,58 +1,14 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-""" Detection Data parser and processing for YOLO."""
+""" Detection Data parser and processing for YOLO.
+Parse image and ground truths in a dataset to training targets and package them
+into (image, labels) tuple for RetinaNet.
+"""
 import tensorflow as tf
 import numpy as np
 from official.vision.beta.projects.yolo.ops import preprocessing_ops
-from official.vision.beta.projects.yolo.ops import box_ops as box_utils
+from official.vision.beta.projects.yolo.ops import anchor
 from official.vision.beta.ops import preprocess_ops
+from official.vision.beta.ops import box_ops as bbox_ops
 from official.vision.beta.dataloaders import parser, utils
-
-
-def _coco91_to_80(classif, box, areas, iscrowds):
-  """Function used to reduce COCO 91 to COCO 80, or to convert from the 2017 
-  foramt to the 2014 format"""
-  # Vector where index i coralates to the class at index[i].
-  x = [
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-      23, 24, 25, 27, 28, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
-      44, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,
-      63, 64, 65, 67, 70, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85,
-      86, 87, 88, 89, 90
-  ]
-  no = tf.expand_dims(tf.convert_to_tensor(x), axis=0)
-
-  # Resahpe the classes to in order to build a class mask.
-  ce = tf.expand_dims(classif, axis=-1)
-
-  # One hot the classificiations to match the 80 class format.
-  ind = ce == tf.cast(no, ce.dtype)
-
-  # Select the max values.
-  co = tf.reshape(tf.math.argmax(tf.cast(ind, tf.float32), axis=-1), [-1])
-  ind = tf.where(tf.reduce_any(ind, axis=-1))
-
-  # Gather the valuable instances.
-  classif = tf.gather_nd(co, ind)
-  box = tf.gather_nd(box, ind)
-  areas = tf.gather_nd(areas, ind)
-  iscrowds = tf.gather_nd(iscrowds, ind)
-
-  # Restate the number of viable detections, ideally it should be the same.
-  num_detections = tf.shape(classif)[0]
-  return classif, box, areas, iscrowds, num_detections
 
 
 class Parser(parser.Parser):
@@ -61,9 +17,8 @@ class Parser(parser.Parser):
   def __init__(
       self,
       output_size,
-      masks,
       anchors,
-      strides,
+      expanded_strides,
       anchor_free_limits=None,
       max_num_instances=200,
       area_thresh=0.1,
@@ -82,23 +37,18 @@ class Parser(parser.Parser):
       anchor_t=4.0,
       scale_xy=None,
       best_match_only=False,
-      coco91to80=False,
       darknet=False,
       use_tie_breaker=True,
       dtype='float32',
-      seed=None,
-  ):
+      seed=None):
     """Initializes parameters for parsing annotations in the dataset.
 
     Args:
       output_size: `Tensor` or `List` for [height, width] of output image. The
         output_size should be divided by the largest feature stride 2^max_level.
-      masks: `Dict[List[int]]` of values indicating the indexes in the 
-        list of anchor boxes to use an each prediction level between min_level 
-        and max_level. each level must have a list of indexes.  
-      anchors: `List[List[Union[int, float]]]` values for each anchor box.
-      strides: `Dict[int]` for how much the model scales down the images at the
-        largest level.
+      anchors: `Dict[List[Union[int, float]]]` values for each anchor box.
+      expanded_strides: `Dict[int]` for how much the model scales down the 
+        images at the largest level.
       anchor_free_limits: `List` the box sizes that will be allowed at each FPN 
         level as is done in the FCOS and YOLOX paper for anchor free box 
         assignment. Anchor free will perform worse than Anchor based, but only 
@@ -144,9 +94,7 @@ class Parser(parser.Parser):
         there should be one value for scale_xy for each level from min_level to 
         max_level.
       best_match_only: `boolean` indicating how boxes are selected for 
-        optimization.
-      coco91to80: `bool` for wether to convert coco91 to coco80 to minimize 
-        model parameters.      
+        optimization.  
       darknet: `boolean` indicating which data pipeline to use. Setting to True 
         swaps the pipeline to output images realtive to Yolov4 and older. 
       use_tie_breaker: `boolean` indicating whether to use the anchor threshold 
@@ -155,25 +103,23 @@ class Parser(parser.Parser):
         from {"float32", "float16", "bfloat16"}.
       seed: `int` the seed for random number generation. 
     """
-    for key in masks.keys():
+    for key in anchors.keys():
       # Assert that the width and height is viable
-      assert output_size[1] % strides[str(key)] == 0
-      assert output_size[0] % strides[str(key)] == 0
+      assert output_size[1] % expanded_strides[str(key)] == 0
+      assert output_size[0] % expanded_strides[str(key)] == 0
 
     # scale of each FPN level
-    self._strides = strides
+    self._strides = expanded_strides
 
     # Set the width and height properly and base init:
-    self._coco91to80 = coco91to80
     self._image_w = output_size[1]
     self._image_h = output_size[0]
 
-    # Set the anchor boxes and masks for each scale
+    # Set the anchor boxes for each scale
     self._anchors = anchors
     self._anchor_free_limits = anchor_free_limits
-    self._masks = {
-        key: tf.convert_to_tensor(value) for key, value in masks.items()
-    }
+
+    # anchor labeling paramters
     self._use_tie_breaker = use_tie_breaker
     self._best_match_only = best_match_only
     self._max_num_instances = max_num_instances
@@ -202,7 +148,7 @@ class Parser(parser.Parser):
     self._darknet = darknet
     self._area_thresh = area_thresh
 
-    keys = list(self._masks.keys())
+    keys = list(self._anchors.keys())
 
     if self._anchor_free_limits is not None:
       maxim = 2000
@@ -218,10 +164,15 @@ class Parser(parser.Parser):
     # Set the data type based on input string
     self._dtype = dtype
 
-  def _get_identity_info(self, image):
-    """Get an identity image op to pad all info vectors, this is used because 
-    graph compilation if there are a variable number of info objects in a list.
-    """
+    self._label_builder = anchor.YoloAnchorLabeler(
+      anchors = self._anchors, 
+      match_threshold=self._anchor_t, 
+      best_matches_only=self._best_match_only,
+      use_tie_breaker=self._use_tie_breaker
+    )
+
+  def _pad_infos_object(self, image):
+    """Get a Tensor to pad the info object list."""
     shape_ = tf.shape(image)
     val = tf.stack([
         tf.cast(shape_[:2], tf.float32),
@@ -234,16 +185,16 @@ class Parser(parser.Parser):
   def _jitter_scale(self, image, shape, letter_box, jitter, random_pad,
                     aug_scale_min, aug_scale_max, translate, angle,
                     perspective):
+    """Distort and scale each input image"""
+    infos = []
     if (aug_scale_min != 1.0 or aug_scale_max != 1.0):
       crop_only = True
       # jitter gives you only one info object, resize and crop gives you one,
       # if crop only then there can be 1 form jitter and 1 from crop
-      reps = 1
+      infos.append(self._pad_infos_object(image))
     else:
       crop_only = False
-      reps = 0
-    infos = []
-    image, info_a, _ = preprocessing_ops.resize_and_jitter_image(
+    image, crop_info, _ = preprocessing_ops.resize_and_jitter_image(
         image,
         shape,
         letter_box=letter_box,
@@ -252,10 +203,7 @@ class Parser(parser.Parser):
         random_pad=random_pad,
         seed=self._seed,
     )
-    infos.extend(info_a)
-    stale_a = self._get_identity_info(image)
-    for _ in range(reps):
-      infos.append(stale_a)
+    infos.extend(crop_info)
     image, _, affine = preprocessing_ops.affine_warp_image(
         image,
         shape,
@@ -269,21 +217,8 @@ class Parser(parser.Parser):
     )
     return image, infos, affine
 
-  def reorg91to80(self, data):
-    """Function used to reduce COCO 91 to COCO 80, or to convert from the 2017 
-    foramt to the 2014 format"""
-    if self._coco91to80:
-      (data['groundtruth_classes'], data['groundtruth_boxes'],
-       data['groundtruth_area'], data['groundtruth_is_crowd'],
-       _) = _coco91_to_80(data['groundtruth_classes'],
-                          data['groundtruth_boxes'], data['groundtruth_area'],
-                          data['groundtruth_is_crowd'])
-    return data
-
   def _parse_train_data(self, data):
-    """Parses data for training and evaluation."""
-    # Down size coco 91 to coco 80 if the option is selected.
-    data = self.reorg91to80(data)
+    """Parses data for training."""
 
     # Initialize the shape constants.
     image = data['image']
@@ -316,12 +251,16 @@ class Parser(parser.Parser):
     else:
       image = tf.image.resize(
           image, (self._image_h, self._image_w), method='nearest')
-      inds = tf.cast(tf.range(0, tf.shape(boxes)[0]), tf.int64)
-      info = self._get_identity_info(image)
+      output_size = tf.cast([640, 640], tf.float32)
+      boxes_ = bbox_ops.denormalize_boxes(boxes, output_size)
+      inds = bbox_ops.get_non_empty_box_indices(boxes_)
+      boxes = tf.gather(boxes, inds)
+      classes = tf.gather(classes, inds)
+      info = self._pad_infos_object(image)
 
     # Apply scaling to the hue saturation and brightness of an image.
     image = tf.cast(image, dtype=self._dtype)
-    image = image / 255
+    image = image / 255.0
     image = preprocessing_ops.image_rand_hsv(
         image,
         self._aug_rand_hue,
@@ -331,30 +270,20 @@ class Parser(parser.Parser):
         darknet=self._darknet)
 
     # Cast the image to the selcted datatype.
-    image, labels = self._build_label(
-        image,
-        boxes,
-        classes,
-        self._image_w,
-        self._image_h,
-        info,
-        inds,
-        data,
-        is_training=True)
+    image, labels = self._build_label(image, boxes, classes, 
+                                      info, inds, data, is_training=True)
     return image, labels
 
   def _parse_eval_data(self, data):
-    # Down size coco 91 to coco 80 if the option is selected.
-    data = self.reorg91to80(data)
+    """Parses data for evaluation."""
 
     # Get the image shape constants and cast the image to the selcted datatype.
     image = tf.cast(data['image'], dtype=self._dtype)
     boxes = data['groundtruth_boxes']
     classes = data['groundtruth_classes']
 
-    height, width = self._image_h, self._image_w
     image, infos, _ = preprocessing_ops.resize_and_jitter_image(
-        image, [height, width],
+        image, [self._image_h, self._image_w],
         letter_box=self._letter_box,
         random_pad=False,
         shiftx=0.5,
@@ -362,7 +291,7 @@ class Parser(parser.Parser):
         jitter=0.0)
 
     # Clip and clean boxes.
-    image = image / 255
+    image = image / 255.0
     boxes, inds = preprocessing_ops.apply_infos(
         boxes, infos, shuffle_boxes=False, area_thresh=0.0, augment=True)
     classes = tf.gather(classes, inds)
@@ -372,8 +301,6 @@ class Parser(parser.Parser):
         image,
         boxes,
         classes,
-        width,
-        height,
         info,
         inds,
         data,
@@ -381,6 +308,7 @@ class Parser(parser.Parser):
     return image, labels
 
   def set_shape(self, values, pad_axis=0, pad_value=0, inds=None, scale=1):
+    """Calls set shape for all input objects."""
     if inds is not None:
       values = tf.gather(values, inds)
     vshape = values.get_shape().as_list()
@@ -396,8 +324,8 @@ class Parser(parser.Parser):
     values.set_shape(vshape)
     return values
 
-  def _build_grid(self, raw_true, width, height, use_tie_breaker=False):
-    '''Private function for building the full scale object and class grid.'''
+  def _build_grid(self, boxes, classes, width, height):
+    """Private function for building the full scale object and class grid."""
     indexes = {}
     updates = {}
     true_grids = {}
@@ -406,27 +334,19 @@ class Parser(parser.Parser):
       self._anchor_free_limits = [0.0] + self._anchor_free_limits + [np.inf]
 
     # for each prediction path generate a properly scaled output prediction map
-    for i, key in enumerate(self._masks.keys()):
+    for i, key in enumerate(self._anchors.keys()):
       if self._anchor_free_limits is not None:
         fpn_limits = self._anchor_free_limits[i:i + 2]
       else:
         fpn_limits = None
 
-      # build the actual grid as well and the list of boxes and classes AND
-      # their index in the prediction grid
       scale_xy = self._scale_xy[key] if not self._darknet else 1
-      (indexes[key], updates[key],
-       true_grids[key]) = preprocessing_ops.build_grided_gt_ind(
-           raw_true,
-           self._masks[key],
-           width // self._strides[str(key)],
-           height // self._strides[str(key)],
-           raw_true['bbox'].dtype,
-           scale_xy,
-           self._scale_up[key],
-           use_tie_breaker,
-           self._strides[str(key)],
-           fpn_limits=fpn_limits)
+
+      indexes[key], updates[key], true_grids[key] = self._label_builder(
+        key, boxes, classes, self._anchors[key], 
+        width, height, self._strides[str(key)],
+        scale_xy, self._max_num_instances * self._scale_up[key], 
+        fpn_limits = fpn_limits)
 
       # set/fix the shapes
       indexes[key] = self.set_shape(indexes[key], -2, None, None,
@@ -442,54 +362,39 @@ class Parser(parser.Parser):
                    image,
                    gt_boxes,
                    gt_classes,
-                   width,
-                   height,
                    info,
                    inds,
                    data,
                    is_training=True):
     """Label construction for both the train and eval data. """
+    width = self._image_w
+    height = self._image_h
+
     # Set the image shape.
     imshape = image.get_shape().as_list()
     imshape[-1] = 3
     image.set_shape(imshape)
-
-    # Get the best anchors.
-    boxes = box_utils.yxyx_to_xcycwh(gt_boxes)
-    best_anchors, ious = preprocessing_ops.get_best_anchor(
-        boxes,
-        self._anchors,
-        width=width,
-        height=height,
-        iou_thresh=self._anchor_t,
-        best_match_only=self._best_match_only)
+    
+    labels = dict()
+    labels['inds'], labels['upds'], labels['true_conf'] = self._build_grid(
+        gt_boxes, gt_classes, width, height)
 
     # Set/fix the boxes shape.
-    boxes = self.set_shape(boxes, pad_axis=0, pad_value=0)
+    boxes = self.set_shape(gt_boxes, pad_axis=0, pad_value=0)
     classes = self.set_shape(gt_classes, pad_axis=0, pad_value=-1)
-    best_anchors = self.set_shape(best_anchors, pad_axis=0, pad_value=-1)
-    ious = self.set_shape(ious, pad_axis=0, pad_value=0)
     area = self.set_shape(
         data['groundtruth_area'], pad_axis=0, pad_value=0, inds=inds)
     is_crowd = self.set_shape(
         data['groundtruth_is_crowd'], pad_axis=0, pad_value=0, inds=inds)
 
     # Build the dictionary set.
-    labels = {
+    labels.update({
         'source_id': utils.process_source_id(data['source_id']),
         'bbox': tf.cast(boxes, dtype=self._dtype),
         'classes': tf.cast(classes, dtype=self._dtype),
-        'best_anchors': tf.cast(best_anchors, dtype=self._dtype),
-        'best_iou_match': ious,
-    }
-
-    # Build the grid formatted for loss computation in model output format.
-    labels['inds'], labels['upds'], labels['true_conf'] = self._build_grid(
-        labels, width, height, use_tie_breaker=self._use_tie_breaker)
+    })
 
     # Update the labels dictionary.
-    labels['bbox'] = box_utils.xcycwh_to_yxyx(labels['bbox'])
-
     if not is_training:
       # Sets up groundtruth data for evaluation.
       groundtruths = {
@@ -509,3 +414,5 @@ class Parser(parser.Parser):
           groundtruths, self._max_num_instances)
       labels['groundtruths'] = groundtruths
     return image, labels
+
+

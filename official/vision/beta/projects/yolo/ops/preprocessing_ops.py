@@ -1,17 +1,3 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-"""Preproceesing operations for YOLO."""
 import tensorflow as tf
 import numpy as np
 import random
@@ -25,18 +11,19 @@ from official.vision.beta.ops import box_ops as bbox_ops
 PAD_VALUE = 114
 GLOBAL_SEED_SET = False
 
+
 def set_random_seeds(seed=0):
   """Sets all accessible global seeds to properly apply randomization.
 
-  This is not the same as passing seed as a variable to each call to tf.random.
-  For more, see the documentation for tf.random on the tensorflow website 
-  https://www.tensorflow.org/api_docs/python/tf/random/set_seed. Note that 
-  passing seed to each random number generator will not giv you the expected 
-  behavior IF you use more than one generator in a single function. 
+  This is not the same as passing the seed as a variable to each call 
+  to tf.random.For more, see the documentation for tf.random on the tensorflow 
+  website https://www.tensorflow.org/api_docs/python/tf/random/set_seed. Note 
+  that passing the seed to each random number generator will not give you the 
+  expected behavior if you use more than one generator in a single function.
 
   Args: 
     seed: `Optional[int]` representing the seed you want to use.
-  """
+  """  
   if seed is not None:
     global GLOBAL_SEED_SET
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -47,15 +34,16 @@ def set_random_seeds(seed=0):
 
 
 def get_pad_value():
+  """Return the padding value."""
   return PAD_VALUE
 
 
 def rand_uniform_strong(minval, maxval, dtype=tf.float32, seed=None, shape=[]):
-  """A unified fucntion for consistant random number generation. 
-
+  """A unified function for consistent random number generation. 
+  
   Equivalent to tf.random.uniform, except that minval and maxval are flipped if
   minval is greater than maxval. Seed Safe random number generator.
-
+  
   Args:
     minval: An `int` for a lower or upper endpoint of the interval from which to
       choose the random number.
@@ -63,8 +51,8 @@ def rand_uniform_strong(minval, maxval, dtype=tf.float32, seed=None, shape=[]):
     dtype: The output type of the tensor.
   
   Returns:
-    A random tensor of type dtype that falls between minval and maxval excluding
-    the bigger one.
+    A random tensor of type `dtype` that falls between `minval` and `maxval` 
+    excluding the larger one.
   """
   if GLOBAL_SEED_SET:
     seed = None
@@ -76,18 +64,18 @@ def rand_uniform_strong(minval, maxval, dtype=tf.float32, seed=None, shape=[]):
 
 
 def rand_scale(val, dtype=tf.float32, seed=None):
-  """Generate a random number for scaling a parameter by multiplication.
+  """Generates a random number for scaling a parameter by multiplication.
 
-  Generates a random number for the scale. Half the time, the value is between
-  [1.0, val) with uniformly distributed probability. The other half, the value
-  is the reciprocal of this value.
-  
-  The function is identical to the one in the original implementation:
+  Generates a random number for the scale. Half of the time, the value is 
+  between [1.0, val) with uniformly distributed probability. In the other half, 
+  the value is the reciprocal of this value. The function is identical to the 
+  one in the original implementation:
   https://github.com/AlexeyAB/darknet/blob/a3714d0a/src/utils.c#L708-L713
   
   Args:
     val: A float representing the maximum scaling allowed.
     dtype: The output type of the tensor.
+    
   Returns:
     The random scale.
   """
@@ -99,18 +87,19 @@ def rand_scale(val, dtype=tf.float32, seed=None):
 
 
 def pad_max_instances(value, instances, pad_value=0, pad_axis=0):
-  """Pad pr clip the tensor value to a fixed length along a given axis.
+  """Pad or clip the tensor value to a fixed length along a given axis.
 
-  Pad a dimension of the tensor to have a maximum number of instances filling
+  Pads a dimension of the tensor to have a maximum number of instances filling
   additional entries with the `pad_value`. Allows for selection of the padding 
-  axis
+  axis.
    
   Args:
     value: An input tensor.
-    instances: An int representing the maximum number of instances.
-    pad_value: An int representing the value used for padding until the maximum
-      number of instances is obtained.
-    pad_axis: An int representing the axis index to pad.
+    instances: An `int` representing the maximum number of instances.
+    pad_value: An `int` representing the value used for padding until the 
+      maximum number of instances is obtained.
+    pad_axis: An `int` representing the axis index to pad.
+  
   Returns:
     The output tensor whose dimensions match the input tensor except with the
     size along the `pad_axis` replaced by `instances`.
@@ -137,16 +126,17 @@ def pad_max_instances(value, instances, pad_value=0, pad_axis=0):
 
 
 def get_image_shape(image):
-  """ Consitently get the width and height of the image. 
+  """Consistently gets the width and height of the image.
   
-  Get the shape of the image regardless of if the image is in the
+  Gets the shape of the image regardless of if the image is in the
   (batch_size, x, y, c) format or the (x, y, c) format.
   
   Args:
     image: A tensor who has either 3 or 4 dimensions.
   
   Returns:
-    A tuple representing the (height, width) of the image.
+    A tuple (height, width), where height is the height of the image 
+    and width is the width of the image.
   """
   shape = tf.shape(image)
   if shape.get_shape().as_list()[0] == 4:
@@ -159,23 +149,7 @@ def get_image_shape(image):
 
 
 def _augment_hsv_darknet(image, rh, rs, rv, seed=None):
-  """Randomly alter the hue, saturation, and brightness of an image. 
-
-  Applies ranomdization the same way as Darknet by scaling the saturation and 
-  brightness of the image and adding/rotating the hue.
-
-  Args: 
-    image: Tensor of shape [None, None, 3] that needs to be altered.
-    rh: `float32` used to indicate the maximum delta that can be added to hue.
-    rs: `float32` used to indicate the maximum delta that can be multiplied to 
-      saturation.
-    rv: `float32` used to indicate the maximum delta that can be multiplied to 
-      brightness.
-    seed: `Optional[int]` for the seed to use in random number generation.
-  
-  Returns:
-    The HSV altered image in the same datatype as the input image
-  """
+  """Randomize the hue, saturation, and brightness via the darknet method."""
   if rh > 0.0:
     delta = rand_uniform_strong(-rh, rh, seed=seed)
     image = tf.image.adjust_hue(image, delta)
@@ -192,24 +166,7 @@ def _augment_hsv_darknet(image, rh, rs, rv, seed=None):
 
 
 def _augment_hsv_torch(image, rh, rs, rv, seed=None):
-  """Randomly alter the hue, saturation, and brightness of an image. 
-
-  Applies ranomdization the same way as Darknet by scaling the saturation and 
-  brightness and hue of the image.
-
-  Args: 
-    image: Tensor of shape [None, None, 3] that needs to be altered.
-    rh: `float32` used to indicate the maximum delta that can be  multiplied to 
-      hue.
-    rs: `float32` used to indicate the maximum delta that can be multiplied to 
-      saturation.
-    rv: `float32` used to indicate the maximum delta that can be multiplied to 
-      brightness.
-    seed: `Optional[int]` for the seed to use in random number generation.
-  
-  Returns:
-    The HSV altered image in the same datatype as the input image
-  """
+  """Randomize the hue, saturation, and brightness via the pytorch method."""
   dtype = image.dtype
   image = tf.cast(image, tf.float32)
   image = tf.image.rgb_to_hsv(image)
@@ -218,7 +175,6 @@ def _augment_hsv_torch(image, rh, rs, rv, seed=None):
   r = rand_uniform_strong(
       -1, 1, shape=[3], dtype=image.dtype, seed=seed) * gen_range + 1
 
-  # image = tf.cast(tf.cast(image, r.dtype) * (r * scale), tf.int32)
   image = tf.math.floor(tf.cast(image, scale.dtype) * scale)
   image = tf.math.floor(tf.cast(image, r.dtype) * r)
   h, s, v = tf.split(image, 3, axis=-1)
@@ -233,23 +189,24 @@ def _augment_hsv_torch(image, rh, rs, rv, seed=None):
 
 
 def image_rand_hsv(image, rh, rs, rv, seed=None, darknet=False):
-  """Randomly alter the hue, saturation, and brightness of an image. 
+  """Randomly alters the hue, saturation, and brightness of an image. 
 
   Args: 
-    image: Tensor of shape [None, None, 3] that needs to be altered.
-    rh: `float32` used to indicate the maximum delta that can be  multiplied to 
-      hue.
+    image: `Tensor` of shape [None, None, 3] that needs to be altered.
+    rh: `float32` used to indicate the maximum delta that can be multiplied to 
+      the hue.
     rs: `float32` used to indicate the maximum delta that can be multiplied to 
-      saturation.
+      the saturation.
     rv: `float32` used to indicate the maximum delta that can be multiplied to 
-      brightness.
-    seed: `Optional[int]` for the seed to use in random number generation.
-    darknet: `bool` indicating wether the model was orignally built in the 
-      darknet or the pytorch library.
+      the brightness.
+    seed: `Optional[int]` for the seed to use in the random number generation.
+    darknet: `bool` indicating whether the model was originally built in the 
+      Darknet or PyTorch library.
   
   Returns:
-    The HSV altered image in the same datatype as the input image
+    The HSV altered image in the same datatype as the input image.
   """
+
   if darknet:
     image = _augment_hsv_darknet(image, rh, rs, rv, seed=seed)
   else:
@@ -259,27 +216,27 @@ def image_rand_hsv(image, rh, rs, rv, seed=None, darknet=False):
 
 def mosaic_cut(image, original_width, original_height, width, height, center,
                ptop, pleft, pbottom, pright, shiftx, shifty):
-  """Use a provided center to take slices of 4 images to apply mosaic. 
+  """Generates a random center location to use for the mosaic operation. 
   
-  Given a center location, cut the input image into a slice that will be 
-  concatnated with other slices with the same center in order to construct 
-  a final mosaiced image. 
+  Given a center location, cuts the input image into a slice that will be 
+  concatenated with other slices with the same center in order to construct 
+  a final mosaicked image. 
   
   Args: 
-    image: Tensor of shape [None, None, 3] that needs to be altered.
-    original_width: `float` value indicating the orignal width of the image.
-    original_height: `float` value indicating the orignal height of the image.
-    width: `float` value indicating the final width image.
-    height: `float` value indicating the final height image.
+    image: `Tensor` of shape [None, None, 3] that needs to be altered.
+    ow: `float` value indicating the original width of the image.
+    oh: `float` value indicating the original height of the image.
+    w: `float` value indicating the final width of the image.
+    h: `float` value indicating the final height of the image.
     center: `float` value indicating the desired center of the final patched 
       image.
     ptop: `float` value indicating the top of the image without padding.
     pleft: `float` value indicating the left of the image without padding. 
     pbottom: `float` value indicating the bottom of the image without padding. 
     pright: `float` value indicating the right of the image without padding. 
-    shiftx: `float` 0.0 or 1.0 value indicating if the image is in the 
+    shiftx: `float` 0.0 or 1.0 value indicating if the image is on the 
       left or right.
-    shifty: `float` 0.0 or 1.0 value indicating if the image is in the 
+    shifty: `float` 0.0 or 1.0 value indicating if the image is at the 
       top or bottom.
   
   Returns:
@@ -362,6 +319,39 @@ def resize_and_jitter_image(image,
                             seed=None):
   """Resize, Pad, and distort a given input image following Darknet.
   
+  Resizes the input image to output size (RetinaNet style).
+  Resize and pad images given the desired output size of the image and
+  stride size.
+  Here are the preprocessing steps.
+  1. For a given image, keep its aspect ratio and rescale the image to make it
+     the largest rectangle to be bounded by the rectangle specified by the
+     `desired_size`.
+  2. Pad the rescaled image to the padded_size.
+  
+  Args:
+    image: a `Tensor` of shape [height, width, 3] representing an image.
+    desired_size: a `Tensor` or `int` list/tuple of two elements representing
+      [height, width] of the desired actual output image size.
+    padded_size: a `Tensor` or `int` list/tuple of two elements representing
+      [height, width] of the padded output image size. Padding will be applied
+      after scaling the image to the desired_size.
+    aug_scale_min: a `float` with range between [0, 1.0] representing minimum
+      random scale applied to desired_size for training scale jittering.
+    aug_scale_max: a `float` with range between [1.0, inf] representing maximum
+      random scale applied to desired_size for training scale jittering.
+    seed: seed for random scale jittering.
+    method: function to resize input image to scaled image.
+  
+  Returns:
+    output_image: `Tensor` of shape [height, width, 3] where [height, width]
+      equals to `output_size`.
+    image_info: a 2D `Tensor` that encodes the information of the image and the
+      applied preprocessing. It is in the format of
+      [[original_height, original_width], [desired_height, desired_width],
+       [y_scale, x_scale], [y_offset, x_offset]], where [desired_height,
+      desired_width] is the actual scaled image size, and [y_scale, x_scale] is
+      the scaling factor, which is the ratio of
+      scaled dimension / original dimension.
   """
 
   def intersection(a, b):
@@ -525,7 +515,7 @@ def _build_transform(image,
                      random_pad=False,
                      desired_size=None,
                      seed=None):
-  """Builds a unifed affine transformation to spatially augment the image."""
+  """Builds a unified affine transformation to spatially augment the image."""
 
   height, width = get_image_shape(image)
   ch = height = tf.cast(height, tf.float32)
@@ -624,6 +614,30 @@ def affine_warp_image(image,
                       translate=0.0,
                       random_pad=False,
                       seed=None):
+  """Applies random spatial augmentation to the image.
+ 
+  Args: 
+    image: A `Tensor` for the image.
+    desired_size: A `tuple` for desired output image size.
+    perspective: An `int` for the maximum that can be applied to random
+      perspective change.
+    degrees: An `int` for the maximum degrees that can be applied to random
+      rotation.
+    scale_min: An `int` for the minimum scaling factor that can be
+      applied to random scaling.
+    scale_max: An `int` for the maximum scaling factor that can be
+      applied to random scaling.
+    translate: An `int` for the maximum translation that can be applied to
+      random translation.
+    random_pad: A `bool` for using random padding.
+    seed: An `Optional[int]` for the seed to use in random number generation.
+ 
+  Returns:
+    image: A `Tensor` representing the augmented image.
+    affine_matrix: A `Tensor` representing the augmenting matrix for the image.
+    affine_info: A `List` containing the size of the original image, the desired 
+      output_size of the image and the augmenting matrix for the boxes.
+  """
 
   # Build an image transformation matrix.
   image_size = tf.cast(get_image_shape(image), tf.float32)
@@ -649,11 +663,30 @@ def affine_warp_image(image,
       interpolation='bilinear')
 
   desired_size = tf.cast(desired_size, tf.float32)
-  return image, affine_matrix, [image_size, desired_size, affine_boxes]
+  affine_info = [image_size, desired_size, affine_boxes]
+  return image, affine_matrix, affine_info
 
 
 # ops for box clipping and cleaning
 def affine_warp_boxes(affine, boxes, output_size, box_history):
+  """Applies random rotation, random perspective change and random translation 
+  and random scaling to the boxes.
+ 
+  Args:
+    Mb: A `Tensor` for the augmenting matrix for the boxes.
+    boxes: A `Tensor` for the boxes.
+    output_size: A `list` of two integers, a two-element vector or a tensor 
+      such that all but the last dimensions are `broadcastable` to `boxes`. 
+      The last dimension is 2, which represents [height, width].
+    box_history: A `Tensor` for the boxes history, which are the boxes that
+    	undergo the same augmentations as `boxes`, but no clipping was applied.
+    	We can keep track of how much changes are done to the boxes by keeping
+    	track of this tensor.
+  
+  Returns:
+    clipped_boxes: A `Tensor` representing the augmented boxes.
+    box_history: A `Tensor` representing the augmented box_history.
+  """
 
   def _get_corners(box):
     """Get the corner of each box as a tuple of (x, y) coordinates"""
@@ -705,6 +738,22 @@ def boxes_candidates(clipped_boxes,
                      wh_thr=2,
                      ar_thr=20,
                      area_thr=0.1):
+  """Filters the boxes and keeps the boxes that satisfy thewidth/height and 
+  area constraints.
+ 
+  Args:
+    clipped_boxes: A `Tensor` for the boxes.
+    box_history: A `Tensor` for the boxes history, which are the boxes that
+    	undergo the same augmentations as `boxes`, but no clipping was applied.
+    	We can keep track of how much changes are done to the boxes by keeping
+    	track of this tensor.
+    wh_thr: An `int` for the width/height threshold.
+    ar_thr: An `int` for the aspect ratio threshold.
+    area_thr: An `int` for the area threshold.
+  
+  Returns:
+    indices[:, 0]: A `Tensor` representing valid boxes after filtering.
+  """
 
   area_thr = tf.math.abs(area_thr)
 
@@ -743,6 +792,25 @@ def boxes_candidates(clipped_boxes,
 
 
 def resize_and_crop_boxes(boxes, image_scale, output_size, offset, box_history):
+  """Resizes and crops the boxes.
+ 
+  Args:
+    boxes: A `Tensor` for the boxes.
+    image_scale: A `Tensor` for the scaling factor of the image.
+    output_size: A `list` of two integers, a two-element vector or a tensor such
+      that all but the last dimensions are `broadcastable` to `boxes`. The last
+      dimension is 2, which represents [height, width].
+    offset: A `Tensor` for how much translation was applied to the image.
+    box_history: A `Tensor` for the boxes history, which are the boxes that
+      undergo the same augmentations as `boxes`, but no clipping was applied.
+      We can keep track of how much changes are done to the boxes by keeping
+      track of this tensor.
+  
+  Returns:
+    clipped_boxes: A `Tensor` representing the augmented boxes.
+    box_history: A `Tensor` representing the augmented box_history.
+  """
+
   # Shift and scale the input boxes.
   boxes *= tf.tile(tf.expand_dims(image_scale, axis=0), [1, 2])
   boxes -= tf.tile(tf.expand_dims(offset, axis=0), [1, 2])
@@ -763,6 +831,22 @@ def apply_infos(boxes,
                 area_thresh=0.1,
                 seed=None,
                 augment=True):
+  """Clips and cleans the boxes.
+ 
+  Args:
+    boxes: A `Tensor` for the boxes.
+    image_scale: A `list` that contains the information of the image.
+    affine: A `list` that contains parameters for resize and crop.
+    shuffle_boxes: A `bool` for shuffling the boxes.
+    area_thresh: An `int` for the area threshold.
+    seed: seed for random number generation.
+    augment: A `bool` for clipping the boxes to [0, 1].
+  
+  Returns:
+    boxes: A `Tensor` representing the augmented boxes.
+    ind: A `Tensor` valid box indices.
+  """
+
   # Clip and clean boxes.
   def get_valid_boxes(boxes):
     """Get indices for non-empty boxes."""
@@ -843,387 +927,3 @@ def apply_infos(boxes,
     inds = bbox_ops.get_non_empty_box_indices(boxes_)
   boxes = tf.gather(boxes, inds)
   return boxes, inds
-
-
-def _gen_viable_box_mask(boxes):
-  """Generate a mask to filter the boxes to only those with in the image. """
-  equal = tf.reduce_all(tf.math.less_equal(boxes[..., 2:4], 0), axis=-1)
-  lower_bound = tf.reduce_any(tf.math.less(boxes[..., 0:2], 0.0), axis=-1)
-  upper_bound = tf.reduce_any(
-      tf.math.greater_equal(boxes[..., 0:2], 1.0), axis=-1)
-
-  negative_mask = tf.logical_or(tf.logical_or(equal, lower_bound), upper_bound)
-  return tf.logical_not(negative_mask)
-
-
-def _get_box_locations(anchors, mask, boxes):
-  """Calculate the number of anchors associated with each ground truth box."""
-  box_mask = _gen_viable_box_mask(boxes)
-
-  mask = tf.reshape(mask, [1, 1, 1, -1])
-  box_mask = tf.reshape(box_mask, [-1, 1, 1])
-  anchors = tf.expand_dims(anchors, axis=-1)
-
-  # split the anchors into the best matches and other wise
-  anchors_primary, anchors_alternate = tf.split(anchors, [1, -1], axis=-2)
-  anchors_alternate = tf.concat(
-      [-tf.ones_like(anchors_primary), anchors_alternate], axis=-2)
-
-  # convert all the masks into index locations
-  viable_primary = tf.where(
-      tf.squeeze(tf.logical_and(box_mask, anchors_primary == mask), axis=0))
-  viable_alternate = tf.where(
-      tf.squeeze(tf.logical_and(box_mask, anchors_alternate == mask), axis=0))
-  viable_full = tf.where(
-      tf.squeeze(tf.logical_and(box_mask, anchors == mask), axis=0))
-
-  # compute the number of anchors associated with each ground truth box.
-  acheck = tf.reduce_any(anchors == mask, axis=-1)
-  repititions = tf.squeeze(
-      tf.reduce_sum(tf.cast(acheck, mask.dtype), axis=-1), axis=0)
-
-  # cast to int32
-  viable_primary = tf.cast(viable_primary, tf.int32)
-  viable_alternate = tf.cast(viable_alternate, tf.int32)
-  viable_full = tf.cast(viable_full, tf.int32)
-  return repititions, viable_primary, viable_alternate, viable_full
-
-
-def _write_sample(box, anchor_id, offset, sample, ind_val, ind_sample, height,
-                  width, num_written):
-  """Find the correct x,y indexs for each box in the output groundtruth."""
-
-  anchor_index = tf.convert_to_tensor([tf.cast(anchor_id, tf.int32)])
-  gain = tf.cast(tf.convert_to_tensor([width, height]), box.dtype)
-
-  y = box[1] * height
-  x = box[0] * width
-
-  y_index = tf.convert_to_tensor([tf.cast(y, tf.int32)])
-  x_index = tf.convert_to_tensor([tf.cast(x, tf.int32)])
-  grid_idx = tf.concat([y_index, x_index, anchor_index], axis=-1)
-  ind_val = ind_val.write(num_written, grid_idx)
-  ind_sample = ind_sample.write(num_written, sample)
-  num_written += 1
-
-  if offset > 0:
-    offset = tf.cast(offset, x.dtype)
-    grid_xy = tf.cast(tf.convert_to_tensor([x, y]), x.dtype)
-    clamp = lambda x, ma: tf.maximum(
-        tf.minimum(x, tf.cast(ma, x.dtype)), tf.zeros_like(x))
-
-    grid_xy_index = grid_xy - tf.floor(grid_xy)
-    positive_shift = ((grid_xy_index < offset) & (grid_xy > 1.))
-    negative_shift = ((grid_xy_index > (1 - offset)) & (grid_xy < (gain - 1.)))
-
-    shifts = [
-        positive_shift[0], positive_shift[1], negative_shift[0],
-        negative_shift[1]
-    ]
-    offset = tf.cast([[1, 0], [0, 1], [-1, 0], [0, -1]], offset.dtype) * offset
-
-    for i in range(4):
-      if shifts[i]:
-        x_index = tf.convert_to_tensor([tf.cast(x - offset[i, 0], tf.int32)])
-        y_index = tf.convert_to_tensor([tf.cast(y - offset[i, 1], tf.int32)])
-        grid_idx = tf.concat([
-            clamp(y_index, height - 1),
-            clamp(x_index, width - 1), anchor_index
-        ],
-                             axis=-1)
-        ind_val = ind_val.write(num_written, grid_idx)
-        ind_sample = ind_sample.write(num_written, sample)
-        num_written += 1
-  return ind_val, ind_sample, num_written
-
-
-def _write_grid(viable, num_reps, boxes, classes, ious, ind_val, ind_sample,
-                height, width, num_written, num_instances, offset):
-  """Iterate all viable anchor boxes and write each sample to groundtruth."""
-
-  const = tf.cast(tf.convert_to_tensor([1.]), dtype=boxes.dtype)
-  num_viable = tf.shape(viable)[0]
-  for val in range(num_viable):
-    idx = viable[val]
-    obj_id, anchor, anchor_idx = idx[0], idx[1], idx[2]
-    if num_written >= num_instances:
-      break
-
-    reps = tf.convert_to_tensor([num_reps[obj_id]])
-    box = boxes[obj_id]
-    cls_ = classes[obj_id]
-    iou = tf.convert_to_tensor([ious[obj_id, anchor]])
-    sample = tf.concat([box, const, cls_, iou, reps], axis=-1)
-
-    ind_val, ind_sample, num_written = _write_sample(box, anchor_idx, offset,
-                                                     sample, ind_val,
-                                                     ind_sample, height, width,
-                                                     num_written)
-  return ind_val, ind_sample, num_written
-
-
-def _write_anchor_free_grid(boxes,
-                            classes,
-                            height,
-                            width,
-                            num_written,
-                            stride,
-                            fpn_limits,
-                            center_radius=2.5):
-  """Iterate all boxes and write to grid without anchors boxes."""
-  gen = loss_utils.GridGenerator(
-      masks=None, anchors=[[1, 1]], scale_anchors=stride)
-  grid_points = gen(width, height, 1, boxes.dtype)[0]
-  grid_points = tf.squeeze(grid_points, axis=0)
-  box_list = boxes
-  class_list = classes
-
-  grid_points = (grid_points + 0.5) * stride
-  x_centers, y_centers = grid_points[..., 0], grid_points[..., 1]
-  boxes *= (tf.convert_to_tensor([width, height, width, height]) * stride)
-  tlbr_boxes = box_ops.xcycwh_to_yxyx(boxes)
-
-  boxes = tf.reshape(boxes, [1, 1, -1, 4])
-  tlbr_boxes = tf.reshape(tlbr_boxes, [1, 1, -1, 4])
-  mask = tf.reshape(class_list != -1, [1, 1, -1])
-
-  # check if the box is in the receptive feild of the this fpn level
-  b_t = y_centers - tlbr_boxes[..., 0]
-  b_l = x_centers - tlbr_boxes[..., 1]
-  b_b = tlbr_boxes[..., 2] - y_centers
-  b_r = tlbr_boxes[..., 3] - x_centers
-  box_delta = tf.stack([b_t, b_l, b_b, b_r], axis=-1)
-  if fpn_limits is not None:
-    max_reg_targets_per_im = tf.reduce_max(box_delta, axis=-1)
-    gt_min = max_reg_targets_per_im >= fpn_limits[0]
-    gt_max = max_reg_targets_per_im <= fpn_limits[1]
-    is_in_boxes = tf.logical_and(gt_min, gt_max)
-  else:
-    is_in_boxes = tf.reduce_min(box_delta, axis=-1) > 0.0
-  is_in_boxes = tf.logical_and(is_in_boxes, mask)
-  is_in_boxes_all = tf.reduce_any(is_in_boxes, axis=(0, 1), keepdims=True)
-
-  # check if the center is in the receptive feild of the this fpn level
-  c_t = y_centers - (boxes[..., 1] - center_radius * stride)
-  c_l = x_centers - (boxes[..., 0] - center_radius * stride)
-  c_b = (boxes[..., 1] + center_radius * stride) - y_centers
-  c_r = (boxes[..., 0] + center_radius * stride) - x_centers
-  centers_delta = tf.stack([c_t, c_l, c_b, c_r], axis=-1)
-  is_in_centers = tf.reduce_min(centers_delta, axis=-1) > 0.0
-  is_in_centers = tf.logical_and(is_in_centers, mask)
-  is_in_centers_all = tf.reduce_any(is_in_centers, axis=(0, 1), keepdims=True)
-
-  # colate all masks to get the final locations
-  is_in_index = tf.logical_or(is_in_boxes_all, is_in_centers_all)
-  is_in_boxes_and_center = tf.logical_and(is_in_boxes, is_in_centers)
-  is_in_boxes_and_center = tf.logical_and(is_in_index, is_in_boxes_and_center)
-
-  # construct the index update grid
-  reps = tf.reduce_sum(tf.cast(is_in_boxes_and_center, tf.int16), axis=-1)
-  indexes = tf.cast(tf.where(is_in_boxes_and_center), tf.int32)
-  y, x, t = tf.split(indexes, 3, axis=-1)
-
-  boxes = tf.gather_nd(box_list, t)
-  classes = tf.cast(tf.gather_nd(class_list, t), boxes.dtype)
-  reps = tf.gather_nd(reps, tf.concat([y, x], axis=-1))
-  reps = tf.cast(tf.expand_dims(reps, axis=-1), boxes.dtype)
-  conf = tf.ones_like(classes)
-
-  # return the samples and the indexes
-  samples = tf.concat([boxes, conf, classes, conf, reps], axis=-1)
-  indexes = tf.concat([y, x, tf.zeros_like(t)], axis=-1)
-  num_written = tf.shape(reps)[0]
-  return indexes, samples, num_written
-
-
-def build_grided_gt_ind(y_true,
-                        mask,
-                        sizew,
-                        sizeh,
-                        dtype,
-                        scale_xy,
-                        scale_num_inst,
-                        use_tie_breaker,
-                        stride,
-                        fpn_limits=None):
-  """Convert ground truth for use in loss functions.
-  
-  Args:
-    y_true: tf.Tensor[] ground truth
-      [batch, box coords[0:4], classes_onehot[0:-1], best_fit_anchor_box]
-    mask: list of the anchor boxes choresponding to the output,
-      ex. [1, 2, 3] tells this layer to predict only the first 3 anchors
-      in the total.
-    size: the dimensions of this output, for regular, it progresses from
-      13, to 26, to 52
-    num_classes: `integer` for the number of classes
-    dtype: expected output datatype
-    scale_xy: A `float` to represent the amount the boxes are scaled in the
-      loss function.
-    scale_num_inst: A `float` to represent the scale at which to multiply the
-      number of predicted boxes by to get the number of instances to write
-      to the grid.
-  Return:
-    tf.Tensor[] of shape [batch, size, size, #of_anchors, 4, 1, num_classes]
-  """
-  # unpack required components from the input ground truth
-  boxes = tf.cast(y_true['bbox'], dtype)
-  classes = tf.expand_dims(tf.cast(y_true['classes'], dtype=dtype), axis=-1)
-  anchors = tf.cast(y_true['best_anchors'], dtype)
-  ious = tf.cast(y_true['best_iou_match'], dtype)
-
-  width = tf.cast(sizew, boxes.dtype)
-  height = tf.cast(sizeh, boxes.dtype)
-  # get the number of anchor boxes used for this anchor scale
-  len_masks = len(mask)
-  # number of anchors
-  num_instances = tf.shape(boxes)[-2] * scale_num_inst
-
-  # rescale the x and y centers to the size of the grid [size, size]
-  pull_in = tf.cast(0.5 * (scale_xy - 1), boxes.dtype)
-  mask = tf.cast(mask, dtype=dtype)
-  num_reps, viable_primary, viable_alternate, viable = _get_box_locations(
-      anchors, mask, boxes)
-
-  # tensor arrays for tracking samples
-  num_written = 0
-
-  if fpn_limits is not None:
-    (indexes, samples,
-     num_written) = _write_anchor_free_grid(boxes, classes, height, width,
-                                            num_written, stride, fpn_limits)
-  else:
-    ind_val = tf.TensorArray(
-        tf.int32, size=0, dynamic_size=True, element_shape=[
-            3,
-        ])
-    ind_sample = tf.TensorArray(
-        dtype, size=0, dynamic_size=True, element_shape=[
-            8,
-        ])
-
-    if pull_in > 0.0:
-      (ind_val, ind_sample,
-       num_written) = _write_grid(viable, num_reps, boxes, classes, ious,
-                                  ind_val, ind_sample, height, width,
-                                  num_written, num_instances, pull_in)
-    else:
-      (ind_val, ind_sample,
-       num_written) = _write_grid(viable_primary, num_reps, boxes, classes,
-                                  ious, ind_val, ind_sample, height, width,
-                                  num_written, num_instances, 0.0)
-
-      if use_tie_breaker:
-        (ind_val, ind_sample,
-         num_written) = _write_grid(viable_alternate, num_reps, boxes, classes,
-                                    ious, ind_val, ind_sample, height, width,
-                                    num_written, num_instances, 0.0)
-    indexes = ind_val.stack()
-    samples = ind_sample.stack()
-
-  (_, ind_mask, _, _, num_reps) = tf.split(samples, [4, 1, 1, 1, 1], axis=-1)
-  full = tf.zeros([sizeh, sizew, len_masks, 1], dtype=dtype)
-  full = tf.tensor_scatter_nd_add(full, indexes, ind_mask)
-
-  if num_written >= num_instances:
-    tf.print("clipped")
-
-  indexs = pad_max_instances(indexes, num_instances, pad_value=0, pad_axis=0)
-  samples = pad_max_instances(samples, num_instances, pad_value=0, pad_axis=0)
-  return indexs, samples, full
-
-
-def get_best_anchor(y_true,
-                    anchors,
-                    width=1,
-                    height=1,
-                    iou_thresh=0.25,
-                    best_match_only=False):
-  """
-  get the correct anchor that is assoiciated with each box using IOU
-  
-  Args:
-    y_true: tf.Tensor[] for the list of bounding boxes in the yolo format
-    anchors: list or tensor for the anchor boxes to be used in prediction
-      found via Kmeans
-    width: int for the image width
-    height: int for the image height
-  Return:
-    tf.Tensor: y_true with the anchor associated with each ground truth
-    box known
-  """
-  with tf.name_scope('get_best_anchor'):
-    is_batch = True
-    ytrue_shape = y_true.get_shape()
-    if ytrue_shape.ndims == 2:
-      is_batch = False
-      y_true = tf.expand_dims(y_true, 0)
-    elif ytrue_shape.ndims is None:
-      is_batch = False
-      y_true = tf.expand_dims(y_true, 0)
-      y_true.set_shape([None] * 3)
-    elif ytrue_shape.ndims != 3:
-      raise ValueError('\'box\' (shape %s) must have either 3 or 4 dimensions.')
-
-    width = tf.cast(width, dtype=tf.float32)
-    height = tf.cast(height, dtype=tf.float32)
-    scaler = tf.convert_to_tensor([width, height])
-
-    true_wh = tf.cast(y_true[..., 2:4], dtype=tf.float32) * scaler
-    anchors = tf.cast(anchors, dtype=tf.float32)
-    k = tf.shape(anchors)[0]
-
-    anchors = tf.expand_dims(
-        tf.concat([tf.zeros_like(anchors), anchors], axis=-1), axis=0)
-    truth_comp = tf.concat([tf.zeros_like(true_wh), true_wh], axis=-1)
-
-    if iou_thresh >= 1.0:
-      anchors = tf.expand_dims(anchors, axis=-2)
-      truth_comp = tf.expand_dims(truth_comp, axis=-3)
-
-      aspect = truth_comp[..., 2:4] / anchors[..., 2:4]
-      aspect = tf.where(tf.math.is_nan(aspect), tf.zeros_like(aspect), aspect)
-      aspect = tf.maximum(aspect, 1 / aspect)
-      aspect = tf.where(tf.math.is_nan(aspect), tf.zeros_like(aspect), aspect)
-      aspect = tf.reduce_max(aspect, axis=-1)
-
-      values, indexes = tf.math.top_k(
-          tf.transpose(-aspect, perm=[0, 2, 1]),
-          k=tf.cast(k, dtype=tf.int32),
-          sorted=True)
-      values = -values
-      ind_mask = tf.cast(values < iou_thresh, dtype=indexes.dtype)
-    else:
-      # iou_raw = box_ops.compute_iou(truth_comp, anchors)
-      truth_comp = box_ops.xcycwh_to_yxyx(truth_comp)
-      anchors = box_ops.xcycwh_to_yxyx(anchors)
-      iou_raw = box_ops.aggregated_comparitive_iou(
-          truth_comp,
-          anchors,
-          iou_type=3,
-      )
-      values, indexes = tf.math.top_k(
-          iou_raw,  #tf.transpose(iou_raw, perm=[0, 2, 1]),
-          k=tf.cast(k, dtype=tf.int32),
-          sorted=True)
-      ind_mask = tf.cast(values >= iou_thresh, dtype=indexes.dtype)
-
-    # pad the indexs such that all values less than the thresh are -1
-    # add one, multiply the mask to zeros all the bad locations
-    # subtract 1 makeing all the bad locations 0.
-    if best_match_only:
-      iou_index = ((indexes[..., 0:] + 1) * ind_mask[..., 0:]) - 1
-    else:
-      iou_index = tf.concat([
-          tf.expand_dims(indexes[..., 0], axis=-1),
-          ((indexes[..., 1:] + 1) * ind_mask[..., 1:]) - 1
-      ],
-                            axis=-1)
-
-    true_prod = tf.reduce_prod(true_wh, axis=-1, keepdims=True)
-    iou_index = tf.where(true_prod > 0, iou_index, tf.zeros_like(iou_index) - 1)
-
-    if not is_batch:
-      iou_index = tf.squeeze(iou_index, axis=0)
-      values = tf.squeeze(values, axis=0)
-  return tf.cast(iou_index, dtype=tf.float32), tf.cast(values, dtype=tf.float32)
