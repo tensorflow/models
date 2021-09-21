@@ -317,42 +317,7 @@ def resize_and_jitter_image(image,
                             cut=None,
                             method=tf.image.ResizeMethod.BILINEAR,
                             seed=None):
-  """Resize, Pad, and distort a given input image following Darknet.
-  
-  Resizes the input image to output size (RetinaNet style).
-  Resize and pad images given the desired output size of the image and
-  stride size.
-  Here are the preprocessing steps.
-  1. For a given image, keep its aspect ratio and rescale the image to make it
-     the largest rectangle to be bounded by the rectangle specified by the
-     `desired_size`.
-  2. Pad the rescaled image to the padded_size.
-  
-  Args:
-    image: a `Tensor` of shape [height, width, 3] representing an image.
-    desired_size: a `Tensor` or `int` list/tuple of two elements representing
-      [height, width] of the desired actual output image size.
-    padded_size: a `Tensor` or `int` list/tuple of two elements representing
-      [height, width] of the padded output image size. Padding will be applied
-      after scaling the image to the desired_size.
-    aug_scale_min: a `float` with range between [0, 1.0] representing minimum
-      random scale applied to desired_size for training scale jittering.
-    aug_scale_max: a `float` with range between [1.0, inf] representing maximum
-      random scale applied to desired_size for training scale jittering.
-    seed: seed for random scale jittering.
-    method: function to resize input image to scaled image.
-  
-  Returns:
-    output_image: `Tensor` of shape [height, width, 3] where [height, width]
-      equals to `output_size`.
-    image_info: a 2D `Tensor` that encodes the information of the image and the
-      applied preprocessing. It is in the format of
-      [[original_height, original_width], [desired_height, desired_width],
-       [y_scale, x_scale], [y_offset, x_offset]], where [desired_height,
-      desired_width] is the actual scaled image size, and [y_scale, x_scale] is
-      the scaling factor, which is the ratio of
-      scaled dimension / original dimension.
-  """
+  """WIP"""
 
   def intersection(a, b):
     minx = tf.maximum(a[0], b[0])
