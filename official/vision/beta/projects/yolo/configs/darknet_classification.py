@@ -29,13 +29,14 @@ from official.vision.beta.projects.yolo.configs import backbones
 @dataclasses.dataclass
 class ImageClassificationModel(hyperparams.Config):
   num_classes: int = 0
-  input_size: List[int] = dataclasses.field(default_factory=list)
+  input_size: List[int] = dataclasses.field(default_factory=lambda:[224, 224])
   backbone: backbones.Backbone = backbones.Backbone(
       type='darknet', darknet=backbones.Darknet())
   dropout_rate: float = 0.0
   norm_activation: common.NormActivation = common.NormActivation()
   # Adds a Batch Normalization layer pre-GlobalAveragePooling in classification.
   add_head_batch_norm: bool = False
+  kernel_initializer: str = 'VarianceScaling'
 
 
 @dataclasses.dataclass
@@ -56,7 +57,6 @@ class ImageClassificationTask(cfg.TaskConfig):
   gradient_clip_norm: float = 0.0
   logging_dir: Optional[str] = None
 
-
 @exp_factory.register_config_factory('darknet_classification')
 def darknet_classification() -> cfg.ExperimentConfig:
   """Image classification general."""
@@ -67,3 +67,4 @@ def darknet_classification() -> cfg.ExperimentConfig:
           'task.train_data.is_training != None',
           'task.validation_data.is_training != None'
       ])
+

@@ -1,109 +1,92 @@
-"""Classification parser."""
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# Import libraries
+"""Classification decoder and parser."""
 import tensorflow as tf
-import tensorflow_datasets as tfds
-import tensorflow_addons as tfa
-
-from official.vision.beta.dataloaders import parser
+from official.vision.beta.dataloaders import classification_input
 from official.vision.beta.ops import preprocess_ops
-from official.vision.beta.ops import augment
 
 
-class Parser(parser.Parser):
+class Parser(classification_input.Parser):
   """Parser to parse an image and its annotations into a dictionary of tensors."""
 
-  def __init__(self,
-               output_size,
-               aug_policy,
-               scale=[128, 448],
-               dtype='float32'):
-    """Initializes parameters for parsing annotations in the dataset.
+  def _parse_train_image(self, decoded_tensors):
+    """Parses image data for training."""
+    image_bytes = decoded_tensors[self._image_field_key]
 
-    Args:
-      output_size: `Tensor` or `list` for [height, width] of output image. The
-        output_size should be divided by the largest feature stride 2^max_level.
-      num_classes: `float`, number of classes.
-      aug_policy: An optional Augmentation object to choose from AutoAugment and
-        RandAugment.
-      scale: A `List[int]`, minimum and maximum image shape range.
-      dtype: `str`, cast output image in dtype. It can be 'float32', 'float16',
-        or 'bfloat16'.
-    """
-    self._output_size = output_size
-    if aug_policy:
-      if aug_policy == 'autoaug':
-        self._augmenter = augment.AutoAugment()
-      elif aug_policy == 'randaug':
-        self._augmenter = augment.RandAugment(num_layers=2, magnitude=20)
-      else:
-        raise ValueError(
-            'Augmentation policy {} not supported.'.format(aug_policy))
+    if self._decode_jpeg_only:
+      image_shape = tf.image.extract_jpeg_shape(image_bytes)
+
+      # Crops image.
+      cropped_image = preprocess_ops.random_crop_image_v2(
+          image_bytes, image_shape)
+      image = tf.cond(
+          tf.reduce_all(tf.equal(tf.shape(cropped_image), image_shape)),
+          lambda: preprocess_ops.center_crop_image_v2(image_bytes, image_shape),
+          lambda: cropped_image)
     else:
-      self._augmenter = None
+      # Decodes image.
+      image = tf.io.decode_image(image_bytes, channels=3)
+      image.set_shape([None, None, 3])
 
-    self._scale = scale
-    if dtype == 'float32':
-      self._dtype = tf.float32
-    elif dtype == 'float16':
-      self._dtype = tf.float16
-    elif dtype == 'bfloat16':
-      self._dtype = tf.bfloat16
-    else:
-      raise ValueError('dtype {!r} is not supported!'.format(dtype))
+      # Crops image.
+      cropped_image = preprocess_ops.random_crop_image(image)
 
-  def _parse_train_data(self, decoded_tensors):
-    """Generates images and labels that are usable for model training.
-     Args:
-       decoded_tensors: a dict of Tensors produced by the decoder.
-     Returns:
-       images: the image tensor.
-       labels: a dict of Tensors that contains labels.
-    """
-    image = tf.io.decode_image(decoded_tensors['image/encoded'])
-    image.set_shape((None, None, 3))
+      image = tf.cond(
+          tf.reduce_all(tf.equal(tf.shape(cropped_image), tf.shape(image))),
+          lambda: preprocess_ops.center_crop_image(image),
+          lambda: cropped_image)
 
-    image = tf.image.resize_with_pad(
-        image,
-        target_width=self._output_size[0],
-        target_height=self._output_size[1])
+    if self._aug_rand_hflip:
+      image = tf.image.random_flip_left_right(image)
 
-    scale = tf.random.uniform([],
-                              minval=self._scale[0],
-                              maxval=self._scale[1],
-                              dtype=tf.int32)
-    if scale > self._output_size[0]:
-      image = tf.image.resize_with_crop_or_pad(
-          image, target_height=scale, target_width=scale)
-    else:
-      image = tf.image.random_crop(image, (scale, scale, 3))
+    # Resizes image.
+    image = tf.image.resize(
+        image, self._output_size, method=tf.image.ResizeMethod.BILINEAR)
+    image.set_shape([self._output_size[0], self._output_size[1], 3])
 
+    # Apply autoaug or randaug.
     if self._augmenter is not None:
       image = self._augmenter.distort(image)
 
-    image = tf.image.random_flip_left_right(image)
-    image = tf.cast(image, tf.float32) / 255
-    image = tf.image.resize(image, (self._output_size[0], self._output_size[1]))
+    # Convert image to self._dtype.
+    image = tf.image.convert_image_dtype(image, self._dtype)
+    image = image/255.0
+    return image
 
-    label = decoded_tensors['image/class/label']
-    return image, label
+  def _parse_eval_image(self, decoded_tensors):
+    """Parses image data for evaluation."""
+    image_bytes = decoded_tensors[self._image_field_key]
 
-  def _parse_eval_data(self, decoded_tensors):
-    """Generates images and labels that are usable for model evaluation.
-    Args:
-      decoded_tensors: a dict of Tensors produced by the decoder.
-    Returns:
-      images: the image tensor.
-      labels: a dict of Tensors that contains labels.
-    """
-    image = tf.io.decode_image(decoded_tensors['image/encoded'])
-    image.set_shape((None, None, 3))
-    image = tf.cast(image, tf.float32)
-    image = tf.image.resize_with_pad(
-        image,
-        target_width=self._output_size[0],
-        target_height=self._output_size[1])  # Final Output Shape
-    image = image / 255.  # Normalize
-    #label = tf.one_hot(decoded_tensors['image/class/label'], self._num_classes)
-    label = decoded_tensors['image/class/label']
-    return image, label
+    if self._decode_jpeg_only:
+      image_shape = tf.image.extract_jpeg_shape(image_bytes)
+
+      # Center crops.
+      image = preprocess_ops.center_crop_image_v2(image_bytes, image_shape)
+    else:
+      # Decodes image.
+      image = tf.io.decode_image(image_bytes, channels=3)
+      image.set_shape([None, None, 3])
+
+      # Center crops.
+      image = preprocess_ops.center_crop_image(image)
+
+    image = tf.image.resize(
+        image, self._output_size, method=tf.image.ResizeMethod.BILINEAR)
+    image.set_shape([self._output_size[0], self._output_size[1], 3])
+
+    # Convert image to self._dtype.
+    image = tf.image.convert_image_dtype(image, self._dtype)
+    image = image/255.0
+    return image
