@@ -51,8 +51,6 @@ def build_classification_model(
       norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
 
-  print(backbone)
-
   model = classification_model.ClassificationModel(
       backbone=backbone,
       num_classes=model_config.num_classes,

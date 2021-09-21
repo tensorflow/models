@@ -15,6 +15,7 @@
 # ==============================================================================
 """Image classification task definition."""
 
+
 from official.core import task_factory
 from official.vision.beta.projects.yolo.configs import darknet_classification as exp_cfg
 
