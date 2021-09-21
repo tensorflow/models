@@ -77,7 +77,6 @@ class DataConfig(maskrcnn.DataConfig):
 class PanopticSegmentationGenerator(hyperparams.Config):
   output_size: List[int] = dataclasses.field(
       default_factory=list)
-  stuff_classes_offset: int = 0
   mask_binarize_threshold: float = 0.5
   score_threshold: float = 0.05
   things_class_label: int = 1
@@ -93,9 +92,9 @@ class PanopticMaskRCNN(maskrcnn.MaskRCNN):
   include_mask = True
   shared_backbone: bool = True
   shared_decoder: bool = True
+  stuff_classes_offset: int = 0
   generate_panoptic_masks: bool = True
-  panoptic_segmentation_generator: PanopticSegmentationGenerator = \
-      PanopticSegmentationGenerator()
+  panoptic_segmentation_generator: PanopticSegmentationGenerator = PanopticSegmentationGenerator()
 
 
 @dataclasses.dataclass
@@ -176,8 +175,8 @@ def panoptic_maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
           model=PanopticMaskRCNN(
               num_classes=91, input_size=[1024, 1024, 3],
               panoptic_segmentation_generator=PanopticSegmentationGenerator(
-                  output_size=[1024, 1024],
-                  stuff_classes_offset=90),
+                  output_size=[1024, 1024]),
+              stuff_classes_offset=90,
               segmentation_model=SEGMENTATION_MODEL(
                   num_classes=num_semantic_segmentation_classes,
                   head=SEGMENTATION_HEAD(level=3))),

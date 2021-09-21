@@ -100,7 +100,7 @@ def build_panoptic_maskrcnn(
         panoptic_segmentation_generator.PanopticSegmentationGenerator(
             output_size=postprocessing_config.output_size,
             max_num_detections=max_num_detections,
-            stuff_classes_offset=postprocessing_config.stuff_classes_offset,
+            stuff_classes_offset=model_config.stuff_classes_offset,
             mask_binarize_threshold=mask_binarize_threshold,
             score_threshold=postprocessing_config.score_threshold,
             things_class_label=postprocessing_config.things_class_label,
