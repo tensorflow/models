@@ -320,6 +320,7 @@ def resize_and_jitter_image(image,
   """WIP"""
 
   def intersection(a, b):
+    """Find the intersection of 2 crop boxes."""
     minx = tf.maximum(a[0], b[0])
     miny = tf.maximum(a[1], b[1])
     maxx = tf.minimum(a[2], b[2])
@@ -327,6 +328,7 @@ def resize_and_jitter_image(image,
     return tf.convert_to_tensor([minx, miny, maxx, maxy])
 
   def cast(values, dtype):
+    """Cast a list of items to a givne data type to reduce lines of code"""
     return [tf.cast(value, dtype) for value in values]
 
   if jitter > 0.5 or jitter < 0:
