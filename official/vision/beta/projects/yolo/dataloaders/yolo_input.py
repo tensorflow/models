@@ -19,7 +19,7 @@ class Parser(parser.Parser):
       output_size,
       anchors,
       expanded_strides,
-      anchor_free_limits=None,
+      level_limit=None,
       max_num_instances=200,
       area_thresh=0.1,
       aug_rand_hue=1.0,
@@ -49,7 +49,7 @@ class Parser(parser.Parser):
       anchors: `Dict[List[Union[int, float]]]` values for each anchor box.
       expanded_strides: `Dict[int]` for how much the model scales down the 
         images at the largest level.
-      anchor_free_limits: `List` the box sizes that will be allowed at each FPN 
+      level_limit: `List` the box sizes that will be allowed at each FPN 
         level as is done in the FCOS and YOLOX paper for anchor free box 
         assignment. Anchor free will perform worse than Anchor based, but only 
         slightly.
@@ -117,7 +117,7 @@ class Parser(parser.Parser):
 
     # Set the anchor boxes for each scale
     self._anchors = anchors
-    self._anchor_free_limits = anchor_free_limits
+    self._level_limit = level_limit
 
     # anchor labeling paramters
     self._use_tie_breaker = use_tie_breaker
@@ -150,7 +150,7 @@ class Parser(parser.Parser):
 
     keys = list(self._anchors.keys())
 
-    if self._anchor_free_limits is not None:
+    if self._level_limit is not None:
       maxim = 2000
       self._scale_up = {key: maxim // self._max_num_instances for key in keys}
       self._anchor_t = -0.01
@@ -330,13 +330,13 @@ class Parser(parser.Parser):
     updates = {}
     true_grids = {}
 
-    if self._anchor_free_limits is not None:
-      self._anchor_free_limits = [0.0] + self._anchor_free_limits + [np.inf]
+    if self._level_limit is not None:
+      self._level_limit = [0.0] + self._level_limit + [np.inf]
 
     # for each prediction path generate a properly scaled output prediction map
     for i, key in enumerate(self._anchors.keys()):
-      if self._anchor_free_limits is not None:
-        fpn_limits = self._anchor_free_limits[i:i + 2]
+      if self._level_limit is not None:
+        fpn_limits = self._level_limit[i:i + 2]
       else:
         fpn_limits = None
 
