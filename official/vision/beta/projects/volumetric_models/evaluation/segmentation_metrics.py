@@ -133,3 +133,4 @@ class DiceScore:
     if self._per_class_metric:
       for class_id in range(self._num_classes):
         self._dice_scores_per_class[class_id] = tf.Variable(0.0)
+        self._count_per_class[class_id] = tf.Variable(0.0)
