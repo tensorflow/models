@@ -811,29 +811,29 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
                             {'provide_keypoint_score': False})
   def test_prediction_to_multi_instance_keypoints(self, provide_keypoint_score):
     image_size = (9, 9)
-    keypoint_heatmap_np = np.zeros((1, image_size[0], image_size[1], 3, 4),
+    keypoint_heatmap_np = np.zeros((image_size[0], image_size[1], 3, 4),
                                    dtype=np.float32)
     # Instance 0.
-    keypoint_heatmap_np[0, 1, 1, 0, 0] = 0.9
-    keypoint_heatmap_np[0, 1, 7, 0, 1] = 0.9
-    keypoint_heatmap_np[0, 7, 1, 0, 2] = 0.9
-    keypoint_heatmap_np[0, 7, 7, 0, 3] = 0.9
+    keypoint_heatmap_np[1, 1, 0, 0] = 0.9
+    keypoint_heatmap_np[1, 7, 0, 1] = 0.9
+    keypoint_heatmap_np[7, 1, 0, 2] = 0.9
+    keypoint_heatmap_np[7, 7, 0, 3] = 0.9
     # Instance 1.
-    keypoint_heatmap_np[0, 2, 2, 1, 0] = 0.8
-    keypoint_heatmap_np[0, 2, 8, 1, 1] = 0.8
-    keypoint_heatmap_np[0, 8, 2, 1, 2] = 0.8
-    keypoint_heatmap_np[0, 8, 8, 1, 3] = 0.8
+    keypoint_heatmap_np[2, 2, 1, 0] = 0.8
+    keypoint_heatmap_np[2, 8, 1, 1] = 0.8
+    keypoint_heatmap_np[8, 2, 1, 2] = 0.8
+    keypoint_heatmap_np[8, 8, 1, 3] = 0.8
 
-    keypoint_offset_np = np.zeros((1, image_size[0], image_size[1], 8),
+    keypoint_offset_np = np.zeros((image_size[0], image_size[1], 8),
                                   dtype=np.float32)
-    keypoint_offset_np[0, 1, 1] = [0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    keypoint_offset_np[0, 1, 7] = [0.0, 0.0, 0.5, -0.5, 0.0, 0.0, 0.0, 0.0]
-    keypoint_offset_np[0, 7, 1] = [0.0, 0.0, 0.0, 0.0, -0.5, 0.5, 0.0, 0.0]
-    keypoint_offset_np[0, 7, 7] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5, -0.5]
-    keypoint_offset_np[0, 2, 2] = [0.3, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    keypoint_offset_np[0, 2, 8] = [0.0, 0.0, 0.3, -0.3, 0.0, 0.0, 0.0, 0.0]
-    keypoint_offset_np[0, 8, 2] = [0.0, 0.0, 0.0, 0.0, -0.3, 0.3, 0.0, 0.0]
-    keypoint_offset_np[0, 8, 8] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.3, -0.3]
+    keypoint_offset_np[1, 1] = [0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    keypoint_offset_np[1, 7] = [0.0, 0.0, 0.5, -0.5, 0.0, 0.0, 0.0, 0.0]
+    keypoint_offset_np[7, 1] = [0.0, 0.0, 0.0, 0.0, -0.5, 0.5, 0.0, 0.0]
+    keypoint_offset_np[7, 7] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5, -0.5]
+    keypoint_offset_np[2, 2] = [0.3, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    keypoint_offset_np[2, 8] = [0.0, 0.0, 0.3, -0.3, 0.0, 0.0, 0.0, 0.0]
+    keypoint_offset_np[8, 2] = [0.0, 0.0, 0.0, 0.0, -0.3, 0.3, 0.0, 0.0]
+    keypoint_offset_np[8, 8] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.3, -0.3]
 
     def graph_fn():
       keypoint_heatmap = tf.constant(keypoint_heatmap_np, dtype=tf.float32)
@@ -844,7 +844,7 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
             cnma.prediction_tensors_to_multi_instance_kpts(
                 keypoint_heatmap,
                 keypoint_offset,
-                tf.reduce_max(keypoint_heatmap, axis=3)))
+                tf.reduce_max(keypoint_heatmap, axis=2)))
       else:
         (keypoint_cands, keypoint_scores) = (
             cnma.prediction_tensors_to_multi_instance_kpts(
