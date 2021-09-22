@@ -208,6 +208,10 @@ class MaskRCNNTask(cfg.TaskConfig):
   per_category_metrics: bool = False
   # If set, we only use masks for the specified class IDs.
   allowed_mask_class_ids: Optional[List[int]] = None
+  # If set, the COCO metrics will be computed.
+  use_coco_metrics: bool = True
+  # If set, the Waymo Open Dataset evaluator would be used.
+  use_wod_metrics: bool = False
 
 
 COCO_INPUT_PATH_BASE = 'coco'

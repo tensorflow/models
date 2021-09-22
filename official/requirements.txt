@@ -21,6 +21,7 @@ pyyaml>=5.1
 opencv-python-headless
 Pillow
 pycocotools
+waymo-open-dataset-tf-2-6-0
 # NLP related dependencies
 seqeval
 sentencepiece
