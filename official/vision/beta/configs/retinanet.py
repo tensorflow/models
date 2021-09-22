@@ -102,7 +102,7 @@ class RetinaNetHead(hyperparams.Config):
   num_convs: int = 4
   num_filters: int = 256
   use_separable_conv: bool = False
-  attribute_heads: Optional[List[AttributeHead]] = None
+  attribute_heads: List[AttributeHead] = dataclasses.field(default_factory=list)
 
 
 @dataclasses.dataclass
