@@ -14,9 +14,8 @@
 
 """Common configuration settings."""
 
-from typing import Optional, Sequence, Union
-
 import dataclasses
+from typing import Optional, Sequence, Union
 
 from official.modeling.hyperparams import base_config
 from official.modeling.optimization.configs import optimization_config
@@ -41,7 +40,9 @@ class DataConfig(base_config.Config):
     tfds_split: A str indicating which split of the data to load from TFDS. It
       is required when above `tfds_name` is specified.
     global_batch_size: The global batch size across all replicas.
-    is_training: Whether this data is used for training or not.
+    is_training: Whether this data is used for training or not. This flag is
+      useful for consumers of this object to determine whether the data should
+      be repeated or shuffled.
     drop_remainder: Whether the last batch should be dropped in the case it has
       fewer than `global_batch_size` elements.
     shuffle_buffer_size: The buffer size used for shuffling training data.
@@ -178,7 +179,8 @@ class TrainerConfig(base_config.Config):
     eval_tf_function: whether or not to use tf_function for eval.
     allow_tpu_summary: Whether to allow summary happen inside the XLA program
       runs on TPU through automatic outside compilation.
-    steps_per_loop: number of steps per loop.
+    steps_per_loop: number of steps per loop to report training metrics. This
+      can also be used to reduce host worker communication in a TPU setup.
     summary_interval: number of steps between each summary.
     checkpoint_interval: number of steps between checkpoints.
     max_to_keep: max checkpoints to keep.
