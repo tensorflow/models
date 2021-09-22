@@ -64,9 +64,6 @@ def get_encoder(bert_config,
   Returns:
     A encoder object.
   """
-  # embedding_size is required for PackedSequenceEmbedding.
-  if bert_config.embedding_size is None:
-    bert_config.embedding_size = bert_config.hidden_size
   embedding_cfg = dict(
       vocab_size=bert_config.vocab_size,
       type_vocab_size=bert_config.type_vocab_size,
