@@ -155,6 +155,8 @@ class SegmentationHead(tf.keras.layers.Layer):
                 depthwise_initializer=random_initializer,
                 depthwise_regularizer=self._config_dict['kernel_regularizer'],
                 depth_multiplier=1))
+        norm_name = 'segmentation_head_depthwise_norm_{}'.format(i)
+        self._norms.append(bn_op(name=norm_name, **bn_kwargs))
       conv_name = 'segmentation_head_conv_{}'.format(i)
       self._convs.append(
           conv_op(
