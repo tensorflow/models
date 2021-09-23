@@ -21,7 +21,7 @@ import tensorflow as tf
 
 from official.core import config_definitions as cfg
 from official.vision.beta import configs
-from official.vision.beta.tasks import image_classification as img_cls_task
+from official.vision.beta import tasks
 
 
 def create_representative_dataset(
@@ -39,7 +39,13 @@ def create_representative_dataset(
   """
   if isinstance(params.task,
                 configs.image_classification.ImageClassificationTask):
-    task = img_cls_task.ImageClassificationTask(params.task)
+
+    task = tasks.image_classification.ImageClassificationTask(params.task)
+  elif isinstance(params.task, configs.retinanet.RetinaNetTask):
+    task = tasks.retinanet.RetinaNetTask(params.task)
+  elif isinstance(params.task,
+                  configs.semantic_segmentation.SemanticSegmentationTask):
+    task = tasks.semantic_segmentation.SemanticSegmentationTask(params.task)
   else:
     raise ValueError('Task {} not supported.'.format(type(params.task)))
   # Ensure batch size is 1 for TFLite model.
