@@ -17,7 +17,7 @@ import random
 import tensorflow as tf
 import tensorflow_addons as tfa
 
-from official.vision.beta.projects.yolo.ops import preprocessing_ops
+from yolo.ops import preprocessing_ops
 from official.vision.beta.ops import box_ops
 from official.vision.beta.ops import preprocess_ops
 
@@ -111,14 +111,30 @@ class Mosaic:
           self._output_size[0] * min_offset,
           self._output_size[0] * (1 - min_offset),
           seed=self._seed)
-      cut = [cut_x, cut_y]
+      cut = [cut_y, cut_x]
       ishape = tf.convert_to_tensor(
-          [self._output_size[1], self._output_size[0], 3])
+          [self._output_size[0], self._output_size[1], 3])
     else:
       cut = None
       ishape = tf.convert_to_tensor(
-          [self._output_size[1] * 2, self._output_size[0] * 2, 3])
+          [self._output_size[0] * 2, self._output_size[1] * 2, 3])
     return cut, ishape
+
+  def scale_boxes(self, patch, ishape, boxes, classes, xs, ys):
+    """Scale and translate the boxes for each image prior to patching."""
+    xs = tf.cast(xs, boxes.dtype)
+    ys = tf.cast(ys, boxes.dtype)
+    pshape = tf.cast(tf.shape(patch), boxes.dtype)
+    ishape = tf.cast(ishape, boxes.dtype)
+    translate = tf.cast((ishape - pshape), boxes.dtype)
+
+    boxes = box_ops.denormalize_boxes(boxes, pshape[:2])
+    boxes = boxes + tf.cast([
+        translate[0] * ys, translate[1] * xs, translate[0] * ys,
+        translate[1] * xs
+    ], boxes.dtype)
+    boxes = box_ops.normalize_boxes(boxes, ishape[:2])
+    return boxes, classes
 
   def _select_ind(self, inds, *args):
     items = []
@@ -209,22 +225,6 @@ class Mosaic:
         seed=self._seed)
     classes, is_crowd, area = self._select_ind(inds, classes, is_crowd, area)
     return image, boxes, classes, is_crowd, area, area
-
-  def scale_boxes(self, patch, ishape, boxes, classes, xs, ys):
-    """Scale and translate the boxes for each image prior to patching."""
-    xs = tf.cast(xs, boxes.dtype)
-    ys = tf.cast(ys, boxes.dtype)
-    pshape = tf.cast(tf.shape(patch), boxes.dtype)
-    ishape = tf.cast(ishape, boxes.dtype)
-    translate = tf.cast((ishape - pshape), boxes.dtype)
-
-    boxes = box_ops.denormalize_boxes(boxes, pshape[:2])
-    boxes = boxes + tf.cast([
-        translate[0] * ys, translate[1] * xs, translate[0] * ys,
-        translate[1] * xs
-    ], boxes.dtype)
-    boxes = box_ops.normalize_boxes(boxes, ishape[:2])
-    return boxes, classes
 
   # mosaic full frequency doubles model speed
   def _process_image(self, sample, shiftx, shifty, cut, ishape):
@@ -396,3 +396,4 @@ class Mosaic:
       return self._apply
     else:
       return self._skip
+      
