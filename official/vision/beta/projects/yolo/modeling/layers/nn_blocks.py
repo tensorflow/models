@@ -1665,7 +1665,13 @@ class DarkRouteProcess(tf.keras.layers.Layer):
 
 
 class Reorg(tf.keras.layers.Layer):
-
+  """Splits a high resolution image into 4 lower resolution images. 
+  
+  Used in YOLOR to process very high resolution inputs efficiently. 
+  for example an input image of [1280, 1280, 3] will become [640, 640, 12], 
+  the images are sampled in such a way that the spatial resoltion is 
+  retained.
+  """
   def call(self, x, training=None):
     return tf.concat([x[..., ::2, ::2, :], 
                       x[..., 1::2, ::2, :], 

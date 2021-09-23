@@ -59,10 +59,20 @@ class TfExampleDecoder(tf_example_decoder.TfExampleDecoder):
   """Tensorflow Example proto decoder."""
 
   def __init__(self,
-               coco91_to_80, 
+               coco91_to_80=None, 
                include_mask=False,
                regenerate_source_id=False,
                mask_binarize_threshold=None):
+    """Initialize the example decoder. 
+
+    Args: 
+      coco91_to_80: `bool` indicating whether to convert coco from its 91 class 
+        format to the 80 class format.
+      include_mask: `bool` indicating if the decoder should also decode instance 
+        masks for instance segmentation.
+      regenerate_source_id: `bool` indicating if the source id needs to be 
+        recreated for each image sample. 
+    """
     if coco91_to_80 and include_mask:
       raise ValueError("If masks are included you cannot \
                         convert coco from the 91 class format \

@@ -1,7 +1,18 @@
-""" Detection Data parser and processing for YOLO.
-Parse image and ground truths in a dataset to training targets and package them
-into (image, labels) tuple for RetinaNet.
-"""
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Detection Data parser and processing for YOLO."""
 import tensorflow as tf
 import numpy as np
 from official.vision.beta.projects.yolo.ops import preprocessing_ops
@@ -19,7 +30,7 @@ class Parser(parser.Parser):
       output_size,
       anchors,
       expanded_strides,
-      level_limit=None,
+      level_limits=None,
       max_num_instances=200,
       area_thresh=0.1,
       aug_rand_hue=1.0,
@@ -48,11 +59,13 @@ class Parser(parser.Parser):
         output_size should be divided by the largest feature stride 2^max_level.
       anchors: `Dict[List[Union[int, float]]]` values for each anchor box.
       expanded_strides: `Dict[int]` for how much the model scales down the 
-        images at the largest level.
-      level_limit: `List` the box sizes that will be allowed at each FPN 
+        images at the largest level. For example, level 3 down samples the image 
+        by a factor of 16, in the expanded strides dictionary, we will pass 
+        along {3: 16} indicating that relative to the original image, the 
+        shapes must be reduced by a factor of 16 to compute the loss.
+      level_limits: `List` the box sizes that will be allowed at each FPN 
         level as is done in the FCOS and YOLOX paper for anchor free box 
-        assignment. Anchor free will perform worse than Anchor based, but only 
-        slightly.
+        assignment.
       max_num_instances: `int` for the number of boxes to compute loss on.
       area_thresh: `float` for the minimum area of a box to allow to pass 
         through for optimization.
@@ -108,20 +121,9 @@ class Parser(parser.Parser):
       assert output_size[1] % expanded_strides[str(key)] == 0
       assert output_size[0] % expanded_strides[str(key)] == 0
 
-    # scale of each FPN level
-    self._strides = expanded_strides
-
     # Set the width and height properly and base init:
     self._image_w = output_size[1]
     self._image_h = output_size[0]
-
-    # Set the anchor boxes for each scale
-    self._anchors = anchors
-    self._level_limit = level_limit
-
-    # anchor labeling paramters
-    self._use_tie_breaker = use_tie_breaker
-    self._best_match_only = best_match_only
     self._max_num_instances = max_num_instances
 
     # Image scaling params
@@ -143,33 +145,23 @@ class Parser(parser.Parser):
     self._aug_rand_hue = aug_rand_hue
 
     # Set the per level values needed for operation
-    self._scale_xy = scale_xy
-    self._anchor_t = anchor_t
     self._darknet = darknet
     self._area_thresh = area_thresh
 
-    keys = list(self._anchors.keys())
-
-    if self._level_limit is not None:
-      maxim = 2000
-      self._scale_up = {key: maxim // self._max_num_instances for key in keys}
-      self._anchor_t = -0.01
-    elif not self._darknet:
-      self._scale_up = {key: 6 - i for i, key in enumerate(keys)}
-    else:
-      self._scale_up = {key: 1 for key in keys}
-
     self._seed = seed
-
-    # Set the data type based on input string
     self._dtype = dtype
 
     self._label_builder = anchor.YoloAnchorLabeler(
-      anchors = self._anchors, 
-      match_threshold=self._anchor_t, 
-      best_matches_only=self._best_match_only,
-      use_tie_breaker=self._use_tie_breaker
-    )
+      anchors = anchors, 
+      anchor_free_level_limits = level_limits,
+      level_strides=expanded_strides, 
+      center_radius=scale_xy, 
+      max_num_instances=max_num_instances,
+      match_threshold=anchor_t, 
+      best_matches_only=best_match_only,
+      use_tie_breaker=use_tie_breaker, 
+      darknet=darknet, 
+      dtype=dtype)
 
   def _pad_infos_object(self, image):
     """Get a Tensor to pad the info object list."""
@@ -307,56 +299,21 @@ class Parser(parser.Parser):
         is_training=False)
     return image, labels
 
-  def set_shape(self, values, pad_axis=0, pad_value=0, inds=None, scale=1):
+  def set_shape(self, values, pad_axis=0, pad_value=0, inds=None):
     """Calls set shape for all input objects."""
     if inds is not None:
       values = tf.gather(values, inds)
     vshape = values.get_shape().as_list()
 
-    if pad_value is not None:
-      values = preprocessing_ops.pad_max_instances(
+    values = preprocessing_ops.pad_max_instances(
           values,
           self._max_num_instances,
           pad_axis=pad_axis,
           pad_value=pad_value)
 
-    vshape[pad_axis] = self._max_num_instances * scale
+    vshape[pad_axis] = self._max_num_instances 
     values.set_shape(vshape)
     return values
-
-  def _build_grid(self, boxes, classes, width, height):
-    """Private function for building the full scale object and class grid."""
-    indexes = {}
-    updates = {}
-    true_grids = {}
-
-    if self._level_limit is not None:
-      self._level_limit = [0.0] + self._level_limit + [np.inf]
-
-    # for each prediction path generate a properly scaled output prediction map
-    for i, key in enumerate(self._anchors.keys()):
-      if self._level_limit is not None:
-        fpn_limits = self._level_limit[i:i + 2]
-      else:
-        fpn_limits = None
-
-      scale_xy = self._scale_xy[key] if not self._darknet else 1
-
-      indexes[key], updates[key], true_grids[key] = self._label_builder(
-        key, boxes, classes, self._anchors[key], 
-        width, height, self._strides[str(key)],
-        scale_xy, self._max_num_instances * self._scale_up[key], 
-        fpn_limits = fpn_limits)
-
-      # set/fix the shapes
-      indexes[key] = self.set_shape(indexes[key], -2, None, None,
-                                    self._scale_up[key])
-      updates[key] = self.set_shape(updates[key], -2, None, None,
-                                    self._scale_up[key])
-
-      # add all the values to the final dictionary
-      updates[key] = tf.cast(updates[key], dtype=self._dtype)
-    return indexes, updates, true_grids
 
   def _build_label(self,
                    image,
@@ -376,16 +333,15 @@ class Parser(parser.Parser):
     image.set_shape(imshape)
     
     labels = dict()
-    labels['inds'], labels['upds'], labels['true_conf'] = self._build_grid(
-        gt_boxes, gt_classes, width, height)
+    (labels['inds'], 
+    labels['upds'], labels['true_conf']) = self._label_builder(gt_boxes, 
+                                                               gt_classes, 
+                                                               width, 
+                                                               height)
 
     # Set/fix the boxes shape.
     boxes = self.set_shape(gt_boxes, pad_axis=0, pad_value=0)
     classes = self.set_shape(gt_classes, pad_axis=0, pad_value=-1)
-    area = self.set_shape(
-        data['groundtruth_area'], pad_axis=0, pad_value=0, inds=inds)
-    is_crowd = self.set_shape(
-        data['groundtruth_is_crowd'], pad_axis=0, pad_value=0, inds=inds)
 
     # Build the dictionary set.
     labels.update({
@@ -396,6 +352,7 @@ class Parser(parser.Parser):
 
     # Update the labels dictionary.
     if not is_training:
+
       # Sets up groundtruth data for evaluation.
       groundtruths = {
           'source_id': labels['source_id'],
@@ -405,8 +362,9 @@ class Parser(parser.Parser):
           'image_info': info,
           'boxes': gt_boxes,
           'classes': gt_classes,
-          'areas': area,
-          'is_crowds': tf.cast(is_crowd, tf.int32),
+          'areas': tf.gather(data['groundtruth_area'], inds),
+          'is_crowds': tf.cast(
+            tf.gather(data['groundtruth_is_crowd'], inds), tf.int32),
       }
       groundtruths['source_id'] = utils.process_source_id(
           groundtruths['source_id'])

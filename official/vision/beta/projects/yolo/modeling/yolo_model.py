@@ -16,7 +16,6 @@
 
 import tensorflow as tf
 
-
 # static base Yolo Models that do not require configuration
 # similar to a backbone model id.
 

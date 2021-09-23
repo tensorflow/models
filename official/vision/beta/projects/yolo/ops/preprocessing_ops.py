@@ -4,8 +4,6 @@ import random
 import os
 
 import tensorflow_addons as tfa
-from official.vision.beta.projects.yolo.ops import box_ops
-from official.vision.beta.projects.yolo.ops import loss_utils
 from official.vision.beta.ops import box_ops as bbox_ops
 
 PAD_VALUE = 114
@@ -122,6 +120,11 @@ def pad_max_instances(value, instances, pad_value=0, pad_axis=0):
   nshape = tf.concat([shape[:pad_axis], pad, shape[(pad_axis + 1):]], axis=0)
   pad_tensor = tf.fill(nshape, tf.cast(pad_value, dtype=value.dtype))
   value = tf.concat([value, pad_tensor], axis=pad_axis)
+
+  if isinstance(instances, int):
+    vshape = value.get_shape().as_list()
+    vshape[pad_axis] = instances
+    value.set_shape(vshape)
   return value
 
 
@@ -317,10 +320,43 @@ def resize_and_jitter_image(image,
                             cut=None,
                             method=tf.image.ResizeMethod.BILINEAR,
                             seed=None):
-  """WIP"""
+  """Resize, Pad, and distort a given input image.
+  
+  Args:
+    image: a `Tensor` of shape [height, width, 3] representing an image.
+    desired_size: a `Tensor` or `int` list/tuple of two elements representing
+      [height, width] of the desired actual output image size.
+    jitter: an `int` representing the maximum jittering that can be applied to
+      the image.
+    letter_box: a `bool` representing if letterboxing should be applied.
+    random_pad: a `bool` representing if random padding should be applied.
+    crop_only: a `bool` representing if only cropping will be applied.
+    shiftx: a `float` indicating if the image is in the
+      left or right.
+    shifty: a `float` value indicating if the image is in the
+      top or bottom.
+    cut: a `float` value indicating the desired center of the final patched
+      image.
+    method: function to resize input image to scaled image.
+    seed: seed for random scale jittering.
+  
+  Returns:
+    image_: a `Tensor` of shape [height, width, 3] where [height, width]
+      equals to `desired_size`.
+    infos: a 2D `Tensor` that encodes the information of the image and the
+      applied preprocessing. It is in the format of
+      [[original_height, original_width], [desired_height, desired_width],
+        [y_scale, x_scale], [y_offset, x_offset]], where [desired_height,
+      desired_width] is the actual scaled image size, and [y_scale, x_scale] is
+      the scaling factor, which is the ratio of
+      scaled dimension / original dimension.
+    cast([original_width, original_height, width, height, ptop, pleft, pbottom,
+      pright], tf.float32): a `Tensor` containing the information of the image
+        andthe applied preprocessing.
+  """
 
   def intersection(a, b):
-    """Find the intersection of 2 crop boxes."""
+    """Find the intersection between 2 crops"""
     minx = tf.maximum(a[0], b[0])
     miny = tf.maximum(a[1], b[1])
     maxx = tf.minimum(a[2], b[2])
@@ -328,11 +364,10 @@ def resize_and_jitter_image(image,
     return tf.convert_to_tensor([minx, miny, maxx, maxy])
 
   def cast(values, dtype):
-    """Cast a list of items to a givne data type to reduce lines of code"""
     return [tf.cast(value, dtype) for value in values]
 
   if jitter > 0.5 or jitter < 0:
-    raise Exception("maximum change in aspect ratio must be between 0 and 0.5")
+    raise Exception('maximum change in aspect ratio must be between 0 and 0.5')
 
   with tf.name_scope('resize_and_jitter_image'):
     # Cast all parameters to a usable float data type.

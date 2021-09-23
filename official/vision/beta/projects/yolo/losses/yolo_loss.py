@@ -14,13 +14,12 @@
 
 """Yolo Loss function."""
 import abc
-import collections
 import functools
+import collections
 
 import tensorflow as tf
-
-from official.vision.beta.projects.yolo.ops import box_ops
 from official.vision.beta.projects.yolo.ops import loss_utils
+from official.vision.beta.projects.yolo.ops import box_ops
 from official.vision.beta.projects.yolo.ops import math_ops
 
 
@@ -33,7 +32,6 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
 
   def __init__(self,
                classes,
-               mask,
                anchors,
                path_stride=1,
                ignore_thresh=0.7,
@@ -52,8 +50,6 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
 
     Args:
       classes: `int` for the number of classes
-      mask: `List[int]` for the output level that this specific model output
-        level
       anchors: `List[List[int]]` for the anchor boxes that are used in the model
         at all levels. For anchor free prediction set the anchor list to be the
         same as the image resolution.
@@ -86,10 +82,9 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
     """
     self._loss_type = loss_type
     self._classes = classes
-    self._num = tf.cast(len(mask), dtype=tf.int32)
+    self._num = tf.cast(len(anchors), dtype=tf.int32)
     self._truth_thresh = truth_thresh
     self._ignore_thresh = ignore_thresh
-    self._masks = mask
     self._anchors = anchors
 
     self._iou_normalizer = iou_normalizer
@@ -112,7 +107,7 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
     self._decode_boxes = functools.partial(
         loss_utils.get_predicted_box, **box_kwargs)
 
-    self._search_pairs = None
+    self._search_pairs = lambda *args: (None, None, None, None)
     self._build_per_path_attributes()
 
   def box_loss(self, true_box, pred_box, darknet=False):
@@ -136,13 +131,18 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
                                scale=None):
     """Search of all groundtruths to associate groundtruths to predictions."""
 
-    if self._search_pairs is None:
-      return true_conf, tf.ones_like(true_conf)
+    boxes = box_ops.yxyx_to_xcycwh(boxes)
+
+    if scale is not None:
+      boxes = boxes * tf.cast(tf.stop_gradient(scale), boxes.dtype)
 
     # Search all predictions against ground truths to find mathcing boxes for
     # each pixel.
-    _, _, iou_max, _ = self._search_pairs(
-        pred_boxes, pred_classes, boxes, classes, scale=scale, yxyx=True)
+    _, _, iou_max, _ = self._search_pairs(pred_boxes, pred_classes, 
+                                          boxes, classes)
+
+    if iou_max is None:
+      return true_conf, tf.ones_like(true_conf)
 
     # Find the exact indexes to ignore and keep.
     ignore_mask = tf.cast(iou_max < self._ignore_thresh, pred_boxes.dtype)
@@ -196,7 +196,7 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
         predictions.
     """
     (loss, box_loss, conf_loss, class_loss, mean_loss, iou, pred_conf, ind_mask,
-     grid_mask) = self._compute_loss(true_counts, inds, y_true, boxes, classes,
+     grid_mask) = self._compute_loss(true_counts, inds, y_true, boxes, classes, 
                                      y_pred)
 
     # Metric compute using done here to save time and resources.
@@ -219,7 +219,8 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
     """The actual logic to apply to the raw model for optimization."""
     ...
 
-  def post_path_aggregation(self, loss, ground_truths, predictions):  # pylint:disable=unused-argument
+  def post_path_aggregation(self, 
+      loss, box_loss, conf_loss, class_loss, ground_truths, predictions): # pylint:disable=unused-argument
     """This method allows for post processing of a loss value.
 
     After the loss has been aggregated across all the FPN levels some post
@@ -277,7 +278,6 @@ class DarknetLoss(YoloLossBase):
     association.
     """
     self._anchor_generator = loss_utils.GridGenerator(
-        masks=self._masks,
         anchors=self._anchors,
         scale_anchors=self._path_stride)
 
@@ -428,14 +428,13 @@ class ScaledLoss(YoloLossBase):
     association.
     """
     self._anchor_generator = loss_utils.GridGenerator(
-        masks=self._masks,
         anchors=self._anchors,
         scale_anchors=self._path_stride)
 
     if self._ignore_thresh > 0.0:
       self._search_pairs = loss_utils.PairWiseSearch(
           iou_type=self._loss_type, any_match=False, min_conf=0.25)
-    
+
     self._cls_normalizer = self._cls_normalizer * self._classes/80
     return
 
@@ -550,7 +549,8 @@ class ScaledLoss(YoloLossBase):
     return (loss, box_loss, conf_loss, class_loss, mean_loss, iou, pred_conf,
             ind_mask, grid_mask)
 
-  def post_path_aggregation(self, loss, ground_truths, predictions):
+  def post_path_aggregation(self, 
+      loss, box_loss, conf_loss, class_loss, ground_truths, predictions):
     """This method allows for post processing of a loss value.
 
     By default the model will have about 3 FPN levels {3, 4, 5}, on
@@ -559,19 +559,12 @@ class ScaledLoss(YoloLossBase):
     magintude as the model with 3 FPN levels. This helps to prevent gradient
     explosions.
 
-    Args:
-      loss: `tf.float` scalar for the actual loss.
-      ground_truths: `Dict` holding all the ground truth tensors.
-      predictions: `Dict` holding all the predicted values.
-
-    Returns:
-      loss: `tf.float` scalar for the scaled loss.
     """
     scale = tf.stop_gradient(3 / len(list(predictions.keys())))
     return loss * scale
 
   def cross_replica_aggregation(self, loss, num_replicas_in_sync):
-    """In the scaled loss, take the sum of the loss across replicas."""
+    """this method is not specific to each loss path, but each loss type"""
     return loss
 
 
@@ -582,7 +575,6 @@ class YoloLoss:
                keys,
                classes,
                anchors,
-               masks=None,
                path_strides=None,
                truth_thresholds=None,
                ignore_thresholds=None,
@@ -606,8 +598,6 @@ class YoloLoss:
       anchors: `List[List[int]]` for the anchor boxes that are used in the model
         at all levels. For anchor free prediction set the anchor list to be the
         same as the image resolution.
-      masks: `List[int]` for the output level that this specific model output
-        level
       path_strides: `Dict[int]` for how much to scale this level to get the
         orginal input shape for each FPN path.
       truth_thresholds: `Dict[float]` for the IOU value over which the loss is
@@ -649,13 +639,12 @@ class YoloLoss:
       loss_type = 'scaled'
     else:
       loss_type = 'darknet'
-
+    
     self._loss_dict = {}
     for key in keys:
       self._loss_dict[key] = losses[loss_type](
           classes=classes,
-          anchors=anchors,
-          mask=masks[key],
+          anchors=anchors[key],
           truth_thresh=truth_thresholds[key],
           ignore_thresh=ignore_thresholds[key],
           loss_type=loss_types[key],
@@ -691,7 +680,7 @@ class YoloLoss:
       # after computing the loss, scale loss as needed for aggregation
       # across FPN levels
       loss = self._loss_dict[key].post_path_aggregation(
-          loss, ground_truth, predictions)
+          loss, loss_box, loss_conf, loss_class, ground_truth, predictions)
 
       # after completing the scaling of the loss on each replica, handle
       # scaling the loss for mergeing the loss across replicas

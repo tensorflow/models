@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Contains common building blocks for yolo layer (detection layer)."""
 import tensorflow as tf
 
@@ -26,7 +25,6 @@ class YoloLayer(tf.keras.Model):
   """Yolo layer (detection generator)."""
 
   def __init__(self,
-               masks,
                anchors,
                classes,
                iou_thresh=0.0,
@@ -52,8 +50,6 @@ class YoloLayer(tf.keras.Model):
     """Parameters for the loss functions used at each detection head output.
 
     Args:
-      masks: `List[int]` for the output level that this specific model output
-        level.
       anchors: `List[List[int]]` for the anchor boxes that are used in the
         model.
       classes: `int` for the number of classes.
@@ -107,7 +103,6 @@ class YoloLayer(tf.keras.Model):
       **kwargs: Addtional keyword arguments.
     """
     super().__init__(**kwargs)
-    self._masks = masks
     self._anchors = anchors
     self._thresh = iou_thresh
     self._ignore_thresh = ignore_thresh
@@ -127,29 +122,23 @@ class YoloLayer(tf.keras.Model):
 
     self._pre_nms_points = pre_nms_points
     self._label_smoothing = label_smoothing
-    self._keys = list(masks.keys())
+
+    self._keys = list(anchors.keys())
     self._len_keys = len(self._keys)
     self._box_type = box_type
-    self._path_scale = path_scale or {
-        key: 2**int(key) for key, _ in masks.items()
-    }
+    self._path_scale = path_scale or {key: 2**int(key) for key in self._keys}
 
     self._nms_type = nms_type
-    self._scale_xy = scale_xy or {key: 1.0 for key, _ in masks.items()}
+    self._scale_xy = scale_xy or {key: 1.0 for key, _ in anchors.items()}
 
     self._generator = {}
     self._len_mask = {}
     for key in self._keys:
-      anchors = [self._anchors[mask] for mask in self._masks[key]]
-      self._generator[key] = self.get_generators(anchors, self._path_scale[key],  # pylint: disable=assignment-from-none
-                                                 key)
-      self._len_mask[key] = len(self._masks[key])
+      anchors = self._anchors[key]
+      self._generator[key] = loss_utils.GridGenerator(
+        anchors, scale_anchors=self._path_scale[key])
+      self._len_mask[key] = len(anchors)
     return
-
-  def get_generators(self, anchors, path_scale, path_key):
-    anchor_generator = loss_utils.GridGenerator(
-        anchors, scale_anchors=path_scale)
-    return anchor_generator
 
   def parse_prediction_path(self, key, inputs):
     shape_ = tf.shape(inputs)
@@ -290,7 +279,6 @@ class YoloLayer(tf.keras.Model):
         keys=self._keys,
         classes=self._classes,
         anchors=self._anchors,
-        masks=self._masks,
         path_strides=self._path_scale,
         truth_thresholds=self._truth_thresh,
         ignore_thresholds=self._ignore_thresh,
@@ -309,7 +297,6 @@ class YoloLayer(tf.keras.Model):
 
   def get_config(self):
     return {
-        'masks': dict(self._masks),
         'anchors': [list(a) for a in self._anchors],
         'thresh': self._thresh,
         'max_boxes': self._max_boxes,

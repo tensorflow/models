@@ -22,8 +22,8 @@ from official.vision.beta.configs import backbones
 class Darknet(hyperparams.Config):
   """DarkNet config."""
   model_id: str = 'cspdarknet53'
-  width_scale: int = 1.0
-  depth_scale: int = 1.0
+  width_scale: float = 1.0
+  depth_scale: float = 1.0
   dilate: bool = False
   min_level: int = 3
   max_level: int = 5

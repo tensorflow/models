@@ -17,7 +17,7 @@ import random
 import tensorflow as tf
 import tensorflow_addons as tfa
 
-from yolo.ops import preprocessing_ops
+from official.vision.beta.projects.yolo.ops import preprocessing_ops
 from official.vision.beta.ops import box_ops
 from official.vision.beta.ops import preprocess_ops
 
@@ -396,4 +396,3 @@ class Mosaic:
       return self._apply
     else:
       return self._skip
-      
