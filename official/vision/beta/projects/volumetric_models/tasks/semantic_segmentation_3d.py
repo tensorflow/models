@@ -342,4 +342,6 @@ class SemanticSegmentation3DTask(base_task.Task):
         metric_name = self.metrics[0].name + '/class_{0}'.format(
             i - 1) if i > 0 else self.metrics[0].name
         result.update({metric_name: metric_val})
+    else:
+      result.update({self.metrics[0].name: metric})
     return result

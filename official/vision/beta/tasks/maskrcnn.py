@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""RetinaNet task definition."""
+"""MaskRCNN task definition."""
 import os
 from typing import Any, Optional, List, Tuple, Mapping
 
@@ -28,6 +28,7 @@ from official.vision.beta.dataloaders import tf_example_decoder
 from official.vision.beta.dataloaders import tf_example_label_map_decoder
 from official.vision.beta.evaluation import coco_evaluator
 from official.vision.beta.evaluation import coco_utils
+from official.vision.beta.evaluation import wod_detection_evaluator
 from official.vision.beta.losses import maskrcnn_losses
 from official.vision.beta.modeling import factory
 
@@ -247,6 +248,39 @@ class MaskRCNNTask(base_task.Task):
     }
     return losses
 
+  def _build_coco_metrics(self):
+    """Build COCO metrics evaluator."""
+    if (not self._task_config.model.include_mask
+       ) or self._task_config.annotation_file:
+      self.coco_metric = coco_evaluator.COCOEvaluator(
+          annotation_file=self._task_config.annotation_file,
+          include_mask=self._task_config.model.include_mask,
+          per_category_metrics=self._task_config.per_category_metrics)
+    else:
+      # Builds COCO-style annotation file if include_mask is True, and
+      # annotation_file isn't provided.
+      annotation_path = os.path.join(self._logging_dir, 'annotation.json')
+      if tf.io.gfile.exists(annotation_path):
+        logging.info(
+            'annotation.json file exists, skipping creating the annotation'
+            ' file.')
+      else:
+        if self._task_config.validation_data.num_examples <= 0:
+          logging.info('validation_data.num_examples needs to be > 0')
+        if not self._task_config.validation_data.input_path:
+          logging.info('Can not create annotation file for tfds.')
+        logging.info(
+            'Creating coco-style annotation file: %s', annotation_path)
+        coco_utils.scan_and_generator_annotation_file(
+            self._task_config.validation_data.input_path,
+            self._task_config.validation_data.file_type,
+            self._task_config.validation_data.num_examples,
+            self.task_config.model.include_mask, annotation_path)
+      self.coco_metric = coco_evaluator.COCOEvaluator(
+          annotation_file=annotation_path,
+          include_mask=self._task_config.model.include_mask,
+          per_category_metrics=self._task_config.per_category_metrics)
+
   def build_metrics(self, training: bool = True):
     """Build detection metrics."""
     metrics = []
@@ -264,36 +298,10 @@ class MaskRCNNTask(base_task.Task):
         metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
 
     else:
-      if (not self._task_config.model.include_mask
-         ) or self._task_config.annotation_file:
-        self.coco_metric = coco_evaluator.COCOEvaluator(
-            annotation_file=self._task_config.annotation_file,
-            include_mask=self._task_config.model.include_mask,
-            per_category_metrics=self._task_config.per_category_metrics)
-      else:
-        # Builds COCO-style annotation file if include_mask is True, and
-        # annotation_file isn't provided.
-        annotation_path = os.path.join(self._logging_dir, 'annotation.json')
-        if tf.io.gfile.exists(annotation_path):
-          logging.info(
-              'annotation.json file exists, skipping creating the annotation'
-              ' file.')
-        else:
-          if self._task_config.validation_data.num_examples <= 0:
-            logging.info('validation_data.num_examples needs to be > 0')
-          if not self._task_config.validation_data.input_path:
-            logging.info('Can not create annotation file for tfds.')
-          logging.info(
-              'Creating coco-style annotation file: %s', annotation_path)
-          coco_utils.scan_and_generator_annotation_file(
-              self._task_config.validation_data.input_path,
-              self._task_config.validation_data.file_type,
-              self._task_config.validation_data.num_examples,
-              self.task_config.model.include_mask, annotation_path)
-        self.coco_metric = coco_evaluator.COCOEvaluator(
-            annotation_file=annotation_path,
-            include_mask=self._task_config.model.include_mask,
-            per_category_metrics=self._task_config.per_category_metrics)
+      if self._task_config.use_coco_metrics:
+        self._build_coco_metrics()
+      if self._task_config.use_wod_metrics:
+        self.wod_metric = wod_detection_evaluator.WOD2dDetectionEvaluator()
 
     return metrics
 
@@ -376,31 +384,58 @@ class MaskRCNNTask(base_task.Task):
         training=False)
 
     logs = {self.loss: 0}
-    coco_model_outputs = {
-        'detection_boxes': outputs['detection_boxes'],
-        'detection_scores': outputs['detection_scores'],
-        'detection_classes': outputs['detection_classes'],
-        'num_detections': outputs['num_detections'],
-        'source_id': labels['groundtruths']['source_id'],
-        'image_info': labels['image_info']
-    }
-    if self.task_config.model.include_mask:
-      coco_model_outputs.update({
-          'detection_masks': outputs['detection_masks'],
-      })
-    logs.update({
-        self.coco_metric.name: (labels['groundtruths'], coco_model_outputs)
-    })
+    if self._task_config.use_coco_metrics:
+      coco_model_outputs = {
+          'detection_boxes': outputs['detection_boxes'],
+          'detection_scores': outputs['detection_scores'],
+          'detection_classes': outputs['detection_classes'],
+          'num_detections': outputs['num_detections'],
+          'source_id': labels['groundtruths']['source_id'],
+          'image_info': labels['image_info']
+      }
+      if self.task_config.model.include_mask:
+        coco_model_outputs.update({
+            'detection_masks': outputs['detection_masks'],
+        })
+      logs.update(
+          {self.coco_metric.name: (labels['groundtruths'], coco_model_outputs)})
+
+    if self.task_config.use_wod_metrics:
+      wod_model_outputs = {
+          'detection_boxes': outputs['detection_boxes'],
+          'detection_scores': outputs['detection_scores'],
+          'detection_classes': outputs['detection_classes'],
+          'num_detections': outputs['num_detections'],
+          'source_id': labels['groundtruths']['source_id'],
+          'image_info': labels['image_info']
+      }
+      logs.update(
+          {self.wod_metric.name: (labels['groundtruths'], wod_model_outputs)})
     return logs
 
   def aggregate_logs(self, state=None, step_outputs=None):
+    if self._task_config.use_coco_metrics:
+      if state is None:
+        self.coco_metric.reset_states()
+      self.coco_metric.update_state(
+          step_outputs[self.coco_metric.name][0],
+          step_outputs[self.coco_metric.name][1])
+    if self._task_config.use_wod_metrics:
+      if state is None:
+        self.wod_metric.reset_states()
+      self.wod_metric.update_state(
+          step_outputs[self.wod_metric.name][0],
+          step_outputs[self.wod_metric.name][1])
     if state is None:
-      self.coco_metric.reset_states()
-      state = self.coco_metric
-    self.coco_metric.update_state(
-        step_outputs[self.coco_metric.name][0],
-        step_outputs[self.coco_metric.name][1])
+      # Create an arbitrary state to indicate it's not the first step in the
+      # following calls to this function.
+      state = True
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
-    return self.coco_metric.result()
+    logs = {}
+    if self._task_config.use_coco_metrics:
+      logs.update(self.coco_metric.result())
+    if self._task_config.use_wod_metrics:
+      logs.update(self.wod_metric.result())
+    return logs

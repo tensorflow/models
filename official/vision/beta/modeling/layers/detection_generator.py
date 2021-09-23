@@ -613,56 +613,14 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
     }
     super(MultilevelDetectionGenerator, self).__init__(**kwargs)
 
-  def __call__(self,
-               raw_boxes: Mapping[str, tf.Tensor],
-               raw_scores: Mapping[str, tf.Tensor],
-               anchor_boxes: tf.Tensor,
-               image_shape: tf.Tensor,
-               raw_attributes: Optional[Mapping[str, tf.Tensor]] = None):
-    """Generates final detections.
-
-    Args:
-      raw_boxes: A `dict` with keys representing FPN levels and values
-        representing box tenors of shape `[batch, feature_h, feature_w,
-        num_anchors * 4]`.
-      raw_scores: A `dict` with keys representing FPN levels and values
-        representing logit tensors of shape `[batch, feature_h, feature_w,
-        num_anchors]`.
-      anchor_boxes: A `tf.Tensor` of shape of [batch_size, K, 4] representing
-        the corresponding anchor boxes w.r.t `box_outputs`.
-      image_shape: A `tf.Tensor` of shape of [batch_size, 2] storing the image
-        height and width w.r.t. the scaled image, i.e. the same image space as
-        `box_outputs` and `anchor_boxes`.
-      raw_attributes: If not None, a `dict` of (attribute_name,
-        attribute_prediction) pairs. `attribute_prediction` is a dict that
-        contains keys representing FPN levels and values representing tenors of
-        shape `[batch, feature_h, feature_w, num_anchors * attribute_size]`.
-
-    Returns:
-      If `apply_nms` = True, the return is a dictionary with keys:
-        `detection_boxes`: A `float` tf.Tensor of shape
-          [batch, max_num_detections, 4] representing top detected boxes in
-          [y1, x1, y2, x2].
-        `detection_scores`: A `float` tf.Tensor of shape
-          [batch, max_num_detections] representing sorted confidence scores for
-          detected boxes. The values are between [0, 1].
-        `detection_classes`: An `int` tf.Tensor of shape
-          [batch, max_num_detections] representing classes for detected boxes.
-        `num_detections`: An `int` tf.Tensor of shape [batch] only the first
-          `num_detections` boxes are valid detections
-        `detection_attributes`: A dict. Values of the dict is a `float`
-          tf.Tensor of shape [batch, max_num_detections, attribute_size]
-          representing attribute predictions for detected boxes.
-      If `apply_nms` = False, the return is a dictionary with keys:
-        `decoded_boxes`: A `float` tf.Tensor of shape [batch, num_raw_boxes, 4]
-          representing all the decoded boxes.
-        `decoded_box_scores`: A `float` tf.Tensor of shape
-          [batch, num_raw_boxes] representing socres of all the decoded boxes.
-        `decoded_box_attributes`: A dict. Values in the dict is a
-          `float` tf.Tensor of shape [batch, num_raw_boxes, attribute_size]
-          representing attribute predictions of all the decoded boxes.
-    """
-    # Collects outputs from all levels into a list.
+  def _decode_multilevel_outputs(
+      self,
+      raw_boxes: Mapping[str, tf.Tensor],
+      raw_scores: Mapping[str, tf.Tensor],
+      anchor_boxes: tf.Tensor,
+      image_shape: tf.Tensor,
+      raw_attributes: Optional[Mapping[str, tf.Tensor]] = None):
+    """Collects dict of multilevel boxes, scores, attributes into lists."""
     boxes = []
     scores = []
     if raw_attributes:
@@ -727,6 +685,60 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
       for att_name in raw_attributes.keys():
         attributes[att_name] = tf.concat(attributes[att_name], axis=1)
         attributes[att_name] = tf.expand_dims(attributes[att_name], axis=2)
+
+    return boxes, scores, attributes
+
+  def __call__(self,
+               raw_boxes: Mapping[str, tf.Tensor],
+               raw_scores: Mapping[str, tf.Tensor],
+               anchor_boxes: tf.Tensor,
+               image_shape: tf.Tensor,
+               raw_attributes: Optional[Mapping[str, tf.Tensor]] = None):
+    """Generates final detections.
+
+    Args:
+      raw_boxes: A `dict` with keys representing FPN levels and values
+        representing box tenors of shape `[batch, feature_h, feature_w,
+        num_anchors * 4]`.
+      raw_scores: A `dict` with keys representing FPN levels and values
+        representing logit tensors of shape `[batch, feature_h, feature_w,
+        num_anchors]`.
+      anchor_boxes: A `tf.Tensor` of shape of [batch_size, K, 4] representing
+        the corresponding anchor boxes w.r.t `box_outputs`.
+      image_shape: A `tf.Tensor` of shape of [batch_size, 2] storing the image
+        height and width w.r.t. the scaled image, i.e. the same image space as
+        `box_outputs` and `anchor_boxes`.
+      raw_attributes: If not None, a `dict` of (attribute_name,
+        attribute_prediction) pairs. `attribute_prediction` is a dict that
+        contains keys representing FPN levels and values representing tenors of
+        shape `[batch, feature_h, feature_w, num_anchors * attribute_size]`.
+
+    Returns:
+      If `apply_nms` = True, the return is a dictionary with keys:
+        `detection_boxes`: A `float` tf.Tensor of shape
+          [batch, max_num_detections, 4] representing top detected boxes in
+          [y1, x1, y2, x2].
+        `detection_scores`: A `float` tf.Tensor of shape
+          [batch, max_num_detections] representing sorted confidence scores for
+          detected boxes. The values are between [0, 1].
+        `detection_classes`: An `int` tf.Tensor of shape
+          [batch, max_num_detections] representing classes for detected boxes.
+        `num_detections`: An `int` tf.Tensor of shape [batch] only the first
+          `num_detections` boxes are valid detections
+        `detection_attributes`: A dict. Values of the dict is a `float`
+          tf.Tensor of shape [batch, max_num_detections, attribute_size]
+          representing attribute predictions for detected boxes.
+      If `apply_nms` = False, the return is a dictionary with keys:
+        `decoded_boxes`: A `float` tf.Tensor of shape [batch, num_raw_boxes, 4]
+          representing all the decoded boxes.
+        `decoded_box_scores`: A `float` tf.Tensor of shape
+          [batch, num_raw_boxes] representing socres of all the decoded boxes.
+        `decoded_box_attributes`: A dict. Values in the dict is a
+          `float` tf.Tensor of shape [batch, num_raw_boxes, attribute_size]
+          representing attribute predictions of all the decoded boxes.
+    """
+    boxes, scores, attributes = self._decode_multilevel_outputs(
+        raw_boxes, raw_scores, anchor_boxes, image_shape, raw_attributes)
 
     if not self._config_dict['apply_nms']:
       return {

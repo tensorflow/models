@@ -62,6 +62,8 @@ class PackedSequenceEmbedding(tf.keras.Model):
                pack_multiple_sequences=False,
                **kwargs):
     initializer = tf.keras.initializers.get(initializer)
+    if embedding_width is None:
+      embedding_width = hidden_size
     config_dict = {
         'vocab_size': vocab_size,
         'type_vocab_size': type_vocab_size,

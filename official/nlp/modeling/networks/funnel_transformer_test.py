@@ -80,8 +80,24 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(tf.float32, data.dtype)
     self.assertAllEqual(pooled_dtype, pooled.dtype)
 
+  def test_invalid_stride_and_num_layers(self):
+    hidden_size = 32
+    num_layers = 3
+    pool_stride = [2, 2]
+    unpool_length = 1
+    with self.assertRaisesRegex(ValueError,
+                                "pool_stride and num_layers are not equal"):
+      _ = funnel_transformer.FunnelTransformerEncoder(
+          vocab_size=100,
+          hidden_size=hidden_size,
+          num_attention_heads=2,
+          num_layers=num_layers,
+          pool_stride=pool_stride,
+          unpool_length=unpool_length)
+
   @parameterized.named_parameters(
       ("no_stride_no_unpool", 1, 0),
+      ("stride_list_with_unpool", [2, 3, 4], 1),
       ("large_stride_with_unpool", 3, 1),
       ("large_stride_with_large_unpool", 5, 10),
       ("no_stride_with_unpool", 1, 1),
@@ -110,11 +126,12 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
     expected_data_shape = [None, sequence_length, hidden_size]
     expected_pooled_shape = [None, hidden_size]
     self.assertLen(all_encoder_outputs, num_layers)
-    for data in all_encoder_outputs:
-      expected_data_shape[1] = unpool_length + (expected_data_shape[1] +
-                                                pool_stride - 1 -
-                                                unpool_length) // pool_stride
-      print("shapes:", expected_data_shape, data.shape.as_list())
+    if isinstance(pool_stride, int):
+      pool_stride = [pool_stride] * num_layers
+    for layer_pool_stride, data in zip(pool_stride, all_encoder_outputs):
+      expected_data_shape[1] = unpool_length + (
+          expected_data_shape[1] + layer_pool_stride - 1 -
+          unpool_length) // layer_pool_stride
       self.assertAllEqual(expected_data_shape, data.shape.as_list())
     self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
 

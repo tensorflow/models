@@ -204,6 +204,7 @@ class EncoderConfig(hyperparams.OneOfConfig):
   bigbird: BigBirdEncoderConfig = BigBirdEncoderConfig()
   kernel: KernelEncoderConfig = KernelEncoderConfig()
   mobilebert: MobileBertEncoderConfig = MobileBertEncoderConfig()
+  teams: BertEncoderConfig = BertEncoderConfig()
   xlnet: XLNetEncoderConfig = XLNetEncoderConfig()
 
 
@@ -435,6 +436,40 @@ def build_encoder(config: EncoderConfig,
         embedding_width=encoder_cfg.embedding_width,
         initializer=tf.keras.initializers.RandomNormal(
             stddev=encoder_cfg.initializer_range))
+
+  if encoder_type == "teams":
+    embedding_cfg = dict(
+        vocab_size=encoder_cfg.vocab_size,
+        type_vocab_size=encoder_cfg.type_vocab_size,
+        hidden_size=encoder_cfg.hidden_size,
+        embedding_width=encoder_cfg.embedding_size,
+        max_seq_length=encoder_cfg.max_position_embeddings,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        dropout_rate=encoder_cfg.dropout_rate,
+    )
+    embedding_network = networks.PackedSequenceEmbedding(**embedding_cfg)
+    hidden_cfg = dict(
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        intermediate_size=encoder_cfg.intermediate_size,
+        intermediate_activation=tf_utils.get_activation(
+            encoder_cfg.hidden_activation),
+        dropout_rate=encoder_cfg.dropout_rate,
+        attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+        kernel_initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+    )
+    kwargs = dict(
+        embedding_cfg=embedding_cfg,
+        embedding_cls=embedding_network,
+        hidden_cfg=hidden_cfg,
+        num_hidden_instances=encoder_cfg.num_layers,
+        pooled_output_dim=encoder_cfg.hidden_size,
+        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        return_all_layer_outputs=encoder_cfg.return_all_encoder_outputs,
+        dict_outputs=True)
+    return networks.EncoderScaffold(**kwargs)
 
   # Uses the default BERTEncoder configuration schema to create the encoder.
   # If it does not match, please add a switch branch by the encoder type.

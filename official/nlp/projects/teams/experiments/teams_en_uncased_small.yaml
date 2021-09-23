@@ -1,7 +1,7 @@
 task:
   model:
     encoder:
-      bert:
+      teams:
         attention_dropout_rate: 0.1
         dropout_rate: 0.1
         embedding_size: 128
@@ -14,3 +14,4 @@ task:
         num_layers: 12
         type_vocab_size: 2
         vocab_size: 30522
+      type: teams

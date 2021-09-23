@@ -113,7 +113,7 @@ class CombinationDatasetInputReader(input_reader.InputReader):
     self._pseudo_label_file_pattern = params.pseudo_label_data.input_path
     self._pseudo_label_dataset_fn = pseudo_label_dataset_fn
     self._pseudo_label_data_ratio = params.pseudo_label_data.data_ratio
-    self._pseudo_label_matched_files = self._match_files(
+    self._pseudo_label_matched_files = input_reader.match_files(
         self._pseudo_label_file_pattern)
     if not self._drop_remainder:
       raise ValueError(
@@ -134,14 +134,20 @@ class CombinationDatasetInputReader(input_reader.InputReader):
           'resulting in a 0 batch size for one of the datasets.'.format(
               self._global_batch_size, self._pseudo_label_data_ratio))
 
-    labeled_dataset = self._read_decode_and_parse_dataset(
+    def _read_decode_and_parse_dataset(matched_files, dataset_fn, batch_size,
+                                       input_context, tfds_builder):
+      dataset = self._read_data_source(matched_files, dataset_fn, input_context,
+                                       tfds_builder)
+      return self._decode_and_parse_dataset(dataset, batch_size, input_context)
+
+    labeled_dataset = _read_decode_and_parse_dataset(
         matched_files=self._matched_files,
         dataset_fn=self._dataset_fn,
         batch_size=labeled_batch_size,
         input_context=input_context,
         tfds_builder=self._tfds_builder)
 
-    pseudo_labeled_dataset = self._read_decode_and_parse_dataset(
+    pseudo_labeled_dataset = _read_decode_and_parse_dataset(
         matched_files=self._pseudo_label_matched_files,
         dataset_fn=self._pseudo_label_dataset_fn,
         batch_size=pl_batch_size,
