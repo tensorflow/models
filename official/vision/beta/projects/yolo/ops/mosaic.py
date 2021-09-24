@@ -105,11 +105,11 @@ class Mosaic:
     """Generate a random center to use for slicing and patching the images."""
     if self._mosaic_crop_mode == 'crop':
       min_offset = self._mosaic_center
-      cut_x = preprocessing_ops.rand_uniform_strong(
+      cut_x = preprocessing_ops.random_uniform_strong(
           self._output_size[1] * min_offset,
           self._output_size[1] * (1 - min_offset),
           seed=self._seed)
-      cut_y = preprocessing_ops.rand_uniform_strong(
+      cut_y = preprocessing_ops.random_uniform_strong(
           self._output_size[0] * min_offset,
           self._output_size[0] * (1 - min_offset),
           seed=self._seed)
@@ -190,10 +190,10 @@ class Mosaic:
       # shift the center of the image by applying a translation to the whole 
       # image
       ch = tf.math.round(
-          preprocessing_ops.rand_uniform_strong(
+          preprocessing_ops.random_uniform_strong(
               -center[0], center[0], seed=self._seed))
       cw = tf.math.round(
-          preprocessing_ops.rand_uniform_strong(
+          preprocessing_ops.random_uniform_strong(
               -center[1], center[1], seed=self._seed))
 
       # clip the boxes to those with in the image
@@ -302,7 +302,7 @@ class Mosaic:
     if self._mosaic_frequency >= 1.0:
       domo = 1.0
     else:
-      domo = preprocessing_ops.rand_uniform_strong(
+      domo = preprocessing_ops.random_uniform_strong(
           0.0, 1.0, dtype=tf.float32, seed=self._seed)
       noop = one.copy()
 
@@ -324,14 +324,14 @@ class Mosaic:
     if self._mixup_frequency >= 1.0:
       domo = 1.0
     else:
-      domo = preprocessing_ops.rand_uniform_strong(
+      domo = preprocessing_ops.random_uniform_strong(
           0.0, 1.0, dtype=tf.float32, seed=self._seed)
       noop = one.copy()
 
     if domo >= (1 - self._mixup_frequency):
       sample = one
       otype = one["image"].dtype
-      r = preprocessing_ops.rand_uniform_strong(
+      r = preprocessing_ops.random_uniform_strong(
           0.4, 0.6, tf.float32, seed=self._seed)
       sample['image'] = (
           r * tf.cast(one["image"], tf.float32) +

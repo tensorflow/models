@@ -14,6 +14,7 @@
 
 """Detection Data parser and processing for YOLO."""
 import tensorflow as tf
+import numpy as np
 from official.vision.beta.projects.yolo.ops import preprocessing_ops
 from official.vision.beta.projects.yolo.ops import anchor
 from official.vision.beta.ops import preprocess_ops
@@ -56,7 +57,8 @@ class Parser(parser.Parser):
     Args:
       output_size: `Tensor` or `List` for [height, width] of output image. The
         output_size should be divided by the largest feature stride 2^max_level.
-      anchors: `Dict[List[Union[int, float]]]` values for each anchor box.
+      anchors: `Dict[List[Union[int, float]]]` of anchor boxes to be bes used 
+        in each level. 
       expanded_strides: `Dict[int]` for how much the model scales down the 
         images at the largest level. For example, level 3 down samples the image 
         by a factor of 16, in the expanded strides dictionary, we will pass 
@@ -115,7 +117,7 @@ class Parser(parser.Parser):
         from {"float32", "float16", "bfloat16"}.
       seed: `int` the seed for random number generation. 
     """
-    for key in anchors.keys():
+    for key in anchors:
       # Assert that the width and height is viable
       assert output_size[1] % expanded_strides[str(key)] == 0
       assert output_size[0] % expanded_strides[str(key)] == 0
@@ -371,5 +373,3 @@ class Parser(parser.Parser):
           groundtruths, self._max_num_instances)
       labels['groundtruths'] = groundtruths
     return image, labels
-
-

@@ -27,7 +27,7 @@ def set_random_seeds(seed=0):
   tf.random.set_seed(seed)
   np.random.seed(seed)
 
-def rand_uniform_strong(minval, maxval, dtype=tf.float32, seed=None, shape=[]):
+def random_uniform_strong(minval, maxval, dtype=tf.float32, seed=None, shape=[]):
   """A unified function for consistent random number generation. 
   
   Equivalent to tf.random.uniform, except that minval and maxval are flipped if
@@ -52,7 +52,7 @@ def rand_uniform_strong(minval, maxval, dtype=tf.float32, seed=None, shape=[]):
       shape=shape, minval=minval, maxval=maxval, seed=seed, dtype=dtype)
 
 
-def rand_scale(val, dtype=tf.float32, seed=None):
+def random_scale(val, dtype=tf.float32, seed=None):
   """Generates a random number for scaling a parameter by multiplication.
 
   Generates a random number for the scale. Half of the time, the value is 
@@ -68,8 +68,8 @@ def rand_scale(val, dtype=tf.float32, seed=None):
   Returns:
     The random scale.
   """
-  scale = rand_uniform_strong(1.0, val, dtype=dtype, seed=seed)
-  do_ret = rand_uniform_strong(minval=0, maxval=2, dtype=tf.int32, seed=seed)
+  scale = random_uniform_strong(1.0, val, dtype=dtype, seed=seed)
+  do_ret = random_uniform_strong(minval=0, maxval=2, dtype=tf.int32, seed=seed)
   if (do_ret == 1):
     return scale
   return 1.0 / scale
@@ -145,13 +145,13 @@ def get_image_shape(image):
 def _augment_hsv_darknet(image, rh, rs, rv, seed=None):
   """Randomize the hue, saturation, and brightness via the darknet method."""
   if rh > 0.0:
-    delta = rand_uniform_strong(-rh, rh, seed=seed)
+    delta = random_uniform_strong(-rh, rh, seed=seed)
     image = tf.image.adjust_hue(image, delta)
   if rs > 0.0:
-    delta = rand_scale(rs, seed=seed)
+    delta = random_scale(rs, seed=seed)
     image = tf.image.adjust_saturation(image, delta)
   if rv > 0.0:
-    delta = rand_scale(rv, seed=seed)
+    delta = random_scale(rv, seed=seed)
     image *= delta
 
   # clip the values of the image between 0.0 and 1.0
@@ -166,7 +166,7 @@ def _augment_hsv_torch(image, rh, rs, rv, seed=None):
   image = tf.image.rgb_to_hsv(image)
   gen_range = tf.cast([rh, rs, rv], image.dtype)
   scale = tf.cast([180, 255, 255], image.dtype)
-  r = rand_uniform_strong(
+  r = random_uniform_strong(
       -1, 1, shape=[3], dtype=image.dtype, seed=seed) * gen_range + 1
 
   image = tf.math.floor(tf.cast(image, scale.dtype) * scale)
@@ -374,13 +374,13 @@ def resize_and_jitter_image(image,
     # location of the corner points.
     jitter_width = original_width * jitter
     jitter_height = original_height * jitter
-    pleft = rand_uniform_strong(
+    pleft = random_uniform_strong(
         -jitter_width, jitter_width, jitter_width.dtype, seed=seed)
-    pright = rand_uniform_strong(
+    pright = random_uniform_strong(
         -jitter_width, jitter_width, jitter_width.dtype, seed=seed)
-    ptop = rand_uniform_strong(
+    ptop = random_uniform_strong(
         -jitter_height, jitter_height, jitter_height.dtype, seed=seed)
-    pbottom = rand_uniform_strong(
+    pbottom = random_uniform_strong(
         -jitter_height, jitter_height, jitter_height.dtype, seed=seed)
 
     # Letter box the image.
@@ -530,7 +530,7 @@ def _build_transform(image,
 
   # Compute a random rotation to apply.
   rotation = tf.eye(3, dtype=tf.float32)
-  a = deg_to_rad(rand_uniform_strong(-degrees, degrees, seed=seed))
+  a = deg_to_rad(random_uniform_strong(-degrees, degrees, seed=seed))
   cos = tf.math.cos(a)
   sin = tf.math.sin(a)
   rotation = tf.tensor_scatter_nd_update(rotation,
@@ -542,8 +542,8 @@ def _build_transform(image,
 
   # Compute a random prespective change to apply.
   prespective_warp = tf.eye(3)
-  Px = rand_uniform_strong(-perspective, perspective, seed=seed)
-  Py = rand_uniform_strong(-perspective, perspective, seed=seed)
+  Px = random_uniform_strong(-perspective, perspective, seed=seed)
+  Py = random_uniform_strong(-perspective, perspective, seed=seed)
   prespective_warp = tf.tensor_scatter_nd_update(prespective_warp,
                                                  [[2, 0], [2, 1]], [Px, Py])
   prespective_warp_boxes = tf.tensor_scatter_nd_update(prespective_warp,
@@ -552,7 +552,7 @@ def _build_transform(image,
 
   # Compute a random scaling to apply.
   scale = tf.eye(3, dtype=tf.float32)
-  s = rand_uniform_strong(scale_min, scale_max, seed=seed)
+  s = random_uniform_strong(scale_min, scale_max, seed=seed)
   scale = tf.tensor_scatter_nd_update(scale, [[0, 0], [1, 1]], [1 / s, 1 / s])
   scale_boxes = tf.tensor_scatter_nd_update(scale, [[0, 0], [1, 1]], [s, s])
 
@@ -562,14 +562,14 @@ def _build_transform(image,
     # The image is contained within the image and arbitrarily translated to
     # locations with in the image.
     center = center_boxes = tf.eye(3, dtype=tf.float32)
-    Tx = rand_uniform_strong(-1, 0, seed=seed) * (cw / s - width)
-    Ty = rand_uniform_strong(-1, 0, seed=seed) * (ch / s - height)
+    Tx = random_uniform_strong(-1, 0, seed=seed) * (cw / s - width)
+    Ty = random_uniform_strong(-1, 0, seed=seed) * (ch / s - height)
   else:
     # The image can be translated outside of the output resolution window
     # but the image is translated relative to the output resolution not the
     # input image resolution.
-    Tx = rand_uniform_strong(0.5 - translate, 0.5 + translate, seed=seed)
-    Ty = rand_uniform_strong(0.5 - translate, 0.5 + translate, seed=seed)
+    Tx = random_uniform_strong(0.5 - translate, 0.5 + translate, seed=seed)
+    Ty = random_uniform_strong(0.5 - translate, 0.5 + translate, seed=seed)
 
     # Center and Scale the image such that the window of translation is
     # contained to the output resolution.

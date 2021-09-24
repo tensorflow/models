@@ -558,6 +558,7 @@ def _anchor_free_scale_boxes(encoded_boxes,
   pred_box = scale_down(scaled_box, (scaler * stride))
   return (scaler, scaled_box, pred_box)
 
+
 def get_predicted_box(width,
                       height,
                       encoded_boxes,
