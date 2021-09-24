@@ -199,7 +199,7 @@ class AnchorLabeler(object):
       for k, v in gt_attributes.items():
         att_size = v.get_shape().as_list()[-1]
         att_mask = tf.tile(cls_mask, [1, att_size])
-        att_targets[k] = self.target_gather(v, match_indices, att_mask, -1)
+        att_targets[k] = self.target_gather(v, match_indices, att_mask, 0.0)
 
     weights = tf.squeeze(tf.ones_like(gt_labels, dtype=tf.float32), -1)
     box_weights = self.target_gather(weights, match_indices, mask)
