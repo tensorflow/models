@@ -232,7 +232,7 @@ class EmbeddingPostprocessor(tf.keras.layers.Layer):
 
   def __call__(self, word_embeddings, token_type_ids=None, **kwargs):
     inputs = tf_utils.pack_inputs([word_embeddings, token_type_ids])
-    return super(EmbeddingPostprocessor, self).__call__(inputs, **kwargs)
+    return super(EmbeddingPostprocessor, self).__call__(inputs, **kwargs)  # pytype: disable=attribute-error  # typed-keras
 
   def call(self, inputs):
     """Implements call() for the layer."""

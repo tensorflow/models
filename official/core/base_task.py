@@ -121,7 +121,7 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
 
     Returns:
       A model instance.
-    """
+    """  # pytype: disable=bad-return-type  # typed-keras
 
   @abc.abstractmethod
   def build_inputs(self,

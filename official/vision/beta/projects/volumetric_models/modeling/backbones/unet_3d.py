@@ -46,7 +46,7 @@ class UNet3D(tf.keras.Model):
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
       use_sync_bn: bool = False,
-      use_batch_normalization: bool = False,
+      use_batch_normalization: bool = False,  # type: ignore  # typed-keras
       **kwargs):
     """3D UNet backbone initialization function.
 
@@ -156,7 +156,7 @@ def build_unet3d(
     input_specs: tf.keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds 3D UNet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()

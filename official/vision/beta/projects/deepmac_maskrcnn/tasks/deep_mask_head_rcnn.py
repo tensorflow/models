@@ -35,7 +35,7 @@ from official.vision.beta.tasks import maskrcnn
 # Taken from modeling/factory.py
 def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
                    model_config: deep_mask_head_rcnn_config.DeepMaskHeadRCNN,
-                   l2_regularizer: tf.keras.regularizers.Regularizer = None):
+                   l2_regularizer: tf.keras.regularizers.Regularizer = None):  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds Mask R-CNN model."""
   norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
