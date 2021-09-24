@@ -67,7 +67,7 @@ class SegmentationHead(hyperparams.Config):
   upsample_factor: int = 1
   feature_fusion: Optional[str] = None  # None, deeplabv3plus, or pyramid_fusion
   # deeplabv3plus feature fusion params
-  low_level: int = 2
+  low_level: Union[int, str] = 2
   low_level_num_filters: int = 48
 
 
@@ -137,7 +137,7 @@ PASCAL_INPUT_PATH_BASE = 'pascal_voc_seg'
 
 @exp_factory.register_config_factory('seg_deeplabv3_pascal')
 def seg_deeplabv3_pascal() -> cfg.ExperimentConfig:
-  """Image segmentation on imagenet with resnet deeplabv3."""
+  """Image segmentation on pascal voc with resnet deeplabv3."""
   train_batch_size = 16
   eval_batch_size = 8
   steps_per_epoch = PASCAL_TRAIN_EXAMPLES // train_batch_size
@@ -225,7 +225,7 @@ def seg_deeplabv3_pascal() -> cfg.ExperimentConfig:
 
 @exp_factory.register_config_factory('seg_deeplabv3plus_pascal')
 def seg_deeplabv3plus_pascal() -> cfg.ExperimentConfig:
-  """Image segmentation on imagenet with resnet deeplabv3+."""
+  """Image segmentation on pascal voc with resnet deeplabv3+."""
   train_batch_size = 16
   eval_batch_size = 8
   steps_per_epoch = PASCAL_TRAIN_EXAMPLES // train_batch_size
@@ -318,7 +318,7 @@ def seg_deeplabv3plus_pascal() -> cfg.ExperimentConfig:
 
 @exp_factory.register_config_factory('seg_resnetfpn_pascal')
 def seg_resnetfpn_pascal() -> cfg.ExperimentConfig:
-  """Image segmentation on imagenet with resnet-fpn."""
+  """Image segmentation on pascal voc with resnet-fpn."""
   train_batch_size = 256
   eval_batch_size = 32
   steps_per_epoch = PASCAL_TRAIN_EXAMPLES // train_batch_size
@@ -390,6 +390,99 @@ def seg_resnetfpn_pascal() -> cfg.ExperimentConfig:
   return config
 
 
+@exp_factory.register_config_factory('mnv2_deeplabv3_pascal')
+def mnv2_deeplabv3_pascal() -> cfg.ExperimentConfig:
+  """Image segmentation on pascal with mobilenetv2 deeplabv3."""
+  train_batch_size = 16
+  eval_batch_size = 16
+  steps_per_epoch = PASCAL_TRAIN_EXAMPLES // train_batch_size
+  output_stride = 16
+  aspp_dilation_rates = []
+  level = int(np.math.log2(output_stride))
+  pool_kernel_size = []
+
+  config = cfg.ExperimentConfig(
+      task=SemanticSegmentationTask(
+          model=SemanticSegmentationModel(
+              num_classes=21,
+              input_size=[None, None, 3],
+              backbone=backbones.Backbone(
+                  type='mobilenet',
+                  mobilenet=backbones.MobileNet(
+                      model_id='MobileNetV2', output_stride=output_stride)),
+              decoder=decoders.Decoder(
+                  type='aspp',
+                  aspp=decoders.ASPP(
+                      level=level,
+                      dilation_rates=aspp_dilation_rates,
+                      pool_kernel_size=pool_kernel_size)),
+              head=SegmentationHead(level=level, num_convs=0),
+              norm_activation=common.NormActivation(
+                  activation='relu',
+                  norm_momentum=0.99,
+                  norm_epsilon=1e-3,
+                  use_sync_bn=True)),
+          losses=Losses(l2_weight_decay=4e-5),
+          train_data=DataConfig(
+              input_path=os.path.join(PASCAL_INPUT_PATH_BASE, 'train_aug*'),
+              output_size=[512, 512],
+              is_training=True,
+              global_batch_size=train_batch_size,
+              aug_scale_min=0.5,
+              aug_scale_max=2.0),
+          validation_data=DataConfig(
+              input_path=os.path.join(PASCAL_INPUT_PATH_BASE, 'val*'),
+              output_size=[512, 512],
+              is_training=False,
+              global_batch_size=eval_batch_size,
+              resize_eval_groundtruth=False,
+              groundtruth_padded_size=[512, 512],
+              drop_remainder=False),
+          # mobilenetv2
+          init_checkpoint='gs://tf_model_garden/cloud/vision-2.0/deeplab/deeplabv3_mobilenetv2_coco/best_ckpt-63',
+          init_checkpoint_modules=['backbone', 'decoder']),
+      trainer=cfg.TrainerConfig(
+          steps_per_loop=steps_per_epoch,
+          summary_interval=steps_per_epoch,
+          checkpoint_interval=steps_per_epoch,
+          train_steps=30000,
+          validation_steps=PASCAL_VAL_EXAMPLES // eval_batch_size,
+          validation_interval=steps_per_epoch,
+          best_checkpoint_eval_metric='mean_iou',
+          best_checkpoint_export_subdir='best_ckpt',
+          best_checkpoint_metric_comp='higher',
+          optimizer_config=optimization.OptimizationConfig({
+              'optimizer': {
+                  'type': 'sgd',
+                  'sgd': {
+                      'momentum': 0.9
+                  }
+              },
+              'learning_rate': {
+                  'type': 'polynomial',
+                  'polynomial': {
+                      'initial_learning_rate': 0.007 * train_batch_size / 16,
+                      'decay_steps': 30000,
+                      'end_learning_rate': 0.0,
+                      'power': 0.9
+                  }
+              },
+              'warmup': {
+                  'type': 'linear',
+                  'linear': {
+                      'warmup_steps': 5 * steps_per_epoch,
+                      'warmup_learning_rate': 0
+                  }
+              }
+          })),
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None'
+      ])
+
+  return config
+
+
 # Cityscapes Dataset (Download and process the dataset yourself)
 CITYSCAPES_TRAIN_EXAMPLES = 2975
 CITYSCAPES_VAL_EXAMPLES = 500
@@ -398,7 +491,7 @@ CITYSCAPES_INPUT_PATH_BASE = 'cityscapes'
 
 @exp_factory.register_config_factory('seg_deeplabv3plus_cityscapes')
 def seg_deeplabv3plus_cityscapes() -> cfg.ExperimentConfig:
-  """Image segmentation on imagenet with resnet deeplabv3+."""
+  """Image segmentation on cityscapes with resnet deeplabv3+."""
   train_batch_size = 16
   eval_batch_size = 16
   steps_per_epoch = CITYSCAPES_TRAIN_EXAMPLES // train_batch_size
@@ -490,4 +583,115 @@ def seg_deeplabv3plus_cityscapes() -> cfg.ExperimentConfig:
           'task.validation_data.is_training != None'
       ])
 
+  return config
+
+
+@exp_factory.register_config_factory('mnv2_deeplabv3_cityscapes')
+def mnv2_deeplabv3_cityscapes() -> cfg.ExperimentConfig:
+  """Image segmentation on cityscapes with mobilenetv2 deeplabv3."""
+  train_batch_size = 16
+  eval_batch_size = 16
+  steps_per_epoch = CITYSCAPES_TRAIN_EXAMPLES // train_batch_size
+  output_stride = 16
+  aspp_dilation_rates = []
+  pool_kernel_size = [512, 1024]
+
+  level = int(np.math.log2(output_stride))
+  config = cfg.ExperimentConfig(
+      task=SemanticSegmentationTask(
+          model=SemanticSegmentationModel(
+              # Cityscapes uses only 19 semantic classes for train/evaluation.
+              # The void (background) class is ignored in train and evaluation.
+              num_classes=19,
+              input_size=[None, None, 3],
+              backbone=backbones.Backbone(
+                  type='mobilenet',
+                  mobilenet=backbones.MobileNet(
+                      model_id='MobileNetV2', output_stride=output_stride)),
+              decoder=decoders.Decoder(
+                  type='aspp',
+                  aspp=decoders.ASPP(
+                      level=level,
+                      dilation_rates=aspp_dilation_rates,
+                      pool_kernel_size=pool_kernel_size)),
+              head=SegmentationHead(level=level, num_convs=0),
+              norm_activation=common.NormActivation(
+                  activation='relu',
+                  norm_momentum=0.99,
+                  norm_epsilon=1e-3,
+                  use_sync_bn=True)),
+          losses=Losses(l2_weight_decay=4e-5),
+          train_data=DataConfig(
+              input_path=os.path.join(CITYSCAPES_INPUT_PATH_BASE,
+                                      'train_fine**'),
+              crop_size=[512, 1024],
+              output_size=[1024, 2048],
+              is_training=True,
+              global_batch_size=train_batch_size,
+              aug_scale_min=0.5,
+              aug_scale_max=2.0),
+          validation_data=DataConfig(
+              input_path=os.path.join(CITYSCAPES_INPUT_PATH_BASE, 'val_fine*'),
+              output_size=[1024, 2048],
+              is_training=False,
+              global_batch_size=eval_batch_size,
+              resize_eval_groundtruth=True,
+              drop_remainder=False),
+          # Coco pre-trained mobilenetv2 checkpoint
+          init_checkpoint='gs://tf_model_garden/cloud/vision-2.0/deeplab/deeplabv3_mobilenetv2_coco/best_ckpt-63',
+          init_checkpoint_modules='backbone'),
+      trainer=cfg.TrainerConfig(
+          steps_per_loop=steps_per_epoch,
+          summary_interval=steps_per_epoch,
+          checkpoint_interval=steps_per_epoch,
+          train_steps=100000,
+          validation_steps=CITYSCAPES_VAL_EXAMPLES // eval_batch_size,
+          validation_interval=steps_per_epoch,
+          best_checkpoint_eval_metric='mean_iou',
+          best_checkpoint_export_subdir='best_ckpt',
+          best_checkpoint_metric_comp='higher',
+          optimizer_config=optimization.OptimizationConfig({
+              'optimizer': {
+                  'type': 'sgd',
+                  'sgd': {
+                      'momentum': 0.9
+                  }
+              },
+              'learning_rate': {
+                  'type': 'polynomial',
+                  'polynomial': {
+                      'initial_learning_rate': 0.01,
+                      'decay_steps': 100000,
+                      'end_learning_rate': 0.0,
+                      'power': 0.9
+                  }
+              },
+              'warmup': {
+                  'type': 'linear',
+                  'linear': {
+                      'warmup_steps': 5 * steps_per_epoch,
+                      'warmup_learning_rate': 0
+                  }
+              }
+          })),
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None'
+      ])
+
+  return config
+
+
+@exp_factory.register_config_factory('mnv2_deeplabv3plus_cityscapes')
+def mnv2_deeplabv3plus_cityscapes() -> cfg.ExperimentConfig:
+  """Image segmentation on cityscapes with mobilenetv2 deeplabv3plus."""
+  config = mnv2_deeplabv3_cityscapes()
+  config.task.model.head = SegmentationHead(
+      level=4,
+      num_convs=2,
+      feature_fusion='deeplabv3plus',
+      use_depthwise_convolution=True,
+      low_level='2/depthwise',
+      low_level_num_filters=48)
+  config.task.model.backbone.mobilenet.output_intermediate_endpoints = True
   return config

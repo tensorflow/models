@@ -14,10 +14,10 @@
 
 # Lint as: python3
 """Backbones configurations."""
+import dataclasses
 from typing import Optional, List
 
 # Import libraries
-import dataclasses
 
 from official.modeling import hyperparams
 
@@ -62,6 +62,8 @@ class MobileNet(hyperparams.Config):
   model_id: str = 'MobileNetV2'
   filter_size_scale: float = 1.0
   stochastic_depth_drop_rate: float = 0.0
+  output_stride: Optional[int] = None
+  output_intermediate_endpoints: bool = False
 
 
 @dataclasses.dataclass
