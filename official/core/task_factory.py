@@ -57,6 +57,9 @@ def register_task_cls(task_config_cls):
 
 def get_task(task_config, **kwargs):
   """Creates a Task (of suitable subclass type) from task_config."""
+  # TODO(hongkuny): deprecate the task factory to use config.BUILDER.
+  if task_config.BUILDER is not None:
+    return task_config.BUILDER(task_config, **kwargs)
   return get_task_cls(task_config.__class__)(task_config, **kwargs)
 
 

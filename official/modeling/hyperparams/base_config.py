@@ -13,17 +13,45 @@
 # limitations under the License.
 
 """Base configurations to standardize experiments."""
-
 import copy
-import functools
-from typing import Any, List, Mapping, Optional, Type
-from absl import logging
-
 import dataclasses
+import functools
+import inspect
+from typing import Any, List, Mapping, Optional, Type
+
+from absl import logging
 import tensorflow as tf
 import yaml
 
 from official.modeling.hyperparams import params_dict
+
+_BOUND = set()
+
+
+def bind(config_cls):
+  """Bind a class to config cls."""
+  if not inspect.isclass(config_cls):
+    raise ValueError('The bind decorator is supposed to apply on the class '
+                     f'attribute. Received {config_cls}, not a class.')
+
+  def decorator(builder):
+    if config_cls in _BOUND:
+      raise ValueError('Inside a program, we should not bind the config with a'
+                       ' class twice.')
+    if inspect.isclass(builder):
+      config_cls._BUILDER = builder  # pylint: disable=protected-access
+    elif inspect.isfunction(builder):
+
+      def _wrapper(self, *args, **kwargs):  # pylint: disable=unused-argument
+        return builder(*args, **kwargs)
+
+      config_cls._BUILDER = _wrapper  # pylint: disable=protected-access
+    else:
+      raise ValueError(f'The `BUILDER` type is not supported: {builder}')
+    _BOUND.add(config_cls)
+    return builder
+
+  return decorator
 
 
 @dataclasses.dataclass
@@ -40,7 +68,8 @@ class Config(params_dict.ParamsDict):
     If you define/annotate some field as Dict, the field will convert to a
     `Config` instance and lose the dictionary type.
   """
-
+  # The class or method to bind with the params class.
+  _BUILDER = None
   # It's safe to add bytes and other immutable types here.
   IMMUTABLE_TYPES = (str, int, float, bool, type(None))
   # It's safe to add set, frozenset and other collections here.
@@ -53,6 +82,10 @@ class Config(params_dict.ParamsDict):
     super().__init__(
         default_params=default_params,
         restrictions=restrictions)
+
+  @property
+  def BUILDER(self):
+    return self._BUILDER
 
   @classmethod
   def _isvalidsequence(cls, v):
@@ -188,6 +221,11 @@ class Config(params_dict.ParamsDict):
       self.__dict__[k] = self._import_config(v, subconfig_type)
 
   def __setattr__(self, k, v):
+    if k == 'BUILDER' or k == '_BUILDER':
+      raise AttributeError('`BUILDER` is a property and `_BUILDER` is the '
+                           'reserved class attribute. We should only assign '
+                           '`_BUILDER` at the class level.')
+
     if k not in self.RESERVED_ATTR:
       if getattr(self, '_locked', False):
         raise ValueError('The Config has been locked. ' 'No change is allowed.')
@@ -265,4 +303,4 @@ class Config(params_dict.ParamsDict):
     attributes = list(cls.__annotations__.keys())
     default_params = {a: p for a, p in zip(attributes, args)}
     default_params.update(kwargs)
-    return cls(default_params)
+    return cls(default_params=default_params)
