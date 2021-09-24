@@ -536,12 +536,6 @@ def _anchor_free_scale_boxes(encoded_boxes,
   # build a scaling tensor to get the offset of th ebox relative to the image
   scaler = tf.convert_to_tensor([height, width, height, width])
 
-  scale_down = lambda x, y: x / tf.cast(y, x.dtype)
-  scale_up = lambda x, y: x * tf.cast(y, x.dtype)
-  if darknet:
-    scale_down = tf.grad_pass_through(scale_down)
-    scale_up = tf.grad_pass_through(scale_up)
-
   # scale the offsets and add them to the grid points or a tensor that is
   # the realtive location of each pixel
   box_xy = (grid_points + pred_xy)
@@ -554,8 +548,8 @@ def _anchor_free_scale_boxes(encoded_boxes,
   scaled_box = tf.concat([box_xy, box_wh], axis=-1)
 
   # properly scaling boxes gradeints
-  scaled_box = scale_up(scaled_box, stride)
-  pred_box = scale_down(scaled_box, (scaler * stride))
+  scaled_box = scaled_box * tf.cast(stride, scaled_box.dtype)
+  pred_box = scaled_box/tf.cast(scaler * stride, scaled_box.dtype)
   return (scaler, scaled_box, pred_box)
 
 
