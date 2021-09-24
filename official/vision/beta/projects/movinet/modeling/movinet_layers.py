@@ -103,7 +103,7 @@ class MobileConv2D(tf.keras.layers.Layer):
       bias_constraint: Optional[tf.keras.constraints.Constraint] = None,
       use_depthwise: bool = False,
       use_temporal: bool = False,
-      use_buffered_input: bool = False,
+      use_buffered_input: bool = False,  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):  # pylint: disable=g-doc-args
     """Initializes mobile conv2d.
 
@@ -270,7 +270,7 @@ class ConvBlock(tf.keras.layers.Layer):
       batch_norm_epsilon: float = 1e-3,
       activation: Optional[Any] = None,
       conv_type: str = '3d',
-      use_buffered_input: bool = False,
+      use_buffered_input: bool = False,  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     """Initializes a conv block.
 
@@ -553,7 +553,7 @@ class StreamConvBlock(ConvBlock):
       batch_norm_epsilon: float = 1e-3,
       activation: Optional[Any] = None,
       conv_type: str = '3d',
-      state_prefix: Optional[str] = None,
+      state_prefix: Optional[str] = None,  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     """Initializes a stream conv block.
 
@@ -678,7 +678,7 @@ class StreamSqueezeExcitation(tf.keras.layers.Layer):
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = tf.keras
       .regularizers.L2(KERNEL_WEIGHT_DECAY),
       use_positional_encoding: bool = False,
-      state_prefix: Optional[str] = None,
+      state_prefix: Optional[str] = None,  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     """Implementation for squeeze and excitation.
 
@@ -917,7 +917,7 @@ class SkipBlock(tf.keras.layers.Layer):
       batch_norm_layer: tf.keras.layers.Layer =
       tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
-      batch_norm_epsilon: float = 1e-3,
+      batch_norm_epsilon: float = 1e-3,  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     """Implementation for skip block.
 
@@ -1035,7 +1035,7 @@ class MovinetBlock(tf.keras.layers.Layer):
       tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
-      state_prefix: Optional[str] = None,
+      state_prefix: Optional[str] = None,  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     """Implementation for MoViNet block.
 
@@ -1235,7 +1235,7 @@ class Stem(tf.keras.layers.Layer):
       tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
-      state_prefix: Optional[str] = None,
+      state_prefix: Optional[str] = None,  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     """Implementation for video model stem.
 
@@ -1343,7 +1343,7 @@ class Head(tf.keras.layers.Layer):
       tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
-      state_prefix: Optional[str] = None,
+      state_prefix: Optional[str] = None,  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     """Implementation for video model head.
 
@@ -1442,7 +1442,7 @@ class ClassifierHead(tf.keras.layers.Layer):
       max_pool_predictions: bool = False,
       kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] =
-      tf.keras.regularizers.L2(KERNEL_WEIGHT_DECAY),
+      tf.keras.regularizers.L2(KERNEL_WEIGHT_DECAY),  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     """Implementation for video model classifier head.
 

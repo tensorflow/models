@@ -38,7 +38,7 @@ class BasicBlock3DVolume(tf.keras.layers.Layer):
                use_sync_bn: bool = False,
                norm_momentum: float = 0.99,
                norm_epsilon: float = 0.001,
-               use_batch_normalization: bool = False,
+               use_batch_normalization: bool = False,  # pytype: disable=annotation-type-mismatch  # typed-keras
                **kwargs):
     """Creates a basic 3d convolution block applying one or more convolutions.
 

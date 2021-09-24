@@ -664,7 +664,7 @@ def build_darknet(
     input_specs: tf.keras.layers.InputSpec,
     backbone_cfg: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds darknet."""
 
   backbone_cfg = backbone_cfg.get()
