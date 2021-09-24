@@ -14,7 +14,6 @@
 
 """Detection Data parser and processing for YOLO."""
 import tensorflow as tf
-import numpy as np
 from official.vision.beta.projects.yolo.ops import preprocessing_ops
 from official.vision.beta.projects.yolo.ops import anchor
 from official.vision.beta.ops import preprocess_ops
@@ -230,7 +229,7 @@ class Parser(parser.Parser):
           self._aug_rand_perspective)
 
       # Clip and clean boxes.
-      boxes, inds = preprocessing_ops.apply_infos(
+      boxes, inds = preprocessing_ops.transform_and_clip_boxes(
           boxes,
           infos,
           affine=affine,
@@ -284,7 +283,7 @@ class Parser(parser.Parser):
 
     # Clip and clean boxes.
     image = image / 255.0
-    boxes, inds = preprocessing_ops.apply_infos(
+    boxes, inds = preprocessing_ops.transform_and_clip_boxes(
         boxes, infos, shuffle_boxes=False, area_thresh=0.0, augment=True)
     classes = tf.gather(classes, inds)
     info = infos[-1]

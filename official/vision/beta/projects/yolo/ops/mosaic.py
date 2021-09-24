@@ -40,6 +40,7 @@ class Mosaic:
                random_pad=False,
                random_flip=False, 
                area_thresh=0.1,
+               pad_value=preprocessing_ops.PAD_VALUE, 
                seed=None):
     """Initializes parameters for mosaic.
 
@@ -95,6 +96,7 @@ class Mosaic:
     self._aug_rand_angle = aug_rand_angle
     self._aug_rand_perspective = aug_rand_perspective
     self._random_flip = random_flip
+    self._pad_value = pad_value
 
     self._deterministic = seed != None
     self._seed = seed if seed is not None else random.randint(0, 2**30)
@@ -169,7 +171,7 @@ class Mosaic:
         seed=self._seed)
 
     # Clip and clean boxes.
-    boxes, inds = preprocessing_ops.apply_infos(
+    boxes, inds = preprocessing_ops.transform_and_clip_boxes(
         boxes,
         infos,
         area_thresh=self._area_thresh,
@@ -195,15 +197,15 @@ class Mosaic:
               -center[1], center[1], seed=self._seed))
 
       # clip the boxes to those with in the image
-      image = tfa.image.translate(
-          image, [cw, ch], fill_value=preprocessing_ops.get_pad_value())
+      image = tfa.image.translate(image, [cw, ch], fill_value=self._pad_value)
       boxes = box_ops.denormalize_boxes(boxes, shape[:2])
       boxes = boxes + tf.cast([ch, cw, ch, cw], boxes.dtype)
       boxes = box_ops.clip_boxes(boxes, shape[:2])
       inds = box_ops.get_non_empty_box_indices(boxes)
 
       boxes = box_ops.normalize_boxes(boxes, shape[:2])
-      boxes, classes, is_crowd, area = self._select_ind(inds, boxes, classes, is_crowd, area)
+      boxes, classes, is_crowd, area = self._select_ind(
+        inds, boxes, classes, is_crowd, area)
 
 
     # warp and scale the fully stitched sample 
@@ -220,7 +222,7 @@ class Mosaic:
     image = tf.image.resize(image, (height, width))
 
     # clip and clean boxes
-    boxes, inds = preprocessing_ops.apply_infos(
+    boxes, inds = preprocessing_ops.transform_and_clip_boxes(
         boxes, None, affine=affine, area_thresh=self._area_thresh, 
         seed=self._seed)
     classes, is_crowd, area = self._select_ind(inds, classes, is_crowd, area)

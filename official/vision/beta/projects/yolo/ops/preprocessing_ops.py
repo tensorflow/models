@@ -1,14 +1,12 @@
 import tensorflow as tf
 import numpy as np
 import random
-import os
 
 import tensorflow_addons as tfa
 from official.vision.beta.ops import box_ops as bbox_ops
 
 PAD_VALUE = 114
 GLOBAL_SEED_SET = False
-
 
 def set_random_seeds(seed=0):
   """Sets all accessible global seeds to properly apply randomization.
@@ -24,17 +22,10 @@ def set_random_seeds(seed=0):
   """  
   if seed is not None:
     global GLOBAL_SEED_SET
-    os.environ['PYTHONHASHSEED'] = str(seed)
     random.seed(seed)
     GLOBAL_SEED_SET = True
   tf.random.set_seed(seed)
   np.random.seed(seed)
-
-
-def get_pad_value():
-  """Return the padding value."""
-  return PAD_VALUE
-
 
 def rand_uniform_strong(minval, maxval, dtype=tf.float32, seed=None, shape=[]):
   """A unified function for consistent random number generation. 
@@ -394,7 +385,8 @@ def resize_and_jitter_image(image,
 
     # Letter box the image.
     if letter_box == True or letter_box is None:
-      image_aspect_ratio, input_aspect_ratio = original_width / original_height, width / height
+      (image_aspect_ratio, 
+      input_aspect_ratio) = original_width / original_height, width / height
       distorted_aspect = image_aspect_ratio / input_aspect_ratio
 
       delta_h, delta_w = 0.0, 0.0
@@ -473,7 +465,7 @@ def resize_and_jitter_image(image,
     # Pad the image to desired size.
     image_ = tf.pad(
         cropped_image, [[pad[0], pad[2]], [pad[1], pad[3]], [0, 0]],
-        constant_values=get_pad_value())
+        constant_values=PAD_VALUE)
     pad_info = tf.stack([
         tf.cast(tf.shape(cropped_image)[:2], tf.float32),
         tf.cast(tf.shape(image_)[:2], dtype=tf.float32),
@@ -660,7 +652,7 @@ def affine_warp_image(image,
   image = tfa.image.transform(
       image,
       affine,
-      fill_value=get_pad_value(),
+      fill_value=PAD_VALUE,
       output_shape=desired_size,
       interpolation='bilinear')
 
@@ -826,7 +818,7 @@ def resize_and_crop_boxes(boxes, image_scale, output_size, offset, box_history):
   return clipped_boxes, box_history
 
 
-def apply_infos(boxes,
+def transform_and_clip_boxes(boxes,
                 infos,
                 affine=None,
                 shuffle_boxes=False,
