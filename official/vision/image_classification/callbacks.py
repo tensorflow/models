@@ -244,7 +244,7 @@ class AverageModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
 
     if self.update_weights:
       self.model.optimizer.assign_average_vars(self.model.variables)
-      return super()._save_model(epoch, logs)
+      return super()._save_model(epoch, logs)  # pytype: disable=attribute-error  # typed-keras
     else:
       # Note: `model.get_weights()` gives us the weights (non-ref)
       # whereas `model.variables` returns references to the variables.
@@ -252,6 +252,6 @@ class AverageModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
       self.model.optimizer.assign_average_vars(self.model.variables)
       # result is currently None, since `super._save_model` doesn't
       # return anything, but this may change in the future.
-      result = super()._save_model(epoch, logs)
+      result = super()._save_model(epoch, logs)  # pytype: disable=attribute-error  # typed-keras
       self.model.set_weights(non_avg_weights)
       return result

@@ -28,7 +28,7 @@ from official.vision.beta.projects.volumetric_models.modeling.heads import segme
 def build_segmentation_model_3d(
     input_specs: tf.keras.layers.InputSpec,
     model_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds Segmentation model."""
   norm_activation_config = model_config.norm_activation
   backbone = backbone_factory.build_backbone(

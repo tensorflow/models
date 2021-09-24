@@ -93,7 +93,7 @@ class MovinetClassifier(tf.keras.Model):
       backbone: tf.keras.Model,
       input_specs: Mapping[str, tf.keras.layers.InputSpec],
       state_specs: Optional[Mapping[str, tf.keras.layers.InputSpec]] = None,
-  ) -> Tuple[Mapping[str, tf.keras.Input], Union[Tuple[Mapping[
+  ) -> Tuple[Mapping[str, tf.keras.Input], Union[Tuple[Mapping[  # pytype: disable=invalid-annotation  # typed-keras
       str, tf.Tensor], Mapping[str, tf.Tensor]], Mapping[str, tf.Tensor]]]:
     """Builds the model network.
 
