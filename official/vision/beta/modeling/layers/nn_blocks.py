@@ -495,6 +495,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
                use_residual=True,
                norm_momentum=0.99,
                norm_epsilon=0.001,
+               output_intermediate_endpoints=False,
                **kwargs):
     """Initializes an inverted bottleneck block with BN after convolutions.
 
@@ -537,6 +538,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
         input and output.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      output_intermediate_endpoints: A `bool` of whether or not output the
+        intermediate endpoints.
       **kwargs: Additional keyword arguments to be passed.
     """
     super(InvertedBottleneckBlock, self).__init__(**kwargs)
@@ -564,6 +567,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
     self._expand_se_in_filters = expand_se_in_filters
+    self._output_intermediate_endpoints = output_intermediate_endpoints
 
     if use_sync_bn:
       self._norm = tf.keras.layers.experimental.SyncBatchNormalization
@@ -698,6 +702,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs, training=None):
+    endpoints = {}
     shortcut = inputs
     if self._expand_ratio > 1:
       x = self._conv0(inputs)
@@ -710,6 +715,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
       x = self._conv1(x)
       x = self._norm1(x)
       x = self._depthwise_activation_layer(x)
+      if self._output_intermediate_endpoints:
+        endpoints['depthwise'] = x
 
     if self._squeeze_excitation:
       x = self._squeeze_excitation(x)
@@ -724,6 +731,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
         x = self._stochastic_depth(x, training=training)
       x = self._add([x, shortcut])
 
+    if self._output_intermediate_endpoints:
+      return x, endpoints
     return x
 
 
