@@ -536,8 +536,8 @@ def _anchor_free_scale_boxes(encoded_boxes,
   # build a scaling tensor to get the offset of th ebox relative to the image
   scaler = tf.convert_to_tensor([height, width, height, width])
 
-  scale_down = lambda x, y: x / y
-  scale_up = lambda x, y: x * y
+  scale_down = lambda x, y: x / tf.cast(y, x.dtype)
+  scale_up = lambda x, y: x * tf.cast(y, x.dtype)
   if darknet:
     scale_down = tf.grad_pass_through(scale_down)
     scale_up = tf.grad_pass_through(scale_up)
@@ -557,7 +557,6 @@ def _anchor_free_scale_boxes(encoded_boxes,
   scaled_box = scale_up(scaled_box, stride)
   pred_box = scale_down(scaled_box, (scaler * stride))
   return (scaler, scaled_box, pred_box)
-
 
 def get_predicted_box(width,
                       height,
