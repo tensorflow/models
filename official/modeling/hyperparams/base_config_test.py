@@ -91,6 +91,31 @@ class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
     with self.assertRaises(AttributeError):
       _ = params.a
 
+  def test_cls(self):
+    params = base_config.Config()
+    with self.assertRaisesRegex(
+        AttributeError,
+        '`BUILDER` is a property and `_BUILDER` is the reserved'):
+      params.BUILDER = DumpConfig2
+    with self.assertRaisesRegex(
+        AttributeError,
+        '`BUILDER` is a property and `_BUILDER` is the reserved'):
+      params._BUILDER = DumpConfig2
+
+    base_config.bind(DumpConfig1)(DumpConfig2)
+    params = DumpConfig1()
+    self.assertEqual(params.BUILDER, DumpConfig2)
+    with self.assertRaisesRegex(ValueError,
+                                'Inside a program, we should not bind'):
+      base_config.bind(DumpConfig1)(DumpConfig2)
+
+    def _test():
+      return 'test'
+
+    base_config.bind(DumpConfig2)(_test)
+    params = DumpConfig2()
+    self.assertEqual(params.BUILDER(), 'test')
+
   def test_nested_config_types(self):
     config = DumpConfig3()
     self.assertIsInstance(config.e, DumpConfig1)
