@@ -14,7 +14,6 @@
 
 """Detection Data parser and processing for YOLO."""
 import tensorflow as tf
-import numpy as np
 from official.vision.beta.projects.yolo.ops import preprocessing_ops
 from official.vision.beta.projects.yolo.ops import anchor
 from official.vision.beta.ops import preprocess_ops
