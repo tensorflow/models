@@ -265,7 +265,7 @@ class BASNetEncoder(tf.keras.Model):
 def build_basnet_encoder(
     input_specs: tf.keras.layers.InputSpec,
     model_config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds BASNet Encoder backbone from a config."""
   backbone_type = model_config.backbone.type
   norm_activation_config = model_config.norm_activation

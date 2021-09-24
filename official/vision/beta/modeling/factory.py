@@ -42,7 +42,7 @@ def build_classification_model(
     input_specs: tf.keras.layers.InputSpec,
     model_config: classification_cfg.ImageClassificationModel,
     l2_regularizer: tf.keras.regularizers.Regularizer = None,
-    skip_logits_layer: bool = False) -> tf.keras.Model:
+    skip_logits_layer: bool = False) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds the classification model."""
   norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
@@ -69,7 +69,7 @@ def build_classification_model(
 def build_maskrcnn(
     input_specs: tf.keras.layers.InputSpec,
     model_config: maskrcnn_cfg.MaskRCNN,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds Mask R-CNN model."""
   norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
@@ -252,7 +252,7 @@ def build_maskrcnn(
 def build_retinanet(
     input_specs: tf.keras.layers.InputSpec,
     model_config: retinanet_cfg.RetinaNet,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds RetinaNet model."""
   norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
@@ -319,7 +319,7 @@ def build_retinanet(
 def build_segmentation_model(
     input_specs: tf.keras.layers.InputSpec,
     model_config: segmentation_cfg.SemanticSegmentationModel,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds Segmentation model."""
   norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(

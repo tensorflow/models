@@ -69,7 +69,7 @@ class ProgressivePolicy:
         shape=[])
     self._volatiles.reassign_trackable(
         optimizer=self.get_optimizer(stage_id),
-        model=self.get_model(stage_id, old_model=None))
+        model=self.get_model(stage_id, old_model=None))  # pytype: disable=wrong-arg-types  # typed-keras
 
     streamz_counters.progressive_policy_creation_counter.get_cell(
         ).increase_by(1)
@@ -96,7 +96,7 @@ class ProgressivePolicy:
   @abc.abstractmethod
   def get_model(self,
                 stage_id: int,
-                old_model: tf.keras.Model = None) -> tf.keras.Model:
+                old_model: tf.keras.Model = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
     """Return model for this stage. For initialization, `old_model` = None."""
     pass
 
