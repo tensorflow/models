@@ -1,0 +1,19 @@
+<annotation>
+    <folder>运球2021_08_03测试</folder>
+    <filename>IMG_0097.JPG</filename>
+    <size>
+        <width>4032</width>
+        <height>3024</height>
+        <depth>3</depth>
+    </size>
+    <object>
+        <name>Basketball</name>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>1279</xmin>
+            <ymin>2121</ymin>
+            <xmax>1588</xmax>
+            <ymax>2438</ymax>
+        </bndbox>
+    </object>
+</annotation>
