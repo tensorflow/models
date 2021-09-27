@@ -1585,6 +1585,13 @@ def _gather_candidates_at_indices(keypoint_candidates,
 
   gathered_keypoint_candidates = tf.transpose(
       nearby_candidate_coords_transposed, [0, 2, 1, 3])
+  # The reshape operation above may result in a singleton last dimension, but
+  # downstream code requires it to always be at least 2-valued.
+  original_shape = tf.shape(gathered_keypoint_candidates)
+  new_shape = tf.concat((original_shape[:3],
+                         [tf.maximum(original_shape[3], 2)]), 0)
+  gathered_keypoint_candidates = tf.reshape(gathered_keypoint_candidates,
+                                            new_shape)
   gathered_keypoint_scores = tf.transpose(nearby_candidate_scores_transposed,
                                           [0, 2, 1])
 
