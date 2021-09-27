@@ -317,7 +317,9 @@ def top_k_feature_map_locations(feature_map, max_pool_kernel_size=3, k=100,
           feature_map_peaks_flat, axis=1, output_type=tf.dtypes.int32), axis=-1)
     else:
       feature_map_peaks_flat = tf.reshape(feature_map_peaks, [batch_size, -1])
-      scores, peak_flat_indices = tf.math.top_k(feature_map_peaks_flat, k=k)
+      safe_k = tf.minimum(k, tf.shape(feature_map_peaks_flat)[1])
+      scores, peak_flat_indices = tf.math.top_k(feature_map_peaks_flat,
+                                                k=safe_k)
 
   # Get x, y and channel indices corresponding to the top indices in the flat
   # array.
