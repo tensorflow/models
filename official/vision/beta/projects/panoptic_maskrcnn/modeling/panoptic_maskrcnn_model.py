@@ -25,31 +25,33 @@ from official.vision.beta.modeling import maskrcnn_model
 class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
   """The Panoptic Segmentation model."""
 
-  def __init__(self,
-               backbone: tf.keras.Model,
-               decoder: tf.keras.Model,
-               rpn_head: tf.keras.layers.Layer,
-               detection_head: Union[tf.keras.layers.Layer,
-                                     List[tf.keras.layers.Layer]],
-               roi_generator: tf.keras.layers.Layer,
-               roi_sampler: Union[tf.keras.layers.Layer,
-                                  List[tf.keras.layers.Layer]],
-               roi_aligner: tf.keras.layers.Layer,
-               detection_generator: tf.keras.layers.Layer,
-               mask_head: Optional[tf.keras.layers.Layer] = None,
-               mask_sampler: Optional[tf.keras.layers.Layer] = None,
-               mask_roi_aligner: Optional[tf.keras.layers.Layer] = None,
-               segmentation_backbone: Optional[tf.keras.Model] = None,
-               segmentation_decoder: Optional[tf.keras.Model] = None,
-               segmentation_head: tf.keras.layers.Layer = None,
-               class_agnostic_bbox_pred: bool = False,
-               cascade_class_ensemble: bool = False,
-               min_level: Optional[int] = None,
-               max_level: Optional[int] = None,
-               num_scales: Optional[int] = None,
-               aspect_ratios: Optional[List[float]] = None,
-               anchor_size: Optional[float] = None,  # pytype: disable=annotation-type-mismatch  # typed-keras
-               **kwargs):
+  def __init__(
+      self,
+      backbone: tf.keras.Model,
+      decoder: tf.keras.Model,
+      rpn_head: tf.keras.layers.Layer,
+      detection_head: Union[tf.keras.layers.Layer,
+                            List[tf.keras.layers.Layer]],
+      roi_generator: tf.keras.layers.Layer,
+      roi_sampler: Union[tf.keras.layers.Layer,
+                         List[tf.keras.layers.Layer]],
+      roi_aligner: tf.keras.layers.Layer,
+      detection_generator: tf.keras.layers.Layer,
+      panoptic_segmentation_generator: Optional[tf.keras.layers.Layer] = None,
+      mask_head: Optional[tf.keras.layers.Layer] = None,
+      mask_sampler: Optional[tf.keras.layers.Layer] = None,
+      mask_roi_aligner: Optional[tf.keras.layers.Layer] = None,
+      segmentation_backbone: Optional[tf.keras.Model] = None,
+      segmentation_decoder: Optional[tf.keras.Model] = None,
+      segmentation_head: tf.keras.layers.Layer = None,
+      class_agnostic_bbox_pred: bool = False,
+      cascade_class_ensemble: bool = False,
+      min_level: Optional[int] = None,
+      max_level: Optional[int] = None,
+      num_scales: Optional[int] = None,
+      aspect_ratios: Optional[List[float]] = None,
+      anchor_size: Optional[float] = None,
+      **kwargs):
     """Initializes the Panoptic Mask R-CNN model.
 
     Args:
@@ -62,6 +64,8 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
         detection heads.
       roi_aligner: the ROI aligner.
       detection_generator: the detection generator.
+      panoptic_segmentation_generator: the panoptic segmentation generator that
+        is used to merge instance and semantic segmentation masks.
       mask_head: the mask head.
       mask_sampler: the mask sampler.
       mask_roi_aligner: the ROI alginer for mask prediction.
@@ -120,6 +124,10 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
         'segmentation_head': segmentation_head
     })
 
+    if panoptic_segmentation_generator is not None:
+      self._config_dict.update(
+          {'panoptic_segmentation_generator': panoptic_segmentation_generator})
+
     if not self._include_mask:
       raise ValueError(
           '`mask_head` needs to be provided for Panoptic Mask R-CNN.')
@@ -131,6 +139,7 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
     self.segmentation_backbone = segmentation_backbone
     self.segmentation_decoder = segmentation_decoder
     self.segmentation_head = segmentation_head
+    self.panoptic_segmentation_generator = panoptic_segmentation_generator
 
   def call(self,
            images: tf.Tensor,
@@ -166,6 +175,10 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
     model_outputs.update({
         'segmentation_outputs': segmentation_outputs,
     })
+
+    if not training and self.panoptic_segmentation_generator is not None:
+      panoptic_outputs = self.panoptic_segmentation_generator(model_outputs)
+      model_outputs.update({'panoptic_outputs': panoptic_outputs})
 
     return model_outputs
 
