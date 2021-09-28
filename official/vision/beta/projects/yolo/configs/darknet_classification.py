@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Image classification with darknet configs."""
 
 import dataclasses
@@ -28,14 +27,16 @@ from official.vision.beta.projects.yolo.configs import backbones
 
 @dataclasses.dataclass
 class ImageClassificationModel(hyperparams.Config):
+  """Image classification model config."""
   num_classes: int = 0
-  input_size: List[int] = dataclasses.field(default_factory=list)
+  input_size: List[int] = dataclasses.field(default_factory=lambda: [224, 224])
   backbone: backbones.Backbone = backbones.Backbone(
       type='darknet', darknet=backbones.Darknet())
   dropout_rate: float = 0.0
   norm_activation: common.NormActivation = common.NormActivation()
   # Adds a Batch Normalization layer pre-GlobalAveragePooling in classification.
   add_head_batch_norm: bool = False
+  kernel_initializer: str = 'VarianceScaling'
 
 
 @dataclasses.dataclass

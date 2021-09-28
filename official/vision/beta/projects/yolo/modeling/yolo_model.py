@@ -16,7 +16,6 @@
 
 import tensorflow as tf
 
-
 # static base Yolo Models that do not require configuration
 # similar to a backbone model id.
 
@@ -104,7 +103,7 @@ class Yolo(tf.keras.Model):
     self._backbone = backbone
     self._decoder = decoder
     self._head = head
-    self._filter = detection_generator
+    self._detection_generator = detection_generator
     return
 
   def call(self, inputs, training=False):
@@ -115,7 +114,7 @@ class Yolo(tf.keras.Model):
       return {"raw_output": raw_predictions}
     else:
       # Post-processing.
-      predictions = self._filter(raw_predictions)
+      predictions = self._detection_generator(raw_predictions)
       predictions.update({"raw_output": raw_predictions})
       return predictions
 
@@ -132,8 +131,8 @@ class Yolo(tf.keras.Model):
     return self._head
 
   @property
-  def filter(self):
-    return self._filter
+  def detection_generator(self):
+    return self._detection_generator
 
   def get_config(self):
     return self._config_dict

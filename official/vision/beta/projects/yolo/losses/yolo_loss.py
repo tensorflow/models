@@ -33,7 +33,6 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
 
   def __init__(self,
                classes,
-               mask,
                anchors,
                path_stride=1,
                ignore_thresh=0.7,
@@ -52,8 +51,6 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
 
     Args:
       classes: `int` for the number of classes
-      mask: `List[int]` for the output level that this specific model output
-        level
       anchors: `List[List[int]]` for the anchor boxes that are used in the model
         at all levels. For anchor free prediction set the anchor list to be the
         same as the image resolution.
@@ -85,11 +82,10 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
       max_delta: gradient clipping to apply to the box loss.
     """
     self._loss_type = loss_type
-    self._classes = tf.constant(tf.cast(classes, dtype=tf.int32))
-    self._num = tf.cast(len(mask), dtype=tf.int32)
+    self._classes = classes
+    self._num = tf.cast(len(anchors), dtype=tf.int32)
     self._truth_thresh = truth_thresh
     self._ignore_thresh = ignore_thresh
-    self._masks = mask
     self._anchors = anchors
 
     self._iou_normalizer = iou_normalizer
@@ -111,8 +107,8 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
         max_delta=self._max_delta)
     self._decode_boxes = functools.partial(
         loss_utils.get_predicted_box, **box_kwargs)
-    self._search_pairs = lambda pred_boxes, pred_classes, boxes, classes, scale, yxyx: (None, None, None, None)  # pylint:disable=line-too-long
-    self._build_per_path_attributes()
+
+    self._search_pairs = lambda *args: (None, None, None, None)
     self._build_per_path_attributes()
 
   def box_loss(self, true_box, pred_box, darknet=False):
@@ -136,10 +132,15 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
                                scale=None):
     """Search of all groundtruths to associate groundtruths to predictions."""
 
+    boxes = box_ops.yxyx_to_xcycwh(boxes)
+
+    if scale is not None:
+      boxes = boxes * tf.cast(tf.stop_gradient(scale), boxes.dtype)
+
     # Search all predictions against ground truths to find mathcing boxes for
     # each pixel.
-    _, _, iou_max, _ = self._search_pairs(
-        pred_boxes, pred_classes, boxes, classes, scale=scale, yxyx=True)
+    _, _, iou_max, _ = self._search_pairs(pred_boxes, pred_classes, boxes,
+                                          classes)
 
     if iou_max is None:
       return true_conf, tf.ones_like(true_conf)
@@ -199,9 +200,6 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
      grid_mask) = self._compute_loss(true_counts, inds, y_true, boxes, classes,
                                      y_pred)
 
-    # Temporary metrics
-    box_loss = tf.stop_gradient(0.05 * box_loss / self._iou_normalizer)
-
     # Metric compute using done here to save time and resources.
     sigmoid_conf = tf.stop_gradient(tf.sigmoid(pred_conf))
     iou = tf.stop_gradient(iou)
@@ -222,21 +220,28 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
     """The actual logic to apply to the raw model for optimization."""
     ...
 
-  def post_path_aggregation(self, loss, ground_truths, predictions):  # pylint:disable=unused-argument
+  def post_path_aggregation(self, loss, box_loss, conf_loss, class_loss,
+                            ground_truths, predictions):  # pylint:disable=unused-argument
     """This method allows for post processing of a loss value.
 
     After the loss has been aggregated across all the FPN levels some post
     proceessing may need to occur to poroperly scale the loss. The default
-    behavior is to pass the loss through with no alterations.
+    behavior is to pass the loss through with no alterations. Passing the
+    individual losses for each mask will allow for aggeregation of loss across
+    paths for some losses.
 
     Args:
       loss: `tf.float` scalar for the actual loss.
+      box_loss: `tf.float` for the loss on the boxs only.
+      conf_loss: `tf.float` for the loss on the confidences only.
+      class_loss: `tf.float` for the loss on the classes only.
       ground_truths: `Dict` holding all the ground truth tensors.
       predictions: `Dict` holding all the predicted values.
 
     Returns:
       loss: `tf.float` scalar for the scaled loss.
     """
+    del box_loss, conf_loss, class_loss, ground_truths, predictions
     return loss
 
   @abc.abstractmethod
@@ -280,7 +285,6 @@ class DarknetLoss(YoloLossBase):
     association.
     """
     self._anchor_generator = loss_utils.GridGenerator(
-        masks=self._masks,
         anchors=self._anchors,
         scale_anchors=self._path_stride)
 
@@ -314,8 +318,7 @@ class DarknetLoss(YoloLossBase):
     anchor_grid = tf.stop_gradient(anchor_grid)
 
     # Split all the ground truths to use as seperate items in loss computation.
-    (true_box, ind_mask, true_class, _, _) = tf.split(
-        y_true, [4, 1, 1, 1, 1], axis=-1)
+    (true_box, ind_mask, true_class) = tf.split(y_true, [4, 1, 1], axis=-1)
     true_conf = tf.squeeze(true_conf, axis=-1)
     true_class = tf.squeeze(true_class, axis=-1)
     grid_mask = true_conf
@@ -432,13 +435,14 @@ class ScaledLoss(YoloLossBase):
     association.
     """
     self._anchor_generator = loss_utils.GridGenerator(
-        masks=self._masks,
         anchors=self._anchors,
         scale_anchors=self._path_stride)
 
     if self._ignore_thresh > 0.0:
       self._search_pairs = loss_utils.PairWiseSearch(
           iou_type=self._loss_type, any_match=False, min_conf=0.25)
+
+    self._cls_normalizer = self._cls_normalizer * self._classes / 80
     return
 
   def _compute_loss(self, true_counts, inds, y_true, boxes, classes, y_pred):
@@ -457,8 +461,7 @@ class ScaledLoss(YoloLossBase):
         width, height, batch_size, dtype=tf.float32)
 
     # Split the y_true list.
-    (true_box, ind_mask, true_class, _, _) = tf.split(
-        y_true, [4, 1, 1, 1, 1], axis=-1)
+    (true_box, ind_mask, true_class) = tf.split(y_true, [4, 1, 1], axis=-1)
     grid_mask = true_conf = tf.squeeze(true_conf, axis=-1)
     true_class = tf.squeeze(true_class, axis=-1)
     num_objs = tf.cast(tf.reduce_sum(ind_mask), dtype=y_pred.dtype)
@@ -469,7 +472,7 @@ class ScaledLoss(YoloLossBase):
     pred_box, pred_conf, pred_class = tf.split(y_pred, [4, 1, -1], axis=-1)
 
     # Decode the boxes for loss compute.
-    scale, pred_box, _ = self._decode_boxes(
+    scale, pred_box, pbg = self._decode_boxes(
         fwidth, fheight, pred_box, anchor_grid, grid_points, darknet=False)
 
     # If the ignore threshold is enabled, search all boxes ignore all
@@ -477,20 +480,24 @@ class ScaledLoss(YoloLossBase):
     # noted ground truth list.
     if self._ignore_thresh != 0.0:
       (_, obj_mask) = self._tiled_global_box_search(
-          pred_box,
+          pbg,
           tf.stop_gradient(tf.sigmoid(pred_class)),
           boxes,
           classes,
           true_conf,
           smoothed=False,
-          scale=scale)
+          scale=None)
 
     # Scale and shift and select the ground truth boxes
     # and predictions to the prediciton domain.
-    offset = tf.cast(
-        tf.gather_nd(grid_points, inds, batch_dims=1), true_box.dtype)
-    offset = tf.concat([offset, tf.zeros_like(offset)], axis=-1)
-    true_box = loss_utils.apply_mask(ind_mask, (scale * true_box) - offset)
+    if self._box_type == 'anchor_free':
+      true_box = loss_utils.apply_mask(ind_mask,
+                                       (scale * self._path_stride * true_box))
+    else:
+      offset = tf.cast(
+          tf.gather_nd(grid_points, inds, batch_dims=1), true_box.dtype)
+      offset = tf.concat([offset, tf.zeros_like(offset)], axis=-1)
+      true_box = loss_utils.apply_mask(ind_mask, (scale * true_box) - offset)
     pred_box = loss_utils.apply_mask(ind_mask,
                                      tf.gather_nd(pred_box, inds, batch_dims=1))
 
@@ -523,7 +530,9 @@ class ScaledLoss(YoloLossBase):
         tf.expand_dims(true_conf, axis=-1), pred_conf, from_logits=True)
     if self._ignore_thresh != 0.0:
       bce = loss_utils.apply_mask(obj_mask, bce)
-    conf_loss = tf.reduce_mean(bce)
+      conf_loss = tf.reduce_sum(bce) / tf.reduce_sum(obj_mask)
+    else:
+      conf_loss = tf.reduce_mean(bce)
 
     # Compute the cross entropy loss for the class maps.
     class_loss = tf.keras.losses.binary_crossentropy(
@@ -547,7 +556,8 @@ class ScaledLoss(YoloLossBase):
     return (loss, box_loss, conf_loss, class_loss, mean_loss, iou, pred_conf,
             ind_mask, grid_mask)
 
-  def post_path_aggregation(self, loss, ground_truths, predictions):
+  def post_path_aggregation(self, loss, box_loss, conf_loss, class_loss,
+                            ground_truths, predictions):
     """This method allows for post processing of a loss value.
 
     By default the model will have about 3 FPN levels {3, 4, 5}, on
@@ -558,9 +568,11 @@ class ScaledLoss(YoloLossBase):
 
     Args:
       loss: `tf.float` scalar for the actual loss.
+      box_loss: `tf.float` for the loss on the boxs only.
+      conf_loss: `tf.float` for the loss on the confidences only.
+      class_loss: `tf.float` for the loss on the classes only.
       ground_truths: `Dict` holding all the ground truth tensors.
       predictions: `Dict` holding all the predicted values.
-
     Returns:
       loss: `tf.float` scalar for the scaled loss.
     """
@@ -568,7 +580,7 @@ class ScaledLoss(YoloLossBase):
     return loss * scale
 
   def cross_replica_aggregation(self, loss, num_replicas_in_sync):
-    """In the scaled loss, take the sum of the loss across replicas."""
+    """this method is not specific to each loss path, but each loss type."""
     return loss
 
 
@@ -579,7 +591,6 @@ class YoloLoss:
                keys,
                classes,
                anchors,
-               masks=None,
                path_strides=None,
                truth_thresholds=None,
                ignore_thresholds=None,
@@ -603,8 +614,6 @@ class YoloLoss:
       anchors: `List[List[int]]` for the anchor boxes that are used in the model
         at all levels. For anchor free prediction set the anchor list to be the
         same as the image resolution.
-      masks: `List[int]` for the output level that this specific model output
-        level
       path_strides: `Dict[int]` for how much to scale this level to get the
         orginal input shape for each FPN path.
       truth_thresholds: `Dict[float]` for the IOU value over which the loss is
@@ -651,8 +660,7 @@ class YoloLoss:
     for key in keys:
       self._loss_dict[key] = losses[loss_type](
           classes=classes,
-          anchors=anchors,
-          mask=masks[key],
+          anchors=anchors[key],
           truth_thresh=truth_thresholds[key],
           ignore_thresh=ignore_thresholds[key],
           loss_type=loss_types[key],
@@ -667,7 +675,7 @@ class YoloLoss:
           update_on_repeat=update_on_repeat,
           label_smoothing=label_smoothing)
 
-  def __call__(self, ground_truth, predictions, use_reduced_logs=True):
+  def __call__(self, ground_truth, predictions):
     metric_dict = collections.defaultdict(dict)
     metric_dict['net']['box'] = 0
     metric_dict['net']['class'] = 0
@@ -687,8 +695,10 @@ class YoloLoss:
 
       # after computing the loss, scale loss as needed for aggregation
       # across FPN levels
-      loss = self._loss_dict[key].post_path_aggregation(
-          loss, ground_truth, predictions)
+      loss = self._loss_dict[key].post_path_aggregation(loss, loss_box,
+                                                        loss_conf, loss_class,
+                                                        ground_truth,
+                                                        predictions)
 
       # after completing the scaling of the loss on each replica, handle
       # scaling the loss for mergeing the loss across replicas
@@ -702,11 +712,6 @@ class YoloLoss:
       metric_dict[key]['loss'] = tf.stop_gradient(mean_loss)
       metric_dict[key]['avg_iou'] = tf.stop_gradient(avg_iou)
       metric_dict[key]['avg_obj'] = tf.stop_gradient(avg_obj)
-
-      if not use_reduced_logs:
-        metric_dict[key]['conf_loss'] = tf.stop_gradient(loss_conf)
-        metric_dict[key]['box_loss'] = tf.stop_gradient(loss_box)
-        metric_dict[key]['class_loss'] = tf.stop_gradient(loss_class)
 
       metric_dict['net']['box'] += tf.stop_gradient(loss_box)
       metric_dict['net']['class'] += tf.stop_gradient(loss_class)
