@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Contains common building blocks for neural networks."""
-
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from absl import logging

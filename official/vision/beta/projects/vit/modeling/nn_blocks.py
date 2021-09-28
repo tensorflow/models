@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Keras-based TransformerEncoder block layer."""
-
 import tensorflow as tf
 
 from official.nlp import keras_nlp
