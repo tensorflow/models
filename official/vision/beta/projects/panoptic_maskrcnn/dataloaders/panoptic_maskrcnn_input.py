@@ -330,6 +330,9 @@ class Parser(maskrcnn_input.Parser):
           data['groundtruth_panoptic_instance_mask'],
           self._panoptic_ignore_label, image_info)
 
+      panoptic_category_mask = panoptic_category_mask[:, :, 0]
+      panoptic_instance_mask = panoptic_instance_mask[:, :, 0]
+
       labels['groundtruths'].update({
           'gt_panoptic_category_mask': panoptic_category_mask,
           'gt_panoptic_instance_mask': panoptic_instance_mask})
