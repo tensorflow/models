@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Yolo loss utility functions."""
+
 import numpy as np
 import tensorflow as tf
 
@@ -129,6 +130,10 @@ def build_grid(indexes, truths, preds, ind_mask, update=False, grid=None):
   indexes = apply_mask(tf.cast(ind_mask, indexes.dtype), indexes)
   indexes = (indexes + (ind_mask - 1))
 
+  # mask truths
+  truths = apply_mask(tf.cast(ind_mask, truths.dtype), truths)
+  truths = (truths + (tf.cast(ind_mask, truths.dtype) - 1))
+
   # reshape the indexes into the correct shape for the loss,
   # just flatten all indexes but the last
   indexes = tf.reshape(indexes, [-1, 4])
@@ -157,26 +162,16 @@ def build_grid(indexes, truths, preds, ind_mask, update=False, grid=None):
 class GridGenerator:
   """Grid generator that generates anchor grids for box decoding."""
 
-  def __init__(self, anchors, masks=None, scale_anchors=None):
+  def __init__(self, anchors, scale_anchors=None):
     """Initialize Grid Generator.
 
     Args:
       anchors: A `List[List[int]]` for the anchor boxes that are used in the
         model at all levels.
-      masks: A `List[int]` for the output level that this specific model output
-        Level.
       scale_anchors: An `int` for how much to scale this level to get the
         original input shape.
     """
     self.dtype = tf.keras.backend.floatx()
-    if masks is not None:
-      self._num = len(masks)
-    else:
-      self._num = tf.shape(anchors)[0]
-
-    if masks is not None:
-      anchors = [anchors[mask] for mask in masks]
-
     self._scale_anchors = scale_anchors
     self._anchors = tf.convert_to_tensor(anchors)
     return
@@ -331,17 +326,9 @@ class PairWiseSearch:
                pred_classes,
                boxes,
                classes,
-               scale=None,
-               yxyx=True,
                clip_thresh=0.0):
     num_boxes = tf.shape(boxes)[-2]
     num_tiles = (num_boxes // TILE_SIZE) - 1
-
-    if yxyx:
-      boxes = box_ops.yxyx_to_xcycwh(boxes)
-
-    if scale is not None:
-      boxes = boxes * tf.stop_gradient(scale)
 
     if self._min_conf > 0.0:
       pred_classes = tf.cast(pred_classes > self._min_conf, pred_classes.dtype)
@@ -535,32 +522,35 @@ def _darknet_new_coord_boxes(encoded_boxes, width, height, anchor_grid,
   return (scaler, scaled_box, pred_box), delta
 
 
-def _anchor_free_scale_boxes(encoded_boxes, width, height, stride, grid_points,
-                             scale_xy):
+def _anchor_free_scale_boxes(encoded_boxes,
+                             width,
+                             height,
+                             stride,
+                             grid_points,
+                             darknet=False):
   """Decode models boxes using FPN stride under anchor free conditions."""
+  del darknet
   # split the boxes
   pred_xy = encoded_boxes[..., 0:2]
   pred_wh = encoded_boxes[..., 2:4]
 
   # build a scaling tensor to get the offset of th ebox relative to the image
   scaler = tf.convert_to_tensor([height, width, height, width])
-  scale_xy = tf.cast(scale_xy, encoded_boxes.dtype)
-
-  # scale the centers and find the offset of each box relative to
-  # their center pixel
-  pred_xy = pred_xy * scale_xy - 0.5 * (scale_xy - 1)
 
   # scale the offsets and add them to the grid points or a tensor that is
   # the realtive location of each pixel
-  box_xy = (grid_points + pred_xy) * stride
+  box_xy = (grid_points + pred_xy)
 
   # scale the width and height of the predictions and corlate them
   # to anchor boxes
-  box_wh = tf.math.exp(pred_wh) * stride
+  box_wh = tf.math.exp(pred_wh)
 
   # build the final predicted box
   scaled_box = tf.concat([box_xy, box_wh], axis=-1)
-  pred_box = scaled_box / scaler
+
+  # properly scaling boxes gradeints
+  scaled_box = scaled_box * tf.cast(stride, scaled_box.dtype)
+  pred_box = scaled_box / tf.cast(scaler * stride, scaled_box.dtype)
   return (scaler, scaled_box, pred_box)
 
 
@@ -608,9 +598,8 @@ def get_predicted_box(width,
       range.
   """
   if box_type == 'anchor_free':
-    (scaler, scaled_box,
-     pred_box) = _anchor_free_scale_boxes(encoded_boxes, width, height, stride,
-                                          grid_points, scale_xy)
+    (scaler, scaled_box, pred_box) = _anchor_free_scale_boxes(
+        encoded_boxes, width, height, stride, grid_points, darknet=darknet)
   elif darknet:
 
     # pylint:disable=unbalanced-tuple-unpacking

@@ -42,10 +42,11 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
         '5': [1, 13, 13, 255]
     }
     classes = 80
-    masks = {'3': [0, 1, 2], '4': [3, 4, 5], '5': [6, 7, 8]}
-    anchors = [[12.0, 19.0], [31.0, 46.0], [96.0, 54.0], [46.0, 114.0],
-               [133.0, 127.0], [79.0, 225.0], [301.0, 150.0], [172.0, 286.0],
-               [348.0, 340.0]]
+    anchors = {
+        '3': [[12.0, 19.0], [31.0, 46.0], [96.0, 54.0]],
+        '4': [[46.0, 114.0], [133.0, 127.0], [79.0, 225.0]],
+        '5': [[301.0, 150.0], [172.0, 286.0], [348.0, 340.0]]
+    }
     keys = ['3', '4', '5']
     path_strides = {key: 2**int(key) for key in keys}
 
@@ -53,7 +54,6 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
         keys,
         classes,
         anchors,
-        masks=masks,
         path_strides=path_strides,
         truth_thresholds={key: 1.0 for key in keys},
         ignore_thresholds={key: 0.7 for key in keys},
@@ -79,7 +79,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
         '4': [1, 300, 3],
         '5': [1, 300, 3]
     }, tf.int32)
-    truths = inpdict({'3': [1, 300, 8], '4': [1, 300, 8], '5': [1, 300, 8]})
+    truths = inpdict({'3': [1, 300, 6], '4': [1, 300, 6], '5': [1, 300, 6]})
     boxes = tf.ones([1, 300, 4], dtype=tf.float32)
     classes = tf.ones([1, 300], dtype=tf.float32)
 

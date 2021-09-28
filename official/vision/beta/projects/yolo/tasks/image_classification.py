@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Image classification task definition."""
-import tensorflow as tf
-
-from official.core import input_reader
+from official.common import dataset_fn
 from official.core import task_factory
-from official.vision.beta.dataloaders import classification_input
+from official.vision.beta.dataloaders import classification_input as classification_input_base
+from official.vision.beta.dataloaders import input_reader_factory
+from official.vision.beta.dataloaders import tfds_factory
 from official.vision.beta.projects.yolo.configs import darknet_classification as exp_cfg
-from official.vision.beta.projects.yolo.dataloaders import classification_tfds_decoder as cli
+from official.vision.beta.projects.yolo.dataloaders import classification_input
 from official.vision.beta.tasks import image_classification
 
 
@@ -33,82 +32,34 @@ class ImageClassificationTask(image_classification.ImageClassificationTask):
 
     num_classes = self.task_config.model.num_classes
     input_size = self.task_config.model.input_size
+    image_field_key = self.task_config.train_data.image_field_key
+    label_field_key = self.task_config.train_data.label_field_key
+    is_multilabel = self.task_config.train_data.is_multilabel
 
     if params.tfds_name:
-      decoder = cli.Decoder()
+      decoder = tfds_factory.get_classification_decoder(params.tfds_name)
     else:
-      decoder = classification_input.Decoder()
+      decoder = classification_input_base.Decoder(
+          image_field_key=image_field_key,
+          label_field_key=label_field_key,
+          is_multilabel=is_multilabel)
 
     parser = classification_input.Parser(
         output_size=input_size[:2],
         num_classes=num_classes,
+        image_field_key=image_field_key,
+        label_field_key=label_field_key,
+        decode_jpeg_only=params.decode_jpeg_only,
+        aug_rand_hflip=params.aug_rand_hflip,
+        aug_type=params.aug_type,
+        is_multilabel=is_multilabel,
         dtype=params.dtype)
 
-    reader = input_reader.InputReader(
+    reader = input_reader_factory.input_reader_generator(
         params,
-        dataset_fn=tf.data.TFRecordDataset,
+        dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
         parser_fn=parser.parse_fn(params.is_training))
 
     dataset = reader.read(input_context=input_context)
     return dataset
-
-  def train_step(self, inputs, model, optimizer, metrics=None):
-    """Does forward and backward.
-
-    Args:
-      inputs: a dictionary of input tensors.
-      model: the model, forward pass definition.
-      optimizer: the optimizer for this training step.
-      metrics: a nested structure of metrics objects.
-
-    Returns:
-      A dictionary of logs.
-    """
-    features, labels = inputs
-    if self.task_config.losses.one_hot:
-      labels = tf.one_hot(labels, self.task_config.model.num_classes)
-
-    num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
-    with tf.GradientTape() as tape:
-      outputs = model(features, training=True)
-      # Casting output layer as float32 is necessary when mixed_precision is
-      # mixed_float16 or mixed_bfloat16 to ensure output is casted as float32.
-      outputs = tf.nest.map_structure(
-          lambda x: tf.cast(x, tf.float32), outputs)
-
-      # Computes per-replica loss.
-      loss = self.build_losses(
-          model_outputs=outputs, labels=labels, aux_losses=model.losses)
-      # Scales loss as the default gradients allreduce performs sum inside the
-      # optimizer.
-      scaled_loss = loss / num_replicas
-
-      # For mixed_precision policy, when LossScaleOptimizer is used, loss is
-      # scaled for numerical stability.
-      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
-        scaled_loss = optimizer.get_scaled_loss(scaled_loss)
-
-    tvars = model.trainable_variables
-    grads = tape.gradient(scaled_loss, tvars)
-    # Scales back gradient before apply_gradients when LossScaleOptimizer is
-    # used.
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
-      grads = optimizer.get_unscaled_gradients(grads)
-
-    # Apply gradient clipping.
-    if self.task_config.gradient_clip_norm > 0:
-      grads, _ = tf.clip_by_global_norm(
-          grads, self.task_config.gradient_clip_norm)
-    optimizer.apply_gradients(list(zip(grads, tvars)))
-
-    logs = {self.loss: loss}
-    if metrics:
-      self.process_metrics(metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in metrics})
-    elif model.compiled_metrics:
-      self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in model.metrics})
-    return logs
-
-

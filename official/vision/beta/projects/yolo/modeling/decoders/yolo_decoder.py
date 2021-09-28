@@ -21,7 +21,7 @@ from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class _IdentityRoute(tf.keras.layers.Layer):
 
-  def call(self, inputs):
+  def call(self, inputs):  # pylint: disable=arguments-differ
     return None, inputs
 
 
@@ -36,6 +36,7 @@ class YoloFPN(tf.keras.layers.Layer):
                activation='leaky',
                fpn_filter_scale=1,
                use_sync_bn=False,
+               use_separable_conv=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
                kernel_initializer='VarianceScaling',
@@ -52,6 +53,7 @@ class YoloFPN(tf.keras.layers.Layer):
       activation: `str`, the activation function to use typically leaky or mish.
       fpn_filter_scale: `int`, scaling factor for the FPN filters.
       use_sync_bn: if True, use synchronized batch normalization.
+      use_separable_conv: `bool` whether to use separable convs.
       norm_momentum: `float`, normalization momentum for the moving average.
       norm_epsilon: `float`, small float added to variance to avoid dividing by
         zero.
@@ -66,6 +68,7 @@ class YoloFPN(tf.keras.layers.Layer):
 
     self._activation = activation
     self._use_sync_bn = use_sync_bn
+    self._use_separable_conv = use_separable_conv
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     self._kernel_initializer = kernel_initializer
@@ -78,6 +81,7 @@ class YoloFPN(tf.keras.layers.Layer):
     self._base_config = dict(
         activation=self._activation,
         use_sync_bn=self._use_sync_bn,
+        use_separable_conv=self._use_separable_conv,
         kernel_regularizer=self._kernel_regularizer,
         kernel_initializer=self._kernel_initializer,
         bias_regularizer=self._bias_regularizer,
@@ -181,6 +185,7 @@ class YoloPAN(tf.keras.layers.Layer):
                csp_stack=False,
                activation='leaky',
                use_sync_bn=False,
+               use_separable_conv=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
                kernel_initializer='VarianceScaling',
@@ -200,6 +205,7 @@ class YoloPAN(tf.keras.layers.Layer):
       csp_stack: `bool`, CSPize the FPN.
       activation: `str`, the activation function to use typically leaky or mish.
       use_sync_bn: if True, use synchronized batch normalization.
+      use_separable_conv: `bool` whether to use separable convs.
       norm_momentum: `float`, normalization omentum for the moving average.
       norm_epsilon: `float`, small float added to variance to avoid dividing
         by zero.
@@ -220,6 +226,7 @@ class YoloPAN(tf.keras.layers.Layer):
 
     self._activation = activation
     self._use_sync_bn = use_sync_bn
+    self._use_separable_conv = use_separable_conv
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     self._kernel_initializer = kernel_initializer
@@ -236,6 +243,7 @@ class YoloPAN(tf.keras.layers.Layer):
     self._base_config = dict(
         activation=self._activation,
         use_sync_bn=self._use_sync_bn,
+        use_separable_conv=self._use_separable_conv,
         kernel_regularizer=self._kernel_regularizer,
         kernel_initializer=self._kernel_initializer,
         bias_regularizer=self._bias_regularizer,
@@ -371,6 +379,7 @@ class YoloDecoder(tf.keras.Model):
                embed_spp=False,
                activation='leaky',
                use_sync_bn=False,
+               use_separable_conv=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
                kernel_initializer='VarianceScaling',
@@ -397,6 +406,7 @@ class YoloDecoder(tf.keras.Model):
       embed_spp: `bool`, use the SPP found in the YoloV3 and V4 model.
       activation: `str`, the activation function to use typically leaky or mish.
       use_sync_bn: if True, use synchronized batch normalization.
+      use_separable_conv: `bool` wether to use separable convs.
       norm_momentum: `float`, normalization omentum for the moving average.
       norm_epsilon: `float`, small float added to variance to avoid dividing by
         zero.
@@ -415,6 +425,7 @@ class YoloDecoder(tf.keras.Model):
 
     self._activation = activation
     self._use_sync_bn = use_sync_bn
+    self._use_separable_conv = use_separable_conv
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     self._kernel_initializer = kernel_initializer
@@ -426,6 +437,7 @@ class YoloDecoder(tf.keras.Model):
         csp_stack=csp_stack,
         activation=self._activation,
         use_sync_bn=self._use_sync_bn,
+        use_separable_conv=self._use_separable_conv,
         fpn_filter_scale=fpn_filter_scale,
         norm_momentum=self._norm_momentum,
         norm_epsilon=self._norm_epsilon,
