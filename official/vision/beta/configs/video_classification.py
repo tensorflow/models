@@ -147,8 +147,7 @@ class VideoClassificationTask(cfg.TaskConfig):
   metrics: Metrics = Metrics()
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: str = 'all'  # all or backbone
-  # Spatial Partitioning fields. See go/tf2-spatial-partition-api-examples
-  # for explanation of the technique.
+  # Spatial Partitioning fields.
   train_input_partition_dims: Optional[Tuple[int, ...]] = None
   eval_input_partition_dims: Optional[Tuple[int, ...]] = None
 
