@@ -296,7 +296,8 @@ def maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
   eval_batch_size = 8
 
   config = cfg.ExperimentConfig(
-      runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
+      runtime=cfg.RuntimeConfig(
+          mixed_precision_dtype='bfloat16', enable_xla=True),
       task=MaskRCNNTask(
           init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/resnet50_imagenet/ckpt-28080',
           init_checkpoint_modules='backbone',
