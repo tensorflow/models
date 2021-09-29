@@ -50,7 +50,7 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
       max_level: Optional[int] = None,
       num_scales: Optional[int] = None,
       aspect_ratios: Optional[List[float]] = None,
-      anchor_size: Optional[float] = None,
+      anchor_size: Optional[float] = None,  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     """Initializes the Panoptic Mask R-CNN model.
 
