@@ -28,7 +28,6 @@ from official.vision.beta.dataloaders import tf_example_decoder
 from official.vision.beta.dataloaders import tf_example_label_map_decoder
 from official.vision.beta.evaluation import coco_evaluator
 from official.vision.beta.evaluation import coco_utils
-from official.vision.beta.evaluation import wod_detection_evaluator
 from official.vision.beta.losses import maskrcnn_losses
 from official.vision.beta.modeling import factory
 
@@ -301,6 +300,18 @@ class MaskRCNNTask(base_task.Task):
       if self._task_config.use_coco_metrics:
         self._build_coco_metrics()
       if self._task_config.use_wod_metrics:
+        # To use Waymo open dataset metrics, please install one of the pip
+        # package `waymo-open-dataset-tf-*` from
+        # https://github.com/waymo-research/waymo-open-dataset/blob/master/docs/quick_start.md#use-pre-compiled-pippip3-packages-for-linux
+        # Note that the package is built with specific tensorflow version and
+        # will produce error if it does not match the tf version that is
+        # currently used.
+        try:
+          from official.vision.beta.evaluation import wod_detection_evaluator  # pylint: disable=g-import-not-at-top
+        except ModuleNotFoundError:
+          logging.error('waymo-open-dataset should be installed to enable Waymo'
+                        ' evaluator.')
+          raise
         self.wod_metric = wod_detection_evaluator.WOD2dDetectionEvaluator()
 
     return metrics
