@@ -35,12 +35,14 @@ output = model_fn(input_images)
 
 from absl import app
 from absl import flags
+import tensorflow as tf
 
 from official.core import exp_factory
 from official.modeling import hyperparams
 # pylint: disable=unused-import
 from official.vision.beta.projects.panoptic_maskrcnn.common import registry_imports
 # pylint: enable=unused-import
+from official.vision.beta.projects.panoptic_maskrcnn.modeling import factory
 from official.vision.beta.projects.panoptic_maskrcnn.serving import panoptic_segmentation
 from official.vision.beta.serving import export_saved_model_lib
 
@@ -85,8 +87,15 @@ def main(_):
   params.validate()
   params.lock()
 
+  input_image_size = [int(x) for x in FLAGS.input_image_size.split(',')]
+  input_specs = tf.keras.layers.InputSpec(
+      shape=[FLAGS.batch_size, *input_image_size, 3])
+  model = factory.build_panoptic_maskrcnn(
+      input_specs=input_specs, model_config=params.task.model)
+
   export_module = panoptic_segmentation.PanopticSegmentationModule(
       params=params,
+      model=model,
       batch_size=FLAGS.batch_size,
       input_image_size=[int(x) for x in FLAGS.input_image_size.split(',')],
       num_channels=3)
@@ -94,7 +103,7 @@ def main(_):
   export_saved_model_lib.export_inference_graph(
       input_type=FLAGS.input_type,
       batch_size=FLAGS.batch_size,
-      input_image_size=[int(x) for x in FLAGS.input_image_size.split(',')],
+      input_image_size=input_image_size,
       params=params,
       checkpoint_path=FLAGS.checkpoint_path,
       export_dir=FLAGS.export_dir,

@@ -14,31 +14,40 @@
 
 """Panoptic Segmentation input and model functions for serving/inference."""
 
+from typing import List
+
 import tensorflow as tf
 
-from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_maskrcnn as cfg
-from official.vision.beta.projects.panoptic_maskrcnn.modeling import factory
+from official.modeling.hyperparams import config_definitions as cfg
+from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_maskrcnn_model
 from official.vision.beta.serving import detection
 
 
 class PanopticSegmentationModule(detection.DetectionModule):
   """Panoptic Segmentation Module."""
 
-  def _build_model(self):
-
-    if self._batch_size is None:
-      raise ValueError('batch_size cannot be None for detection models.')
-
-    input_specs = tf.keras.layers.InputSpec(shape=[self._batch_size] +
-                                            self._input_image_size + [3])
-
-    if isinstance(self.params.task.model, cfg.PanopticMaskRCNN):
-      model = factory.build_panoptic_maskrcnn(
-          input_specs=input_specs, model_config=self.params.task.model)
-    else:
+  def __init__(self,
+               params: cfg.ExperimentConfig,
+               *,
+               model: [tf.keras.Model],
+               batch_size: int,
+               input_image_size: List[int],
+               num_channels: int = 3):
+    """Initializes panoptic segmentation module for export."""
+  
+    if batch_size is None:
+      raise ValueError('batch_size cannot be None for panoptic segmentation '
+                       'model.')
+    if not isinstance(model, panoptic_maskrcnn_model.PanopticMaskRCNNModel):
       raise ValueError('PanopticSegmentationModule module not implemented for '
-                       '{} model.'.format(type(self.params.task.model)))
-    return model
+                       '{} model.'.format(type(model)))
+
+    super(PanopticSegmentationModule, self).__init__(
+        params=params,
+        model=model,
+        batch_size=batch_size,
+        input_image_size=input_image_size,
+        num_channels=num_channels)
 
   def serve(self, images: tf.Tensor):
     """Cast image to float and run inference.

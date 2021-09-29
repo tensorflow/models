@@ -23,7 +23,10 @@ from PIL import Image
 import tensorflow as tf
 
 from official.core import exp_factory
-from official.vision.beta.projects.panoptic_maskrcnn.common import registry_imports  # pylint: disable=unused-import
+# pylint: disable=unused-import
+from official.vision.beta.projects.panoptic_maskrcnn.common import registry_imports
+# pylint: enable=unused-import
+from official.vision.beta.projects.panoptic_maskrcnn.modeling import factory
 from official.vision.beta.projects.panoptic_maskrcnn.serving import panoptic_segmentation
 
 
@@ -33,8 +36,11 @@ class PanopticSegmentationExportTest(tf.test.TestCase, parameterized.TestCase):
     params = exp_factory.get_exp_config(experiment_name)
     params.task.model.backbone.resnet.model_id = 18
     params.task.model.detection_generator.nms_version = 'batched'
+    input_specs = tf.keras.layers.InputSpec(shape=[1, 640, 640, 3])
+    model = factory.build_panoptic_maskrcnn(
+        input_specs=input_specs, model_config=params.task.model)
     panoptic_segmentation_module = panoptic_segmentation.PanopticSegmentationModule(
-        params, batch_size=1, input_image_size=[640, 640])
+        params, model=model, batch_size=1, input_image_size=[640, 640])
     return panoptic_segmentation_module
 
   def _export_from_module(self, module, input_type, save_directory):
@@ -110,11 +116,14 @@ class PanopticSegmentationExportTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_build_model_fail_with_none_batch_size(self):
     params = exp_factory.get_exp_config('panoptic_maskrcnn_resnetfpn_coco')
+    input_specs = tf.keras.layers.InputSpec(shape=[1, 640, 640, 3])
+    model = factory.build_panoptic_maskrcnn(
+        input_specs=input_specs, model_config=params.task.model)
     with self.assertRaisesRegex(
-        ValueError, 'batch_size cannot be None for detection models.'):
-      panoptic_segmentation.PanopticSegmentationModule(
-          params, batch_size=None, input_image_size=[640, 640])
-
+        ValueError,
+        'batch_size cannot be None for panoptic segmentation model.'):
+      panoptic_segmentation_module = panoptic_segmentation.PanopticSegmentationModule(
+          params, model=model, batch_size=None, input_image_size=[640, 640])
 
 if __name__ == '__main__':
   tf.test.main()
