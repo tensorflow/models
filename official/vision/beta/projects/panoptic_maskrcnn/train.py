@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""TensorFlow Model Garden Vision trainer.
+"""Panoptic MaskRCNN trainer.
 
 All custom registry are imported from registry_imports. Here we use default
 trainer so we directly call train.main. If you need to customize the trainer,

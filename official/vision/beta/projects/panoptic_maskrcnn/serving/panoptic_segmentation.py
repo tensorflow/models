@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Detection input and model functions for serving/inference."""
+"""Panoptic Segmentation input and model functions for serving/inference."""
 
 import tensorflow as tf
 
@@ -22,7 +22,7 @@ from official.vision.beta.serving import detection
 
 
 class PanopticSegmentationModule(detection.DetectionModule):
-  """Detection Module."""
+  """Panoptic Segmentation Module."""
 
   def _build_model(self):
 
