@@ -46,14 +46,8 @@ py_test() {
   return "${exit_code}"
 }
 
-py2_test() {
-  local PY_BINARY=$(which python2)
-  py_test "$PY_BINARY"
-  return $?
-}
-
 py3_test() {
-  local PY_BINARY=$(which python3)
+  local PY_BINARY=python3.9
   py_test "$PY_BINARY"
   return $?
 }
@@ -61,7 +55,7 @@ py3_test() {
 test_result=0
 
 if [ "$#" -eq 0 ]; then
-  TESTS="lint py2_test py3_test"
+  TESTS="lint py3_test"
 else
   TESTS="$@"
 fi

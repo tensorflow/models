@@ -120,7 +120,7 @@ class MultiChannelAttention(tf.keras.layers.MultiHeadAttention):
   """
 
   def _build_attention(self, rank):
-    super(MultiChannelAttention, self)._build_attention(rank)
+    super(MultiChannelAttention, self)._build_attention(rank)  # pytype: disable=attribute-error  # typed-keras
     self._masked_softmax = masked_softmax.MaskedSoftmax(mask_expansion_axes=[2])
 
   def call(self,

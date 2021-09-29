@@ -188,7 +188,7 @@ W-2135 CPU.
 
 ## Prediction Examples
 
-Please check out our [Colab Notebook](https://colab.research.google.com/github/tensorflow/models/tree/master/official/vision/beta/projects/movinet/movinet_tutorial.ipynb)
+Please check out our [Colab Notebook](https://colab.research.google.com/github/tensorflow/models/blob/master/official/vision/beta/projects/movinet/movinet_tutorial.ipynb)
 to get started with MoViNets.
 
 This section provides examples on how to run prediction.
@@ -338,7 +338,7 @@ with the Python API:
 ```python
 # Create the interpreter and signature runner
 interpreter = tf.lite.Interpreter('/tmp/movinet_a0_stream.tflite')
-signature = interpreter.get_signature_runner()
+runner = interpreter.get_signature_runner()
 
 # Extract state names and create the initial (zero) states
 def state_name(name: str) -> str:
@@ -358,7 +358,7 @@ clips = tf.split(video, video.shape[1], axis=1)
 states = init_states
 for clip in clips:
   # Input shape: [1, 1, 172, 172, 3]
-  outputs = signature(**states, image=clip)
+  outputs = runner(**states, image=clip)
   logits = outputs.pop('logits')
   states = outputs
 ```

@@ -32,6 +32,7 @@ class Identity(hyperparams.Config):
 class FPN(hyperparams.Config):
   """FPN config."""
   num_filters: int = 256
+  fusion_type: str = 'sum'
   use_separable_conv: bool = False
 
 

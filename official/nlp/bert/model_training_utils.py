@@ -22,7 +22,7 @@ from absl import logging
 import tensorflow as tf
 from tensorflow.python.util import deprecation
 from official.common import distribute_utils
-from official.staging.training import grad_utils
+from official.modeling import grad_utils
 
 _SUMMARY_TXT = 'training_summary.txt'
 _MIN_SUMMARY_STEPS = 10

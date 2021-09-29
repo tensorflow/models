@@ -92,7 +92,7 @@ def build_decoder(
     input_specs: Mapping[str, tf.TensorShape],
     model_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None,
-    **kwargs) -> Union[None, tf.keras.Model, tf.keras.layers.Layer]:
+    **kwargs) -> Union[None, tf.keras.Model, tf.keras.layers.Layer]:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds decoder from a config.
 
   Args:

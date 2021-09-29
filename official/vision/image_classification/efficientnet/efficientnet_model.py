@@ -327,7 +327,7 @@ def mb_conv_block(inputs: tf.Tensor,
   return x
 
 
-def efficientnet(image_input: tf.keras.layers.Input, config: ModelConfig):
+def efficientnet(image_input: tf.keras.layers.Input, config: ModelConfig):  # pytype: disable=invalid-annotation  # typed-keras
   """Creates an EfficientNet graph given the model parameters.
 
   This function is wrapped by the `EfficientNet` class to make a tf.keras.Model.
@@ -424,7 +424,6 @@ def efficientnet(image_input: tf.keras.layers.Input, config: ModelConfig):
   return x
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
 class EfficientNet(tf.keras.Model):
   """Wrapper class for an EfficientNet Keras model.
 

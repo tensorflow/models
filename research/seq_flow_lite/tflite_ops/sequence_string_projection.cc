@@ -31,7 +31,7 @@ limitations under the License.
 #include "tf_ops/projection_util.h"  // seq_flow_lite
 #include "tflite_ops/quantization_util.h"  // seq_flow_lite
 
-namespace tflite {
+namespace seq_flow_lite {
 namespace ops {
 namespace custom {
 
@@ -163,7 +163,7 @@ class ProjectionParams {
     DocSizeFeature(&doc_size_feature, num_tokens);
     *data = PodQuantize(doc_size_feature, 127.0f, 127);
   }
-  void Hash(const std::string& word, std::vector<uint64_t>* hash_codes) {
+  void Hash(const std::string& word, std::vector<uint64_t>& hash_codes) {
     hasher_->GetHashCodes(word, hash_codes);
   }
   // Lower cases the input text and eliminates all unsupported
@@ -269,6 +269,8 @@ class ProjectionParamsV2 : public ProjectionParams {
                            num_tokens, dims->data[1]);
       return kTfLiteError;
     }
+    tokens_.clear();
+    tokens_.reserve(num_tokens);
     for (int i = 0; i < num_tokens; ++i) {
       const tflite::StringRef strref = tflite::GetString(input_t, i);
       tokens_.push_back(std::pair<const char*, size_t>(strref.str, strref.len));
@@ -412,7 +414,7 @@ void TypedEval(const T* mapping_table, ProjectionParams* params, T* data) {
     } else {
       word = kEndToken;
     }
-    params->Hash(word, &hash_codes);
+    params->Hash(word, hash_codes);
     for (int hindex = 0, k = 0; hindex < hash_codes.size(); hindex++) {
       auto hash = hash_codes[hindex];
       for (int kmax = std::min(k + kIncrement, params->FeatureSize());
@@ -505,4 +507,4 @@ TfLiteRegistration* Register_SEQUENCE_STRING_PROJECTION_V2() {
 
 }  // namespace custom
 }  // namespace ops
-}  // namespace tflite
+}  // namespace seq_flow_lite

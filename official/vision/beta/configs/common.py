@@ -15,13 +15,42 @@
 # Lint as: python3
 """Common configurations."""
 
-from typing import Optional
-# Import libraries
-
 import dataclasses
+from typing import List, Optional
+
+# Import libraries
 
 from official.core import config_definitions as cfg
 from official.modeling import hyperparams
+
+
+@dataclasses.dataclass
+class TfExampleDecoder(hyperparams.Config):
+  """A simple TF Example decoder config."""
+  regenerate_source_id: bool = False
+  mask_binarize_threshold: Optional[float] = None
+
+
+@dataclasses.dataclass
+class TfExampleDecoderLabelMap(hyperparams.Config):
+  """TF Example decoder with label map config."""
+  regenerate_source_id: bool = False
+  mask_binarize_threshold: Optional[float] = None
+  label_map: str = ''
+
+
+@dataclasses.dataclass
+class DataDecoder(hyperparams.OneOfConfig):
+  """Data decoder config.
+
+  Attributes:
+    type: 'str', type of data decoder be used, one of the fields below.
+    simple_decoder: simple TF Example decoder config.
+    label_map_decoder: TF Example decoder with label map config.
+  """
+  type: Optional[str] = 'simple_decoder'
+  simple_decoder: TfExampleDecoder = TfExampleDecoder()
+  label_map_decoder: TfExampleDecoderLabelMap = TfExampleDecoderLabelMap()
 
 
 @dataclasses.dataclass
@@ -31,7 +60,9 @@ class RandAugment(hyperparams.Config):
   magnitude: float = 10
   cutout_const: float = 40
   translate_const: float = 10
+  magnitude_std: float = 0.0
   prob_to_apply: Optional[float] = None
+  exclude_ops: List[str] = dataclasses.field(default_factory=list)
 
 
 @dataclasses.dataclass
@@ -40,6 +71,29 @@ class AutoAugment(hyperparams.Config):
   augmentation_name: str = 'v0'
   cutout_const: float = 100
   translate_const: float = 250
+
+
+@dataclasses.dataclass
+class RandomErasing(hyperparams.Config):
+  """Configuration for RandomErasing."""
+  probability: float = 0.25
+  min_area: float = 0.02
+  max_area: float = 1 / 3
+  min_aspect: float = 0.3
+  max_aspect = None
+  min_count = 1
+  max_count = 1
+  trials = 10
+
+
+@dataclasses.dataclass
+class MixupAndCutmix(hyperparams.Config):
+  """Configuration for MixupAndCutmix."""
+  mixup_alpha: float = .8
+  cutmix_alpha: float = 1.
+  prob: float = 1.0
+  switch_prob: float = 0.5
+  label_smoothing: float = 0.1
 
 
 @dataclasses.dataclass

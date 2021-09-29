@@ -37,7 +37,7 @@ class SegmentationHead3D(tf.keras.layers.Layer):
                use_batch_normalization: bool = False,
                kernel_regularizer: tf.keras.regularizers.Regularizer = None,
                bias_regularizer: tf.keras.regularizers.Regularizer = None,
-               output_logits: bool = True,
+               output_logits: bool = True,  # pytype: disable=annotation-type-mismatch  # typed-keras
                **kwargs):
     """Initialize params to build segmentation head.
 

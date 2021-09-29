@@ -38,7 +38,6 @@ class TfExampleDecoder(decoder.Decoder):
     self._regenerate_source_id = regenerate_source_id
     self._keys_to_features = {
         'image/encoded': tf.io.FixedLenFeature((), tf.string),
-        'image/source_id': tf.io.FixedLenFeature((), tf.string),
         'image/height': tf.io.FixedLenFeature((), tf.int64),
         'image/width': tf.io.FixedLenFeature((), tf.int64),
         'image/object/bbox/xmin': tf.io.VarLenFeature(tf.float32),
@@ -53,6 +52,10 @@ class TfExampleDecoder(decoder.Decoder):
     if include_mask:
       self._keys_to_features.update({
           'image/object/mask': tf.io.VarLenFeature(tf.string),
+      })
+    if not regenerate_source_id:
+      self._keys_to_features.update({
+          'image/source_id': tf.io.FixedLenFeature((), tf.string),
       })
 
   def _decode_image(self, parsed_tensors):

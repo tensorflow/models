@@ -42,7 +42,7 @@ def build_classification_model(
     input_specs: tf.keras.layers.InputSpec,
     model_config: classification_cfg.ImageClassificationModel,
     l2_regularizer: tf.keras.regularizers.Regularizer = None,
-    skip_logits_layer: bool = False) -> tf.keras.Model:
+    skip_logits_layer: bool = False) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds the classification model."""
   norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
@@ -56,6 +56,7 @@ def build_classification_model(
       num_classes=model_config.num_classes,
       input_specs=input_specs,
       dropout_rate=model_config.dropout_rate,
+      kernel_initializer=model_config.kernel_initializer,
       kernel_regularizer=l2_regularizer,
       add_head_batch_norm=model_config.add_head_batch_norm,
       use_sync_bn=norm_activation_config.use_sync_bn,
@@ -68,7 +69,7 @@ def build_classification_model(
 def build_maskrcnn(
     input_specs: tf.keras.layers.InputSpec,
     model_config: maskrcnn_cfg.MaskRCNN,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds Mask R-CNN model."""
   norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
@@ -120,8 +121,7 @@ def build_maskrcnn(
       kernel_regularizer=l2_regularizer,
       name='detection_head')
 
-  # Build backbone, decoder and region proposal network:
-
+  # Builds decoder and region proposal network:
   if decoder:
     decoder_features = decoder(backbone_features)
     rpn_head(decoder_features)
@@ -144,6 +144,7 @@ def build_maskrcnn(
           norm_epsilon=norm_activation_config.norm_epsilon,
           kernel_regularizer=l2_regularizer,
           name='detection_head_{}'.format(cascade_num + 1))
+
       detection_head_cascade.append(detection_head)
     detection_head = detection_head_cascade
 
@@ -196,7 +197,8 @@ def build_maskrcnn(
       pre_nms_score_threshold=generator_config.pre_nms_score_threshold,
       nms_iou_threshold=generator_config.nms_iou_threshold,
       max_num_detections=generator_config.max_num_detections,
-      use_batched_nms=generator_config.use_batched_nms)
+      nms_version=generator_config.nms_version,
+      use_cpu_nms=generator_config.use_cpu_nms)
 
   if model_config.include_mask:
     mask_head = instance_heads.MaskHead(
@@ -250,7 +252,7 @@ def build_maskrcnn(
 def build_retinanet(
     input_specs: tf.keras.layers.InputSpec,
     model_config: retinanet_cfg.RetinaNet,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds RetinaNet model."""
   norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
@@ -258,7 +260,7 @@ def build_retinanet(
       backbone_config=model_config.backbone,
       norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
-  backbone(tf.keras.Input(input_specs.shape[1:]))
+  backbone_features = backbone(tf.keras.Input(input_specs.shape[1:]))
 
   decoder = decoders.factory.build_decoder(
       input_specs=backbone.output_specs,
@@ -287,13 +289,19 @@ def build_retinanet(
       norm_epsilon=norm_activation_config.norm_epsilon,
       kernel_regularizer=l2_regularizer)
 
+  # Builds decoder and head so that their trainable weights are initialized
+  if decoder:
+    decoder_features = decoder(backbone_features)
+    _ = head(decoder_features)
+
   detection_generator_obj = detection_generator.MultilevelDetectionGenerator(
       apply_nms=generator_config.apply_nms,
       pre_nms_top_k=generator_config.pre_nms_top_k,
       pre_nms_score_threshold=generator_config.pre_nms_score_threshold,
       nms_iou_threshold=generator_config.nms_iou_threshold,
       max_num_detections=generator_config.max_num_detections,
-      use_batched_nms=generator_config.use_batched_nms)
+      nms_version=generator_config.nms_version,
+      use_cpu_nms=generator_config.use_cpu_nms)
 
   model = retinanet_model.RetinaNetModel(
       backbone,
@@ -311,7 +319,7 @@ def build_retinanet(
 def build_segmentation_model(
     input_specs: tf.keras.layers.InputSpec,
     model_config: segmentation_cfg.SemanticSegmentationModel,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds Segmentation model."""
   norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(

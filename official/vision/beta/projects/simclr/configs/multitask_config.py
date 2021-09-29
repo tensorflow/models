@@ -51,6 +51,9 @@ class SimCLRMTModelConfig(hyperparams.Config):
   # L2 weight decay is used in the model, not in task.
   # Note that this can not be used together with lars optimizer.
   l2_weight_decay: float = 0.0
+  init_checkpoint: str = ''
+  # backbone_projection or backbone
+  init_checkpoint_modules: str = 'backbone_projection'
 
 
 @exp_factory.register_config_factory('multitask_simclr')

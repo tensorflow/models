@@ -54,19 +54,23 @@ class BaseLayer(tf.keras.layers.Layer):
     assert len(tensor.get_shape().as_list()) == rank
     assert tensor.dtype == dtype
 
-  def add_qweight(self, shape, num_bits=8):
-    """Return a quantized weight variable for the given shape."""
+  def add_weight_wrapper(self, shape):
+    """Return a weight variable for the given shape."""
     if self.parameters.initializer is not None:
       initializer = self.parameters.initializer
     else:
       initializer = tf.keras.initializers.GlorotUniform()
     weight = self.add_weight(
-        "weight", shape, initializer=initializer, trainable=True)
+        "weight",
+        shape,
+        initializer=initializer,
+        trainable=True,
+        dtype=tf.float32)
     self.add_reg_loss(weight)
-    return self._weight_quantization(weight, num_bits=num_bits)
+    return weight
 
-  def _weight_quantization(self, tensor, num_bits=8):
-    """Quantize weights when enabled."""
+  def quantize_parameter(self, tensor, num_bits=8):
+    """Quantize parameters when enabled."""
     # For infer mode, toco computes the min/max from the weights offline to
     # quantize it. During train/eval this is computed from the current value
     # in the session by the graph itself.
@@ -98,21 +102,37 @@ class BaseLayer(tf.keras.layers.Layer):
   def assign_moving_average(self, var, update, ema_decay):
     return var.assign(var.read_value() * (1 - ema_decay) + (ema_decay) * update)
 
-  def qrange_sigmoid(self, tensor):
-    if self.parameters.quantize:
+  def quantize_tensor(self, tf_only):
+    if tf_only and self.parameters.mode == TFLITE:
+      return False
+    return self.parameters.quantize
+
+  def qrange_sigmoid(self, tensor, tf_only=False):
+    if self.quantize_tensor(tf_only):
       return tf.quantization.fake_quant_with_min_max_args(tensor, 0.0, 1.0)
     return tensor
 
-  def qrange_tanh(self, tensor):
-    if self.parameters.quantize:
+  def qrange_tanh(self, tensor, tf_only=False):
+    if self.quantize_tensor(tf_only):
       return tf.quantization.fake_quant_with_min_max_args(tensor, -1.0, 1.0)
     return tensor
 
-  def quantized_tanh(self, tensor):
-    return self.qrange_tanh(tf.tanh(tensor))
+  def quantized_tanh(self, tensor, tf_only=False):
+    return self.qrange_tanh(tf.tanh(tensor), tf_only)
 
-  def quantized_sigmoid(self, tensor):
-    return self.qrange_sigmoid(tf.sigmoid(tensor))
+  def quantized_sigmoid(self, tensor, tf_only=False):
+    return self.qrange_sigmoid(tf.sigmoid(tensor), tf_only)
 
   def get_batch_dimension(self, tensor):
     return tensor.get_shape().as_list()[0] or tf.shape(tensor)[0]
+
+  def inverse_normalizer(self, mask):
+    return tf.math.reciprocal(tf.reduce_sum(mask))
+
+  def random_drop_to_zero(self, tensor, zero_probability):
+    rnd = tf.random.uniform(
+        shape=tf.shape(tensor),
+        minval=-zero_probability,
+        maxval=(1.0 - zero_probability),
+        dtype=tensor.dtype)
+    return tf.math.ceil(rnd)

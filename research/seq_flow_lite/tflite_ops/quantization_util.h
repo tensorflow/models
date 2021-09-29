@@ -20,7 +20,7 @@ limitations under the License.
 
 #include "tensorflow/lite/context.h"
 
-namespace tflite {
+namespace seq_flow_lite {
 
 // Returns the original (dequantized) value of 8bit value.
 inline float PodDequantizeValue(const TfLiteTensor& tensor, uint8_t value) {
@@ -48,6 +48,6 @@ inline uint8_t PodQuantize(float value, int32_t zero_point,
   return static_cast<uint8_t>(std::max(std::min(255, integer_value), 0));
 }
 
-}  // namespace tflite
+}  // namespace seq_flow_lite
 
 #endif  // TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TFLITE_OPS_QUANTIZATION_UTIL_H_

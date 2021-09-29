@@ -79,8 +79,8 @@ class SemanticSegmentation3DTask(base_task.Task):
     # Restoring checkpoint.
     if 'all' in self.task_config.init_checkpoint_modules:
       ckpt = tf.train.Checkpoint(**model.checkpoint_items)
-      status = ckpt.restore(ckpt_dir_or_file)
-      status.assert_consumed()
+      status = ckpt.read(ckpt_dir_or_file)
+      status.expect_partial().assert_existing_objects_matched()
     else:
       ckpt_items = {}
       if 'backbone' in self.task_config.init_checkpoint_modules:
@@ -89,7 +89,7 @@ class SemanticSegmentation3DTask(base_task.Task):
         ckpt_items.update(decoder=model.decoder)
 
       ckpt = tf.train.Checkpoint(**ckpt_items)
-      status = ckpt.restore(ckpt_dir_or_file)
+      status = ckpt.read(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
 
     logging.info('Finished loading pretrained checkpoint from %s',
@@ -342,4 +342,6 @@ class SemanticSegmentation3DTask(base_task.Task):
         metric_name = self.metrics[0].name + '/class_{0}'.format(
             i - 1) if i > 0 else self.metrics[0].name
         result.update({metric_name: metric_val})
+    else:
+      result.update({self.metrics[0].name: metric})
     return result

@@ -331,7 +331,7 @@ class Parser(parser.Parser):
         'source_id': data['source_id'],
         'height': data['height'],
         'width': data['width'],
-        'num_detections': tf.shape(data['groundtruth_classes']),
+        'num_detections': tf.shape(data['groundtruth_classes'])[0],
         'boxes': boxes,
         'classes': data['groundtruth_classes'],
         'areas': data['groundtruth_area'],

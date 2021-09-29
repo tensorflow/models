@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Mask R-CNN model."""
+"""R-CNN(-RS) models."""
 
 from typing import Any, List, Mapping, Optional, Tuple, Union
 
@@ -24,7 +24,7 @@ from official.vision.beta.ops import box_ops
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class MaskRCNNModel(tf.keras.Model):
-  """The Mask R-CNN model."""
+  """The Mask R-CNN(-RS) and Cascade RCNN-RS models."""
 
   def __init__(self,
                backbone: tf.keras.Model,
@@ -48,7 +48,7 @@ class MaskRCNNModel(tf.keras.Model):
                aspect_ratios: Optional[List[float]] = None,
                anchor_size: Optional[float] = None,
                **kwargs):
-    """Initializes the Mask R-CNN model.
+    """Initializes the R-CNN(-RS) model.
 
     Args:
       backbone: `tf.keras.Model`, the backbone network.
@@ -65,19 +65,18 @@ class MaskRCNNModel(tf.keras.Model):
       mask_roi_aligner: the ROI alginer for mask prediction.
       class_agnostic_bbox_pred: if True, perform class agnostic bounding box
         prediction. Needs to be `True` for Cascade RCNN models.
-      cascade_class_ensemble: if True, ensemble classification scores over
-        all detection heads.
+      cascade_class_ensemble: if True, ensemble classification scores over all
+        detection heads.
       min_level: Minimum level in output feature maps.
       max_level: Maximum level in output feature maps.
-      num_scales: A number representing intermediate scales added
-        on each level. For instances, num_scales=2 adds one additional
-        intermediate anchor scales [2^0, 2^0.5] on each level.
-      aspect_ratios: A list representing the aspect raito
-        anchors added on each level. The number indicates the ratio of width to
-        height. For instances, aspect_ratios=[1.0, 2.0, 0.5] adds three anchors
-        on each scale level.
-      anchor_size: A number representing the scale of size of the base
-        anchor to the feature stride 2^level.
+      num_scales: A number representing intermediate scales added on each level.
+        For instances, num_scales=2 adds one additional intermediate anchor
+        scales [2^0, 2^0.5] on each level.
+      aspect_ratios: A list representing the aspect raito anchors added on each
+        level. The number indicates the ratio of width to height. For instances,
+        aspect_ratios=[1.0, 2.0, 0.5] adds three anchors on each scale level.
+      anchor_size: A number representing the scale of size of the base anchor to
+        the feature stride 2^level.
       **kwargs: keyword arguments to be passed.
     """
     super(MaskRCNNModel, self).__init__(**kwargs)

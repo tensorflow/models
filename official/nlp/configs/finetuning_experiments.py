@@ -61,7 +61,6 @@ def bert_sentence_prediction() -> cfg.ExperimentConfig:
           'task.train_data.is_training != None',
           'task.validation_data.is_training != None'
       ])
-  config.task.model.encoder.type = 'bert'
   return config
 
 
@@ -98,7 +97,6 @@ def bert_squad() -> cfg.ExperimentConfig:
           'task.train_data.is_training != None',
           'task.validation_data.is_training != None'
       ])
-  config.task.model.encoder.type = 'bert'
   return config
 
 

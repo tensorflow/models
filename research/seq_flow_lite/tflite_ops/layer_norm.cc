@@ -17,10 +17,10 @@ limitations under the License.
 #include <unordered_set>
 #include <vector>
 
-#include "tflite_ops/quantization_util.h"  // seq_flow_lite
 #include "tensorflow/lite/kernels/kernel_util.h"
+#include "tflite_ops/quantization_util.h"  // seq_flow_lite
 
-namespace tflite {
+namespace seq_flow_lite {
 namespace ops {
 namespace custom {
 
@@ -213,6 +213,102 @@ TfLiteStatus FlexibleLayerNorm(const TfLiteTensor* input, const float scale,
   return kTfLiteOk;
 }
 
+/*
+ * Layer normalization is optimized as follows in integer arithmetic
+ *
+ * Algorithm
+ * *********
+ * Subscript i \in {1, ..., N}, Inputs q_i, Outputs oq_i.
+ *
+ * x_i = (q_i - input_zero_point) * input_scale
+ * mean = sum_i x_i / N
+ * var = sum_i (x_i * x_i / N) - mean * mean
+ * std = sqrt(var + tolerance)
+ * xni = (xi - mean) / std
+ * yi = xni * scale + offset
+ * o_i = round(y_i / output_scale + output_zero_point)
+ * oq_i = clamp(o_i, 0, 255)
+ *
+ * Optimizations
+ * *************
+ * Applying linear expansion
+ * x_i = q_i * input_scale - input_zero_point * input_scale
+ * or x_i = m * qi + c
+ * mean = m * mean_q + c
+ * Variance is not affected by a constant shift to input
+ * var = m^2 * var_q
+ * std = m * sqrt(var_q + tolerance)
+ * Expanding xi, mean, std in equation for xni
+ * xni = (m * qi + c - m * mean_q - c) / m * sqrt(var_q + tolerance)
+ * Simplifying
+ * xni = (qi - mean_q) / sqrt(var_q + tolerance)
+ * Setting inv_std_qi = 1 / sqrt(var_q + tolerance)
+ * xni = qi * inv_std_qi - mean_q * inv_std_qi
+ * yi = qi * inv_std_qi * scale - mean_q * inv_std_qi * scale + offset
+ * o_i = round(qi * inv_std_qi * scale / output_scale
+ *             - mean_q * inv_std_qi * scale / output_scale
+ *             + offset / output_scale
+ *             + output_zero_point)
+ * Setting
+ * static_bias = offset / output_scale + output_zero_point
+ * static_scale = scale / output_scale
+ * o_i = round(qi * inv_std_qi * static_scale
+ *             - mean_q * inv_std_qi * static_scale
+ *             + static_bias)
+ * Setting
+ * dynamic_scale = inv_std_qi * static_scale
+ * dynamic_bias = static_bias - mean_q * dynamic_scale
+ * o_i = round(qi * dynamic_scale + dynamic_bias)
+ * oq_i = clamp(round(qi * dynamic_scale + dynamic_bias), 0, 255)
+ *
+ * This results in the below optimized implementation. The strategy is to first
+ * compute first and second order summary statistics for qi in a loop,
+ * then compute mean_q, var_q and then dynamic_scale/dynamic_bias. This
+ * allows one to compute oqi quickly in a tight loop.
+ * */
+TfLiteStatus IntegerLayerNorm(const TfLiteTensor* input, const float scale,
+                              const float offset, TfLiteTensor* output) {
+  const int input_rank = input->dims->size;
+  const int num_features = input->dims->data[input_rank - 1];
+  const int time_steps =
+      static_cast<int>(GetNumberOfSteps(input) / num_features);
+
+  const float out_inverse_scale = 1.0f / output->params.scale;
+  const float static_scale = scale * out_inverse_scale;
+  const float static_bias = static_cast<float>(output->params.zero_point) +
+                            offset * out_inverse_scale;
+  const float inverse_num_features = 1.0f / num_features;
+  const uint8_t* const in_ptr = input->data.uint8;
+  uint8_t* out_ptr = output->data.uint8;
+  for (int i = 0; i < time_steps; ++i) {
+    int32_t i32_sum_q = 0;
+    int32_t i32_sum_qq = 0;
+    const int32_t index = i * num_features;
+    for (int j = index; j < index + num_features; ++j) {
+      const int32_t q_i = static_cast<int32_t>(in_ptr[j]);
+      // Compute first and second order statistics for qi.
+      i32_sum_q += q_i;
+      i32_sum_qq += q_i * q_i;
+    }
+    const float second_moment_qq = i32_sum_qq * inverse_num_features;
+    const float mean_q = i32_sum_q * inverse_num_features;
+    const float var_q = second_moment_qq - mean_q * mean_q;
+    const float inv_std_q = 1.0f / sqrt(var_q + 1e-6);
+    const float dynamic_scale = inv_std_q * static_scale;
+    const float dynamic_bias = static_bias - mean_q * dynamic_scale;
+    for (int j = index; j < index + num_features; ++j) {
+      const int32_t invalue = static_cast<int32_t>(in_ptr[j]);
+      const float value = invalue * dynamic_scale + dynamic_bias;
+      // Use an offseted cast to perform float round.
+      const int32_t i32value =
+          static_cast<int32_t>(value + ((value >= 0.0) ? 0.5f : -0.5f));
+      // Clamp the result.
+      out_ptr[j] = static_cast<uint8_t>(std::max(std::min(255, i32value), 0));
+    }
+  }
+  return kTfLiteOk;
+}
+
 TfLiteStatus DefaultLayerNormFloat(const TfLiteTensor* input, const float scale,
                                    const float offset, TfLiteTensor* output) {
   const int input_rank = input->dims->size;
@@ -298,7 +394,7 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
   if (num_axis == 1 && (axis->data.i32[0] == -1 ||
                         axis->data.i32[0] == (input->dims->size - 1))) {
     if (input->type == kTfLiteUInt8) {
-      return DefaultLayerNorm(input, scale, offset, output);
+      return IntegerLayerNorm(input, scale, offset, output);
     } else if (input->type == kTfLiteFloat32) {
       return DefaultLayerNormFloat(input, scale, offset, output);
     } else {
@@ -328,4 +424,4 @@ TfLiteRegistration* Register_LAYER_NORM() {
 
 }  // namespace custom
 }  // namespace ops
-}  // namespace tflite
+}  // namespace seq_flow_lite

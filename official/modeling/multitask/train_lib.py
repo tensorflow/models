@@ -252,6 +252,6 @@ def run_experiment_with_multitask_eval(
 
     if run_post_eval:
       return model, evaluator.evaluate(
-          tf.convert_to_tensor(params.trainer.validation_steps))
+          tf.convert_to_tensor(params.trainer.validation_steps))  # pytype: disable=bad-return-type  # typed-keras
     else:
-      return model, {}
+      return model, {}  # pytype: disable=bad-return-type  # typed-keras

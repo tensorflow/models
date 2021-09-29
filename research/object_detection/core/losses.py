@@ -286,15 +286,19 @@ class WeightedDiceClassificationLoss(Loss):
 
   """
 
-  def __init__(self, squared_normalization):
+  def __init__(self, squared_normalization, is_prediction_probability=False):
     """Initializes the loss object.
 
     Args:
       squared_normalization: boolean, if set, we square the probabilities in the
         denominator term used for normalization.
+      is_prediction_probability: boolean, whether or not the input
+        prediction_tensor represents a probability. If false, it is
+        first converted to a probability by applying sigmoid.
     """
 
     self._squared_normalization = squared_normalization
+    self.is_prediction_probability = is_prediction_probability
     super(WeightedDiceClassificationLoss, self).__init__()
 
   def _compute_loss(self,
@@ -332,7 +336,10 @@ class WeightedDiceClassificationLoss(Loss):
                                       tf.shape(prediction_tensor)[2]),
           [1, 1, -1])
 
-    prob_tensor = tf.nn.sigmoid(prediction_tensor)
+    if self.is_prediction_probability:
+      prob_tensor = prediction_tensor
+    else:
+      prob_tensor = tf.nn.sigmoid(prediction_tensor)
 
     if self._squared_normalization:
       prob_tensor = tf.pow(prob_tensor, 2)

@@ -27,6 +27,8 @@ class ActivationQuantization(base_layers.BaseLayer):
     self.ema_decay = ema_decay
     self.num_bits = num_bits
     super(ActivationQuantization, self).__init__(**kwargs)
+
+  def build(self, input_shapes):
     if self.parameters.quantize:
       self.min_var = self.add_weight(
           "min", initializer=tf.keras.initializers.Zeros(), trainable=False)
@@ -53,6 +55,7 @@ class ActivationQuantization(base_layers.BaseLayer):
     return inputs
 
   def quantize_using_range(self, inputs):
+    # This method can only be called after a call to "call" method in this class
     if self.parameters.quantize:
       return tf.quantization.fake_quant_with_min_max_vars(
           inputs, self.min_var, self.max_var, num_bits=self.num_bits)
@@ -66,21 +69,24 @@ class ConcatQuantization(ActivationQuantization):
     self.axis = axis
     super(ConcatQuantization, self).__init__(**kwargs)
 
-  def reduce_list(self, tensor_list, functor):
+  def _reduce_list(self, tensor_list, functor):
     reduce_result = [functor(tensor) for tensor in tensor_list]
     # Toco expects 0.0 to be part of the quantization range.
     reduce_result.append(tf.constant(0.0))
     return functor(tf.stack(reduce_result))
 
   def call(self, tensors):
+    # Ignore empty invocations done to build the keras layer.
+    if tensors is None:
+      return
     if self.parameters.quantize:
       if self.parameters.mode == base_layers.TRAIN:
         # Toco expects 0.0 to be part of the quantization range.
-        batch_min = self.reduce_list(tensors, tf.reduce_min)
+        batch_min = self._reduce_list(tensors, tf.reduce_min)
         min_var = self.assign_moving_average(self.min_var, batch_min,
                                              self.ema_decay)
 
-        batch_max = self.reduce_list(tensors, tf.reduce_max)
+        batch_max = self._reduce_list(tensors, tf.reduce_max)
         max_var = self.assign_moving_average(self.max_var, batch_max,
                                              self.ema_decay)
       else:

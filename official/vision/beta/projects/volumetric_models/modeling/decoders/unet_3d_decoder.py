@@ -45,7 +45,7 @@ class UNet3DDecoder(tf.keras.Model):
                norm_epsilon: float = 0.001,
                use_sync_bn: bool = False,
                use_batch_normalization: bool = False,
-               use_deconvolution: bool = False,
+               use_deconvolution: bool = False,  # pytype: disable=annotation-type-mismatch  # typed-keras
                **kwargs):
     """3D UNet decoder initialization function.
 

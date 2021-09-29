@@ -30,3 +30,5 @@ cp -f "${RUNFILES_DIR}/tf_ops/libtf_custom_ops_py_gen_op.so" \
 cp -f "${RUNFILES_DIR}/tf_ops/tf_custom_ops_py.py" \
   "${BUILD_WORKSPACE_DIRECTORY}/tf_ops"
 
+cp -f "${RUNFILES_DIR}/tflite_ops/registerer.so" \
+  "${BUILD_WORKSPACE_DIRECTORY}/tflite_ops"

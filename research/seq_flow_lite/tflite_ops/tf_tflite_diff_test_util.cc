@@ -19,11 +19,16 @@ limitations under the License.
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/lib/core/status_test_util.h"
 
-namespace tflite {
+namespace seq_flow_lite {
 namespace testing {
 
 using ::tensorflow::TensorProto;
 using ::testing::FloatNear;
+using ::tflite::TensorType_STRING;
+using ::tflite::TensorType_UINT8;
+using ::tflite::TensorType_INT32;
+using ::tflite::TensorType_BOOL;
+using ::tflite::TensorType_FLOAT32;
 
 ::tflite::TensorType TfTypeToTfLiteType(::tensorflow::DataType dtype) {
   switch (dtype) {
@@ -324,7 +329,7 @@ void TensorflowTfLiteOpTest::CompareOpOutput() {
         const auto& quantization_params =
             GetParam().output_tensors[i].quantization_params;
         if (quantization_params.scale != 0.0) {
-          auto tflite_output_values = Dequantize(
+          auto tflite_output_values = tflite::Dequantize(
               tflite_op_.ExtractVector<uint8_t>(tflite_outputs_[i]),
               quantization_params.scale, quantization_params.zero_point);
           for (int i = 0; i < tf_output_values.size(); i++) {

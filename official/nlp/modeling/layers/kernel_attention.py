@@ -302,7 +302,7 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
     return attention_output
 
   def _build_from_signature(self, query, value, key=None):
-    super()._build_from_signature(query=query, value=value, key=key)
+    super()._build_from_signature(query=query, value=value, key=key)  # pytype: disable=attribute-error  # typed-keras
     if self._begin_kernel > 0:
       common_kwargs = dict(
           kernel_initializer=self._kernel_initializer,

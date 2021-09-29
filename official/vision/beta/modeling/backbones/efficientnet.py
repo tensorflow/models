@@ -114,7 +114,7 @@ class EfficientNet(tf.keras.Model):
                activation: str = 'relu',
                use_sync_bn: bool = False,
                norm_momentum: float = 0.99,
-               norm_epsilon: float = 0.001,
+               norm_epsilon: float = 0.001,  # pytype: disable=annotation-type-mismatch  # typed-keras
                **kwargs):
     """Initializes an EfficientNet model.
 
@@ -299,7 +299,7 @@ def build_efficientnet(
     input_specs: tf.keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds EfficientNet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()

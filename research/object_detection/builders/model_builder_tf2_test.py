@@ -126,6 +126,8 @@ class ModelBuilderTF2Test(
       score_distance_multiplier: 11.0
       std_dev_multiplier: 2.8
       rescoring_threshold: 0.5
+      gaussian_denom_ratio: 0.3
+      argmax_postprocessing: True
     """
     if customize_head_params:
       task_proto_txt += """
@@ -158,6 +160,7 @@ class ModelBuilderTF2Test(
           beta: 4.0
         }
       }
+      peak_max_pool_kernel_size: 5
     """
     if customize_head_params:
       proto_txt += """
@@ -319,6 +322,7 @@ class ModelBuilderTF2Test(
     else:
       self.assertEqual(model._center_params.center_head_num_filters, [256])
       self.assertEqual(model._center_params.center_head_kernel_sizes, [3])
+    self.assertEqual(model._center_params.peak_max_pool_kernel_size, 5)
 
     # Check object detection related parameters.
     self.assertAlmostEqual(model._od_params.offset_loss_weight, 0.1)
@@ -376,6 +380,8 @@ class ModelBuilderTF2Test(
       self.assertEqual(kp_params.heatmap_head_kernel_sizes, [3])
       self.assertEqual(kp_params.offset_head_num_filters, [256])
       self.assertEqual(kp_params.offset_head_kernel_sizes, [3])
+    self.assertAlmostEqual(kp_params.gaussian_denom_ratio, 0.3)
+    self.assertEqual(kp_params.argmax_postprocessing, True)
 
     # Check mask related parameters.
     self.assertAlmostEqual(model._mask_params.task_loss_weight, 0.7)
@@ -470,7 +476,7 @@ class ModelBuilderTF2Test(
         num_classes: 10
         feature_extractor {
           type: "mobilenet_v2_fpn"
-          depth_multiplier: 1.0
+          depth_multiplier: 2.0
           use_separable_conv: true
           upsampling_interpolation: "bilinear"
         }
@@ -506,6 +512,21 @@ class ModelBuilderTF2Test(
         self.assertEqual('bilinear', layer.interpolation)
     # Verify that there are up_sampling2d layers.
     self.assertGreater(num_up_sampling2d_layers, 0)
+
+    # Verify that the FPN ops uses separable conv.
+    for layer in fpn.layers:
+      # Convolution layers with kernel size not equal to (1, 1) should be
+      # separable 2D convolutions.
+      if 'conv' in layer.name and layer.kernel_size != (1, 1):
+        self.assertIsInstance(layer, tf.keras.layers.SeparableConv2D)
+
+    # Verify that the backbone indeed double the number of channel according to
+    # the depthmultiplier.
+    backbone = feature_extractor.get_layer('model')
+    first_conv = backbone.get_layer('Conv1')
+    # Note that the first layer typically has 32 filters, but this model has
+    # a depth multiplier of 2.
+    self.assertEqual(64, first_conv.filters)
 
   def test_create_center_net_deepmac(self):
     """Test building a CenterNet DeepMAC model."""

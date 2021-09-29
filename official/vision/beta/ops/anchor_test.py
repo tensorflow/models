@@ -155,7 +155,7 @@ class AnchorTest(parameterized.TestCase, tf.test.TestCase):
         att_targets[attribute_name][k] = v.numpy()
       anchor_locations = np.vstack(
           np.where(
-              att_targets[attribute_name][str(min_level)] > -1)).transpose()
+              att_targets[attribute_name][str(min_level)] > 0.0)).transpose()
       self.assertAllClose(expected_anchor_locations, anchor_locations)
     else:
       self.assertEmpty(att_targets)
