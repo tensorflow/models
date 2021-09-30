@@ -232,6 +232,39 @@ def get_label_map_dict(label_map_path_or_proto,
   return label_map_dict
 
 
+def get_keypoint_label_map_dict(label_map_path_or_proto):
+  """Reads a label map and returns a dictionary of keypoint names to ids.
+
+  Note that the keypoints belong to different classes will be merged into a
+  single dictionary. It is expected that there is no duplicated keypoint names
+  or ids from different classes.
+
+  Args:
+    label_map_path_or_proto: path to StringIntLabelMap proto text file or the
+      proto itself.
+
+  Returns:
+    A dictionary mapping keypoint names to the keypoint id (not the object id).
+
+  Raises:
+    ValueError: if there are duplicated keyoint names or ids.
+  """
+  if isinstance(label_map_path_or_proto, string_types):
+    label_map = load_labelmap(label_map_path_or_proto)
+  else:
+    label_map = label_map_path_or_proto
+
+  label_map_dict = {}
+  for item in label_map.item:
+    for kpts in item.keypoints:
+      if kpts.label in label_map_dict.keys():
+        raise ValueError('Duplicated keypoint label: %s' % kpts.label)
+      if kpts.id in label_map_dict.values():
+        raise ValueError('Duplicated keypoint ID: %d' % kpts.id)
+      label_map_dict[kpts.label] = kpts.id
+  return label_map_dict
+
+
 def get_label_map_hierarchy_lut(label_map_path_or_proto,
                                 include_identity=False):
   """Reads a label map and returns ancestors and descendants in the hierarchy.

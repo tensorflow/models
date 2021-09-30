@@ -74,6 +74,82 @@ class LabelMapUtilTest(tf.test.TestCase):
     self.assertEqual(label_map_dict['dog'], 1)
     self.assertEqual(label_map_dict['cat'], 2)
 
+  def test_get_keypoint_label_map_dict(self):
+    label_map_string = """
+      item: {
+        id: 1
+        name: 'face'
+        display_name: 'face'
+        keypoints {
+         id: 0
+         label: 'left_eye'
+        }
+        keypoints {
+         id: 1
+         label: 'right_eye'
+        }
+      }
+      item: {
+        id: 2
+        name: '/m/01g317'
+        display_name: 'person'
+        keypoints {
+          id: 2
+          label: 'left_shoulder'
+        }
+        keypoints {
+          id: 3
+          label: 'right_shoulder'
+        }
+      }
+    """
+    label_map_path = os.path.join(self.get_temp_dir(), 'label_map.pbtxt')
+    with tf.gfile.Open(label_map_path, 'wb') as f:
+      f.write(label_map_string)
+
+    label_map_dict = label_map_util.get_keypoint_label_map_dict(label_map_path)
+    self.assertEqual(label_map_dict['left_eye'], 0)
+    self.assertEqual(label_map_dict['right_eye'], 1)
+    self.assertEqual(label_map_dict['left_shoulder'], 2)
+    self.assertEqual(label_map_dict['right_shoulder'], 3)
+
+  def test_get_keypoint_label_map_dict_invalid(self):
+    label_map_string = """
+      item: {
+        id: 1
+        name: 'face'
+        display_name: 'face'
+        keypoints {
+         id: 0
+         label: 'left_eye'
+        }
+        keypoints {
+         id: 1
+         label: 'right_eye'
+        }
+      }
+      item: {
+        id: 2
+        name: '/m/01g317'
+        display_name: 'person'
+        keypoints {
+          id: 0
+          label: 'left_shoulder'
+        }
+        keypoints {
+          id: 1
+          label: 'right_shoulder'
+        }
+      }
+    """
+    label_map_path = os.path.join(self.get_temp_dir(), 'label_map.pbtxt')
+    with tf.gfile.Open(label_map_path, 'wb') as f:
+      f.write(label_map_string)
+
+    with self.assertRaises(ValueError):
+      _ = label_map_util.get_keypoint_label_map_dict(
+          label_map_path)
+
   def test_get_label_map_dict_from_proto(self):
     label_map_string = """
       item {
