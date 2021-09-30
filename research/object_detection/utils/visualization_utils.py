@@ -1181,9 +1181,14 @@ def visualize_boxes_and_labels_on_image_array(
   box_to_keypoints_map = collections.defaultdict(list)
   box_to_keypoint_scores_map = collections.defaultdict(list)
   box_to_track_ids_map = {}
+  print('boxes.shape[0]')
+  print(boxes.shape[0])
   if not max_boxes_to_draw:
     max_boxes_to_draw = boxes.shape[0]
   for i in range(boxes.shape[0]):
+    print(i)
+    print(scores[i])
+    print(min_score_thresh)
     if max_boxes_to_draw == len(box_to_color_map):
       break
     if scores is None or scores[i] > min_score_thresh:
