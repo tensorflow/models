@@ -71,8 +71,13 @@ class RotaryPositionEmbedding(tf.keras.layers.Layer):
         input_shape = tf_utils.get_shape_list(q)
         batch_size = input_shape[0]
         length = input_shape[1]
-        num_heads = input_shape[2]
+        num_heads1 = input_shape[2]
         head_size = input_shape[3]
+
+        input_shape2 = tf_utils.get_shape_list(k)
+        length2 = input_shape2[1]
+        num_heads2 = input_shape2[2]
+        head_size2 = input_shape2[3]
 
         position_ids = tf.cast(tf.range(length), tf.float32)[None]  # (1, length)
         num_timescales = self._hidden_size // 2
@@ -84,9 +89,9 @@ class RotaryPositionEmbedding(tf.keras.layers.Layer):
         cos_emb = tf.repeat(tf.cos(embeddings), repeats=2, axis=-1)
         cos_emb = tf.expand_dims(cos_emb, 2)  # (1, length, 1, d/2)
         q2 = tf.stack([-q[..., 1::2], q[..., ::2]], axis=4)
-        q2 = tf.reshape(q2, (batch_size, length, num_heads, head_size))
+        q2 = tf.reshape(q2, (batch_size, length, num_heads1, head_size))
         k2 = tf.stack([-k[..., 1::2], k[..., ::2]], axis=4)
-        k2 = tf.reshape(k2, (batch_size, length, num_heads, head_size))
+        k2 = tf.reshape(k2, (batch_size, length2, num_heads2, head_size2))
         ret_q = q * cos_emb + q2 * sin_emb
         ret_w = k * cos_emb + k2 * sin_emb
         return ret_q, ret_w, v
