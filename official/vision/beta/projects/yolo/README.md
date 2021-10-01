@@ -73,10 +73,14 @@ connected to a new, more powerful backbone if a person chose to.
 | Yolo-v3 spp      |
 | Yolo-v4          |
 | Yolo-v4 tiny     |
+| Yolo-v4 csp      |
+| Yolo-v4 large    |
+
+## Models Zoo
+
 
 ## Requirements
-
-[![TensorFlow 2.2](https://img.shields.io/badge/TensorFlow-2.2-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.2.0)
+[![TensorFlow 2.6](https://img.shields.io/badge/TensorFlow-2.6-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.6.0)
 [![Python 3.8](https://img.shields.io/badge/Python-3.8-3776AB)](https://www.python.org/downloads/release/python-380/)
 
 
