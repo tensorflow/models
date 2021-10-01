@@ -40,8 +40,7 @@ necessary. This is to run this on TPU efficiently.
 """
 
 import functools
-import math
-from typing import Any, Mapping, List, Callable, Optional
+from typing import Any, Mapping, List, Optional
 
 from absl import logging
 import numpy as np
@@ -69,7 +68,8 @@ def softmax_merge_peer_attentions(peers):
   dtype = peers[0].dtype
   assert data_format == 'channels_last'
 
-  initial_attn_weights = tf.keras.initializers.TruncatedNormal(stddev=0.01)([len(peers)])
+  initial_attn_weights = \
+    tf.keras.initializers.TruncatedNormal(stddev=0.01)([len(peers)])
   attn_weights = tf.cast(tf.nn.softmax(initial_attn_weights), dtype)
   weighted_peers = []
   for i, peer in enumerate(peers):
@@ -117,7 +117,8 @@ def apply_attention(inputs,
     kernel_initializer=tf.random_normal_initializer(stddev=.01))(
     inputs=attn)
   attn = tf.math.sigmoid(attn)
-  channel_attn = tf.expand_dims(tf.expand_dims(attn, h_channel_loc), h_channel_loc)
+  channel_attn = tf.expand_dims(
+    tf.expand_dims(attn, h_channel_loc), h_channel_loc)
 
   inputs = tf.math.multiply(inputs, channel_attn)
 
@@ -145,9 +146,11 @@ class _ApplyEdgeWeight(layers.Layer):
       index: `int` index of the block within the AssembleNet architecture. Used
         for summation weight initial loading.
       use_5d_mode: `bool` indicating whether the inputs are in 5D tensor or 4D.
-      model_edge_weights: AssembleNet++ model structure connection weights in the
-        string format.
-      num_object_classes:
+      model_edge_weights: AssembleNet++ model structure connection weights in
+        the string format.
+      num_object_classes: Assemblenet++ structure used object inputs so we
+        should use what dataset classes you might be use
+        (e.g. ADE-20k 151 classes)
       **kwargs: pass through arguments.
 
     Returns:
@@ -230,8 +233,7 @@ class _ApplyEdgeWeight(layers.Layer):
     # Compute weighted inputs. We group inputs with the same channels.
     per_channel_inps = dict({0: []})
     for i, inp in enumerate(inputs):
-      if inp.shape[h_channel_loc] != sm_size[0] or inp.shape[h_channel_loc + 1] != sm_size[
-        1]:  # pylint: disable=line-too-long
+      if inp.shape[h_channel_loc] != sm_size[0] or inp.shape[h_channel_loc + 1] != sm_size[1]:  # pylint: disable=line-too-long
         assert sm_size[0] != 0
         ratio = (inp.shape[h_channel_loc] + 1) // sm_size[0]
         if use_5d_mode:
@@ -396,9 +398,8 @@ class AssembleNetPlus(tf.keras.Model):
       num_frames: the number of frames in the input tensor.
       model_structure: AssembleNetPlus model structure in the string format.
       input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
-      todo: add description on dimensionality of input_specs 'tuple'
         Dimension should be `[batch*time, height, width, channels]`.
-      model_edge_weights: AssembleNet model structure connection weights in the
+      model_edge_weights: AssembleNet model structure connection weight in the
         string format.
       bn_decay: `float` batch norm decay parameter to use.
       bn_epsilon: `float` batch norm epsilon parameter to use.
@@ -443,7 +444,8 @@ class AssembleNetPlus(tf.keras.Model):
       first_dim = (
         input_specs.shape[0] * input_specs.shape[1]
         if input_specs.shape[0] and input_specs.shape[1] else -1)
-      reshape_inputs = tf.reshape(original_inputs, (first_dim,) + input_specs.shape[2:])
+      reshape_inputs = tf.reshape(original_inputs,
+                                  (first_dim,) + input_specs.shape[2:])
     elif len(input_specs.shape) == 4:
       reshape_inputs = original_inputs
     else:
@@ -718,7 +720,8 @@ def build_assemblenet_plus_model(
   """Builds assemblenet++ model."""
   input_specs_dict = {'image': input_specs}
   backbone = build_assemblenet_plus(input_specs, model_config.backbone,
-                                    model_config.norm_activation, l2_regularizer)
+                                    model_config.norm_activation,
+                                    l2_regularizer)
   backbone_cfg = model_config.backbone.get()
   model_structure, _ = cfg.blocks_to_flat_lists(backbone_cfg.blocks)
   model = AssembleNetPlusModel(

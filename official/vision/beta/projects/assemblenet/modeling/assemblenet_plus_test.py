@@ -40,19 +40,24 @@ class AssembleNetPlusTest(parameterized.TestCase, tf.test.TestCase):
 
 
     if use_object_input:
-      vid_input = (batch_size * num_frames, img_size, img_size, 3)
-      obj_input = (batch_size * num_frames, img_size, img_size, num_object_classes)
+      vid_input = (batch_size * num_frames, img_size,
+                   img_size, 3)
+      obj_input = (batch_size * num_frames, img_size,
+                   img_size, num_object_classes)
       input_specs = (tf.keras.layers.InputSpec(shape=(vid_input)),
                      tf.keras.layers.InputSpec(shape=(obj_input)))
-      vid_inputs = np.random.rand(batch_size * num_frames, img_size, img_size, 3)
-      obj_inputs = np.random.rand(batch_size * num_frames, img_size, img_size, num_object_classes)
+      vid_inputs = np.random.rand(batch_size * num_frames,
+                                  img_size, img_size, 3)
+      obj_inputs = np.random.rand(batch_size * num_frames,
+                                  img_size, img_size, num_object_classes)
       inputs = [vid_inputs, obj_inputs]
       # We are using the full_asnp50_structure, since we feed both video and object.
       model_structure = asn_config.full_asnp50_structure #using object input
       model_edge_weights = asn_config.full_asnp_structure_weights
     else:
       #video input: (batch_size, FLAGS.num_frames, image_size, image_size, 3)
-      input_specs = tf.keras.layers.InputSpec(shape=(batch_size, num_frames, img_size, img_size, 3))
+      input_specs = tf.keras.layers.InputSpec(shape=(batch_size, num_frames,
+                                                     img_size, img_size, 3))
       inputs = np.random.rand(batch_size, num_frames, img_size, img_size, 3)
 
       # Here, we are using model_structures.asn50_structure for AssembleNet++
@@ -60,13 +65,13 @@ class AssembleNetPlusTest(parameterized.TestCase, tf.test.TestCase):
       # essentially becomes AssembleNet++ without objects, only requiring RGB
       # inputs (and optical flow to be computed inside the model).
       model_structure = asn_config.asn50_structure
-      model_edge_weights = asn_config.asn_structure_weights
+      edge_weights = asn_config.asn_structure_weights
 
     model = asnp.assemblenet_plus(assemblenet_depth=depth,
                                   num_classes=num_classes,
                                  num_frames=num_frames,
                                  model_structure=model_structure,
-                                 model_edge_weights=model_edge_weights,
+                                 model_edge_weights=edge_weights,
                                  input_specs=input_specs,
                                  use_object_input=use_object_input,
                                  attention_mode = attention_mode,)

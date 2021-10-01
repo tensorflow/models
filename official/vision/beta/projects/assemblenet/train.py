@@ -58,26 +58,27 @@ def main(_):
       if 'eval' in FLAGS.mode:
         # Use the feature shape in validation_data for all jobs. The number of
         # frames in train_data will be used to construct the Assemblenet++ model.
-        params.task.model.backbone.assemblenet_plus.num_frames = params.task.validation_data.feature_shape[
-          0]
+        params.task.model.backbone.assemblenet_plus.num_frames = \
+          params.task.validation_data.feature_shape[0]
         shape = params.task.validation_data.feature_shape
       else:
-        params.task.model.backbone.assemblenet_plus.num_frames = params.task.train_data.feature_shape[
-          0]
+        params.task.model.backbone.assemblenet_plus.num_frames = \
+          params.task.train_data.feature_shape[0]
         shape = params.task.train_data.feature_shape
       logging.info('mode %r num_frames %r feature shape %r', FLAGS.mode,
-                   params.task.model.backbone.assemblenet_plus.num_frames, shape)
+                   params.task.model.backbone.assemblenet_plus.num_frames,
+                   shape)
 
     else:
       if 'eval' in FLAGS.mode:
         # Use the feature shape in validation_data for all jobs. The number of
         # frames in train_data will be used to construct the Assemblenet model.
-        params.task.model.backbone.assemblenet.num_frames = params.task.validation_data.feature_shape[
-          0]
+        params.task.model.backbone.assemblenet.num_frames = \
+          params.task.validation_data.feature_shape[0]
         shape = params.task.validation_data.feature_shape
       else:
-        params.task.model.backbone.assemblenet.num_frames = params.task.train_data.feature_shape[
-          0]
+        params.task.model.backbone.assemblenet.num_frames = \
+          params.task.train_data.feature_shape[0]
         shape = params.task.train_data.feature_shape
       logging.info('mode %r num_frames %r feature shape %r', FLAGS.mode,
                    params.task.model.backbone.assemblenet.num_frames, shape)
