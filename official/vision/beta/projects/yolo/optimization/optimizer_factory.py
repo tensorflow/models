@@ -62,11 +62,28 @@ class OptimizerFactory(optimizer_factory.OptimizerFactory):
   """
 
   def get_bias_lr_schedule(self, bias_lr):
-    """Used to build additional learning rate schedules."""
-    temp = self._warmup_config.warmup_learning_rate
-    self._warmup_config.warmup_learning_rate = bias_lr
-    lr = self.build_learning_rate()
-    self._warmup_config.warmup_learning_rate = temp
+    """Build learning rate.
+
+    Builds learning rate from config. Learning rate schedule is built according
+    to the learning rate config. If learning rate type is consant,
+    lr_config.learning_rate is returned.
+
+    Returns:
+      tf.keras.optimizers.schedules.LearningRateSchedule instance. If
+      learning rate type is consant, lr_config.learning_rate is returned.
+    """
+    if self._lr_type == 'constant':
+      lr = self._lr_config.learning_rate
+    else:
+      lr = LR_CLS[self._lr_type](**self._lr_config.as_dict())
+
+    if self._warmup_config:
+      if self._warmup_type != 'linear':
+        raise ValueError("Smart Bias is only supported currently with a"
+                         "linear warm up.")
+      warm_up_cfg = self._warmup_config.as_dict()
+      warm_up_cfg["warmup_learning_rate"] = bias_lr
+      lr = WARMUP_CLS['linear'](lr, **warm_up_cfg)
     return lr
 
   @gin.configurable

@@ -21,9 +21,6 @@ from typing import Optional
 
 import dataclasses
 
-from official.modeling.hyperparams import base_config
-from official.modeling.hyperparams import oneof
-from official.vision.beta.projects.yolo.optimization.configs import learning_rate_config as lr_cfg
 from official.vision.beta.projects.yolo.optimization.configs import optimizer_config as opt_cfg
 from official.modeling.optimization.configs import optimization_config as optimization_cfg
 

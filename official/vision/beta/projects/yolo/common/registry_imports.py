@@ -31,6 +31,5 @@ from official.vision.beta.projects.yolo.tasks import yolo
 
 # import optimization packages
 from official.vision.beta.projects.yolo.optimization import optimizer_factory
-from official.vision.beta.projects.yolo.optimization.configs import learning_rate_config
 from official.vision.beta.projects.yolo.optimization.configs import optimization_config
 from official.vision.beta.projects.yolo.optimization.configs import optimizer_config
