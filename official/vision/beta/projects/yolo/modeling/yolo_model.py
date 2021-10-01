@@ -15,62 +15,7 @@
 """Yolo models."""
 
 import tensorflow as tf
-
-# static base Yolo Models that do not require configuration
-# similar to a backbone model id.
-
-# this is done greatly simplify the model config
-# the structure is as follows. model version, {v3, v4, v#, ... etc}
-# the model config type {regular, tiny, small, large, ... etc}
-YOLO_MODELS = {
-    "v4":
-        dict(
-            regular=dict(
-                embed_spp=False,
-                use_fpn=True,
-                max_level_process_len=None,
-                path_process_len=6),
-            tiny=dict(
-                embed_spp=False,
-                use_fpn=False,
-                max_level_process_len=2,
-                path_process_len=1),
-            csp=dict(
-                embed_spp=False,
-                use_fpn=True,
-                max_level_process_len=None,
-                csp_stack=5,
-                fpn_depth=5,
-                path_process_len=6),
-            csp_large=dict(
-                embed_spp=False,
-                use_fpn=True,
-                max_level_process_len=None,
-                csp_stack=7,
-                fpn_depth=7,
-                path_process_len=8,
-                fpn_filter_scale=2),
-        ),
-    "v3":
-        dict(
-            regular=dict(
-                embed_spp=False,
-                use_fpn=False,
-                max_level_process_len=None,
-                path_process_len=6),
-            tiny=dict(
-                embed_spp=False,
-                use_fpn=False,
-                max_level_process_len=2,
-                path_process_len=1),
-            spp=dict(
-                embed_spp=True,
-                use_fpn=False,
-                max_level_process_len=2,
-                path_process_len=1),
-        ),
-}
-
+from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
 class Yolo(tf.keras.Model):
   """The YOLO model class."""
@@ -82,21 +27,20 @@ class Yolo(tf.keras.Model):
                detection_generator=None,
                **kwargs):
     """Detection initialization function.
-
     Args:
       backbone: `tf.keras.Model` a backbone network.
       decoder: `tf.keras.Model` a decoder network.
       head: `RetinaNetHead`, the RetinaNet head.
-      detection_generator: the detection generator.
+      filter: the detection generator.
       **kwargs: keyword arguments to be passed.
     """
     super(Yolo, self).__init__(**kwargs)
 
     self._config_dict = {
-        "backbone": backbone,
-        "decoder": decoder,
-        "head": head,
-        "filter": detection_generator
+        'backbone': backbone,
+        'decoder': decoder,
+        'head': head,
+        'detection_generator': detection_generator
     }
 
     # model components
@@ -104,6 +48,7 @@ class Yolo(tf.keras.Model):
     self._decoder = decoder
     self._head = head
     self._detection_generator = detection_generator
+    self._fused = False
     return
 
   def call(self, inputs, training=False):
@@ -142,10 +87,10 @@ class Yolo(tf.keras.Model):
     return cls(**config)
 
   def get_weight_groups(self, train_vars):
-    """Sort the list of trainable variables into groups for optimization.
+    """Sort the list of trainable variables into groups for optimization. 
 
     Args:
-      train_vars: a list of tf.Variables that need to get sorted into their
+      train_vars: a list of tf.Variables that need to get sorted into their 
         respective groups.
 
     Returns:
@@ -166,3 +111,13 @@ class Yolo(tf.keras.Model):
       else:
         other.append(var)
     return weights, bias, other
+  
+  def fuse(self):
+    print("Fusing Conv Batch Norm Layers.")
+    if not self._fused:
+      self._fused = True
+      for layer in self.submodules:
+        if isinstance(layer, nn_blocks.ConvBN):
+          layer.fuse()
+      self.summary()
+    return 

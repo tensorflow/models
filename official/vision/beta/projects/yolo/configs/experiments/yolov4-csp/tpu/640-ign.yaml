@@ -1,0 +1,135 @@
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'float32'
+  tpu_enable_xla_dynamic_padder: false
+task:
+  smart_bias_lr: 0.1
+  model:
+    darknet_based_model: False
+    input_size: [640, 640, 3]
+    backbone:
+      type: 'darknet'
+      darknet:
+        model_id: 'altered_cspdarknet53'
+        max_level: 5
+        min_level: 3
+    decoder:
+      type: yolo_decoder
+      yolo_decoder:
+        version: v4
+        type: csp
+    head:
+      smart_bias: true
+    detection_generator:
+      box_type:
+        'all': scaled
+      scale_xy:
+        'all': 2.0
+      max_boxes: 300
+      nms_type: greedy
+      iou_thresh: 0.001
+      nms_thresh: 0.60
+    loss:
+      use_scaled_loss: true
+      update_on_repeat: true
+      box_loss_type:  
+        'all': ciou
+      ignore_thresh:
+        'all': 0.7
+      iou_normalizer: 
+        'all': 0.05
+      cls_normalizer: 
+        'all': 0.3
+      obj_normalizer: 
+        '5': 0.28
+        '4': 0.70
+        '3': 2.80
+      objectness_smooth: 
+        'all': 1.0
+    norm_activation:
+      activation: mish
+      norm_epsilon: 0.0001
+      norm_momentum: 0.97
+      use_sync_bn: true
+    num_classes: 80
+    anchor_boxes:
+      anchors_per_scale: 3
+      boxes: [box: [12, 16],   box: [19, 36],   box: [40, 28], 
+              box: [36, 75],   box: [76, 55],   box: [72, 146], 
+              box: [142, 110], box: [192, 243], box: [459, 401]]
+  train_data:
+    global_batch_size: 64
+    dtype: float32
+    input_path: 'gs://cam2-datasets/coco/train*'
+    is_training: true
+    shuffle_buffer_size: 10000
+    drop_remainder: true
+    seed: 1000
+    parser:
+      mosaic: 
+        mosaic_frequency: 1.0
+        mixup_frequency: 0.0
+        mosaic_crop_mode: 'scale'
+        mosaic_center: 0.25
+        aug_scale_min: 0.1
+        aug_scale_max: 1.9
+      max_num_instances: 300
+      letter_box: True
+      random_flip: True
+      aug_rand_saturation: 0.7
+      aug_rand_brightness: 0.4
+      aug_rand_hue: 0.015
+      aug_rand_translate: 0.1
+      area_thresh: 0.1
+      random_pad: False
+      use_tie_breaker: True
+      anchor_thresh: 4.0
+      best_match_only: True
+  validation_data:
+    global_batch_size: 8
+    dtype: float32
+    input_path: 'gs://cam2-datasets/coco/val*'
+    is_training: false
+    shuffle_buffer_size: 10
+    drop_remainder: true
+    parser:
+      max_num_instances: 300
+      letter_box: True
+      use_tie_breaker: True
+      anchor_thresh: 4.0
+      best_match_only: True
+  weight_decay: 0.000
+  annotation_file: null
+trainer:
+  train_steps: 555000 # 160 epochs at 64 batchsize -> 500500 * 64/2
+  validation_steps: 625
+  steps_per_loop: 1850
+  summary_interval: 1850
+  validation_interval: 1850
+  checkpoint_interval: 1850
+  optimizer_config:
+    ema:
+      average_decay: 0.9999
+      trainable_weights_only: False
+      dynamic_decay: True
+    learning_rate:
+      type: cosine
+      cosine:
+        initial_learning_rate: 0.01
+        name: Cosine
+        alpha: 0.2
+        decay_steps: 555000
+    optimizer:
+      type: sgd_torch
+      sgd_torch:
+        momentum: 0.937
+        momentum_start: 0.8
+        nesterov: True
+        warmup_steps: 5550
+        weight_decay: 0.0005
+        sim_torch: true
+        name: SGD
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 5550 #learning rate rises from 0 to 0.0013 over 1000 steps

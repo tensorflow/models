@@ -383,7 +383,7 @@ class Darknet(tf.keras.Model):
       max_level=5,
       width_scale=1.0,
       depth_scale=1.0,
-      use_reorg_input=False,
+      use_reorg_input = False, 
       csp_level_mod=(),
       activation=None,
       use_sync_bn=False,
@@ -454,6 +454,9 @@ class Darknet(tf.keras.Model):
   def _build_struct(self, net, inputs):
     if self._use_reorg_input:
       inputs = nn_blocks.Reorg()(inputs)
+      net[0].filters = net[1].filters
+      net[0].output_name = net[1].output_name
+      del net[1]
 
     endpoints = collections.OrderedDict()
     stack_outputs = [inputs]
@@ -665,7 +668,6 @@ class Darknet(tf.keras.Model):
         'activation': self._activation,
     }
     return layer_config
-
 
 @factory.register_backbone_builder('darknet')
 def build_darknet(

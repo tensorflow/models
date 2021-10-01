@@ -16,6 +16,21 @@
 
 # pylint: disable=unused-import
 from official.common import registry_imports
+
+# import configs 
 from official.vision.beta.projects.yolo.configs import darknet_classification
+from official.vision.beta.projects.yolo.configs import yolo
+
+# import modeling components
 from official.vision.beta.projects.yolo.modeling.backbones import darknet
+from official.vision.beta.projects.yolo.modeling.decoders import yolo_decoder
+
+# import tasks
 from official.vision.beta.projects.yolo.tasks import image_classification
+from official.vision.beta.projects.yolo.tasks import yolo
+
+# import optimization packages
+from official.vision.beta.projects.yolo.optimization import optimizer_factory
+from official.vision.beta.projects.yolo.optimization.configs import learning_rate_config
+from official.vision.beta.projects.yolo.optimization.configs import optimization_config
+from official.vision.beta.projects.yolo.optimization.configs import optimizer_config

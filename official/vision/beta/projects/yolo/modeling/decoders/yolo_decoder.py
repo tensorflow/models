@@ -12,11 +12,66 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Lint as: python3
 """Feature Pyramid Network and Path Aggregation variants used in YOLO."""
+from typing import Mapping, Union
+from official.modeling import hyperparams
 
 import tensorflow as tf
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
+from official.vision.beta.modeling.decoders import factory
 
+# model configurations
+# the structure is as follows. model version, {v3, v4, v#, ... etc}
+# the model config type {regular, tiny, small, large, ... etc}
+YOLO_MODELS = {
+    "v4":
+        dict(
+            regular=dict(
+                embed_spp=False,
+                use_fpn=True,
+                max_level_process_len=None,
+                path_process_len=6),
+            tiny=dict(
+                embed_spp=False,
+                use_fpn=False,
+                max_level_process_len=2,
+                path_process_len=1),
+            csp=dict(
+                embed_spp=False,
+                use_fpn=True,
+                max_level_process_len=None,
+                csp_stack=5,
+                fpn_depth=5,
+                path_process_len=6),
+            csp_large=dict(
+                embed_spp=False,
+                use_fpn=True,
+                max_level_process_len=None,
+                csp_stack=7,
+                fpn_depth=7,
+                path_process_len=8,
+                fpn_filter_scale=2),
+        ),
+    "v3":
+        dict(
+            regular=dict(
+                embed_spp=False,
+                use_fpn=False,
+                max_level_process_len=None,
+                path_process_len=6),
+            tiny=dict(
+                embed_spp=False,
+                use_fpn=False,
+                max_level_process_len=2,
+                path_process_len=1),
+            spp=dict(
+                embed_spp=True,
+                use_fpn=False,
+                max_level_process_len=2,
+                path_process_len=1),
+        ),
+}
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class _IdentityRoute(tf.keras.layers.Layer):
@@ -487,3 +542,65 @@ class YoloDecoder(tf.keras.Model):
   @classmethod
   def from_config(cls, config, custom_objects=None):
     return cls(**config)
+
+
+@factory.register_decoder_builder('yolo_decoder')
+def build_yolo_decoder(input_specs: Mapping[str, tf.TensorShape], 
+                       model_config: hyperparams.Config, 
+                       l2_regularizer: tf.keras.regularizers.Regularizer = None, 
+                       **kwargs) -> Union[None, tf.keras.Model, tf.keras.layers.Layer]:
+  """Builds Yolo FPN/PAN decoder from a config.
+
+  Args:
+    input_specs: A `dict` of input specifications. A dictionary consists of
+      {level: TensorShape} from a backbone.
+    model_config: A OneOfConfig. Model config.
+    l2_regularizer: A `tf.keras.regularizers.Regularizer` instance. Default to
+      None.
+
+  Returns:
+    A `tf.keras.Model` instance of the Yolo FPN/PAN decoder.
+  """
+  decoder_cfg = model_config.decoder.get()
+  norm_activation_config = model_config.norm_activation
+
+  activation = (
+      decoder_cfg.activation
+      if decoder_cfg.activation != "same" else
+      norm_activation_config.activation)
+
+  if decoder_cfg.version is None:  # custom yolo
+    raise Exception("decoder version cannot be None, specify v3 or v4")
+
+  if decoder_cfg.version not in YOLO_MODELS:
+    raise Exception(
+        "unsupported model version please select from {v3, v4}, \n\n \
+        or specify a custom decoder config using YoloDecoder in you yaml")
+
+  if decoder_cfg.type == None:
+    decoder_cfg.type = "regular"
+
+  if decoder_cfg.type not in YOLO_MODELS[decoder_cfg.version]:
+    raise Exception("unsupported model type please select from \
+        {yolo_model.YOLO_MODELS[decoder_cfg.version].keys()},\
+        \n\n or specify a custom decoder config using YoloDecoder in you yaml")
+
+  base_model = YOLO_MODELS[decoder_cfg.version][decoder_cfg.type]
+
+  cfg_dict = decoder_cfg.as_dict()
+  for key in base_model:
+    if cfg_dict[key] is not None:
+      base_model[key] = cfg_dict[key]
+
+  base_dict = dict(
+      activation=activation,
+      use_spatial_attention=decoder_cfg.use_spatial_attention,
+      use_separable_conv=decoder_cfg.use_separable_conv,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      kernel_regularizer=l2_regularizer)
+
+  base_model.update(base_dict)
+  model = YoloDecoder(input_specs, **base_model)
+  return model
