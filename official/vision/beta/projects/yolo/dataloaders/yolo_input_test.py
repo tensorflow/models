@@ -20,7 +20,8 @@ def test_yolo_input_task(scaled_pipeline = False, batch_size = 1):
     config_path = [
       "official/vision/beta/projects/yolo/configs/experiments/yolov4-csp/tpu/640.yaml"]
 
-  config = train_utils.ParseConfigOptions(experiment=experiment, config_file=config_path)
+  config = train_utils.ParseConfigOptions(experiment=experiment, 
+                                          config_file=config_path)
   params = train_utils.parse_configuration(config)
   config = params.task
   task = task_factory.get_task(params.task)
@@ -47,7 +48,8 @@ def test_yolo_pipeline_visually(is_training=True, num=30):
   data = dataset if is_training else testing
   data = data.take(num)
   for l, (image, label) in enumerate(data):
-    image = tf.image.draw_bounding_boxes(image, label['bbox'], [[1.0, 0.0, 1.0]])
+    image = tf.image.draw_bounding_boxes(
+        image, label['bbox'], [[1.0, 0.0, 1.0]])
 
     gt = label['true_conf']
 

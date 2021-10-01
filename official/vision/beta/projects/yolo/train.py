@@ -33,7 +33,7 @@ FLAGS = flags.FLAGS
 python3 -m official.vision.beta.projects.yolo.train --mode=train_and_eval --experiment=darknet_classification --model_dir=training_dir --config_file=official/vision/beta/projects/yolo/configs/experiments/darknet53_tfds.yaml
 
 
-python3.8 -m official.vision.beta.projects.yolo.train --experiment=yolo_darknet --mode train_and_eval --config_file yolo/configs/experiments/yolov4/inference/512-swin.yaml --model_dir ../checkpoints/test-swin
+python3.8 -m official.vision.beta.projects.yolo.train --experiment=scaled_yolo --mode train_and_eval --config_file yolo/configs/experiments/yolov4-csp/tpu/640.yaml --model_dir ../checkpoints/yolov4-csp-640
 '''
 
 
