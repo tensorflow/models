@@ -66,20 +66,20 @@ class PenaltyReducedLogisticFocalLoss(object):
       loss: a float tensor of shape [batch_size, num_anchors, num_classes]
         representing the value of the loss function.
     """
-    
-    is_present_tensor = tf.math.equal(target_tensor, 1.0)
-    prediction_tensor = tf.clip_by_value(tf.sigmoid(prediction_tensor),
-                                         self._sigmoid_clip_value,
-                                         1 - self._sigmoid_clip_value)
-    
-    positive_loss = (tf.math.pow((1 - prediction_tensor), self._alpha) *
-                     tf.math.log(prediction_tensor))
-    negative_loss = (tf.math.pow((1 - target_tensor), self._beta) *
-                     tf.math.pow(prediction_tensor, self._alpha) *
-                     tf.math.log(1 - prediction_tensor))
-    
-    loss = -tf.where(is_present_tensor, positive_loss, negative_loss)
-    return loss * weights
+    with tf.name_scope('prlf_loss'):
+      is_present_tensor = tf.math.equal(target_tensor, 1.0)
+      prediction_tensor = tf.clip_by_value(tf.sigmoid(prediction_tensor),
+                                           self._sigmoid_clip_value,
+                                           1 - self._sigmoid_clip_value)
+      
+      positive_loss = (tf.math.pow((1 - prediction_tensor), self._alpha) *
+                       tf.math.log(prediction_tensor))
+      negative_loss = (tf.math.pow((1 - target_tensor), self._beta) *
+                       tf.math.pow(prediction_tensor, self._alpha) *
+                       tf.math.log(1 - prediction_tensor))
+      
+      loss = -tf.where(is_present_tensor, positive_loss, negative_loss)
+      return loss * weights
 
 
 class L1LocalizationLoss(object):
@@ -101,9 +101,10 @@ class L1LocalizationLoss(object):
       loss: a float tensor of shape [batch_size, num_anchors] tensor
         representing the value of the loss function.
     """
-    return tf.compat.v1.losses.absolute_difference(
-        labels=target_tensor,
-        predictions=prediction_tensor,
-        weights=weights,
-        reduction=tf.losses.Reduction.NONE
-    )
+    with tf.name_scope('l1l_loss'):
+      return tf.compat.v1.losses.absolute_difference(
+          labels=target_tensor,
+          predictions=prediction_tensor,
+          weights=weights,
+          reduction=tf.losses.Reduction.NONE
+      )

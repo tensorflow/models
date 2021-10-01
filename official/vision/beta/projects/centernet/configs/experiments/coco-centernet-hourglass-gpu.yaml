@@ -31,7 +31,6 @@ task:
     detection:
       offset_weight: 1.0
       scale_weight: 0.1
-    segmentation:
     gaussian_iou: 0.7
     class_offset: 1
   per_category_metrics: false

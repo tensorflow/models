@@ -28,7 +28,6 @@ task:
       object_center_weight: 1.0
       offset_weight: 1.0
       scale_weight: 0.1
-    segmentation:
     gaussian_iou: 0.7
   per_category_metrics: false
   weight_decay: 0.0005
