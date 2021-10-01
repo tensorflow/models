@@ -23,11 +23,6 @@ task:
       nms_pre_thresh: 0.1
       nms_thresh: 0.4
       class_offset: 1
-  subtasks:
-    detection:
-      use_centers: true
-      use_corners: false
-      predict_3d: false
   losses:
     detection:
       object_center_weight: 1.0

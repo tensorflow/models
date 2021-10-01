@@ -27,11 +27,6 @@ task:
       norm_epsilon: 0.00001
       norm_momentum: 0.1
       use_sync_bn: true
-  subtasks:
-    detection:
-      use_centers: true
-      use_corners: false
-      predict_3d: false
   losses:
     detection:
       offset_weight: 1.0

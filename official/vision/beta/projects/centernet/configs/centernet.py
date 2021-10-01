@@ -28,15 +28,12 @@ from official.vision.beta.configs import common
 from official.modeling.hyperparams import config_definitions as cfg
 
 
+TfExampleDecoderLabelMap = common.TfExampleDecoderLabelMap
+
+
 @dataclasses.dataclass
 class TfExampleDecoder(hyperparams.Config):
   regenerate_source_id: bool = False
-
-
-@dataclasses.dataclass
-class TfExampleDecoderLabelMap(hyperparams.Config):
-  regenerate_source_id: bool = False
-  label_map: str = ''
 
 
 @dataclasses.dataclass
@@ -86,14 +83,8 @@ class DetectionLoss(hyperparams.Config):
 
 
 @dataclasses.dataclass
-class SegmentationLoss(hyperparams.Config):
-  pass
-
-
-@dataclasses.dataclass
 class Losses(hyperparams.Config):
   detection: DetectionLoss = DetectionLoss()
-  segmentation: SegmentationLoss = SegmentationLoss()
   gaussian_iou: float = 0.7
   class_offset: int = 1
 
@@ -133,21 +124,13 @@ class CenterNetModel(hyperparams.Config):
 
 @dataclasses.dataclass
 class CenterNetDetection(hyperparams.Config):
+  # use_center is the only option implemented currently.
   use_centers: bool = True
-  # corner is not supported currently
-  use_corners: bool = False
-  predict_3d: bool = False
 
 
 @dataclasses.dataclass
 class CenterNetSubTasks(hyperparams.Config):
   detection: CenterNetDetection = CenterNetDetection()
-  # Placeholder for extending for additional task
-  # segmentation: bool = False
-  # pose: bool = False
-  # kp_detection: bool = False
-  # reid: bool = False
-  # temporal: bool = False
 
 
 @dataclasses.dataclass
@@ -171,41 +154,17 @@ class CenterNetTask(cfg.TaskConfig):
   checkpoint_head_name: Optional[str] = None
   
   def get_output_length_dict(self):
-    lengths = {}
-    sub_task_check = (
-        self.subtasks.detection is not None
-        or self.subtasks.kp_detection or
-        self.subtasks.segmentation)
-    assert sub_task_check, 'You must specify at least one subtask to CenterNet'
-    
-    if self.subtasks.detection:
-      detection_task_check = (
-          self.subtasks.detection.use_centers and
-          not self.subtasks.detection.use_corners)
-      assert detection_task_check, 'Use corner is not supported currently.'
-      if self.subtasks.detection.use_centers:
-        lengths.update({
-            'ct_heatmaps': self.model.num_classes,
-            'ct_offset': 2,
-        })
-        if not self.subtasks.detection.use_corners:
-          lengths['ct_size'] = 2
+    task_outputs = {}
 
-      if self.subtasks.detection.use_corners:
-        lengths.update({
-            'tl_heatmaps': self.model.num_classes,
-            'tl_offset': 2,
-            'br_heatmaps': self.model.num_classes,
-            'br_offset': 2
-        })
-      
-      if self.subtasks.detection.predict_3d:
-        lengths.update({
-            'depth': 1,
-            'orientation': 8
-        })
-    
-    return lengths
+    if self.subtasks.detection and self.subtasks.detection.use_centers:
+      task_outputs.update({
+          'ct_heatmaps': self.model.num_classes,
+          'ct_offset': 2,
+          'ct_size': 2
+      })
+    else:
+      raise ValueError('Detection with center point is only available ')
+    return task_outputs
 
 
 COCO_INPUT_PATH_BASE = 'coco'
