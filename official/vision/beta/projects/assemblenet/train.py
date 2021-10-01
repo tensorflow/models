@@ -37,6 +37,14 @@ from official.vision.beta.projects.assemblenet.modeling import assemblenet_plus 
 
 FLAGS = flags.FLAGS
 
+'''
+python -m official.vision.beta.projects.assemblenet.trian \
+--mode=train_and_eval --experiment=assemblenetplus_ucf101 \
+--model_dir='YOUR MODEL SAVE GS BUCKET' \
+--config_file=./official/vision/beta/projects/assemblenet/\
+--ucf101_assemblenet_plus_tpu.yaml \
+--tpu=TPU_NAME 
+'''
 
 def main(_):
   gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_params)
