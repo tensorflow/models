@@ -459,6 +459,167 @@ class TfExampleDecoderTest(test_case.TestCase):
         expected_visibility,
         tensor_dict[fields.InputDataFields.groundtruth_keypoint_visibilities])
 
+  def testDecodeKeypointNoInstance(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg, _ = self._create_encoded_and_decoded_data(
+        image_tensor, 'jpeg')
+    bbox_ymins = []
+    bbox_xmins = []
+    bbox_ymaxs = []
+    bbox_xmaxs = []
+    keypoint_ys = []
+    keypoint_xs = []
+    keypoint_visibility = []
+
+    def graph_fn():
+      example = tf.train.Example(
+          features=tf.train.Features(
+              feature={
+                  'image/encoded':
+                      dataset_util.bytes_feature(encoded_jpeg),
+                  'image/format':
+                      dataset_util.bytes_feature(six.b('jpeg')),
+                  'image/object/bbox/ymin':
+                      dataset_util.float_list_feature(bbox_ymins),
+                  'image/object/bbox/xmin':
+                      dataset_util.float_list_feature(bbox_xmins),
+                  'image/object/bbox/ymax':
+                      dataset_util.float_list_feature(bbox_ymaxs),
+                  'image/object/bbox/xmax':
+                      dataset_util.float_list_feature(bbox_xmaxs),
+                  'image/object/keypoint/y':
+                      dataset_util.float_list_feature(keypoint_ys),
+                  'image/object/keypoint/x':
+                      dataset_util.float_list_feature(keypoint_xs),
+                  'image/object/keypoint/visibility':
+                      dataset_util.int64_list_feature(keypoint_visibility),
+              })).SerializeToString()
+
+      example_decoder = tf_example_decoder.TfExampleDecoder(num_keypoints=3)
+      output = example_decoder.decode(tf.convert_to_tensor(example))
+
+      self.assertAllEqual((output[
+          fields.InputDataFields.groundtruth_boxes].get_shape().as_list()),
+                          [None, 4])
+      self.assertAllEqual((output[
+          fields.InputDataFields.groundtruth_keypoints].get_shape().as_list()),
+                          [0, 3, 2])
+      return output
+
+    tensor_dict = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(
+        [0, 4], tensor_dict[fields.InputDataFields.groundtruth_boxes].shape)
+    self.assertAllEqual(
+        [0, 3, 2],
+        tensor_dict[fields.InputDataFields.groundtruth_keypoints].shape)
+
+  def testDecodeKeypointWithText(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg, _ = self._create_encoded_and_decoded_data(
+        image_tensor, 'jpeg')
+    bbox_classes = [0, 1]
+    bbox_ymins = [0.0, 4.0]
+    bbox_xmins = [1.0, 5.0]
+    bbox_ymaxs = [2.0, 6.0]
+    bbox_xmaxs = [3.0, 7.0]
+    keypoint_ys = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+    keypoint_xs = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+    keypoint_visibility = [1, 2, 0, 1, 0, 2]
+    keypoint_texts = [
+        six.b('nose'), six.b('left_eye'), six.b('right_eye'), six.b('nose'),
+        six.b('left_eye'), six.b('right_eye')
+    ]
+
+    label_map_string = """
+      item: {
+        id: 1
+        name: 'face'
+        display_name: 'face'
+        keypoints {
+         id: 0
+         label: "nose"
+        }
+        keypoints {
+         id: 2
+         label: "right_eye"
+        }
+      }
+      item: {
+        id: 2
+        name: 'person'
+        display_name: 'person'
+        keypoints {
+         id: 1
+         label: "left_eye"
+        }
+      }
+    """
+    label_map_proto_file = os.path.join(self.get_temp_dir(), 'label_map.pbtxt')
+    with tf.gfile.Open(label_map_proto_file, 'wb') as f:
+      f.write(label_map_string)
+
+    def graph_fn():
+      example = tf.train.Example(
+          features=tf.train.Features(
+              feature={
+                  'image/encoded':
+                      dataset_util.bytes_feature(encoded_jpeg),
+                  'image/format':
+                      dataset_util.bytes_feature(six.b('jpeg')),
+                  'image/object/bbox/ymin':
+                      dataset_util.float_list_feature(bbox_ymins),
+                  'image/object/bbox/xmin':
+                      dataset_util.float_list_feature(bbox_xmins),
+                  'image/object/bbox/ymax':
+                      dataset_util.float_list_feature(bbox_ymaxs),
+                  'image/object/bbox/xmax':
+                      dataset_util.float_list_feature(bbox_xmaxs),
+                  'image/object/keypoint/y':
+                      dataset_util.float_list_feature(keypoint_ys),
+                  'image/object/keypoint/x':
+                      dataset_util.float_list_feature(keypoint_xs),
+                  'image/object/keypoint/visibility':
+                      dataset_util.int64_list_feature(keypoint_visibility),
+                  'image/object/keypoint/text':
+                      dataset_util.bytes_list_feature(keypoint_texts),
+                  'image/object/class/label':
+                      dataset_util.int64_list_feature(bbox_classes),
+              })).SerializeToString()
+
+      example_decoder = tf_example_decoder.TfExampleDecoder(
+          label_map_proto_file=label_map_proto_file, num_keypoints=5,
+          use_keypoint_label_map=True)
+      output = example_decoder.decode(tf.convert_to_tensor(example))
+
+      self.assertAllEqual((output[
+          fields.InputDataFields.groundtruth_boxes].get_shape().as_list()),
+                          [None, 4])
+      self.assertAllEqual((output[
+          fields.InputDataFields.groundtruth_keypoints].get_shape().as_list()),
+                          [None, 5, 2])
+      return output
+
+    output = self.execute_cpu(graph_fn, [])
+    expected_boxes = np.vstack([bbox_ymins, bbox_xmins, bbox_ymaxs,
+                                bbox_xmaxs]).transpose()
+    self.assertAllEqual(expected_boxes,
+                        output[fields.InputDataFields.groundtruth_boxes])
+
+    expected_keypoints = [[[0.0, 1.0], [1.0, 2.0], [np.nan, np.nan],
+                           [np.nan, np.nan], [np.nan, np.nan]],
+                          [[3.0, 4.0], [np.nan, np.nan], [5.0, 6.0],
+                           [np.nan, np.nan], [np.nan, np.nan]]]
+    self.assertAllClose(expected_keypoints,
+                        output[fields.InputDataFields.groundtruth_keypoints])
+
+    expected_visibility = (
+        (np.array(keypoint_visibility) > 0).reshape((2, 3)))
+    gt_kpts_vis_fld = fields.InputDataFields.groundtruth_keypoint_visibilities
+    self.assertAllEqual(expected_visibility, output[gt_kpts_vis_fld][:, 0:3])
+    # The additional keypoints should all have False visibility.
+    self.assertAllEqual(
+        np.zeros([2, 2], dtype=np.bool), output[gt_kpts_vis_fld][:, 3:])
+
   def testDecodeKeypointNoVisibilities(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
     encoded_jpeg, _ = self._create_encoded_and_decoded_data(
@@ -735,6 +896,18 @@ class TfExampleDecoderTest(test_case.TestCase):
         item {
           id:1
           name:'cat'
+          keypoints {
+            id: 0
+            label: "nose"
+          }
+          keypoints {
+            id: 1
+            label: "left_eye"
+          }
+          keypoints {
+            id: 2
+            label: "right_eye"
+          }
         }
         item {
           id:2

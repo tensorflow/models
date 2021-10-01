@@ -22,6 +22,7 @@ from __future__ import division
 from __future__ import print_function
 
 import enum
+import functools
 import numpy as np
 from six.moves import zip
 import tensorflow.compat.v1 as tf
@@ -42,6 +43,9 @@ except ImportError:
 # pylint: enable=g-import-not-at-top
 
 _LABEL_OFFSET = 1
+# The field name of hosting keypoint text feature. Only used within this file
+# to help forming the keypoint related features.
+_KEYPOINT_TEXT_FIELD = 'image/object/keypoint/text'
 
 
 class Visibility(enum.Enum):
@@ -140,7 +144,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                expand_hierarchy_labels=False,
                load_dense_pose=False,
                load_track_id=False,
-               load_keypoint_depth_features=False):
+               load_keypoint_depth_features=False,
+               use_keypoint_label_map=False):
     """Constructor sets keys_to_features and items_to_handlers.
 
     Args:
@@ -177,6 +182,12 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         including keypoint relative depths and weights. If this field is set to
         True but no keypoint depth features are in the input tf.Example, then
         default values will be populated.
+      use_keypoint_label_map: If set to True, the 'image/object/keypoint/text'
+        field will be used to map the keypoint coordinates (using the label
+        map defined in label_map_proto_file) instead of assuming the ordering
+        in the tf.Example feature. This is useful when training with multiple
+        datasets while each of them contains different subset of keypoint
+        annotations.
 
     Raises:
       ValueError: If `instance_mask_type` option is not one of
@@ -294,6 +305,34 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             slim_example_decoder.Tensor('image/object/weight')),
 
     }
+
+    self._keypoint_label_map = None
+    if use_keypoint_label_map:
+      assert label_map_proto_file is not None
+      self._keypoint_label_map = label_map_util.get_keypoint_label_map_dict(
+          label_map_proto_file)
+      # We use a default_value of -1, but we expect all labels to be
+      # contained in the label map.
+      try:
+        # Dynamically try to load the tf v2 lookup, falling back to contrib
+        lookup = tf.compat.v2.lookup
+        hash_table_class = tf.compat.v2.lookup.StaticHashTable
+      except AttributeError:
+        lookup = contrib_lookup
+        hash_table_class = contrib_lookup.HashTable
+      self._kpts_name_to_id_table = hash_table_class(
+          initializer=lookup.KeyValueTensorInitializer(
+              keys=tf.constant(list(self._keypoint_label_map.keys())),
+              values=tf.constant(
+                  list(self._keypoint_label_map.values()), dtype=tf.int64)),
+          default_value=-1)
+
+      self.keys_to_features[_KEYPOINT_TEXT_FIELD] = tf.VarLenFeature(
+          tf.string)
+      self.items_to_handlers[_KEYPOINT_TEXT_FIELD] = (
+          slim_example_decoder.ItemHandlerCallback(
+              [_KEYPOINT_TEXT_FIELD], self._keypoint_text_handle))
+
     if load_multiclass_scores:
       self.keys_to_features[
           'image/object/class/multiclass_scores'] = tf.VarLenFeature(tf.float32)
@@ -556,16 +595,70 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                   default_groundtruth_instance_mask_weights))
 
     if fields.InputDataFields.groundtruth_keypoints in tensor_dict:
-      # Set all keypoints that are not labeled to NaN.
       gt_kpt_fld = fields.InputDataFields.groundtruth_keypoints
       gt_kpt_vis_fld = fields.InputDataFields.groundtruth_keypoint_visibilities
-      visibilities_tiled = tf.tile(
-          tf.expand_dims(tensor_dict[gt_kpt_vis_fld], -1),
-          [1, 1, 2])
-      tensor_dict[gt_kpt_fld] = tf.where(
-          visibilities_tiled,
-          tensor_dict[gt_kpt_fld],
-          np.nan * tf.ones_like(tensor_dict[gt_kpt_fld]))
+
+      if self._keypoint_label_map is None:
+        # Set all keypoints that are not labeled to NaN.
+        tensor_dict[gt_kpt_fld] = tf.reshape(tensor_dict[gt_kpt_fld],
+                                             [-1, self._num_keypoints, 2])
+        tensor_dict[gt_kpt_vis_fld] = tf.reshape(
+            tensor_dict[gt_kpt_vis_fld], [-1, self._num_keypoints])
+        visibilities_tiled = tf.tile(
+            tf.expand_dims(tensor_dict[gt_kpt_vis_fld], axis=-1), [1, 1, 2])
+        tensor_dict[gt_kpt_fld] = tf.where(
+            visibilities_tiled, tensor_dict[gt_kpt_fld],
+            np.nan * tf.ones_like(tensor_dict[gt_kpt_fld]))
+      else:
+        num_instances = tf.shape(tensor_dict['groundtruth_classes'])[0]
+
+        def true_fn(num_instances):
+          """Logics to process the tensor when num_instances is not zero."""
+          kpts_idx = tf.cast(self._kpts_name_to_id_table.lookup(
+              tensor_dict[_KEYPOINT_TEXT_FIELD]), dtype=tf.int32)
+          num_kpt_texts = tf.cast(
+              tf.size(tensor_dict[_KEYPOINT_TEXT_FIELD]) / num_instances,
+              dtype=tf.int32)
+          # Prepare the index of the instances: [num_instances, num_kpt_texts].
+          instance_idx = tf.tile(
+              tf.expand_dims(tf.range(num_instances, dtype=tf.int32), axis=-1),
+              [1, num_kpt_texts])
+          # Prepare the index of the keypoints to scatter the keypoint
+          # coordinates: [num_kpts_texts * num_instances, 2].
+          kpt_idx = tf.concat([
+              tf.reshape(
+                  instance_idx, shape=[num_kpt_texts * num_instances, 1]),
+              tf.expand_dims(kpts_idx, axis=-1)
+          ], axis=1)
+
+          gt_kpt = tf.scatter_nd(
+              kpt_idx,
+              tensor_dict[gt_kpt_fld],
+              shape=[num_instances, self._num_keypoints, 2])
+          gt_kpt_vis = tf.cast(tf.scatter_nd(
+              kpt_idx,
+              tensor_dict[gt_kpt_vis_fld],
+              shape=[num_instances, self._num_keypoints]), dtype=tf.bool)
+          visibilities_tiled = tf.tile(
+              tf.expand_dims(gt_kpt_vis, axis=-1), [1, 1, 2])
+          gt_kpt = tf.where(visibilities_tiled, gt_kpt,
+                            np.nan * tf.ones_like(gt_kpt))
+          return (gt_kpt, gt_kpt_vis)
+
+        def false_fn():
+          """Logics to process the tensor when num_instances is zero."""
+          return (tf.zeros([0, self._num_keypoints, 2], dtype=tf.float32),
+                  tf.zeros([0, self._num_keypoints], dtype=tf.bool))
+
+        true_fn = functools.partial(true_fn, num_instances)
+        results = tf.cond(num_instances > 0, true_fn, false_fn)
+
+        tensor_dict[gt_kpt_fld] = results[0]
+        tensor_dict[gt_kpt_vis_fld] = results[1]
+        # Since the keypoint text tensor won't be used anymore, deleting it from
+        # the tensor_dict to avoid further code changes to handle it in the
+        # inputs.py file.
+        del tensor_dict[_KEYPOINT_TEXT_FIELD]
 
     if self._expand_hierarchy_labels:
       input_fields = fields.InputDataFields
@@ -622,6 +715,13 @@ class TfExampleDecoder(data_decoder.DataDecoder):
 
     return tensor_dict
 
+  def _keypoint_text_handle(self, keys_to_tensors):
+    """Reshapes keypoint text feature."""
+    y = keys_to_tensors[_KEYPOINT_TEXT_FIELD]
+    if isinstance(y, tf.SparseTensor):
+      y = tf.sparse_tensor_to_dense(y)
+    return y
+
   def _reshape_keypoints(self, keys_to_tensors):
     """Reshape keypoints.
 
@@ -633,7 +733,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         'image/object/keypoint/y'
 
     Returns:
-      A 3-D float tensor of shape [num_instances, num_keypoints, 2] with values
+      A 2-D float tensor of shape [num_instances * num_keypoints, 2] with values
         in [0, 1].
     """
     y = keys_to_tensors['image/object/keypoint/y']
@@ -645,7 +745,6 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       x = tf.sparse_tensor_to_dense(x)
     x = tf.expand_dims(x, 1)
     keypoints = tf.concat([y, x], 1)
-    keypoints = tf.reshape(keypoints, [-1, self._num_keypoints, 2])
     return keypoints
 
   def _reshape_keypoint_depths(self, keys_to_tensors):
@@ -739,7 +838,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         'image/object/keypoint/visibility'
 
     Returns:
-      A 2-D bool tensor of shape [num_instances, num_keypoints] with values
+      A 1-D bool tensor of shape [num_instances * num_keypoints] with values
         in {0, 1}. 1 if the keypoint is labeled, 0 otherwise.
     """
     x = keys_to_tensors['image/object/keypoint/x']
@@ -760,7 +859,6 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     vis = tf.math.logical_or(
         tf.math.equal(vis, Visibility.NOT_VISIBLE.value),
         tf.math.equal(vis, Visibility.VISIBLE.value))
-    vis = tf.reshape(vis, [-1, self._num_keypoints])
     return vis
 
   def _reshape_instance_masks(self, keys_to_tensors):
