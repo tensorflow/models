@@ -15,86 +15,11 @@
 """Losses for centernet model."""
 
 # Import libraries
-import abc
 
 import tensorflow as tf
 
 
-class Loss(abc.ABC):
-  """Abstract base class for loss functions."""
-  
-  def __call__(self,
-               prediction_tensor,
-               target_tensor,
-               ignore_nan_targets=False,
-               losses_mask=None,
-               scope=None,
-               **params):
-    """Call the loss function.
-
-    Args:
-      prediction_tensor: an N-d tensor of shape [batch, anchors, ...]
-        representing predicted quantities.
-      target_tensor: an N-d tensor of shape [batch, anchors, ...] representing
-        regression or classification targets.
-      ignore_nan_targets: whether to ignore nan targets in the loss computation.
-        E.g. can be used if the target tensor is missing groundtruth data that
-        shouldn't be factored into the loss.
-      losses_mask: A [batch] boolean tensor that indicates whether losses should
-        be applied to individual images in the batch. For elements that
-        are False, corresponding prediction, target, and weight tensors will not
-        contribute to loss computation. If None, no filtering will take place
-        prior to loss computation.
-      scope: Op scope name. Defaults to 'Loss' if None.
-      **params: Additional keyword arguments for specific implementations of
-              the Loss.
-
-    Returns:
-      loss: a tensor representing the value of the loss function.
-    """
-    scope = self.__class__.__name__ if scope is None else scope
-    with tf.name_scope(scope):
-      if ignore_nan_targets:
-        target_tensor = tf.where(tf.math.is_nan(target_tensor),
-                                 prediction_tensor,
-                                 target_tensor)
-      if losses_mask is not None:
-        tensor_multiplier = self._get_loss_multiplier_for_tensor(
-            prediction_tensor,
-            losses_mask)
-        prediction_tensor *= tensor_multiplier
-        target_tensor *= tensor_multiplier
-        
-        if 'weights' in params:
-          params['weights'] = tf.convert_to_tensor(params['weights'])
-          weights_multiplier = self._get_loss_multiplier_for_tensor(
-              params['weights'],
-              losses_mask)
-          params['weights'] *= weights_multiplier
-      return self._compute_loss(prediction_tensor, target_tensor, **params)
-  
-  def _get_loss_multiplier_for_tensor(self, tensor, losses_mask):
-    loss_multiplier_shape = tf.stack([-1] + [1] * (len(tensor.shape) - 1))
-    return tf.cast(tf.reshape(losses_mask, loss_multiplier_shape), tf.float32)
-  
-  @abc.abstractmethod
-  def _compute_loss(self, prediction_tensor, target_tensor, **params):
-    """Method to be overridden by implementations.
-
-    Args:
-      prediction_tensor: a tensor representing predicted quantities
-      target_tensor: a tensor representing regression or classification targets
-      **params: Additional keyword arguments for specific implementations of
-              the Loss.
-
-    Returns:
-      loss: an N-d tensor of shape [batch, anchors, ...] containing the loss per
-        anchor
-    """
-    pass
-
-
-class PenaltyReducedLogisticFocalLoss(Loss):
+class PenaltyReducedLogisticFocalLoss(object):
   """Penalty-reduced pixelwise logistic regression with focal loss."""
   
   def __init__(self, alpha=2.0, beta=4.0, sigmoid_clip_value=1e-4):
@@ -119,7 +44,7 @@ class PenaltyReducedLogisticFocalLoss(Loss):
     self._sigmoid_clip_value = sigmoid_clip_value
     super(PenaltyReducedLogisticFocalLoss, self).__init__()
   
-  def _compute_loss(self, prediction_tensor, target_tensor, weights=1.0):
+  def __call__(self, prediction_tensor, target_tensor, weights=1.0):
     """Compute loss function.
 
     In all input tensors, `num_anchors` is the total number of pixels in the
@@ -157,10 +82,10 @@ class PenaltyReducedLogisticFocalLoss(Loss):
     return loss * weights
 
 
-class L1LocalizationLoss(Loss):
+class L1LocalizationLoss(object):
   """L1 loss or absolute difference."""
   
-  def _compute_loss(self, prediction_tensor, target_tensor, weights=1.0):
+  def __call__(self, prediction_tensor, target_tensor, weights=1.0):
     """Compute loss function.
 
     When used in a per-pixel manner, each pixel should be given as an anchor.
