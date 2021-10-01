@@ -147,6 +147,7 @@ class Parser(parser.Parser):
     # Set the per level values needed for operation
     self._darknet = darknet
     self._area_thresh = area_thresh
+    self._level_limits = level_limits
 
     self._seed = seed
     self._dtype = dtype
@@ -259,7 +260,7 @@ class Parser(parser.Parser):
         self._aug_rand_saturation,
         self._aug_rand_brightness,
         seed=self._seed,
-        darknet=self._darknet)
+        darknet=self._darknet or self._level_limits is not None)
 
     # Cast the image to the selcted datatype.
     image, labels = self._build_label(
@@ -322,7 +323,7 @@ class Parser(parser.Parser):
     imshape = image.get_shape().as_list()
     imshape[-1] = 3
     image.set_shape(imshape)
-
+    
     labels = dict()
     (labels['inds'], labels['upds'],
      labels['true_conf']) = self._label_builder(gt_boxes, gt_classes, width,

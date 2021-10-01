@@ -14,14 +14,12 @@
 
 """Mosaic op."""
 import random
-
 import tensorflow as tf
 import tensorflow_addons as tfa
 
 from official.vision.beta.ops import box_ops
 from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.projects.yolo.ops import preprocessing_ops
-
 
 class Mosaic:
   """Stitch together sets of 4 images to generate samples with more boxes."""
@@ -211,6 +209,7 @@ class Mosaic:
       boxes, classes, is_crowd, area = self._select_ind(inds, boxes, classes,  # pylint:disable=unbalanced-tuple-unpacking
                                                         is_crowd, area)
 
+
     # warp and scale the fully stitched sample
     image, _, affine = preprocessing_ops.affine_warp_image(
         image, [self._output_size[0], self._output_size[1]],
@@ -325,6 +324,11 @@ class Mosaic:
     else:
       return self._add_param(noop)
 
+  def _beta(self, alpha, beta):
+    a = tf.random.gamma([], alpha)
+    b = tf.random.gamma([], beta)
+    return b / (a + b)
+
   def _mixup(self, one, two):
     """Blend together 2 images for the mixup data augmentation."""
     if self._mixup_frequency >= 1.0:
@@ -337,8 +341,8 @@ class Mosaic:
     if domo >= (1 - self._mixup_frequency):
       sample = one
       otype = one['image'].dtype
-      r = preprocessing_ops.random_uniform_strong(
-          0.4, 0.6, tf.float32, seed=self._seed)
+
+      r = self._beta(8.0, 8.0)
       sample['image'] = (
           r * tf.cast(one['image'], tf.float32) +
           (1 - r) * tf.cast(two['image'], tf.float32))

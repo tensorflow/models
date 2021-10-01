@@ -170,14 +170,14 @@ def get_image_shape(image):
 def _augment_hsv_darknet(image, rh, rs, rv, seed=None):
   """Randomize the hue, saturation, and brightness via the darknet method."""
   if rh > 0.0:
-    delta = random_uniform_strong(-rh, rh, seed=seed)
-    image = tf.image.adjust_hue(image, delta)
+    deltah = random_uniform_strong(-rh, rh, seed=seed)
+    image = tf.image.adjust_hue(image, deltah)
   if rs > 0.0:
-    delta = random_scale(rs, seed=seed)
-    image = tf.image.adjust_saturation(image, delta)
+    deltas = random_scale(rs, seed=seed)
+    image = tf.image.adjust_saturation(image, deltas)
   if rv > 0.0:
-    delta = random_scale(rv, seed=seed)
-    image *= delta
+    deltav = random_scale(rv, seed=seed)
+    image *= tf.cast(deltav, image.dtype)
 
   # clip the values of the image between 0.0 and 1.0
   image = tf.clip_by_value(image, 0.0, 1.0)
@@ -719,7 +719,7 @@ def affine_warp_boxes(affine, boxes, output_size, box_history):
     return tf.stack([y_min, x_min, y_max, x_max], axis=-1)
 
   def _aug_boxes(affine_matrix, box):
-    """Apply an affine transformation matrix M to the boxes augmente boxes."""
+    """Apply an affine transformation matrix M to the boxes augment boxes."""
     corners = _get_corners(box)
     corners = tf.reshape(corners, [-1, 4, 2])
     z = tf.expand_dims(tf.ones_like(corners[..., 1]), axis=-1)
