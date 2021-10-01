@@ -113,6 +113,7 @@ class Yolo(tf.keras.Model):
     return weights, bias, other
   
   def fuse(self):
+    """Fuses all Convolution and Batchnorm layers to get better latency."""
     print("Fusing Conv Batch Norm Layers.")
     if not self._fused:
       self._fused = True

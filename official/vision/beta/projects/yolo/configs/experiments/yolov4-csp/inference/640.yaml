@@ -27,9 +27,11 @@ task:
         'all': 2.0
       max_boxes: 300
       nms_type: greedy
-      iou_thresh: 0.25
-      nms_thresh: 0.45
-      pre_nms_points: 500
+      # iou_thresh: 0.25
+      # nms_thresh: 0.45
+      iou_thresh: 0.001
+      nms_thresh: 0.60
+      pre_nms_points: 5000
     loss:
       use_scaled_loss: true
       update_on_repeat: true
@@ -70,5 +72,5 @@ task:
       aug_rand_translate: 0.1
       area_thresh: 0.1
   validation_data:
-    global_batch_size: 1
+    global_batch_size: 8
     input_path: '/media/vbanna/DATA_SHARE/CV/datasets/COCO_raw/records/val*'

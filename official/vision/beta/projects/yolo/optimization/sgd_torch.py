@@ -30,27 +30,35 @@ def _var_key(var):
 
 
 class SGDTorch(tf.keras.optimizers.Optimizer):
-  """Optimizer that computes an exponential moving average of the variables.
-
-  Empirically it has been found that using the moving average of the trained
-  parameters of a deep network is better than using its trained parameters
-  directly. This optimizer allows you to compute this moving average and swap
-  the variables at save time so that any code outside of the training loop
-  will use by default the average values instead of the original ones.
+  """Optimizer that simulates the SGD module used in pytorch. 
+  
+  
+  For details on the differences between the original SGD implemention and the 
+  one in pytorch: https://pytorch.org/docs/stable/generated/torch.optim.SGD.html.
+  This optimizer also allow for the usage of a momentum warmup along side a 
+  learning rate warm up, though using this is not required. 
 
   Example of usage for training:
   ```python
-  opt = tf.keras.optimizers.SGD(learning_rate)
-  opt = ExponentialMovingAverage(opt)
+  opt = SGDTorch(learning_rate)
 
-  opt.shadow_copy(model)
-  ```
+  # Models must implement a method to iterate all model.trainable_variables
+  # and split the variables by key into the weights, biases, and others.
+  # Weight decay wil be applied to all variables in the weights group. Bias 
+  # and others are included as a way to proved alternate LR scedules to various 
+  # paramter groups. An example of this variable search can be found in 
+  # official/vision/beta/projects/yolo/modeling/yolo_model.py.
 
-  At test time, swap the shadow variables to evaluate on the averaged weights:
-  ```python
-  opt.swap_weights()
-  # Test eval the model here
-  opt.swap_weights()
+  weights, biases, other = model.get_groups()
+  opt.set_params(weights, biases, other)
+
+  # if the learning rate schedule on the biases are different. if lr is not set 
+  # the default schedule used for weights will be used on the biases. 
+  opt.set_bias_lr(<lr schedule>)
+
+  # if the learning rate schedule on the others are different. if lr is not set 
+  # the default schedule used for weights will be used on the biases. 
+  opt.set_other_lr(<lr schedule>)
   ```
   """
 
