@@ -244,7 +244,7 @@ def build_hourglass(
     input_specs: tf.keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None) -> tf.keras.Model:
   """Builds Hourglass backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()
