@@ -17,7 +17,7 @@ class YoloTaskTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(("scaled_yolo",))
   def test_task(self, config_name):
-    config_path = ["official/vision/beta/projects/yolo/configs/experiments/yolov4-csp/inference/640.yaml"]
+    config_path = ["official/vision/beta/projects/yolo/configs/experiments/yolov4-csp/tpu/640.yaml"]
     config = exp_factory.get_exp_config(config_name)
 
     config = train_utils.ParseConfigOptions(
