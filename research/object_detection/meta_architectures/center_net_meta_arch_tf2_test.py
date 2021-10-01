@@ -3460,6 +3460,7 @@ class CenterNetMetaArch1dTest(test_case.TestCase, parameterized.TestCase):
     postprocess_output = arch.postprocess(predictions, true_shapes)
     losses_output = arch.loss(predictions, true_shapes)
 
+    self.assertIn('extracted_features', predictions)
     self.assertIn('%s/%s' % (cnma.LOSS_KEY_PREFIX, cnma.OBJECT_CENTER),
                   losses_output)
     self.assertEqual((), losses_output['%s/%s' % (

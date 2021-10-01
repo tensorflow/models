@@ -3805,6 +3805,7 @@ class CenterNetMetaArch(model.DetectionModel):
       prediction_dict: a dictionary holding predicted tensors with
         'preprocessed_inputs' - The input image after being resized and
           preprocessed by the feature extractor.
+        'extracted_features' - The output of the feature extractor.
         'object_center' - A list of size num_feature_outputs containing
           float tensors of size [batch_size, output_height, output_width,
           num_classes] representing the predicted object center heatmap logits.
@@ -3848,6 +3849,7 @@ class CenterNetMetaArch(model.DetectionModel):
       predictions[head_name] = [
           head(feature) for (feature, head) in zip(features_list, heads)
       ]
+    predictions['extracted_features'] = features_list
     predictions['preprocessed_inputs'] = preprocessed_inputs
 
     self._batched_prediction_tensor_names = predictions.keys()
