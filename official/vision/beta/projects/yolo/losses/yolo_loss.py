@@ -40,7 +40,7 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
                loss_type='ciou',
                iou_normalizer=1.0,
                cls_normalizer=1.0,
-               obj_normalizer=1.0,
+               object_normalizer=1.0,
                label_smoothing=0.0,
                objectness_smooth=True,
                update_on_repeat=False,
@@ -65,7 +65,7 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
       iou_normalizer: `float` for how much to scale the loss on the IOU or the
         boxes.
       cls_normalizer: `float` for how much to scale the loss on the classes.
-      obj_normalizer: `float` for how much to scale loss on the detection map.
+      object_normalizer: `float` for how much to scale loss on the detection map.
       label_smoothing: `float` for how much to smooth the loss on the classes.
       objectness_smooth: `float` for how much to smooth the loss on the
         detection map.
@@ -90,7 +90,7 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
 
     self._iou_normalizer = iou_normalizer
     self._cls_normalizer = cls_normalizer
-    self._obj_normalizer = obj_normalizer
+    self._object_normalizer = object_normalizer
     self._scale_x_y = scale_x_y
     self._max_delta = max_delta
 
@@ -240,9 +240,9 @@ class YoloLossBase(object, metaclass=abc.ABCMeta):
 
     Returns:
       loss: `tf.float` scalar for the scaled loss.
+      scale: `tf.float` how much the loss was scaled by.
     """
-    del box_loss, conf_loss, class_loss, ground_truths, predictions
-    return loss
+    return loss, tf.ones_like(loss)
 
   @abc.abstractmethod
   def cross_replica_aggregation(self, loss, num_replicas_in_sync):
@@ -373,6 +373,11 @@ class DarknetLoss(YoloLossBase):
     box_loss = tf.cast(tf.reduce_sum(box_loss, axis=1), dtype=y_pred.dtype)
 
     if self._update_on_repeat:
+      # Converts list of gound truths into a grid where repeated values
+      # are replaced by the most recent value. So some class identities may 
+      # get lost but the loss computation will be more stable. Results are 
+      # more consistent.
+       
       # Compute the sigmoid binary cross entropy for the class maps.
       class_loss = tf.reduce_mean(
           loss_utils.sigmoid_bce(
@@ -395,6 +400,9 @@ class DarknetLoss(YoloLossBase):
       class_loss = tf.cast(
           tf.reduce_sum(class_loss, axis=(1, 2, 3)), dtype=y_pred.dtype)
     else:
+      # Computes the loss while keeping the structure as a list in 
+      # order to ensure all objects are considered. In some cases can 
+      # make training more unstable but may also return higher APs. 
       pred_class = loss_utils.apply_mask(
           ind_mask, tf.gather_nd(pred_class, inds, batch_dims=1))
       class_loss = tf.keras.losses.binary_crossentropy(
@@ -405,8 +413,9 @@ class DarknetLoss(YoloLossBase):
       class_loss = loss_utils.apply_mask(ind_mask, class_loss)
       class_loss = math_ops.divide_no_nan(
           class_loss, tf.expand_dims(reps, axis = -1))
-      class_loss = tf.cast(tf.reduce_sum(
-          class_loss, axis=(1, 2)), dtype=y_pred.dtype)
+      class_loss = tf.cast(
+          tf.reduce_sum(class_loss, axis=(1, 2)), dtype=y_pred.dtype)
+      class_loss *= self._cls_normalizer
 
     # Compute the sigmoid binary cross entropy for the confidence maps.
     bce = tf.reduce_mean(
@@ -421,7 +430,7 @@ class DarknetLoss(YoloLossBase):
 
     # Apply the weights to each loss.
     box_loss *= self._iou_normalizer
-    conf_loss *= self._obj_normalizer
+    conf_loss *= self._object_normalizer
 
     # Add all the losses together then take the mean over the batches.
     loss = box_loss + class_loss + conf_loss
@@ -505,7 +514,7 @@ class ScaledLoss(YoloLossBase):
 
     # Scale and shift and select the ground truth boxes
     # and predictions to the prediciton domain.
-    if self._box_type == 'anchor_free':
+    if self._box_type == "anchor_free":
       true_box = loss_utils.apply_mask(ind_mask,
                                        (scale * self._path_stride * true_box))
     else:
@@ -562,7 +571,7 @@ class ScaledLoss(YoloLossBase):
     # Apply the weights to each loss.
     box_loss *= self._iou_normalizer
     class_loss *= self._cls_normalizer
-    conf_loss *= self._obj_normalizer
+    conf_loss *= self._object_normalizer
 
     # Add all the losses together then take the sum over the batches.
     mean_loss = box_loss + class_loss + conf_loss
@@ -590,14 +599,14 @@ class ScaledLoss(YoloLossBase):
       predictions: `Dict` holding all the predicted values.
     Returns:
       loss: `tf.float` scalar for the scaled loss.
+      scale: `tf.float` how much the loss was scaled by.
     """
     scale = tf.stop_gradient(3 / len(list(predictions.keys())))
-    return loss * scale
+    return loss * scale, 1/scale
 
   def cross_replica_aggregation(self, loss, num_replicas_in_sync):
-    """this method is not specific to each loss path, but each loss type."""
+    """This method is not specific to each loss path, but each loss type."""
     return loss
-
 
 class YoloLoss:
   """This class implements the aggregated loss across YOLO model FPN levels."""
@@ -612,7 +621,7 @@ class YoloLoss:
                loss_types=None,
                iou_normalizers=None,
                cls_normalizers=None,
-               obj_normalizers=None,
+               object_normalizers=None,
                objectness_smooths=None,
                box_types=None,
                scale_xys=None,
@@ -642,7 +651,7 @@ class YoloLoss:
         or the boxes for each FPN path.
       cls_normalizers: `Dict[float]` for how much to scale the loss on the
         classes for each FPN path.
-      obj_normalizers: `Dict[float]` for how much to scale loss on the detection
+      object_normalizers: `Dict[float]` for how much to scale loss on the detection
         map for each FPN path.
       objectness_smooths: `Dict[float]` for how much to smooth the loss on the
         detection map for each FPN path.
@@ -670,7 +679,7 @@ class YoloLoss:
       loss_type = 'scaled'
     else:
       loss_type = 'darknet'
-
+    
     self._loss_dict = {}
     for key in keys:
       self._loss_dict[key] = losses[loss_type](
@@ -681,7 +690,7 @@ class YoloLoss:
           loss_type=loss_types[key],
           iou_normalizer=iou_normalizers[key],
           cls_normalizer=cls_normalizers[key],
-          obj_normalizer=obj_normalizers[key],
+          object_normalizer=object_normalizers[key],
           box_type=box_types[key],
           objectness_smooth=objectness_smooths[key],
           max_delta=max_deltas[key],
@@ -710,10 +719,11 @@ class YoloLoss:
 
       # after computing the loss, scale loss as needed for aggregation
       # across FPN levels
-      loss = self._loss_dict[key].post_path_aggregation(loss, loss_box,
-                                                        loss_conf, loss_class,
-                                                        ground_truth,
-                                                        predictions)
+      loss, scale = self._loss_dict[key].post_path_aggregation(loss, loss_box, 
+                                                               loss_conf, 
+                                                               loss_class, 
+                                                               ground_truth, 
+                                                               predictions)
 
       # after completing the scaling of the loss on each replica, handle
       # scaling the loss for mergeing the loss across replicas
@@ -723,12 +733,13 @@ class YoloLoss:
 
       # detach all the below gradients: none of them should make a
       # contribution to the gradient form this point forwards
-      metric_loss += tf.stop_gradient(mean_loss)
-      metric_dict[key]['loss'] = tf.stop_gradient(mean_loss)
+      metric_loss += tf.stop_gradient(mean_loss/scale)
+      metric_dict[key]['loss'] = tf.stop_gradient(mean_loss/scale)
       metric_dict[key]['avg_iou'] = tf.stop_gradient(avg_iou)
       metric_dict[key]['avg_obj'] = tf.stop_gradient(avg_obj)
 
-      metric_dict['net']['box'] += tf.stop_gradient(loss_box)
-      metric_dict['net']['class'] += tf.stop_gradient(loss_class)
-      metric_dict['net']['conf'] += tf.stop_gradient(loss_conf)
+      metric_dict['net']['box'] += tf.stop_gradient(loss_box/scale)
+      metric_dict['net']['class'] += tf.stop_gradient(loss_class/scale)
+      metric_dict['net']['conf'] += tf.stop_gradient(loss_conf/scale)
+
     return loss_val, metric_loss, metric_dict

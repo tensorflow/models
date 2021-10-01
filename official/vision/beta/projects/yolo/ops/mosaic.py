@@ -325,6 +325,7 @@ class Mosaic:
       return self._add_param(noop)
 
   def _beta(self, alpha, beta):
+    """Generates a random number using the beta distribution."""
     a = tf.random.gamma([], alpha)
     b = tf.random.gamma([], beta)
     return b / (a + b)

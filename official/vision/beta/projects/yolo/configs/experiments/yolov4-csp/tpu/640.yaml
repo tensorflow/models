@@ -38,7 +38,7 @@ task:
         'all': 0.05
       cls_normalizer: 
         'all': 0.3
-      obj_normalizer: 
+      object_normalizer: 
         '5': 0.28
         '4': 0.70
         '3': 2.80

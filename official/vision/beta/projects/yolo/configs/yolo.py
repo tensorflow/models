@@ -143,7 +143,7 @@ class YoloLoss(hyperparams.Config):
       default_factory=_build_dict(MIN_LEVEL, MAX_LEVEL, 1.0))
   cls_normalizer: FPNConfig = dataclasses.field(
       default_factory=_build_dict(MIN_LEVEL, MAX_LEVEL, 1.0))
-  obj_normalizer: FPNConfig = dataclasses.field(
+  object_normalizer: FPNConfig = dataclasses.field(
       default_factory=_build_dict(MIN_LEVEL, MAX_LEVEL, 1.0))
   max_delta: FPNConfig = dataclasses.field(
       default_factory=_build_dict(MIN_LEVEL, MAX_LEVEL, np.inf))

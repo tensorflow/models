@@ -43,7 +43,7 @@ def build_yolo_detection_generator(model_config: yolo.Yolo, anchor_boxes):
       max_delta=model_config.loss.max_delta.get(),
       iou_normalizer=model_config.loss.iou_normalizer.get(),
       cls_normalizer=model_config.loss.cls_normalizer.get(),
-      obj_normalizer=model_config.loss.obj_normalizer.get(),
+      object_normalizer=model_config.loss.object_normalizer.get(),
       ignore_thresh=model_config.loss.ignore_thresh.get(),
       objectness_smooth=model_config.loss.objectness_smooth.get())
   return model

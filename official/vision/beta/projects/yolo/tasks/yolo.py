@@ -24,7 +24,7 @@ from official.core import config_definitions
 from official.modeling import performance
 from official.vision.beta.ops import box_ops
 from official.vision.beta.evaluation import coco_evaluator
-from official.vision.beta.dataloaders import tfds_detection_decoders
+from official.vision.beta.dataloaders import tfds_factory
 from official.vision.beta.dataloaders import tf_example_label_map_decoder
 
 from official.vision.beta.projects.yolo import optimization
@@ -54,6 +54,7 @@ class YoloTask(base_task.Task):
     self.coco_metric = None
     self._loss_fn = None
     self._model = None
+    self._coco_91_to_80 = False
     self._metrics = []
 
     # globally set the random seed
@@ -79,17 +80,14 @@ class YoloTask(base_task.Task):
     self._model = model
     return model
 
-  def get_decoder(self, params):
+  def _get_data_decoder(self, params):
     """Get a decoder object to decode the dataset."""
     if params.tfds_name:
-      if params.tfds_name in tfds_detection_decoders.TFDS_ID_TO_DECODER_MAP:
-        decoder = tfds_detection_decoders.TFDS_ID_TO_DECODER_MAP[
-            params.tfds_name]()
-      else:
-        raise ValueError('TFDS {} is not supported'.format(params.tfds_name))
+      decoder = tfds_factory.get_detection_decoder(params.tfds_name)
     else:
       decoder_cfg = params.decoder.get()
       if params.decoder.type == 'simple_decoder':
+        self._coco_91_to_80 = decoder_cfg.coco91_to_80
         decoder = tf_example_decoder.TfExampleDecoder(
             coco91_to_80=decoder_cfg.coco91_to_80,
             regenerate_source_id=decoder_cfg.regenerate_source_id)
@@ -123,7 +121,7 @@ class YoloTask(base_task.Task):
     )
 
     # get the decoder
-    decoder = self.get_decoder(params)
+    decoder = self._get_data_decoder(params)
 
     # init Mosaic
     sample_fn = mosaic.Mosaic(
@@ -186,12 +184,15 @@ class YoloTask(base_task.Task):
     metric_names['net'].append('conf')
 
     for i, key in enumerate(metric_names.keys()):
-      metrics.append(ListMetrics(metric_names[key], name=key))
+      metrics.append(_ListMetrics(metric_names[key], name=key))
 
     self._metrics = metrics
     if not training:
+      annotation_file = self.task_config.annotation_file
+      if self._coco_91_to_80:
+        annotation_file = None
       self.coco_metric = coco_evaluator.COCOEvaluator(
-          annotation_file=self.task_config.annotation_file,
+          annotation_file=annotation_file,
           include_mask=False,
           need_rescale_bboxes=False,
           per_category_metrics=self._task_config.per_category_metrics)
@@ -238,11 +239,6 @@ class YoloTask(base_task.Task):
     # Get unscaled loss if we are using the loss scale optimizer on fp16
     if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
       gradients = optimizer.get_unscaled_gradients(gradients)
-
-    # Clip the gradients
-    if self.task_config.gradient_clip_norm > 0.0:
-      gradients, _ = tf.clip_by_global_norm(gradients,
-                                            self.task_config.gradient_clip_norm)
 
     # Apply gradients to the model
     optimizer.apply_gradients(zip(gradients, train_vars))
@@ -407,7 +403,8 @@ class YoloTask(base_task.Task):
     return optimizer
 
 
-class ListMetrics:
+class _ListMetrics:
+  """Private class used to cleanly place the matric values for each level."""
 
   def __init__(self, metric_names, name="ListMetrics", **kwargs):
     self.name = name

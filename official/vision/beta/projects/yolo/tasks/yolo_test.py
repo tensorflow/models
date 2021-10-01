@@ -27,6 +27,8 @@ class YoloTaskTest(tf.test.TestCase, parameterized.TestCase):
     config.trainer.optimizer_config.ema = None
     config.task.train_data.global_batch_size = 1
     config.task.validation_data.global_batch_size = 1
+    config.task.train_data.shuffle_buffer_size = 1
+    config.task.validation_data.shuffle_buffer_size = 1
 
     task = yolo.YoloTask(config.task)
     model = task.build_model()
