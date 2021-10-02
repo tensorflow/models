@@ -126,9 +126,11 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
 
   def _search(self, var, keys):
     """Search all all keys for matches. Return True on match."""
-    for r in keys:
-      if re.search(r, var.name) is not None:
-        return True
+    if keys is not None:
+      # variable group is not ignored so search for the keys. 
+      for r in keys:
+        if re.search(r, var.name) is not None:
+          return True
     return False 
 
   def search_and_set_variable_groups(self, variables):
@@ -143,11 +145,11 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
 
     for var in variables:
       # search for weights
-      if self.search(var, self._weight_keys):
+      if self._search(var, self._weight_keys):
         weights.append(var)
         continue
       # search for biases
-      if self.search(var, self._bias_keys):
+      if self._search(var, self._bias_keys):
         biases.append(var)
         continue
       # if all searches fail, add to other group
