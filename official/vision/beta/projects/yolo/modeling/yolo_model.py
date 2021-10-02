@@ -85,32 +85,6 @@ class Yolo(tf.keras.Model):
   @classmethod
   def from_config(cls, config):
     return cls(**config)
-
-  def get_weight_groups(self, train_vars):
-    """Sort the list of trainable variables into groups for optimization. 
-
-    Args:
-      train_vars: a list of tf.Variables that need to get sorted into their 
-        respective groups.
-
-    Returns:
-      weights: a list of tf.Variables for the weights.
-      bias: a list of tf.Variables for the bias.
-      other: a list of tf.Variables for the other operations.
-    """
-    bias = []
-    weights = []
-    other = []
-    for var in train_vars:
-      if "bias" in var.name:
-        bias.append(var)
-      elif "beta" in var.name:
-        bias.append(var)
-      elif "kernel" in var.name or "weight" in var.name:
-        weights.append(var)
-      else:
-        other.append(var)
-    return weights, bias, other
   
   def fuse(self):
     """Fuses all Convolution and Batchnorm layers to get better latency."""
