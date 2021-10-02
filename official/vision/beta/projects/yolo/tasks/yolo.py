@@ -388,9 +388,9 @@ class YoloTask(base_task.Task):
       optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
       optimizer.set_bias_lr(
           opt_factory.get_bias_lr_schedule(self._task_config.smart_bias_lr))
-      weights, biases, others = self._model.get_weight_groups(
-          self._model.trainable_variables)
-      optimizer.set_variable_groups(weights, biases, others)
+      # weights, biases, others = self._model.get_weight_groups(
+      #     self._model.trainable_variables)
+      # optimizer.set_variable_groups(weights, biases, others)
     else:
       optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
     opt_factory._use_ema = ema
