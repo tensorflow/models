@@ -21,6 +21,8 @@ from official.modeling import tf_utils
 from official.nlp.modeling import layers
 from official.nlp.modeling import models
 
+_LOGIT_PENALTY_MULTIPLIER = 10000
+
 
 class ReplacedTokenDetectionHead(tf.keras.layers.Layer):
   """Replaced token detection discriminator head.
@@ -273,10 +275,9 @@ class TeamsPretrainer(tf.keras.Model):
     self.mlm_activation = mlm_activation
     self.mlm_initializer = mlm_initializer
     self.output_type = output_type
-    self.embedding_table = (
-        self.discriminator_mws_network.embedding_network.get_embedding_table())
     self.masked_lm = layers.MaskedLM(
-        embedding_table=self.embedding_table,
+        embedding_table=self.generator_network.embedding_network
+        .get_embedding_table(),
         activation=mlm_activation,
         initializer=mlm_initializer,
         output=output_type,
@@ -290,7 +291,8 @@ class TeamsPretrainer(tf.keras.Model):
         name='discriminator_rtd')
     hidden_cfg = discriminator_cfg['hidden_cfg']
     self.discriminator_mws_head = MultiWordSelectionHead(
-        embedding_table=self.embedding_table,
+        embedding_table=self.discriminator_mws_network.embedding_network
+        .get_embedding_table(),
         activation=hidden_cfg['intermediate_activation'],
         initializer=hidden_cfg['kernel_initializer'],
         output=output_type,
@@ -436,7 +438,7 @@ def sample_k_from_softmax(logits, k, disallow=None, use_topk=False):
   """
   if use_topk:
     if disallow is not None:
-      logits -= 10000.0 * disallow
+      logits -= _LOGIT_PENALTY_MULTIPLIER * disallow
     uniform_noise = tf.random.uniform(
         tf_utils.get_shape_list(logits), minval=0, maxval=1)
     gumbel_noise = -tf.math.log(-tf.math.log(uniform_noise + 1e-9) + 1e-9)
@@ -445,7 +447,7 @@ def sample_k_from_softmax(logits, k, disallow=None, use_topk=False):
     sampled_tokens_list = []
     vocab_size = tf_utils.get_shape_list(logits)[-1]
     if disallow is not None:
-      logits -= 10000.0 * disallow
+      logits -= _LOGIT_PENALTY_MULTIPLIER * disallow
 
     uniform_noise = tf.random.uniform(
         tf_utils.get_shape_list(logits), minval=0, maxval=1)
@@ -454,7 +456,7 @@ def sample_k_from_softmax(logits, k, disallow=None, use_topk=False):
     for _ in range(k):
       token_ids = tf.argmax(logits, -1, output_type=tf.int32)
       sampled_tokens_list.append(token_ids)
-      logits -= 10000.0 *  tf.one_hot(
+      logits -= _LOGIT_PENALTY_MULTIPLIER *  tf.one_hot(
           token_ids, depth=vocab_size, dtype=tf.float32)
     sampled_tokens = tf.stack(sampled_tokens_list, -1)
   return sampled_tokens
