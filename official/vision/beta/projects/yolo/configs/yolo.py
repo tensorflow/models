@@ -29,6 +29,7 @@ import dataclasses
 
 MIN_LEVEL = 1
 MAX_LEVEL = 7
+GLOBAL_SEED = 1000
 
 def _build_dict(min_level, max_level, value):
   vals = {str(key): value for key in range(min_level, max_level + 1)}
@@ -213,12 +214,13 @@ class YoloTask(cfg.TaskConfig):
   init_checkpoint_modules: Union[
       str, List[str]] = 'all'  # all, backbone, and/or decoder
   gradient_clip_norm: float = 0.0
+  seed = GLOBAL_SEED
 
 
 COCO_INPUT_PATH_BASE = 'coco'
 COCO_TRAIN_EXAMPLES = 118287
 COCO_VAL_EXAMPLES = 5000
-GLOBAL_SEED = 1000
+
 
 @exp_factory.register_config_factory('yolo')
 def yolo() -> cfg.ExperimentConfig:
@@ -256,7 +258,6 @@ def yolo_darknet() -> cfg.ExperimentConfig:
           train_data=DataConfig(
               is_training=True,
               global_batch_size=train_batch_size,
-              seed=GLOBAL_SEED, 
               dtype='float32', 
               parser=Parser(
                 letter_box=False,
@@ -371,7 +372,6 @@ def scaled_yolo() -> cfg.ExperimentConfig:
           train_data=DataConfig(
               is_training=True,
               global_batch_size=train_batch_size,
-              seed=GLOBAL_SEED, 
               dtype='float32',
               parser=Parser(
                 aug_rand_saturation = 0.7, 

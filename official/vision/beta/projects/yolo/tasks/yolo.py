@@ -58,7 +58,7 @@ class YoloTask(base_task.Task):
     self._metrics = []
 
     # globally set the random seed
-    preprocessing_ops.set_random_seeds(seed=params.train_data.seed)
+    preprocessing_ops.set_random_seeds(seed=params.seed)
     return
 
   def build_model(self):
@@ -109,6 +109,7 @@ class YoloTask(base_task.Task):
     anchor_dict, level_limits = model.anchor_boxes.get(backbone.min_level,
                                                        backbone.max_level)
 
+    params.seed = self.task_config.seed
     # set shared patamters between mosaic and yolo_input
     base_config = dict(
         letter_box=params.parser.letter_box,
