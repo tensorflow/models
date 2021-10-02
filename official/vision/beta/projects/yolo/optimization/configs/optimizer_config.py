@@ -54,10 +54,10 @@ class SGDTorchConfig(BaseOptimizerConfig):
   nesterov: bool = False
   momentum_start: float = 0.0
   momentum: float = 0.9
-  warmup_steps: int = 1000
+  warmup_steps: int = 0
   weight_decay: float = 0.0
   sim_torch: bool = False
-  weight_keys: List[str] = dataclasses.field(
+  weight_keys: Optional[List[str]] = dataclasses.field(
       default_factory=lambda:["kernel", "weight"])
-  bias_keys: List[str] = dataclasses.field(
+  bias_keys: Optional[List[str]] = dataclasses.field(
       default_factory=lambda:["bias", "beta"])
