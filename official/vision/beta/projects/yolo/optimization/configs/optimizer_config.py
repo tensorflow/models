@@ -57,3 +57,7 @@ class SGDTorchConfig(BaseOptimizerConfig):
   warmup_steps: int = 1000
   weight_decay: float = 0.0
   sim_torch: bool = False
+  weight_keys: List[str] = dataclasses.field(
+      default_factory=lambda:["kernel", "weight"])
+  bias_keys: List[str] = dataclasses.field(
+      default_factory=lambda:["bias", "beta"])

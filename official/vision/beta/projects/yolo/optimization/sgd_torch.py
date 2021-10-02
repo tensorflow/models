@@ -4,6 +4,7 @@ from tensorflow.keras.optimizers.schedules import LearningRateSchedule
 from tensorflow.python.training import gen_training_ops
 
 import tensorflow as tf
+import re
 import logging
 
 __all__ = ['SGDTorch']
@@ -49,8 +50,7 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
   # paramter groups. An example of this variable search can be found in 
   # official/vision/beta/projects/yolo/modeling/yolo_model.py.
 
-  weights, biases, other = model.get_groups()
-  opt.set_params(weights, biases, other)
+  optimizer.search_and_set_variable_groups(model.trainable_variables)
 
   # if the learning rate schedule on the biases are different. if lr is not set 
   # the default schedule used for weights will be used on the biases. 
@@ -73,6 +73,8 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
                nesterov=False,
                sim_torch=False,
                name="SGD",
+               weight_keys=["kernel", "weight"],
+               bias_keys=["bias", "beta"],
                **kwargs):
     super(SGDTorch, self).__init__(name, **kwargs)
 
@@ -105,6 +107,9 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
     self.sim_torch = sim_torch
 
     # weights, biases, other
+    self._weight_keys = weight_keys
+    self._bias_keys = bias_keys
+    self._variables_set = False
     self._wset = set()
     self._bset = set()
     self._oset = set()
@@ -117,21 +122,80 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
   def set_other_lr(self, lr):
     self._set_hyper("other_learning_rate", lr)
 
-  def set_params(self, weights, biases, others):
-    self._wset = set([_var_key(w) for w in weights])
-    self._bset = set([_var_key(b) for b in biases])
-    self._oset = set([_var_key(o) for o in others])
+  def search_and_set_variable_groups(self, variables):
+    """Search all variable for matches ot each group. 
 
+    Args:
+      variables: List[tf.Variable] from model.trainable_variables
+    """
+    weights = []
+    biases = []
+    others = []
+
+    def search(var, keys):
+      """Search all all keys for matches. Return True on match."""
+      for r in keys:
+        if re.search(r, var.name) is not None:
+          return True
+      return False 
+
+    for var in variables:
+      # search for weights
+      if search(var, self._weight_keys):
+        weights.append(var)
+        continue
+      # search for biases
+      if search(var, self._bias_keys):
+        biases.append(var)
+        continue
+      # if all searches fail, add to other group
+      others.append(var)
+
+    self.set_variable_groups(weights, biases, others)
+    return
+
+  def set_variable_groups(self, weights, biases, others):
+    """Alterantive to search and set allowing user to manually set each group.
+
+    This method is allows the user to bypass the weights, biases and others 
+    search by key, and manually set the values for each group. This is the 
+    safest alternative in cases where the variables cannot be grouped by 
+    searching their names. 
+
+    Args:
+      weights: List[tf.Variable] from model.trainable_variables
+      biases: List[tf.Variable] from model.trainable_variables
+      others: List[tf.Variable] from model.trainable_variables
+    """
+    if self._variables_set:
+      logging.warning("set_variable_groups has been called again indicating"
+                      "that the variable groups have already been set, they" 
+                      "will be updated.")
+    self._wset.update(set([_var_key(w) for w in weights]))
+    self._bset.update(set([_var_key(b) for b in biases]))
+    self._oset.update(set([_var_key(o) for o in others]))
+
+    # Log the number of objects in each group. 
     logging.info(
-        f"Weights: {len(weights)} Biases: {len(biases)} Others: {len(others)}")
+        f"Weights: {len(self._wset)} Biases: {len(self._bset)} Others: {len(self._oset)}")
+    self._variables_set = True
     return
 
   def _create_slots(self, var_list):
+    """Create a momentum variable for each variable."""
     if self._momentum:
       for var in var_list:
-        self.add_slot(var, "momentum")
+        # check if trainable to support GPU EMA. 
+        if var.trainable: 
+          self.add_slot(var, "momentum")
+    
+    if not self._variables_set:
+      # Fall back to automatically set the variables in case the user did not. 
+      self.search_and_set_variable_groups(var_list)
+      self._variables_set = False
 
   def _get_momentum(self, iteration):
+    """Get the momentum value."""
     momentum = self._get_hyper("momentum")
     momentum_start = self._get_hyper("momentum_start")
     momentum_warm_up_steps = tf.cast(
@@ -249,6 +313,8 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
       weight_decay = tf.zeros_like(coefficients["weight_decay"])
       lr = coefficients["other_lr_t"]
     momentum = coefficients["momentum"]
+
+    tf.print(lr)
 
     if self.sim_torch:
       return self._apply(grad, var, weight_decay, momentum, lr)
