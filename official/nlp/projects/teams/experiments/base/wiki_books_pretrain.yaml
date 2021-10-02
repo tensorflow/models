@@ -1,41 +1,35 @@
 task:
   model:
-    cls_heads: [{activation: tanh, cls_token_idx: 0, dropout_rate: 0.1, inner_dim: 768,
-        name: next_sentence, num_classes: 2}]
-    generator_encoder:
-      bert:
-        attention_dropout_rate: 0.1
-        dropout_rate: 0.1
-        embedding_size: 768
-        hidden_activation: gelu
-        hidden_size: 256
-        initializer_range: 0.02
-        intermediate_size: 1024
-        max_position_embeddings: 512
-        num_attention_heads: 4
-        num_layers: 12
-        type_vocab_size: 2
-        vocab_size: 30522
-    num_masked_tokens: 76
-    sequence_length: 512
-    num_classes: 2
-    discriminator_encoder:
-      bert:
-        attention_dropout_rate: 0.1
-        dropout_rate: 0.1
-        embedding_size: 768
-        hidden_activation: gelu
-        hidden_size: 768
-        initializer_range: 0.02
-        intermediate_size: 3072
-        max_position_embeddings: 512
-        num_attention_heads: 12
-        num_layers: 12
-        type_vocab_size: 2
-        vocab_size: 30522
-    discriminator_loss_weight: 50.0
-    disallow_correct: false
+    candidate_size: 5
+    num_shared_generator_hidden_layers: 3
+    num_discriminator_task_agnostic_layers: 11
     tie_embeddings: true
+    generator:
+      attention_dropout_rate: 0.1
+      dropout_rate: 0.1
+      embedding_size: 768
+      hidden_activation: gelu
+      hidden_size: 768
+      initializer_range: 0.02
+      intermediate_size: 3072
+      max_position_embeddings: 512
+      num_attention_heads: 12
+      num_layers: 6
+      type_vocab_size: 2
+      vocab_size: 30522
+    discriminator:
+      attention_dropout_rate: 0.1
+      dropout_rate: 0.1
+      embedding_size: 768
+      hidden_activation: gelu
+      hidden_size: 768
+      initializer_range: 0.02
+      intermediate_size: 3072
+      max_position_embeddings: 512
+      num_attention_heads: 12
+      num_layers: 6
+      type_vocab_size: 2
+      vocab_size: 30522
   train_data:
     drop_remainder: true
     global_batch_size: 256
@@ -55,8 +49,8 @@ task:
     use_next_sentence_label: false
     use_position_id: false
 trainer:
-  checkpoint_interval: 6000
-  max_to_keep: 50
+  checkpoint_interval: 4000
+  max_to_keep: 5
   optimizer_config:
     learning_rate:
       polynomial:
@@ -73,8 +67,8 @@ trainer:
         power: 1
         warmup_steps: 10000
       type: polynomial
-  steps_per_loop: 1000
-  summary_interval: 1000
+  steps_per_loop: 4000
+  summary_interval: 4000
   train_steps: 1000000
   validation_interval: 100
   validation_steps: 64
