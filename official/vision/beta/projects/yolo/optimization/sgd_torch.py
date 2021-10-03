@@ -41,7 +41,8 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
 
   Example of usage for training:
   ```python
-  opt = SGDTorch(learning_rate)
+  opt = SGDTorch(learning_rate, weight_decay = 0.0001)
+  l2_regularization = None
 
   # Models must implement a method to iterate all model.trainable_variables
   # and split the variables by key into the weights, biases, and others.
@@ -49,7 +50,6 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
   # and others are included as a way to proved alternate LR scedules to various 
   # paramter groups. An example of this variable search can be found in 
   # official/vision/beta/projects/yolo/modeling/yolo_model.py.
-
   optimizer.search_and_set_variable_groups(model.trainable_variables)
 
   # if the learning rate schedule on the biases are different. if lr is not set 
@@ -160,7 +160,7 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
 
   def _set_variable_groups(self, weights, biases, others):
     """Sets the variables to be used in each group."""
-    
+
     if self._variables_set:
       logging.warning("_set_variable_groups has been called again indicating"
                       "that the variable groups have already been set, they" 
