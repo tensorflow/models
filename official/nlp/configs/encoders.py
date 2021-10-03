@@ -207,6 +207,26 @@ class EncoderConfig(hyperparams.OneOfConfig):
   teams: BertEncoderConfig = BertEncoderConfig()
   xlnet: XLNetEncoderConfig = XLNetEncoderConfig()
 
+@dataclasses.dataclass
+class RoformerEncoderConfig(hyperparams.Config):
+  """Roformer encoder configuration."""
+  vocab_size: int = 30522
+  hidden_size: int = 768
+  num_layers: int = 12
+  num_attention_heads: int = 12
+  hidden_activation: str = "gelu"
+  intermediate_size: int = 3072
+  dropout_rate: float = 0.1
+  attention_dropout_rate: float = 0.1
+  max_position_embeddings: int = 512
+  type_vocab_size: int = 2
+  initializer_range: float = 0.02
+  embedding_size: Optional[int] = None
+  output_range: Optional[int] = None
+  return_all_encoder_outputs: bool = False
+  # Pre/Post-LN Transformer
+  norm_first: bool = False
+
 
 @gin.configurable
 def build_encoder(config: EncoderConfig,
@@ -470,6 +490,27 @@ def build_encoder(config: EncoderConfig,
         return_all_layer_outputs=encoder_cfg.return_all_encoder_outputs,
         dict_outputs=True)
     return networks.EncoderScaffold(**kwargs)
+
+  if encoder_type == "roformer":
+    return networks.RoformerEncoder(
+      vocab_size=encoder_cfg.vocab_size,
+      hidden_size=encoder_cfg.hidden_size,
+      num_layers=encoder_cfg.num_layers,
+      num_attention_heads=encoder_cfg.num_attention_heads,
+      intermediate_size=encoder_cfg.intermediate_size,
+      activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
+      dropout_rate=encoder_cfg.dropout_rate,
+      attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+      max_sequence_length=encoder_cfg.max_position_embeddings,
+      type_vocab_size=encoder_cfg.type_vocab_size,
+      initializer=tf.keras.initializers.TruncatedNormal(
+          stddev=encoder_cfg.initializer_range),
+      output_range=encoder_cfg.output_range,
+      embedding_width=encoder_cfg.embedding_size,
+      embedding_layer=embedding_layer,
+      return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs,
+      dict_outputs=True,
+      norm_first=encoder_cfg.norm_first)
 
   # Uses the default BERTEncoder configuration schema to create the encoder.
   # If it does not match, please add a switch branch by the encoder type.
