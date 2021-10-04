@@ -1,33 +1,30 @@
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import array_ops
 from tensorflow.keras.optimizers.schedules import LearningRateSchedule
-from tensorflow.python.training import gen_training_ops
 
 import tensorflow as tf
 import re
 import logging
 
-try:
-  from keras.optimizer_v2.optimizer_v2 import _var_key
-except:
-  def _var_key(var):
-    """Key for representing a primary variable, for looking up slots.
-    In graph mode the name is derived from the var shared name.
-    In eager mode the name is derived from the var unique id.
-    If distribution strategy exists, get the primary variable first.
-    Args:
-      var: the variable.
-    Returns:
-      the unique name of the variable.
-    """
 
-    # pylint: disable=protected-access
-    # Get the distributed variable if it exists.
-    if hasattr(var, "_distributed_container"):
-      var = var._distributed_container()
-    if var._in_graph_mode:
-      return var._shared_name
-    return var._unique_id
+def _var_key(var):
+  """Key for representing a primary variable, for looking up slots.
+  In graph mode the name is derived from the var shared name.
+  In eager mode the name is derived from the var unique id.
+  If distribution strategy exists, get the primary variable first.
+  Args:
+    var: the variable.
+  Returns:
+    the unique name of the variable.
+  """
+
+  # pylint: disable=protected-access
+  # Get the distributed variable if it exists.
+  if hasattr(var, "_distributed_container"):
+    var = var._distributed_container()
+  if var._in_graph_mode:
+    return var._shared_name
+  return var._unique_id
 
 
 class SGDTorch(tf.keras.optimizers.Optimizer):
