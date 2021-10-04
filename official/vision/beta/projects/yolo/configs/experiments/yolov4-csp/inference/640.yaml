@@ -3,6 +3,8 @@ runtime:
   mixed_precision_dtype: 'float16'
   num_gpus: 1
 task:
+  init_checkpoint: /home/vbanna/Research/checkpoints/yolo/v4-csp
+  init_checkpoint_modules: ['backbone', 'decoder']
   smart_bias_lr: 0.1
   model:
     darknet_based_model: False
@@ -47,6 +49,11 @@ task:
         '3': 2.80
       objectness_smooth: 
         'all': 1.0
+    norm_activation:
+      activation: leaky
+      norm_epsilon: 0.0001
+      norm_momentum: 0.97
+      use_sync_bn: false
     num_classes: 80
     anchor_boxes:
       anchors_per_scale: 3
@@ -56,7 +63,7 @@ task:
   train_data:
     global_batch_size: 1
     input_path:  '/media/vbanna/DATA_SHARE/CV/datasets/COCO_raw/records/train*'
-    shuffle_buffer_size: 10000
+    shuffle_buffer_size: 1
     parser:
       mosaic: 
         mosaic_frequency: 1.0
@@ -73,5 +80,7 @@ task:
     global_batch_size: 1
     input_path: '/media/vbanna/DATA_SHARE/CV/datasets/COCO_raw/records/val*'
 trainer:
+  steps_per_loop: 1
+  summary_interval: 1
   optimizer_config:
     ema: null

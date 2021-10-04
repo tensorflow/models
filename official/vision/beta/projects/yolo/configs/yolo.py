@@ -14,7 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 """YOLO configuration definition."""
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 
 from official.core import exp_factory
 from official.modeling import hyperparams
@@ -41,7 +41,10 @@ def _build_path_scales(min_level, max_level):
 
 @dataclasses.dataclass
 class FPNConfig(hyperparams.Config):
+  all: Optional[Any] = None 
+
   def get(self):
+    """Allow for a key for each level or a single key for all the levels."""
     values = self.as_dict()
     if "all" in values and values["all"] is not None:
       for key in values:
@@ -165,6 +168,17 @@ class AnchorBoxes(hyperparams.Config):
   anchors_per_scale: int = 3
 
   def get(self, min_level, max_level):
+    """Distribute them in order to each level. 
+    
+    Args: 
+      min_level: `int` the lowest output level.
+      max_level: `int` the heighest output level.
+
+    Return: 
+      anchors_per_level: A `Dict[List[int]]` of the anchor boxes for each level.
+      self.level_limits: A `List[int]` of the box size limits to link to each 
+        level under anchor free conditions.
+    """
     if self.level_limits is None:
       boxes = [box.box for box in self.boxes]
     else:
@@ -310,7 +324,6 @@ def yolo_darknet() -> cfg.ExperimentConfig:
                       'nesterov': True,
                       'warmup_steps': 1000,
                       'weight_decay': 0.0005,
-                      'sim_torch': True,
                   }
               },
               'learning_rate': {
@@ -424,7 +437,6 @@ def scaled_yolo() -> cfg.ExperimentConfig:
                       'nesterov': True,
                       'warmup_steps': steps_per_epoch * warmup_epochs,
                       'weight_decay': 0.0005 * train_batch_size/64.0,
-                      'sim_torch': True,
                   }
               },
               'learning_rate': {

@@ -1,3 +1,4 @@
+#--experiment_type=yolo_darknet mAP 43.0
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'

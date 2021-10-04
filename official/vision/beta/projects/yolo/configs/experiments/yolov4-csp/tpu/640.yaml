@@ -1,3 +1,4 @@
+#--experiment_type=scaled_yolo mAP 47.5
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'float32'

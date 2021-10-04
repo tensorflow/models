@@ -340,33 +340,22 @@ class YoloTask(base_task.Task):
 
     # Restoring checkpoint.
     if self.task_config.init_checkpoint_modules == 'all':
-      ckpt = tf.train.Checkpoint(model=model)
-      status = ckpt.restore(ckpt_dir_or_file)
+      ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+      status = ckpt.read(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
-    elif self.task_config.init_checkpoint_modules == 'backbone':
-      ckpt = tf.train.Checkpoint(backbone=model.backbone)
-      status = ckpt.restore(ckpt_dir_or_file)
-      status.expect_partial().assert_existing_objects_matched()
-    elif self.task_config.init_checkpoint_modules == 'decoder':
-      ckpt = tf.train.Checkpoint(backbone=model.backbone, decoder=model.decoder)
-      status = ckpt.restore(ckpt_dir_or_file)
-      status.expect_partial() 
     else:
-      assert "Only 'all' or 'backbone' can be used to initialize the model."
+      ckpt_items = {}
+      if 'backbone' in self.task_config.init_checkpoint_modules:
+        ckpt_items.update(backbone=model.backbone)
+      if 'decoder' in self.task_config.init_checkpoint_modules:
+        ckpt_items.update(decoder=model.decoder)
+
+      ckpt = tf.train.Checkpoint(**ckpt_items)
+      status = ckpt.read(ckpt_dir_or_file)
+      status.expect_partial().assert_existing_objects_matched()
 
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
-
-  def _wrap_optimizer(self, optimizer, runtime_config):
-    """Wraps the optimizer object with the loss scale optimizer."""
-    if runtime_config and runtime_config.loss_scale:
-      use_float16 = runtime_config.mixed_precision_dtype == "float16"
-      optimizer = performance.configure_optimizer(
-          optimizer,
-          use_graph_rewrite=False,
-          use_float16=use_float16,
-          loss_scale=runtime_config.loss_scale)
-    return optimizer
 
   def create_optimizer(self,
                        optimizer_config: OptimizationConfig,
@@ -397,7 +386,15 @@ class YoloTask(base_task.Task):
     if ema:
       logging.info("EMA is enabled.")
     optimizer = opt_factory.add_ema(optimizer)
-    optimizer = self._wrap_optimizer(optimizer, runtime_config)
+
+    if runtime_config and runtime_config.loss_scale:
+      use_float16 = runtime_config.mixed_precision_dtype == "float16"
+      optimizer = performance.configure_optimizer(
+          optimizer,
+          use_graph_rewrite=False,
+          use_float16=use_float16,
+          loss_scale=runtime_config.loss_scale)
+
     return optimizer
 
 

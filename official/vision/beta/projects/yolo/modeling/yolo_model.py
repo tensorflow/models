@@ -14,6 +14,7 @@
 
 """Yolo models."""
 
+from typing import Mapping, Union
 import tensorflow as tf
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
@@ -52,14 +53,14 @@ class Yolo(tf.keras.Model):
     return
 
   def call(self, inputs, training=False):
-    maps = self._backbone(inputs)
-    decoded_maps = self._decoder(maps)
-    raw_predictions = self._head(decoded_maps)
+    maps = self.backbone(inputs)
+    decoded_maps = self.decoder(maps)
+    raw_predictions = self.head(decoded_maps)
     if training:
       return {"raw_output": raw_predictions}
     else:
       # Post-processing.
-      predictions = self._detection_generator(raw_predictions)
+      predictions = self.detection_generator(raw_predictions)
       predictions.update({"raw_output": raw_predictions})
       return predictions
 
@@ -85,7 +86,16 @@ class Yolo(tf.keras.Model):
   @classmethod
   def from_config(cls, config):
     return cls(**config)
-  
+
+  @property
+  def checkpoint_items(
+      self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
+    """Returns a dictionary of items to be additionally checkpointed."""
+    items = dict(backbone=self.backbone, head=self.head)
+    if self.decoder is not None:
+      items.update(decoder=self.decoder)
+    return items
+    
   def fuse(self):
     """Fuses all Convolution and Batchnorm layers to get better latency."""
     print("Fusing Conv Batch Norm Layers.")

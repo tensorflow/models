@@ -67,7 +67,6 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
                momentum_start=0.0,
                warmup_steps=1000,
                nesterov=False,
-               sim_torch=False,
                name="SGD",
                weight_keys=["kernel", "weight"],
                bias_keys=["bias", "beta"],
@@ -99,9 +98,6 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
     # Enable Nesterov Momentum
     self.nesterov = nesterov
 
-    # Simulate Pytorch Optimizer
-    self.sim_torch = sim_torch
-
     # weights, biases, other
     self._weight_keys = weight_keys
     self._bias_keys = bias_keys
@@ -110,8 +106,7 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
     self._bset = set()
     self._oset = set()
 
-    if self.sim_torch:
-      logging.info(f"Pytorch SGD simulation: ")
+    logging.info(f"Pytorch SGD simulation: ")
     logging.info(f"Weight Decay: {weight_decay}")
 
   def set_bias_lr(self, lr):
@@ -140,16 +135,16 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
     others = []
 
     for var in variables:
-      # search for weights
+      
       if self._search(var, self._weight_keys):
+        # search for weights
         weights.append(var)
-        continue
-      # search for biases
-      if self._search(var, self._bias_keys):
+      elif self._search(var, self._bias_keys):
+        # search for biases
         biases.append(var)
-        continue
-      # if all searches fail, add to other group
-      others.append(var)
+      else:
+        # if all searches fail, add to other group
+        others.append(var)
 
     self._set_variable_groups(weights, biases, others)
     return weights, biases, others
@@ -238,30 +233,6 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
 
     return apply_state[(var_device, var_dtype)]
 
-  def _apply_tf(self, grad, var, weight_decay, momentum, lr):
-    """Uses Tensorflow Optimizer with Weight decay SGDW."""
-    def decay_op(var, learning_rate, wd):
-      if self._weight_decay and wd > 0:
-        return var.assign_sub(
-            learning_rate * var * wd, use_locking=self._use_locking)
-      return tf.no_op()
-
-    decay = decay_op(var, lr, weight_decay)
-    with tf.control_dependencies([decay]):
-      if self._momentum:
-        momentum_var = self.get_slot(var, "momentum")
-        return gen_training_ops.ResourceApplyKerasMomentum(
-            var=var.handle,
-            accum=momentum_var.handle,
-            lr=lr,
-            grad=grad,
-            momentum=momentum,
-            use_locking=self._use_locking,
-            use_nesterov=self.nesterov)
-      else:
-        return gen_training_ops.ResourceApplyGradientDescent(
-            var=var.handle, alpha=lr, delta=grad, use_locking=self._use_locking)
-
   def _apply(self, grad, var, weight_decay, momentum, lr):
     """Uses Pytorch Optimizer with Weight decay SGDW."""
     dparams = grad
@@ -308,10 +279,7 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
       lr = coefficients["other_lr_t"]
     momentum = coefficients["momentum"]
 
-    if self.sim_torch:
-      return self._apply(grad, var, weight_decay, momentum, lr)
-    else:
-      return self._apply_tf(grad, var, weight_decay, momentum, lr)
+    return self._apply(grad, var, weight_decay, momentum, lr)
 
   def _resource_apply_dense(self, grad, var, apply_state=None):
     return self._run_sgd(grad, var, apply_state=apply_state)
