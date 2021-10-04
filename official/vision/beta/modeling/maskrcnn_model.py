@@ -151,7 +151,7 @@ class MaskRCNNModel(tf.keras.Model):
 
     model_mask_outputs = self._call_mask_outputs(
         model_box_outputs=model_outputs,
-        features=intermediate_outputs['features'],
+        features=model_outputs['decoder_features'],
         current_rois=intermediate_outputs['current_rois'],
         matched_gt_indices=intermediate_outputs['matched_gt_indices'],
         matched_gt_boxes=intermediate_outputs['matched_gt_boxes'],
@@ -160,6 +160,15 @@ class MaskRCNNModel(tf.keras.Model):
         training=training)
     model_outputs.update(model_mask_outputs)
     return model_outputs
+
+  def _get_backbone_and_decoder_features(self, images):
+
+    backbone_features = self.backbone(images)
+    if self.decoder:
+      features = self.decoder(backbone_features)
+    else:
+      features = backbone_features
+    return backbone_features, features
 
   def _call_box_outputs(
       self, images: tf.Tensor,
@@ -173,18 +182,15 @@ class MaskRCNNModel(tf.keras.Model):
     model_outputs = {}
 
     # Feature extraction.
-    backbone_features = self.backbone(images)
-    if self.decoder:
-      features = self.decoder(backbone_features)
-    else:
-      features = backbone_features
+    (backbone_features,
+     decoder_features) = self._get_backbone_and_decoder_features(images)
 
     # Region proposal network.
-    rpn_scores, rpn_boxes = self.rpn_head(features)
+    rpn_scores, rpn_boxes = self.rpn_head(decoder_features)
 
     model_outputs.update({
         'backbone_features': backbone_features,
-        'decoder_features': features,
+        'decoder_features': decoder_features,
         'rpn_boxes': rpn_boxes,
         'rpn_scores': rpn_scores
     })
@@ -219,7 +225,7 @@ class MaskRCNNModel(tf.keras.Model):
       (class_outputs, box_outputs, model_outputs, matched_gt_boxes,
        matched_gt_classes, matched_gt_indices,
        current_rois) = self._run_frcnn_head(
-           features=features,
+           features=decoder_features,
            rois=current_rois,
            gt_boxes=gt_boxes,
            gt_classes=gt_classes,
@@ -270,7 +276,6 @@ class MaskRCNNModel(tf.keras.Model):
         'matched_gt_boxes': matched_gt_boxes,
         'matched_gt_indices': matched_gt_indices,
         'matched_gt_classes': matched_gt_classes,
-        'features': features,
         'current_rois': current_rois,
     }
     return (model_outputs, intermediate_outputs)
@@ -302,19 +307,16 @@ class MaskRCNNModel(tf.keras.Model):
       current_rois = model_outputs['detection_boxes']
       roi_classes = model_outputs['detection_classes']
 
-    # Mask RoI align.
-    mask_roi_features = self.mask_roi_aligner(features, current_rois)
-
-    # Mask head.
-    raw_masks = self.mask_head([mask_roi_features, roi_classes])
+    mask_logits, mask_probs = self._features_to_mask_outputs(
+        features, current_rois, roi_classes)
 
     if training:
       model_outputs.update({
-          'mask_outputs': raw_masks,
+          'mask_outputs': mask_logits,
       })
     else:
       model_outputs.update({
-          'detection_masks': tf.math.sigmoid(raw_masks),
+          'detection_masks': mask_probs,
       })
     return model_outputs
 
@@ -394,6 +396,15 @@ class MaskRCNNModel(tf.keras.Model):
     })
     return (class_outputs, box_outputs, model_outputs, matched_gt_boxes,
             matched_gt_classes, matched_gt_indices, rois)
+
+  def _features_to_mask_outputs(self, features, rois, roi_classes):
+    # Mask RoI align.
+    mask_roi_features = self.mask_roi_aligner(features, rois)
+
+    # Mask head.
+    raw_masks = self.mask_head([mask_roi_features, roi_classes])
+
+    return raw_masks, tf.nn.sigmoid(raw_masks)
 
   @property
   def checkpoint_items(

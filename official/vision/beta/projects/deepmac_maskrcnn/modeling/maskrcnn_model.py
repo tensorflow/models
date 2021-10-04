@@ -131,7 +131,7 @@ class DeepMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
 
     model_mask_outputs = self._call_mask_outputs(
         model_box_outputs=model_outputs,
-        features=intermediate_outputs['features'],
+        features=model_outputs['decoder_features'],
         current_rois=intermediate_outputs['current_rois'],
         matched_gt_indices=intermediate_outputs['matched_gt_indices'],
         matched_gt_boxes=intermediate_outputs['matched_gt_boxes'],
