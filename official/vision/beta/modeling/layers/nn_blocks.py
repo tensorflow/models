@@ -604,6 +604,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
   def build(self, input_shape):
     expand_filters = self._in_filters
     if self._expand_ratio > 1:
+      logging.info(f'expand_ratio {self._expand_ratio}')
       # First 1x1 conv for channel expansion.
       expand_filters = nn_layers.make_divisible(
           self._in_filters * self._expand_ratio, self._divisible_by)
