@@ -1,0 +1,27 @@
+#!/bin/bash
+#
+# Git hook that runs whenever a user types "git commit";
+# It runs pylint on any files that were changed, saves the linter
+# output into a .txt file, prints the contents of the file out, 
+# and adds the file to the commit.
+
+PROJECT_DIR=./official/vision/beta/projects/mesh_rcnn
+
+echo ">>> Running pre-commit scripts on:"
+echo $PROJECT_DIR
+
+echo ">>> Running isort on your project repo..."
+isort --recursive $PROJECT_DIR
+
+echo
+echo ">>> Running mypy on your project repo..."
+mypy $PROJECT_DIR
+
+echo 
+echo ">>> Running pylint on your changed python files -- please wait..."
+python pylint_script.py > linter_log.txt
+cat linter_log.txt
+
+git add .
+
+exit 0
