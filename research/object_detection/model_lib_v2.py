@@ -442,7 +442,7 @@ def train_loop(
     use_tpu=False,
     save_final_config=False,
     checkpoint_every_n=1000,
-    checkpoint_max_to_keep=7,
+    checkpoint_max_to_keep=20,
     record_summaries=True,
     performance_summary_exporter=None,
     num_steps_per_iteration=NUM_STEPS_PER_ITERATION,
@@ -499,6 +499,8 @@ def train_loop(
       pipeline_config_path, config_override=config_override)
   kwargs.update({
       'train_steps': train_steps,
+      'sample_1_of_n_eval_examples': 1,
+      'eval_num_epochs': 1,
       'use_bfloat16': configs['train_config'].use_bfloat16 and use_tpu
   })
   configs = merge_external_params_with_configs(
@@ -556,7 +558,13 @@ def train_loop(
 
     train_input = strategy.experimental_distribute_datasets_from_function(
         train_dataset_fn)
-
+    
+    eval_input = strategy.experimental_distribute_dataset(
+        inputs.eval_input(
+            eval_config=configs['eval_config'],
+            eval_input_config=configs['eval_input_configs'][0],
+            model_config=configs['model'],
+            model=detection_model))
 
     global_step = tf.Variable(
         0, trainable=False, dtype=tf.compat.v2.dtypes.int64, name='global_step',
@@ -587,6 +595,8 @@ def train_loop(
   summary_writer = tf.compat.v2.summary.create_file_writer(
       summary_writer_filepath)
 
+  eval_summary_writer = tf.compat.v2.summary.create_file_writer(
+      os.path.join(model_dir, 'eval', eval_input_config.name))
   with summary_writer.as_default():
     with strategy.scope():
       with tf.compat.v2.summary.record_if(
@@ -705,6 +715,14 @@ def train_loop(
               checkpoint_every_n):
             manager.save()
             checkpointed_step = int(global_step.value())
+            with eval_summary_writer.as_default():
+              eager_eval_loop(
+                  detection_model,
+                  configs,
+                  eval_input,
+                  use_tpu=use_tpu,
+                  global_step=global_step
+              )
 
   # Remove the checkpoint directories of the non-chief workers that
   # MultiWorkerMirroredStrategy forces us to save during sync distributed
