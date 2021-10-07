@@ -63,3 +63,41 @@ def roformer_pretraining() -> cfg.ExperimentConfig:
           'task.validation_data.is_training != None'
       ])
   return config
+
+@exp_factory.register_config_factory('roformer/glue')
+def roformer_glue() -> cfg.ExperimentConfig:
+  r"""BigBird GLUE."""
+  config = cfg.ExperimentConfig(
+      task=sentence_prediction.SentencePredictionConfig(
+          train_data=sentence_prediction_dataloader
+          .SentencePredictionDataConfig(),
+          validation_data=sentence_prediction_dataloader
+          .SentencePredictionDataConfig(
+              is_training=False, drop_remainder=False)),
+      trainer=cfg.TrainerConfig(
+          optimizer_config=optimization.OptimizationConfig({
+              'optimizer': {
+                  'type': 'adamw',
+                  'adamw': {
+                      'weight_decay_rate':
+                          0.01,
+                      'exclude_from_weight_decay':
+                          ['LayerNorm', 'layer_norm', 'bias'],
+                  }
+              },
+              'learning_rate': {
+                  'type': 'polynomial',
+                  'polynomial': {
+                      'initial_learning_rate': 3e-5,
+                      'end_learning_rate': 0.0,
+                  }
+              },
+              'warmup': {
+                  'type': 'polynomial'
+              }
+          })),
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None'
+      ])
+  return config
