@@ -196,7 +196,7 @@ class RoformerEncoderBlock(tf.keras.layers.Layer):
         epsilon=self._norm_epsilon,
         dtype=tf.float32)
 
-    super(TransformerEncoderBlock, self).build(input_shape)
+    super(RoformerEncoderBlock, self).build(input_shape)
 
   def get_config(self):
     config = {
@@ -238,7 +238,7 @@ class RoformerEncoderBlock(tf.keras.layers.Layer):
             tf.keras.initializers.serialize(self._attention_initializer),
         "attention_axes": self._attention_axes,
     }
-    base_config = super(TransformerEncoderBlock, self).get_config()
+    base_config = super(RoformerEncoderBlock, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs):
