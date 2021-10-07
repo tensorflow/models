@@ -23,14 +23,15 @@ echo
 echo ">>> Running pylint on: " + $PROJECT_DIR + " -- please wait..."
 # python pylint_script.py > linter_log.txt
 pylint --rcfile=$PYLINTRC $PROJECT_DIR > linter_log.txt
-cat linter_log.txt
 if [ $? -eq 0 ];
 then
   echo "Success! Adding files..."
+  cat linter_log.txt
   git add .
   exit 0
 else
   echo "Failed, undoing commit. Please reformat your code..."
+  cat linter_log.txt
   git reset HEAD~1 .
   exit 1
 fi
