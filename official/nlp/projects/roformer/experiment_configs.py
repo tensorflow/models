@@ -20,10 +20,8 @@ Copied from nlp/projects/bigbird/experiment_configs.py
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import optimization
-from official.nlp.data import question_answering_dataloader
-from official.nlp.data import sentence_prediction_dataloader
-from official.nlp.tasks import question_answering
-from official.nlp.tasks import sentence_prediction
+from official.nlp.data import pretrain_dataloader
+from official.nlp.tasks import masked_lm
 
 _TRAINER = cfg.TrainerConfig(
     train_steps=1000000,
