@@ -1,5 +1,0 @@
-************* Module modeling.layers.nn_blocks
-official\vision\beta\projects\mesh_rcnn\modeling\layers\nn_blocks.py:6:0: C0301: Line too long (90/80) (line-too-long)
-official\vision\beta\projects\mesh_rcnn\modeling\layers\nn_blocks.py:1:0: C0114: Missing module docstring (missing-module-docstring)
-official\vision\beta\projects\mesh_rcnn\modeling\layers\nn_blocks.py:1:0: W0611: Unused numpy imported as np (unused-import)
-official\vision\beta\projects\mesh_rcnn\modeling\layers\nn_blocks.py:2:0: W0611: Unused tensorflow imported as tf (unused-import)
