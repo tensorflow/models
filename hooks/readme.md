@@ -20,10 +20,10 @@ You will need to have the following in the root directory of your project:
 - ```hooks``` directory, which contains the ```pre-commit``` hook script
 - ```pylintrc``` config file
  
-The files are located [here](https://github.com/PurdueCAM2Project/TensorFlowModels/tree/yolo_debug_linter)
-in the root folder of the ```yolo_linter_debug``` branch:
+The files are located [here](https://github.com/PurdueDualityLab/tf-models/tree/mesh_rcnn_linter)
+in the root folder of the ```mesh_rcnn_linter``` branch:
 
-![necessary_files](./screenshots/necessary_files.png)
+![folder_structure](./screenshots/folder_structure.png)
 
 ## install.sh
 You can easily set everything up by navigating into the ```hooks``` folder and running the 
@@ -35,20 +35,34 @@ the command ```chmod +x install.sh```.
 ## Manual Installation 
 If you want to set things up manually, what you can do is the following:
 - copy and paste the ```pre-commit``` script into your local ```.git/hooks``` directory like so:
-![mv_command](./screenshots/mv_command.png)
-, OR 
+
+``` mv hooks/precommit .git/hooks```
+
+OR 
 - create a symbolic link from the ```hooks``` directory to the ```.git/hooks``` directory
 using the following command (run the command in project root directory):
+
 ```ln -s -f ../../hooks/pre-commit .git/hooks/pre-commit```
 
-And that's it! Now when you run ```git commit``` command on your local machine, 
-you will see the following output: 
+## How to use the linter 
+After running ```git add .```, when you run ```git commit``` on your local machine, the pre-commit script
+will run the linter to scan the ```$PROJECT_DIR``` defined in ```pre-commit```.
 
-![git_commit](./screenshots/git_commit.png)
+If there are any formatting issues with your code, you should see something like this:
+
+![failed_commit](./screenshots/failed_commit.png)
+
+and your changes will not be commited.
+
+After you correct any formatting issues, run ```git commit``` again and your changes
+will be committed successfully and you should see a message like this:
+
+![passed_commit](./screenshots/passed_commit.png)
+
+You will now be able to push your local changes.
 
 # Important Notes
-- You need to make sure the ```pre-commit``` and the ```pylint.sh``` files are 
-executables; if they're not, use the command ```sudo chmod +x {FILENAME}``` to
-make them executables
+- You need to make sure the ```pre-commit``` file is an 
+executable; use the command ```sudo chmod +x pre-commit``` to make it an executable
 - If you run into permission issues with "git add . " command when running the pre-commit hook, 
 use the following command to fix the issue: ```sudo chown -R "${USER:-$(id -un)}" . ```
