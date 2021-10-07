@@ -119,12 +119,13 @@ class RoformerEncoder(tf.keras.Model):
       embedding_layer_inst = embedding_layer
     word_embeddings = embedding_layer_inst(word_ids)
 
+    # Roformer doesn't need position embeding layer
     # Always uses dynamic slicing for simplicity.
-    position_embedding_layer = layers.PositionEmbedding(
-        initializer=initializer,
-        max_length=max_sequence_length,
-        name='position_embedding')
-    position_embeddings = position_embedding_layer(word_embeddings)
+    # position_embedding_layer = layers.PositionEmbedding(
+    #     initializer=initializer,
+    #     max_length=max_sequence_length,
+    #     name='position_embedding')
+    # position_embeddings = position_embedding_layer(word_embeddings)
     type_embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=type_vocab_size,
         embedding_width=embedding_width,
@@ -165,7 +166,7 @@ class RoformerEncoder(tf.keras.Model):
         transformer_output_range = output_range
       else:
         transformer_output_range = None
-      layer = networks.TransformerEncoderBlock(
+      layer = networks.RoformerEncoderBlock(
           num_attention_heads=num_attention_heads,
           inner_dim=inner_dim,
           inner_activation=inner_activation,
@@ -203,7 +204,7 @@ class RoformerEncoder(tf.keras.Model):
     # created using the Functional API. Once super().__init__ is called, we
     # can assign attributes to `self` - note that all `self` assignments are
     # below this line.
-    super(BertEncoder, self).__init__(
+    super(RoformerEncoder, self).__init__(
         inputs=[word_ids, mask, type_ids], outputs=outputs, **kwargs)
 
     config_dict = {
@@ -235,7 +236,8 @@ class RoformerEncoder(tf.keras.Model):
     self._transformer_layers = transformer_layers
     self._embedding_norm_layer = embedding_norm_layer
     self._embedding_layer = embedding_layer_inst
-    self._position_embedding_layer = position_embedding_layer
+    # self._position_embedding_layer = position_embedding_layer
+    self._position_embedding_layer = None
     self._type_embedding_layer = type_embedding_layer
     if embedding_projection is not None:
       self._embedding_projection = embedding_projection
