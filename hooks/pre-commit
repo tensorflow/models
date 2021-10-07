@@ -29,8 +29,7 @@ then
   cat linter_log.txt
   exit 0
 else
-  echo "Failed, undoing commit. Please reformat your code..."
+  echo "Failed, commit not completed. Please reformat your code..."
   cat linter_log.txt
-  git reset HEAD~1 .
   exit 1
 fi
