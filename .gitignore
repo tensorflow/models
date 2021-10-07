@@ -99,6 +99,4 @@ ENV/
 
 hooks/
 pylint.sh
-linter_log.txt
-pylint_script.py
-pylint_script
+pylintrc
