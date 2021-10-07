@@ -471,6 +471,7 @@ def build_encoder(config: EncoderConfig,
     return networks.EncoderScaffold(**kwargs)
 
   if encoder_type == "roformer":
+    print("**************************************HERE**********************************")
     return networks.RoformerEncoder(
       vocab_size=encoder_cfg.vocab_size,
       hidden_size=encoder_cfg.hidden_size,
@@ -487,8 +488,6 @@ def build_encoder(config: EncoderConfig,
       output_range=encoder_cfg.output_range,
       embedding_width=encoder_cfg.embedding_size,
       embedding_layer=embedding_layer,
-      return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs,
-      dict_outputs=True,
       norm_first=encoder_cfg.norm_first)
 
   # Uses the default BERTEncoder configuration schema to create the encoder.

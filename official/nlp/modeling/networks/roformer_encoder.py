@@ -27,7 +27,7 @@ from official.nlp.modeling import networks
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
-class RoformerEncoder(networks.BertEncoder):
+class RoformerEncoder(tf.keras.Model):
   """Bi-directional Transformer-based encoder network.
 
   This network implements a bi-directional Transformer-based encoder as
@@ -96,6 +96,20 @@ class RoformerEncoder(networks.BertEncoder):
       embedding_layer=None,
       norm_first=False,
       **kwargs):
+    if "intermediate_size" in kwargs:
+        inner_dim = kwargs["intermediate_size"]
+        del kwargs["intermediate_size"]
+    if "activation" in kwargs:
+        inner_activation = kwargs["activation"]
+        del kwargs["activation"]
+    if "dropout_rate" in kwargs:
+        output_dropout = kwargs["dropout_rate"]
+        del kwargs["dropout_rate"]
+    if "attention_dropout_rate" in kwargs:
+        attention_dropout = kwargs["attention_dropout_rate"]
+        del kwargs["attention_dropout_rate"]
+
+
     activation = tf.keras.activations.get(inner_activation)
     initializer = tf.keras.initializers.get(initializer)
 
@@ -204,7 +218,8 @@ class RoformerEncoder(networks.BertEncoder):
     # created using the Functional API. Once super().__init__ is called, we
     # can assign attributes to `self` - note that all `self` assignments are
     # below this line.
-    super(RoformerEncoder, self).__init__(vocab_size,
+    print(kwargs)
+    super(RoformerEncoder, self).__init__(
         inputs=[word_ids, mask, type_ids], outputs=outputs, **kwargs)
 
     config_dict = {
@@ -224,6 +239,7 @@ class RoformerEncoder(networks.BertEncoder):
         'embedding_layer': embedding_layer,
         'norm_first': norm_first,
     }
+
 
     # We are storing the config dict as a namedtuple here to ensure checkpoint
     # compatibility with an earlier version of this model which did not track
