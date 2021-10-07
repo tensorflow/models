@@ -27,7 +27,6 @@ if [ $? -eq 0 ];
 then
   echo "Success! Adding files..."
   cat linter_log.txt
-  git add .
   exit 0
 else
   echo "Failed, undoing commit. Please reformat your code..."

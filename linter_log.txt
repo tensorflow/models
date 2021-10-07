@@ -1,0 +1,3 @@
+************* Module modeling.heads.nn_blocks
+official\vision\beta\projects\mesh_rcnn\modeling\heads\nn_blocks.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+official\vision\beta\projects\mesh_rcnn\modeling\heads\nn_blocks.py:1:0: W0611: Unused tensorflow imported as tf (unused-import)
