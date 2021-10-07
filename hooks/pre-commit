@@ -6,6 +6,9 @@
 # and adds the file to the commit.
 
 PROJECT_DIR=./official/vision/beta/projects/mesh_rcnn
+PYLINTRC = ./pylintrc
+PYLINT_LOG = ./inter_log.log
+
 
 echo ">>> Running pre-commit scripts on:"
 echo $PROJECT_DIR
@@ -18,8 +21,9 @@ echo ">>> Running mypy on your project repo..."
 mypy $PROJECT_DIR
 
 echo 
-echo ">>> Running pylint on your changed python files -- please wait..."
-python pylint_script.py > linter_log.txt
+echo ">>> Running pylint on: " + $PROJECT_DIR + " -- please wait..."
+# python pylint_script.py > linter_log.txt
+pylint $PROJECT_DIR > linter_log.txt
 cat linter_log.txt
 
 git add .
