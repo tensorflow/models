@@ -22,6 +22,7 @@ from official.nlp.modeling.layers.bigbird_attention import BigBirdAttention
 from official.nlp.modeling.layers.bigbird_attention import BigBirdMasks
 from official.nlp.modeling.layers.cls_head import *
 from official.nlp.modeling.layers.dense_einsum import DenseEinsum
+from official.nlp.modeling.layers.exbert_layers import *
 from official.nlp.modeling.layers.gated_feedforward import GatedFeedforward
 from official.nlp.modeling.layers.gaussian_process import RandomFeatureGaussianProcess
 from official.nlp.modeling.layers.kernel_attention import KernelAttention
@@ -34,6 +35,7 @@ from official.nlp.modeling.layers.mobile_bert_layers import MobileBertMaskedLM
 from official.nlp.modeling.layers.mobile_bert_layers import MobileBertTransformer
 from official.nlp.modeling.layers.multi_channel_attention import *
 from official.nlp.modeling.layers.on_device_embedding import OnDeviceEmbedding
+from official.nlp.modeling.layers.position_embedding import PositionEmbedding
 from official.nlp.modeling.layers.position_embedding import RelativePositionBias
 from official.nlp.modeling.layers.position_embedding import RelativePositionEmbedding
 from official.nlp.modeling.layers.relative_attention import MultiHeadRelativeAttention
@@ -47,6 +49,7 @@ from official.nlp.modeling.layers.text_layers import BertTokenizer
 from official.nlp.modeling.layers.text_layers import SentencepieceTokenizer
 from official.nlp.modeling.layers.tn_transformer_expand_condense import TNTransformerExpandCondense
 from official.nlp.modeling.layers.transformer import *
+from official.nlp.modeling.layers.transformer_encoder_block import TransformerEncoderBlock
 from official.nlp.modeling.layers.transformer_scaffold import TransformerScaffold
 from official.nlp.modeling.layers.transformer_xl import TransformerXL
 from official.nlp.modeling.layers.transformer_xl import TransformerXLBlock

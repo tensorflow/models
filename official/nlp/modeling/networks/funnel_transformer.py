@@ -19,7 +19,7 @@ from absl import logging
 import numpy as np
 import tensorflow as tf
 
-from official.nlp import keras_nlp
+from official.nlp.modeling import layers
 
 
 def _pool_and_concat(mask, unpool_length: int, strides: Union[Sequence[int],
@@ -139,7 +139,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       embedding_width = hidden_size
 
     if embedding_layer is None:
-      self._embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
+      self._embedding_layer = layers.OnDeviceEmbedding(
           vocab_size=vocab_size,
           embedding_width=embedding_width,
           initializer=initializer,
@@ -147,12 +147,12 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
     else:
       self._embedding_layer = embedding_layer
 
-    self._position_embedding_layer = keras_nlp.layers.PositionEmbedding(
+    self._position_embedding_layer = layers.PositionEmbedding(
         initializer=initializer,
         max_length=max_sequence_length,
         name='position_embedding')
 
-    self._type_embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
+    self._type_embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=type_vocab_size,
         embedding_width=embedding_width,
         initializer=initializer,
@@ -177,10 +177,10 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
           name='embedding_projection')
 
     self._transformer_layers = []
-    self._attention_mask_layer = keras_nlp.layers.SelfAttentionMask(
+    self._attention_mask_layer = layers.SelfAttentionMask(
         name='self_attention_mask')
     for i in range(num_layers):
-      layer = keras_nlp.layers.TransformerEncoderBlock(
+      layer = layers.TransformerEncoderBlock(
           num_attention_heads=num_attention_heads,
           inner_dim=inner_dim,
           inner_activation=inner_activation,

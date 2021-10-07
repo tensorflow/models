@@ -21,7 +21,6 @@ from absl import logging
 import gin
 import tensorflow as tf
 
-from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 
 
@@ -115,7 +114,7 @@ class EncoderScaffold(tf.keras.Model):
                num_hidden_instances=1,
                hidden_cls=layers.Transformer,
                hidden_cfg=None,
-               mask_cls=keras_nlp.layers.SelfAttentionMask,
+               mask_cls=layers.SelfAttentionMask,
                mask_cfg=None,
                layer_norm_before_pooling=False,
                return_all_layer_outputs=False,
@@ -146,7 +145,7 @@ class EncoderScaffold(tf.keras.Model):
           shape=(seq_length,), dtype=tf.int32, name='input_type_ids')
       inputs = [word_ids, mask, type_ids]
 
-      embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
+      embedding_layer = layers.OnDeviceEmbedding(
           vocab_size=embedding_cfg['vocab_size'],
           embedding_width=embedding_cfg['hidden_size'],
           initializer=embedding_cfg['initializer'],
@@ -155,13 +154,13 @@ class EncoderScaffold(tf.keras.Model):
       word_embeddings = embedding_layer(word_ids)
 
       # Always uses dynamic slicing for simplicity.
-      position_embedding_layer = keras_nlp.layers.PositionEmbedding(
+      position_embedding_layer = layers.PositionEmbedding(
           initializer=embedding_cfg['initializer'],
           max_length=embedding_cfg['max_seq_length'],
           name='position_embedding')
       position_embeddings = position_embedding_layer(word_embeddings)
 
-      type_embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
+      type_embedding_layer = layers.OnDeviceEmbedding(
           vocab_size=embedding_cfg['type_vocab_size'],
           embedding_width=embedding_cfg['hidden_size'],
           initializer=embedding_cfg['initializer'],
