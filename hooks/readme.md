@@ -18,7 +18,6 @@ install them manually.
 ## Required Files 
 You will need to have the following in the root directory of your project:
 - ```hooks``` directory, which contains the ```pre-commit``` hook script
-- ```pylint.sh``` script
 - ```pylintrc``` config file
  
 The files are located [here](https://github.com/PurdueCAM2Project/TensorFlowModels/tree/yolo_debug_linter)
