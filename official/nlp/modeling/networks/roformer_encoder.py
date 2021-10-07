@@ -27,7 +27,7 @@ from official.nlp.modeling import networks
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
-class RoformerEncoder(tf.keras.Model):
+class RoformerEncoder(networks.BertEncoder):
   """Bi-directional Transformer-based encoder network.
 
   This network implements a bi-directional Transformer-based encoder as
@@ -175,7 +175,7 @@ class RoformerEncoder(tf.keras.Model):
           norm_first=norm_first,
           output_range=transformer_output_range,
           kernel_initializer=initializer,
-          name='transformer/layer_%d' % i)
+          name='roformer/layer_%d' % i)
       transformer_layers.append(layer)
       data = layer([data, attention_mask])
       encoder_outputs.append(data)
@@ -204,7 +204,7 @@ class RoformerEncoder(tf.keras.Model):
     # created using the Functional API. Once super().__init__ is called, we
     # can assign attributes to `self` - note that all `self` assignments are
     # below this line.
-    super(RoformerEncoder, self).__init__(
+    super(RoformerEncoder, self).__init__(vocab_size,
         inputs=[word_ids, mask, type_ids], outputs=outputs, **kwargs)
 
     config_dict = {

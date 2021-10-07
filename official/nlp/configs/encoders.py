@@ -194,7 +194,6 @@ class XLNetEncoderConfig(hyperparams.Config):
   initializer_range: float = 0.02
   two_stream: bool = False
 
-
 @dataclasses.dataclass
 class EncoderConfig(hyperparams.OneOfConfig):
   """Encoder configuration."""
@@ -206,27 +205,7 @@ class EncoderConfig(hyperparams.OneOfConfig):
   mobilebert: MobileBertEncoderConfig = MobileBertEncoderConfig()
   teams: BertEncoderConfig = BertEncoderConfig()
   xlnet: XLNetEncoderConfig = XLNetEncoderConfig()
-
-@dataclasses.dataclass
-class RoformerEncoderConfig(hyperparams.Config):
-  """Roformer encoder configuration."""
-  vocab_size: int = 30522
-  hidden_size: int = 768
-  num_layers: int = 12
-  num_attention_heads: int = 12
-  hidden_activation: str = "gelu"
-  intermediate_size: int = 3072
-  dropout_rate: float = 0.1
-  attention_dropout_rate: float = 0.1
-  max_position_embeddings: int = 512
-  type_vocab_size: int = 2
-  initializer_range: float = 0.02
-  embedding_size: Optional[int] = None
-  output_range: Optional[int] = None
-  return_all_encoder_outputs: bool = False
-  # Pre/Post-LN Transformer
-  norm_first: bool = False
-
+  roformer: BertEncoderConfig = BertEncoderConfig()
 
 @gin.configurable
 def build_encoder(config: EncoderConfig,
