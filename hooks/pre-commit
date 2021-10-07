@@ -1,0 +1,39 @@
+#!/bin/bash
+#
+# Git hook that runs whenever a user types "git commit";
+# It runs pylint on files in PROJECT_DIR, logs the linter output, 
+# prints the contents of the file out, and commits the changes if there are no
+# formatting issues.
+
+START_RED="\033[0;31m"
+START_GREEN="\033[0;32m"
+RESET_COLOR="\033[0m"
+
+PROJECT_DIR=./official/vision/beta/projects/mesh_rcnn
+PYLINTRC=./pylintrc
+LOG_FILE=./linter.log
+
+echo ">>> Running pre-commit scripts on:"
+echo $PROJECT_DIR
+
+echo ">>> Running isort on your project folder..."
+isort --recursive $PROJECT_DIR
+
+echo
+echo ">>> Running mypy on your project folder..."
+mypy $PROJECT_DIR
+
+echo 
+echo ">>> Running pylint on: " + $PROJECT_DIR + " -- please wait..."
+
+pylint --rcfile=$PYLINTRC $PROJECT_DIR > $LOG_FILE
+if [ $? -eq 0 ];
+then
+  echo -e "${START_GREEN}Success! Commit was successful, ready to git push${RESET_COLOR}"
+  cat $LOG_FILE
+  exit 0
+else
+  echo -e "${START_RED}Failed, commit was not successful, please reformat your code...${RESET_COLOR}"
+  cat $LOG_FILE
+  exit 1
+fi
