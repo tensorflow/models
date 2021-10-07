@@ -121,3 +121,7 @@ assemble new `tf.keras` layers or models.
     [BertTokenizer](text_layers.py) and [SentencepieceTokenizer](text_layers.py)
     implements the layer to tokenize raw text and pack them into the inputs for
     BERT models.
+    
+*   [TransformerEncoderBlock](transformer_encoder_block.py) implements
+    an optionally masked transformer as described in
+    ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762).

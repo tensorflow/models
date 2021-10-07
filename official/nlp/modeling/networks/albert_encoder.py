@@ -18,7 +18,6 @@ import collections
 import tensorflow as tf
 
 from official.modeling import activations
-from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 
 
@@ -98,7 +97,7 @@ class AlbertEncoder(tf.keras.Model):
     word_embeddings = embedding_layer(word_ids)
 
     # Always uses dynamic slicing for simplicity.
-    position_embedding_layer = keras_nlp.layers.PositionEmbedding(
+    position_embedding_layer = layers.PositionEmbedding(
         initializer=initializer,
         max_length=max_sequence_length,
         name='position_embedding')
@@ -133,8 +132,8 @@ class AlbertEncoder(tf.keras.Model):
               embeddings)
 
     data = embeddings
-    attention_mask = keras_nlp.layers.SelfAttentionMask()(data, mask)
-    shared_layer = keras_nlp.layers.TransformerEncoderBlock(
+    attention_mask = layers.SelfAttentionMask()(data, mask)
+    shared_layer = layers.TransformerEncoderBlock(
         num_attention_heads=num_attention_heads,
         inner_dim=intermediate_size,
         inner_activation=activation,

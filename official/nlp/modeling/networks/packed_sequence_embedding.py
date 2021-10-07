@@ -18,7 +18,6 @@ import collections
 import tensorflow as tf
 
 from official.modeling import tf_utils
-from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 
 
@@ -137,7 +136,7 @@ class PackedSequenceEmbedding(tf.keras.Model):
           name='embedding_projection')(
               embeddings)
 
-    attention_mask = keras_nlp.layers.SelfAttentionMask()(embeddings, mask)
+    attention_mask = layers.SelfAttentionMask()(embeddings, mask)
     if sub_seq_mask is not None:
       attention_mask = tf.keras.layers.Lambda(
           lambda x: x[0] * tf.cast(x[1], x[0].dtype))(
