@@ -16,8 +16,8 @@ PYLINT_ALLOWLIST_FILE = os.path.join(tempfile.gettempdir(), "pylint_allowlist")
 PYLINT_SCRIPT_NAME = "pylint_script.py" 
 
 # Download latest configs from main TensorFlow repo
-# request.urlretrieve("https://raw.githubusercontent.com/tensorflow/tensorflow/master/tensorflow/tools/ci_build/pylintrc", PYLINTRC_FILE)
-# request.urlretrieve("https://raw.githubusercontent.com/tensorflow/tensorflow/master/tensorflow/tools/ci_build/pylint_allowlist", PYLINT_ALLOWLIST_FILE)
+request.urlretrieve("https://raw.githubusercontent.com/tensorflow/tensorflow/master/tensorflow/tools/ci_build/pylintrc", PYLINTRC_FILE)
+request.urlretrieve("https://raw.githubusercontent.com/tensorflow/tensorflow/master/tensorflow/tools/ci_build/pylint_allowlist", PYLINT_ALLOWLIST_FILE)
 
 # Get the number of CPUs
 def num_cpus():
