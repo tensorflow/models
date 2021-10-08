@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """YT8M model definition."""
+from typing import Optional
 
 import tensorflow as tf
 from official.modeling import tf_utils
@@ -23,23 +24,43 @@ from official.vision.beta.projects.yt8m.modeling import yt8m_model_utils as util
 layers = tf.keras.layers
 
 
-class YT8MModel(tf.keras.Model):
-  """A YT8M model class builder."""
+class DbofModel(tf.keras.Model):
+  """A YT8M model class builder.
 
-  def __init__(self,
-               input_params: yt8m_cfg.YT8MModel,
-               num_frames=30,
-               num_classes=3862,
-               input_specs=layers.InputSpec(shape=[None, None, 1152]),
-               **kwargs):
+  Creates a Deep Bag of Frames model.
+  The model projects the features for each frame into a higher dimensional
+  'clustering' space, pools across frames in that space, and then
+  uses a configurable video-level model to classify the now aggregated features.
+  The model will randomly sample either frames or sequences of frames during
+  training to speed up convergence.
+  """
+
+  def __init__(
+      self,
+      params: yt8m_cfg.DbofModel,
+      num_frames=30,
+      num_classes=3862,
+      input_specs=layers.InputSpec(shape=[None, None, 1152]),
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      activation: str = "relu",
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      **kwargs):
     """YT8M initialization function.
 
     Args:
-      input_params: model configuration parameters
+      params: model configuration parameters
       num_frames: `int` number of frames in a single input.
       num_classes: `int` number of classes in dataset.
       input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
         [batch_size x num_frames x num_features]
+      kernel_regularizer: tf.keras.regularizers.Regularizer object. Default to
+        None.
+      activation: A `str` of name of the activation function.
+      use_sync_bn: If True, use synchronized batch normalization.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
       **kwargs: keyword arguments to be passed.
     """
 
@@ -48,12 +69,19 @@ class YT8MModel(tf.keras.Model):
         "input_specs": input_specs,
         "num_classes": num_classes,
         "num_frames": num_frames,
-        "input_params": input_params
+        "params": params
     }
     self._num_classes = num_classes
     self._input_specs = input_specs
-    self._act_fn = tf_utils.get_activation(input_params.activation)
-    self._is_training = input_params.is_training
+    self._act_fn = tf_utils.get_activation(activation)
+    if use_sync_bn:
+      self._norm = layers.experimental.SyncBatchNormalization
+    else:
+      self._norm = layers.BatchNormalization
+    if tf.keras.backend.image_data_format() == "channels_last":
+      bn_axis = -1
+    else:
+      bn_axis = 1
 
     # [batch_size x num_frames x num_features]
     feature_size = input_specs.shape[-1]
@@ -63,31 +91,34 @@ class YT8MModel(tf.keras.Model):
     tf.summary.histogram("input_hist", model_input)
 
     # configure model
-    if input_params.add_batch_norm:
-      reshaped_input = layers.BatchNormalization(
-          name="input_bn", scale=True, center=True,
-          trainable=self._is_training)(
+    if params.add_batch_norm:
+      reshaped_input = self._norm(
+          axis=bn_axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          name="input_bn")(
               reshaped_input)
 
     # activation = reshaped input * cluster weights
-    activation = layers.Dense(
-        input_params.cluster_size,
-        kernel_initializer=tf.random_normal_initializer(
-            stddev=1 / tf.sqrt(tf.cast(feature_size, tf.float32))))(
-                reshaped_input)
+    if params.cluster_size > 0:
+      activation = layers.Dense(
+          params.cluster_size,
+          kernel_regularizer=kernel_regularizer,
+          kernel_initializer=tf.random_normal_initializer(
+              stddev=1 / tf.sqrt(tf.cast(feature_size, tf.float32))))(
+                  reshaped_input)
 
-    if input_params.add_batch_norm:
-      activation = layers.BatchNormalization(
-          name="cluster_bn",
-          scale=True,
-          center=True,
-          trainable=self._is_training)(
+    if params.add_batch_norm:
+      activation = self._norm(
+          axis=bn_axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          name="cluster_bn")(
               activation)
-
     else:
       cluster_biases = tf.Variable(
           tf.random_normal_initializer(stddev=1 / tf.math.sqrt(feature_size))(
-              shape=[input_params.cluster_size]),
+              shape=[params.cluster_size]),
           name="cluster_biases")
       tf.summary.histogram("cluster_biases", cluster_biases)
       activation += cluster_biases
@@ -95,30 +126,42 @@ class YT8MModel(tf.keras.Model):
     activation = self._act_fn(activation)
     tf.summary.histogram("cluster_output", activation)
 
-    activation = tf.reshape(activation,
-                            [-1, num_frames, input_params.cluster_size])
-    activation = utils.FramePooling(activation, input_params.pooling_method)
+    if params.use_context_gate_cluster_layer:
+      pooling_method = None
+      norm_args = dict(
+          axis=bn_axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          name="context_gate_bn")
+      activation = utils.context_gate(
+          activation,
+          normalizer_fn=self._norm,
+          normalizer_params=norm_args,
+          pooling_method=pooling_method,
+          hidden_layer_size=params.context_gate_cluster_bottleneck_size,
+          kernel_regularizer=kernel_regularizer)
+    activation = tf.reshape(activation, [-1, num_frames, params.cluster_size])
+    activation = utils.frame_pooling(activation, params.pooling_method)
 
     # activation = activation * hidden1_weights
     activation = layers.Dense(
-        input_params.hidden_size,
+        params.hidden_size,
+        kernel_regularizer=kernel_regularizer,
         kernel_initializer=tf.random_normal_initializer(
-            stddev=1 /
-            tf.sqrt(tf.cast(input_params.cluster_size, tf.float32))))(
+            stddev=1 / tf.sqrt(tf.cast(params.cluster_size, tf.float32))))(
                 activation)
 
-    if input_params.add_batch_norm:
-      activation = layers.BatchNormalization(
-          name="hidden1_bn",
-          scale=True,
-          center=True,
-          trainable=self._is_training)(
+    if params.add_batch_norm:
+      activation = self._norm(
+          axis=bn_axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          name="hidden1_bn")(
               activation)
 
     else:
       hidden1_biases = tf.Variable(
-          tf.random_normal_initializer(stddev=0.01)(
-              shape=[input_params.hidden_size]),
+          tf.random_normal_initializer(stddev=0.01)(shape=[params.hidden_size]),
           name="hidden1_biases")
 
       tf.summary.histogram("hidden1_biases", hidden1_biases)
@@ -128,9 +171,15 @@ class YT8MModel(tf.keras.Model):
     tf.summary.histogram("hidden1_output", activation)
 
     aggregated_model = getattr(yt8m_agg_models,
-                               input_params.yt8m_agg_classifier_model)
+                               params.yt8m_agg_classifier_model)
+    norm_args = dict(axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)
     output = aggregated_model().create_model(
-        model_input=activation, vocab_size=self._num_classes)
+        model_input=activation,
+        vocab_size=self._num_classes,
+        num_mixtures=params.agg_model.num_mixtures,
+        normalizer_fn=self._norm,
+        normalizer_params=norm_args,
+        l2_penalty=params.agg_model.l2_penalty)
 
     super().__init__(
         inputs=model_input, outputs=output.get("predictions"), **kwargs)

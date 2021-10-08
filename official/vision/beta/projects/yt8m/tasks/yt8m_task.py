@@ -24,7 +24,7 @@ from official.vision.beta.projects.yt8m.configs import yt8m as yt8m_cfg
 from official.vision.beta.projects.yt8m.dataloaders import yt8m_input
 from official.vision.beta.projects.yt8m.eval_utils import eval_util
 from official.vision.beta.projects.yt8m.modeling import yt8m_model_utils as utils
-from official.vision.beta.projects.yt8m.modeling.yt8m_model import YT8MModel
+from official.vision.beta.projects.yt8m.modeling.yt8m_model import DbofModel
 
 
 @task_factory.register_task_cls(yt8m_cfg.YT8MTask)
@@ -40,13 +40,26 @@ class YT8MTask(base_task.Task):
     input_specs = tf.keras.layers.InputSpec(shape=[None] + common_input_shape)
     logging.info('Build model input %r', common_input_shape)
 
+    l2_weight_decay = self.task_config.losses.l2_weight_decay
+    # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
+    # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
+    # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
+    l2_regularizer = (
+        tf.keras.regularizers.l2(l2_weight_decay /
+                                 2.0) if l2_weight_decay else None)
     # Model configuration.
     model_config = self.task_config.model
-    model = YT8MModel(
-        input_params=model_config,
+    norm_activation_config = model_config.norm_activation
+    model = DbofModel(
+        params=model_config,
         input_specs=input_specs,
         num_frames=train_cfg.num_frames,
-        num_classes=train_cfg.num_classes)
+        num_classes=train_cfg.num_classes,
+        activation=norm_activation_config.activation,
+        use_sync_bn=norm_activation_config.use_sync_bn,
+        norm_momentum=norm_activation_config.norm_momentum,
+        norm_epsilon=norm_activation_config.norm_epsilon,
+        kernel_regularizer=l2_regularizer)
     return model
 
   def build_inputs(self, params: yt8m_cfg.DataConfig, input_context=None):
@@ -163,9 +176,10 @@ class YT8MTask(base_task.Task):
     num_frames = tf.cast(num_frames, tf.float32)
     sample_frames = self.task_config.train_data.num_frames
     if self.task_config.model.sample_random_frames:
-      features = utils.SampleRandomFrames(features, num_frames, sample_frames)
+      features = utils.sample_random_frames(features, num_frames, sample_frames)
     else:
-      features = utils.SampleRandomSequence(features, num_frames, sample_frames)
+      features = utils.sample_random_sequence(features, num_frames,
+                                              sample_frames)
 
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
@@ -237,9 +251,10 @@ class YT8MTask(base_task.Task):
     # sample random frames (None, 5, 1152) -> (None, 30, 1152)
     sample_frames = self.task_config.validation_data.num_frames
     if self.task_config.model.sample_random_frames:
-      features = utils.SampleRandomFrames(features, num_frames, sample_frames)
+      features = utils.sample_random_frames(features, num_frames, sample_frames)
     else:
-      features = utils.SampleRandomSequence(features, num_frames, sample_frames)
+      features = utils.sample_random_sequence(features, num_frames,
+                                              sample_frames)
 
     outputs = self.inference_step(features, model)
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
@@ -276,7 +291,7 @@ class YT8MTask(base_task.Task):
         predictions=step_logs[self.avg_prec_metric.name][1])
     return state
 
-  def reduce_aggregated_logs(self, aggregated_logs):
+  def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     avg_prec_metrics = self.avg_prec_metric.get()
     self.avg_prec_metric.clear()
     return avg_prec_metrics

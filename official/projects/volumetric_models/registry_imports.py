@@ -12,18 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""YT8M model training driver."""
+"""All necessary imports for registration."""
 
-from absl import app
-
-from official.common import flags as tfm_flags
-from official.vision.beta import train
 # pylint: disable=unused-import
-from official.vision.beta.projects.yt8m.configs import yt8m
-from official.vision.beta.projects.yt8m.tasks import yt8m_task
-# pylint: enable=unused-import
-
-
-if __name__ == '__main__':
-  tfm_flags.define_flags()
-  app.run(train.main)
+from official.common import registry_imports
+from official.projects.volumetric_models.configs import semantic_segmentation_3d as semantic_segmentation_3d_cfg
+from official.projects.volumetric_models.modeling import backbones
+from official.projects.volumetric_models.modeling import decoders
+from official.projects.volumetric_models.tasks import semantic_segmentation_3d

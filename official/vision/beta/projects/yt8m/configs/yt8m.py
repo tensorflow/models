@@ -13,14 +13,15 @@
 # limitations under the License.
 
 """Video classification configuration definition."""
+import dataclasses
 from typing import Optional, Tuple
 from absl import flags
-import dataclasses
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
+from official.vision.beta.configs import common
 
 FLAGS = flags.FLAGS
 
@@ -66,16 +67,28 @@ def yt8m(is_training):
 
 
 @dataclasses.dataclass
-class YT8MModel(hyperparams.Config):
+class MoeModel(hyperparams.Config):
   """The model config."""
-  cluster_size: int = 2048
-  hidden_size: int = 2048
+  num_mixtures: int = 5
+  l2_penalty: float = 1e-5
+  use_input_context_gate: bool = False
+  use_output_context_gate: bool = False
+
+
+@dataclasses.dataclass
+class DbofModel(hyperparams.Config):
+  """The model config."""
+  cluster_size: int = 3000
+  hidden_size: int = 2000
   add_batch_norm: bool = True
   sample_random_frames: bool = True
-  is_training: bool = True
-  activation: str = 'relu6'
+  use_context_gate_cluster_layer: bool = False
+  context_gate_cluster_bottleneck_size: int = 0
   pooling_method: str = 'average'
   yt8m_agg_classifier_model: str = 'MoeModel'
+  agg_model: hyperparams.Config = MoeModel()
+  norm_activation: common.NormActivation = common.NormActivation(
+      activation='relu', use_sync_bn=False)
 
 
 @dataclasses.dataclass
@@ -83,12 +96,13 @@ class Losses(hyperparams.Config):
   name: str = 'binary_crossentropy'
   from_logits: bool = False
   label_smoothing: float = 0.0
+  l2_weight_decay: float = 1e-5
 
 
 @dataclasses.dataclass
 class YT8MTask(cfg.TaskConfig):
   """The task config."""
-  model: YT8MModel = YT8MModel()
+  model: DbofModel = DbofModel()
   train_data: DataConfig = yt8m(is_training=True)
   validation_data: DataConfig = yt8m(is_training=False)
   losses: Losses = Losses()
@@ -102,8 +116,8 @@ def add_trainer(
     experiment: cfg.ExperimentConfig,
     train_batch_size: int,
     eval_batch_size: int,
-    learning_rate: float = 0.005,
-    train_epochs: int = 44,
+    learning_rate: float = 0.0001,
+    train_epochs: int = 50,
 ):
   """Add and config a trainer to the experiment config."""
   if YT8M_TRAIN_EXAMPLES <= 0:
@@ -115,13 +129,14 @@ def add_trainer(
   experiment.task.train_data.global_batch_size = train_batch_size
   experiment.task.validation_data.global_batch_size = eval_batch_size
   steps_per_epoch = YT8M_TRAIN_EXAMPLES // train_batch_size
+  steps_per_loop = 30
   experiment.trainer = cfg.TrainerConfig(
-      steps_per_loop=steps_per_epoch,
-      summary_interval=steps_per_epoch,
-      checkpoint_interval=steps_per_epoch,
+      steps_per_loop=steps_per_loop,
+      summary_interval=steps_per_loop,
+      checkpoint_interval=steps_per_loop,
       train_steps=train_epochs * steps_per_epoch,
       validation_steps=YT8M_VAL_EXAMPLES // eval_batch_size,
-      validation_interval=steps_per_epoch,
+      validation_interval=steps_per_loop,
       optimizer_config=optimization.OptimizationConfig({
           'optimizer': {
               'type': 'adam',
@@ -132,9 +147,18 @@ def add_trainer(
               'exponential': {
                   'initial_learning_rate': learning_rate,
                   'decay_rate': 0.95,
-                  'decay_steps': 1500000,
+                  'decay_steps': int(steps_per_epoch * 1.5),
+                  'offset': 500,
               }
           },
+          'warmup': {
+              'linear': {
+                  'name': 'linear',
+                  'warmup_learning_rate': 0,
+                  'warmup_steps': 500,
+              },
+              'type': 'linear',
+          }
       }))
   return experiment
 
@@ -154,4 +178,17 @@ def yt8m_experiment() -> cfg.ExperimentConfig:
           'task.train_data.feature_names != None',
       ])
 
-  return add_trainer(exp_config, train_batch_size=512, eval_batch_size=512)
+  # Per TPUv3 Core batch size 16GB HBM. `factor` in range(1, 26)
+  factor = 1
+  num_cores = 32  # for TPU 4x4
+  train_per_core_bs = 32 * factor
+  train_bs = train_per_core_bs * num_cores
+  eval_per_core_bs = 32 * 50  # multiplier<=100
+  eval_bs = eval_per_core_bs * num_cores
+  # based lr=0.0001 for bs=512
+  return add_trainer(
+      exp_config,
+      train_batch_size=train_bs,
+      eval_batch_size=eval_bs,
+      learning_rate=0.0001 * (train_bs / 512),
+      train_epochs=100)

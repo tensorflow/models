@@ -37,8 +37,8 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
     input_specs = tf.keras.layers.InputSpec(shape=[num_frames, feature_dims])
 
     num_classes = 3862
-    model = yt8m_model.YT8MModel(
-        input_params=yt8m_cfg.YT8MTask.model,
+    model = yt8m_model.DbofModel(
+        params=yt8m_cfg.YT8MTask.model,
         num_frames=num_frames,
         num_classes=num_classes,
         input_specs=input_specs)
@@ -49,10 +49,10 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual([2, num_classes], logits.numpy().shape)
 
   def test_serialize_deserialize(self):
-    model = yt8m_model.YT8MModel(input_params=yt8m_cfg.YT8MTask.model)
+    model = yt8m_model.DbofModel(params=yt8m_cfg.YT8MTask.model)
 
     config = model.get_config()
-    new_model = yt8m_model.YT8MModel.from_config(config)
+    new_model = yt8m_model.DbofModel.from_config(config)
 
     # If the serialization was successful,
     # the new config should match the old.
