@@ -24,9 +24,7 @@ from official.nlp.modeling import networks
 class BertEncoder(networks.BertEncoder):
   """Deprecated."""
 
-  def __init__(
-      self,
-      **kwargs):
+  def __init__(self, *args, **kwargs):
     if 'dict_outputs' in kwargs:
       kwargs.pop('dict_outputs')
-    super().__init__(dict_outputs=True, **kwargs)
+    super().__init__(*args, dict_outputs=True, **kwargs)

@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""YT8M model training driver."""
+"""TensorFlow Model Garden Vision training driver."""
 
 from absl import app
+import gin  # pylint: disable=unused-import
 
 from official.common import flags as tfm_flags
+from official.projects.volumetric_models import registry_imports  # pylint: disable=unused-import
 from official.vision.beta import train
-# pylint: disable=unused-import
-from official.vision.beta.projects.yt8m.configs import yt8m
-from official.vision.beta.projects.yt8m.tasks import yt8m_task
-# pylint: enable=unused-import
+
+
+def main(_):
+  train.main(_)
 
 
 if __name__ == '__main__':
   tfm_flags.define_flags()
-  app.run(train.main)
+  app.run(main)

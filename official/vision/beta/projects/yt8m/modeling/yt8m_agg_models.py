@@ -13,13 +13,12 @@
 # limitations under the License.
 
 """Contains model definitions."""
+from typing import Optional, Dict, Any
 
 import tensorflow as tf
+from official.vision.beta.projects.yt8m.modeling import yt8m_model_utils as utils
 
 layers = tf.keras.layers
-regularizers = tf.keras.regularizers
-# The number of mixtures (excluding the dummy 'expert') used for MoeModel.
-moe_num_mixtures = 2
 
 
 class LogisticModel():
@@ -41,7 +40,7 @@ class LogisticModel():
     output = layers.Dense(
         vocab_size,
         activation=tf.nn.sigmoid,
-        kernel_regularizer=regularizers.l2(l2_penalty))(
+        kernel_regularizer=tf.keras.regularizers.l2(l2_penalty))(
             model_input)
     return {"predictions": output}
 
@@ -52,8 +51,12 @@ class MoeModel():
   def create_model(self,
                    model_input,
                    vocab_size,
-                   num_mixtures=None,
-                   l2_penalty=1e-8):
+                   num_mixtures: int = 2,
+                   use_input_context_gate: bool = False,
+                   use_output_context_gate: bool = False,
+                   normalizer_fn=None,
+                   normalizer_params: Optional[Dict[str, Any]] = None,
+                   l2_penalty: float = 1e-5):
     """Creates a Mixture of (Logistic) Experts model.
 
      The model consists of a per-class softmax distribution over a
@@ -64,6 +67,10 @@ class MoeModel():
       vocab_size: The number of classes in the dataset.
       num_mixtures: The number of mixtures (excluding a dummy 'expert' that
         always predicts the non-existence of an entity).
+      use_input_context_gate: if True apply context gate layer to the input.
+      use_output_context_gate: if True apply context gate layer to the output.
+      normalizer_fn: normalization op constructor (e.g. batch norm).
+      normalizer_params: parameters to the `normalizer_fn`.
       l2_penalty: How much to penalize the squared magnitudes of parameter
         values.
 
@@ -72,18 +79,23 @@ class MoeModel():
       of the model in the 'predictions' key. The dimensions of the tensor
       are batch_size x num_classes.
     """
-    num_mixtures = num_mixtures or moe_num_mixtures
+    if use_input_context_gate:
+      model_input = utils.context_gate(
+          model_input,
+          normalizer_fn=normalizer_fn,
+          normalizer_params=normalizer_params,
+      )
 
     gate_activations = layers.Dense(
         vocab_size * (num_mixtures + 1),
         activation=None,
         bias_initializer=None,
-        kernel_regularizer=regularizers.l2(l2_penalty))(
+        kernel_regularizer=tf.keras.regularizers.l2(l2_penalty))(
             model_input)
     expert_activations = layers.Dense(
         vocab_size * num_mixtures,
         activation=None,
-        kernel_regularizer=regularizers.l2(l2_penalty))(
+        kernel_regularizer=tf.keras.regularizers.l2(l2_penalty))(
             model_input)
 
     gating_distribution = tf.nn.softmax(
@@ -98,4 +110,10 @@ class MoeModel():
         gating_distribution[:, :num_mixtures] * expert_distribution, 1)
     final_probabilities = tf.reshape(final_probabilities_by_class_and_batch,
                                      [-1, vocab_size])
+    if use_output_context_gate:
+      final_probabilities = utils.context_gate(
+          final_probabilities,
+          normalizer_fn=normalizer_fn,
+          normalizer_params=normalizer_params,
+      )
     return {"predictions": final_probabilities}
