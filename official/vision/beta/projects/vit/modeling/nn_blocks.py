@@ -15,11 +15,11 @@
 """Keras-based TransformerEncoder block layer."""
 import tensorflow as tf
 
-from official.nlp import keras_nlp
+from official.nlp import modeling
 from official.vision.beta.modeling.layers.nn_layers import StochasticDepth
 
 
-class TransformerEncoderBlock(keras_nlp.layers.TransformerEncoderBlock):
+class TransformerEncoderBlock(modeling.layers.TransformerEncoderBlock):
   """TransformerEncoderBlock layer with stochastic depth."""
 
   def __init__(self, *args, stochastic_depth_drop_rate=0.0, **kwargs):
