@@ -53,17 +53,16 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
                        shared_decoder,
                        is_training=True):
     num_classes = 3
-    min_level = 3
-    max_level = 7
+    min_level = 2
+    max_level = 6
     num_scales = 3
     aspect_ratios = [1.0]
     anchor_size = 3
     resnet_model_id = 50
     segmentation_resnet_model_id = 50
-    segmentation_output_stride = 16
     aspp_dilation_rates = [6, 12, 18]
-    aspp_decoder_level = int(np.math.log2(segmentation_output_stride))
-    fpn_decoder_level = 3
+    aspp_decoder_level = 2
+    fpn_decoder_level = 2
     num_anchors_per_location = num_scales * len(aspect_ratios)
     image_size = 128
     images = np.random.rand(2, image_size, image_size, 3)
@@ -115,15 +114,20 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
       segmentation_backbone = resnet.ResNet(
           model_id=segmentation_resnet_model_id)
     if not shared_decoder:
+      feature_fusion = 'deeplabv3plus'
       level = aspp_decoder_level
       segmentation_decoder = aspp.ASPP(
           level=level, dilation_rates=aspp_dilation_rates)
     else:
+      feature_fusion = 'panoptic_fpn_fusion'
       level = fpn_decoder_level
       segmentation_decoder = None
     segmentation_head = segmentation_heads.SegmentationHead(
         num_classes=2,  # stuff and common class for things,
         level=level,
+        feature_fusion=feature_fusion,
+        decoder_min_level=min_level,
+        decoder_max_level=max_level,
         num_convs=2)
 
     model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
@@ -179,16 +183,15 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
                    shared_backbone, shared_decoder,
                    generate_panoptic_masks):
     num_classes = 3
-    min_level = 3
-    max_level = 4
+    min_level = 2
+    max_level = 6
     num_scales = 3
     aspect_ratios = [1.0]
     anchor_size = 3
     segmentation_resnet_model_id = 101
-    segmentation_output_stride = 16
     aspp_dilation_rates = [6, 12, 18]
-    aspp_decoder_level = int(np.math.log2(segmentation_output_stride))
-    fpn_decoder_level = 3
+    aspp_decoder_level = 2
+    fpn_decoder_level = 2
 
     class_agnostic_bbox_pred = False
     cascade_class_ensemble = False
@@ -250,15 +253,20 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         segmentation_backbone = resnet.ResNet(
             model_id=segmentation_resnet_model_id)
       if not shared_decoder:
+        feature_fusion = 'deeplabv3plus'
         level = aspp_decoder_level
         segmentation_decoder = aspp.ASPP(
             level=level, dilation_rates=aspp_dilation_rates)
       else:
+        feature_fusion = 'panoptic_fpn_fusion'
         level = fpn_decoder_level
         segmentation_decoder = None
       segmentation_head = segmentation_heads.SegmentationHead(
           num_classes=2,  # stuff and common class for things,
           level=level,
+          feature_fusion=feature_fusion,
+          decoder_min_level=min_level,
+          decoder_max_level=max_level,
           num_convs=2)
 
       model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
@@ -354,10 +362,11 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         max_num_detections=100,
         stuff_classes_offset=90)
     segmentation_resnet_model_id = 101
-    segmentation_output_stride = 16
     aspp_dilation_rates = [6, 12, 18]
-    aspp_decoder_level = int(np.math.log2(segmentation_output_stride))
-    fpn_decoder_level = 3
+    min_level = 2
+    max_level = 6
+    aspp_decoder_level = 2
+    fpn_decoder_level = 2
     shared_decoder = shared_decoder and shared_backbone
     mask_head = instance_heads.MaskHead(num_classes=2, upsample_factor=2)
     mask_sampler_obj = mask_sampler.MaskSampler(
@@ -370,15 +379,20 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
       segmentation_backbone = resnet.ResNet(
           model_id=segmentation_resnet_model_id)
     if not shared_decoder:
+      feature_fusion = 'deeplabv3plus'
       level = aspp_decoder_level
       segmentation_decoder = aspp.ASPP(
           level=level, dilation_rates=aspp_dilation_rates)
     else:
+      feature_fusion = 'panoptic_fpn_fusion'
       level = fpn_decoder_level
       segmentation_decoder = None
     segmentation_head = segmentation_heads.SegmentationHead(
         num_classes=2,  # stuff and common class for things,
         level=level,
+        feature_fusion=feature_fusion,
+        decoder_min_level=min_level,
+        decoder_max_level=max_level,
         num_convs=2)
 
     model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
@@ -397,8 +411,8 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         segmentation_backbone=segmentation_backbone,
         segmentation_decoder=segmentation_decoder,
         segmentation_head=segmentation_head,
-        min_level=3,
-        max_level=7,
+        min_level=min_level,
+        max_level=max_level,
         num_scales=3,
         aspect_ratios=[1.0],
         anchor_size=3)
@@ -433,10 +447,11 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         max_num_detections=100,
         stuff_classes_offset=90)
     segmentation_resnet_model_id = 101
-    segmentation_output_stride = 16
     aspp_dilation_rates = [6, 12, 18]
-    aspp_decoder_level = int(np.math.log2(segmentation_output_stride))
-    fpn_decoder_level = 3
+    min_level = 2
+    max_level = 6
+    aspp_decoder_level = 2
+    fpn_decoder_level = 2
     shared_decoder = shared_decoder and shared_backbone
     mask_head = instance_heads.MaskHead(num_classes=2, upsample_factor=2)
     mask_sampler_obj = mask_sampler.MaskSampler(
@@ -449,15 +464,20 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
       segmentation_backbone = resnet.ResNet(
           model_id=segmentation_resnet_model_id)
     if not shared_decoder:
+      feature_fusion = 'deeplabv3plus'
       level = aspp_decoder_level
       segmentation_decoder = aspp.ASPP(
           level=level, dilation_rates=aspp_dilation_rates)
     else:
+      feature_fusion = 'panoptic_fpn_fusion'
       level = fpn_decoder_level
       segmentation_decoder = None
     segmentation_head = segmentation_heads.SegmentationHead(
         num_classes=2,  # stuff and common class for things,
         level=level,
+        feature_fusion=feature_fusion,
+        decoder_min_level=min_level,
+        decoder_max_level=max_level,
         num_convs=2)
 
     model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
@@ -476,8 +496,8 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         segmentation_backbone=segmentation_backbone,
         segmentation_decoder=segmentation_decoder,
         segmentation_head=segmentation_head,
-        min_level=3,
-        max_level=7,
+        min_level=max_level,
+        max_level=max_level,
         num_scales=3,
         aspect_ratios=[1.0],
         anchor_size=3)
