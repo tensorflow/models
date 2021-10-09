@@ -47,8 +47,8 @@ from official.vision.beta.serving import export_saved_model_lib
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('experiment', 'panoptic_maskrcnn_resnetfpn_coco',
-                    'experiment type, e.g. panoptic_maskrcnn_resnetfpn_coco')
+flags.DEFINE_string('experiment', 'panoptic_fpn_coco',
+                    'experiment type, e.g. panoptic_fpn_coco')
 flags.DEFINE_string('export_dir', None, 'The export directory.')
 flags.DEFINE_string('checkpoint_path', None, 'Checkpoint path.')
 flags.DEFINE_multi_string(

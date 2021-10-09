@@ -25,7 +25,7 @@ from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_mas
 class PanopticMaskRCNNConfigTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(
-      ('panoptic_maskrcnn_resnetfpn_coco',),
+      ('panoptic_fpn_coco',),
   )
   def test_panoptic_maskrcnn_configs(self, config_name):
     config = exp_factory.get_exp_config(config_name)

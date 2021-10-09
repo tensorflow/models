@@ -144,8 +144,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   panoptic_quality_evaluator: PanopticQualityEvaluator = PanopticQualityEvaluator()  # pylint: disable=line-too-long
 
 
-@exp_factory.register_config_factory('panoptic_maskrcnn_resnetfpn_coco')
-def panoptic_maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
+@exp_factory.register_config_factory('panoptic_fpn_coco')
+def panoptic_fpn_coco() -> cfg.ExperimentConfig:
   """COCO panoptic segmentation with Panoptic Mask R-CNN."""
   train_batch_size = 64
   eval_batch_size = 8
@@ -180,7 +180,11 @@ def panoptic_maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
               stuff_classes_offset=90,
               segmentation_model=SEGMENTATION_MODEL(
                   num_classes=num_semantic_segmentation_classes,
-                  head=SEGMENTATION_HEAD(level=3))),
+                  head=SEGMENTATION_HEAD(
+                    level=2,
+                    decoder_min_level=2,
+                    decoder_max_level=6,
+                    feature_fusion='panoptic_fpn_fusion'))),
           losses=Losses(l2_weight_decay=0.00004),
           train_data=DataConfig(
               input_path=os.path.join(_COCO_INPUT_PATH_BASE, 'train*'),
