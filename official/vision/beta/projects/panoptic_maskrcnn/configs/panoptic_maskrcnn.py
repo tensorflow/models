@@ -181,10 +181,10 @@ def panoptic_fpn_coco() -> cfg.ExperimentConfig:
               segmentation_model=SEGMENTATION_MODEL(
                   num_classes=num_semantic_segmentation_classes,
                   head=SEGMENTATION_HEAD(
-                    level=2,
-                    decoder_min_level=2,
-                    decoder_max_level=6,
-                    feature_fusion='panoptic_fpn_fusion'))),
+                      level=2,
+                      decoder_min_level=2,
+                      decoder_max_level=6,
+                      feature_fusion='panoptic_fpn_fusion'))),
           losses=Losses(l2_weight_decay=0.00004),
           train_data=DataConfig(
               input_path=os.path.join(_COCO_INPUT_PATH_BASE, 'train*'),
