@@ -27,7 +27,7 @@ class MaskedLM(tf.keras.layers.Layer):
 
   Example:
   ```python
-  encoder=keras_nlp.BertEncoder(...)
+  encoder=modeling.networks.BertEncoder(...)
   lm_layer=MaskedLM(embedding_table=encoder.get_embedding_table())
   ```
 
