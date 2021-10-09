@@ -22,24 +22,41 @@ import tensorflow as tf
 
 from official.vision.beta.modeling.heads import segmentation_heads
 
-
 class SegmentationHeadTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (2, 'pyramid_fusion'),
-      (3, 'pyramid_fusion'),
-  )
-  def test_forward(self, level, feature_fusion):
-    head = segmentation_heads.SegmentationHead(
-        num_classes=10, level=level, feature_fusion=feature_fusion)
+      (2, 'pyramid_fusion', None, None),
+      (3, 'pyramid_fusion', None, None),
+      (2, 'panoptic_fpn_fusion', 2, 5),
+      (2, 'panoptic_fpn_fusion', 2, 6),
+      (3, 'panoptic_fpn_fusion', 3, 5),
+      (3, 'panoptic_fpn_fusion', 3, 6))
+  def test_forward(self, level, feature_fusion,
+                   decoder_min_level, decoder_max_level):
     backbone_features = {
         '3': np.random.rand(2, 128, 128, 16),
         '4': np.random.rand(2, 64, 64, 16),
+        '5': np.random.rand(2, 32, 32, 16),
     }
     decoder_features = {
-        '3': np.random.rand(2, 128, 128, 16),
-        '4': np.random.rand(2, 64, 64, 16),
+        '3': np.random.rand(2, 128, 128, 64),
+        '4': np.random.rand(2, 64, 64, 64),
+        '5': np.random.rand(2, 32, 32, 64),
+        '6': np.random.rand(2, 16, 16, 64),
     }
+
+    if feature_fusion == 'panoptic_fpn_fusion':
+      backbone_features['2'] = np.random.rand(2, 256, 256, 16)
+      decoder_features['2'] = np.random.rand(2, 256, 256, 64)
+
+    head = segmentation_heads.SegmentationHead(
+        num_classes=10,
+        level=level,
+        feature_fusion=feature_fusion,
+        decoder_min_level=decoder_min_level,
+        decoder_max_level=decoder_max_level,
+        num_decoder_filters=64)
+
     logits = head(backbone_features, decoder_features)
 
     if level in decoder_features:

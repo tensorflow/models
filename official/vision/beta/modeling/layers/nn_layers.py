@@ -13,12 +13,14 @@
 # limitations under the License.
 
 """Contains common building blocks for neural networks."""
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
 
 from absl import logging
 import tensorflow as tf
+import tensorflow_addons as tfa
 
 from official.modeling import tf_utils
+from official.vision.beta.ops import spatial_transform_ops
 
 
 # Type annotations.
@@ -306,6 +308,113 @@ def pyramid_feature_fusion(inputs, target_level):
       resampled_feats.append(feat)
 
   return tf.math.add_n(resampled_feats)
+
+
+class PanopticFPNFusion(tf.keras.Model):
+  """Creates a Panoptic FPN feature Fusion layer.
+
+  This implements feature fusion for semantic segmentation head from the paper:
+  Alexander Kirillov, Ross Girshick, Kaiming He and Piotr Dollar.
+  Panoptic Feature Pyramid Networks.
+  (https://arxiv.org/pdf/1901.02446.pdf)
+  """
+
+  def __init__(
+      self,
+      min_level: int = 2,
+      max_level: int = 5,
+      target_level: int = 2,
+      num_filters: int = 128,
+      num_fpn_filters: int = 256,
+      activation: str = 'relu',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
+
+    """Initializes panoptic FPN feature fusion layer.
+
+    Args:
+      min_level: An `int` of minimum level to use in feature fusion.
+      max_level: An `int` of maximum level to use in feature fusion.
+      target_level: An `int` of the target feature level for feature fusion..      
+      num_filters: An `int` number of filters in conv2d layers.
+      num_fpn_filters: An `int` number of filters in the FPN outputs
+      activation: A `str` name of the activation function.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default is None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      **kwargs: Additional keyword arguments to be passed.
+    Returns:
+      A `float` `tf.Tensor` of shape [batch_size, feature_height, feature_width,
+        feature_channel].
+    """
+    if target_level > max_level:
+      raise ValueError('target_level should be less than max_level')
+
+    self._config_dict = {
+        'min_level': min_level,
+        'max_level': max_level,
+        'target_level': target_level,
+        'num_filters': num_filters,
+        'num_fpn_filters': num_fpn_filters,
+        'activation': activation,
+        'kernel_regularizer': kernel_regularizer,
+        'bias_regularizer': bias_regularizer,
+    }
+    norm = tfa.layers.GroupNormalization
+    conv2d = tf.keras.layers.Conv2D
+    activation_fn = tf.keras.layers.Activation(
+        tf_utils.get_activation(activation))
+    if tf.keras.backend.image_data_format() == 'channels_last':
+      norm_axis = -1
+    else:
+      norm_axis = 1
+    inputs = self._build_inputs(num_fpn_filters, min_level, max_level)
+
+    upscaled_features = []
+    for level in range(min_level, max_level + 1):
+      num_conv_layers = max(1, level - target_level)
+      x = inputs[str(level)]
+      for i in range(num_conv_layers):
+        x = conv2d(
+            filters=num_filters,
+            kernel_size=3,
+            padding='same',
+            kernel_initializer=tf.keras.initializers.VarianceScaling(),
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer)(x)
+        x = norm(groups=32, axis=norm_axis)(x)
+        x = activation_fn(x)
+        if not level == target_level:
+          x = spatial_transform_ops.nearest_upsampling(x, scale=2)
+      upscaled_features.append(x)
+
+    fused_features = tf.math.add_n(upscaled_features)
+    self._output_specs = {str(target_level): fused_features.get_shape()}
+
+
+    super(PanopticFPNFusion, self).__init__(
+        inputs=inputs, outputs=fused_features, **kwargs)
+
+
+  def _build_inputs(self, num_filters: int,
+                    min_level: int, max_level: int):
+    inputs = {}
+    for level in range(min_level, max_level + 1):
+      inputs[str(level)] = tf.keras.Input(shape=[None, None, num_filters])
+    return inputs
+
+  def get_config(self) -> Mapping[str, Any]:
+    return self._config_dict
+
+  @classmethod
+  def from_config(cls, config, custom_objects=None):
+    return cls(**config)
+
+  @property
+  def output_specs(self) -> Mapping[str, tf.TensorShape]:
+    """A dict of {level: TensorShape} pairs for the model output."""
+    return self._output_specs
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
