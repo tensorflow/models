@@ -182,6 +182,8 @@ def panoptic_fpn_coco() -> cfg.ExperimentConfig:
                   num_classes=num_semantic_segmentation_classes,
                   head=SEGMENTATION_HEAD(
                       level=2,
+                      num_convs=0,
+                      num_filters=128,
                       decoder_min_level=2,
                       decoder_max_level=6,
                       feature_fusion='panoptic_fpn_fusion'))),
@@ -199,6 +201,8 @@ def panoptic_fpn_coco() -> cfg.ExperimentConfig:
               drop_remainder=False),
           annotation_file=os.path.join(_COCO_INPUT_PATH_BASE,
                                        'instances_val2017.json'),
+          segmentation_evaluation=semantic_segmentation.Evaluation(
+              report_per_class_iou=False, report_train_mean_iou=False),
           panoptic_quality_evaluator=PanopticQualityEvaluator(
               num_categories=num_panoptic_categories,
               ignored_label=0,
