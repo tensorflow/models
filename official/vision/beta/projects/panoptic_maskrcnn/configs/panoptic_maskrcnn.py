@@ -106,6 +106,7 @@ class Losses(maskrcnn.Losses):
       default_factory=list)
   semantic_segmentation_use_groundtruth_dimension: bool = True
   semantic_segmentation_top_k_percent_pixels: float = 1.0
+  instance_segmentation_weight: float = 1.0
   semantic_segmentation_weight: float = 1.0
 
 

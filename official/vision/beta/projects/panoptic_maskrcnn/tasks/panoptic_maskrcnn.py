@@ -178,6 +178,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         ignore_label=params.semantic_segmentation_ignore_label,
         use_groundtruth_dimension=use_groundtruth_dimension,
         top_k_percent_pixels=params.semantic_segmentation_top_k_percent_pixels)
+    
+    instance_segmentation_weight = params.instance_segmentation_weight
     semantic_segmentation_weight = params.semantic_segmentation_weight
 
     losses = super(PanopticMaskRCNNTask, self).build_losses(
@@ -190,7 +192,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         labels['gt_segmentation_mask'])
 
     model_loss = (
-        maskrcnn_loss + semantic_segmentation_weight * segmentation_loss)
+        instance_segmentation_weight * maskrcnn_loss + 
+        semantic_segmentation_weight * segmentation_loss)
 
     total_loss = model_loss
     if aux_losses:
