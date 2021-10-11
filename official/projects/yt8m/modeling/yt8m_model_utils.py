@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Contains a collection of util functions for model construction."""
-from typing import Dict, Optional, Union, Any
+from typing import Any, Dict, Optional, Union
 
 import tensorflow as tf
 

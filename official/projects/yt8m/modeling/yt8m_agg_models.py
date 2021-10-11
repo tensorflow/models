@@ -13,10 +13,10 @@
 # limitations under the License.
 
 """Contains model definitions."""
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 import tensorflow as tf
-from official.vision.beta.projects.yt8m.modeling import yt8m_model_utils as utils
+from official.projects.yt8m.modeling import yt8m_model_utils as utils
 
 layers = tf.keras.layers
 

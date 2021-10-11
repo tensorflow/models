@@ -17,9 +17,9 @@ from typing import Optional
 
 import tensorflow as tf
 from official.modeling import tf_utils
-from official.vision.beta.projects.yt8m.configs import yt8m as yt8m_cfg
-from official.vision.beta.projects.yt8m.modeling import yt8m_agg_models
-from official.vision.beta.projects.yt8m.modeling import yt8m_model_utils as utils
+from official.projects.yt8m.configs import yt8m as yt8m_cfg
+from official.projects.yt8m.modeling import yt8m_agg_models
+from official.projects.yt8m.modeling import yt8m_model_utils as utils
 
 layers = tf.keras.layers
 

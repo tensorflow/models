@@ -26,10 +26,10 @@
 from typing import Dict
 
 import tensorflow as tf
+from official.projects.yt8m.dataloaders import utils
 from official.vision.beta.configs import video_classification as exp_cfg
 from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
-from official.vision.beta.projects.yt8m.dataloaders import utils
 
 
 def resize_axis(tensor, axis, new_size, fill_value=0):
