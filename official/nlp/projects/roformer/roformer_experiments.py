@@ -54,8 +54,8 @@ def roformer_pretraining() -> cfg.ExperimentConfig:
   config = cfg.ExperimentConfig(
       runtime=cfg.RuntimeConfig(enable_xla=True),
       task=masked_lm.MaskedLMConfig(
-          train_data=pretrain_dataloader.BertPretrainDataConfig(),
-          validation_data=pretrain_dataloader.BertPretrainDataConfig(
+          train_data=pretrain_dataloader.BertPretrainDataConfig(use_v2_feature_names=True),
+          validation_data=pretrain_dataloader.BertPretrainDataConfig(use_v2_feature_names=True,
               is_training=False)),
       trainer=cfg.TrainerConfig(
           optimizer_config=RoformerOptimizationConfig(), train_steps=1000000),
