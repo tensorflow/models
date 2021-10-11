@@ -12,18 +12,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""TensorFlow Model Garden Vision training driver."""
-
-from absl import app
-from absl import flags
-
-from official.common import flags as tfm_flags
-from official.vision.beta import train
-from official.vision.beta.projects.yolo.common import registry_imports  # pylint: disable=unused-import
-
-FLAGS = flags.FLAGS
-
-
-if __name__ == '__main__':
-  tfm_flags.define_flags()
-  app.run(train.main)

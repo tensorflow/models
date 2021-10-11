@@ -14,7 +14,9 @@
 
 """Contains common building blocks for yolo neural networks."""
 from typing import Callable, List, Tuple
+
 import tensorflow as tf
+
 from official.modeling import tf_utils
 from official.vision.beta.ops import spatial_transform_ops
 
@@ -141,6 +143,7 @@ class ConvBN(tf.keras.layers.Layer):
     # activation params
     self._activation = activation
     self._leaky_alpha = leaky_alpha
+    self._fuse = False
 
     super().__init__(**kwargs)
 
@@ -164,6 +167,8 @@ class ConvBN(tf.keras.layers.Layer):
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon,
           axis=self._bn_axis)
+    else:
+      self.bn = None
 
     if self._activation == 'leaky':
       self._activation_fn = tf.keras.layers.LeakyReLU(alpha=self._leaky_alpha)
@@ -174,10 +179,43 @@ class ConvBN(tf.keras.layers.Layer):
 
   def call(self, x):
     x = self.conv(x)
-    if self._use_bn:
+    if self._use_bn and not self._fuse:
       x = self.bn(x)
     x = self._activation_fn(x)
     return x
+
+  def fuse(self):
+    if self.bn is not None and not self._use_separable_conv:
+      # Fuse convolution and batchnorm, gives me +2 to 3 FPS 2ms latency.
+      # layers: https://tehnokv.com/posts/fusing-batchnorm-and-conv/
+      if self._fuse:
+        return
+
+      self._fuse = True
+      conv_weights = self.conv.get_weights()[0]
+      gamma, beta, moving_mean, moving_variance = self.bn.get_weights()
+
+      self.conv.use_bias = True
+      infilters = conv_weights.shape[-2]
+      self.conv.build([None, None, None, infilters])
+
+      base = tf.sqrt(self._norm_epsilon + moving_variance)
+      w_conv_base = tf.transpose(conv_weights, perm=(3, 2, 0, 1))
+      w_conv = tf.reshape(w_conv_base, [conv_weights.shape[-1], -1])
+
+      w_bn = tf.linalg.diag(gamma / base)
+      w_conv = tf.reshape(tf.matmul(w_bn, w_conv), w_conv_base.get_shape())
+      w_conv = tf.transpose(w_conv, perm=(2, 3, 1, 0))
+
+      b_bn = beta - gamma * moving_mean / base
+
+      self.conv.set_weights([w_conv, b_bn])
+      del self.bn
+
+      self.trainable = False
+      self.conv.trainable = False
+      self.bn = None
+    return
 
   def get_config(self):
     # used to store/share parameters to reconstruct the model

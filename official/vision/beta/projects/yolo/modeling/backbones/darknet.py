@@ -454,6 +454,9 @@ class Darknet(tf.keras.Model):
   def _build_struct(self, net, inputs):
     if self._use_reorg_input:
       inputs = nn_blocks.Reorg()(inputs)
+      net[0].filters = net[1].filters
+      net[0].output_name = net[1].output_name
+      del net[1]
 
     endpoints = collections.OrderedDict()
     stack_outputs = [inputs]
