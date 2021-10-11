@@ -37,8 +37,7 @@ aps = calculator.peek_map_at_n()
 ```
 """
 
-from official.vision.beta.projects.yt8m.eval_utils import \
-    average_precision_calculator
+from official.projects.yt8m.eval_utils import average_precision_calculator
 
 
 class MeanAveragePrecisionCalculator(object):

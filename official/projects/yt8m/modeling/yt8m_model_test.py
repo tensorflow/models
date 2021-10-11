@@ -18,8 +18,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.projects.yt8m.configs import yt8m as yt8m_cfg
-from official.vision.beta.projects.yt8m.modeling import yt8m_model
+from official.projects.yt8m.configs import yt8m as yt8m_cfg
+from official.projects.yt8m.modeling import yt8m_model
 
 
 class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):

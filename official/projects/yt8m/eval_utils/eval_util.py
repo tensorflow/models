@@ -15,10 +15,8 @@
 """Provides functions to help with evaluating models."""
 import numpy as np
 import tensorflow as tf
-from official.vision.beta.projects.yt8m.eval_utils import \
-    average_precision_calculator as ap_calculator
-from official.vision.beta.projects.yt8m.eval_utils import \
-    mean_average_precision_calculator as map_calculator
+from official.projects.yt8m.eval_utils import average_precision_calculator as ap_calculator
+from official.projects.yt8m.eval_utils import mean_average_precision_calculator as map_calculator
 
 
 def flatten(l):

@@ -12,6 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Configs package definition."""
-
-from official.vision.beta.projects.yt8m.configs import yt8m
+"""Tasks package definition."""
+from official.projects.yt8m.tasks import yt8m_task
