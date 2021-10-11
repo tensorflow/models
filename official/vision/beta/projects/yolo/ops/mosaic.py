@@ -14,7 +14,6 @@
 
 """Mosaic op."""
 import random
-
 import tensorflow as tf
 import tensorflow_addons as tfa
 
@@ -55,7 +54,7 @@ class Mosaic:
         the images should be preserved.
       jitter: `float` for the maximum change in aspect ratio expected in each
         preprocessing step.
-      mosaic_crop_mode: `str` they type of mosaic to apply. The options are
+      mosaic_crop_mode: `str` the type of mosaic to apply. The options are
         {crop, scale, None}, crop will construct a mosaic by slicing images
         togther, scale will create a mosaic by concatnating and shifting the
         image, and None will default to scale and apply no post processing to
@@ -325,6 +324,12 @@ class Mosaic:
     else:
       return self._add_param(noop)
 
+  def _beta(self, alpha, beta):
+    """Generates a random number using the beta distribution."""
+    a = tf.random.gamma([], alpha)
+    b = tf.random.gamma([], beta)
+    return b / (a + b)
+
   def _mixup(self, one, two):
     """Blend together 2 images for the mixup data augmentation."""
     if self._mixup_frequency >= 1.0:
@@ -337,8 +342,8 @@ class Mosaic:
     if domo >= (1 - self._mixup_frequency):
       sample = one
       otype = one['image'].dtype
-      r = preprocessing_ops.random_uniform_strong(
-          0.4, 0.6, tf.float32, seed=self._seed)
+
+      r = self._beta(8.0, 8.0)
       sample['image'] = (
           r * tf.cast(one['image'], tf.float32) +
           (1 - r) * tf.cast(two['image'], tf.float32))
