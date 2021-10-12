@@ -400,7 +400,7 @@ def resnet_v1_152(batchnorm_training,
 
 
 # The following codes are based on the existing keras ResNet model pattern:
-# google3/third_party/tensorflow/python/keras/applications/resnet.py
+# google3/third_party/py/keras/applications/resnet.py
 def block_basic(x,
                 filters,
                 kernel_size=3,
