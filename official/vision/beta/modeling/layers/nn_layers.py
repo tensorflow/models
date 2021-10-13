@@ -34,7 +34,7 @@ def make_divisible(value: float,
 
   Args:
     value: A `float` of original value.
-    divisor: An `int` off the divisor that need to be checked upon.
+    divisor: An `int` of the divisor that need to be checked upon.
     min_value: A `float` of  minimum value threshold.
 
   Returns:
@@ -46,7 +46,7 @@ def make_divisible(value: float,
   # Make sure that round down does not go down by more than 10%.
   if new_value < 0.9 * value:
     new_value += divisor
-  return new_value
+  return int(new_value)
 
 
 def round_filters(filters: int,
