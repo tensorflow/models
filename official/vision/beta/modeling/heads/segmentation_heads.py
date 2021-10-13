@@ -21,7 +21,7 @@ from official.vision.beta.modeling.layers import nn_layers
 from official.vision.beta.ops import spatial_transform_ops
 
 
-# @tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Vision')
 class SegmentationHead(tf.keras.layers.Layer):
   """Creates a segmentation head."""
 
