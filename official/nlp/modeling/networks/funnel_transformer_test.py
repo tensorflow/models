@@ -37,9 +37,12 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
     super(FunnelTransformerEncoderTest, self).tearDown()
     tf.keras.mixed_precision.set_global_policy("float32")
 
-  @parameterized.named_parameters(("mix", "mixed_float16", tf.float16),
-                                  ("float32", "float32", tf.float32))
-  def test_network_creation(self, policy, pooled_dtype):
+  @parameterized.named_parameters(
+      ("mix_max", "mixed_float16", tf.float16, "max"),
+      ("float32_max", "float32", tf.float32, "max"),
+      ("mix_avg", "mixed_float16", tf.float16, "avg"),
+      ("float32_avg", "float32", tf.float32, "avg"))
+  def test_network_creation(self, policy, pooled_dtype, pool_type):
     tf.keras.mixed_precision.set_global_policy(policy)
 
     hidden_size = 32
@@ -53,6 +56,7 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
         num_attention_heads=2,
         num_layers=num_layers,
         pool_stride=pool_stride,
+        pool_type=pool_type,
         unpool_length=0)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -238,6 +242,7 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
         embedding_width=16,
         embedding_layer=None,
         norm_first=False,
+        pool_type="max",
         pool_stride=2,
         unpool_length=0)
     network = funnel_transformer.FunnelTransformerEncoder(**kwargs)
