@@ -90,6 +90,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       dropout.
     attention_dropout: The dropout rate to use for the attention layers within
       the transformer layers.
+    pool_type: Pooling type. Choose from ['max', 'avg'].
     pool_stride: An int or a list of ints. Pooling stride(s) to compress the
       sequence length. If set to int, each layer will have the same stride size.
       If set to list, the number of elements needs to match num_layers.
@@ -123,6 +124,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       inner_activation=lambda x: tf.keras.activations.gelu(x, approximate=True),
       output_dropout=0.1,
       attention_dropout=0.1,
+      pool_type='max',
       pool_stride=2,
       unpool_length=0,
       initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
@@ -204,9 +206,16 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       if len(pool_stride) != num_layers:
         raise ValueError('Lengths of pool_stride and num_layers are not equal.')
       pool_strides = pool_stride
+    # TODO(crickwu): explore tf.keras.layers.serialize method.
+    if pool_type == 'max':
+      pool_cls = tf.keras.layers.MaxPooling1D
+    elif pool_type == 'avg':
+      pool_cls = tf.keras.layers.AveragePooling1D
+    else:
+      raise ValueError('pool_type not supported.')
     self._att_input_pool_layers = []
     for layer_pool_stride in pool_strides:
-      att_input_pool_layer = tf.keras.layers.MaxPooling1D(
+      att_input_pool_layer = pool_cls(
           pool_size=layer_pool_stride,
           strides=layer_pool_stride,
           padding='same',
@@ -232,6 +241,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
         'embedding_width': embedding_width,
         'embedding_layer': embedding_layer,
         'norm_first': norm_first,
+        'pool_type': pool_type,
         'pool_stride': pool_stride,
         'unpool_length': unpool_length,
     }
