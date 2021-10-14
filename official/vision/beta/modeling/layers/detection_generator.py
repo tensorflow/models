@@ -391,6 +391,7 @@ def _generate_detections_batched(boxes: tf.Tensor, scores: tf.Tensor,
             score_threshold=pre_nms_score_threshold,
             pad_per_class=False,
             clip_boxes=False))
+    nmsed_classes = tf.cast(nmsed_classes, tf.int32)
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 
