@@ -22,17 +22,12 @@ from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-dir
 from official.nlp.modeling.layers import roformer_attention
 
 
-def _check_trig_vectors(
-        sin_emb,
-        cos_emb):
-    pass
-
-
 def _create_mock_attention_data(
     num_heads,
     key_dim,
     value_dim,
-    seq_length,
+    q_seq_length,
+    kv_seq_length,
     batch_size,
     include_mask=False):
   """Creates mock testing data.
@@ -48,18 +43,18 @@ def _create_mock_attention_data(
   Returns:
     A dictionary with `str` as keys and `Tensor` as values.
   """
-  query_shape = (batch_size, seq_length, key_dim)
-  value_shape = (batch_size, seq_length, value_dim)
+  query_shape = (batch_size, q_seq_length, key_dim)
+  value_shape = (batch_size, kv_seq_length, value_dim)
 
   data = dict(
       query=tf.random.normal(shape=query_shape),
       value=tf.random.normal(shape=value_shape),
       key=tf.random.normal(shape=value_shape))
 
-  total_seq_length = seq_length
+  total_seq_length = kv_seq_length
 
   if include_mask:
-    mask_shape = (batch_size, num_heads, seq_length, total_seq_length)
+    mask_shape = (batch_size, num_heads, q_seq_length, total_seq_length)
     mask_data = np.random.randint(2, size=mask_shape).astype("float32")
     mask_data = dict(attention_mask=mask_data)
     data.update(mask_data)
@@ -101,6 +96,8 @@ class RoformerAttentionTest(keras_parameterized.TestCase):
     """Tests combinations of attention score calculations."""
     batch_size, num_heads, key_dim, seq_length = 2, 12, 64, 8
     test_layer = roformer_attention.RoformerAttention(
+        q_max_sequence_length=seq_length,
+        kv_max_sequence_length=seq_length,
         num_heads=num_heads,
         key_dim=key_dim,
         value_dim=value_dim)
@@ -108,11 +105,37 @@ class RoformerAttentionTest(keras_parameterized.TestCase):
         num_heads=num_heads,
         key_dim=key_dim,
         value_dim=value_dim,
-        seq_length=seq_length,
+        q_seq_length=seq_length,
+        kv_seq_length=seq_length,
         batch_size=batch_size,
         include_mask=mask)
     output = test_layer(**data)
     self.assertEqual(output.shape, [batch_size, seq_length, key_dim])
+
+    @combinations.generate(combinations.combine(
+        value_dim=[32, 64],
+        mask=[True, False]))
+    def test_seperate_qkv_attention_scores(self,
+                              value_dim,
+                              mask):
+        """Tests combinations of attention score calculations."""
+        batch_size, num_heads, key_dim, q_seq_length, kv_seq_length = 2, 12, 64, 8, 16
+        test_layer = roformer_attention.RoformerAttention(
+            q_max_sequence_length=q_seq_length,
+            kv_max_sequence_length=kv_seq_length,
+            num_heads=num_heads,
+            key_dim=key_dim,
+            value_dim=value_dim)
+        data = _create_mock_attention_data(
+            num_heads=num_heads,
+            key_dim=key_dim,
+            value_dim=value_dim,
+            q_seq_length=seq_length,
+            kv_seq_length=seq_length,
+            batch_size=batch_size,
+            include_mask=mask)
+        output = test_layer(**data)
+        self.assertEqual(output.shape, [batch_size, seq_length, key_dim])
 
 
 if __name__ == "__main__":

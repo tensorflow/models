@@ -42,24 +42,36 @@ def _build_trig_vector(length, key_dim):
 
 @tf.keras.utils.register_keras_serializable(package="Text")
 class RoformerAttention(tf.keras.layers.MultiHeadAttention):
+  def __init__(self,
+               q_max_sequence_length,
+               kv_max_sequence_length,
+               output_range=None,
+               **kwargs):
+      super().__init__(**kwargs)
+      self._q_max_sequence_length = q_max_sequence_length
+      self._kv_max_sequence_length = kv_max_sequence_length
+      q_sin_vec, q_cos_vec = _build_trig_vector(self._q_max_sequence_length, self._key_dim)       # FIXME: key_dim should not be odd!
+      k_sin_vec, k_cos_vec = _build_trig_vector(self._kv_max_sequence_length, self._key_dim)
+      self.q_sin_vec, self.q_cos_vec = (q_sin_vec, q_cos_vec) if output_range is None else (
+          q_sin_vec[:, 0:output_range, ...], q_cos_vec[:, 0:output_range, ...])
+      self.k_sin_vec, self.k_cos_vec = (k_sin_vec, k_cos_vec)
+
   def roformer_recompute_qkv(self,
                              q,
                              k,
                              v):
-      q_shape = tf.shape(q)
-      q_len = q_shape[1]
-      k_shape = tf.shape(k)
-      k_len = k_shape[1]
+    q_shape = tf.shape(q)
+    q_len = q_shape[1]
+    k_shape = tf.shape(k)
+    k_len = k_shape[1]
 
-      q_sin_vec, q_cos_vec = _build_trig_vector(q_len, self._key_dim)
-      k_sin_vec, k_cos_vec = _build_trig_vector(k_len, self._key_dim)
-      q2 = tf.stack([-q[..., 1::2], q[..., ::2]], axis=4)
-      q2 = tf.reshape(q2, q_shape)
-      k2 = tf.stack([-k[..., 1::2], k[..., ::2]], axis=4)
-      k2 = tf.reshape(k2, k_shape)
-      ret_q = q * q_cos_vec + q2 * q_sin_vec
-      ret_w = k * k_cos_vec + k2 * k_sin_vec
-      return ret_q, ret_w, v
+    q2 = tf.stack([-q[..., 1::2], q[..., ::2]], axis=4)
+    q2 = tf.reshape(q2, q_shape)
+    k2 = tf.stack([-k[..., 1::2], k[..., ::2]], axis=4)
+    k2 = tf.reshape(k2, k_shape)
+    ret_q = q * self.q_cos_vec[:, 0:q_len, ...] + q2 * self.q_sin_vec[:, 0:q_len, ...]
+    ret_w = k * self.k_cos_vec[:, 0:k_len, ...] + k2 * self.k_sin_vec[:, 0:k_len, ...]
+    return ret_q, ret_w, v
 
 
   def call(self,

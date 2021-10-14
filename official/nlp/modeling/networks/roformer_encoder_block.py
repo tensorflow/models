@@ -41,6 +41,8 @@ class RoformerEncoderBlock(tf.keras.layers.Layer):
                num_attention_heads,
                inner_dim,
                inner_activation,
+               q_max_sequence_length=512,
+               kv_max_sequence_length=512,
                output_range=None,
                kernel_initializer="glorot_uniform",
                bias_initializer="zeros",
@@ -114,6 +116,8 @@ class RoformerEncoderBlock(tf.keras.layers.Layer):
     self._norm_first = norm_first
     self._norm_epsilon = norm_epsilon
     self._inner_dropout = inner_dropout
+    self._q_max_sequence_length = q_max_sequence_length
+    self._kv_max_sequence_length = kv_max_sequence_length
     if attention_initializer:
       self._attention_initializer = tf.keras.initializers.get(
           attention_initializer)
@@ -147,6 +151,9 @@ class RoformerEncoderBlock(tf.keras.layers.Layer):
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint)
     self._attention_layer = layers.RoformerAttention(
+        q_max_sequence_length=self._q_max_sequence_length,
+        kv_max_sequence_length=self._kv_max_sequence_length,
+        output_range=self._output_range,
         num_heads=self._num_heads,
         key_dim=self._attention_head_size,
         dropout=self._attention_dropout,
