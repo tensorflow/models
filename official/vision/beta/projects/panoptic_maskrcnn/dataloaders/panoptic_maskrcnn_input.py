@@ -228,8 +228,8 @@ class Parser(maskrcnn_input.Parser):
       image = image_mask[:, :, :-1]
 
       data['image'] = image
-      data['boxes'] = boxes
-      data['masks'] = masks
+      data['groundtruth_boxes'] = boxes
+      data['groundtruth_instance_masks'] = masks
 
     image, labels = super(Parser, self)._parse_train_data(data)
 
