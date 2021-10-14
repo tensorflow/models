@@ -60,7 +60,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
         loss_types={key: 'ciou' for key in keys},
         iou_normalizers={key: 0.05 for key in keys},
         cls_normalizers={key: 0.5 for key in keys},
-        obj_normalizers={key: 1.0 for key in keys},
+        object_normalizers={key: 1.0 for key in keys},
         objectness_smooths={key: 1.0 for key in keys},
         box_types={key: 'scaled' for key in keys},
         scale_xys={key: 2.0 for key in keys},

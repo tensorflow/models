@@ -73,6 +73,23 @@ documentation of the Object Detection API:
 
 ## Whats New
 
+### SpaghettiNet for Edge TPU
+
+We have released SpaghettiNet models optimized for the Edge TPU in the [Google Tensor SoC](https://blog.google/products/pixel/google-tensor-debuts-new-pixel-6-fall/).
+
+SpaghettiNet models are derived from a TuNAS search space that incorporates
+group convolution based [Inverted Bottleneck](https://arxiv.org/abs/1801.04381) blocks.
+The backbone and detection head are connected through [MnasFPN](https://arxiv.org/abs/1912.01106)-style feature map
+merging and searched jointly.
+
+When compared to MobileDet-EdgeTPU, SpaghettiNet models achieve +2.2% mAP
+(absolute) on COCO17 at the same latency. They also consume <70% of the energy
+used by MobileDet-EdgeTPU to achieve the same accuracy.
+
+Sample config available [here](configs/tf1/ssd_spaghettinet_edgetpu_320x320_coco17_sync_4x4.config).
+
+<b>Thanks to contributors</b>: Marie White, Hao Xu, Hanxiao Liu and Suyog Gupta.
+
 ### DeepMAC architecture
 
 We have released our new architecture, **DeepMAC**, designed for partially

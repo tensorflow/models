@@ -43,10 +43,11 @@ def _feature_bilinear_interpolation(features, kernel_y, kernel_x):
     [batch_size, num_boxes, output_size, output_size, num_filters].
 
   """
-  batch_size, num_boxes, output_size, _, num_filters = (
-      features.get_shape().as_list())
-  if batch_size is None:
-    batch_size = tf.shape(features)[0]
+  features_shape = tf.shape(features)
+  batch_size, num_boxes, output_size, num_filters = (
+      features_shape[0], features_shape[1], features_shape[2],
+      features_shape[4])
+
   output_size = output_size // 2
   kernel_y = tf.reshape(kernel_y, [batch_size, num_boxes, output_size * 2, 1])
   kernel_x = tf.reshape(kernel_x, [batch_size, num_boxes, 1, output_size * 2])
@@ -88,7 +89,8 @@ def _compute_grid_positions(boxes, boundaries, output_size, sample_offset):
     box_grid_y0y1: Tensor of size [batch_size, boxes, output_size, 2]
     box_grid_x0x1: Tensor of size [batch_size, boxes, output_size, 2]
   """
-  batch_size, num_boxes, _ = boxes.get_shape().as_list()
+  boxes_shape = tf.shape(boxes)
+  batch_size, num_boxes = boxes_shape[0], boxes_shape[1]
   if batch_size is None:
     batch_size = tf.shape(boxes)[0]
   box_grid_x = []
@@ -161,11 +163,12 @@ def multilevel_crop_and_resize(features,
     levels = list(features.keys())
     min_level = int(min(levels))
     max_level = int(max(levels))
+    features_shape = tf.shape(features[str(min_level)])
     batch_size, max_feature_height, max_feature_width, num_filters = (
-        features[str(min_level)].get_shape().as_list())
-    if batch_size is None:
-      batch_size = tf.shape(features[str(min_level)])[0]
-    _, num_boxes, _ = boxes.get_shape().as_list()
+        features_shape[0], features_shape[1], features_shape[2],
+        features_shape[3])
+
+    num_boxes = tf.shape(boxes)[1]
 
     # Stack feature pyramid into a features_all of shape
     # [batch_size, levels, height, width, num_filters].

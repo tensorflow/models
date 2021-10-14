@@ -20,7 +20,6 @@ import math
 
 import tensorflow as tf
 from official.modeling import tf_utils
-from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 from official.nlp.modeling.ops import beam_search
 
@@ -79,7 +78,7 @@ class Seq2SeqTransformer(tf.keras.Model):
     self._beam_size = beam_size
     self._alpha = alpha
     self._eos_id = eos_id
-    self.embedding_lookup = keras_nlp.layers.OnDeviceEmbedding(
+    self.embedding_lookup = layers.OnDeviceEmbedding(
         vocab_size=self._vocab_size,
         embedding_width=self._embedding_width,
         initializer=tf.random_normal_initializer(
@@ -393,7 +392,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
     self.encoder_layers = []
     for i in range(self.num_layers):
       self.encoder_layers.append(
-          keras_nlp.layers.TransformerEncoderBlock(
+          layers.TransformerEncoderBlock(
               num_attention_heads=self.num_attention_heads,
               inner_dim=self._intermediate_size,
               inner_activation=self._activation,

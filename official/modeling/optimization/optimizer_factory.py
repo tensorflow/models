@@ -56,6 +56,22 @@ WARMUP_CLS = {
 }
 
 
+def register_optimizer_cls(
+    key: str, optimizer_config_cls: tf.keras.optimizers.Optimizer):
+  """Register customize optimizer cls.
+
+  The user will still need to subclass data classes in
+  configs.optimization_config to be used with OptimizerFactory.
+
+  Args:
+    key: A string to that the optimizer_config_cls is registered with.
+    optimizer_config_cls: A class which inherits tf.keras.optimizers.Optimizer.
+  """
+  if key in OPTIMIZERS_CLS:
+    raise ValueError('%s already registered in OPTIMIZER_CLS.' % key)
+  OPTIMIZERS_CLS[key] = optimizer_config_cls
+
+
 class OptimizerFactory:
   """Optimizer factory class.
 

@@ -18,7 +18,6 @@ import collections
 import tensorflow as tf
 
 from official.modeling import tf_utils
-from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 
 
@@ -82,15 +81,11 @@ class PackedSequenceEmbedding(tf.keras.Model):
         shape=(None,), dtype=tf.int32, name='input_mask')
     type_ids = tf.keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_type_ids')
-    inputs = {
-        'input_word_ids': word_ids,
-        'input_mask': mask,
-        'input_type_ids': type_ids,
-    }
+    inputs = [word_ids, mask, type_ids]
     if use_position_id:
       position_ids = tf.keras.layers.Input(
           shape=(None,), dtype=tf.int32, name='position_ids')
-      inputs['position_ids'] = position_ids
+      inputs.append(position_ids)
     else:
       position_ids = None
 
@@ -141,7 +136,7 @@ class PackedSequenceEmbedding(tf.keras.Model):
           name='embedding_projection')(
               embeddings)
 
-    attention_mask = keras_nlp.layers.SelfAttentionMask()(embeddings, mask)
+    attention_mask = layers.SelfAttentionMask()(embeddings, mask)
     if sub_seq_mask is not None:
       attention_mask = tf.keras.layers.Lambda(
           lambda x: x[0] * tf.cast(x[1], x[0].dtype))(

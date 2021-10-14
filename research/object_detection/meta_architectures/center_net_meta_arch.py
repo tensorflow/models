@@ -3053,7 +3053,8 @@ class CenterNetMetaArch(model.DetectionModel):
     return loss_per_instance
 
   def _compute_object_detection_losses(self, input_height, input_width,
-                                       prediction_dict, per_pixel_weights):
+                                       prediction_dict, per_pixel_weights,
+                                       maximum_normalized_coordinate=1.1):
     """Computes the weighted object detection losses.
 
     This wrapper function calls the function which computes the losses for
@@ -3068,6 +3069,9 @@ class CenterNetMetaArch(model.DetectionModel):
       per_pixel_weights: A float tensor of shape [batch_size,
         out_height * out_width, 1] with 1s in locations where the spatial
         coordinates fall within the height and width in true_image_shapes.
+      maximum_normalized_coordinate: Maximum coordinate value to be considered
+        as normalized, default to 1.1. This is used to check bounds during
+        converting normalized coordinates to absolute coordinates.
 
     Returns:
       A dictionary of scalar float tensors representing the weighted losses for
@@ -3079,7 +3083,8 @@ class CenterNetMetaArch(model.DetectionModel):
         scale_predictions=prediction_dict[BOX_SCALE],
         offset_predictions=prediction_dict[BOX_OFFSET],
         input_height=input_height,
-        input_width=input_width)
+        input_width=input_width,
+        maximum_normalized_coordinate=maximum_normalized_coordinate)
     loss_dict = {}
     loss_dict[BOX_SCALE] = (
         self._od_params.scale_loss_weight * od_scale_loss)
@@ -3088,7 +3093,8 @@ class CenterNetMetaArch(model.DetectionModel):
     return loss_dict
 
   def _compute_box_scale_and_offset_loss(self, input_height, input_width,
-                                         scale_predictions, offset_predictions):
+                                         scale_predictions, offset_predictions,
+                                         maximum_normalized_coordinate=1.1):
     """Computes the scale loss of the object detection task.
 
     Args:
@@ -3100,6 +3106,9 @@ class CenterNetMetaArch(model.DetectionModel):
       offset_predictions: A list of float tensors of shape [batch_size,
         out_height, out_width, 2] representing the prediction heads of the model
         for object offset.
+      maximum_normalized_coordinate: Maximum coordinate value to be considered
+        as normalized, default to 1.1. This is used to check bounds during
+        converting normalized coordinates to absolute coordinates.
 
     Returns:
       A tuple of two losses:
@@ -3120,7 +3129,8 @@ class CenterNetMetaArch(model.DetectionModel):
          height=input_height,
          width=input_width,
          gt_boxes_list=gt_boxes_list,
-         gt_weights_list=gt_weights_list)
+         gt_weights_list=gt_weights_list,
+         maximum_normalized_coordinate=maximum_normalized_coordinate)
     batch_weights = tf.expand_dims(batch_weights, -1)
 
     scale_loss = 0
@@ -3919,7 +3929,8 @@ class CenterNetMetaArch(model.DetectionModel):
           input_height=input_height,
           input_width=input_width,
           prediction_dict=prediction_dict,
-          per_pixel_weights=valid_anchor_weights)
+          per_pixel_weights=valid_anchor_weights,
+          maximum_normalized_coordinate=maximum_normalized_coordinate)
       for key in od_losses:
         od_losses[key] = od_losses[key] * self._od_params.task_loss_weight
       losses.update(od_losses)

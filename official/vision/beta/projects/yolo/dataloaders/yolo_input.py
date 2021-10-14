@@ -75,11 +75,11 @@ class Parser(parser.Parser):
         saturation. saturation will be scaled between 1/value and value.
       aug_rand_brightness: `float` indicating the maximum scaling value for
         brightness. brightness will be scaled between 1/value and value.
-      letter_box: `boolean` indicating whether upon start of the datapipeline
+      letter_box: `boolean` indicating whether upon start of the data pipeline
         regardless of the preprocessing ops that are used, the aspect ratio of
         the images should be preserved.
       random_pad: `bool` indiccating wether to use padding to apply random
-        translation true for darknet yolo false for scaled yolo.
+        translation, true for darknet yolo false for scaled yolo.
       random_flip: `boolean` indicating whether or not to randomly flip the
         image horizontally.
       jitter: `float` for the maximum change in aspect ratio expected in each
@@ -147,6 +147,7 @@ class Parser(parser.Parser):
     # Set the per level values needed for operation
     self._darknet = darknet
     self._area_thresh = area_thresh
+    self._level_limits = level_limits
 
     self._seed = seed
     self._dtype = dtype
@@ -259,7 +260,7 @@ class Parser(parser.Parser):
         self._aug_rand_saturation,
         self._aug_rand_brightness,
         seed=self._seed,
-        darknet=self._darknet)
+        darknet=self._darknet or self._level_limits is not None)
 
     # Cast the image to the selcted datatype.
     image, labels = self._build_label(

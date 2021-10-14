@@ -93,6 +93,7 @@ if tf_version.is_tf1():
   from object_detection.models.ssd_mobiledet_feature_extractor import SSDMobileDetDSPFeatureExtractor
   from object_detection.models.ssd_mobiledet_feature_extractor import SSDMobileDetEdgeTPUFeatureExtractor
   from object_detection.models.ssd_mobiledet_feature_extractor import SSDMobileDetGPUFeatureExtractor
+  from object_detection.models.ssd_spaghettinet_feature_extractor import SSDSpaghettinetFeatureExtractor
   from object_detection.models.ssd_pnasnet_feature_extractor import SSDPNASNetFeatureExtractor
   from object_detection.predictors import rfcn_box_predictor
 # pylint: enable=g-import-not-at-top
@@ -229,6 +230,8 @@ if tf_version.is_tf1():
           SSDMobileDetEdgeTPUFeatureExtractor,
       'ssd_mobiledet_gpu':
           SSDMobileDetGPUFeatureExtractor,
+      'ssd_spaghettinet':
+          SSDSpaghettinetFeatureExtractor,
   }
 
   FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP = {
@@ -349,6 +352,12 @@ def _build_ssd_feature_extractor(feature_extractor_config,
         'reuse_weights': reuse_weights,
     })
 
+
+  if feature_extractor_config.HasField('spaghettinet_arch_name'):
+    kwargs.update({
+        'spaghettinet_arch_name':
+            feature_extractor_config.spaghettinet_arch_name,
+    })
 
   if feature_extractor_config.HasField('fpn'):
     kwargs.update({

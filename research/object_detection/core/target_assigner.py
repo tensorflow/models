@@ -1193,7 +1193,8 @@ class CenterNetBoxTargetAssigner(object):
                                      height,
                                      width,
                                      gt_boxes_list,
-                                     gt_weights_list=None):
+                                     gt_weights_list=None,
+                                     maximum_normalized_coordinate=1.1):
     """Returns the box height/width and center offset targets and their indices.
 
     The returned values are expected to be used with predicted tensors
@@ -1211,6 +1212,9 @@ class CenterNetBoxTargetAssigner(object):
         the batch. The coordinates are expected in normalized coordinates.
       gt_weights_list: A list of tensors with shape [num_boxes] corresponding to
         the weight of each groundtruth detection box.
+      maximum_normalized_coordinate: Maximum coordinate value to be considered
+        as normalized, default to 1.1. This is used to check bounds during
+        converting normalized coordinates to absolute coordinates.
 
     Returns:
       batch_indices: an integer tensor of shape [num_boxes, 3] holding the
@@ -1239,7 +1243,8 @@ class CenterNetBoxTargetAssigner(object):
       boxes = box_list_ops.to_absolute_coordinates(
           boxes,
           tf.maximum(height // self._stride, 1),
-          tf.maximum(width // self._stride, 1))
+          tf.maximum(width // self._stride, 1),
+          maximum_normalized_coordinate=maximum_normalized_coordinate)
       # Get the box center coordinates. Each returned tensors have the shape of
       # [num_boxes]
       (y_center, x_center, boxes_height,
