@@ -1,9 +1,12 @@
+# Assemblenet++ structure video classificaion on UCF-101 dataset
+# --experiment_type=assemblenetplus_ucf101
+# device : TPU v3-8
+
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
 task:
   model:
-    num_classes: 101
     backbone:
       assemblenet_plus:
         model_id: 50
@@ -11,6 +14,13 @@ task:
         attention_mode : 'peer'
         use_object_input: false
       type: 'assemblenet_plus'
+    dropout_rate: 0.5
+    norm_activation:
+      activation: relu
+      norm_momentum: 0.99
+      norm_epsilon: 0.00001
+      use_sync_bn: true
+    max_pool_predictions: true
   train_data:
     is_training: true
     global_batch_size: 64

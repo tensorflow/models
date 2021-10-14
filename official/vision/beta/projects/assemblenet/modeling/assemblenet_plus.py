@@ -731,7 +731,7 @@ def build_assemblenet_plus_model(
     model_structure=model_structure,
     input_specs=input_specs_dict,
     max_pool_predictions=model_config.max_pool_predictions,
-    use_object_input=model_config.use_object_input)
+    use_object_input=backbone_cfg.use_object_input)
   return model
 
 

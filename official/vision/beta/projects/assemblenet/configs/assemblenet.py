@@ -181,6 +181,7 @@ class AssembleNetPlus(hyperparams.Config):
   num_frames: int = 0
   attention_mode: str = 'None'
   blocks: Tuple[BlockSpec, ...] = tuple()
+  use_object_input : bool = False
 
 @dataclasses.dataclass
 class Backbone3D(backbones_3d.Backbone3D):
@@ -213,7 +214,6 @@ class AssembleNetPlusModel(video_classification.VideoClassificationModel):
   norm_activation: common.NormActivation = common.NormActivation(
       norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=True)
   max_pool_predictions: bool = False
-  use_object_input: bool = False
 
 @exp_factory.register_config_factory('assemblenet50_kinetics600')
 def assemblenet_kinetics600() -> cfg.ExperimentConfig:
