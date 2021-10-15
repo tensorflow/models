@@ -69,7 +69,7 @@ def create_tf_example(image):
     """
 
     with tf.io.gfile.GFile(os.join(image["pix3d_dir"], image["img"]), 'rb') as fid:
-      encoded_img_jpg = fid.read()
+        encoded_img_jpg = fid.read()
 
     img_width, img_height = image["img_size"]
     img_filename = image["img"]
@@ -84,15 +84,15 @@ def create_tf_example(image):
                     "img/2d_keypoints": convert_to_feature(keypoints_2d)}
 
     with tf.io.gfile.GFile(os.join(image["pix3d_dir"], image["mask"]), 'rb') as fid:
-      encoded_mask_jpg = fid.read()
+        encoded_mask_jpg = fid.read()
 
     feature_dict.update({"mask": convert_to_feature(encoded_mask_jpg)})
 
     with tf.io.gfile.GFile(os.join(image["pix3d_dir"], image["model"]), 'rb') as fid:
-      encoded_model = fid.read()
-  
+        encoded_model = fid.read()
+
     with tf.io.gfile.GFile(os.join(image["pix3d_dir"], image["3d_keypoints"]), 'rb') as fid:
-      keypoints_3d = fid.read()
+        keypoints_3d = fid.read()
 
     model_raw = image["model_raw"]
     model_source = image["model_source"]
@@ -103,7 +103,7 @@ def create_tf_example(image):
                          "model/3d_keypoints": convert_to_feature(keypoints_3d)})
 
     with tf.io.gfile.GFile(os.join(image["pix3d_dir"], image["voxel"]), 'rb') as fid:
-      encoded_voxel = fid.read()
+        encoded_voxel = fid.read()
 
     rot_mat = image["rot_mat"]
     trans_mat = image["trans_mat"]
@@ -127,7 +127,8 @@ def create_tf_example(image):
                          "slightly_occluded": convert_to_feature(slightly_occluded),
                          "bbox": convert_to_feature(bbox)})
 
-    example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
+    example = tf.train.Example(
+        features=tf.train.Features(feature=feature_dict))
 
     return example, 0
 
