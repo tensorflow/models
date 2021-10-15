@@ -51,7 +51,7 @@ YOLO_MODELS = {
                 csp_stack=7,
                 fpn_depth=7,
                 path_process_len=8,
-                fpn_filter_scale=2),
+                fpn_filter_scale=1),
         ),
     'v3':
         dict(
@@ -349,13 +349,16 @@ class YoloPAN(tf.keras.layers.Layer):
       downsample = False
       upsample = True
 
-    if self._csp_stack == 0:
-      proc_filters = lambda x: x
-      resample_filters = lambda x: x // 2
-    else:
-      proc_filters = lambda x: x * 2
-      resample_filters = lambda x: x
     for level, depth in zip(self._iterator, self._depths):
+      if level > 5:
+        proc_filters = lambda x: x * 2
+        resample_filters = lambda x: x // 2
+      elif self._csp_stack == 0:
+        proc_filters = lambda x: x
+        resample_filters = lambda x: x // 2
+      else:
+        proc_filters = lambda x: x * 2
+        resample_filters = lambda x: x
       if level == self._input:
         self.preprocessors[str(level)] = nn_blocks.DarkRouteProcess(
             filters=proc_filters(depth),
@@ -396,7 +399,7 @@ class YoloPAN(tf.keras.layers.Layer):
     depths = []
     if len(inputs.keys()) > 3 or self._fpn_filter_scale > 1:
       for i in range(self._min_level, self._max_level + 1):
-        depths.append(inputs[str(i)][-1] * 2)
+        depths.append(inputs[str(i)][-1]) # * 2)
     else:
       for _ in range(self._min_level, self._max_level + 1):
         depths.append(minimum_depth)
