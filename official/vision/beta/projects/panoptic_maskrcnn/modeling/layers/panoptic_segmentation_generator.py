@@ -79,26 +79,27 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
     pasted_mask = tf.ones(
         self._output_size + [1], dtype=mask.dtype) * self._void_class_label
 
-    ymin = box[0]
-    xmin = box[1]
+    ymin = tf.clip_by_value(box[0], 0, self._output_size[0])
+    xmin = tf.clip_by_value(box[1], 0, self._output_size[1])
     ymax = tf.clip_by_value(box[2] + 1, 0, self._output_size[0])
     xmax = tf.clip_by_value(box[3] + 1, 0, self._output_size[1])
     box_height = ymax - ymin
     box_width = xmax - xmin
 
-    # resize mask to match the shape of the instance bounding box
-    resized_mask = tf.image.resize(
-        mask,
-        size=(box_height, box_width),
-        method='nearest')
+    if not (box_height == 0 or box_width == 0):
+      # resize mask to match the shape of the instance bounding box
+      resized_mask = tf.image.resize(
+          mask,
+          size=(box_height, box_width),
+          method='nearest')
 
-    # paste resized mask on a blank mask that matches image shape
-    pasted_mask = tf.raw_ops.TensorStridedSliceUpdate(
-        input=pasted_mask,
-        begin=[ymin, xmin],
-        end=[ymax, xmax],
-        strides=[1, 1],
-        value=resized_mask)
+      # paste resized mask on a blank mask that matches image shape
+      pasted_mask = tf.raw_ops.TensorStridedSliceUpdate(
+          input=pasted_mask,
+          begin=[ymin, xmin],
+          end=[ymax, xmax],
+          strides=[1, 1],
+          value=resized_mask)
 
     return pasted_mask
 
