@@ -40,6 +40,7 @@ import tensorflow as tf
 import multiprocessing as mp
 from official.vision.beta.data import tfrecord_lib
 from research.object_detection.utils import dataset_util
+from official.vision.beta.data.tfrecord_lib import convert_to_feature
 
 flags.DEFINE_multi_string('pix3d_dir', '', 'Directory containing Pix3d.')
 flags.DEFINE_string('output_file_prefix', '/tmp/train', 'Path to output file')
@@ -66,14 +67,24 @@ def create_tf_example(image):
       of the Pix3D folder is incorrect.
     """
 
-    image_height = image['height']
-    image_width = image['width']
-    filename = image['file_name']
-    image_id = image['id']
+    
 
-    features_dict = {}
+    with tf.io.gfile.GFile(os.join(image["pix3d_dir"], image["img"]), 'rb') as fid:
+      encoded_jpg = fid.read()
 
-    return image
+    img_width, img_height = image["img_size"]
+    img_filename = image["img"]
+    img_category = image["category"]
+    
+    feature_dict = {"img/height": dataset_util.int64_feature(img_height),
+                    "img/width": dataset_util.int64_feature(img_width),
+                    "img/category": dataset_util.bytes_feature(img_category),
+                    "img/filename": dataset_util.bytes_feature(img_filename),
+                    "img/encoded": dataset_util.bytes_feature(encoded_jpg)}
+  
+    example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
+
+    return example, 0
 
 
 def generate_annotations(images, pix3d_dir):
@@ -84,7 +95,7 @@ def generate_annotations(images, pix3d_dir):
                "model_source": image["model_source"], "3d_keypoints": image["3d_keypoints"], "voxel": image["voxel"], "rot_mat": image["rot_mat"],
                "trans_mat": image["trans_mat"], "focal_length": image["focal_length"], "cam_position": image["cam_position"],
                "inplane_rotation": image["inplane_rotation"], "truncated": image["truncated"], "occluded": image["occluded"],
-               "slightly_ocluded": image["slightly_occluded"], "bbox": image["bbox"]}
+               "slightly_ocluded": image["slightly_occluded"], "bbox": image["bbox"], "pix3d_dir": pix3d_dir}
 
 
 def _create_tf_record_from_pix3d_dir(pix3d_dir,
