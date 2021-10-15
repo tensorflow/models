@@ -39,7 +39,7 @@ class RoformerEncoderBlock(tf.keras.layers.Layer):
 
   def __init__(self,
                num_attention_heads,
-               inner_dim,
+               inner_dim,  # FIXME: hidden_size per head should be even!
                inner_activation,
                q_max_sequence_length=512,
                kv_max_sequence_length=512,

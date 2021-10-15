@@ -47,14 +47,14 @@ class RoformerAttention(tf.keras.layers.MultiHeadAttention):
                kv_max_sequence_length,
                output_range=None,
                **kwargs):
-      super().__init__(**kwargs)
-      self._q_max_sequence_length = q_max_sequence_length
-      self._kv_max_sequence_length = kv_max_sequence_length
-      q_sin_vec, q_cos_vec = _build_trig_vector(self._q_max_sequence_length, self._key_dim)       # FIXME: key_dim should not be odd!
-      k_sin_vec, k_cos_vec = _build_trig_vector(self._kv_max_sequence_length, self._key_dim)
-      self.q_sin_vec, self.q_cos_vec = (q_sin_vec, q_cos_vec) if output_range is None else (
-          q_sin_vec[:, 0:output_range, ...], q_cos_vec[:, 0:output_range, ...])
-      self.k_sin_vec, self.k_cos_vec = (k_sin_vec, k_cos_vec)
+    super().__init__(**kwargs)
+    self._q_max_sequence_length = q_max_sequence_length
+    self._kv_max_sequence_length = kv_max_sequence_length
+    q_sin_vec, q_cos_vec = _build_trig_vector(self._q_max_sequence_length, self._key_dim)       # FIXME: key_dim should be even!
+    k_sin_vec, k_cos_vec = _build_trig_vector(self._kv_max_sequence_length, self._key_dim)
+    self.q_sin_vec, self.q_cos_vec = (q_sin_vec, q_cos_vec) if output_range is None else (
+        q_sin_vec[:, 0:output_range, ...], q_cos_vec[:, 0:output_range, ...])
+    self.k_sin_vec, self.k_cos_vec = (k_sin_vec, k_cos_vec)
 
   def roformer_recompute_qkv(self,
                              q,

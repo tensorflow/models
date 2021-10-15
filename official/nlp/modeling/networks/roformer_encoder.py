@@ -81,7 +81,7 @@ class RoformerEncoder(tf.keras.Model):
   def __init__(
       self,
       vocab_size,
-      hidden_size=768,
+      hidden_size=768,  # FIXME: hidden_size per head should be even!
       num_layers=12,
       num_attention_heads=12,
       max_sequence_length=512,
