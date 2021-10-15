@@ -81,7 +81,7 @@ class RoformerEncoder(tf.keras.Model):
   def __init__(
       self,
       vocab_size,
-      hidden_size=768,
+      hidden_size=768,  # FIXME: hidden_size per head should be even!
       num_layers=12,
       num_attention_heads=12,
       max_sequence_length=512,
@@ -147,7 +147,7 @@ class RoformerEncoder(tf.keras.Model):
         use_one_hot=True,
         name='type_embeddings')
     type_embeddings = type_embedding_layer(type_ids)
-    
+
     # roformer does not have absolute position embedding
     embeddings = tf.keras.layers.Add()(
         [word_embeddings, type_embeddings])
@@ -184,6 +184,8 @@ class RoformerEncoder(tf.keras.Model):
           num_attention_heads=num_attention_heads,
           inner_dim=inner_dim,
           inner_activation=inner_activation,
+          q_max_sequence_length=max_sequence_length,
+          kv_max_sequence_length=max_sequence_length,
           output_dropout=output_dropout,
           attention_dropout=attention_dropout,
           norm_first=norm_first,
