@@ -51,62 +51,72 @@ logger = tf.get_logger()
 logger.setLevel(logging.INFO)
 
 
+def create_tf_example(image):
+    """Converts image and annotations to a tf.Example proto.
+    Args:
+      image: dict with keys: [img, category, img_size, 2d_keypoints, mask, img_source, model,
+                              model_raw, model_source, 3d_keypoints, voxel, rot_mat, trans_mat,
+                              focal_length, cam_position, inplane_rotation, truncated, occluded,
+                              slightly_occluded, bbox]
+    Returns:
+      example: The converted tf.Example
+      num_annotations_skipped: Number of (invalid) annotations that were ignored.
+    Raises:
+      ValueError: if the image is not able to be found. This indicates the file structure 
+      of the Pix3D folder is incorrect.
+    """
+
+    image_height = image['height']
+    image_width = image['width']
+    filename = image['file_name']
+    image_id = image['id']
+
+    features_dict = {}
+
+    return image
 
 
-
-def create_tf_example(image,):
-
-  return image
-
-
-def generate_annotations(images):
-      """Generator for Pix3D annotations."""
-      for image in images:
-            yield (image["img"], image["category"], image["img_size"], image["2d_keypoints"],
-                   image["mask"], image["img_source"], image["model"], image["model_raw"],
-                   image["model_source"], image["3d_keypoints"], image["voxel"], image["rot_mat"],
-                   image["trans_mat"], image["focal_length"], image["cam_position"],
-                   image["inplane_rotation"], image["truncated"], image["occluded"],
-                   image["slightly_occluded"], image["bbox"])
-      
-      
+def generate_annotations(images, pix3d_dir):
+    """Generator for Pix3D annotations."""
+    for image in images:
+        yield {"img": image["img"], "category": image["category"], "img_size": image["img_size"], "2d_keypoints": image["2d_keypoints"],
+               "mask": image["mask"], "img_source": image["img_source"], "model": image["model"], "model_raw": image["model_raw"],
+               "model_source": image["model_source"], "3d_keypoints": image["3d_keypoints"], "voxel": image["voxel"], "rot_mat": image["rot_mat"],
+               "trans_mat": image["trans_mat"], "focal_length": image["focal_length"], "cam_position": image["cam_position"],
+               "inplane_rotation": image["inplane_rotation"], "truncated": image["truncated"], "occluded": image["occluded"],
+               "slightly_ocluded": image["slightly_occluded"], "bbox": image["bbox"]}
 
 
 def _create_tf_record_from_pix3d_dir(pix3d_dir,
-                                    output_path,
-                                    num_shards):
-  """Loads Pix3D json files and converts to tf.Record format.
-  Args:
-    images_info_file: pix3d_dir download directory
-    output_path: Path to output tf.Record file.
-    num_shards: Number of output files to create.
-  """
+                                     output_path,
+                                     num_shards):
+    """Loads Pix3D json files and converts to tf.Record format.
+    Args:
+      images_info_file: pix3d_dir download directory
+      output_path: Path to output tf.Record file.
+      num_shards: Number of output files to create.
+    """
 
-  logging.info('writing to output path: %s', output_path)
+    logging.info('writing to output path: %s', output_path)
 
-  images = json.load(open(pix3d_dir + "/pix3d.json"))
+    images = json.load(open(os.join(pix3d_dir, "pix3d.json")))
 
-  pix3d_annotations_iter = generate_annotations(images=images)
+    pix3d_annotations_iter = generate_annotations(
+        images=images, pix3d_dir=pix3d_dir)
 
-  num_skipped = tfrecord_lib.write_tf_record_dataset(
-      output_path, pix3d_annotations_iter, create_tf_example, num_shards)
+    num_skipped = tfrecord_lib.write_tf_record_dataset(
+        output_path, pix3d_annotations_iter, create_tf_example, num_shards)
 
-  logging.info('Finished writing, skipped %d annotations.', num_skipped)
-
-
+    logging.info('Finished writing, skipped %d annotations.', num_skipped)
 
 
 def main(_):
-  assert FLAGS.pix3d_dir, '`pix3d_dir` missing.'
+    assert FLAGS.pix3d_dir, '`pix3d_dir` missing.'
 
-  directory = os.path.dirname(FLAGS.output_file_prefix)
-  if not tf.io.gfile.isdir(directory):
-    tf.io.gfile.makedirs(directory)
-
-  
-
-  
+    directory = os.path.dirname(FLAGS.output_file_prefix)
+    if not tf.io.gfile.isdir(directory):
+        tf.io.gfile.makedirs(directory)
 
 
 if __name__ == '__main__':
-  app.run(main)
+    app.run(main)
