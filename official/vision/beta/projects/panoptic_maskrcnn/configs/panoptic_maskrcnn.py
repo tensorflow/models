@@ -78,7 +78,7 @@ class PanopticSegmentationGenerator(hyperparams.Config):
   output_size: List[int] = dataclasses.field(
       default_factory=list)
   mask_binarize_threshold: float = 0.5
-  score_threshold: float = 0.05
+  score_threshold: float = 0.5
   things_class_label: int = 1
   void_class_label: int = 0
   void_instance_id: int = 0
