@@ -115,7 +115,8 @@ class CenterNetTask(base_task.Task):
         num_inputs=backbone.num_hourglasses,
         heatmap_bias=model_config.head.heatmap_bias)
     
-    backbone_output_spec = backbone.output_specs.values()[0]
+    # output_specs is a dict
+    backbone_output_spec = list(backbone.output_specs.values())[0]
     if len(backbone_output_spec) == 4:
       bb_output_height = backbone_output_spec[1]
     elif len(backbone_output_spec) == 3:
