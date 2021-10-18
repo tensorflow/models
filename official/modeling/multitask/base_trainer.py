@@ -34,7 +34,8 @@ class MultiTaskBaseTrainer(orbit.StandardTrainer):
                multi_task_model: Union[tf.keras.Model,
                                        base_model.MultiTaskBaseModel],
                optimizer: tf.optimizers.Optimizer,
-               trainer_options=None):
+               trainer_options=None,
+               train_datasets=None):
     self._strategy = tf.distribute.get_strategy()
     self._multi_task = multi_task
     self._multi_task_model = multi_task_model
@@ -55,10 +56,11 @@ class MultiTaskBaseTrainer(orbit.StandardTrainer):
         global_step=self.global_step,
         **checkpoint_items)
 
-    train_datasets = {}
-    for name, task in self.multi_task.tasks.items():
-      train_datasets[name] = orbit.utils.make_distributed_dataset(
-          self.strategy, task.build_inputs, task.task_config.train_data)
+    if train_datasets is None:
+      train_datasets = {}
+      for name, task in self.multi_task.tasks.items():
+        train_datasets[name] = orbit.utils.make_distributed_dataset(
+            self.strategy, task.build_inputs, task.task_config.train_data)
 
     super().__init__(
         train_dataset=train_datasets,
