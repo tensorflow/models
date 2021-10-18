@@ -76,3 +76,8 @@ task:
       area_thresh: 0.1
   validation_data:
     input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/val*'
+  trainer:
+    train_steps: 831600 # epoch 300 to 450 
+    learning_rate:
+      cosine:
+        decay_steps: 831600 # epoch 300 to 450 
