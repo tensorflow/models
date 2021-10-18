@@ -141,7 +141,7 @@ class Hourglass(tf.keras.Model):
         norm_momentum=self._norm_momentum,
         norm_epsilon=self._norm_epsilon)(x_downsampled)
     
-    all_heatmaps = []
+    all_heatmaps = {}
     for i in range(num_hourglasses):
       # Create an hourglass stack
       x_hg = nn_blocks.HourglassBlock(
@@ -163,7 +163,8 @@ class Hourglass(tf.keras.Model):
           norm_epsilon=self._norm_epsilon
       )(x_hg)
       
-      all_heatmaps.append(x_hg)
+      # Two down-sampling blocks above, so the starting level set to 2
+      all_heatmaps['2_{}'.format(i)] = x_hg
       
       # Intermediate conv and residual layers between hourglasses
       if i < num_hourglasses - 1:
@@ -208,9 +209,8 @@ class Hourglass(tf.keras.Model):
             norm_momentum=self._norm_momentum,
             norm_epsilon=self._norm_epsilon
         )(x_downsampled)
-    # yapf: enable
     
-    self._output_specs = [hm.get_shape() for hm in all_heatmaps]
+    self._output_specs = {l: all_heatmaps[l].get_shape() for l in all_heatmaps}
     
     super().__init__(inputs=inputs, outputs=all_heatmaps, **kwargs)
   

@@ -14,7 +14,7 @@
 
 """Contains the definitions of head for CenterNet."""
 
-from typing import Any, Mapping, List
+from typing import Any, Mapping, List, Dict
 
 import tensorflow as tf
 
@@ -26,7 +26,7 @@ class CenterNetHead(tf.keras.Model):
   """CenterNet Head."""
   
   def __init__(self,
-               input_specs: List[tf.TensorShape],
+               input_specs: Dict[str, tf.TensorShape],
                task_outputs: Mapping[str, int],
                heatmap_bias: float = -2.19,
                num_inputs: int = 2,
@@ -49,13 +49,18 @@ class CenterNetHead(tf.keras.Model):
       dictionary where the keys-value pairs denote the names of the output
       and the respective output tensor
     """
+    assert num_inputs == len(input_specs), (f'Inconsistent input_specs: '
+                                            f'{input_specs} and {num_inputs}')
+    
     self._input_specs = input_specs
     self._task_outputs = task_outputs
     self._heatmap_bias = heatmap_bias
     self._num_inputs = num_inputs
     
-    inputs = [tf.keras.layers.Input(shape=value[1:])
-              for value in self._input_specs]
+    input_levels = sorted(self._input_specs.keys())
+    
+    inputs = {level: tf.keras.layers.Input(shape=self._input_specs[level][1:])
+              for level in input_levels}
     outputs = {}
     
     for key in self._task_outputs:
@@ -65,7 +70,7 @@ class CenterNetHead(tf.keras.Model):
               bias_init=self._heatmap_bias if 'heatmaps' in key else 0,
               name=key + str(i),
           )(inputs[i])
-          for i in range(self._num_inputs)
+          for i in input_levels
       ]
     
     self._output_specs = {

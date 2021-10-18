@@ -30,10 +30,10 @@ class CenterNetHeadTest(tf.test.TestCase, parameterized.TestCase):
         'ct_offset': 2,
         'ct_size': 2,
     }
-    input_specs = [
-        tf.keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
-        tf.keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
-    ]
+    input_specs = {
+        '2_0': tf.keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
+        '2_1': tf.keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
+    }
     
     head = centernet_head.CenterNetHead(
         task_outputs=task_config,
