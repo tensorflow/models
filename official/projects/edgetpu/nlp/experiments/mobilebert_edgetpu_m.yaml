@@ -1,0 +1,141 @@
+layer_wise_distillation:
+  num_steps: 20000
+  warmup_steps: 0
+  initial_learning_rate: 1.5e-3
+  end_learning_rate: 1.5e-3
+  decay_steps: 20000
+end_to_end_distillation:
+  num_steps: 585000
+  warmup_steps: 20000
+  initial_learning_rate: 1.5e-3
+  end_learning_rate: 1.5e-7
+  decay_steps: 585000
+  distill_ground_truth_ratio: 0.5
+optimizer:
+  optimizer:
+    lamb:
+      beta_1: 0.9
+      beta_2: 0.999
+      clipnorm: 1.0
+      epsilon: 1.0e-06
+      exclude_from_layer_adaptation: null
+      exclude_from_weight_decay: ['LayerNorm', 'bias', 'norm']
+      global_clipnorm: null
+      name: LAMB
+      weight_decay_rate: 0.01
+    type: lamb
+orbit_config:
+  eval_interval: 1000
+  eval_steps: -1
+  mode: train
+  steps_per_loop: 1000
+  total_steps: 825000
+runtime:
+  distribution_strategy: 'tpu'
+student_model:
+  cls_heads: [{'activation': 'tanh',
+               'cls_token_idx': 0,
+               'dropout_rate': 0.0,
+               'inner_dim': 512,
+               'name': 'next_sentence',
+               'num_classes': 2}]
+  encoder:
+    mobilebert:
+      attention_probs_dropout_prob: 0.1
+      classifier_activation: false
+      hidden_activation: relu
+      hidden_dropout_prob: 0.0
+      hidden_size: 512
+      initializer_range: 0.02
+      input_mask_dtype: int32
+      intermediate_size: 1024
+      intra_bottleneck_size: 256
+      key_query_shared_bottleneck: true
+      max_sequence_length: 512
+      normalization_type: no_norm
+      num_attention_heads: 4
+      num_blocks: 12
+      num_feedforward_networks: 6
+      type_vocab_size: 2
+      use_bottleneck_attention: false
+      word_embed_size: 128
+      word_vocab_size: 30522
+    type: mobilebert
+  mlm_activation: relu
+  mlm_initializer_range: 0.02
+teacher_model:
+  cls_heads: []
+  encoder:
+    mobilebert:
+      attention_probs_dropout_prob: 0.1
+      classifier_activation: false
+      hidden_activation: gelu
+      hidden_dropout_prob: 0.1
+      hidden_size: 512
+      initializer_range: 0.02
+      input_mask_dtype: int32
+      intermediate_size: 4096
+      intra_bottleneck_size: 1024
+      key_query_shared_bottleneck: false
+      max_sequence_length: 512
+      normalization_type: layer_norm
+      num_attention_heads: 4
+      num_blocks: 24
+      num_feedforward_networks: 1
+      type_vocab_size: 2
+      use_bottleneck_attention: false
+      word_embed_size: 128
+      word_vocab_size: 30522
+    type: mobilebert
+  mlm_activation: gelu
+  mlm_initializer_range: 0.02
+teacher_model_init_checkpoint: gs://**/uncased_L-24_H-1024_B-512_A-4_teacher/tf2_checkpoint/bert_model.ckpt-1
+student_model_init_checkpoint: ''
+train_datasest:
+  block_length: 1
+  cache: false
+  cycle_length: null
+  deterministic: null
+  drop_remainder: true
+  enable_tf_data_service: false
+  global_batch_size: 2048
+  input_path: gs://**/seq_512_mask_20/wikipedia.tfrecord*,gs://**/seq_512_mask_20/books.tfrecord*
+  is_training: true
+  max_predictions_per_seq: 20
+  seq_length: 512
+  sharding: true
+  shuffle_buffer_size: 100
+  tf_data_service_address: null
+  tf_data_service_job_name: null
+  tfds_as_supervised: false
+  tfds_data_dir: ''
+  tfds_name: ''
+  tfds_skip_decoding_feature: ''
+  tfds_split: ''
+  use_next_sentence_label: true
+  use_position_id: false
+  use_v2_feature_names: false
+eval_dataset:
+  block_length: 1
+  cache: false
+  cycle_length: null
+  deterministic: null
+  drop_remainder: true
+  enable_tf_data_service: false
+  global_batch_size: 2048
+  input_path: gs://**/seq_512_mask_20/wikipedia.tfrecord-00141-of-00500,gs://**/seq_512_mask_20/books.tfrecord-00141-of-00500
+  is_training: false
+  max_predictions_per_seq: 20
+  seq_length: 512
+  sharding: true
+  shuffle_buffer_size: 100
+  tf_data_service_address: null
+  tf_data_service_job_name: null
+  tfds_as_supervised: false
+  tfds_data_dir: ''
+  tfds_name: ''
+  tfds_skip_decoding_feature: ''
+  tfds_split: ''
+  use_next_sentence_label: true
+  use_position_id: false
+  use_v2_feature_names: false
