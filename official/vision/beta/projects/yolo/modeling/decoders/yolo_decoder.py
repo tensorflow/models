@@ -399,7 +399,7 @@ class YoloPAN(tf.keras.layers.Layer):
     depths = []
     if len(inputs.keys()) > 3 or self._fpn_filter_scale > 1:
       for i in range(self._min_level, self._max_level + 1):
-        depths.append(inputs[str(i)][-1]) # * 2)
+        depths.append(inputs[str(i)][-1])
     else:
       for _ in range(self._min_level, self._max_level + 1):
         depths.append(minimum_depth)
