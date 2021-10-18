@@ -17,6 +17,7 @@
 
 from absl import app
 from absl import flags
+from absl import logging
 
 import tensorflow as tf
 
@@ -28,16 +29,17 @@ from official.vision.beta.projects.centernet.modeling.layers import detection_ge
 from official.vision.beta.projects.centernet.modeling import centernet_model
 from official.vision.beta.projects.centernet.utils.checkpoints import read_checkpoints
 from official.vision.beta.projects.centernet.utils.checkpoints import load_weights
+from official.vision.beta.projects.centernet.common import registry_imports  # pylint: disable=unused-import
 
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string("checkpoint_to_convert", None,
                     "Initial checkpoint from a pretrained model.")
-flags.DEFINE_string("checkpoint_backbone_name", None,
+flags.DEFINE_string("checkpoint_backbone_name", 'hourglass104_512',
                     "Initial checkpoint from a pretrained model.")
-flags.DEFINE_string("checkpoint_head_name", 'hourglass104_512',
+flags.DEFINE_string("checkpoint_head_name", 'detection_2d',
                     "Indicate the desired backbone configuration.")
-flags.DEFINE_string("converted_checkpoint_path", 'detection_2d',
+flags.DEFINE_string("converted_checkpoint_path", None,
                     "Indicate the desired head configuration.")
 flags.DEFINE_integer("hourglass_id", 52,
                      "Model id of hourglass backbone.")
@@ -75,6 +77,7 @@ def _create_centernet_model(model_id: int = 52,
       backbone=backbone,
       head=head,
       detection_generator=detect_generator_obj)
+  logging.info('Successfully created centernet model.')
 
   return model
 
@@ -100,6 +103,7 @@ def _save_checkpoint(model, ckpt_dir):
                                        directory=ckpt_dir,
                                        max_to_keep=3)
   manager.save()
+  logging.info('Save checkpoint to {}.'.format(ckpt_dir))
 
 
 def convert_checkpoint(model_id,
@@ -125,7 +129,7 @@ def convert_checkpoint(model_id,
 def main(_):
   convert_checkpoint(
       model_id=FLAGS.hourglass_id,
-      num_hourglasses=FLAGS.hourglass_id,
+      num_hourglasses=FLAGS.num_hourglasses,
       ckpt_dir_or_file=FLAGS.checkpoint_to_convert,
       ckpt_backbone_name=FLAGS.checkpoint_backbone_name,
       ckpt_head_name=FLAGS.checkpoint_head_name,
