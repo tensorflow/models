@@ -32,11 +32,9 @@ task:
   per_category_metrics: false
   weight_decay: 0.0005
   gradient_clip_norm: 10.0
-  init_checkpoint: 'centernet_hg104_512x512_coco17_tpu-8/checkpoint'
-  init_checkpoint_source: 'ODAPI'
+  init_checkpoint: 'centernet_hg104_512x512_coco17_tpu'
+  init_checkpoint_modules: 'all'
   annotation_file: 'coco/instances_val2017.json'
-  checkpoint_backbone_name: 'hourglass104_512'
-  checkpoint_head_name: 'detection_2d'
   validation_data:
     input_path: 'coco/val*'
     drop_remainder: false

@@ -14,7 +14,7 @@
 
 """Contains the definitions of head for CenterNet."""
 
-from typing import Any, Mapping, List, Dict
+from typing import Any, Mapping, Dict
 
 import tensorflow as tf
 
