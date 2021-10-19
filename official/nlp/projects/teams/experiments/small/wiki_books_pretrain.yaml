@@ -39,6 +39,7 @@ task:
     seq_length: 512
     use_next_sentence_label: false
     use_position_id: false
+    cycle_length: 8
   validation_data:
     drop_remainder: true
     global_batch_size: 256
