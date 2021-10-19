@@ -40,7 +40,7 @@ vision models. This limits the use of “fused” full-convolution IBNs througho
 the model and leaves depthwise IBN as the only alternative.
 
 <figure align="center">
-<img width=70% src=https://storage.cloud.google.com/tf_model_garden/models/edgetpu/images/readme-ibn-intro.png>
+<img width=70% src=https://storage.googleapis.com/tf_model_garden/models/edgetpu/images/readme-ibn-intro.png>
   <figcaption>Inverted bottleneck block (IBN) variants: (a) Conventional with depthwise, (b) Fused-IBN, (c)GC-IBN with group convolutions in the expansion phase</figcaption>
 </figure>
 
@@ -56,7 +56,7 @@ also be faster than conventional IBNs with depthwise convolutions while
 providing more trainable parameters.
 
 <figure align="center">
-<img width=60% src=https://storage.cloud.google.com/tf_model_garden/models/edgetpu/images/readme-gc-comparison.png>
+<img width=60% src=https://storage.googleapis.com/tf_model_garden/models/edgetpu/images/readme-gc-comparison.png>
 </figure>
 
 
@@ -72,7 +72,7 @@ TPU.
 
 
 <figure align="center">
-<img width=70% src=https://storage.cloud.google.com/tf_model_garden/models/edgetpu/images/readme-edgetpu-classification-plot.png>
+<img width=70% src=https://storage.googleapis.com/tf_model_garden/models/edgetpu/images/readme-edgetpu-classification-plot.png>
 <figcaption>Comparison of Imagenet top-1 accuracy and Pixel 6 Edge TPU latency of MobilenetEdgeTPUV2 models with other on-device classification models</figcaption>
 </figure>
 
@@ -107,7 +107,7 @@ MobilenetEdgeTPUV2 is also superior to other on-device models when run on Pixel
 6 CPU as shown in Figure 4.
 
 <figure align="center">
-<img width=70% src=https://storage.cloud.google.com/tf_model_garden/models/edgetpu/images/readme-cpu-classification-plot.png>
+<img width=70% src=https://storage.googleapis.com/tf_model_garden/models/edgetpu/images/readme-cpu-classification-plot.png>
 <figcaption>Comparison of Imagenet top-1 accuracy and Pixel 6 latency of MobilenetEdgeTPUV2 models with other on-device classification models</figcaption>
 </figure>
 
@@ -123,17 +123,29 @@ next generation Edge TPU accelerators featured in Pixel 6 phones and improve the
 latency-accuracy pareto-frontier compared to the their predecessor based on
 MobileNetV2 and DeepLabV3+.
 
-#### Segmentation model design
-
 The segmentation model is built using the pretrained MobilenetEdgeTPUV2 as a
 feature encoder and ASPP decoder in conjunction with a Deeplab V3 Plus head.
 Separable convolutions used to reduce the size of the model.
 
 <figure align="center">
-<img width=60% src=https://storage.cloud.google.com/tf_model_garden/models/edgetpu/images/readme-seg-flow.png>
+<img width=60% src=https://storage.googleapis.com/tf_model_garden/models/edgetpu/images/readme-seg-flow.png>
 <figcaption></figcaption>
 </figure>
 
+#### Using architecture search to find high-quality, low-latency segmentation models
+
+To further improve the quality of on-device segmentation models, we invoke
+architecture search to jointly search for the model's feature extractor and the
+segmentation head. Autoseg-EdgeTPU is a set of searched segmentation models
+customized for the Edge TPU in Pixel 6. The feature extractor is derived from
+Edge TPU search space where a mixture of IBN and fused IBN are used. We
+automatically find the optimal kernel size, channel multiplier, expansion ratio,
+and groups on a per layer basis using a reinforcement learning algorithm. The
+segmentation head is an optimized version of
+[Bi-FPN](https://arxiv.org/abs/1911.09070) head, with customized number of
+repeats and feature selection.
+
+#### Argmax fusion to improve segmentation model latency
 The last two levels of the model (bilinear resizing and Argmax) contribute
 significantly to latency on the device model. This is due to the large
 activation size between these layers (512 x 512 x Number of classes). These
@@ -142,14 +154,14 @@ Argmax smaller and scaling the classes to the desired size with nearest
 neighbor.
 
 <figure align="center">
-<img width=60% src=https://storage.cloud.google.com/tf_model_garden/models/edgetpu/images/readme-seg-fused-argmax.png>
+<img width=60% src=https://storage.googleapis.com/tf_model_garden/models/edgetpu/images/readme-seg-fused-argmax.png>
 </figure>
 
 
 ### On-device benchmarking of segmentation models
 
 <figure align="center">
-<img src=https://storage.cloud.google.com/tf_model_garden/models/edgetpu/images/readme-seg-plot.png width=60%>
+<img src=https://storage.googleapis.com/tf_model_garden/models/edgetpu/images/readme-seg-plot.png width=60%>
   <figcaption>Performance of AutosegEdgeTPU and MobilenetEdgeTPUV2+DeeplabV3+ models on the 32-class ADE20K semantic segmentation task.</figcaption>
 </figure>
 
