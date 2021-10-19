@@ -91,7 +91,8 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
       resized_mask = tf.image.resize(
           mask,
           size=(box_height, box_width),
-          method='nearest')
+          method='bilinear')
+      resized_mask = tf.cast(resized_mask, dtype=mask.dtype)
 
       # paste resized mask on a blank mask that matches image shape
       pasted_mask = tf.raw_ops.TensorStridedSliceUpdate(
