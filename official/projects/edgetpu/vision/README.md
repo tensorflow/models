@@ -153,31 +153,28 @@ neighbor.
   <figcaption>Performance of AutosegEdgeTPU and MobilenetEdgeTPUV2+DeeplabV3+ models on the 32-class ADE20K semantic segmentation task.</figcaption>
 </figure>
 
-| Backbone              | Segmentation | #Parameters | ADE20K   | Pixel 6 Edge |
-:                       : Head         : (million)   : 32-class : TPU latency  :
-:                       :              :             : mIOU     : (ms)         :
-| --------------------- | ------------ | ----------- | -------- | ------------ |
-| MobileNet V2          | DeeplabV3+   | 2.34        | 54.06%   | 7.5          |
-: (baseline)            :              :             :          :              :
-| MobilenetEdgeTPUV2-XS | DeeplabV3+   | 3.6         | 56.02%   | 5.2          |
-| MobilenetEdgeTPUV2-S  | DeeplabV3+   | 5.2         | 59.43%   | 5.9          |
-| MobilenetEdgeTPUV2-M  | DeeplabV3+   | 7.7         | 59.81%   | 7.2          |
-| AutosegEdgeTPU-XS     | BiFPN        | 2.9         | 59.64%   | 5.4          |
-| AutosegEdgeTPU-S      | BiFPN        | 3.1         | 61.31%   | 5.7          |
+| Backbone               | Segmentation Head| #Parameters (million)| ADE20K 32-class mIOU| Pixel 6 EdgeTPU latency (ms)|
+|------------------------|------------------|----------------------|---------------------|-----------------------------|
+| MobileNet V2 (baseline)| DeeplabV3+       | 2.34                 | 54.06%              | 7.5                         |
+| MobilenetEdgeTPUV2-XS  | DeeplabV3+       | 3.6                  | 56.02%              | 5.2                         |
+| MobilenetEdgeTPUV2-S   | DeeplabV3+       | 5.2                  | 59.43%              | 5.9                         |
+| MobilenetEdgeTPUV2-M   | DeeplabV3+       | 7.7                  | 59.81%              | 7.2                         |
+| AutosegEdgeTPU-XS      | BiFPN            | 2.9                  | 59.64%              | 5.4                         |
+| AutosegEdgeTPU-S       | BiFPN            | 3.1                  | 61.31%              | 5.7                         |
+
 
 By fusing argmax with resize operator as shown above, it is possible to further
 improve the on-device latency of the segmentation models without significantly
 impacting the quality:
 
-| Backbone              | Segmentation | #Parameters | ADE20K   | Pixel 6 Edge |
-:                       : Head         : (million)   : 32-class : TPU latency  :
-:                       :              :             : mIOU     : (ms)         :
-| --------------------- | ------------ | ----------- | -------- | ------------ |
-| MobilenetEdgeTPUV2-XS | DeeplabV3+   | 3.6         | 56%      | 3.4          |
-| MobilenetEdgeTPUV2-S  | DeeplabV3+   | 5.2         | 59.41%   | 4.2          |
-| MobilenetEdgeTPUV2-M  | DeeplabV3+   | 7.7         | 59.79%   | 5.5          |
-| AutosegEdgeTPU-XS     | BiFPN        | 2.9         | 59.62%   | 3.6          |
-| AutosegEdgeTPU-S      | BiFPN        | 3.1         | 61.28%   | 3.9          |
+| Backbone             | Segmentation Head| #Parameters (million)| ADE20K 32-class mIOU| Pixel 6 EdgeTPU latency (ms)|
+|----------------------|------------------|----------------------|---------------------|-----------------------------|
+| MobilenetEdgeTPUV2-XS| DeeplabV3+       | 3.6                  | 56%                 | 3.4                         |
+| MobilenetEdgeTPUV2-S | DeeplabV3+       | 5.2                  | 59.41%              | 4.2                         |
+| MobilenetEdgeTPUV2-M | DeeplabV3+       | 7.7                  | 59.79%              | 5.5                         |
+| AutosegEdgeTPU-XS    | BiFPN            | 2.9                  | 59.62%              | 3.6                         |
+| AutosegEdgeTPU-S     | BiFPN            | 3.1                  | 61.28%              | 3.9                         |
+
 
 
 ### Training the models
