@@ -136,6 +136,7 @@ class ModelLibTest(tf.test.TestCase):
     return configs
 
   def _get_weights_before_and_after_train_step(self, configs):
+    """Get model weights before and after a train step."""
     train_config = configs['train_config']
     detection_model = model_builder.build(
         model_config=configs['model'], is_training=True)
