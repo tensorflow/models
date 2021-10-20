@@ -54,7 +54,9 @@ def make_distributed_dataset(strategy, dataset_or_fn, *args, **kwargs):
       an argument named `input_context` which will be passed a
       `tf.distribute.InputContext` instance.
     *args: Any positional arguments to pass through to `dataset_or_fn`.
-    **kwargs: Any keyword arguments to pass through to `dataset_or_fn`.
+    **kwargs: Any keyword arguments to pass through to `dataset_or_fn`, except
+      that the `input_options` keyword is used to specify a
+      `tf.distribute.InputOptions` for making the distributed dataset.
 
   Returns:
     A distributed Dataset.
