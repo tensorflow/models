@@ -1457,8 +1457,8 @@ class MixupAndCutmix:
                  prob: float = 1.0,
                  switch_prob: float = 0.5,
                  label_smoothing: float = 0.1,
-                 one_hot: bool = True,
-                 num_classes: Optional[int] = None):
+                 one_hot: bool = False,
+                 num_classes: Optional[int] = 1001):
         """Applies Mixup and/or Cutmix to a batch of images.
 
         Args:
@@ -1520,7 +1520,6 @@ class MixupAndCutmix:
         augment_cond = tf.less(
             tf.random.uniform(shape=[], minval=0., maxval=1.0), self.mix_prob)
 
-        # pylint: disable=g-long-lambda
         def augment_a():
             _images, _labels = self._update_labels(*tf.cond(
                 tf.less(
@@ -1545,7 +1544,7 @@ class MixupAndCutmix:
                 labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
         """Apply cutmix."""
         lam = MixupAndCutmix._sample_from_beta(self.cutmix_alpha, self.cutmix_alpha,
-                                               [labels.shape[0], 1])
+                                               [labels.shape[0]])
 
         ratio = tf.math.sqrt(1 - lam)
 
@@ -1578,7 +1577,7 @@ class MixupAndCutmix:
     def _mixup(self, images: tf.Tensor,
                labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
         lam = MixupAndCutmix._sample_from_beta(self.mixup_alpha, self.mixup_alpha,
-                                               [labels.shape[0], 1])
+                                               [labels.shape[0]])
         lam = tf.reshape(lam, [-1, 1, 1, 1])
         images = lam * images + (1. - lam) * tf.reverse(images, [0])
 
@@ -1588,7 +1587,6 @@ class MixupAndCutmix:
         # Ensure coverage of single and multi-label inputs
         if not self.one_hot:
             labels = tf.one_hot(labels, self.num_classes)
-            labels = tf.squeeze(tf.reduce_prod(labels, axis=-1))
 
         num_classes = tf.cast(tf.shape(labels)[-1], labels.dtype)
         return labels * (1.0 - self.label_smoothing) + self.label_smoothing / num_classes
