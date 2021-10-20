@@ -83,7 +83,7 @@ class CenterNetHead(tf.keras.Model):
         'input_spec': self._input_specs,
         'task_outputs': self._task_outputs,
         'heatmap_bias': self._heatmap_bias,
-        'num_inputs': self._num_inputs,
+        'input_levels': self._input_levels,
     }
     
     base_config = super(CenterNetHead, self).get_config()

@@ -29,7 +29,7 @@ strategies. See the TensorFlow distributed training
 [guide](https://www.tensorflow.org/guide/distributed_training) for an overview
 of `tf.distribute`.
 
-The code is compatible with TensorFlow 2.4+. See requirements.txt for all
+The code is compatible with TensorFlow 2.5+. See requirements.txt for all
 prerequisites, and you can also install them using the following command. `pip
 install -r ./official/requirements.txt`
 
@@ -44,7 +44,18 @@ python3 -m official.vision.beta.projects.centernet.train \
   --config_file={CONFIG_FILE}
 ```
 
-An example of the config file can be found [here](./configs/experiments/coco-centernet-hourglass.yaml).
+An example of the config file can be found [here](./configs/experiments/coco-centernet-hourglass-gpu.yaml).
+
+## Configurations
+
+In the following table, we report the mAP measured on the `coco-val2017` set.
+
+Backbone         | Config name                                     | mAP
+:--------------- | :-----------------------------------------------| -------:
+Hourglass-104    | `coco-centernet-hourglass-gpu.yaml`             | 40.01
+Hourglass-104    | `coco-centernet-hourglass-tpu.yaml`             | 40.5
+
+**Note:** `float16` (`bfloat16` for TPU) is used in the provided configurations.
 
 ## Cite
 
