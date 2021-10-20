@@ -79,6 +79,8 @@ class PanopticSegmentationGenerator(hyperparams.Config):
       default_factory=list)
   mask_binarize_threshold: float = 0.5
   score_threshold: float = 0.5
+  things_overlap_threshold: float = 0.5
+  stuff_area_threshold: float = 4096.0
   things_class_label: int = 1
   void_class_label: int = 0
   void_instance_id: int = 0
