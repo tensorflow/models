@@ -164,7 +164,10 @@ class Hourglass(tf.keras.Model):
       )(x_hg)
       
       # Two down-sampling blocks above, so the starting level set to 2
-      all_heatmaps['2_{}'.format(i)] = x_hg
+      if i < num_hourglasses - 1:
+        all_heatmaps['2_{}'.format(i)] = x_hg
+      else:
+        all_heatmaps['2'] = x_hg
       
       # Intermediate conv and residual layers between hourglasses
       if i < num_hourglasses - 1:

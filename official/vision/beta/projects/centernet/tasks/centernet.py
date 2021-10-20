@@ -107,14 +107,15 @@ class CenterNetTask(base_task.Task):
         l2_regularizer=l2_regularizer)
     
     task_outputs = self.task_config.get_output_length_dict()
+    head_config = model_config.head
     head = centernet_head.CenterNetHead(
         input_specs=backbone.output_specs,
         task_outputs=task_outputs,
-        num_inputs=backbone.num_hourglasses,
-        heatmap_bias=model_config.head.heatmap_bias)
+        input_levels=head_config.input_levels,
+        heatmap_bias=head_config.heatmap_bias)
     
     # output_specs is a dict
-    backbone_output_spec = list(backbone.output_specs.values())[0]
+    backbone_output_spec = backbone.output_specs[head_config.input_levels[-1]]
     if len(backbone_output_spec) == 4:
       bb_output_height = backbone_output_spec[1]
     elif len(backbone_output_spec) == 3:

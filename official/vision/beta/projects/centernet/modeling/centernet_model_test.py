@@ -41,10 +41,12 @@ class CenterNetTest(parameterized.TestCase, tf.test.TestCase):
         'ct_size': 2,
     }
     
+    input_levels = ['2_0', '2']
+    
     head = centernet_head.CenterNetHead(
         task_outputs=task_config,
         input_specs=backbone.output_specs,
-        num_inputs=2)
+        input_levels=input_levels)
     
     detection_ge = detection_generator.CenterNetDetectionGenerator()
     

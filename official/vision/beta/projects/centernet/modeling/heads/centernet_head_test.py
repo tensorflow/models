@@ -32,13 +32,15 @@ class CenterNetHeadTest(tf.test.TestCase, parameterized.TestCase):
     }
     input_specs = {
         '2_0': tf.keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
-        '2_1': tf.keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
+        '2': tf.keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
     }
+    
+    input_levels = ['2', '2_0']
     
     head = centernet_head.CenterNetHead(
         task_outputs=task_config,
         input_specs=input_specs,
-        num_inputs=2)
+        input_levels=input_levels)
     
     config = head.get_config()
     self.assertEqual(config['heatmap_bias'], -2.19)

@@ -14,7 +14,7 @@
 
 """Contains the definitions of head for CenterNet."""
 
-from typing import Any, Mapping, Dict
+from typing import Any, Mapping, Dict, List
 
 import tensorflow as tf
 
@@ -28,8 +28,8 @@ class CenterNetHead(tf.keras.Model):
   def __init__(self,
                input_specs: Dict[str, tf.TensorShape],
                task_outputs: Mapping[str, int],
+               input_levels: List[str],
                heatmap_bias: float = -2.19,
-               num_inputs: int = 2,
                **kwargs):
     """CenterNet Head Initialization.
     
@@ -37,27 +37,24 @@ class CenterNetHead(tf.keras.Model):
       input_specs: A `list` of input specifications.
       task_outputs: A `dict`, with key-value pairs denoting the names of the
         outputs and the desired channel depth of each output
+      input_levels: list of str representing the level used as input to the
+        CenternetHead from the backbone. For example, ['2_0', '2'] should be
+        set for hourglass-104 has two hourglass-52 modules.
       heatmap_bias: `float`, constant value to initialize the convolution layer
         bias vector if it is responsible for generating a heatmap (not for
         regressed predictions)
-      num_inputs: `int`, indicates number of output branches from
-        multiple backbone modules. For example, hourglass-104 has two
-        hourglass-52 modules.
       **kwargs: Additional keyword arguments to be passed.
 
     Returns:
       dictionary where the keys-value pairs denote the names of the output
       and the respective output tensor
     """
-    assert num_inputs == len(input_specs), (f'Inconsistent input_specs: '
-                                            f'{input_specs} and {num_inputs}')
+    assert len(input_levels) > 0, f'Please specify input levels: {input_levels}'
     
     self._input_specs = input_specs
     self._task_outputs = task_outputs
     self._heatmap_bias = heatmap_bias
-    self._num_inputs = num_inputs
-    
-    input_levels = sorted(self._input_specs.keys())
+    self._num_inputs = len(input_levels)
     
     inputs = {level: tf.keras.layers.Input(shape=self._input_specs[level][1:])
               for level in input_levels}
@@ -74,7 +71,7 @@ class CenterNetHead(tf.keras.Model):
       ]
     
     self._output_specs = {
-        key: [value[i].get_shape() for i in range(num_inputs)]
+        key: [value[i].get_shape() for i in range(self._num_inputs)]
         for key, value in outputs.items()
     }
     

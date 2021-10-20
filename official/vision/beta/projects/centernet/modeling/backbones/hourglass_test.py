@@ -36,7 +36,7 @@ class HourglassTest(tf.test.TestCase, parameterized.TestCase):
     inputs = np.zeros((2, 512, 512, 3), dtype=np.float32)
     outputs = backbone(inputs)
     self.assertEqual(outputs['2_0'].shape, (2, 128, 128, 256))
-    self.assertEqual(outputs['2_1'].shape, (2, 128, 128, 256))
+    self.assertEqual(outputs['2'].shape, (2, 128, 128, 256))
 
 
 if __name__ == '__main__':

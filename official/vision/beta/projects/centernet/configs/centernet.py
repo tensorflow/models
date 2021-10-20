@@ -92,7 +92,8 @@ class Losses(hyperparams.Config):
 @dataclasses.dataclass
 class CenterNetHead(hyperparams.Config):
   heatmap_bias: float = -2.19
-  num_inputs: int = 2
+  input_levels: List[str] = dataclasses.field(
+      default_factory=lambda: ['2_0', '2'])
 
 
 @dataclasses.dataclass

@@ -15,6 +15,7 @@ task:
         num_hourglasses: 2
     head:
       heatmap_bias: -2.19
+      input_levels: ['2_0', '2']
     detection_generator:
       max_detections: 100
       peak_error: 0.000001
