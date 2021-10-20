@@ -115,7 +115,7 @@ class PanopticQualityEvaluator(hyperparams.Config):
   """Panoptic Quality Evaluator config."""
   num_categories: int = 2
   ignored_label: int = 0
-  max_instances_per_category: int = 100
+  max_instances_per_category: int = 256
   offset: int = 256 * 256 * 256
   is_thing: List[float] = dataclasses.field(
       default_factory=list)
