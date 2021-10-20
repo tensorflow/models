@@ -23,18 +23,18 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
   """Panoptic segmentation generator layer."""
 
   def __init__(
-          self,
-          output_size: List[int],
-          max_num_detections: int,
-          stuff_classes_offset: int,
-          mask_binarize_threshold: float = 0.5,
-          score_threshold: float = 0.5,
-          things_overlap_threshold: float = 0.5,
-          stuff_area_threshold: float = 4096,
-          things_class_label: int = 1,
-          void_class_label: int = 0,
-          void_instance_id: int = -1,
-          **kwargs):
+      self,
+      output_size: List[int],
+      max_num_detections: int,
+      stuff_classes_offset: int,
+      mask_binarize_threshold: float = 0.5,
+      score_threshold: float = 0.5,
+      things_overlap_threshold: float = 0.5,
+      stuff_area_threshold: float = 4096,
+      things_class_label: int = 1,
+      void_class_label: int = 0,
+      void_instance_id: int = -1,
+      **kwargs):
     """Generates panoptic segmentation masks.
 
     Args:
