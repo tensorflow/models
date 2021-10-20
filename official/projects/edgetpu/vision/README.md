@@ -84,11 +84,11 @@ models for 224x224 input resolution:
 
 Model                   | Accuracy (int8) | Pixel 6 Edge TPU Latency (ms)
 ----------------------- | :-------------- | :----------------------------
-MobileNetEdgeTPUv2-Tiny | 74.70%          | 0.78
-MobileNetEdgeTPUv2-XS   | 75.78%          | 0.82
+MobileNetEdgeTPUv2-Tiny | 74.66%          | 0.78
+MobileNetEdgeTPUv2-XS   | 75.79%          | 0.82
 MobileNetEdgeTPUv2-S    | 77.36%          | 1.03
-MobileNetEdgeTPUv2-M    | 78.34%          | 1.35
-MobileNetEdgeTPUv2-L    | 78.97%          | 1.64
+MobileNetEdgeTPUv2-M    | 78.43%          | 1.35
+MobileNetEdgeTPUv2-L    | 79.00%          | 1.64
 MobileNetEdgeTPU dm0.75 | 73.5%           | 0.79
 MobileNetEdgeTPU dm1.0  | 75.6%           | 0.92
 MobileNetEdgeTPU dm1.25 | 77.06%          | 1.2
