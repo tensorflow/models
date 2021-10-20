@@ -427,7 +427,17 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
     result.update({'segmentation_mean_iou': tf.reduce_mean(ious).numpy()})
 
     if self.task_config.model.generate_panoptic_masks:
-      for k, value in self.panoptic_quality_metric.result().items():
-        result['panoptic_quality/' + k] = value
+      report_per_class_metrics = self.task_config.panoptic_quality_evaluator.report_per_class_metrics
+      panoptic_quality_results = self.panoptic_quality_metric.result()
+      for k, value in panoptic_quality_results.items():
+        if k.endswith('per_class'):
+          if report_per_class_metrics:
+            for i, per_class_value in enumerate(value):
+              metric_key = 'panoptic_quality/{}/class_{}'.format(k, i)
+              result[metric_key] = per_class_value
+          else:
+            continue
+        else:
+          result['panoptic_quality/{}'.format(k)] = value
 
     return result

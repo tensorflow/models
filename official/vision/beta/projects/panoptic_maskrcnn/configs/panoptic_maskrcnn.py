@@ -121,6 +121,7 @@ class PanopticQualityEvaluator(hyperparams.Config):
   offset: int = 256 * 256 * 256
   is_thing: List[float] = dataclasses.field(
       default_factory=list)
+  report_per_class_metrics: bool = False
 
 
 @dataclasses.dataclass
