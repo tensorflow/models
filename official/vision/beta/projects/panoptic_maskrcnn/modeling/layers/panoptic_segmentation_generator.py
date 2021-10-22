@@ -116,7 +116,6 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
         - instance_mask: A `tf.Tensor for instance masks.
     """
     # Paste instance masks
-    pasted_masks = self._paste_masks_fn((detections_masks, boxes))
 
     # Offset stuff class predictions
     segmentation_mask = tf.where(
@@ -135,7 +134,6 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
     instance_mask = tf.ones(
         mask_shape, dtype=tf.float32) * self._void_instance_id
 
-    
     # filter instances with low confidence
     sorted_scores = tf.sort(scores, direction='DESCENDING')
 
@@ -148,6 +146,10 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
       loop_end_idx = tf.minimum(
           tf.cast(loop_end_idx, dtype=tf.int32),
           self._max_num_detections)
+    
+      pasted_masks = self._paste_masks_fn((
+          detections_masks[:loop_end_idx],
+          boxes[:loop_end_idx]))
 
       # add things segmentation to panoptic masks
       for i in range(loop_end_idx):
