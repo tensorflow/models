@@ -112,8 +112,8 @@ class PasteMasks(tf.keras.layers.Layer):
     masks, boxes = inputs
     y0, x0, y1, x1 = tf.split(boxes, 4, axis=1)
 
-    x_coords = tf.range(0, self._output_size[1], dtype=tf.float32)
-    y_coords = tf.range(0, self._output_size[0], dtype=tf.float32)
+    x_coords = tf.range(0, self._output_size[1], dtype=boxes.dtype)
+    y_coords = tf.range(0, self._output_size[0], dtype=boxes.dtype)
     x_coords = (x_coords - x0) / (x1 - x0) * 2 - 1
     y_coords = (y_coords - y0) / (y1 - y0) * 2 - 1
 
