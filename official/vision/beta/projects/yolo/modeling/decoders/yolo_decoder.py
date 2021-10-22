@@ -50,6 +50,8 @@ YOLO_MODELS = {
                 max_level_process_len=None,
                 csp_stack=7,
                 fpn_depth=7,
+                max_fpn_depth=5, 
+                max_csp_stack=5, 
                 path_process_len=8,
                 fpn_filter_scale=1),
         ),
@@ -87,6 +89,8 @@ class YoloFPN(tf.keras.layers.Layer):
 
   def __init__(self,
                fpn_depth=4,
+               max_fpn_depth=None, 
+               max_csp_stack=None, 
                use_spatial_attention=False,
                csp_stack=False,
                activation='leaky',
@@ -104,8 +108,12 @@ class YoloFPN(tf.keras.layers.Layer):
     Args:
       fpn_depth: `int`, number of layers to use in each FPN path
         if you choose to use an FPN.
+      max_fpn_depth: `int`, number of layers to use in each FPN path
+        if you choose to use an FPN along the largest FPN level.
       use_spatial_attention: `bool`, use the spatial attention module.
       csp_stack: `bool`, CSPize the FPN.
+      max_csp_stack: `int`, number of layers to use for CSP on the largest_path
+        only.
       activation: `str`, the activation function to use typically leaky or mish.
       fpn_filter_scale: `int`, scaling factor for the FPN filters.
       use_sync_bn: if True, use synchronized batch normalization.
@@ -121,6 +129,7 @@ class YoloFPN(tf.keras.layers.Layer):
 
     super().__init__(**kwargs)
     self._fpn_depth = fpn_depth
+    self._max_fpn_depth = max_fpn_depth or self._fpn_depth
 
     self._activation = activation
     self._use_sync_bn = use_sync_bn
@@ -133,6 +142,7 @@ class YoloFPN(tf.keras.layers.Layer):
     self._use_spatial_attention = use_spatial_attention
     self._filter_scale = fpn_filter_scale
     self._csp_stack = csp_stack
+    self._max_csp_stack = max_csp_stack or min(self._max_fpn_depth, csp_stack)
 
     self._base_config = dict(
         activation=self._activation,
@@ -184,6 +194,7 @@ class YoloFPN(tf.keras.layers.Layer):
 
     for level, depth in zip(
         reversed(range(self._min_level, self._max_level + 1)), self._depths):
+      
       if level == self._min_level:
         self.resamples[str(level)] = nn_blocks.PathAggregationBlock(
             filters=depth // 2,
@@ -211,10 +222,10 @@ class YoloFPN(tf.keras.layers.Layer):
       else:
         self.preprocessors[str(level)] = nn_blocks.DarkRouteProcess(
             filters=depth,
-            repetitions=self._fpn_depth + 1 * int(self._csp_stack == 0),
+            repetitions=self._max_fpn_depth + 1 * int(self._csp_stack == 0),
             insert_spp=True,
             block_invert=False,
-            csp_stack=self._csp_stack,
+            csp_stack=min(self._csp_stack, self._max_fpn_depth),
             **self._base_config)
 
   def call(self, inputs):
@@ -432,6 +443,8 @@ class YoloDecoder(tf.keras.Model):
                use_spatial_attention=False,
                csp_stack=False,
                fpn_depth=4,
+               max_fpn_depth=None, 
+               max_csp_stack=None, 
                fpn_filter_scale=1,
                path_process_len=6,
                max_level_process_len=None,
@@ -478,6 +491,8 @@ class YoloDecoder(tf.keras.Model):
     self._input_specs = input_specs
     self._use_fpn = use_fpn
     self._fpn_depth = fpn_depth
+    self._max_fpn_depth = max_fpn_depth
+    self._max_csp_stack = max_csp_stack
     self._path_process_len = path_process_len
     self._max_level_process_len = max_level_process_len
     self._embed_spp = embed_spp
@@ -517,8 +532,10 @@ class YoloDecoder(tf.keras.Model):
     }
     if self._use_fpn:
       inter_outs = YoloFPN(
-          fpn_depth=self._fpn_depth, **self._base_config)(
-              inputs)
+          fpn_depth=self._fpn_depth, 
+          max_fpn_depth=self._max_fpn_depth,
+          max_csp_stack=self._max_csp_stack,
+          **self._base_config)(inputs)
       outputs = YoloPAN(**self._decoder_config)(inter_outs)
     else:
       inter_outs = None

@@ -4,6 +4,11 @@ runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'float32'
   tpu_enable_xla_dynamic_padder: false
+runtime:
+  distribution_strategy: 'mirrored'
+  mixed_precision_dtype: 'float16'
+  tpu_enable_xla_dynamic_padder: false
+  num_gpus: 1
 task:
   model:
     input_size: [640, 640, 3]
