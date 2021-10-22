@@ -110,6 +110,9 @@ class PasteMasks(tf.keras.layers.Layer):
 
   def call(self, inputs):
     masks, boxes = inputs
+    masks_dtype = masks.dtype
+    masks = tf.cast(masks, dtype=tf.float32)
+    boxes = tf.cast(boxes, dtype=tf.float32)
     y0, x0, y1, x1 = tf.split(boxes, 4, axis=1)
 
     x_coords = tf.range(0, self._output_size[1], dtype=boxes.dtype)
@@ -124,7 +127,7 @@ class PasteMasks(tf.keras.layers.Layer):
         tf.expand_dims(y_coords, axis=2),
         multiples=[1, 1, self._output_size[1]])
     pasted_masks = self._grid_sampler((masks, x_coords, y_coords))
-    return pasted_masks
+    return tf.cast(pasted_masks, dtype=masks_dtype)
 
   def get_config(self):
     return self._config_dict
