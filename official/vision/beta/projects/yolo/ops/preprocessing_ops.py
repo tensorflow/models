@@ -839,7 +839,7 @@ def transform_and_clip_boxes(boxes,
                              shuffle_boxes=False,
                              area_thresh=0.1,
                              seed=None,
-                             augment=True):
+                             filter_and_clip_boxes=True):
   """Clips and cleans the boxes.
 
   Args:
@@ -870,12 +870,8 @@ def transform_and_clip_boxes(boxes,
 
   # Make sure all boxes are valid to start, clip to [0, 1] and get only the
   # valid boxes.
-  # if output_size is None:
-  #   output_size = tf.cast([640, 640], tf.float32)
-  # else:
-  #   output_size = tf.cast(output_size, tf.float32)
   output_size = None
-  if augment:
+  if filter_and_clip_boxes:
     boxes = tf.math.maximum(tf.math.minimum(boxes, 1.0), 0.0)
   cond = get_valid_boxes(boxes)
 
@@ -924,7 +920,7 @@ def transform_and_clip_boxes(boxes,
   boxes *= tf.cast(tf.expand_dims(cond, axis=-1), boxes.dtype)
 
   # Threshold the existing boxes.
-  if augment:
+  if filter_and_clip_boxes:
     if output_size is not None:
       boxes_ = bbox_ops.denormalize_boxes(boxes, output_size)
       box_history_ = bbox_ops.denormalize_boxes(box_history, output_size)

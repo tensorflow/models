@@ -237,7 +237,7 @@ class Parser(parser.Parser):
           affine=affine,
           shuffle_boxes=False,
           area_thresh=self._area_thresh,
-          augment=True,
+          filter_and_clip_boxes=True,
           seed=self._seed)
       classes = tf.gather(classes, inds)
       info = infos[-1]
@@ -286,7 +286,8 @@ class Parser(parser.Parser):
     # Clip and clean boxes.
     image = image / 255.0
     boxes, inds = preprocessing_ops.transform_and_clip_boxes(
-        boxes, infos, shuffle_boxes=False, area_thresh=0.0, augment=True)
+        boxes, infos, shuffle_boxes=False, area_thresh=0.0, 
+        filter_and_clip_boxes=False)
     classes = tf.gather(classes, inds)
     info = infos[-1]
 
