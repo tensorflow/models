@@ -345,7 +345,7 @@ class Parser(parser.Parser):
     if not is_training:
       output_size = tf.cast([height, width], tf.float32)
       boxes = bbox_ops.denormalize_boxes(gt_boxes, output_size)
-      gt_area = (boxes[2] - boxes[0]) * (boxes[3] - boxes[1])
+      gt_area = (boxes[..., 2] - boxes[..., 0]) * (boxes[..., 3] - boxes[..., 1])
 
       # Sets up groundtruth data for evaluation.
       groundtruths = {

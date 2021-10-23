@@ -29,11 +29,13 @@ def test_yolo_input_task(scaled_pipeline = True, batch_size = 1):
   if not scaled_pipeline:
     experiment = "yolo_darknet"
     config_path = [
-      "official/vision/beta/projects/yolo/configs/experiments/yolov4/tpu/512.yaml"]
+      "official/vision/beta/projects/yolo/configs/experiments/yolov4/detection/yolov4_512_tpu.yaml"]
   else:
     experiment = "large_yolo"
+    # config_path = [
+    #   "official/vision/beta/projects/yolo/configs/experiments/scaled-yolo/detection/yolo_l_p6_1280_tpu.yaml"]
     config_path = [
-      "official/vision/beta/projects/yolo/configs/experiments/scaled-yolo/detection/yolo_l_p6_1280_tpu.yaml"]
+      "official/vision/beta/projects/yolo/configs/experiments/scaled-yolo/detection/yolo_l_p7_1536_tpu.yaml"]
 
   config = train_utils.ParseConfigOptions(experiment=experiment, 
                                           config_file=config_path)
@@ -64,7 +66,7 @@ def test_yolo_pipeline_visually(is_training=True, num=30):
   data = data.take(num)
   for l, (image, label) in enumerate(data):
     image = tf.image.draw_bounding_boxes(
-        image, label['bbox'], [[1.0, 1.0, 1.0]])
+        image, label['bbox'], [[1.0, 0.0, 1.0]])
 
     gt = label['true_conf']
 
@@ -72,17 +74,21 @@ def test_yolo_pipeline_visually(is_training=True, num=30):
     obj4 = tf.clip_by_value(gt['4'][..., 0], 0.0, 1.0)
     obj5 = tf.clip_by_value(gt['5'][..., 0], 0.0, 1.0)
     obj6 = tf.clip_by_value(gt['6'][..., 0], 0.0, 1.0)
+    obj7 = tf.clip_by_value(gt['7'][..., 0], 0.0, 1.0)
 
     for shind in range(1):
-      fig, axe = plt.subplots(1, 5)
+      fig, axe = plt.subplots(2, 4)
 
       image = image[shind]
 
-      axe[0].imshow(image)
-      axe[1].imshow(obj3[shind, ..., :3].numpy())
-      axe[2].imshow(obj4[shind, ..., :3].numpy())
-      axe[3].imshow(obj5[shind, ..., :3].numpy())
-      axe[4].imshow(obj6[shind, ..., :3].numpy())
+      axe[0, 0].imshow(image)
+      axe[0, 1].imshow(obj3[shind, ..., :3].numpy())
+      axe[0, 2].imshow(obj4[shind, ..., :3].numpy())
+      axe[0, 3].imshow(obj5[shind, ..., :3].numpy())
+      axe[1, 0].imshow(obj6[shind, ..., :3].numpy())
+      axe[1, 2].imshow(obj7[shind, ..., :3].numpy())
+      axe[1, 1].imshow(obj6[shind, ..., 3].numpy())
+      axe[1, 3].imshow(obj7[shind, ..., 3].numpy())
 
       fig.set_size_inches(18.5, 6.5, forward=True)
       plt.tight_layout()
@@ -93,11 +99,14 @@ class YoloDetectionInputTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('scaled', True), ('darknet', False))
   def test_yolo_input(self, scaled_pipeline):
     # builds a pipline forom the config and tests the datapipline shapes
-    dataset, _, params = test_yolo_input_task(
+    # dataset, _, params = test_yolo_input_task(
+    #     scaled_pipeline=scaled_pipeline, 
+    #     batch_size=1)
+    _, dataset, params = test_yolo_input_task(
         scaled_pipeline=scaled_pipeline, 
         batch_size=1)
 
-    dataset = dataset.take(1)
+    dataset = dataset.take(100)
 
     for image, label in dataset:
       self.assertAllEqual(image.shape, ([1] + params.model.input_size))
@@ -106,5 +115,5 @@ class YoloDetectionInputTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  # tf.test.main()
-  test_yolo_pipeline_visually(is_training=True, num=20)
+  tf.test.main()
+  test_yolo_pipeline_visually(is_training=False, num=20)
