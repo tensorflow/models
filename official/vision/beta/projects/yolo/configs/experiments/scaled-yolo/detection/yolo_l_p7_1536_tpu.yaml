@@ -75,6 +75,6 @@ task:
       letter_box: true
       random_flip: true
       aug_rand_translate: 0.5
-      area_thresh: 0.2
+      area_thresh: 0.1
   validation_data:
     input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/val*'
