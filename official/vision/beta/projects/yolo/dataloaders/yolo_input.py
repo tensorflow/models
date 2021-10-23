@@ -244,7 +244,7 @@ class Parser(parser.Parser):
     else:
       image = tf.image.resize(
           image, (self._image_h, self._image_w), method='nearest')
-      output_size = tf.cast([640, 640], tf.float32)
+      output_size = tf.cast([self._image_h, self._image_w], tf.float32)
       boxes_ = bbox_ops.denormalize_boxes(boxes, output_size)
       inds = bbox_ops.get_non_empty_box_indices(boxes_)
       boxes = tf.gather(boxes, inds)
@@ -286,7 +286,8 @@ class Parser(parser.Parser):
     # Clip and clean boxes.
     image = image / 255.0
     boxes, inds = preprocessing_ops.transform_and_clip_boxes(
-        boxes, infos, shuffle_boxes=False, area_thresh=0.0, augment=True)
+        boxes, infos, shuffle_boxes=False, area_thresh=0.0, augment=True,
+        output_size = [self._image_h, self._image_w])
     classes = tf.gather(classes, inds)
     info = infos[-1]
 
@@ -342,6 +343,9 @@ class Parser(parser.Parser):
 
     # Update the labels dictionary.
     if not is_training:
+      output_size = tf.cast([height, width], tf.float32)
+      boxes = bbox_ops.denormalize_boxes(gt_boxes, output_size)
+      gt_area = (boxes[2] - boxes[0]) * (boxes[3] - boxes[1])
 
       # Sets up groundtruth data for evaluation.
       groundtruths = {
@@ -352,7 +356,7 @@ class Parser(parser.Parser):
           'image_info': info,
           'boxes': gt_boxes,
           'classes': gt_classes,
-          'areas': tf.gather(data['groundtruth_area'], inds),
+          'areas': gt_area,
           'is_crowds':
               tf.cast(tf.gather(data['groundtruth_is_crowd'], inds), tf.int32),
       }

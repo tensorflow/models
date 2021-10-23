@@ -180,7 +180,8 @@ class Mosaic:
         area_thresh=self._area_thresh,
         shuffle_boxes=False,
         augment=True,
-        seed=self._seed)
+        seed=self._seed,
+        output_size=[self._output_size[0], self._output_size[1]])
     classes, is_crowd, area = self._select_ind(inds, classes, is_crowd, area)  # pylint:disable=unbalanced-tuple-unpacking
     return image, boxes, classes, is_crowd, area, crop_points
 
@@ -229,7 +230,8 @@ class Mosaic:
         None,
         affine=affine,
         area_thresh=self._area_thresh,
-        seed=self._seed)
+        seed=self._seed,
+        output_size=[self._output_size[0], self._output_size[1]])
     classes, is_crowd, area = self._select_ind(inds, classes, is_crowd, area)  # pylint:disable=unbalanced-tuple-unpacking
     return image, boxes, classes, is_crowd, area, area
 
