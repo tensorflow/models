@@ -4,14 +4,9 @@ runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'float32'
   tpu_enable_xla_dynamic_padder: false
-runtime:
-  distribution_strategy: 'mirrored'
-  mixed_precision_dtype: 'float16'
-  tpu_enable_xla_dynamic_padder: false
-  num_gpus: 1
 task:
   model:
-    input_size: [640, 640, 3]
+    input_size: [896, 896, 3]
     backbone:
       type: 'darknet'
       darknet:
@@ -24,7 +19,7 @@ task:
       type: yolo_decoder
       yolo_decoder:
         version: v4
-        type: csp_large
+        type: csp_xlarge
     head:
       smart_bias: true
     detection_generator:
@@ -58,9 +53,9 @@ task:
     num_classes: 80
     anchor_boxes:
       anchors_per_scale: 4
-      boxes: [box: [7,9], box: [17,14], box: [13,29], box: [34,25], 
-              box: [27,58], box: [68,54], box: [55,108], box: [124,105], 
-              box: [97,219], box: [185,257],  box: [352,353], box: [457,457]]
+      boxes: [box: [13,17], box: [31,25], box: [24,51], box: [61,45], 
+              box: [48,102], box: [119,96], box: [97,189], box: [217,184], 
+              box: [171,384], box: [324,451],  box: [616,618], box: [800,800]]
   train_data:
     input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/train*'
     shuffle_buffer_size: 10000
@@ -76,6 +71,6 @@ task:
       letter_box: true
       random_flip: true
       aug_rand_translate: 0.5
-      area_thresh: 0.1
+      area_thresh: 0.0
   validation_data:
     input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/val*'

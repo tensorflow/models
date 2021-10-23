@@ -54,6 +54,14 @@ YOLO_MODELS = {
                 max_csp_stack=5, 
                 path_process_len=8,
                 fpn_filter_scale=1),
+            csp_xlarge=dict(
+                embed_spp=False,
+                use_fpn=True,
+                max_level_process_len=None,
+                csp_stack=7,
+                fpn_depth=7,
+                path_process_len=8,
+                fpn_filter_scale=1),
         ),
     'v3':
         dict(
