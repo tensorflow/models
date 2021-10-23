@@ -115,5 +115,5 @@ class YoloDetectionInputTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
-  test_yolo_pipeline_visually(is_training=False, num=20)
+  # tf.test.main()
+  test_yolo_pipeline_visually(is_training=True, num=20)
