@@ -11,7 +11,7 @@ runtime:
   num_gpus: 1
 task:
   model:
-    input_size: [896, 896, 3]
+    input_size: [640, 640, 3]
     backbone:
       type: 'darknet'
       darknet:
