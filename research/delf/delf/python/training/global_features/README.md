@@ -53,8 +53,8 @@ comparing the resemblance of two images by simply using their inner product.
 ### Install DELF library
 
 To be able to use this code, please follow
-[these instructions](../../../INSTALL_INSTRUCTIONS.md) to properly install the
-DELF library.
+[these instructions](../../../../INSTALL_INSTRUCTIONS.md) to properly install
+the DELF library.
 
 ### Usage
 
@@ -129,8 +129,8 @@ not present in the data folder.
 The main training loop (for the required number of epochs):
 1. Finding the hard negative pairs in the dataset (using the forward pass through the model)
 1. Creating the training dataset from generator which changes every epoch. Each
- element in the dataset consists of 1xPositive image, 1xQuery image
- , NxHard negative images (N is specified by the `num_neg` flag), an array
+ element in the dataset consists of 1 x Positive image, 1 x Query image
+ , N x Hard negative images (N is specified by the `num_neg` flag), an array
   specifying the Positive (-1), Query (0), Negative (1) images.
 1. Performing one training step and calculating the final epoch loss.
 1. If validation is required, finding hard negatives in the validation set
@@ -140,3 +140,20 @@ The main training loop (for the required number of epochs):
 1. Saving checkpoint (optimizer and the model weights).
 
 </details>
+
+## Exporting the Trained Model
+
+Assuming the training output, the TensorFlow checkpoint, is located in the
+`--directory` path. The following code exports the model:
+```
+python3 model/export_CNN_global_model.py \
+        [--ckpt_path PATH] [--export_path PATH] [--input_scales_list LIST]
+        [--multi_scale_pool_type TYPE] [--normalize_global_descriptor BOOL] 
+        [arch ARCHITECTURE] [pool POOLING] [whitening BOOL]
+```
+*NOTE:* Path to the checkpoint must include .h5 file.
+
+## Testing the trained model
+After the trained model has been exported, it can be used to extract global
+features similarly as for the DELG model. Please follow 
+[these instructions](https://github.com/tensorflow/models/tree/master/research/delf/delf/python/training#testing-the-trained-model).
