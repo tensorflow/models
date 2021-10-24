@@ -154,8 +154,6 @@ class PanopticQualityEvaluator:
       ValueError: if the required prediction or groundtruth fields are not
         present in the incoming `predictions` or `groundtruths`.
     """
-    groundtruths, predictions = self._convert_to_numpy(groundtruths,
-                                                       predictions)
     for k in self._required_prediction_fields:
       if k not in predictions:
         raise ValueError(
@@ -191,4 +189,6 @@ class PanopticQualityEvaluator:
         self._pq_metric_module.compare_and_accumulate(
             _groundtruths, _predictions)
     else:
+      groundtruths, predictions = self._convert_to_numpy(
+          groundtruths, predictions)
       self._pq_metric_module.compare_and_accumulate(groundtruths, predictions)
