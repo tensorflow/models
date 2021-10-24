@@ -154,6 +154,8 @@ class PanopticQualityEvaluator:
       ValueError: if the required prediction or groundtruth fields are not
         present in the incoming `predictions` or `groundtruths`.
     """
+    groundtruths, predictions = self._convert_to_numpy(groundtruths,
+                                                       predictions)
     for k in self._required_prediction_fields:
       if k not in predictions:
         raise ValueError(
@@ -163,10 +165,6 @@ class PanopticQualityEvaluator:
       if k not in groundtruths:
         raise ValueError(
             'Missing the required key `{}` in groundtruths!'.format(k))
-
-    if isinstance(groundtruths['image_info'], (list, tuple)):
-      groundtruths['image_info'] = tf.concat(
-          groundtruths['image_info'], axis=0)
 
     if self._rescale_predictions:
       for idx in range(len(groundtruths['category_mask'])):
@@ -193,6 +191,4 @@ class PanopticQualityEvaluator:
         self._pq_metric_module.compare_and_accumulate(
             _groundtruths, _predictions)
     else:
-      groundtruths, predictions = self._convert_to_numpy(
-          groundtruths, predictions)
       self._pq_metric_module.compare_and_accumulate(groundtruths, predictions)
