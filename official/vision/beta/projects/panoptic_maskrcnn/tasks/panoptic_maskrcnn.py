@@ -259,7 +259,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
             ignored_label=pq_config.ignored_label,
             max_instances_per_category=pq_config.max_instances_per_category,
             offset=pq_config.offset,
-            is_thing=pq_config.is_thing)
+            is_thing=pq_config.is_thing,
+            rescale_predictions=pq_config.rescale_predictions)
 
     return metrics
 
@@ -383,7 +384,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
           'category_mask':
               labels['groundtruths']['gt_panoptic_category_mask'],
           'instance_mask':
-              labels['groundtruths']['gt_panoptic_instance_mask']
+              labels['groundtruths']['gt_panoptic_instance_mask'],
+          'image_info': labels['image_info']
             }
       logs.update({
           self.panoptic_quality_metric.name:

@@ -121,6 +121,7 @@ class PanopticQualityEvaluator(hyperparams.Config):
   offset: int = 256 * 256 * 256
   is_thing: List[float] = dataclasses.field(
       default_factory=list)
+  rescale_predictions: bool = False
   report_per_class_metrics: bool = False
 
 
@@ -203,6 +204,9 @@ def panoptic_fpn_coco() -> cfg.ExperimentConfig:
               input_path=os.path.join(_COCO_INPUT_PATH_BASE, 'val*'),
               is_training=False,
               global_batch_size=eval_batch_size,
+              parser=Parser(
+                  segmentation_resize_eval_groundtruth=False,
+                  segmentation_groundtruth_padded_size=[640, 640]),
               drop_remainder=False),
           annotation_file=os.path.join(_COCO_INPUT_PATH_BASE,
                                        'instances_val2017.json'),
@@ -211,7 +215,8 @@ def panoptic_fpn_coco() -> cfg.ExperimentConfig:
           panoptic_quality_evaluator=PanopticQualityEvaluator(
               num_categories=num_panoptic_categories,
               ignored_label=0,
-              is_thing=is_thing)),
+              is_thing=is_thing,
+              rescale_predictions=True)),
       trainer=cfg.TrainerConfig(
           train_steps=22500,
           validation_steps=validation_steps,
