@@ -164,6 +164,10 @@ class PanopticQualityEvaluator:
         raise ValueError(
             'Missing the required key `{}` in groundtruths!'.format(k))
 
+    if isinstance(groundtruths['image_info'], (list, tuple)):
+      groundtruths['image_info'] = tf.concat(
+          groundtruths['image_info'], axis=0)
+
     if self._rescale_predictions:
       for idx in range(len(groundtruths['category_mask'])):
         image_info = groundtruths['image_info'][idx]
