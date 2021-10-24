@@ -14,7 +14,7 @@ for line in lines:
     lineID = line[0:2]
     
     if lineID == "v ":
-        vertex = lines[1:].split(" ")
+        vertex = line[2:].split(" ")
         
         for i, v in enumerate(vertex):
             vertex[i] = float(v)
@@ -23,7 +23,7 @@ for line in lines:
 
     if lineID == "f ":
 
-        face = lines[1:].split(" ")
+        face = line[2:].split(" ")
         
         for i, f in enumerate(face):
             face[i] = [int(x) for x in f.split("/")]

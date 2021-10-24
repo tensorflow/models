@@ -92,8 +92,10 @@ def create_tf_example(image):
 
     feature_dict.update({"mask": convert_to_feature(encoded_mask_jpg)})
 
-    with tf.io.gfile.GFile(os.join(image["pix3d_dir"], image["model"]), 'rb') as fid:
-        encoded_model = fid.read()
+    #with tf.io.gfile.GFile(os.join(image["pix3d_dir"], image["model"]), 'rb') as fid:
+    #    encoded_model = fid.read()
+
+    model_vertices, model_faces = parse_obj_file(os.join(image["pix3d_dir"], image["model"]))
 
     with tf.io.gfile.GFile(os.join(image["pix3d_dir"], image["3d_keypoints"]), 'rb') as fid:
         keypoints_3d = fid.read()
@@ -101,7 +103,8 @@ def create_tf_example(image):
     model_raw = image["model_raw"]
     model_source = image["model_source"]
 
-    feature_dict.update({"model": convert_to_feature(encoded_model),
+    feature_dict.update({"model/vertices": convert_to_feature(model_vertices),
+                         "model/faces": convert_to_feature(model_faces),
                          "model/raw": convert_to_feature(model_raw),
                          "model/source": convert_to_feature(model_source),
                          "model/3d_keypoints": convert_to_feature(keypoints_3d)})
@@ -160,7 +163,6 @@ def parse_obj_file(file):
         vertices: vertices of object
         faces: faces of object
     """
-
     vertices = []
     faces = []
 
@@ -171,7 +173,7 @@ def parse_obj_file(file):
         lineID = line[0:2]
         
         if lineID == "v ":
-            vertex = lines[1:].split(" ")
+            vertex = line[2:].split(" ")
             
             for i, v in enumerate(vertex):
                 vertex[i] = float(v)
@@ -180,7 +182,7 @@ def parse_obj_file(file):
 
         if lineID == "f ":
 
-            face = lines[1:].split(" ")
+            face = line[2:].split(" ")
             
             for i, f in enumerate(face):
                 face[i] = [int(x) for x in f.split("/")]
