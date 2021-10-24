@@ -29,7 +29,7 @@ class BilinearGridSampler(tf.keras.layers.Layer):
       align_corners: A `bool` bool, if True, the centers of the 4 corner
         pixels of the input and output tensors are aligned, preserving the
         values at the corner pixels.
-    """    
+    """
     super(BilinearGridSampler, self).__init__(**kwargs)
     self.align_corners = align_corners
 
@@ -121,13 +121,16 @@ class BilinearGridSampler(tf.keras.layers.Layer):
   def get_config(self):
     return self._config_dict
 
+  @classmethod
+  def from_config(cls, config):
+    return cls(**config)
 
 
 class PasteMasks(tf.keras.layers.Layer):
   """Layer to paste instance masks."""
 
-  def __init__(self, output_size: List[int], 
-      grid_sampler, **kwargs):
+  def __init__(self, output_size: List[int],
+               grid_sampler, **kwargs):
     """Generates panoptic segmentation masks.
 
     Args:
@@ -169,3 +172,7 @@ class PasteMasks(tf.keras.layers.Layer):
 
   def get_config(self):
     return self._config_dict
+
+  @classmethod
+  def from_config(cls, config):
+    return cls(**config)
