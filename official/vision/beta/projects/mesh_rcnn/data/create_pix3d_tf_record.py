@@ -191,10 +191,6 @@ def parse_obj_file(file):
 
     return vertices, faces
 
-
-
-
-
 def generate_annotations(images, pix3d_dir):
     """Generator for Pix3D annotations."""
     for image in images:
