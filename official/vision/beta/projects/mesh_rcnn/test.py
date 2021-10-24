@@ -1,4 +1,17 @@
 import json
+import scipy.io as sio
+import os
+
+dir = os.path.join("D:\\", "Programming", "pix3d", "model", "bookcase", "IKEA_BILLY_1", "voxel.mat")
+
+test = sio.loadmat(dir)
+
+print(test["voxel"])
+
+
+
+
+"""
 
 load = json.load(open("D:\Programming\pix3d\pix3d.json"))
 
@@ -14,7 +27,7 @@ l = {"img": image["img"], "category": image["category"], "img_size": image["img_
      "slightly_ocluded": image["slightly_occluded"], "bbox": image["bbox"]}
 
 print(l)
-
+"""
 
 """
 for photo in load:

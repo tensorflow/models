@@ -13,6 +13,8 @@
 # limitations under the License.
 # Author: Jacob Zietek
 
+# Voxel (.mat) and Model (.obj)
+
 # https://github.com/PurdueDualityLab/tf-models/blob/master/official/vision/beta/data/create_coco_tf_record.py reference
 
 r"""Convert raw Pix3D dataset to TFRecord format.
@@ -31,10 +33,12 @@ import logging
 import os
 import json
 from re import I
+import re
 
 from absl import app  # pylint:disable=unused-import
 from absl import flags
 import numpy as np
+import scipy.io as sio
 
 import tensorflow as tf
 
@@ -102,8 +106,10 @@ def create_tf_example(image):
                          "model/source": convert_to_feature(model_source),
                          "model/3d_keypoints": convert_to_feature(keypoints_3d)})
 
-    with tf.io.gfile.GFile(os.join(image["pix3d_dir"], image["voxel"]), 'rb') as fid:
-        encoded_voxel = fid.read()
+    #with tf.io.gfile.GFile(os.join(image["pix3d_dir"], image["voxel"]), 'rb') as fid:
+    #    encoded_voxel = fid.read()
+
+    encoded_voxel = parse_mat_file(os.join(image["pix3d_dir"], image["voxel"]))
 
     rot_mat = image["rot_mat"]
     trans_mat = image["trans_mat"]
@@ -131,6 +137,22 @@ def create_tf_example(image):
         features=tf.train.Features(feature=feature_dict))
 
     return example, 0
+
+def parse_mat_file(file):
+    """
+    Parses relevant data out of a .mat file. This contains all of the voxel information.
+    Args:
+        file: file path to .mat file
+    Returns:
+        voxel: a 3d array of voxel information. an empty 3d array if file is invalid.
+    """
+    try:
+        return sio.loadmat(file)["voxel"]
+    except:
+        return [[[]]]
+
+
+
 
 
 def generate_annotations(images, pix3d_dir):
