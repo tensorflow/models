@@ -2,12 +2,45 @@ import json
 import scipy.io as sio
 import os
 
+file = os.path.join("D:\\", "Programming", "pix3d", "model", "bookcase", "IKEA_BILLY_1", "model.obj")
+
+vertices = []
+faces = []
+
+obj_file = open(file, 'r')
+lines = obj_file.readlines()
+
+for line in lines:
+    lineID = line[0:2]
+    
+    if lineID == "v ":
+        vertex = lines[1:].split(" ")
+        
+        for i, v in enumerate(vertex):
+            vertex[i] = float(v)
+
+        vertices.append(vertex)
+
+    if lineID == "f ":
+
+        face = lines[1:].split(" ")
+        
+        for i, f in enumerate(face):
+            face[i] = [int(x) for x in f.split("/")]
+
+        faces.append(face)
+
+
+print(vertices, faces)
+
+
+"""
 dir = os.path.join("D:\\", "Programming", "pix3d", "model", "bookcase", "IKEA_BILLY_1", "voxel.mat")
 
 test = sio.loadmat(dir)
 
 print(test["voxel"])
-
+"""
 
 
 

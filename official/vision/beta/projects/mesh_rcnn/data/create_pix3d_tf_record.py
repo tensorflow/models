@@ -151,6 +151,44 @@ def parse_mat_file(file):
     except:
         return [[[]]]
 
+def parse_obj_file(file):
+    """
+    Parses relevant data out of a .obj file. This contains all of the model information.
+    Args:
+        file: file path to .obj file
+    Return:
+        vertices: vertices of object
+        faces: faces of object
+    """
+
+    vertices = []
+    faces = []
+
+    obj_file = open(file, 'r')
+    lines = obj_file.readlines()
+
+    for line in lines:
+        lineID = line[0:2]
+        
+        if lineID == "v ":
+            vertex = lines[1:].split(" ")
+            
+            for i, v in enumerate(vertex):
+                vertex[i] = float(v)
+
+            vertices.append(vertex)
+
+        if lineID == "f ":
+
+            face = lines[1:].split(" ")
+            
+            for i, f in enumerate(face):
+                face[i] = [int(x) for x in f.split("/")]
+
+            faces.append(face)
+
+    return vertices, faces
+
 
 
 
