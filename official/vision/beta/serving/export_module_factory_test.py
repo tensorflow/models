@@ -107,8 +107,10 @@ class ImageClassificationExportTest(tf.test.TestCase, parameterized.TestCase):
     # The imported model should contain any trackable attrs that the original
     # model had.
     self.assertTrue(hasattr(imported.model, 'test_trackable'))
-    self.assertAllClose(out['logits'].numpy(), expected_logits.numpy())
-    self.assertAllClose(out['probs'].numpy(), expected_prob.numpy())
+    self.assertAllClose(
+        out['logits'].numpy(), expected_logits.numpy(), rtol=1e-04, atol=1e-04)
+    self.assertAllClose(
+        out['probs'].numpy(), expected_prob.numpy(), rtol=1e-04, atol=1e-04)
 
 
 if __name__ == '__main__':
