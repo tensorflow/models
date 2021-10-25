@@ -224,12 +224,11 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
     }
     return results
 
-  def call(self, inputs):
+  def call(self, inputs: tf.Tensor, image_shape: tf.Tensor):
     detections = inputs
 
     batched_scores = detections['detection_scores']
     batched_classes = detections['detection_classes']
-    batched_boxes = detections['detection_boxes']
     batched_detections_masks = tf.expand_dims(
         detections['detection_masks'], axis=-1)
 
@@ -240,6 +239,13 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
     batched_segmentation_masks = tf.expand_dims(tf.cast(
         tf.argmax(batched_segmentation_masks, axis=-1),
         dtype=tf.float32), axis=-1)
+
+    batched_boxes = detections['detection_boxes']
+    image_shape = tf.cast(image_shape, dtype=batched_boxes.dtype)
+    scale = tf.convert_to_tensor(
+        [self._output_size], dtype=batched_boxes.dtype) / image_shape
+    scale = tf.tile(tf.expand_dims(scale, axis=0), multiples=[1, 1, 2])
+    batched_boxes = batched_boxes * scale
 
     panoptic_masks = tf.map_fn(
         fn=lambda x: self._generate_panoptic_masks(  # pylint:disable=g-long-lambda
@@ -253,7 +259,7 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
         fn_output_signature={
             'category_mask': tf.float32,
             'instance_mask': tf.float32
-        })
+        }, parallel_iterations=32)
 
     for k, v in panoptic_masks.items():
       panoptic_masks[k] = tf.cast(v, dtype=tf.int32)

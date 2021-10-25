@@ -177,7 +177,8 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
     })
 
     if not training and self.panoptic_segmentation_generator is not None:
-      panoptic_outputs = self.panoptic_segmentation_generator(model_outputs)
+      panoptic_outputs = self.panoptic_segmentation_generator(
+          model_outputs, image_shape=image_shape)
       model_outputs.update({'panoptic_outputs': panoptic_outputs})
 
     return model_outputs

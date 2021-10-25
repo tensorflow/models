@@ -32,18 +32,12 @@ import tensorflow as tf
 from official.vision.beta.evaluation import panoptic_quality
 
 
-def rescale_masks(groundtruth, prediction, image_info):
-  rescale_size = tf.cast(
-      tf.math.ceil(image_info[1, :] / image_info[2, :]), tf.int32)
+def _crop_padding(groundtruth, prediction, image_info):
   image_shape = tf.cast(image_info[0, :], tf.int32)
   offsets = tf.cast(image_info[3, :], tf.int32)
 
-  prediction = tf.image.resize(
-      tf.expand_dims(prediction, axis=-1),
-      rescale_size,
-      method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
   prediction = tf.image.crop_to_bounding_box(
-      prediction,
+      tf.expand_dims(prediction, axis=-1),
       offsets[0], offsets[1],
       image_shape[0],
       image_shape[1])
@@ -52,8 +46,8 @@ def rescale_masks(groundtruth, prediction, image_info):
       image_shape[0], image_shape[1])
 
   return (
-    tf.expand_dims(groundtruth[:, :, 0], axis=0),
-    tf.expand_dims(prediction[:, :, 0], axis=0))
+      tf.expand_dims(groundtruth[:, :, 0], axis=0),
+      tf.expand_dims(prediction[:, :, 0], axis=0))
 
 class PanopticQualityEvaluator:
   """Panoptic Quality metric class."""
@@ -169,11 +163,11 @@ class PanopticQualityEvaluator:
     if self._rescale_predictions:
       for idx in range(len(groundtruths['category_mask'])):
         image_info = groundtruths['image_info'][idx]
-        groundtruth_category_mask, prediction_category_mask = rescale_masks(
+        groundtruth_category_mask, prediction_category_mask = _crop_padding(
             groundtruths['category_mask'][idx],
             predictions['category_mask'][idx],
             image_info)
-        groundtruth_instance_mask, prediction_instance_mask = rescale_masks(
+        groundtruth_instance_mask, prediction_instance_mask = _crop_padding(
             groundtruths['instance_mask'][idx],
             predictions['instance_mask'][idx],
             image_info)
