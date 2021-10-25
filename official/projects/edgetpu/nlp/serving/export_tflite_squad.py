@@ -18,7 +18,7 @@ r"""Export tflite for MobileBERT-EdgeTPU with SQUAD head.
 Example usage:
 
 python3 export_tflite_squad.py \
---config_file=third_party/tensorflow_models/official/projects/edgetpu/nlp/experiments/mobilebert_edgetpu_xs.yaml \
+--config_file=official/projects/edgetpu/nlp/experiments/mobilebert_edgetpu_xs.yaml \
 --export_path=/tmp/ \
 --quantization_method=full-integer
 """

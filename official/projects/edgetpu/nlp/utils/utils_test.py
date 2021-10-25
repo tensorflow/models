@@ -16,7 +16,6 @@
 
 from absl import flags
 import tensorflow as tf
-import yaml
 
 from official.projects.edgetpu.nlp.configs import params
 from official.projects.edgetpu.nlp.modeling import model_builder
@@ -48,25 +47,21 @@ class UtilsTest(tf.test.TestCase):
   def test_config_override(self):
     # Define several dummy flags which are call by the utils.config_override
     # function.
-    file_path = 'third_party/tensorflow_models/official/projects/edgetpu/nlp/experiments/mobilebert_edgetpu_m.yaml'
     flags.DEFINE_string('tpu', None, 'tpu_address.')
-    flags.DEFINE_list('config_file', [file_path],
+    flags.DEFINE_list('config_file', [],
                       'A list of config files path.')
-    flags.DEFINE_string('params_override', None, 'Override params.')
+    flags.DEFINE_string('params_override',
+                        'orbit_config.mode=eval', 'Override params.')
     flags.DEFINE_string('model_dir', '/tmp/', 'Model saving directory.')
     flags.DEFINE_list('mode', ['train'], 'Job mode.')
     flags.DEFINE_bool('use_vizier', False,
                       'Whether to enable vizier based hyperparameter search.')
     experiment_params = params.EdgeTPUBERTCustomParams()
+    # By default, the orbit is set with train mode.
+    self.assertEqual(experiment_params.orbit_config.mode, 'train')
+    # Config override should set the orbit to eval mode.
     experiment_params = utils.config_override(experiment_params, FLAGS)
-    experiment_params_dict = experiment_params.as_dict()
-
-    with tf.io.gfile.GFile(file_path, 'r') as f:
-      loaded_dict = yaml.load(f, Loader=yaml.FullLoader)
-
-    # experiment_params contains all the configs but the loaded_dict might
-    # only contains partial of the configs.
-    self.assertTrue(nested_dict_compare(loaded_dict, experiment_params_dict))
+    self.assertEqual(experiment_params.orbit_config.mode, 'eval')
 
   def test_load_checkpoint(self):
     """Test the pretrained model can be successfully loaded."""
