@@ -244,7 +244,7 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
     image_shape = tf.cast(image_shape, dtype=batched_boxes.dtype)
     scale = tf.convert_to_tensor(
         [self._output_size], dtype=batched_boxes.dtype) / image_shape
-    scale = tf.tile(tf.expand_dims(scale, axis=0), multiples=[1, 1, 2])
+    scale = tf.tile(tf.expand_dims(scale, axis=1), multiples=[1, 1, 2])
     batched_boxes = batched_boxes * scale
 
     panoptic_masks = tf.map_fn(
