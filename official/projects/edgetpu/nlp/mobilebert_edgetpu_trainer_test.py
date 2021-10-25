@@ -45,9 +45,7 @@ class EdgetpuBertTrainerTest(tf.test.TestCase):
 
   def setUp(self):
     super(EdgetpuBertTrainerTest, self).setUp()
-    config_path = 'third_party/tensorflow_models/official/projects/edgetpu/nlp/experiments/mobilebert_edgetpu_m.yaml'
-    self.experiment_params = params.EdgeTPUBERTCustomParams.from_yaml(
-        config_path)
+    self.experiment_params = params.EdgeTPUBERTCustomParams()
     self.strategy = tf.distribute.get_strategy()
     self.experiment_params.train_datasest.input_path = 'dummy'
     self.experiment_params.eval_dataset.input_path = 'dummy'
