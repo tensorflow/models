@@ -67,3 +67,15 @@ class Parser(object):
         return self._parse_eval_data(decoded_tensors)
 
     return parse
+
+  @classmethod
+  def inference_fn(cls, inputs):
+    """Parses inputs for predictions.
+
+    Args:
+      inputs: A Tensor, or dictionary of Tensors.
+
+    Returns:
+      processed_inputs: An input tensor to the model.
+    """
+    pass

@@ -301,8 +301,21 @@ def top_k_feature_map_locations(feature_map, max_pool_kernel_size=3, k=100,
                                                   perm=[0, 3, 1, 2])
       feature_map_peaks_transposed = tf.reshape(
           feature_map_peaks_transposed, [batch_size, num_channels, -1])
+      # safe_k will be used whenever there are fewer positions in the heatmap
+      # than the requested number of locations to score. In that case, all
+      # positions are returned in sorted order. To ensure consistent shapes for
+      # downstream ops the outputs are padded with zeros. Safe_k is also
+      # fine for TPU because TPUs require a fixed input size so the number of
+      # positions will also be fixed.
+      safe_k = tf.minimum(k, tf.shape(feature_map_peaks_transposed)[-1])
       scores, peak_flat_indices = tf.math.top_k(
-          feature_map_peaks_transposed, k=k)
+          feature_map_peaks_transposed, k=safe_k)
+      scores = tf.pad(scores, [(0, 0), (0, 0), (0, k - safe_k)])
+      peak_flat_indices = tf.pad(peak_flat_indices,
+                                 [(0, 0), (0, 0), (0, k - safe_k)])
+      scores = tf.ensure_shape(scores, (batch_size, num_channels, k))
+      peak_flat_indices = tf.ensure_shape(peak_flat_indices,
+                                          (batch_size, num_channels, k))
     # Convert the indices such that they represent the location in the full
     # (flattened) feature map of size [batch, height * width * channels].
     channel_idx = tf.range(num_channels)[tf.newaxis, :, tf.newaxis]

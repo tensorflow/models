@@ -24,6 +24,8 @@ from official.nlp.modeling.models.bert_token_classifier import BertTokenClassifi
 from official.nlp.modeling.models.dual_encoder import DualEncoder
 from official.nlp.modeling.models.electra_pretrainer import ElectraPretrainer
 from official.nlp.modeling.models.seq2seq_transformer import *
+from official.nlp.modeling.models.t5 import T5Transformer
+from official.nlp.modeling.models.t5 import T5TransformerParams
 from official.nlp.modeling.models.xlnet import XLNetClassifier
 from official.nlp.modeling.models.xlnet import XLNetPretrainer
 from official.nlp.modeling.models.xlnet import XLNetSpanLabeler

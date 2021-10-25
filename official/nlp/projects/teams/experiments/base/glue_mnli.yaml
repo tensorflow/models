@@ -16,6 +16,7 @@ task:
     seq_length: 128
 trainer:
   checkpoint_interval: 1000
+  continuous_eval_timeout: 7200
   optimizer_config:
     learning_rate:
       polynomial:
