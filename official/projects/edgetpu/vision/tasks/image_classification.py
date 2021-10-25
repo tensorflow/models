@@ -28,7 +28,6 @@ from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v1_model
 from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v2_model
 from official.vision.beta.configs import image_classification as base_cfg
 from official.vision.beta.dataloaders import input_reader_factory
-from official.vision.beta.dataloaders.google import tfds_classification_decoders
 
 
 def get_models() -> Mapping[str, tf.keras.Model]:
@@ -141,11 +140,7 @@ class EdgeTPUTask(base_task.Task):
     is_multilabel = self.task_config.train_data.is_multilabel
 
     if params.tfds_name:
-      if params.tfds_name in tfds_classification_decoders.TFDS_ID_TO_DECODER_MAP:
-        decoder = tfds_classification_decoders.TFDS_ID_TO_DECODER_MAP[
-            params.tfds_name]()
-      else:
-        raise ValueError('TFDS {} is not supported'.format(params.tfds_name))
+      raise ValueError('TFDS {} is not supported'.format(params.tfds_name))
     else:
       decoder = classification_input.Decoder(
           image_field_key=image_field_key, label_field_key=label_field_key,
