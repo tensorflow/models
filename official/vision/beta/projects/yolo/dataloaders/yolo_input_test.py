@@ -66,7 +66,7 @@ def test_yolo_pipeline_visually(is_training=True, num=30):
   data = data.take(num)
   for l, (image, label) in enumerate(data):
     image = tf.image.draw_bounding_boxes(
-        image, label['bbox'], [[1.0, 0.0, 1.0]])
+        image, label['bbox'], [[0.0, 1.0, 1.0]])
 
     gt = label['true_conf']
 
