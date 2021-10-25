@@ -482,11 +482,15 @@ def resize_and_jitter_image(image,
     image_ = tf.pad(
         cropped_image, [[pad[0], pad[2]], [pad[1], pad[3]], [0, 0]],
         constant_values=PAD_VALUE)
+
+    # Pad and scale info
+    isize = tf.cast(tf.shape(image_)[:2], dtype=tf.float32)
+    osize = tf.cast((desired_size[0], desired_size[1]), dtype=tf.float32)
     pad_info = tf.stack([
         tf.cast(tf.shape(cropped_image)[:2], tf.float32),
-        tf.cast(tf.shape(image_)[:2], dtype=tf.float32),
-        tf.ones_like(original_dims, dtype=tf.float32),
-        (-tf.cast(pad[:2], tf.float32))
+        osize, 
+        osize/isize,
+        (-tf.cast(pad[:2], tf.float32)*osize/isize)
     ])
     infos.append(pad_info)
 

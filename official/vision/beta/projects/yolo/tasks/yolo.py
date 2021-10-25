@@ -255,16 +255,22 @@ class YoloTask(base_task.Task):
         logs.update({m.name: m.result()})
     return logs
 
-  def _reorg_boxes(self, boxes, num_detections, image):
+  def _reorg_boxes(self, boxes, info, num_detections):
     """Scale and Clean boxes prior to Evaluation."""
-
-    # Build a prediciton mask to take only the number of detections
     mask = tf.sequence_mask(num_detections, maxlen=tf.shape(boxes)[1])
-    mask = tf.cast(tf.expand_dims(mask, axis=-1), boxes.dtype)
+    mask = tf.cast(tf.expand_dims(mask, axis = -1), boxes.dtype)
 
     # Denormalize the boxes by the shape of the image
-    inshape = tf.cast(preprocessing_ops.get_image_shape(image), boxes.dtype)
+    inshape = tf.expand_dims(info[:, 1, :], axis = 1)
+    ogshape = tf.expand_dims(info[:, 0, :], axis = 1)
+    scale = tf.expand_dims(info[:, 2, :], axis = 1)
+    offset = tf.expand_dims(info[:, 3, :], axis = 1)
+
     boxes = box_ops.denormalize_boxes(boxes, inshape)
+    boxes = box_ops.clip_boxes(boxes, inshape)
+    boxes += tf.tile(offset, [1, 1, 2])
+    boxes /= tf.tile(scale, [1, 1, 2])
+    boxes = box_ops.clip_boxes(boxes, ogshape)
 
     # Mask the boxes for usage
     boxes *= mask
@@ -292,10 +298,8 @@ class YoloTask(base_task.Task):
     logs = {self.loss: metric_loss}
 
     # Reorganize and rescale the boxes
-    boxes = self._reorg_boxes(y_pred['bbox'], y_pred['num_detections'], image)
-    label['groundtruths']['boxes'] = self._reorg_boxes(
-        label['groundtruths']['boxes'], label['groundtruths']['num_detections'],
-        image)
+    info = label['groundtruths']['image_info']
+    boxes = self._reorg_boxes(y_pred['bbox'], info, y_pred["num_detections"])
 
     # Build the input for the coc evaluation metric
     coco_model_outputs = {
