@@ -174,8 +174,8 @@ def panoptic_fpn_coco() -> cfg.ExperimentConfig:
     is_thing.append(True if idx <= num_thing_categories else False)
 
   config = cfg.ExperimentConfig(
-    runtime=cfg.RuntimeConfig(
-      mixed_precision_dtype='bfloat16', enable_xla=True),
+      runtime=cfg.RuntimeConfig(
+          mixed_precision_dtype='bfloat16', enable_xla=True),
       task=PanopticMaskRCNNTask(
           init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/resnet50_imagenet/ckpt-28080',  # pylint: disable=line-too-long
           init_checkpoint_modules=['backbone'],

@@ -79,7 +79,7 @@ class PanopticQualityEvaluator:
         instead of "stuff." Default to `None`, and it means categories are not
         classified into these two categories.
       rescale_predictions: `bool`, whether to scale back prediction to original
-        image sizes. If True, y_true['image_info'] is used to rescale
+        image sizes. If True, groundtruths['image_info'] is used to rescale
         predictions.        
     """
     self._pq_metric_module = panoptic_quality.PanopticQuality(

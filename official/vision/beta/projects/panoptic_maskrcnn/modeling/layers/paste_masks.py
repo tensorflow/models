@@ -131,7 +131,7 @@ class PasteMasks(tf.keras.layers.Layer):
 
   def __init__(self, output_size: List[int],
                grid_sampler, **kwargs):
-    """Generates panoptic segmentation masks.
+    """Resizes and pastes instance masks to match image size.
 
     Args:
       output_size: A `List` of integers that represent the height and width of
