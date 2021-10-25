@@ -26,7 +26,7 @@ for line in lines:
         face = line[2:].split(" ")
         
         for i, f in enumerate(face):
-            face[i] = [int(x) for x in f.split("/")]
+            face[i] = [int(x) - 1 for x in f.split("/")]
 
         faces.append(face)
 
