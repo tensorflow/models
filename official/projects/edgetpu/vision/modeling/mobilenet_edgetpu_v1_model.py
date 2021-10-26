@@ -27,6 +27,7 @@ ModelConfig = mobilenet_edgetpu_v1_model_blocks.ModelConfig
 MODEL_CONFIGS = {
     # (width, depth, resolution, dropout)
     'mobilenet_edgetpu': ModelConfig.from_args(1.0, 1.0, 224, 0.1),
+    'mobilenet_edgetpu_dm0p75': ModelConfig.from_args(0.75, 1.0, 224, 0.1),
     'mobilenet_edgetpu_dm1p25': ModelConfig.from_args(1.25, 1.0, 224, 0.1),
     'mobilenet_edgetpu_dm1p5': ModelConfig.from_args(1.5, 1.0, 224, 0.1),
     'mobilenet_edgetpu_dm1p75': ModelConfig.from_args(1.75, 1.0, 224, 0.1)

@@ -41,6 +41,7 @@ MOBILENET_EDGETPU_V2_CONFIGS = frozenset([
 # MobileNet-EdgeTPU-V1 configs.
 MOBILENET_EDGETPU_CONFIGS = frozenset([
     'mobilenet_edgetpu',
+    'mobilenet_edgetpu_dm0p75',
     'mobilenet_edgetpu_dm1p25',
     'mobilenet_edgetpu_dm1p5',
     'mobilenet_edgetpu_dm1p75',

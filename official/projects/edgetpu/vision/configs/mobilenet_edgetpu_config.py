@@ -193,7 +193,12 @@ def mobilenet_edgetpu() -> cfg.ExperimentConfig:
 
 # Registration for MobileNet-EdgeTPU-V1 models.
 # We use 'depth_multiplier' to scale the models.
-# E.g. dm1p25 implies depth multiplier of 1.25x
+# E.g. dm0p75 implies depth multiplier of 0.75x
+@exp_factory.register_config_factory('mobilenet_edgetpu_dm0p75')
+def mobilenet_edgetpu_dm0p75() -> cfg.ExperimentConfig:
+  return mobilenet_edgetpu_base_experiment_config('mobilenet_edgetpu_dm0p75')
+
+
 @exp_factory.register_config_factory('mobilenet_edgetpu_dm1p25')
 def mobilenet_edgetpu_dm1p25() -> cfg.ExperimentConfig:
   return mobilenet_edgetpu_base_experiment_config('mobilenet_edgetpu_dm1p25')
