@@ -166,7 +166,7 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     del training
     return []
 
-  def process_metrics(self, metrics, labels, model_outputs):
+  def process_metrics(self, metrics, labels, model_outputs, **kwargs):
     """Process and update metrics.
 
     Called when using custom training loop API.
@@ -177,6 +177,7 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
       labels: a tensor or a nested structure of tensors.
       model_outputs: a tensor or a nested structure of tensors. For example,
         output of the keras model built by self.build_model.
+      **kwargs: other args.
     """
     for metric in metrics:
       metric.update_state(labels, model_outputs)
