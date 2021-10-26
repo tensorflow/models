@@ -224,6 +224,25 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
     }
     return results
 
+  def _resize_and_pad_masks(self, mask, image_info):
+    rescale_size = tf.cast(
+        tf.math.ceil(image_info[1, :] / image_info[2, :]), tf.int32)
+    image_shape = tf.cast(image_info[0, :], tf.int32)
+    offsets = tf.cast(image_info[3, :], tf.int32)
+
+    mask = tf.image.resize(
+        mask,
+        rescale_size,
+        method=tf.image.ResizeMethod.BILINEAR)
+    mask = tf.image.crop_to_bounding_box(
+        mask,
+        offsets[0], offsets[1],
+        image_shape[0],
+        image_shape[1])
+    mask = tf.image.pad_to_bounding_box(
+        mask, 0, 0, self._output_size[0], self._output_size[1])
+    return mask
+
   def call(self, inputs: tf.Tensor, image_info: Mapping[str, tf.Tensor]):
     detections = inputs
 
@@ -232,19 +251,25 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
     batched_detections_masks = tf.expand_dims(
         detections['detection_masks'], axis=-1)
 
-    batched_segmentation_masks = tf.image.resize(
-        detections['segmentation_outputs'],
-        size=self._output_size,
-        method='bilinear')
-    batched_segmentation_masks = tf.expand_dims(tf.cast(
-        tf.argmax(batched_segmentation_masks, axis=-1),
-        dtype=tf.float32), axis=-1)
-
     batched_boxes = detections['detection_boxes']
     scale = tf.tile(
         tf.cast(image_info[:, 2:3, :], dtype=batched_boxes.dtype),
         multiples=[1, 1, 2])
     batched_boxes /= scale
+
+    batched_segmentation_masks = tf.cast(
+        detections['segmentation_outputs'], dtype=tf.float32)
+    batched_segmentation_masks = tf.map_fn(
+        fn=lambda x: self._resize_and_pad_masks(
+            x[0], x[1]),
+        elems=(
+            batched_segmentation_masks,
+            image_info),
+        fn_output_signature=tf.float32,
+        parallel_iterations=32)
+    batched_segmentation_masks = tf.expand_dims(tf.cast(
+        tf.argmax(batched_segmentation_masks, axis=-1),
+        dtype=tf.float32), axis=-1)
 
     panoptic_masks = tf.map_fn(
         fn=lambda x: self._generate_panoptic_masks(  # pylint:disable=g-long-lambda
