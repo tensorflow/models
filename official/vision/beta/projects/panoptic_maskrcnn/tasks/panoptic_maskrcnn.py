@@ -286,7 +286,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
     with tf.GradientTape() as tape:
       outputs = model(
           images,
-          image_shape=labels['image_info'][:, 1, :],
+          image_info=labels['image_info'],
           anchor_boxes=labels['anchor_boxes'],
           gt_boxes=labels['gt_boxes'],
           gt_classes=labels['gt_classes'],
@@ -355,7 +355,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
     outputs = model(
         images,
         anchor_boxes=labels['anchor_boxes'],
-        image_shape=labels['image_info'][:, 1, :],
+        image_info=labels['image_info'],
         training=False)
 
     logs = {self.loss: 0}

@@ -110,7 +110,8 @@ def build_panoptic_maskrcnn(
         things_class_label=postprocessing_config.things_class_label,
         stuff_area_threshold=postprocessing_config.stuff_area_threshold,
         void_class_label=postprocessing_config.void_class_label,
-        void_instance_id=postprocessing_config.void_instance_id)
+        void_instance_id=postprocessing_config.void_instance_id,
+        rescale_predictions=postprocessing_config.rescale_predictions)
   else:
     panoptic_segmentation_generator_obj = None
 

@@ -143,12 +143,13 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
 
   def call(self,
            images: tf.Tensor,
-           image_shape: tf.Tensor,
+           image_info: Mapping[str, tf.Tensor],
            anchor_boxes: Optional[Mapping[str, tf.Tensor]] = None,
            gt_boxes: Optional[tf.Tensor] = None,
            gt_classes: Optional[tf.Tensor] = None,
            gt_masks: Optional[tf.Tensor] = None,
            training: Optional[bool] = None) -> Mapping[str, tf.Tensor]:
+    image_shape = image_info[:, 1, :]
     model_outputs = super(PanopticMaskRCNNModel, self).call(
         images=images,
         image_shape=image_shape,
@@ -177,7 +178,8 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
     })
 
     if not training and self.panoptic_segmentation_generator is not None:
-      panoptic_outputs = self.panoptic_segmentation_generator(model_outputs)
+      panoptic_outputs = self.panoptic_segmentation_generator(
+          model_outputs, image_info=image_info)
       model_outputs.update({'panoptic_outputs': panoptic_outputs})
 
     return model_outputs
