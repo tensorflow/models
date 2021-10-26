@@ -26,6 +26,10 @@ class TaskSampler(tf.Module, metaclass=abc.ABCMeta):
   def __init__(self, task_weights: Dict[Text, Union[float, int]]):
     self._task_weights = task_weights
 
+  @property
+  def task_weights(self):
+    return self._task_weights
+
   @abc.abstractmethod
   def task_cumulative_distribution(self, global_step: tf.Tensor) -> tf.Tensor:
     """Compute cumulative distribution to sample tasks.
