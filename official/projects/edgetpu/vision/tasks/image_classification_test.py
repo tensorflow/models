@@ -34,6 +34,7 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
                             ('mobilenet_edgetpu_v2_m'),
                             ('mobilenet_edgetpu_v2_l'),
                             ('mobilenet_edgetpu'),
+                            ('mobilenet_edgetpu_dm0p75'),
                             ('mobilenet_edgetpu_dm1p25'),
                             ('mobilenet_edgetpu_dm1p5'),
                             ('mobilenet_edgetpu_dm1p75'))
