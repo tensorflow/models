@@ -13,11 +13,13 @@
 # limitations under the License.
 
 """Image classification task definition."""
+import os
 import tempfile
 from typing import Any, List, Mapping, Optional, Tuple
 
 from absl import logging
 import tensorflow as tf
+
 from official.common import dataset_fn
 from official.core import base_task
 from official.core import task_factory
@@ -28,6 +30,19 @@ from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v1_model
 from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v2_model
 from official.vision.beta.configs import image_classification as base_cfg
 from official.vision.beta.dataloaders import input_reader_factory
+
+
+def _copy_recursively(src: str, dst: str) -> None:
+  """Recursively copy directory."""
+  for src_dir, _, src_files in tf.io.gfile.walk(src):
+    dst_dir = os.path.join(dst, os.path.relpath(src_dir, src))
+    if not tf.io.gfile.exists(dst_dir):
+      tf.io.gfile.makedirs(dst_dir)
+    for src_file in src_files:
+      tf.io.gfile.copy(
+          os.path.join(src_dir, src_file),
+          os.path.join(dst_dir, src_file),
+          overwrite=True)
 
 
 def get_models() -> Mapping[str, tf.keras.Model]:
@@ -61,8 +76,8 @@ def load_searched_model(saved_model_path: str) -> tf.keras.Model:
     Loaded keras model.
   """
   with tempfile.TemporaryDirectory() as tmp_dir:
-    if tf.io.gfile.IsDirectory(saved_model_path):
-      tf.io.gfile.RecursivelyCopyDir(saved_model_path, tmp_dir, overwrite=True)
+    if tf.io.gfile.isdir(saved_model_path):
+      _copy_recursively(saved_model_path, tmp_dir)
       load_path = tmp_dir
     else:
       raise ValueError('Saved model path is invalid.')
