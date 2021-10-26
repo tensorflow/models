@@ -183,7 +183,7 @@ def panoptic_fpn_coco() -> cfg.ExperimentConfig:
           model=PanopticMaskRCNN(
               num_classes=91, input_size=[1024, 1024, 3],
               panoptic_segmentation_generator=PanopticSegmentationGenerator(
-                  output_size=[640, 640]),
+                  output_size=[640, 640], rescale_predictions=True),
               stuff_classes_offset=90,
               segmentation_model=SEGMENTATION_MODEL(
                   num_classes=num_semantic_segmentation_classes,
