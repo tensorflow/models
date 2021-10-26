@@ -14,7 +14,7 @@
 
 """Contains definition for postprocessing layer to genrate panoptic segmentations."""
 
-from typing import List, Mapping
+from typing import List
 
 import tensorflow as tf
 
@@ -57,7 +57,7 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
         assigned to any thing class. That is, void_instance_id are assigned to
         both stuff regions and empty regions.
       rescale_predictions: `bool`, whether to scale back prediction to original
-        image sizes. If True, image_info `dict` is used to rescale predictions.
+        image sizes. If True, image_info is used to rescale predictions.
       **kwargs: additional kewargs arguments.
     """
     self._output_size = output_size
@@ -230,6 +230,13 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
     return results
 
   def _resize_and_pad_masks(self, mask, image_info):
+    """Resizes masks to match the original image shape and pads them to
+        `output_size`.
+    Args:
+      mask: a padded mask tensor. 
+      image_info: a tensor that holds information about original and
+        preprocessed images.
+    """
     rescale_size = tf.cast(
         tf.math.ceil(image_info[1, :] / image_info[2, :]), tf.int32)
     image_shape = tf.cast(image_info[0, :], tf.int32)
@@ -238,7 +245,7 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
     mask = tf.image.resize(
         mask,
         rescale_size,
-        method=tf.image.ResizeMethod.BILINEAR)
+        method='bilinear')
     mask = tf.image.crop_to_bounding_box(
         mask,
         offsets[0], offsets[1],
@@ -248,7 +255,7 @@ class PanopticSegmentationGenerator(tf.keras.layers.Layer):
         mask, 0, 0, self._output_size[0], self._output_size[1])
     return mask
 
-  def call(self, inputs: tf.Tensor, image_info: Mapping[str, tf.Tensor]):
+  def call(self, inputs: tf.Tensor, image_info: tf.Tensor):
     detections = inputs
 
     batched_scores = detections['detection_scores']

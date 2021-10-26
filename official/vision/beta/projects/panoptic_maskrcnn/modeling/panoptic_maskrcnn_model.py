@@ -143,7 +143,7 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
 
   def call(self,
            images: tf.Tensor,
-           image_info: Mapping[str, tf.Tensor],
+           image_info: tf.Tensor,
            anchor_boxes: Optional[Mapping[str, tf.Tensor]] = None,
            gt_boxes: Optional[tf.Tensor] = None,
            gt_classes: Optional[tf.Tensor] = None,

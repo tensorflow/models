@@ -33,11 +33,16 @@ from official.vision.beta.evaluation import panoptic_quality
 
 
 def _crop_padding(mask, image_info):
+  """Crops padded masks to match original image shape.
+  Args:
+    mask: a padded mask tensor. 
+    image_info: a tensor that holds information about original and preprocessed
+      images.
+  """
   image_shape = tf.cast(image_info[0, :], tf.int32)
   mask = tf.image.crop_to_bounding_box(
       tf.expand_dims(mask, axis=-1), 0, 0,
       image_shape[0], image_shape[1])
-
   return tf.expand_dims(mask[:, :, 0], axis=0)
 
 class PanopticQualityEvaluator:
