@@ -84,6 +84,7 @@ class PanopticSegmentationGenerator(hyperparams.Config):
   things_class_label: int = 1
   void_class_label: int = 0
   void_instance_id: int = 0
+  rescale_predictions: bool = False
 
 
 @dataclasses.dataclass
