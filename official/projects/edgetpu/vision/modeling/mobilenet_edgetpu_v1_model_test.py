@@ -30,6 +30,19 @@ EXAMPLE_IMAGE = ('third_party/tensorflow_models/official/vision/'
 CKPTS = 'gs://**/efficientnets'
 
 
+def _copy_recursively(src: str, dst: str) -> None:
+  """Recursively copy directory."""
+  for src_dir, _, src_files in tf.io.gfile.walk(src):
+    dst_dir = os.path.join(dst, os.path.relpath(src_dir, src))
+    if not tf.io.gfile.exists(dst_dir):
+      tf.io.gfile.makedirs(dst_dir)
+    for src_file in src_files:
+      tf.io.gfile.copy(
+          os.path.join(src_dir, src_file),
+          os.path.join(dst_dir, src_file),
+          overwrite=True)
+
+
 class MobilenetEdgeTPUBlocksTest(tf.test.TestCase):
 
   def setUp(self):
@@ -200,7 +213,7 @@ class MobilenetEdgeTPUPredictTest(tf.test.TestCase):
   def _copy_saved_model_to_local(self, model_ckpt):
     # Copy saved model to local first for speed
     tmp_path = '/tmp/saved_model'
-    tf.io.gfile.RecursivelyCopyDir(model_ckpt, tmp_path, overwrite=True)
+    _copy_recursively(model_ckpt, tmp_path)
     return tmp_path
 
   def _test_prediction(self, model_name, image_size):
