@@ -198,7 +198,8 @@ def build_maskrcnn(
       nms_iou_threshold=generator_config.nms_iou_threshold,
       max_num_detections=generator_config.max_num_detections,
       nms_version=generator_config.nms_version,
-      use_cpu_nms=generator_config.use_cpu_nms)
+      use_cpu_nms=generator_config.use_cpu_nms,
+      soft_nms_sigma=generator_config.soft_nms_sigma)
 
   if model_config.include_mask:
     mask_head = instance_heads.MaskHead(
@@ -301,7 +302,8 @@ def build_retinanet(
       nms_iou_threshold=generator_config.nms_iou_threshold,
       max_num_detections=generator_config.max_num_detections,
       nms_version=generator_config.nms_version,
-      use_cpu_nms=generator_config.use_cpu_nms)
+      use_cpu_nms=generator_config.use_cpu_nms,
+      soft_nms_sigma=generator_config.soft_nms_sigma)
 
   model = retinanet_model.RetinaNetModel(
       backbone,

@@ -148,9 +148,10 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
           training=[True, False],
           has_att_heads=[True, False],
           output_intermediate_features=[True, False],
+          soft_nms_sigma=[None, 0.0, 0.1],
       ))
   def test_forward(self, strategy, image_size, training, has_att_heads,
-                   output_intermediate_features):
+                   output_intermediate_features, soft_nms_sigma):
     """Test for creation of a R50-FPN RetinaNet."""
     tf.keras.backend.set_image_data_format('channels_last')
     num_classes = 3
@@ -193,7 +194,10 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
           attribute_heads=attribute_heads,
           num_anchors_per_location=num_anchors_per_location)
       generator = detection_generator.MultilevelDetectionGenerator(
-          max_num_detections=10, nms_version='v1')
+          max_num_detections=10,
+          nms_version='v1',
+          use_cpu_nms=soft_nms_sigma is not None,
+          soft_nms_sigma=soft_nms_sigma)
       model = retinanet_model.RetinaNetModel(
           backbone=backbone,
           decoder=decoder,

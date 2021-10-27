@@ -20,6 +20,7 @@ import tensorflow as tf
 
 from official.vision.beta.ops import box_ops
 from official.vision.beta.ops import nms
+from official.vision.beta.ops import preprocess_ops
 
 
 def _generate_detections_v1(boxes: tf.Tensor,
@@ -29,7 +30,8 @@ def _generate_detections_v1(boxes: tf.Tensor,
                             pre_nms_top_k: int = 5000,
                             pre_nms_score_threshold: float = 0.05,
                             nms_iou_threshold: float = 0.5,
-                            max_num_detections: int = 100):
+                            max_num_detections: int = 100,
+                            soft_nms_sigma: Optional[float] = None):
   """Generates the final detections given the model outputs.
 
   The implementation unrolls the batch dimension and process images one by one.
@@ -58,6 +60,8 @@ def _generate_detections_v1(boxes: tf.Tensor,
       boxes overlap too much with respect to IOU.
     max_num_detections: A scalar representing maximum number of boxes retained
       over all classes.
+    soft_nms_sigma: A `float` representing the sigma parameter for Soft NMS.
+      When soft_nms_sigma=0.0 (which is default), we fall back to standard NMS.
 
   Returns:
     nms_boxes: A `float` type `tf.Tensor` of shape
@@ -99,7 +103,8 @@ def _generate_detections_v1(boxes: tf.Tensor,
            pre_nms_top_k=pre_nms_top_k,
            pre_nms_score_threshold=pre_nms_score_threshold,
            nms_iou_threshold=nms_iou_threshold,
-           max_num_detections=max_num_detections)
+           max_num_detections=max_num_detections,
+           soft_nms_sigma=soft_nms_sigma)
       nmsed_boxes.append(nmsed_boxes_i)
       nmsed_scores.append(nmsed_scores_i)
       nmsed_classes.append(nmsed_classes_i)
@@ -126,7 +131,8 @@ def _generate_detections_per_image(
     pre_nms_top_k: int = 5000,
     pre_nms_score_threshold: float = 0.05,
     nms_iou_threshold: float = 0.5,
-    max_num_detections: int = 100):
+    max_num_detections: int = 100,
+    soft_nms_sigma: Optional[float] = None):
   """Generates the final detections per image given the model outputs.
 
   Args:
@@ -149,6 +155,9 @@ def _generate_detections_per_image(
       boxes overlap too much with respect to IOU.
     max_num_detections: A `scalar` representing maximum number of boxes retained
       over all classes.
+    soft_nms_sigma: A `float` representing the sigma parameter for Soft NMS.
+      When soft_nms_sigma=0.0, we fall back to standard NMS.
+      If set to None, `tf.image.non_max_suppression_padded` is called instead.
 
   Returns:
     nms_boxes: A `float` tf.Tensor of shape `[max_num_detections, 4]`
@@ -182,21 +191,38 @@ def _generate_detections_per_image(
         scores_i, k=tf.minimum(tf.shape(scores_i)[-1], pre_nms_top_k))
     boxes_i = tf.gather(boxes_i, indices)
 
-    (nmsed_indices_i,
-     nmsed_num_valid_i) = tf.image.non_max_suppression_padded(
-         tf.cast(boxes_i, tf.float32),
-         tf.cast(scores_i, tf.float32),
-         max_num_detections,
-         iou_threshold=nms_iou_threshold,
-         score_threshold=pre_nms_score_threshold,
-         pad_to_max_output_size=True,
-         name='nms_detections_' + str(i))
-    nmsed_boxes_i = tf.gather(boxes_i, nmsed_indices_i)
-    nmsed_scores_i = tf.gather(scores_i, nmsed_indices_i)
-    # Sets scores of invalid boxes to -1.
-    nmsed_scores_i = tf.where(
-        tf.less(tf.range(max_num_detections), [nmsed_num_valid_i]),
-        nmsed_scores_i, -tf.ones_like(nmsed_scores_i))
+    if soft_nms_sigma is not None:
+      (nmsed_indices_i,
+       nmsed_scores_i) = tf.image.non_max_suppression_with_scores(
+           tf.cast(boxes_i, tf.float32),
+           tf.cast(scores_i, tf.float32),
+           max_num_detections,
+           iou_threshold=nms_iou_threshold,
+           score_threshold=pre_nms_score_threshold,
+           soft_nms_sigma=soft_nms_sigma,
+           name='nms_detections_' + str(i))
+      nmsed_boxes_i = tf.gather(boxes_i, nmsed_indices_i)
+      nmsed_boxes_i = preprocess_ops.clip_or_pad_to_fixed_size(
+          nmsed_boxes_i, max_num_detections, 0.0)
+      nmsed_scores_i = preprocess_ops.clip_or_pad_to_fixed_size(
+          nmsed_scores_i, max_num_detections, -1.0)
+    else:
+      (nmsed_indices_i,
+       nmsed_num_valid_i) = tf.image.non_max_suppression_padded(
+           tf.cast(boxes_i, tf.float32),
+           tf.cast(scores_i, tf.float32),
+           max_num_detections,
+           iou_threshold=nms_iou_threshold,
+           score_threshold=pre_nms_score_threshold,
+           pad_to_max_output_size=True,
+           name='nms_detections_' + str(i))
+      nmsed_boxes_i = tf.gather(boxes_i, nmsed_indices_i)
+      nmsed_scores_i = tf.gather(scores_i, nmsed_indices_i)
+      # Sets scores of invalid boxes to -1.
+      nmsed_scores_i = tf.where(
+          tf.less(tf.range(max_num_detections), [nmsed_num_valid_i]),
+          nmsed_scores_i, -tf.ones_like(nmsed_scores_i))
+
     nmsed_classes_i = tf.fill([max_num_detections], i)
     nmsed_boxes.append(nmsed_boxes_i)
     nmsed_scores.append(nmsed_scores_i)
@@ -207,6 +233,8 @@ def _generate_detections_per_image(
         att_i = att[:, min(num_classes_for_attr - 1, i)]
         att_i = tf.gather(att_i, indices)
         nmsed_att_i = tf.gather(att_i, nmsed_indices_i)
+        nmsed_att_i = preprocess_ops.clip_or_pad_to_fixed_size(
+            nmsed_att_i, max_num_detections, 0.0)
         nmsed_attributes[att_name].append(nmsed_att_i)
 
   # Concats results from all classes and sort them.
@@ -407,6 +435,7 @@ class DetectionGenerator(tf.keras.layers.Layer):
                max_num_detections: int = 100,
                nms_version: str = 'v2',
                use_cpu_nms: bool = False,
+               soft_nms_sigma: Optional[float] = None,
                **kwargs):
     """Initializes a detection generator.
 
@@ -423,6 +452,8 @@ class DetectionGenerator(tf.keras.layers.Layer):
         generate.
       nms_version: A string of `batched`, `v1` or `v2` specifies NMS version.
       use_cpu_nms: A `bool` of whether or not enforce NMS to run on CPU.
+      soft_nms_sigma: A `float` representing the sigma parameter for Soft NMS.
+        When soft_nms_sigma=0.0, we fall back to standard NMS.
       **kwargs: Additional keyword arguments passed to Layer.
     """
     self._config_dict = {
@@ -433,6 +464,7 @@ class DetectionGenerator(tf.keras.layers.Layer):
         'max_num_detections': max_num_detections,
         'nms_version': nms_version,
         'use_cpu_nms': use_cpu_nms,
+        'soft_nms_sigma': soft_nms_sigma,
     }
     super(DetectionGenerator, self).__init__(**kwargs)
 
@@ -540,7 +572,8 @@ class DetectionGenerator(tf.keras.layers.Layer):
                 pre_nms_score_threshold=self
                 ._config_dict['pre_nms_score_threshold'],
                 nms_iou_threshold=self._config_dict['nms_iou_threshold'],
-                max_num_detections=self._config_dict['max_num_detections']))
+                max_num_detections=self._config_dict['max_num_detections'],
+                soft_nms_sigma=self._config_dict['soft_nms_sigma']))
       elif self._config_dict['nms_version'] == 'v2':
         (nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections) = (
             _generate_detections_v2(
@@ -585,6 +618,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
                max_num_detections: int = 100,
                nms_version: str = 'v1',
                use_cpu_nms: bool = False,
+               soft_nms_sigma: Optional[float] = None,
                **kwargs):
     """Initializes a multi-level detection generator.
 
@@ -601,6 +635,8 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         generate.
       nms_version: A string of `batched`, `v1` or `v2` specifies NMS version
       use_cpu_nms: A `bool` of whether or not enforce NMS to run on CPU.
+      soft_nms_sigma: A `float` representing the sigma parameter for Soft NMS.
+        When soft_nms_sigma=0.0, we fall back to standard NMS.
       **kwargs: Additional keyword arguments passed to Layer.
     """
     self._config_dict = {
@@ -611,6 +647,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         'max_num_detections': max_num_detections,
         'nms_version': nms_version,
         'use_cpu_nms': use_cpu_nms,
+        'soft_nms_sigma': soft_nms_sigma,
     }
     super(MultilevelDetectionGenerator, self).__init__(**kwargs)
 
@@ -778,7 +815,8 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
                  pre_nms_score_threshold=self
                  ._config_dict['pre_nms_score_threshold'],
                  nms_iou_threshold=self._config_dict['nms_iou_threshold'],
-                 max_num_detections=self._config_dict['max_num_detections']))
+                 max_num_detections=self._config_dict['max_num_detections'],
+                 soft_nms_sigma=self._config_dict['soft_nms_sigma']))
       elif self._config_dict['nms_version'] == 'v2':
         (nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections) = (
             _generate_detections_v2(
