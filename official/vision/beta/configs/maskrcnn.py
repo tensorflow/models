@@ -133,6 +133,7 @@ class DetectionGenerator(hyperparams.Config):
   max_num_detections: int = 100
   nms_version: str = 'v2'  # `v2`, `v1`, `batched`
   use_cpu_nms: bool = False
+  soft_nms_sigma: Optional[float] = None  # Only works when nms_version='v1'.
 
 
 @dataclasses.dataclass
