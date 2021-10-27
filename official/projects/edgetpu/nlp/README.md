@@ -48,11 +48,15 @@ time-to-market.
 
 ## Pre-trained Models
 
-Model name            | # Parameters | # Ops  |  MLM   | Checkpoint | TFhub link
---------------------- | :----------: | :----: | :---: | :---: | :--------:
-MobileBERT-EdgeTPU-M  | 50.9M        | 18.8e9 |  73.8% | WIP | WIP
-MobileBERT-EdgeTPU-S  | 38.3M        | 14.0e9 |  72.8% | WIP | WIP
-MobileBERT-EdgeTPU-XS | 27.1M        | 9.4e9  |  71.2% | WIP | WIP
+Note: the SQUAD score is measured with SQUAD V1.1 dataset by adding the [BertSpanLabeler task head](https://github.com/tensorflow/models/blob/master/official/nlp/modeling/models/bert_span_labeler.py).
+
+Model name (checkpoint)            | # Parameters |  MLM | SQUAD (float) | SQUAD (int8) | TFhub link
+--------------------- | :----------: | :----: |:---:|:---:| :--------:
+MobileBERT (baseline) | 24.6M | 71.4% | 89.02% | 87.95% | n/a
+[MobileBERT-EdgeTPU-XS](https://storage.cloud.google.com/tf_model_garden/models/edgetpu/checkpoint_and_tflite/nlp/mobilebert-edgetpu/checkpoint/mobilebert-edgetpu-xs.tar.gz) | 27.1M        |  71.2% | 88.20% | 87.15% | [link](https://tfhub.dev/google/edgetpu/nlp/mobilebert-edgetpu/xs/1)
+[MobileBERT-EdgeTPU-S](https://storage.cloud.google.com/tf_model_garden/models/edgetpu/checkpoint_and_tflite/nlp/mobilebert-edgetpu/checkpoint/mobilebert-edgetpu-s.tar.gz)  | 38.3M        |  72.8% | 89.97% | 89.40% | [link](https://tfhub.dev/google/edgetpu/nlp/mobilebert-edgetpu/s/1)
+[MobileBERT-EdgeTPU-M](https://storage.cloud.google.com/tf_model_garden/models/edgetpu/checkpoint_and_tflite/nlp/mobilebert-edgetpu/checkpoint/mobilebert-edgetpu-m.tar.gz)  | 50.9M        |  73.8% | 90.24% | 89.50% | [link](https://tfhub.dev/google/edgetpu/nlp/mobilebert-edgetpu/m/1)
+
 
 ### Restoring from Checkpoints
 
@@ -83,4 +87,19 @@ checkpoint.restore(FLAGS.model_checkpoint).assert_existing_objects_matched()
 
 ### Use TF-Hub models
 
-TODO(longy): Update with instructions to use tf-hub models
+In addition to the checkpoint, MobileBERT-EdgeTPU models are also available in
+[Tensorflow Hub](https://tfhub.dev/). To use the models for finetuning on a
+downstream task (e.g. Question Answering):
+
+```
+import tensorflow as tf
+import tensorflow_hub as hub
+from official.nlp.modeling import models
+
+encoder_network = hub.KerasLayer(
+    'https://tfhub.dev/google/edgetpu/nlp/mobilebert-edgetpu/s/1',
+    trainable=True)
+squad_model = models.BertSpanLabeler(
+    network=encoder_network,
+    initializer=tf.keras.initializers.TruncatedNormal(stddev=0.01))
+```
