@@ -44,7 +44,7 @@ $ unzip $DATA_DIR/annotations/panoptic_val2017.zip -d $DATA_DIR
 
 ### Create TFrecords
 ```bash
-cd official/vision/beta/data
+$ cd official/vision/beta/data
 
 $ python3 create_coco_tf_record.py \
   --logtostderr  \
@@ -115,15 +115,14 @@ $ python3 train.py \
   --experiment panoptic_fpn_coco \
   --mode eval \
   --model_dir $MODEL_DIR \
-  --tpu $TPU_NAME \
   --params_override=$OVERRIDES
 ```
 **Note**: The [PanopticSegmentationGenerator](https://github.com/tensorflow/models/blob/ac7f9e7f2d0508913947242bad3e23ef7cae5a43/official/vision/beta/projects/panoptic_maskrcnn/modeling/layers/panoptic_segmentation_generator.py#L22) layer uses dynamic shapes and hence generating panoptic masks is not supported on Cloud TPUs. Running evaluation on Cloud TPUs is not supported for the same reson. 
 ## Pretrained Models
-Backbone     | Schedule     | Experiment name             | Box mAP |  Mask mAP  | Overall PQ | Things PQ | Stuff PQ
-:------------| :----------- | :---------------------------| ------- | ---------- | ---------- | --------- | -------:
-ResNet-50    | 1x           | `panoptic_fpn_coco`         | 38.19   |   34.25    |   39.14    |  45.42    |  29.65
-ResNet-50    | 3x           | `panoptic_fpn_coco`         | 40.64   |   36.29    |   40.91    |  47.68    |  30.69
+Backbone     | Schedule     | Experiment name             | Box mAP |  Mask mAP  | Overall PQ | Things PQ | Stuff PQ | Checkpoints
+:------------| :----------- | :---------------------------| ------- | ---------- | ---------- | --------- | -------- | ------------:
+ResNet-50    | 1x           | `panoptic_fpn_coco`         | 38.19   |   34.25    |   39.14    |  45.42    |  29.65   | [ckpt]()
+ResNet-50    | 3x           | `panoptic_fpn_coco`         | 40.64   |   36.29    |   40.91    |  47.68    |  30.69   | [ckpt]()
 
 **Note**: Here 1x schedule refers to ~12 epochs
 
