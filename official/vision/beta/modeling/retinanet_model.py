@@ -123,9 +123,9 @@ class RetinaNetModel(tf.keras.Model):
           {'backbone_{}'.format(k): v for k, v in features.items()})
     if self.decoder:
       features = self.decoder(features)
-      if output_intermediate_features:
-        outputs.update(
-            {'decoder_{}'.format(k): v for k, v in features.items()})
+    if output_intermediate_features:
+      outputs.update(
+          {'decoder_{}'.format(k): v for k, v in features.items()})
 
     # Dense prediction. `raw_attributes` can be empty.
     raw_scores, raw_boxes, raw_attributes = self.head(features)
