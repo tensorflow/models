@@ -27,6 +27,19 @@ from official.projects.edgetpu.vision.configs import mobilenet_edgetpu_config
 from official.projects.edgetpu.vision.tasks import image_classification
 
 
+# Dummy ImageNet TF dataset.
+def dummy_imagenet_dataset():
+  def dummy_data(_):
+    dummy_image = tf.zeros((2, 224, 224, 3), dtype=tf.float32)
+    dummy_label = tf.zeros((2), dtype=tf.int32)
+    return (dummy_image, dummy_label)
+  dataset = tf.data.Dataset.range(1)
+  dataset = dataset.repeat()
+  dataset = dataset.map(
+      dummy_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+  return dataset
+
+
 class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(('mobilenet_edgetpu_v2_xs'),
@@ -45,10 +58,8 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
     task = image_classification.EdgeTPUTask(config.task)
     model = task.build_model()
     metrics = task.build_metrics()
-    strategy = tf.distribute.get_strategy()
 
-    dataset = orbit.utils.make_distributed_dataset(strategy, task.build_inputs,
-                                                   config.task.train_data)
+    dataset = dummy_imagenet_dataset()
 
     iterator = iter(dataset)
     opt_factory = optimization.OptimizerFactory(config.trainer.optimizer_config)
