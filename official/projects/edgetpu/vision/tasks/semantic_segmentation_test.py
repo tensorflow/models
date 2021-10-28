@@ -28,6 +28,25 @@ from official.projects.edgetpu.vision.tasks import semantic_segmentation as img_
 from official.vision import beta
 
 
+# Dummy ADE20K TF dataset.
+def dummy_ade20k_dataset(image_width, image_height):
+  def dummy_data(_):
+    dummy_image = tf.zeros((1, image_width, image_height, 3), dtype=tf.float32)
+    dummy_masks = tf.zeros((1, image_width, image_height, 1), dtype=tf.float32)
+    dummy_valid_masks = dummy_masks
+    dummy_image_info = tf.zeros((1, 4, 2), dtype=tf.float32)
+    return (dummy_image, {
+        'masks': dummy_masks,
+        'valid_masks': dummy_valid_masks,
+        'image_info': dummy_image_info,
+    })
+  dataset = tf.data.Dataset.range(1)
+  dataset = dataset.repeat()
+  dataset = dataset.map(
+      dummy_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+  return dataset
+
+
 class SemanticSegmentationTaskTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(('deeplabv3plus_mobilenet_edgetpuv2_xs_ade20k_32',),
@@ -57,10 +76,8 @@ class SemanticSegmentationTaskTest(tf.test.TestCase, parameterized.TestCase):
     task = img_seg_task.CustomSemanticSegmentationTask(config.task)
     model = task.build_model()
     metrics = task.build_metrics()
-    strategy = tf.distribute.get_strategy()
 
-    dataset = orbit.utils.make_distributed_dataset(strategy, task.build_inputs,
-                                                   config.task.train_data)
+    dataset = dummy_ade20k_dataset(32, 32)
 
     iterator = iter(dataset)
     opt_factory = optimization.OptimizerFactory(config.trainer.optimizer_config)
