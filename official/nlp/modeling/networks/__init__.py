@@ -27,7 +27,6 @@ from official.nlp.modeling.networks.mobile_bert_encoder import MobileBERTEncoder
 from official.nlp.modeling.networks.packed_sequence_embedding import PackedSequenceEmbedding
 from official.nlp.modeling.networks.roformer_encoder import RoformerEncoder
 from official.nlp.modeling.networks.roformer_encoder_block import RoformerEncoderBlock
-from official.nlp.modeling.networks.packed_sequence_embedding import PackedSequenceEmbedding
 from official.nlp.modeling.networks.span_labeling import SpanLabeling
 from official.nlp.modeling.networks.span_labeling import XLNetSpanLabeling
 from official.nlp.modeling.networks.xlnet_base import XLNetBase

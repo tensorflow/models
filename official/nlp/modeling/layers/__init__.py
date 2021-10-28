@@ -38,8 +38,8 @@ from official.nlp.modeling.layers.position_embedding import RelativePositionBias
 from official.nlp.modeling.layers.position_embedding import RelativePositionEmbedding
 from official.nlp.modeling.layers.relative_attention import MultiHeadRelativeAttention
 from official.nlp.modeling.layers.relative_attention import TwoStreamRelativeAttention
-from official.nlp.modeling.layers.roformer_attention import RoformerAttention
 from official.nlp.modeling.layers.rezero_transformer import ReZeroTransformer
+from official.nlp.modeling.layers.roformer_attention import RoformerAttention
 from official.nlp.modeling.layers.self_attention_mask import SelfAttentionMask
 from official.nlp.modeling.layers.spectral_normalization import *
 from official.nlp.modeling.layers.talking_heads_attention import TalkingHeadsAttention

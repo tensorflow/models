@@ -194,6 +194,7 @@ class XLNetEncoderConfig(hyperparams.Config):
   initializer_range: float = 0.02
   two_stream: bool = False
 
+
 @dataclasses.dataclass
 class EncoderConfig(hyperparams.OneOfConfig):
   """Encoder configuration."""
@@ -206,6 +207,7 @@ class EncoderConfig(hyperparams.OneOfConfig):
   teams: BertEncoderConfig = BertEncoderConfig()
   xlnet: XLNetEncoderConfig = XLNetEncoderConfig()
   roformer: BertEncoderConfig = BertEncoderConfig()
+
 
 @gin.configurable
 def build_encoder(config: EncoderConfig,
@@ -471,7 +473,6 @@ def build_encoder(config: EncoderConfig,
     return networks.EncoderScaffold(**kwargs)
 
   if encoder_type == "roformer":
-    print("**************************************HERE**********************************")
     return networks.RoformerEncoder(
       vocab_size=encoder_cfg.vocab_size,
       hidden_size=encoder_cfg.hidden_size,
