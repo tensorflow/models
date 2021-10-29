@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Panoptic MaskRCNN trainer.
+"""Panoptic MaskRCNN trainer."""
 
-All custom registry are imported from registry_imports. Here we use default
-trainer so we directly call train.main. If you need to customize the trainer,
-branch from `official/vision/beta/train.py` and make changes.
-"""
 from absl import app
 
 from official.common import flags as tfm_flags

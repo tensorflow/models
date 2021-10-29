@@ -228,8 +228,8 @@ class Parser(maskrcnn_input.Parser):
       image = image_mask[:, :, :-1]
 
       data['image'] = image
-      data['boxes'] = boxes
-      data['masks'] = masks
+      data['groundtruth_boxes'] = boxes
+      data['groundtruth_instance_masks'] = masks
 
     image, labels = super(Parser, self)._parse_train_data(data)
 
@@ -334,7 +334,9 @@ class Parser(maskrcnn_input.Parser):
       panoptic_instance_mask = panoptic_instance_mask[:, :, 0]
 
       labels['groundtruths'].update({
-          'gt_panoptic_category_mask': panoptic_category_mask,
-          'gt_panoptic_instance_mask': panoptic_instance_mask})
+          'gt_panoptic_category_mask':
+              tf.cast(panoptic_category_mask, dtype=tf.int32),
+          'gt_panoptic_instance_mask':
+              tf.cast(panoptic_instance_mask, dtype=tf.int32)})
 
     return image, labels

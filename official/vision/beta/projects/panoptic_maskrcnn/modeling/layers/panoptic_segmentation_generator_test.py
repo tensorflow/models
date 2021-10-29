@@ -37,7 +37,8 @@ class PanopticSegmentationGeneratorTest(
         'score_threshold': 0.005,
         'things_class_label': 1,
         'void_class_label': 0,
-        'void_instance_id': -1
+        'void_instance_id': -1,
+        'rescale_predictions': False,
     }
     generator = PANOPTIC_SEGMENTATION_GENERATOR(**config)
 
@@ -79,7 +80,8 @@ class PanopticSegmentationGeneratorTest(
         'score_threshold': 0.005,
         'things_class_label': 1,
         'void_class_label': 0,
-        'void_instance_id': -1
+        'void_instance_id': -1,
+        'rescale_predictions': False,
     }
     generator = PANOPTIC_SEGMENTATION_GENERATOR(**config)
 

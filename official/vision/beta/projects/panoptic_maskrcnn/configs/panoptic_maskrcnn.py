@@ -30,7 +30,7 @@ from official.vision.beta.configs import semantic_segmentation
 SEGMENTATION_MODEL = semantic_segmentation.SemanticSegmentationModel
 SEGMENTATION_HEAD = semantic_segmentation.SegmentationHead
 
-_COCO_INPUT_PATH_BASE = 'coco'
+_COCO_INPUT_PATH_BASE = 'coco/tfrecords'
 _COCO_TRAIN_EXAMPLES = 118287
 _COCO_VAL_EXAMPLES = 5000
 
@@ -75,13 +75,17 @@ class DataConfig(maskrcnn.DataConfig):
 
 @dataclasses.dataclass
 class PanopticSegmentationGenerator(hyperparams.Config):
+  """Panoptic segmentation generator config."""
   output_size: List[int] = dataclasses.field(
       default_factory=list)
   mask_binarize_threshold: float = 0.5
-  score_threshold: float = 0.05
+  score_threshold: float = 0.5
+  things_overlap_threshold: float = 0.5
+  stuff_area_threshold: float = 4096.0
   things_class_label: int = 1
   void_class_label: int = 0
   void_instance_id: int = 0
+  rescale_predictions: bool = False
 
 
 @dataclasses.dataclass
@@ -106,7 +110,8 @@ class Losses(maskrcnn.Losses):
       default_factory=list)
   semantic_segmentation_use_groundtruth_dimension: bool = True
   semantic_segmentation_top_k_percent_pixels: float = 1.0
-  semantic_segmentation_weight: float = 1.0
+  instance_segmentation_weight: float = 1.0
+  semantic_segmentation_weight: float = 0.5
 
 
 @dataclasses.dataclass
@@ -114,10 +119,12 @@ class PanopticQualityEvaluator(hyperparams.Config):
   """Panoptic Quality Evaluator config."""
   num_categories: int = 2
   ignored_label: int = 0
-  max_instances_per_category: int = 100
+  max_instances_per_category: int = 256
   offset: int = 256 * 256 * 256
   is_thing: List[float] = dataclasses.field(
       default_factory=list)
+  rescale_predictions: bool = False
+  report_per_class_metrics: bool = False
 
 
 @dataclasses.dataclass
@@ -144,8 +151,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   panoptic_quality_evaluator: PanopticQualityEvaluator = PanopticQualityEvaluator()  # pylint: disable=line-too-long
 
 
-@exp_factory.register_config_factory('panoptic_maskrcnn_resnetfpn_coco')
-def panoptic_maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
+@exp_factory.register_config_factory('panoptic_fpn_coco')
+def panoptic_fpn_coco() -> cfg.ExperimentConfig:
   """COCO panoptic segmentation with Panoptic Mask R-CNN."""
   train_batch_size = 64
   eval_batch_size = 8
@@ -169,18 +176,25 @@ def panoptic_maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
     is_thing.append(True if idx <= num_thing_categories else False)
 
   config = cfg.ExperimentConfig(
-      runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
+      runtime=cfg.RuntimeConfig(
+          mixed_precision_dtype='float32', enable_xla=True),
       task=PanopticMaskRCNNTask(
           init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/resnet50_imagenet/ckpt-28080',  # pylint: disable=line-too-long
           init_checkpoint_modules=['backbone'],
           model=PanopticMaskRCNN(
               num_classes=91, input_size=[1024, 1024, 3],
               panoptic_segmentation_generator=PanopticSegmentationGenerator(
-                  output_size=[1024, 1024]),
+                  output_size=[640, 640], rescale_predictions=True),
               stuff_classes_offset=90,
               segmentation_model=SEGMENTATION_MODEL(
                   num_classes=num_semantic_segmentation_classes,
-                  head=SEGMENTATION_HEAD(level=3))),
+                  head=SEGMENTATION_HEAD(
+                      level=2,
+                      num_convs=0,
+                      num_filters=128,
+                      decoder_min_level=2,
+                      decoder_max_level=6,
+                      feature_fusion='panoptic_fpn_fusion'))),
           losses=Losses(l2_weight_decay=0.00004),
           train_data=DataConfig(
               input_path=os.path.join(_COCO_INPUT_PATH_BASE, 'train*'),
@@ -192,13 +206,19 @@ def panoptic_maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
               input_path=os.path.join(_COCO_INPUT_PATH_BASE, 'val*'),
               is_training=False,
               global_batch_size=eval_batch_size,
+              parser=Parser(
+                  segmentation_resize_eval_groundtruth=False,
+                  segmentation_groundtruth_padded_size=[640, 640]),
               drop_remainder=False),
           annotation_file=os.path.join(_COCO_INPUT_PATH_BASE,
                                        'instances_val2017.json'),
+          segmentation_evaluation=semantic_segmentation.Evaluation(
+              report_per_class_iou=False, report_train_mean_iou=False),
           panoptic_quality_evaluator=PanopticQualityEvaluator(
               num_categories=num_panoptic_categories,
               ignored_label=0,
-              is_thing=is_thing)),
+              is_thing=is_thing,
+              rescale_predictions=True)),
       trainer=cfg.TrainerConfig(
           train_steps=22500,
           validation_steps=validation_steps,

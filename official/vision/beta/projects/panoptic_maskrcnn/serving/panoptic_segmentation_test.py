@@ -70,9 +70,9 @@ class PanopticSegmentationExportTest(tf.test.TestCase, parameterized.TestCase):
       return [example for b in range(batch_size)]
 
   @parameterized.parameters(
-      ('image_tensor', 'panoptic_maskrcnn_resnetfpn_coco'),
-      ('image_bytes', 'panoptic_maskrcnn_resnetfpn_coco'),
-      ('tf_example', 'panoptic_maskrcnn_resnetfpn_coco'),
+      ('image_tensor', 'panoptic_fpn_coco'),
+      ('image_bytes', 'panoptic_fpn_coco'),
+      ('tf_example', 'panoptic_fpn_coco'),
   )
   def test_export(self, input_type, experiment_name):
     tmp_dir = self.get_temp_dir()
@@ -96,15 +96,14 @@ class PanopticSegmentationExportTest(tf.test.TestCase, parameterized.TestCase):
 
     processed_images, anchor_boxes, image_info = module._build_inputs(
         tf.zeros((128, 128, 3), dtype=tf.uint8))
-    image_shape = image_info[1, :]
-    image_shape = tf.expand_dims(image_shape, 0)
+    image_info = tf.expand_dims(image_info, 0)
     processed_images = tf.expand_dims(processed_images, 0)
     for l, l_boxes in anchor_boxes.items():
       anchor_boxes[l] = tf.expand_dims(l_boxes, 0)
 
     expected_outputs = module.model(
         images=processed_images,
-        image_shape=image_shape,
+        image_info=image_info,
         anchor_boxes=anchor_boxes,
         training=False)
     outputs = detection_fn(tf.constant(images))
@@ -113,7 +112,7 @@ class PanopticSegmentationExportTest(tf.test.TestCase, parameterized.TestCase):
                         expected_outputs['num_detections'].numpy())
 
   def test_build_model_fail_with_none_batch_size(self):
-    params = exp_factory.get_exp_config('panoptic_maskrcnn_resnetfpn_coco')
+    params = exp_factory.get_exp_config('panoptic_fpn_coco')
     input_specs = tf.keras.layers.InputSpec(shape=[1, 128, 128, 3])
     model = factory.build_panoptic_maskrcnn(
         input_specs=input_specs, model_config=params.task.model)
