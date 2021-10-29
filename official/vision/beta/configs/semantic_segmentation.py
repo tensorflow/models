@@ -50,6 +50,7 @@ class DataConfig(cfg.DataConfig):
   aug_scale_min: float = 1.0
   aug_scale_max: float = 1.0
   aug_rand_hflip: bool = True
+  preserve_aspect_ratio: bool = True
   aug_policy: Optional[str] = None
   drop_remainder: bool = True
   file_type: str = 'tfrecord'

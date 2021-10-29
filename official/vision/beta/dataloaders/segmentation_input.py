@@ -48,6 +48,7 @@ class Parser(parser.Parser):
                groundtruth_padded_size=None,
                ignore_label=255,
                aug_rand_hflip=False,
+               preserve_aspect_ratio=True,
                aug_scale_min=1.0,
                aug_scale_max=1.0,
                dtype='float32'):
@@ -69,6 +70,8 @@ class Parser(parser.Parser):
         and evaluation.
       aug_rand_hflip: `bool`, if True, augment training with random
         horizontal flip.
+      preserve_aspect_ratio: `bool`, if True, the aspect ratio is preserved,
+        otherwise, the image is resized to output_size.
       aug_scale_min: `float`, the minimum scale applied to `output_size` for
         data augmentation during training.
       aug_scale_max: `float`, the maximum scale applied to `output_size` for
@@ -83,6 +86,7 @@ class Parser(parser.Parser):
                        'specified when resize_eval_groundtruth is False.')
     self._groundtruth_padded_size = groundtruth_padded_size
     self._ignore_label = ignore_label
+    self._preserve_aspect_ratio = preserve_aspect_ratio
 
     # Data augmentation.
     self._aug_rand_hflip = aug_rand_hflip
@@ -105,6 +109,13 @@ class Parser(parser.Parser):
     label = tf.cast(label, tf.float32)
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(image)
+
+    if not self._preserve_aspect_ratio:
+      label = tf.reshape(label, [data['image/height'], data['image/width'], 1])
+      image = tf.image.resize(image, self._output_size, method='bilinear')
+      label = tf.image.resize(label, self._output_size, method='nearest')
+      label = tf.reshape(label[:, :, -1], [1] + self._output_size)
+
     return image, label
 
   def _parse_train_data(self, data):
