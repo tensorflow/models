@@ -69,8 +69,10 @@ def build_panoptic_maskrcnn(
         input_specs=segmentation_decoder_input_specs,
         model_config=segmentation_config,
         l2_regularizer=l2_regularizer)
+    decoder_config = segmentation_decoder.get_config()
   else:
     segmentation_decoder = None
+    decoder_config = maskrcnn_model.decoder.get_config()
 
   segmentation_head_config = segmentation_config.head
   detection_head_config = model_config.detection_head
@@ -84,12 +86,15 @@ def build_panoptic_maskrcnn(
       num_filters=segmentation_head_config.num_filters,
       upsample_factor=segmentation_head_config.upsample_factor,
       feature_fusion=segmentation_head_config.feature_fusion,
+      decoder_min_level=segmentation_head_config.decoder_min_level,
+      decoder_max_level=segmentation_head_config.decoder_max_level,
       low_level=segmentation_head_config.low_level,
       low_level_num_filters=segmentation_head_config.low_level_num_filters,
       activation=norm_activation_config.activation,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
+      num_decoder_filters=decoder_config['num_filters'],
       kernel_regularizer=l2_regularizer)
 
   if model_config.generate_panoptic_masks:
@@ -101,9 +106,12 @@ def build_panoptic_maskrcnn(
         stuff_classes_offset=model_config.stuff_classes_offset,
         mask_binarize_threshold=mask_binarize_threshold,
         score_threshold=postprocessing_config.score_threshold,
+        things_overlap_threshold=postprocessing_config.things_overlap_threshold,
         things_class_label=postprocessing_config.things_class_label,
+        stuff_area_threshold=postprocessing_config.stuff_area_threshold,
         void_class_label=postprocessing_config.void_class_label,
-        void_instance_id=postprocessing_config.void_instance_id)
+        void_instance_id=postprocessing_config.void_instance_id,
+        rescale_predictions=postprocessing_config.rescale_predictions)
   else:
     panoptic_segmentation_generator_obj = None
 
