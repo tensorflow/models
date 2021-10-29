@@ -18,7 +18,7 @@ from typing import Any, Mapping, Dict, List
 
 import tensorflow as tf
 
-from official.vision.beta.projects.centernet.modeling.layers import nn_blocks
+from official.vision.beta.projects.centernet.modeling.layers import cn_nn_blocks
 
 
 @tf.keras.utils.register_keras_serializable(package='centernet')
@@ -53,6 +53,7 @@ class CenterNetHead(tf.keras.Model):
     
     self._input_specs = input_specs
     self._task_outputs = task_outputs
+    self._input_levels = input_levels
     self._heatmap_bias = heatmap_bias
     self._num_inputs = len(input_levels)
     
@@ -62,7 +63,7 @@ class CenterNetHead(tf.keras.Model):
     
     for key in self._task_outputs:
       outputs[key] = [
-          nn_blocks.CenterNetHeadConv(
+          cn_nn_blocks.CenterNetHeadConv(
               output_filters=self._task_outputs[key],
               bias_init=self._heatmap_bias if 'heatmaps' in key else 0,
               name=key + str(i),

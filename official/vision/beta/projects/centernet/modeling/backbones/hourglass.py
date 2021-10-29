@@ -20,7 +20,9 @@ import tensorflow as tf
 
 from official.modeling import hyperparams
 from official.vision.beta.modeling.backbones import factory
-from official.vision.beta.projects.centernet.modeling.layers import nn_blocks
+from official.vision.beta.modeling.layers import nn_blocks
+from official.vision.beta.modeling.backbones import mobilenet
+from official.vision.beta.projects.centernet.modeling.layers import cn_nn_blocks
 
 HOURGLASS_SPECS = {
     10: {
@@ -116,7 +118,7 @@ class Hourglass(tf.keras.Model):
       prelayer_kernel_size = 3
       prelayer_strides = 1
     
-    x_downsampled = nn_blocks.Conv2DBNEPBlock(
+    x_downsampled = mobilenet.Conv2DBNBlock(
         filters=self._input_channel_dims,
         kernel_size=prelayer_kernel_size,
         strides=prelayer_strides,
@@ -129,7 +131,7 @@ class Hourglass(tf.keras.Model):
         norm_momentum=self._norm_momentum,
         norm_epsilon=self._norm_epsilon)(inputs)
     
-    x_downsampled = nn_blocks.ResidualEPBlock(
+    x_downsampled = nn_blocks.ResidualBlock(
         filters=inp_filters,
         use_projection=True,
         use_explicit_padding=True,
@@ -144,12 +146,12 @@ class Hourglass(tf.keras.Model):
     all_heatmaps = {}
     for i in range(num_hourglasses):
       # Create an hourglass stack
-      x_hg = nn_blocks.HourglassBlock(
+      x_hg = cn_nn_blocks.HourglassBlock(
           channel_dims_per_stage=self._channel_dims_per_stage,
           blocks_per_stage=self._blocks_per_stage,
       )(x_downsampled)
       
-      x_hg = nn_blocks.Conv2DBNEPBlock(
+      x_hg = mobilenet.Conv2DBNBlock(
           filters=inp_filters,
           kernel_size=3,
           strides=1,
@@ -171,7 +173,7 @@ class Hourglass(tf.keras.Model):
       
       # Intermediate conv and residual layers between hourglasses
       if i < num_hourglasses - 1:
-        inter_hg_conv1 = nn_blocks.Conv2DBNEPBlock(
+        inter_hg_conv1 = mobilenet.Conv2DBNBlock(
             filters=inp_filters,
             kernel_size=1,
             strides=1,
@@ -184,7 +186,7 @@ class Hourglass(tf.keras.Model):
             norm_epsilon=self._norm_epsilon
         )(x_downsampled)
         
-        inter_hg_conv2 = nn_blocks.Conv2DBNEPBlock(
+        inter_hg_conv2 = mobilenet.Conv2DBNBlock(
             filters=inp_filters,
             kernel_size=1,
             strides=1,
@@ -200,7 +202,7 @@ class Hourglass(tf.keras.Model):
         x_downsampled = tf.keras.layers.Add()([inter_hg_conv1, inter_hg_conv2])
         x_downsampled = tf.keras.layers.ReLU()(x_downsampled)
         
-        x_downsampled = nn_blocks.ResidualEPBlock(
+        x_downsampled = nn_blocks.ResidualBlock(
             filters=inp_filters,
             use_projection=False,
             use_explicit_padding=True,
