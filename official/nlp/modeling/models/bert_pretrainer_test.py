@@ -125,13 +125,12 @@ class BertPretrainerV2Test(keras_parameterized.TestCase):
     sequence_length = 512
     hidden_size = 48
     num_layers = 2
-    test_network = networks.BertEncoder(
+    test_network = networks.BertEncoderV2(
         vocab_size=vocab_size,
         num_layers=num_layers,
         hidden_size=hidden_size,
-        max_sequence_length=sequence_length,
-        return_all_encoder_outputs=return_all_encoder_outputs,
-        dict_outputs=dict_outputs)
+        max_sequence_length=sequence_length)
+    _ = test_network(test_network.inputs)
 
     # Create a BERT trainer with the created network.
     if use_customized_masked_lm:
@@ -155,7 +154,7 @@ class BertPretrainerV2Test(keras_parameterized.TestCase):
     # Invoke the trainer model on the inputs. This causes the layer to be built.
     outputs = bert_trainer_model(inputs)
 
-    has_encoder_outputs = dict_outputs or return_all_encoder_outputs
+    has_encoder_outputs = True  # dict_outputs or return_all_encoder_outputs
     expected_keys = ['sequence_output', 'pooled_output']
     if has_encoder_outputs:
       expected_keys.append('encoder_outputs')
@@ -184,12 +183,11 @@ class BertPretrainerV2Test(keras_parameterized.TestCase):
     sequence_length = 512
     hidden_size = 48
     num_layers = 2
-    test_network = networks.BertEncoder(
+    test_network = networks.BertEncoderV2(
         vocab_size=vocab_size,
         num_layers=num_layers,
         hidden_size=hidden_size,
-        max_sequence_length=sequence_length,
-        dict_outputs=True)
+        max_sequence_length=sequence_length)
 
     bert_trainer_model = bert_pretrainer.BertPretrainerV2(
         encoder_network=test_network,
@@ -212,7 +210,7 @@ class BertPretrainerV2Test(keras_parameterized.TestCase):
   def test_v2_serialize_deserialize(self):
     """Validate that the BERT trainer can be serialized and deserialized."""
     # Build a transformer network to use within the BERT trainer.
-    test_network = networks.BertEncoder(vocab_size=100, num_layers=2)
+    test_network = networks.BertEncoderV2(vocab_size=100, num_layers=2)
 
     # Create a BERT trainer with the created network. (Note that all the args
     # are different, so we can catch any serialization mismatches.)
