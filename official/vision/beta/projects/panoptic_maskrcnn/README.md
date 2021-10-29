@@ -20,58 +20,12 @@ prerequisites.
 $ git clone https://github.com/tensorflow/models.git
 $ cd models
 $ pip3 install -r official/requirements.txt
+$ export PYTHONPATH=$(pwd)
 ```
 
 ## Preparing Dataset
-### Download and extract COCO dataset
 ```bash
-$ sudo apt update
-$ sudo apt install unzip aria2 -y
-
-$ export DATA_DIR=<path-to-store-tfrecords>
-$ aria2c -j 8 -Z \
-  http://images.cocodataset.org/annotations/annotations_trainval2017.zip \
-  http://images.cocodataset.org/annotations/panoptic_annotations_trainval2017.zip \
-  http://images.cocodataset.org/zips/train2017.zip \
-  http://images.cocodataset.org/zips/val2017.zip \
-  --dir=$DATA_DIR;
-
-$ unzip $DATA_DIR/"*".zip -d $DATA_DIR;
-$ mkdir $DATA_DIR/zips && mv $DATA_DIR/*.zip $DATA_DIR/zips;
-$ unzip $DATA_DIR/annotations/panoptic_train2017.zip -d $DATA_DIR
-$ unzip $DATA_DIR/annotations/panoptic_val2017.zip -d $DATA_DIR
-```
-
-### Create TFrecords
-```bash
-$ cd official/vision/beta/data
-
-$ python3 create_coco_tf_record.py \
-  --logtostderr  \
-  --image_dir="$DATA_DIR/val2017" \
-  --object_annotations_file="$DATA_DIR/annotations/instances_val2017.json"  \
-  --output_file_prefix="$DATA_DIR/tfrecords/val"  \
-  --panoptic_annotations_file="$DATA_DIR/annotations/panoptic_val2017.json" \
-  --panoptic_masks_dir="$DATA_DIR/panoptic_val2017" \
-  --num_shards=8 \
-  --include_masks \
-  --include_panoptic_masks
-
-
-$ python3 create_coco_tf_record.py \
-  --logtostderr  \
-  --image_dir="$DATA_DIR/train2017" \
-  --object_annotations_file="$DATA_DIR/annotations/instances_train2017.json"  \
-  --output_file_prefix="$DATA_DIR/tfrecords/train"  \
-  --panoptic_annotations_file="$DATA_DIR/annotations/panoptic_train2017.json" \
-  --panoptic_masks_dir="$DATA_DIR/panoptic_train2017" \
-  --num_shards=32 \
-  --include_masks \
-  --include_panoptic_masks
-```
-### Upload tfrecords to a Google Cloud Storage Bucket
-```bash
-$ gsutil -m cp -r "$DATA_DIR/tfrecords" gs://<bucket-details>
+$ ./official/vision/beta/data/process_coco_panoptic.sh <path-to-data-directory>
 ```
 
 ## Launch Training
@@ -82,9 +36,9 @@ $ export ANNOTATION_FILE="gs://<path-to-coco-annotation-json>"
 $ export TRAIN_DATA="gs://<path-to-train-data>"
 $ export EVAL_DATA="gs://<path-to-eval-data>"
 $ export OVERRIDES="task.validation_data.input_path=${EVAL_DATA},\
-  task.train_data.input_path=${TRAIN_DATA},\
-  task.annotation_file=${ANNOTATION_FILE},\
-  runtime.distribution_strategy=tpu"
+task.train_data.input_path=${TRAIN_DATA},\
+task.annotation_file=${ANNOTATION_FILE},\
+runtime.distribution_strategy=tpu"
 
 
 $ python3 train.py \
@@ -104,11 +58,11 @@ $ export ANNOTATION_FILE="gs://<path-to-coco-annotation-json>"
 $ export TRAIN_DATA="gs://<path-to-train-data>"
 $ export EVAL_DATA="gs://<path-to-eval-data>"
 $ export OVERRIDES="task.validation_data.input_path=${EVAL_DATA}, \
-  task.train_data.input_path=${TRAIN_DATA}, \
-  task.annotation_file=${ANNOTATION_FILE}, \
-  runtime.distribution_strategy=mirrored, \
-  runtime.mixed_precision_dtype=$PRECISION, \
-  runtime.num_gpus=$NUM_GPUS"
+task.train_data.input_path=${TRAIN_DATA}, \
+task.annotation_file=${ANNOTATION_FILE}, \
+runtime.distribution_strategy=mirrored, \
+runtime.mixed_precision_dtype=$PRECISION, \
+runtime.num_gpus=$NUM_GPUS"
 
 
 $ python3 train.py \
@@ -117,7 +71,7 @@ $ python3 train.py \
   --model_dir $MODEL_DIR \
   --params_override=$OVERRIDES
 ```
-**Note**: The [PanopticSegmentationGenerator](https://github.com/tensorflow/models/blob/ac7f9e7f2d0508913947242bad3e23ef7cae5a43/official/vision/beta/projects/panoptic_maskrcnn/modeling/layers/panoptic_segmentation_generator.py#L22) layer uses dynamic shapes and hence generating panoptic masks is not supported on Cloud TPUs. Running evaluation on Cloud TPUs is not supported for the same reson. 
+**Note**: The [PanopticSegmentationGenerator](https://github.com/tensorflow/models/blob/ac7f9e7f2d0508913947242bad3e23ef7cae5a43/official/vision/beta/projects/panoptic_maskrcnn/modeling/layers/panoptic_segmentation_generator.py#L22) layer uses dynamic shapes and hence generating panoptic masks is not supported on Cloud TPUs. Running evaluation on Cloud TPUs is not supported for the same reason. However, training is both supported on Cloud TPUs and GPUs.
 ## Pretrained Models
 Backbone     | Schedule     | Experiment name             | Box mAP |  Mask mAP  | Overall PQ | Things PQ | Stuff PQ | Checkpoints
 :------------| :----------- | :---------------------------| ------- | ---------- | ---------- | --------- | -------- | ------------:
@@ -128,7 +82,6 @@ ResNet-50    | 3x           | `panoptic_fpn_coco`         | 40.64   |   36.29   
 
 ___
 ## Citation
-
 ```
 @misc{kirillov2019panoptic,
       title={Panoptic Feature Pyramid Networks}, 
