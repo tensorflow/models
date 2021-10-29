@@ -69,7 +69,7 @@ def _create_centernet_model(model_id: int = 52,
   head = centernet_head.CenterNetHead(
       input_specs=backbone.output_specs,
       task_outputs=task_outputs,
-      num_inputs=backbone.num_hourglasses)
+      input_levels=model_config.head.input_levels)
   
   detect_generator_obj = detection_generator.CenterNetDetectionGenerator()
   
