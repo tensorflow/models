@@ -201,6 +201,7 @@ class EncoderConfig(hyperparams.OneOfConfig):
   type: Optional[str] = "bert"
   albert: AlbertEncoderConfig = AlbertEncoderConfig()
   bert: BertEncoderConfig = BertEncoderConfig()
+  bert_v2: BertEncoderConfig = BertEncoderConfig()
   bigbird: BigBirdEncoderConfig = BigBirdEncoderConfig()
   kernel: KernelEncoderConfig = KernelEncoderConfig()
   mobilebert: MobileBertEncoderConfig = MobileBertEncoderConfig()
@@ -471,9 +472,13 @@ def build_encoder(config: EncoderConfig,
         dict_outputs=True)
     return networks.EncoderScaffold(**kwargs)
 
+  bert_encoder_cls = networks.BertEncoder
+  if encoder_type == "bert_v2":
+    bert_encoder_cls = networks.BertEncoderV2
+
   # Uses the default BERTEncoder configuration schema to create the encoder.
   # If it does not match, please add a switch branch by the encoder type.
-  return networks.BertEncoder(
+  return bert_encoder_cls(
       vocab_size=encoder_cfg.vocab_size,
       hidden_size=encoder_cfg.hidden_size,
       num_layers=encoder_cfg.num_layers,
