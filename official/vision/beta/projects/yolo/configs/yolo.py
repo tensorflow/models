@@ -483,7 +483,7 @@ def scaled_yolo() -> cfg.ExperimentConfig:
                       'momentum_start': 0.8,
                       'nesterov': True,
                       'warmup_steps': steps_per_epoch * warmup_epochs,
-                      'weight_decay': 0.0005 * train_batch_size / 64.0,
+                      'weight_decay': 0.0005,
                   }
               },
               'learning_rate': {
@@ -595,7 +595,7 @@ def large_yolo() -> cfg.ExperimentConfig:
                       'momentum_start': 0.9,
                       'nesterov': True,
                       'warmup_steps': steps_per_epoch * warmup_epochs,
-                      'weight_decay': 0.0005 * train_batch_size / 64.0,
+                      'weight_decay': 0.0005,
                   }
               },
               'learning_rate': {
