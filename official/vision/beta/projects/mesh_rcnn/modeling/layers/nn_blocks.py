@@ -20,6 +20,7 @@ class GraphConv(tf.keras.layers.Layer):
     self.input_dim = input_dim
     self.output_dim = output_dim
     self.directed = directed
+    self.initialization = init
 
     if init == "normal":
       self.kernel_initializer = tf.keras.initializers.RandomNormal(mean=0, stddev=0.01)
@@ -43,18 +44,9 @@ class GraphConv(tf.keras.layers.Layer):
         kernel_initializer = self.kernel_initializer,
         bias_initializer = self.bias_initializer
     )
-    self.w0 = tf.keras.layers.Dense(
-        input_shape = (self.input_dim,),
-        units = self.output_dim,
-        kernel_initializer = tf.keras.initializers.Constant(value=1),
-        bias_initializer = tf.keras.initializers.Zeros()
-    )
-    self.w1 = tf.keras.layers.Dense(
-        input_shape = (self.input_dim,),
-        units = self.output_dim,
-        kernel_initializer = tf.keras.initializers.Constant(value=-1),
-        bias_initializer = tf.keras.initializers.Zeros()
-    )
+
+    self.w0.build((self.input_dim,))
+    self.w1.build((self.input_dim,))
 
   def call(self, verts, edges):
     """
@@ -72,7 +64,6 @@ class GraphConv(tf.keras.layers.Layer):
       number of output features per vertex.
     """
 
-    # TODO: Tensors verts and edges of same device (is_cuda in pytorch)
     if verts.shape[0] == 0:
       # empty graph
       return tf.zeros((0,self.output_dim)) * tf.reduce_sum(verts)
@@ -89,8 +80,12 @@ class GraphConv(tf.keras.layers.Layer):
 
   def get_config(self):
     layer_config = {
-
+      "input_dim": self.input_dim,
+      "output_dim": self.output_dim,
+      "init": self.initialization,
+      "directed": self.directed
     }
+    return layer_config
 
     layer_config.update(super().get_config())
     return layer_config
@@ -113,22 +108,3 @@ def gather_scatter(verts, edges, directed: bool = False):
         new_one = tf.reshape(edges[:, 1], (edges.shape[0], 1))
         output = tf.tensor_scatter_nd_add(output, new_one, gather_0)
     return output
-
-@tf.keras.utils.register_keras_serializable(package='mesh_rcnn')
-class ResGraphConv(tf.keras.layers.Layer):
-  def __init__(self,):
-    pass
-
-  def build(self, input_shape):
-    pass
-
-  def call(self, x):
-    pass
-
-  def get_config(self):
-    layer_config = {
-
-    }
-
-    layer_config.update(super().get_config())
-    return layer_config
