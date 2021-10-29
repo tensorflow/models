@@ -43,8 +43,11 @@ def create_classification_export_module(params: cfg.ExperimentConfig,
       l2_regularizer=None)
 
   def preprocess_fn(inputs):
-    image_tensor = export_utils.parse_image(
-        inputs, input_type, input_image_size, num_channels)
+    image_tensor = export_utils.parse_image(inputs, input_type,
+                                            input_image_size, num_channels)
+    # If input_type is `tflite`, do not apply image preprocessing.
+    if input_type == 'tflite':
+      return image_tensor
 
     def preprocess_image_fn(inputs):
       return classification_input.Parser.inference_fn(
