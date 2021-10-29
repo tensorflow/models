@@ -402,6 +402,40 @@ MNMultiAVG_BLOCK_SPECS = {
     ]
 }
 
+# Similar to MobileNetMultiAVG and used for segmentation task.
+# Reduced the filters by a factor of 2 in the last block.
+MNMultiAVG_SEG_BLOCK_SPECS = {
+    'spec_name': 'MobileNetMultiAVGSeg',
+    'block_spec_schema': [
+        'block_fn', 'kernel_size', 'strides', 'filters', 'activation',
+        'expand_ratio', 'use_normalization', 'use_bias', 'is_output'
+    ],
+    'block_specs': [
+        ('convbn', 3, 2, 32, 'relu', None, True, False, False),
+        ('invertedbottleneck', 3, 2, 32, 'relu', 3., True, False, False),
+        ('invertedbottleneck', 3, 1, 32, 'relu', 2., True, False, True),
+        ('invertedbottleneck', 5, 2, 64, 'relu', 5., True, False, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 3., True, False, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 2., True, False, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 3., True, False, True),
+        ('invertedbottleneck', 5, 2, 128, 'relu', 6., True, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., True, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., True, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., True, False, False),
+        ('invertedbottleneck', 3, 1, 160, 'relu', 6., True, False, False),
+        ('invertedbottleneck', 3, 1, 160, 'relu', 4., True, False, True),
+        ('invertedbottleneck', 3, 2, 192, 'relu', 6., True, False, False),
+        ('invertedbottleneck', 5, 1, 96, 'relu', 2., True, False, False),
+        ('invertedbottleneck', 5, 1, 96, 'relu', 4., True, False, False),
+        ('invertedbottleneck', 5, 1, 96, 'relu', 4., True, False, True),
+        ('convbn', 1, 1, 480, 'relu', None, True, False, False),
+        ('gpooling', None, None, None, None, None, None, None, False),
+        # Remove bias and add batch norm for the last layer to support QAT
+        # and achieve slightly better accuracy.
+        ('convbn', 1, 1, 1280, 'relu', None, True, False, False),
+    ]
+}
+
 SUPPORTED_SPECS_MAP = {
     'MobileNetV1': MNV1_BLOCK_SPECS,
     'MobileNetV2': MNV2_BLOCK_SPECS,
@@ -410,6 +444,7 @@ SUPPORTED_SPECS_MAP = {
     'MobileNetV3EdgeTPU': MNV3EdgeTPU_BLOCK_SPECS,
     'MobileNetMultiMAX': MNMultiMAX_BLOCK_SPECS,
     'MobileNetMultiAVG': MNMultiAVG_BLOCK_SPECS,
+    'MobileNetMultiAVGSeg': MNMultiAVG_SEG_BLOCK_SPECS,
 }
 
 

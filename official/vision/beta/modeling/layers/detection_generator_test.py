@@ -44,9 +44,11 @@ class DetectionGeneratorTest(
     parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.product(
-      nms_version=['batched', 'v1', 'v2'], use_cpu_nms=[True, False])
-  def testDetectionsOutputShape(self, nms_version, use_cpu_nms):
-    max_num_detections = 100
+      nms_version=['batched', 'v1', 'v2'],
+      use_cpu_nms=[True, False],
+      soft_nms_sigma=[None, 0.1])
+  def testDetectionsOutputShape(self, nms_version, use_cpu_nms, soft_nms_sigma):
+    max_num_detections = 10
     num_classes = 4
     pre_nms_top_k = 5000
     pre_nms_score_threshold = 0.01
@@ -59,6 +61,7 @@ class DetectionGeneratorTest(
         'max_num_detections': max_num_detections,
         'nms_version': nms_version,
         'use_cpu_nms': use_cpu_nms,
+        'soft_nms_sigma': soft_nms_sigma,
     }
     generator = detection_generator.DetectionGenerator(**kwargs)
 
@@ -99,6 +102,7 @@ class DetectionGeneratorTest(
         'max_num_detections': 10,
         'nms_version': 'v2',
         'use_cpu_nms': False,
+        'soft_nms_sigma': None,
     }
     generator = detection_generator.DetectionGenerator(**kwargs)
 
@@ -116,18 +120,20 @@ class MultilevelDetectionGeneratorTest(
     parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      ('batched', False, True),
-      ('batched', False, False),
-      ('v2', False, True),
-      ('v2', False, False),
-      ('v1', True, True),
-      ('v1', True, False),
+      ('batched', False, True, None),
+      ('batched', False, False, None),
+      ('v2', False, True, None),
+      ('v2', False, False, None),
+      ('v1', True, True, 0.0),
+      ('v1', True, False, 0.1),
+      ('v1', True, False, None),
   )
-  def testDetectionsOutputShape(self, nms_version, has_att_heads, use_cpu_nms):
+  def testDetectionsOutputShape(self, nms_version, has_att_heads, use_cpu_nms,
+                                soft_nms_sigma):
     min_level = 4
     max_level = 6
     num_scales = 2
-    max_num_detections = 100
+    max_num_detections = 10
     aspect_ratios = [1.0, 2.0]
     anchor_scale = 2.0
     output_size = [64, 64]
@@ -143,6 +149,7 @@ class MultilevelDetectionGeneratorTest(
         'max_num_detections': max_num_detections,
         'nms_version': nms_version,
         'use_cpu_nms': use_cpu_nms,
+        'soft_nms_sigma': soft_nms_sigma,
     }
 
     input_anchor = anchor.build_anchor_generator(min_level, max_level,
@@ -224,6 +231,7 @@ class MultilevelDetectionGeneratorTest(
         'max_num_detections': 10,
         'nms_version': 'v2',
         'use_cpu_nms': False,
+        'soft_nms_sigma': None,
     }
     generator = detection_generator.MultilevelDetectionGenerator(**kwargs)
 

@@ -99,7 +99,8 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
 
   def joint_train_step(self, task_inputs,
                        multi_task_model: base_model.MultiTaskBaseModel,
-                       optimizer: tf.keras.optimizers.Optimizer, task_metrics):
+                       optimizer: tf.keras.optimizers.Optimizer, task_metrics,
+                       **kwargs):
     """The joint train step.
 
     Args:
@@ -107,6 +108,7 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
       multi_task_model: a MultiTaskBaseModel instance.
       optimizer: a tf.optimizers.Optimizer.
       task_metrics: a dictionary of task names and per-task metrics.
+      **kwargs: other arguments to pass through.
 
     Returns:
       A dictionary of losses, inculding per-task losses and their weighted sum.
@@ -129,7 +131,8 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
         task_weight = self.task_weight(name)
         total_loss += task_weight * task_loss
         losses[name] = task_loss
-        self.tasks[name].process_metrics(task_metrics[name], labels, outputs)
+        self.tasks[name].process_metrics(task_metrics[name], labels, outputs,
+                                         **kwargs)
 
         # Scales loss as the default gradients allreduce performs sum inside
         # the optimizer.

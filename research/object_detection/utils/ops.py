@@ -811,7 +811,7 @@ def reframe_image_corners_relative_to_boxes(boxes):
   Returns:
     reframed_boxes: Reframes boxes with same shape as input.
   """
-  ymin, xmin, ymax, xmax = tf.unstack(boxes, axis=1)
+  ymin, xmin, ymax, xmax = (boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3])
 
   height = tf.maximum(ymax - ymin, 1e-4)
   width = tf.maximum(xmax - xmin, 1e-4)

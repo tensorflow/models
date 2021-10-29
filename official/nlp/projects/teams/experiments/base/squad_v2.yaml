@@ -23,6 +23,7 @@ task:
     vocab_file: ''
 trainer:
   checkpoint_interval: 500
+  continuous_eval_timeout: 7200
   max_to_keep: 5
   optimizer_config:
     learning_rate:

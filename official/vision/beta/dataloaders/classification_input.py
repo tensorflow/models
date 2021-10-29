@@ -253,3 +253,21 @@ class Parser(parser.Parser):
     image = tf.image.convert_image_dtype(image, self._dtype)
 
     return image
+
+  @classmethod
+  def inference_fn(cls,
+                   image: tf.Tensor,
+                   input_image_size: List[int],
+                   num_channels: int = 3) -> tf.Tensor:
+    """Builds image model inputs for serving."""
+
+    image = tf.cast(image, dtype=tf.float32)
+    image = preprocess_ops.center_crop_image(image)
+    image = tf.image.resize(
+        image, input_image_size, method=tf.image.ResizeMethod.BILINEAR)
+
+    # Normalizes image with mean and std pixel values.
+    image = preprocess_ops.normalize_image(
+        image, offset=MEAN_RGB, scale=STDDEV_RGB)
+    image.set_shape(input_image_size + [num_channels])
+    return image

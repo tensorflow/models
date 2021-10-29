@@ -54,7 +54,9 @@ def make_distributed_dataset(strategy, dataset_or_fn, *args, **kwargs):
       an argument named `input_context` which will be passed a
       `tf.distribute.InputContext` instance.
     *args: Any positional arguments to pass through to `dataset_or_fn`.
-    **kwargs: Any keyword arguments to pass through to `dataset_or_fn`.
+    **kwargs: Any keyword arguments to pass through to `dataset_or_fn`, except
+      that the `input_options` keyword is used to specify a
+      `tf.distribute.InputOptions` for making the distributed dataset.
 
   Returns:
     A distributed Dataset.
@@ -62,8 +64,11 @@ def make_distributed_dataset(strategy, dataset_or_fn, *args, **kwargs):
   if strategy is None:
     strategy = tf.distribute.get_strategy()
 
+  input_options = kwargs.pop("input_options", None)
+
   if isinstance(dataset_or_fn, tf.data.Dataset):
-    return strategy.experimental_distribute_dataset(dataset_or_fn)
+    return strategy.experimental_distribute_dataset(dataset_or_fn,
+                                                    input_options)
 
   if not callable(dataset_or_fn):
     raise ValueError("`dataset_or_fn` should be either callable or an instance "
@@ -82,7 +87,7 @@ def make_distributed_dataset(strategy, dataset_or_fn, *args, **kwargs):
       kwargs["input_context"] = input_context
     return dataset_or_fn(*args, **kwargs)
 
-  return strategy.distribute_datasets_from_function(dataset_fn)
+  return strategy.distribute_datasets_from_function(dataset_fn, input_options)
 
 
 def get_value(x):

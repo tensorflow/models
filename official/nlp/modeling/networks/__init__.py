@@ -28,5 +28,3 @@ from official.nlp.modeling.networks.packed_sequence_embedding import PackedSeque
 from official.nlp.modeling.networks.span_labeling import SpanLabeling
 from official.nlp.modeling.networks.span_labeling import XLNetSpanLabeling
 from official.nlp.modeling.networks.xlnet_base import XLNetBase
-# Backward compatibility. The modules are deprecated.
-TransformerEncoder = BertEncoder

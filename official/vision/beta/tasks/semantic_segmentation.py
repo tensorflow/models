@@ -158,6 +158,10 @@ class SemanticSegmentationTask(base_task.Task):
           .resize_eval_groundtruth,
           dtype=tf.float32)
 
+      # Update state on CPU if TPUStrategy due to dynamic resizing.
+      self._process_iou_metric_on_cpu = isinstance(
+          tf.distribute.get_strategy(), tf.distribute.TPUStrategy)
+
     return metrics
 
   def train_step(self,
@@ -251,7 +255,11 @@ class SemanticSegmentationTask(base_task.Task):
       loss = 0
 
     logs = {self.loss: loss}
-    logs.update({self.iou_metric.name: (labels, outputs)})
+
+    if self._process_iou_metric_on_cpu:
+      logs.update({self.iou_metric.name: (labels, outputs)})
+    else:
+      self.iou_metric.update_state(labels, outputs)
 
     if metrics:
       self.process_metrics(metrics, labels, outputs)
@@ -267,8 +275,9 @@ class SemanticSegmentationTask(base_task.Task):
     if state is None:
       self.iou_metric.reset_states()
       state = self.iou_metric
-    self.iou_metric.update_state(step_outputs[self.iou_metric.name][0],
-                                 step_outputs[self.iou_metric.name][1])
+    if self._process_iou_metric_on_cpu:
+      self.iou_metric.update_state(step_outputs[self.iou_metric.name][0],
+                                   step_outputs[self.iou_metric.name][1])
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
