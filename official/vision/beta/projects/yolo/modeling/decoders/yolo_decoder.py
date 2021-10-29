@@ -371,7 +371,7 @@ class YoloPAN(tf.keras.layers.Layer):
     for level, depth in zip(self._iterator, self._depths):
       if level > 5:
         proc_filters = lambda x: x * 2
-        resample_filters = lambda x: x // 2
+        resample_filters = lambda x: x
       elif self._csp_stack == 0:
         proc_filters = lambda x: x
         resample_filters = lambda x: x // 2
