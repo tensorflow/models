@@ -43,6 +43,7 @@ runtime.distribution_strategy=tpu"
 
 $ python3 train.py \
   --experiment panoptic_fpn_coco \
+  --config_file configs/experiments/r50fpn_1x_coco.yaml \
   --mode train \
   --model_dir $MODEL_DIR \
   --tpu $TPU_NAME \
@@ -67,6 +68,7 @@ runtime.num_gpus=$NUM_GPUS"
 
 $ python3 train.py \
   --experiment panoptic_fpn_coco \
+  --config_file configs/experiments/r50fpn_1x_coco.yaml \
   --mode eval \
   --model_dir $MODEL_DIR \
   --params_override=$OVERRIDES
