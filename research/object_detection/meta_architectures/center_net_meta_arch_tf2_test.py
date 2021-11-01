@@ -3311,6 +3311,23 @@ class CenterNetFeatureExtractorTest(test_case.TestCase):
     output = self.execute(graph_fn, [])
     self.assertAlmostEqual(output.sum(), 2 * 32 * 32 * 3)
 
+  def test_preprocess_reverse(self):
+    feature_extractor = DummyFeatureExtractor(
+        channel_means=(1.0, 2.0, 3.0),
+        channel_stds=(10., 20., 30.), bgr_ordering=False,
+        num_feature_outputs=2, stride=4)
+
+    img = np.zeros((2, 32, 32, 3))
+    img[:, :, :] = 11, 22, 33
+
+    def graph_fn():
+      output = feature_extractor.preprocess_reverse(
+          feature_extractor.preprocess(img))
+      return output
+
+    output = self.execute(graph_fn, [])
+    self.assertAllClose(img, output)
+
   def test_bgr_ordering(self):
     feature_extractor = DummyFeatureExtractor(
         channel_means=(0.0, 0.0, 0.0),

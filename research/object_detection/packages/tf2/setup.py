@@ -22,6 +22,7 @@ REQUIRED_PACKAGES = [
     'scipy',
     'pandas',
     'tf-models-official>=2.5.1',
+    'tensorflow_io'
 ]
 
 setup(

@@ -104,6 +104,32 @@ class CenterNetFeatureExtractor(tf.keras.Model):
 
     return (inputs - channel_means)/channel_stds
 
+  def preprocess_reverse(self, preprocessed_inputs):
+    """Undo the preprocessing and return the raw image.
+
+    This is a convenience function for some algorithms that require access
+    to the raw inputs.
+
+    Args:
+      preprocessed_inputs: A [batch_size, height, width, channels] float
+        tensor preprocessed_inputs from the preprocess function.
+
+    Returns:
+      images: A [batch_size, height, width, channels] float tensor with
+        the preprocessing removed.
+    """
+    channel_means = tf.reshape(tf.constant(self._channel_means),
+                               [1, 1, 1, -1])
+    channel_stds = tf.reshape(tf.constant(self._channel_stds),
+                              [1, 1, 1, -1])
+    inputs = (preprocessed_inputs * channel_stds) + channel_means
+
+    if self._bgr_ordering:
+      blue, green, red = tf.unstack(inputs, axis=3)
+      inputs = tf.stack([red, green, blue], axis=3)
+
+    return inputs
+
   @property
   @abc.abstractmethod
   def out_stride(self):
