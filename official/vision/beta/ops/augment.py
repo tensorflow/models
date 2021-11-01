@@ -28,10 +28,9 @@ https://github.com/rwightman/pytorch-image-models
 import math
 from typing import Any, List, Iterable, Optional, Text, Tuple
 
+from keras.layers.preprocessing import image_preprocessing as image_ops
 import numpy as np
 import tensorflow as tf
-
-from tensorflow.python.keras.layers.preprocessing import image_preprocessing as image_ops
 
 
 # This signifies the max integer that the controller RNN could predict for the

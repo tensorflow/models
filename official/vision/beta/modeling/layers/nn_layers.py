@@ -13,12 +13,14 @@
 # limitations under the License.
 
 """Contains common building blocks for neural networks."""
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
 
 from absl import logging
 import tensorflow as tf
+import tensorflow_addons as tfa
 
 from official.modeling import tf_utils
+from official.vision.beta.ops import spatial_transform_ops
 
 
 # Type annotations.
@@ -306,6 +308,110 @@ def pyramid_feature_fusion(inputs, target_level):
       resampled_feats.append(feat)
 
   return tf.math.add_n(resampled_feats)
+
+
+class PanopticFPNFusion(tf.keras.Model):
+  """Creates a Panoptic FPN feature Fusion layer.
+
+  This implements feature fusion for semantic segmentation head from the paper:
+  Alexander Kirillov, Ross Girshick, Kaiming He and Piotr Dollar.
+  Panoptic Feature Pyramid Networks.
+  (https://arxiv.org/pdf/1901.02446.pdf)
+  """
+
+  def __init__(
+      self,
+      min_level: int = 2,
+      max_level: int = 5,
+      target_level: int = 2,
+      num_filters: int = 128,
+      num_fpn_filters: int = 256,
+      activation: str = 'relu',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
+
+    """Initializes panoptic FPN feature fusion layer.
+
+    Args:
+      min_level: An `int` of minimum level to use in feature fusion.
+      max_level: An `int` of maximum level to use in feature fusion.
+      target_level: An `int` of the target feature level for feature fusion.
+      num_filters: An `int` number of filters in conv2d layers.
+      num_fpn_filters: An `int` number of filters in the FPN outputs
+      activation: A `str` name of the activation function.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default is None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      **kwargs: Additional keyword arguments to be passed.
+    Returns:
+      A `float` `tf.Tensor` of shape [batch_size, feature_height, feature_width,
+        feature_channel].
+    """
+    if target_level > max_level:
+      raise ValueError('target_level should be less than max_level')
+
+    self._config_dict = {
+        'min_level': min_level,
+        'max_level': max_level,
+        'target_level': target_level,
+        'num_filters': num_filters,
+        'num_fpn_filters': num_fpn_filters,
+        'activation': activation,
+        'kernel_regularizer': kernel_regularizer,
+        'bias_regularizer': bias_regularizer,
+    }
+    norm = tfa.layers.GroupNormalization
+    conv2d = tf.keras.layers.Conv2D
+    activation_fn = tf_utils.get_activation(activation)
+    if tf.keras.backend.image_data_format() == 'channels_last':
+      norm_axis = -1
+    else:
+      norm_axis = 1
+    inputs = self._build_inputs(num_fpn_filters, min_level, max_level)
+
+    upscaled_features = []
+    for level in range(min_level, max_level + 1):
+      num_conv_layers = max(1, level - target_level)
+      x = inputs[str(level)]
+      for i in range(num_conv_layers):
+        x = conv2d(
+            filters=num_filters,
+            kernel_size=3,
+            padding='same',
+            kernel_initializer=tf.keras.initializers.VarianceScaling(),
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer)(x)
+        x = norm(groups=32, axis=norm_axis)(x)
+        x = activation_fn(x)
+        if level != target_level:
+          x = spatial_transform_ops.nearest_upsampling(x, scale=2)
+      upscaled_features.append(x)
+
+    fused_features = tf.math.add_n(upscaled_features)
+    self._output_specs = {str(target_level): fused_features.get_shape()}
+
+    super(PanopticFPNFusion, self).__init__(
+        inputs=inputs, outputs=fused_features, **kwargs)
+
+  def _build_inputs(self, num_filters: int,
+                    min_level: int, max_level: int):
+    inputs = {}
+    for level in range(min_level, max_level + 1):
+      inputs[str(level)] = tf.keras.Input(shape=[None, None, num_filters])
+    return inputs
+
+  def get_config(self) -> Mapping[str, Any]:
+    return self._config_dict
+
+  @classmethod
+  def from_config(cls, config, custom_objects=None):
+    return cls(**config)
+
+  @property
+  def output_specs(self) -> Mapping[str, tf.TensorShape]:
+    """A dict of {level: TensorShape} pairs for the model output."""
+    return self._output_specs
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -970,3 +1076,213 @@ class Conv3D(tf.keras.layers.Conv3D, CausalConvMixin):
     """Computes the spatial output shape from the input shape."""
     shape = super(Conv3D, self)._spatial_output_shape(spatial_input_shape)
     return self._buffered_spatial_output_shape(shape)
+
+
+@tf.keras.utils.register_keras_serializable(package='Vision')
+class SpatialPyramidPooling(tf.keras.layers.Layer):
+  """Implements the Atrous Spatial Pyramid Pooling.
+
+  References:
+    [Rethinking Atrous Convolution for Semantic Image Segmentation](
+      https://arxiv.org/pdf/1706.05587.pdf)
+    [Encoder-Decoder with Atrous Separable Convolution for Semantic Image
+    Segmentation](https://arxiv.org/pdf/1802.02611.pdf)
+  """
+
+  def __init__(
+      self,
+      output_channels: int,
+      dilation_rates: List[int],
+      pool_kernel_size: Optional[List[int]] = None,
+      use_sync_bn: bool = False,
+      batchnorm_momentum: float = 0.99,
+      batchnorm_epsilon: float = 0.001,
+      activation: str = 'relu',
+      dropout: float = 0.5,
+      kernel_initializer: str = 'GlorotUniform',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      interpolation: str = 'bilinear',
+      use_depthwise_convolution: bool = False,
+      **kwargs):
+    """Initializes `SpatialPyramidPooling`.
+
+    Args:
+      output_channels: Number of channels produced by SpatialPyramidPooling.
+      dilation_rates: A list of integers for parallel dilated conv.
+      pool_kernel_size: A list of integers or None. If None, global average
+        pooling is applied, otherwise an average pooling of pool_kernel_size is
+        applied.
+      use_sync_bn: A bool, whether or not to use sync batch normalization.
+      batchnorm_momentum: A float for the momentum in BatchNorm. Defaults to
+        0.99.
+      batchnorm_epsilon: A float for the epsilon value in BatchNorm. Defaults to
+        0.001.
+      activation: A `str` for type of activation to be used. Defaults to 'relu'.
+      dropout: A float for the dropout rate before output. Defaults to 0.5.
+      kernel_initializer: Kernel initializer for conv layers. Defaults to
+        `glorot_uniform`.
+      kernel_regularizer: Kernel regularizer for conv layers. Defaults to None.
+      interpolation: The interpolation method for upsampling. Defaults to
+        `bilinear`.
+      use_depthwise_convolution: Allows spatial pooling to be separable
+        depthwise convolusions. [Encoder-Decoder with Atrous Separable
+        Convolution for Semantic Image Segmentation](
+         https://arxiv.org/pdf/1802.02611.pdf)
+      **kwargs: Other keyword arguments for the layer.
+    """
+    super().__init__(**kwargs)
+
+    self._output_channels = output_channels
+    self._dilation_rates = dilation_rates
+    self._use_sync_bn = use_sync_bn
+    self._batchnorm_momentum = batchnorm_momentum
+    self._batchnorm_epsilon = batchnorm_epsilon
+    self._activation = activation
+    self._dropout = dropout
+    self._kernel_initializer = kernel_initializer
+    self._kernel_regularizer = kernel_regularizer
+    self._interpolation = interpolation
+    self._pool_kernel_size = pool_kernel_size
+    self._use_depthwise_convolution = use_depthwise_convolution
+    self._activation_fn = tf_utils.get_activation(activation)
+    if self._use_sync_bn:
+      self._bn_op = tf.keras.layers.experimental.SyncBatchNormalization
+    else:
+      self._bn_op = tf.keras.layers.BatchNormalization
+
+    if tf.keras.backend.image_data_format() == 'channels_last':
+      self._bn_axis = -1
+    else:
+      self._bn_axis = 1
+
+  def build(self, input_shape):
+    height = input_shape[1]
+    width = input_shape[2]
+    channels = input_shape[3]
+
+    self.aspp_layers = []
+
+    conv1 = tf.keras.layers.Conv2D(
+        filters=self._output_channels,
+        kernel_size=(1, 1),
+        kernel_initializer=self._kernel_initializer,
+        kernel_regularizer=self._kernel_regularizer,
+        use_bias=False)
+    norm1 = self._bn_op(
+        axis=self._bn_axis,
+        momentum=self._batchnorm_momentum,
+        epsilon=self._batchnorm_epsilon)
+
+    self.aspp_layers.append([conv1, norm1])
+
+    for dilation_rate in self._dilation_rates:
+      leading_layers = []
+      kernel_size = (3, 3)
+      if self._use_depthwise_convolution:
+        leading_layers += [
+            tf.keras.layers.DepthwiseConv2D(
+                depth_multiplier=1,
+                kernel_size=kernel_size,
+                padding='same',
+                depthwise_regularizer=self._kernel_regularizer,
+                depthwise_initializer=self._kernel_initializer,
+                dilation_rate=dilation_rate,
+                use_bias=False)
+        ]
+        kernel_size = (1, 1)
+      conv_dilation = leading_layers + [
+          tf.keras.layers.Conv2D(
+              filters=self._output_channels,
+              kernel_size=kernel_size,
+              padding='same',
+              kernel_regularizer=self._kernel_regularizer,
+              kernel_initializer=self._kernel_initializer,
+              dilation_rate=dilation_rate,
+              use_bias=False)
+      ]
+      norm_dilation = self._bn_op(
+          axis=self._bn_axis,
+          momentum=self._batchnorm_momentum,
+          epsilon=self._batchnorm_epsilon)
+
+      self.aspp_layers.append(conv_dilation + [norm_dilation])
+
+    if self._pool_kernel_size is None:
+      pooling = [
+          tf.keras.layers.GlobalAveragePooling2D(),
+          tf.keras.layers.Reshape((1, 1, channels))
+      ]
+    else:
+      pooling = [tf.keras.layers.AveragePooling2D(self._pool_kernel_size)]
+
+    conv2 = tf.keras.layers.Conv2D(
+        filters=self._output_channels,
+        kernel_size=(1, 1),
+        kernel_initializer=self._kernel_initializer,
+        kernel_regularizer=self._kernel_regularizer,
+        use_bias=False)
+    norm2 = self._bn_op(
+        axis=self._bn_axis,
+        momentum=self._batchnorm_momentum,
+        epsilon=self._batchnorm_epsilon)
+
+    self.aspp_layers.append(pooling + [conv2, norm2])
+
+    self._resize_layer = tf.keras.layers.Resizing(
+        height, width, interpolation=self._interpolation, dtype=tf.float32)
+
+    self._projection = [
+        tf.keras.layers.Conv2D(
+            filters=self._output_channels,
+            kernel_size=(1, 1),
+            kernel_initializer=self._kernel_initializer,
+            kernel_regularizer=self._kernel_regularizer,
+            use_bias=False),
+        self._bn_op(
+            axis=self._bn_axis,
+            momentum=self._batchnorm_momentum,
+            epsilon=self._batchnorm_epsilon)
+    ]
+    self._dropout_layer = tf.keras.layers.Dropout(rate=self._dropout)
+    self._concat_layer = tf.keras.layers.Concatenate(axis=-1)
+
+  def call(self,
+           inputs: tf.Tensor,
+           training: Optional[bool] = None) -> tf.Tensor:
+    if training is None:
+      training = tf.keras.backend.learning_phase()
+    result = []
+    for i, layers in enumerate(self.aspp_layers):
+      x = inputs
+      for layer in layers:
+        # Apply layers sequentially.
+        x = layer(x, training=training)
+      x = self._activation_fn(x)
+
+      # Apply resize layer to the end of the last set of layers.
+      if i == len(self.aspp_layers) - 1:
+        x = self._resize_layer(x)
+
+      result.append(tf.cast(x, inputs.dtype))
+    x = self._concat_layer(result)
+    for layer in self._projection:
+      x = layer(x, training=training)
+    x = self._activation_fn(x)
+    return self._dropout_layer(x)
+
+  def get_config(self):
+    config = {
+        'output_channels': self._output_channels,
+        'dilation_rates': self._dilation_rates,
+        'pool_kernel_size': self._pool_kernel_size,
+        'use_sync_bn': self._use_sync_bn,
+        'batchnorm_momentum': self._batchnorm_momentum,
+        'batchnorm_epsilon': self._batchnorm_epsilon,
+        'activation': self._activation,
+        'dropout': self._dropout,
+        'kernel_initializer': self._kernel_initializer,
+        'kernel_regularizer': self._kernel_regularizer,
+        'interpolation': self._interpolation,
+    }
+    base_config = super().get_config()
+    return dict(list(base_config.items()) + list(config.items()))

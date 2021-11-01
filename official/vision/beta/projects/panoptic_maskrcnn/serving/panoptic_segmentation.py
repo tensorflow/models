@@ -88,14 +88,12 @@ class PanopticSegmentationModule(detection.DetectionModule):
                                    image_info_spec),
               parallel_iterations=32))
 
-    input_image_shape = image_info[:, 1, :]
-
     # To overcome keras.Model extra limitation to save a model with layers that
     # have multiple inputs, we use `model.call` here to trigger the forward
     # path. Note that, this disables some keras magics happens in `__call__`.
     detections = self.model.call(
         images=images,
-        image_shape=input_image_shape,
+        image_info=image_info,
         anchor_boxes=anchor_boxes,
         training=False)
 

@@ -611,7 +611,6 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             np.nan * tf.ones_like(tensor_dict[gt_kpt_fld]))
       else:
         num_instances = tf.shape(tensor_dict['groundtruth_classes'])[0]
-
         def true_fn(num_instances):
           """Logics to process the tensor when num_instances is not zero."""
           kpts_idx = tf.cast(self._kpts_name_to_id_table.lookup(
@@ -625,19 +624,25 @@ class TfExampleDecoder(data_decoder.DataDecoder):
               [1, num_kpt_texts])
           # Prepare the index of the keypoints to scatter the keypoint
           # coordinates: [num_kpts_texts * num_instances, 2].
-          kpt_idx = tf.concat([
+          full_kpt_idx = tf.concat([
               tf.reshape(
                   instance_idx, shape=[num_kpt_texts * num_instances, 1]),
               tf.expand_dims(kpts_idx, axis=-1)
           ], axis=1)
 
+          # Get the mask and gather only the keypoints with non-negative
+          # indices (i.e. the keypoint labels in the image/object/keypoint/text
+          # but do not exist in the label map).
+          valid_mask = tf.greater_equal(kpts_idx, 0)
+          full_kpt_idx = tf.boolean_mask(full_kpt_idx, valid_mask)
+
           gt_kpt = tf.scatter_nd(
-              kpt_idx,
-              tensor_dict[gt_kpt_fld],
+              full_kpt_idx,
+              tf.boolean_mask(tensor_dict[gt_kpt_fld], valid_mask),
               shape=[num_instances, self._num_keypoints, 2])
           gt_kpt_vis = tf.cast(tf.scatter_nd(
-              kpt_idx,
-              tensor_dict[gt_kpt_vis_fld],
+              full_kpt_idx,
+              tf.boolean_mask(tensor_dict[gt_kpt_vis_fld], valid_mask),
               shape=[num_instances, self._num_keypoints]), dtype=tf.bool)
           visibilities_tiled = tf.tile(
               tf.expand_dims(gt_kpt_vis, axis=-1), [1, 1, 2])
@@ -1091,3 +1096,4 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       new_object_field = tf.repeat(
           object_field, tf.reduce_sum(expanded_indices, axis=1), axis=0)
     return new_object_field
+

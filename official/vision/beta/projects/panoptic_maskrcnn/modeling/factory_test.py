@@ -27,19 +27,18 @@ from official.vision.beta.projects.panoptic_maskrcnn.modeling import factory
 class PanopticMaskRCNNBuilderTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      ('resnet', (640, 640), 'dilated_resnet', 'fpn'),
-      ('resnet', (640, 640), 'dilated_resnet', 'aspp'),
-      ('resnet', (640, 640), None, 'fpn'),
-      ('resnet', (640, 640), None, 'aspp'),
-      ('resnet', (640, 640), None, None),
-      ('resnet', (None, None), 'dilated_resnet', 'fpn'),
-      ('resnet', (None, None), 'dilated_resnet', 'aspp'),
-      ('resnet', (None, None), None, 'fpn'),
-      ('resnet', (None, None), None, 'aspp'),
-      ('resnet', (None, None), None, None)
-  )
+      ('resnet', (640, 640), 'dilated_resnet', 'fpn', 'panoptic_fpn_fusion'),
+      ('resnet', (640, 640), 'dilated_resnet', 'aspp', 'deeplabv3plus'),
+      ('resnet', (640, 640), None, 'fpn', 'panoptic_fpn_fusion'),
+      ('resnet', (640, 640), None, 'aspp', 'deeplabv3plus'),
+      ('resnet', (640, 640), None, None, 'panoptic_fpn_fusion'),
+      ('resnet', (None, None), 'dilated_resnet', 'fpn', 'panoptic_fpn_fusion'),
+      ('resnet', (None, None), 'dilated_resnet', 'aspp', 'deeplabv3plus'),
+      ('resnet', (None, None), None, 'fpn', 'panoptic_fpn_fusion'),
+      ('resnet', (None, None), None, 'aspp', 'deeplabv3plus'),
+      ('resnet', (None, None), None, None, 'deeplabv3plus'))
   def test_builder(self, backbone_type, input_size, segmentation_backbone_type,
-                   segmentation_decoder_type):
+                   segmentation_decoder_type, fusion_type):
     num_classes = 2
     input_specs = tf.keras.layers.InputSpec(
         shape=[None, input_size[0], input_size[1], 3])

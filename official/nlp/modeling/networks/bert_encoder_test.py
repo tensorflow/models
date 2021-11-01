@@ -32,21 +32,30 @@ class BertEncoderTest(keras_parameterized.TestCase):
     super(BertEncoderTest, self).tearDown()
     tf.keras.mixed_precision.set_global_policy("float32")
 
-  def test_v2_network_creation(self):
+  @parameterized.named_parameters(
+      ("encoder_v2", bert_encoder.BertEncoderV2),
+      ("encoder_v1", bert_encoder.BertEncoder),
+  )
+  def test_dict_outputs_network_creation(self, encoder_cls):
     hidden_size = 32
     sequence_length = 21
     # Create a small BertEncoder for testing.
-    test_network = bert_encoder.BertEncoder(
+    if encoder_cls is bert_encoder.BertEncoderV2:
+      kwargs = {}
+    else:
+      kwargs = dict(dict_outputs=True)
+    test_network = encoder_cls(
         vocab_size=100,
         hidden_size=hidden_size,
         num_attention_heads=2,
         num_layers=3,
-        dict_outputs=True)
+        **kwargs)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    dict_outputs = test_network([word_ids, mask, type_ids])
+    dict_outputs = test_network(
+        dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids))
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
 
@@ -63,11 +72,15 @@ class BertEncoderTest(keras_parameterized.TestCase):
     self.assertAllEqual(tf.float32, data.dtype)
     self.assertAllEqual(tf.float32, pooled.dtype)
 
-  def test_v2_all_encoder_outputs_network_creation(self):
+  @parameterized.named_parameters(
+      ("encoder_v2", bert_encoder.BertEncoderV2),
+      ("encoder_v1", bert_encoder.BertEncoder),
+  )
+  def test_dict_outputs_all_encoder_outputs_network_creation(self, encoder_cls):
     hidden_size = 32
     sequence_length = 21
     # Create a small BertEncoder for testing.
-    test_network = bert_encoder.BertEncoder(
+    test_network = encoder_cls(
         vocab_size=100,
         hidden_size=hidden_size,
         num_attention_heads=2,
@@ -77,7 +90,8 @@ class BertEncoderTest(keras_parameterized.TestCase):
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    dict_outputs = test_network([word_ids, mask, type_ids])
+    dict_outputs = test_network(
+        dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids))
     all_encoder_outputs = dict_outputs["encoder_outputs"]
     pooled = dict_outputs["pooled_output"]
 
@@ -92,12 +106,16 @@ class BertEncoderTest(keras_parameterized.TestCase):
     self.assertAllEqual(tf.float32, all_encoder_outputs[-1].dtype)
     self.assertAllEqual(tf.float32, pooled.dtype)
 
-  def test_v2_network_creation_with_float16_dtype(self):
+  @parameterized.named_parameters(
+      ("encoder_v2", bert_encoder.BertEncoderV2),
+      ("encoder_v1", bert_encoder.BertEncoder),
+  )
+  def test_dict_outputs_network_creation_with_float16_dtype(self, encoder_cls):
     hidden_size = 32
     sequence_length = 21
     tf.keras.mixed_precision.set_global_policy("mixed_float16")
     # Create a small BertEncoder for testing.
-    test_network = bert_encoder.BertEncoder(
+    test_network = encoder_cls(
         vocab_size=100,
         hidden_size=hidden_size,
         num_attention_heads=2,
@@ -107,7 +125,8 @@ class BertEncoderTest(keras_parameterized.TestCase):
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    dict_outputs = test_network([word_ids, mask, type_ids])
+    dict_outputs = test_network(
+        dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids))
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
 
@@ -122,16 +141,19 @@ class BertEncoderTest(keras_parameterized.TestCase):
     self.assertAllEqual(tf.float16, pooled.dtype)
 
   @parameterized.named_parameters(
-      ("all_sequence", None, 21),
-      ("output_range", 1, 1),
+      ("all_sequence_encoder_v1", bert_encoder.BertEncoder, None, 21),
+      ("output_range_encoder_v1", bert_encoder.BertEncoder, 1, 1),
+      ("all_sequence_encoder_v2", bert_encoder.BertEncoderV2, None, 21),
+      ("output_range_encoder_v2", bert_encoder.BertEncoderV2, 1, 1),
   )
-  def test_v2_network_invocation(self, output_range, out_seq_len):
+  def test_dict_outputs_network_invocation(
+      self, encoder_cls, output_range, out_seq_len):
     hidden_size = 32
     sequence_length = 21
     vocab_size = 57
     num_types = 7
     # Create a small BertEncoder for testing.
-    test_network = bert_encoder.BertEncoder(
+    test_network = encoder_cls(
         vocab_size=vocab_size,
         hidden_size=hidden_size,
         num_attention_heads=2,
@@ -143,7 +165,8 @@ class BertEncoderTest(keras_parameterized.TestCase):
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    dict_outputs = test_network([word_ids, mask, type_ids])
+    dict_outputs = test_network(
+        dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids))
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
 
@@ -163,7 +186,7 @@ class BertEncoderTest(keras_parameterized.TestCase):
 
     # Creates a BertEncoder with max_sequence_length != sequence_length
     max_sequence_length = 128
-    test_network = bert_encoder.BertEncoder(
+    test_network = encoder_cls(
         vocab_size=vocab_size,
         hidden_size=hidden_size,
         max_sequence_length=max_sequence_length,
@@ -171,7 +194,8 @@ class BertEncoderTest(keras_parameterized.TestCase):
         num_layers=3,
         type_vocab_size=num_types,
         dict_outputs=True)
-    dict_outputs = test_network([word_ids, mask, type_ids])
+    dict_outputs = test_network(
+        dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids))
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
     model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
@@ -179,7 +203,7 @@ class BertEncoderTest(keras_parameterized.TestCase):
     self.assertEqual(outputs[0].shape[1], sequence_length)
 
     # Creates a BertEncoder with embedding_width != hidden_size
-    test_network = bert_encoder.BertEncoder(
+    test_network = encoder_cls(
         vocab_size=vocab_size,
         hidden_size=hidden_size,
         max_sequence_length=max_sequence_length,
@@ -188,13 +212,50 @@ class BertEncoderTest(keras_parameterized.TestCase):
         type_vocab_size=num_types,
         embedding_width=16,
         dict_outputs=True)
-    dict_outputs = test_network([word_ids, mask, type_ids])
+    dict_outputs = test_network(
+        dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids))
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
     model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
     outputs = model.predict([word_id_data, mask_data, type_id_data])
     self.assertEqual(outputs[0].shape[-1], hidden_size)
     self.assertTrue(hasattr(test_network, "_embedding_projection"))
+
+  def test_embeddings_as_inputs(self):
+    hidden_size = 32
+    sequence_length = 21
+    # Create a small BertEncoder for testing.
+    test_network = bert_encoder.BertEncoderV2(
+        vocab_size=100,
+        hidden_size=hidden_size,
+        num_attention_heads=2,
+        num_layers=3)
+    # Create the inputs (note that the first dimension is implicit).
+    word_ids = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
+    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    test_network.build(
+        dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids))
+    embeddings = test_network.get_embedding_layer()(word_ids)
+    # Calls with the embeddings.
+    dict_outputs = test_network(
+        dict(
+            input_word_embeddings=embeddings,
+            input_mask=mask,
+            input_type_ids=type_ids))
+    all_encoder_outputs = dict_outputs["encoder_outputs"]
+    pooled = dict_outputs["pooled_output"]
+
+    expected_data_shape = [None, sequence_length, hidden_size]
+    expected_pooled_shape = [None, hidden_size]
+    self.assertLen(all_encoder_outputs, 3)
+    for data in all_encoder_outputs:
+      self.assertAllEqual(expected_data_shape, data.shape.as_list())
+    self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
+
+    # The default output dtype is float32.
+    self.assertAllEqual(tf.float32, all_encoder_outputs[-1].dtype)
+    self.assertAllEqual(tf.float32, pooled.dtype)
 
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.
@@ -399,6 +460,116 @@ class BertEncoderTest(keras_parameterized.TestCase):
     outputs = model.predict([word_id_data, mask_data, type_id_data])
     self.assertEqual(outputs[0].shape[-1], hidden_size)
     self.assertTrue(hasattr(test_network, "_embedding_projection"))
+
+
+class BertEncoderV2CompatibilityTest(tf.test.TestCase):
+
+  def tearDown(self):
+    super().tearDown()
+    tf.keras.mixed_precision.set_global_policy("float32")
+
+  def test_weights_forward_compatible(self):
+    batch_size = 3
+
+    hidden_size = 32
+    sequence_length = 21
+    vocab_size = 57
+    num_types = 7
+
+    kwargs = dict(
+        vocab_size=vocab_size,
+        hidden_size=hidden_size,
+        num_attention_heads=2,
+        num_layers=3,
+        type_vocab_size=num_types,
+        output_range=None)
+
+    word_id_data = np.random.randint(
+        vocab_size, size=(batch_size, sequence_length))
+    mask_data = np.random.randint(2, size=(batch_size, sequence_length))
+    type_id_data = np.random.randint(
+        num_types, size=(batch_size, sequence_length))
+    data = dict(
+        input_word_ids=word_id_data,
+        input_mask=mask_data,
+        input_type_ids=type_id_data)
+
+    # Create small BertEncoders for testing.
+    new_net = bert_encoder.BertEncoderV2(**kwargs)
+    _ = new_net(data)
+    kwargs["dict_outputs"] = True
+    old_net = bert_encoder.BertEncoder(**kwargs)
+    _ = old_net(data)
+    new_net._embedding_layer.set_weights(old_net._embedding_layer.get_weights())
+    new_net._position_embedding_layer.set_weights(
+        old_net._position_embedding_layer.get_weights())
+    new_net._type_embedding_layer.set_weights(
+        old_net._type_embedding_layer.get_weights())
+    new_net._embedding_norm_layer.set_weights(
+        old_net._embedding_norm_layer.get_weights())
+    # embedding_dropout has no weights.
+
+    if hasattr(old_net, "_embedding_projection"):
+      new_net._embedding_projection.set_weights(
+          old_net._embedding_projection.get_weights())
+    # attention_mask_layer has no weights.
+
+    new_net._pooler_layer.set_weights(old_net._pooler_layer.get_weights())
+
+    for otl, ntl in zip(old_net._transformer_layers,
+                        new_net._transformer_layers):
+      ntl.set_weights(otl.get_weights())
+
+    def check_output_close(data, net1, net2):
+      output1 = net1(data)
+      output2 = net2(data)
+      for key in output1:
+        self.assertAllClose(output1[key], output2[key])
+
+    check_output_close(data, old_net, new_net)
+
+  def test_checkpoint_forward_compatible(self):
+    batch_size = 3
+
+    hidden_size = 32
+    sequence_length = 21
+    vocab_size = 57
+    num_types = 7
+
+    kwargs = dict(
+        vocab_size=vocab_size,
+        hidden_size=hidden_size,
+        num_attention_heads=2,
+        num_layers=3,
+        type_vocab_size=num_types,
+        output_range=None)
+
+    word_id_data = np.random.randint(
+        vocab_size, size=(batch_size, sequence_length))
+    mask_data = np.random.randint(2, size=(batch_size, sequence_length))
+    type_id_data = np.random.randint(
+        num_types, size=(batch_size, sequence_length))
+    data = dict(
+        input_word_ids=word_id_data,
+        input_mask=mask_data,
+        input_type_ids=type_id_data)
+
+    kwargs["dict_outputs"] = True
+    old_net = bert_encoder.BertEncoder(**kwargs)
+    old_net_outputs = old_net(data)
+    ckpt = tf.train.Checkpoint(net=old_net)
+    path = ckpt.save(self.get_temp_dir())
+    del kwargs["dict_outputs"]
+    new_net = bert_encoder.BertEncoderV2(**kwargs)
+    new_ckpt = tf.train.Checkpoint(net=new_net)
+    status = new_ckpt.restore(path)
+    status.assert_existing_objects_matched()
+    # assert_consumed will fail because the old model has redundant nodes.
+    new_net_outputs = new_net(data)
+
+    self.assertAllEqual(old_net_outputs.keys(), new_net_outputs.keys())
+    for key in old_net_outputs:
+      self.assertAllClose(old_net_outputs[key], new_net_outputs[key])
 
 
 if __name__ == "__main__":

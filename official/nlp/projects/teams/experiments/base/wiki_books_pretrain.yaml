@@ -27,7 +27,7 @@ task:
       intermediate_size: 3072
       max_position_embeddings: 512
       num_attention_heads: 12
-      num_layers: 6
+      num_layers: 12
       type_vocab_size: 2
       vocab_size: 30522
   train_data:
@@ -39,6 +39,7 @@ task:
     seq_length: 512
     use_next_sentence_label: false
     use_position_id: false
+    cycle_length: 8
   validation_data:
     drop_remainder: true
     global_batch_size: 256

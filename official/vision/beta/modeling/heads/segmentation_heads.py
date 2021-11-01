@@ -35,8 +35,11 @@ class SegmentationHead(tf.keras.layers.Layer):
       prediction_kernel_size: int = 1,
       upsample_factor: int = 1,
       feature_fusion: Optional[str] = None,
+      decoder_min_level: Optional[int] = None,
+      decoder_max_level: Optional[int] = None,
       low_level: int = 2,
       low_level_num_filters: int = 48,
+      num_decoder_filters: int = 256,
       activation: str = 'relu',
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
@@ -60,15 +63,24 @@ class SegmentationHead(tf.keras.layers.Layer):
       prediction layer.
       upsample_factor: An `int` number to specify the upsampling factor to
         generate finer mask. Default 1 means no upsampling is applied.
-      feature_fusion: One of `deeplabv3plus`, `pyramid_fusion`, or None. If
-        `deeplabv3plus`, features from decoder_features[level] will be fused
-        with low level feature maps from backbone. If `pyramid_fusion`,
-        multiscale features will be resized and fused at the target level.
+      feature_fusion: One of `deeplabv3plus`, `pyramid_fusion`,
+        `panoptic_fpn_fusion`, or None. If `deeplabv3plus`, features from
+        decoder_features[level] will be fused with low level feature maps from
+        backbone. If `pyramid_fusion`, multiscale features will be resized and
+        fused at the target level.
+      decoder_min_level: An `int` of minimum level from decoder to use in
+        feature fusion. It is only used when feature_fusion is set to
+        `panoptic_fpn_fusion`.
+      decoder_max_level: An `int` of maximum level from decoder to use in
+        feature fusion. It is only used when feature_fusion is set to
+        `panoptic_fpn_fusion`.
       low_level: An `int` of backbone level to be used for feature fusion. It is
         used when feature_fusion is set to `deeplabv3plus`.
       low_level_num_filters: An `int` of reduced number of filters for the low
         level features before fusing it with higher level features. It is only
         used when feature_fusion is set to `deeplabv3plus`.
+      num_decoder_filters: An `int` of number of filters in the decoder outputs.
+        It is only used when feature_fusion is set to `panoptic_fpn_fusion`.
       activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
       use_sync_bn: A `bool` that indicates whether to use synchronized batch
@@ -91,14 +103,17 @@ class SegmentationHead(tf.keras.layers.Layer):
         'prediction_kernel_size': prediction_kernel_size,
         'upsample_factor': upsample_factor,
         'feature_fusion': feature_fusion,
+        'decoder_min_level': decoder_min_level,
+        'decoder_max_level': decoder_max_level,
         'low_level': low_level,
         'low_level_num_filters': low_level_num_filters,
+        'num_decoder_filters': num_decoder_filters,
         'activation': activation,
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
         'norm_epsilon': norm_epsilon,
         'kernel_regularizer': kernel_regularizer,
-        'bias_regularizer': bias_regularizer,
+        'bias_regularizer': bias_regularizer
     }
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
@@ -140,6 +155,17 @@ class SegmentationHead(tf.keras.layers.Layer):
 
       self._dlv3p_norm = bn_op(
           name='segmentation_head_deeplabv3p_fusion_norm', **bn_kwargs)
+
+    elif self._config_dict['feature_fusion'] == 'panoptic_fpn_fusion':
+      self._panoptic_fpn_fusion = nn_layers.PanopticFPNFusion(
+          min_level=self._config_dict['decoder_min_level'],
+          max_level=self._config_dict['decoder_max_level'],
+          target_level=self._config_dict['level'],
+          num_filters=self._config_dict['num_filters'],
+          num_fpn_filters=self._config_dict['num_decoder_filters'],
+          activation=self._config_dict['activation'],
+          kernel_regularizer=self._config_dict['kernel_regularizer'],
+          bias_regularizer=self._config_dict['bias_regularizer'])
 
     # Segmentation head layers.
     self._convs = []
@@ -210,6 +236,8 @@ class SegmentationHead(tf.keras.layers.Layer):
     elif self._config_dict['feature_fusion'] == 'pyramid_fusion':
       x = nn_layers.pyramid_feature_fusion(decoder_output,
                                            self._config_dict['level'])
+    elif self._config_dict['feature_fusion'] == 'panoptic_fpn_fusion':
+      x = self._panoptic_fpn_fusion(decoder_output)
     else:
       x = decoder_output[str(self._config_dict['level'])]
 
