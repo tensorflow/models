@@ -69,6 +69,7 @@ class ResidualBlock(tf.keras.layers.Layer):
                kernel_regularizer=None,
                bias_regularizer=None,
                activation='relu',
+               use_explicit_padding: bool = False,
                use_sync_bn=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
@@ -97,6 +98,9 @@ class ResidualBlock(tf.keras.layers.Layer):
       bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2d.
         Default to None.
       activation: A `str` name of the activation function.
+      use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
+        inputs so that the output dimensions are the same as if 'SAME' padding
+        were used.
       use_sync_bn: A `bool`. If True, use synchronized batch normalization.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
@@ -111,6 +115,7 @@ class ResidualBlock(tf.keras.layers.Layer):
     self._use_projection = use_projection
     self._se_ratio = se_ratio
     self._resnetd_shortcut = resnetd_shortcut
+    self._use_explicit_padding = use_explicit_padding
     self._use_sync_bn = use_sync_bn
     self._activation = activation
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
@@ -147,11 +152,17 @@ class ResidualBlock(tf.keras.layers.Layer):
           epsilon=self._norm_epsilon,
           trainable=self._bn_trainable)
 
+    conv1_padding = 'same'
+    # explicit padding here is added for centernet
+    if self._use_explicit_padding:
+      self._pad = tf.keras.layers.ZeroPadding2D(padding=(1, 1))
+      conv1_padding = 'valid'
+
     self._conv1 = tf.keras.layers.Conv2D(
         filters=self._filters,
         kernel_size=3,
         strides=self._strides,
-        padding='same',
+        padding=conv1_padding,
         use_bias=False,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
@@ -208,6 +219,7 @@ class ResidualBlock(tf.keras.layers.Layer):
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
         'activation': self._activation,
+        'use_explicit_padding': self._use_explicit_padding,
         'use_sync_bn': self._use_sync_bn,
         'norm_momentum': self._norm_momentum,
         'norm_epsilon': self._norm_epsilon,
@@ -222,6 +234,8 @@ class ResidualBlock(tf.keras.layers.Layer):
       shortcut = self._shortcut(shortcut)
       shortcut = self._norm0(shortcut)
 
+    if self._use_explicit_padding:
+      inputs = self._pad(inputs)
     x = self._conv1(inputs)
     x = self._norm1(x)
     x = self._activation_fn(x)

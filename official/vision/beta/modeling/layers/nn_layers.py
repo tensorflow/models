@@ -69,6 +69,17 @@ def round_filters(filters: int,
   return int(new_filters)
 
 
+def get_padding_for_kernel_size(kernel_size):
+  """Compute padding size given kernel size."""
+  if kernel_size == 7:
+    return (3, 3)
+  elif kernel_size == 3:
+    return (1, 1)
+  else:
+    raise ValueError('Padding for kernel size {} not known.'.format(
+        kernel_size))
+
+
 def hard_swish(x: tf.Tensor) -> tf.Tensor:
   """A Swish6/H-Swish activation function.
 
