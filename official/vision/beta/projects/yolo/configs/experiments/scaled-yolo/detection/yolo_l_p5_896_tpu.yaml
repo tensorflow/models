@@ -57,7 +57,7 @@ task:
               box: [48,102], box: [119,96], box: [97,189], box: [217,184], 
               box: [171,384], box: [324,451],  box: [616,618], box: [800,800]]
   train_data:
-    input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/train*'
+    input_path: 'gs://cam2-datasets/coco/train*'
     shuffle_buffer_size: 10000
     parser:
       mosaic:
@@ -73,4 +73,4 @@ task:
       aug_rand_translate: 0.5
       area_thresh: 0.1
   validation_data:
-    input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/val*'
+    input_path: 'gs://cam2-datasets/coco/val*'
