@@ -4,9 +4,22 @@ import os
 
 file = os.path.join("D:\\", "Programming", "pix3d", "model", "bookcase", "IKEA_BILLY_1", "model.obj")
 
+folder = os.path.join("D:\\", "Programming", "tfrecords", "pix3d")
+
+
+print(file, folder)
+
+print(os.path.isfile(file), os.path.isdir(folder))
+# D:\Programming\pix3d\model\bookcase\IKEA_BILLY_1\model.obj D:\Programming\tfrecords\pix3d
+
+load = json.load(open(os.path.join("D:\\", "Programming", "pix3d", "pix3dsingle.json")))
+
+print(load[0])
+
+"""
 vertices = []
 faces = []
-
+s
 obj_file = open(file, 'r')
 lines = obj_file.readlines()
 
@@ -32,7 +45,7 @@ for line in lines:
 
 
 print(vertices, faces)
-
+"""
 
 """
 dir = os.path.join("D:\\", "Programming", "pix3d", "model", "bookcase", "IKEA_BILLY_1", "voxel.mat")
