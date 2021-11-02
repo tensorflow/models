@@ -311,10 +311,10 @@ def serialize_config(params: config_definitions.ExperimentConfig,
   hyperparams.save_params_dict_to_yaml(params, params_save_path)
 
 
-def save_gin_config(filename_surfix: str, model_dir: str):
+def save_gin_config(filename_suffix: str, model_dir: str):
   """Serializes and saves the experiment config."""
   gin_save_path = os.path.join(
-      model_dir, 'operative_config.{}.gin'.format(filename_surfix))
+      model_dir, 'operative_config.{}.gin'.format(filename_suffix))
   logging.info('Saving gin configurations to %s', gin_save_path)
   tf.io.gfile.makedirs(model_dir)
   with tf.io.gfile.GFile(gin_save_path, 'w') as f:
