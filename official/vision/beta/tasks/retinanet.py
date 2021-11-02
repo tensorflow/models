@@ -220,6 +220,8 @@ class RetinaNetTask(base_task.Task):
       reg_loss = tf.reduce_sum(aux_losses)
       total_loss = model_loss + reg_loss
 
+    total_loss = params.losses.loss_weight * total_loss
+
     return total_loss, cls_loss, box_loss, model_loss
 
   def build_metrics(self, training: bool = True):

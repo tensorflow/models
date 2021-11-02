@@ -92,6 +92,7 @@ class SemanticSegmentationModel(hyperparams.Config):
 
 @dataclasses.dataclass
 class Losses(hyperparams.Config):
+  loss_weight: float = 1.0
   label_smoothing: float = 0.0
   ignore_label: int = 255
   class_weights: List[float] = dataclasses.field(default_factory=list)
