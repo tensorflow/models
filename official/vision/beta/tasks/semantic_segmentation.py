@@ -140,6 +140,8 @@ class SemanticSegmentationTask(base_task.Task):
     if aux_losses:
       total_loss += tf.add_n(aux_losses)
 
+    total_loss = loss_params.loss_weight * total_loss
+
     return total_loss
 
   def build_metrics(self, training: bool = True):

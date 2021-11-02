@@ -49,6 +49,7 @@ class ImageClassificationModel(hyperparams.Config):
 
 @dataclasses.dataclass
 class Losses(hyperparams.Config):
+  loss_weight: float = 1.0
   one_hot: bool = True
   label_smoothing: float = 0.0
   l2_weight_decay: float = 0.0

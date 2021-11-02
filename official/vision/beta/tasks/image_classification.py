@@ -169,6 +169,7 @@ class ImageClassificationTask(base_task.Task):
     if aux_losses:
       total_loss += tf.add_n(aux_losses)
 
+    total_loss = losses_config.loss_weight * total_loss
     return total_loss
 
   def build_metrics(self,
