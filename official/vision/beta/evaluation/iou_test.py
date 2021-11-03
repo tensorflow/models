@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for Keras metrics functions."""
+"""Tests for iou metric."""
 
 import tensorflow as tf
 
-from official.vision.keras_cv.metrics import iou
+from official.vision.beta.evaluation import iou
 
 
 class MeanIoUTest(tf.test.TestCase):

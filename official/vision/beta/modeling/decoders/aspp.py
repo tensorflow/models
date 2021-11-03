@@ -20,8 +20,8 @@ from typing import Any, List, Mapping, Optional
 import tensorflow as tf
 
 from official.modeling import hyperparams
-from official.vision import keras_cv
 from official.vision.beta.modeling.decoders import factory
+from official.vision.beta.modeling.layers import deeplab
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -93,7 +93,7 @@ class ASPP(tf.keras.layers.Layer):
           int(p_size // 2**self._config_dict['level'])
           for p_size in self._config_dict['pool_kernel_size']
       ]
-    self.aspp = keras_cv.layers.SpatialPyramidPooling(
+    self.aspp = deeplab.SpatialPyramidPooling(
         output_channels=self._config_dict['num_filters'],
         dilation_rates=self._config_dict['dilation_rates'],
         pool_kernel_size=pool_kernel_size,

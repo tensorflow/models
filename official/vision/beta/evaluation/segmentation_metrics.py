@@ -15,7 +15,7 @@
 """Metrics for segmentation."""
 import tensorflow as tf
 
-from official.vision import keras_cv
+from official.vision.beta.evaluation import iou
 
 
 class MeanIoU(tf.keras.metrics.MeanIoU):
@@ -125,7 +125,7 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
           tf.cast(flatten_valid_masks, tf.float32))
 
 
-class PerClassIoU(keras_cv.metrics.PerClassIoU):
+class PerClassIoU(iou.PerClassIoU):
   """Per Class IoU metric for semantic segmentation.
 
   This class utilizes keras_cv.metrics.PerClassIoU to perform batched per class
