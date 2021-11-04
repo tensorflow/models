@@ -74,8 +74,9 @@ task:
       area_thresh: 0.1
   validation_data:
     input_path: 'gs://cam2-datasets/coco/val*'
-  trainer:
-    train_steps: 831600 # epoch 300 to 450 
+trainer:
+  train_steps: 831600 # epoch 300 to 450 
+  optimizer_config:
     learning_rate:
       cosine:
         decay_steps: 831600 # epoch 300 to 450 
