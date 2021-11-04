@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for nlp.nhnet.models."""
+"""Tests for projects.nhnet.models."""
 
 import os
 
@@ -25,9 +25,9 @@ import tensorflow as tf
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
 # pylint: enable=g-direct-tensorflow-import
-from official.nlp.nhnet import configs
-from official.nlp.nhnet import models
-from official.nlp.nhnet import utils
+from official.projects.nhnet import configs
+from official.projects.nhnet import models
+from official.projects.nhnet import utils
 
 
 def all_strategy_combinations():

@@ -14,9 +14,8 @@
 
 """Common NHNet/Bert2Bert configuration."""
 
-from typing import List, Text
-
 import dataclasses
+from typing import List, Text
 
 from official.modeling.hyperparams import base_config
 

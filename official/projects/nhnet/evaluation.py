@@ -15,15 +15,17 @@
 """Evaluation for Bert2Bert."""
 
 import os
+
 # Import libraries
+
 from absl import logging
 import numpy as np
 import tensorflow as tf
 
-from official.nlp.nhnet import input_pipeline
-from official.nlp.nhnet import models
 from official.nlp.transformer import metrics as metrics_v2
 from official.nlp.transformer.utils import metrics
+from official.projects.nhnet import input_pipeline
+from official.projects.nhnet import models
 
 
 def rouge_l_fscore(logits, labels):

@@ -20,7 +20,7 @@ import tensorflow as tf
 
 from official.modeling.hyperparams import params_dict
 from official.nlp.bert import configs
-from official.nlp.nhnet import configs as nhnet_configs
+from official.projects.nhnet import configs as nhnet_configs
 
 
 def get_bert_config_from_params(

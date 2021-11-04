@@ -15,7 +15,7 @@
 """Tests for configs."""
 
 import tensorflow as tf
-from official.nlp.nhnet import configs
+from official.projects.nhnet import configs
 
 BERT2BERT_CONFIG = {
     "vocab_size": 30522,

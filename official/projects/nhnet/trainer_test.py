@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for official.nlp.nhnet.trainer."""
+"""Tests for official.projects.nhnet.trainer."""
 
 import os
 
@@ -24,8 +24,8 @@ import tensorflow as tf
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
 # pylint: enable=g-direct-tensorflow-import
-from official.nlp.nhnet import trainer
-from official.nlp.nhnet import utils
+from official.projects.nhnet import trainer
+from official.projects.nhnet import utils
 
 FLAGS = flags.FLAGS
 trainer.define_flags()

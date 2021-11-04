@@ -17,18 +17,20 @@
 import os
 
 # Import libraries
+
 from absl import app
 from absl import flags
 from absl import logging
 from six.moves import zip
 import tensorflow as tf
+
 from official.common import distribute_utils
 from official.modeling.hyperparams import params_dict
-from official.nlp.nhnet import evaluation
-from official.nlp.nhnet import input_pipeline
-from official.nlp.nhnet import models
-from official.nlp.nhnet import optimizer
 from official.nlp.transformer import metrics as transformer_metrics
+from official.projects.nhnet import evaluation
+from official.projects.nhnet import input_pipeline
+from official.projects.nhnet import models
+from official.projects.nhnet import optimizer
 from official.utils.misc import keras_utils
 
 FLAGS = flags.FLAGS

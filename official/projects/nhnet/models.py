@@ -24,9 +24,9 @@ from official.modeling.hyperparams import params_dict
 from official.nlp.modeling import networks
 from official.nlp.modeling.layers import multi_channel_attention
 from official.nlp.modeling.ops import beam_search
-from official.nlp.nhnet import configs
-from official.nlp.nhnet import decoder
-from official.nlp.nhnet import utils
+from official.projects.nhnet import configs
+from official.projects.nhnet import decoder
+from official.projects.nhnet import utils
 
 
 def embedding_linear(embedding_matrix, x):

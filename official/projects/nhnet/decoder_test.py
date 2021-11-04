@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for nlp.nhnet.decoder."""
+"""Tests for projects.nhnet.decoder."""
 
 import numpy as np
 import tensorflow as tf
 from official.nlp.modeling import layers
-from official.nlp.nhnet import configs
-from official.nlp.nhnet import decoder
-from official.nlp.nhnet import utils
+from official.projects.nhnet import configs
+from official.projects.nhnet import decoder
+from official.projects.nhnet import utils
 
 
 class DecoderTest(tf.test.TestCase):
