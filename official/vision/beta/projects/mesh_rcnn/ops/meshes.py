@@ -74,9 +74,11 @@ class Meshes():
     self._faces_padded: A `Tensor` of shape [B, _max_faces_per_mesh, 3] for that
         represents the padded form of the faces. Meshes with less faces
         than _max_faces_per_mesh are padded at the end with -1.
-    # TODO
-    self._face_normals_packed:
-    self._face_normals_padded:
+    self._face_normals_packed: A `Tensor` of shape [sum(F1, ..., Fn), 3] that
+        contains the unit normal vectors for each face in the meshes.
+    self._face_normals_padded: # TODO
+    self._face_areas_packed: A `Tensor` of shape [sum(F1, ..., Fn)] that
+        contains the areas for each face in the meshes.
   """
   def __init__(self, verts_list: List[tf.Tensor], faces_list: List[tf.Tensor]):
     """Meshes Initialization.
@@ -120,11 +122,14 @@ class Meshes():
     self._face_normals_packed = None
     self._face_normals_padded = None
 
+    self._face_areas_packed = None
+
     # Compute mesh representations/properties
     self.compute_packed()
     self.compute_padded()
 
     self.compute_edges_packed()
+    self.compute_face_areas_normals()
 
   @property
   def verts_list(self):
@@ -216,6 +221,10 @@ class Meshes():
     return self._face_normals_packed
 
   @property
+  def face_areas_packed(self):
+    return self._face_areas_packed
+
+  @property
   def face_normals_padded(self):
     return self._face_normals_padded
 
@@ -294,15 +303,11 @@ class Meshes():
     # mapped to the original array
     sorted_hash, sort_idx = tf.sort(edges_hash), tf.argsort(edges_hash)
 
-    # Since the hash is sorted, we know that we have unique hashes where:
+    # Since the hash is sorted, we know that we have non-duplicate hashes where:
     # sorted_hash[1:] != sorted_hash[:-1] (comparing adjacent hash values)
-    # example: sorted_hash = [0, 0, 1, 2, 3, 3, 4, 5, 5]
-    #          sorted_hash[1:]  = [0, 1, 2, 3, 3, 4, 5, 5]
-    #          sorted_hash[:-1] = [0, 0, 1, 2, 3, 3, 4, 5]
-    #          unique_mask      = [0, 1, 1, 1, 0, 0, 0, 1]
-    #          unique_mask      = [1, 0, 1, 1, 1, 0, 0, 0, 1] (bool tensor)
-    # compared to sorted hash:    [0, 0, 1, 2, 3, 3, 4, 5, 5]
     unique_mask = sorted_hash[1:] != sorted_hash[:-1]
+
+    # First element is always going to be a non-duplicate
     unique_mask = tf.concat(
         [tf.constant([True], unique_mask.dtype), unique_mask], axis=-1)
 
@@ -337,3 +342,28 @@ class Meshes():
 
     self._mesh_to_edges_packed_first_idx = tf.concat(
         [tf.zeros(shape=[1], dtype=tf.int32), num_edges_cumsum[:-1]], axis=0)
+
+  def compute_face_areas_normals(self):
+    """Computes the face areas and face normals of the meshes."""
+    v0, v1, v2 = tf.split(self._faces_packed, 3, axis=-1)
+
+    # Get the (x, y, z) coordinates of the vertices in the faces
+    coords_v0 = tf.gather_nd(self.verts_packed, v0)
+    coords_v1 = tf.gather_nd(self.verts_packed, v1)
+    coords_v2 = tf.gather_nd(self.verts_packed, v2)
+
+    # Get distance vectors
+    d1 = (coords_v1 - coords_v0)
+    d2 = (coords_v2 - coords_v0)
+
+    # Compute the cross product and normalize
+    # NOTE: see if we need to pre-compute the mags in case of dividing by 0
+    cross = tf.linalg.cross(d1, d2)
+    normals, mags = tf.linalg.normalize(cross, ord="euclidean", axis=1)
+
+    self._face_normals_packed = normals
+
+    # Magnitude of the faces is the same as the area of the parallelogram
+    # that spans the vectors, dividing by 2 gives the triangle area
+    areas = mags / 2.0
+    self._face_areas_packed = tf.reshape(areas, shape=[-1])

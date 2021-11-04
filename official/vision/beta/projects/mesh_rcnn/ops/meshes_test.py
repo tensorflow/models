@@ -184,7 +184,36 @@ class MeshesTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllClose(
         tf_meshes.faces_padded.numpy(),
         torch_meshes.faces_padded().numpy())
-    # TODO add tests for padded representation
+
+  @parameterized.named_parameters(
+      {'testcase_name': 'single-mesh-1-face',
+       'num_verts_per_mesh': [3],
+       'faces': [[[0, 1, 2]]]},
+      {'testcase_name': 'multiple-meshes-same-number-verts',
+       'num_verts_per_mesh': [3, 3, 3],
+       'faces': [[[0, 1, 2]], [[0, 1, 2]], [[0, 1, 2]]]},
+      {'testcase_name': 'multiple-meshes-different-number-verts',
+       'num_verts_per_mesh': [3, 4, 5],
+       'faces': [[[0, 1, 2]],
+                 [[0, 1, 2], [1, 2, 3]],
+                 [[0, 1, 2], [1, 2, 3], [3, 4, 0]]]}
+  )
+  def test_meshes_face_area_normals(self, num_verts_per_mesh: List[int],
+                                    faces: List[List[List[int]]]):
+    """Tests face normal computations.
+
+    Args:
+      num_verts_per_mesh: `List` of integers for the number of vertices in each
+          mesh to be created
+      faces: `List` of faces for each mesh to be created.
+    """
+    tf_meshes, torch_meshes = self._create_meshes(num_verts_per_mesh, faces)
+    self.assertAllClose(
+        tf_meshes.face_normals_packed.numpy(),
+        torch_meshes.faces_normals_packed().numpy())
+    self.assertAllClose(
+        tf_meshes.face_areas_packed.numpy(),
+        torch_meshes.faces_areas_packed().numpy())
 
 if __name__ == "__main__":
   tf.test.main()
