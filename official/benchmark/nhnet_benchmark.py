@@ -26,7 +26,7 @@ import tensorflow as tf
 from official.benchmark import benchmark_wrappers
 from official.benchmark import owner_utils
 from official.benchmark import perfzero_benchmark
-from official.nlp.nhnet import trainer
+from official.projects.nhnet import trainer
 from official.utils.flags import core as flags_core
 
 MIN_LOSS = 0.40
