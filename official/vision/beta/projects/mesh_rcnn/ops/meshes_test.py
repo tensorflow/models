@@ -75,9 +75,9 @@ class MeshesTest(parameterized.TestCase, tf.test.TestCase):
                  [[0, 1, 2], [1, 2, 3]],
                  [[0, 1, 2], [1, 2, 3], [3, 4, 0]]]}
   )
-  def test_meshes(self, num_verts_per_mesh: List[int],
-                  faces: List[List[List[int]]]):
-    """Runs differential tests for meshes.
+  def test_meshes_initialization(self, num_verts_per_mesh: List[int],
+                                 faces: List[List[List[int]]]):
+    """Tests initialized state of meshes class.
 
     Args:
       num_verts_per_mesh: `List` of integers for the number of vertices in each
@@ -85,17 +85,6 @@ class MeshesTest(parameterized.TestCase, tf.test.TestCase):
       faces: `List` of faces for each mesh to be created.
     """
     tf_meshes, torch_meshes = self._create_meshes(num_verts_per_mesh, faces)
-    self._test_meshes_initialization(tf_meshes, torch_meshes)
-    self._test_meshes_packed_representation(tf_meshes, torch_meshes)
-
-  def _test_meshes_initialization(self, tf_meshes: Meshes,
-                                  torch_meshes: PyTorchMeshes):
-    """Tests initialized state of meshes class.
-
-    Args:
-      tf_meshes: TF implementation of Meshes object.
-      torch_meshes: PyTorch implementation of Meshes object.
-    """
     self.assertAllEqual(
         tf_meshes.num_verts_per_mesh,
         torch_meshes.num_verts_per_mesh())
@@ -107,14 +96,29 @@ class MeshesTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(tf_meshes.max_verts_per_mesh, torch_meshes._V) # pylint: disable=protected-access
     self.assertEqual(tf_meshes.max_faces_per_mesh, torch_meshes._F) # pylint: disable=protected-access
 
-  def _test_meshes_packed_representation(self, tf_meshes: Meshes,
-                                         torch_meshes: PyTorchMeshes):
+  @parameterized.named_parameters(
+      {'testcase_name': 'single-mesh-1-face',
+       'num_verts_per_mesh': [3],
+       'faces': [[[0, 1, 2]]]},
+      {'testcase_name': 'multiple-meshes-same-number-verts',
+       'num_verts_per_mesh': [3, 3, 3],
+       'faces': [[[0, 1, 2]], [[0, 1, 2]], [[0, 1, 2]]]},
+      {'testcase_name': 'multiple-meshes-different-number-verts',
+       'num_verts_per_mesh': [3, 4, 5],
+       'faces': [[[0, 1, 2]],
+                 [[0, 1, 2], [1, 2, 3]],
+                 [[0, 1, 2], [1, 2, 3], [3, 4, 0]]]}
+  )
+  def test_meshes_packed_representation(self, num_verts_per_mesh: List[int],
+                                        faces: List[List[List[int]]]):
     """Tests packed representation of meshes class.
 
     Args:
-      tf_meshes: TF implementation of Meshes object.
-      torch_meshes: PyTorch implementation of Meshes object.
+      num_verts_per_mesh: `List` of integers for the number of vertices in each
+          mesh to be created
+      faces: `List` of faces for each mesh to be created.
     """
+    tf_meshes, torch_meshes = self._create_meshes(num_verts_per_mesh, faces)
     # Check that the packed representations have the same values
     self.assertAllClose(
         tf_meshes.verts_packed.numpy(),
@@ -151,14 +155,35 @@ class MeshesTest(parameterized.TestCase, tf.test.TestCase):
 
     # TODO add tests for packed normals/areas
 
-  def test_meshes_padded_presentation(self, tf_meshes: Meshes,
-                                      torch_meshes: PyTorchMeshes):
+  @parameterized.named_parameters(
+      {'testcase_name': 'single-mesh-1-face',
+       'num_verts_per_mesh': [3],
+       'faces': [[[0, 1, 2]]]},
+      {'testcase_name': 'multiple-meshes-same-number-verts',
+       'num_verts_per_mesh': [3, 3, 3],
+       'faces': [[[0, 1, 2]], [[0, 1, 2]], [[0, 1, 2]]]},
+      {'testcase_name': 'multiple-meshes-different-number-verts',
+       'num_verts_per_mesh': [3, 4, 5],
+       'faces': [[[0, 1, 2]],
+                 [[0, 1, 2], [1, 2, 3]],
+                 [[0, 1, 2], [1, 2, 3], [3, 4, 0]]]}
+  )
+  def test_meshes_padded_representation(self, num_verts_per_mesh: List[int],
+                                        faces: List[List[List[int]]]):
     """Tests padded representation of meshes class.
 
     Args:
-      tf_meshes: TF implementation of Meshes object.
-      torch_meshes: PyTorch implementation of Meshes object.
+      num_verts_per_mesh: `List` of integers for the number of vertices in each
+          mesh to be created
+      faces: `List` of faces for each mesh to be created.
     """
+    tf_meshes, torch_meshes = self._create_meshes(num_verts_per_mesh, faces)
+    self.assertAllClose(
+        tf_meshes.verts_padded.numpy(),
+        torch_meshes.verts_padded().numpy())
+    self.assertAllClose(
+        tf_meshes.faces_padded.numpy(),
+        torch_meshes.faces_padded().numpy())
     # TODO add tests for padded representation
 
 if __name__ == "__main__":
