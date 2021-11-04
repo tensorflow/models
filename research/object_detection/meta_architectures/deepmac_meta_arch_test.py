@@ -432,11 +432,12 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     masks[1, 16:, 16:] = 1.0
     masks = tf.constant(masks)
 
-    loss, _, _ = model._compute_per_instance_deepmac_losses(
+    loss_dict = model._compute_per_instance_deepmac_losses(
         boxes, masks, tf.zeros((32, 32, 2)), tf.zeros((32, 32, 2)),
         tf.zeros((16, 16, 3)))
     self.assertAllClose(
-        loss, np.zeros(2) - tf.math.log(tf.nn.sigmoid(0.9)))
+        loss_dict[deepmac_meta_arch.DEEP_MASK_ESTIMATION],
+        np.zeros(2) - tf.math.log(tf.nn.sigmoid(0.9)))
 
   def test_per_instance_loss_no_crop_resize(self):
 
@@ -446,11 +447,12 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     masks = np.ones((2, 128, 128), dtype=np.float32)
     masks = tf.constant(masks)
 
-    loss, _, _ = model._compute_per_instance_deepmac_losses(
+    loss_dict = model._compute_per_instance_deepmac_losses(
         boxes, masks, tf.zeros((32, 32, 2)), tf.zeros((32, 32, 2)),
         tf.zeros((32, 32, 3)))
     self.assertAllClose(
-        loss, np.zeros(2) - tf.math.log(tf.nn.sigmoid(0.9)))
+        loss_dict[deepmac_meta_arch.DEEP_MASK_ESTIMATION],
+        np.zeros(2) - tf.math.log(tf.nn.sigmoid(0.9)))
 
   def test_per_instance_loss_no_crop_resize_dice(self):
 
@@ -461,21 +463,23 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     masks = np.ones((2, 128, 128), dtype=np.float32)
     masks = tf.constant(masks)
 
-    loss, _, _ = model._compute_per_instance_deepmac_losses(
+    loss_dict = model._compute_per_instance_deepmac_losses(
         boxes, masks, tf.zeros((32, 32, 2)), tf.zeros((32, 32, 2)),
         tf.zeros((32, 32, 3)))
     pred = tf.nn.sigmoid(0.9)
     expected = (1.0 - ((2.0 * pred) / (1.0 + pred)))
-    self.assertAllClose(loss, [expected, expected], rtol=1e-3)
+    self.assertAllClose(loss_dict[deepmac_meta_arch.DEEP_MASK_ESTIMATION],
+                        [expected, expected], rtol=1e-3)
 
   def test_empty_masks(self):
     boxes = tf.zeros([0, 4])
     masks = tf.zeros([0, 128, 128])
 
-    loss, _, _ = self.model._compute_per_instance_deepmac_losses(
+    loss_dict = self.model._compute_per_instance_deepmac_losses(
         boxes, masks, tf.zeros((32, 32, 2)), tf.zeros((32, 32, 2)),
         tf.zeros((16, 16, 3)))
-    self.assertEqual(loss.shape, (0,))
+    self.assertEqual(loss_dict[deepmac_meta_arch.DEEP_MASK_ESTIMATION].shape,
+                     (0,))
 
   def test_postprocess(self):
 
@@ -678,6 +682,53 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
 
     output = self.model._get_lab_image(tf.zeros((2, 4, 4, 3)))
     self.assertEqual(output.shape, (2, 4, 4, 3))
+
+  def test_loss_keys(self):
+    model = build_meta_arch(use_dice_loss=True)
+    prediction = {
+        'preprocessed_inputs': tf.random.normal((1, 32, 32, 3)),
+        'INSTANCE_EMBEDDING': [tf.random.normal((1, 8, 8, 17))] * 2,
+        'PIXEL_EMBEDDING': [tf.random.normal((1, 8, 8, 19))] * 2,
+        'object_center': [tf.random.normal((1, 8, 8, 6))] * 2,
+        'box/offset': [tf.random.normal((1, 8, 8, 2))] * 2,
+        'box/scale': [tf.random.normal((1, 8, 8, 2))] * 2
+    }
+    model.provide_groundtruth(
+        groundtruth_boxes_list=[tf.convert_to_tensor([[0., 0., 1., 1.]] * 5)],
+        groundtruth_classes_list=[tf.one_hot([1, 0, 1, 1, 1], depth=6)],
+        groundtruth_weights_list=[tf.ones(5)],
+        groundtruth_masks_list=[tf.ones((5, 32, 32))])
+    loss = model.loss(prediction, tf.constant([[32, 32, 3.0]]))
+    self.assertGreater(loss['Loss/deep_mask_estimation'], 0.0)
+
+    for weak_loss in deepmac_meta_arch.WEAK_LOSSES:
+      if weak_loss == deepmac_meta_arch.DEEP_MASK_COLOR_CONSISTENCY:
+        continue
+      self.assertGreater(loss['Loss/' + weak_loss], 0.0,
+                         '{} was <= 0'.format(weak_loss))
+
+  def test_loss_keys_full_res(self):
+    model = build_meta_arch(use_dice_loss=True,
+                            predict_full_resolution_masks=True)
+    prediction = {
+        'preprocessed_inputs': tf.random.normal((1, 32, 32, 3)),
+        'INSTANCE_EMBEDDING': [tf.random.normal((1, 8, 8, 17))] * 2,
+        'PIXEL_EMBEDDING': [tf.random.normal((1, 8, 8, 19))] * 2,
+        'object_center': [tf.random.normal((1, 8, 8, 6))] * 2,
+        'box/offset': [tf.random.normal((1, 8, 8, 2))] * 2,
+        'box/scale': [tf.random.normal((1, 8, 8, 2))] * 2
+    }
+    model.provide_groundtruth(
+        groundtruth_boxes_list=[tf.convert_to_tensor([[0., 0., 1., 1.]] * 5)],
+        groundtruth_classes_list=[tf.one_hot([1, 0, 1, 1, 1], depth=6)],
+        groundtruth_weights_list=[tf.ones(5)],
+        groundtruth_masks_list=[tf.ones((5, 32, 32))])
+    loss = model.loss(prediction, tf.constant([[32, 32, 3.0]]))
+    self.assertGreater(loss['Loss/deep_mask_estimation'], 0.0)
+
+    for weak_loss in deepmac_meta_arch.WEAK_LOSSES:
+      self.assertGreater(loss['Loss/' + weak_loss], 0.0,
+                         '{} was <= 0'.format(weak_loss))
 
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')

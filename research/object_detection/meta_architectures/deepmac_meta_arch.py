@@ -1,10 +1,11 @@
-"""Deep Mask heads above CenterNet (DeepMAC) architecture.
+"""Deep Mask heads above CenterNet (DeepMAC)[1] architecture.
 
-TODO(vighneshb) Add link to paper when done.
+[1]: https://arxiv.org/abs/2104.00613
 """
 
 import collections
 
+from absl import logging
 import numpy as np
 import tensorflow as tf
 
@@ -36,6 +37,7 @@ LOSS_KEY_PREFIX = center_net_meta_arch.LOSS_KEY_PREFIX
 NEIGHBORS_2D = [[-1, -1], [-1, 0], [-1, 1],
                 [0, -1], [0, 1],
                 [1, -1], [1, 0], [1, 1]]
+WEAK_LOSSES = [DEEP_MASK_BOX_CONSISTENCY, DEEP_MASK_COLOR_CONSISTENCY]
 
 
 class DeepMACParams(
@@ -72,6 +74,15 @@ class DeepMACParams(
                               color_consistency_threshold,
                               color_consistency_dilation,
                               color_consistency_loss_weight)
+
+
+def _get_weak_loss_weight(loss_name, config):
+  if loss_name == DEEP_MASK_COLOR_CONSISTENCY:
+    return config.color_consistency_loss_weight
+  elif loss_name == DEEP_MASK_BOX_CONSISTENCY:
+    return config.box_consistency_loss_weight
+  else:
+    raise ValueError('Unknown loss - {}'.format(loss_name))
 
 
 def subsample_instances(classes, weights, boxes, masks, num_subsamples):
@@ -952,6 +963,11 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
       loss: A [num_instances] shaped tensor with the loss for each instance.
     """
 
+    if not self._deepmac_params.predict_full_resolution_masks:
+      logging.info('Color consistency is not implemented with RoIAlign '
+                   ', i.e, fixed sized masks. Returning 0 loss.')
+      return tf.zeros(tf.shape(boxes)[0])
+
     dilation = self._deepmac_params.color_consistency_dilation
 
     height, width = (tf.shape(preprocessed_image)[0],
@@ -1032,7 +1048,11 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     color_consistency_loss = self._compute_per_instance_color_consistency_loss(
         boxes, image, mask_logits)
 
-    return mask_prediction_loss, box_consistency_loss, color_consistency_loss
+    return {
+        DEEP_MASK_ESTIMATION: mask_prediction_loss,
+        DEEP_MASK_BOX_CONSISTENCY: box_consistency_loss,
+        DEEP_MASK_COLOR_CONSISTENCY: color_consistency_loss
+    }
 
   def _get_lab_image(self, preprocessed_image):
     raw_image = self._feature_extractor.preprocess_reverse(
@@ -1066,9 +1086,10 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
 
     loss_dict = {
         DEEP_MASK_ESTIMATION: 0.0,
-        DEEP_MASK_BOX_CONSISTENCY: 0.0,
-        DEEP_MASK_COLOR_CONSISTENCY: 0.0
     }
+
+    for loss_name in WEAK_LOSSES:
+      loss_dict[loss_name] = 0.0
 
     prediction_shape = tf.shape(prediction_dict[INSTANCE_EMBEDDING][0])
     height, width = prediction_shape[1], prediction_shape[2]
@@ -1093,26 +1114,24 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
         classes, valid_mask_weights, masks = filter_masked_classes(
             allowed_masked_classes_ids, classes, weights, masks)
 
-        (per_instance_mask_loss, per_instance_consistency_loss,
-         per_instance_color_consistency_loss) = (
-             self._compute_per_instance_deepmac_losses(
-                 boxes, masks, instance_pred[i], pixel_pred[i],
-                 image[i]))
-        per_instance_mask_loss *= valid_mask_weights
-        per_instance_consistency_loss *= weights
+        sample_loss_dict = self._compute_per_instance_deepmac_losses(
+            boxes, masks, instance_pred[i], pixel_pred[i], image[i])
+
+        sample_loss_dict[DEEP_MASK_ESTIMATION] *= valid_mask_weights
+        for loss_name in WEAK_LOSSES:
+          sample_loss_dict[loss_name] *= weights
 
         num_instances = tf.maximum(tf.reduce_sum(weights), 1.0)
         num_instances_allowed = tf.maximum(
             tf.reduce_sum(valid_mask_weights), 1.0)
 
         loss_dict[DEEP_MASK_ESTIMATION] += (
-            tf.reduce_sum(per_instance_mask_loss) / num_instances_allowed)
+            tf.reduce_sum(sample_loss_dict[DEEP_MASK_ESTIMATION]) /
+            num_instances_allowed)
 
-        loss_dict[DEEP_MASK_BOX_CONSISTENCY] += (
-            tf.reduce_sum(per_instance_consistency_loss) / num_instances)
-
-        loss_dict[DEEP_MASK_COLOR_CONSISTENCY] += (
-            tf.reduce_sum(per_instance_color_consistency_loss) / num_instances)
+        for loss_name in WEAK_LOSSES:
+          loss_dict[loss_name] += (tf.reduce_sum(sample_loss_dict[loss_name]) /
+                                   num_instances)
 
     batch_size = len(gt_boxes_list)
     num_predictions = len(prediction_dict[INSTANCE_EMBEDDING])
@@ -1134,17 +1153,12 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
               DEEP_MASK_ESTIMATION]
       )
 
-      if self._deepmac_params.box_consistency_loss_weight > 0.0:
-        losses_dict[LOSS_KEY_PREFIX + '/' + DEEP_MASK_BOX_CONSISTENCY] = (
-            self._deepmac_params.box_consistency_loss_weight * mask_loss_dict[
-                DEEP_MASK_BOX_CONSISTENCY]
-        )
+      for loss_name in WEAK_LOSSES:
+        loss_weight = _get_weak_loss_weight(loss_name, self._deepmac_params)
+        if loss_weight > 0.0:
+          losses_dict[LOSS_KEY_PREFIX + '/' + loss_name] = (
+              loss_weight * mask_loss_dict[loss_name])
 
-      if self._deepmac_params.color_consistency_loss_weight > 0.0:
-        losses_dict[LOSS_KEY_PREFIX + '/' + DEEP_MASK_COLOR_CONSISTENCY] = (
-            self._deepmac_params.box_consistency_loss_weight * mask_loss_dict[
-                DEEP_MASK_COLOR_CONSISTENCY]
-        )
     return losses_dict
 
   def postprocess(self, prediction_dict, true_image_shapes, **params):
