@@ -22,7 +22,7 @@ from official.vision.detection.utils.input_utils import pad_to_fixed_size
 
 
 def list_to_padded_tensor(x: List[tf.Tensor],
-                          pad_value: int = -1) -> Tuple[tf.Tensor]: 
+                          pad_value: int = -1) -> Tuple[tf.Tensor]:
   """Converts a list of tensors into a padded tensor
 
   Each tensor in the input is padded to a fixed size and stacked to create
