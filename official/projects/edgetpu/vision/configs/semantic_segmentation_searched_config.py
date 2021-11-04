@@ -58,7 +58,7 @@ class BiFPNHeadConfig(hyperparams.Config):
 
 
 @dataclasses.dataclass
-class Losses(hyperparams.Config):
+class Losses(base_cfg.Losses):
   label_smoothing: float = 0.0
   ignore_label: int = 255
   class_weights: List[float] = dataclasses.field(default_factory=list)
