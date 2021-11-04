@@ -4171,11 +4171,7 @@ class CenterNetMetaArch(model.DetectionModel):
                 keypoints, keypoint_scores, self._stride, true_image_shapes,
                 clip_out_of_frame_keypoints=clip_keypoints))
 
-      # Update instance scores based on keypoints.
-      scores = self._rescore_instances(
-          channel_indices, detection_scores, keypoint_scores)
       postprocess_dict.update({
-          fields.DetectionResultFields.detection_scores: scores,
           fields.DetectionResultFields.detection_keypoints: keypoints,
           fields.DetectionResultFields.detection_keypoint_scores:
               keypoint_scores
@@ -4253,6 +4249,22 @@ class CenterNetMetaArch(model.DetectionModel):
       postprocess_dict[
           fields.DetectionResultFields.num_detections] = num_detections
       postprocess_dict.update(nmsed_additional_fields)
+
+    # Perform the rescoring once the NMS is applied to make sure the rescored
+    # scores won't be washed out by the NMS function.
+    if self._kp_params_dict:
+      channel_indices = postprocess_dict[
+          fields.DetectionResultFields.detection_classes]
+      detection_scores = postprocess_dict[
+          fields.DetectionResultFields.detection_scores]
+      keypoint_scores = postprocess_dict[
+          fields.DetectionResultFields.detection_keypoint_scores]
+      # Update instance scores based on keypoints.
+      scores = self._rescore_instances(
+          channel_indices, detection_scores, keypoint_scores)
+      postprocess_dict.update({
+          fields.DetectionResultFields.detection_scores: scores,
+      })
     return postprocess_dict
 
   def postprocess_single_instance_keypoints(
