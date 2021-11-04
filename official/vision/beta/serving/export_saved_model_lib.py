@@ -18,6 +18,7 @@ r"""Vision models export utility function for serving/inference."""
 import os
 from typing import Optional, List
 
+from absl import logging
 import tensorflow as tf
 
 from official.core import config_definitions as cfg
@@ -41,7 +42,8 @@ def export_inference_graph(
     export_module: Optional[export_base.ExportModule] = None,
     export_checkpoint_subdir: Optional[str] = None,
     export_saved_model_subdir: Optional[str] = None,
-    save_options: Optional[tf.saved_model.SaveOptions] = None):
+    save_options: Optional[tf.saved_model.SaveOptions] = None,
+    log_model_flops_and_params: bool = False):
   """Exports inference graph for the model specified in the exp config.
 
   Saved model is stored at export_dir/saved_model, checkpoint is saved
@@ -63,6 +65,8 @@ def export_inference_graph(
     export_saved_model_subdir: Optional subdirectory under export_dir
       to store saved model.
     save_options: `SaveOptions` for `tf.saved_model.save`.
+    log_model_flops_and_params: If True, writes model FLOPs to model_flops.txt
+      and model parameters to model_params.txt.
   """
 
   if export_checkpoint_subdir:
@@ -123,3 +127,32 @@ def export_inference_graph(
     ckpt = tf.train.Checkpoint(model=export_module.model)
     ckpt.save(os.path.join(output_checkpoint_directory, 'ckpt'))
   train_utils.serialize_config(params, export_dir)
+
+  if log_model_flops_and_params:
+    inputs_kwargs = None
+    if isinstance(params.task, configs.retinanet.RetinaNetTask):
+      # We need to create inputs_kwargs argument to specify the input shapes for
+      # subclass model that overrides model.call to take multiple inputs,
+      # e.g., RetinaNet model.
+      inputs_kwargs = {
+          'images':
+              tf.TensorSpec([1] + input_image_size + [num_channels],
+                            tf.float32),
+          'image_shape':
+              tf.TensorSpec([1, 2], tf.float32)
+      }
+      dummy_inputs = {
+          k: tf.ones(v.shape.as_list(), tf.float32)
+          for k, v in inputs_kwargs.items()
+      }
+      # Must do forward pass to build the model.
+      export_module.model(**dummy_inputs)
+    else:
+      logging.info(
+          'Logging model flops and params not implemented for %s task.',
+          type(params.task))
+      return
+    train_utils.try_count_flops(export_module.model, inputs_kwargs,
+                                os.path.join(export_dir, 'model_flops.txt'))
+    train_utils.write_model_params(export_module.model,
+                                   os.path.join(export_dir, 'model_params.txt'))

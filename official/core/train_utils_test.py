@@ -14,8 +14,12 @@
 
 """Tests for official.core.train_utils."""
 
+import os
+
+import numpy as np
 import tensorflow as tf
 
+from official.core import test_utils
 from official.core import train_utils
 
 
@@ -50,6 +54,44 @@ class TrainUtilsTest(tf.test.TestCase):
     d = train_utils.cast_leaf_nested_dict(d, int)
     self.assertEqual(d['a']['i']['x'], 123)
     self.assertEqual(d['b'], 456)
+
+  def test_write_model_params_keras_model(self):
+    inputs = np.zeros([2, 3])
+    model = test_utils.FakeKerasModel()
+    model(inputs)  # Must do forward pass to build the model.
+
+    filepath = os.path.join(self.create_tempdir(), 'model_params.txt')
+    train_utils.write_model_params(model, filepath)
+    actual = tf.io.gfile.GFile(filepath, 'r').read().splitlines()
+
+    expected = [
+        'fake_keras_model/dense/kernel:0 [3, 4]',
+        'fake_keras_model/dense/bias:0 [4]',
+        'fake_keras_model/dense_1/kernel:0 [4, 4]',
+        'fake_keras_model/dense_1/bias:0 [4]',
+        '',
+        'Total params: 36',
+    ]
+    self.assertEqual(actual, expected)
+
+  def test_write_model_params_module(self):
+    inputs = np.zeros([2, 3], dtype=np.float32)
+    model = test_utils.FakeModule(3, name='fake_module')
+    model(inputs)  # Must do forward pass to build the model.
+
+    filepath = os.path.join(self.create_tempdir(), 'model_params.txt')
+    train_utils.write_model_params(model, filepath)
+    actual = tf.io.gfile.GFile(filepath, 'r').read().splitlines()
+
+    expected = [
+        'fake_module/dense/b:0 [4]',
+        'fake_module/dense/w:0 [3, 4]',
+        'fake_module/dense_1/b:0 [4]',
+        'fake_module/dense_1/w:0 [4, 4]',
+        '',
+        'Total params: 36',
+    ]
+    self.assertEqual(actual, expected)
 
 
 if __name__ == '__main__':
