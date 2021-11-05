@@ -16,7 +16,7 @@
 
 import tensorflow as tf
 
-from official.vision.keras_cv.ops import iou_similarity
+from official.vision.beta.ops import iou_similarity
 
 
 class BoxMatcherTest(tf.test.TestCase):

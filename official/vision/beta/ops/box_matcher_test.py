@@ -16,7 +16,7 @@
 
 import tensorflow as tf
 
-from official.vision.keras_cv.ops import box_matcher
+from official.vision.beta.ops import box_matcher
 
 
 class BoxMatcherTest(tf.test.TestCase):

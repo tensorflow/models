@@ -15,9 +15,15 @@
 """Anchor box and labeler definition."""
 
 import collections
+
 # Import libraries
+
 import tensorflow as tf
-from official.vision import keras_cv
+
+from official.vision.beta.ops import anchor_generator
+from official.vision.beta.ops import box_matcher
+from official.vision.beta.ops import iou_similarity
+from official.vision.beta.ops import target_gather
 from official.vision.detection.utils.object_detection import balanced_positive_negative_sampler
 from official.vision.detection.utils.object_detection import box_list
 from official.vision.detection.utils.object_detection import faster_rcnn_box_coder
@@ -132,9 +138,9 @@ class AnchorLabeler(object):
         upper-bound threshold to assign negative labels for anchors. An anchor
         with a score below the threshold is labeled negative.
     """
-    self.similarity_calc = keras_cv.ops.IouSimilarity()
-    self.target_gather = keras_cv.ops.TargetGather()
-    self.matcher = keras_cv.ops.BoxMatcher(
+    self.similarity_calc = iou_similarity.IouSimilarity()
+    self.target_gather = target_gather.TargetGather()
+    self.matcher = box_matcher.BoxMatcher(
         thresholds=[unmatched_threshold, match_threshold],
         indicators=[-1, -2, 1],
         force_match_for_each_col=True)
@@ -343,7 +349,7 @@ def build_anchor_generator(min_level, max_level, num_scales, aspect_ratios,
     stride = 2**level
     strides[str(level)] = stride
     anchor_sizes[str(level)] = anchor_size * stride
-  anchor_gen = keras_cv.ops.AnchorGenerator(
+  anchor_gen = anchor_generator.AnchorGenerator(
       anchor_sizes=anchor_sizes,
       scales=scales,
       aspect_ratios=aspect_ratios,

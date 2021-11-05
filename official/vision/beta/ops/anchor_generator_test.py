@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import tensorflow as tf
-from official.vision.keras_cv.ops import anchor_generator
+from official.vision.beta.ops import anchor_generator
 
 
 class AnchorGeneratorTest(parameterized.TestCase, tf.test.TestCase):

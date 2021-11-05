@@ -16,7 +16,7 @@
 
 import tensorflow as tf
 
-from official.vision.keras_cv.ops import target_gather
+from official.vision.beta.ops import target_gather
 
 
 class TargetGatherTest(tf.test.TestCase):

@@ -128,7 +128,7 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
 class PerClassIoU(iou.PerClassIoU):
   """Per Class IoU metric for semantic segmentation.
 
-  This class utilizes keras_cv.metrics.PerClassIoU to perform batched per class
+  This class utilizes iou.PerClassIoU to perform batched per class
   iou when both input images and groundtruth masks are resized to the same size
   (rescale_predictions=False). It also computes per class iou on groundtruth
   original sizes, in which case, each prediction is rescaled back to the
