@@ -311,11 +311,8 @@ class Meshes():
     unique_mask = tf.concat(
         [tf.constant([True], unique_mask.dtype), unique_mask], axis=-1)
 
-    # Gives indices where unique_mask is True
-    unique_mask_idx = tf.where(unique_mask)
-
-    # Gives the indices of unique values in sorted_hash (shape: [|E|, 1])
-    unique_idx = tf.gather_nd(sort_idx, unique_mask_idx)
+    # Gives the indices of unique values in sorted_hash
+    unique_idx = sort_idx[unique_mask]
 
     # Recompute the unique packed edges by reversing the hash
     self._edges_packed = tf.stack([u // num_verts, u % num_verts], axis=-1)
