@@ -1,4 +1,4 @@
-# EdgeTPU: Machine Learning Models Optimized for Google Tensor
+# Machine Learning Models Optimized for Google Tensor's Edge TPU
 
 ## Requirements
 [![TensorFlow 2.4](https://img.shields.io/badge/TensorFlow-2.4-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.4.0)
@@ -7,11 +7,12 @@
 ## Overview
 
 <figure align="center">
-<img width=70% src=https://storage.cloud.google.com/tf_model_garden/models/edgetpu/images/neural%20architecture%20search.gif>
-  <figcaption>An illustration of NAS to find Edge TPU optimized models</figcaption>
+<img width=70% src=https://storage.googleapis.com/tf_model_garden/models/edgetpu/images/neural%20architecture%20search.gif>
+  <figcaption><i>An illustration of NAS to find Edge TPU optimized models, Each column represents a stage in the natural network, with dots indicating different options, and each color representing a different type of building block. A path from inputs (e.g., an image) to outputs (e.g., per-pixel label predictions) through the matrix represents a candidate neural network. In each iteration of the search, a neural network is formed using the blocks chosen at every stage, and the search algorithm aims to find neural networks that jointly minimize TPU latency and/or energy and maximize accuracy.
+    </i></figcaption>
 </figure>
 
-This repository contains machine learning models optimized for Edge TPU in
+This repository contains machine learning models optimized for the Edge TPU in
 Pixel 6's SoC,
 [Google Tensor](https://blog.google/products/pixel/google-tensor-debuts-new-pixel-6-fall/).
 We use Neural Architecture Search (NAS) to automate the process of designing ML
