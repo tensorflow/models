@@ -48,7 +48,7 @@ task:
     norm_activation:
       activation: leaky
       norm_epsilon: 0.0001
-      norm_momentum: 0.99
+      norm_momentum: 0.97
       use_sync_bn: true
     num_classes: 80
     anchor_boxes:
