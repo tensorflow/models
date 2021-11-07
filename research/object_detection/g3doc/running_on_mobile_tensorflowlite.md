@@ -3,7 +3,7 @@
 [![TensorFlow 1.15](https://img.shields.io/badge/TensorFlow-1.15-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v1.15.0)
 
 In this section, we will show you how to use [TensorFlow
-Lite](https://www.tensorflow.org/mobile/tflite/) to get a smaller model and
+Lite](https://www.tensorflow.org/lite) to get a smaller model and
 allow you take advantage of ops that have been optimized for mobile devices.
 TensorFlow Lite is TensorFlow’s lightweight solution for mobile and embedded
 devices. It enables on-device machine learning inference with low latency and a
@@ -11,7 +11,7 @@ small binary size. TensorFlow Lite uses many techniques for this such as
 quantized kernels that allow smaller and faster (fixed-point math) models.
 
 For this section, you will need to build [TensorFlow from
-source](https://www.tensorflow.org/install/install_sources) to get the
+source](https://www.tensorflow.org/install) to get the
 TensorFlow Lite support for the SSD model. At this time only SSD models are supported.
 Models like faster_rcnn are not supported at this time. You will also need to install the
 [bazel build
@@ -28,7 +28,7 @@ export OUTPUT_DIR=/tmp/tflite
 We start with a checkpoint and get a TensorFlow frozen graph with compatible ops
 that we can use with TensorFlow Lite. First, you’ll need to install these
 [python
-libraries](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/installation.md).
+libraries](tf2.md).
 Then to get the frozen graph, run the export_tflite_ssd_graph.py script from the
 `models/research` directory with this command:
 
@@ -78,7 +78,7 @@ are named 'TFLite_Detection_PostProcess', 'TFLite_Detection_PostProcess:1',
 'TFLite_Detection_PostProcess:2', and 'TFLite_Detection_PostProcess:3' and
 represent four arrays: detection_boxes, detection_classes, detection_scores, and
 num_detections. The documentation for other flags used in this command is
-[here](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/g3doc/convert/cmdline.md).
+[here](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/g3doc/convert/index.md).
 If things ran successfully, you should now see a third file in the /tmp/tflite
 directory called detect.tflite. This file contains the graph and all model
 parameters and can be run via the TensorFlow Lite interpreter on the Android
@@ -103,9 +103,9 @@ and run the TensorFlow Lite detection example with the new model. The example is
 found in the
 [TensorFlow examples repository](https://github.com/tensorflow/examples) under
 `/lite/examples/object_detection`. The example can be built with
-[Android Studio](https://developer.android.com/studio/index.html), and requires
+[Android Studio](https://developer.android.com/studio), and requires
 the
-[Android SDK with build tools](https://developer.android.com/tools/revisions/build-tools.html)
+[Android SDK with build tools](https://developer.android.com/studio/releases/build-tools)
 that support API >= 21. Additional details are available on the
 [TensorFlow Lite example page](https://github.com/tensorflow/examples/tree/master/lite/examples/object_detection/android).
 

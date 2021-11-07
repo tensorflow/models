@@ -20,7 +20,7 @@ Huang J, Rathod V, Sun C, Zhu M, Korattikara A, Fathi A, Fischer I, Wojna Z,
 Song Y, Guadarrama S, Murphy K, CVPR 2017
 ```
 
-\[[link](https://arxiv.org/abs/1611.10012)\]\[[bibtex](https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.google.com/&output=citation&scisig=AAGBfm0AAAAAWUIIlnPZ_L9jxvPwcC49kDlELtaeIyU-&scisf=4&ct=citation&cd=-1&hl=en&scfhb=1)\]
+\[[link](https://arxiv.org/abs/1611.10012)\]\[[bibtex](https://openaccess.thecvf.com/content_cvpr_2017/html/Huang_SpeedAccuracy_Trade-Offs_for_CVPR_2017_paper.html)\]
 
 <p align="center">
   <img src="g3doc/img/tf-od-api-logo.png" width=140 height=195>

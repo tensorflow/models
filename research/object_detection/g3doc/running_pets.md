@@ -40,11 +40,11 @@ export YOUR_GCS_BUCKET=${YOUR_GCS_BUCKET}
 ```
 
 It is also possible to run locally by following
-[the running locally instructions](running_locally.md).
+[the running locally instructions](tf2_training_and_evaluation.md).
 
 ## Installing TensorFlow and the TensorFlow Object Detection API
 
-Please run through the [installation instructions](installation.md) to install
+Please run through the [installation instructions](tf2.md) to install
 TensorFlow and all it dependencies. Ensure the Protobuf libraries are
 compiled and the library directories are added to `PYTHONPATH`.
 

@@ -7,7 +7,7 @@
 details on our (experimental) CenterNet support, see
 [this notebook](../colab_tutorials/centernet_on_device.ipynb).
 
-[TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/)(TFLite) is
+[TensorFlow Lite](https://www.tensorflow.org/lite/)(TFLite) is
 TensorFlow’s lightweight solution for mobile and embedded devices. It enables
 on-device machine learning inference with low latency and a small binary size.
 TensorFlow Lite uses many techniques for this such as quantized kernels that
@@ -136,9 +136,9 @@ and run the TensorFlow Lite detection example with the new model. The example is
 found in the
 [TensorFlow examples repository](https://github.com/tensorflow/examples) under
 `/lite/examples/object_detection`. The example can be built with
-[Android Studio](https://developer.android.com/studio/index.html), and requires
+[Android Studio](https://developer.android.com/studio), and requires
 the
-[Android SDK with build tools](https://developer.android.com/tools/revisions/build-tools.html)
+[Android SDK with build tools](https://developer.android.com/studio/releases/build-tools)
 that support API >= 21. Additional details are available on the
 [TensorFlow Lite example page](https://github.com/tensorflow/examples/tree/master/lite/examples/object_detection/android).
 

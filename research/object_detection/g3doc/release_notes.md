@@ -214,7 +214,7 @@ capability of the API:
     pipeline configuration files indicating TPU compatibility.
 *   Support for quantized training.
 *   Updated documentation for new binaries, Cloud training, and
-    [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/).
+    [TensorFlow Lite](https://www.tensorflow.org/lite).
 
 See also our
 [expanded announcement blogpost](https://ai.googleblog.com/2018/07/accelerated-training-and-inference-with.html)

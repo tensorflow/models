@@ -174,8 +174,8 @@ context_config {
 ```
 
 Once your config file has been updated with your local paths, you can follow
-along with documentation for running [locally](running_locally.md), or
-[on the cloud](running_on_cloud.md).
+along with documentation for running [locally](tf2_training_and_evaluation.md#local), or
+[on the cloud](tf2_training_and_evaluation.md#google-cloud-vm).
 
 ## Exporting a Context R-CNN Model
 
