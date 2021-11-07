@@ -620,3 +620,112 @@ def large_yolo() -> cfg.ExperimentConfig:
       ])
 
   return config
+
+
+@exp_factory.register_config_factory('yolo_tiny')
+def yolo_tiny() -> cfg.ExperimentConfig:
+  """COCO object detection with YOLOv3 and v4."""
+  train_batch_size = 256
+  eval_batch_size = 8
+  train_epochs = 600
+  steps_per_epoch = COCO_TRAIN_EXAMPLES // train_batch_size
+  validation_interval = 10
+
+  max_num_instances = 200
+  config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
+      task=YoloTask(
+          smart_bias_lr=0.1,
+          init_checkpoint='',
+          init_checkpoint_modules='backbone',
+          annotation_file=None,
+          weight_decay=0.0,
+          model=Yolo(
+              darknet_based_model=True,
+              norm_activation=common.NormActivation(use_sync_bn=True, 
+                                                    activation="leaky"),
+              head=YoloHead(smart_bias=True),
+              loss=YoloLoss(use_scaled_loss=False, update_on_repeat=True)),
+          train_data=DataConfig(
+              input_path=os.path.join(COCO_INPUT_PATH_BASE, 'train*'),
+              is_training=True,
+              global_batch_size=train_batch_size,
+              dtype='float32',
+              parser=Parser(
+                  letter_box=False,
+                  aug_rand_saturation=1.5,
+                  aug_rand_brightness=1.5,
+                  aug_rand_hue=0.1,
+                  use_tie_breaker=True,
+                  best_match_only=False,
+                  anchor_thresh=0.4,
+                  area_thresh=0.1,
+                  max_num_instances=max_num_instances,
+                  mosaic=Mosaic(
+                      mosaic_frequency=0.75,
+                      mixup_frequency=0.0,
+                      mosaic_crop_mode='crop',
+                      mosaic_center=0.2))),
+          validation_data=DataConfig(
+              input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
+              is_training=False,
+              global_batch_size=eval_batch_size,
+              drop_remainder=True,
+              dtype='float32',
+              parser=Parser(
+                  letter_box=False,
+                  use_tie_breaker=True,
+                  best_match_only=False,
+                  anchor_thresh=0.4,
+                  area_thresh=0.1,
+                  max_num_instances=max_num_instances,
+              ))),
+      trainer=cfg.TrainerConfig(
+          train_steps=train_epochs * steps_per_epoch,
+          validation_steps=COCO_VAL_EXAMPLES // eval_batch_size,
+          validation_interval=validation_interval * steps_per_epoch,
+          steps_per_loop=steps_per_epoch,
+          summary_interval=steps_per_epoch,
+          checkpoint_interval=steps_per_epoch,
+          optimizer_config=optimization.OptimizationConfig({
+              'ema': {
+                  'average_decay': 0.9998,
+                  'trainable_weights_only': False,
+                  'dynamic_decay': True,
+              },
+              'optimizer': {
+                  'type': 'sgd_torch',
+                  'sgd_torch': {
+                      'momentum': 0.9,
+                      'momentum_start': 0.9,
+                      'nesterov': True,
+                      'warmup_steps': 1000,
+                      'weight_decay': 0.0005,
+                  }
+              },
+              'learning_rate': {
+                  'type': 'stepwise',
+                  'stepwise': {
+                      'boundaries': [
+                          0.8 * train_epochs * steps_per_epoch
+                      ],
+                      'values': [
+                          0.00261 * train_batch_size / 64.0,
+                          0.000261 * train_batch_size / 64.0,
+                      ]
+                  }
+              },
+              'warmup': {
+                  'type': 'linear',
+                  'linear': {
+                      'warmup_steps': 1000,
+                      'warmup_learning_rate': 0
+                  }
+              }
+          })),
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None'
+      ])
+
+  return config
