@@ -70,8 +70,8 @@ task:
         mixup_frequency: 0.0
         mosaic_crop_mode: 'crop'
         mosaic_center: 0.2
-        aug_scale_min: 0.2
-        aug_scale_max: 1.6
+        aug_scale_min: 0.7
+        aug_scale_max: 1.3
         jitter: 0.3
       max_num_instances: 200
       letter_box: false
@@ -79,8 +79,8 @@ task:
       aug_rand_saturation: 1.5
       aug_rand_brightness: 1.5
       aug_rand_hue: 0.1
-      aug_scale_min: 0.1
-      aug_scale_max: 1.9
+      aug_scale_min: 0.5
+      aug_scale_max: 1.5
       aug_rand_translate: 0.0
       jitter: 0.3
       area_thresh: 0.1
