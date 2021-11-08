@@ -146,7 +146,7 @@ SpineNet-143 | 1280x1280  | 500    | 94.9       | 51.9   | 45.0    | [config](ht
 *   We provide models for video classification with backbones:
     *   SlowOnly in
         [SlowFast Networks for Video Recognition](https://arxiv.org/abs/1812.03982).
-    *   ResNet-RS (R3D) in
+    *   ResNet-3D (R3D) in
         [Spatiotemporal Contrastive Video Representation Learning](https://arxiv.org/abs/2008.03800).
     *   ResNet-3D-RS (R3D-RS) in
         [Revisiting 3D ResNets for Video Recognition](https://arxiv.org/pdf/2109.01696.pdf).
@@ -167,10 +167,10 @@ SpineNet-143 | 1280x1280  | 500    | 94.9       | 51.9   | 45.0    | [config](ht
 | SlowOnly | 16 x 4                 |  75.6   |  92.1   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k400_slowonly16x4_tpu.yaml) |
 | R3D-50   | 32 x 2                 |  77.0   |  93.0   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k400_3d-resnet50_tpu.yaml) |
 | R3D-RS-50   | 32 x 2                 |  78.2   |  93.7   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k400_resnet3drs_50_tpu.yaml) |
-R3D-RS-101 | 32 x 2                 | 79.5  | 94.2  | -
-R3D-RS-152 | 32 x 2                 | 79.9  | 94.3  | -
-R3D-RS-200 | 32 x 2                 | 80.4  | 94.4  | -
-R3D-RS-200 | 48 x 2                 | 81.0  | -     | -
+| R3D-RS-101 | 32 x 2                 | 79.5  | 94.2  | -
+| R3D-RS-152 | 32 x 2                 | 79.9  | 94.3  | -
+| R3D-RS-200 | 32 x 2                 | 80.4  | 94.4  | -
+| R3D-RS-200 | 48 x 2                 | 81.0  | -     | -
 
 ### Kinetics-600 Action Recognition Baselines
 
@@ -178,5 +178,5 @@ R3D-RS-200 | 48 x 2                 | 81.0  | -     | -
 | -------- |:----------------------:|--------:|--------:|---------:|
 | SlowOnly | 8 x 8                  |  77.3   |  93.6   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k600_slowonly8x8_tpu.yaml) |
 | R3D-50   | 32 x 2                 |  79.5   |  94.8   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k600_3d-resnet50_tpu.yaml) |
-R3D-RS-200 | 32 x 2                 | 83.1  | -     | -
-R3D-RS-200 | 48 x 2                 | 83.8  | -     | -
+| R3D-RS-200 | 32 x 2                 | 83.1  | -     | -
+| R3D-RS-200 | 48 x 2                 | 83.8  | -     | -
