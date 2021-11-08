@@ -19,9 +19,6 @@ import os
 from absl.testing import parameterized
 import tensorflow as tf
 
-from official.common import dataset_fn
-from official.core import config_definitions as cfg
-from official.core import input_reader
 from official.projects.volumetric_models.dataloaders import segmentation_input_3d
 from official.vision.beta.dataloaders import tfexample_utils
 
@@ -33,19 +30,15 @@ class InputReaderTest(parameterized.TestCase, tf.test.TestCase):
     data_dir = os.path.join(self.get_temp_dir(), 'data')
     tf.io.gfile.makedirs(data_dir)
     self._data_path = os.path.join(data_dir, 'data.tfrecord')
-    # pylint: disable=g-complex-comprehension
-    examples = [
-        tfexample_utils.create_3d_image_test_example(
-            image_height=32, image_width=32, image_volume=32, image_channel=2)
-        for _ in range(20)
-    ]
-    # pylint: enable=g-complex-comprehension
-    tfexample_utils.dump_to_tfrecord(self._data_path, tf_examples=examples)
+    self._example = tfexample_utils.create_3d_image_test_example(
+        image_height=32, image_width=32, image_volume=32, image_channel=2)
 
-  @parameterized.parameters(([32, 32, 32], 2, 2))
-  def testSegmentationInputReader(self, input_size, num_classes, num_channels):
-    params = cfg.DataConfig(
-        input_path=self._data_path, global_batch_size=2, is_training=False)
+  @parameterized.parameters(
+      ([32, 32, 32], 2, 2, False),
+      ([32, 32, 32], 2, 2, True),
+  )
+  def testSegmentationInputReader(self, input_size, num_classes, num_channels,
+                                  is_training):
 
     decoder = segmentation_input_3d.Decoder()
     parser = segmentation_input_3d.Parser(
@@ -53,23 +46,16 @@ class InputReaderTest(parameterized.TestCase, tf.test.TestCase):
         num_classes=num_classes,
         num_channels=num_channels)
 
-    reader = input_reader.InputReader(
-        params,
-        dataset_fn=dataset_fn.pick_dataset_fn('tfrecord'),
-        decoder_fn=decoder.decode,
-        parser_fn=parser.parse_fn(params.is_training))
-
-    dataset = reader.read()
-    iterator = iter(dataset)
-    image, labels = next(iterator)
+    decoded_tensor = decoder.decode(self._example.SerializeToString())
+    image, labels = parser.parse_fn(is_training=is_training)(decoded_tensor)
 
     # Checks image shape.
     self.assertEqual(
         list(image.numpy().shape),
-        [2, input_size[0], input_size[1], input_size[2], num_channels])
+        [input_size[0], input_size[1], input_size[2], num_channels])
     self.assertEqual(
         list(labels.numpy().shape),
-        [2, input_size[0], input_size[1], input_size[2], num_classes])
+        [input_size[0], input_size[1], input_size[2], num_classes])
 
 
 if __name__ == '__main__':
