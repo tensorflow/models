@@ -6,7 +6,12 @@ file = os.path.join("D:\\", "Programming", "pix3d", "model", "bookcase", "IKEA_B
 
 folder = os.path.join("D:\\", "Programming", "tfrecords", "pix3d")
 
+#folder = os.path.join("D:\\", "Programming", "tfrecords")
 
+
+print(os.listdir(folder))
+
+"""
 print(file, folder)
 
 print(os.path.isfile(file), os.path.isdir(folder))
@@ -15,7 +20,7 @@ print(os.path.isfile(file), os.path.isdir(folder))
 load = json.load(open(os.path.join("D:\\", "Programming", "pix3d", "pix3dsingle.json")))
 
 print(load[0])
-
+"""
 """
 vertices = []
 faces = []

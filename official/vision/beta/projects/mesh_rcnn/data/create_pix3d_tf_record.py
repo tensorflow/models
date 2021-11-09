@@ -16,7 +16,7 @@
 # Voxel (.mat) and Model (.obj)
 
 # https://github.com/PurdueDualityLab/tf-models/blob/master/official/vision/beta/data/create_coco_tf_record.py reference
-# python3 .\create_pix3d_tf_record.py --logtostderr --pix3d_dir="D:\Programming\pix3d\" --output_file_prefix="D:\Programming\tfrecords\pix3d" --pix3d_json_file="pix3dsingle.json"
+# python3 .\create_pix3d_tf_record.py --logtostderr --pix3d_dir="D:\Programming\pix3d\" --output_file_prefix="D:\Programming\tfrecords\pix3d\" --pix3d_json_file="pix3dsingle.json"
 #
 
 r"""Convert raw Pix3D dataset to TFRecord format.
@@ -30,14 +30,10 @@ Example usage:
       --pix3d_json_file="pix3d.json"
 """
 
-from ast import Str
-import collections
 import json
 import logging
 import os
 import json
-from re import I
-import re
 
 from absl import app  # pylint:disable=unused-import
 from absl import flags
@@ -259,13 +255,12 @@ def create_tf_example(image):
                     "img/encoded": convert_to_feature(encoded_img_jpg),
                     "img/2d_keypoints": convert_to_feature(keypoints_2d)}
 
+    #print(feature_dict)
+
     with tf.io.gfile.GFile(os.path.join(image["pix3d_dir"], image["mask"]), 'rb') as fid:
         encoded_mask_jpg = fid.read()
 
     feature_dict.update({"mask": convert_to_feature(encoded_mask_jpg)})
-
-    #with tf.io.gfile.GFile(os.join(image["pix3d_dir"], image["model"]), 'rb') as fid:
-    #    encoded_model = fid.read()
 
     model_vertices, model_faces = parse_obj_file(os.path.join(image["pix3d_dir"], image["model"]))
 
@@ -281,12 +276,7 @@ def create_tf_example(image):
                          "model/source": convert_to_feature(model_source),
                          "model/3d_keypoints": convert_to_feature(keypoints_3d)})
 
-    #with tf.io.gfile.GFile(os.join(image["pix3d_dir"], image["voxel"]), 'rb') as fid:
-    #    encoded_voxel = fid.read()
-
     encoded_voxel = parse_mat_file(os.path.join(image["pix3d_dir"], image["voxel"]))
-
-    #print(encoded_voxel, type(encoded_voxel))
 
     rot_mat = image["rot_mat"]
     trans_mat = image["trans_mat"]
@@ -298,7 +288,6 @@ def create_tf_example(image):
     slightly_occluded = image["slightly_occluded"]
     bbox = image["bbox"]
 
-    # Where are these supposed to be categorized???
     feature_dict.update({"voxel": convert_to_feature(encoded_voxel),
                          "rot_mat": convert_to_feature(rot_mat),
                          "trans_mat": convert_to_feature(trans_mat),
@@ -312,6 +301,8 @@ def create_tf_example(image):
 
     example = tf.train.Example(
         features=tf.train.Features(feature=feature_dict))
+
+    
 
     return example, 0
 
@@ -359,7 +350,7 @@ def parse_obj_file(file):
             face = line[2:].split(" ")
             
             for i, f in enumerate(face):
-                face[i] = [int(x) - 1 for x in f.split("/")]
+                face[i] = [int(x) for x in f.split("/")]
 
             faces.append(face)
 
@@ -398,21 +389,16 @@ def _create_tf_record_from_pix3d_dir(pix3d_dir,
     #print(pix3d_dir, pix3d_json_file, os.path.join(pix3d_dir, pix3d_json_file))
     images = json.load(open(os.path.join(pix3d_dir, pix3d_json_file)))
 
-    print(images)
+    #print(simages)
 
     pix3d_annotations_iter = generate_annotations(
         images=images, pix3d_dir=pix3d_dir)
 
     #print(pix3d_annotations_iter)
 
-    print(pix3d_annotations_iter)
+    num_skipped = write_tf_record_dataset(output_path, pix3d_annotations_iter, create_tf_example, num_shards, unpack_arguments=False, use_multiprocessing=True)
 
-    num_skipped = write_tf_record_dataset(output_path, pix3d_annotations_iter, create_tf_example, num_shards, unpack_arguments=False, use_multiprocessing=False)
-
-    #num_skipped = tfrecord_lib.write_tf_record_dataset(
-    #    output_path, pix3d_annotations_iter, create_tf_example, num_shards)
-
-    #logging.info('Finished writing, skipped %d annotations.', num_skipped)
+    logging.info('Finished writing, skipped %d annotations.', num_skipped)
 
 
 def main(_):
