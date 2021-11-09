@@ -171,7 +171,7 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
       decoder_features = model_outputs['decoder_features']
 
     segmentation_outputs = self.segmentation_head(
-        backbone_features, decoder_features, training=training)
+        (backbone_features, decoder_features), training=training)
 
     model_outputs.update({
         'segmentation_outputs': segmentation_outputs,

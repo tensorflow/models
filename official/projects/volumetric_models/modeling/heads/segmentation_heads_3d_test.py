@@ -42,7 +42,7 @@ class SegmentationHead3DTest(parameterized.TestCase, tf.test.TestCase):
         '1': np.random.rand(2, 128, 128, 128, 16),
         '2': np.random.rand(2, 64, 64, 64, 16),
     }
-    logits = head(backbone_features, decoder_features)
+    logits = head((backbone_features, decoder_features))
 
     if str(level) in decoder_features:
       self.assertAllEqual(logits.numpy().shape, [

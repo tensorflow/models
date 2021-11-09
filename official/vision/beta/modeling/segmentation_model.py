@@ -62,7 +62,7 @@ class SegmentationModel(tf.keras.Model):
     else:
       decoder_features = backbone_features
 
-    return self.head(backbone_features, decoder_features)
+    return self.head((backbone_features, decoder_features))
 
   @property
   def checkpoint_items(
