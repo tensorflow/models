@@ -17,7 +17,7 @@ Example usage:
     python pix3d_visualizer.py --logtostderr \
       --num_models=2 \
       --pix3d_dir="${PIX3D_TFRECORD_DIR}" \
-      --output_file_prefix="${OUTPUT_DIR/FILE_PREFIX}"    
+      --output_folder="${OUTPUT_DIR}"    
 """
 
 import logging
@@ -31,7 +31,7 @@ import cv2
 import tensorflow as tf
 
 flags.DEFINE_multi_string('pix3d_dir', '', 'Directory containing Pix3d.')
-flags.DEFINE_string('output_file_prefix', '/tmp/output',
+flags.DEFINE_string('output_folder', '/tmp/output',
                     'Path to output files')
 flags.DEFINE_integer(
     'num_models', 2, 'Number of models rebuilt from TFRecord.')
@@ -133,12 +133,12 @@ def visualize_tf_record(pix3d_dir,
 def main(_):
     assert FLAGS.pix3d_dir, '`pix3d_dir` missing.'
 
-    directory = os.path.dirname(FLAGS.output_file_prefix)
+    directory = os.path.dirname(FLAGS.output_folder)
     if not tf.io.gfile.isdir(directory):
         tf.io.gfile.makedirs(directory)
 
     visualize_tf_record(
-        FLAGS.pix3d_dir[0], FLAGS.output_file_prefix, FLAGS.num_models)
+        FLAGS.pix3d_dir[0], FLAGS.output_folder, FLAGS.num_models)
 
 
 if __name__ == '__main__':
