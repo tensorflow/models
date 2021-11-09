@@ -175,6 +175,13 @@ class AssembleNet(hyperparams.Config):
   combine_method: str = 'sigmoid'
   blocks: Tuple[BlockSpec, ...] = tuple()
 
+@dataclasses.dataclass
+class AssembleNetPlus(hyperparams.Config):
+  model_id: str = '50'
+  num_frames: int = 0
+  attention_mode: str = 'None'
+  blocks: Tuple[BlockSpec, ...] = tuple()
+  use_object_input : bool = False
 
 @dataclasses.dataclass
 class AssembleNetPlus(hyperparams.Config):
@@ -218,6 +225,14 @@ class AssembleNetPlusModel(video_classification.VideoClassificationModel):
       norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=True)
   max_pool_predictions: bool = False
 
+@dataclasses.dataclass
+class AssembleNetPlusModel(video_classification.VideoClassificationModel):
+  """The AssembleNet model config."""
+  model_type: str = 'assemblenet_plus'
+  backbone: Backbone3D = Backbone3D()
+  norm_activation: common.NormActivation = common.NormActivation(
+      norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=True)
+  max_pool_predictions: bool = False
 
 @exp_factory.register_config_factory('assemblenet50_kinetics600')
 def assemblenet_kinetics600() -> cfg.ExperimentConfig:
