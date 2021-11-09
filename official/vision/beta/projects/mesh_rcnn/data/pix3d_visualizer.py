@@ -118,9 +118,6 @@ def visualize_tf_record(pix3d_dir,
         image = cv2.imdecode(np.fromstring(
             features["img/encoded"].bytes_list.value[0], np.uint8), flags=1).tolist()
 
-        #mask = tf.io.parse_tensor(features["mask"].bytes_list.value[0], tf.int32).numpy().tolist()
-        #image = tf.io.parse_tensor(features["img/encoded"].bytes_list.value[0], tf.int32).numpy().tolist()
-
         filename = str(
             features["img/filename"].bytes_list.value[0]).split("/")[2][:-1]
         filename = filename.split(".")[0]
