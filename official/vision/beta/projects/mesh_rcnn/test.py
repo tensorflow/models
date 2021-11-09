@@ -11,14 +11,18 @@ folder = os.path.join("D:\\", "Programming", "tfrecords", "pix3d")
 
 pic = os.path.join("D:\\", "Programming", "pix3d", "img", "bed", "0001.png")
 
+
+sio.loadmat(file)["voxel"].tolist()
+
+
 #folder = os.path.join("D:\\", "Programming", "tfrecords")
 #print(np.array(Image.open(pic).getdata()).tolist())
 
-a = cv2.imread(pic, -1)
-dim1 = len(a)
-dim2 = len(a[0])
-dim3 = len(a[0][0])
-print(a, dim1, dim2, dim3)
+#a = cv2.imread(pic, -1)
+#dim1 = len(a)
+#dim2 = len(a[0])
+#dim3 = len(a[0][0])
+#print(a, dim1, dim2, dim3)
 
 
 #print(os.listdir(folder))

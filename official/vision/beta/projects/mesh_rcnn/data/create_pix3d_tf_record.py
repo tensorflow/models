@@ -41,8 +41,6 @@ import multiprocessing as mp
 #from official.vision.beta.data import tfrecord_lib
 #from research.object_detection.utils import dataset_util
 # ^pythonpath is messed up ^ cant import so copied function
-
-
 def write_tf_record_dataset(output_path, annotation_iterator,
                             process_func, num_shards,
                             use_multiprocessing=True, unpack_arguments=True):
@@ -109,8 +107,6 @@ def write_tf_record_dataset(output_path, annotation_iterator,
 
 #from official.vision.beta.data.tfrecord_lib import convert_to_feature
 # ^pythonpath is messed up ^ cant import so copied function
-
-
 def convert_to_feature(value, value_type=None):
     """Converts the given python object to a tf.train.Feature.
 
