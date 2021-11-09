@@ -42,6 +42,7 @@ from numpy.core.defchararray import encode
 from numpy.lib.arraysetops import isin
 from numpy.lib.type_check import imag
 import scipy.io as sio
+import cv2
 
 import tensorflow as tf
 import itertools
@@ -240,8 +241,12 @@ def create_tf_example(image):
       of the Pix3D folder is incorrect.
     """
 
-    with tf.io.gfile.GFile(os.path.join(image["pix3d_dir"], image["img"]), 'rb') as fid:
-        encoded_img_jpg = fid.read()
+    #with tf.io.gfile.GFile(os.path.join(image["pix3d_dir"], image["img"]), 'rb') as fid:
+    #    encoded_img_jpg = fid.read()
+
+    #image_arr = np.array(Image.open(os.path.join(image["pix3d_dir"], image["img"])).getdata()).tolist()
+    image_arr = cv2.imread(os.path.join(image["pix3d_dir"], image["img"]), -1).tolist()
+
 
     img_width, img_height = image["img_size"]
     img_filename = image["img"]
@@ -252,15 +257,18 @@ def create_tf_example(image):
                     "img/width": convert_to_feature(img_width),
                     "img/category": convert_to_feature(img_category),
                     "img/filename": convert_to_feature(img_filename),
-                    "img/encoded": convert_to_feature(encoded_img_jpg),
+                    "img/encoded": convert_to_feature(image_arr),
                     "img/2d_keypoints": convert_to_feature(keypoints_2d)}
 
     #print(feature_dict)
 
-    with tf.io.gfile.GFile(os.path.join(image["pix3d_dir"], image["mask"]), 'rb') as fid:
-        encoded_mask_jpg = fid.read()
+    #with tf.io.gfile.GFile(os.path.join(image["pix3d_dir"], image["mask"]), 'rb') as fid:
+    #    encoded_mask_jpg = fid.read()
 
-    feature_dict.update({"mask": convert_to_feature(encoded_mask_jpg)})
+    #mask_arr = np.array(Image.open(os.path.join(image["pix3d_dir"], image["mask"])).getdata()).tolist()
+    mask_arr = cv2.imread(os.path.join(image["pix3d_dir"], image["mask"]), -1).tolist()
+
+    feature_dict.update({"mask": convert_to_feature(mask_arr)})
 
     model_vertices, model_faces = parse_obj_file(os.path.join(image["pix3d_dir"], image["model"]))
 

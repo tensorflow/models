@@ -1,15 +1,27 @@
 import json
 import scipy.io as sio
 import os
+from PIL import Image
+import numpy as np
+import cv2
 
 file = os.path.join("D:\\", "Programming", "pix3d", "model", "bookcase", "IKEA_BILLY_1", "model.obj")
 
 folder = os.path.join("D:\\", "Programming", "tfrecords", "pix3d")
 
+pic = os.path.join("D:\\", "Programming", "pix3d", "img", "bed", "0001.png")
+
 #folder = os.path.join("D:\\", "Programming", "tfrecords")
+#print(np.array(Image.open(pic).getdata()).tolist())
+
+a = cv2.imread(pic, -1)
+dim1 = len(a)
+dim2 = len(a[0])
+dim3 = len(a[0][0])
+print(a, dim1, dim2, dim3)
 
 
-print(os.listdir(folder))
+#print(os.listdir(folder))
 
 """
 print(file, folder)
