@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Transformer-based BERT encoder network."""
+"""Transformer-based BERT encoder network with dense features as inputs."""
 # pylint: disable=g-classes-have-attributes
 
 from typing import Any, Callable, Optional, Union

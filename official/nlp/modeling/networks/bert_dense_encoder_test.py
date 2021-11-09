@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for transformer-based bert encoder network."""
+"""Tests for transformer-based bert encoder network with dense features as inputs."""
 
 # Import libraries
 from absl.testing import parameterized
