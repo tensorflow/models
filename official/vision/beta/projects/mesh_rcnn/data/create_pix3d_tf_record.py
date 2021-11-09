@@ -11,22 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# Author: Jacob Zietek
-
-# Voxel (.mat) and Model (.obj)
 
 # https://github.com/PurdueDualityLab/tf-models/blob/master/official/vision/beta/data/create_coco_tf_record.py reference
 # python3 .\create_pix3d_tf_record.py --logtostderr --pix3d_dir="D:\Programming\pix3d\" --output_file_prefix="D:\Programming\tfrecords\pix3d\" --pix3d_json_file="pix3dsingle.json"
-#
 
 r"""Convert raw Pix3D dataset to TFRecord format.
-This scripts follows the label map decoder format and supports detection
-boxes, instance masks and captions.
 Example usage:
     python create_pix3d_tf_record.py --logtostderr \
       --pix3d_dir="${TRAIN_IMAGE_DIR}" \
       --output_file_prefix="${OUTPUT_DIR/FILE_PREFIX}" \
-      --num_shards=32 \
+      --num_shards=32 \ 
       --pix3d_json_file="pix3d.json"
 """
 
@@ -47,21 +41,6 @@ import cv2
 import tensorflow as tf
 import itertools
 import multiprocessing as mp
-
-#from research.object_detection.utils.dataset_util import float_feature
-
-#from research.object_detection.utils.dataset_util import float_list_feature
-#^pythonpath is messed up ^ cant import so copied function
-def float_list_feature(value):
-      return tf.train.Feature(float_list=tf.train.FloatList(value=value))
-
-def float_feature(value):
-       return tf.train.Feature(float_list=tf.train.FloatList(value=value))
-
-#import multiprocessing as mp
-#from official.vision.beta.data import tfrecord_lib
-#from research.object_detection.utils import dataset_util
-
 
 #from official.vision.beta.data import tfrecord_lib
 #from research.object_detection.utils import dataset_util
@@ -143,12 +122,9 @@ def convert_to_feature(value, value_type=None):
     Args:
     value: int, float, bytes or a list of them.
     value_type: optional, if specified, forces the feature to be of the given
-        type. Otherwise, type is inferred automatically. Can be one of
-        ['bytes', 'int64', 'float', 'bytes_list', 'int64_list', 'float_list']
-
+        type. Otherwise, type is inferred automatically.
     Returns:
-     
-    feature: A tf.train.Feature object.
+      feature: A tf.train.Feature object.
     """
 
     if value_type is None:
@@ -241,11 +217,11 @@ def create_tf_example(image):
       of the Pix3D folder is incorrect.
     """
 
-    #with tf.io.gfile.GFile(os.path.join(image["pix3d_dir"], image["img"]), 'rb') as fid:
-    #    encoded_img_jpg = fid.read()
+    with tf.io.gfile.GFile(os.path.join(image["pix3d_dir"], image["img"]), 'rb') as fid:
+        encoded_img = fid.read()
 
     #image_arr = np.array(Image.open(os.path.join(image["pix3d_dir"], image["img"])).getdata()).tolist()
-    image_arr = cv2.imread(os.path.join(image["pix3d_dir"], image["img"]), -1).tolist()
+    #image_arr = cv2.imread(os.path.join(image["pix3d_dir"], image["img"]), -1).tolist()
 
 
     img_width, img_height = image["img_size"]
@@ -257,18 +233,16 @@ def create_tf_example(image):
                     "img/width": convert_to_feature(img_width),
                     "img/category": convert_to_feature(img_category),
                     "img/filename": convert_to_feature(img_filename),
-                    "img/encoded": convert_to_feature(image_arr),
+                    "img/encoded": convert_to_feature(encoded_img),
                     "img/2d_keypoints": convert_to_feature(keypoints_2d)}
 
-    #print(feature_dict)
-
-    #with tf.io.gfile.GFile(os.path.join(image["pix3d_dir"], image["mask"]), 'rb') as fid:
-    #    encoded_mask_jpg = fid.read()
+    with tf.io.gfile.GFile(os.path.join(image["pix3d_dir"], image["mask"]), 'rb') as fid:
+        encoded_mask = fid.read()
 
     #mask_arr = np.array(Image.open(os.path.join(image["pix3d_dir"], image["mask"])).getdata()).tolist()
-    mask_arr = cv2.imread(os.path.join(image["pix3d_dir"], image["mask"]), -1).tolist()
+    #mask_arr = cv2.imread(os.path.join(image["pix3d_dir"], image["mask"]), -1).tolist()
 
-    feature_dict.update({"mask": convert_to_feature(mask_arr)})
+    feature_dict.update({"mask": convert_to_feature(encoded_mask)})
 
     model_vertices, model_faces = parse_obj_file(os.path.join(image["pix3d_dir"], image["model"]))
 
@@ -284,7 +258,10 @@ def create_tf_example(image):
                          "model/source": convert_to_feature(model_source),
                          "model/3d_keypoints": convert_to_feature(keypoints_3d)})
 
-    encoded_voxel = parse_mat_file(os.path.join(image["pix3d_dir"], image["voxel"]))
+    #encoded_voxel = parse_mat_file(os.path.join(image["pix3d_dir"], image["voxel"]))
+
+    with tf.io.gfile.GFile(os.path.join(image["pix3d_dir"], image["voxel"]), 'rb') as fid:
+        encoded_voxel = fid.read()
 
     rot_mat = image["rot_mat"]
     trans_mat = image["trans_mat"]
@@ -309,8 +286,6 @@ def create_tf_example(image):
 
     example = tf.train.Example(
         features=tf.train.Features(feature=feature_dict))
-
-    
 
     return example, 0
 

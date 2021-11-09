@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# Author: Jacob Zietek
 
 r"""Takes TFRecord containing Pix3D dataset and visualizes it.
 Example usage:
@@ -21,23 +20,15 @@ Example usage:
       --output_file_prefix="${OUTPUT_DIR/FILE_PREFIX}"    
 """
 
-import json
 import logging
 import os
-import json
 
 from absl import app  # pylint:disable=unused-import
 from absl import flags
 import numpy as np
-from numpy.core.defchararray import encode
-from numpy.lib.arraysetops import isin
-from numpy.lib.type_check import imag
-import scipy.io as sio
 import cv2
 
 import tensorflow as tf
-import itertools
-import multiprocessing as mp
 
 flags.DEFINE_multi_string('pix3d_dir', '', 'Directory containing Pix3d.')
 flags.DEFINE_string('output_file_prefix', '/tmp/output', 'Path to output files')
@@ -47,7 +38,6 @@ FLAGS = flags.FLAGS
 
 logger = tf.get_logger()
 logger.setLevel(logging.INFO)
-
 
 
 def write_obj_file(vertices,
@@ -108,16 +98,19 @@ def visualize_tf_record(pix3d_dir,
     filenames = [os.path.join(pix3d_dir, x) for x in os.listdir(pix3d_dir)]
     
     raw_dataset = tf.data.TFRecordDataset(filenames)
-
     
     for raw_record in raw_dataset.take(num_models):
         example = tf.train.Example()
         example.ParseFromString(raw_record.numpy())
         features = example.features.feature
+
         vertices = tf.io.parse_tensor(features["model/vertices"].bytes_list.value[0], tf.float32).numpy().tolist()
         faces = tf.io.parse_tensor(features["model/faces"].bytes_list.value[0], tf.int32).numpy().tolist()
-        mask = tf.io.parse_tensor(features["mask"].bytes_list.value[0], tf.int32).numpy().tolist()
-        image = tf.io.parse_tensor(features["img/encoded"].bytes_list.value[0], tf.int32).numpy().tolist()
+        mask = cv2.imdecode(np.fromstring(features["mask"].bytes_list.value[0], np.uint8), cv2.IMREAD_GRAYSCALE).tolist()
+        image = cv2.imdecode(np.fromstring(features["img/encoded"].bytes_list.value[0], np.uint8), flags=1).tolist()
+        
+        #mask = tf.io.parse_tensor(features["mask"].bytes_list.value[0], tf.int32).numpy().tolist()
+        #image = tf.io.parse_tensor(features["img/encoded"].bytes_list.value[0], tf.int32).numpy().tolist()
 
         filename = str(features["img/filename"].bytes_list.value[0]).split("/")[2][:-1]
         filename = filename.split(".")[0]
