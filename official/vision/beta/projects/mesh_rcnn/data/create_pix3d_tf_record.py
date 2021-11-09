@@ -32,11 +32,7 @@ import json
 from absl import app  # pylint:disable=unused-import
 from absl import flags
 import numpy as np
-from numpy.core.defchararray import encode
-from numpy.lib.arraysetops import isin
-from numpy.lib.type_check import imag
 import scipy.io as sio
-import cv2
 
 import tensorflow as tf
 import itertools
@@ -106,13 +102,6 @@ def write_tf_record_dataset(output_path, annotation_iterator,
   logging.info('Finished writing, skipped %d annotations.',
                total_num_annotations_skipped)
   return total_num_annotations_skipped
-
-
-def check_and_make_dir(directory):
-  """Creates the directory if it doesn't exist."""
-  if not tf.io.gfile.isdir(directory):
-    tf.io.gfile.makedirs(directory)
-
 
 #from official.vision.beta.data.tfrecord_lib import convert_to_feature
 # ^pythonpath is messed up ^ cant import so copied function
@@ -322,19 +311,14 @@ def parse_obj_file(file):
         
         if lineID == "v ":
             vertex = line[2:].split(" ")
-            
             for i, v in enumerate(vertex):
                 vertex[i] = float(v)
-
             vertices.append(vertex)
 
         if lineID == "f ":
-
             face = line[2:].split(" ")
-            
             for i, f in enumerate(face):
                 face[i] = [int(x) for x in f.split("/")]
-
             faces.append(face)
 
     return vertices, faces
@@ -364,20 +348,14 @@ def _create_tf_record_from_pix3d_dir(pix3d_dir,
       images_info_file: pix3d_dir download directory
       output_path: Path to output tf.Record file.
       num_shards: Number of output files to create.
-
     """
 
     logging.info('writing to output path: %s', output_path)
 
-    #print(pix3d_dir, pix3d_json_file, os.path.join(pix3d_dir, pix3d_json_file))
     images = json.load(open(os.path.join(pix3d_dir, pix3d_json_file)))
-
-    #print(simages)
 
     pix3d_annotations_iter = generate_annotations(
         images=images, pix3d_dir=pix3d_dir)
-
-    #print(pix3d_annotations_iter)
 
     num_skipped = write_tf_record_dataset(output_path, pix3d_annotations_iter, create_tf_example, num_shards, unpack_arguments=False, use_multiprocessing=True)
 
