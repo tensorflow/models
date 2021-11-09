@@ -301,7 +301,7 @@ class Meshes():
 
     # We get the sorted hash and the index of each element in the sorted hash
     # mapped to the original array
-    sorted_hash, sort_idx = tf.sort(edges_hash), tf.argsort(edges_hash)
+    sorted_hash, sort_idx = tf.sort(edges_hash), tf.argsort(edges_hash) #TODO dont need sort, just argsort
 
     # Since the hash is sorted, we know that we have non-duplicate hashes where:
     # sorted_hash[1:] != sorted_hash[:-1] (comparing adjacent hash values)

@@ -153,8 +153,6 @@ class MeshesTest(parameterized.TestCase, tf.test.TestCase):
         tf_meshes.faces_packed_to_edges_packed.numpy(),
         torch_meshes.faces_packed_to_edges_packed().numpy())
 
-    # TODO add tests for packed normals/areas
-
   @parameterized.named_parameters(
       {'testcase_name': 'single-mesh-1-face',
        'num_verts_per_mesh': [3],
