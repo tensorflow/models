@@ -19,11 +19,10 @@ import os
 from typing import List, Optional, Union
 
 import numpy as np
-
+from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.modeling.hyperparams import config_definitions as cfg
 from official.vision.beta.configs import common
 from official.vision.beta.configs import decoders
 from official.vision.beta.configs import backbones

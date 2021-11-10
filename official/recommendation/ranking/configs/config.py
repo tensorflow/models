@@ -13,12 +13,31 @@
 # limitations under the License.
 
 """Ranking Model configuration definition."""
-from typing import Optional, List, Union
 import dataclasses
-
+from typing import List, Optional, Union
+from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
-from official.modeling.hyperparams import config_definitions as cfg
+
+
+@dataclasses.dataclass
+class CallbacksConfig(hyperparams.Config):
+  """Configuration for Callbacks.
+
+  Attributes:
+    enable_checkpoint_and_export: Whether or not to enable checkpoints as a
+      Callback. Defaults to True.
+    enable_backup_and_restore: Whether or not to add BackupAndRestore
+      callback. Defaults to True.
+    enable_tensorboard: Whether or not to enable TensorBoard as a Callback.
+      Defaults to True.
+    enable_time_history: Whether or not to enable TimeHistory Callbacks.
+      Defaults to True.
+  """
+  enable_checkpoint_and_export: bool = True
+  enable_backup_and_restore: bool = False
+  enable_tensorboard: bool = True
+  enable_time_history: bool = True
 
 
 @dataclasses.dataclass
@@ -126,7 +145,6 @@ class TrainerConfig(cfg.TrainerConfig):
     use_orbit: Whether to use orbit library with custom training loop or
       compile/fit API.
     enable_metrics_in_training: Whether to enable metrics during training.
-    tensorboard: An instance of TensorboardConfig.
     time_history: Config of TimeHistory callback.
     optimizer_config: An `OptimizerConfig` instance for embedding optimizer.
        Defaults to None.
@@ -135,10 +153,9 @@ class TrainerConfig(cfg.TrainerConfig):
   # Sets validation steps to be -1 to evaluate the entire dataset.
   validation_steps: int = -1
   validation_interval: int = 70000
-  callbacks: cfg.CallbacksConfig = cfg.CallbacksConfig()
+  callbacks: CallbacksConfig = CallbacksConfig()
   use_orbit: bool = False
   enable_metrics_in_training: bool = True
-  tensorboard: cfg.TensorboardConfig = cfg.TensorboardConfig()
   time_history: TimeHistoryConfig = TimeHistoryConfig(log_steps=5000)
   optimizer_config: OptimizationConfig = OptimizationConfig()
 
