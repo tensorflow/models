@@ -171,6 +171,31 @@ class KernelEncoderConfig(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class ReuseEncoderConfig(hyperparams.Config):
+  """Reuse encoder configuration."""
+  vocab_size: int = 30522
+  hidden_size: int = 768
+  num_layers: int = 12
+  num_attention_heads: int = 12
+  hidden_activation: str = "gelu"
+  intermediate_size: int = 3072
+  dropout_rate: float = 0.1
+  attention_dropout_rate: float = 0.1
+  max_position_embeddings: int = 512
+  type_vocab_size: int = 2
+  initializer_range: float = 0.02
+  embedding_size: Optional[int] = None
+  output_range: Optional[int] = None
+  return_all_encoder_outputs: bool = False
+  # Pre/Post-LN Transformer
+  norm_first: bool = False
+  # Reuse transformer
+  reuse_attention: int = -1
+  use_relative_pe: bool = False
+  pe_max_seq_length: int = 512
+
+
+@dataclasses.dataclass
 class XLNetEncoderConfig(hyperparams.Config):
   """XLNet encoder configuration."""
   vocab_size: int = 32000
@@ -205,6 +230,7 @@ class EncoderConfig(hyperparams.OneOfConfig):
   bigbird: BigBirdEncoderConfig = BigBirdEncoderConfig()
   kernel: KernelEncoderConfig = KernelEncoderConfig()
   mobilebert: MobileBertEncoderConfig = MobileBertEncoderConfig()
+  reuse: ReuseEncoderConfig = ReuseEncoderConfig()
   teams: BertEncoderConfig = BertEncoderConfig()
   xlnet: XLNetEncoderConfig = XLNetEncoderConfig()
 
@@ -470,6 +496,42 @@ def build_encoder(config: EncoderConfig,
             stddev=encoder_cfg.initializer_range),
         return_all_layer_outputs=encoder_cfg.return_all_encoder_outputs,
         dict_outputs=True)
+    return networks.EncoderScaffold(**kwargs)
+
+  if encoder_type == "reuse":
+    embedding_cfg = dict(
+        vocab_size=encoder_cfg.vocab_size,
+        type_vocab_size=encoder_cfg.type_vocab_size,
+        hidden_size=encoder_cfg.hidden_size,
+        max_seq_length=encoder_cfg.max_position_embeddings,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        dropout_rate=encoder_cfg.dropout_rate)
+    hidden_cfg = dict(
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        inner_dim=encoder_cfg.intermediate_size,
+        inner_activation=tf_utils.get_activation(
+            encoder_cfg.hidden_activation),
+        output_dropout=encoder_cfg.dropout_rate,
+        attention_dropout=encoder_cfg.attention_dropout_rate,
+        norm_first=encoder_cfg.norm_first,
+        kernel_initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        reuse_attention=encoder_cfg.reuse_attention,
+        use_relative_pe=encoder_cfg.use_relative_pe,
+        pe_max_seq_length=encoder_cfg.pe_max_seq_length)
+    kwargs = dict(
+        embedding_cfg=embedding_cfg,
+        hidden_cls=layers.ReuseTransformer,
+        hidden_cfg=hidden_cfg,
+        num_hidden_instances=encoder_cfg.num_layers,
+        pooled_output_dim=encoder_cfg.hidden_size,
+        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        return_all_layer_outputs=False,
+        dict_outputs=True,
+        feed_layer_idx=True,
+        recursive=True)
     return networks.EncoderScaffold(**kwargs)
 
   bert_encoder_cls = networks.BertEncoder
