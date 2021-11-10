@@ -193,6 +193,7 @@ class ReuseEncoderConfig(hyperparams.Config):
   reuse_attention: int = -1
   use_relative_pe: bool = False
   pe_max_seq_length: int = 512
+  max_reuse_layer_idx: int = 6
 
 
 @dataclasses.dataclass
@@ -519,7 +520,8 @@ def build_encoder(config: EncoderConfig,
             stddev=encoder_cfg.initializer_range),
         reuse_attention=encoder_cfg.reuse_attention,
         use_relative_pe=encoder_cfg.use_relative_pe,
-        pe_max_seq_length=encoder_cfg.pe_max_seq_length)
+        pe_max_seq_length=encoder_cfg.pe_max_seq_length,
+        max_reuse_layer_idx=encoder_cfg.max_reuse_layer_idx)
     kwargs = dict(
         embedding_cfg=embedding_cfg,
         hidden_cls=layers.ReuseTransformer,
