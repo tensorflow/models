@@ -26,7 +26,6 @@ from official.nlp.modeling.ops import beam_search
 EOS_ID = 1
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
 class Seq2SeqTransformer(tf.keras.Model):
   """Transformer model with Keras.
 
