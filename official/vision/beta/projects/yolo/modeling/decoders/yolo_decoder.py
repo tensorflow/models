@@ -78,8 +78,8 @@ YOLO_MODELS = {
             spp=dict(
                 embed_spp=True,
                 use_fpn=False,
-                max_level_process_len=2,
-                path_process_len=1),
+                max_level_process_len=None,
+                path_process_len=6),
         ),
 }
 
