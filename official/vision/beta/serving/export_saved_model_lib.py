@@ -50,7 +50,7 @@ def export_inference_graph(
   at export_dir/checkpoint, and params is saved at export_dir/params.yaml.
 
   Args:
-    input_type: One of `image_tensor`, `image_bytes`, `tf_example`.
+    input_type: One of `image_tensor`, `image_bytes`, `tf_example` or `tflite`.
     batch_size: 'int', or None.
     input_image_size: List or Tuple of height and width.
     params: Experiment params.
