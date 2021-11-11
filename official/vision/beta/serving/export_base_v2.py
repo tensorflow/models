@@ -38,14 +38,16 @@ class ExportModule(export_base.ExportModule):
       model: A tf.keras.Model instance to be exported.
       input_signature: tf.TensorSpec, e.g.
         tf.TensorSpec(shape=[None, 224, 224, 3], dtype=tf.uint8)
-      preprocessor: An optional callable function to preprocess the inputs.
-      inference_step: An optional callable function to forward-pass the model.
-      postprocessor: An optional callable function to postprocess the model
-        outputs.
+      preprocessor: An optional callable to preprocess the inputs.
+      inference_step: An optional callable to forward-pass the model.
+      postprocessor: An optional callable to postprocess the model outputs.
     """
-    super().__init__(params, model=model, inference_step=inference_step)
-    self.preprocessor = preprocessor
-    self.postprocessor = postprocessor
+    super().__init__(
+        params,
+        model=model,
+        preprocessor=preprocessor,
+        inference_step=inference_step,
+        postprocessor=postprocessor)
     self.input_signature = input_signature
 
   @tf.function

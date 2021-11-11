@@ -28,13 +28,34 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
   def __init__(self,
                params,
                model: Union[tf.Module, tf.keras.Model],
-               inference_step: Optional[Callable[..., Any]] = None):
+               preprocessor: Optional[Callable[..., Any]] = None,
+               inference_step: Optional[Callable[..., Any]] = None,
+               postprocessor: Optional[Callable[..., Any]] = None):
     """Instantiates an ExportModel.
+
+    Examples:
+
+    `inference_step` must be a function that has `model` as an kwarg or the
+    second positional argument.
+    ```
+    def _inference_step(inputs, model=None):
+      return model(inputs, training=False)
+
+    module = ExportModule(params, model, inference_step=_inference_step)
+    ```
+
+    `preprocessor` and `postprocessor` could be either functions or `tf.Module`.
+    The usages of preprocessor and postprocessor are managed by the
+    implementation of `serve()` method.
 
     Args:
       params: A dataclass for parameters to the module.
       model: A model instance which contains weights and forward computation.
-      inference_step: An optional callable to define how the model is called.
+      preprocessor: An optional callable to preprocess the inputs.
+      inference_step: An optional callable to forward-pass the model. If not
+        specified, it creates a parital function with `model` as an required
+        kwarg.
+      postprocessor: An optional callable to postprocess the model outputs.
     """
     super().__init__(name=None)
     self.model = model
@@ -45,6 +66,8 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
     else:
       self.inference_step = functools.partial(
           self.model.__call__, training=False)
+    self.preprocessor = preprocessor
+    self.postprocessor = postprocessor
 
   @abc.abstractmethod
   def serve(self) -> Mapping[Text, tf.Tensor]:
