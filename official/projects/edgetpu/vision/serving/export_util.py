@@ -69,7 +69,9 @@ class ExportConfig(base_config.Config):
   """Configuration for exporting models as tflite and saved_models.
 
   Attributes:
-    model_name: One of the registered model names
+    model_name: One of the registered model names.
+    output_layer: Layer name to take the output from. Can be used to take the
+      output from an intermediate layer.
     ckpt_path: Path of the training checkpoint. If not provided tflite with
       random parameters is exported.
     ckpt_format: Format of the checkpoint. tf_checkpoint is for ckpt files from
@@ -92,7 +94,8 @@ class ExportConfig(base_config.Config):
         resize bilinear to 128x128, then argmax then resize nn to 512x512
   """
   quantization_config: QuantizationConfig = QuantizationConfig()
-  model_name: str = None
+  model_name: Optional[str] = None
+  output_layer: Optional[str] = None
   ckpt_path: Optional[str] = None
   ckpt_format: Optional[str] = 'tf_checkpoint'
   output_dir: str = '/tmp/'

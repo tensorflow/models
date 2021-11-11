@@ -112,7 +112,6 @@ class EdgeTPUTask(base_task.Task):
     else:
       raise ValueError('Model has to be mobilenet-edgetpu model or searched'
                        'model with given saved model path.')
-    model.summary()
 
     return model
 
