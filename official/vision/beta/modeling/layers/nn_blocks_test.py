@@ -32,8 +32,7 @@ def distribution_strategy_combinations() -> Iterable[Tuple[Any, ...]]:
           strategy_combinations.default_strategy,
           strategy_combinations.cloud_tpu_strategy,
           strategy_combinations.one_device_strategy_gpu,
-      ],
-  )
+      ],)
 
 
 class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
@@ -92,9 +91,9 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
       (nn_blocks.InvertedBottleneckBlock, 1, 1, 0.2, None),
       (nn_blocks.InvertedBottleneckBlock, 1, 1, None, 0.2),
   )
-  def test_invertedbottleneck_block_creation(
-      self, block_fn, expand_ratio, strides, se_ratio,
-      stochastic_depth_drop_rate):
+  def test_invertedbottleneck_block_creation(self, block_fn, expand_ratio,
+                                             strides, se_ratio,
+                                             stochastic_depth_drop_rate):
     input_size = 128
     in_filters = 24
     out_filters = 40
@@ -149,6 +148,32 @@ class BottleneckResidualInnerTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(expected_output_shape, output.shape.as_list())
 
 
+class DepthwiseSeparableConvBlockTest(parameterized.TestCase, tf.test.TestCase):
+
+  @combinations.generate(distribution_strategy_combinations())
+  def test_shape(self, distribution):
+    batch_size, height, width, num_channels = 8, 32, 32, 32
+    num_filters = 64
+    strides = 2
+
+    input_tensor = tf.random.normal(
+        shape=[batch_size, height, width, num_channels])
+    with distribution.scope():
+      block = nn_blocks.DepthwiseSeparableConvBlock(
+          num_filters, strides=strides)
+      config_dict = block.get_config()
+      recreate_block = nn_blocks.DepthwiseSeparableConvBlock(**config_dict)
+
+    output_tensor = block(input_tensor)
+    expected_output_shape = [
+        batch_size, height // strides, width // strides, num_filters
+    ]
+    self.assertEqual(output_tensor.shape.as_list(), expected_output_shape)
+
+    output_tensor = recreate_block(input_tensor)
+    self.assertEqual(output_tensor.shape.as_list(), expected_output_shape)
+
+
 class ReversibleLayerTest(parameterized.TestCase, tf.test.TestCase):
 
   @combinations.generate(distribution_strategy_combinations())
@@ -160,13 +185,9 @@ class ReversibleLayerTest(parameterized.TestCase, tf.test.TestCase):
     input_tensor = tf.random.uniform(shape=[bsz, h, w, c])
     with distribution.scope():
       f = nn_blocks.ResidualInner(
-          filters=filters // 2,
-          strides=strides,
-          batch_norm_first=True)
+          filters=filters // 2, strides=strides, batch_norm_first=True)
       g = nn_blocks.ResidualInner(
-          filters=filters // 2,
-          strides=1,
-          batch_norm_first=True)
+          filters=filters // 2, strides=1, batch_norm_first=True)
       test_layer = nn_blocks.ReversibleLayer(f, g)
       test_layer.build(input_tensor.shape)
       optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
@@ -199,13 +220,9 @@ class ReversibleLayerTest(parameterized.TestCase, tf.test.TestCase):
     input_tensor = tf.random.uniform(shape=[bsz, h, w, c])
     with distribution.scope():
       f = nn_blocks.ResidualInner(
-          filters=filters // 2,
-          strides=strides,
-          batch_norm_first=False)
+          filters=filters // 2, strides=strides, batch_norm_first=False)
       g = nn_blocks.ResidualInner(
-          filters=filters // 2,
-          strides=1,
-          batch_norm_first=False)
+          filters=filters // 2, strides=1, batch_norm_first=False)
       test_layer = nn_blocks.ReversibleLayer(f, g)
       test_layer(input_tensor, training=False)  # init weights
       optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
@@ -247,24 +264,16 @@ class ReversibleLayerTest(parameterized.TestCase, tf.test.TestCase):
     input_tensor = tf.random.uniform(shape=[bsz, h, w, c * 4])  # bottleneck
     with distribution.scope():
       f_manual = nn_blocks.BottleneckResidualInner(
-          filters=filters // 2,
-          strides=strides,
-          batch_norm_first=False)
+          filters=filters // 2, strides=strides, batch_norm_first=False)
       g_manual = nn_blocks.BottleneckResidualInner(
-          filters=filters // 2,
-          strides=1,
-          batch_norm_first=False)
+          filters=filters // 2, strides=1, batch_norm_first=False)
       manual_grad_layer = nn_blocks.ReversibleLayer(f_manual, g_manual)
       manual_grad_layer(input_tensor, training=False)  # init weights
 
       f_auto = nn_blocks.BottleneckResidualInner(
-          filters=filters // 2,
-          strides=strides,
-          batch_norm_first=False)
+          filters=filters // 2, strides=strides, batch_norm_first=False)
       g_auto = nn_blocks.BottleneckResidualInner(
-          filters=filters // 2,
-          strides=1,
-          batch_norm_first=False)
+          filters=filters // 2, strides=1, batch_norm_first=False)
       auto_grad_layer = nn_blocks.ReversibleLayer(
           f_auto, g_auto, manual_grads=False)
       auto_grad_layer(input_tensor)  # init weights
@@ -294,12 +303,12 @@ class ReversibleLayerTest(parameterized.TestCase, tf.test.TestCase):
       self.assertAllClose(
           distribution.experimental_local_results(manual_grad),
           distribution.experimental_local_results(auto_grad),
-          atol=5e-3, rtol=5e-3)
+          atol=5e-3,
+          rtol=5e-3)
 
     # Verify that BN moving mean and variance is correct.
-    for manual_var, auto_var in zip(
-        manual_grad_layer.non_trainable_variables,
-        auto_grad_layer.non_trainable_variables):
+    for manual_var, auto_var in zip(manual_grad_layer.non_trainable_variables,
+                                    auto_grad_layer.non_trainable_variables):
       self.assertAllClose(manual_var, auto_var)
 
 

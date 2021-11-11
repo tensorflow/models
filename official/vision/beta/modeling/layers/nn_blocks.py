@@ -32,9 +32,7 @@ def _pad_strides(strides: int, axis: int) -> Tuple[int, int, int, int]:
     return (1, strides, strides, 1)
 
 
-def _maybe_downsample(x: tf.Tensor,
-                      out_filter: int,
-                      strides: int,
+def _maybe_downsample(x: tf.Tensor, out_filter: int, strides: int,
                       axis: int) -> tf.Tensor:
   """Downsamples feature map and 0-pads tensor if in_filter != out_filter."""
   data_format = 'NCHW' if axis == 1 else 'NHWC'
@@ -738,8 +736,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     x = self._conv2(x)
     x = self._norm2(x)
 
-    if (self._use_residual and
-        self._in_filters == self._out_filters and
+    if (self._use_residual and self._in_filters == self._out_filters and
         self._strides == 1):
       if self._stochastic_depth:
         x = self._stochastic_depth(x, training=training)
@@ -859,8 +856,9 @@ class ResidualInner(tf.keras.layers.Layer):
     base_config = super(ResidualInner, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def call(
-      self, inputs: tf.Tensor, training: Optional[bool] = None) -> tf.Tensor:
+  def call(self,
+           inputs: tf.Tensor,
+           training: Optional[bool] = None) -> tf.Tensor:
     x = inputs
     if self._batch_norm_first:
       x = self._batch_norm_0(x, training=training)
@@ -993,8 +991,9 @@ class BottleneckResidualInner(tf.keras.layers.Layer):
     base_config = super(BottleneckResidualInner, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def call(
-      self, inputs: tf.Tensor, training: Optional[bool] = None) -> tf.Tensor:
+  def call(self,
+           inputs: tf.Tensor,
+           training: Optional[bool] = None) -> tf.Tensor:
     x = inputs
     if self._batch_norm_first:
       x = self._batch_norm_0(x, training=training)
@@ -1063,20 +1062,23 @@ class ReversibleLayer(tf.keras.layers.Layer):
 
   def _ckpt_non_trainable_vars(self):
     self._f_non_trainable_vars = [
-        v.read_value() for v in self._f.non_trainable_variables]
+        v.read_value() for v in self._f.non_trainable_variables
+    ]
     self._g_non_trainable_vars = [
-        v.read_value() for v in self._g.non_trainable_variables]
+        v.read_value() for v in self._g.non_trainable_variables
+    ]
 
   def _load_ckpt_non_trainable_vars(self):
-    for v, v_chkpt in zip(
-        self._f.non_trainable_variables, self._f_non_trainable_vars):
+    for v, v_chkpt in zip(self._f.non_trainable_variables,
+                          self._f_non_trainable_vars):
       v.assign(v_chkpt)
-    for v, v_chkpt in zip(
-        self._g.non_trainable_variables, self._g_non_trainable_vars):
+    for v, v_chkpt in zip(self._g.non_trainable_variables,
+                          self._g_non_trainable_vars):
       v.assign(v_chkpt)
 
-  def call(
-      self, inputs: tf.Tensor, training: Optional[bool] = None) -> tf.Tensor:
+  def call(self,
+           inputs: tf.Tensor,
+           training: Optional[bool] = None) -> tf.Tensor:
 
     @tf.custom_gradient
     def reversible(
@@ -1101,12 +1103,12 @@ class ReversibleLayer(tf.keras.layers.Layer):
         fwdtape.watch(x)
         x1, x2 = tf.split(x, num_or_size_splits=2, axis=self._axis)
         f_x2 = self._f(x2, training=training)
-        x1_down = _maybe_downsample(
-            x1, f_x2.shape[self._axis], self._f.strides, self._axis)
+        x1_down = _maybe_downsample(x1, f_x2.shape[self._axis], self._f.strides,
+                                    self._axis)
         z1 = f_x2 + x1_down
         g_z1 = self._g(z1, training=training)
-        x2_down = _maybe_downsample(
-            x2, g_z1.shape[self._axis], self._f.strides, self._axis)
+        x2_down = _maybe_downsample(x2, g_z1.shape[self._axis], self._f.strides,
+                                    self._axis)
         y2 = x2_down + g_z1
 
         # Equation 8: https://arxiv.org/pdf/1707.04585.pdf
@@ -1114,17 +1116,17 @@ class ReversibleLayer(tf.keras.layers.Layer):
         y1 = tf.identity(z1)
         y = tf.concat([y1, y2], axis=self._axis)
 
-        irreversible = (
-            (self._f.strides != 1 or self._g.strides != 1)
-            or (y.shape[self._axis] != inputs.shape[self._axis]))
+        irreversible = ((self._f.strides != 1 or self._g.strides != 1) or
+                        (y.shape[self._axis] != inputs.shape[self._axis]))
 
         # Checkpointing moving mean/variance for batch normalization layers
         # as they shouldn't be updated during the custom gradient pass of f/g.
         self._ckpt_non_trainable_vars()
 
-      def grad_fn(dy: tf.Tensor,
-                  variables: Optional[List[tf.Variable]] = None,
-                  ) -> Tuple[List[tf.Tensor], List[tf.Tensor]]:
+      def grad_fn(
+          dy: tf.Tensor,
+          variables: Optional[List[tf.Variable]] = None,
+      ) -> Tuple[List[tf.Tensor], List[tf.Tensor]]:
         """Given dy calculate (dy/dx)|_{x_{input}} using f/g."""
         if irreversible or not self._manual_grads:
           grads_combined = fwdtape.gradient(
@@ -1158,16 +1160,12 @@ class ReversibleLayer(tf.keras.layers.Layer):
 
           # Compute gradients
           g_grads_combined = gtape.gradient(
-              g_z1,
-              [z1] + self._g.trainable_variables,
-              output_gradients=dy2)
+              g_z1, [z1] + self._g.trainable_variables, output_gradients=dy2)
           dz1 = dy1 + g_grads_combined[0]  # line 5
           dwg = g_grads_combined[1:]  # line 9
 
           f_grads_combined = ftape.gradient(
-              f_x2,
-              [x2] + self._f.trainable_variables,
-              output_gradients=dz1)
+              f_x2, [x2] + self._f.trainable_variables, output_gradients=dz1)
           dx2 = dy2 + f_grads_combined[0]  # line 6
           dwf = f_grads_combined[1:]  # line 8
           dx1 = dz1  # line 7
@@ -1263,10 +1261,8 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
         'filters': self._filters,
         'strides': self._strides,
         'regularize_depthwise': self._regularize_depthwise,
-        'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
-        'bias_regularizer': self._bias_regularizer,
         'activation': self._activation,
         'use_sync_bn': self._use_sync_bn,
         'norm_momentum': self._norm_momentum,
