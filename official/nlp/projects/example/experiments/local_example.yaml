@@ -1,0 +1,40 @@
+task:
+  model:
+    encoder:
+      type: bert
+      bert:
+        attention_dropout_rate: 0.1
+        dropout_rate: 0.1
+        hidden_activation: gelu
+        hidden_size: 288
+        initializer_range: 0.02
+        intermediate_size: 256
+        max_position_embeddings: 512
+        num_attention_heads: 6
+        num_layers: 2
+        type_vocab_size: 4
+        vocab_size: 114507
+  train_data:
+    input_path: 'YourData/COLA_train.tf_record'
+    is_training: true
+    global_batch_size: 32
+  validation_data:
+    input_path: 'YourData/COLA_eval.tf_record'
+    is_training: false
+    global_batch_size: 32
+trainer:
+  checkpoint_interval: 500
+  max_to_keep: 5
+  steps_per_loop: 100
+  summary_interval: 100
+  train_steps: 500
+  validation_interval: 100
+  validation_steps: -1
+  optimizer_config:
+    learning_rate:
+      polynomial:
+        initial_learning_rate: 0.001
+        decay_steps: 740000
+    warmup:
+      polynomial:
+        warmup_steps: 100

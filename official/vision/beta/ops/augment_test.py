@@ -283,10 +283,10 @@ class MixupAndCutmixTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(images.shape, aug_images.shape)
     self.assertEqual(images.dtype, aug_images.dtype)
     self.assertEqual([batch_size, num_classes], aug_labels.shape)
-    self.assertAllLessEqual(
-        aug_labels, 1. - label_smoothing + 2. / num_classes)  # With tolerance
-    self.assertAllGreaterEqual(
-        aug_labels, label_smoothing / num_classes - 1e4)  # With tolerance
+    self.assertAllLessEqual(aug_labels, 1. - label_smoothing +
+                            2. / num_classes)  # With tolerance
+    self.assertAllGreaterEqual(aug_labels, label_smoothing / num_classes -
+                               1e4)  # With tolerance
 
   def test_mixup_changes_image(self):
     batch_size = 12
@@ -303,11 +303,11 @@ class MixupAndCutmixTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(images.shape, aug_images.shape)
     self.assertEqual(images.dtype, aug_images.dtype)
     self.assertEqual([batch_size, num_classes], aug_labels.shape)
-    self.assertAllLessEqual(
-        aug_labels, 1. - label_smoothing + 2. / num_classes)  # With tolerance
-    self.assertAllGreaterEqual(
-        aug_labels, label_smoothing / num_classes - 1e4)  # With tolerance
-    self.assertTrue(not tf.math.reduce_all(images == aug_images))
+    self.assertAllLessEqual(aug_labels, 1. - label_smoothing +
+                            2. / num_classes)  # With tolerance
+    self.assertAllGreaterEqual(aug_labels, label_smoothing / num_classes -
+                               1e4)  # With tolerance
+    self.assertFalse(tf.math.reduce_all(images == aug_images))
 
   def test_cutmix_changes_image(self):
     batch_size = 12
@@ -324,11 +324,11 @@ class MixupAndCutmixTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(images.shape, aug_images.shape)
     self.assertEqual(images.dtype, aug_images.dtype)
     self.assertEqual([batch_size, num_classes], aug_labels.shape)
-    self.assertAllLessEqual(
-        aug_labels, 1. - label_smoothing + 2. / num_classes)  # With tolerance
-    self.assertAllGreaterEqual(
-        aug_labels, label_smoothing / num_classes - 1e4)  # With tolerance
-    self.assertTrue(not tf.math.reduce_all(images == aug_images))
+    self.assertAllLessEqual(aug_labels, 1. - label_smoothing +
+                            2. / num_classes)  # With tolerance
+    self.assertAllGreaterEqual(aug_labels, label_smoothing / num_classes -
+                               1e4)  # With tolerance
+    self.assertFalse(tf.math.reduce_all(images == aug_images))
 
 
 if __name__ == '__main__':

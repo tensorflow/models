@@ -1195,6 +1195,14 @@ class OpsTestBatchPositionSensitiveCropRegions(test_case.TestCase):
 class ReframeBoxMasksToImageMasksTest(test_case.TestCase,
                                       parameterized.TestCase):
 
+  def test_reframe_image_corners_relative_to_boxes(self):
+
+    def graph_fn():
+      return ops.reframe_image_corners_relative_to_boxes(
+          tf.constant([[0.1, 0.2, 0.3, 0.4]]))
+    np_boxes = self.execute_cpu(graph_fn, [])
+    self.assertAllClose(np_boxes, [[-0.5, -1, 4.5, 4.]])
+
   @parameterized.parameters(
       {'mask_dtype': tf.float32, 'mask_dtype_np': np.float32,
        'resize_method': 'bilinear'},

@@ -76,6 +76,7 @@ python3 official/nlp/train.py \
    --config_file=experiments/glue_mnli_matched.yaml \
    --params_override=task.init_checkpoint=${INIT_CKPT} \
    --params_override=runtime.distribution_strategy=tpu \
+   --params_override=task.train_data.input_path=${TRAIN_FILE},task.validation_data.input_path=${EVAL_FILE} \
    --tpu=??? \
    --mode=train_and_eval
 ```
@@ -97,3 +98,9 @@ python3 official/nlp/train.py \
    --tpu=??? \
    --mode=train_and_eval
 ```
+
+## Checkpoints
+
+Model        | Configuration                            | Training Data                                           | Checkpoint                                                                                             | Metrics
+------------ | :--------------------------------------: | ------------------------------------------------------: | :----------------------------------------------------------------------------------------------------: | :-----:
+BigBird base | 12 layer, 1024<= sequence length <= 4096 | Wiki + Books + CC-News + Stories (part of Common Crawl) | [bigbird_base](https://storage.googleapis.com/tf_model_garden/nlp/bigbird/bigbird.etc.base.keras.tar.gz) | Squad v1 F1 91.3, TriviaQA F1 79.8

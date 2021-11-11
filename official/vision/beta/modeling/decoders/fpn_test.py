@@ -27,11 +27,11 @@ from official.vision.beta.modeling.decoders import fpn
 class FPNTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (256, 3, 7, False),
-      (256, 3, 7, True),
+      (256, 3, 7, False, 'sum'),
+      (256, 3, 7, True, 'concat'),
   )
   def test_network_creation(self, input_size, min_level, max_level,
-                            use_separable_conv):
+                            use_separable_conv, fusion_type):
     """Test creation of FPN."""
     tf.keras.backend.set_image_data_format('channels_last')
 
@@ -42,6 +42,7 @@ class FPNTest(parameterized.TestCase, tf.test.TestCase):
         input_specs=backbone.output_specs,
         min_level=min_level,
         max_level=max_level,
+        fusion_type=fusion_type,
         use_separable_conv=use_separable_conv)
 
     endpoints = backbone(inputs)
@@ -87,6 +88,7 @@ class FPNTest(parameterized.TestCase, tf.test.TestCase):
         min_level=3,
         max_level=7,
         num_filters=256,
+        fusion_type='sum',
         use_separable_conv=False,
         use_sync_bn=False,
         activation='relu',

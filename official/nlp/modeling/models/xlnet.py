@@ -181,7 +181,7 @@ class XLNetClassifier(tf.keras.Model):
       initializer: tf.keras.initializers.Initializer = 'random_normal',
       summary_type: str = 'last',
       dropout_rate: float = 0.1,
-      head_name: str = 'sentence_prediction',
+      head_name: str = 'sentence_prediction',  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     super().__init__(**kwargs)
     self._network = network
@@ -271,7 +271,7 @@ class XLNetSpanLabeler(tf.keras.Model):
       end_n_top: int = 5,
       dropout_rate: float = 0.1,
       span_labeling_activation: tf.keras.initializers.Initializer = 'tanh',
-      initializer: tf.keras.initializers.Initializer = 'glorot_uniform',
+      initializer: tf.keras.initializers.Initializer = 'glorot_uniform',  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     super().__init__(**kwargs)
     self._config = {

@@ -17,10 +17,12 @@
 The trainer derives from the Orbit `StandardTrainer` class.
 """
 from typing import Union
+
 import gin
 import orbit
 import tensorflow as tf
 
+from official.modeling import optimization
 from official.modeling.multitask import base_model
 from official.modeling.multitask import multitask
 
@@ -34,7 +36,8 @@ class MultiTaskBaseTrainer(orbit.StandardTrainer):
                multi_task_model: Union[tf.keras.Model,
                                        base_model.MultiTaskBaseModel],
                optimizer: tf.optimizers.Optimizer,
-               trainer_options=None):
+               trainer_options=None,
+               train_datasets=None):
     self._strategy = tf.distribute.get_strategy()
     self._multi_task = multi_task
     self._multi_task_model = multi_task_model
@@ -43,6 +46,11 @@ class MultiTaskBaseTrainer(orbit.StandardTrainer):
     self._training_losses = None
     self._training_metrics = None
     self._global_step = orbit.utils.create_global_step()
+
+    # Creates a shadow copy of the weights to store weights moving average.
+    if isinstance(self._optimizer, optimization.ExponentialMovingAverage
+                 ) and not self._optimizer.has_shadow_copy:
+      self._optimizer.shadow_copy(multi_task_model)
 
     if hasattr(self.multi_task_model, "checkpoint_items"):
       checkpoint_items = self.multi_task_model.checkpoint_items
@@ -55,10 +63,11 @@ class MultiTaskBaseTrainer(orbit.StandardTrainer):
         global_step=self.global_step,
         **checkpoint_items)
 
-    train_datasets = {}
-    for name, task in self.multi_task.tasks.items():
-      train_datasets[name] = orbit.utils.make_distributed_dataset(
-          self.strategy, task.build_inputs, task.task_config.train_data)
+    if train_datasets is None:
+      train_datasets = {}
+      for name, task in self.multi_task.tasks.items():
+        train_datasets[name] = orbit.utils.make_distributed_dataset(
+            self.strategy, task.build_inputs, task.task_config.train_data)
 
     super().__init__(
         train_dataset=train_datasets,

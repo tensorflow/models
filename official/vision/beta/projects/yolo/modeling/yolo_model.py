@@ -14,90 +14,36 @@
 
 """Yolo models."""
 
+from typing import Mapping, Union
 import tensorflow as tf
-
-
-# Static base Yolo Models that do not require configuration
-# similar to a backbone model id.
-
-# this is done greatly simplify the model config
-# the structure is as follows. model version, {v3, v4, v#, ... etc}
-# the model config type {regular, tiny, small, large, ... etc}
-YOLO_MODELS = {
-    "v4":
-        dict(
-            regular=dict(
-                embed_spp=False,
-                use_fpn=True,
-                max_level_process_len=None,
-                path_process_len=6),
-            tiny=dict(
-                embed_spp=False,
-                use_fpn=False,
-                max_level_process_len=2,
-                path_process_len=1),
-            csp=dict(
-                embed_spp=False,
-                use_fpn=True,
-                max_level_process_len=None,
-                csp_stack=5,
-                fpn_depth=5,
-                path_process_len=6),
-            csp_large=dict(
-                embed_spp=False,
-                use_fpn=True,
-                max_level_process_len=None,
-                csp_stack=7,
-                fpn_depth=7,
-                path_process_len=8,
-                fpn_filter_scale=2),
-        ),
-    "v3":
-        dict(
-            regular=dict(
-                embed_spp=False,
-                use_fpn=False,
-                max_level_process_len=None,
-                path_process_len=6),
-            tiny=dict(
-                embed_spp=False,
-                use_fpn=False,
-                max_level_process_len=2,
-                path_process_len=1),
-            spp=dict(
-                embed_spp=True,
-                use_fpn=False,
-                max_level_process_len=2,
-                path_process_len=1),
-        ),
-}
+from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
 
 class Yolo(tf.keras.Model):
   """The YOLO model class."""
 
   def __init__(self,
-               backbone=None,
-               decoder=None,
-               head=None,
-               detection_generator=None,
+               backbone,
+               decoder,
+               head,
+               detection_generator,
                **kwargs):
     """Detection initialization function.
 
     Args:
-      backbone: `tf.keras.Model`, a backbone network.
-      decoder: `tf.keras.Model`, a decoder network.
-      head: `YoloHead`, the YOLO head.
-      detection_generator: `tf.keras.Model`, the detection generator.
+      backbone: `tf.keras.Model` a backbone network.
+      decoder: `tf.keras.Model` a decoder network.
+      head: `RetinaNetHead`, the RetinaNet head.
+      detection_generator: the detection generator.
       **kwargs: keyword arguments to be passed.
     """
-    super().__init__(**kwargs)
+    super(Yolo, self).__init__(**kwargs)
 
     self._config_dict = {
-        "backbone": backbone,
-        "decoder": decoder,
-        "head": head,
-        "detection_generator": detection_generator
+        'backbone': backbone,
+        'decoder': decoder,
+        'head': head,
+        'detection_generator': detection_generator
     }
 
     # model components
@@ -105,17 +51,19 @@ class Yolo(tf.keras.Model):
     self._decoder = decoder
     self._head = head
     self._detection_generator = detection_generator
+    self._fused = False
+    return
 
   def call(self, inputs, training=False):
-    maps = self._backbone(inputs)
-    decoded_maps = self._decoder(maps)
-    raw_predictions = self._head(decoded_maps)
+    maps = self.backbone(inputs)
+    decoded_maps = self.decoder(maps)
+    raw_predictions = self.head(decoded_maps)
     if training:
-      return {"raw_output": raw_predictions}
+      return {'raw_output': raw_predictions}
     else:
       # Post-processing.
-      predictions = self._detection_generator(raw_predictions)
-      predictions.update({"raw_output": raw_predictions})
+      predictions = self.detection_generator(raw_predictions)
+      predictions.update({'raw_output': raw_predictions})
       return predictions
 
   @property
@@ -140,3 +88,23 @@ class Yolo(tf.keras.Model):
   @classmethod
   def from_config(cls, config):
     return cls(**config)
+
+  @property
+  def checkpoint_items(
+      self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
+    """Returns a dictionary of items to be additionally checkpointed."""
+    items = dict(backbone=self.backbone, head=self.head)
+    if self.decoder is not None:
+      items.update(decoder=self.decoder)
+    return items
+
+  def fuse(self):
+    """Fuses all Convolution and Batchnorm layers to get better latency."""
+    print('Fusing Conv Batch Norm Layers.')
+    if not self._fused:
+      self._fused = True
+      for layer in self.submodules:
+        if isinstance(layer, nn_blocks.ConvBN):
+          layer.fuse()
+      self.summary()
+    return

@@ -16,6 +16,8 @@
 """Tests for MobileNet."""
 
 import itertools
+import math
+
 # Import libraries
 
 from absl.testing import parameterized
@@ -34,6 +36,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
       'MobileNetV3EdgeTPU',
       'MobileNetMultiAVG',
       'MobileNetMultiMAX',
+      'MobileNetMultiAVGSeg',
   )
   def test_serialize_deserialize(self, model_id):
     # Create a network object that sets all of its config options.
@@ -78,6 +81,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetV3EdgeTPU',
               'MobileNetMultiAVG',
               'MobileNetMultiMAX',
+              'MobileNetMultiAVGSeg',
           ],
       ))
   def test_input_specs(self, input_dim, model_id):
@@ -100,6 +104,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetV3EdgeTPU',
               'MobileNetMultiAVG',
               'MobileNetMultiMAX',
+              'MobileNetMultiAVGSeg',
           ],
           [32, 224],
       ))
@@ -118,6 +123,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         'MobileNetV3EdgeTPU': [32, 48, 96, 192],
         'MobileNetMultiMAX': [32, 64, 128, 160],
         'MobileNetMultiAVG': [32, 64, 160, 192],
+        'MobileNetMultiAVGSeg': [32, 64, 160, 96],
     }
 
     network = mobilenet.MobileNet(model_id=model_id,
@@ -141,6 +147,55 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetV3EdgeTPU',
               'MobileNetMultiAVG',
               'MobileNetMultiMAX',
+              'MobileNetMultiAVGSeg',
+          ],
+          [32, 224],
+      ))
+  def test_mobilenet_intermediate_layers(self, model_id, input_size):
+    tf.keras.backend.set_image_data_format('channels_last')
+    # Tests the mobilenet intermediate depthwise layers.
+    mobilenet_depthwise_layers = {
+        # The number of filters of depthwise layers having outputs been
+        # collected for filter_size_scale = 1.0. Only tests the mobilenet
+        # model with inverted bottleneck block using depthwise which excludes
+        # MobileNetV1.
+        'MobileNetV1': [],
+        'MobileNetV2': [144, 192, 576, 960],
+        'MobileNetV3Small': [16, 88, 144, 576],
+        'MobileNetV3Large': [72, 120, 672, 960],
+        'MobileNetV3EdgeTPU': [None, None, 384, 1280],
+        'MobileNetMultiMAX': [96, 128, 384, 640],
+        'MobileNetMultiAVG': [64, 192, 640, 768],
+        'MobileNetMultiAVGSeg': [64, 192, 640, 384],
+    }
+    network = mobilenet.MobileNet(model_id=model_id,
+                                  filter_size_scale=1.0,
+                                  output_intermediate_endpoints=True)
+
+    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    endpoints = network(inputs)
+
+    for idx, num_filter in enumerate(mobilenet_depthwise_layers[model_id]):
+      # Not using depthwise conv in this layer.
+      if num_filter is None:
+        continue
+
+      self.assertAllEqual(
+          [1, input_size / 2**(idx + 2), input_size / 2**(idx + 2), num_filter],
+          endpoints[str(idx + 2) + '/depthwise'].shape.as_list())
+
+  @parameterized.parameters(
+      itertools.product(
+          [
+              'MobileNetV1',
+              'MobileNetV2',
+              'MobileNetV3Large',
+              'MobileNetV3Small',
+              'MobileNetV3EdgeTPU',
+              'MobileNetMultiAVG',
+              'MobileNetMultiMAX',
+              'MobileNetMultiMAX',
+              'MobileNetMultiAVGSeg',
           ],
           [1.0, 0.75],
       ))
@@ -162,6 +217,8 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         ('MobileNetMultiAVG', 0.75): 2349704,
         ('MobileNetMultiMAX', 1.0): 3174560,
         ('MobileNetMultiMAX', 0.75): 2045816,
+        ('MobileNetMultiAVGSeg', 1.0): 2284000,
+        ('MobileNetMultiAVGSeg', 0.75): 1427816,
     }
 
     input_size = 224
@@ -172,6 +229,50 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
 
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     _ = network(inputs)
+
+  @parameterized.parameters(
+      itertools.product(
+          [
+              'MobileNetV1',
+              'MobileNetV2',
+              'MobileNetV3Large',
+              'MobileNetV3Small',
+              'MobileNetV3EdgeTPU',
+              'MobileNetMultiAVG',
+              'MobileNetMultiMAX',
+              'MobileNetMultiAVGSeg',
+          ],
+          [8, 16, 32],
+      ))
+  def test_mobilenet_output_stride(self, model_id, output_stride):
+    """Test for creation of a MobileNet with different output strides."""
+    tf.keras.backend.set_image_data_format('channels_last')
+
+    mobilenet_layers = {
+        # The number of filters of the layers outputs been collected
+        # for filter_size_scale = 1.0.
+        'MobileNetV1': 1024,
+        'MobileNetV2': 320,
+        'MobileNetV3Small': 96,
+        'MobileNetV3Large': 160,
+        'MobileNetV3EdgeTPU': 192,
+        'MobileNetMultiMAX': 160,
+        'MobileNetMultiAVG': 192,
+        'MobileNetMultiAVGSeg': 96,
+    }
+
+    network = mobilenet.MobileNet(
+        model_id=model_id, filter_size_scale=1.0, output_stride=output_stride)
+    level = int(math.log2(output_stride))
+    input_size = 224
+
+    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    endpoints = network(inputs)
+    num_filter = mobilenet_layers[model_id]
+    self.assertAllEqual(
+        [1, input_size / output_stride, input_size / output_stride, num_filter],
+        endpoints[str(level)].shape.as_list())
+
 
 if __name__ == '__main__':
   tf.test.main()

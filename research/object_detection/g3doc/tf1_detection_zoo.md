@@ -173,10 +173,19 @@ Model name                                                                      
 [faster_rcnn_resnet101_snapshot_serengeti](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_snapshot_serengeti_2020_06_10.tar.gz)   | 38           | Boxes
 [context_rcnn_resnet101_snapshot_serengeti](http://download.tensorflow.org/models/object_detection/context_rcnn_resnet101_snapshot_serengeti_2020_06_10.tar.gz) | 56           | Boxes
 
+## Pixel 6 Edge TPU models
+
+Model name                                                                                                                    | Pixel 6 Edge TPU Speed (ms) | Pixel 6 Speed with Post-processing on CPU (ms) | COCO 2017 mAP (uint8) | Outputs
+----------------------------------------------------------------------------------------------------------------------------- | :-------------------------: | :--------------------------------------------: | :-------------------: | :-----:
+[spaghettinet_edgetpu_s](http://download.tensorflow.org/models/object_detection/tf1/spaghettinet_edgetpu_s_2021_10_13.tar.gz) | 1.3                         | 1.8                                            | 26.3                  | Boxes
+[spaghettinet_edgetpu_m](http://download.tensorflow.org/models/object_detection/tf1/spaghettinet_edgetpu_m_2021_10_13.tar.gz) | 1.4                         | 1.9                                            | 27.4                  | Boxes
+[spaghettinet_edgetpu_l](http://download.tensorflow.org/models/object_detection/tf1/spaghettinet_edgetpu_l_2021_10_13.tar.gz) | 1.7                         | 2.1                                            | 28.0                  | Boxes
+
 [^1]: See [MSCOCO evaluation protocol](http://cocodataset.org/#detections-eval).
-    The COCO mAP numbers here are evaluated on COCO 14 minival set (note that
-    our split is different from COCO 17 Val). A full list of image ids used in
-    our split could be fould
+    The COCO mAP numbers, with the exception of the Pixel 6 Edge TPU models,
+    are evaluated on COCO 14 minival set (note that our split is different
+    from COCO 17 Val). A full list of image ids used in our split could be
+    found
     [here](https://github.com/tensorflow/models/blob/master/research/object_detection/data/mscoco_minival_ids.txt).
 [^2]: This is PASCAL mAP with a slightly different way of true positives
     computation: see

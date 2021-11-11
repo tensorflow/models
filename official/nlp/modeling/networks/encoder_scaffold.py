@@ -21,7 +21,6 @@ from absl import logging
 import gin
 import tensorflow as tf
 
-from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 
 
@@ -103,6 +102,9 @@ class EncoderScaffold(tf.keras.Model):
     dict_outputs: Whether to use a dictionary as the model outputs.
     layer_idx_as_attention_seed: Whether to include layer_idx in
       attention_cfg in hidden_cfg.
+    feed_layer_idx: whether the scaffold should feed layer index to hidden_cls.
+    recursive: whether to pass the second return of the hidden layer as the last
+      element among the inputs. None will be passed as the initial state.
   """
 
   def __init__(self,
@@ -115,12 +117,14 @@ class EncoderScaffold(tf.keras.Model):
                num_hidden_instances=1,
                hidden_cls=layers.Transformer,
                hidden_cfg=None,
-               mask_cls=keras_nlp.layers.SelfAttentionMask,
+               mask_cls=layers.SelfAttentionMask,
                mask_cfg=None,
                layer_norm_before_pooling=False,
                return_all_layer_outputs=False,
                dict_outputs=False,
                layer_idx_as_attention_seed=False,
+               feed_layer_idx=False,
+               recursive=False,
                **kwargs):
 
     if embedding_cls:
@@ -146,7 +150,7 @@ class EncoderScaffold(tf.keras.Model):
           shape=(seq_length,), dtype=tf.int32, name='input_type_ids')
       inputs = [word_ids, mask, type_ids]
 
-      embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
+      embedding_layer = layers.OnDeviceEmbedding(
           vocab_size=embedding_cfg['vocab_size'],
           embedding_width=embedding_cfg['hidden_size'],
           initializer=embedding_cfg['initializer'],
@@ -155,13 +159,13 @@ class EncoderScaffold(tf.keras.Model):
       word_embeddings = embedding_layer(word_ids)
 
       # Always uses dynamic slicing for simplicity.
-      position_embedding_layer = keras_nlp.layers.PositionEmbedding(
+      position_embedding_layer = layers.PositionEmbedding(
           initializer=embedding_cfg['initializer'],
           max_length=embedding_cfg['max_seq_length'],
           name='position_embedding')
       position_embeddings = position_embedding_layer(word_embeddings)
 
-      type_embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
+      type_embedding_layer = layers.OnDeviceEmbedding(
           vocab_size=embedding_cfg['type_vocab_size'],
           embedding_width=embedding_cfg['hidden_size'],
           initializer=embedding_cfg['initializer'],
@@ -202,6 +206,8 @@ class EncoderScaffold(tf.keras.Model):
            'contain classes or instances with size specified by '
            'num_hidden_instances, got %d vs %d.') % self.name, len(hidden_cls),
           num_hidden_instances)
+    # Consider supporting customized init states.
+    recursive_states = None
     for i in range(num_hidden_instances):
       if isinstance(hidden_cls, list):
         cur_hidden_cls = hidden_cls[i]
@@ -212,10 +218,15 @@ class EncoderScaffold(tf.keras.Model):
             layer_idx_as_attention_seed):
           hidden_cfg = copy.deepcopy(hidden_cfg)
           hidden_cfg['attention_cfg']['seed'] = i
+        if feed_layer_idx:
+          hidden_cfg['layer_idx'] = i
         layer = cur_hidden_cls(**hidden_cfg)
       else:
         layer = cur_hidden_cls
-      data = layer([data, attention_mask])
+      if recursive:
+        data, recursive_states = layer([data, attention_mask, recursive_states])
+      else:
+        data = layer([data, attention_mask])
       layer_output_data.append(data)
       hidden_layers.append(layer)
 

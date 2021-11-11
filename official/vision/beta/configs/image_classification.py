@@ -70,6 +70,7 @@ class ImageClassificationModel(hyperparams.Config):
 
 @dataclasses.dataclass
 class Losses(hyperparams.Config):
+  loss_weight: float = 1.0
   one_hot: bool = True
   label_smoothing: float = 0.0
   l2_weight_decay: float = 0.0
@@ -119,6 +120,7 @@ def image_classification_imagenet() -> cfg.ExperimentConfig:
   eval_batch_size = 4096
   steps_per_epoch = IMAGENET_TRAIN_EXAMPLES // train_batch_size
   config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(enable_xla=True),
       task=ImageClassificationTask(
           model=ImageClassificationModel(
               num_classes=1001,

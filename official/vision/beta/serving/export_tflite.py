@@ -12,7 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Binary to convert a saved model to tflite model."""
+r"""Binary to convert a saved model to tflite model.
+
+It requires a SavedModel exported using export_saved_model.py with batch size 1
+and input type `tflite`, and using the same config file used for exporting saved
+model. It includes optional post-training quantization. When using integer
+quantization, calibration steps need to be provided to calibrate model input.
+
+To convert a SavedModel to a TFLite model:
+
+EXPERIMENT_TYPE = XX
+TFLITE_PATH = XX
+SAVED_MOODEL_DIR = XX
+CONFIG_FILE = XX
+export_tflite --experiment=${EXPERIMENT_TYPE} \
+              --saved_model_dir=${SAVED_MOODEL_DIR} \
+              --tflite_path=${TFLITE_PATH} \
+              --config_file=${CONFIG_FILE} \
+              --quant_type=fp16 \
+              --calibration_steps=500
+"""
 from absl import app
 from absl import flags
 from absl import logging

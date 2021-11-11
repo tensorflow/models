@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Contains definitions of Darknet Backbone Networks.
 
-   The models are inspired by ResNet, and CSPNet
+   The models are inspired by ResNet and CSPNet.
 
 Residual networks (ResNets) were proposed in:
 [1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
@@ -384,13 +383,15 @@ class Darknet(tf.keras.Model):
       max_level=5,
       width_scale=1.0,
       depth_scale=1.0,
+      use_reorg_input=False,
       csp_level_mod=(),
       activation=None,
       use_sync_bn=False,
+      use_separable_conv=False,
       norm_momentum=0.99,
       norm_epsilon=0.001,
       dilate=False,
-      kernel_initializer='glorot_uniform',
+      kernel_initializer='VarianceScaling',
       kernel_regularizer=None,
       bias_regularizer=None,
       **kwargs):
@@ -413,11 +414,13 @@ class Darknet(tf.keras.Model):
     self._norm_momentum = norm_momentum
     self._norm_epislon = norm_epsilon
     self._use_sync_bn = use_sync_bn
+    self._use_separable_conv = use_separable_conv
     self._activation = activation
     self._kernel_regularizer = kernel_regularizer
     self._dilate = dilate
     self._width_scale = width_scale
     self._depth_scale = depth_scale
+    self._use_reorg_input = use_reorg_input
 
     self._default_dict = {
         'kernel_initializer': self._kernel_initializer,
@@ -427,6 +430,7 @@ class Darknet(tf.keras.Model):
         'norm_epsilon': self._norm_epislon,
         'use_sync_bn': self._use_sync_bn,
         'activation': self._activation,
+        'use_separable_conv': self._use_separable_conv,
         'dilation_rate': 1,
         'name': None
     }
@@ -448,6 +452,12 @@ class Darknet(tf.keras.Model):
     return self._splits
 
   def _build_struct(self, net, inputs):
+    if self._use_reorg_input:
+      inputs = nn_blocks.Reorg()(inputs)
+      net[0].filters = net[1].filters
+      net[0].output_name = net[1].output_name
+      del net[1]
+
     endpoints = collections.OrderedDict()
     stack_outputs = [inputs]
     for i, config in enumerate(net):
@@ -507,10 +517,12 @@ class Darknet(tf.keras.Model):
     self._default_dict['name'] = f'{name}_csp_down'
     if self._dilate:
       self._default_dict['dilation_rate'] = config.dilation_rate
+      degrid = int(tf.math.log(float(config.dilation_rate)) / tf.math.log(2.))
     else:
       self._default_dict['dilation_rate'] = 1
+      degrid = 0
 
-    # swap/add dilation
+    # swap/add dialation
     x, x_route = nn_blocks.CSPRoute(
         filters=config.filters,
         filter_scale=csp_filter_scale,
@@ -518,7 +530,7 @@ class Darknet(tf.keras.Model):
         **self._default_dict)(
             inputs)
 
-    dilated_reps = config.repetitions - self._default_dict['dilation_rate'] // 2
+    dilated_reps = config.repetitions - degrid
     for i in range(dilated_reps):
       self._default_dict['name'] = f'{name}_{i}'
       x = nn_blocks.DarkResidual(
@@ -528,8 +540,8 @@ class Darknet(tf.keras.Model):
               x)
 
     for i in range(dilated_reps, config.repetitions):
-      self._default_dict[
-          'dilation_rate'] = self._default_dict['dilation_rate'] // 2
+      self._default_dict['dilation_rate'] = max(
+          1, self._default_dict['dilation_rate'] // 2)
       self._default_dict[
           'name'] = f"{name}_{i}_degridded_{self._default_dict['dilation_rate']}"
       x = nn_blocks.DarkResidual(
@@ -592,8 +604,8 @@ class Darknet(tf.keras.Model):
         filters=config.filters, downsample=True, **self._default_dict)(
             inputs)
 
-    dilated_reps = config.repetitions - (
-        self._default_dict['dilation_rate'] // 2) - 1
+    dilated_reps = config.repetitions - self._default_dict[
+        'dilation_rate'] // 2 - 1
     for i in range(dilated_reps):
       self._default_dict['name'] = f'{name}_{i}'
       x = nn_blocks.DarkResidual(
@@ -663,22 +675,24 @@ def build_darknet(
     input_specs: tf.keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: tf.keras.regularizers.Regularizer = None
+) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds darknet."""
 
-  backbone_cfg = backbone_config.get()
+  backbone_config = backbone_config.get()
   model = Darknet(
-      model_id=backbone_cfg.model_id,
-      min_level=backbone_cfg.min_level,
-      max_level=backbone_cfg.max_level,
+      model_id=backbone_config.model_id,
+      min_level=backbone_config.min_level,
+      max_level=backbone_config.max_level,
       input_specs=input_specs,
-      dilate=backbone_cfg.dilate,
-      width_scale=backbone_cfg.width_scale,
-      depth_scale=backbone_cfg.depth_scale,
+      dilate=backbone_config.dilate,
+      width_scale=backbone_config.width_scale,
+      depth_scale=backbone_config.depth_scale,
+      use_reorg_input=backbone_config.use_reorg_input,
       activation=norm_activation_config.activation,
       use_sync_bn=norm_activation_config.use_sync_bn,
+      use_separable_conv=backbone_config.use_separable_conv,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
       kernel_regularizer=l2_regularizer)
-  model.summary()
   return model

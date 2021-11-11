@@ -17,3 +17,4 @@
 from official.nlp.configs import finetuning_experiments
 from official.nlp.configs import pretraining_experiments
 from official.nlp.configs import wmt_transformer_experiments
+from official.nlp.projects.teams import teams_experiments

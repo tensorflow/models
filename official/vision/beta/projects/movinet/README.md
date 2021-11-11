@@ -188,7 +188,7 @@ W-2135 CPU.
 
 ## Prediction Examples
 
-Please check out our [Colab Notebook](https://colab.research.google.com/github/tensorflow/models/tree/master/official/vision/beta/projects/movinet/movinet_tutorial.ipynb)
+Please check out our [Colab Notebook](https://colab.research.google.com/github/tensorflow/models/blob/master/official/vision/beta/projects/movinet/movinet_tutorial.ipynb)
 to get started with MoViNets.
 
 This section provides examples on how to run prediction.

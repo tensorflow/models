@@ -25,7 +25,7 @@ from official.modeling import optimization
 from official.modeling import tf_utils
 from official.modeling.fast_training.progressive import policies
 from official.modeling.hyperparams import base_config
-from official.nlp import keras_nlp
+from official.nlp import modeling
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
 from official.nlp.data import data_loader_factory
@@ -96,7 +96,7 @@ def build_sub_encoder(encoder, target_layer_id):
   input_ids = encoder.inputs[0]
   input_mask = encoder.inputs[1]
   type_ids = encoder.inputs[2]
-  attention_mask = keras_nlp.layers.SelfAttentionMask()(
+  attention_mask = modeling.layers.SelfAttentionMask()(
       inputs=input_ids, to_mask=input_mask)
   embedding_output = encoder.embedding_layer(input_ids, type_ids)
 

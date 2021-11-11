@@ -18,7 +18,7 @@
 import tensorflow as tf
 
 from official.modeling import activations
-from official.nlp import keras_nlp
+from official.nlp import modeling
 from official.nlp.modeling import layers
 from official.nlp.projects.bigbird import recompute_grad
 from official.nlp.projects.bigbird import recomputing_dropout
@@ -136,7 +136,7 @@ class BigBirdEncoder(tf.keras.Model):
 
     if embedding_width is None:
       embedding_width = hidden_size
-    self._embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
+    self._embedding_layer = modeling.layers.OnDeviceEmbedding(
         vocab_size=vocab_size,
         embedding_width=embedding_width,
         initializer=initializer,
@@ -144,12 +144,12 @@ class BigBirdEncoder(tf.keras.Model):
     word_embeddings = self._embedding_layer(word_ids)
 
     # Always uses dynamic slicing for simplicity.
-    self._position_embedding_layer = keras_nlp.layers.PositionEmbedding(
+    self._position_embedding_layer = modeling.layers.PositionEmbedding(
         initializer=initializer,
         max_length=max_position_embeddings,
         name='position_embedding')
     position_embeddings = self._position_embedding_layer(word_embeddings)
-    self._type_embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
+    self._type_embedding_layer = modeling.layers.OnDeviceEmbedding(
         vocab_size=type_vocab_size,
         embedding_width=embedding_width,
         initializer=initializer,

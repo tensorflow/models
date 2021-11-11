@@ -427,5 +427,17 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     for step, value in expected_lr_step_values:
       self.assertAlmostEqual(lr(step).numpy(), value)
 
+
+class OptimizerFactoryRegistryTest(tf.test.TestCase):
+
+  def test_registry(self):
+
+    class MyClass():
+      pass
+    optimizer_factory.register_optimizer_cls('test', MyClass)
+    self.assertIn('test', optimizer_factory.OPTIMIZERS_CLS)
+    with self.assertRaisesRegex(ValueError, 'test already registered.*'):
+      optimizer_factory.register_optimizer_cls('test', MyClass)
+
 if __name__ == '__main__':
   tf.test.main()

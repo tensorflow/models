@@ -14,10 +14,13 @@
 
 """Contains definitions of ROI sampler."""
 # Import libraries
+
 import tensorflow as tf
 
-from official.vision import keras_cv
 from official.vision.beta.modeling.layers import box_sampler
+from official.vision.beta.ops import box_matcher
+from official.vision.beta.ops import iou_similarity
+from official.vision.beta.ops import target_gather
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -64,14 +67,14 @@ class ROISampler(tf.keras.layers.Layer):
         'skip_subsampling': skip_subsampling,
     }
 
-    self._sim_calc = keras_cv.ops.IouSimilarity()
-    self._box_matcher = keras_cv.ops.BoxMatcher(
+    self._sim_calc = iou_similarity.IouSimilarity()
+    self._box_matcher = box_matcher.BoxMatcher(
         thresholds=[
             background_iou_low_threshold, background_iou_high_threshold,
             foreground_iou_threshold
         ],
         indicators=[-3, -1, -2, 1])
-    self._target_gather = keras_cv.ops.TargetGather()
+    self._target_gather = target_gather.TargetGather()
 
     self._sampler = box_sampler.BoxSampler(
         num_sampled_rois, foreground_fraction)

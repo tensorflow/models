@@ -100,6 +100,7 @@ class SemanticSegmentationTask(base_task.Task):
         aug_scale_min=params.aug_scale_min,
         aug_scale_max=params.aug_scale_max,
         aug_rand_hflip=params.aug_rand_hflip,
+        preserve_aspect_ratio=params.preserve_aspect_ratio,
         dtype=params.dtype)
 
     reader = input_reader_factory.input_reader_generator(
@@ -139,6 +140,8 @@ class SemanticSegmentationTask(base_task.Task):
     if aux_losses:
       total_loss += tf.add_n(aux_losses)
 
+    total_loss = loss_params.loss_weight * total_loss
+
     return total_loss
 
   def build_metrics(self, training: bool = True):
@@ -157,6 +160,10 @@ class SemanticSegmentationTask(base_task.Task):
           rescale_predictions=not self.task_config.validation_data
           .resize_eval_groundtruth,
           dtype=tf.float32)
+
+      # Update state on CPU if TPUStrategy due to dynamic resizing.
+      self._process_iou_metric_on_cpu = isinstance(
+          tf.distribute.get_strategy(), tf.distribute.TPUStrategy)
 
     return metrics
 
@@ -251,7 +258,11 @@ class SemanticSegmentationTask(base_task.Task):
       loss = 0
 
     logs = {self.loss: loss}
-    logs.update({self.iou_metric.name: (labels, outputs)})
+
+    if self._process_iou_metric_on_cpu:
+      logs.update({self.iou_metric.name: (labels, outputs)})
+    else:
+      self.iou_metric.update_state(labels, outputs)
 
     if metrics:
       self.process_metrics(metrics, labels, outputs)
@@ -267,8 +278,9 @@ class SemanticSegmentationTask(base_task.Task):
     if state is None:
       self.iou_metric.reset_states()
       state = self.iou_metric
-    self.iou_metric.update_state(step_outputs[self.iou_metric.name][0],
-                                 step_outputs[self.iou_metric.name][1])
+    if self._process_iou_metric_on_cpu:
+      self.iou_metric.update_state(step_outputs[self.iou_metric.name][0],
+                                   step_outputs[self.iou_metric.name][1])
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):

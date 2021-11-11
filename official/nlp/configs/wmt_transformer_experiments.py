@@ -43,6 +43,7 @@ def wmt_transformer_large() -> cfg.ExperimentConfig:
   encdecoder = translation.EncDecoder(
       num_attention_heads=16, intermediate_size=hidden_size * 4)
   config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(enable_xla=True),
       task=translation.TranslationConfig(
           model=translation.ModelConfig(
               encoder=encdecoder,

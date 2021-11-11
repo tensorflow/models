@@ -14,23 +14,37 @@
 
 """Funnel Transformer network."""
 # pylint: disable=g-classes-have-attributes
-from typing import Union, Collection
+
+from typing import Union, Sequence
 from absl import logging
+import numpy as np
 import tensorflow as tf
 
-from official.nlp import keras_nlp
+from official.nlp.modeling import layers
+
+_MAX = 'max'
+_AVG = 'avg'
+_TRUNCATED_AVG = 'truncated_avg'
 
 
-def _pool_and_concat(data, unpool_length: int, stride: int,
-                     axes: Union[Collection[int], int]):
-  """Pools the data along a given axis with stride.
+def _get_policy_dtype():
+  try:
+    return tf.keras.mixed_precision.global_policy().compute_dtype or tf.float32
+  except AttributeError:  # tf1 has no attribute 'global_policy'
+    return tf.float32
+
+
+def _pool_and_concat(mask, unpool_length: int, strides: Union[Sequence[int],
+                                                              int],
+                     axes: Union[Sequence[int], int]):
+  """Pools the mask along a given axis with stride.
 
   It also skips first unpool_length elements.
 
   Args:
-    data: Tensor to be pooled.
+    mask: Tensor to be pooled.
     unpool_length: Leading elements to be skipped.
-    stride: Stride for the given axis.
+    strides: Strides for the given axes.
     axes: Axes to pool the Tensor.
 
   Returns:
@@ -39,18 +53,111 @@ def _pool_and_concat(data, unpool_length: int, stride: int,
   # Wraps the axes as a list.
   if isinstance(axes, int):
     axes = [axes]
+  if isinstance(strides, int):
+    strides = [strides] * len(axes)
+  else:
+    if len(strides) != len(axes):
+      raise ValueError('The lengths of strides and axes need to match.')
+  # Bypass no pooling cases.
+  if np.all(np.array(strides) == 1):
+    return mask
 
-  for axis in axes:
+  for axis, stride in zip(axes, strides):
     # Skips first `unpool_length` tokens.
     unpool_tensor_shape = [slice(None)] * axis + [slice(None, unpool_length)]
-    unpool_tensor = data[unpool_tensor_shape]
+    unpool_tensor = mask[unpool_tensor_shape]
     # Pools the second half.
     pool_tensor_shape = [slice(None)] * axis + [
         slice(unpool_length, None, stride)
     ]
-    pool_tensor = data[pool_tensor_shape]
-    data = tf.concat((unpool_tensor, pool_tensor), axis=axis)
-  return data
+    pool_tensor = mask[pool_tensor_shape]
+    mask = tf.concat((unpool_tensor, pool_tensor), axis=axis)
+  return mask
+
+
+def _create_truncated_avg_transforms(seq_length: int,
+                                     pool_strides: Sequence[int]):
+  """Computes pooling transforms.
+
+  The pooling_transform is of shape [seq_length,
+  seq_length//pool_stride] and
+  pooling_transform[i,j] = 1.0/pool_stride if i//pool_stride == j
+                           0.0                otherwise.
+  It's in essense average pooling but truncate the final window if it
+  seq_length % pool_stride != 0.
+  For seq_length==6 and pool_stride==2, it is
+  [[ 0.5, 0.0, 0.0 ],
+   [ 0.5, 0.0, 0.0 ],
+   [ 0.0, 0.5, 0.0 ],
+   [ 0.0, 0.5, 0.0 ],
+   [ 0.0, 0.0, 0.5 ],
+   [ 0.0, 0.0, 0.5 ]]
+
+  Args:
+    seq_length: int, sequence length.
+    pool_strides: Sequence of pooling strides for each layer.
+
+  Returns:
+    pooling_transforms: Sequence of pooling transforms (Tensors) for each layer.
+  """
+
+  pooling_transforms = []
+  for pool_stride in pool_strides:
+    if pool_stride == 1:
+      pooling_transforms.append(None)
+    else:
+      pooled_seq_length = seq_length // pool_stride
+
+      pfac, sl, psl = pool_stride, seq_length, pooled_seq_length
+      transform = [[1.0 if (i // pfac) == j else 0.0
+                    for j in range(psl)]
+                   for i in range(sl)]
+      transform = tf.constant(transform, dtype=_get_policy_dtype())
+
+      pooling_transforms.append(transform / pool_stride)
+      seq_length = pooled_seq_length
+
+  return pooling_transforms
+
+
+def _create_truncated_avg_masks(input_mask: tf.Tensor,
+                                pool_strides: Sequence[int],
+                                transforms: Sequence[tf.Tensor]):
+  """Computes attention masks.
+
+  For [1,1,1,0,0]
+
+  Args:
+    input_mask: Tensor of shape [batch_size, seq_length].
+    pool_strides: Sequence of pooling strides for each layer.
+    transforms: Sequence of off-diagonal matrices filling with 0.0 and
+      1/pool_stride.
+
+  Returns:
+    attention_masks: Sequence of attention masks for each layer.
+  """
+
+  def create_2d_mask(from_length, mask):
+    return tf.einsum('F,BT->BFT', tf.ones([from_length], dtype=mask.dtype),
+                     mask)
+
+  attention_masks = []
+  seq_length = tf.shape(input_mask)[-1]
+  layer_mask = tf.cast(input_mask, dtype=_get_policy_dtype())
+  for pool_stride, transform in zip(pool_strides, transforms):
+    if pool_stride == 1:
+      attention_masks.append(create_2d_mask(seq_length, layer_mask))
+    else:
+      pooled_seq_length = seq_length // pool_stride
+      attention_masks.append(create_2d_mask(pooled_seq_length, layer_mask))
+
+      layer_mask = tf.cast(
+          tf.einsum('BF,FT->BT', layer_mask, transform) > 0.0,
+          dtype=layer_mask.dtype)
+      seq_length = pooled_seq_length
+  del seq_length
+
+  return attention_masks
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
@@ -80,7 +187,10 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       dropout.
     attention_dropout: The dropout rate to use for the attention layers within
       the transformer layers.
-    pool_stride: Pooling stride to compress the sequence length.
+    pool_type: Pooling type. Choose from ['max', 'avg', 'truncated_avg'].
+    pool_stride: An int or a list of ints. Pooling stride(s) to compress the
+      sequence length. If set to int, each layer will have the same stride size.
+      If set to list, the number of elements needs to match num_layers.
     unpool_length: Leading n tokens to be skipped from pooling.
     initializer: The initialzer to use for all weights in this encoder.
     output_range: The sequence output range, [0, output_range), by slicing the
@@ -111,6 +221,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       inner_activation=lambda x: tf.keras.activations.gelu(x, approximate=True),
       output_dropout=0.1,
       attention_dropout=0.1,
+      pool_type=_MAX,
       pool_stride=2,
       unpool_length=0,
       initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
@@ -127,7 +238,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       embedding_width = hidden_size
 
     if embedding_layer is None:
-      self._embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
+      self._embedding_layer = layers.OnDeviceEmbedding(
           vocab_size=vocab_size,
           embedding_width=embedding_width,
           initializer=initializer,
@@ -135,12 +246,12 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
     else:
       self._embedding_layer = embedding_layer
 
-    self._position_embedding_layer = keras_nlp.layers.PositionEmbedding(
+    self._position_embedding_layer = layers.PositionEmbedding(
         initializer=initializer,
         max_length=max_sequence_length,
         name='position_embedding')
 
-    self._type_embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
+    self._type_embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=type_vocab_size,
         embedding_width=embedding_width,
         initializer=initializer,
@@ -165,10 +276,10 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
           name='embedding_projection')
 
     self._transformer_layers = []
-    self._attention_mask_layer = keras_nlp.layers.SelfAttentionMask(
+    self._attention_mask_layer = layers.SelfAttentionMask(
         name='self_attention_mask')
     for i in range(num_layers):
-      layer = keras_nlp.layers.TransformerEncoderBlock(
+      layer = layers.TransformerEncoderBlock(
           num_attention_heads=num_attention_heads,
           inner_dim=inner_dim,
           inner_activation=inner_activation,
@@ -185,13 +296,41 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
         activation='tanh',
         kernel_initializer=initializer,
         name='pooler_transform')
-    self._att_input_pool_layer = tf.keras.layers.MaxPooling1D(
-        pool_size=pool_stride,
-        strides=pool_stride,
-        padding='same',
-        name='att_input_pool_layer')
-    self._pool_stride = pool_stride
+    if isinstance(pool_stride, int):
+      # TODO(b/197133196): Pooling layer can be shared.
+      pool_strides = [pool_stride] * num_layers
+    else:
+      if len(pool_stride) != num_layers:
+        raise ValueError('Lengths of pool_stride and num_layers are not equal.')
+      pool_strides = pool_stride
+    # TODO(crickwu): explore tf.keras.layers.serialize method.
+    if pool_type == _MAX:
+      pool_cls = tf.keras.layers.MaxPooling1D
+    elif pool_type == _AVG:
+      pool_cls = tf.keras.layers.AveragePooling1D
+    elif pool_type == _TRUNCATED_AVG:
+      # TODO(b/203665205): unpool_length should be implemented.
+      if unpool_length != 0:
+        raise ValueError('unpool_length is not supported by truncated_avg now.')
+      # Compute the attention masks and pooling transforms.
+      self._pooling_transforms = _create_truncated_avg_transforms(
+          max_sequence_length, pool_strides)
+    else:
+      raise ValueError('pool_type not supported.')
+
+    if pool_type in (_MAX, _AVG):
+      self._att_input_pool_layers = []
+      for layer_pool_stride in pool_strides:
+        att_input_pool_layer = pool_cls(
+            pool_size=layer_pool_stride,
+            strides=layer_pool_stride,
+            padding='same',
+            name='att_input_pool_layer')
+        self._att_input_pool_layers.append(att_input_pool_layer)
+
+    self._pool_strides = pool_strides  # This is a list here.
     self._unpool_length = unpool_length
+    self._pool_type = pool_type
 
     self._config = {
         'vocab_size': vocab_size,
@@ -209,6 +348,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
         'embedding_width': embedding_width,
         'embedding_layer': embedding_layer,
         'norm_first': norm_first,
+        'pool_type': pool_type,
         'pool_stride': pool_stride,
         'unpool_length': unpool_length,
     }
@@ -247,33 +387,64 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
     encoder_outputs = []
     x = embeddings
     # TODO(b/195972228): attention_mask can be co-generated with pooling.
-    attention_mask = _pool_and_concat(
-        attention_mask,
-        unpool_length=self._unpool_length,
-        stride=self._pool_stride,
-        axes=[1])
-    for layer in self._transformer_layers:
-      # Pools layer for compressing the query length.
-      pooled_inputs = self._att_input_pool_layer(x[:, self._unpool_length:, :])
-      query_inputs = tf.concat(
-          values=(tf.cast(
-              x[:, :self._unpool_length, :],
-              dtype=pooled_inputs.dtype), pooled_inputs),
-          axis=1)
-      x = layer([query_inputs, x, attention_mask])
-      # Pools the corresponding attention_mask.
+    if self._pool_type in (_MAX, _AVG):
       attention_mask = _pool_and_concat(
           attention_mask,
           unpool_length=self._unpool_length,
-          stride=self._pool_stride,
-          axes=[1, 2])
-      encoder_outputs.append(x)
+          strides=self._pool_strides[0],
+          axes=[1])
+
+      for i, layer in enumerate(self._transformer_layers):
+        # Bypass no pooling cases.
+        if self._pool_strides[i] == 1:
+          x = layer([x, x, attention_mask])
+        else:
+          # Pools layer for compressing the query length.
+          pooled_inputs = self._att_input_pool_layers[i](
+              x[:, self._unpool_length:, :])
+          query_inputs = tf.concat(
+              values=(tf.cast(
+                  x[:, :self._unpool_length, :],
+                  dtype=pooled_inputs.dtype), pooled_inputs),
+              axis=1)
+          x = layer([query_inputs, x, attention_mask])
+        # Pools the corresponding attention_mask.
+        if i < len(self._transformer_layers) - 1:
+          attention_mask = _pool_and_concat(
+              attention_mask,
+              unpool_length=self._unpool_length,
+              strides=[self._pool_strides[i + 1], self._pool_strides[i]],
+              axes=[1, 2])
+        encoder_outputs.append(x)
+    elif self._pool_type == _TRUNCATED_AVG:
+      attention_masks = _create_truncated_avg_masks(mask, self._pool_strides,
+                                                    self._pooling_transforms)
+      for i, layer in enumerate(self._transformer_layers):
+        attention_mask = attention_masks[i]
+        # Bypass no pooling cases.
+        if self._pool_strides[i] == 1:
+          x = layer([x, x, attention_mask])
+        else:
+          pooled_inputs = tf.einsum(
+              'BFD,FT->BTD',
+              tf.cast(x[:, self._unpool_length:, :], _get_policy_dtype()
+                     ),  # extra casting for faster mixed computation.
+              self._pooling_transforms[i])
+          query_inputs = tf.concat(
+              values=(tf.cast(
+                  x[:, :self._unpool_length, :],
+                  dtype=pooled_inputs.dtype), pooled_inputs),
+              axis=1)
+          x = layer([query_inputs, x, attention_mask])
+        encoder_outputs.append(x)
 
     last_encoder_output = encoder_outputs[-1]
     first_token_tensor = last_encoder_output[:, 0, :]
     pooled_output = self._pooler_layer(first_token_tensor)
 
     return dict(
+        word_embeddings=word_embeddings,
+        embedding_output=embeddings,
         sequence_output=encoder_outputs[-1],
         pooled_output=pooled_output,
         encoder_outputs=encoder_outputs)

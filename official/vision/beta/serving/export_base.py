@@ -19,9 +19,8 @@ import abc
 from typing import Dict, List, Mapping, Optional, Text
 
 import tensorflow as tf
-
+from official.core import config_definitions as cfg
 from official.core import export_base
-from official.modeling.hyperparams import config_definitions as cfg
 
 
 class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):

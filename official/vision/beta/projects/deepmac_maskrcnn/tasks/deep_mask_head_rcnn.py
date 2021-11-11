@@ -35,7 +35,7 @@ from official.vision.beta.tasks import maskrcnn
 # Taken from modeling/factory.py
 def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
                    model_config: deep_mask_head_rcnn_config.DeepMaskHeadRCNN,
-                   l2_regularizer: tf.keras.regularizers.Regularizer = None):
+                   l2_regularizer: tf.keras.regularizers.Regularizer = None):  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds Mask R-CNN model."""
   norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
@@ -120,7 +120,7 @@ def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
       pre_nms_score_threshold=generator_config.pre_nms_score_threshold,
       nms_iou_threshold=generator_config.nms_iou_threshold,
       max_num_detections=generator_config.max_num_detections,
-      use_batched_nms=generator_config.use_batched_nms)
+      nms_version=generator_config.nms_version)
 
   if model_config.include_mask:
     mask_head = deep_instance_heads.DeepMaskHead(

@@ -87,7 +87,7 @@ def get_batch_norm(batch_norm_type: Text) -> tf.keras.layers.BatchNormalization:
   if batch_norm_type == 'tpu':
     return TpuBatchNormalization
 
-  return tf.keras.layers.BatchNormalization
+  return tf.keras.layers.BatchNormalization  # pytype: disable=bad-return-type  # typed-keras
 
 
 def count_params(model, trainable_only=True):

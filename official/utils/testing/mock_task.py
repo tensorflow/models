@@ -15,13 +15,14 @@
 """Mock task for testing."""
 
 import dataclasses
+
 import numpy as np
 import tensorflow as tf
 
 from official.core import base_task
 from official.core import config_definitions as cfg
 from official.core import exp_factory
-from official.core import task_factory
+from official.modeling.hyperparams import base_config
 
 
 class MockModel(tf.keras.Model):
@@ -41,7 +42,7 @@ class MockTaskConfig(cfg.TaskConfig):
   pass
 
 
-@task_factory.register_task_cls(MockTaskConfig)
+@base_config.bind(MockTaskConfig)
 class MockTask(base_task.Task):
   """Mock task object for testing."""
 

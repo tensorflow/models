@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Trainer network for ELECTRA models."""
+"""Trainer network for TEAMS models."""
 # pylint: disable=g-classes-have-attributes
 
 import tensorflow as tf
@@ -20,6 +20,8 @@ import tensorflow as tf
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
 from official.nlp.modeling import models
+
+_LOGIT_PENALTY_MULTIPLIER = 10000
 
 
 class ReplacedTokenDetectionHead(tf.keras.layers.Layer):
@@ -47,13 +49,6 @@ class ReplacedTokenDetectionHead(tf.keras.layers.Layer):
     self.activation = self.hidden_cfg['intermediate_activation']
     self.initializer = self.hidden_cfg['kernel_initializer']
 
-    if output not in ('predictions', 'logits'):
-      raise ValueError(
-          ('Unknown `output` value "%s". `output` can be either "logits" or '
-           '"predictions"') % output)
-    self._output_type = output
-
-  def build(self, input_shape):
     self.hidden_layers = []
     for i in range(self.num_task_agnostic_layers, self.num_hidden_instances):
       self.hidden_layers.append(
@@ -73,6 +68,12 @@ class ReplacedTokenDetectionHead(tf.keras.layers.Layer):
     self.rtd_head = tf.keras.layers.Dense(
         units=1, kernel_initializer=self.initializer,
         name='transform/rtd_head')
+
+    if output not in ('predictions', 'logits'):
+      raise ValueError(
+          ('Unknown `output` value "%s". `output` can be either "logits" or '
+           '"predictions"') % output)
+    self._output_type = output
 
   def call(self, sequence_data, input_mask):
     """Compute inner-products of hidden vectors with sampled element embeddings.
@@ -117,13 +118,6 @@ class MultiWordSelectionHead(tf.keras.layers.Layer):
     self.activation = activation
     self.initializer = tf.keras.initializers.get(initializer)
 
-    if output not in ('predictions', 'logits'):
-      raise ValueError(
-          ('Unknown `output` value "%s". `output` can be either "logits" or '
-           '"predictions"') % output)
-    self._output_type = output
-
-  def build(self, input_shape):
     self._vocab_size, self.embed_size = self.embedding_table.shape
     self.dense = tf.keras.layers.Dense(
         self.embed_size,
@@ -133,7 +127,11 @@ class MultiWordSelectionHead(tf.keras.layers.Layer):
     self.layer_norm = tf.keras.layers.LayerNormalization(
         axis=-1, epsilon=1e-12, name='transform/mws_layernorm')
 
-    super(MultiWordSelectionHead, self).build(input_shape)
+    if output not in ('predictions', 'logits'):
+      raise ValueError(
+          ('Unknown `output` value "%s". `output` can be either "logits" or '
+           '"predictions"') % output)
+    self._output_type = output
 
   def call(self, sequence_data, masked_positions, candidate_sets):
     """Compute inner-products of hidden vectors with sampled element embeddings.
@@ -277,27 +275,28 @@ class TeamsPretrainer(tf.keras.Model):
     self.mlm_activation = mlm_activation
     self.mlm_initializer = mlm_initializer
     self.output_type = output_type
-    embedding_table = generator_network.embedding_network.get_embedding_table()
     self.masked_lm = layers.MaskedLM(
-        embedding_table=embedding_table,
+        embedding_table=self.generator_network.embedding_network
+        .get_embedding_table(),
         activation=mlm_activation,
         initializer=mlm_initializer,
         output=output_type,
         name='generator_masked_lm')
     discriminator_cfg = self.discriminator_mws_network.get_config()
+    self.num_task_agnostic_layers = num_discriminator_task_agnostic_layers
     self.discriminator_rtd_head = ReplacedTokenDetectionHead(
         encoder_cfg=discriminator_cfg,
-        num_task_agnostic_layers=num_discriminator_task_agnostic_layers,
+        num_task_agnostic_layers=self.num_task_agnostic_layers,
         output=output_type,
         name='discriminator_rtd')
     hidden_cfg = discriminator_cfg['hidden_cfg']
     self.discriminator_mws_head = MultiWordSelectionHead(
-        embedding_table=embedding_table,
+        embedding_table=self.discriminator_mws_network.embedding_network
+        .get_embedding_table(),
         activation=hidden_cfg['intermediate_activation'],
         initializer=hidden_cfg['kernel_initializer'],
         output=output_type,
         name='discriminator_mws')
-    self.num_task_agnostic_layers = num_discriminator_task_agnostic_layers
 
   def call(self, inputs):
     """TEAMS forward pass.
@@ -380,7 +379,7 @@ class TeamsPretrainer(tf.keras.Model):
     sampled_tokens = tf.stop_gradient(
         models.electra_pretrainer.sample_from_softmax(
             mlm_logits, disallow=None))
-    sampled_tokids = tf.argmax(sampled_tokens, -1, output_type=tf.int32)
+    sampled_tokids = tf.argmax(sampled_tokens, axis=-1, output_type=tf.int32)
 
     # Prepares input and label for replaced token detection task.
     updated_input_ids, masked = models.electra_pretrainer.scatter_update(
@@ -439,7 +438,7 @@ def sample_k_from_softmax(logits, k, disallow=None, use_topk=False):
   """
   if use_topk:
     if disallow is not None:
-      logits -= 10000.0 * disallow
+      logits -= _LOGIT_PENALTY_MULTIPLIER * disallow
     uniform_noise = tf.random.uniform(
         tf_utils.get_shape_list(logits), minval=0, maxval=1)
     gumbel_noise = -tf.math.log(-tf.math.log(uniform_noise + 1e-9) + 1e-9)
@@ -448,7 +447,7 @@ def sample_k_from_softmax(logits, k, disallow=None, use_topk=False):
     sampled_tokens_list = []
     vocab_size = tf_utils.get_shape_list(logits)[-1]
     if disallow is not None:
-      logits -= 10000.0 * disallow
+      logits -= _LOGIT_PENALTY_MULTIPLIER * disallow
 
     uniform_noise = tf.random.uniform(
         tf_utils.get_shape_list(logits), minval=0, maxval=1)
@@ -457,7 +456,7 @@ def sample_k_from_softmax(logits, k, disallow=None, use_topk=False):
     for _ in range(k):
       token_ids = tf.argmax(logits, -1, output_type=tf.int32)
       sampled_tokens_list.append(token_ids)
-      logits -= 10000.0 *  tf.one_hot(
+      logits -= _LOGIT_PENALTY_MULTIPLIER *  tf.one_hot(
           token_ids, depth=vocab_size, dtype=tf.float32)
     sampled_tokens = tf.stack(sampled_tokens_list, -1)
   return sampled_tokens

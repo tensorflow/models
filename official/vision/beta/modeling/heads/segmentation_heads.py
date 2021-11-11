@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Contains definitions of segmentation heads."""
-from typing import List, Union, Optional, Mapping
+from typing import List, Union, Optional, Mapping, Tuple
 import tensorflow as tf
 
 from official.modeling import tf_utils
@@ -35,8 +35,11 @@ class SegmentationHead(tf.keras.layers.Layer):
       prediction_kernel_size: int = 1,
       upsample_factor: int = 1,
       feature_fusion: Optional[str] = None,
+      decoder_min_level: Optional[int] = None,
+      decoder_max_level: Optional[int] = None,
       low_level: int = 2,
       low_level_num_filters: int = 48,
+      num_decoder_filters: int = 256,
       activation: str = 'relu',
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
@@ -60,15 +63,24 @@ class SegmentationHead(tf.keras.layers.Layer):
       prediction layer.
       upsample_factor: An `int` number to specify the upsampling factor to
         generate finer mask. Default 1 means no upsampling is applied.
-      feature_fusion: One of `deeplabv3plus`, `pyramid_fusion`, or None. If
-        `deeplabv3plus`, features from decoder_features[level] will be fused
-        with low level feature maps from backbone. If `pyramid_fusion`,
-        multiscale features will be resized and fused at the target level.
+      feature_fusion: One of `deeplabv3plus`, `pyramid_fusion`,
+        `panoptic_fpn_fusion`, or None. If `deeplabv3plus`, features from
+        decoder_features[level] will be fused with low level feature maps from
+        backbone. If `pyramid_fusion`, multiscale features will be resized and
+        fused at the target level.
+      decoder_min_level: An `int` of minimum level from decoder to use in
+        feature fusion. It is only used when feature_fusion is set to
+        `panoptic_fpn_fusion`.
+      decoder_max_level: An `int` of maximum level from decoder to use in
+        feature fusion. It is only used when feature_fusion is set to
+        `panoptic_fpn_fusion`.
       low_level: An `int` of backbone level to be used for feature fusion. It is
         used when feature_fusion is set to `deeplabv3plus`.
       low_level_num_filters: An `int` of reduced number of filters for the low
         level features before fusing it with higher level features. It is only
         used when feature_fusion is set to `deeplabv3plus`.
+      num_decoder_filters: An `int` of number of filters in the decoder outputs.
+        It is only used when feature_fusion is set to `panoptic_fpn_fusion`.
       activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
       use_sync_bn: A `bool` that indicates whether to use synchronized batch
@@ -91,14 +103,17 @@ class SegmentationHead(tf.keras.layers.Layer):
         'prediction_kernel_size': prediction_kernel_size,
         'upsample_factor': upsample_factor,
         'feature_fusion': feature_fusion,
+        'decoder_min_level': decoder_min_level,
+        'decoder_max_level': decoder_max_level,
         'low_level': low_level,
         'low_level_num_filters': low_level_num_filters,
+        'num_decoder_filters': num_decoder_filters,
         'activation': activation,
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
         'norm_epsilon': norm_epsilon,
         'kernel_regularizer': kernel_regularizer,
-        'bias_regularizer': bias_regularizer,
+        'bias_regularizer': bias_regularizer
     }
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
@@ -141,6 +156,17 @@ class SegmentationHead(tf.keras.layers.Layer):
       self._dlv3p_norm = bn_op(
           name='segmentation_head_deeplabv3p_fusion_norm', **bn_kwargs)
 
+    elif self._config_dict['feature_fusion'] == 'panoptic_fpn_fusion':
+      self._panoptic_fpn_fusion = nn_layers.PanopticFPNFusion(
+          min_level=self._config_dict['decoder_min_level'],
+          max_level=self._config_dict['decoder_max_level'],
+          target_level=self._config_dict['level'],
+          num_filters=self._config_dict['num_filters'],
+          num_fpn_filters=self._config_dict['num_decoder_filters'],
+          activation=self._config_dict['activation'],
+          kernel_regularizer=self._config_dict['kernel_regularizer'],
+          bias_regularizer=self._config_dict['bias_regularizer'])
+
     # Segmentation head layers.
     self._convs = []
     self._norms = []
@@ -155,6 +181,8 @@ class SegmentationHead(tf.keras.layers.Layer):
                 depthwise_initializer=random_initializer,
                 depthwise_regularizer=self._config_dict['kernel_regularizer'],
                 depth_multiplier=1))
+        norm_name = 'segmentation_head_depthwise_norm_{}'.format(i)
+        self._norms.append(bn_op(name=norm_name, **bn_kwargs))
       conv_name = 'segmentation_head_conv_{}'.format(i)
       self._convs.append(
           conv_op(
@@ -176,16 +204,19 @@ class SegmentationHead(tf.keras.layers.Layer):
 
     super(SegmentationHead, self).build(input_shape)
 
-  def call(self, backbone_output: Mapping[str, tf.Tensor],
-           decoder_output: Mapping[str, tf.Tensor]):
+  def call(self, inputs: Tuple[Union[tf.Tensor, Mapping[str, tf.Tensor]],
+                               Union[tf.Tensor, Mapping[str, tf.Tensor]]]):
     """Forward pass of the segmentation head.
 
+    It supports both a tuple of 2 tensors or 2 dictionaries. The first is
+    backbone endpoints, and the second is decoder endpoints. When inputs are
+    tensors, they are from a single level of feature maps. When inputs are
+    dictionaries, they contain multiple levels of feature maps, where the key
+    is the index of feature map.
+
     Args:
-      backbone_output: A `dict` of tensors
-        - key: A `str` of the level of the multilevel features.
-        - values: A `tf.Tensor` of the feature map tensors, whose shape is
-            [batch, height_l, width_l, channels].
-      decoder_output: A `dict` of tensors
+      inputs: A tuple of 2 feature map tensors of shape
+        [batch, height_l, width_l, channels] or 2 dictionaries of tensors:
         - key: A `str` of the level of the multilevel features.
         - values: A `tf.Tensor` of the feature map tensors, whose shape is
             [batch, height_l, width_l, channels].
@@ -193,11 +224,14 @@ class SegmentationHead(tf.keras.layers.Layer):
       segmentation prediction mask: A `tf.Tensor` of the segmentation mask
         scores predicted from input features.
     """
+    backbone_output = inputs[0]
+    decoder_output = inputs[1]
     if self._config_dict['feature_fusion'] == 'deeplabv3plus':
       # deeplabv3+ feature fusion
-      x = decoder_output[str(self._config_dict['level'])]
-      y = backbone_output[str(
-          self._config_dict['low_level'])]
+      x = decoder_output[str(self._config_dict['level'])] if isinstance(
+          decoder_output, dict) else decoder_output
+      y = backbone_output[str(self._config_dict['low_level'])] if isinstance(
+          backbone_output, dict) else backbone_output
       y = self._dlv3p_norm(self._dlv3p_conv(y))
       y = self._activation(y)
 
@@ -206,10 +240,15 @@ class SegmentationHead(tf.keras.layers.Layer):
       x = tf.cast(x, dtype=y.dtype)
       x = tf.concat([x, y], axis=self._bn_axis)
     elif self._config_dict['feature_fusion'] == 'pyramid_fusion':
+      if not isinstance(decoder_output, dict):
+        raise ValueError('Only support dictionary decoder_output.')
       x = nn_layers.pyramid_feature_fusion(decoder_output,
                                            self._config_dict['level'])
+    elif self._config_dict['feature_fusion'] == 'panoptic_fpn_fusion':
+      x = self._panoptic_fpn_fusion(decoder_output)
     else:
-      x = decoder_output[str(self._config_dict['level'])]
+      x = decoder_output[str(self._config_dict['level'])] if isinstance(
+          decoder_output, dict) else decoder_output
 
     for conv, norm in zip(self._convs, self._norms):
       x = conv(x)

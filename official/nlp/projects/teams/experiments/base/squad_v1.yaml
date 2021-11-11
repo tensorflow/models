@@ -1,0 +1,47 @@
+task:
+  hub_module_url: ''
+  max_answer_length: 30
+  n_best_size: 20
+  null_score_diff_threshold: 0.0
+  train_data:
+    drop_remainder: true
+    global_batch_size: 32
+    input_path: ''
+    is_training: true
+    seq_length: 384
+  validation_data:
+    do_lower_case: true
+    doc_stride: 128
+    drop_remainder: false
+    global_batch_size: 32
+    input_path: ''
+    is_training: false
+    query_length: 64
+    seq_length: 384
+    tokenization: WordPiece
+    version_2_with_negative: false
+    vocab_file: ''
+trainer:
+  checkpoint_interval: 500
+  continuous_eval_timeout: 7200
+  max_to_keep: 5
+  optimizer_config:
+    learning_rate:
+      polynomial:
+        decay_steps: 5549
+        end_learning_rate: 0.0
+        initial_learning_rate: 5.0e-05
+        power: 1.0
+      type: polynomial
+    optimizer:
+      type: adamw
+    warmup:
+      polynomial:
+        power: 1
+        warmup_steps: 555
+      type: polynomial
+  steps_per_loop: 500
+  summary_interval: 500
+  train_steps: 5549
+  validation_interval: 500
+  validation_steps: 339

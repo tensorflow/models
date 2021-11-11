@@ -476,7 +476,7 @@ class ModelBuilderTF2Test(
         num_classes: 10
         feature_extractor {
           type: "mobilenet_v2_fpn"
-          depth_multiplier: 1.0
+          depth_multiplier: 2.0
           use_separable_conv: true
           upsampling_interpolation: "bilinear"
         }
@@ -512,6 +512,21 @@ class ModelBuilderTF2Test(
         self.assertEqual('bilinear', layer.interpolation)
     # Verify that there are up_sampling2d layers.
     self.assertGreater(num_up_sampling2d_layers, 0)
+
+    # Verify that the FPN ops uses separable conv.
+    for layer in fpn.layers:
+      # Convolution layers with kernel size not equal to (1, 1) should be
+      # separable 2D convolutions.
+      if 'conv' in layer.name and layer.kernel_size != (1, 1):
+        self.assertIsInstance(layer, tf.keras.layers.SeparableConv2D)
+
+    # Verify that the backbone indeed double the number of channel according to
+    # the depthmultiplier.
+    backbone = feature_extractor.get_layer('model')
+    first_conv = backbone.get_layer('Conv1')
+    # Note that the first layer typically has 32 filters, but this model has
+    # a depth multiplier of 2.
+    self.assertEqual(64, first_conv.filters)
 
   def test_create_center_net_deepmac(self):
     """Test building a CenterNet DeepMAC model."""

@@ -64,7 +64,8 @@ def build_meta_arch(predict_full_resolution_masks=False, use_dice_loss=False,
                     use_instance_embedding=True, mask_num_subsamples=-1,
                     network_type='hourglass10', use_xy=True,
                     pixel_embedding_dim=2,
-                    dice_loss_prediction_probability=False):
+                    dice_loss_prediction_probability=False,
+                    color_consistency_threshold=0.5):
   """Builds the DeepMAC meta architecture."""
 
   feature_extractor = DummyFeatureExtractor(
@@ -110,6 +111,9 @@ def build_meta_arch(predict_full_resolution_masks=False, use_dice_loss=False,
       max_roi_jitter_ratio=0.0,
       roi_jitter_mode='random',
       box_consistency_loss_weight=1.0,
+      color_consistency_threshold=color_consistency_threshold,
+      color_consistency_dilation=2,
+      color_consistency_loss_weight=1.0
   )
 
   object_detection_params = center_net_meta_arch.ObjectDetectionParams(
@@ -174,41 +178,128 @@ class DeepMACUtilsTest(tf.test.TestCase, parameterized.TestCase):
         features, boxes, 32)
     self.assertEqual(output.shape, (5, 32, 32, 7))
 
-  def test_embedding_distance_prob_shape(self):
-    dist = deepmac_meta_arch.embedding_distance_to_probability(
+  def test_embedding_projection_prob_shape(self):
+    dist = deepmac_meta_arch.embedding_projection(
         tf.ones((4, 32, 32, 8)), tf.zeros((4, 32, 32, 8)))
     self.assertEqual(dist.shape, (4, 32, 32, 1))
 
   @parameterized.parameters([1e-20, 1e20])
-  def test_embedding_distance_prob_value(self, value):
-    dist = deepmac_meta_arch.embedding_distance_to_probability(
+  def test_embedding_projection_value(self, value):
+    dist = deepmac_meta_arch.embedding_projection(
         tf.zeros((1, 1, 1, 8)), value + tf.zeros((1, 1, 1, 8))).numpy()
     max_float = np.finfo(dist.dtype).max
     self.assertLess(dist.max(), max_float)
     self.assertGreater(dist.max(), -max_float)
 
+  @parameterized.named_parameters(
+      [('no_conv_shortcut', (False,)),
+       ('conv_shortcut', (True,))]
+      )
+  def test_res_dense_block(self, conv_shortcut):
+
+    net = deepmac_meta_arch.DenseResidualBlock(32, conv_shortcut)
+    out = net(tf.zeros((2, 32)))
+    self.assertEqual(out.shape, (2, 32))
+
+  @parameterized.parameters(
+      [4, 8, 20]
+  )
+  def test_dense_resnet(self, num_layers):
+
+    net = deepmac_meta_arch.DenseResNet(num_layers, 16, 8)
+    out = net(tf.zeros((2, 24)))
+    self.assertEqual(out.shape, (2, 8))
+
+  def test_generate_2d_neighbors_shape(self):
+
+    inp = tf.zeros((13, 14, 3))
+    out = deepmac_meta_arch.generate_2d_neighbors(inp)
+    self.assertEqual((8, 13, 14, 3), out.shape)
+
+  def test_generate_2d_neighbors(self):
+
+    inp = np.arange(16).reshape(4, 4).astype(np.float32)
+    inp = tf.stack([inp, inp * 2], axis=2)
+    out = deepmac_meta_arch.generate_2d_neighbors(inp, dilation=1)
+    self.assertEqual((8, 4, 4, 2), out.shape)
+
+    for i in range(2):
+      expected = np.array([0, 1, 2, 4, 6, 8, 9, 10]) * (i + 1)
+      self.assertAllEqual(out[:, 1, 1, i], expected)
+
+      expected = np.array([1, 2, 3, 5, 7, 9, 10, 11]) * (i + 1)
+      self.assertAllEqual(out[:, 1, 2, i], expected)
+
+      expected = np.array([4, 5, 6, 8, 10, 12, 13, 14]) * (i + 1)
+      self.assertAllEqual(out[:, 2, 1, i], expected)
+
+      expected = np.array([5, 6, 7, 9, 11, 13, 14, 15]) * (i + 1)
+      self.assertAllEqual(out[:, 2, 2, i], expected)
+
+  def test_generate_2d_neighbors_dilation2(self):
+
+    inp = np.arange(16).reshape(4, 4, 1).astype(np.float32)
+    out = deepmac_meta_arch.generate_2d_neighbors(inp, dilation=2)
+    self.assertEqual((8, 4, 4, 1), out.shape)
+
+    expected = np.array([0, 0, 0, 0, 2, 0, 8, 10])
+    self.assertAllEqual(out[:, 0, 0, 0], expected)
+
+  def test_dilated_similarity_shape(self):
+
+    fmap = tf.zeros((32, 32, 9))
+    similarity = deepmac_meta_arch.dilated_cross_pixel_similarity(
+        fmap)
+    self.assertEqual((8, 32, 32), similarity.shape)
+
+  def test_dilated_similarity(self):
+
+    fmap = np.zeros((5, 5, 2), dtype=np.float32)
+
+    fmap[0, 0, :] = 1.0
+    fmap[4, 4, :] = 1.0
+
+    similarity = deepmac_meta_arch.dilated_cross_pixel_similarity(
+        fmap, theta=1.0, dilation=2)
+    self.assertAlmostEqual(similarity.numpy()[0, 2, 2],
+                           np.exp(-np.sqrt(2)))
+
+  def test_dilated_same_instance_mask_shape(self):
+
+    instances = tf.zeros((5, 32, 32))
+    output = deepmac_meta_arch.dilated_cross_same_mask_label(instances)
+    self.assertEqual((8, 5, 32, 32), output.shape)
+
+  def test_dilated_same_instance_mask(self):
+
+    instances = np.zeros((2, 5, 5), dtype=np.float32)
+    instances[0, 0, 0] = 1.0
+    instances[0, 2, 2] = 1.0
+    instances[0, 4, 4] = 1.0
+    output = deepmac_meta_arch.dilated_cross_same_mask_label(instances).numpy()
+    self.assertAllClose(np.ones((8, 5, 5)), output[:, 1, :, :])
+    self.assertAllClose([1, 0, 0, 0, 0, 0, 0, 1], output[:, 0, 2, 2])
+
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
-class DeepMACMaskHeadTest(tf.test.TestCase):
+class DeepMACMaskHeadTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_mask_network(self):
-    net = deepmac_meta_arch.MaskHeadNetwork('hourglass10', 8)
-
-    out = net(tf.zeros((2, 4)), tf.zeros((2, 32, 32, 16)), training=True)
-    self.assertEqual(out.shape, (2, 32, 32))
-
-  def test_mask_network_hourglass20(self):
-    net = deepmac_meta_arch.MaskHeadNetwork('hourglass20', 8)
+  @parameterized.parameters(
+      ['hourglass10', 'hourglass20', 'resnet4'])
+  def test_mask_network(self, head_type):
+    net = deepmac_meta_arch.MaskHeadNetwork(head_type, 8)
 
     out = net(tf.zeros((2, 4)), tf.zeros((2, 32, 32, 16)), training=True)
     self.assertEqual(out.shape, (2, 32, 32))
 
-  def test_mask_network_resnet(self):
+  def test_mask_network_params_resnet4(self):
+    net = deepmac_meta_arch.MaskHeadNetwork('resnet4', num_init_channels=8)
+    _ = net(tf.zeros((2, 16)), tf.zeros((2, 32, 32, 16)), training=True)
 
-    net = deepmac_meta_arch.MaskHeadNetwork('resnet4')
+    trainable_params = tf.reduce_sum([tf.reduce_prod(tf.shape(w)) for w in
+                                      net.trainable_weights])
 
-    out = net(tf.zeros((2, 4)), tf.zeros((2, 32, 32, 16)), training=True)
-    self.assertEqual(out.shape, (2, 32, 32))
+    self.assertEqual(trainable_params.numpy(), 8665)
 
   def test_mask_network_resnet_tf_function(self):
 
@@ -218,10 +309,10 @@ class DeepMACMaskHeadTest(tf.test.TestCase):
     out = call_func(tf.zeros((2, 4)), tf.zeros((2, 32, 32, 16)), training=True)
     self.assertEqual(out.shape, (2, 32, 32))
 
-  def test_mask_network_embedding_distance_zero_dist(self):
+  def test_mask_network_embedding_projection_zero(self):
 
     net = deepmac_meta_arch.MaskHeadNetwork(
-        'embedding_distance_probability', num_init_channels=8,
+        'embedding_projection', num_init_channels=8,
         use_instance_embedding=False)
     call_func = tf.function(net.__call__)
 
@@ -230,10 +321,10 @@ class DeepMACMaskHeadTest(tf.test.TestCase):
     self.assertAllGreater(out.numpy(), -np.inf)
     self.assertAllLess(out.numpy(), np.inf)
 
-  def test_mask_network_embedding_distance_small_dist(self):
+  def test_mask_network_embedding_projection_small(self):
 
     net = deepmac_meta_arch.MaskHeadNetwork(
-        'embedding_distance_probability', num_init_channels=-1,
+        'embedding_projection', num_init_channels=-1,
         use_instance_embedding=False)
     call_func = tf.function(net.__call__)
 
@@ -341,10 +432,12 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     masks[1, 16:, 16:] = 1.0
     masks = tf.constant(masks)
 
-    loss, _ = model._compute_per_instance_deepmac_losses(
-        boxes, masks, tf.zeros((32, 32, 2)), tf.zeros((32, 32, 2)))
+    loss_dict = model._compute_per_instance_deepmac_losses(
+        boxes, masks, tf.zeros((32, 32, 2)), tf.zeros((32, 32, 2)),
+        tf.zeros((16, 16, 3)))
     self.assertAllClose(
-        loss, np.zeros(2) - tf.math.log(tf.nn.sigmoid(0.9)))
+        loss_dict[deepmac_meta_arch.DEEP_MASK_ESTIMATION],
+        np.zeros(2) - tf.math.log(tf.nn.sigmoid(0.9)))
 
   def test_per_instance_loss_no_crop_resize(self):
 
@@ -354,10 +447,12 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     masks = np.ones((2, 128, 128), dtype=np.float32)
     masks = tf.constant(masks)
 
-    loss, _ = model._compute_per_instance_deepmac_losses(
-        boxes, masks, tf.zeros((32, 32, 2)), tf.zeros((32, 32, 2)))
+    loss_dict = model._compute_per_instance_deepmac_losses(
+        boxes, masks, tf.zeros((32, 32, 2)), tf.zeros((32, 32, 2)),
+        tf.zeros((32, 32, 3)))
     self.assertAllClose(
-        loss, np.zeros(2) - tf.math.log(tf.nn.sigmoid(0.9)))
+        loss_dict[deepmac_meta_arch.DEEP_MASK_ESTIMATION],
+        np.zeros(2) - tf.math.log(tf.nn.sigmoid(0.9)))
 
   def test_per_instance_loss_no_crop_resize_dice(self):
 
@@ -368,19 +463,23 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     masks = np.ones((2, 128, 128), dtype=np.float32)
     masks = tf.constant(masks)
 
-    loss, _ = model._compute_per_instance_deepmac_losses(
-        boxes, masks, tf.zeros((32, 32, 2)), tf.zeros((32, 32, 2)))
+    loss_dict = model._compute_per_instance_deepmac_losses(
+        boxes, masks, tf.zeros((32, 32, 2)), tf.zeros((32, 32, 2)),
+        tf.zeros((32, 32, 3)))
     pred = tf.nn.sigmoid(0.9)
     expected = (1.0 - ((2.0 * pred) / (1.0 + pred)))
-    self.assertAllClose(loss, [expected, expected], rtol=1e-3)
+    self.assertAllClose(loss_dict[deepmac_meta_arch.DEEP_MASK_ESTIMATION],
+                        [expected, expected], rtol=1e-3)
 
   def test_empty_masks(self):
     boxes = tf.zeros([0, 4])
     masks = tf.zeros([0, 128, 128])
 
-    loss, _ = self.model._compute_per_instance_deepmac_losses(
-        boxes, masks, tf.zeros((32, 32, 2)), tf.zeros((32, 32, 2)))
-    self.assertEqual(loss.shape, (0,))
+    loss_dict = self.model._compute_per_instance_deepmac_losses(
+        boxes, masks, tf.zeros((32, 32, 2)), tf.zeros((32, 32, 2)),
+        tf.zeros((16, 16, 3)))
+    self.assertEqual(loss_dict[deepmac_meta_arch.DEEP_MASK_ESTIMATION].shape,
+                     (0,))
 
   def test_postprocess(self):
 
@@ -396,9 +495,9 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     prob = tf.nn.sigmoid(0.9).numpy()
     self.assertAllClose(masks, prob * np.ones((2, 3, 16, 16)))
 
-  def test_postprocess_emb_dist(self):
+  def test_postprocess_emb_proj(self):
 
-    model = build_meta_arch(network_type='embedding_distance_probability',
+    model = build_meta_arch(network_type='embedding_projection',
                             use_instance_embedding=False,
                             use_xy=False, pixel_embedding_dim=8,
                             use_dice_loss=True,
@@ -412,14 +511,13 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
         boxes, tf.zeros((2, 32, 32, 2)), tf.zeros((2, 32, 32, 2)))
     self.assertEqual(masks.shape, (2, 3, 16, 16))
 
-  def test_postprocess_emb_dist_fullres(self):
+  def test_postprocess_emb_proj_fullres(self):
 
-    model = build_meta_arch(network_type='embedding_distance_probability',
+    model = build_meta_arch(network_type='embedding_projection',
                             predict_full_resolution_masks=True,
                             use_instance_embedding=False,
                             pixel_embedding_dim=8, use_xy=False,
-                            use_dice_loss=True,
-                            dice_loss_prediction_probability=True)
+                            use_dice_loss=True)
     boxes = np.zeros((2, 3, 4), dtype=np.float32)
     boxes = tf.constant(boxes)
 
@@ -542,6 +640,29 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertAllClose(loss, [yloss + xloss])
 
+  def test_color_consistency_loss_full_res_shape(self):
+
+    model = build_meta_arch(use_dice_loss=True,
+                            predict_full_resolution_masks=True)
+    boxes = tf.zeros((3, 4))
+    img = tf.zeros((32, 32, 3))
+    mask_logits = tf.zeros((3, 32, 32))
+
+    loss = model._compute_per_instance_color_consistency_loss(
+        boxes, img, mask_logits)
+    self.assertEqual([3], loss.shape)
+
+  def test_color_consistency_1_threshold(self):
+    model = build_meta_arch(predict_full_resolution_masks=True,
+                            color_consistency_threshold=0.99)
+    boxes = tf.zeros((3, 4))
+    img = tf.zeros((32, 32, 3))
+    mask_logits = tf.zeros((3, 32, 32)) - 1e4
+
+    loss = model._compute_per_instance_color_consistency_loss(
+        boxes, img, mask_logits)
+    self.assertAllClose(loss, np.zeros(3))
+
   def test_box_consistency_dice_loss_full_res(self):
 
     model = build_meta_arch(use_dice_loss=True,
@@ -556,6 +677,58 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     loss = model._compute_per_instance_box_consistency_loss(
         boxes_gt, boxes_jittered, tf.constant(mask_prediction))
     self.assertAlmostEqual(loss[0].numpy(), 1 / 3)
+
+  def test_get_lab_image_shape(self):
+
+    output = self.model._get_lab_image(tf.zeros((2, 4, 4, 3)))
+    self.assertEqual(output.shape, (2, 4, 4, 3))
+
+  def test_loss_keys(self):
+    model = build_meta_arch(use_dice_loss=True)
+    prediction = {
+        'preprocessed_inputs': tf.random.normal((1, 32, 32, 3)),
+        'INSTANCE_EMBEDDING': [tf.random.normal((1, 8, 8, 17))] * 2,
+        'PIXEL_EMBEDDING': [tf.random.normal((1, 8, 8, 19))] * 2,
+        'object_center': [tf.random.normal((1, 8, 8, 6))] * 2,
+        'box/offset': [tf.random.normal((1, 8, 8, 2))] * 2,
+        'box/scale': [tf.random.normal((1, 8, 8, 2))] * 2
+    }
+    model.provide_groundtruth(
+        groundtruth_boxes_list=[tf.convert_to_tensor([[0., 0., 1., 1.]] * 5)],
+        groundtruth_classes_list=[tf.one_hot([1, 0, 1, 1, 1], depth=6)],
+        groundtruth_weights_list=[tf.ones(5)],
+        groundtruth_masks_list=[tf.ones((5, 32, 32))])
+    loss = model.loss(prediction, tf.constant([[32, 32, 3.0]]))
+    self.assertGreater(loss['Loss/deep_mask_estimation'], 0.0)
+
+    for weak_loss in deepmac_meta_arch.WEAK_LOSSES:
+      if weak_loss == deepmac_meta_arch.DEEP_MASK_COLOR_CONSISTENCY:
+        continue
+      self.assertGreater(loss['Loss/' + weak_loss], 0.0,
+                         '{} was <= 0'.format(weak_loss))
+
+  def test_loss_keys_full_res(self):
+    model = build_meta_arch(use_dice_loss=True,
+                            predict_full_resolution_masks=True)
+    prediction = {
+        'preprocessed_inputs': tf.random.normal((1, 32, 32, 3)),
+        'INSTANCE_EMBEDDING': [tf.random.normal((1, 8, 8, 17))] * 2,
+        'PIXEL_EMBEDDING': [tf.random.normal((1, 8, 8, 19))] * 2,
+        'object_center': [tf.random.normal((1, 8, 8, 6))] * 2,
+        'box/offset': [tf.random.normal((1, 8, 8, 2))] * 2,
+        'box/scale': [tf.random.normal((1, 8, 8, 2))] * 2
+    }
+    model.provide_groundtruth(
+        groundtruth_boxes_list=[tf.convert_to_tensor([[0., 0., 1., 1.]] * 5)],
+        groundtruth_classes_list=[tf.one_hot([1, 0, 1, 1, 1], depth=6)],
+        groundtruth_weights_list=[tf.ones(5)],
+        groundtruth_masks_list=[tf.ones((5, 32, 32))])
+    loss = model.loss(prediction, tf.constant([[32, 32, 3.0]]))
+    self.assertGreater(loss['Loss/deep_mask_estimation'], 0.0)
+
+    for weak_loss in deepmac_meta_arch.WEAK_LOSSES:
+      self.assertGreater(loss['Loss/' + weak_loss], 0.0,
+                         '{} was <= 0'.format(weak_loss))
 
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')

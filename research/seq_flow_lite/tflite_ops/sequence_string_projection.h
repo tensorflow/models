@@ -16,7 +16,7 @@ limitations under the License.
 #define TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TFLITE_OPS_SEQUENCE_STRING_PROJECTION_H_
 #include "tensorflow/lite/kernels/register.h"
 
-namespace tflite {
+namespace seq_flow_lite {
 namespace ops {
 namespace custom {
 
@@ -29,6 +29,6 @@ extern const char kSequenceStringProjectionV2[];
 TfLiteRegistration* Register_SEQUENCE_STRING_PROJECTION_V2();
 }  // namespace custom
 }  // namespace ops
-}  // namespace tflite
+}  // namespace seq_flow_lite
 
 #endif  // TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TFLITE_OPS_SEQUENCE_STRING_PROJECTION_H_

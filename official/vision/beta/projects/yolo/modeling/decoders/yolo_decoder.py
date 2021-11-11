@@ -12,17 +12,72 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Feature Pyramid Network and Path Aggregation variants used in YOLO."""
+from typing import Mapping, Union, Optional
 
 import tensorflow as tf
+
+from official.modeling import hyperparams
+from official.vision.beta.modeling.decoders import factory
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
+
+# model configurations
+# the structure is as follows. model version, {v3, v4, v#, ... etc}
+# the model config type {regular, tiny, small, large, ... etc}
+YOLO_MODELS = {
+    'v4':
+        dict(
+            regular=dict(
+                embed_spp=False,
+                use_fpn=True,
+                max_level_process_len=None,
+                path_process_len=6),
+            tiny=dict(
+                embed_spp=False,
+                use_fpn=False,
+                max_level_process_len=2,
+                path_process_len=1),
+            csp=dict(
+                embed_spp=False,
+                use_fpn=True,
+                max_level_process_len=None,
+                csp_stack=5,
+                fpn_depth=5,
+                path_process_len=6),
+            csp_large=dict(
+                embed_spp=False,
+                use_fpn=True,
+                max_level_process_len=None,
+                csp_stack=7,
+                fpn_depth=7,
+                path_process_len=8,
+                fpn_filter_scale=2),
+        ),
+    'v3':
+        dict(
+            regular=dict(
+                embed_spp=False,
+                use_fpn=False,
+                max_level_process_len=None,
+                path_process_len=6),
+            tiny=dict(
+                embed_spp=False,
+                use_fpn=False,
+                max_level_process_len=2,
+                path_process_len=1),
+            spp=dict(
+                embed_spp=True,
+                use_fpn=False,
+                max_level_process_len=2,
+                path_process_len=1),
+        ),
+}
 
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class _IdentityRoute(tf.keras.layers.Layer):
 
-  def call(self, inputs):
+  def call(self, inputs):  # pylint: disable=arguments-differ
     return None, inputs
 
 
@@ -37,9 +92,10 @@ class YoloFPN(tf.keras.layers.Layer):
                activation='leaky',
                fpn_filter_scale=1,
                use_sync_bn=False,
+               use_separable_conv=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
@@ -53,6 +109,7 @@ class YoloFPN(tf.keras.layers.Layer):
       activation: `str`, the activation function to use typically leaky or mish.
       fpn_filter_scale: `int`, scaling factor for the FPN filters.
       use_sync_bn: if True, use synchronized batch normalization.
+      use_separable_conv: `bool` whether to use separable convs.
       norm_momentum: `float`, normalization momentum for the moving average.
       norm_epsilon: `float`, small float added to variance to avoid dividing by
         zero.
@@ -67,6 +124,7 @@ class YoloFPN(tf.keras.layers.Layer):
 
     self._activation = activation
     self._use_sync_bn = use_sync_bn
+    self._use_separable_conv = use_separable_conv
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     self._kernel_initializer = kernel_initializer
@@ -79,6 +137,7 @@ class YoloFPN(tf.keras.layers.Layer):
     self._base_config = dict(
         activation=self._activation,
         use_sync_bn=self._use_sync_bn,
+        use_separable_conv=self._use_separable_conv,
         kernel_regularizer=self._kernel_regularizer,
         kernel_initializer=self._kernel_initializer,
         bias_regularizer=self._bias_regularizer,
@@ -182,9 +241,10 @@ class YoloPAN(tf.keras.layers.Layer):
                csp_stack=False,
                activation='leaky',
                use_sync_bn=False,
+               use_separable_conv=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
                bias_regularizer=None,
                fpn_input=True,
@@ -201,12 +261,13 @@ class YoloPAN(tf.keras.layers.Layer):
       csp_stack: `bool`, CSPize the FPN.
       activation: `str`, the activation function to use typically leaky or mish.
       use_sync_bn: if True, use synchronized batch normalization.
+      use_separable_conv: `bool` whether to use separable convs.
       norm_momentum: `float`, normalization omentum for the moving average.
       norm_epsilon: `float`, small float added to variance to avoid dividing
         by zero.
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       fpn_input: `bool`, for whether the input into this fucntion is an FPN or
         a backbone.
       fpn_filter_scale: `int`, scaling factor for the FPN filters.
@@ -221,6 +282,7 @@ class YoloPAN(tf.keras.layers.Layer):
 
     self._activation = activation
     self._use_sync_bn = use_sync_bn
+    self._use_separable_conv = use_separable_conv
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     self._kernel_initializer = kernel_initializer
@@ -237,6 +299,7 @@ class YoloPAN(tf.keras.layers.Layer):
     self._base_config = dict(
         activation=self._activation,
         use_sync_bn=self._use_sync_bn,
+        use_separable_conv=self._use_separable_conv,
         kernel_regularizer=self._kernel_regularizer,
         kernel_initializer=self._kernel_initializer,
         bias_regularizer=self._bias_regularizer,
@@ -372,9 +435,10 @@ class YoloDecoder(tf.keras.Model):
                embed_spp=False,
                activation='leaky',
                use_sync_bn=False,
+               use_separable_conv=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
-               kernel_initializer='glorot_uniform',
+               kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
@@ -389,8 +453,8 @@ class YoloDecoder(tf.keras.Model):
       use_fpn: `bool`, use the FPN found in the YoloV4 model.
       use_spatial_attention: `bool`, use the spatial attention module.
       csp_stack: `bool`, CSPize the FPN.
-      fpn_depth: `int`, number of layers ot use in each FPN path
-        if you choose to use an FPN.
+      fpn_depth: `int`, number of layers ot use in each FPN path if you choose
+        to use an FPN.
       fpn_filter_scale: `int`, scaling factor for the FPN filters.
       path_process_len: `int`, number of layers ot use in each Decoder path.
       max_level_process_len: `int`, number of layers ot use in the largest
@@ -398,6 +462,7 @@ class YoloDecoder(tf.keras.Model):
       embed_spp: `bool`, use the SPP found in the YoloV3 and V4 model.
       activation: `str`, the activation function to use typically leaky or mish.
       use_sync_bn: if True, use synchronized batch normalization.
+      use_separable_conv: `bool` wether to use separable convs.
       norm_momentum: `float`, normalization omentum for the moving average.
       norm_epsilon: `float`, small float added to variance to avoid dividing by
         zero.
@@ -416,6 +481,7 @@ class YoloDecoder(tf.keras.Model):
 
     self._activation = activation
     self._use_sync_bn = use_sync_bn
+    self._use_separable_conv = use_separable_conv
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     self._kernel_initializer = kernel_initializer
@@ -427,6 +493,7 @@ class YoloDecoder(tf.keras.Model):
         csp_stack=csp_stack,
         activation=self._activation,
         use_sync_bn=self._use_sync_bn,
+        use_separable_conv=self._use_separable_conv,
         fpn_filter_scale=fpn_filter_scale,
         norm_momentum=self._norm_momentum,
         norm_epsilon=self._norm_epsilon,
@@ -476,3 +543,66 @@ class YoloDecoder(tf.keras.Model):
   @classmethod
   def from_config(cls, config, custom_objects=None):
     return cls(**config)
+
+
+@factory.register_decoder_builder('yolo_decoder')
+def build_yolo_decoder(
+    input_specs: Mapping[str, tf.TensorShape],
+    model_config: hyperparams.Config,
+    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+    **kwargs) -> Union[None, tf.keras.Model, tf.keras.layers.Layer]:
+  """Builds Yolo FPN/PAN decoder from a config.
+
+  Args:
+    input_specs: A `dict` of input specifications. A dictionary consists of
+      {level: TensorShape} from a backbone.
+    model_config: A OneOfConfig. Model config.
+    l2_regularizer: A `tf.keras.regularizers.Regularizer` instance. Default to
+      None.
+    **kwargs: Additional kwargs arguments.
+
+  Returns:
+    A `tf.keras.Model` instance of the Yolo FPN/PAN decoder.
+  """
+  decoder_cfg = model_config.decoder.get()
+  norm_activation_config = model_config.norm_activation
+
+  activation = (
+      decoder_cfg.activation if decoder_cfg.activation != 'same' else
+      norm_activation_config.activation)
+
+  if decoder_cfg.version is None:  # custom yolo
+    raise ValueError('Decoder version cannot be None, specify v3 or v4.')
+
+  if decoder_cfg.version not in YOLO_MODELS:
+    raise ValueError(
+        'Unsupported model version please select from {v3, v4}, '
+        'or specify a custom decoder config using YoloDecoder in you yaml')
+
+  if decoder_cfg.type is None:
+    decoder_cfg.type = 'regular'
+
+  if decoder_cfg.type not in YOLO_MODELS[decoder_cfg.version]:
+    raise ValueError('Unsupported model type please select from '
+                     '{yolo_model.YOLO_MODELS[decoder_cfg.version].keys()}'
+                     'or specify a custom decoder config using YoloDecoder.')
+
+  base_model = YOLO_MODELS[decoder_cfg.version][decoder_cfg.type]
+
+  cfg_dict = decoder_cfg.as_dict()
+  for key in base_model:
+    if cfg_dict[key] is not None:
+      base_model[key] = cfg_dict[key]
+
+  base_dict = dict(
+      activation=activation,
+      use_spatial_attention=decoder_cfg.use_spatial_attention,
+      use_separable_conv=decoder_cfg.use_separable_conv,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      kernel_regularizer=l2_regularizer)
+
+  base_model.update(base_dict)
+  model = YoloDecoder(input_specs, **base_model, **kwargs)
+  return model

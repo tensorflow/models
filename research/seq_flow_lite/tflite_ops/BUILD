@@ -1,4 +1,5 @@
 # TFLite ops for sequence string projection.
+load("@org_tensorflow//tensorflow:tensorflow.bzl", "pybind_extension")
 load("@org_tensorflow//tensorflow/lite:build_def.bzl", "tflite_copts")
 
 licenses(["notice"])
@@ -98,5 +99,18 @@ cc_test(
         "@org_tensorflow//tensorflow/lite/kernels:test_util",
         "@com_google_googletest//:gtest_main",
         "@flatbuffers",
+    ],
+)
+
+pybind_extension(
+    name = "registerer",
+    srcs = ["registerer.cc"],
+    module_name = "registerer",
+    deps = [
+        ":expected_value",
+        ":layer_norm",
+        ":sequence_string_projection",
+        "@org_tensorflow//tensorflow/lite:framework",
+        "@pybind11",
     ],
 )

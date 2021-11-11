@@ -21,3 +21,4 @@ from official.modeling.optimization.configs.optimizer_config import *
 from official.modeling.optimization.ema_optimizer import ExponentialMovingAverage
 from official.modeling.optimization.lr_schedule import *
 from official.modeling.optimization.optimizer_factory import OptimizerFactory
+from official.modeling.optimization.optimizer_factory import register_optimizer_cls

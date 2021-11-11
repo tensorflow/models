@@ -33,7 +33,7 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
   def _get_detection_module(self, experiment_name):
     params = exp_factory.get_exp_config(experiment_name)
     params.task.model.backbone.resnet.model_id = 18
-    params.task.model.detection_generator.use_batched_nms = True
+    params.task.model.detection_generator.nms_version = 'batched'
     detection_module = detection.DetectionModule(
         params, batch_size=1, input_image_size=[640, 640])
     return detection_module

@@ -62,7 +62,7 @@ class ImageClassificationTask(base_task.Task):
 
     # Restoring checkpoint.
     if self.task_config.init_checkpoint_modules == 'all':
-      ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+      ckpt = tf.train.Checkpoint(model=model)
       status = ckpt.read(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     elif self.task_config.init_checkpoint_modules == 'backbone':
@@ -116,8 +116,7 @@ class ImageClassificationTask(base_task.Task):
           cutmix_alpha=params.mixup_and_cutmix.cutmix_alpha,
           prob=params.mixup_and_cutmix.prob,
           label_smoothing=params.mixup_and_cutmix.label_smoothing,
-          num_classes=params.mixup_and_cutmix.num_classes
-      )
+          num_classes=num_classes)
 
     reader = input_reader_factory.input_reader_generator(
         params,
@@ -133,15 +132,12 @@ class ImageClassificationTask(base_task.Task):
   def build_losses(self,
                    labels: tf.Tensor,
                    model_outputs: tf.Tensor,
-                   is_validation: bool,
                    aux_losses: Optional[Any] = None) -> tf.Tensor:
     """Builds sparse categorical cross entropy loss.
 
     Args:
       labels: Input groundtruth labels.
       model_outputs: Output logits of the classifier.
-      is_validation: To handle that some augmentations need custom soft labels
-        while the validation should remain unchainged.
       aux_losses: The auxiliarly loss tensors, i.e. `losses` in tf.keras.Model.
 
     Returns:
@@ -151,9 +147,7 @@ class ImageClassificationTask(base_task.Task):
     is_multilabel = self.task_config.train_data.is_multilabel
 
     if not is_multilabel:
-      # Some augmentation need custom soft labels in training, but validation
-      # should remain unchainged
-      if losses_config.one_hot or is_validation:
+      if losses_config.one_hot:
         total_loss = tf.keras.losses.categorical_crossentropy(
             labels,
             model_outputs,
@@ -161,9 +155,7 @@ class ImageClassificationTask(base_task.Task):
             label_smoothing=losses_config.label_smoothing)
       elif losses_config.soft_labels:
         total_loss = tf.nn.softmax_cross_entropy_with_logits(
-            labels,
-            model_outputs
-        )
+            labels, model_outputs)
       else:
         total_loss = tf.keras.losses.sparse_categorical_crossentropy(
             labels, model_outputs, from_logits=True)
@@ -177,6 +169,7 @@ class ImageClassificationTask(base_task.Task):
     if aux_losses:
       total_loss += tf.add_n(aux_losses)
 
+    total_loss = losses_config.loss_weight * total_loss
     return total_loss
 
   def build_metrics(self,
@@ -185,8 +178,8 @@ class ImageClassificationTask(base_task.Task):
     is_multilabel = self.task_config.train_data.is_multilabel
     if not is_multilabel:
       k = self.task_config.evaluation.top_k
-      if (self.task_config.losses.one_hot
-              or self.task_config.losses.soft_labels):
+      if (self.task_config.losses.one_hot or
+          self.task_config.losses.soft_labels):
         metrics = [
             tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
             tf.keras.metrics.TopKCategoricalAccuracy(
@@ -247,8 +240,10 @@ class ImageClassificationTask(base_task.Task):
           lambda x: tf.cast(x, tf.float32), outputs)
 
       # Computes per-replica loss.
-      loss = self.build_losses(model_outputs=outputs, labels=labels,
-                               is_validation=False, aux_losses=model.losses)
+      loss = self.build_losses(
+          model_outputs=outputs,
+          labels=labels,
+          aux_losses=model.losses)
       # Scales loss as the default gradients allreduce performs sum inside the
       # optimizer.
       scaled_loss = loss / num_replicas
@@ -299,8 +294,10 @@ class ImageClassificationTask(base_task.Task):
 
     outputs = self.inference_step(features, model)
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
-    loss = self.build_losses(model_outputs=outputs, labels=labels,
-                             is_validation=True, aux_losses=model.losses)
+    loss = self.build_losses(
+        model_outputs=outputs,
+        labels=labels,
+        aux_losses=model.losses)
 
     logs = {self.loss: loss}
     if metrics:

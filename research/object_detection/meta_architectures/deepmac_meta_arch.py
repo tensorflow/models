@@ -1,10 +1,11 @@
-"""Deep Mask heads above CenterNet (DeepMAC) architecture.
+"""Deep Mask heads above CenterNet (DeepMAC)[1] architecture.
 
-TODO(vighneshb) Add link to paper when done.
+[1]: https://arxiv.org/abs/2104.00613
 """
 
 import collections
 
+from absl import logging
 import numpy as np
 import tensorflow as tf
 
@@ -21,13 +22,22 @@ from object_detection.protos import losses_pb2
 from object_detection.protos import preprocessor_pb2
 from object_detection.utils import shape_utils
 from object_detection.utils import spatial_transform_ops
+from object_detection.utils import tf_version
+
+if tf_version.is_tf2():
+  import tensorflow_io as tfio  # pylint:disable=g-import-not-at-top
 
 
 INSTANCE_EMBEDDING = 'INSTANCE_EMBEDDING'
 PIXEL_EMBEDDING = 'PIXEL_EMBEDDING'
 DEEP_MASK_ESTIMATION = 'deep_mask_estimation'
 DEEP_MASK_BOX_CONSISTENCY = 'deep_mask_box_consistency'
+DEEP_MASK_COLOR_CONSISTENCY = 'deep_mask_color_consistency'
 LOSS_KEY_PREFIX = center_net_meta_arch.LOSS_KEY_PREFIX
+NEIGHBORS_2D = [[-1, -1], [-1, 0], [-1, 1],
+                [0, -1], [0, 1],
+                [1, -1], [1, 0], [1, 1]]
+WEAK_LOSSES = [DEEP_MASK_BOX_CONSISTENCY, DEEP_MASK_COLOR_CONSISTENCY]
 
 
 class DeepMACParams(
@@ -37,7 +47,8 @@ class DeepMACParams(
         'use_xy', 'network_type', 'use_instance_embedding', 'num_init_channels',
         'predict_full_resolution_masks', 'postprocess_crop_size',
         'max_roi_jitter_ratio', 'roi_jitter_mode',
-        'box_consistency_loss_weight',
+        'box_consistency_loss_weight', 'color_consistency_threshold',
+        'color_consistency_dilation', 'color_consistency_loss_weight'
     ])):
   """Class holding the DeepMAC network configutration."""
 
@@ -48,7 +59,9 @@ class DeepMACParams(
               mask_num_subsamples, use_xy, network_type, use_instance_embedding,
               num_init_channels, predict_full_resolution_masks,
               postprocess_crop_size, max_roi_jitter_ratio,
-              roi_jitter_mode, box_consistency_loss_weight):
+              roi_jitter_mode, box_consistency_loss_weight,
+              color_consistency_threshold, color_consistency_dilation,
+              color_consistency_loss_weight):
     return super(DeepMACParams,
                  cls).__new__(cls, classification_loss, dim,
                               task_loss_weight, pixel_embedding_dim,
@@ -57,7 +70,19 @@ class DeepMACParams(
                               use_instance_embedding, num_init_channels,
                               predict_full_resolution_masks,
                               postprocess_crop_size, max_roi_jitter_ratio,
-                              roi_jitter_mode, box_consistency_loss_weight)
+                              roi_jitter_mode, box_consistency_loss_weight,
+                              color_consistency_threshold,
+                              color_consistency_dilation,
+                              color_consistency_loss_weight)
+
+
+def _get_weak_loss_weight(loss_name, config):
+  if loss_name == DEEP_MASK_COLOR_CONSISTENCY:
+    return config.color_consistency_loss_weight
+  elif loss_name == DEEP_MASK_BOX_CONSISTENCY:
+    return config.box_consistency_loss_weight
+  else:
+    raise ValueError('Unknown loss - {}'.format(loss_name))
 
 
 def subsample_instances(classes, weights, boxes, masks, num_subsamples):
@@ -126,7 +151,7 @@ def _get_deepmac_network_by_type(name, num_init_channels, mask_size=None):
       raise ValueError('Mask size must be set.')
     return FullyConnectedMaskHead(num_init_channels, mask_size)
 
-  elif name == 'embedding_distance_probability':
+  elif name == 'embedding_projection':
     return tf.keras.layers.Lambda(lambda x: x)
 
   elif name.startswith('resnet'):
@@ -266,8 +291,8 @@ def fill_boxes(boxes, height, width):
   return tf.cast(filled_boxes, tf.float32)
 
 
-def embedding_distance_to_probability(x, y):
-  """Compute probability based on pixel-wise embedding distance.
+def embedding_projection(x, y):
+  """Compute dot product between two given embeddings.
 
   Args:
     x: [num_instances, height, width, dimension] float tensor input.
@@ -277,12 +302,97 @@ def embedding_distance_to_probability(x, y):
 
   Returns:
     dist: [num_instances, height, width, 1] A float tensor returning
-      the per-pixel probability. Pixels whose embeddings are close in
-      euclidean distance get a probability of close to 1.
+      the per-pixel embedding projection.
   """
-  diff = x - y
-  squared_dist = tf.reduce_sum(diff * diff, axis=3, keepdims=True)
-  return tf.exp(-squared_dist)
+
+  dot = tf.reduce_sum(x * y, axis=3, keepdims=True)
+  return  dot
+
+
+def _get_2d_neighbors_kenel():
+  """Returns a conv. kernel that when applies generates 2D neighbors.
+
+  Returns:
+    kernel: A float tensor of shape [3, 3, 1, 8]
+  """
+
+  kernel = np.zeros((3, 3, 1, 8))
+
+  for i, (y, x) in enumerate(NEIGHBORS_2D):
+    kernel[1 + y, 1 + x, 0, i] = 1.0
+
+  return tf.constant(kernel, dtype=tf.float32)
+
+
+def generate_2d_neighbors(input_tensor, dilation=2):
+  """Generate a feature map of 2D neighbors.
+
+  Note: This op makes 8 (# of neighbors) as the leading dimension so that
+  following ops on TPU won't have to pad the last dimension to 128.
+
+  Args:
+    input_tensor: A float tensor of shape [height, width, channels].
+    dilation: int, the dilation factor for considering neighbors.
+
+  Returns:
+    output: A float tensor of all 8 2-D neighbors. of shape
+      [8, height, width, channels].
+  """
+  input_tensor = tf.transpose(input_tensor, (2, 0, 1))
+  input_tensor = input_tensor[:, :, :, tf.newaxis]
+
+  kernel = _get_2d_neighbors_kenel()
+  output = tf.nn.atrous_conv2d(input_tensor, kernel, rate=dilation,
+                               padding='SAME')
+  return tf.transpose(output, [3, 1, 2, 0])
+
+
+def gaussian_pixel_similarity(a, b, theta):
+  norm_difference = tf.linalg.norm(a - b, axis=-1)
+  similarity = tf.exp(-norm_difference / theta)
+  return similarity
+
+
+def dilated_cross_pixel_similarity(feature_map, dilation=2, theta=2.0):
+  """Dilated cross pixel similarity as defined in [1].
+
+  [1]: https://arxiv.org/abs/2012.02310
+
+  Args:
+    feature_map: A float tensor of shape [height, width, channels]
+    dilation: int, the dilation factor.
+    theta: The denominator while taking difference inside the gaussian.
+
+  Returns:
+    dilated_similarity: A tensor of shape [8, height, width]
+  """
+  neighbors = generate_2d_neighbors(feature_map, dilation)
+  feature_map = feature_map[tf.newaxis]
+
+  return gaussian_pixel_similarity(feature_map, neighbors, theta=theta)
+
+
+def dilated_cross_same_mask_label(instance_masks, dilation=2):
+  """Dilated cross pixel similarity as defined in [1].
+
+  [1]: https://arxiv.org/abs/2012.02310
+
+  Args:
+    instance_masks: A float tensor of shape [num_instances, height, width]
+    dilation: int, the dilation factor.
+
+  Returns:
+    dilated_same_label: A tensor of shape [8, num_instances, height, width]
+  """
+
+  instance_masks = tf.transpose(instance_masks, (1, 2, 0))
+
+  neighbors = generate_2d_neighbors(instance_masks, dilation)
+  instance_masks = instance_masks[tf.newaxis]
+  same_mask_prob = ((instance_masks * neighbors) +
+                    ((1 - instance_masks) * (1 - neighbors)))
+
+  return tf.transpose(same_mask_prob, (0, 3, 1, 2))
 
 
 class ResNetMaskNetwork(tf.keras.layers.Layer):
@@ -364,6 +474,92 @@ class FullyConnectedMaskHead(tf.keras.layers.Layer):
                       [num_instances, self.mask_size, self.mask_size, 1])
 
 
+class DenseResidualBlock(tf.keras.layers.Layer):
+  """Residual block for 1D inputs.
+
+  This class implemented the pre-activation version of the ResNet block.
+  """
+
+  def __init__(self, hidden_size, use_shortcut_linear):
+    """Residual Block for 1D inputs.
+
+    Args:
+      hidden_size: size of the hidden layer.
+      use_shortcut_linear: bool, whether or not to use a linear layer for
+        shortcut.
+    """
+
+    super(DenseResidualBlock, self).__init__()
+
+    self.bn_0 = tf.keras.layers.experimental.SyncBatchNormalization(axis=-1)
+    self.bn_1 = tf.keras.layers.experimental.SyncBatchNormalization(axis=-1)
+
+    self.fc_0 = tf.keras.layers.Dense(
+        hidden_size, activation=None)
+    self.fc_1 = tf.keras.layers.Dense(
+        hidden_size, activation=None, kernel_initializer='zeros')
+
+    self.activation = tf.keras.layers.Activation('relu')
+
+    if use_shortcut_linear:
+      self.shortcut = tf.keras.layers.Dense(
+          hidden_size, activation=None, use_bias=False)
+    else:
+      self.shortcut = tf.keras.layers.Lambda(lambda x: x)
+
+  def __call__(self, inputs):
+    """Layer's forward pass.
+
+    Args:
+      inputs: input tensor.
+
+    Returns:
+      Tensor after residual block w/ CondBatchNorm.
+    """
+    out = self.fc_0(self.activation(self.bn_0(inputs)))
+    residual_inp = self.fc_1(self.activation(self.bn_1(out)))
+
+    skip = self.shortcut(inputs)
+
+    return residual_inp + skip
+
+
+class DenseResNet(tf.keras.layers.Layer):
+  """Resnet with dense layers."""
+
+  def __init__(self, num_layers, hidden_size, output_size):
+    """Resnet with dense layers.
+
+    Args:
+      num_layers: int, the number of layers.
+      hidden_size: size of the hidden layer.
+      output_size: size of the output.
+    """
+
+    super(DenseResNet, self).__init__()
+
+    self.input_proj = DenseResidualBlock(hidden_size, use_shortcut_linear=True)
+    if num_layers < 4:
+      raise ValueError(
+          'Cannot construct a DenseResNet with less than 4 layers')
+
+    num_blocks = (num_layers - 2) // 2
+
+    if ((num_blocks * 2) + 2) != num_layers:
+      raise ValueError(('DenseResNet depth has to be of the form (2n + 2). '
+                        f'Found {num_layers}'))
+
+    self._num_blocks = num_blocks
+    blocks = [DenseResidualBlock(hidden_size, use_shortcut_linear=False)
+              for _ in range(num_blocks)]
+    self.resnet = tf.keras.Sequential(blocks)
+    self.out_conv = tf.keras.layers.Dense(output_size)
+
+  def __call__(self, inputs):
+    net = self.input_proj(inputs)
+    return self.out_conv(self.resnet(net))
+
+
 class MaskHeadNetwork(tf.keras.layers.Layer):
   """Mask head class for DeepMAC."""
 
@@ -392,11 +588,11 @@ class MaskHeadNetwork(tf.keras.layers.Layer):
     self._network_type = network_type
 
     if (self._use_instance_embedding and
-        (self._network_type == 'embedding_distance_probability')):
+        (self._network_type == 'embedding_projection')):
       raise ValueError(('Cannot feed instance embedding to mask head when '
-                        'computing distance from instance embedding.'))
+                        'computing embedding projection.'))
 
-    if network_type == 'embedding_distance_probability':
+    if network_type == 'embedding_projection':
       self.project_out = tf.keras.layers.Lambda(lambda x: x)
     else:
       self.project_out = tf.keras.layers.Conv2D(
@@ -432,9 +628,9 @@ class MaskHeadNetwork(tf.keras.layers.Layer):
     if isinstance(out, list):
       out = out[-1]
 
-    if self._network_type == 'embedding_distance_probability':
+    if self._network_type == 'embedding_projection':
       instance_embedding = instance_embedding[:, tf.newaxis, tf.newaxis, :]
-      out = embedding_distance_to_probability(instance_embedding, out)
+      out = embedding_projection(instance_embedding, out)
 
     if out.shape[-1] > 1:
       out = self.project_out(out)
@@ -472,7 +668,10 @@ def deepmac_proto_to_params(deepmac_config):
       postprocess_crop_size=deepmac_config.postprocess_crop_size,
       max_roi_jitter_ratio=deepmac_config.max_roi_jitter_ratio,
       roi_jitter_mode=jitter_mode,
-      box_consistency_loss_weight=deepmac_config.box_consistency_loss_weight
+      box_consistency_loss_weight=deepmac_config.box_consistency_loss_weight,
+      color_consistency_threshold=deepmac_config.color_consistency_threshold,
+      color_consistency_dilation=deepmac_config.color_consistency_dilation,
+      color_consistency_loss_weight=deepmac_config.color_consistency_loss_weight
   )
 
 
@@ -502,24 +701,20 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     if self._deepmac_params.mask_num_subsamples > 0:
       raise ValueError('Subsampling masks is currently not supported.')
 
-    if self._deepmac_params.network_type == 'embedding_distance_probability':
+    if self._deepmac_params.network_type == 'embedding_projection':
       if self._deepmac_params.use_xy:
         raise ValueError(
-            'Cannot use x/y coordinates when using embedding distance.')
+            'Cannot use x/y coordinates when using embedding projection.')
 
       pixel_embedding_dim = self._deepmac_params.pixel_embedding_dim
       dim = self._deepmac_params.dim
       if dim != pixel_embedding_dim:
         raise ValueError(
-            'When using embedding distance mask head, '
+            'When using embedding projection mask head, '
             f'pixel_embedding_dim({pixel_embedding_dim}) '
             f'must be same as dim({dim}).')
 
       loss = self._deepmac_params.classification_loss
-      if ((not isinstance(loss, losses.WeightedDiceClassificationLoss))
-          or (not loss.is_prediction_probability)):
-        raise ValueError('Only dice loss with is_prediction_probability=true '
-                         'is supported with embedding distance mask head.')
 
     super(DeepMACMetaArch, self).__init__(
         is_training=is_training, add_summaries=add_summaries,
@@ -675,6 +870,17 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
 
   def _compute_per_instance_mask_prediction_loss(
       self, boxes, mask_logits, mask_gt):
+    """Compute the per-instance mask loss.
+
+    Args:
+      boxes: A [num_instances, 4] float tensor of GT boxes.
+      mask_logits: A [num_instances, height, width] float tensor of predicted
+        masks
+      mask_gt: The groundtruth mask.
+
+    Returns:
+      loss: A [num_instances] shaped tensor with the loss for each instance.
+    """
     num_instances = tf.shape(boxes)[0]
     mask_logits = self._resize_logits_like_gt(mask_logits, mask_gt)
 
@@ -696,6 +902,18 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
 
   def _compute_per_instance_box_consistency_loss(
       self, boxes_gt, boxes_for_crop, mask_logits):
+    """Compute the per-instance box consistency loss.
+
+    Args:
+      boxes_gt: A [num_instances, 4] float tensor of GT boxes.
+      boxes_for_crop: A [num_instances, 4] float tensor of augmented boxes,
+        to be used when using crop-and-resize based mask head.
+      mask_logits: A [num_instances, height, width] float tensor of predicted
+        masks.
+
+    Returns:
+      loss: A [num_instances] shaped tensor with the loss for each instance.
+    """
 
     height, width = tf.shape(mask_logits)[1], tf.shape(mask_logits)[2]
     filled_boxes = fill_boxes(boxes_gt, height, width)[:, :, :, tf.newaxis]
@@ -730,8 +948,58 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     else:
       return tf.reduce_mean(loss, axis=[1, 2])
 
+  def _compute_per_instance_color_consistency_loss(
+      self, boxes, preprocessed_image, mask_logits):
+    """Compute the per-instance color consistency loss.
+
+    Args:
+      boxes: A [num_instances, 4] float tensor of GT boxes.
+      preprocessed_image: A [height, width, 3] float tensor containing the
+        preprocessed image.
+      mask_logits: A [num_instances, height, width] float tensor of predicted
+        masks.
+
+    Returns:
+      loss: A [num_instances] shaped tensor with the loss for each instance.
+    """
+
+    if not self._deepmac_params.predict_full_resolution_masks:
+      logging.info('Color consistency is not implemented with RoIAlign '
+                   ', i.e, fixed sized masks. Returning 0 loss.')
+      return tf.zeros(tf.shape(boxes)[0])
+
+    dilation = self._deepmac_params.color_consistency_dilation
+
+    height, width = (tf.shape(preprocessed_image)[0],
+                     tf.shape(preprocessed_image)[1])
+    color_similarity = dilated_cross_pixel_similarity(
+        preprocessed_image, dilation=dilation, theta=2.0)
+    mask_probs = tf.nn.sigmoid(mask_logits)
+    same_mask_label_probability = dilated_cross_same_mask_label(
+        mask_probs, dilation=dilation)
+    same_mask_label_probability = tf.clip_by_value(
+        same_mask_label_probability, 1e-3, 1.0)
+
+    color_similarity_mask = (
+        color_similarity > self._deepmac_params.color_consistency_threshold)
+    color_similarity_mask = tf.cast(
+        color_similarity_mask[:, tf.newaxis, :, :], tf.float32)
+    per_pixel_loss = -(color_similarity_mask *
+                       tf.math.log(same_mask_label_probability))
+    # TODO(vighneshb) explore if shrinking the box by 1px helps.
+    box_mask = fill_boxes(boxes, height, width)
+    box_mask_expanded = box_mask[tf.newaxis, :, :, :]
+
+    per_pixel_loss = per_pixel_loss * box_mask_expanded
+    loss = tf.reduce_sum(per_pixel_loss, axis=[0, 2, 3])
+    num_box_pixels = tf.maximum(1.0, tf.reduce_sum(box_mask, axis=[1, 2]))
+    loss = loss / num_box_pixels
+
+    return loss
+
   def _compute_per_instance_deepmac_losses(
-      self, boxes, masks, instance_embedding, pixel_embedding):
+      self, boxes, masks, instance_embedding, pixel_embedding,
+      image):
     """Returns the mask loss per instance.
 
     Args:
@@ -743,13 +1011,16 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
         float tensor containing the instance embeddings.
       pixel_embedding: optional [output_height, output_width,
         pixel_embedding_size] float tensor containing the per-pixel embeddings.
+      image: [output_height, output_width, channels] float tensor
+        denoting the input image.
 
     Returns:
       mask_prediction_loss: A [num_instances] shaped float tensor containing the
         mask loss for each instance.
       box_consistency_loss: A [num_instances] shaped float tensor containing
         the box consistency loss for each instance.
-
+      box_consistency_loss: A [num_instances] shaped float tensor containing
+        the color consistency loss.
     """
 
     if tf.keras.backend.learning_phase():
@@ -774,7 +1045,24 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     box_consistency_loss = self._compute_per_instance_box_consistency_loss(
         boxes, boxes_for_crop, mask_logits)
 
-    return mask_prediction_loss, box_consistency_loss
+    color_consistency_loss = self._compute_per_instance_color_consistency_loss(
+        boxes, image, mask_logits)
+
+    return {
+        DEEP_MASK_ESTIMATION: mask_prediction_loss,
+        DEEP_MASK_BOX_CONSISTENCY: box_consistency_loss,
+        DEEP_MASK_COLOR_CONSISTENCY: color_consistency_loss
+    }
+
+  def _get_lab_image(self, preprocessed_image):
+    raw_image = self._feature_extractor.preprocess_reverse(
+        preprocessed_image)
+    raw_image = raw_image / 255.0
+
+    if tf_version.is_tf1():
+      raise NotImplementedError(('RGB-to-LAB conversion required for the color'
+                                 ' consistency loss is not supported in TF1.'))
+    return tfio.experimental.color.rgb_to_lab(raw_image)
 
   def _compute_instance_masks_loss(self, prediction_dict):
     """Computes the mask loss.
@@ -798,9 +1086,20 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
 
     loss_dict = {
         DEEP_MASK_ESTIMATION: 0.0,
-        DEEP_MASK_BOX_CONSISTENCY: 0.0
     }
 
+    for loss_name in WEAK_LOSSES:
+      loss_dict[loss_name] = 0.0
+
+    prediction_shape = tf.shape(prediction_dict[INSTANCE_EMBEDDING][0])
+    height, width = prediction_shape[1], prediction_shape[2]
+
+    preprocessed_image = tf.image.resize(
+        prediction_dict['preprocessed_inputs'], (height, width))
+    image = self._get_lab_image(preprocessed_image)
+
+    # TODO(vighneshb) See if we can save memory by only using the final
+    # prediction
     # Iterate over multiple preidctions by backbone (for hourglass length=2)
     for instance_pred, pixel_pred in zip(
         prediction_dict[INSTANCE_EMBEDDING],
@@ -815,21 +1114,24 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
         classes, valid_mask_weights, masks = filter_masked_classes(
             allowed_masked_classes_ids, classes, weights, masks)
 
-        per_instance_mask_loss, per_instance_consistency_loss = (
-            self._compute_per_instance_deepmac_losses(
-                boxes, masks, instance_pred[i], pixel_pred[i]))
-        per_instance_mask_loss *= valid_mask_weights
-        per_instance_consistency_loss *= weights
+        sample_loss_dict = self._compute_per_instance_deepmac_losses(
+            boxes, masks, instance_pred[i], pixel_pred[i], image[i])
+
+        sample_loss_dict[DEEP_MASK_ESTIMATION] *= valid_mask_weights
+        for loss_name in WEAK_LOSSES:
+          sample_loss_dict[loss_name] *= weights
 
         num_instances = tf.maximum(tf.reduce_sum(weights), 1.0)
         num_instances_allowed = tf.maximum(
             tf.reduce_sum(valid_mask_weights), 1.0)
 
         loss_dict[DEEP_MASK_ESTIMATION] += (
-            tf.reduce_sum(per_instance_mask_loss) / num_instances_allowed)
+            tf.reduce_sum(sample_loss_dict[DEEP_MASK_ESTIMATION]) /
+            num_instances_allowed)
 
-        loss_dict[DEEP_MASK_BOX_CONSISTENCY] += (
-            tf.reduce_sum(per_instance_consistency_loss) / num_instances)
+        for loss_name in WEAK_LOSSES:
+          loss_dict[loss_name] += (tf.reduce_sum(sample_loss_dict[loss_name]) /
+                                   num_instances)
 
     batch_size = len(gt_boxes_list)
     num_predictions = len(prediction_dict[INSTANCE_EMBEDDING])
@@ -851,11 +1153,12 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
               DEEP_MASK_ESTIMATION]
       )
 
-      if self._deepmac_params.box_consistency_loss_weight > 0.0:
-        losses_dict[LOSS_KEY_PREFIX + '/' + DEEP_MASK_BOX_CONSISTENCY] = (
-            self._deepmac_params.box_consistency_loss_weight * mask_loss_dict[
-                DEEP_MASK_BOX_CONSISTENCY]
-        )
+      for loss_name in WEAK_LOSSES:
+        loss_weight = _get_weak_loss_weight(loss_name, self._deepmac_params)
+        if loss_weight > 0.0:
+          losses_dict[LOSS_KEY_PREFIX + '/' + loss_name] = (
+              loss_weight * mask_loss_dict[loss_name])
+
     return losses_dict
 
   def postprocess(self, prediction_dict, true_image_shapes, **params):
@@ -964,10 +1267,7 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
       mask_logits = crop_masks_within_boxes(
           mask_logits, boxes, self._deepmac_params.postprocess_crop_size)
 
-    if self._deepmac_params.network_type == 'embedding_distance_probability':
-      masks_prob = mask_logits
-    else:
-      masks_prob = tf.nn.sigmoid(mask_logits)
+    masks_prob = tf.nn.sigmoid(mask_logits)
 
     return masks_prob
 

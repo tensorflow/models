@@ -94,7 +94,6 @@ class MixupAndCutmix(hyperparams.Config):
   prob: float = 1.0
   switch_prob: float = 0.5
   label_smoothing: float = 0.1
-  num_classes: int = 1000
 
 
 @dataclasses.dataclass

@@ -147,7 +147,7 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
         config, custom_objects=custom_objects)
 
   def _prepare_local(self, var_device, var_dtype, apply_state):
-    super(AdamWeightDecay, self)._prepare_local(var_device, var_dtype,
+    super(AdamWeightDecay, self)._prepare_local(var_device, var_dtype,  # pytype: disable=attribute-error  # typed-keras
                                                 apply_state)
     apply_state[(var_device, var_dtype)]['weight_decay_rate'] = tf.constant(
         self.weight_decay_rate, name='adam_weight_decay_rate')
@@ -197,14 +197,14 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
     decay = self._decay_weights_op(var, lr_t, apply_state)
     with tf.control_dependencies([decay]):
       return super(AdamWeightDecay,
-                   self)._resource_apply_dense(grad, var, **kwargs)
+                   self)._resource_apply_dense(grad, var, **kwargs)  # pytype: disable=attribute-error  # typed-keras
 
   def _resource_apply_sparse(self, grad, var, indices, apply_state=None):
     lr_t, kwargs = self._get_lr(var.device, var.dtype.base_dtype, apply_state)
     decay = self._decay_weights_op(var, lr_t, apply_state)
     with tf.control_dependencies([decay]):
       return super(AdamWeightDecay,
-                   self)._resource_apply_sparse(grad, var, indices, **kwargs)
+                   self)._resource_apply_sparse(grad, var, indices, **kwargs)  # pytype: disable=attribute-error  # typed-keras
 
   def get_config(self):
     config = super(AdamWeightDecay, self).get_config()

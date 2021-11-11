@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Optimizer factory class."""
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, List, Tuple
 
 import gin
 import tensorflow as tf
@@ -54,6 +54,22 @@ WARMUP_CLS = {
     'linear': lr_schedule.LinearWarmup,
     'polynomial': lr_schedule.PolynomialWarmUp
 }
+
+
+def register_optimizer_cls(
+    key: str, optimizer_config_cls: tf.keras.optimizers.Optimizer):
+  """Register customize optimizer cls.
+
+  The user will still need to subclass data classes in
+  configs.optimization_config to be used with OptimizerFactory.
+
+  Args:
+    key: A string to that the optimizer_config_cls is registered with.
+    optimizer_config_cls: A class which inherits tf.keras.optimizers.Optimizer.
+  """
+  if key in OPTIMIZERS_CLS:
+    raise ValueError('%s already registered in OPTIMIZER_CLS.' % key)
+  OPTIMIZERS_CLS[key] = optimizer_config_cls
 
 
 class OptimizerFactory:
@@ -139,6 +155,9 @@ class OptimizerFactory:
   def build_optimizer(
       self,
       lr: Union[tf.keras.optimizers.schedules.LearningRateSchedule, float],
+      gradient_transformers: Optional[List[Callable[
+          [List[Tuple[tf.Tensor, tf.Tensor]]], List[Tuple[tf.Tensor, tf.Tensor]]
+      ]]] = None,
       postprocessor: Optional[Callable[[tf.keras.optimizers.Optimizer],
                                        tf.keras.optimizers.Optimizer]] = None):
     """Build optimizer.
@@ -150,6 +169,11 @@ class OptimizerFactory:
     Args:
       lr: A floating point value, or a
         tf.keras.optimizers.schedules.LearningRateSchedule instance.
+      gradient_transformers: Optional list of functions to use to transform
+        gradients before applying updates to Variables. The functions are
+        applied after gradient_aggregator. The functions should accept and
+        return a list of (gradient, variable) tuples. clipvalue, clipnorm,
+        global_clipnorm should not be set when gradient_transformers is passed.
       postprocessor: An optional function for postprocessing the optimizer. It
         takes an optimizer and returns an optimizer.
 
@@ -158,13 +182,17 @@ class OptimizerFactory:
     """
 
     optimizer_dict = self._optimizer_config.as_dict()
-    ## Delete clipnorm and clipvalue if None
+    ## Delete clipnorm, clipvalue, global_clipnorm if None
     if optimizer_dict['clipnorm'] is None:
       del optimizer_dict['clipnorm']
     if optimizer_dict['clipvalue'] is None:
       del optimizer_dict['clipvalue']
+    if optimizer_dict['global_clipnorm'] is None:
+      del optimizer_dict['global_clipnorm']
 
     optimizer_dict['learning_rate'] = lr
+    if gradient_transformers is not None:
+      optimizer_dict['gradient_transformers'] = gradient_transformers
 
     optimizer = OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
 

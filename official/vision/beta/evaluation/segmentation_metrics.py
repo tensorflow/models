@@ -13,10 +13,9 @@
 # limitations under the License.
 
 """Metrics for segmentation."""
-
 import tensorflow as tf
 
-from official.vision import keras_cv
+from official.vision.beta.evaluation import iou
 
 
 class MeanIoU(tf.keras.metrics.MeanIoU):
@@ -77,11 +76,11 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
 
     if self._rescale_predictions:
       # This part can only run on cpu/gpu due to dynamic image resizing.
-      flatten_predictions = []
-      flatten_masks = []
-      flatten_valid_masks = []
-      for mask, valid_mask, predicted_mask, image_info in zip(
-          masks, valid_masks, predictions, images_info):
+      for i in range(tf.shape(predictions)[0]):
+        mask = masks[i]
+        valid_mask = valid_masks[i]
+        predicted_mask = predictions[i]
+        image_info = images_info[i]
 
         rescale_size = tf.cast(
             tf.math.ceil(image_info[1, :] / image_info[2, :]), tf.int32)
@@ -104,12 +103,12 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
                                                    image_shape[1])
 
         predicted_mask = tf.argmax(predicted_mask, axis=2)
-        flatten_predictions.append(tf.reshape(predicted_mask, shape=[1, -1]))
-        flatten_masks.append(tf.reshape(mask, shape=[1, -1]))
-        flatten_valid_masks.append(tf.reshape(valid_mask, shape=[1, -1]))
-      flatten_predictions = tf.concat(flatten_predictions, axis=1)
-      flatten_masks = tf.concat(flatten_masks, axis=1)
-      flatten_valid_masks = tf.concat(flatten_valid_masks, axis=1)
+        flatten_predictions = tf.reshape(predicted_mask, shape=[1, -1])
+        flatten_masks = tf.reshape(mask, shape=[1, -1])
+        flatten_valid_masks = tf.reshape(valid_mask, shape=[1, -1])
+        super(MeanIoU, self).update_state(
+            flatten_masks, flatten_predictions,
+            tf.cast(flatten_valid_masks, tf.float32))
 
     else:
       predictions = tf.image.resize(
@@ -121,15 +120,15 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
       flatten_masks = tf.reshape(masks, shape=[-1])
       flatten_valid_masks = tf.reshape(valid_masks, shape=[-1])
 
-    super(MeanIoU, self).update_state(
-        flatten_masks, flatten_predictions,
-        tf.cast(flatten_valid_masks, tf.float32))
+      super(MeanIoU, self).update_state(
+          flatten_masks, flatten_predictions,
+          tf.cast(flatten_valid_masks, tf.float32))
 
 
-class PerClassIoU(keras_cv.metrics.PerClassIoU):
+class PerClassIoU(iou.PerClassIoU):
   """Per Class IoU metric for semantic segmentation.
 
-  This class utilizes keras_cv.metrics.PerClassIoU to perform batched per class
+  This class utilizes iou.PerClassIoU to perform batched per class
   iou when both input images and groundtruth masks are resized to the same size
   (rescale_predictions=False). It also computes per class iou on groundtruth
   original sizes, in which case, each prediction is rescaled back to the
@@ -184,11 +183,11 @@ class PerClassIoU(keras_cv.metrics.PerClassIoU):
 
     if self._rescale_predictions:
       # This part can only run on cpu/gpu due to dynamic image resizing.
-      flatten_predictions = []
-      flatten_masks = []
-      flatten_valid_masks = []
-      for mask, valid_mask, predicted_mask, image_info in zip(
-          masks, valid_masks, predictions, images_info):
+      for i in range(tf.shape(predictions)[0]):
+        mask = masks[i]
+        valid_mask = valid_masks[i]
+        predicted_mask = predictions[i]
+        image_info = images_info[i]
 
         rescale_size = tf.cast(
             tf.math.ceil(image_info[1, :] / image_info[2, :]), tf.int32)
@@ -211,12 +210,12 @@ class PerClassIoU(keras_cv.metrics.PerClassIoU):
                                                    image_shape[1])
 
         predicted_mask = tf.argmax(predicted_mask, axis=2)
-        flatten_predictions.append(tf.reshape(predicted_mask, shape=[1, -1]))
-        flatten_masks.append(tf.reshape(mask, shape=[1, -1]))
-        flatten_valid_masks.append(tf.reshape(valid_mask, shape=[1, -1]))
-      flatten_predictions = tf.concat(flatten_predictions, axis=1)
-      flatten_masks = tf.concat(flatten_masks, axis=1)
-      flatten_valid_masks = tf.concat(flatten_valid_masks, axis=1)
+        flatten_predictions = tf.reshape(predicted_mask, shape=[1, -1])
+        flatten_masks = tf.reshape(mask, shape=[1, -1])
+        flatten_valid_masks = tf.reshape(valid_mask, shape=[1, -1])
+        super(PerClassIoU, self).update_state(
+            flatten_masks, flatten_predictions,
+            tf.cast(flatten_valid_masks, tf.float32))
 
     else:
       predictions = tf.image.resize(
@@ -228,6 +227,6 @@ class PerClassIoU(keras_cv.metrics.PerClassIoU):
       flatten_masks = tf.reshape(masks, shape=[-1])
       flatten_valid_masks = tf.reshape(valid_masks, shape=[-1])
 
-    super(PerClassIoU, self).update_state(
-        flatten_masks, flatten_predictions,
-        tf.cast(flatten_valid_masks, tf.float32))
+      super(PerClassIoU, self).update_state(
+          flatten_masks, flatten_predictions,
+          tf.cast(flatten_valid_masks, tf.float32))

@@ -947,7 +947,7 @@ class ObjectDetectionEvaluatorTest(tf.test.TestCase, parameterized.TestCase):
                                  axis=0)
     detection_classes = tf.tile(tf.constant([[0]]), multiples=[batch_size, 1])
     detection_masks = tf.tile(
-        tf.ones(shape=[1, 2, 20, 20], dtype=tf.float32),
+        tf.ones(shape=[1, 1, 20, 20], dtype=tf.float32),
         multiples=[batch_size, 1, 1, 1])
     groundtruth_boxes = tf.constant([[0., 0., 1., 1.]])
     groundtruth_classes = tf.constant([1])
@@ -972,6 +972,7 @@ class ObjectDetectionEvaluatorTest(tf.test.TestCase, parameterized.TestCase):
         detection_fields.detection_masks: detection_masks,
         detection_fields.num_detections: num_detections
     }
+
     groundtruth = {
         input_data_fields.groundtruth_boxes:
             groundtruth_boxes,

@@ -51,9 +51,7 @@ class TeamsPretrainerConfig(base_config.Config):
 
 
 @gin.configurable
-def get_encoder(bert_config,
-                embedding_network=None,
-                hidden_layers=layers.Transformer):
+def get_encoder(bert_config, embedding_network=None, hidden_layers=None):
   """Gets a 'EncoderScaffold' object.
 
   Args:
@@ -64,9 +62,6 @@ def get_encoder(bert_config,
   Returns:
     A encoder object.
   """
-  # embedding_size is required for PackedSequenceEmbedding.
-  if bert_config.embedding_size is None:
-    bert_config.embedding_size = bert_config.hidden_size
   embedding_cfg = dict(
       vocab_size=bert_config.vocab_size,
       type_vocab_size=bert_config.type_vocab_size,
@@ -88,7 +83,9 @@ def get_encoder(bert_config,
           stddev=bert_config.initializer_range),
   )
   if embedding_network is None:
-    embedding_network = networks.PackedSequenceEmbedding(**embedding_cfg)
+    embedding_network = networks.PackedSequenceEmbedding
+  if hidden_layers is None:
+    hidden_layers = layers.Transformer
   kwargs = dict(
       embedding_cfg=embedding_cfg,
       embedding_cls=embedding_network,

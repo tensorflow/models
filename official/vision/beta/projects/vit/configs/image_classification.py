@@ -49,6 +49,7 @@ class ImageClassificationModel(hyperparams.Config):
 
 @dataclasses.dataclass
 class Losses(hyperparams.Config):
+  loss_weight: float = 1.0
   one_hot: bool = True
   label_smoothing: float = 0.0
   l2_weight_decay: float = 0.0
@@ -104,19 +105,21 @@ def image_classification_imagenet_deit_pretrain() -> cfg.ExperimentConfig:
                       original_init=False,
                       transformer=backbones.Transformer(
                           dropout_rate=0.0, attention_dropout_rate=0.0)))),
-          losses=Losses(l2_weight_decay=0.0, label_smoothing=label_smoothing,
-                        one_hot=False, soft_labels=True),
+          losses=Losses(
+              l2_weight_decay=0.0,
+              label_smoothing=label_smoothing,
+              one_hot=False,
+              soft_labels=True),
           train_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'train*'),
               is_training=True,
               global_batch_size=train_batch_size,
               aug_type=common.Augmentation(
-                  type='randaug', randaug=common.RandAugment(
+                  type='randaug',
+                  randaug=common.RandAugment(
                       magnitude=9, exclude_ops=['Cutout'])),
               mixup_and_cutmix=common.MixupAndCutmix(
-                  num_classes=num_classes,
-                  label_smoothing=label_smoothing
-              )),
+                  label_smoothing=label_smoothing)),
           validation_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'valid*'),
               is_training=False,
@@ -134,7 +137,8 @@ def image_classification_imagenet_deit_pretrain() -> cfg.ExperimentConfig:
                   'adamw': {
                       'weight_decay_rate': 0.05,
                       'include_in_weight_decay': r'.*(kernel|weight):0$',
-                      'gradient_clip_norm': 0.0}
+                      'gradient_clip_norm': 0.0
+                  }
               },
               'learning_rate': {
                   'type': 'cosine',

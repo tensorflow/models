@@ -43,12 +43,12 @@ class SelectTopKScoresTest(tf.test.TestCase):
 class DetectionGeneratorTest(
     parameterized.TestCase, tf.test.TestCase):
 
-  @parameterized.parameters(
-      (True),
-      (False),
-  )
-  def testDetectionsOutputShape(self, use_batched_nms):
-    max_num_detections = 100
+  @parameterized.product(
+      nms_version=['batched', 'v1', 'v2'],
+      use_cpu_nms=[True, False],
+      soft_nms_sigma=[None, 0.1])
+  def testDetectionsOutputShape(self, nms_version, use_cpu_nms, soft_nms_sigma):
+    max_num_detections = 10
     num_classes = 4
     pre_nms_top_k = 5000
     pre_nms_score_threshold = 0.01
@@ -59,7 +59,9 @@ class DetectionGeneratorTest(
         'pre_nms_score_threshold': pre_nms_score_threshold,
         'nms_iou_threshold': 0.5,
         'max_num_detections': max_num_detections,
-        'use_batched_nms': use_batched_nms,
+        'nms_version': nms_version,
+        'use_cpu_nms': use_cpu_nms,
+        'soft_nms_sigma': soft_nms_sigma,
     }
     generator = detection_generator.DetectionGenerator(**kwargs)
 
@@ -98,7 +100,9 @@ class DetectionGeneratorTest(
         'pre_nms_score_threshold': 0.1,
         'nms_iou_threshold': 0.5,
         'max_num_detections': 10,
-        'use_batched_nms': False,
+        'nms_version': 'v2',
+        'use_cpu_nms': False,
+        'soft_nms_sigma': None,
     }
     generator = detection_generator.DetectionGenerator(**kwargs)
 
@@ -116,16 +120,21 @@ class MultilevelDetectionGeneratorTest(
     parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (True, False),
-      (False, False),
-      (False, True),
+      ('batched', False, True, None),
+      ('batched', False, False, None),
+      ('v2', False, True, None),
+      ('v2', False, False, None),
+      ('v1', True, True, 0.0),
+      ('v1', True, False, 0.1),
+      ('v1', True, False, None),
   )
-  def testDetectionsOutputShape(self, use_batched_nms, has_att_heads):
+  def testDetectionsOutputShape(self, nms_version, has_att_heads, use_cpu_nms,
+                                soft_nms_sigma):
     min_level = 4
     max_level = 6
     num_scales = 2
-    max_num_detections = 100
-    aspect_ratios = [1.0, 2.0,]
+    max_num_detections = 10
+    aspect_ratios = [1.0, 2.0]
     anchor_scale = 2.0
     output_size = [64, 64]
     num_classes = 4
@@ -138,7 +147,9 @@ class MultilevelDetectionGeneratorTest(
         'pre_nms_score_threshold': pre_nms_score_threshold,
         'nms_iou_threshold': 0.5,
         'max_num_detections': max_num_detections,
-        'use_batched_nms': use_batched_nms,
+        'nms_version': nms_version,
+        'use_cpu_nms': use_cpu_nms,
+        'soft_nms_sigma': soft_nms_sigma,
     }
 
     input_anchor = anchor.build_anchor_generator(min_level, max_level,
@@ -218,7 +229,9 @@ class MultilevelDetectionGeneratorTest(
         'pre_nms_score_threshold': 0.1,
         'nms_iou_threshold': 0.5,
         'max_num_detections': 10,
-        'use_batched_nms': False,
+        'nms_version': 'v2',
+        'use_cpu_nms': False,
+        'soft_nms_sigma': None,
     }
     generator = detection_generator.MultilevelDetectionGenerator(**kwargs)
 

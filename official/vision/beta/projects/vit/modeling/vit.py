@@ -19,28 +19,22 @@ import tensorflow as tf
 from official.modeling import activations
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_layers
-from official.vision.beta.projects.vit.modeling.layers import StochsticDepthTransformerEncoderBlock
+from official.vision.beta.projects.vit.modeling import nn_blocks
 
 layers = tf.keras.layers
 
 VIT_SPECS = {
-    'vit-testing':
-        dict(
-            hidden_size=1,
-            patch_size=16,
-            transformer=dict(mlp_dim=1, num_heads=1, num_layers=1),
-        ),
     'vit-ti16':
         dict(
             hidden_size=192,
             patch_size=16,
-            transformer=dict(mlp_dim=3072, num_heads=3, num_layers=12),
+            transformer=dict(mlp_dim=768, num_heads=3, num_layers=12),
         ),
     'vit-s16':
         dict(
             hidden_size=384,
             patch_size=16,
-            transformer=dict(mlp_dim=3072, num_heads=6, num_layers=12),
+            transformer=dict(mlp_dim=1536, num_heads=6, num_layers=12),
         ),
     'vit-b16':
         dict(
@@ -149,7 +143,7 @@ class Encoder(tf.keras.layers.Layer):
     # Set layer norm epsilons to 1e-6 to be consistent with JAX implementation.
     # https://flax.readthedocs.io/en/latest/_autosummary/flax.nn.LayerNorm.html
     for i in range(self._num_layers):
-      encoder_layer = StochsticDepthTransformerEncoderBlock(
+      encoder_layer = nn_blocks.TransformerEncoderBlock(
           inner_activation=activations.gelu,
           num_attention_heads=self._num_heads,
           inner_dim=self._mlp_dim,
@@ -159,7 +153,7 @@ class Encoder(tf.keras.layers.Layer):
           kernel_initializer=self._kernel_initializer,
           norm_first=True,
           stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
-              self._init_stochastic_depth_rate, i, self._num_layers - 1),
+              self._init_stochastic_depth_rate, i + 1, self._num_layers),
           norm_epsilon=1e-6)
       self._encoder_layers.append(encoder_layer)
     self._norm = layers.LayerNormalization(epsilon=1e-6)
@@ -252,8 +246,7 @@ class VisionTransformer(tf.keras.Model):
             tf.reshape(x, [-1, 1, 1, representation_size or hidden_size])
     }
 
-    super(VisionTransformer, self).__init__(
-        inputs=inputs, outputs=endpoints)
+    super(VisionTransformer, self).__init__(inputs=inputs, outputs=endpoints)
 
 
 @factory.register_backbone_builder('vit')

@@ -406,5 +406,19 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
                         [[[[[1.]]],
                           [[[3.]]]]])
 
+  @parameterized.parameters(
+      (None, []),
+      (None, [6, 12, 18]),
+      ([32, 32], [6, 12, 18]),
+  )
+  def test_aspp(self, pool_kernel_size, dilation_rates):
+    inputs = tf.keras.Input(shape=(64, 64, 128), dtype=tf.float32)
+    layer = nn_layers.SpatialPyramidPooling(
+        output_channels=256,
+        dilation_rates=dilation_rates,
+        pool_kernel_size=pool_kernel_size)
+    output = layer(inputs)
+    self.assertAllEqual([None, 64, 64, 256], output.shape)
+
 if __name__ == '__main__':
   tf.test.main()

@@ -79,7 +79,7 @@ std::string ContractToken(const char* input_ptr, size_t len, size_t num_chars) {
 
     // Count how many times this pattern appeared.
     int num_cur_patterns = 0;
-    if (cur_pattern.find(" ") == std::string::npos && !IsDigit(cur_pattern)) {
+    if (cur_pattern.find(' ') == std::string::npos && !IsDigit(cur_pattern)) {
       num_cur_patterns =
           GetNumPattern(char_tokens, i + num_chars, num_chars, cur_pattern);
     }

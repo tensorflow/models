@@ -21,16 +21,16 @@ MixupAndCutmix:
   - Mixup: https://arxiv.org/abs/1710.09412
   - Cutmix: https://arxiv.org/abs/1905.04899
 
-RandomErasing, Mixup and Cutmix are inspired by https://github.com/rwightman/pytorch-image-models
+RandomErasing, Mixup and Cutmix are inspired by
+https://github.com/rwightman/pytorch-image-models
 
 """
 import math
 from typing import Any, List, Iterable, Optional, Text, Tuple
 
+from keras.layers.preprocessing import image_preprocessing as image_ops
 import numpy as np
 import tensorflow as tf
-
-from tensorflow.python.keras.layers.preprocessing import image_preprocessing as image_ops
 
 
 # This signifies the max integer that the controller RNN could predict for the
@@ -308,8 +308,13 @@ def cutout(image: tf.Tensor, pad_size: int, replace: int = 0) -> tf.Tensor:
   return image
 
 
-def _fill_rectangle(image, center_width, center_height, half_width,
-                    half_height, replace=None):
+def _fill_rectangle(image,
+                    center_width,
+                    center_height,
+                    half_width,
+                    half_height,
+                    replace=None):
+  """Fill blank area."""
   image_height = tf.shape(image)[0]
   image_width = tf.shape(image)[1]
 
@@ -827,10 +832,13 @@ def level_to_arg(cutout_const: float, translate_const: float):
   return args
 
 
-def _parse_policy_info(name: Text, prob: float, level: float,
-                       replace_value: List[int], cutout_const: float,
-                       translate_const: float, level_std: float = 0.
-                       ) -> Tuple[Any, float, Any]:
+def _parse_policy_info(name: Text,
+                       prob: float,
+                       level: float,
+                       replace_value: List[int],
+                       cutout_const: float,
+                       translate_const: float,
+                       level_std: float = 0.) -> Tuple[Any, float, Any]:
   """Return the function that corresponds to `name` and update `level` param."""
   func = NAME_TO_FUNC[name]
 
@@ -1216,7 +1224,7 @@ class RandAugment(ImageAugment):
                translate_const: float = 100.,
                magnitude_std: float = 0.0,
                prob_to_apply: Optional[float] = None,
-               exclude_ops: List[str] = []):
+               exclude_ops: Optional[List[str]] = None):
     """Applies the RandAugment policy to images.
 
     Args:
@@ -1248,8 +1256,10 @@ class RandAugment(ImageAugment):
         'TranslateX', 'TranslateY', 'Cutout', 'SolarizeAdd'
     ]
     self.magnitude_std = magnitude_std
-    self.available_ops = [
-        op for op in self.available_ops if op not in exclude_ops]
+    if exclude_ops:
+      self.available_ops = [
+          op for op in self.available_ops if op not in exclude_ops
+      ]
 
   def distort(self, image: tf.Tensor) -> tf.Tensor:
     """Applies the RandAugment policy to `image`.
@@ -1316,26 +1326,32 @@ class RandomErasing(ImageAugment):
   Implementaion is inspired by https://github.com/rwightman/pytorch-image-models
   """
 
-  def __init__(self, probability: float = 0.25, min_area: float = 0.02,
-               max_area: float = 1 / 3, min_aspect: float = 0.3,
-               max_aspect=None, min_count=1, max_count=1, trials=10):
+  def __init__(self,
+               probability: float = 0.25,
+               min_area: float = 0.02,
+               max_area: float = 1 / 3,
+               min_aspect: float = 0.3,
+               max_aspect=None,
+               min_count=1,
+               max_count=1,
+               trials=10):
     """Applies RandomErasing to a single image.
 
     Args:
       probability (float, optional): Probability of augmenting the image.
         Defaults to 0.25.
-      min_area (float, optional): Minimum area of the random erasing
-        rectangle. Defaults to 0.02.
-      max_area (float, optional): Maximum area of the random erasing
-        rectangle. Defaults to 1/3.
+      min_area (float, optional): Minimum area of the random erasing rectangle.
+        Defaults to 0.02.
+      max_area (float, optional): Maximum area of the random erasing rectangle.
+        Defaults to 1/3.
       min_aspect (float, optional): Minimum aspect rate of the random erasing
         rectangle. Defaults to 0.3.
-      max_aspect ([type], optional): Maximum aspect rate of the random
-        erasing rectangle. Defaults to None.
-      min_count (int, optional): Minimum number of erased
-        rectangles. Defaults to 1.
-      max_count (int, optional):  Maximum number of erased
-        rectangles. Defaults to 1.
+      max_aspect ([type], optional): Maximum aspect rate of the random erasing
+        rectangle. Defaults to None.
+      min_count (int, optional): Minimum number of erased rectangles. Defaults
+        to 1.
+      max_count (int, optional):  Maximum number of erased rectangles. Defaults
+        to 1.
       trials (int, optional): Maximum number of trials to randomly sample a
         rectangle that fulfills constraint. Defaults to 10.
     """
@@ -1364,10 +1380,15 @@ class RandomErasing(ImageAugment):
 
   @tf.function
   def _erase(self, image: tf.Tensor) -> tf.Tensor:
-    count = self._min_count if self._min_count == self._max_count else \
-        tf.random.uniform(shape=[], minval=int(self._min_count),
-                          maxval=int(self._max_count - self._min_count + 1),
-                          dtype=tf.int32)
+    """Erase an area."""
+    if self._min_count == self._max_count:
+      count = self._min_count
+    else:
+      count = tf.random.uniform(
+          shape=[],
+          minval=int(self._min_count),
+          maxval=int(self._max_count - self._min_count + 1),
+          dtype=tf.int32)
 
     image_height = tf.shape(image)[0]
     image_width = tf.shape(image)[1]
@@ -1378,28 +1399,42 @@ class RandomErasing(ImageAugment):
       is_trial_successfull = False
       for _ in range(self._trials):
         if not is_trial_successfull:
-          erase_area = tf.random.uniform(shape=[],
-                                        minval=area * self._min_area,
-                                        maxval=area * self._max_area)
-          aspect_ratio = tf.math.exp(tf.random.uniform(
-              shape=[], minval=self._min_log_aspect,
-              maxval=self._max_log_aspect))
+          erase_area = tf.random.uniform(
+              shape=[],
+              minval=area * self._min_area,
+              maxval=area * self._max_area)
+          aspect_ratio = tf.math.exp(
+              tf.random.uniform(
+                  shape=[],
+                  minval=self._min_log_aspect,
+                  maxval=self._max_log_aspect))
 
-          half_height = tf.cast(tf.math.round(tf.math.sqrt(
-              erase_area * aspect_ratio) / 2), dtype=tf.int32)
-          half_width = tf.cast(tf.math.round(tf.math.sqrt(
-              erase_area / aspect_ratio) / 2), dtype=tf.int32)
+          half_height = tf.cast(
+              tf.math.round(tf.math.sqrt(erase_area * aspect_ratio) / 2),
+              dtype=tf.int32)
+          half_width = tf.cast(
+              tf.math.round(tf.math.sqrt(erase_area / aspect_ratio) / 2),
+              dtype=tf.int32)
 
           if 2 * half_height < image_height and 2 * half_width < image_width:
             center_height = tf.random.uniform(
-                shape=[], minval=0, maxval=int(image_height - 2 * half_height),
+                shape=[],
+                minval=0,
+                maxval=int(image_height - 2 * half_height),
                 dtype=tf.int32)
             center_width = tf.random.uniform(
-                shape=[], minval=0, maxval=int(image_width - 2 * half_width),
+                shape=[],
+                minval=0,
+                maxval=int(image_width - 2 * half_width),
                 dtype=tf.int32)
-            
-            image = _fill_rectangle(image, center_width, center_height,
-                                    half_width, half_height, replace=None)
+
+            image = _fill_rectangle(
+                image,
+                center_width,
+                center_height,
+                half_width,
+                half_height,
+                replace=None)
 
             is_trial_successfull = True
 
@@ -1415,17 +1450,21 @@ class MixupAndCutmix:
   Implementaion is inspired by https://github.com/rwightman/pytorch-image-models
   """
 
-  def __init__(self, mixup_alpha: float = .8, cutmix_alpha: float = 1.,
-               prob: float = 1.0, switch_prob: float = 0.5,
-               label_smoothing: float = 0.1, num_classes: int = 1001):
+  def __init__(self,
+               mixup_alpha: float = .8,
+               cutmix_alpha: float = 1.,
+               prob: float = 1.0,
+               switch_prob: float = 0.5,
+               label_smoothing: float = 0.1,
+               num_classes: int = 1001):
     """Applies Mixup and/or Cutmix to a batch of images.
 
     Args:
       mixup_alpha (float, optional): For drawing a random lambda (`lam`) from a
         beta distribution (for each image). If zero Mixup is deactivated.
         Defaults to .8.
-      cutmix_alpha (float, optional): For drawing a random lambda (`lam`) from
-        a beta distribution (for each image). If zero Cutmix is deactivated.
+      cutmix_alpha (float, optional): For drawing a random lambda (`lam`) from a
+        beta distribution (for each image). If zero Cutmix is deactivated.
         Defaults to 1..
       prob (float, optional): Of augmenting the batch. Defaults to 1.0.
       switch_prob (float, optional): Probability of applying Cutmix for the
@@ -1454,12 +1493,11 @@ class MixupAndCutmix:
 
   def distort(self, images: tf.Tensor,
               labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
-    """Applies Mixup and/or Cutmix to batch of `images` and transforms the
-      `labels` (incl. label smoothing).
+    """Applies Mixup and/or Cutmix to batch of images and transforms labels.
 
     Args:
-      images (tf.Tensor): Of shape [batch_size,height, width, 3] representing
-        a batch of image.
+      images (tf.Tensor): Of shape [batch_size,height, width, 3] representing a
+        batch of image.
       labels (tf.Tensor): Of shape [batch_size, ] representing the class id for
         each image of the batch.
 
@@ -1467,30 +1505,30 @@ class MixupAndCutmix:
       Tuple[tf.Tensor, tf.Tensor]: The augmented version of `image` and
         `labels`.
     """
-    augment_cond = tf.less(tf.random.uniform(shape=[], minval=0., maxval=1.0),
-                           self.mix_prob)
+    augment_cond = tf.less(
+        tf.random.uniform(shape=[], minval=0., maxval=1.0), self.mix_prob)
+    # pylint: disable=g-long-lambda
+    augment_a = lambda: self._update_labels(*tf.cond(
+        tf.less(
+            tf.random.uniform(shape=[], minval=0., maxval=1.0), self.switch_prob
+        ), lambda: self._cutmix(images, labels), lambda: self._mixup(
+            images, labels)))
+    augment_b = lambda: (images, self._smooth_labels(labels))
+    # pylint: enable=g-long-lambda
 
-    return tf.cond(
-        augment_cond,
-        lambda: self._update_labels(*tf.cond(
-            tf.less(tf.random.uniform(
-                shape=[], minval=0., maxval=1.0), self.switch_prob),
-            lambda: self._cutmix(images, labels),
-            lambda: self._mixup(images, labels)
-        )),
-        lambda: (images, self._smooth_labels(labels))
-    )
+    return tf.cond(augment_cond, augment_a, augment_b)
 
   @staticmethod
-  def _sample_from_beta(alpha: float, beta: float, shape: tuple):
+  def _sample_from_beta(alpha, beta, shape):
     sample_alpha = tf.random.gamma(shape, 1., beta=alpha)
     sample_beta = tf.random.gamma(shape, 1., beta=beta)
     return sample_alpha / (sample_alpha + sample_beta)
 
   def _cutmix(self, images: tf.Tensor,
               labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-    lam = MixupAndCutmix._sample_from_beta(
-        self.cutmix_alpha, self.cutmix_alpha, labels.shape)
+    """Apply cutmix."""
+    lam = MixupAndCutmix._sample_from_beta(self.cutmix_alpha, self.cutmix_alpha,
+                                           labels.shape)
 
     ratio = tf.math.sqrt(1 - lam)
 
@@ -1514,7 +1552,7 @@ class MixupAndCutmix:
     images = tf.map_fn(
         lambda x: _fill_rectangle(*x),
         (images, random_center_width, random_center_height, cut_width // 2,
-            cut_height // 2, tf.reverse(images, [0])),
+         cut_height // 2, tf.reverse(images, [0])),
         dtype=(tf.float32, tf.int32, tf.int32, tf.int32, tf.int32, tf.float32),
         fn_output_signature=tf.TensorSpec(images.shape[1:], dtype=tf.float32))
 
@@ -1522,8 +1560,8 @@ class MixupAndCutmix:
 
   def _mixup(self, images: tf.Tensor,
              labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-    lam = MixupAndCutmix._sample_from_beta(
-        self.mixup_alpha, self.mixup_alpha, labels.shape)
+    lam = MixupAndCutmix._sample_from_beta(self.mixup_alpha, self.mixup_alpha,
+                                           labels.shape)
     lam = tf.reshape(lam, [-1, 1, 1, 1])
     images = lam * images + (1. - lam) * tf.reverse(images, [0])
 
@@ -1533,8 +1571,8 @@ class MixupAndCutmix:
     off_value = self.label_smoothing / self.num_classes
     on_value = 1. - self.label_smoothing + off_value
 
-    smooth_labels = tf.one_hot(labels, self.num_classes,
-                               on_value=on_value, off_value=off_value)
+    smooth_labels = tf.one_hot(
+        labels, self.num_classes, on_value=on_value, off_value=off_value)
     return smooth_labels
 
   def _update_labels(self, images: tf.Tensor, labels: tf.Tensor,
