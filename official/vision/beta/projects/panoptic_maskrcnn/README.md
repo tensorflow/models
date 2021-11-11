@@ -78,8 +78,8 @@ $ python3 train.py \
 ### Panoptic FPN
 Backbone     | Schedule     | Experiment name             | Box mAP |  Mask mAP  | Overall PQ | Things PQ | Stuff PQ | Checkpoints
 :------------| :----------- | :---------------------------| ------- | ---------- | ---------- | --------- | -------- | ------------:
-ResNet-50    | 1x           | `panoptic_fpn_coco`         | 38.19   |   34.25    |   39.14    |  45.42    |  29.65   | [ckpt]()
-ResNet-50    | 3x           | `panoptic_fpn_coco`         | 40.64   |   36.29    |   40.91    |  47.68    |  30.69   | [ckpt]()
+ResNet-50    | 1x           | `panoptic_fpn_coco`         | 38.19   |   34.25    |   39.14    |  45.42    |  29.65   | [ckpt](gs://tf_model_garden/vision/panoptic/panoptic_fpn/panoptic_fpn_1x)
+ResNet-50    | 3x           | `panoptic_fpn_coco`         | 40.64   |   36.29    |   40.91    |  47.68    |  30.69   | [ckpt](gs://tf_model_garden/vision/panoptic/panoptic_fpn/panoptic_fpn_3x)
 
 **Note**: Here 1x schedule refers to ~12 epochs
 
