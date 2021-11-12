@@ -1,9 +1,14 @@
+"""Contains tests for Graph Convolution"""
 import tensorflow as tf
 from absl.testing import parameterized
 import numpy as np
 from nn_blocks import GraphConv, gather_scatter
+
+
 class GraphConvTest(parameterized.TestCase, tf.test.TestCase):
+    """Graph convolution tests"""
     def test_undirected(self):
+        """Test with undirected graph"""
         verts = tf.constant([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=tf.float32)
         edges = tf.constant([[0, 1], [0, 2]])
         expected_y = tf.constant(
@@ -20,16 +25,17 @@ class GraphConvTest(parameterized.TestCase, tf.test.TestCase):
 
         w0 = np.array([[1.], [1.], [1.0]])
         w1 = np.array([[-1.], [-1.], [-1.0]])
-        b = np.array([0.])
+        bias = np.array([0.])
 
-        conv.w0.set_weights([w0, b])
-        conv.w1.set_weights([w1, b])
+        conv._w0.set_weights([w0, bias])
+        conv._w1.set_weights([w1, bias])
 
         y = conv(verts, edges)
 
         self.assertAllEqual(y, expected_y)
 
     def test_no_edges(self):
+        """Test with no edges"""
         dtype = tf.float32
         verts = tf.constant([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=tf.float32)
         edges = tf.zeros((0, 2), dtype=tf.int64)
@@ -40,14 +46,15 @@ class GraphConvTest(parameterized.TestCase, tf.test.TestCase):
         y = conv(verts, edges)
 
         w0 = np.array([[1.], [-1.], [-2.]])
-        b = np.array([0.])
-        conv.w0.set_weights([w0, b])
+        bias = np.array([0.])
+        conv._w0.set_weights([w0, bias])
 
         y = conv(verts, edges)
 
         self.assertAllEqual(y, expected_y)
 
     def test_no_verts_and_edges(self):
+        """Test with no vertices and no edges"""
         dtype = tf.float32
 
         verts = tf.constant([], dtype=dtype)
@@ -58,8 +65,8 @@ class GraphConvTest(parameterized.TestCase, tf.test.TestCase):
         y = conv(verts, edges)
 
         w0 = np.array([[1.], [-1.], [-2.]])
-        b = np.array([0.])
-        conv.w0.set_weights([w0, b])
+        bias = np.array([0.])
+        conv._w0.set_weights([w0, bias])
 
         y = conv(verts, edges)
         self.assertAllEqual(y, tf.zeros((0, 1)))
@@ -69,14 +76,15 @@ class GraphConvTest(parameterized.TestCase, tf.test.TestCase):
         y = conv(verts, edges)
 
         w0 = np.tile(w0, (1, 2))
-        b = np.array([0., 0.])
+        bias = np.array([0., 0.])
 
-        conv2.w0.set_weights([w0, b])
+        conv2._w0.set_weights([w0, bias])
         y = conv2(verts, edges)
 
         self.assertAllEqual(y, tf.zeros((0, 2)))
 
     def test_directed(self):
+        """Test with a directed graph"""
         dtype = tf.float32
         verts = tf.constant([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=dtype)
         edges = tf.constant([[0, 1], [0, 2]])
@@ -94,16 +102,17 @@ class GraphConvTest(parameterized.TestCase, tf.test.TestCase):
 
         w0 = np.array([[1.], [1.], [1.0]])
         w1 = np.array([[-1.], [-1.], [-1.0]])
-        b = np.array([0.])
+        bias = np.array([0.])
 
-        conv.w0.set_weights([w0, b])
-        conv.w1.set_weights([w1, b])
+        conv._w0.set_weights([w0, bias])
+        conv._w1.set_weights([w1, bias])
 
         y = conv(verts, edges)
 
         self.assertAllEqual(y, expected_y)
 
     def test_gather_scatter(self):
+        """Test gather scatter"""
         dtype = tf.float32
         verts = tf.constant([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=dtype)
         edges = tf.constant([[0, 1], [0, 2]])
@@ -118,10 +127,15 @@ class GraphConvTest(parameterized.TestCase, tf.test.TestCase):
         y = gather_scatter(verts, edges)
         self.assertAllEqual(y, expected_y)
 
+    def test_gradient_pass_through(self):
+        """Test gradient pass through"""
+        v, e = 100, 100
+        verts = tf.random.uniform(shape=[v, 3], dtype=tf.dtypes.float32)
+        edges = tf.random.uniform(shape=[e, 2], minval=0, maxval=v, dtype=tf.dtypes.int32)
 
-gct = GraphConvTest()
-gct.test_undirected()
-gct.test_no_edges()
-gct.test_no_verts_and_edges()
-gct.test_directed()
-gct.test_gather_scatter()
+        conv = GraphConv(3, 1, directed=False)
+
+        with tf.GradientTape() as tape:
+            y = conv(verts, edges)
+        grads = tape.gradient(y, conv.trainable_variables)
+        self.assertIsNotNone(grads)
