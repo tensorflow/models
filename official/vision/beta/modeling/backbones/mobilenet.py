@@ -574,7 +574,7 @@ class MobileNet(tf.keras.Model):
     Args:
       model_id: A `str` of MobileNet version. The supported values are
         `MobileNetV1`, `MobileNetV2`, `MobileNetV3Large`, `MobileNetV3Small`,
-        and `MobileNetV3EdgeTPU`.
+        `MobileNetV3EdgeTPU`, `MobileNetMultiMAX` and `MobileNetMultiAVG`.
       filter_size_scale: A `float` of multiplier for the filters (number of
         channels) for all convolution ops. The value must be greater than zero.
         Typical usage will be to set this value in (0, 1) to reduce the number
