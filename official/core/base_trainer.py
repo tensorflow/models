@@ -75,8 +75,8 @@ class Recovery:
     self.recover_counter += 1
     if self.recover_counter > self.recovery_max_trials:
       raise RuntimeError(
-          "The loss value is NaN after training loop and it happens %d times." %
-          self.recover_counter)
+          "The loss value is NaN or out of range after training loop and "
+          f"this happens {self.recover_counter} times.")
     # Loads the previous good checkpoint.
     checkpoint_path = self.checkpoint_manager.restore_or_initialize()
     logging.warning(
