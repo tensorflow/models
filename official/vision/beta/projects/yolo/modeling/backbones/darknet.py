@@ -225,7 +225,7 @@ LARGECSP53 = {
             False
         ],
         [
-            'DarkRes', 'csp', 1, True, 64, None, None, None, None, 'mish', -1,
+            'DarkRes', 'csp', 1, False, 64, None, None, None, None, 'mish', -1,
             1, 1, False
         ],
         [

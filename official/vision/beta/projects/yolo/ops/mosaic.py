@@ -179,7 +179,7 @@ class Mosaic:
         infos,
         area_thresh=self._area_thresh,
         shuffle_boxes=False,
-        augment=True,
+        filter_and_clip_boxes=True,
         seed=self._seed)
     classes, is_crowd, area = self._select_ind(inds, classes, is_crowd, area)  # pylint:disable=unbalanced-tuple-unpacking
     return image, boxes, classes, is_crowd, area, crop_points

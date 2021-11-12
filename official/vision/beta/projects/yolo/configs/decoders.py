@@ -33,6 +33,8 @@ class YoloDecoder(hyperparams.Config):
   use_separable_conv: bool = False
   csp_stack: Optional[bool] = None
   fpn_depth: Optional[int] = None
+  max_fpn_depth: Optional[int] = None
+  max_csp_stack: Optional[int] = None
   fpn_filter_scale: Optional[int] = None
   path_process_len: Optional[int] = None
   max_level_process_len: Optional[int] = None
