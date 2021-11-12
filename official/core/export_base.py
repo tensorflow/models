@@ -28,8 +28,9 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
   def __init__(self,
                params,
                model: Union[tf.Module, tf.keras.Model],
-               preprocessor: Optional[Callable[..., Any]] = None,
                inference_step: Optional[Callable[..., Any]] = None,
+               *,
+               preprocessor: Optional[Callable[..., Any]] = None,
                postprocessor: Optional[Callable[..., Any]] = None):
     """Instantiates an ExportModel.
 
@@ -51,10 +52,10 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
     Args:
       params: A dataclass for parameters to the module.
       model: A model instance which contains weights and forward computation.
-      preprocessor: An optional callable to preprocess the inputs.
       inference_step: An optional callable to forward-pass the model. If not
         specified, it creates a parital function with `model` as an required
         kwarg.
+      preprocessor: An optional callable to preprocess the inputs.
       postprocessor: An optional callable to postprocess the model outputs.
     """
     super().__init__(name=None)
