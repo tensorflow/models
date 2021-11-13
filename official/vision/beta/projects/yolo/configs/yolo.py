@@ -186,9 +186,10 @@ class AnchorBoxes(hyperparams.Config):
   level_limits: Optional[List[int]] = None
   anchors_per_scale: int = 3
 
-  generate_anchors: bool = False
-  scaling_mode: str = "sqrt_log"
+  generate_anchors: bool = True
+  scaling_mode: str = "sqrt"
   box_generation_mode: str = "per_level"
+  num_samples: Optional[int] = None
 
   def get(self, min_level, max_level):
     """Distribute them in order to each level.

@@ -94,6 +94,7 @@ class YoloTask(base_task.Task):
       input_context = input_context,
       scaling_mode = anchor_cfg.scaling_mode, 
       box_generation_mode = anchor_cfg.box_generation_mode,
+      num_samples = anchor_cfg.num_samples
     )
 
     dataset.global_batch_size = gbs
