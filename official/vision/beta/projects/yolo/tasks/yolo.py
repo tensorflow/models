@@ -74,10 +74,7 @@ class YoloTask(base_task.Task):
     anchor_cfg = self.task_config.model.anchor_boxes
     backbone =  self.task_config.model.backbone.get()
 
-    if anchor_cfg.use_validation_data:
-      dataset = self.task_config.validation_data
-    else:
-      dataset = self.task_config.train_data
+    dataset = self.task_config.train_data
     decoder = self._get_data_decoder(dataset)
     
     num_anchors = backbone.max_level - backbone.min_level + 1

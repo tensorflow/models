@@ -189,7 +189,6 @@ class AnchorBoxes(hyperparams.Config):
   generate_anchors: bool = False
   scaling_mode: str = "sqrt_log"
   box_generation_mode: str = "per_level"
-  use_validation_data: bool = True
 
   def get(self, min_level, max_level):
     """Distribute them in order to each level.
