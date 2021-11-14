@@ -157,3 +157,18 @@ python3 model/export_CNN_global_model.py \
 After the trained model has been exported, it can be used to extract global
 features similarly as for the DELG model. Please follow 
 [these instructions](https://github.com/tensorflow/models/tree/master/research/delf/delf/python/training#testing-the-trained-model).
+
+After training the standard training setup for 100 epochs, the
+ following results are obtained on Roxford and RParis datasets under a single
+ -scale evaluation:
+```
+>> roxford5k: mAP E: 74.88, M: 58.28, H: 30.4
+>> roxford5k: mP@k[1, 5, 10] E: [89.71 84.8  79.07],
+                             M: [91.43 84.67 78.24],
+                             H: [68.57 53.29 43.29]
+
+>> rparis6k: mAP E: 89.21, M: 73.69, H: 49.1
+>> rparis6k: mP@k[1, 5, 10] E: [98.57 97.43 95.57],
+                            M: [98.57 99.14 98.14],
+                            H: [94.29 90.   87.29]
+```
