@@ -274,7 +274,8 @@ class BoxGenInputReader(input_reader.InputReader):
       k: `int` for the number for centroids to generate. 
       anchors_per_scale: `int` for how many anchor boxes to use per level.
       scaling_mode: `str` for the type of box scaling to used when generating 
-        anchor boxes. Must be in the set {sqrt_log, default}.
+        anchor boxes. Must be in the set {sqrt, none}. By default we use sqrt
+        to get an even distribution of anchor boxes across FPN levels.
       box_generation_mode: `str` for the type of kmeans to use when generating 
         anchor boxes. Must be in the set {across_level, per_level}.
       image_resolution: `List[int]` for the resolution of the boxes to run 
