@@ -53,9 +53,9 @@ class TransformerTaskTest(tf.test.TestCase):
     FLAGS.param_set = 'tiny'
     FLAGS.use_synthetic_data = True
     FLAGS.steps_between_evals = 1
-    FLAGS.train_steps = 2
+    FLAGS.train_steps = 1
     FLAGS.validation_steps = 1
-    FLAGS.batch_size = 8
+    FLAGS.batch_size = 4
     FLAGS.max_length = 1
     FLAGS.num_gpus = 1
     FLAGS.distribution_strategy = 'off'
