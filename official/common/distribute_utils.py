@@ -141,8 +141,8 @@ def get_distribution_strategy(distribution_strategy="mirrored",
   distribution_strategy = distribution_strategy.lower()
   if distribution_strategy == "off":
     if num_gpus > 1:
-      raise ValueError("When {} GPUs are specified, distribution_strategy "
-                       "flag cannot be set to `off`.".format(num_gpus))
+      raise ValueError(f"When {num_gpus} GPUs are specified, "
+                       "distribution_strategy flag cannot be set to `off`.")
     # Return the default distribution strategy.
     return tf.distribute.get_strategy()
 
