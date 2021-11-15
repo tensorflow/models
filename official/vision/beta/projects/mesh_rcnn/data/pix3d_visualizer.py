@@ -23,14 +23,12 @@ Example usage:
 import logging
 import os
 
-from absl import app  # pylint:disable=unused-import
-from absl import flags
-import numpy as np
 import cv2
-
+import numpy as np
 import tensorflow as tf
+from absl import app, flags
 
-flags.DEFINE_multi_string('pix3d_dir', '', 'Directory containing Pix3d.')
+flags.DEFINE_multi_string('pix3d_dir', '', 'Directory containing Pix3d TFRecords.')
 flags.DEFINE_string('output_folder', '/tmp/output',
                     'Path to output files')
 flags.DEFINE_integer(
@@ -40,7 +38,6 @@ FLAGS = flags.FLAGS
 
 logger = tf.get_logger()
 logger.setLevel(logging.INFO)
-
 
 def write_obj_file(vertices,
                    faces,
@@ -114,12 +111,12 @@ def visualize_tf_record(pix3d_dir,
         faces = tf.io.parse_tensor(
             features["model/faces"].bytes_list.value[0], tf.int32).numpy().tolist()
         mask = cv2.imdecode(np.fromstring(
-            features["mask"].bytes_list.value[0], np.uint8), cv2.IMREAD_GRAYSCALE).tolist()
+            features["image/object/mask"].bytes_list.value[0], np.uint8), cv2.IMREAD_GRAYSCALE).tolist()
         image = cv2.imdecode(np.fromstring(
-            features["img/encoded"].bytes_list.value[0], np.uint8), flags=1).tolist()
+            features["image/encoded"].bytes_list.value[0], np.uint8), flags=1).tolist()
 
         filename = str(
-            features["img/filename"].bytes_list.value[0]).split("/")[2][:-1]
+            features["image/filename"].bytes_list.value[0]).split("/")[2][:-1]
         filename = filename.split(".")[0]
         filename = os.path.join(output_path, filename)
 
