@@ -56,13 +56,10 @@ def write_obj_file(vertices: List[float], faces: List[int], filename: str):
   logging.info('Writing mesh to: %s', filename)
   with open(filename, 'w') as f:
     for vertex in vertices:
-      print("v " + ' '.join(map(str, vertex)), file=f)
-    for face in faces:
-      ret = "f "
-      for coordinate in face:
-        ret += str(coordinate[0]) + " "
+      f.write("v " + ' '.join(map(str, vertex)))
 
-      print(ret, file=f)
+    for face in faces:
+      f.write("f " + ' '.join(map(str, face)))
 
 def write_masked_image(mask: List[List[int]], image: List[List[List[int]]],
                        filename: str):
@@ -79,7 +76,8 @@ def write_masked_image(mask: List[List[int]], image: List[List[List[int]]],
 
   for i in range(dim1):
     for j in range(dim2):
-      if mask[i][j] > 0:  # add green mask to image
+      # add green mask to image
+      if mask[i][j] > 0:
         image[i][j][1] += 50
         image[i][j][1] = max(image[i][j][1], 255)
 
@@ -98,10 +96,13 @@ def write_voxel_files(encoded_voxel_data: bytes, mat_filename: str,
   with open(mat_filename, 'wb') as f:
     f.write(encoded_voxel_data)
 
+  # Loading voxel data as a 3D array
   mat_contents = sio.loadmat(mat_filename)
   voxel = mat_contents['voxel']
 
   logging.info('Writing voxel render to: %s', render_filename)
+
+  # Visualize and render the voxels
   fig = plt.figure()
   ax = fig.add_subplot(111, projection='3d')
   ax.voxels(voxel)
@@ -127,11 +128,13 @@ def visualize_tf_record(pix3d_records_dir: str,
 
   raw_dataset = tf.data.TFRecordDataset(filenames)
 
+  # Iterate through some samples in the dataset
   for raw_record in raw_dataset.take(num_models):
     example = tf.train.Example()
     example.ParseFromString(raw_record.numpy())
     features = example.features.feature
 
+    # Extract the information to visualize
     vertices = tf.io.parse_tensor(
         features['model/vertices'].bytes_list.value[0],
         tf.float32).numpy().tolist()
@@ -152,6 +155,7 @@ def visualize_tf_record(pix3d_records_dir: str,
 
     encoded_voxel_data = features['model/voxel'].bytes_list.value[0]
 
+    # Write the features
     write_obj_file(vertices, faces, filename + '.obj')
     write_masked_image(mask, image, filename + '.png')
     write_voxel_files(encoded_voxel_data, filename + '.mat',

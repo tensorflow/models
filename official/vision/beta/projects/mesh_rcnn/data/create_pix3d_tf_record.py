@@ -20,12 +20,13 @@ Example usage:
       --pix3d_dir="${TRAIN_IMAGE_DIR}" \
       --output_file_prefix="${OUTPUT_DIR/FILE_PREFIX}" \
       --num_shards=32 \
-      --pix3d_json_file="pix3d.json"
+      --pix3d_json_file="pix3d_s1_train.json"
 """
 
 import json
 import logging
 import os
+from typing import List, Tuple
 
 import numpy as np
 import tensorflow as tf
@@ -188,16 +189,16 @@ def create_tf_example(image):
 
   return example, 0
 
-def parse_obj_file(file):
+def parse_obj_file(file) -> Tuple[List[List[int]], List[List[int]]]:
   """
-  Parses relevant data out of a .obj file.
+  Parses the vertex and face data out of a .obj file.
 
   Args:
-    file: file path to .obj file
-  
+    file: String filepath to .obj file
+
   Return:
-      vertices: vertices of object
-    faces: faces of object
+    vertices: List of vertices of object
+    faces: List faces of object
   """
   vertices = []
   faces = []
@@ -208,16 +209,24 @@ def parse_obj_file(file):
   for line in lines:
     line_id = line[0:2]
 
+    # Vertex data only consists of x, y, z coordinates
+    # Example: v -0.251095661374 -0.368396054024 -0.157995216677
     if line_id == "v ":
-      vertex = line[2:].split(" ")
-      for i, v in enumerate(vertex):
-        vertex[i] = float(v)
+      vertex_line = line[2:].split(" ")
+      vertex = []
+      for v in vertex_line:
+        vertex.append(float(v))
       vertices.append(vertex)
 
+    # Face data might contain information about the vertices, vertex normals,
+    # and vertex textures. These are grouped by "/" characters. The first
+    # element in the group is the vertex index
+    # Example: f 6/8 5/7 4/6
     if line_id == "f ":
-      face = line[2:].split(" ")
-      for i, f in enumerate(face):
-        face[i] = [int(x) for x in f.split("/")]
+      face_line = line[2:].split(" ")
+      face = []
+      for f in face_line:
+        face.append(int(f.split("/")[0]))
       faces.append(face)
 
   return vertices, faces
@@ -273,7 +282,7 @@ def _create_tf_record_from_pix3d_dir(pix3d_dir,
 
   num_skipped = write_tf_record_dataset(
       output_path, pix3d_annotations_iter, create_tf_example,
-      num_shards, unpack_arguments=False, use_multiprocessing=False)
+      num_shards, unpack_arguments=False, use_multiprocessing=True)
 
   logging.info('Finished writing, skipped %d annotations.', num_skipped)
 
