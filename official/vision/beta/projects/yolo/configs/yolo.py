@@ -186,7 +186,7 @@ class AnchorBoxes(hyperparams.Config):
   level_limits: Optional[List[int]] = None
   anchors_per_scale: int = 3
 
-  generate_anchors: bool = True
+  generate_anchors: bool = False
   scaling_mode: str = "sqrt"
   box_generation_mode: str = "per_level"
   num_samples: Optional[int] = None
