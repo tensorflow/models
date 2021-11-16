@@ -28,6 +28,8 @@ from tensorflow.python.distribute import strategy_combinations
 from official.projects.nhnet import configs
 from official.projects.nhnet import models
 from official.projects.nhnet import utils
+from official.projects.nhnet.configs import UNITTEST_CONFIG, BERT2BERTConfig
+from official.projects.nhnet.models import Bert2Bert, get_bert2bert_layers
 
 
 def all_strategy_combinations():
@@ -206,6 +208,28 @@ class Bert2BertTest(tf.test.TestCase, parameterized.TestCase):
       results = distribution_forward_path(
           distribution, model, fake_inputs, batch_size, mode="eval")
       self.assertLen(results, batches)
+
+  def test_call_with_padded_decode(self):
+    bert2bert_config_dict = UNITTEST_CONFIG.copy()
+    bert2bert_config_dict["len_title"] = 32
+    bert2bert_config_dict["beam_size"] = 6
+    bert2bert_config_dict["max_position_embeddings"] = 200
+    bert2bert_config_dict["padded_decode"] = True
+
+    bert2bert_config = BERT2BERTConfig.from_args(**bert2bert_config_dict)
+    bert_layer, decoder_layer = get_bert2bert_layers(params=bert2bert_config)
+
+    bert2bert = Bert2Bert(bert2bert_config, bert_layer, decoder_layer)
+
+    inputs = {
+        "input_ids": tf.keras.layers.Input((200,), dtype=tf.int32, name="input_ids"),
+        "input_mask": tf.keras.layers.Input((200,), dtype=tf.int32, name="input_mask"),
+        "segment_ids": tf.keras.layers.Input((200,), dtype=tf.int32, name="segment_ids")
+    }
+
+    output = bert2bert(inputs, mode='predict')
+    self.assertEqual(output[0].shape.as_list(), [None, 6, 32])
+    self.assertEqual(output[1].shape.as_list(), [None, 6])
 
 
 class NHNetTest(tf.test.TestCase, parameterized.TestCase):

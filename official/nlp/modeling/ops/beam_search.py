@@ -152,9 +152,7 @@ class SequenceBeamSearch(tf.Module):
     Returns:
       finished_seq and finished_scores.
     """
-    batch_size = (
-        initial_ids.shape.as_list()[0]
-        if self.padded_decode else tf.shape(initial_ids)[0])
+    batch_size = tf.shape(initial_ids)[0]
     state, state_shapes = self._create_initial_state(initial_ids, initial_cache,
                                                      batch_size)
 
@@ -455,19 +453,19 @@ class SequenceBeamSearch(tf.Module):
               tf.TensorShape([]),
           _StateKeys.ALIVE_SEQ:
               tf.TensorShape(
-                  [batch_size, self.beam_size, self.max_decode_length + 1]),
+                  [None, self.beam_size, self.max_decode_length + 1]),
           _StateKeys.ALIVE_LOG_PROBS:
-              tf.TensorShape([batch_size, self.beam_size]),
+              tf.TensorShape([None, self.beam_size]),
           _StateKeys.ALIVE_CACHE:
               tf.nest.map_structure(lambda state: state.get_shape(),
                                     alive_cache),
           _StateKeys.FINISHED_SEQ:
               tf.TensorShape(
-                  [batch_size, self.beam_size, self.max_decode_length + 1]),
+                  [None, self.beam_size, self.max_decode_length + 1]),
           _StateKeys.FINISHED_SCORES:
-              tf.TensorShape([batch_size, self.beam_size]),
+              tf.TensorShape([None, self.beam_size]),
           _StateKeys.FINISHED_FLAGS:
-              tf.TensorShape([batch_size, self.beam_size])
+              tf.TensorShape([None, self.beam_size])
       }
     else:
       state_shape_invariants = {
