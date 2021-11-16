@@ -130,9 +130,9 @@ def create_tf_example(image):
     image: dict with keys:
       ['filename, 'height', 'width', 'iscrowd', 'segmentation', 'model',
           'category_id', 'K', 'bbox', 'trans_mat', 'area', 'image_id',
-          'rot_mat', 'voxel', 'pix3d_dir']
+          'rot_mat', 'voxel', 'pix3d_dir'].
   Returns:
-    example: The converted tf.Example
+    example: The converted tf.Example.
     num_annotations_skipped: Number of (invalid) annotations that were
       ignored.
   Raises:
@@ -189,16 +189,16 @@ def create_tf_example(image):
 
   return example, 0
 
-def parse_obj_file(file) -> Tuple[List[List[int]], List[List[int]]]:
+def parse_obj_file(file) -> Tuple[List[List[float]], List[List[int]]]:
   """
   Parses the vertex and face data out of a .obj file.
 
   Args:
-    file: String filepath to .obj file
+    file: String filepath to .obj file.
 
   Return:
-    vertices: List of vertices of object
-    faces: List faces of object
+    vertices: List of vertices of object.
+    faces: List faces of object.
   """
   vertices = []
   faces = []
@@ -232,7 +232,15 @@ def parse_obj_file(file) -> Tuple[List[List[int]], List[List[int]]]:
   return vertices, faces
 
 def generate_annotations(annotation_dict, pix3d_dir):
-  """Generator for Pix3D annotations."""
+  """Generator for Pix3D annotations.
+
+  Args:
+    annotation_dict: String filepath to .obj file.
+    pix3d_dir: pix3d_dir: String, path to Pix3D download directory.
+
+  Return:
+    annotations: Dict containing the annotations to write to the TFRecord.
+  """
 
   raw_annotations = annotation_dict['annotations']
   images = annotation_dict['images']
@@ -268,9 +276,10 @@ def _create_tf_record_from_pix3d_dir(pix3d_dir,
   """Loads Pix3D json files and converts to tf.Record format.
 
   Args:
-    images_info_file: pix3d_dir download directory
-    output_path: Path to output tf.Record file.
+    pix3d_dir: String, path to Pix3D download directory.
+    output_path: Path to output tf.Record files.
     num_shards: Number of output files to create.
+    pix3d_json_file: String, path to the Pix3D annotation file.
   """
 
   logging.info('writing to output path: %s', output_path)
