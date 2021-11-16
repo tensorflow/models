@@ -1,5 +1,18 @@
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-import math
+"""K-means for generation of anchor boxes for YOLO."""
 import numpy as np
 import tensorflow as tf
 
@@ -13,7 +26,7 @@ from matplotlib.pyplot import cm
 
 import logging
 
-def IOU(X, centroids_X, iou_type = "iou"):
+def _iou(X, centroids_X, iou_type = "iou"):
   """Compute the WH IOU between the ground truths and the centroids."""
 
   # set the center of the boxes to zeros
@@ -34,12 +47,12 @@ class AnchorKMeans:
   def boxes(self):
     return self._boxes.numpy()
 
-  def get_box_from_dataset(self, dataset, image_w=512, num_samples = None):
+  def get_box_from_dataset(self, dataset, image_w=512, num_samples = -1):
     """Load all the boxes in the dataset into memory."""
     box_list = []
 
     for i, sample in enumerate(dataset):
-      if num_samples is not None and i > num_samples:
+      if num_samples > 0 and i > num_samples:
         break
       width = sample["width"]
       height = sample["height"]
@@ -92,7 +105,7 @@ class AnchorKMeans:
     clusters = tf.cast(clusters, tf.float32)
 
     # compute the IOU
-    return IOU(boxes, clusters)
+    return _iou(boxes, clusters)
 
   def maximization(self, boxes, clusters, assignments):
     """K-means maximization term"""
@@ -186,7 +199,7 @@ class AnchorKMeans:
                scaling_mode = "sqrt_log",
                box_generation_mode = "across_level",
                image_resolution=[512, 512, 3], 
-               num_samples = None):
+               num_samples = -1):
     """Run k-means on th eboxes for a given input resolution. 
     
     Args: 
@@ -266,7 +279,7 @@ class BoxGenInputReader(input_reader.InputReader):
            scaling_mode = "sqrt",
            box_generation_mode = "across_level",
            image_resolution=[512, 512, 3], 
-           num_samples = None, 
+           num_samples = -1, 
            input_context=None):
     """Run k-means on th eboxes for a given input resolution. 
     
