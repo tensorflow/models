@@ -17,12 +17,7 @@ import numpy as np
 import tensorflow as tf
 
 from official.vision.beta.projects.yolo.ops import box_ops
-from official.vision.beta.projects.yolo.ops import math_ops
 from official.core import input_reader
-
-import matplotlib.patches as patches
-import matplotlib.pyplot as plt
-from matplotlib.pyplot import cm
 
 import logging
 
