@@ -19,7 +19,7 @@ Example usage:
     python create_pix3d_tf_record.py --logtostderr \
       --pix3d_dir="${TRAIN_IMAGE_DIR}" \
       --output_file_prefix="${OUTPUT_DIR/FILE_PREFIX}" \
-      --num_shards=32 \ 
+      --num_shards=32 \
       --pix3d_json_file="pix3d.json"
 """
 
@@ -49,11 +49,11 @@ def convert_to_feature(value, value_type=None):
   """Converts the given python object to a tf.train.Feature.
 
   Args:
-  value: int, float, bytes or a list of them.
-  value_type: optional, if specified, forces the feature to be of the given
-      type. Otherwise, type is inferred automatically.
-  Returns:
-    feature: A tf.train.Feature object.
+    value: int, float, bytes or a list of them.
+    value_type: optional, if specified, forces the feature to be of the given
+        type. Otherwise, type is inferred automatically.
+    Returns:
+      feature: A tf.train.Feature object.
   """
 
   if value_type is None:
@@ -79,11 +79,11 @@ def convert_to_feature(value, value_type=None):
       value_type = "none"
 
     else:
-      raise ValueError('Cannot convert type {} to feature'.
-                          format(type(element)))
+      raise ValueError(
+          'Cannot convert type {} to feature'.format(type(element)))
 
     if isinstance(value, list):
-        value_type = value_type + '_list'
+      value_type = value_type + '_list'
 
   if value_type == 'int64':
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
@@ -114,7 +114,7 @@ def convert_to_feature(value, value_type=None):
     serialized_data = tf.io.serialize_tensor(data)
 
     return tf.train.Feature(
-          bytes_list=tf.train.BytesList(value=[serialized_data.numpy()]))
+        bytes_list=tf.train.BytesList(value=[serialized_data.numpy()]))
 
   elif value_type == "none":
     return tf.train.Feature()
@@ -126,16 +126,16 @@ def convert_to_feature(value, value_type=None):
 def create_tf_example(image):
   """Converts image and annotations to a tf.Example proto.
   Args:
-    image: dict with keys: 
-      ['filename, 'height', 'width', 'iscrowd', 'segmentation', 'model', 
-          'category_id', 'K', 'bbox', 'trans_mat', 'area', 'image_id', 
+    image: dict with keys:
+      ['filename, 'height', 'width', 'iscrowd', 'segmentation', 'model',
+          'category_id', 'K', 'bbox', 'trans_mat', 'area', 'image_id',
           'rot_mat', 'voxel', 'pix3d_dir']
   Returns:
     example: The converted tf.Example
-    num_annotations_skipped: Number of (invalid) annotations that were 
+    num_annotations_skipped: Number of (invalid) annotations that were
       ignored.
   Raises:
-    ValueError: if the image is not able to be found. This indicates the file 
+    ValueError: if the image is not able to be found. This indicates the file
     structure of the Pix3D folder is incorrect.
   """
 
@@ -148,15 +148,14 @@ def create_tf_example(image):
   model = image['model']
   voxel = image['voxel']
 
-  with tf.io.gfile.GFile(
-      os.path.join(pix3d_dir, img_filename), 'rb') as fid:
-          encoded_img = fid.read()
+  with tf.io.gfile.GFile(os.path.join(pix3d_dir, img_filename), 'rb') as fid:
+    encoded_img = fid.read()
 
   feature_dict = image_info_to_feature_dict(
       img_height, img_width, img_filename, img_category, encoded_img, 'jpg')
 
   with tf.io.gfile.GFile(os.path.join(pix3d_dir, mask_filename), 'rb') as fid:
-      encoded_mask = fid.read()
+    encoded_mask = fid.read()
 
   feature_dict.update({'image/object/mask': convert_to_feature(encoded_mask)})
 
@@ -165,12 +164,11 @@ def create_tf_example(image):
       {'model/vertices': convert_to_feature(model_vertices),
        'model/faces': convert_to_feature(model_faces)})
 
-  with tf.io.gfile.GFile(
-      os.path.join(pix3d_dir, voxel), 'rb') as fid:
-          encoded_voxel = fid.read()
+  with tf.io.gfile.GFile(os.path.join(pix3d_dir, voxel), 'rb') as fid:
+    encoded_voxel = fid.read()
   feature_dict.update(
       {'model/voxel': convert_to_feature(encoded_voxel)})
-  
+
   rot_mat = image['rot_mat']
   trans_mat = image['trans_mat']
   bbox = image['bbox']
@@ -193,11 +191,13 @@ def create_tf_example(image):
 def parse_obj_file(file):
   """
   Parses relevant data out of a .obj file.
+
   Args:
-      file: file path to .obj file
+    file: file path to .obj file
+  
   Return:
       vertices: vertices of object
-      faces: faces of object
+    faces: faces of object
   """
   vertices = []
   faces = []
@@ -206,15 +206,15 @@ def parse_obj_file(file):
   lines = obj_file.readlines()
 
   for line in lines:
-    lineID = line[0:2]
+    line_id = line[0:2]
 
-    if lineID == "v ":
+    if line_id == "v ":
       vertex = line[2:].split(" ")
       for i, v in enumerate(vertex):
         vertex[i] = float(v)
       vertices.append(vertex)
 
-    if lineID == "f ":
+    if line_id == "f ":
       face = line[2:].split(" ")
       for i, f in enumerate(face):
         face[i] = [int(x) for x in f.split("/")]
@@ -230,11 +230,9 @@ def generate_annotations(annotation_dict, pix3d_dir):
 
   image_info = {}
   for image in images:
-    image_info[image['id']] = {
-      'filename': image['file_name'],
-      'height': image['height'],
-      'width': image['width'],
-    }
+    image_info[image['id']] = {'filename': image['file_name'],
+                               'height': image['height'],
+                               'width': image['width']}
 
   annotations = []
   for annotation in raw_annotations:
@@ -242,15 +240,15 @@ def generate_annotations(annotation_dict, pix3d_dir):
 
     annotations.append(
         {'filename': info['filename'], 'height': info['height'],
-         'width': info['width'], 'iscrowd': annotation['iscrowd'], 
+         'width': info['width'], 'iscrowd': annotation['iscrowd'],
          'segmentation': annotation['segmentation'],
-         'model': annotation['model'], 
+         'model': annotation['model'],
          'category_id': annotation['category_id'],
-         'K': annotation['K'], 'bbox': annotation['bbox'], 
-         'trans_mat': annotation['trans_mat'], 'area': annotation['area'], 
-         'image_id': annotation['image_id'], 'rot_mat': annotation['rot_mat'], 
+         'K': annotation['K'], 'bbox': annotation['bbox'],
+         'trans_mat': annotation['trans_mat'], 'area': annotation['area'],
+         'image_id': annotation['image_id'], 'rot_mat': annotation['rot_mat'],
          'voxel': annotation['voxel'], 'pix3d_dir': pix3d_dir})
-  
+
   return annotations
 
 
@@ -259,6 +257,7 @@ def _create_tf_record_from_pix3d_dir(pix3d_dir,
                                      num_shards,
                                      pix3d_json_file):
   """Loads Pix3D json files and converts to tf.Record format.
+
   Args:
     images_info_file: pix3d_dir download directory
     output_path: Path to output tf.Record file.
@@ -273,7 +272,7 @@ def _create_tf_record_from_pix3d_dir(pix3d_dir,
       annotation_dict=annotation_dict, pix3d_dir=pix3d_dir)
 
   num_skipped = write_tf_record_dataset(
-      output_path, pix3d_annotations_iter, create_tf_example, 
+      output_path, pix3d_annotations_iter, create_tf_example,
       num_shards, unpack_arguments=False, use_multiprocessing=True)
 
   logging.info('Finished writing, skipped %d annotations.', num_skipped)
@@ -283,11 +282,11 @@ def main(_):
 
   directory = os.path.dirname(FLAGS.output_file_prefix)
   if not tf.io.gfile.isdir(directory):
-      tf.io.gfile.makedirs(directory)
+    tf.io.gfile.makedirs(directory)
 
   _create_tf_record_from_pix3d_dir(
-      FLAGS.pix3d_dir[0], FLAGS.output_file_prefix, FLAGS.num_shards, 
+      FLAGS.pix3d_dir[0], FLAGS.output_file_prefix, FLAGS.num_shards,
       FLAGS.pix3d_json_file[0])
 
 if __name__ == '__main__':
-    app.run(main)
+  app.run(main)

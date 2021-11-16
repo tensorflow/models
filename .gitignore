@@ -96,3 +96,6 @@ ENV/
 
 # For mac
 .DS_Store
+
+# Linting
+pylintrc
