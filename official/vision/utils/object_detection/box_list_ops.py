@@ -29,8 +29,8 @@ from __future__ import print_function
 from six.moves import range
 import tensorflow as tf
 
-from official.vision.detection.utils.object_detection import box_list
-from official.vision.detection.utils.object_detection import ops
+from official.vision.utils.object_detection import box_list
+from official.vision.utils.object_detection import ops
 
 
 class SortOrder(object):

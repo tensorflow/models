@@ -39,11 +39,9 @@ we pass it to the functions. At the end of the preprocess we expand the image
 back to rank 4.
 """
 
-import tensorflow as tf
-
 import numpy as np
-
-from official.vision.detection.utils.object_detection import box_list
+import tensorflow as tf
+from official.vision.utils.object_detection import box_list
 
 
 def _flip_boxes_left_right(boxes):

@@ -34,7 +34,7 @@ from abc import abstractmethod
 
 import tensorflow as tf
 
-from official.vision.detection.utils.object_detection import ops
+from official.vision.utils.object_detection import ops
 
 
 class MinibatchSampler(object):

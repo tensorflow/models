@@ -22,7 +22,7 @@ from absl import logging
 
 import tensorflow as tf
 from official.vision.detection.executor import distributed_executor as executor
-from official.vision.detection.utils.object_detection import visualization_utils
+from official.vision.utils.object_detection import visualization_utils
 
 
 class DetectionDistributedExecutor(executor.DistributedExecutor):

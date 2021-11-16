@@ -33,8 +33,8 @@ images must be handled externally.
 
 import tensorflow as tf
 
-from official.vision.detection.utils.object_detection import box_list
-from official.vision.detection.utils.object_detection import shape_utils
+from official.vision.utils.object_detection import box_list
+from official.vision.utils.object_detection import shape_utils
 
 KEYPOINTS_FIELD_NAME = 'keypoints'
 

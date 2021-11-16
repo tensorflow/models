@@ -34,8 +34,8 @@ import PIL.ImageFont as ImageFont
 import six
 import tensorflow as tf
 
-from official.vision.detection.utils import box_utils
-from official.vision.detection.utils.object_detection import shape_utils
+from official.vision.beta.ops import box_ops
+from official.vision.utils.object_detection import shape_utils
 
 _TITLE_LEFT_MARGIN = 10
 _TITLE_TOP_MARGIN = 10
@@ -107,8 +107,8 @@ def visualize_images_with_bounding_boxes(images, box_outputs, step,
   image_shape = tf.shape(images[0])
   image_height = tf.cast(image_shape[0], tf.float32)
   image_width = tf.cast(image_shape[1], tf.float32)
-  normalized_boxes = box_utils.normalize_boxes(box_outputs,
-                                               [image_height, image_width])
+  normalized_boxes = box_ops.normalize_boxes(box_outputs,
+                                             [image_height, image_width])
 
   bounding_box_color = tf.constant([[1.0, 1.0, 0.0, 1.0]])
   image_summary = tf.image.draw_bounding_boxes(

@@ -33,8 +33,8 @@ This is originally implemented in TensorFlow Object Detection API.
 
 import tensorflow as tf
 
-from official.vision.detection.utils.object_detection import minibatch_sampler
-from official.vision.detection.utils.object_detection import ops
+from official.vision.utils.object_detection import minibatch_sampler
+from official.vision.utils.object_detection import ops
 
 
 class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
