@@ -273,7 +273,7 @@ def _create_tf_record_from_pix3d_dir(pix3d_dir,
 
   num_skipped = write_tf_record_dataset(
       output_path, pix3d_annotations_iter, create_tf_example,
-      num_shards, unpack_arguments=False, use_multiprocessing=True)
+      num_shards, unpack_arguments=False, use_multiprocessing=False)
 
   logging.info('Finished writing, skipped %d annotations.', num_skipped)
 

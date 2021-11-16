@@ -25,7 +25,9 @@ import os
 from typing import List
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
+import scipy.io as sio
 import tensorflow as tf
 from absl import app, flags
 
@@ -69,9 +71,9 @@ def write_masked_image(mask: List[List[int]], image: List[List[List[int]]],
   Args:
       mask: A 2D list containing the mask data
       image: A 3D list containing the image data
-      filename: String for the filename of the .obj file.
+      filename: String for the filename of the .png file.
   """
-  logging.info('Writing mask image: %s', filename)
+  logging.info('Writing mask image to: %s', filename)
   dim1 = len(mask)
   dim2 = len(mask[0])
 
@@ -82,6 +84,28 @@ def write_masked_image(mask: List[List[int]], image: List[List[List[int]]],
         image[i][j][1] = max(image[i][j][1], 255)
 
   cv2.imwrite(filename, np.array(image))
+
+def write_voxel_files(encoded_voxel_data: bytes, mat_filename: str,
+                      render_filename: str):
+  """Writes a new .mat file using the voxel data and renders it as a .png file.
+
+  Args:
+      encoded_voxel_data: Bytes object with encoded voxel data.
+      mat_filename: String for the filename of the .mat file.
+      render_filename: String for the filename of the .png file.
+  """
+  logging.info('Writing voxel data to: %s', mat_filename)
+  with open(mat_filename, 'wb') as f:
+    f.write(encoded_voxel_data)
+
+  mat_contents = sio.loadmat(mat_filename)
+  voxel = mat_contents['voxel']
+
+  logging.info('Writing voxel render to: %s', render_filename)
+  fig = plt.figure()
+  ax = fig.add_subplot(111, projection='3d')
+  ax.voxels(voxel)
+  plt.savefig(render_filename)
 
 def visualize_tf_record(pix3d_records_dir: str,
                         output_path: str,
@@ -126,8 +150,12 @@ def visualize_tf_record(pix3d_records_dir: str,
     filename = filename.split(".")[0]
     filename = os.path.join(output_path, filename)
 
+    encoded_voxel_data = features['model/voxel'].bytes_list.value[0]
+
     write_obj_file(vertices, faces, filename + '.obj')
     write_masked_image(mask, image, filename + '.png')
+    write_voxel_files(encoded_voxel_data, filename + '.mat',
+                      filename + '_rendered' + '.png')
 
 def main(_):
   assert FLAGS.pix3d_records_dir, '`pix3d_dir` missing.'
