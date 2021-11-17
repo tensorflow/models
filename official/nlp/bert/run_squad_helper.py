@@ -252,8 +252,7 @@ def train_squad(strategy,
 
     squad_model.optimizer = performance.configure_optimizer(
         optimizer,
-        use_float16=common_flags.use_float16(),
-        use_graph_rewrite=common_flags.use_graph_rewrite())
+        use_float16=common_flags.use_float16())
     return squad_model, core_model
 
   # Only when explicit_allreduce = True, post_allreduce_callbacks and

@@ -150,8 +150,7 @@ def run_bert_classifier(strategy,
                                               FLAGS.optimizer_type)
     classifier_model.optimizer = performance.configure_optimizer(
         optimizer,
-        use_float16=common_flags.use_float16(),
-        use_graph_rewrite=common_flags.use_graph_rewrite())
+        use_float16=common_flags.use_float16())
     return classifier_model, core_model
 
   # tf.keras.losses objects accept optional sample_weight arguments (eg. coming
