@@ -247,14 +247,12 @@ class Trainer(_AsyncTrainer):
     self._validation_loss = tf.keras.metrics.Mean(
         "validation_loss", dtype=tf.float32)
     model_metrics = model.metrics if hasattr(model, "metrics") else []
-    self._train_metrics = self.task.build_metrics(
-        training=True) + model_metrics
-    self._validation_metrics = self.task.build_metrics(
-        training=False) + model_metrics
 
     self.init_async()
 
     if train:
+      self._train_metrics = self.task.build_metrics(
+          training=True) + model_metrics
       train_dataset = train_dataset or self.distribute_dataset(
           self.task.build_inputs, self.config.task.train_data)
       orbit.StandardTrainer.__init__(
@@ -266,6 +264,8 @@ class Trainer(_AsyncTrainer):
               use_tpu_summary_optimization=config.trainer.allow_tpu_summary))
 
     if evaluate:
+      self._validation_metrics = self.task.build_metrics(
+          training=False) + model_metrics
       validation_dataset = validation_dataset or self.distribute_dataset(
           self.task.build_inputs, self.config.task.validation_data)
       orbit.StandardEvaluator.__init__(
@@ -403,10 +403,7 @@ class Trainer(_AsyncTrainer):
     """See base class."""
 
     def step_fn(inputs):
-      if self.config.runtime.enable_xla and (self.config.runtime.num_gpus > 0):
-        task_train_step = tf.function(self.task.train_step, jit_compile=True)
-      else:
-        task_train_step = self.task.train_step
+      task_train_step = self.task.train_step
       logs = task_train_step(
           inputs,
           model=self.model,
