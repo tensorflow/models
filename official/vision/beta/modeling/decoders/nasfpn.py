@@ -234,9 +234,9 @@ class NASFPN(tf.keras.Model):
     # dtype mismatch when one input (by default float32 dtype) does not meet all
     # the above conditions and is output unchanged, while other inputs are
     # processed to have different dtype, e.g., using bfloat16 on TPU.
-    if tf.keras.layers.Layer().dtype_policy.compute_dtype is not None:
-      return tf.cast(
-          x, dtype=tf.keras.layers.Layer().dtype_policy.compute_dtype)
+    compute_dtype = tf.keras.layers.Layer().dtype_policy.compute_dtype
+    if (compute_dtype is not None) and (x.dtype != compute_dtype):
+      return tf.cast(x, dtype=compute_dtype)
     else:
       return x
 
