@@ -21,7 +21,6 @@ from official.vision.beta.projects.yolo.ops import box_ops
 from official.vision.beta.projects.yolo.ops import loss_utils
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class YoloLayer(tf.keras.Model):
   """Yolo layer (detection generator)."""
 

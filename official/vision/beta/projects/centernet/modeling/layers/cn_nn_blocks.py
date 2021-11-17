@@ -123,7 +123,6 @@ def _make_repeated_residual_blocks(
   return tf.keras.Sequential(blocks)
 
 
-@tf.keras.utils.register_keras_serializable(package='centernet')
 class HourglassBlock(tf.keras.layers.Layer):
   """Hourglass module: an encoder-decoder block."""
 
@@ -274,7 +273,6 @@ class HourglassBlock(tf.keras.layers.Layer):
     return config
 
 
-@tf.keras.utils.register_keras_serializable(package='centernet')
 class CenterNetHeadConv(tf.keras.layers.Layer):
   """Convolution block for the CenterNet head."""
 
