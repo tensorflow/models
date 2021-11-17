@@ -819,19 +819,6 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
-  def benchmark_1_gpu_amp(self):
-    """Test Keras model with 1 GPU with automatic mixed precision."""
-    self._setup()
-
-    FLAGS.num_gpus = 1
-    FLAGS.enable_eager = True
-    FLAGS.dtype = 'fp16'
-    FLAGS.fp16_implementation = 'graph_rewrite'
-    FLAGS.distribution_strategy = 'one_device'
-    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_amp')
-    FLAGS.batch_size = 256
-    self._run_and_report_benchmark()
-
   def benchmark_xla_1_gpu(self):
     """Test Keras model with XLA and 1 GPU."""
     self._setup()
@@ -842,20 +829,6 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu')
     FLAGS.batch_size = 128
-    self._run_and_report_benchmark()
-
-  def benchmark_xla_1_gpu_amp(self):
-    """Test Keras model with XLA and 1 GPU with automatic mixed precision."""
-    self._setup()
-
-    FLAGS.num_gpus = 1
-    FLAGS.enable_eager = True
-    FLAGS.dtype = 'fp16'
-    FLAGS.fp16_implementation = 'graph_rewrite'
-    FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'one_device'
-    FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_amp')
-    FLAGS.batch_size = 256
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_fp16(self):
@@ -946,19 +919,6 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
-  def benchmark_8_gpu_amp(self):
-    """Test Keras model with 8 GPUs with automatic mixed precision."""
-    self._setup()
-
-    FLAGS.num_gpus = 8
-    FLAGS.enable_eager = True
-    FLAGS.dtype = 'fp16'
-    FLAGS.fp16_implementation = 'graph_rewrite'
-    FLAGS.distribution_strategy = 'mirrored'
-    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_amp')
-    FLAGS.batch_size = 256 * 8  # 8 GPUs
-    self._run_and_report_benchmark()
-
   def benchmark_8_gpu_tweaked(self):
     """Test Keras model with manual config tuning and 8 GPUs."""
     self._setup()
@@ -981,20 +941,6 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
-    self._run_and_report_benchmark()
-
-  def benchmark_xla_8_gpu_amp(self):
-    """Test Keras model with XLA and 8 GPUs with automatic mixed precision."""
-    self._setup()
-
-    FLAGS.num_gpus = 8
-    FLAGS.enable_eager = True
-    FLAGS.dtype = 'fp16'
-    FLAGS.fp16_implementation = 'graph_rewrite'
-    FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'mirrored'
-    FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_amp')
-    FLAGS.batch_size = 256 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_tweaked(self):
@@ -1315,20 +1261,6 @@ class Resnet50KerasBenchmarkRemoteData(Resnet50KerasBenchmarkBase):
     self._override_flags_to_run_test_shorter()
     self._run_and_report_benchmark()
 
-  def benchmark_1_gpu_amp(self):
-    """Test Keras model with 1 GPU with automatic mixed precision."""
-    self._setup()
-
-    FLAGS.num_gpus = 1
-    FLAGS.enable_eager = True
-    FLAGS.dtype = 'fp16'
-    FLAGS.fp16_implementation = 'graph_rewrite'
-    FLAGS.distribution_strategy = 'one_device'
-    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_amp')
-    FLAGS.batch_size = 256
-    self._override_flags_to_run_test_shorter()
-    self._run_and_report_benchmark()
-
   def benchmark_xla_1_gpu(self):
     """Test Keras model with XLA and 1 GPU."""
     self._setup()
@@ -1339,21 +1271,6 @@ class Resnet50KerasBenchmarkRemoteData(Resnet50KerasBenchmarkBase):
     FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu')
     FLAGS.batch_size = 128
-    self._override_flags_to_run_test_shorter()
-    self._run_and_report_benchmark()
-
-  def benchmark_xla_1_gpu_amp(self):
-    """Test Keras model with XLA and 1 GPU with automatic mixed precision."""
-    self._setup()
-
-    FLAGS.num_gpus = 1
-    FLAGS.enable_eager = True
-    FLAGS.dtype = 'fp16'
-    FLAGS.fp16_implementation = 'graph_rewrite'
-    FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'one_device'
-    FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_amp')
-    FLAGS.batch_size = 256
     self._override_flags_to_run_test_shorter()
     self._run_and_report_benchmark()
 

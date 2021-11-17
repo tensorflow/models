@@ -273,25 +273,6 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.loss_scale = 8192
     self._run_and_report_benchmark_mlperf_like()
 
-  def benchmark_1_gpu_ctl_fp16_graph_rewrite_mlperf_like(self):
-    """1 GPU using CTL and FP16 graph rewrite."""
-    self._setup()
-    FLAGS.keras_use_ctl = True
-    FLAGS.train_epochs = 7
-    FLAGS.dtype = 'fp16'
-    FLAGS.fp16_implementation = 'graph_rewrite'
-    FLAGS.loss_scale = 8192
-    self._run_and_report_benchmark_mlperf_like()
-
-  def benchmark_1_gpu_fp16_graph_rewrite_mlperf_like(self):
-    """1 GPU using FP16 graph rewrite."""
-    self._setup()
-    FLAGS.train_epochs = 7
-    FLAGS.dtype = 'fp16'
-    FLAGS.fp16_implementation = 'graph_rewrite'
-    FLAGS.loss_scale = 8192
-    self._run_and_report_benchmark_mlperf_like()
-
   def benchmark_1_gpu_ctl_run_eagerly_mlperf_like(self):
     """1 GPU using CTL with eager and distribution strategy."""
     self._setup()
@@ -375,16 +356,6 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._set_8_gpu_defaults()
     FLAGS.keras_use_ctl = True
     FLAGS.dtype = 'fp16'
-    FLAGS.loss_scale = 8192
-    self._run_and_report_benchmark_mlperf_like()
-
-  def benchmark_8_gpu_tf_data_ctl_fp16_graph_rewrite_mlperf_like(self):
-    """8 GPU FP16 graph rewrite using CTL."""
-    self._setup()
-    self._set_8_gpu_defaults()
-    FLAGS.keras_use_ctl = True
-    FLAGS.dtype = 'fp16'
-    FLAGS.fp16_implementation = 'graph_rewrite'
     FLAGS.loss_scale = 8192
     self._run_and_report_benchmark_mlperf_like()
 

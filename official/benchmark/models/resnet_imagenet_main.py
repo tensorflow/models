@@ -14,10 +14,6 @@
 # ==============================================================================
 """Runs a ResNet model on the ImageNet dataset."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 
 # Import libraries
@@ -197,7 +193,6 @@ def run(flags_obj):
     optimizer = performance.configure_optimizer(
         optimizer,
         use_float16=flags_core.get_tf_dtype(flags_obj) == tf.float16,
-        use_graph_rewrite=flags_obj.fp16_implementation == 'graph_rewrite',
         loss_scale=flags_core.get_loss_scale(flags_obj, default_for_fp16=128),)
 
     # TODO(hongkuny): Remove trivial model usage and move it to benchmark.
@@ -243,8 +238,7 @@ def run(flags_obj):
 
     if flags_obj.clustering_method == 'selective_clustering':
       import tensorflow_model_optimization as tfmot  # pylint: disable=g-import-not-at-top
-      if dtype != tf.float32 or \
-        flags_obj.fp16_implementation == 'graph_rewrite':
+      if dtype != tf.float32:
         raise NotImplementedError(
             'Clustering is currently only supported on dtype=tf.float32.')
       model = _cluster_last_three_conv2d_layers(model)
