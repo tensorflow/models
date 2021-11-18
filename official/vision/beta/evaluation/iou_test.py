@@ -95,5 +95,21 @@ class MeanIoUTest(tf.test.TestCase):
     expected_result = [0, 1 / (1 + 1 - 1)]
     self.assertAllClose(expected_result, result, atol=1e-3)
 
+  def test_update_state_annd_result(self):
+    y_pred = [0, 1, 0, 1]
+    y_true = [0, 0, 1, 1]
+
+    m_obj = iou.PerClassIoU(num_classes=2)
+
+    m_obj.update_state(y_true, y_pred)
+    result = m_obj.result()
+
+    # cm = [[1, 1],
+    #       [1, 1]]
+    # sum_row = [2, 2], sum_col = [2, 2], true_positives = [1, 1]
+    # iou = true_positives / (sum_row + sum_col - true_positives))
+    expected_result = [1 / (2 + 2 - 1), 1 / (2 + 2 - 1)]
+    self.assertAllClose(expected_result, result, atol=1e-3)
+
 if __name__ == '__main__':
   tf.test.main()
