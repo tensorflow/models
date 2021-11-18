@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""box_ops tests."""
+"""kmeans_test tests."""
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -20,7 +20,7 @@ import tensorflow as tf
 from official.vision.beta.projects.yolo.ops import kmeans_anchors
 
 
-class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
+class KMeansTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters((9, 3, 100))
   def test_kmeans(self, k, anchors_per_scale, samples):
