@@ -189,6 +189,40 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         norm_momentum=0.99,
         norm_epsilon=1e-5)
 
+  @combinations.generate(
+      combinations.combine(
+          model_id=[
+              'MobileDetCPU',
+              'MobileDetDSP',
+              'MobileDetEdgeTPU',
+              'MobileDetGPU'],
+          filter_size_scale=[1.0, 0.75],
+      ))
+  def test_mobiledet_creation(self, model_id, filter_size_scale):
+    """Test creation of Mobiledet models."""
+
+    network = backbones.MobileDet(
+        model_id=model_id,
+        filter_size_scale=filter_size_scale,
+        norm_momentum=0.99,
+        norm_epsilon=1e-5)
+
+    backbone_config = backbones_cfg.Backbone(
+        type='mobiledet',
+        mobiledet=backbones_cfg.MobileDet(
+            model_id=model_id, filter_size_scale=filter_size_scale))
+    norm_activation_config = common_cfg.NormActivation(
+        norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
+
+    factory_network = factory.build_backbone(
+        input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
+        backbone_config=backbone_config,
+        norm_activation_config=norm_activation_config)
+
+    network_config = network.get_config()
+    factory_network_config = factory_network.get_config()
+
+    self.assertEqual(network_config, factory_network_config)
 
 if __name__ == '__main__':
   tf.test.main()

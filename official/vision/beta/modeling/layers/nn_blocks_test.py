@@ -113,6 +113,31 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
         [1, input_size // strides, input_size // strides, out_filters],
         features.shape.as_list())
 
+  @parameterized.parameters(
+      (nn_blocks.TuckerConvBlock, 1, 0.25, 0.25),
+      (nn_blocks.TuckerConvBlock, 2, 0.25, 0.25),
+  )
+  def test_tucker_conv_block(
+      self, block_fn, strides,
+      input_compression_ratio, output_compression_ratio):
+    input_size = 128
+    in_filters = 24
+    out_filters = 24
+    inputs = tf.keras.Input(
+        shape=(input_size, input_size, in_filters), batch_size=1)
+    block = block_fn(
+        in_filters=in_filters,
+        out_filters=out_filters,
+        input_compression_ratio=input_compression_ratio,
+        output_compression_ratio=output_compression_ratio,
+        strides=strides)
+
+    features = block(inputs)
+
+    self.assertAllEqual(
+        [1, input_size // strides, input_size // strides, out_filters],
+        features.shape.as_list())
+
 
 class ResidualInnerTest(parameterized.TestCase, tf.test.TestCase):
 
