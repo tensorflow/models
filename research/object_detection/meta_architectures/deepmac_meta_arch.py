@@ -151,7 +151,7 @@ def _get_deepmac_network_by_type(name, num_init_channels, mask_size=None):
       raise ValueError('Mask size must be set.')
     return FullyConnectedMaskHead(num_init_channels, mask_size)
 
-  elif name == 'embedding_projection':
+  elif _is_mask_head_param_free(name):
     return tf.keras.layers.Lambda(lambda x: x)
 
   elif name.startswith('resnet'):
@@ -395,6 +395,89 @@ def dilated_cross_same_mask_label(instance_masks, dilation=2):
   return tf.transpose(same_mask_prob, (0, 3, 1, 2))
 
 
+def _per_pixel_single_conv(input_tensor, params, channels):
+  """Convolve the given input with the given params.
+
+  Args:
+    input_tensor: A [num_instances, height, width, channels] shaped
+      float tensor.
+    params: A [num_instances, num_params] shaped float tensor.
+    channels: int, number of channels in the convolution.
+
+  Returns:
+    output: A float tensor of shape [num_instances, height, width, channels]
+  """
+
+  input_channels = input_tensor.get_shape().as_list()[3]
+  weights = params[:, :(input_channels * channels)]
+  biases = params[:, (input_channels * channels):]
+  num_instances = tf.shape(params)[0]
+
+  weights = tf.reshape(weights, (num_instances, input_channels, channels))
+  output = (input_tensor[:, :, tf.newaxis, :] @
+            weights[:, tf.newaxis, tf.newaxis, :, :])
+
+  output = output[:, :, 0, :, :]
+  output = output + biases[:, tf.newaxis, tf.newaxis, :]
+  return output
+
+
+def per_pixel_conditional_conv(input_tensor, parameters, channels, depth):
+  """Use parameters perform per-pixel convolutions with the given depth [1].
+
+  [1]: https://arxiv.org/abs/2003.05664
+
+  Args:
+    input_tensor: float tensor of shape [num_instances, height,
+      width, input_channels]
+    parameters: A [num_instances, num_params] float tensor. If num_params
+      is incomparible with the given channels and depth, a ValueError will
+      be raised.
+    channels: int, the number of channels in the convolution.
+    depth: int, the number of layers of convolutions to perform.
+
+  Returns:
+    output: A [num_instances, height, width] tensor with the conditional
+      conv applied according to each instance's parameters.
+  """
+
+  input_channels = input_tensor.get_shape().as_list()[3]
+  num_params = parameters.get_shape().as_list()[1]
+
+  input_convs = 1 if depth > 1 else 0
+  intermediate_convs = depth - 2 if depth >= 2 else 0
+  expected_weights = ((input_channels * channels * input_convs) +
+                      (channels * channels * intermediate_convs) +
+                      channels)  # final conv
+  expected_biases = (channels * (depth - 1)) + 1
+
+  if depth == 1:
+    if input_channels != channels:
+      raise ValueError(
+          'When depth=1, input_channels({}) should be equal to'.format(
+              input_channels) + ' channels({})'.format(channels))
+
+  if num_params != (expected_weights + expected_biases):
+    raise ValueError('Expected {} parameters at depth {}, but got {}'.format(
+        expected_weights + expected_biases, depth, num_params))
+
+  start = 0
+  output = input_tensor
+  for i in range(depth):
+
+    if i == (depth - 1):
+      channels = 1
+
+    num_params_single_conv = channels * input_channels + channels
+    params = parameters[:, start:start + num_params_single_conv]
+
+    start += num_params_single_conv
+    output = _per_pixel_single_conv(output, params, channels)
+    input_channels = channels
+
+  return output
+
+
 class ResNetMaskNetwork(tf.keras.layers.Layer):
   """A small wrapper around ResNet blocks to predict masks."""
 
@@ -560,6 +643,16 @@ class DenseResNet(tf.keras.layers.Layer):
     return self.out_conv(self.resnet(net))
 
 
+def _is_mask_head_param_free(name):
+
+  # Mask heads which don't have parameters of their own and instead rely
+  # on the instance embedding.
+
+  if name == 'embedding_projection' or name.startswith('cond_inst'):
+    return True
+  return False
+
+
 class MaskHeadNetwork(tf.keras.layers.Layer):
   """Mask head class for DeepMAC."""
 
@@ -586,13 +679,14 @@ class MaskHeadNetwork(tf.keras.layers.Layer):
     self._use_instance_embedding = use_instance_embedding
 
     self._network_type = network_type
+    self._num_init_channels = num_init_channels
 
     if (self._use_instance_embedding and
-        (self._network_type == 'embedding_projection')):
+        (_is_mask_head_param_free(network_type))):
       raise ValueError(('Cannot feed instance embedding to mask head when '
-                        'computing embedding projection.'))
+                        'mask-head has no parameters.'))
 
-    if network_type == 'embedding_projection':
+    if _is_mask_head_param_free(network_type):
       self.project_out = tf.keras.layers.Lambda(lambda x: x)
     else:
       self.project_out = tf.keras.layers.Conv2D(
@@ -631,6 +725,11 @@ class MaskHeadNetwork(tf.keras.layers.Layer):
     if self._network_type == 'embedding_projection':
       instance_embedding = instance_embedding[:, tf.newaxis, tf.newaxis, :]
       out = embedding_projection(instance_embedding, out)
+
+    elif self._network_type.startswith('cond_inst'):
+      depth = int(self._network_type.lstrip('cond_inst'))
+      out = per_pixel_conditional_conv(out, instance_embedding,
+                                       self._num_init_channels, depth)
 
     if out.shape[-1] > 1:
       out = self.project_out(out)

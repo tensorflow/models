@@ -280,17 +280,60 @@ class DeepMACUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(np.ones((8, 5, 5)), output[:, 1, :, :])
     self.assertAllClose([1, 0, 0, 0, 0, 0, 0, 1], output[:, 0, 2, 2])
 
+  def test_per_pixel_single_conv_multiple_instance(self):
+
+    inp = tf.zeros((5, 32, 32, 7))
+    params = tf.zeros((5, 7*8 + 8))
+
+    out = deepmac_meta_arch._per_pixel_single_conv(inp, params, 8)
+    self.assertEqual(out.shape, (5, 32, 32, 8))
+
+  def test_per_pixel_conditional_conv_error(self):
+
+    with self.assertRaises(ValueError):
+      deepmac_meta_arch.per_pixel_conditional_conv(
+          tf.zeros((10, 32, 32, 8)), tf.zeros((10, 2)), 8, 3)
+
+  def test_per_pixel_conditional_conv_error_tf_func(self):
+
+    with self.assertRaises(ValueError):
+      func = tf.function(deepmac_meta_arch.per_pixel_conditional_conv)
+      func(tf.zeros((10, 32, 32, 8)), tf.zeros((10, 2)), 8, 3)
+
+  def test_per_pixel_conditional_conv_depth1_error(self):
+
+    with self.assertRaises(ValueError):
+      _ = deepmac_meta_arch.per_pixel_conditional_conv(
+          tf.zeros((10, 32, 32, 7)), tf.zeros((10, 8)), 99, 1)
+
+  def test_per_pixel_conditional_conv_depth1(self):
+
+    out = deepmac_meta_arch.per_pixel_conditional_conv(
+        tf.zeros((10, 32, 32, 7)), tf.zeros((10, 8)), 7, 1)
+
+    self.assertEqual(out.shape, (10, 32, 32, 1))
+
+  def test_per_pixel_conditional_conv_depth2(self):
+
+    num_params = (
+        7 * 9 + 9 +  # layer 1
+        9 + 1)  # layer 2
+    out = deepmac_meta_arch.per_pixel_conditional_conv(
+        tf.zeros((10, 32, 32, 7)), tf.zeros((10, num_params)), 9, 2)
+
+    self.assertEqual(out.shape, (10, 32, 32, 1))
+
+  def test_per_pixel_conditional_conv_depth3(self):
+
+    # From the paper https://arxiv.org/abs/2003.05664
+    out = deepmac_meta_arch.per_pixel_conditional_conv(
+        tf.zeros((10, 32, 32, 10)), tf.zeros((10, 169)), 8, 3)
+
+    self.assertEqual(out.shape, (10, 32, 32, 1))
+
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
 class DeepMACMaskHeadTest(tf.test.TestCase, parameterized.TestCase):
-
-  @parameterized.parameters(
-      ['hourglass10', 'hourglass20', 'resnet4'])
-  def test_mask_network(self, head_type):
-    net = deepmac_meta_arch.MaskHeadNetwork(head_type, 8)
-
-    out = net(tf.zeros((2, 4)), tf.zeros((2, 32, 32, 16)), training=True)
-    self.assertEqual(out.shape, (2, 32, 32))
 
   def test_mask_network_params_resnet4(self):
     net = deepmac_meta_arch.MaskHeadNetwork('resnet4', num_init_channels=8)
@@ -300,26 +343,6 @@ class DeepMACMaskHeadTest(tf.test.TestCase, parameterized.TestCase):
                                       net.trainable_weights])
 
     self.assertEqual(trainable_params.numpy(), 8665)
-
-  def test_mask_network_resnet_tf_function(self):
-
-    net = deepmac_meta_arch.MaskHeadNetwork('resnet8')
-    call_func = tf.function(net.__call__)
-
-    out = call_func(tf.zeros((2, 4)), tf.zeros((2, 32, 32, 16)), training=True)
-    self.assertEqual(out.shape, (2, 32, 32))
-
-  def test_mask_network_embedding_projection_zero(self):
-
-    net = deepmac_meta_arch.MaskHeadNetwork(
-        'embedding_projection', num_init_channels=8,
-        use_instance_embedding=False)
-    call_func = tf.function(net.__call__)
-
-    out = call_func(tf.zeros((2, 7)), tf.zeros((2, 32, 32, 7)), training=True)
-    self.assertEqual(out.shape, (2, 32, 32))
-    self.assertAllGreater(out.numpy(), -np.inf)
-    self.assertAllLess(out.numpy(), np.inf)
 
   def test_mask_network_embedding_projection_small(self):
 
@@ -333,6 +356,52 @@ class DeepMACMaskHeadTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(out.shape, (2, 32, 32))
     self.assertAllGreater(out.numpy(), -np.inf)
     self.assertAllLess(out.numpy(), np.inf)
+
+  @parameterized.parameters([
+      {'mask_net': 'resnet4', 'mask_net_channels': 8,
+       'instance_embedding_dim': 4, 'input_channels': 16,
+       'use_instance_embedding': False},
+      {'mask_net': 'hourglass10', 'mask_net_channels': 8,
+       'instance_embedding_dim': 4, 'input_channels': 16,
+       'use_instance_embedding': False},
+      {'mask_net': 'hourglass20', 'mask_net_channels': 8,
+       'instance_embedding_dim': 4, 'input_channels': 16,
+       'use_instance_embedding': False},
+      {'mask_net': 'cond_inst3', 'mask_net_channels': 8,
+       'instance_embedding_dim': 153, 'input_channels': 8,
+       'use_instance_embedding': False},
+      {'mask_net': 'cond_inst3', 'mask_net_channels': 8,
+       'instance_embedding_dim': 169, 'input_channels': 10,
+       'use_instance_embedding': False},
+      {'mask_net': 'cond_inst1', 'mask_net_channels': 8,
+       'instance_embedding_dim': 9, 'input_channels': 8,
+       'use_instance_embedding': False},
+      {'mask_net': 'cond_inst2', 'mask_net_channels': 8,
+       'instance_embedding_dim': 81, 'input_channels': 8,
+       'use_instance_embedding': False},
+  ])
+  def test_mask_network(self, mask_net, mask_net_channels,
+                        instance_embedding_dim, input_channels,
+                        use_instance_embedding):
+
+    net = deepmac_meta_arch.MaskHeadNetwork(
+        mask_net, num_init_channels=mask_net_channels,
+        use_instance_embedding=use_instance_embedding)
+    call_func = tf.function(net.__call__)
+
+    out = call_func(tf.zeros((2, instance_embedding_dim)),
+                    tf.zeros((2, 32, 32, input_channels)), training=True)
+    self.assertEqual(out.shape, (2, 32, 32))
+    self.assertAllGreater(out.numpy(), -np.inf)
+    self.assertAllLess(out.numpy(), np.inf)
+
+    out = call_func(tf.zeros((2, instance_embedding_dim)),
+                    tf.zeros((2, 32, 32, input_channels)), training=True)
+    self.assertEqual(out.shape, (2, 32, 32))
+
+    out = call_func(tf.zeros((0, instance_embedding_dim)),
+                    tf.zeros((0, 32, 32, input_channels)), training=True)
+    self.assertEqual(out.shape, (0, 32, 32))
 
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
