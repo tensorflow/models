@@ -42,7 +42,7 @@ class AnchorKMeans:
   def boxes(self):
     return self._boxes.numpy()
 
-  def get_box_from_dataset(self, dataset, image_w=512, num_samples = -1):
+  def get_box_from_dataset(self, dataset, num_samples = -1):
     """Load all the boxes in the dataset into memory."""
     box_list = []
 
