@@ -21,8 +21,8 @@ from __future__ import print_function
 from absl.testing import parameterized
 import tensorflow as tf
 from official.benchmark.models import resnet_imagenet_main
+from official.legacy.image_classification.resnet import imagenet_preprocessing
 from official.utils.testing import integration
-from official.vision.image_classification.resnet import imagenet_preprocessing
 
 
 class KerasImagenetTest(tf.test.TestCase, parameterized.TestCase):

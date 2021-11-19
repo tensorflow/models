@@ -23,8 +23,8 @@ import tensorflow as tf
 
 from tensorflow.python.eager import context
 from official.benchmark.models import resnet_imagenet_main
+from official.legacy.image_classification.resnet import imagenet_preprocessing
 from official.utils.testing import integration
-from official.vision.image_classification.resnet import imagenet_preprocessing
 
 
 @parameterized.parameters(

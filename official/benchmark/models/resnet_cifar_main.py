@@ -28,9 +28,9 @@ from official.benchmark.models import cifar_preprocessing
 from official.benchmark.models import resnet_cifar_model
 from official.benchmark.models import synthetic_util
 from official.common import distribute_utils
+from official.legacy.image_classification.resnet import common
 from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
-from official.vision.image_classification.resnet import common
 
 
 LR_SCHEDULE = [  # (multiplier, epoch to start) tuples

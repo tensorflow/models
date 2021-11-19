@@ -23,8 +23,8 @@ from absl import flags
 import tensorflow as tf
 
 from official.benchmark import owner_utils
-from official.vision.image_classification.resnet import common
-from official.vision.image_classification.resnet import resnet_ctl_imagenet_main
+from official.legacy.image_classification.resnet import common
+from official.legacy.image_classification.resnet import resnet_ctl_imagenet_main
 from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
 from official.benchmark import benchmark_wrappers
 from official.utils.flags import core as flags_core

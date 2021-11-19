@@ -23,7 +23,7 @@ import os
 from absl import logging
 import tensorflow as tf
 
-from official.vision.image_classification.resnet import imagenet_preprocessing
+from official.legacy.image_classification.resnet import imagenet_preprocessing
 
 HEIGHT = 32
 WIDTH = 32

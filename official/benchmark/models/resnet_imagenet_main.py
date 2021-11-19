@@ -22,14 +22,14 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 from official.common import distribute_utils
+from official.legacy.image_classification import test_utils
+from official.legacy.image_classification.resnet import common
+from official.legacy.image_classification.resnet import imagenet_preprocessing
+from official.legacy.image_classification.resnet import resnet_model
 from official.modeling import performance
 from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
-from official.vision.image_classification import test_utils
-from official.vision.image_classification.resnet import common
-from official.vision.image_classification.resnet import imagenet_preprocessing
-from official.vision.image_classification.resnet import resnet_model
 
 
 def _cluster_last_three_conv2d_layers(model):
