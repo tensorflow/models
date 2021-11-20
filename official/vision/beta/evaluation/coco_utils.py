@@ -261,6 +261,10 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
           np_mask[np_mask > 0] = 255
           encoded_mask = mask_api.encode(np.asfortranarray(np_mask))
           ann['segmentation'] = encoded_mask
+          # Ensure the content of `counts` is JSON serializable string.
+          if 'counts' in ann['segmentation']:
+            ann['segmentation']['counts'] = six.ensure_str(
+                ann['segmentation']['counts'])
           if 'areas' not in groundtruths:
             ann['area'] = mask_api.area(encoded_mask)
         gt_annotations.append(ann)
