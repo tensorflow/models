@@ -104,6 +104,32 @@ class CenterNetFeatureExtractor(tf.keras.Model):
 
     return (inputs - channel_means)/channel_stds
 
+  def preprocess_reverse(self, preprocessed_inputs):
+    """Undo the preprocessing and return the raw image.
+
+    This is a convenience function for some algorithms that require access
+    to the raw inputs.
+
+    Args:
+      preprocessed_inputs: A [batch_size, height, width, channels] float
+        tensor preprocessed_inputs from the preprocess function.
+
+    Returns:
+      images: A [batch_size, height, width, channels] float tensor with
+        the preprocessing removed.
+    """
+    channel_means = tf.reshape(tf.constant(self._channel_means),
+                               [1, 1, 1, -1])
+    channel_stds = tf.reshape(tf.constant(self._channel_stds),
+                              [1, 1, 1, -1])
+    inputs = (preprocessed_inputs * channel_stds) + channel_means
+
+    if self._bgr_ordering:
+      blue, green, red = tf.unstack(inputs, axis=3)
+      inputs = tf.stack([red, green, blue], axis=3)
+
+    return inputs
+
   @property
   @abc.abstractmethod
   def out_stride(self):
@@ -4145,11 +4171,7 @@ class CenterNetMetaArch(model.DetectionModel):
                 keypoints, keypoint_scores, self._stride, true_image_shapes,
                 clip_out_of_frame_keypoints=clip_keypoints))
 
-      # Update instance scores based on keypoints.
-      scores = self._rescore_instances(
-          channel_indices, detection_scores, keypoint_scores)
       postprocess_dict.update({
-          fields.DetectionResultFields.detection_scores: scores,
           fields.DetectionResultFields.detection_keypoints: keypoints,
           fields.DetectionResultFields.detection_keypoint_scores:
               keypoint_scores
@@ -4227,6 +4249,22 @@ class CenterNetMetaArch(model.DetectionModel):
       postprocess_dict[
           fields.DetectionResultFields.num_detections] = num_detections
       postprocess_dict.update(nmsed_additional_fields)
+
+    # Perform the rescoring once the NMS is applied to make sure the rescored
+    # scores won't be washed out by the NMS function.
+    if self._kp_params_dict:
+      channel_indices = postprocess_dict[
+          fields.DetectionResultFields.detection_classes]
+      detection_scores = postprocess_dict[
+          fields.DetectionResultFields.detection_scores]
+      keypoint_scores = postprocess_dict[
+          fields.DetectionResultFields.detection_keypoint_scores]
+      # Update instance scores based on keypoints.
+      scores = self._rescore_instances(
+          channel_indices, detection_scores, keypoint_scores)
+      postprocess_dict.update({
+          fields.DetectionResultFields.detection_scores: scores,
+      })
     return postprocess_dict
 
   def postprocess_single_instance_keypoints(

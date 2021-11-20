@@ -19,8 +19,8 @@ from absl import logging
 import tensorflow as tf
 
 from official.common import dataset_fn
+from official.core import config_definitions as cfg
 from official.core import task_factory
-from official.modeling.hyperparams import config_definitions as cfg
 from official.projects.edgetpu.vision.configs import semantic_segmentation_config as exp_cfg
 from official.projects.edgetpu.vision.configs import semantic_segmentation_searched_config as searched_cfg
 from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v1_model

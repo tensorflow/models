@@ -27,7 +27,6 @@ PROJECTION_OUTPUT_KEY = 'projection_outputs'
 SUPERVISED_OUTPUT_KEY = 'supervised_outputs'
 
 
-@tf.keras.utils.register_keras_serializable(package='simclr')
 class SimCLRModel(tf.keras.Model):
   """A classification model based on SimCLR framework."""
 

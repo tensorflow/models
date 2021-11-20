@@ -311,10 +311,10 @@ def serialize_config(params: config_definitions.ExperimentConfig,
   hyperparams.save_params_dict_to_yaml(params, params_save_path)
 
 
-def save_gin_config(filename_surfix: str, model_dir: str):
+def save_gin_config(filename_suffix: str, model_dir: str):
   """Serializes and saves the experiment config."""
   gin_save_path = os.path.join(
-      model_dir, 'operative_config.{}.gin'.format(filename_surfix))
+      model_dir, 'operative_config.{}.gin'.format(filename_suffix))
   logging.info('Saving gin configurations to %s', gin_save_path)
   tf.io.gfile.makedirs(model_dir)
   with tf.io.gfile.GFile(gin_save_path, 'w') as f:
@@ -380,6 +380,23 @@ def remove_ckpts(model_dir):
     tf.io.gfile.remove(file_to_remove)
 
 
+def write_model_params(model: Union[tf.Module, tf.keras.Model],
+                       output_path: str) -> None:
+  """Writes the model parameters and shapes to a file.
+
+  Args:
+    model: A model instance.
+    output_path: Output file path.
+  """
+  with tf.io.gfile.GFile(output_path, 'w') as f:
+    total_params = 0
+    for var in model.variables:
+      shape = tf.shape(var)
+      total_params += tf.math.reduce_prod(shape).numpy()
+      f.write(f'{var.name} {shape.numpy().tolist()}\n')
+    f.write(f'\nTotal params: {total_params}\n')
+
+
 def try_count_params(
     model: Union[tf.Module, tf.keras.Model],
     trainable_only: bool = False):
@@ -412,13 +429,15 @@ def try_count_params(
 
 
 def try_count_flops(model: Union[tf.Module, tf.keras.Model],
-                    inputs_kwargs: Optional[Dict[str, Any]] = None):
+                    inputs_kwargs: Optional[Dict[str, Any]] = None,
+                    output_path: Optional[str] = None):
   """Counts and returns model FLOPs.
 
   Args:
     model: A model instance.
     inputs_kwargs: An optional dictionary of argument pairs specifying inputs'
       shape specifications to getting corresponding concrete function.
+    output_path: A file path to write the profiling results to.
 
   Returns:
     The model's FLOPs.
@@ -442,7 +461,10 @@ def try_count_flops(model: Union[tf.Module, tf.keras.Model],
       # Calculate FLOPs.
       run_meta = tf.compat.v1.RunMetadata()
       opts = tf.compat.v1.profiler.ProfileOptionBuilder.float_operation()
-      opts['output'] = 'none'
+      if output_path is not None:
+        opts['output'] = f'file:outfile={output_path}'
+      else:
+        opts['output'] = 'none'
       flops = tf.compat.v1.profiler.profile(
           graph=frozen_func.graph, run_meta=run_meta, options=opts)
       return flops.total_float_ops

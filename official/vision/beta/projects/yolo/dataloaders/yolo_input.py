@@ -237,14 +237,14 @@ class Parser(parser.Parser):
           affine=affine,
           shuffle_boxes=False,
           area_thresh=self._area_thresh,
-          augment=True,
+          filter_and_clip_boxes=True,
           seed=self._seed)
       classes = tf.gather(classes, inds)
       info = infos[-1]
     else:
       image = tf.image.resize(
           image, (self._image_h, self._image_w), method='nearest')
-      output_size = tf.cast([640, 640], tf.float32)
+      output_size = tf.cast([self._image_h, self._image_w], tf.float32)
       boxes_ = bbox_ops.denormalize_boxes(boxes, output_size)
       inds = bbox_ops.get_non_empty_box_indices(boxes_)
       boxes = tf.gather(boxes, inds)
@@ -286,7 +286,8 @@ class Parser(parser.Parser):
     # Clip and clean boxes.
     image = image / 255.0
     boxes, inds = preprocessing_ops.transform_and_clip_boxes(
-        boxes, infos, shuffle_boxes=False, area_thresh=0.0, augment=True)
+        boxes, infos, shuffle_boxes=False, area_thresh=0.0,
+        filter_and_clip_boxes=False)
     classes = tf.gather(classes, inds)
     info = infos[-1]
 
@@ -342,17 +343,26 @@ class Parser(parser.Parser):
 
     # Update the labels dictionary.
     if not is_training:
-
       # Sets up groundtruth data for evaluation.
       groundtruths = {
-          'source_id': labels['source_id'],
-          'height': height,
-          'width': width,
-          'num_detections': tf.shape(gt_boxes)[0],
-          'image_info': info,
-          'boxes': gt_boxes,
-          'classes': gt_classes,
-          'areas': tf.gather(data['groundtruth_area'], inds),
+          'source_id':
+              labels['source_id'],
+          'height':
+              data['height'],
+          'width':
+              data['width'],
+          'num_detections':
+              tf.shape(data['groundtruth_boxes'])[0],
+          'image_info':
+              info,
+          'boxes':
+              bbox_ops.denormalize_boxes(
+                  data['groundtruth_boxes'],
+                  tf.cast([data['height'], data['width']], gt_boxes.dtype)),
+          'classes':
+              data['groundtruth_classes'],
+          'areas':
+              data['groundtruth_area'],
           'is_crowds':
               tf.cast(tf.gather(data['groundtruth_is_crowd'], inds), tf.int32),
       }

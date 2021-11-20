@@ -24,7 +24,6 @@ regularizers = tf.keras.regularizers
 layers = tf.keras.layers
 
 
-@tf.keras.utils.register_keras_serializable(package='simclr')
 class ProjectionHead(tf.keras.layers.Layer):
   """Projection head."""
 
@@ -144,7 +143,6 @@ class ProjectionHead(tf.keras.layers.Layer):
     return proj_head_output, proj_finetune_output
 
 
-@tf.keras.utils.register_keras_serializable(package='simclr')
 class ClassificationHead(tf.keras.layers.Layer):
   """Classification Head."""
 

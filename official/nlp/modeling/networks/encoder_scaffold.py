@@ -102,6 +102,9 @@ class EncoderScaffold(tf.keras.Model):
     dict_outputs: Whether to use a dictionary as the model outputs.
     layer_idx_as_attention_seed: Whether to include layer_idx in
       attention_cfg in hidden_cfg.
+    feed_layer_idx: whether the scaffold should feed layer index to hidden_cls.
+    recursive: whether to pass the second return of the hidden layer as the last
+      element among the inputs. None will be passed as the initial state.
   """
 
   def __init__(self,
@@ -120,6 +123,8 @@ class EncoderScaffold(tf.keras.Model):
                return_all_layer_outputs=False,
                dict_outputs=False,
                layer_idx_as_attention_seed=False,
+               feed_layer_idx=False,
+               recursive=False,
                **kwargs):
 
     if embedding_cls:
@@ -201,6 +206,8 @@ class EncoderScaffold(tf.keras.Model):
            'contain classes or instances with size specified by '
            'num_hidden_instances, got %d vs %d.') % self.name, len(hidden_cls),
           num_hidden_instances)
+    # Consider supporting customized init states.
+    recursive_states = None
     for i in range(num_hidden_instances):
       if isinstance(hidden_cls, list):
         cur_hidden_cls = hidden_cls[i]
@@ -211,10 +218,15 @@ class EncoderScaffold(tf.keras.Model):
             layer_idx_as_attention_seed):
           hidden_cfg = copy.deepcopy(hidden_cfg)
           hidden_cfg['attention_cfg']['seed'] = i
+        if feed_layer_idx:
+          hidden_cfg['layer_idx'] = i
         layer = cur_hidden_cls(**hidden_cfg)
       else:
         layer = cur_hidden_cls
-      data = layer([data, attention_mask])
+      if recursive:
+        data, recursive_states = layer([data, attention_mask, recursive_states])
+      else:
+        data = layer([data, attention_mask])
       layer_output_data.append(data)
       hidden_layers.append(layer)
 

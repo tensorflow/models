@@ -19,7 +19,7 @@ import math
 import tensorflow as tf
 
 from official.vision.detection.utils import box_utils
-from official.vision.detection.utils.object_detection import preprocessor
+from official.vision.utils.object_detection import preprocessor
 
 
 def pad_to_fixed_size(input_tensor, size, constant_values=0):

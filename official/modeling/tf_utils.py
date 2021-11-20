@@ -110,6 +110,8 @@ def get_activation(identifier, use_keras_layer=False):
           "swish": "swish",
           "sigmoid": "sigmoid",
           "relu6": tf.nn.relu6,
+          "hard_swish": activations.hard_swish,
+          "hard_sigmoid": activations.hard_sigmoid,
       }
       if identifier in keras_layer_allowlist:
         return tf.keras.layers.Activation(keras_layer_allowlist[identifier])

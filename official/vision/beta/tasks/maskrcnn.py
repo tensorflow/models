@@ -236,6 +236,7 @@ class MaskRCNNTask(base_task.Task):
       reg_loss = tf.reduce_sum(aux_losses)
       total_loss = model_loss + reg_loss
 
+    total_loss = params.losses.loss_weight * total_loss
     losses = {
         'total_loss': total_loss,
         'rpn_score_loss': rpn_score_loss,
@@ -274,7 +275,9 @@ class MaskRCNNTask(base_task.Task):
             self._task_config.validation_data.input_path,
             self._task_config.validation_data.file_type,
             self._task_config.validation_data.num_examples,
-            self.task_config.model.include_mask, annotation_path)
+            self.task_config.model.include_mask, annotation_path,
+            regenerate_source_id=self._task_config.validation_data.decoder
+            .simple_decoder.regenerate_source_id)
       self.coco_metric = coco_evaluator.COCOEvaluator(
           annotation_file=annotation_path,
           include_mask=self._task_config.model.include_mask,

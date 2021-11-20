@@ -21,14 +21,12 @@ from official.modeling import tf_utils
 from official.vision.beta.ops import spatial_transform_ops
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class Identity(tf.keras.layers.Layer):
 
   def call(self, inputs):
     return inputs
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class ConvBN(tf.keras.layers.Layer):
   """ConvBN block.
 
@@ -241,7 +239,6 @@ class ConvBN(tf.keras.layers.Layer):
     return layer_config
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class DarkResidual(tf.keras.layers.Layer):
   """Darknet block with Residual connection for Yolo v3 Backbone."""
 
@@ -406,7 +403,6 @@ class DarkResidual(tf.keras.layers.Layer):
     return layer_config
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class CSPTiny(tf.keras.layers.Layer):
   """CSP Tiny layer.
 
@@ -556,7 +552,6 @@ class CSPTiny(tf.keras.layers.Layer):
     return x, x5
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class CSPRoute(tf.keras.layers.Layer):
   """CSPRoute block.
 
@@ -696,7 +691,6 @@ class CSPRoute(tf.keras.layers.Layer):
     return (x, y)
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class CSPConnect(tf.keras.layers.Layer):
   """CSPConnect block.
 
@@ -941,7 +935,6 @@ class CSPStack(tf.keras.layers.Layer):
     return x
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class PathAggregationBlock(tf.keras.layers.Layer):
   """Path Aggregation block."""
 
@@ -1132,7 +1125,6 @@ class PathAggregationBlock(tf.keras.layers.Layer):
       return self._call_regular(inputs, training=training)
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class SPP(tf.keras.layers.Layer):
   """Spatial Pyramid Pooling.
 
@@ -1411,7 +1403,6 @@ class CBAM(tf.keras.layers.Layer):
     return self._sam(self._cam(inputs))
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class DarkRouteProcess(tf.keras.layers.Layer):
   """Dark Route Process block.
 

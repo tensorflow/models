@@ -72,14 +72,9 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
     # Make sure iterations variable is created inside scope.
     self.global_step = self.optimizer.iterations
 
-    use_graph_rewrite = flags_obj.fp16_implementation == 'graph_rewrite'
-    if use_graph_rewrite and not flags_obj.use_tf_function:
-      raise ValueError('--fp16_implementation=graph_rewrite requires '
-                       '--use_tf_function to be true')
     self.optimizer = performance.configure_optimizer(
         self.optimizer,
         use_float16=self.dtype == tf.float16,
-        use_graph_rewrite=use_graph_rewrite,
         loss_scale=flags_core.get_loss_scale(flags_obj, default_for_fp16=128))
 
     self.train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)

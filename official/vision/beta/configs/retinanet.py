@@ -83,6 +83,7 @@ class Anchor(hyperparams.Config):
 
 @dataclasses.dataclass
 class Losses(hyperparams.Config):
+  loss_weight: float = 1.0
   focal_loss_alpha: float = 0.25
   focal_loss_gamma: float = 1.5
   huber_loss_delta: float = 0.1

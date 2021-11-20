@@ -110,6 +110,7 @@ def get_export_config_from_flags():
       dataset_split=FLAGS.dataset_split)
   export_config = export_util.ExportConfig(
       model_name=FLAGS.model_name,
+      output_layer=FLAGS.output_layer,
       ckpt_path=FLAGS.ckpt_path,
       ckpt_format=FLAGS.ckpt_format,
       output_dir=FLAGS.output_dir,

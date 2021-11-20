@@ -21,7 +21,6 @@ import tensorflow as tf
 from official.vision.beta.modeling import maskrcnn_model
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
 class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
   """The Panoptic Segmentation model."""
 
@@ -171,7 +170,7 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
       decoder_features = model_outputs['decoder_features']
 
     segmentation_outputs = self.segmentation_head(
-        backbone_features, decoder_features, training=training)
+        (backbone_features, decoder_features), training=training)
 
     model_outputs.update({
         'segmentation_outputs': segmentation_outputs,

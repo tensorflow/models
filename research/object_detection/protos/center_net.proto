@@ -464,6 +464,13 @@ message CenterNet {
     // Weight for the box consistency loss as described in the BoxInst paper
     // https://arxiv.org/abs/2012.02310
     optional float box_consistency_loss_weight = 16 [default=0.0];
+
+    optional float color_consistency_threshold = 17 [default=0.4];
+
+    optional int32 color_consistency_dilation = 18 [default=2];
+
+    optional float color_consistency_loss_weight = 19 [default=0.0];
+
   }
 
   optional DeepMACMaskEstimation deepmac_mask_estimation = 14;

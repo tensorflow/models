@@ -57,7 +57,6 @@ def cross_replica_concat(tensor: tf.Tensor, num_replicas: int) -> tf.Tensor:
     return tf.reshape(ext_tensor, [-1] + ext_tensor.shape.as_list()[2:])
 
 
-@tf.keras.utils.register_keras_serializable(package='simclr')
 class ContrastiveLoss(object):
   """Contrastive training loss function."""
 

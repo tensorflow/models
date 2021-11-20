@@ -19,8 +19,8 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
+from official.core import config_definitions as cfg
 from official.core import exp_factory
-from official.modeling.hyperparams import config_definitions as cfg
 from official.projects.volumetric_models.configs import semantic_segmentation_3d as exp_cfg
 
 
