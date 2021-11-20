@@ -29,6 +29,9 @@ from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
 from official.benchmark import benchmark_wrappers
 from official.utils.flags import core as flags_core
 
+IMAGENET_DEFAULT_DATA_PATH = 'gs://mlcompass-data/imagenet/imagenet-2012-tfrecord'
+IMAGENET_EXP_DATA_PATH = 'gs://mlcompass-data/imagenet/imagenet-2012-tfrecord'
+
 MIN_TOP_1_ACCURACY = 0.76
 MAX_TOP_1_ACCURACY = 0.77
 
@@ -346,7 +349,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.single_l2_loss_op = True
     FLAGS.use_tf_function = True
     FLAGS.enable_checkpoint_and_export = False
-    FLAGS.data_dir = '/readahead/400M/placer/prod/home/distbelief/imagenet-tensorflow/imagenet-2012-tfrecord'
+    FLAGS.data_dir = IMAGENET_DEFAULT_DATA_PATH
 
   def benchmark_2x2_tpu_bf16(self):
     self._setup()
@@ -373,11 +376,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.train_epochs = 4
     FLAGS.dtype = 'bf16'
     FLAGS.model_dir = self._get_model_dir('benchmark_4x4_tpu_bf16')
-    # Use dataset local to running cell (me). Also use ssd because this has
-    # given the max performance for ML Perf runs.
-    # TODO(emizan) See performance when placer has data on me cell and
-    # update copybara again
-    FLAGS.data_dir = 'gs://mlcompass-data/imagenet/imagenet-2012-tfrecord'
+    FLAGS.data_dir = IMAGENET_EXP_DATA_PATH
     self._run_and_report_benchmark()
 
   @owner_utils.Owner('tf-graph-compiler')
