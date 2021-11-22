@@ -375,12 +375,12 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         'image_info': labels['image_info']
     }
 
+    logs.update(
+        {self.coco_metric.name: (labels['groundtruths'], coco_model_outputs)})
     if self._process_iou_metric_on_cpu:
       logs.update({
-          self.coco_metric.name: (labels['groundtruths'], coco_model_outputs),
-          self.segmentation_perclass_iou_metric.name: (
-              segmentation_labels,
-              outputs['segmentation_outputs'])
+          self.segmentation_perclass_iou_metric.name:
+              (segmentation_labels, outputs['segmentation_outputs'])
       })
     else:
       self.segmentation_perclass_iou_metric.update_state(
