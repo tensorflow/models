@@ -18,8 +18,8 @@ import tensorflow as tf
 
 from official.core import config_definitions as cfg
 from official.nlp.configs import encoders
-from official.nlp.projects.example import classification_data_loader
-from official.nlp.projects.example import classification_example
+from official.projects.text_classification_example import classification_data_loader
+from official.projects.text_classification_example import classification_example
 
 
 class ClassificationExampleTest(tf.test.TestCase):

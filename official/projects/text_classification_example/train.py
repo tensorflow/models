@@ -23,7 +23,7 @@ from official.common import flags as tfm_flags
 from official.core import train_lib
 from official.core import train_utils
 from official.modeling import performance
-from official.nlp.projects.example import classification_example
+from official.projects.text_classification_example import classification_example
 
 FLAGS = flags.FLAGS
 

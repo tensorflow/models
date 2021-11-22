@@ -27,8 +27,8 @@ from official.modeling import tf_utils
 from official.modeling.hyperparams import base_config
 from official.nlp.configs import encoders
 from official.nlp.modeling import models
-from official.nlp.projects.example import classification_data_loader
 from official.nlp.tasks import utils
+from official.projects.text_classification_example import classification_data_loader
 
 
 @dataclasses.dataclass
