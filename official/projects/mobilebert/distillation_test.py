@@ -28,7 +28,7 @@ from official.nlp.configs import encoders
 from official.nlp.data import pretrain_dataloader
 from official.nlp.modeling import layers
 from official.nlp.modeling import models
-from official.nlp.projects.mobilebert import distillation
+from official.projects.mobilebert import distillation
 
 
 class DistillationTest(tf.test.TestCase, parameterized.TestCase):

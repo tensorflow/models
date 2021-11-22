@@ -21,7 +21,7 @@ from absl import logging
 import numpy as np
 import tensorflow.compat.v1 as tf
 
-from official.nlp.projects.mobilebert import model_utils
+from official.projects.mobilebert import model_utils
 
 
 FLAGS = flags.FLAGS

@@ -18,7 +18,7 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-from official.nlp.projects.mobilebert import model_utils
+from official.projects.mobilebert import model_utils
 
 FLAGS = flags.FLAGS
 

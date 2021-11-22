@@ -31,7 +31,7 @@ from official.modeling import performance
 from official.modeling.fast_training.progressive import train_lib
 from official.modeling.fast_training.progressive import trainer as prog_trainer_lib
 from official.nlp.data import pretrain_dataloader
-from official.nlp.projects.mobilebert import distillation
+from official.projects.mobilebert import distillation
 
 
 FLAGS = flags.FLAGS
