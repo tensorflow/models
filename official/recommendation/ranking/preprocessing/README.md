@@ -70,8 +70,8 @@ python3 criteo_preprocess.py \
   --project ${PROJECT} --region ${REGION}
 ```
 Vocabulary for each feature is going to be generated to
-${STORAGE_BUCKET}/criteo_vocab/tftransform_tmp/feature_??_vocab files.
-Vocabulary size can be found as wc -l <feature_vocab_file>.
+`${STORAGE_BUCKET}/criteo_vocab/tftransform_tmp/feature_??_vocab` files.
+Vocabulary size can be found as `wc -l <feature_vocab_file>`.
 
 Preprocess training and test data:
 
