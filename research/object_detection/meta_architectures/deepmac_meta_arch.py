@@ -465,7 +465,8 @@ def per_pixel_conditional_conv(input_tensor, parameters, channels, depth):
   output = input_tensor
   for i in range(depth):
 
-    if i == (depth - 1):
+    is_last_layer = i == (depth - 1)
+    if is_last_layer:
       channels = 1
 
     num_params_single_conv = channels * input_channels + channels
@@ -473,6 +474,10 @@ def per_pixel_conditional_conv(input_tensor, parameters, channels, depth):
 
     start += num_params_single_conv
     output = _per_pixel_single_conv(output, params, channels)
+
+    if not is_last_layer:
+      output = tf.nn.relu(output)
+
     input_channels = channels
 
   return output
