@@ -107,6 +107,7 @@ class SequenceBeamSearch(tf.Module):
                max_decode_length,
                eos_id,
                padded_decode,
+               pad_id,
                dtype=tf.float32):
     """Initialize sequence beam search.
 
@@ -128,6 +129,7 @@ class SequenceBeamSearch(tf.Module):
       eos_id: An integer. ID of end of sentence token.
       padded_decode: A bool, indicating if max_sequence_length padding is used
         for beam search.
+      pad_id: An integer, ID to be used to pad predictions.
       dtype: A tensorflow data type used for score computation. The default is
         tf.float32.
     """
@@ -138,6 +140,7 @@ class SequenceBeamSearch(tf.Module):
     self.max_decode_length = max_decode_length
     self.eos_id = eos_id
     self.padded_decode = padded_decode
+    self.pad_id = pad_id
     self.dtype = tf.as_dtype(dtype)
 
   def search(self, initial_ids, initial_cache):
@@ -409,7 +412,7 @@ class SequenceBeamSearch(tf.Module):
     alive_seq = expand_to_beam_size(initial_ids, self.beam_size)
     alive_seq = tf.expand_dims(alive_seq, axis=2)
     if self.padded_decode:
-      alive_seq = tf.tile(alive_seq, [1, 1, self.max_decode_length + 1])
+        alive_seq = tf.pad(alive_seq, [[0, 0], [0, 0], [0, self.max_decode_length]], constant_values=self.pad_id)
 
     # Create tensor for storing initial log probabilities.
     # Assume initial_ids are prob 1.0
@@ -587,6 +590,7 @@ def sequence_beam_search(symbols_to_logits_fn,
                          max_decode_length,
                          eos_id,
                          padded_decode=False,
+                         pad_id=0,
                          dtype="float32"):
   """Search for sequence of subtoken ids with the largest probability.
 
@@ -610,6 +614,7 @@ def sequence_beam_search(symbols_to_logits_fn,
       finished.
     padded_decode: A bool, indicating if max_sequence_length padding is used for
       beam search.
+    pad_id: An integer, ID to be used to pad predictions.
     dtype: A tensorflow data type used for score computation. The default is
       tf.float32.
 
@@ -618,7 +623,7 @@ def sequence_beam_search(symbols_to_logits_fn,
     sequence scores [batch_size, beam_size]
   """
   sbs = SequenceBeamSearch(symbols_to_logits_fn, vocab_size, beam_size, alpha,
-                           max_decode_length, eos_id, padded_decode, dtype)
+                           max_decode_length, eos_id, padded_decode, pad_id, dtype)
   return sbs.search(initial_ids, initial_cache)
 
 
