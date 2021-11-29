@@ -19,7 +19,7 @@ import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
-from official.nlp.modeling.layers import roformer_attention
+import roformer_attention
 
 
 def _create_mock_attention_data(

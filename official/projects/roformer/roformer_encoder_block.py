@@ -19,7 +19,8 @@ modified from official/nlp/keras_nlp/layers/transformer_encoder_block.py
 """Keras-based TransformerEncoder block layer."""
 
 import tensorflow as tf
-from official.nlp.modeling import layers
+from roformer_attention import RoformerAttention
+
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
@@ -150,7 +151,7 @@ class RoformerEncoderBlock(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint)
-    self._attention_layer = layers.RoformerAttention(
+    self._attention_layer = RoformerAttention(
         q_max_sequence_length=self._q_max_sequence_length,
         kv_max_sequence_length=self._kv_max_sequence_length,
         output_range=self._output_range,

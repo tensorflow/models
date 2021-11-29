@@ -24,7 +24,7 @@ from official.core import task_factory
 from official.core import train_lib
 from official.core import train_utils
 from official.modeling import performance
-from official.nlp.projects.roformer import roformer_experiments
+import roformer_experiments
 
 FLAGS = flags.FLAGS
 

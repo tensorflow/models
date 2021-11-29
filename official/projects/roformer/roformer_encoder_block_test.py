@@ -19,7 +19,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
-from official.nlp.modeling.networks.roformer_encoder_block import RoformerEncoderBlock
+from roformer_encoder_block import RoformerEncoderBlock
 
 
 @keras_parameterized.run_all_keras_modes

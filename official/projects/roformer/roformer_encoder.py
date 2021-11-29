@@ -24,6 +24,7 @@ import tensorflow as tf
 
 from official.nlp.keras_nlp import layers
 from official.nlp.modeling import networks
+from roformer_encoder_block import RoformerEncoderBlock
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
@@ -180,7 +181,7 @@ class RoformerEncoder(tf.keras.Model):
         transformer_output_range = output_range
       else:
         transformer_output_range = None
-      layer = networks.RoformerEncoderBlock(
+      layer = RoformerEncoderBlock(
           num_attention_heads=num_attention_heads,
           inner_dim=inner_dim,
           inner_activation=inner_activation,
