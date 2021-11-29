@@ -27,6 +27,7 @@ from official.modeling import tf_utils
 from official.nlp.modeling import layers
 from official.nlp.modeling import networks
 from official.nlp.projects.bigbird import encoder as bigbird_encoder
+from official.projects.roformer import RoformerEncoder
 
 
 @dataclasses.dataclass
@@ -473,7 +474,7 @@ def build_encoder(config: EncoderConfig,
     return networks.EncoderScaffold(**kwargs)
 
   if encoder_type == "roformer":
-    return networks.RoformerEncoder(
+    return RoformerEncoder(
       vocab_size=encoder_cfg.vocab_size,
       hidden_size=encoder_cfg.hidden_size,
       num_layers=encoder_cfg.num_layers,
