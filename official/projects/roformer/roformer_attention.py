@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Modified from attention.py
-"""
-
-"""Keras-based attention layer."""
+"""Roformer attention layer"""
 # pylint: disable=g-classes-have-attributes
 import math
 
@@ -48,9 +44,10 @@ class RoformerAttention(tf.keras.layers.MultiHeadAttention):
                output_range=None,
                **kwargs):
     """
-    :param q_max_sequence_length: maximum length in input for the query
-    :param kv_max_sequence_length: maximum length in input for key and value, can be different from q_max_sequence_length
-    :param output_range: length of the query tensor to consider. 
+    Args:
+      q_max_sequence_length: maximum length in input for the query
+      kv_max_sequence_length: maximum length in input for key and value, can be different from q_max_sequence_length
+      output_range: length of the query tensor to consider.
     """
     super().__init__(**kwargs)
     self._q_max_sequence_length = q_max_sequence_length

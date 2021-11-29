@@ -65,6 +65,11 @@ def _create_mock_attention_data(
 @keras_parameterized.run_all_keras_modes
 class RoformerAttentionTest(keras_parameterized.TestCase):
 
+  def setUp(self):
+    super(RoformerAttentionTest, self).setUp()
+    np.random.seed(0)
+    tf.random.set_seed(0)
+
   @combinations.generate(combinations.combine(
       length=[8, 50],
       key_dim=[64, 128]))
@@ -139,6 +144,4 @@ class RoformerAttentionTest(keras_parameterized.TestCase):
 
 
 if __name__ == "__main__":
-  np.random.seed(0)
-  tf.random.set_seed(0)
   tf.test.main()
