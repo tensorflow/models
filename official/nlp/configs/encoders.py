@@ -27,7 +27,7 @@ from official.modeling import tf_utils
 from official.nlp.modeling import layers
 from official.nlp.modeling import networks
 from official.nlp.projects.bigbird import encoder as bigbird_encoder
-from official.projects.roformer import RoformerEncoder
+from official.projects.roformer.roformer_encoder import RoformerEncoder
 
 
 @dataclasses.dataclass

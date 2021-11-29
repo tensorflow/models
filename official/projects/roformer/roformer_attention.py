@@ -47,13 +47,17 @@ class RoformerAttention(tf.keras.layers.MultiHeadAttention):
                kv_max_sequence_length,
                output_range=None,
                **kwargs):
+    """
+    :param q_max_sequence_length: maximum length in input for the query
+    :param kv_max_sequence_length: maximum length in input for key and value, can be different from q_max_sequence_length
+    """
     super().__init__(**kwargs)
     self._q_max_sequence_length = q_max_sequence_length
     self._kv_max_sequence_length = kv_max_sequence_length
+    assert self._key_dim % 2 == 0
     q_sin_vec, q_cos_vec = _build_trig_vector(self._q_max_sequence_length, self._key_dim)
     k_sin_vec, k_cos_vec = _build_trig_vector(self._kv_max_sequence_length, self._key_dim)
-    self.q_sin_vec, self.q_cos_vec = (q_sin_vec, q_cos_vec) if output_range is None else (
-        q_sin_vec[:, 0:output_range, ...], q_cos_vec[:, 0:output_range, ...])
+    self.q_sin_vec, self.q_cos_vec = (q_sin_vec, q_cos_vec)
     self.k_sin_vec, self.k_cos_vec = (k_sin_vec, k_cos_vec)
 
   def roformer_recompute_qkv(self,
