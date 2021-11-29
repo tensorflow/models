@@ -27,6 +27,7 @@ from official.modeling import tf_utils
 from official.nlp.modeling import layers
 from official.nlp.modeling import networks
 from official.nlp.projects.bigbird import encoder as bigbird_encoder
+from official.projects.roformer.roformer_encoder import RoformerEncoder
 
 
 @dataclasses.dataclass
@@ -206,6 +207,7 @@ class EncoderConfig(hyperparams.OneOfConfig):
   mobilebert: MobileBertEncoderConfig = MobileBertEncoderConfig()
   teams: BertEncoderConfig = BertEncoderConfig()
   xlnet: XLNetEncoderConfig = XLNetEncoderConfig()
+  roformer: BertEncoderConfig = BertEncoderConfig()
 
 
 @gin.configurable
@@ -470,6 +472,25 @@ def build_encoder(config: EncoderConfig,
         return_all_layer_outputs=encoder_cfg.return_all_encoder_outputs,
         dict_outputs=True)
     return networks.EncoderScaffold(**kwargs)
+
+  if encoder_type == "roformer":
+    return RoformerEncoder(
+      vocab_size=encoder_cfg.vocab_size,
+      hidden_size=encoder_cfg.hidden_size,
+      num_layers=encoder_cfg.num_layers,
+      num_attention_heads=encoder_cfg.num_attention_heads,
+      intermediate_size=encoder_cfg.intermediate_size,
+      activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
+      dropout_rate=encoder_cfg.dropout_rate,
+      attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+      max_sequence_length=encoder_cfg.max_position_embeddings,
+      type_vocab_size=encoder_cfg.type_vocab_size,
+      initializer=tf.keras.initializers.TruncatedNormal(
+          stddev=encoder_cfg.initializer_range),
+      output_range=encoder_cfg.output_range,
+      embedding_width=encoder_cfg.embedding_size,
+      embedding_layer=embedding_layer,
+      norm_first=encoder_cfg.norm_first)
 
   # Uses the default BERTEncoder configuration schema to create the encoder.
   # If it does not match, please add a switch branch by the encoder type.
