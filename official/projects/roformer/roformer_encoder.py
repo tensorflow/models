@@ -134,13 +134,7 @@ class RoformerEncoder(tf.keras.Model):
       embedding_layer_inst = embedding_layer
     word_embeddings = embedding_layer_inst(word_ids)
 
-    # Roformer doesn't need position embeding layer
-    # Always uses dynamic slicing for simplicity.
-    # position_embedding_layer = layers.PositionEmbedding(
-    #     initializer=initializer,
-    #     max_length=max_sequence_length,
-    #     name='position_embedding')
-    # position_embeddings = position_embedding_layer(word_embeddings)
+    # Roformer does not need a position embedding layer
     type_embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=type_vocab_size,
         embedding_width=embedding_width,
@@ -149,7 +143,7 @@ class RoformerEncoder(tf.keras.Model):
         name='type_embeddings')
     type_embeddings = type_embedding_layer(type_ids)
 
-    # roformer does not have absolute position embedding
+    # Roformer does not have absolute position embedding
     embeddings = tf.keras.layers.Add()(
         [word_embeddings, type_embeddings])
 
