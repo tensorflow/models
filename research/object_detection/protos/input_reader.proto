@@ -30,7 +30,7 @@ enum InputType {
   TF_SEQUENCE_EXAMPLE = 2;  // TfSequenceExample Input
 }
 
-// Next id: 39
+// Next id: 38
 message InputReader {
   // Name of input reader. Typically used to describe the dataset that is read
   // by this input reader.
@@ -150,11 +150,6 @@ message InputReader {
   // Which frame to choose from the input if Sequence Example. -1 indicates
   // random choice.
   optional int32 frame_index = 32 [default = -1];
-
-  // Whether to use the label map and the keypoint text feature to construct the
-  // keypoint coordinates/visibilities groundtruth tensors. Usually used when
-  // training with multiple datasets that contain different subset of keypoints.
-  optional bool use_keypoint_label_map = 38 [default = false];
 
   oneof input_reader {
     TFRecordInputReader tf_record_input_reader = 8;
