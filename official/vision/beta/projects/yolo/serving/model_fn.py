@@ -1,9 +1,29 @@
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""YOLO input and model functions for serving/inference."""
+
+from typing import List
+
 import tensorflow as tf 
 
 from official.vision.beta.projects.yolo.ops import preprocessing_ops
 from official.vision.beta.ops import box_ops
 
-def letterbox(image, desired_size, letter_box = True):
+def letterbox(image: tf.Tensor,
+              desired_size: List[int],
+              letter_box: bool = True):
   """Letter box an image for image serving."""
 
   with tf.name_scope('letter_box'):
@@ -37,9 +57,12 @@ def letterbox(image, desired_size, letter_box = True):
         tf.cast(offset, tf.float32)])
     return output_image, image_info
 
-def undo_info(boxes, num_detections, info, expand = True):
+def undo_info(boxes: tf.Tensor,
+              num_detections: int,
+              info: tf.Tensor,
+              expand: bool = True):
   """Clip and normalize boxes for serving."""
-  
+
   mask = tf.sequence_mask(num_detections, maxlen=tf.shape(boxes)[1])
   boxes = tf.cast(tf.expand_dims(mask, axis = -1), boxes.dtype) * boxes
 
