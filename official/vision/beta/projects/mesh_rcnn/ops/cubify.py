@@ -1,6 +1,21 @@
-import tensorflow as tf
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
+"""Cubify Operation"""
 from typing import Tuple
+
+import tensorflow as tf
 
 # Vertices in the unit cube (x, y, z)
 UNIT_CUBOID_VERTS = tf.constant(
@@ -17,7 +32,7 @@ UNIT_CUBOID_VERTS = tf.constant(
 
 NUM_VERTS_PER_CUBOID = tf.shape(UNIT_CUBOID_VERTS)[0]
 
-# Indices for vertices that make up each face in the unit cuboid 
+# Indices for vertices that make up each face in the unit cuboid
 UNIT_CUBOID_FACES = tf.constant(
     [
         [0, 1, 2],
@@ -37,7 +52,7 @@ NUM_FACES_PER_CUBOID = tf.shape(UNIT_CUBOID_FACES)[0]
 
 def hash_flatenned_3d_coords(x: tf.Tensor) -> Tuple[tf.Tensor, int]:
   """Hashes a rank 2 int Tensor with a last dimension of 3 into a rank 1 Tensor.
-  
+
   This hashing scheme only works where there is an upper bound max_val on all of
   the values in the tensor. The input must not contain any negative values.
   Suppose the input tensor has shape [10, 3], the hashed output will have
@@ -55,7 +70,7 @@ def hash_flatenned_3d_coords(x: tf.Tensor) -> Tuple[tf.Tensor, int]:
 
 def unhash_flattened_3d_coords(x: tf.Tensor, max_val: int) -> tf.Tensor:
   """Undos the hash on a rank 1 Tensor and converts it back ot a rank 2 Tensor.
-  
+
   Args:
     x: `Tensor` with rank 1, the hashed tensor.
     max_val: `int` that was used to hash the tensor.
@@ -67,14 +82,14 @@ def unhash_flattened_3d_coords(x: tf.Tensor, max_val: int) -> tf.Tensor:
       [x // (max_val ** 2), (x // max_val) % max_val, x % max_val], axis=1)
   return unhashed_x
 
-def generate_3d_coords(x_max: int, y_max: int, z_max:int,
-                       flatten_output: bool=False) -> tf.Tensor:
+def generate_3d_coords(x_max: int, y_max: int, z_max: int,
+                       flatten_output: bool = False) -> tf.Tensor:
   """Generates a tensor that containing cartesian coordinates.
 
   This function has two modes. By default, the returned tensor has shape
   [x_max+1, y_max+1, z_max+1, 3], where last dimension contains the x, y, and z
   values at the specified coordinate (i.e. coords[x, y, z] == [x, y, z]).
-  If flatten_output is True, the output is flattened to a 2D Tensor and the 
+  If flatten_output is True, the output is flattened to a 2D Tensor and the
   inner dimension is 3.
 
   Args:
@@ -82,9 +97,9 @@ def generate_3d_coords(x_max: int, y_max: int, z_max:int,
     y_max: `int`, specifies the maximum y value in the coordinate grid.
     z_max: `int`, specifies the maximum z value in the coordinate grid.
     flatten_output: `bool`, whether to flatten the output to a 2D Tensor.
-  
+
   Returns:
-    coords: `Tensor` that contains the coordinate values with shape 
+    coords: `Tensor` that contains the coordinate values with shape
       [x_max+1, y_max+1, z_max+1, 3] when flatten_output is False and shape
       [(x_max+1)*(y_max+1)*(z_max+1), 3] when flatten_output is True. The values
       in the last dimension are the x, y, and z values at a coordinate location.
@@ -106,12 +121,12 @@ def initialize_mesh(grid_dims: int) -> Tuple[tf.Tensor, tf.Tensor]:
 
   This function generates 2 rank 2 Tensors, one for vertices and another for
   faces. The vertices are the initial (x,y,z) coordinates of each vertex
-  in the mesh normalized between 0 and 1. The faces are the indices of the 3 
+  in the mesh normalized between -1 and 1. The faces are the indices of the 3
   vertices that define the face. Note that there may be duplicate faces.
 
   Args:
     grid_dims: `int`, specifies the length, width, and depth of the mesh.
-  
+
   Returns:
     verts: `Tensor` of shape [num_verts, 3], where num_verts = (grid_dim+1)**3.
     faces: `Tensor` of shape [num_faces, 3], where num_verts = 12*(grid_dim)**3.
@@ -121,25 +136,25 @@ def initialize_mesh(grid_dims: int) -> Tuple[tf.Tensor, tf.Tensor]:
   # Generate the vertex locations
   coords = generate_3d_coords(grid_dims, grid_dims, grid_dims, True)
 
-  # Normalize the verts so that they fall between 0 and 1
-  verts = coords / grid_dims
+  # Normalize the verts so that they fall between -1 and 1
+  verts = coords * 2 / grid_dims - 1
 
   # Generate offsets for the unit cube verts for the grid
   offsets = generate_3d_coords(grid_dims-1, grid_dims-1, grid_dims-1)
   offsets = tf.expand_dims(offsets, axis=-2)
-  
+
   # Create unit cubes for each cuboid
   cuboid_verts = tf.tile(UNIT_CUBOID_VERTS, multiples=[num_cuboids, 1])
   cuboid_verts = tf.reshape(
       cuboid_verts,
       shape=[grid_dims, grid_dims, grid_dims, NUM_VERTS_PER_CUBOID, 3])
-  
+
   # Add the offsets so that each cube in the grid has the correct vertices
   cuboid_verts += offsets
-  
+
   # Map the vertices of each cuboid in the grid to the predefined coords
   cuboid_verts = tf.reshape(cuboid_verts, shape=[-1, 3])
-  
+
   # Converting to scalar values to save memory when doing tf.equal
   coords_hashed, _ = hash_flatenned_3d_coords(coords)
   cuboid_verts_hashed, _ = hash_flatenned_3d_coords(
@@ -148,7 +163,7 @@ def initialize_mesh(grid_dims: int) -> Tuple[tf.Tensor, tf.Tensor]:
   mask = tf.equal(coords_hashed, cuboid_verts_hashed)
   cuboid_verts = tf.where(mask)[:, -1]
 
-  # cuboid_verts is a tensor with shape [num_cuboids, 8], where each entry 
+  # cuboid_verts is a tensor with shape [num_cuboids, 8], where each entry
   # contains the indices of the 8 vertices in verts that belong to it
   # The ordering of the vertices are:
   # 0. left-up-front
@@ -161,7 +176,7 @@ def initialize_mesh(grid_dims: int) -> Tuple[tf.Tensor, tf.Tensor]:
   # 7. right-down-back
   cuboid_verts = tf.reshape(
       cuboid_verts, shape=[num_cuboids, NUM_VERTS_PER_CUBOID])
-  
+
   # Map each cuboids face's vertex indices to match the actual index of the
   # vertex in cuboid_verts
   cuboid_range = tf.expand_dims(
@@ -169,24 +184,62 @@ def initialize_mesh(grid_dims: int) -> Tuple[tf.Tensor, tf.Tensor]:
   cuboid_face_indices = tf.tile(UNIT_CUBOID_FACES, multiples=[num_cuboids, 1])
   cuboid_face_indices = tf.stack(
       [tf.concat(
-          [cuboid_range, tf.expand_dims(cuboid_face_indices[:, 0], -1)], 1), 
+          [cuboid_range, tf.expand_dims(cuboid_face_indices[:, 0], -1)], 1),
        tf.concat(
-          [cuboid_range, tf.expand_dims(cuboid_face_indices[:, 1], -1)], 1),
+           [cuboid_range, tf.expand_dims(cuboid_face_indices[:, 1], -1)], 1),
        tf.concat(
-          [cuboid_range, tf.expand_dims(cuboid_face_indices[:, 2], -1)], 1)],
+           [cuboid_range, tf.expand_dims(cuboid_face_indices[:, 2], -1)], 1)],
       axis=1)
   faces = tf.gather_nd(cuboid_verts, cuboid_face_indices)
 
   return verts, faces
 
-def create_face_mask(voxels, kernel_weights, axis):
+def create_face_mask(voxels: tf.Tensor, axis: int):
+  """Generates `Tensors` that give masks for boundaries of the voxels.
+
+  This function returns 2 `Tensors`, an upper boundary and a lower boundary, for
+  the voxel occupancy grid that indicate whether or not the voxel is considered
+  an external surface in the mesh. This is done using 3D convolutions to find
+  the adjacent voxels that share a face, and masking them out. The direction
+  of the lower boundary is left, top, or front for axes 1, 2, 3 respectively.
+  Likewise, the direction of the upper boundary is right, bottom, back.
+
+  Args:
+    voxels: A `Tensor` of shape [B, D, H, W] that contains the thresholded
+      voxel occupancies.
+    axis: `Integer` that indicates the axis of interest. Either 1 for the
+      z-axis, 2 for the y-axis, or 3 for the x-axis.
+  Returns:
+    upper: A `Tensor` of shape [B, D, H, W] containing 1s and 0s that indicate
+      whether a given voxel has a face present (either right, bottom, or back
+      depending on the axis).
+    lower: A `Tensor` of shape [B, D, H, W] containing 1s and 0s that indicate
+      whether a given voxel has a face present (either left, top, or front
+      depending on the axis).
+  """
+  shape = tf.shape(voxels)
+  batch_size, depth, height, width = shape[0], shape[1], shape[2], shape[3]
+
+  # Prepare input for 3D convolution
   conv_input = tf.expand_dims(voxels, axis=-1)
 
-  mask = tf.nn.conv3d(conv_input, kernel_weights, [1, 1, 1, 1, 1], "VALID")
-  mask = tf.cast(mask > 0.5, mask.dtype)
+  # Generate the weights depending on the direction of interest
+  if axis == 3:
+    kernel_shape = [1, 1, 2, 1, 1]
+  elif axis == 2:
+    kernel_shape = [1, 2, 1, 1, 1]
+  elif axis == 1:
+    kernel_shape = [2, 1, 1, 1, 1]
 
-  mask = tf.squeeze(mask)
-  batch_size, depth, height, width = tf.shape(voxels)
+  kernel_weights = tf.constant(value=0.5, shape=kernel_shape)
+
+  # Create the mask that finds shared faces
+  adj_mask = tf.nn.conv3d(conv_input, kernel_weights, [1, 1, 1, 1, 1], "VALID")
+
+  # Since the weights values are 0.5 and the voxels occupancy values are either
+  # 0 or 1, any occupied voxel that has an adjacent occupied voxel will be
+  # identified if the mask value is 1.0 (0.5*1 + 0.5*1)
+  adj_mask = tf.cast(adj_mask > 0.5, adj_mask.dtype)
 
   if axis == 3:
     width -= 1
@@ -198,49 +251,58 @@ def create_face_mask(voxels, kernel_weights, axis):
     depth -= 1
     concat_shape = [batch_size, 1, height, width]
 
-  mask = tf.reshape(mask, shape=[batch_size, depth, height, width])
+  adj_mask = tf.reshape(adj_mask, shape=[batch_size, depth, height, width])
 
+  # Generate the lower and upper tensors [B, D, H, W] that indicate if the
+  # voxel does not share an adjacent face in the axis direction. The inverse
+  # of the mask is inserted into a tensor of ones to account for voxels that are
+  # on the edge of the occupancy grid, as those faces are not captured by the
+  # 3D convolution. Later, any unoccupied voxels along the edge of the grid will
+  # be zeroed out
   lower = tf.concat(
       [tf.ones(concat_shape),
-       1-mask], axis=axis)
+       1-adj_mask], axis=axis)
   upper = tf.concat(
-      [1-mask,
+      [1-adj_mask,
        tf.ones(concat_shape)], axis=axis)
-  
+
+  # Zero out any unoccupied voxels
   lower *= voxels
   upper *= voxels
 
   return lower, upper
 
-
 def cubify(voxels: tf.Tensor,
-           thresh: float,
-           align: str='topleft'):
+           thresh: float):
   """Converts a voxel occupancy grid into a mesh.
 
   Args:
     voxels: A `Tensor` of shape [B, D, H, W] that contains the voxel occupancy
-      prediction.
+      prediction. D, H, and W must be equal.
     thresh: A `float` that specifies the threshold value of a valid occupied
-      voxel. 
-    align: A string of either 'topleft', 'corner', or 'center'. Currently only
-      'topleft' is supported, and is the default behavior.
-  
-  Returns:
-    vertices:
-    vertices_mask:
-    faces:
-    faces_mask:
-  """
-  batch_size, depth, _, _ = tf.shape(voxels)
-  voxels = tf.cast(voxels > thresh, voxels.dtype)
-  wz = tf.constant(value=0.5, shape=[2, 1, 1, 1, 1])
-  wy = tf.constant(value=0.5, shape=[1, 2, 1, 1, 1])
-  wx = tf.constant(value=0.5, shape=[1, 1, 2, 1, 1])
+      voxel.
 
-  z_front_updates, z_back_updates = create_face_mask(voxels, wz, axis=1)
-  y_top_updates, y_bot_updates = create_face_mask(voxels, wy, axis=2)
-  x_left_updates, x_right_updates = create_face_mask(voxels, wx, axis=3)
+  Returns:
+    verts: A `Tensor` of shape [B, num_verts, 3], where the last dimension
+      contains all (x,y,z) vertex coordinates in the initial mesh mesh.
+    verts_mask: A `Tensor` of shape [B, num_verts], a mask for valid vertices
+      in the watertight mesh.
+    faces: A `Tensor` of shape [B, num_faces, 3], where the last dimension
+      contain the verts indices that make up the face. This may include
+      duplicate faces.
+    faces_mask: A `Tensor` of shape [B, num_faces], a mask for valid faces in
+      the watertight mesh.
+  """
+  shape = tf.shape(voxels)
+  batch_size, depth, _, _ = shape[0], shape[1], shape[2], shape[3]
+
+  # Threshold the voxel occupancy prediction
+  voxels = tf.cast(voxels > thresh, voxels.dtype)
+
+  # Determine the non-adjacent faces in the final mesh
+  z_front_updates, z_back_updates = create_face_mask(voxels, axis=1)
+  y_top_updates, y_bot_updates = create_face_mask(voxels, axis=2)
+  x_left_updates, x_right_updates = create_face_mask(voxels, axis=3)
 
   updates = [
       x_left_updates,
@@ -251,7 +313,7 @@ def cubify(voxels: tf.Tensor,
 
       z_front_updates,
       z_front_updates,
-      
+
       y_top_updates,
       y_top_updates,
 
@@ -260,13 +322,15 @@ def cubify(voxels: tf.Tensor,
 
       z_back_updates,
       z_back_updates]
-  
+
   faces_idx = tf.stack(updates, axis=0)
 
-  # faces_idx cuboid order: (x, y, z) because this will be used to generate
-  # the mask to mark valid faces. The faces were generated in x, y, z order
+  # faces_idx cuboid ordering: left-to-right, top-to-bot, front-to-back
+  # because this will be used to generate the mask to mark valid faces. The
+  # UNIT_CUBOID_FACES are defined in the same orientation
   faces_idx = tf.transpose(faces_idx, perm=[1, 4, 3, 2, 0])
   faces_idx = tf.reshape(faces_idx, [batch_size, -1, 12])
+
   # Boolean mask for valid faces
   faces_mask = tf.reshape(faces_idx, shape=[batch_size, -1])
 
@@ -285,14 +349,14 @@ def cubify(voxels: tf.Tensor,
 
   # Zero out unused faces
   masked_faces = masked_faces * tf.cast(
-      tf.expand_dims(faces_mask, -1), faces.dtype) 
+      tf.expand_dims(faces_mask, -1), faces.dtype)
 
   # Create a mask based on whether or not a vertex appeared in any of the faces
   num_verts = (depth+1)**3
   verts_mask = tf.math.bincount(
       tf.cast(tf.reshape(masked_faces, [batch_size, -1]), tf.int32),
       minlength=num_verts+1, binary_output=True, axis=-1)
-  
+
   # The first index was used for any 0s, which can be ignored
   verts_mask = verts_mask[:, 1:]
 

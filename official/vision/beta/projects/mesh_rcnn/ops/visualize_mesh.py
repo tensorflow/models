@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import art3d
 import tensorflow as tf
+from mpl_toolkits.mplot3d import art3d
 
 from official.vision.beta.projects.mesh_rcnn.ops.cubify import cubify
+
 
 def create_voxels(grid_dims, batch_size, occupancy_locs):
   ones = tf.ones(shape=[len(occupancy_locs)])
