@@ -17,7 +17,7 @@ from typing import Tuple
 
 import tensorflow as tf
 
-# Vertices in the unit cube (x, y, z)
+# Vertices in the unit cube (x,y,z)
 UNIT_CUBOID_VERTS = tf.constant(
     [
         [0, 0, 0], # left-top-front
@@ -60,6 +60,7 @@ def hash_flatenned_3d_coords(x: tf.Tensor) -> Tuple[tf.Tensor, int]:
 
   Args:
     x: `Tensor` with rank 2, and 3 as the last dimension.
+
   Returns:
     hashed_x: `Tensor` with rank 1 for the hashed output.
     max_val: `int` that was used to hash the input tensor.
@@ -74,6 +75,7 @@ def unhash_flattened_3d_coords(x: tf.Tensor, max_val: int) -> tf.Tensor:
   Args:
     x: `Tensor` with rank 1, the hashed tensor.
     max_val: `int` that was used to hash the tensor.
+
   Returns:
     unhashed_x: `Tensor` with rank 1, and 3 as the last dimension.
   """
@@ -207,8 +209,9 @@ def create_face_mask(voxels: tf.Tensor, axis: int):
   Args:
     voxels: A `Tensor` of shape [B, D, H, W] that contains the thresholded
       voxel occupancies.
-    axis: `Integer` that indicates the axis of interest. Either 1 for the
+    axis: `int` that indicates the axis of interest. Either 1 for the
       z-axis, 2 for the y-axis, or 3 for the x-axis.
+
   Returns:
     upper: A `Tensor` of shape [B, D, H, W] containing 1s and 0s that indicate
       whether a given voxel has a face present (either right, bottom, or back
@@ -344,7 +347,7 @@ def cubify(voxels: tf.Tensor,
   verts = tf.tile(verts, multiples=[batch_size, 1, 1])
   faces = tf.tile(faces, multiples=[batch_size, 1, 1])
 
-  # Offset the faces so that each vertex index is positive
+  # Offset the faces so that each vertex index is greater than 0
   masked_faces = faces + 1
 
   # Zero out unused faces
@@ -357,7 +360,7 @@ def cubify(voxels: tf.Tensor,
       tf.cast(tf.reshape(masked_faces, [batch_size, -1]), tf.int32),
       minlength=num_verts+1, binary_output=True, axis=-1)
 
-  # The first index was used for any 0s, which can be ignored
+  # The first index was used for any 0s (masked out faces), which can be ignored
   verts_mask = verts_mask[:, 1:]
 
   return verts, faces, verts_mask, faces_mask
