@@ -124,6 +124,20 @@ class TransformerWithReZeroLayerTest(keras_parameterized.TestCase):
     new_output_tensor = new_layer([input_data, mask_data])
     self.assertAllClose(new_output_tensor, output_tensor[:, 0:1, :])
 
+  def test_separate_qkv(self):
+    test_layer = rezero_transformer.ReZeroTransformer(
+        num_attention_heads=2,
+        intermediate_size=128,
+        intermediate_activation='relu',
+        kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))
+    # Forward path.
+    q_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
+    kv_tensor = tf.zeros([2, 8, 16], dtype=tf.float32)
+    dummy_mask = tf.zeros([2, 4, 8], dtype=tf.float32)
+    inputs = [q_tensor, kv_tensor, dummy_mask]
+    output = test_layer(inputs)
+    self.assertEqual(output.shape, q_tensor.shape)
+
 
 if __name__ == '__main__':
   tf.test.main()
