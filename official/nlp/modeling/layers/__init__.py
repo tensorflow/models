@@ -21,7 +21,6 @@ from official.nlp.modeling.layers.attention import *
 from official.nlp.modeling.layers.bigbird_attention import BigBirdAttention
 from official.nlp.modeling.layers.bigbird_attention import BigBirdMasks
 from official.nlp.modeling.layers.cls_head import *
-from official.nlp.modeling.layers.dense_einsum import DenseEinsum
 from official.nlp.modeling.layers.gated_feedforward import GatedFeedforward
 from official.nlp.modeling.layers.gaussian_process import RandomFeatureGaussianProcess
 from official.nlp.modeling.layers.kernel_attention import KernelAttention
@@ -39,6 +38,8 @@ from official.nlp.modeling.layers.position_embedding import RelativePositionBias
 from official.nlp.modeling.layers.position_embedding import RelativePositionEmbedding
 from official.nlp.modeling.layers.relative_attention import MultiHeadRelativeAttention
 from official.nlp.modeling.layers.relative_attention import TwoStreamRelativeAttention
+from official.nlp.modeling.layers.reuse_attention import ReuseMultiHeadAttention
+from official.nlp.modeling.layers.reuse_transformer import ReuseTransformer
 from official.nlp.modeling.layers.rezero_transformer import ReZeroTransformer
 from official.nlp.modeling.layers.self_attention_mask import SelfAttentionMask
 from official.nlp.modeling.layers.spectral_normalization import *

@@ -14,7 +14,7 @@
 
 """Segmentation heads."""
 
-from typing import Any, Union, Sequence, Mapping
+from typing import Any, Union, Sequence, Mapping, Tuple
 import tensorflow as tf
 
 from official.modeling import tf_utils
@@ -139,25 +139,29 @@ class SegmentationHead3D(tf.keras.layers.Layer):
 
     super(SegmentationHead3D, self).build(input_shape)
 
-  def call(self, backbone_output: Mapping[str, tf.Tensor],
-           decoder_output: Mapping[str, tf.Tensor]) -> tf.Tensor:
+  def call(self, inputs: Tuple[Union[tf.Tensor, Mapping[str, tf.Tensor]],
+                               Union[tf.Tensor, Mapping[str, tf.Tensor]]]):
     """Forward pass of the segmentation head.
 
-    Args:
-      backbone_output: a dict of tensors
-        - key: `str`, the level of the multilevel features.
-        - values: `Tensor`, the feature map tensors, whose shape is [batch,
-          height_l, width_l, channels].
-      decoder_output: a dict of tensors
-        - key: `str`, the level of the multilevel features.
-        - values: `Tensor`, the feature map tensors, whose shape is [batch,
-          height_l, width_l, channels].
+    It supports both a tuple of 2 tensors or 2 dictionaries. The first is
+    backbone endpoints, and the second is decoder endpoints. When inputs are
+    tensors, they are from a single level of feature maps. When inputs are
+    dictionaries, they contain multiple levels of feature maps, where the key
+    is the index of feature map.
 
+    Args:
+      inputs: A tuple of 2 feature map tensors of shape
+        [batch, height_l, width_l, channels] or 2 dictionaries of tensors:
+        - key: A `str` of the level of the multilevel features.
+        - values: A `tf.Tensor` of the feature map tensors, whose shape is
+            [batch, height_l, width_l, channels].
     Returns:
-      segmentation prediction mask: `Tensor`, the segmentation mask scores
-        predicted from input feature.
+      segmentation prediction mask: A `tf.Tensor` of the segmentation mask
+        scores predicted from input features.
     """
-    x = decoder_output[str(self._config_dict['level'])]
+    decoder_output = inputs[1]
+    x = decoder_output[str(self._config_dict['level'])] if isinstance(
+        decoder_output, dict) else decoder_output
 
     for i, conv in enumerate(self._convs):
       x = conv(x)

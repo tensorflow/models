@@ -22,6 +22,7 @@ from typing import Any, Mapping, Optional, Sequence, Tuple, Union
 
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.vision.beta.modeling.layers import nn_layers
 
 # Default kernel weight decay that may be overridden
@@ -323,7 +324,8 @@ class ConvBlock(tf.keras.layers.Layer):
     self._use_buffered_input = use_buffered_input
 
     if activation is not None:
-      self._activation_layer = tf.keras.layers.Activation(activation)
+      self._activation_layer = tf_utils.get_activation(
+          activation, use_keras_layer=True)
     else:
       self._activation_layer = None
 

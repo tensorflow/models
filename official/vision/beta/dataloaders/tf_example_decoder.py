@@ -23,8 +23,9 @@ from official.vision.beta.dataloaders import decoder
 
 
 def _generate_source_id(image_bytes):
+  # Hashing using 22 bits since float32 has only 23 mantissa bits.
   return tf.strings.as_string(
-      tf.strings.to_hash_bucket_fast(image_bytes, 2 ** 63 - 1))
+      tf.strings.to_hash_bucket_fast(image_bytes, 2 ** 22 - 1))
 
 
 class TfExampleDecoder(decoder.Decoder):

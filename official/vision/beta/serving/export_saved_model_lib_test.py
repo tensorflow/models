@@ -29,11 +29,16 @@ class WriteModelFlopsAndParamsTest(tf.test.TestCase):
   @mock.patch.object(export_base, 'export', autospec=True, spec_set=True)
   def test_retinanet_task(self, unused_export):
     tempdir = self.create_tempdir()
+    params = configs.retinanet.retinanet_resnetfpn_coco()
+    print(params.task.model.backbone)
+    params.task.model.backbone.resnet.model_id = 18
+    params.task.model.num_classes = 2
+    params.task.model.max_level = 6
     export_saved_model_lib.export_inference_graph(
         input_type='image_tensor',
         batch_size=1,
-        input_image_size=[128, 128],
-        params=configs.retinanet.retinanet_resnetfpn_coco(),
+        input_image_size=[64, 64],
+        params=params,
         checkpoint_path=os.path.join(tempdir, 'unused-ckpt'),
         export_dir=tempdir,
         log_model_flops_and_params=True)

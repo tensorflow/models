@@ -27,7 +27,6 @@ from official.vision.beta.projects.video_ssl.configs import video_ssl as video_s
 layers = tf.keras.layers
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
 class VideoSSLModel(tf.keras.Model):
   """A video ssl model class builder."""
 

@@ -27,14 +27,16 @@ from official.core import actions
 from official.modeling import optimization
 
 
-class TestModel(tf.Module):
+class TestModel(tf.keras.Model):
 
   def __init__(self):
-    self.value = tf.Variable(0)
+    super().__init__()
+    self.value = tf.Variable(0.0)
+    self.dense = tf.keras.layers.Dense(2)
+    _ = self.dense(tf.zeros((2, 2), tf.float32))
 
-  @tf.function(input_signature=[])
-  def __call__(self):
-    return self.value
+  def call(self, x, training=None):
+    return self.value + x
 
 
 class ActionsTest(tf.test.TestCase, parameterized.TestCase):
@@ -43,7 +45,7 @@ class ActionsTest(tf.test.TestCase, parameterized.TestCase):
       combinations.combine(
           distribution=[
               strategy_combinations.cloud_tpu_strategy,
-              strategy_combinations.one_device_strategy_gpu,
+              strategy_combinations.one_device_strategy,
           ],))
   def test_ema_checkpointing(self, distribution):
     with distribution.scope():
@@ -62,18 +64,25 @@ class ActionsTest(tf.test.TestCase, parameterized.TestCase):
       model.value.assign(3)
 
       # Checks model.value is 3
-      self.assertEqual(model(), 3)
+      self.assertEqual(model(0.), 3)
       ema_action = actions.EMACheckpointing(directory, optimizer, checkpoint)
 
       ema_action({})
       self.assertNotEmpty(
           tf.io.gfile.glob(os.path.join(directory, 'ema_checkpoints')))
 
-      checkpoint.read(tf.train.latest_checkpoint(
-          os.path.join(directory, 'ema_checkpoints')))
+      checkpoint.read(
+          tf.train.latest_checkpoint(
+              os.path.join(directory, 'ema_checkpoints')))
 
       # Checks model.value is 0 after swapping.
-      self.assertEqual(model(), 0)
+      self.assertEqual(model(0.), 0)
+
+      # Raises an error for a normal optimizer.
+      with self.assertRaisesRegex(ValueError,
+                                  'Optimizer has to be instance of.*'):
+        _ = actions.EMACheckpointing(directory, tf.keras.optimizers.SGD(),
+                                     checkpoint)
 
   @combinations.generate(
       combinations.combine(
@@ -101,6 +110,21 @@ class ActionsTest(tf.test.TestCase, parameterized.TestCase):
       self.assertTrue(recover_condition(outputs))
       with self.assertRaises(RuntimeError):
         recover_condition(outputs)
+
+  @combinations.generate(
+      combinations.combine(
+          distribution=[
+              strategy_combinations.one_device_strategy_gpu,
+              strategy_combinations.one_device_strategy,
+          ],))
+  def test_pruning(self, distribution):
+    with distribution.scope():
+      directory = self.get_temp_dir()
+      model = TestModel()
+      optimizer = tf.keras.optimizers.SGD()
+      pruning = actions.PruningAction(directory, model, optimizer)
+
+      pruning({})
 
 
 if __name__ == '__main__':

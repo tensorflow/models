@@ -31,7 +31,11 @@ class NNBlocks3DTest(parameterized.TestCase, tf.test.TestCase):
         shape=(spatial_size, spatial_size, volume_size, filters * 4),
         batch_size=1)
     block = nn_blocks_3d.BottleneckBlock3DVolume(
-        filters=filters, strides=strides, use_projection=True)
+        filters=filters,
+        strides=strides,
+        use_projection=True,
+        se_ratio=0.2,
+        stochastic_depth_drop_rate=0.2)
 
     features = block(inputs)
 
@@ -46,7 +50,11 @@ class NNBlocks3DTest(parameterized.TestCase, tf.test.TestCase):
     inputs = tf.keras.Input(
         shape=(spatial_size, spatial_size, volume_size, filters), batch_size=1)
     block = nn_blocks_3d.ResidualBlock3DVolume(
-        filters=filters, strides=strides, use_projection=True)
+        filters=filters,
+        strides=strides,
+        use_projection=True,
+        se_ratio=0.2,
+        stochastic_depth_drop_rate=0.2)
 
     features = block(inputs)
 

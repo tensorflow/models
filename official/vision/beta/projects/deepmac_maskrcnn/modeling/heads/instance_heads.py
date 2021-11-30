@@ -23,7 +23,6 @@ from official.modeling import tf_utils
 from official.vision.beta.projects.deepmac_maskrcnn.modeling.heads import hourglass_network
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
 class DeepMaskHead(tf.keras.layers.Layer):
   """Creates a mask head."""
 

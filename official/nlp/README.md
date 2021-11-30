@@ -44,9 +44,6 @@ READMEs for specific papers.
 4.  [Transformer for translation](transformer):
     [Attention Is All You Need](https://arxiv.org/abs/1706.03762) by Vaswani et
     al., 2017
-5.  [NHNet](nhnet):
-    [Generating Representative Headlines for News Stories](https://arxiv.org/abs/2001.09386)
-    by Gu et al, 2020
 
 ### Common Training Driver
 

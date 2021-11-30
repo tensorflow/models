@@ -21,7 +21,6 @@ import tensorflow as tf
 from official.vision.beta.projects.centernet.modeling.layers import cn_nn_blocks
 
 
-@tf.keras.utils.register_keras_serializable(package='centernet')
 class CenterNetHead(tf.keras.Model):
   """CenterNet Head."""
 

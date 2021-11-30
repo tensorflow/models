@@ -16,7 +16,6 @@
 import math
 
 import tensorflow as tf
-from official.nlp.modeling import layers
 
 
 class Attention(tf.keras.layers.Layer):
@@ -51,28 +50,31 @@ class Attention(tf.keras.layers.Layer):
 
     attention_initializer = _glorot_initializer(input_shape.as_list()[-1],
                                                 self.hidden_size)
-    self.query_dense_layer = layers.DenseEinsum(
-        output_shape=(self.num_heads, size_per_head),
+    self.query_dense_layer = tf.keras.layers.experimental.EinsumDense(
+        "BTE,ENH->BTNH",
+        output_shape=(None, self.num_heads, size_per_head),
         kernel_initializer=attention_initializer,
-        use_bias=False,
+        bias_axes=None,
         name="query")
-    self.key_dense_layer = layers.DenseEinsum(
-        output_shape=(self.num_heads, size_per_head),
+    self.key_dense_layer = tf.keras.layers.experimental.EinsumDense(
+        "BTE,ENH->BTNH",
+        output_shape=(None, self.num_heads, size_per_head),
         kernel_initializer=attention_initializer,
-        use_bias=False,
+        bias_axes=None,
         name="key")
-    self.value_dense_layer = layers.DenseEinsum(
-        output_shape=(self.num_heads, size_per_head),
+    self.value_dense_layer = tf.keras.layers.experimental.EinsumDense(
+        "BTE,ENH->BTNH",
+        output_shape=(None, self.num_heads, size_per_head),
         kernel_initializer=attention_initializer,
-        use_bias=False,
+        bias_axes=None,
         name="value")
 
     output_initializer = _glorot_initializer(self.hidden_size, self.hidden_size)
-    self.output_dense_layer = layers.DenseEinsum(
-        output_shape=self.hidden_size,
-        num_summed_dimensions=2,
+    self.output_dense_layer = tf.keras.layers.experimental.EinsumDense(
+        "BTNH,NHE->BTE",
+        output_shape=(None, self.hidden_size),
         kernel_initializer=output_initializer,
-        use_bias=False,
+        bias_axes=None,
         name="output_transform")
     super(Attention, self).build(input_shape)
 

@@ -31,8 +31,7 @@ from official.vision.beta.serving import semantic_segmentation
 class SemanticSegmentationExportTest(tf.test.TestCase, parameterized.TestCase):
 
   def _get_segmentation_module(self):
-    params = exp_factory.get_exp_config('seg_deeplabv3_pascal')
-    params.task.model.backbone.dilated_resnet.model_id = 50
+    params = exp_factory.get_exp_config('mnv2_deeplabv3_pascal')
     segmentation_module = semantic_segmentation.SegmentationModule(
         params, batch_size=1, input_image_size=[112, 112])
     return segmentation_module

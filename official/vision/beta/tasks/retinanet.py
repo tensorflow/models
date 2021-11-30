@@ -13,14 +13,14 @@
 # limitations under the License.
 
 """RetinaNet task definition."""
-from typing import Any, Optional, List, Tuple, Mapping
+from typing import Any, List, Mapping, Optional, Tuple
 
 from absl import logging
 import tensorflow as tf
+
 from official.common import dataset_fn
 from official.core import base_task
 from official.core import task_factory
-from official.vision import keras_cv
 from official.vision.beta.configs import retinanet as exp_cfg
 from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import retinanet_input
@@ -28,6 +28,8 @@ from official.vision.beta.dataloaders import tf_example_decoder
 from official.vision.beta.dataloaders import tfds_factory
 from official.vision.beta.dataloaders import tf_example_label_map_decoder
 from official.vision.beta.evaluation import coco_evaluator
+from official.vision.beta.losses import focal_loss
+from official.vision.beta.losses import loss_utils
 from official.vision.beta.modeling import factory
 
 
@@ -155,9 +157,9 @@ class RetinaNetTask(base_task.Task):
       if head.name not in outputs['attribute_outputs']:
         raise ValueError(f'Attribute {head.name} not found in model outputs.')
 
-      y_true_att = keras_cv.losses.multi_level_flatten(
+      y_true_att = loss_utils.multi_level_flatten(
           labels['attribute_targets'][head.name], last_dim=head.size)
-      y_pred_att = keras_cv.losses.multi_level_flatten(
+      y_pred_att = loss_utils.multi_level_flatten(
           outputs['attribute_outputs'][head.name], last_dim=head.size)
       if head.type == 'regression':
         att_loss_fn = tf.keras.losses.Huber(
@@ -180,7 +182,7 @@ class RetinaNetTask(base_task.Task):
     params = self.task_config
     attribute_heads = self.task_config.model.head.attribute_heads
 
-    cls_loss_fn = keras_cv.losses.FocalLoss(
+    cls_loss_fn = focal_loss.FocalLoss(
         alpha=params.losses.focal_loss_alpha,
         gamma=params.losses.focal_loss_gamma,
         reduction=tf.keras.losses.Reduction.SUM)
@@ -194,14 +196,14 @@ class RetinaNetTask(base_task.Task):
     num_positives = tf.reduce_sum(box_sample_weight) + 1.0
     cls_sample_weight = cls_sample_weight / num_positives
     box_sample_weight = box_sample_weight / num_positives
-    y_true_cls = keras_cv.losses.multi_level_flatten(
+    y_true_cls = loss_utils.multi_level_flatten(
         labels['cls_targets'], last_dim=None)
     y_true_cls = tf.one_hot(y_true_cls, params.model.num_classes)
-    y_pred_cls = keras_cv.losses.multi_level_flatten(
+    y_pred_cls = loss_utils.multi_level_flatten(
         outputs['cls_outputs'], last_dim=params.model.num_classes)
-    y_true_box = keras_cv.losses.multi_level_flatten(
+    y_true_box = loss_utils.multi_level_flatten(
         labels['box_targets'], last_dim=4)
-    y_pred_box = keras_cv.losses.multi_level_flatten(
+    y_pred_box = loss_utils.multi_level_flatten(
         outputs['box_outputs'], last_dim=4)
 
     cls_loss = cls_loss_fn(

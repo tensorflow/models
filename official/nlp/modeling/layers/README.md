@@ -50,6 +50,14 @@ assemble new `tf.keras` layers or models.
     feature-based Gaussian process described in ["Random Features for
      Large-Scale Kernel Machines"](https://people.eecs.berkeley.edu/~brecht/papers/07.rah.rec.nips.pdf).
 
+*   [ReuseMultiHeadAttention](reuse_attention.py) supports passing
+    attention scores to be reused and avoid recomputation described in
+    ["Leveraging redundancy in attention with Reuse Transformers"](https://arxiv.org/abs/2110.06821).
+
+*   [ReuseTransformer](reuse_transformer.py) supports reusing attention scores
+    from lower layers in higher layers to avoid recomputing attention scores
+    described in ["Leveraging redundancy in attention with Reuse Transformers"](https://arxiv.org/abs/2110.06821).
+
 *   [ReZeroTransformer](rezero_transformer.py) implements Transformer with
     ReZero described in
     ["ReZero is All You Need: Fast Convergence at Large Depth"](https://arxiv.org/abs/2003.04887).
