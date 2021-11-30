@@ -28,7 +28,7 @@ from official.core import config_definitions
 from official.modeling import optimization
 
 
-class PruningActions:
+class PruningAction:
   """Train action to updates pruning related information.
 
   This action updates pruning steps at the end of trainig loop, and log
@@ -66,7 +66,7 @@ class PruningActions:
     """Update pruning step and log pruning summaries.
 
     Args:
-      output: The train output to test.
+      output: The train output.
     """
     self.update_pruning_step.on_epoch_end(batch=None)
     self.pruning_summaries.on_epoch_begin(epoch=None)
@@ -81,8 +81,11 @@ class EMACheckpointing:
   than training.
   """
 
-  def __init__(self, export_dir: str, optimizer: tf.keras.optimizers.Optimizer,
-               checkpoint: tf.train.Checkpoint, max_to_keep: int = 1):
+  def __init__(self,
+               export_dir: str,
+               optimizer: tf.keras.optimizers.Optimizer,
+               checkpoint: tf.train.Checkpoint,
+               max_to_keep: int = 1):
     """Initializes the instance.
 
     Args:
@@ -99,8 +102,7 @@ class EMACheckpointing:
                        'EMACheckpointing action')
 
     export_dir = os.path.join(export_dir, 'ema_checkpoints')
-    tf.io.gfile.makedirs(
-        os.path.dirname(export_dir))
+    tf.io.gfile.makedirs(os.path.dirname(export_dir))
     self._optimizer = optimizer
     self._checkpoint = checkpoint
     self._checkpoint_manager = tf.train.CheckpointManager(
@@ -113,7 +115,7 @@ class EMACheckpointing:
     """Swaps model weights, and saves the checkpoint.
 
     Args:
-      output: The train or eval output to test.
+      output: The train or eval output.
     """
     self._optimizer.swap_weights()
     self._checkpoint_manager.save(checkpoint_number=self._optimizer.iterations)
@@ -173,10 +175,9 @@ class RecoveryCondition:
 
 
 @gin.configurable
-def get_eval_actions(
-    params: config_definitions.ExperimentConfig,
-    trainer: base_trainer.Trainer,
-    model_dir: str) -> List[orbit.Action]:
+def get_eval_actions(params: config_definitions.ExperimentConfig,
+                     trainer: base_trainer.Trainer,
+                     model_dir: str) -> List[orbit.Action]:
   """Gets eval actions for TFM trainer."""
   eval_actions = []
   # Adds ema checkpointing action to save the average weights under
@@ -202,7 +203,7 @@ def get_train_actions(
   # Adds pruning callback actions.
   if hasattr(params.task, 'pruning'):
     train_actions.append(
-        PruningActions(
+        PruningAction(
             export_dir=model_dir,
             model=trainer.model,
             optimizer=trainer.optimizer))

@@ -25,7 +25,6 @@ import tensorflow as tf
 from official.vision.beta.projects.example import example_config as example_cfg
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
 class ExampleModel(tf.keras.Model):
   """A example model class.
 

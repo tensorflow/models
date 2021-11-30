@@ -125,8 +125,7 @@ def run_customized_training(strategy,
         end_lr, optimizer_type)
     pretrain_model.optimizer = performance.configure_optimizer(
         optimizer,
-        use_float16=common_flags.use_float16(),
-        use_graph_rewrite=common_flags.use_graph_rewrite())
+        use_float16=common_flags.use_float16())
     return pretrain_model, core_model
 
   trained_model = model_training_utils.run_customized_training_loop(

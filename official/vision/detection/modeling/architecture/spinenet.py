@@ -113,7 +113,6 @@ def build_block_specs(block_specs=None):
   return [BlockSpec(*b) for b in block_specs]
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
 class SpineNet(tf.keras.Model):
   """Class to build SpineNet models."""
 

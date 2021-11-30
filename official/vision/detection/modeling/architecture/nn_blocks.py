@@ -23,7 +23,6 @@ import tensorflow as tf
 from official.modeling import tf_utils
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
 class ResidualBlock(tf.keras.layers.Layer):
   """A residual block."""
 
@@ -163,7 +162,6 @@ class ResidualBlock(tf.keras.layers.Layer):
     return self._activation_fn(x + shortcut)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
 class BottleneckBlock(tf.keras.layers.Layer):
   """A standard bottleneck block."""
 

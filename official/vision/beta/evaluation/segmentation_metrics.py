@@ -41,8 +41,7 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
       dtype: data type of the metric result.
     """
     self._rescale_predictions = rescale_predictions
-    super(MeanIoU, self).__init__(
-        num_classes=num_classes, name=name, dtype=dtype)
+    super().__init__(num_classes=num_classes, name=name, dtype=dtype)
 
   def update_state(self, y_true, y_pred):
     """Updates metric state.
@@ -120,9 +119,8 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
       flatten_masks = tf.reshape(masks, shape=[-1])
       flatten_valid_masks = tf.reshape(valid_masks, shape=[-1])
 
-      super(MeanIoU, self).update_state(
-          flatten_masks, flatten_predictions,
-          tf.cast(flatten_valid_masks, tf.float32))
+      super().update_state(flatten_masks, flatten_predictions,
+                           tf.cast(flatten_valid_masks, tf.float32))
 
 
 class PerClassIoU(iou.PerClassIoU):
@@ -148,8 +146,7 @@ class PerClassIoU(iou.PerClassIoU):
       dtype: data type of the metric result.
     """
     self._rescale_predictions = rescale_predictions
-    super(PerClassIoU, self).__init__(
-        num_classes=num_classes, name=name, dtype=dtype)
+    super().__init__(num_classes=num_classes, name=name, dtype=dtype)
 
   def update_state(self, y_true, y_pred):
     """Updates metric state.
@@ -213,9 +210,8 @@ class PerClassIoU(iou.PerClassIoU):
         flatten_predictions = tf.reshape(predicted_mask, shape=[1, -1])
         flatten_masks = tf.reshape(mask, shape=[1, -1])
         flatten_valid_masks = tf.reshape(valid_mask, shape=[1, -1])
-        super(PerClassIoU, self).update_state(
-            flatten_masks, flatten_predictions,
-            tf.cast(flatten_valid_masks, tf.float32))
+        super().update_state(flatten_masks, flatten_predictions,
+                             tf.cast(flatten_valid_masks, tf.float32))
 
     else:
       predictions = tf.image.resize(
@@ -227,6 +223,5 @@ class PerClassIoU(iou.PerClassIoU):
       flatten_masks = tf.reshape(masks, shape=[-1])
       flatten_valid_masks = tf.reshape(valid_masks, shape=[-1])
 
-      super(PerClassIoU, self).update_state(
-          flatten_masks, flatten_predictions,
-          tf.cast(flatten_valid_masks, tf.float32))
+      super().update_state(flatten_masks, flatten_predictions,
+                           tf.cast(flatten_valid_masks, tf.float32))

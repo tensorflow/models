@@ -371,7 +371,6 @@ BACKBONES = {
 }
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class Darknet(tf.keras.Model):
   """The Darknet backbone architecture."""
 

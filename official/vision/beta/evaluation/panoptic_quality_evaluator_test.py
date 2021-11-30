@@ -45,19 +45,25 @@ class PanopticQualityEvaluatorTest(tf.test.TestCase):
                                       dtype=np.uint16)
 
     groundtruths = {
-        'category_mask': tf.convert_to_tensor(category_mask),
-        'instance_mask': tf.convert_to_tensor(groundtruth_instance_mask)
+        'category_mask':
+            tf.convert_to_tensor([category_mask]),
+        'instance_mask':
+            tf.convert_to_tensor([groundtruth_instance_mask]),
+        'image_info':
+            tf.convert_to_tensor([[[6, 6], [6, 6], [1.0, 1.0], [0, 0]]],
+                                 dtype=tf.float32)
     }
     predictions = {
-        'category_mask': tf.convert_to_tensor(category_mask),
-        'instance_mask': tf.convert_to_tensor(good_det_instance_mask)
+        'category_mask': tf.convert_to_tensor([category_mask]),
+        'instance_mask': tf.convert_to_tensor([good_det_instance_mask])
     }
 
     pq_evaluator = panoptic_quality_evaluator.PanopticQualityEvaluator(
         num_categories=1,
         ignored_label=2,
         max_instances_per_category=16,
-        offset=16)
+        offset=16,
+        rescale_predictions=True)
     for _ in range(2):
       pq_evaluator.update_state(groundtruths, predictions)
 
@@ -70,7 +76,7 @@ class PanopticQualityEvaluatorTest(tf.test.TestCase):
         [1, 1, 1, 1, 1, 1],
     ],
                                      dtype=np.uint16)
-    predictions['instance_mask'] = tf.convert_to_tensor(bad_det_instance_mask)
+    predictions['instance_mask'] = tf.convert_to_tensor([bad_det_instance_mask])
     for _ in range(2):
       pq_evaluator.update_state(groundtruths, predictions)
 

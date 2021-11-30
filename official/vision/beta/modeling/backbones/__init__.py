@@ -16,6 +16,7 @@
 """Backbones package definition."""
 
 from official.vision.beta.modeling.backbones.efficientnet import EfficientNet
+from official.vision.beta.modeling.backbones.mobiledet import MobileDet
 from official.vision.beta.modeling.backbones.mobilenet import MobileNet
 from official.vision.beta.modeling.backbones.resnet import ResNet
 from official.vision.beta.modeling.backbones.resnet_3d import ResNet3D

@@ -69,6 +69,10 @@ class BigBirdEncoder(tf.keras.Model):
       embeddings.
     type_vocab_size: The number of types that the 'type_ids' input can take.
     intermediate_size: The intermediate size for the transformer layers.
+    block_size: int. A BigBird Attention parameter: size of block in from/to
+      sequences.
+    num_rand_blocks: int. A BigBird Attention parameter: number of random chunks
+      per row.
     activation: The activation to use for the transformer layers.
     dropout_rate: The dropout rate to use for the transformer layers.
     attention_dropout_rate: The dropout rate to use for the attention layers

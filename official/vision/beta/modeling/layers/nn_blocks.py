@@ -497,6 +497,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
                activation='relu',
                se_inner_activation='relu',
                se_gating_activation='sigmoid',
+               se_round_down_protect=True,
                expand_se_in_filters=False,
                depthwise_activation=None,
                use_sync_bn=False,
@@ -532,6 +533,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
       se_inner_activation: A `str` name of squeeze-excitation inner activation.
       se_gating_activation: A `str` name of squeeze-excitation gating
         activation.
+      se_round_down_protect: A `bool` of whether round down more than 10%
+        will be allowed in SE layer.
       expand_se_in_filters: A `bool` of whether or not to expand in_filter in
         squeeze and excitation layer.
       depthwise_activation: A `str` name of the activation function for
@@ -573,6 +576,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     self._se_inner_activation = se_inner_activation
     self._se_gating_activation = se_gating_activation
     self._depthwise_activation = depthwise_activation
+    self._se_round_down_protect = se_round_down_protect
     self._kernel_initializer = kernel_initializer
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
@@ -652,6 +656,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
           out_filters=expand_filters,
           se_ratio=self._se_ratio,
           divisible_by=self._divisible_by,
+          round_down_protect=self._se_round_down_protect,
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer,
@@ -700,6 +705,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
         'activation': self._activation,
         'se_inner_activation': self._se_inner_activation,
         'se_gating_activation': self._se_gating_activation,
+        'se_round_down_protect': self._se_round_down_protect,
         'expand_se_in_filters': self._expand_se_in_filters,
         'depthwise_activation': self._depthwise_activation,
         'dilation_rate': self._dilation_rate,
@@ -1310,3 +1316,196 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
     x = self._conv1(x)
     x = self._norm1(x)
     return self._activation_fn(x)
+
+
+@tf.keras.utils.register_keras_serializable(package='Vision')
+class TuckerConvBlock(tf.keras.layers.Layer):
+  """An Tucker block (generalized bottleneck)."""
+
+  def __init__(self,
+               in_filters,
+               out_filters,
+               input_compression_ratio,
+               output_compression_ratio,
+               strides,
+               kernel_size=3,
+               stochastic_depth_drop_rate=None,
+               kernel_initializer='VarianceScaling',
+               kernel_regularizer=None,
+               bias_regularizer=None,
+               activation='relu',
+               use_sync_bn=False,
+               divisible_by=1,
+               use_residual=True,
+               norm_momentum=0.99,
+               norm_epsilon=0.001,
+               **kwargs):
+    """Initializes an inverted bottleneck block with BN after convolutions.
+
+    Args:
+      in_filters: An `int` number of filters of the input tensor.
+      out_filters: An `int` number of filters of the output tensor.
+      input_compression_ratio: An `float` of compression ratio for
+        input filters.
+      output_compression_ratio: An `float` of compression ratio for
+        output filters.
+      strides: An `int` block stride. If greater than 1, this block will
+        ultimately downsample the input.
+      kernel_size: An `int` kernel_size of the depthwise conv layer.
+      stochastic_depth_drop_rate: A `float` or None. if not None, drop rate for
+        the stochastic depth layer.
+      kernel_initializer: A `str` of kernel_initializer for convolutional
+        layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default to None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2d.
+        Default to None.
+      activation: A `str` name of the activation function.
+      use_sync_bn: A `bool`. If True, use synchronized batch normalization.
+      divisible_by: An `int` that ensures all inner dimensions are divisible by
+        this number.
+      use_residual: A `bool` of whether to include residual connection between
+        input and output.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      **kwargs: Additional keyword arguments to be passed.
+    """
+    super(TuckerConvBlock, self).__init__(**kwargs)
+
+    self._in_filters = in_filters
+    self._out_filters = out_filters
+    self._input_compression_ratio = input_compression_ratio
+    self._output_compression_ratio = output_compression_ratio
+    self._strides = strides
+    self._kernel_size = kernel_size
+    self._divisible_by = divisible_by
+    self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
+    self._use_sync_bn = use_sync_bn
+    self._use_residual = use_residual
+    self._activation = activation
+    self._kernel_initializer = kernel_initializer
+    self._norm_momentum = norm_momentum
+    self._norm_epsilon = norm_epsilon
+    self._kernel_regularizer = kernel_regularizer
+    self._bias_regularizer = bias_regularizer
+
+    if use_sync_bn:
+      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
+    else:
+      self._norm = tf.keras.layers.BatchNormalization
+    if tf.keras.backend.image_data_format() == 'channels_last':
+      self._bn_axis = -1
+    else:
+      self._bn_axis = 1
+
+  def build(self, input_shape):
+    input_compressed_filters = nn_layers.make_divisible(
+        value=self._in_filters * self._input_compression_ratio,
+        divisor=self._divisible_by,
+        round_down_protect=False)
+
+    self._conv0 = tf.keras.layers.Conv2D(
+        filters=input_compressed_filters,
+        kernel_size=1,
+        strides=1,
+        padding='same',
+        use_bias=False,
+        kernel_initializer=self._kernel_initializer,
+        kernel_regularizer=self._kernel_regularizer,
+        bias_regularizer=self._bias_regularizer)
+    self._norm0 = self._norm(
+        axis=self._bn_axis,
+        momentum=self._norm_momentum,
+        epsilon=self._norm_epsilon)
+    self._activation_layer0 = tf_utils.get_activation(
+        self._activation, use_keras_layer=True)
+
+    output_compressed_filters = nn_layers.make_divisible(
+        value=self._out_filters * self._output_compression_ratio,
+        divisor=self._divisible_by,
+        round_down_protect=False)
+
+    self._conv1 = tf.keras.layers.Conv2D(
+        filters=output_compressed_filters,
+        kernel_size=self._kernel_size,
+        strides=self._strides,
+        padding='same',
+        use_bias=False,
+        kernel_initializer=self._kernel_initializer,
+        kernel_regularizer=self._kernel_regularizer,
+        bias_regularizer=self._bias_regularizer)
+    self._norm1 = self._norm(
+        axis=self._bn_axis,
+        momentum=self._norm_momentum,
+        epsilon=self._norm_epsilon)
+    self._activation_layer1 = tf_utils.get_activation(
+        self._activation, use_keras_layer=True)
+
+    # Last 1x1 conv.
+    self._conv2 = tf.keras.layers.Conv2D(
+        filters=self._out_filters,
+        kernel_size=1,
+        strides=1,
+        padding='same',
+        use_bias=False,
+        kernel_initializer=self._kernel_initializer,
+        kernel_regularizer=self._kernel_regularizer,
+        bias_regularizer=self._bias_regularizer)
+    self._norm2 = self._norm(
+        axis=self._bn_axis,
+        momentum=self._norm_momentum,
+        epsilon=self._norm_epsilon)
+
+    if self._stochastic_depth_drop_rate:
+      self._stochastic_depth = nn_layers.StochasticDepth(
+          self._stochastic_depth_drop_rate)
+    else:
+      self._stochastic_depth = None
+    self._add = tf.keras.layers.Add()
+
+    super(TuckerConvBlock, self).build(input_shape)
+
+  def get_config(self):
+    config = {
+        'in_filters': self._in_filters,
+        'out_filters': self._out_filters,
+        'input_compression_ratio': self._input_compression_ratio,
+        'output_compression_ratio': self._output_compression_ratio,
+        'strides': self._strides,
+        'kernel_size': self._kernel_size,
+        'divisible_by': self._divisible_by,
+        'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
+        'kernel_initializer': self._kernel_initializer,
+        'kernel_regularizer': self._kernel_regularizer,
+        'bias_regularizer': self._bias_regularizer,
+        'activation': self._activation,
+        'use_sync_bn': self._use_sync_bn,
+        'use_residual': self._use_residual,
+        'norm_momentum': self._norm_momentum,
+        'norm_epsilon': self._norm_epsilon
+    }
+    base_config = super(TuckerConvBlock, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+  def call(self, inputs, training=None):
+    shortcut = inputs
+
+    x = self._conv0(inputs)
+    x = self._norm0(x)
+    x = self._activation_layer0(x)
+
+    x = self._conv1(x)
+    x = self._norm1(x)
+    x = self._activation_layer1(x)
+
+    x = self._conv2(x)
+    x = self._norm2(x)
+
+    if (self._use_residual and
+        self._in_filters == self._out_filters and
+        self._strides == 1):
+      if self._stochastic_depth:
+        x = self._stochastic_depth(x, training=training)
+      x = self._add([x, shortcut])
+
+    return x

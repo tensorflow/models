@@ -13,14 +13,13 @@
 # limitations under the License.
 
 """Panoptic MaskRCNN task definition."""
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, List, Mapping, Optional, Tuple, Dict
 from absl import logging
 import tensorflow as tf
 
 from official.common import dataset_fn
 from official.core import task_factory
 from official.vision.beta.dataloaders import input_reader_factory
-from official.vision.beta.evaluation import coco_evaluator
 from official.vision.beta.evaluation import panoptic_quality_evaluator
 from official.vision.beta.evaluation import segmentation_metrics
 from official.vision.beta.losses import segmentation_losses
@@ -235,10 +234,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
             dtype=tf.float32)
 
     else:
-      self.coco_metric = coco_evaluator.COCOEvaluator(
-          annotation_file=self.task_config.annotation_file,
-          include_mask=self.task_config.model.include_mask,
-          per_category_metrics=self.task_config.per_category_metrics)
+      self._build_coco_metrics()
 
       rescale_predictions = (not self.task_config.validation_data.parser
                              .segmentation_resize_eval_groundtruth)
@@ -379,12 +375,12 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         'image_info': labels['image_info']
     }
 
+    logs.update(
+        {self.coco_metric.name: (labels['groundtruths'], coco_model_outputs)})
     if self._process_iou_metric_on_cpu:
       logs.update({
-          self.coco_metric.name: (labels['groundtruths'], coco_model_outputs),
-          self.segmentation_perclass_iou_metric.name: (
-              segmentation_labels,
-              outputs['segmentation_outputs'])
+          self.segmentation_perclass_iou_metric.name:
+              (segmentation_labels, outputs['segmentation_outputs'])
       })
     else:
       self.segmentation_perclass_iou_metric.update_state(
@@ -430,7 +426,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     result = {}
-    result[self.coco_metric.name] = super(
+    result = super(
         PanopticMaskRCNNTask, self).reduce_aggregated_logs(
             aggregated_logs=aggregated_logs,
             global_step=global_step)

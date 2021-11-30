@@ -54,16 +54,20 @@ IMAGE_KEY = 'image/encoded'
 CLASSIFICATION_LABEL_KEY = 'image/class/label'
 LABEL_KEY = 'clip/label/index'
 AUDIO_KEY = 'features/audio'
+DUMP_SOURCE_ID = b'123'
 
 
-def make_image_bytes(shape: Sequence[int]):
-  """Generates image and return bytes in JPEG format."""
+def encode_image(image_array: np.array, fmt: str) -> bytes:
+  image = Image.fromarray(image_array)
+  with io.BytesIO() as output:
+    image.save(output, format=fmt)
+    return output.getvalue()
+
+
+def make_image_bytes(shape: Sequence[int], fmt: str = 'JPEG') -> bytes:
+  """Generates image and return bytes in specified format."""
   random_image = np.random.randint(0, 256, size=shape, dtype=np.uint8)
-  random_image = Image.fromarray(random_image)
-  with io.BytesIO() as buffer:
-    random_image.save(buffer, format='JPEG')
-    raw_image_bytes = buffer.getvalue()
-  return raw_image_bytes
+  return encode_image(random_image, fmt=fmt)
 
 
 def put_int64_to_context(seq_example: tf.train.SequenceExample,
@@ -164,3 +168,102 @@ def create_3d_image_test_example(image_height: int, image_width: int,
           bytes_list=tf.train.BytesList(value=[labels.tobytes()])))
   }
   return tf.train.Example(features=tf.train.Features(feature=feature))
+
+
+def create_detection_test_example(image_height: int, image_width: int,
+                                  image_channel: int,
+                                  num_instances: int) -> tf.train.Example:
+  """Creates and returns a test example containing box and mask annotations.
+
+  Args:
+    image_height: The height of test image.
+    image_width: The width of test image.
+    image_channel: The channel of test image.
+    num_instances: The number of object instances per image.
+
+  Returns:
+    A tf.train.Example for testing.
+  """
+  image = make_image_bytes([image_height, image_width, image_channel])
+  if num_instances == 0:
+    xmins = []
+    xmaxs = []
+    ymins = []
+    ymaxs = []
+    labels = []
+    areas = []
+    is_crowds = []
+    masks = []
+    labels_text = []
+  else:
+    xmins = list(np.random.rand(num_instances))
+    xmaxs = list(np.random.rand(num_instances))
+    ymins = list(np.random.rand(num_instances))
+    ymaxs = list(np.random.rand(num_instances))
+    labels_text = [b'class_1'] * num_instances
+    labels = list(np.random.randint(100, size=num_instances))
+    areas = [(xmax - xmin) * (ymax - ymin) * image_height * image_width
+             for xmin, xmax, ymin, ymax in zip(xmins, xmaxs, ymins, ymaxs)]
+    is_crowds = [0] * num_instances
+    masks = []
+    for _ in range(num_instances):
+      mask = make_image_bytes([image_height, image_width], fmt='PNG')
+      masks.append(mask)
+  return tf.train.Example(
+      features=tf.train.Features(
+          feature={
+              'image/encoded': (tf.train.Feature(
+                  bytes_list=tf.train.BytesList(value=[image]))),
+              'image/source_id': (tf.train.Feature(
+                  bytes_list=tf.train.BytesList(value=[DUMP_SOURCE_ID]))),
+              'image/height': (tf.train.Feature(
+                  int64_list=tf.train.Int64List(value=[image_height]))),
+              'image/width': (tf.train.Feature(
+                  int64_list=tf.train.Int64List(value=[image_width]))),
+              'image/object/bbox/xmin': (tf.train.Feature(
+                  float_list=tf.train.FloatList(value=xmins))),
+              'image/object/bbox/xmax': (tf.train.Feature(
+                  float_list=tf.train.FloatList(value=xmaxs))),
+              'image/object/bbox/ymin': (tf.train.Feature(
+                  float_list=tf.train.FloatList(value=ymins))),
+              'image/object/bbox/ymax': (tf.train.Feature(
+                  float_list=tf.train.FloatList(value=ymaxs))),
+              'image/object/class/label': (tf.train.Feature(
+                  int64_list=tf.train.Int64List(value=labels))),
+              'image/object/class/text': (tf.train.Feature(
+                  bytes_list=tf.train.BytesList(value=labels_text))),
+              'image/object/is_crowd': (tf.train.Feature(
+                  int64_list=tf.train.Int64List(value=is_crowds))),
+              'image/object/area': (tf.train.Feature(
+                  float_list=tf.train.FloatList(value=areas))),
+              'image/object/mask': (tf.train.Feature(
+                  bytes_list=tf.train.BytesList(value=masks))),
+          }))
+
+
+def create_segmentation_test_example(image_height: int, image_width: int,
+                                     image_channel: int) -> tf.train.Example:
+  """Creates and returns a test example containing mask annotations.
+
+  Args:
+    image_height: The height of test image.
+    image_width: The width of test image.
+    image_channel: The channel of test image.
+
+  Returns:
+    A tf.train.Example for testing.
+  """
+  image = make_image_bytes([image_height, image_width, image_channel])
+  mask = make_image_bytes([image_height, image_width], fmt='PNG')
+  return tf.train.Example(
+      features=tf.train.Features(
+          feature={
+              'image/encoded': (tf.train.Feature(
+                  bytes_list=tf.train.BytesList(value=[image]))),
+              'image/segmentation/class/encoded': (tf.train.Feature(
+                  bytes_list=tf.train.BytesList(value=[mask]))),
+              'image/height': (tf.train.Feature(
+                  int64_list=tf.train.Int64List(value=[image_height]))),
+              'image/width': (tf.train.Feature(
+                  int64_list=tf.train.Int64List(value=[image_width])))
+          }))

@@ -84,14 +84,12 @@ YOLO_MODELS = {
 }
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class _IdentityRoute(tf.keras.layers.Layer):
 
   def call(self, inputs):  # pylint: disable=arguments-differ
     return None, inputs
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class YoloFPN(tf.keras.layers.Layer):
   """YOLO Feature pyramid network."""
 
@@ -248,7 +246,6 @@ class YoloFPN(tf.keras.layers.Layer):
     return outputs
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class YoloPAN(tf.keras.layers.Layer):
   """YOLO Path Aggregation Network."""
 
@@ -441,7 +438,6 @@ class YoloPAN(tf.keras.layers.Layer):
     return outputs
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class YoloDecoder(tf.keras.Model):
   """Darknet Backbone Decoder."""
 

@@ -113,6 +113,7 @@ python3 train.py \
  --experiment=bert/sentence_prediction \
  --mode=train_and_eval \
  --model_dir=$OUTPUT_DIR \
+ --config_file=configs/models/bert_en_uncased_base.yaml \
  --config_file=configs/experiments/glue_mnli_matched.yaml \
  --tfhub_cache_dir=$OUTPUT_DIR/hub_cache \
  --tpu=${TPU_NAME} \
@@ -172,6 +173,7 @@ python3 train.py \
  --experiment=bert/squad \
  --mode=train_and_eval \
  --model_dir=$OUTPUT_DIR \
+ --config_file=configs/models/bert_en_uncased_base.yaml \
  --config_file=configs/experiments/squad_v1.1.yaml \
  --tpu=${TPU_NAME} \
  --params_override=$PARAMS

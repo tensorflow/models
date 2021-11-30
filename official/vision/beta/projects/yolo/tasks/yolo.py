@@ -401,7 +401,6 @@ class YoloTask(base_task.Task):
       use_float16 = runtime_config.mixed_precision_dtype == 'float16'
       optimizer = performance.configure_optimizer(
           optimizer,
-          use_graph_rewrite=False,
           use_float16=use_float16,
           loss_scale=runtime_config.loss_scale)
 

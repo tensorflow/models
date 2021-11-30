@@ -884,7 +884,6 @@ class AssembleNet(tf.keras.Model):
         inputs=original_inputs, outputs=streams, **kwargs)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
 class AssembleNetModel(tf.keras.Model):
   """An AssembleNet model builder."""
 

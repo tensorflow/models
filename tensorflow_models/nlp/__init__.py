@@ -13,4 +13,5 @@
 # limitations under the License.
 
 """TensorFlow Models NLP Libraries."""
+from official.nlp import tasks
 from official.nlp.modeling import *
