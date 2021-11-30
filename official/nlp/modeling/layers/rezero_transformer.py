@@ -80,8 +80,15 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     self._use_layer_norm = use_layer_norm
 
   def build(self, input_shape):
-    input_tensor = input_shape[0] if len(input_shape) == 2 else input_shape
-    input_tensor_shape = tf.TensorShape(input_tensor)
+    if isinstance(input_shape, tf.TensorShape):
+      input_tensor_shape = input_shape
+    elif isinstance(input_shape, (list, tuple)):
+      input_tensor_shape = tf.TensorShape(input_shape[0])
+    else:
+      raise ValueError(
+          "The type of input shape argument is not supported, got: %s" %
+          type(input_shape))
+
     if len(input_tensor_shape.as_list()) != 3:
       raise ValueError("TransformerLayer expects a three-dimensional input of "
                        "shape [batch, sequence, width].")
@@ -198,19 +205,30 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     self._rezero_a.assign(0.)
 
   def call(self, inputs):
-    if isinstance(inputs, (list, tuple)) and len(inputs) == 2:
-      input_tensor, attention_mask = inputs
+    if isinstance(inputs, (list, tuple)):
+      if len(inputs) == 2:
+        input_tensor, attention_mask = inputs
+        key_value = None
+      elif len(inputs) == 3:
+        input_tensor, key_value, attention_mask = inputs
+      else:
+        raise ValueError("Unexpected inputs to %s with length at %d" %
+                         (self.__class__, len(inputs)))
     else:
-      input_tensor, attention_mask = (inputs, None)
+      input_tensor, key_value, attention_mask = (inputs, None, None)
 
     if self._output_range:
       target_tensor = input_tensor[:, 0:self._output_range, :]
-      attention_mask = attention_mask[:, 0:self._output_range, :]
+      if attention_mask is not None:
+        attention_mask = attention_mask[:, 0:self._output_range, :]
     else:
       target_tensor = input_tensor
 
+    if key_value is None:
+      key_value = input_tensor
+
     attention_output = self._attention_layer(
-        query=target_tensor, value=input_tensor, attention_mask=attention_mask)
+        query=target_tensor, value=key_value, attention_mask=attention_mask)
     attention_output = self._attention_dropout(attention_output)
     attention_output = target_tensor + self._rezero_a * attention_output
     if self._use_layer_norm:
