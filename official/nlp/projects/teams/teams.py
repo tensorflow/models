@@ -45,13 +45,17 @@ class TeamsPretrainerConfig(base_config.Config):
   num_discriminator_task_agnostic_layers: int = 11
   generator: encoders.BertEncoderConfig = encoders.BertEncoderConfig()
   discriminator: encoders.BertEncoderConfig = encoders.BertEncoderConfig()
-  # Used for compatibility with continuous finetuning where common BERT config
-  # is used.
-  encoder: encoders.EncoderConfig = encoders.EncoderConfig()
+
+
+class TeamsEncoderConfig(encoders.BertEncoderConfig):
+  pass
 
 
 @gin.configurable
-def get_encoder(bert_config, embedding_network=None, hidden_layers=None):
+@base_config.bind(TeamsEncoderConfig)
+def get_encoder(bert_config: TeamsEncoderConfig,
+                embedding_network=None,
+                hidden_layers=None):
   """Gets a 'EncoderScaffold' object.
 
   Args:
@@ -98,4 +102,4 @@ def get_encoder(bert_config, embedding_network=None, hidden_layers=None):
       dict_outputs=True)
 
   # Relies on gin configuration to define the Transformer encoder arguments.
-  return networks.encoder_scaffold.EncoderScaffold(**kwargs)
+  return networks.EncoderScaffold(**kwargs)
