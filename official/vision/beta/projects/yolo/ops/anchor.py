@@ -268,11 +268,10 @@ class YoloAnchorLabeler:
 
     grid_xy = grid_xy * wh_scale
     centers = tf.math.floor(grid_xy)
-
-    if offset != 0.0:
-      clamp = lambda x, ma: tf.maximum(  # pylint:disable=g-long-lambda
+    clamp = lambda x, ma: tf.maximum(  # pylint:disable=g-long-lambda
           tf.minimum(x, tf.cast(ma, x.dtype)), tf.zeros_like(x))
 
+    if offset != 0.0:
       grid_xy_index = grid_xy - centers
       positive_shift = ((grid_xy_index < offset) & (grid_xy > 1.))
       negative_shift = ((grid_xy_index > (1 - offset)) & (grid_xy <
@@ -312,8 +311,8 @@ class YoloAnchorLabeler:
           boxes_and_centers, [4, 1, 1, 1], axis=-1)
       grid_xy, _ = tf.split(boxes, 2, axis=-1)
       centers = tf.math.floor(grid_xy * wh_scale - shifts)
-      centers = clamp(centers, wh_scale - 1)
 
+    centers = clamp(centers, wh_scale - 1)
     x, y = tf.split(centers, 2, axis=-1)
     centers = tf.cast(tf.concat([y, x, anchors], axis=-1), tf.int32)
     return boxes, classes, centers
