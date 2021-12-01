@@ -1,0 +1,9 @@
+{
+  "categories": [{"id": 1, "name": "bed"}, {"id": 2, "name": "bookcase"}, {"id": 3, "name": "chair"}, {"id": 4, "name": "desk"}, {"id": 5, "name": "misc"}, {"id": 6, "name": "sofa"}, {"id": 7, "name": "table"}, {"id": 8, "name": "tool"}, {"id": 9, "name": "wardrobe"}],
+  "licenses": {},
+  "info": {"year": 2018, "url": "https://github.com/xingyuansun/pix3d", "contributor": "Pix3D", "description": "Dataset of paper https://arxiv.org/abs/1804.04610"},
+  "annotations": [
+    {"iscrowd": 0, "segmentation": "mask/chair/0409.png", "model": "model/chair/SS_042/model.obj", "category_id": 3, "K": [3434.68173275, 1512.0, 2016.0], "bbox": [320, 56, 2131, 3609], "trans_mat": [0.017055282615799992, 0.058128800728, 0.938664993887], "area": 7690779, "image_id": 1, "id": 1, "rot_mat": [[0.7829390757301289, 0.005066182290536127, 0.6220777583966899], [-0.31879059850064173, 0.8619595114951648, 0.39420598023193354], [-0.5342087213837434, -0.506951806723298, 0.676476834531331]], "voxel": "model/chair/SS_042/voxel.mat"}
+  ],
+  "images": [{"id": 1, "file_name": "img/chair/0412.jpg", "height": 4032, "width": 3024}]
+}

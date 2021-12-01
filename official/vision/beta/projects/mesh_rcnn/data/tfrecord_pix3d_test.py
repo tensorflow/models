@@ -21,8 +21,7 @@ import os
 from absl.testing import parameterized
 from absl import flags
 
-# from official.vision.beta.projects.mesh_rcnn.data import create_pix3d_tf_record
-# from create_pix3d_tf_record import _create_tf_record_from_pix3d_dir
+from official.vision.beta.projects.mesh_rcnn.data import create_pix3d_tf_record
 
 def get_features(tfrecord_filename, num_models):
   raw_dataset = tf.data.TFRecordDataset(tfrecord_filename)
@@ -36,14 +35,14 @@ def get_features(tfrecord_filename, num_models):
 class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-    ((3,3), [[-0.8679031454645554, -0.012174281185507776, 0.49658424961968634], 
-    [-0.23962605126130768, 0.8859471856705277, -0.3970855572283948], 
-    [-0.4351131871704694, -0.4636263269919945, -0.7718336240863495]])
+    ((3,3), [[0.7829390757301289, 0.005066182290536127, 0.6220777583966899], 
+    [-0.31879059850064173, 0.8619595114951648, 0.39420598023193354], 
+    [-0.5342087213837434, -0.506951806723298, 0.676476834531331]])
   )
   def test_rot_mat(self, expected_shape: tuple,
                    expected_output: list):
     
-    tfrecord_filename = 'pix3d_records/tmp-00000-of-00032.tfrecord'
+    tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
     features = get_features(tfrecord_filename=tfrecord_filename, 
                             num_models=1)
 
@@ -55,51 +54,47 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual((np.array(expected_output)).astype(np.float32), rot_mat)
 
   @parameterized.parameters(
-    ((3,), [0.0123832253541, -0.005298808760219998, 0.982734527031])
+    ((3,), [0.017055282615799992, 0.058128800728, 0.938664993887])
   )
   def test_trans_mat(self, expected_shape: tuple,
                      expected_output: list):
     
-    tfrecord_filename = 'pix3d_records/tmp-00000-of-00032.tfrecord'
+    tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
     features = get_features(tfrecord_filename=tfrecord_filename, 
                             num_models=1)
 
-    trans_mat = tf.io.parse_tensor(
-        features['camera/trans_mat'].bytes_list.value[0],
-        tf.float32).numpy()
+    trans_mat = features['camera/trans_mat'].float_list.value
     
     self.assertAllEqual(expected_shape, np.shape(trans_mat))
     self.assertAllEqual((np.array(expected_output)).astype(np.float32), trans_mat)
 
 
   @parameterized.parameters(
-  ((4,), [231, 446, 2273, 3312])
+  ((4,), [320, 56, 2131, 3609])
   )
   def test_bbox(self, expected_shape: tuple,
                 expected_output: list):
     
-    tfrecord_filename = 'pix3d_records/tmp-00000-of-00032.tfrecord'
+    tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
     features = get_features(tfrecord_filename=tfrecord_filename, 
                             num_models=1)
 
-    bbox = tf.io.parse_tensor(
-        features['image/object/bbox'].bytes_list.value[0],
-        tf.int32).numpy()
+    bbox = features['image/object/bbox'].int64_list.value
     
     self.assertAllEqual(expected_shape, np.shape(bbox))
-    self.assertAllEqual((np.array(expected_output)).astype(np.int32), bbox)
+    self.assertAllEqual((np.array(expected_output)).astype(np.int64), bbox)
 
 if __name__ == '__main__':
+  # make output file directory if it doesn't exist
+  directory = os.path.dirname("tmp")
+  if not tf.io.gfile.isdir(directory):
+    tf.io.gfile.makedirs(directory)
 
-  # #make output file directory if it doesn't exist
-  # directory = os.path.dirname("tmp")
-  # if not tf.io.gfile.isdir(directory):
-  #   tf.io.gfile.makedirs(directory)
-
-  # #create TF record files 
-  # _create_tf_record_from_pix3d_dir(
-  #     "pix3d", "tmp", 32,
-  #     "pix3d_single_example.json")
+  pix3d_dir = 'D:\Datasets\pix3d'
+  #create TF record files 
+  create_pix3d_tf_record._create_tf_record_from_pix3d_dir(
+      pix3d_dir, "tmp", 1,
+      "tfrecord_pix3d_test_annotations.json")
 
   tf.test.main()
 
