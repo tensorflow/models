@@ -17,6 +17,7 @@ import numpy as np
 import tensorflow as tf
 import scipy.io as sio
 import os
+import cv2
 
 from absl.testing import parameterized
 from absl import flags
@@ -154,6 +155,20 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
         tf.int32).numpy()
     
     self.assertAllEqual(expected_shape, np.shape(faces))
+
+  def test_image(self):
+    tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
+    features = get_features(tfrecord_filename=tfrecord_filename, 
+                            num_models=1)
+    image = cv2.imdecode(
+      np.fromstring(features['image/encoded'].bytes_list.value[0], np.uint8),
+      flags=1)
+
+    self.assertGreater(np.shape(image)[0], 0)
+    self.assertGreater(np.shape(image)[1], 0)
+    self.assertAllEqual(np.shape(image)[2], 3)
+
+
 
 if __name__ == '__main__':
   # make output file directory if it doesn't exist
