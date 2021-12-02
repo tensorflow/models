@@ -79,6 +79,9 @@ def roformer_glue() -> cfg.ExperimentConfig:
   r"""BigBird GLUE."""
   config = cfg.ExperimentConfig(
       task=sentence_prediction.SentencePredictionConfig(
+          model=sentence_prediction.ModelConfig(
+              encoder=encoders.EncoderConfig(
+                  type="any", any=rofomer.RoformerEncoderConfig())),
           train_data=sentence_prediction_dataloader
           .SentencePredictionDataConfig(),
           validation_data=sentence_prediction_dataloader
