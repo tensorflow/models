@@ -30,7 +30,7 @@ class RoformerEncoderConfig(encoders.BertEncoderConfig):
 @gin.configurable
 @base_config.bind(RoformerEncoderConfig)
 def get_encoder(encoder_cfg: RoformerEncoderConfig):
-  """Gets a 'EncoderScaffold' object.
+  """Gets a 'RoformerEncoder' object.
 
   Args:
     encoder_cfg: A 'modeling.BertConfig'.
@@ -53,5 +53,4 @@ def get_encoder(encoder_cfg: RoformerEncoderConfig):
           stddev=encoder_cfg.initializer_range),
       output_range=encoder_cfg.output_range,
       embedding_width=encoder_cfg.embedding_size,
-      embedding_layer=embedding_layer,
       norm_first=encoder_cfg.norm_first)
