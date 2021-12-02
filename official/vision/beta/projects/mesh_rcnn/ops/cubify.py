@@ -17,6 +17,8 @@ from typing import Tuple
 
 import tensorflow as tf
 
+from collections import defaultdict
+
 # Vertices in the unit cube (x,y,z)
 UNIT_CUBOID_VERTS = tf.constant(
     [
@@ -196,7 +198,7 @@ def initialize_mesh(grid_dims: int) -> Tuple[tf.Tensor, tf.Tensor]:
 
   return verts, faces
 
-def create_face_mask(voxels: tf.Tensor, axis: int):
+def generate_face_bounds(voxels: tf.Tensor, axis: int):
   """Generates `Tensors` that give masks for boundaries of the voxels.
 
   This function returns 2 `Tensors`, an upper boundary and a lower boundary, for
@@ -303,9 +305,9 @@ def cubify(voxels: tf.Tensor,
   voxels = tf.cast(voxels > thresh, voxels.dtype)
 
   # Determine the non-adjacent faces in the final mesh
-  z_front_updates, z_back_updates = create_face_mask(voxels, axis=1)
-  y_top_updates, y_bot_updates = create_face_mask(voxels, axis=2)
-  x_left_updates, x_right_updates = create_face_mask(voxels, axis=3)
+  z_front_updates, z_back_updates = generate_face_bounds(voxels, axis=1)
+  y_top_updates, y_bot_updates = generate_face_bounds(voxels, axis=2)
+  x_left_updates, x_right_updates = generate_face_bounds(voxels, axis=3)
 
   updates = [
       x_left_updates,
@@ -364,3 +366,45 @@ def cubify(voxels: tf.Tensor,
   verts_mask = verts_mask[:, 1:]
 
   return verts, faces, verts_mask, faces_mask
+
+def compute_edges(faces, faces_mask):
+  v0, v1, v2 = tf.split(faces, 3, axis=-1)
+
+  e01 = tf.concat([v0, v1], axis=2)
+  e12 = tf.concat([v1, v2], axis=2)
+  e20 = tf.concat([v2, v0], axis=2)
+
+  edges = tf.concat([e12, e20, e01], axis=1)
+  edges_mask = tf.concat([faces_mask, faces_mask, faces_mask], axis=1)
+  
+  return edges, edges_mask
+
+
+if __name__ == '__main__':
+  def create_voxels(grid_dims, batch_size, occupancy_locs):
+    ones = tf.ones(shape=[len(occupancy_locs)])
+    voxels = tf.scatter_nd(
+        indices=tf.convert_to_tensor(occupancy_locs, tf.int32),
+        updates=ones,
+        shape=[batch_size, grid_dims, grid_dims, grid_dims])
+
+    return voxels
+  
+  grid_dims = 3
+  batch_size = 1
+  occupancy_locs = [
+      [0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0], [0, 0, 1, 1],
+      [0, 1, 0, 0], [0, 1, 0, 1], [0, 1, 1, 0], [0, 1, 1, 1],
+  ]
+
+  voxels = create_voxels(grid_dims, batch_size, occupancy_locs)
+  verts, faces, verts_mask, faces_mask = cubify(voxels, 0.5)
+  
+  edges, edges_mask = compute_edges(faces, faces_mask)
+
+  e = edges.numpy().squeeze()
+  edges_dict = defaultdict(int)
+  for k in e:
+    edges_dict[k[0]] +=1
+    edges_dict[k[1]] +=1
+  print(edges_dict)
