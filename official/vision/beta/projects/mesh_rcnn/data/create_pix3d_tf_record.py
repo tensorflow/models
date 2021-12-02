@@ -124,7 +124,7 @@ def convert_to_feature(value, value_type=None):
     raise ValueError(
         'Unknown value_type parameter - {}'.format(value_type))
 
-def create_tf_example(image):
+def create_tf_example(image: dict):
   """Converts image and annotations to a tf.Example proto.
   Args:
     image: dict with keys:
@@ -189,7 +189,7 @@ def create_tf_example(image):
 
   return example, 0
 
-def parse_obj_file(file) -> Tuple[List[List[float]], List[List[int]]]:
+def parse_obj_file(file: str) -> Tuple[List[List[float]], List[List[int]]]:
   """
   Parses the vertex and face data out of a .obj file.
 
@@ -231,15 +231,16 @@ def parse_obj_file(file) -> Tuple[List[List[float]], List[List[int]]]:
 
   return vertices, faces
 
-def generate_annotations(annotation_dict, pix3d_dir):
+def generate_annotations(annotation_dict: dict, pix3d_dir: str) -> List:
   """Generator for Pix3D annotations.
 
   Args:
-    annotation_dict: String filepath to .obj file.
+    annotation_dict: Dictionary containing the raw annotations from the
+      Pix3D annotations json file.
     pix3d_dir: pix3d_dir: String, path to Pix3D download directory.
 
   Return:
-    annotations: Dict containing the annotations to write to the TFRecord.
+    annotations: List containing the annotations to write to the TFRecord.
   """
 
   raw_annotations = annotation_dict['annotations']
@@ -269,17 +270,17 @@ def generate_annotations(annotation_dict, pix3d_dir):
   return annotations
 
 
-def _create_tf_record_from_pix3d_dir(pix3d_dir,
-                                     output_path,
-                                     num_shards,
-                                     pix3d_json_file):
+def _create_tf_record_from_pix3d_dir(pix3d_dir: str,
+                                     output_path: str,
+                                     num_shards: int,
+                                     pix3d_json_file: str):
   """Loads Pix3D json files and converts to tf.Record format.
 
   Args:
     pix3d_dir: String, path to Pix3D download directory.
     output_path: Path to output tf.Record files.
     num_shards: Number of output files to create.
-    pix3d_json_file: String, path to the Pix3D annotation file.
+    pix3d_json_file: Name of the Pix3D annotation file inside pix3d_dir.
   """
 
   logging.info('writing to output path: %s', output_path)
@@ -291,7 +292,7 @@ def _create_tf_record_from_pix3d_dir(pix3d_dir,
 
   num_skipped = write_tf_record_dataset(
       output_path, pix3d_annotations_iter, create_tf_example,
-      num_shards, unpack_arguments=False, use_multiprocessing=True)
+      num_shards, unpack_arguments=False, use_multiprocessing=False)
 
   logging.info('Finished writing, skipped %d annotations.', num_skipped)
 
