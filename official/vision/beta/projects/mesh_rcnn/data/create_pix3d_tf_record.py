@@ -14,7 +14,7 @@
 
 # https://github.com/PurdueDualityLab/tf-models/blob/master/official/vision/beta/data/create_coco_tf_record.py reference
 
-r"""Convert raw Pix3D dataset to TFRecord format.
+"""Convert raw Pix3D dataset to TFRecord format.
 Example usage:
     python create_pix3d_tf_record.py --logtostderr \
       --pix3d_dir="${TRAIN_IMAGE_DIR}" \
@@ -73,7 +73,7 @@ def convert_to_feature(value, value_type=None):
     elif isinstance(element, str):
       value_type = "str"
 
-    elif isinstance(element, list) and isinstance(value, list):
+    elif isinstance(element, list):
       value_type = "2d"
 
     elif element is None:
@@ -292,7 +292,7 @@ def _create_tf_record_from_pix3d_dir(pix3d_dir: str,
 
   num_skipped = write_tf_record_dataset(
       output_path, pix3d_annotations_iter, create_tf_example,
-      num_shards, unpack_arguments=False, use_multiprocessing=False)
+      num_shards, unpack_arguments=False, use_multiprocessing=True)
 
   logging.info('Finished writing, skipped %d annotations.', num_skipped)
 

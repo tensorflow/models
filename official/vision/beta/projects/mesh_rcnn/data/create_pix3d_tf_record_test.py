@@ -24,13 +24,21 @@ from official.vision.beta.projects.mesh_rcnn.data.create_pix3d_tf_record import 
     _create_tf_record_from_pix3d_dir
 
 
-def get_features(tfrecord_filename, num_models):
+def get_features_single_instance(tfrecord_filename: str):
+  """Grabs the features from a single sample from a TFRecord.
+
+  Args:
+    tfrecord_filename: String for the filename of the TFRecord.
+
+  Returns:
+    features: a tf.train.Feature message that holds the feature data.
+  """
   raw_dataset = tf.data.TFRecordDataset(tfrecord_filename)
-  for raw_record in raw_dataset.take(num_models):
+  for raw_record in raw_dataset.take(1):
     example = tf.train.Example()
     example.ParseFromString(raw_record.numpy())
     features = example.features.feature
-
+  
   return features
 
 class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
@@ -43,13 +51,13 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
   def test_rot_mat(self, expected_shape: tuple,
                    expected_output: list):
     """Test for rotation matrix.
+
     Args:
       expected_shape: The expected shape of the rotation matrix.
       expected_output: The expected values of the rotation matrix.
     """
     tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
-    features = get_features(tfrecord_filename=tfrecord_filename,
-                            num_models=1)
+    features = get_features_single_instance(tfrecord_filename=tfrecord_filename)
 
     rot_mat = tf.io.parse_tensor(
         features['camera/rot_mat'].bytes_list.value[0],
@@ -64,13 +72,13 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
   def test_trans_mat(self, expected_shape: tuple,
                      expected_output: list):
     """Test for translation matrix.
+
     Args:
       expected_shape: The expected shape of the translation matrix.
       expected_output: The expected values of the translation matrix.
     """
     tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
-    features = get_features(tfrecord_filename=tfrecord_filename,
-                            num_models=1)
+    features = get_features_single_instance(tfrecord_filename=tfrecord_filename)
 
     trans_mat = features['camera/trans_mat'].float_list.value
 
@@ -85,13 +93,13 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
   def test_bbox(self, expected_shape: tuple,
                 expected_output: list):
     """Test for bounding boxes.
+
     Args:
       expected_shape: The expected shape of the bounding box.
       expected_output: The expected values of the bounding box.
     """
     tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
-    features = get_features(tfrecord_filename=tfrecord_filename,
-                            num_models=1)
+    features = get_features_single_instance(tfrecord_filename=tfrecord_filename)
 
     bbox = features['image/object/bbox'].int64_list.value
 
@@ -104,13 +112,13 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
   def test_intrinsic_mat(self, expected_shape: tuple,
                          expected_output: list):
     """Test for camera intrinsic matrix.
+
     Args:
       expected_shape: The expected shape of the intrinsic matrix.
       expected_output: The expected values of the intrinsic matrix.
     """
     tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
-    features = get_features(tfrecord_filename=tfrecord_filename,
-                            num_models=1)
+    features = get_features_single_instance(tfrecord_filename=tfrecord_filename)
 
     intrinstic_mat = features['camera/intrinstic_mat'].float_list.value
 
@@ -125,13 +133,13 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
   def test_is_crowd(self, expected_shape: tuple,
                     expected_output: list):
     """Test for is_crowd annotation.
+
     Args:
       expected_shape: The expected shape of is_crowd.
       expected_output: The expected value of is_crowd.
     """
     tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
-    features = get_features(tfrecord_filename=tfrecord_filename,
-                            num_models=1)
+    features = get_features_single_instance(tfrecord_filename=tfrecord_filename)
 
     is_crowd = features['is_crowd'].int64_list.value
 
@@ -141,8 +149,7 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
   def test_voxel(self):
     """Test for encoded voxels."""
     tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
-    features = get_features(tfrecord_filename=tfrecord_filename,
-                            num_models=1)
+    features = get_features_single_instance(tfrecord_filename=tfrecord_filename)
 
     voxel_len = len(features['model/voxel'].bytes_list.value[0])
 
@@ -153,12 +160,12 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_vertices(self, expected_shape: tuple):
     """Test for vertices.
+
     Args:
       expected_shape: The expected shape of vertices.
     """
     tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
-    features = get_features(tfrecord_filename=tfrecord_filename,
-                            num_models=1)
+    features = get_features_single_instance(tfrecord_filename=tfrecord_filename)
 
     vertices = tf.io.parse_tensor(
         features['model/vertices'].bytes_list.value[0],
@@ -171,12 +178,12 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_faces(self, expected_shape: tuple):
     """Test for faces.
+
     Args:
       expected_shape: The expected shape of faces.
     """
     tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
-    features = get_features(tfrecord_filename=tfrecord_filename,
-                            num_models=1)
+    features = get_features_single_instance(tfrecord_filename=tfrecord_filename)
 
     faces = tf.io.parse_tensor(
         features['model/faces'].bytes_list.value[0],
@@ -187,8 +194,7 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
   def test_image(self):
     """Test for image."""
     tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
-    features = get_features(tfrecord_filename=tfrecord_filename,
-                            num_models=1)
+    features = get_features_single_instance(tfrecord_filename=tfrecord_filename)
     image = cv2.imdecode(
         np.fromstring(features['image/encoded'].bytes_list.value[0], np.uint8),
         flags=1)
