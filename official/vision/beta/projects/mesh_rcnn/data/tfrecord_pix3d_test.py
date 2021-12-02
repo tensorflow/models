@@ -84,13 +84,84 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(expected_shape, np.shape(bbox))
     self.assertAllEqual((np.array(expected_output)).astype(np.int64), bbox)
 
+  @parameterized.parameters(
+  ((3,), [3434.68173275, 1512.0, 2016.0])
+  )
+  def test_intrinsic_mat(self, expected_shape: tuple,
+                         expected_output: list):
+    
+    tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
+    features = get_features(tfrecord_filename=tfrecord_filename, 
+                            num_models=1)
+
+    intrinstic_mat = features['camera/intrinstic_mat'].float_list.value
+    
+    self.assertAllEqual(expected_shape, np.shape(intrinstic_mat))
+    self.assertAllEqual((np.array(expected_output)).astype(np.float32), intrinstic_mat)
+
+
+  @parameterized.parameters(
+  ((1,), [0])
+  )
+  def test_is_crowd(self, expected_shape: tuple,
+                    expected_output: list):
+    
+    tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
+    features = get_features(tfrecord_filename=tfrecord_filename, 
+                            num_models=1)
+
+    is_crowd = features['is_crowd'].int64_list.value
+    
+    self.assertAllEqual(expected_shape, np.shape(is_crowd))
+    self.assertAllEqual(expected_output, is_crowd)
+
+  def test_voxel(self):
+    
+    tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
+    features = get_features(tfrecord_filename=tfrecord_filename, 
+                            num_models=1)
+
+    voxel_len = len(features['model/voxel'].bytes_list.value[0])
+    
+    self.assertGreater(voxel_len, 0)
+
+  @parameterized.parameters(
+  ((49840, 3),)
+  )
+  def test_vertices(self, expected_shape: tuple):
+    
+    tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
+    features = get_features(tfrecord_filename=tfrecord_filename, 
+                            num_models=1)
+
+    vertices = tf.io.parse_tensor(
+        features['model/vertices'].bytes_list.value[0],
+        tf.float32).numpy()
+    
+    self.assertAllEqual(expected_shape, np.shape(vertices))
+  
+  @parameterized.parameters(
+  ((100000, 3),)
+  )
+  def test_faces(self, expected_shape: tuple):
+    
+    tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
+    features = get_features(tfrecord_filename=tfrecord_filename, 
+                            num_models=1)
+
+    faces = tf.io.parse_tensor(
+        features['model/faces'].bytes_list.value[0],
+        tf.int32).numpy()
+    
+    self.assertAllEqual(expected_shape, np.shape(faces))
+
 if __name__ == '__main__':
   # make output file directory if it doesn't exist
   directory = os.path.dirname("tmp")
   if not tf.io.gfile.isdir(directory):
     tf.io.gfile.makedirs(directory)
 
-  pix3d_dir = 'D:\Datasets\pix3d'
+  pix3d_dir = 'pix3d'
   #create TF record files 
   create_pix3d_tf_record._create_tf_record_from_pix3d_dir(
       pix3d_dir, "tmp", 1,
