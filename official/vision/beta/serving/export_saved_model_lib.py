@@ -130,7 +130,9 @@ def export_inference_graph(
 
   if log_model_flops_and_params:
     inputs_kwargs = None
-    if isinstance(params.task, configs.retinanet.RetinaNetTask):
+    if isinstance(
+        params.task,
+        (configs.retinanet.RetinaNetTask, configs.maskrcnn.MaskRCNNTask)):
       # We need to create inputs_kwargs argument to specify the input shapes for
       # subclass model that overrides model.call to take multiple inputs,
       # e.g., RetinaNet model.
