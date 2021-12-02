@@ -22,8 +22,9 @@ import collections
 from absl import logging
 import tensorflow as tf
 
-from official.nlp.keras_nlp import layers
 from official.nlp.modeling import networks
+from official.nlp.modeling.layers import on_device_embedding
+from official.nlp.modeling.layers import self_attention_mask
 from roformer_encoder_block import RoformerEncoderBlock
 
 
@@ -125,7 +126,7 @@ class RoformerEncoder(tf.keras.Model):
       embedding_width = hidden_size
 
     if embedding_layer is None:
-      embedding_layer_inst = layers.OnDeviceEmbedding(
+      embedding_layer_inst = on_device_embedding.OnDeviceEmbedding(
           vocab_size=vocab_size,
           embedding_width=embedding_width,
           initializer=initializer,
@@ -135,7 +136,7 @@ class RoformerEncoder(tf.keras.Model):
     word_embeddings = embedding_layer_inst(word_ids)
 
     # Roformer does not need a position embedding layer
-    type_embedding_layer = layers.OnDeviceEmbedding(
+    type_embedding_layer = on_device_embedding.OnDeviceEmbedding(
         vocab_size=type_vocab_size,
         embedding_width=embedding_width,
         initializer=initializer,
@@ -168,7 +169,7 @@ class RoformerEncoder(tf.keras.Model):
 
     transformer_layers = []
     data = embeddings
-    attention_mask = layers.SelfAttentionMask()(data, mask)
+    attention_mask = self_attention_mask.SelfAttentionMask()(data, mask)
     encoder_outputs = []
     for i in range(num_layers):
       if i == num_layers - 1 and output_range is not None:

@@ -3,8 +3,8 @@ task:
   model:
     cls_heads: [{activation: tanh, cls_token_idx: 0, dropout_rate: 0.1, inner_dim: 768, name: next_sentence, num_classes: 2}]
     encoder:
-      type: roformer
-      roformer:
+      type: any
+      any:
         attention_dropout_rate: 0.1
         dropout_rate: 0.1
         embedding_size: 768

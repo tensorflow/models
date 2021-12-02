@@ -25,6 +25,7 @@ from official.nlp.data import pretrain_dataloader
 from official.nlp.tasks import masked_lm
 from official.nlp.data import sentence_prediction_dataloader
 from official.nlp.tasks import sentence_prediction
+import rofomer
 
 AdamWeightDecay = optimization.AdamWeightDecayConfig
 PolynomialLr = optimization.PolynomialLrConfig
@@ -54,6 +55,14 @@ def roformer_pretraining() -> cfg.ExperimentConfig:
   config = cfg.ExperimentConfig(
       runtime=cfg.RuntimeConfig(enable_xla=True),
       task=masked_lm.MaskedLMConfig(
+          model=bert.PretrainerConfig(
+              encoder=encoders.EncoderConfig(
+                  type="any", any=rofomer.RoformerEncoderConfig()),
+              cls_heads=[
+                  bert.ClsHeadConfig(
+                      inner_dim=768, num_classes=2, dropout_rate=0.1, name='next_sentence')
+              ]
+          ),
           train_data=pretrain_dataloader.BertPretrainDataConfig(use_v2_feature_names=True),
           validation_data=pretrain_dataloader.BertPretrainDataConfig(use_v2_feature_names=True,
               is_training=False)),

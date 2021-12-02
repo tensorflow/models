@@ -20,6 +20,7 @@ import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 import roformer_encoder
+import roformer
 
 
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
@@ -30,6 +31,14 @@ class RoformerEncoderTest(keras_parameterized.TestCase):
   def tearDown(self):
     super(RoformerEncoderTest, self).tearDown()
     tf.keras.mixed_precision.set_global_policy("float32")
+
+  def test_build_teams(self):
+    config = encoders.EncoderConfig(
+        type="any", any=roformer.RoformerEncoderConfig())
+    encoder = encoders.build_encoder(config)
+    self.assertIsInstance(encoder, networks.EncoderScaffold)
+    self.assertIsInstance(encoder.embedding_network,
+                          networks.PackedSequenceEmbedding)
 
   def test_network_creation(self):
     hidden_size = 32
