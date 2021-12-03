@@ -14,6 +14,7 @@
 
 """Utilities for creating loop functions."""
 
+from absl import logging
 from orbit.utils import tpu_summaries
 
 import tensorflow as tf
@@ -65,8 +66,8 @@ def create_loop_fn(step_fn):
       The final state returned by `reduce_fn`, or `None` if `state` and
       `reduce_fn` are not provided.
     """
+    step = 0
     try:
-      step = 0
       # To make sure the OutOfRangeError exception can be handled well under
       # async remote eager, we need to wrap the loop body in `async_scope`.
       with tf.experimental.async_scope():
@@ -77,6 +78,7 @@ def create_loop_fn(step_fn):
           step += 1
         return state
     except (StopIteration, tf.errors.OutOfRangeError):
+      logging.info("The dataset iterator is exhausted after %d steps.", step)
       tf.experimental.async_clear_error()
       return state
 
