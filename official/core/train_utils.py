@@ -14,13 +14,13 @@
 
 """Training utils."""
 import copy
+import dataclasses
 import json
 import os
 import pprint
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from absl import logging
-import dataclasses
 import gin
 import orbit
 import tensorflow as tf
@@ -244,49 +244,87 @@ class ParseConfigOptions:
     return name in dataclasses.asdict(self)
 
 
+class ExperimentParser:
+  """Constructs the Experiment config from Flags or equivalent object.
+
+  Most of the cases, users only need to call the `parse()` function:
+  ```
+  builder = ExperimentParser(FLAGS)
+  params = builder.parse()
+  ```
+
+  The advanced users can modify the flow by calling the parse_*() functions
+  separately.
+  """
+
+  def __init__(self, flags_obj):
+    self._flags_obj = flags_obj
+
+  def parse(self):
+    """Overrall process of constructing Experiment config."""
+    params = self.base_experiment()
+    params = self.parse_config_file(params)
+    params = self.parse_runtime(params)
+    params = self.parse_data_service(params)
+    params = self.parse_params_override(params)
+    return params
+
+  def base_experiment(self):
+    """Get the base experiment config from --experiment field."""
+    if self._flags_obj.experiment is None:
+      raise ValueError('The flag --experiment must be specified.')
+    return exp_factory.get_exp_config(self._flags_obj.experiment)
+
+  def parse_config_file(self, params):
+    """Override the configs of params from the config_file."""
+    for config_file in self._flags_obj.config_file or []:
+      params = hyperparams.override_params_dict(
+          params, config_file, is_strict=True)
+    return params
+
+  def parse_runtime(self, params):
+    """Override the runtime configs of params from flags."""
+    # Override the TPU address and tf.data service address.
+    params.override({
+        'runtime': {
+            'tpu': self._flags_obj.tpu,
+        },
+    })
+    return params
+
+  def parse_data_service(self, params):
+    """Override the data service configs of params from flags."""
+    if ('tf_data_service' in self._flags_obj and
+        self._flags_obj.tf_data_service and
+        isinstance(params.task, config_definitions.TaskConfig)):
+      params.override({
+          'task': {
+              'train_data': {
+                  'tf_data_service_address': self._flags_obj.tf_data_service,
+              },
+              'validation_data': {
+                  'tf_data_service_address': self._flags_obj.tf_data_service,
+              }
+          }
+      })
+    return params
+
+  def parse_params_override(self, params):
+    # Get the second level of override from `--params_override`.
+    # `--params_override` is typically used as a further override over the
+    # template. For example, one may define a particular template for training
+    # ResNet50 on ImageNet in a config file and pass it via `--config_file`,
+    # then define different learning rates and pass it via `--params_override`.
+    if self._flags_obj.params_override:
+      params = hyperparams.override_params_dict(
+          params, self._flags_obj.params_override, is_strict=True)
+    return params
+
+
 def parse_configuration(flags_obj, lock_return=True, print_return=True):
   """Parses ExperimentConfig from flags."""
 
-  if flags_obj.experiment is None:
-    raise ValueError('The flag --experiment must be specified.')
-
-  # 1. Get the default config from the registered experiment.
-  params = exp_factory.get_exp_config(flags_obj.experiment)
-
-  # 2. Get the first level of override from `--config_file`.
-  #    `--config_file` is typically used as a template that specifies the common
-  #    override for a particular experiment.
-  for config_file in flags_obj.config_file or []:
-    params = hyperparams.override_params_dict(
-        params, config_file, is_strict=True)
-
-  # 3. Override the TPU address and tf.data service address.
-  params.override({
-      'runtime': {
-          'tpu': flags_obj.tpu,
-      },
-  })
-  if ('tf_data_service' in flags_obj and flags_obj.tf_data_service and
-      isinstance(params.task, config_definitions.TaskConfig)):
-    params.override({
-        'task': {
-            'train_data': {
-                'tf_data_service_address': flags_obj.tf_data_service,
-            },
-            'validation_data': {
-                'tf_data_service_address': flags_obj.tf_data_service,
-            }
-        }
-    })
-
-  # 4. Get the second level of override from `--params_override`.
-  #    `--params_override` is typically used as a further override over the
-  #    template. For example, one may define a particular template for training
-  #    ResNet50 on ImageNet in a config file and pass it via `--config_file`,
-  #    then define different learning rates and pass it via `--params_override`.
-  if flags_obj.params_override:
-    params = hyperparams.override_params_dict(
-        params, flags_obj.params_override, is_strict=True)
+  params = ExperimentParser(flags_obj).parse()
 
   params.validate()
   if lock_return:
