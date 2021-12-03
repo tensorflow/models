@@ -29,10 +29,10 @@ import tensorflow as tf
 
 from official.benchmark import benchmark_wrappers
 from official.benchmark import perfzero_benchmark
+from official.legacy.detection import main as detection
+from official.legacy.detection.configs import base_config
 from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
-from official.vision.detection import main as detection
-from official.vision.detection.configs import base_config
 
 FLAGS = flags.FLAGS
 
