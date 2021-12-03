@@ -25,7 +25,10 @@ from official.nlp.data import pretrain_dataloader
 from official.nlp.tasks import masked_lm
 from official.nlp.data import sentence_prediction_dataloader
 from official.nlp.tasks import sentence_prediction
-import rofomer
+from official.nlp.configs import bert
+from official.nlp.configs import encoders
+
+import roformer
 
 AdamWeightDecay = optimization.AdamWeightDecayConfig
 PolynomialLr = optimization.PolynomialLrConfig
@@ -57,7 +60,7 @@ def roformer_pretraining() -> cfg.ExperimentConfig:
       task=masked_lm.MaskedLMConfig(
           model=bert.PretrainerConfig(
               encoder=encoders.EncoderConfig(
-                  type="any", any=rofomer.RoformerEncoderConfig()),
+                  type="any", any=roformer.RoformerEncoderConfig()),
               cls_heads=[
                   bert.ClsHeadConfig(
                       inner_dim=768, num_classes=2, dropout_rate=0.1, name='next_sentence')
@@ -81,7 +84,7 @@ def roformer_glue() -> cfg.ExperimentConfig:
       task=sentence_prediction.SentencePredictionConfig(
           model=sentence_prediction.ModelConfig(
               encoder=encoders.EncoderConfig(
-                  type="any", any=rofomer.RoformerEncoderConfig())),
+                  type="any", any=roformer.RoformerEncoderConfig())),
           train_data=sentence_prediction_dataloader
           .SentencePredictionDataConfig(),
           validation_data=sentence_prediction_dataloader
