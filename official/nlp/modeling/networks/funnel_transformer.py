@@ -15,16 +15,31 @@
 """Funnel Transformer network."""
 # pylint: disable=g-classes-have-attributes
 
-from typing import Union, Sequence
+from typing import Any, Callable, Optional, Union, Sequence
 from absl import logging
 import numpy as np
 import tensorflow as tf
 
 from official.nlp.modeling import layers
 
+_Initializer = Union[str, tf.keras.initializers.Initializer]
+_Activation = Union[str, Callable[..., Any]]
+
 _MAX = 'max'
 _AVG = 'avg'
 _TRUNCATED_AVG = 'truncated_avg'
+
+_transformer_cls2str = {
+    layers.TransformerEncoderBlock: 'TransformerEncoderBlock',
+    layers.ReZeroTransformer: 'ReZeroTransformer'
+}
+
+_str2transformer_cls = {
+    'TransformerEncoderBlock': layers.TransformerEncoderBlock,
+    'ReZeroTransformer': layers.ReZeroTransformer
+}
+
+_approx_gelu = lambda x: tf.keras.activations.gelu(x, approximate=True)
 
 
 def _get_policy_dtype():
@@ -206,29 +221,37 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       embeddings for the input word IDs.
     norm_first: Whether to normalize inputs to attention and intermediate dense
       layers. If set False, output of attention and intermediate dense layers is
-      normalized.
+      normalized. This does not apply to ReZero.
+    transformer_cls: str or a keras Layer. This is the base TransformerBlock the
+      funnel encoder relies on.
+    share_rezero: bool. Whether to share ReZero alpha between the attention
+      layer and the ffn layer. This option is specific to ReZero.
   """
 
   def __init__(
       self,
-      vocab_size,
-      hidden_size=768,
-      num_layers=12,
-      num_attention_heads=12,
-      max_sequence_length=512,
-      type_vocab_size=16,
-      inner_dim=3072,
-      inner_activation=lambda x: tf.keras.activations.gelu(x, approximate=True),
-      output_dropout=0.1,
-      attention_dropout=0.1,
-      pool_type=_MAX,
-      pool_stride=2,
-      unpool_length=0,
-      initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
-      output_range=None,
-      embedding_width=None,
-      embedding_layer=None,
-      norm_first=False,
+      vocab_size: int,
+      hidden_size: int = 768,
+      num_layers: int = 12,
+      num_attention_heads: int = 12,
+      max_sequence_length: int = 512,
+      type_vocab_size: int = 16,
+      inner_dim: int = 3072,
+      inner_activation: _Activation = _approx_gelu,
+      output_dropout: float = 0.1,
+      attention_dropout: float = 0.1,
+      pool_type: str = _MAX,
+      pool_stride: int = 2,
+      unpool_length: int = 0,
+      initializer: _Initializer = tf.keras.initializers.TruncatedNormal(
+          stddev=0.02),
+      output_range: Optional[int] = None,
+      embedding_width: Optional[int] = None,
+      embedding_layer: Optional[tf.keras.layers.Layer] = None,
+      norm_first: bool = False,
+      transformer_cls: Union[
+          str, tf.keras.layers.Layer] = layers.TransformerEncoderBlock,
+      share_rezero: bool = True,
       **kwargs):
     super().__init__(**kwargs)
     activation = tf.keras.activations.get(inner_activation)
@@ -278,16 +301,22 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
     self._transformer_layers = []
     self._attention_mask_layer = layers.SelfAttentionMask(
         name='self_attention_mask')
+    # Will raise an error if the string is not supported.
+    if isinstance(transformer_cls, str):
+      transformer_cls = _str2transformer_cls[transformer_cls]
     for i in range(num_layers):
-      layer = layers.TransformerEncoderBlock(
+      layer = transformer_cls(
           num_attention_heads=num_attention_heads,
+          intermediate_size=inner_dim,
           inner_dim=inner_dim,
+          intermediate_activation=inner_activation,
           inner_activation=inner_activation,
           output_dropout=output_dropout,
           attention_dropout=attention_dropout,
           norm_first=norm_first,
           output_range=output_range if i == num_layers - 1 else None,
           kernel_initializer=initializer,
+          share_rezero=share_rezero,
           name='transformer/layer_%d' % i)
       self._transformer_layers.append(layer)
 
@@ -333,24 +362,44 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
     self._pool_type = pool_type
 
     self._config = {
-        'vocab_size': vocab_size,
-        'hidden_size': hidden_size,
-        'num_layers': num_layers,
-        'num_attention_heads': num_attention_heads,
-        'max_sequence_length': max_sequence_length,
-        'type_vocab_size': type_vocab_size,
-        'inner_dim': inner_dim,
-        'inner_activation': tf.keras.activations.serialize(activation),
-        'output_dropout': output_dropout,
-        'attention_dropout': attention_dropout,
-        'initializer': tf.keras.initializers.serialize(initializer),
-        'output_range': output_range,
-        'embedding_width': embedding_width,
-        'embedding_layer': embedding_layer,
-        'norm_first': norm_first,
-        'pool_type': pool_type,
-        'pool_stride': pool_stride,
-        'unpool_length': unpool_length,
+        'vocab_size':
+            vocab_size,
+        'hidden_size':
+            hidden_size,
+        'num_layers':
+            num_layers,
+        'num_attention_heads':
+            num_attention_heads,
+        'max_sequence_length':
+            max_sequence_length,
+        'type_vocab_size':
+            type_vocab_size,
+        'inner_dim':
+            inner_dim,
+        'inner_activation':
+            tf.keras.activations.serialize(activation),
+        'output_dropout':
+            output_dropout,
+        'attention_dropout':
+            attention_dropout,
+        'initializer':
+            tf.keras.initializers.serialize(initializer),
+        'output_range':
+            output_range,
+        'embedding_width':
+            embedding_width,
+        'embedding_layer':
+            embedding_layer,
+        'norm_first':
+            norm_first,
+        'pool_type':
+            pool_type,
+        'pool_stride':
+            pool_stride,
+        'unpool_length':
+            unpool_length,
+        'transformer_cls':
+            _transformer_cls2str.get(transformer_cls, str(transformer_cls))
     }
 
   def call(self, inputs):

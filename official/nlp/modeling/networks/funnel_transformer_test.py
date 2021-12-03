@@ -38,13 +38,20 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
     tf.keras.mixed_precision.set_global_policy("float32")
 
   @parameterized.named_parameters(
-      ("mix_truncated_avg", "mixed_float16", tf.float16, "truncated_avg"),
-      ("float32_truncated_avg", "float32", tf.float32, "truncated_avg"),
-      ("mix_max", "mixed_float16", tf.float16, "max"),
-      ("float32_max", "float32", tf.float32, "max"),
-      ("mix_avg", "mixed_float16", tf.float16, "avg"),
-      ("float32_avg", "float32", tf.float32, "avg"))
-  def test_network_creation(self, policy, pooled_dtype, pool_type):
+      ("mix_truncated_avg_rezero", "mixed_float16", tf.float16, "truncated_avg",
+       "ReZeroTransformer"), ("float32_truncated_avg_rezero", "float32",
+                              tf.float32, "truncated_avg", "ReZeroTransformer"),
+      ("mix_truncated_avg", "mixed_float16", tf.float16, "truncated_avg",
+       "TransformerEncoderBlock"),
+      ("float32_truncated_avg", "float32", tf.float32, "truncated_avg",
+       "TransformerEncoderBlock"), ("mix_max", "mixed_float16", tf.float16,
+                                    "max", "TransformerEncoderBlock"),
+      ("float32_max", "float32", tf.float32, "max", "TransformerEncoderBlock"),
+      ("mix_avg", "mixed_float16", tf.float16, "avg",
+       "TransformerEncoderBlock"),
+      ("float32_avg", "float32", tf.float32, "avg", "TransformerEncoderBlock"))
+  def test_network_creation(self, policy, pooled_dtype, pool_type,
+                            transformer_cls):
     tf.keras.mixed_precision.set_global_policy(policy)
 
     hidden_size = 32
@@ -60,7 +67,8 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
         pool_stride=pool_stride,
         pool_type=pool_type,
         max_sequence_length=sequence_length,
-        unpool_length=0)
+        unpool_length=0,
+        transformer_cls=transformer_cls)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -253,7 +261,8 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
         norm_first=False,
         pool_type="max",
         pool_stride=2,
-        unpool_length=0)
+        unpool_length=0,
+        transformer_cls="TransformerEncoderBlock")
     network = funnel_transformer.FunnelTransformerEncoder(**kwargs)
     expected_config = dict(kwargs)
     expected_config["inner_activation"] = tf.keras.activations.serialize(
