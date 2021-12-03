@@ -420,7 +420,8 @@ MNMultiAVG_BLOCK_SPECS = {
 # Similar to MobileNetMultiAVG and used for segmentation task.
 # Reduced the filters by a factor of 2 in the last block.
 MNMultiAVG_SEG_BLOCK_SPECS = {
-    'spec_name': 'MobileNetMultiAVGSeg',
+    'spec_name':
+        'MobileNetMultiAVGSeg',
     'block_spec_schema': [
         'block_fn', 'kernel_size', 'strides', 'filters', 'activation',
         'expand_ratio', 'use_normalization', 'use_bias', 'is_output'
@@ -443,7 +444,40 @@ MNMultiAVG_SEG_BLOCK_SPECS = {
         ('invertedbottleneck', 5, 1, 96, 'relu', 2., True, False, False),
         ('invertedbottleneck', 5, 1, 96, 'relu', 4., True, False, False),
         ('invertedbottleneck', 5, 1, 96, 'relu', 4., True, False, True),
-        ('convbn', 1, 1, 480, 'relu', None, True, False, False),
+        ('convbn', 1, 1, 448, 'relu', None, True, False, True),
+        ('gpooling', None, None, None, None, None, None, None, False),
+        # Remove bias and add batch norm for the last layer to support QAT
+        # and achieve slightly better accuracy.
+        ('convbn', 1, 1, 1280, 'relu', None, True, False, False),
+    ]
+}
+
+# Similar to MobileNetMultiMax and used for segmentation task.
+# Reduced the filters by a factor of 2 in the last block.
+MNMultiMAX_SEG_BLOCK_SPECS = {
+    'spec_name':
+        'MobileNetMultiMAXSeg',
+    'block_spec_schema': [
+        'block_fn', 'kernel_size', 'strides', 'filters', 'activation',
+        'expand_ratio', 'use_normalization', 'use_bias', 'is_output'
+    ],
+    'block_specs': [
+        ('convbn', 3, 2, 32, 'relu', None, True, False, False),
+        ('invertedbottleneck', 3, 2, 32, 'relu', 3., True, False, True),
+        ('invertedbottleneck', 5, 2, 64, 'relu', 6., True, False, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 2., True, False, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 2., True, False, True),
+        ('invertedbottleneck', 5, 2, 128, 'relu', 6., True, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 4., True, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., True, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., True, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 6., True, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., True, False, True),
+        ('invertedbottleneck', 3, 2, 160, 'relu', 6., True, False, False),
+        ('invertedbottleneck', 5, 1, 96, 'relu', 2., True, False, False),
+        ('invertedbottleneck', 3, 1, 96, 'relu', 4., True, False, False),
+        ('invertedbottleneck', 5, 1, 96, 'relu', 320.0 / 96, True, False, True),
+        ('convbn', 1, 1, 448, 'relu', None, True, False, True),
         ('gpooling', None, None, None, None, None, None, None, False),
         # Remove bias and add batch norm for the last layer to support QAT
         # and achieve slightly better accuracy.
@@ -460,6 +494,7 @@ SUPPORTED_SPECS_MAP = {
     'MobileNetMultiMAX': MNMultiMAX_BLOCK_SPECS,
     'MobileNetMultiAVG': MNMultiAVG_BLOCK_SPECS,
     'MobileNetMultiAVGSeg': MNMultiAVG_SEG_BLOCK_SPECS,
+    'MobileNetMultiMAXSeg': MNMultiMAX_SEG_BLOCK_SPECS,
 }
 
 
