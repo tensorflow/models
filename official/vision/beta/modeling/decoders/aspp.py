@@ -149,7 +149,8 @@ class ASPP(tf.keras.layers.Layer):
     return outputs if self._config_dict['output_tensor'] else {level: outputs}
 
   def get_config(self) -> Mapping[str, Any]:
-    return self._config_dict
+    base_config = super().get_config()
+    return dict(list(base_config.items()) + list(self._config_dict.items()))
 
   @classmethod
   def from_config(cls, config, custom_objects=None):

@@ -74,7 +74,10 @@ class ASPPTest(parameterized.TestCase, tf.test.TestCase):
         dropout_rate=0.2,
         use_depthwise_convolution='false',
         spp_layer_version='v1',
-        output_tensor=False)
+        output_tensor=False,
+        dtype='float32',
+        name='aspp',
+        trainable=True)
     network = aspp.ASPP(**kwargs)
 
     expected_config = dict(kwargs)

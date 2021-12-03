@@ -202,7 +202,7 @@ class SegmentationHead(tf.keras.layers.Layer):
         kernel_regularizer=self._config_dict['kernel_regularizer'],
         bias_regularizer=self._config_dict['bias_regularizer'])
 
-    super(SegmentationHead, self).build(input_shape)
+    super().build(input_shape)
 
   def call(self, inputs: Tuple[Union[tf.Tensor, Mapping[str, tf.Tensor]],
                                Union[tf.Tensor, Mapping[str, tf.Tensor]]]):
@@ -220,6 +220,7 @@ class SegmentationHead(tf.keras.layers.Layer):
         - key: A `str` of the level of the multilevel features.
         - values: A `tf.Tensor` of the feature map tensors, whose shape is
             [batch, height_l, width_l, channels].
+        The first is backbone endpoints, and the second is decoder endpoints.
     Returns:
       segmentation prediction mask: A `tf.Tensor` of the segmentation mask
         scores predicted from input features.
@@ -261,7 +262,8 @@ class SegmentationHead(tf.keras.layers.Layer):
     return self._classifier(x)
 
   def get_config(self):
-    return self._config_dict
+    base_config = super().get_config()
+    return dict(list(base_config.items()) + list(self._config_dict.items()))
 
   @classmethod
   def from_config(cls, config):
