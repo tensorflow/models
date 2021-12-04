@@ -30,12 +30,15 @@ from official.vision.beta.serving import detection
 
 class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
 
-  def _get_detection_module(self, experiment_name):
+  def _get_detection_module(self, experiment_name, input_type):
     params = exp_factory.get_exp_config(experiment_name)
     params.task.model.backbone.resnet.model_id = 18
     params.task.model.detection_generator.nms_version = 'batched'
     detection_module = detection.DetectionModule(
-        params, batch_size=1, input_image_size=[640, 640])
+        params,
+        batch_size=1,
+        input_image_size=[640, 640],
+        input_type=input_type)
     return detection_module
 
   def _export_from_module(self, module, input_type, save_directory):
@@ -65,24 +68,30 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
                           bytes_list=tf.train.BytesList(value=[encoded_jpeg])),
               })).SerializeToString()
       return [example for b in range(batch_size)]
+    elif input_type == 'tflite':
+      return tf.zeros((batch_size, h, w, 3), dtype=np.float32)
 
   @parameterized.parameters(
       ('image_tensor', 'fasterrcnn_resnetfpn_coco', [384, 384]),
       ('image_bytes', 'fasterrcnn_resnetfpn_coco', [640, 640]),
       ('tf_example', 'fasterrcnn_resnetfpn_coco', [640, 640]),
+      ('tflite', 'fasterrcnn_resnetfpn_coco', [640, 640]),
       ('image_tensor', 'maskrcnn_resnetfpn_coco', [640, 640]),
       ('image_bytes', 'maskrcnn_resnetfpn_coco', [640, 384]),
       ('tf_example', 'maskrcnn_resnetfpn_coco', [640, 640]),
+      ('tflite', 'maskrcnn_resnetfpn_coco', [640, 640]),
       ('image_tensor', 'retinanet_resnetfpn_coco', [640, 640]),
       ('image_bytes', 'retinanet_resnetfpn_coco', [640, 640]),
       ('tf_example', 'retinanet_resnetfpn_coco', [384, 640]),
+      ('tflite', 'retinanet_resnetfpn_coco', [640, 640]),
       ('image_tensor', 'retinanet_resnetfpn_coco', [384, 384]),
       ('image_bytes', 'retinanet_spinenet_coco', [640, 640]),
       ('tf_example', 'retinanet_spinenet_coco', [640, 384]),
+      ('tflite', 'retinanet_spinenet_coco', [640, 640]),
   )
   def test_export(self, input_type, experiment_name, image_size):
     tmp_dir = self.get_temp_dir()
-    module = self._get_detection_module(experiment_name)
+    module = self._get_detection_module(experiment_name, input_type)
 
     self._export_from_module(module, input_type, tmp_dir)
 
@@ -100,8 +109,14 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
     images = self._get_dummy_input(
         input_type, batch_size=1, image_size=image_size)
 
-    processed_images, anchor_boxes, image_info = module._build_inputs(
-        tf.zeros((224, 224, 3), dtype=tf.uint8))
+    if input_type == 'tflite':
+      processed_images = tf.zeros(image_size + [3], dtype=tf.float32)
+      anchor_boxes = module._build_anchor_boxes()
+      image_info = tf.convert_to_tensor(
+          [image_size, image_size, [1.0, 1.0], [0, 0]], dtype=tf.float32)
+    else:
+      processed_images, anchor_boxes, image_info = module._build_inputs(
+          tf.zeros((224, 224, 3), dtype=tf.uint8))
     image_shape = image_info[1, :]
     image_shape = tf.expand_dims(image_shape, 0)
     processed_images = tf.expand_dims(processed_images, 0)

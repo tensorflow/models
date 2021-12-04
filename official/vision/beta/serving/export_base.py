@@ -31,6 +31,7 @@ class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):
                *,
                batch_size: int,
                input_image_size: List[int],
+               input_type: str = 'image_tensor',
                num_channels: int = 3,
                model: Optional[tf.keras.Model] = None):
     """Initializes a module for export.
@@ -40,6 +41,7 @@ class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):
       batch_size: The batch size of the model input. Can be `int` or None.
       input_image_size: List or Tuple of size of the input image. For 2D image,
         it is [height, width].
+      input_type: The input signature type.
       num_channels: The number of the image channels.
       model: A tf.keras.Model instance to be exported.
     """
@@ -47,6 +49,7 @@ class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):
     self._batch_size = batch_size
     self._input_image_size = input_image_size
     self._num_channels = num_channels
+    self._input_type = input_type
     if model is None:
       model = self._build_model()  # pylint: disable=assignment-from-none
     super().__init__(params=params, model=model)

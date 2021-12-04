@@ -89,6 +89,7 @@ def export_inference_graph(
           params=params,
           batch_size=batch_size,
           input_image_size=input_image_size,
+          input_type=input_type,
           num_channels=num_channels)
     elif isinstance(params.task, configs.retinanet.RetinaNetTask) or isinstance(
         params.task, configs.maskrcnn.MaskRCNNTask):
@@ -96,6 +97,7 @@ def export_inference_graph(
           params=params,
           batch_size=batch_size,
           input_image_size=input_image_size,
+          input_type=input_type,
           num_channels=num_channels)
     elif isinstance(params.task,
                     configs.semantic_segmentation.SemanticSegmentationTask):
@@ -103,6 +105,7 @@ def export_inference_graph(
           params=params,
           batch_size=batch_size,
           input_image_size=input_image_size,
+          input_type=input_type,
           num_channels=num_channels)
     elif isinstance(params.task,
                     configs.video_classification.VideoClassificationTask):
@@ -110,6 +113,7 @@ def export_inference_graph(
           params=params,
           batch_size=batch_size,
           input_image_size=input_image_size,
+          input_type=input_type,
           num_channels=num_channels)
     else:
       raise ValueError('Export module not implemented for {} task.'.format(
