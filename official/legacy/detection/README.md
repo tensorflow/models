@@ -30,7 +30,7 @@ RESNET_CHECKPOINT="<path to the pre-trained Resnet-50 checkpoint>"
 TRAIN_FILE_PATTERN="<path to the TFRecord training data>"
 EVAL_FILE_PATTERN="<path to the TFRecord validation data>"
 VAL_JSON_FILE="<path to the validation annotation JSON file>"
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --strategy_type=tpu \
   --tpu="${TPU_NAME?}" \
   --model_dir="${MODEL_DIR?}" \
@@ -41,7 +41,7 @@ python3 ~/models/official/vision/detection/main.py \
 The pre-trained ResNet-50 checkpoint can be downloaded [here](https://storage.cloud.google.com/cloud-tpu-checkpoints/model-garden-vision/detection/resnet50-2018-02-07.tar.gz).
 
 Note: The ResNet implementation under
-[detection/](https://github.com/tensorflow/models/tree/master/official/vision/detection)
+[detection/](https://github.com/tensorflow/models/tree/master/official/legacy/detection)
 is currently different from the one under
 [classification/](https://github.com/tensorflow/models/tree/master/official/vision/image_classification),
 so the checkpoints are not compatible.
@@ -56,7 +56,7 @@ MODEL_DIR="<path to the directory to store model files>"
 TRAIN_FILE_PATTERN="<path to the TFRecord training data>"
 EVAL_FILE_PATTERN="<path to the TFRecord validation data>"
 VAL_JSON_FILE="<path to the validation annotation JSON file>"
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --strategy_type=tpu \
   --tpu="${TPU_NAME?}" \
   --model_dir="${MODEL_DIR?}" \
@@ -87,7 +87,7 @@ following command.
 ```bash
 TPU_NAME="<your GCP TPU name>"
 MODEL_DIR="<path to the directory to store model files>"
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --strategy_type=tpu \
   --tpu="${TPU_NAME?}" \
   --model_dir="${MODEL_DIR?}" \
@@ -105,7 +105,7 @@ Multi-GPUs example (assuming there are 8GPU connected to the host):
 
 ```bash
 MODEL_DIR="<path to the directory to store model files>"
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --strategy_type=mirrored \
   --num_gpus=8 \
   --model_dir="${MODEL_DIR?}" \
@@ -115,7 +115,7 @@ python3 ~/models/official/vision/detection/main.py \
 
 ```bash
 MODEL_DIR="<path to the directory to store model files>"
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --strategy_type=one_device \
   --num_gpus=1 \
   --model_dir="${MODEL_DIR?}" \
@@ -126,7 +126,7 @@ python3 ~/models/official/vision/detection/main.py \
 An example with inline configuration (YAML or JSON format):
 
 ```
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --model_dir=<model folder> \
   --strategy_type=one_device \
   --num_gpus=1 \
@@ -160,7 +160,7 @@ RESNET_CHECKPOINT="<path to the pre-trained Resnet-50 checkpoint>"
 TRAIN_FILE_PATTERN="<path to the TFRecord training data>"
 EVAL_FILE_PATTERN="<path to the TFRecord validation data>"
 VAL_JSON_FILE="<path to the validation annotation JSON file>"
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --strategy_type=tpu \
   --tpu=${TPU_NAME} \
   --model_dir=${MODEL_DIR} \
@@ -172,7 +172,7 @@ python3 ~/models/official/vision/detection/main.py \
 The pre-trained ResNet-50 checkpoint can be downloaded [here](https://storage.cloud.google.com/cloud-tpu-checkpoints/model-garden-vision/detection/resnet50-2018-02-07.tar.gz).
 
 Note: The ResNet implementation under
-[detection/](https://github.com/tensorflow/models/tree/master/official/vision/detection)
+[detection/](https://github.com/tensorflow/models/tree/master/official/legacy/detection)
 is currently different from the one under
 [classification/](https://github.com/tensorflow/models/tree/master/official/vision/image_classification),
 so the checkpoints are not compatible.
@@ -187,7 +187,7 @@ MODEL_DIR="<path to the directory to store model files>"
 TRAIN_FILE_PATTERN="<path to the TFRecord training data>"
 EVAL_FILE_PATTERN="<path to the TFRecord validation data>"
 VAL_JSON_FILE="<path to the validation annotation JSON file>"
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --strategy_type=tpu \
   --tpu="${TPU_NAME?}" \
   --model_dir="${MODEL_DIR?}" \
@@ -218,7 +218,7 @@ following command.
 ```bash
 TPU_NAME="<your GCP TPU name>"
 MODEL_DIR="<path to the directory to store model files>"
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --strategy_type=tpu \
   --tpu=${TPU_NAME} \
   --model_dir=${MODEL_DIR} \
@@ -240,7 +240,7 @@ Multi-GPUs example (assuming there are 8GPU connected to the host):
 
 ```bash
 MODEL_DIR="<path to the directory to store model files>"
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --strategy_type=mirrored \
   --num_gpus=8 \
   --model_dir=${MODEL_DIR} \
@@ -251,7 +251,7 @@ python3 ~/models/official/vision/detection/main.py \
 
 ```bash
 MODEL_DIR="<path to the directory to store model files>"
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --strategy_type=one_device \
   --num_gpus=1 \
   --model_dir=${MODEL_DIR} \
@@ -263,7 +263,7 @@ python3 ~/models/official/vision/detection/main.py \
 An example with inline configuration (YAML or JSON format):
 
 ```
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --model_dir=<model folder> \
   --strategy_type=one_device \
   --num_gpus=1 \
@@ -297,7 +297,7 @@ TRAIN_FILE_PATTERN="<path to the TFRecord training data>"
 EVAL_FILE_PATTERN="<path to the TFRecord validation data>"
 VAL_JSON_FILE="<path to the validation annotation JSON file>"
 SHAPE_PRIOR_PATH="<path to shape priors>"
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --strategy_type=tpu \
   --tpu=${TPU_NAME} \
   --model_dir=${MODEL_DIR} \
@@ -337,7 +337,7 @@ following command.
 ```bash
 TPU_NAME="<your GCP TPU name>"
 MODEL_DIR="<path to the directory to store model files>"
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --strategy_type=tpu \
   --tpu=${TPU_NAME} \
   --model_dir=${MODEL_DIR} \
@@ -359,7 +359,7 @@ Multi-GPUs example (assuming there are 8GPU connected to the host):
 
 ```bash
 MODEL_DIR="<path to the directory to store model files>"
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --strategy_type=mirrored \
   --num_gpus=8 \
   --model_dir=${MODEL_DIR} \
@@ -372,7 +372,7 @@ A single GPU example
 
 ```bash
 MODEL_DIR="<path to the directory to store model files>"
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --strategy_type=one_device \
   --num_gpus=1 \
   --model_dir=${MODEL_DIR} \
@@ -385,7 +385,7 @@ python3 ~/models/official/vision/detection/main.py \
 An example with inline configuration (YAML or JSON format):
 
 ```
-python3 ~/models/official/vision/detection/main.py \
+python3 ~/models/official/legacy/detection/main.py \
   --model_dir=<model folder> \
   --strategy_type=one_device \
   --num_gpus=1 \
@@ -407,7 +407,7 @@ use_tpu: False
 ### Run the evaluation (after training)
 
 ```
-python3 /usr/share/models/official/vision/detection/main.py \
+python3 /usr/share/models/official/legacy/detection/main.py \
    --strategy_type=tpu \
    --tpu=${TPU_NAME} \
    --model_dir=${MODEL_DIR} \
