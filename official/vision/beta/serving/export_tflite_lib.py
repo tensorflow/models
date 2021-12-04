@@ -43,6 +43,8 @@ def create_representative_dataset(
     task = tasks.image_classification.ImageClassificationTask(params.task)
   elif isinstance(params.task, configs.retinanet.RetinaNetTask):
     task = tasks.retinanet.RetinaNetTask(params.task)
+  elif isinstance(params.task, configs.maskrcnn.MaskRCNNTask):
+    task = tasks.maskrcnn.MaskRCNNTask(params.task)
   elif isinstance(params.task,
                   configs.semantic_segmentation.SemanticSegmentationTask):
     task = tasks.semantic_segmentation.SemanticSegmentationTask(params.task)
