@@ -30,10 +30,13 @@ from official.vision.beta.serving import semantic_segmentation
 
 class SemanticSegmentationExportTest(tf.test.TestCase, parameterized.TestCase):
 
-  def _get_segmentation_module(self):
+  def _get_segmentation_module(self, input_type):
     params = exp_factory.get_exp_config('mnv2_deeplabv3_pascal')
     segmentation_module = semantic_segmentation.SegmentationModule(
-        params, batch_size=1, input_image_size=[112, 112])
+        params,
+        batch_size=1,
+        input_image_size=[112, 112],
+        input_type=input_type)
     return segmentation_module
 
   def _export_from_module(self, module, input_type, save_directory):
@@ -62,15 +65,18 @@ class SemanticSegmentationExportTest(tf.test.TestCase, parameterized.TestCase):
                           bytes_list=tf.train.BytesList(value=[encoded_jpeg])),
               })).SerializeToString()
       return [example]
+    elif input_type == 'tflite':
+      return tf.zeros((1, 112, 112, 3), dtype=np.float32)
 
   @parameterized.parameters(
       {'input_type': 'image_tensor'},
       {'input_type': 'image_bytes'},
       {'input_type': 'tf_example'},
+      {'input_type': 'tflite'},
   )
   def test_export(self, input_type='image_tensor'):
     tmp_dir = self.get_temp_dir()
-    module = self._get_segmentation_module()
+    module = self._get_segmentation_module(input_type)
 
     self._export_from_module(module, input_type, tmp_dir)
 
@@ -86,13 +92,16 @@ class SemanticSegmentationExportTest(tf.test.TestCase, parameterized.TestCase):
     segmentation_fn = imported.signatures['serving_default']
 
     images = self._get_dummy_input(input_type)
-    processed_images = tf.nest.map_structure(
-        tf.stop_gradient,
-        tf.map_fn(
-            module._build_inputs,
-            elems=tf.zeros((1, 112, 112, 3), dtype=tf.uint8),
-            fn_output_signature=tf.TensorSpec(
-                shape=[112, 112, 3], dtype=tf.float32)))
+    if input_type != 'tflite':
+      processed_images = tf.nest.map_structure(
+          tf.stop_gradient,
+          tf.map_fn(
+              module._build_inputs,
+              elems=tf.zeros((1, 112, 112, 3), dtype=tf.uint8),
+              fn_output_signature=tf.TensorSpec(
+                  shape=[112, 112, 3], dtype=tf.float32)))
+    else:
+      processed_images = images
     expected_output = tf.image.resize(
         module.model(processed_images, training=False), [112, 112],
         method='bilinear')

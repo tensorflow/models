@@ -30,11 +30,14 @@ from official.vision.beta.serving import image_classification
 
 class ImageClassificationExportTest(tf.test.TestCase, parameterized.TestCase):
 
-  def _get_classification_module(self):
+  def _get_classification_module(self, input_type):
     params = exp_factory.get_exp_config('resnet_imagenet')
     params.task.model.backbone.resnet.model_id = 18
     classification_module = image_classification.ClassificationModule(
-        params, batch_size=1, input_image_size=[224, 224])
+        params,
+        batch_size=1,
+        input_image_size=[224, 224],
+        input_type=input_type)
     return classification_module
 
   def _export_from_module(self, module, input_type, save_directory):
@@ -65,15 +68,18 @@ class ImageClassificationExportTest(tf.test.TestCase, parameterized.TestCase):
                           bytes_list=tf.train.BytesList(value=[encoded_jpeg])),
               })).SerializeToString()
       return [example]
+    elif input_type == 'tflite':
+      return tf.zeros((1, 224, 224, 3), dtype=np.float32)
 
   @parameterized.parameters(
       {'input_type': 'image_tensor'},
       {'input_type': 'image_bytes'},
       {'input_type': 'tf_example'},
+      {'input_type': 'tflite'},
   )
   def test_export(self, input_type='image_tensor'):
     tmp_dir = self.get_temp_dir()
-    module = self._get_classification_module()
+    module = self._get_classification_module(input_type)
     # Test that the model restores any attrs that are trackable objects
     # (eg: tables, resource variables, keras models/layers, tf.hub modules).
     module.model.test_trackable = tf.keras.layers.InputLayer(input_shape=(4,))
@@ -90,13 +96,16 @@ class ImageClassificationExportTest(tf.test.TestCase, parameterized.TestCase):
     classification_fn = imported.signatures['serving_default']
 
     images = self._get_dummy_input(input_type)
-    processed_images = tf.nest.map_structure(
-        tf.stop_gradient,
-        tf.map_fn(
-            module._build_inputs,
-            elems=tf.zeros((1, 224, 224, 3), dtype=tf.uint8),
-            fn_output_signature=tf.TensorSpec(
-                shape=[224, 224, 3], dtype=tf.float32)))
+    if input_type != 'tflite':
+      processed_images = tf.nest.map_structure(
+          tf.stop_gradient,
+          tf.map_fn(
+              module._build_inputs,
+              elems=tf.zeros((1, 224, 224, 3), dtype=tf.uint8),
+              fn_output_signature=tf.TensorSpec(
+                  shape=[224, 224, 3], dtype=tf.float32)))
+    else:
+      processed_images = images
     expected_logits = module.model(processed_images, training=False)
     expected_prob = tf.nn.softmax(expected_logits)
     out = classification_fn(tf.constant(images))
