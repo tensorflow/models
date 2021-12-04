@@ -686,7 +686,7 @@ def multi_stream_heads(streams,
                        final_nodes,
                        num_frames,
                        num_classes,
-                       max_pool_preditions: bool = False):
+                       max_pool_predictions: bool = False):
   """Layers for the classification heads.
 
   Args:
@@ -694,7 +694,7 @@ def multi_stream_heads(streams,
     final_nodes: A list of `int` where classification heads will be added.
     num_frames: `int` number of frames in the input tensor.
     num_classes: `int` number of possible classes for video classification.
-    max_pool_preditions: Use max-pooling on predictions instead of mean
+    max_pool_predictions: Use max-pooling on predictions instead of mean
       pooling on features. It helps if you have more than 32 frames.
 
   Returns:
@@ -709,7 +709,7 @@ def multi_stream_heads(streams,
     net = tf.identity(net, 'final_avg_pool0')
 
     net = tf.reshape(net, [-1, num_frames, num_channels])
-    if not max_pool_preditions:
+    if not max_pool_predictions:
       net = tf.reduce_mean(net, 1)
     return net
 
@@ -730,7 +730,7 @@ def multi_stream_heads(streams,
       kernel_initializer=tf.random_normal_initializer(stddev=.01))(
           inputs=outputs)
   outputs = tf.identity(outputs, 'final_dense0')
-  if max_pool_preditions:
+  if max_pool_predictions:
     pre_logits = outputs / np.sqrt(num_frames)
     acts = tf.nn.softmax(pre_logits, axis=1)
     outputs = tf.math.multiply(outputs, acts)
@@ -894,7 +894,7 @@ class AssembleNetModel(tf.keras.Model):
                model_structure: List[Any],
                input_specs: Optional[Mapping[str,
                                              tf.keras.layers.InputSpec]] = None,
-               max_pool_preditions: bool = False,
+               max_pool_predictions: bool = False,
                **kwargs):
     if not input_specs:
       input_specs = {
@@ -924,7 +924,7 @@ class AssembleNetModel(tf.keras.Model):
         grouping[3],
         num_frames,
         num_classes,
-        max_pool_preditions=max_pool_preditions)
+        max_pool_predictions=max_pool_predictions)
 
     super(AssembleNetModel, self).__init__(
         inputs=inputs, outputs=outputs, **kwargs)
@@ -981,7 +981,7 @@ def assemblenet_v1(assemblenet_depth: int,
                    input_specs: layers.InputSpec = layers.InputSpec(
                        shape=[None, None, None, None, 3]),
                    model_edge_weights: Optional[List[Any]] = None,
-                   max_pool_preditions: bool = False,
+                   max_pool_predictions: bool = False,
                    combine_method: str = 'sigmoid',
                    **kwargs):
   """Returns the AssembleNet model for a given size and number of output classes."""
@@ -1009,7 +1009,7 @@ def assemblenet_v1(assemblenet_depth: int,
       num_frames=num_frames,
       model_structure=model_structure,
       input_specs=input_specs_dict,
-      max_pool_preditions=max_pool_preditions,
+      max_pool_predictions=max_pool_predictions,
       **kwargs)
 
 
@@ -1025,7 +1025,7 @@ def build_assemblenet_v1(
 
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()
-  assert backbone_type == 'assemblenet'
+  assert 'assemblenet' in backbone_type
 
   assemblenet_depth = int(backbone_cfg.model_id)
   if assemblenet_depth not in ASSEMBLENET_SPECS:
@@ -1072,5 +1072,5 @@ def build_assemblenet_model(
       num_frames=backbone_cfg.num_frames,
       model_structure=model_structure,
       input_specs=input_specs_dict,
-      max_pool_preditions=model_config.max_pool_preditions)
+      max_pool_predictions=model_config.max_pool_predictions)
   return model
