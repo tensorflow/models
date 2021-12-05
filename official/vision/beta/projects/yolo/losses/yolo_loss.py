@@ -296,7 +296,7 @@ class DarknetLoss(YoloLossBase):
 
     if self._ignore_thresh > 0.0:
       self._search_pairs = loss_utils.PairWiseSearch(
-          iou_type='iou', any_match=False, min_conf=0.25)
+          iou_type='iou', any_match=True, min_conf=0.25)
     return
 
   def _compute_loss(self, true_counts, inds, y_true, boxes, classes, y_pred):
