@@ -55,7 +55,7 @@ class Parser(object):
       is_training: a `bool` to indicate whether it is in training mode.
 
     Returns:
-      parse: a `callable` that takes the serialized examle and generate the
+      parse: a `callable` that takes the serialized example and generate the
         images, labels tuple where labels is a dict of Tensors that contains
         labels.
     """
