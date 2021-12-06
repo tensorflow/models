@@ -30,7 +30,9 @@ from official.benchmark import benchmark_wrappers
 from official.utils.flags import core as flags_core
 
 IMAGENET_DEFAULT_DATA_PATH = 'gs://mlcompass-data/imagenet/imagenet-2012-tfrecord'
-IMAGENET_EXP_DATA_PATH = 'gs://mlcompass-data/imagenet/imagenet-2012-tfrecord'
+# TODO(emizan) Remove comment once you make sure that dataset caching has similar or better
+# performance as the uncached local SSD dataset below.
+# IMAGENET_EXP_DATA_PATH = 'gs://mlcompass-data/imagenet/imagenet-2012-tfrecord'
 
 MIN_TOP_1_ACCURACY = 0.76
 MAX_TOP_1_ACCURACY = 0.77
@@ -376,7 +378,8 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.train_epochs = 4
     FLAGS.dtype = 'bf16'
     FLAGS.model_dir = self._get_model_dir('benchmark_4x4_tpu_bf16')
-    FLAGS.data_dir = IMAGENET_EXP_DATA_PATH
+    FLAGS.data_dir = IMAGENET_DEFAULT_DATA_PATH
+    FLAGS.training_dataset_cache = True
     self._run_and_report_benchmark()
 
   @owner_utils.Owner('tf-graph-compiler')
