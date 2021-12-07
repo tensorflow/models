@@ -3,9 +3,6 @@ import os
 from setuptools import find_packages
 from setuptools import setup
 
-# Note: adding apache-beam to required packages causes conflict with
-# tf-models-offical requirements. These packages request for incompatible
-# oauth2client package.
 REQUIRED_PACKAGES = [
     # Required for apache-beam with PY3
     'avro-python3',
