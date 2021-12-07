@@ -121,6 +121,13 @@ class ExportBaseTest(tf.test.TestCase):
     output = module.serve(inputs)
     self.assertAllClose(output['outputs'].numpy(), 1.11)
 
+  def test_get_timestamped_export_dir(self):
+    export_dir = self.get_temp_dir()
+    timed_dir = export_base.get_timestamped_export_dir(
+        export_dir_base=export_dir)
+    self.assertFalse(tf.io.gfile.exists(timed_dir))
+    self.assertIn(export_dir, str(timed_dir))
+
 
 if __name__ == '__main__':
   tf.test.main()
