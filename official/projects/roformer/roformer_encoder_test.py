@@ -200,7 +200,7 @@ class RoformerEncoderTest(keras_parameterized.TestCase):
         num_attention_heads=2,
         max_sequence_length=21,
         type_vocab_size=12,
-        inner_dim=1223,
+        inner_dim=1224,
         inner_activation="relu",
         output_dropout=0.05,
         attention_dropout=0.22,
