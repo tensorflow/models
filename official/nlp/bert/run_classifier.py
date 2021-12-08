@@ -76,7 +76,7 @@ def get_loss_fn(num_classes):
 
   def classification_loss_fn(labels, logits):
     """Classification loss."""
-    labels = tf.squeeze(labels)
+    labels = tf.reshape(labels, [-1])
     log_probs = tf.nn.log_softmax(logits, axis=-1)
     one_hot_labels = tf.one_hot(
         tf.cast(labels, dtype=tf.int32), depth=num_classes, dtype=tf.float32)
