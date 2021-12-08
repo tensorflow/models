@@ -21,8 +21,7 @@ import tensorflow as tf
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.configs import encoders
 from official.nlp.modeling import networks
-import roformer_encoder
-import roformer
+from official.projects.roformer.roformer_encoder import RoformerEncoder
 
 
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
@@ -38,7 +37,7 @@ class RoformerEncoderTest(keras_parameterized.TestCase):
     hidden_size = 32
     sequence_length = 21
     # Create a small BertEncoder for testing.
-    test_network = roformer_encoder.RoformerEncoder(
+    test_network = RoformerEncoder(
         vocab_size=100,
         hidden_size=hidden_size,
         num_attention_heads=2,
@@ -68,7 +67,7 @@ class RoformerEncoderTest(keras_parameterized.TestCase):
     hidden_size = 32
     sequence_length = 21
     # Create a small BertEncoder for testing.
-    test_network = roformer_encoder.RoformerEncoder(
+    test_network = RoformerEncoder(
         vocab_size=100,
         hidden_size=hidden_size,
         num_attention_heads=2,
@@ -97,7 +96,7 @@ class RoformerEncoderTest(keras_parameterized.TestCase):
     sequence_length = 21
     tf.keras.mixed_precision.set_global_policy("mixed_float16")
     # Create a small BertEncoder for testing.
-    test_network = roformer_encoder.RoformerEncoder(
+    test_network = RoformerEncoder(
         vocab_size=100,
         hidden_size=hidden_size,
         num_attention_heads=2,
@@ -130,7 +129,7 @@ class RoformerEncoderTest(keras_parameterized.TestCase):
     vocab_size = 57
     num_types = 7
     # Create a small BertEncoder for testing.
-    test_network = roformer_encoder.RoformerEncoder(
+    test_network = RoformerEncoder(
         vocab_size=vocab_size,
         hidden_size=hidden_size,
         num_attention_heads=2,
@@ -161,7 +160,7 @@ class RoformerEncoderTest(keras_parameterized.TestCase):
 
     # Creates a BertEncoder with max_sequence_length != sequence_length
     max_sequence_length = 128
-    test_network = roformer_encoder.RoformerEncoder(
+    test_network = RoformerEncoder(
         vocab_size=vocab_size,
         hidden_size=hidden_size,
         max_sequence_length=max_sequence_length,
@@ -176,7 +175,7 @@ class RoformerEncoderTest(keras_parameterized.TestCase):
     self.assertEqual(outputs[0].shape[1], sequence_length)
 
     # Creates a BertEncoder with embedding_width != hidden_size
-    test_network = roformer_encoder.RoformerEncoder(
+    test_network = RoformerEncoder(
         vocab_size=vocab_size,
         hidden_size=hidden_size,
         max_sequence_length=max_sequence_length,
@@ -210,7 +209,7 @@ class RoformerEncoderTest(keras_parameterized.TestCase):
         embedding_width=16,
         embedding_layer=None,
         norm_first=False)
-    network = roformer_encoder.RoformerEncoder(**kwargs)
+    network = RoformerEncoder(**kwargs)
     expected_config = dict(kwargs)
     expected_config["inner_activation"] = tf.keras.activations.serialize(
         tf.keras.activations.get(expected_config["inner_activation"]))
@@ -218,7 +217,7 @@ class RoformerEncoderTest(keras_parameterized.TestCase):
         tf.keras.initializers.get(expected_config["initializer"]))
     self.assertEqual(network.get_config(), expected_config)
     # Create another network object from the first object's config.
-    new_network = roformer_encoder.RoformerEncoder.from_config(network.get_config())
+    new_network = RoformerEncoder.from_config(network.get_config())
 
     # Validate that the config can be forced to JSON.
     _ = network.to_json()

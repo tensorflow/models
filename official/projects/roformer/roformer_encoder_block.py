@@ -16,10 +16,8 @@
 modified from official/nlp/keras_nlp/layers/transformer_encoder_block.py
 """
 
-"""Keras-based TransformerEncoder block layer."""
-
 import tensorflow as tf
-from roformer_attention import RoformerAttention
+from official.projects.roformer.roformer_attention import RoformerAttention
 
 
 
@@ -40,7 +38,7 @@ class RoformerEncoderBlock(tf.keras.layers.Layer):
 
   def __init__(self,
                num_attention_heads,
-               inner_dim,  # FIXME: hidden_size per head should be even!
+               inner_dim,
                inner_activation,
                q_max_sequence_length=512,
                kv_max_sequence_length=512,
@@ -97,6 +95,8 @@ class RoformerEncoderBlock(tf.keras.layers.Layer):
       **kwargs: keyword arguments/
     """
     super().__init__(**kwargs)
+
+    assert inner_dim % 2 == 0, "inner_dim should be even"
 
     self._num_heads = num_attention_heads
     self._inner_dim = inner_dim

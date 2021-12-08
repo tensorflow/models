@@ -19,7 +19,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
-from roformer_encoder_block import RoformerEncoderBlock
+from official.projects.roformer.roformer_encoder_block import RoformerEncoderBlock
 
 
 @keras_parameterized.run_all_keras_modes
@@ -219,24 +219,6 @@ class RoformerEncoderBlockLayerTest(keras_parameterized.TestCase):
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output.shape.as_list())
 
-  # def test_dynamic_layer_sequence(self, transformer_cls):
-  #   test_layer = transformer_cls(
-  #       num_attention_heads=10,
-  #       inner_dim=2048,
-  #       inner_activation='relu',
-  #       kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))
-  #   # Create a 3-dimensional input (the first dimension is implicit).
-  #   width = 30
-  #   input_tensor = tf.keras.Input(shape=(None, width))
-  #   output_tensor = test_layer(input_tensor)
-  #   model = tf.keras.Model(input_tensor, output_tensor)
-  #
-  #   input_length = 17
-  #   input_data = np.ones((1, input_length, width))
-  #   output_data = model.predict(input_data)
-  #
-  #   self.assertAllEqual([1, input_length, width], output_data.shape)
-
   def test_separate_qkv(self, transformer_cls):
     test_layer = transformer_cls(
         num_attention_heads=2,
@@ -258,7 +240,7 @@ class RoformerArgumentTest(keras_parameterized.TestCase):
   def test_use_bias_norm_first(self):
     num_attention_heads = 2
     hidden_size = 16
-    encoder_block = RoformerEncoderBlockLayerTest(
+    encoder_block = RoformerEncoderBlock(
         num_attention_heads=num_attention_heads,
         inner_dim=32,
         inner_activation='relu',
@@ -310,11 +292,10 @@ class RoformerArgumentTest(keras_parameterized.TestCase):
         inner_dropout=0.1,
         num_attention_heads=10,
         attention_axes=attention_axes)
-    num_rows = 21
-    num_cols = 13
-    width = 80
+    seq_len = 21
+    dimensions = 80
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(shape=(num_rows, num_cols, width))
+    data_tensor = tf.keras.Input(shape=(seq_len, dimensions))
     output_tensor = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())

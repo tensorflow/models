@@ -19,7 +19,8 @@ import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
-import roformer_attention
+from official.projects.roformer.roformer_attention import _build_trig_vector
+from official.projects.roformer.roformer_attention import RoformerAttention
 
 
 def _create_mock_attention_data(
@@ -76,7 +77,7 @@ class RoformerAttentionTest(keras_parameterized.TestCase):
   def test_trig_vector(self,
                        length,
                        key_dim):
-    sin_emb, cos_emb = roformer_attention._build_trig_vector(length, key_dim)
+    sin_emb, cos_emb = _build_trig_vector(length, key_dim)
     length = tf.shape(sin_emb)[1]
     key_dim = tf.shape(sin_emb)[3]
     for m in range(0, length):
@@ -100,7 +101,7 @@ class RoformerAttentionTest(keras_parameterized.TestCase):
                             mask):
     """Tests combinations of attention score calculations."""
     batch_size, num_heads, key_dim, seq_length = 2, 12, 64, 8
-    test_layer = roformer_attention.RoformerAttention(
+    test_layer = RoformerAttention(
         q_max_sequence_length=seq_length,
         kv_max_sequence_length=seq_length,
         num_heads=num_heads,
@@ -125,7 +126,7 @@ class RoformerAttentionTest(keras_parameterized.TestCase):
                               mask):
         """Tests combinations of attention score calculations."""
         batch_size, num_heads, key_dim, q_seq_length, kv_seq_length = 2, 12, 64, 8, 16
-        test_layer = roformer_attention.RoformerAttention(
+        test_layer = RoformerAttention(
             q_max_sequence_length=q_seq_length,
             kv_max_sequence_length=kv_seq_length,
             num_heads=num_heads,

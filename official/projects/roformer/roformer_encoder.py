@@ -25,7 +25,7 @@ import tensorflow as tf
 from official.nlp.modeling import networks
 from official.nlp.modeling.layers import on_device_embedding
 from official.nlp.modeling.layers import self_attention_mask
-from roformer_encoder_block import RoformerEncoderBlock
+from official.projects.roformer.roformer_encoder_block import RoformerEncoderBlock
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')

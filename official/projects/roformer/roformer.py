@@ -21,7 +21,7 @@ import tensorflow as tf
 from official.modeling import tf_utils
 from official.modeling.hyperparams import base_config
 from official.nlp.configs import encoders
-from roformer_encoder import RoformerEncoder
+from official.projects.roformer.roformer_encoder import RoformerEncoder
 
 class RoformerEncoderConfig(encoders.BertEncoderConfig):
   pass
