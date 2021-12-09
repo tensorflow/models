@@ -204,8 +204,8 @@ from official.vision.beta.projects.movinet.modeling import movinet_model
 # Create backbone and model.
 backbone = movinet.Movinet(
     model_id='a0',
-    causal=True,
-    use_external_states=True,
+    causal=False,
+    use_external_states=False,
 )
 model = movinet_model.MovinetClassifier(
     backbone, num_classes=600, output_states=True)
