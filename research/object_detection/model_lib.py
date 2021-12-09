@@ -303,7 +303,7 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
   return unbatched_tensor_dict
 
 
-def provide_groundtruth(model, labels):
+def provide_groundtruth(model, labels, training_step=None):
   """Provides the labels to a model as groundtruth.
 
   This helper function extracts the corresponding boxes, classes,
@@ -313,6 +313,8 @@ def provide_groundtruth(model, labels):
   Args:
     model: The detection model to provide groundtruth to.
     labels: The labels for the training or evaluation inputs.
+    training_step: int, optional. The training step for the model. Useful
+      for models which want to anneal loss weights.
   """
   gt_boxes_list = labels[fields.InputDataFields.groundtruth_boxes]
   gt_classes_list = labels[fields.InputDataFields.groundtruth_classes]
@@ -402,7 +404,8 @@ def provide_groundtruth(model, labels):
       groundtruth_verified_neg_classes=gt_verified_neg_classes,
       groundtruth_not_exhaustive_classes=gt_not_exhaustive_classes,
       groundtruth_keypoint_depths_list=gt_keypoint_depths_list,
-      groundtruth_keypoint_depth_weights_list=gt_keypoint_depth_weights_list)
+      groundtruth_keypoint_depth_weights_list=gt_keypoint_depth_weights_list,
+      training_step=training_step)
 
 
 def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,

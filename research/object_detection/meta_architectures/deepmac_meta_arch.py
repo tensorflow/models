@@ -12,12 +12,12 @@ import tensorflow as tf
 from object_detection.builders import losses_builder
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
-from object_detection.core import losses
 from object_detection.core import preprocessor
 from object_detection.core import standard_fields as fields
 from object_detection.meta_architectures import center_net_meta_arch
 from object_detection.models.keras_models import hourglass_network
 from object_detection.models.keras_models import resnet_v1
+from object_detection.protos import center_net_pb2
 from object_detection.protos import losses_pb2
 from object_detection.protos import preprocessor_pb2
 from object_detection.utils import shape_utils
@@ -38,46 +38,26 @@ NEIGHBORS_2D = [[-1, -1], [-1, 0], [-1, 1],
                 [0, -1], [0, 1],
                 [1, -1], [1, 0], [1, 1]]
 WEAK_LOSSES = [DEEP_MASK_BOX_CONSISTENCY, DEEP_MASK_COLOR_CONSISTENCY]
+MASK_LOSSES = WEAK_LOSSES + [DEEP_MASK_ESTIMATION]
 
 
-class DeepMACParams(
-    collections.namedtuple('DeepMACParams', [
+DeepMACParams = collections.namedtuple('DeepMACParams', [
         'classification_loss', 'dim', 'task_loss_weight', 'pixel_embedding_dim',
         'allowed_masked_classes_ids', 'mask_size', 'mask_num_subsamples',
         'use_xy', 'network_type', 'use_instance_embedding', 'num_init_channels',
         'predict_full_resolution_masks', 'postprocess_crop_size',
         'max_roi_jitter_ratio', 'roi_jitter_mode',
         'box_consistency_loss_weight', 'color_consistency_threshold',
-        'color_consistency_dilation', 'color_consistency_loss_weight'
-    ])):
-  """Class holding the DeepMAC network configutration."""
-
-  __slots__ = ()
-
-  def __new__(cls, classification_loss, dim, task_loss_weight,
-              pixel_embedding_dim, allowed_masked_classes_ids, mask_size,
-              mask_num_subsamples, use_xy, network_type, use_instance_embedding,
-              num_init_channels, predict_full_resolution_masks,
-              postprocess_crop_size, max_roi_jitter_ratio,
-              roi_jitter_mode, box_consistency_loss_weight,
-              color_consistency_threshold, color_consistency_dilation,
-              color_consistency_loss_weight):
-    return super(DeepMACParams,
-                 cls).__new__(cls, classification_loss, dim,
-                              task_loss_weight, pixel_embedding_dim,
-                              allowed_masked_classes_ids, mask_size,
-                              mask_num_subsamples, use_xy, network_type,
-                              use_instance_embedding, num_init_channels,
-                              predict_full_resolution_masks,
-                              postprocess_crop_size, max_roi_jitter_ratio,
-                              roi_jitter_mode, box_consistency_loss_weight,
-                              color_consistency_threshold,
-                              color_consistency_dilation,
-                              color_consistency_loss_weight)
+        'color_consistency_dilation', 'color_consistency_loss_weight',
+        'box_consistency_loss_normalize', 'box_consistency_tightness',
+        'color_consistency_warmup_steps', 'color_consistency_warmup_start'
+    ])
 
 
-def _get_weak_loss_weight(loss_name, config):
-  if loss_name == DEEP_MASK_COLOR_CONSISTENCY:
+def _get_loss_weight(loss_name, config):
+  if loss_name == DEEP_MASK_ESTIMATION:
+    return config.task_loss_weight
+  elif loss_name == DEEP_MASK_COLOR_CONSISTENCY:
     return config.color_consistency_loss_weight
   elif loss_name == DEEP_MASK_BOX_CONSISTENCY:
     return config.box_consistency_loss_weight
@@ -755,6 +735,9 @@ def deepmac_proto_to_params(deepmac_config):
   jitter_mode = preprocessor_pb2.RandomJitterBoxes.JitterMode.Name(
       deepmac_config.jitter_mode).lower()
 
+  box_consistency_loss_normalize = center_net_pb2.LossNormalize.Name(
+      deepmac_config.box_consistency_loss_normalize).lower()
+
   return DeepMACParams(
       dim=deepmac_config.dim,
       classification_loss=classification_loss,
@@ -775,7 +758,14 @@ def deepmac_proto_to_params(deepmac_config):
       box_consistency_loss_weight=deepmac_config.box_consistency_loss_weight,
       color_consistency_threshold=deepmac_config.color_consistency_threshold,
       color_consistency_dilation=deepmac_config.color_consistency_dilation,
-      color_consistency_loss_weight=deepmac_config.color_consistency_loss_weight
+      color_consistency_loss_weight=
+      deepmac_config.color_consistency_loss_weight,
+      box_consistency_loss_normalize=box_consistency_loss_normalize,
+      box_consistency_tightness=deepmac_config.box_consistency_tightness,
+      color_consistency_warmup_steps=
+      deepmac_config.color_consistency_warmup_steps,
+      color_consistency_warmup_start=
+      deepmac_config.color_consistency_warmup_start
   )
 
 
@@ -972,6 +962,60 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
 
     return resize_instance_masks(logits, (height, width))
 
+  def _aggregate_classification_loss(self, loss, gt, pred, method):
+    """Aggregates loss at a per-instance level.
+
+    When this function is used with mask-heads, num_classes is usually 1.
+    Args:
+      loss: A [num_instances, num_pixels, num_classes] or
+        [num_instances, num_classes] tensor. If the tensor is of rank 2, i.e.,
+        of the form [num_instances, num_classes], we will assume that the
+        number of pixels have already been nornalized.
+      gt: A [num_instances, num_pixels, num_classes] float tensor of
+        groundtruths.
+      pred: A [num_instances, num_pixels, num_classes] float tensor of
+        preditions.
+      method: A string in ['auto', 'groundtruth'].
+        'auto': When `loss` is rank 2, aggregates by sum. Otherwise, aggregates
+          by mean.
+        'groundtruth_count': Aggreagates the loss by computing sum and dividing
+          by the number of positive (1) groundtruth pixels.
+        'balanced': Normalizes each pixel by the number of positive or negative
+          pixels depending on the groundtruth.
+
+    Returns:
+      per_instance_loss: A [num_instances] float tensor.
+    """
+
+    rank = len(loss.get_shape().as_list())
+    if rank == 2:
+      axes = [1]
+    else:
+      axes = [1, 2]
+
+    if method == 'normalize_auto':
+      normalization = 1.0
+      if rank == 2:
+        return tf.reduce_sum(loss, axis=axes)
+      else:
+        return tf.reduce_mean(loss, axis=axes)
+
+    elif method == 'normalize_groundtruth_count':
+      normalization = tf.reduce_sum(gt, axis=axes)
+      return tf.reduce_sum(loss, axis=axes) / normalization
+
+    elif method == 'normalize_balanced':
+      if rank != 3:
+        raise ValueError('Cannot apply normalized_balanced aggregation '
+                         f'to loss of rank {rank}')
+      normalization = (
+          (gt * tf.reduce_sum(gt, keepdims=True, axis=axes)) +
+          (1 - gt) * tf.reduce_sum(1 - gt, keepdims=True, axis=axes))
+      return tf.reduce_sum(loss / normalization, axis=axes)
+
+    else:
+      raise ValueError('Unknown loss aggregation - {}'.format(method))
+
   def _compute_per_instance_mask_prediction_loss(
       self, boxes, mask_logits, mask_gt):
     """Compute the per-instance mask loss.
@@ -995,14 +1039,8 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
         target_tensor=mask_gt,
         weights=tf.ones_like(mask_logits))
 
-    # TODO(vighneshb) Make this configurable via config.
-    # Skip normalization for dice loss because the denominator term already
-    # does normalization.
-    if isinstance(self._deepmac_params.classification_loss,
-                  losses.WeightedDiceClassificationLoss):
-      return tf.reduce_sum(loss, axis=1)
-    else:
-      return tf.reduce_mean(loss, axis=[1, 2])
+    return self._aggregate_classification_loss(
+        loss, mask_gt, mask_logits, 'normalize_auto')
 
   def _compute_per_instance_box_consistency_loss(
       self, boxes_gt, boxes_for_crop, mask_logits):
@@ -1034,23 +1072,30 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
 
     loss = 0.0
     for axis in [1, 2]:
-      pred_max = tf.reduce_max(pred_crop, axis=axis)[:, :, tf.newaxis]
+
+      if self._deepmac_params.box_consistency_tightness:
+        pred_max_raw = tf.reduce_max(pred_crop, axis=axis)
+        pred_max_within_box = tf.reduce_max(pred_crop * gt_crop, axis=axis)
+        box_1d = tf.reduce_max(gt_crop, axis=axis)
+        pred_max = ((box_1d * pred_max_within_box) +
+                    ((1 - box_1d) * pred_max_raw))
+
+      else:
+        pred_max = tf.reduce_max(pred_crop, axis=axis)
+
+      pred_max = pred_max[:, :, tf.newaxis]
       gt_max = tf.reduce_max(gt_crop, axis=axis)[:, :, tf.newaxis]
 
-      axis_loss = self._deepmac_params.classification_loss(
+      raw_loss = self._deepmac_params.classification_loss(
           prediction_tensor=pred_max,
           target_tensor=gt_max,
           weights=tf.ones_like(pred_max))
-      loss += axis_loss
 
-    # Skip normalization for dice loss because the denominator term already
-    # does normalization.
-    # TODO(vighneshb) Make this configurable via config.
-    if isinstance(self._deepmac_params.classification_loss,
-                  losses.WeightedDiceClassificationLoss):
-      return tf.reduce_sum(loss, axis=1)
-    else:
-      return tf.reduce_mean(loss, axis=[1, 2])
+      loss += self._aggregate_classification_loss(
+          raw_loss, gt_max, pred_max,
+          self._deepmac_params.box_consistency_loss_normalize)
+
+    return loss
 
   def _compute_per_instance_color_consistency_loss(
       self, boxes, preprocessed_image, mask_logits):
@@ -1098,6 +1143,17 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     loss = tf.reduce_sum(per_pixel_loss, axis=[0, 2, 3])
     num_box_pixels = tf.maximum(1.0, tf.reduce_sum(box_mask, axis=[1, 2]))
     loss = loss / num_box_pixels
+
+    if ((self._deepmac_params.color_consistency_warmup_steps > 0) and
+        self._is_training):
+      training_step = tf.cast(self.training_step, tf.float32)
+      warmup_steps = tf.cast(
+          self._deepmac_params.color_consistency_warmup_steps, tf.float32)
+      start_step = tf.cast(
+          self._deepmac_params.color_consistency_warmup_start, tf.float32)
+      warmup_weight = (training_step - start_step) / warmup_steps
+      warmup_weight = tf.clip_by_value(warmup_weight, 0.0, 1.0)
+      loss *= warmup_weight
 
     return loss
 
@@ -1188,11 +1244,8 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     allowed_masked_classes_ids = (
         self._deepmac_params.allowed_masked_classes_ids)
 
-    loss_dict = {
-        DEEP_MASK_ESTIMATION: 0.0,
-    }
-
-    for loss_name in WEAK_LOSSES:
+    loss_dict = {}
+    for loss_name in MASK_LOSSES:
       loss_dict[loss_name] = 0.0
 
     prediction_shape = tf.shape(prediction_dict[INSTANCE_EMBEDDING][0])
@@ -1252,13 +1305,8 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
       mask_loss_dict = self._compute_instance_masks_loss(
           prediction_dict=prediction_dict)
 
-      losses_dict[LOSS_KEY_PREFIX + '/' + DEEP_MASK_ESTIMATION] = (
-          self._deepmac_params.task_loss_weight * mask_loss_dict[
-              DEEP_MASK_ESTIMATION]
-      )
-
-      for loss_name in WEAK_LOSSES:
-        loss_weight = _get_weak_loss_weight(loss_name, self._deepmac_params)
+      for loss_name in MASK_LOSSES:
+        loss_weight = _get_loss_weight(loss_name, self._deepmac_params)
         if loss_weight > 0.0:
           losses_dict[LOSS_KEY_PREFIX + '/' + loss_name] = (
               loss_weight * mask_loss_dict[loss_name])
