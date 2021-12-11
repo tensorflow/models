@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Cubify Operation"""
+from collections import defaultdict
 from typing import Tuple
 
 import tensorflow as tf

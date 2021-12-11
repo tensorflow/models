@@ -58,5 +58,5 @@ if __name__ == '__main__':
                  _faces[batch_to_view, :],
                  _verts_mask[batch_to_view, :],
                  _faces_mask[batch_to_view, :])
-  
+
   plt.show()
