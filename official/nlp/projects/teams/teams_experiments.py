@@ -16,12 +16,18 @@
 # pylint: disable=g-doc-return-or-yield,line-too-long
 """TEAMS experiments."""
 import dataclasses
+
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import optimization
+from official.nlp.configs import encoders
 from official.nlp.data import pretrain_dataloader
+from official.nlp.data import question_answering_dataloader
+from official.nlp.data import sentence_prediction_dataloader
+from official.nlp.projects.teams import teams
 from official.nlp.projects.teams import teams_task
-
+from official.nlp.tasks import question_answering
+from official.nlp.tasks import sentence_prediction
 
 AdamWeightDecay = optimization.AdamWeightDecayConfig
 PolynomialLr = optimization.PolynomialLrConfig
@@ -57,6 +63,45 @@ def teams_pretrain() -> cfg.ExperimentConfig:
               is_training=False)),
       trainer=cfg.TrainerConfig(
           optimizer_config=TeamsOptimizationConfig(), train_steps=1000000),
+      restrictions=[
+          "task.train_data.is_training != None",
+          "task.validation_data.is_training != None"
+      ])
+  return config
+
+
+@exp_factory.register_config_factory("teams/sentence_prediction")
+def teams_sentence_prediction() -> cfg.ExperimentConfig:
+  r"""Teams GLUE."""
+  config = cfg.ExperimentConfig(
+      task=sentence_prediction.SentencePredictionConfig(
+          model=sentence_prediction.ModelConfig(
+              encoder=encoders.EncoderConfig(
+                  type="any", any=teams.TeamsEncoderConfig(num_layers=1))),
+          train_data=sentence_prediction_dataloader
+          .SentencePredictionDataConfig(),
+          validation_data=sentence_prediction_dataloader
+          .SentencePredictionDataConfig(
+              is_training=False, drop_remainder=False)),
+      trainer=cfg.TrainerConfig(optimizer_config=TeamsOptimizationConfig()),
+      restrictions=[
+          "task.train_data.is_training != None",
+          "task.validation_data.is_training != None"
+      ])
+  return config
+
+
+@exp_factory.register_config_factory("teams/squad")
+def teams_squad() -> cfg.ExperimentConfig:
+  """Teams Squad V1/V2."""
+  config = cfg.ExperimentConfig(
+      task=question_answering.QuestionAnsweringConfig(
+          model=question_answering.ModelConfig(
+              encoder=encoders.EncoderConfig(
+                  type="any", any=teams.TeamsEncoderConfig(num_layers=1))),
+          train_data=question_answering_dataloader.QADataConfig(),
+          validation_data=question_answering_dataloader.QADataConfig()),
+      trainer=cfg.TrainerConfig(optimizer_config=TeamsOptimizationConfig()),
       restrictions=[
           "task.train_data.is_training != None",
           "task.validation_data.is_training != None"

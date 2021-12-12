@@ -133,6 +133,10 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
 
     network_config = network.get_config()
     factory_network_config = factory_network.get_config()
+    # Due to calling `super().get_config()` in aspp layer, everything but the
+    # the name of two layer instances are the same, so we force equal name so it
+    # will not give false alarm.
+    factory_network_config['name'] = network_config['name']
 
     self.assertEqual(network_config, factory_network_config)
 

@@ -440,7 +440,6 @@ class TransformerTask(object):
     opt = performance.configure_optimizer(
         opt,
         use_float16=params["dtype"] == tf.float16,
-        use_graph_rewrite=self.flags_obj.fp16_implementation == "graph_rewrite",
         loss_scale=flags_core.get_loss_scale(
             self.flags_obj, default_for_fp16="dynamic"))
 

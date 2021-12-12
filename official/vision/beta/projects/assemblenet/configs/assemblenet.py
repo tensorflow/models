@@ -34,8 +34,9 @@ used for each layer in the inverted bottleneck modules.
 
 The structure_weights specify the learned connection weights.
 """
-from typing import List, Tuple
 import dataclasses
+from typing import List, Tuple, Optional
+
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
@@ -177,25 +178,46 @@ class AssembleNet(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class AssembleNetPlus(hyperparams.Config):
+  model_id: str = '50'
+  num_frames: int = 0
+  attention_mode: str = 'None'
+  blocks: Tuple[BlockSpec, ...] = tuple()
+  use_object_input: bool = False
+
+
+@dataclasses.dataclass
 class Backbone3D(backbones_3d.Backbone3D):
   """Configuration for backbones.
 
   Attributes:
     type: 'str', type of backbone be used, on the of fields below.
-    resnet: resnet3d backbone config.
+    assemblenet: AssembleNet backbone config.
+    assemblenet_plus : AssembleNetPlus backbone config.
   """
-  type: str = 'assemblenet'
+  type: Optional[str] = None
   assemblenet: AssembleNet = AssembleNet()
+  assemblenet_plus: AssembleNetPlus = AssembleNetPlus()
 
 
 @dataclasses.dataclass
 class AssembleNetModel(video_classification.VideoClassificationModel):
   """The AssembleNet model config."""
   model_type: str = 'assemblenet'
-  backbone: Backbone3D = Backbone3D()
+  backbone: Backbone3D = Backbone3D(type='assemblenet')
   norm_activation: common.NormActivation = common.NormActivation(
       norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=True)
-  max_pool_preditions: bool = False
+  max_pool_predictions: bool = False
+
+
+@dataclasses.dataclass
+class AssembleNetPlusModel(video_classification.VideoClassificationModel):
+  """The AssembleNet model config."""
+  model_type: str = 'assemblenet_plus'
+  backbone: Backbone3D = Backbone3D(type='assemblenet_plus')
+  norm_activation: common.NormActivation = common.NormActivation(
+      norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=True)
+  max_pool_predictions: bool = False
 
 
 @exp_factory.register_config_factory('assemblenet50_kinetics600')
@@ -221,5 +243,45 @@ def assemblenet_kinetics600() -> cfg.ExperimentConfig:
   assert exp.task.model.backbone.assemblenet.num_frames > 0, (
       f'backbone num_frames '
       f'{exp.task.model.backbone.assemblenet}')
+
+  return exp
+
+
+@exp_factory.register_config_factory('assemblenet_ucf101')
+def assemblenet_ucf101() -> cfg.ExperimentConfig:
+  """Video classification on Videonet with assemblenet."""
+  exp = video_classification.video_classification_ucf101()
+  exp.task.train_data.dtype = 'bfloat16'
+  exp.task.validation_data.dtype = 'bfloat16'
+  feature_shape = (32, 224, 224, 3)
+  model = AssembleNetModel()
+  model.backbone.assemblenet.blocks = flat_lists_to_blocks(
+      asn50_structure, asn_structure_weights)
+  model.backbone.assemblenet.num_frames = feature_shape[0]
+  exp.task.model = model
+
+  assert exp.task.model.backbone.assemblenet.num_frames > 0, (
+      f'backbone num_frames '
+      f'{exp.task.model.backbone.assemblenet}')
+
+  return exp
+
+
+@exp_factory.register_config_factory('assemblenetplus_ucf101')
+def assemblenetplus_ucf101() -> cfg.ExperimentConfig:
+  """Video classification on Videonet with assemblenet."""
+  exp = video_classification.video_classification_ucf101()
+  exp.task.train_data.dtype = 'bfloat16'
+  exp.task.validation_data.dtype = 'bfloat16'
+  feature_shape = (32, 224, 224, 3)
+  model = AssembleNetPlusModel()
+  model.backbone.assemblenet_plus.blocks = flat_lists_to_blocks(
+      asn50_structure, asn_structure_weights)
+  model.backbone.assemblenet_plus.num_frames = feature_shape[0]
+  exp.task.model = model
+
+  assert exp.task.model.backbone.assemblenet_plus.num_frames > 0, (
+      f'backbone num_frames '
+      f'{exp.task.model.backbone.assemblenet_plus}')
 
   return exp

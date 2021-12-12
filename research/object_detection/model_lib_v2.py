@@ -52,7 +52,7 @@ RESTORE_MAP_ERROR_TEMPLATE = (
 
 
 def _compute_losses_and_predictions_dicts(
-    model, features, labels,
+    model, features, labels, training_step=None,
     add_regularization_loss=True):
   """Computes the losses dict and predictions dict for a model on inputs.
 
@@ -108,6 +108,7 @@ def _compute_losses_and_predictions_dicts(
           float32 tensor containing keypoint depths information.
         labels[fields.InputDataFields.groundtruth_keypoint_depth_weights] is a
           float32 tensor containing the weights of the keypoint depth feature.
+    training_step: int, the current training step.
     add_regularization_loss: Whether or not to include the model's
       regularization loss in the losses dictionary.
 
@@ -117,7 +118,7 @@ def _compute_losses_and_predictions_dicts(
     `model.predict`.
 
   """
-  model_lib.provide_groundtruth(model, labels)
+  model_lib.provide_groundtruth(model, labels, training_step=training_step)
   preprocessed_images = features[fields.InputDataFields.image]
 
   prediction_dict = model.predict(
@@ -167,7 +168,8 @@ def _ensure_model_is_built(model, input_dataset, unpad_groundtruth_tensors):
     labels = model_lib.unstack_batch(
         labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
-    return _compute_losses_and_predictions_dicts(model, features, labels)
+    return _compute_losses_and_predictions_dicts(model, features, labels,
+                                                 training_step=0)
 
   strategy = tf.compat.v2.distribute.get_strategy()
   if hasattr(tf.distribute.Strategy, 'run'):
@@ -209,6 +211,7 @@ def eager_train_step(detection_model,
                      labels,
                      unpad_groundtruth_tensors,
                      optimizer,
+                     training_step,
                      train_config,
                      add_regularization_loss=True,
                      clip_gradients_value=None,
@@ -282,6 +285,7 @@ def eager_train_step(detection_model,
           float32 tensor containing the weights of the keypoint depth feature.
     unpad_groundtruth_tensors: A parameter passed to unstack_batch.
     optimizer: The training optimizer that will update the variables.
+    training_step: int, the training step number.
     train_config: The train_pb2.TrainConfig protobuf.
     add_regularization_loss: Whether or not to include the model's
       regularization loss in the losses dictionary.
@@ -305,7 +309,9 @@ def eager_train_step(detection_model,
 
   with tf.GradientTape() as tape:
     losses_dict, _ = _compute_losses_and_predictions_dicts(
-        detection_model, features, labels, add_regularization_loss)
+        detection_model, features, labels,
+        training_step=training_step,
+        add_regularization_loss=add_regularization_loss)
 
     losses_dict = normalize_dict(losses_dict, num_replicas)
 
@@ -645,6 +651,7 @@ def train_loop(
               labels,
               unpad_groundtruth_tensors,
               optimizer,
+              training_step=global_step,
               train_config,
               add_regularization_loss=add_regularization_loss,
               clip_gradients_value=clip_gradients_value,
@@ -915,7 +922,8 @@ def eager_eval_loop(
         labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
     losses_dict, prediction_dict = _compute_losses_and_predictions_dicts(
-        detection_model, features, labels, add_regularization_loss)
+        detection_model, features, labels, training_step=None,
+        add_regularization_loss=add_regularization_loss)
     prediction_dict = detection_model.postprocess(
         prediction_dict, features[fields.InputDataFields.true_image_shape])
     eval_features = {

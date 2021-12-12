@@ -482,11 +482,15 @@ def resize_and_jitter_image(image,
     image_ = tf.pad(
         cropped_image, [[pad[0], pad[2]], [pad[1], pad[3]], [0, 0]],
         constant_values=PAD_VALUE)
+
+    # Pad and scale info
+    isize = tf.cast(tf.shape(image_)[:2], dtype=tf.float32)
+    osize = tf.cast((desired_size[0], desired_size[1]), dtype=tf.float32)
     pad_info = tf.stack([
         tf.cast(tf.shape(cropped_image)[:2], tf.float32),
-        tf.cast(tf.shape(image_)[:2], dtype=tf.float32),
-        tf.ones_like(original_dims, dtype=tf.float32),
-        (-tf.cast(pad[:2], tf.float32))
+        osize,
+        osize/isize,
+        (-tf.cast(pad[:2], tf.float32)*osize/isize)
     ])
     infos.append(pad_info)
 
@@ -761,7 +765,9 @@ def boxes_candidates(clipped_boxes,
   Returns:
     indices[:, 0]: A `Tensor` representing valid boxes after filtering.
   """
-
+  if area_thr == 0.0:
+    wh_thr = 0
+    ar_thr = np.inf
   area_thr = tf.math.abs(area_thr)
 
   # Get the scaled and shifted heights of the original
@@ -778,8 +784,8 @@ def boxes_candidates(clipped_boxes,
                   clipped_height / (clipped_width + 1e-16))
 
   # Ensure the clipped width adn height are larger than a preset threshold.
-  conda = clipped_width > wh_thr
-  condb = clipped_height > wh_thr
+  conda = clipped_width >= wh_thr
+  condb = clipped_height >= wh_thr
 
   # Ensure the area of the clipped box is larger than the area threshold.
   area = (clipped_height * clipped_width) / (og_width * og_height + 1e-16)
@@ -837,7 +843,7 @@ def transform_and_clip_boxes(boxes,
                              shuffle_boxes=False,
                              area_thresh=0.1,
                              seed=None,
-                             augment=True):
+                             filter_and_clip_boxes=True):
   """Clips and cleans the boxes.
 
   Args:
@@ -847,7 +853,8 @@ def transform_and_clip_boxes(boxes,
     shuffle_boxes: A `bool` for shuffling the boxes.
     area_thresh: An `int` for the area threshold.
     seed: seed for random number generation.
-    augment: A `bool` for clipping the boxes to [0, 1].
+    filter_and_clip_boxes: A `bool` for filtering and clipping the boxes to
+      [0, 1].
 
   Returns:
     boxes: A `Tensor` representing the augmented boxes.
@@ -868,8 +875,8 @@ def transform_and_clip_boxes(boxes,
 
   # Make sure all boxes are valid to start, clip to [0, 1] and get only the
   # valid boxes.
-  output_size = tf.cast([640, 640], tf.float32)
-  if augment:
+  output_size = None
+  if filter_and_clip_boxes:
     boxes = tf.math.maximum(tf.math.minimum(boxes, 1.0), 0.0)
   cond = get_valid_boxes(boxes)
 
@@ -918,16 +925,18 @@ def transform_and_clip_boxes(boxes,
   boxes *= tf.cast(tf.expand_dims(cond, axis=-1), boxes.dtype)
 
   # Threshold the existing boxes.
-  if augment:
-    boxes_ = bbox_ops.denormalize_boxes(boxes, output_size)
-    box_history_ = bbox_ops.denormalize_boxes(box_history, output_size)
-    inds = boxes_candidates(boxes_, box_history_, area_thr=area_thresh)
+  if filter_and_clip_boxes:
+    if output_size is not None:
+      boxes_ = bbox_ops.denormalize_boxes(boxes, output_size)
+      box_history_ = bbox_ops.denormalize_boxes(box_history, output_size)
+      inds = boxes_candidates(boxes_, box_history_, area_thr=area_thresh)
+    else:
+      inds = boxes_candidates(
+          boxes, box_history, wh_thr=0.0, area_thr=area_thresh)
     # Select and gather the good boxes.
     if shuffle_boxes:
       inds = tf.random.shuffle(inds, seed=seed)
   else:
-    boxes = box_history
-    boxes_ = bbox_ops.denormalize_boxes(boxes, output_size)
-    inds = bbox_ops.get_non_empty_box_indices(boxes_)
+    inds = bbox_ops.get_non_empty_box_indices(boxes)
   boxes = tf.gather(boxes, inds)
   return boxes, inds

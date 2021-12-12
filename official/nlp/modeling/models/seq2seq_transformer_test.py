@@ -26,12 +26,11 @@ from official.nlp.modeling.models import seq2seq_transformer
 
 class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
 
-  def _build_model(self, padded_decode, decode_max_length):
+  def _build_model(self, padded_decode, decode_max_length, embedding_width):
     num_layers = 1
     num_attention_heads = 2
     intermediate_size = 32
     vocab_size = 100
-    embedding_width = 16
     encdec_kwargs = dict(
         num_layers=num_layers,
         num_attention_heads=num_attention_heads,
@@ -63,15 +62,19 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
               strategy_combinations.default_strategy,
               strategy_combinations.cloud_tpu_strategy,
           ],
+          embed=[True, False],
+          is_training=[True, False],
           mode="eager"))
-  def test_create_model_with_ds(self, distribution):
+  def test_create_model_with_ds(self, distribution, embed, is_training):
     with distribution.scope():
       padded_decode = isinstance(
           distribution,
           (tf.distribute.TPUStrategy, tf.distribute.experimental.TPUStrategy))
       decode_max_length = 10
       batch_size = 4
-      model = self._build_model(padded_decode, decode_max_length)
+      embedding_width = 16
+      model = self._build_model(
+          padded_decode, decode_max_length, embedding_width)
 
       @tf.function
       def step(inputs):
@@ -83,23 +86,32 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
         return tf.nest.map_structure(distribution.experimental_local_results,
                                      outputs)
 
-      fake_inputs = dict(
-          inputs=np.zeros((batch_size, decode_max_length), dtype=np.int32))
-      local_outputs = step(fake_inputs)
-      logging.info("local_outputs=%s", local_outputs)
-      self.assertEqual(local_outputs["outputs"][0].shape, (4, 10))
+      if embed:
+        fake_inputs = dict(
+            embedded_inputs=np.zeros(
+                (batch_size, decode_max_length, embedding_width),
+                dtype=np.float32),
+            input_masks=np.ones((batch_size, decode_max_length), dtype=np.bool))
+      else:
+        fake_inputs = dict(
+            inputs=np.zeros((batch_size, decode_max_length), dtype=np.int32))
 
-      fake_inputs = dict(
-          inputs=np.zeros((batch_size, decode_max_length), dtype=np.int32),
-          targets=np.zeros((batch_size, 8), dtype=np.int32))
-      local_outputs = step(fake_inputs)
-      logging.info("local_outputs=%s", local_outputs)
-      self.assertEqual(local_outputs[0].shape, (4, 8, 100))
+      if is_training:
+        fake_inputs["targets"] = np.zeros((batch_size, 8), dtype=np.int32)
+        local_outputs = step(fake_inputs)
+        logging.info("local_outputs=%s", local_outputs)
+        self.assertEqual(local_outputs[0].shape, (4, 8, 100))
+      else:
+        local_outputs = step(fake_inputs)
+        logging.info("local_outputs=%s", local_outputs)
+        self.assertEqual(local_outputs["outputs"][0].shape, (4, 10))
 
   @parameterized.parameters(True, False)
   def test_create_savedmodel(self, padded_decode):
     decode_max_length = 10
-    model = self._build_model(padded_decode, decode_max_length)
+    embedding_width = 16
+    model = self._build_model(
+        padded_decode, decode_max_length, embedding_width)
 
     class SaveModule(tf.Module):
 
@@ -111,14 +123,28 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
       def serve(self, inputs):
         return self.model.call(dict(inputs=inputs))
 
+      @tf.function
+      def embedded_serve(self, embedded_inputs, input_masks):
+        return self.model.call(
+            dict(embedded_inputs=embedded_inputs, input_masks=input_masks))
+
     save_module = SaveModule(model)
     if padded_decode:
-      tensor_shape = (4, 10)
+      tensor_shape = (4, decode_max_length)
+      embedded_tensor_shape = (4, decode_max_length, embedding_width)
     else:
       tensor_shape = (None, None)
+      embedded_tensor_shape = (None, None, embedding_width)
     signatures = dict(
         serving_default=save_module.serve.get_concrete_function(
-            tf.TensorSpec(shape=tensor_shape, dtype=tf.int32, name="inputs")))
+            tf.TensorSpec(shape=tensor_shape, dtype=tf.int32, name="inputs")),
+        embedded_serving=save_module.embedded_serve.get_concrete_function(
+            tf.TensorSpec(
+                shape=embedded_tensor_shape, dtype=tf.float32,
+                name="embedded_inputs"),
+            tf.TensorSpec(
+                shape=tensor_shape, dtype=tf.bool, name="input_masks"),
+            ))
     tf.saved_model.save(save_module, self.get_temp_dir(), signatures=signatures)
 
 

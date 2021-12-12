@@ -13,7 +13,16 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Training driver."""
+r"""Training driver.
+
+Commandline:
+python -m official.vision.beta.projects.assemblenet.trian \
+  --mode=train_and_eval --experiment=assemblenetplus_ucf101 \
+  --model_dir='YOUR MODEL SAVE GS BUCKET' \
+  --config_file=./official/vision/beta/projects/assemblenet/ \
+  --ucf101_assemblenet_plus_tpu.yaml \
+  --tpu=TPU_NAME
+"""
 
 from absl import app
 from absl import flags
@@ -32,6 +41,7 @@ from official.modeling import performance
 # pylint: disable=unused-import
 from official.vision.beta.projects.assemblenet.configs import assemblenet as asn_configs
 from official.vision.beta.projects.assemblenet.modeling import assemblenet as asn
+from official.vision.beta.projects.assemblenet.modeling import assemblenet_plus as asnp
 # pylint: enable=unused-import
 
 FLAGS = flags.FLAGS
@@ -53,18 +63,35 @@ def main(_):
                 f'{params.task.validation_data.feature_shape}')
 
   if 'assemblenet' in FLAGS.experiment:
-    if 'eval' in FLAGS.mode:
-      # Use the feature shape in validation_data for all jobs. The number of
-      # frames in train_data will be used to construct the Assemblenet model.
-      params.task.model.backbone.assemblenet.num_frames = params.task.validation_data.feature_shape[
-          0]
-      shape = params.task.validation_data.feature_shape
+    if 'plus' in FLAGS.experiment:
+      if 'eval' in FLAGS.mode:
+        # Use the feature shape in validation_data for all jobs. The number of
+        # frames in train_data will be used to construct the Assemblenet++
+        # model.
+        params.task.model.backbone.assemblenet_plus.num_frames = (
+            params.task.validation_data.feature_shape[0])
+        shape = params.task.validation_data.feature_shape
+      else:
+        params.task.model.backbone.assemblenet_plus.num_frames = (
+            params.task.train_data.feature_shape[0])
+        shape = params.task.train_data.feature_shape
+      logging.info('mode %r num_frames %r feature shape %r', FLAGS.mode,
+                   params.task.model.backbone.assemblenet_plus.num_frames,
+                   shape)
+
     else:
-      params.task.model.backbone.assemblenet.num_frames = params.task.train_data.feature_shape[
-          0]
-      shape = params.task.train_data.feature_shape
-    logging.info('mode %r num_frames %r feature shape %r', FLAGS.mode,
-                 params.task.model.backbone.assemblenet.num_frames, shape)
+      if 'eval' in FLAGS.mode:
+        # Use the feature shape in validation_data for all jobs. The number of
+        # frames in train_data will be used to construct the Assemblenet model.
+        params.task.model.backbone.assemblenet.num_frames = (
+            params.task.validation_data.feature_shape[0])
+        shape = params.task.validation_data.feature_shape
+      else:
+        params.task.model.backbone.assemblenet.num_frames = (
+            params.task.train_data.feature_shape[0])
+        shape = params.task.train_data.feature_shape
+      logging.info('mode %r num_frames %r feature shape %r', FLAGS.mode,
+                   params.task.model.backbone.assemblenet.num_frames, shape)
 
   # Sets mixed_precision policy. Using 'mixed_float16' or 'mixed_bfloat16'
   # can have significant impact on model speeds by utilizing float16 in case of
@@ -91,4 +118,5 @@ def main(_):
 
 if __name__ == '__main__':
   tfm_flags.define_flags()
+  flags.mark_flags_as_required(['experiment', 'mode', 'model_dir'])
   app.run(main)

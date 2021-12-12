@@ -58,7 +58,7 @@ class SegmentationHeadTest(parameterized.TestCase, tf.test.TestCase):
         decoder_max_level=decoder_max_level,
         num_decoder_filters=64)
 
-    logits = head(backbone_features, decoder_features)
+    logits = head((backbone_features, decoder_features))
 
     if level in decoder_features:
       self.assertAllEqual(logits.numpy().shape, [

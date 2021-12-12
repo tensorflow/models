@@ -41,6 +41,7 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
       kernel_size: int = 3,
       strides: int = 1,
       use_bias: bool = False,
+      use_explicit_padding: bool = False,
       activation: str = 'relu6',
       kernel_initializer: str = 'VarianceScaling',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
@@ -60,6 +61,9 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
       strides: An `int` of block stride. If greater than 1, this block will
         ultimately downsample the input.
       use_bias: If True, use bias in the convolution layer.
+      use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
+        inputs so that the output dimensions are the same as if 'SAME' padding
+        were used.
       activation: A `str` name of the activation function.
       kernel_initializer: A `str` for kernel initializer of convolutional
         layers.
@@ -79,6 +83,7 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
     self._strides = strides
     self._activation = activation
     self._use_bias = use_bias
+    self._use_explicit_padding = use_explicit_padding
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
@@ -87,6 +92,10 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
 
+    if use_explicit_padding and kernel_size > 1:
+      self._padding = 'valid'
+    else:
+      self._padding = 'same'
     if use_sync_bn:
       self._norm = tf.keras.layers.experimental.SyncBatchNormalization
     else:
@@ -102,6 +111,7 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
         'strides': self._strides,
         'kernel_size': self._kernel_size,
         'use_bias': self._use_bias,
+        'use_explicit_padding': self._use_explicit_padding,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
@@ -115,11 +125,14 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
     return dict(list(base_config.items()) + list(config.items()))
 
   def build(self, input_shape):
+    if self._use_explicit_padding and self._kernel_size > 1:
+      padding_size = nn_layers.get_padding_for_kernel_size(self._kernel_size)
+      self._pad = tf.keras.layers.ZeroPadding2D(padding_size)
     self._conv0 = tf.keras.layers.Conv2D(
         filters=self._filters,
         kernel_size=self._kernel_size,
         strides=self._strides,
-        padding='same',
+        padding=self._padding,
         use_bias=self._use_bias,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
@@ -135,6 +148,8 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
     super(Conv2DBNBlock, self).build(input_shape)
 
   def call(self, inputs, training=None):
+    if self._use_explicit_padding and self._kernel_size > 1:
+      inputs = self._pad(inputs)
     x = self._conv0(inputs)
     if self._use_normalization:
       x = self._norm0(x)
@@ -405,7 +420,8 @@ MNMultiAVG_BLOCK_SPECS = {
 # Similar to MobileNetMultiAVG and used for segmentation task.
 # Reduced the filters by a factor of 2 in the last block.
 MNMultiAVG_SEG_BLOCK_SPECS = {
-    'spec_name': 'MobileNetMultiAVGSeg',
+    'spec_name':
+        'MobileNetMultiAVGSeg',
     'block_spec_schema': [
         'block_fn', 'kernel_size', 'strides', 'filters', 'activation',
         'expand_ratio', 'use_normalization', 'use_bias', 'is_output'
@@ -428,7 +444,40 @@ MNMultiAVG_SEG_BLOCK_SPECS = {
         ('invertedbottleneck', 5, 1, 96, 'relu', 2., True, False, False),
         ('invertedbottleneck', 5, 1, 96, 'relu', 4., True, False, False),
         ('invertedbottleneck', 5, 1, 96, 'relu', 4., True, False, True),
-        ('convbn', 1, 1, 480, 'relu', None, True, False, False),
+        ('convbn', 1, 1, 448, 'relu', None, True, False, True),
+        ('gpooling', None, None, None, None, None, None, None, False),
+        # Remove bias and add batch norm for the last layer to support QAT
+        # and achieve slightly better accuracy.
+        ('convbn', 1, 1, 1280, 'relu', None, True, False, False),
+    ]
+}
+
+# Similar to MobileNetMultiMax and used for segmentation task.
+# Reduced the filters by a factor of 2 in the last block.
+MNMultiMAX_SEG_BLOCK_SPECS = {
+    'spec_name':
+        'MobileNetMultiMAXSeg',
+    'block_spec_schema': [
+        'block_fn', 'kernel_size', 'strides', 'filters', 'activation',
+        'expand_ratio', 'use_normalization', 'use_bias', 'is_output'
+    ],
+    'block_specs': [
+        ('convbn', 3, 2, 32, 'relu', None, True, False, False),
+        ('invertedbottleneck', 3, 2, 32, 'relu', 3., True, False, True),
+        ('invertedbottleneck', 5, 2, 64, 'relu', 6., True, False, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 2., True, False, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 2., True, False, True),
+        ('invertedbottleneck', 5, 2, 128, 'relu', 6., True, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 4., True, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., True, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., True, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 6., True, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., True, False, True),
+        ('invertedbottleneck', 3, 2, 160, 'relu', 6., True, False, False),
+        ('invertedbottleneck', 5, 1, 96, 'relu', 2., True, False, False),
+        ('invertedbottleneck', 3, 1, 96, 'relu', 4., True, False, False),
+        ('invertedbottleneck', 5, 1, 96, 'relu', 320.0 / 96, True, False, True),
+        ('convbn', 1, 1, 448, 'relu', None, True, False, True),
         ('gpooling', None, None, None, None, None, None, None, False),
         # Remove bias and add batch norm for the last layer to support QAT
         # and achieve slightly better accuracy.
@@ -445,6 +494,7 @@ SUPPORTED_SPECS_MAP = {
     'MobileNetMultiMAX': MNMultiMAX_BLOCK_SPECS,
     'MobileNetMultiAVG': MNMultiAVG_BLOCK_SPECS,
     'MobileNetMultiAVGSeg': MNMultiAVG_SEG_BLOCK_SPECS,
+    'MobileNetMultiMAXSeg': MNMultiMAX_SEG_BLOCK_SPECS,
 }
 
 
@@ -559,7 +609,7 @@ class MobileNet(tf.keras.Model):
     Args:
       model_id: A `str` of MobileNet version. The supported values are
         `MobileNetV1`, `MobileNetV2`, `MobileNetV3Large`, `MobileNetV3Small`,
-        and `MobileNetV3EdgeTPU`.
+        `MobileNetV3EdgeTPU`, `MobileNetMultiMAX` and `MobileNetMultiAVG`.
       filter_size_scale: A `float` of multiplier for the filters (number of
         channels) for all convolution ops. The value must be greater than zero.
         Typical usage will be to set this value in (0, 1) to reduce the number

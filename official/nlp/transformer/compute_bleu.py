@@ -24,6 +24,7 @@ import unicodedata
 
 from absl import app
 from absl import flags
+from absl import logging
 import six
 from six.moves import range
 import tensorflow as tf
@@ -109,11 +110,11 @@ def bleu_on_list(ref_lines, hyp_lines, case_sensitive=False):
 def main(unused_argv):
   if FLAGS.bleu_variant in ("both", "uncased"):
     score = bleu_wrapper(FLAGS.reference, FLAGS.translation, False)
-    tf.logging.info("Case-insensitive results: %f" % score)
+    logging.info("Case-insensitive results: %f", score)
 
   if FLAGS.bleu_variant in ("both", "cased"):
     score = bleu_wrapper(FLAGS.reference, FLAGS.translation, True)
-    tf.logging.info("Case-sensitive results: %f" % score)
+    logging.info("Case-sensitive results: %f", score)
 
 
 def define_compute_bleu_flags():
@@ -142,7 +143,6 @@ def define_compute_bleu_flags():
 
 
 if __name__ == "__main__":
-  tf.logging.set_verbosity(tf.logging.INFO)
   define_compute_bleu_flags()
   FLAGS = flags.FLAGS
   app.run(main)

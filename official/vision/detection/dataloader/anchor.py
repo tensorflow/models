@@ -21,13 +21,13 @@ from __future__ import print_function
 import collections
 
 import tensorflow as tf
-from official.vision import keras_cv
+from official.vision.beta.ops import iou_similarity
 from official.vision.detection.utils import box_utils
-from official.vision.detection.utils.object_detection import argmax_matcher
-from official.vision.detection.utils.object_detection import balanced_positive_negative_sampler
-from official.vision.detection.utils.object_detection import box_list
-from official.vision.detection.utils.object_detection import faster_rcnn_box_coder
-from official.vision.detection.utils.object_detection import target_assigner
+from official.vision.utils.object_detection import argmax_matcher
+from official.vision.utils.object_detection import balanced_positive_negative_sampler
+from official.vision.utils.object_detection import box_list
+from official.vision.utils.object_detection import faster_rcnn_box_coder
+from official.vision.utils.object_detection import target_assigner
 
 
 class Anchor(object):
@@ -135,7 +135,7 @@ class AnchorLabeler(object):
         upper-bound threshold to assign negative labels for anchors. An anchor
         with a score below the threshold is labeled negative.
     """
-    similarity_calc = keras_cv.ops.IouSimilarity()
+    similarity_calc = iou_similarity.IouSimilarity()
     matcher = argmax_matcher.ArgMaxMatcher(
         match_threshold,
         unmatched_threshold=unmatched_threshold,
@@ -341,7 +341,7 @@ class OlnAnchorLabeler(RpnAnchorLabeler):
         unmatched_threshold=unmatched_threshold,
         rpn_batch_size_per_im=rpn_batch_size_per_im,
         rpn_fg_fraction=rpn_fg_fraction)
-    similarity_calc = keras_cv.ops.IouSimilarity()
+    similarity_calc = iou_similarity.IouSimilarity()
     matcher = argmax_matcher.ArgMaxMatcher(
         match_threshold,
         unmatched_threshold=unmatched_threshold,

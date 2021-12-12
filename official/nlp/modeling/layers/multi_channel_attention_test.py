@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for nlp.nhnet.multi_channel_attention."""
+"""Tests for projects.nhnet.multi_channel_attention."""
 
 import numpy as np
 import tensorflow as tf

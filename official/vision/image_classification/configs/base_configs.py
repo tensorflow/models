@@ -14,17 +14,47 @@
 
 # Lint as: python3
 """Definitions for high level configuration groups.."""
-from typing import Any, List, Mapping, Optional
 
 import dataclasses
-
+from typing import Any, List, Mapping, Optional
 from official.core import config_definitions
 from official.modeling import hyperparams
-from official.modeling.hyperparams import config_definitions as legacy_cfg
 
-CallbacksConfig = legacy_cfg.CallbacksConfig
-TensorboardConfig = legacy_cfg.TensorboardConfig
 RuntimeConfig = config_definitions.RuntimeConfig
+
+
+@dataclasses.dataclass
+class TensorBoardConfig(hyperparams.Config):
+  """Configuration for TensorBoard.
+
+  Attributes:
+    track_lr: Whether or not to track the learning rate in TensorBoard. Defaults
+      to True.
+    write_model_weights: Whether or not to write the model weights as images in
+      TensorBoard. Defaults to False.
+  """
+  track_lr: bool = True
+  write_model_weights: bool = False
+
+
+@dataclasses.dataclass
+class CallbacksConfig(hyperparams.Config):
+  """Configuration for Callbacks.
+
+  Attributes:
+    enable_checkpoint_and_export: Whether or not to enable checkpoints as a
+      Callback. Defaults to True.
+    enable_backup_and_restore: Whether or not to add BackupAndRestore
+      callback. Defaults to True.
+    enable_tensorboard: Whether or not to enable TensorBoard as a Callback.
+      Defaults to True.
+    enable_time_history: Whether or not to enable TimeHistory Callbacks.
+      Defaults to True.
+  """
+  enable_checkpoint_and_export: bool = True
+  enable_backup_and_restore: bool = False
+  enable_tensorboard: bool = True
+  enable_time_history: bool = True
 
 
 @dataclasses.dataclass
@@ -74,7 +104,7 @@ class TrainConfig(hyperparams.Config):
       inferred based on the number of images and batch size. Defaults to None.
     callbacks: An instance of CallbacksConfig.
     metrics: An instance of MetricsConfig.
-    tensorboard: An instance of TensorboardConfig.
+    tensorboard: An instance of TensorBoardConfig.
     set_epoch_loop: Whether or not to set `steps_per_execution` to
       equal the number of training steps in `model.compile`. This reduces the
       number of callbacks run per epoch which significantly improves end-to-end
@@ -85,7 +115,7 @@ class TrainConfig(hyperparams.Config):
   steps: int = None
   callbacks: CallbacksConfig = CallbacksConfig()
   metrics: MetricsConfig = None
-  tensorboard: TensorboardConfig = TensorboardConfig()
+  tensorboard: TensorBoardConfig = TensorBoardConfig()
   time_history: TimeHistoryConfig = TimeHistoryConfig()
   set_epoch_loop: bool = False
 
