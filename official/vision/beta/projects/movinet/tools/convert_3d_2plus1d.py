@@ -30,7 +30,7 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     'model_id', 'a0', 'MoViNet model name.')
 flags.DEFINE_bool(
-    'causal', False, 'Run the model in causal mode.')
+    'causal', True, 'Run the model in causal mode.')
 flags.DEFINE_bool(
     'use_positional_encoding', False,
     'Whether to use positional encoding (only applied when causal=True).')
