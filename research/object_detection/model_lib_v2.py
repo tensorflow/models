@@ -211,8 +211,8 @@ def eager_train_step(detection_model,
                      labels,
                      unpad_groundtruth_tensors,
                      optimizer,
-                     training_step,
                      train_config,
+                     training_step,
                      add_regularization_loss=True,
                      clip_gradients_value=None,
                      num_replicas=1.0):
@@ -285,8 +285,8 @@ def eager_train_step(detection_model,
           float32 tensor containing the weights of the keypoint depth feature.
     unpad_groundtruth_tensors: A parameter passed to unstack_batch.
     optimizer: The training optimizer that will update the variables.
-    training_step: int, the training step number.
     train_config: The train_pb2.TrainConfig protobuf.
+    training_step: int, the training step number.
     add_regularization_loss: Whether or not to include the model's
       regularization loss in the losses dictionary.
     clip_gradients_value: If this is present, clip the gradients global norm
@@ -651,8 +651,8 @@ def train_loop(
               labels,
               unpad_groundtruth_tensors,
               optimizer,
-              training_step=global_step,
               train_config,
+              training_step=global_step,
               add_regularization_loss=add_regularization_loss,
               clip_gradients_value=clip_gradients_value,
               num_replicas=strategy.num_replicas_in_sync)
