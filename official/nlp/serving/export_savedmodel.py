@@ -60,6 +60,10 @@ def define_flags():
   flags.DEFINE_string(
       "function_keys", None,
       "A string key to retrieve pre-defined serving signatures.")
+  flags.DEFINE_string(
+      "module_key", None,
+      "For multi-task case, load the export module weights from a specific "
+      "checkpoint item.")
   flags.DEFINE_bool("convert_tpu", False, "")
   flags.DEFINE_multi_integer("allowed_batch_size", None,
                              "Allowed batch sizes for batching ops.")
@@ -116,7 +120,8 @@ def main(_):
       export_module,
       function_keys=[FLAGS.function_keys],
       checkpoint_path=FLAGS.checkpoint_path,
-      export_savedmodel_dir=FLAGS.export_savedmodel_dir)
+      export_savedmodel_dir=FLAGS.export_savedmodel_dir,
+      module_key=FLAGS.module_key)
 
   if FLAGS.convert_tpu:
     # pylint: disable=g-import-not-at-top

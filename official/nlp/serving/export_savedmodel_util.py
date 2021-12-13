@@ -26,7 +26,8 @@ def export(export_module: export_base.ExportModule,
            function_keys: Union[List[Text], Dict[Text, Text]],
            export_savedmodel_dir: Text,
            checkpoint_path: Optional[Text] = None,
-           timestamped: bool = True) -> Text:
+           timestamped: bool = True,
+           module_key: Optional[Text] = None) -> Text:
   """Exports to SavedModel format.
 
   Args:
@@ -37,6 +38,8 @@ def export(export_module: export_base.ExportModule,
     export_savedmodel_dir: Output saved model directory.
     checkpoint_path: Object-based checkpoint path or directory.
     timestamped: Whether to export the savedmodel to a timestamped directory.
+    module_key: Optional string to identify a checkpoint object to load for the
+      model in the export module.
 
   Returns:
     The savedmodel directory path.
@@ -44,5 +47,16 @@ def export(export_module: export_base.ExportModule,
   save_options = tf.saved_model.SaveOptions(function_aliases={
       'tpu_candidate': export_module.serve,
   })
-  return export_base.export(export_module, function_keys, export_savedmodel_dir,
-                            checkpoint_path, timestamped, save_options)
+  if module_key:
+    kwargs = {module_key: export_module.model}
+    checkpoint = tf.train.Checkpoint(**kwargs)
+  else:
+    checkpoint = None
+  return export_base.export(
+      export_module,
+      function_keys,
+      export_savedmodel_dir,
+      checkpoint_path,
+      timestamped,
+      save_options,
+      checkpoint=checkpoint)
