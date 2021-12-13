@@ -474,7 +474,7 @@ class Movinet(tf.keras.Model):
         if not (len(block.expand_filters) == len(block.kernel_sizes) ==
                 len(block.strides)):
           raise ValueError(
-              'Lenths of block parameters differ: {}, {}, {}'.format(
+              'Lengths of block parameters differ: {}, {}, {}'.format(
                   len(block.expand_filters),
                   len(block.kernel_sizes),
                   len(block.strides)))
