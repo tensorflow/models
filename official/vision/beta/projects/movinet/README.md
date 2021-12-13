@@ -300,6 +300,12 @@ non_streaming_prediction = tf.argmax(non_streaming_output, -1)
 This section outlines an example on how to export a model to run on mobile
 devices with [TF Lite](https://www.tensorflow.org/lite).
 
+[Optional] For streaming models, they are typically trained with
+`conv_type = 3d_2plus1d` for better training throughpouts. In order to achieve
+better inference performance on CPU, we need to convert the `3d_2plus1d`
+checkpoint to make it compatible with the `2plus1d` graph.
+You could achieve this by running `tools/convert_3d_2plus1d.py`.
+
 First, convert to [TF SavedModel](https://www.tensorflow.org/guide/saved_model)
 by running `export_saved_model.py`. For example, for `MoViNet-A0-Stream`, run:
 
