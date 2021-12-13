@@ -64,6 +64,48 @@ def bert_sentence_prediction() -> cfg.ExperimentConfig:
   return config
 
 
+@exp_factory.register_config_factory('bert/sentence_prediction_text')
+def bert_sentence_prediction_text() -> cfg.ExperimentConfig:
+  r"""BERT sentence prediction with raw text data.
+
+  Example: use tf.text and tfds as input with glue_mnli_text.yaml
+  """
+  config = cfg.ExperimentConfig(
+      task=sentence_prediction.SentencePredictionConfig(
+          train_data=sentence_prediction_dataloader
+          .SentencePredictionTextDataConfig(),
+          validation_data=sentence_prediction_dataloader
+          .SentencePredictionTextDataConfig(
+              is_training=False, drop_remainder=False)),
+      trainer=cfg.TrainerConfig(
+          optimizer_config=optimization.OptimizationConfig({
+              'optimizer': {
+                  'type': 'adamw',
+                  'adamw': {
+                      'weight_decay_rate':
+                          0.01,
+                      'exclude_from_weight_decay':
+                          ['LayerNorm', 'layer_norm', 'bias'],
+                  }
+              },
+              'learning_rate': {
+                  'type': 'polynomial',
+                  'polynomial': {
+                      'initial_learning_rate': 3e-5,
+                      'end_learning_rate': 0.0,
+                  }
+              },
+              'warmup': {
+                  'type': 'polynomial'
+              }
+          })),
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None'
+      ])
+  return config
+
+
 @exp_factory.register_config_factory('bert/squad')
 def bert_squad() -> cfg.ExperimentConfig:
   """BERT Squad V1/V2."""
