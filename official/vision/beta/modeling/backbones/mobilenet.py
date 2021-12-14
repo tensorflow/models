@@ -485,6 +485,45 @@ MNMultiMAX_SEG_BLOCK_SPECS = {
     ]
 }
 
+# A smaller MNV3Small, with reduced filters for the last few layers
+MNV3SmallReducedFilters = {
+    'spec_name':
+        'MobilenetV3SmallReducedFilters',
+    'block_spec_schema': [
+        'block_fn', 'kernel_size', 'strides', 'filters', 'activation',
+        'se_ratio', 'expand_ratio', 'use_normalization', 'use_bias', 'is_output'
+    ],
+    'block_specs': [
+        ('convbn', 3, 2, 16, 'hard_swish', None, None, True, False, False),
+        ('invertedbottleneck', 3, 2, 16, 'relu', 0.25, 1, None, False, True),
+        ('invertedbottleneck', 3, 2, 24, 'relu', None, 72. / 16, None, False,
+         False),
+        ('invertedbottleneck', 3, 1, 24, 'relu', None, 88. / 24, None, False,
+         True),
+        ('invertedbottleneck', 5, 2, 40, 'hard_swish', 0.25, 4, None, False,
+         False),
+        ('invertedbottleneck', 5, 1, 40, 'hard_swish', 0.25, 6, None, False,
+         False),
+        ('invertedbottleneck', 5, 1, 40, 'hard_swish', 0.25, 6, None, False,
+         False),
+        ('invertedbottleneck', 5, 1, 48, 'hard_swish', 0.25, 3, None, False,
+         False),
+        ('invertedbottleneck', 5, 1, 48, 'hard_swish', 0.25, 3, None, False,
+         True),
+        # Layers below are different from MobileNetV3Small and have
+        # half as many filters
+        ('invertedbottleneck', 5, 2, 48, 'hard_swish', 0.25, 3, None, False,
+         False),
+        ('invertedbottleneck', 5, 1, 48, 'hard_swish', 0.25, 6, None, False,
+         False),
+        ('invertedbottleneck', 5, 1, 48, 'hard_swish', 0.25, 6, None, False,
+         True),
+        ('convbn', 1, 1, 288, 'hard_swish', None, None, True, False, False),
+        ('gpooling', None, None, None, None, None, None, None, None, False),
+        ('convbn', 1, 1, 1024, 'hard_swish', None, None, False, True, False),
+    ]
+}
+
 SUPPORTED_SPECS_MAP = {
     'MobileNetV1': MNV1_BLOCK_SPECS,
     'MobileNetV2': MNV2_BLOCK_SPECS,
@@ -495,6 +534,7 @@ SUPPORTED_SPECS_MAP = {
     'MobileNetMultiAVG': MNMultiAVG_BLOCK_SPECS,
     'MobileNetMultiAVGSeg': MNMultiAVG_SEG_BLOCK_SPECS,
     'MobileNetMultiMAXSeg': MNMultiMAX_SEG_BLOCK_SPECS,
+    'MobileNetV3SmallReducedFilters': MNV3SmallReducedFilters,
 }
 
 
