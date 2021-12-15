@@ -68,7 +68,7 @@ Note that the dataset is large (~1TB).
 
 ### Preprocess the data
 
-Follow the instructions in [Data Preprocessing](data/preprocessing) to
+Follow the instructions in [Data Preprocessing](./preprocessing) to
 preprocess the Criteo Terabyte dataset.
 
 Data preprocessing steps are summarized below.
@@ -87,7 +87,8 @@ Categorical features:
     function such as modulus will suffice, i.e. feature_value % MAX_INDEX.
 
 The vocabulary sizes resulting from pre-processing are passed in to the model
-trainer using the model.vocab_sizes config.
+trainer using the model.vocab_sizes config. Note that provided values in sample below
+are only valid for Criteo Terabyte dataset.
 
 The full dataset is composed of 24 directories. Partition the data into training
 and eval sets, for example days 1-23 for training and day 24 for evaluation.
