@@ -17,6 +17,8 @@
 # Import libraries
 import tensorflow as tf
 
+from official.modeling import tf_utils
+
 EPSILON = 1e-5
 
 
@@ -86,4 +88,47 @@ class SegmentationLoss:
           tf.cast(tf.not_equal(top_k_losses, 0.0), tf.float32)) + EPSILON
       loss = tf.reduce_sum(top_k_losses) / normalizer
 
+    return loss
+
+
+def get_actual_mask_scores(logits, labels, ignore_label):
+  """Gets actual mask scores."""
+  _, height, width, num_classes = logits.get_shape().as_list()
+  batch_size = tf.shape(logits)[0]
+  logits = tf.stop_gradient(logits)
+  labels = tf.image.resize(
+      labels, (height, width),
+      method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  predicted_labels = tf.argmax(logits, -1, output_type=tf.int32)
+  flat_predictions = tf.reshape(predicted_labels, [batch_size, -1])
+  flat_labels = tf.cast(tf.reshape(labels, [batch_size, -1]), tf.int32)
+
+  one_hot_predictions = tf.one_hot(
+      flat_predictions, num_classes, on_value=True, off_value=False)
+  one_hot_labels = tf.one_hot(
+      flat_labels, num_classes, on_value=True, off_value=False)
+  keep_mask = tf.not_equal(flat_labels, ignore_label)
+  keep_mask = tf.expand_dims(keep_mask, 2)
+
+  overlap = tf.logical_and(one_hot_predictions, one_hot_labels)
+  overlap = tf.logical_and(overlap, keep_mask)
+  overlap = tf.reduce_sum(tf.cast(overlap, tf.float32), axis=1)
+  union = tf.logical_or(one_hot_predictions, one_hot_labels)
+  union = tf.logical_and(union, keep_mask)
+  union = tf.reduce_sum(tf.cast(union, tf.float32), axis=1)
+  actual_scores = tf.divide(overlap, tf.maximum(union, EPSILON))
+  return actual_scores
+
+
+class MaskScoringLoss:
+  """Mask Scoring loss."""
+
+  def __init__(self, ignore_label):
+    self._ignore_label = ignore_label
+    self._mse_loss = tf.keras.losses.MeanSquaredError(
+        reduction=tf.keras.losses.Reduction.NONE)
+
+  def __call__(self, predicted_scores, logits, labels):
+    actual_scores = get_actual_mask_scores(logits, labels, self._ignore_label)
+    loss = tf_utils.safe_mean(self._mse_loss(actual_scores, predicted_scores))
     return loss

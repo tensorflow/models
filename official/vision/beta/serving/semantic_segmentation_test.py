@@ -103,10 +103,10 @@ class SemanticSegmentationExportTest(tf.test.TestCase, parameterized.TestCase):
     else:
       processed_images = images
     expected_output = tf.image.resize(
-        module.model(processed_images, training=False), [112, 112],
+        module.model(processed_images, training=False)['logits'], [112, 112],
         method='bilinear')
     out = segmentation_fn(tf.constant(images))
-    self.assertAllClose(out['predicted_masks'].numpy(), expected_output.numpy())
+    self.assertAllClose(out['logits'].numpy(), expected_output.numpy())
 
 
 if __name__ == '__main__':

@@ -47,10 +47,10 @@ class SegmentationNetworkUNet3DTest(parameterized.TestCase, tf.test.TestCase):
     model = segmentation_model.SegmentationModel(
         backbone=backbone, decoder=decoder, head=head)
 
-    logits = model(inputs)
+    outputs = model(inputs)
     self.assertAllEqual(
         [2, input_size[0], input_size[0], input_size[1], num_classes],
-        logits.numpy().shape)
+        outputs['logits'].numpy().shape)
 
   def test_serialize_deserialize(self):
     """Validate the network can be serialized and deserialized."""

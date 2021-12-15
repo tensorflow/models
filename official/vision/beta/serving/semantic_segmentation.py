@@ -77,7 +77,8 @@ class SegmentationModule(export_base.ExportModule):
                     shape=self._input_image_size + [3], dtype=tf.float32),
                 parallel_iterations=32))
 
-    masks = self.inference_step(images)
-    masks = tf.image.resize(masks, self._input_image_size, method='bilinear')
+    outputs = self.inference_step(images)
+    outputs['logits'] = tf.image.resize(
+        outputs['logits'], self._input_image_size, method='bilinear')
 
-    return dict(predicted_masks=masks)
+    return outputs

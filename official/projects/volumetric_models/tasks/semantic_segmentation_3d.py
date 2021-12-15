@@ -198,6 +198,8 @@ class SemanticSegmentation3DTask(base_task.Task):
       # Casting output layer as float32 is necessary when mixed_precision is
       # mixed_float16 or mixed_bfloat16 to ensure output is casted as float32.
       outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
+
+      outputs = outputs['logits']
       if self.task_config.model.head.output_logits:
         outputs = tf.nn.softmax(outputs)
 
@@ -258,6 +260,7 @@ class SemanticSegmentation3DTask(base_task.Task):
 
     outputs = self.inference_step(features, model)
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
+    outputs = outputs['logits']
     if self.task_config.model.head.output_logits:
       outputs = tf.nn.softmax(outputs)
 
@@ -268,8 +271,8 @@ class SemanticSegmentation3DTask(base_task.Task):
     # Compute dice score metrics on CPU.
     for metric in self.metrics:
       labels = tf.cast(labels, tf.float32)
-      outputs = tf.cast(outputs, tf.float32)
-      logs.update({metric.name: (labels, outputs)})
+      logits = tf.cast(outputs, tf.float32)
+      logs.update({metric.name: (labels, logits)})
 
     return logs
 
