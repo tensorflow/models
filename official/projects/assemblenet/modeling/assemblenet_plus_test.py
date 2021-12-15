@@ -18,8 +18,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.projects.assemblenet.configs import assemblenet as asn_config
-from official.vision.beta.projects.assemblenet.modeling import assemblenet_plus as asnp
+from official.projects.assemblenet.configs import assemblenet as asn_config
+from official.projects.assemblenet.modeling import assemblenet_plus as asnp
 
 
 class AssembleNetPlusTest(parameterized.TestCase, tf.test.TestCase):

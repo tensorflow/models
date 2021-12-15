@@ -17,8 +17,8 @@ from absl.testing import parameterized
 import tensorflow as tf
 from official.core import config_definitions as cfg
 from official.core import exp_factory
+from official.projects.assemblenet.configs import assemblenet
 from official.vision.beta.configs import video_classification as exp_cfg
-from official.vision.beta.projects.assemblenet.configs import assemblenet
 
 
 class AssemblenetTest(tf.test.TestCase, parameterized.TestCase):

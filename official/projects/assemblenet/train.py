@@ -39,9 +39,9 @@ from official.core import train_lib
 from official.core import train_utils
 from official.modeling import performance
 # pylint: disable=unused-import
-from official.vision.beta.projects.assemblenet.configs import assemblenet as asn_configs
-from official.vision.beta.projects.assemblenet.modeling import assemblenet as asn
-from official.vision.beta.projects.assemblenet.modeling import assemblenet_plus as asnp
+from official.projects.assemblenet.configs import assemblenet as asn_configs
+from official.projects.assemblenet.modeling import assemblenet as asn
+from official.projects.assemblenet.modeling import assemblenet_plus as asnp
 # pylint: enable=unused-import
 
 FLAGS = flags.FLAGS
