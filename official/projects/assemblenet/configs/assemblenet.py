@@ -35,14 +35,14 @@ used for each layer in the inverted bottleneck modules.
 The structure_weights specify the learned connection weights.
 """
 import dataclasses
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.vision.beta.configs import backbones_3d
 from official.vision.beta.configs import common
-from official.vision.beta.configs import video_classification
+from official.vision.beta.configs.google import video_classification
 
 
 @dataclasses.dataclass

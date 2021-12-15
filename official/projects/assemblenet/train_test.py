@@ -21,9 +21,8 @@ from absl import flags
 from absl import logging
 from absl.testing import flagsaver
 import tensorflow as tf
-
+from official.projects.assemblenet import train as train_lib
 from official.vision.beta.dataloaders import tfexample_utils
-from official.vision.beta.projects.assemblenet import train as train_lib
 
 FLAGS = flags.FLAGS
 

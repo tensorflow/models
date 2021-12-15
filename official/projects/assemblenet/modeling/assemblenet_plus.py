@@ -54,18 +54,18 @@ necessary. This is to run this on TPU efficiently.
 """
 
 import functools
-from typing import Any, Dict, Mapping, List, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 from absl import logging
 import numpy as np
 import tensorflow as tf
 
 from official.modeling import hyperparams
+from official.projects.assemblenet.configs import assemblenet as cfg
+from official.projects.assemblenet.modeling import assemblenet as asn
+from official.projects.assemblenet.modeling import rep_flow_2d_layer as rf
 from official.vision.beta.modeling import factory_3d as model_factory
 from official.vision.beta.modeling.backbones import factory as backbone_factory
-from official.vision.beta.projects.assemblenet.configs import assemblenet as cfg
-from official.vision.beta.projects.assemblenet.modeling import assemblenet as asn
-from official.vision.beta.projects.assemblenet.modeling import rep_flow_2d_layer as rf
 
 layers = tf.keras.layers
 
