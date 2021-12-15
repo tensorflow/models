@@ -104,7 +104,8 @@ class SemanticSegmentationExportTest(tf.test.TestCase, parameterized.TestCase):
     # outputs equal.
     expected_output = module.model(image_tensor, training=False)
     out = segmentation_fn(tf.constant(images))
-    self.assertAllClose(out['logits'].numpy(), expected_output.numpy())
+    self.assertAllClose(out['logits'].numpy(),
+                        expected_output['logits'].numpy())
 
 
 if __name__ == '__main__':

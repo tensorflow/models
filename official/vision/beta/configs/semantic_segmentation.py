@@ -76,6 +76,16 @@ class SegmentationHead(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class MaskScoringHead(hyperparams.Config):
+  """Mask Scoring head config."""
+  num_convs: int = 4
+  num_filters: int = 128
+  fc_input_size: List[int] = dataclasses.field(default_factory=list)
+  num_fcs: int = 2
+  fc_dims: int = 1024
+
+
+@dataclasses.dataclass
 class SemanticSegmentationModel(hyperparams.Config):
   """Semantic segmentation model config."""
   num_classes: int = 0
@@ -86,6 +96,7 @@ class SemanticSegmentationModel(hyperparams.Config):
   backbone: backbones.Backbone = backbones.Backbone(
       type='resnet', resnet=backbones.ResNet())
   decoder: decoders.Decoder = decoders.Decoder(type='identity')
+  mask_scoring_head: Optional[MaskScoringHead] = None
   norm_activation: common.NormActivation = common.NormActivation()
 
 
