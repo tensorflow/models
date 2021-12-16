@@ -61,8 +61,8 @@ if project_name == 'tf-models-nightly':
   install_requires.append('tf-nightly')
   install_requires.append('tensorflow-text-nightly')
 else:
-  install_requires.append('tensorflow>=2.7.0')
-  install_requires.append('tensorflow-text>=2.7.0')
+  install_requires.append(f'tensorflow~={version}')
+  install_requires.append(f'tensorflow-text~={version}')
 
 print('install_requires: ', install_requires)
 print('dependency_links: ', dependency_links)
