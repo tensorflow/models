@@ -46,6 +46,7 @@ from official.nlp.modeling.layers.spectral_normalization import *
 from official.nlp.modeling.layers.talking_heads_attention import TalkingHeadsAttention
 from official.nlp.modeling.layers.text_layers import BertPackInputs
 from official.nlp.modeling.layers.text_layers import BertTokenizer
+from official.nlp.modeling.layers.text_layers import FastWordpieceBertTokenizer
 from official.nlp.modeling.layers.text_layers import SentencepieceTokenizer
 from official.nlp.modeling.layers.tn_transformer_expand_condense import TNTransformerExpandCondense
 from official.nlp.modeling.layers.transformer import *
