@@ -13,18 +13,22 @@
 # limitations under the License.
 
 """Keras Layers for BERT-specific preprocessing."""
+# pylint: disable=g-import-not-at-top
 from typing import Any, Dict, List, Optional, Union
 
 from absl import logging
 import tensorflow as tf
 
 try:
-  import tensorflow_text as text  # pylint: disable=g-import-not-at-top
+  import tensorflow_text as text
+  from tensorflow_text.python.ops import bert_tokenizer
 except ImportError:
   text = None
+  bert_tokenizer = None
 except tf.errors.NotFoundError as e:
   logging.warn("Encountered error when importing tensorflow_text: %s", e)
   text = None
+  bert_tokenizer = None
 
 
 def _check_if_tf_text_installed():
@@ -587,3 +591,139 @@ class BertPackInputs(tf.keras.layers.Layer):
     return dict(input_word_ids=_reshape(input_word_ids),
                 input_mask=_reshape(input_mask),
                 input_type_ids=_reshape(input_type_ids))
+
+
+class FastWordpieceBertTokenizer(tf.keras.layers.Layer):
+  """A bert tokenizer keras layer using text.FastWordpieceTokenizer.
+
+  See details: "Fast WordPiece Tokenization" (https://arxiv.org/abs/2012.15524)
+  """
+
+  def __init__(self,
+               *,
+               vocab_file: str,
+               lower_case: bool,
+               tokenize_with_offsets: bool = False,
+               **kwargs):
+    """Initializes a FastWordpieceBertTokenizer layer.
+
+    Args:
+      vocab_file: A Python string with the path of the vocabulary file. This is
+        a text file with newline-separated wordpiece tokens. This layer loads
+        a list of tokens from it to create text.FastWordpieceTokenizer.
+      lower_case: A Python boolean forwarded to text.BasicTokenizer. If true,
+        input text is converted to lower case (where applicable) before
+        tokenization. This must be set to match the way in which the vocab_file
+        was created.
+      tokenize_with_offsets: A Python boolean. If true, this layer calls
+        FastWordpieceTokenizer.tokenize_with_offsets() instead of plain
+        .tokenize() and outputs a triple of (tokens, start_offsets,
+        limit_offsets) insead of just tokens.
+      **kwargs: standard arguments to Layer().
+    """
+    super().__init__(**kwargs)
+    logging.info("Initialize a FastWordpieceBertTokenizer.")
+    self.tokenize_with_offsets = tokenize_with_offsets
+    self._basic_tokenizer = bert_tokenizer.BasicTokenizer(lower_case=lower_case)
+
+    # Read the vocab file into a list of tokens to create `fast_wp_tokenizer`.
+    self._vocab = [line.rstrip() for line in tf.io.gfile.GFile(vocab_file)]
+    self._fast_wp_tokenizer = text.FastWordpieceTokenizer(
+        vocab=self._vocab, token_out_type=tf.int32, no_pretokenization=True)
+    self._special_tokens_dict = self._create_special_tokens_dict()
+
+  @property
+  def vocab_size(self):
+    return len(self._vocab)
+
+  def get_config(self):
+    # Skip in tf.saved_model.save(); fail if called direcly.
+    # We cannot just put the original, user-supplied vocab file name into
+    # the config, because the path has to change as the SavedModel is copied
+    # around.
+    raise NotImplementedError("Not implemented yet.")
+
+  def get_special_tokens_dict(self):
+    """Returns dict of token ids, keyed by standard names for their purpose.
+
+    Returns:
+      A dict from Python strings to Python integers. Each key is a standard
+      name for a special token describing its use. (For example, "padding_id"
+      is what BERT traditionally calls "[PAD]" but others may call "<pad>".)
+      The corresponding value is the integer token id. If a special token
+      is not found, its entry is omitted from the dict.
+
+      The supported keys and tokens are:
+        * start_of_sequence_id: looked up from "[CLS]"
+        * end_of_segment_id: looked up from "[SEP]"
+        * padding_id: looked up form "[PAD]"
+        * mask_id: looked up from "[MASK]"
+        * vocab_size: one past the largest token id used
+    """
+    return self._special_tokens_dict
+
+  def _create_special_tokens_dict(self):
+    """Creates dict of token ids, keyed by standard names for their purpose."""
+    special_tokens = {"vocab_size": self.vocab_size}
+
+    def add_special_token(key, token):
+      try:
+        token_id = self._vocab.index(token)
+        special_tokens[key] = token_id
+      except ValueError:
+        # Similar as nlp.modeling.layers.BertTokenizer, if a special token
+        # is not found, its entry is omitted from the dict.
+        logging.warning("Could not find %s as token \"%s\" in vocab file", key,
+                        token)
+
+    add_special_token("start_of_sequence_id", "[CLS]")
+    add_special_token("end_of_segment_id", "[SEP]")
+    add_special_token("padding_id", "[PAD]")
+    add_special_token("mask_id", "[MASK]")
+    return special_tokens
+
+  def _tokenize_with_offsets(self, text_input: tf.Tensor):
+    tokens, begin, _ = self._basic_tokenizer.tokenize_with_offsets(text_input)
+    wordpieces, wp_begin, wp_end = (
+        self._fast_wp_tokenizer.tokenize_with_offsets(tokens))
+    begin_expanded = tf.expand_dims(begin, axis=2)
+    final_begin = begin_expanded + wp_begin
+    final_end = begin_expanded + wp_end
+    return wordpieces, final_begin, final_end
+
+  def _tokenize(self, text_input: tf.Tensor):
+    tokens = self._basic_tokenizer.tokenize(text_input)
+    return self._fast_wp_tokenizer.tokenize(tokens)
+
+  def call(self, inputs: tf.Tensor):
+    """Calls text.BertTokenizer on inputs.
+
+    Args:
+      inputs: A string Tensor of shape [batch_size].
+
+    Returns:
+      One or three of RaggedTensors if tokenize_with_offsets is False or True,
+      respectively. These are
+      tokens: A RaggedTensor of shape [batch_size, (words), (pieces_per_word)]
+        and type int32. tokens[i,j,k] contains the k-th wordpiece of the
+        j-th word in the i-th input.
+      start_offsets, limit_offsets: If tokenize_with_offsets is True,
+        RaggedTensors of type int64 with the same indices as tokens.
+        Element [i,j,k] contains the byte offset at the start, or past the
+        end, resp., for the k-th wordpiece of the j-th word in the i-th input.
+    """
+    # Prepare to reshape the result to work around broken shape inference.
+    batch_size = tf.shape(inputs)[0]
+
+    def _reshape(rt):
+      values = rt.values
+      row_splits = rt.row_splits
+      row_splits = tf.reshape(row_splits, [batch_size + 1])
+      return tf.RaggedTensor.from_row_splits(values, row_splits)
+
+    if self.tokenize_with_offsets:
+      tokens, start_offsets, limit_offsets = self._tokenize_with_offsets(inputs)
+      return _reshape(tokens), _reshape(start_offsets), _reshape(limit_offsets)
+    else:
+      tokens = self._tokenize(inputs)
+      return _reshape(tokens)
