@@ -119,6 +119,7 @@ class RetinaNetTask(base_task.Task):
         dtype=params.dtype,
         match_threshold=params.parser.match_threshold,
         unmatched_threshold=params.parser.unmatched_threshold,
+        aug_type=params.parser.aug_type,
         aug_rand_hflip=params.parser.aug_rand_hflip,
         aug_scale_min=params.parser.aug_scale_min,
         aug_scale_max=params.parser.aug_scale_max,

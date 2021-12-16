@@ -55,9 +55,14 @@ class Parser(hyperparams.Config):
   aug_rand_hflip: bool = False
   aug_scale_min: float = 1.0
   aug_scale_max: float = 1.0
-  aug_policy: Optional[str] = None
   skip_crowd_during_training: bool = True
   max_num_instances: int = 100
+  # Can choose AutoAugment and RandAugment.
+  # TODO(b/205346436) Support RandAugment.
+  aug_type: Optional[common.Augmentation] = None
+
+  # Keep for backward compatibility. Not used.
+  aug_policy: Optional[str] = None
 
 
 @dataclasses.dataclass
