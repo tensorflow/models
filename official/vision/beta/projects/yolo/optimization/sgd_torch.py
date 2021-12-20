@@ -302,6 +302,7 @@ class SGDTorch(tf.keras.optimizers.Optimizer):
         "decay": self._initial_decay,
         "momentum": self._serialize_hyperparameter("momentum"),
         "momentum_start": self._serialize_hyperparameter("momentum_start"),
+        "weight_decay": self._serialize_hyperparameter("weight_decay"),
         "warmup_steps": self._serialize_hyperparameter("warmup_steps"),
         "nesterov": self.nesterov,
     })

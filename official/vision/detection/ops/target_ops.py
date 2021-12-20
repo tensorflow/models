@@ -22,7 +22,7 @@ import tensorflow as tf
 
 from official.vision.detection.ops import spatial_transform_ops
 from official.vision.detection.utils import box_utils
-from official.vision.detection.utils.object_detection import balanced_positive_negative_sampler
+from official.vision.utils.object_detection import balanced_positive_negative_sampler
 
 
 def box_matching(boxes, gt_boxes, gt_classes):

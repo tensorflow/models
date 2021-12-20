@@ -22,6 +22,7 @@ from absl import logging
 import tensorflow as tf
 
 from official.modeling import hyperparams
+from official.modeling import tf_utils
 from official.vision.beta.modeling.decoders import factory
 from official.vision.beta.ops import spatial_transform_ops
 
@@ -165,12 +166,7 @@ class NASFPN(tf.keras.Model):
         'momentum': self._config_dict['norm_momentum'],
         'epsilon': self._config_dict['norm_epsilon'],
     }
-    if activation == 'relu':
-      self._activation = tf.nn.relu
-    elif activation == 'swish':
-      self._activation = tf.nn.swish
-    else:
-      raise ValueError('Activation {} not implemented.'.format(activation))
+    self._activation = tf_utils.get_activation(activation)
 
     # Gets input feature pyramid from backbone.
     inputs = self._build_input_pyramid(input_specs, min_level)
@@ -238,7 +234,11 @@ class NASFPN(tf.keras.Model):
     # dtype mismatch when one input (by default float32 dtype) does not meet all
     # the above conditions and is output unchanged, while other inputs are
     # processed to have different dtype, e.g., using bfloat16 on TPU.
-    return tf.cast(x, dtype=tf.keras.layers.Layer().dtype_policy.compute_dtype)
+    compute_dtype = tf.keras.layers.Layer().dtype_policy.compute_dtype
+    if (compute_dtype is not None) and (x.dtype != compute_dtype):
+      return tf.cast(x, dtype=compute_dtype)
+    else:
+      return x
 
   def _global_attention(self, feat0, feat1):
     m = tf.math.reduce_max(feat0, axis=[1, 2], keepdims=True)

@@ -1,0 +1,25 @@
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+
+task:
+  init_checkpoint: 'gs://cloud-tpu-checkpoints/vision-2.0/resnet50_imagenet/ckpt-28080'
+  annotation_file: 'coco/instances_val2017.json'
+  train_data:
+    global_batch_size: 64
+  validation_data:
+    global_batch_size: 8
+
+trainer:
+  train_steps: 67500
+  optimizer_config:
+    learning_rate:
+      type: 'stepwise'
+      stepwise:
+        boundaries: [45000, 60000]
+        values: [0.12, 0.012, 0.0012]
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 500
+        warmup_learning_rate: 0.0067

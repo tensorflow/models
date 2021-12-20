@@ -56,4 +56,4 @@ class SegmentationModule(export_base.ExportModule):
     outputs = self.inference_step(images)
     output_key = 'logits' if self.params.task.model.head.output_logits else 'probs'
 
-    return {output_key: outputs}
+    return {output_key: outputs['logits']}

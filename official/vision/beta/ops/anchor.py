@@ -24,9 +24,9 @@ from official.vision.beta.ops import anchor_generator
 from official.vision.beta.ops import box_matcher
 from official.vision.beta.ops import iou_similarity
 from official.vision.beta.ops import target_gather
-from official.vision.detection.utils.object_detection import balanced_positive_negative_sampler
-from official.vision.detection.utils.object_detection import box_list
-from official.vision.detection.utils.object_detection import faster_rcnn_box_coder
+from official.vision.utils.object_detection import balanced_positive_negative_sampler
+from official.vision.utils.object_detection import box_list
+from official.vision.utils.object_detection import faster_rcnn_box_coder
 
 
 class Anchor(object):

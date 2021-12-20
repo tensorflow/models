@@ -25,7 +25,11 @@ class TestModule(export_base.ExportModule):
 
   @tf.function
   def serve(self, inputs: tf.Tensor) -> Mapping[Text, tf.Tensor]:
-    return {'outputs': self.inference_step(inputs)}
+    x = inputs if self.preprocessor is None else self.preprocessor(
+        inputs=inputs)
+    x = self.inference_step(x)
+    x = self.postprocessor(x) if self.postprocessor else x
+    return {'outputs': x}
 
   def get_inference_signatures(
       self, function_keys: Dict[Text, Text]) -> Mapping[Text, Any]:
@@ -82,6 +86,47 @@ class ExportBaseTest(tf.test.TestCase):
     imported = tf.saved_model.load(export_dir)
     output = imported.signatures['foo'](inputs)
     self.assertAllClose(output['outputs'].numpy(), expected_output.numpy())
+
+  def test_processors(self):
+    model = tf.Module()
+    inputs = tf.zeros((), tf.float32)
+
+    def _inference_step(inputs, model):
+      del model
+      return inputs + 1.0
+
+    def _preprocessor(inputs):
+      print(inputs)
+      return inputs + 0.1
+
+    module = TestModule(
+        params=None,
+        model=model,
+        inference_step=_inference_step,
+        preprocessor=_preprocessor)
+    output = module.serve(inputs)
+    self.assertAllClose(output['outputs'].numpy(), 1.1)
+
+    class _PostProcessor(tf.Module):
+
+      def __call__(self, inputs):
+        return inputs + 0.01
+
+    module = TestModule(
+        params=None,
+        model=model,
+        inference_step=_inference_step,
+        preprocessor=_preprocessor,
+        postprocessor=_PostProcessor())
+    output = module.serve(inputs)
+    self.assertAllClose(output['outputs'].numpy(), 1.11)
+
+  def test_get_timestamped_export_dir(self):
+    export_dir = self.get_temp_dir()
+    timed_dir = export_base.get_timestamped_export_dir(
+        export_dir_base=export_dir)
+    self.assertFalse(tf.io.gfile.exists(timed_dir))
+    self.assertIn(export_dir, str(timed_dir))
 
 
 if __name__ == '__main__':

@@ -19,6 +19,8 @@ import tensorflow as tf
 
 from official.modeling import hyperparams
 from official.nlp.configs import encoders
+from official.nlp.modeling import networks
+from official.nlp.projects.teams import teams
 
 
 class EncodersTest(tf.test.TestCase):
@@ -36,6 +38,14 @@ class EncodersTest(tf.test.TestCase):
     retored_encoder = encoders.build_encoder(retored_cfg)
     status = tf.train.Checkpoint(encoder=retored_encoder).restore(ckpt_path)
     status.assert_consumed()
+
+  def test_build_teams(self):
+    config = encoders.EncoderConfig(
+        type="any", any=teams.TeamsEncoderConfig(num_layers=1))
+    encoder = encoders.build_encoder(config)
+    self.assertIsInstance(encoder, networks.EncoderScaffold)
+    self.assertIsInstance(encoder.embedding_network,
+                          networks.PackedSequenceEmbedding)
 
 
 if __name__ == "__main__":

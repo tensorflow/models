@@ -28,6 +28,7 @@ class TensorflowModelsTest(tf.test.TestCase):
   def testNLPImport(self):
     _ = tfm.nlp.layers.TransformerEncoderBlock(
         num_attention_heads=2, inner_dim=10, inner_activation='relu')
+    _ = tfm.nlp.tasks.TaggingTask(params=tfm.nlp.tasks.TaggingConfig())
 
   def testCommonImports(self):
     _ = tfm.hyperparams.Config()

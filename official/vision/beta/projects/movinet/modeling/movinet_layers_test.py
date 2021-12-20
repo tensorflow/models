@@ -338,7 +338,7 @@ class MovinetLayersTest(parameterized.TestCase, tf.test.TestCase):
       predicted = tf.concat(predicted, axis=1)
 
       self.assertEqual(predicted.shape, expected.shape)
-      self.assertAllClose(predicted, expected)
+      self.assertAllClose(predicted, expected, atol=1e-4)
 
       self.assertAllClose(
           predicted,
@@ -349,7 +349,8 @@ class MovinetLayersTest(parameterized.TestCase, tf.test.TestCase):
             [[[3., 3., 3.]],
              [[3., 3., 3.]]],
             [[[4., 4., 4.]],
-             [[4., 4., 4.]]]]])
+             [[4., 4., 4.]]]]],
+          atol=1e-4)
 
   def test_stream_movinet_block(self):
     block = movinet_layers.MovinetBlock(

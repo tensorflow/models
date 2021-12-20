@@ -212,6 +212,8 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
   gt_annotations = []
   num_batches = len(groundtruths['source_id'])
   for i in range(num_batches):
+    logging.info(
+        'convert_groundtruths_to_coco_dataset: Processing annotation %d', i)
     max_num_instances = groundtruths['classes'][i].shape[1]
     batch_size = groundtruths['source_id'][i].shape[0]
     for j in range(batch_size):
@@ -259,6 +261,10 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
           np_mask[np_mask > 0] = 255
           encoded_mask = mask_api.encode(np.asfortranarray(np_mask))
           ann['segmentation'] = encoded_mask
+          # Ensure the content of `counts` is JSON serializable string.
+          if 'counts' in ann['segmentation']:
+            ann['segmentation']['counts'] = six.ensure_str(
+                ann['segmentation']['counts'])
           if 'areas' not in groundtruths:
             ann['area'] = mask_api.area(encoded_mask)
         gt_annotations.append(ann)
@@ -283,11 +289,13 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
 class COCOGroundtruthGenerator:
   """Generates the groundtruth annotations from a single example."""
 
-  def __init__(self, file_pattern, file_type, num_examples, include_mask):
+  def __init__(self, file_pattern, file_type, num_examples, include_mask,
+               regenerate_source_id=False):
     self._file_pattern = file_pattern
     self._num_examples = num_examples
     self._include_mask = include_mask
     self._dataset_fn = dataset_fn.pick_dataset_fn(file_type)
+    self._regenerate_source_id = regenerate_source_id
 
   def _parse_single_example(self, example):
     """Parses a single serialized tf.Example proto.
@@ -312,16 +320,21 @@ class COCOGroundtruthGenerator:
           mask of each instance.
     """
     decoder = tf_example_decoder.TfExampleDecoder(
-        include_mask=self._include_mask)
+        include_mask=self._include_mask,
+        regenerate_source_id=self._regenerate_source_id)
     decoded_tensors = decoder.decode(example)
 
     image = decoded_tensors['image']
     image_size = tf.shape(image)[0:2]
     boxes = box_ops.denormalize_boxes(
         decoded_tensors['groundtruth_boxes'], image_size)
+
+    source_id = decoded_tensors['source_id']
+    if source_id.dtype is tf.string:
+      source_id = tf.strings.to_number(source_id, out_type=tf.int64)
+
     groundtruths = {
-        'source_id': tf.strings.to_number(
-            decoded_tensors['source_id'], out_type=tf.int64),
+        'source_id': source_id,
         'height': decoded_tensors['height'],
         'width': decoded_tensors['width'],
         'num_detections': tf.shape(decoded_tensors['groundtruth_classes'])[0],
@@ -341,9 +354,10 @@ class COCOGroundtruthGenerator:
     dataset = tf.data.Dataset.list_files(self._file_pattern, shuffle=False)
     dataset = dataset.interleave(
         map_func=lambda filename: self._dataset_fn(filename).prefetch(1),
-        cycle_length=12,
+        cycle_length=None,
         num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
+    dataset = dataset.take(self._num_examples)
     dataset = dataset.map(self._parse_single_example,
                           num_parallel_calls=tf.data.experimental.AUTOTUNE)
     dataset = dataset.batch(1, drop_remainder=False)
@@ -351,18 +365,18 @@ class COCOGroundtruthGenerator:
     return dataset
 
   def __call__(self):
-    for groundtruth_result in self._build_pipeline():
-      yield groundtruth_result
+    return self._build_pipeline()
 
 
 def scan_and_generator_annotation_file(file_pattern: str,
                                        file_type: str,
                                        num_samples: int,
                                        include_mask: bool,
-                                       annotation_file: str):
+                                       annotation_file: str,
+                                       regenerate_source_id: bool = False):
   """Scans and generate the COCO-style annotation JSON file given a dataset."""
   groundtruth_generator = COCOGroundtruthGenerator(
-      file_pattern, file_type, num_samples, include_mask)
+      file_pattern, file_type, num_samples, include_mask, regenerate_source_id)
   generate_annotation_file(groundtruth_generator, annotation_file)
 
 
@@ -371,7 +385,8 @@ def generate_annotation_file(groundtruth_generator,
   """Generates COCO-style annotation JSON file given a groundtruth generator."""
   groundtruths = {}
   logging.info('Loading groundtruth annotations from dataset to memory...')
-  for groundtruth in groundtruth_generator():
+  for i, groundtruth in enumerate(groundtruth_generator()):
+    logging.info('generate_annotation_file: Processing annotation %d', i)
     for k, v in six.iteritems(groundtruth):
       if k not in groundtruths:
         groundtruths[k] = [v]

@@ -1,0 +1,53 @@
+# MobileNetV3-large_1.0 ImageNet classification: 74.96% top-1.
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  model:
+    num_classes: 1001
+    input_size: [224, 224, 3]
+    backbone:
+      type: 'mobilenet'
+      mobilenet:
+        model_id: 'MobileNetV3Large'
+        filter_size_scale: 1.0
+    dropout_rate: 0.2
+  losses:
+    l2_weight_decay: 0.00001
+    one_hot: true
+    label_smoothing: 0.1
+  train_data:
+    input_path: 'imagenet-2012-tfrecord/train*'
+    is_training: true
+    global_batch_size: 4096
+    dtype: 'bfloat16'
+    # Enables Inception-style pre-processing.
+    decode_jpeg_only: false
+  validation_data:
+    input_path: 'imagenet-2012-tfrecord/valid*'
+    is_training: false
+    global_batch_size: 4096
+    dtype: 'bfloat16'
+    drop_remainder: false
+    # Enables Inception-style pre-processing.
+    decode_jpeg_only: false
+trainer:
+  train_steps: 156000  # 500 epochs
+  validation_steps: 13
+  validation_interval: 312
+  steps_per_loop: 312  # NUM_EXAMPLES (1281167) // global_batch_size
+  summary_interval: 312
+  checkpoint_interval: 312
+  optimizer_config:
+    learning_rate:
+      type: 'cosine'
+      cosine:
+        alpha: 0.0
+        decay_steps: 156000
+        initial_learning_rate: 0.5
+        name: CosineDecay
+        offset: 0
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 5000

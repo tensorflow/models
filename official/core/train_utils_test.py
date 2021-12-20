@@ -13,14 +13,37 @@
 # limitations under the License.
 
 """Tests for official.core.train_utils."""
-
 import os
+import pprint
 
 import numpy as np
 import tensorflow as tf
 
+from official.core import exp_factory
 from official.core import test_utils
 from official.core import train_utils
+from official.modeling import hyperparams
+
+
+@exp_factory.register_config_factory('foo')
+def foo():
+  """Multitask experiment for test."""
+  experiment_config = hyperparams.Config(
+      default_params={
+          'runtime': {
+              'tpu': 'fake',
+          },
+          'task': {
+              'model': {
+                  'model_id': 'bar',
+              },
+          },
+          'trainer': {
+              'train_steps': -1,
+              'validation_steps': -1,
+          },
+      })
+  return experiment_config
 
 
 class TrainUtilsTest(tf.test.TestCase):
@@ -92,6 +115,27 @@ class TrainUtilsTest(tf.test.TestCase):
         'Total params: 36',
     ]
     self.assertEqual(actual, expected)
+
+  def test_construct_experiment_from_flags(self):
+    options = train_utils.ParseConfigOptions(
+        experiment='foo',
+        config_file=[],
+        tpu='bar',
+        tf_data_service='',
+        params_override='task.model.model_id=new,'
+        'trainer.train_steps=10,'
+        'trainer.validation_steps=11')
+    builder = train_utils.ExperimentParser(options)
+    params_from_obj = builder.parse()
+    params_from_func = train_utils.parse_configuration(options)
+    pp = pprint.PrettyPrinter()
+    self.assertEqual(
+        pp.pformat(params_from_obj.as_dict()),
+        pp.pformat(params_from_func.as_dict()))
+    self.assertEqual(params_from_obj.runtime.tpu, 'bar')
+    self.assertEqual(params_from_obj.task.model.model_id, 'new')
+    self.assertEqual(params_from_obj.trainer.train_steps, 10)
+    self.assertEqual(params_from_obj.trainer.validation_steps, 11)
 
 
 if __name__ == '__main__':

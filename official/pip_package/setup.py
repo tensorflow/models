@@ -20,7 +20,8 @@ import sys
 from setuptools import find_packages
 from setuptools import setup
 
-version = '2.5.0'
+version = '2.7.0'
+tf_version = '2.7.0'  # Major version.
 
 project_name = 'tf-models-official'
 
@@ -61,8 +62,8 @@ if project_name == 'tf-models-nightly':
   install_requires.append('tf-nightly')
   install_requires.append('tensorflow-text-nightly')
 else:
-  install_requires.append('tensorflow>=2.4.0')
-  install_requires.append('tensorflow-text>=2.4.0')
+  install_requires.append(f'tensorflow~={tf_version}')
+  install_requires.append(f'tensorflow-text~={tf_version}')
 
 print('install_requires: ', install_requires)
 print('dependency_links: ', dependency_links)
@@ -88,5 +89,5 @@ setup(
     },
     install_requires=install_requires,
     dependency_links=dependency_links,
-    python_requires='>=3.6',
+    python_requires='>=3.7',
 )

@@ -14,6 +14,7 @@
 
 """Tests for Keras-based rezero-transformer block layer."""
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
@@ -30,12 +31,15 @@ class TransformerWithReZeroLayerTest(keras_parameterized.TestCase):
     super(TransformerWithReZeroLayerTest, self).tearDown()
     tf.keras.mixed_precision.set_global_policy('float32')
 
-  def test_layer_invocation_with_float16_dtype(self):
+  @parameterized.named_parameters(('no_share_attn_ffn', False),
+                                  ('share_attn_ffn', True))
+  def test_layer_invocation_with_float16_dtype(self, share_rezero):
     tf.keras.mixed_precision.set_global_policy('mixed_float16')
     test_layer = rezero_transformer.ReZeroTransformer(
         num_attention_heads=10,
         intermediate_size=2048,
-        intermediate_activation='relu')
+        intermediate_activation='relu',
+        share_rezero=share_rezero)
     sequence_length = 21
     width = 80
     # Create a 3-dimensional input (the first dimension is implicit).
@@ -123,6 +127,20 @@ class TransformerWithReZeroLayerTest(keras_parameterized.TestCase):
     new_layer.set_weights(test_layer.get_weights())
     new_output_tensor = new_layer([input_data, mask_data])
     self.assertAllClose(new_output_tensor, output_tensor[:, 0:1, :])
+
+  def test_separate_qkv(self):
+    test_layer = rezero_transformer.ReZeroTransformer(
+        num_attention_heads=2,
+        intermediate_size=128,
+        intermediate_activation='relu',
+        kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))
+    # Forward path.
+    q_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
+    kv_tensor = tf.zeros([2, 8, 16], dtype=tf.float32)
+    dummy_mask = tf.zeros([2, 4, 8], dtype=tf.float32)
+    inputs = [q_tensor, kv_tensor, dummy_mask]
+    output = test_layer(inputs)
+    self.assertEqual(output.shape, q_tensor.shape)
 
 
 if __name__ == '__main__':

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Build segmentation models."""
-from typing import Any, Mapping, Union
+from typing import Any, Mapping, Union, Optional, Dict
 
 # Import libraries
 import tensorflow as tf
@@ -35,13 +35,16 @@ class SegmentationModel(tf.keras.Model):
   """
 
   def __init__(self, backbone: tf.keras.Model, decoder: tf.keras.Model,
-               head: tf.keras.layers.Layer, **kwargs):
+               head: tf.keras.layers.Layer,
+               mask_scoring_head: Optional[tf.keras.layers.Layer] = None,
+               **kwargs):
     """Segmentation initialization function.
 
     Args:
       backbone: a backbone network.
       decoder: a decoder network. E.g. FPN.
       head: segmentation head.
+      mask_scoring_head: mask scoring head.
       **kwargs: keyword arguments to be passed.
     """
     super(SegmentationModel, self).__init__(**kwargs)
@@ -49,12 +52,15 @@ class SegmentationModel(tf.keras.Model):
         'backbone': backbone,
         'decoder': decoder,
         'head': head,
+        'mask_scoring_head': mask_scoring_head,
     }
     self.backbone = backbone
     self.decoder = decoder
     self.head = head
+    self.mask_scoring_head = mask_scoring_head
 
-  def call(self, inputs: tf.Tensor, training: bool = None) -> tf.Tensor:
+  def call(self, inputs: tf.Tensor, training: bool = None
+           ) -> Dict[str, tf.Tensor]:
     backbone_features = self.backbone(inputs)
 
     if self.decoder:
@@ -62,7 +68,12 @@ class SegmentationModel(tf.keras.Model):
     else:
       decoder_features = backbone_features
 
-    return self.head((backbone_features, decoder_features))
+    logits = self.head((backbone_features, decoder_features))
+    outputs = {'logits': logits}
+    if self.mask_scoring_head:
+      mask_scores = self.mask_scoring_head(logits)
+      outputs.update({'mask_scores': mask_scores})
+    return outputs
 
   @property
   def checkpoint_items(
@@ -71,6 +82,8 @@ class SegmentationModel(tf.keras.Model):
     items = dict(backbone=self.backbone, head=self.head)
     if self.decoder is not None:
       items.update(decoder=self.decoder)
+    if self.mask_scoring_head is not None:
+      items.update(mask_scoring_head=self.mask_scoring_head)
     return items
 
   def get_config(self) -> Mapping[str, Any]:

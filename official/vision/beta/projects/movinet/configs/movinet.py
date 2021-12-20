@@ -126,7 +126,7 @@ class MovinetModel(video_classification.VideoClassificationModel):
   model_type: str = 'movinet'
   backbone: Backbone3D = Backbone3D()
   norm_activation: common.NormActivation = common.NormActivation(
-      activation='swish',
+      activation=None,  # legacy flag, not used.
       norm_momentum=0.99,
       norm_epsilon=1e-3,
       use_sync_bn=True)

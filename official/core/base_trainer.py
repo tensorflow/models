@@ -75,8 +75,8 @@ class Recovery:
     self.recover_counter += 1
     if self.recover_counter > self.recovery_max_trials:
       raise RuntimeError(
-          "The loss value is NaN after training loop and it happens %d times." %
-          self.recover_counter)
+          "The loss value is NaN or out of range after training loop and "
+          f"this happens {self.recover_counter} times.")
     # Loads the previous good checkpoint.
     checkpoint_path = self.checkpoint_manager.restore_or_initialize()
     logging.warning(
@@ -247,14 +247,12 @@ class Trainer(_AsyncTrainer):
     self._validation_loss = tf.keras.metrics.Mean(
         "validation_loss", dtype=tf.float32)
     model_metrics = model.metrics if hasattr(model, "metrics") else []
-    self._train_metrics = self.task.build_metrics(
-        training=True) + model_metrics
-    self._validation_metrics = self.task.build_metrics(
-        training=False) + model_metrics
 
     self.init_async()
 
     if train:
+      self._train_metrics = self.task.build_metrics(
+          training=True) + model_metrics
       train_dataset = train_dataset or self.distribute_dataset(
           self.task.build_inputs, self.config.task.train_data)
       orbit.StandardTrainer.__init__(
@@ -266,6 +264,8 @@ class Trainer(_AsyncTrainer):
               use_tpu_summary_optimization=config.trainer.allow_tpu_summary))
 
     if evaluate:
+      self._validation_metrics = self.task.build_metrics(
+          training=False) + model_metrics
       validation_dataset = validation_dataset or self.distribute_dataset(
           self.task.build_inputs, self.config.task.validation_data)
       orbit.StandardEvaluator.__init__(
@@ -369,16 +369,6 @@ class Trainer(_AsyncTrainer):
   def checkpoint(self):
     """Accesses the training checkpoint."""
     return self._checkpoint
-
-  # TODO(yejiayu): Remove this once all deps are fixed.
-  def add_recovery(self, params: TrainerConfig,
-                   checkpoint_manager: tf.train.CheckpointManager):
-    if params.recovery_max_trials >= 0:
-      self._recovery = Recovery(
-          loss_upper_bound=params.loss_upper_bound,
-          recovery_begin_steps=params.recovery_begin_steps,
-          recovery_max_trials=params.recovery_max_trials,
-          checkpoint_manager=checkpoint_manager)
 
   def train_loop_end(self):
     """See base class."""

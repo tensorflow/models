@@ -37,6 +37,8 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
       'MobileNetMultiAVG',
       'MobileNetMultiMAX',
       'MobileNetMultiAVGSeg',
+      'MobileNetMultiMAXSeg',
+      'MobileNetV3SmallReducedFilters',
   )
   def test_serialize_deserialize(self, model_id):
     # Create a network object that sets all of its config options.
@@ -82,6 +84,8 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetMultiAVG',
               'MobileNetMultiMAX',
               'MobileNetMultiAVGSeg',
+              'MobileNetMultiMAXSeg',
+              'MobileNetV3SmallReducedFilters',
           ],
       ))
   def test_input_specs(self, input_dim, model_id):
@@ -105,6 +109,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetMultiAVG',
               'MobileNetMultiMAX',
               'MobileNetMultiAVGSeg',
+              'MobileNetV3SmallReducedFilters',
           ],
           [32, 224],
       ))
@@ -124,6 +129,8 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         'MobileNetMultiMAX': [32, 64, 128, 160],
         'MobileNetMultiAVG': [32, 64, 160, 192],
         'MobileNetMultiAVGSeg': [32, 64, 160, 96],
+        'MobileNetMultiMAXSeg': [32, 64, 128, 96],
+        'MobileNetV3SmallReducedFilters': [16, 24, 48, 48],
     }
 
     network = mobilenet.MobileNet(model_id=model_id,
@@ -148,6 +155,8 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetMultiAVG',
               'MobileNetMultiMAX',
               'MobileNetMultiAVGSeg',
+              'MobileNetMultiMAXSeg',
+              'MobileNetV3SmallReducedFilters',
           ],
           [32, 224],
       ))
@@ -167,6 +176,8 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         'MobileNetMultiMAX': [96, 128, 384, 640],
         'MobileNetMultiAVG': [64, 192, 640, 768],
         'MobileNetMultiAVGSeg': [64, 192, 640, 384],
+        'MobileNetMultiMAXSeg': [96, 128, 384, 320],
+        'MobileNetV3SmallReducedFilters': [16, 88, 144, 288],
     }
     network = mobilenet.MobileNet(model_id=model_id,
                                   filter_size_scale=1.0,
@@ -196,6 +207,8 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetMultiMAX',
               'MobileNetMultiMAX',
               'MobileNetMultiAVGSeg',
+              'MobileNetMultiMAXSeg',
+              'MobileNetV3SmallReducedFilters',
           ],
           [1.0, 0.75],
       ))
@@ -217,8 +230,12 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         ('MobileNetMultiAVG', 0.75): 2349704,
         ('MobileNetMultiMAX', 1.0): 3174560,
         ('MobileNetMultiMAX', 0.75): 2045816,
-        ('MobileNetMultiAVGSeg', 1.0): 2284000,
-        ('MobileNetMultiAVGSeg', 0.75): 1427816,
+        ('MobileNetMultiAVGSeg', 1.0): 2239840,
+        ('MobileNetMultiAVGSeg', 0.75): 1395272,
+        ('MobileNetMultiMAXSeg', 1.0): 1929088,
+        ('MobileNetMultiMAXSeg', 0.75): 1216544,
+        ('MobileNetV3SmallReducedFilters', 1.0): 694880,
+        ('MobileNetV3SmallReducedFilters', 0.75): 505960,
     }
 
     input_size = 224
@@ -241,6 +258,8 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetMultiAVG',
               'MobileNetMultiMAX',
               'MobileNetMultiAVGSeg',
+              'MobileNetMultiMAXSeg',
+              'MobileNetV3SmallReducedFilters',
           ],
           [8, 16, 32],
       ))
@@ -258,7 +277,9 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         'MobileNetV3EdgeTPU': 192,
         'MobileNetMultiMAX': 160,
         'MobileNetMultiAVG': 192,
-        'MobileNetMultiAVGSeg': 96,
+        'MobileNetMultiAVGSeg': 448,
+        'MobileNetMultiMAXSeg': 448,
+        'MobileNetV3SmallReducedFilters': 48,
     }
 
     network = mobilenet.MobileNet(

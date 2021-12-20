@@ -474,7 +474,7 @@ class Movinet(tf.keras.Model):
         if not (len(block.expand_filters) == len(block.kernel_sizes) ==
                 len(block.strides)):
           raise ValueError(
-              'Lenths of block parameters differ: {}, {}, {}'.format(
+              'Lengths of block parameters differ: {}, {}, {}'.format(
                   len(block.expand_filters),
                   len(block.kernel_sizes),
                   len(block.strides)))
@@ -709,8 +709,12 @@ def build_movinet(
   """Builds MoViNet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()
-  assert backbone_type == 'movinet', ('Inconsistent backbone type '
-                                      f'{backbone_type}')
+  if backbone_type != 'movinet':
+    raise ValueError(f'Inconsistent backbone type {backbone_type}')
+  if norm_activation_config.activation is not None:
+    raise ValueError(
+        'norm_activation is not used in MoViNets, but specified: %s' %
+        norm_activation_config.activation)
 
   return Movinet(
       model_id=backbone_cfg.model_id,
