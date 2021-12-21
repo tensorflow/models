@@ -25,8 +25,8 @@ from six.moves import zip
 import tensorflow as tf
 
 from official.common import distribute_utils
+from official.legacy.transformer import metrics as transformer_metrics
 from official.modeling.hyperparams import params_dict
-from official.nlp.transformer import metrics as transformer_metrics
 from official.projects.nhnet import evaluation
 from official.projects.nhnet import input_pipeline
 from official.projects.nhnet import models
