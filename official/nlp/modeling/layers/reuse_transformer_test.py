@@ -121,7 +121,7 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     new_layer.set_weights(test_layer.get_weights())
     new_output_tensor, _ = new_layer([input_data, mask_data])
     self.assertAllClose(
-        new_output_tensor, output_tensor[:, 0:1, :], atol=5e-5, rtol=0.003)
+        new_output_tensor, output_tensor[:, 0:1, :], atol=0.002, rtol=0.25)
 
   def test_layer_output_range_with_relative_pe(self, transformer_cls):
     test_layer = transformer_cls(
