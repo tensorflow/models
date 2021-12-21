@@ -25,8 +25,8 @@ import tensorflow as tf
 from official.benchmark import benchmark_wrappers
 from official.benchmark import owner_utils
 from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
-from official.nlp.transformer import misc
-from official.nlp.transformer import transformer_main as transformer_main
+from official.legacy.transformer import misc
+from official.legacy.transformer import transformer_main
 from official.utils.flags import core as flags_core
 
 TPU_DATA_DIR = 'gs://mlcompass-data/transformer'
