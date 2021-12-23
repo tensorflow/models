@@ -45,7 +45,9 @@ python3 train.py \
 3. Overrides params `model` in `TaskConfig` with `${MODEL_CONFIG}`
 4. Overrides any params in `ExperimentConfig` with `${EXTRA_PARAMS}`
 
-Note that `${TASK_CONFIG}`, `${MODEL_CONFIG}`, `${EXTRA_PARAMS}` can be optional when EXPERIMENT default is enough.
+Note that 
+1. `${TASK_CONFIG}`, `${MODEL_CONFIG}`, `${EXTRA_PARAMS}` can be optional when EXPERIMENT default is enough.
+2. `${TASK_CONFIG}`, `${MODEL_CONFIG}`, `${EXTRA_PARAMS}` are only guaranteed to be compatible to it's `${EXPERIMENT}`.
 
 ## Experiments
 
