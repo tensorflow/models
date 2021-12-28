@@ -23,8 +23,8 @@ from official.core import task_factory
 from official.modeling import tf_utils
 from official.nlp.data import pretrain_dataloader
 from official.nlp.modeling import layers
-from official.nlp.projects.teams import teams
-from official.nlp.projects.teams import teams_pretrainer
+from official.projects.teams import teams
+from official.projects.teams import teams_pretrainer
 
 
 @dataclasses.dataclass
