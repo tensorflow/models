@@ -13,12 +13,14 @@
 # limitations under the License.
 
 """A binary/library to export TF-NLP serving `SavedModel`."""
+import dataclasses
 import os
 from typing import Any, Dict, Text
+
 from absl import app
 from absl import flags
-import dataclasses
 import yaml
+
 from official.core import base_task
 from official.core import task_factory
 from official.modeling import hyperparams
@@ -29,6 +31,7 @@ from official.nlp.tasks import masked_lm
 from official.nlp.tasks import question_answering
 from official.nlp.tasks import sentence_prediction
 from official.nlp.tasks import tagging
+from official.nlp.tasks import translation
 
 FLAGS = flags.FLAGS
 
@@ -40,7 +43,9 @@ SERVING_MODULES = {
     question_answering.QuestionAnsweringTask:
         serving_modules.QuestionAnswering,
     tagging.TaggingTask:
-        serving_modules.Tagging
+        serving_modules.Tagging,
+    translation.TranslationTask:
+        serving_modules.Translation
 }
 
 
