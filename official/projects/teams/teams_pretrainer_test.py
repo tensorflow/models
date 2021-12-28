@@ -20,7 +20,7 @@ from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-dir
 from official.modeling import activations
 from official.nlp.modeling.networks import encoder_scaffold
 from official.nlp.modeling.networks import packed_sequence_embedding
-from official.nlp.projects.teams import teams_pretrainer
+from official.projects.teams import teams_pretrainer
 
 
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It

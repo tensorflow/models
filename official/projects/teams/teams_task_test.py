@@ -19,8 +19,8 @@ import tensorflow as tf
 
 from official.nlp.configs import encoders
 from official.nlp.data import pretrain_dataloader
-from official.nlp.projects.teams import teams
-from official.nlp.projects.teams import teams_task
+from official.projects.teams import teams
+from official.projects.teams import teams_task
 
 
 class TeamsPretrainTaskTest(tf.test.TestCase, parameterized.TestCase):
