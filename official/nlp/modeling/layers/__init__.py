@@ -20,6 +20,7 @@ They can be used to assemble new `tf.keras` layers or models.
 from official.nlp.modeling.layers.attention import *
 from official.nlp.modeling.layers.bigbird_attention import BigBirdAttention
 from official.nlp.modeling.layers.bigbird_attention import BigBirdMasks
+from official.nlp.modeling.layers.block_diag_feedforward import BlockDiagFeedforward
 from official.nlp.modeling.layers.cls_head import *
 from official.nlp.modeling.layers.gated_feedforward import GatedFeedforward
 from official.nlp.modeling.layers.gaussian_process import RandomFeatureGaussianProcess
