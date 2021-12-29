@@ -17,8 +17,8 @@
 import numpy as np
 import tensorflow as tf
 
-from official.nlp.projects.bigbird import recompute_grad as recompute_grad_lib
-from official.nlp.projects.bigbird import stateless_dropout as stateless_dropout_lib
+from official.projects.bigbird import recompute_grad as recompute_grad_lib
+from official.projects.bigbird import stateless_dropout as stateless_dropout_lib
 
 
 # Reimplements internal function

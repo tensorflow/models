@@ -17,7 +17,7 @@
 import numpy as np
 import tensorflow as tf
 
-from official.nlp.projects.bigbird import encoder
+from official.projects.bigbird import encoder
 
 
 class BigBirdEncoderTest(tf.test.TestCase):
