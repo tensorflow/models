@@ -201,3 +201,74 @@ def safe_mean(losses):
   total = tf.reduce_sum(losses)
   num_elements = tf.cast(tf.size(losses), dtype=losses.dtype)
   return tf.math.divide_no_nan(total, num_elements)
+
+
+def get_replica_id():
+  """Gets replica id depending on the environment."""
+  context = tf.distribute.get_replica_context()
+  if context is not None:
+    return context.replica_id_in_sync_group
+  else:
+    raise RuntimeError("Unknown replica context. The `get_replica_id` method "
+                       "relies on TF 2.x tf.distribute API.")
+
+
+def cross_replica_concat(value, axis, name="cross_replica_concat"):
+  """Concatenates the given `value` across (GPU/TPU) cores, along `axis`.
+
+  In general, each core ("replica") will pass a
+  replica-specific value as `value` (corresponding to some element of a
+  data-parallel computation taking place across replicas).
+
+  The resulting concatenated `Tensor` will have the same shape as `value` for
+  all dimensions except `axis`, where it will be larger by a factor of the
+  number of replicas. It will also have the same `dtype` as `value`.
+
+  The position of a given replica's `value` within the resulting concatenation
+  is determined by that replica's replica ID. For
+  example:
+
+  With `value` for replica 0 given as
+
+      0 0 0
+      0 0 0
+
+  and `value` for replica 1 given as
+
+      1 1 1
+      1 1 1
+
+  the resulting concatenation along axis 0 will be
+
+      0 0 0
+      0 0 0
+      1 1 1
+      1 1 1
+
+  and this result will be identical across all replicas.
+
+  Note that this API only works in TF2 with `tf.distribute`.
+
+  Args:
+    value: The `Tensor` to concatenate across replicas. Each replica will have a
+      different value for this `Tensor`, and these replica-specific values will
+      be concatenated.
+    axis: The axis along which to perform the concatenation as a Python integer
+      (not a `Tensor`). E.g., `axis=0` to concatenate along the batch dimension.
+    name: A name for the operation (used to create a name scope).
+
+  Returns:
+    The result of concatenating `value` along `axis` across replicas.
+
+  Raises:
+    RuntimeError: when the batch (0-th) dimension is None.
+  """
+  with tf.name_scope(name):
+    context = tf.distribute.get_replica_context()
+    # Typically this could be hit only if the tensor is derived from a
+    # dataset with finite epochs and drop_remainder=False, where the last
+    # batch could of different batch size and then the dim-0 is of dynamic
+    # shape.
+    if value.shape.as_list()[0] is None:
+      raise RuntimeError(f"{value} has unknown batch.")
+    return context.all_gather(value, axis=axis)
