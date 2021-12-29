@@ -16,9 +16,9 @@
 
 Includes configurations and factory methods.
 """
+import dataclasses
 from typing import Optional
 
-import dataclasses
 import gin
 import tensorflow as tf
 
@@ -26,7 +26,7 @@ from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
 from official.nlp.modeling import networks
-from official.nlp.projects.bigbird import encoder as bigbird_encoder
+from official.projects.bigbird import encoder as bigbird_encoder
 
 
 @dataclasses.dataclass

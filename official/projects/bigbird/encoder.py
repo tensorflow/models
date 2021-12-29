@@ -20,8 +20,8 @@ import tensorflow as tf
 from official.modeling import activations
 from official.nlp import modeling
 from official.nlp.modeling import layers
-from official.nlp.projects.bigbird import recompute_grad
-from official.nlp.projects.bigbird import recomputing_dropout
+from official.projects.bigbird import recompute_grad
+from official.projects.bigbird import recomputing_dropout
 
 
 _MAX_SEQ_LEN = 4096
