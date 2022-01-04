@@ -12,3 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Deprecating the vision/detection folder."""
+raise ImportError('This module has been moved to official/legacy/detection')
