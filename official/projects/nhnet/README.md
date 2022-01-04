@@ -36,7 +36,7 @@ will crawl and extract news articles on a local machine.
 
 First, install the `news-please` CLI (requires python 3.x)
 ```shell
-$ pip3 install news-please
+$ pip3 install news-please==1.4.26
 ```
 
 Next, run the crawler with our provided [config and URL list](https://github.com/google-research-datasets/NewSHead/releases)
