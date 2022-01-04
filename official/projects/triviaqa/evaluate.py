@@ -20,7 +20,7 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-from official.nlp.projects.triviaqa import evaluation
+from official.projects.triviaqa import evaluation
 
 flags.DEFINE_string('gold_path', None,
                     'Path to golden validation, i.e. wikipedia-dev.json.')

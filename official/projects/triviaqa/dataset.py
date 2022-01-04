@@ -23,7 +23,7 @@ import six
 import tensorflow as tf
 import tensorflow_datasets.public_api as tfds
 
-from official.nlp.projects.triviaqa import preprocess
+from official.projects.triviaqa import preprocess
 
 _CITATION = """
 @article{2017arXivtriviaqa,
