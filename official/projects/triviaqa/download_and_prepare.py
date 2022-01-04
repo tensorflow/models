@@ -21,7 +21,7 @@ from absl import logging
 import apache_beam as beam
 import tensorflow_datasets as tfds
 
-from official.nlp.projects.triviaqa import dataset  # pylint: disable=unused-import
+from official.projects.triviaqa import dataset  # pylint: disable=unused-import
 
 flags.DEFINE_integer('sequence_length', 4096, 'Max number of tokens.')
 

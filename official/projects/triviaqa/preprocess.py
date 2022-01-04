@@ -30,8 +30,8 @@ import numpy as np
 import tensorflow.io.gfile as gfile
 
 import sentencepiece as spm
-from official.nlp.projects.triviaqa import evaluation
-from official.nlp.projects.triviaqa import sentencepiece_pb2
+from official.projects.triviaqa import evaluation
+from official.projects.triviaqa import sentencepiece_pb2
 
 
 @dataclasses.dataclass

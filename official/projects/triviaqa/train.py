@@ -30,10 +30,10 @@ import tensorflow_datasets as tfds
 import sentencepiece as spm
 from official.nlp import optimization as nlp_optimization
 from official.nlp.configs import encoders
-from official.nlp.projects.triviaqa import evaluation
-from official.nlp.projects.triviaqa import inputs
-from official.nlp.projects.triviaqa import modeling
-from official.nlp.projects.triviaqa import prediction
+from official.projects.triviaqa import evaluation
+from official.projects.triviaqa import inputs
+from official.projects.triviaqa import modeling
+from official.projects.triviaqa import prediction
 
 flags.DEFINE_string('data_dir', None, 'Data directory for TensorFlow Datasets.')
 
