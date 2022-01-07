@@ -49,5 +49,5 @@ class VGGModelConfig(base_configs.ModelConfig):
           examples_per_epoch=1281167,
           boundaries=[30, 60],
           warmup_epochs=0,
-          scale_by_batch_size=1. / 128.,
+          scale_by_batch_size=1. / 256.,
           multipliers=[0.01 / 256, 0.001 / 256, 0.0001 / 256]))

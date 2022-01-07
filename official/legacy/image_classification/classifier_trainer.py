@@ -36,6 +36,7 @@ from official.modeling import hyperparams
 from official.modeling import performance
 from official.utils import hyperparams_flags
 from official.utils.misc import keras_utils
+from official.vision.image_classification.vgg16 import vgg_model
 
 
 def get_models() -> Mapping[str, tf.keras.Model]:
@@ -43,6 +44,7 @@ def get_models() -> Mapping[str, tf.keras.Model]:
   return {
       'efficientnet': efficientnet_model.EfficientNet.from_name,
       'resnet': resnet_model.resnet50,
+      'vgg': vgg_model.vgg16,
   }
 
 

@@ -36,7 +36,6 @@ from official.vision.image_classification.configs import configs
 from official.vision.image_classification.efficientnet import efficientnet_model
 from official.vision.image_classification.resnet import common
 from official.vision.image_classification.resnet import resnet_model
-from official.vision.image_classification.vgg16 import vgg_model
 
 
 def get_models() -> Mapping[str, tf.keras.Model]:
@@ -44,7 +43,6 @@ def get_models() -> Mapping[str, tf.keras.Model]:
   return {
       'efficientnet': efficientnet_model.EfficientNet.from_name,
       'resnet': resnet_model.resnet50,
-      'vgg': vgg_model.vgg16,
   }
 
 

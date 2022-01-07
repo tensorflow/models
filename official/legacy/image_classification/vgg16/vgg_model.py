@@ -174,17 +174,23 @@ def vgg16(num_classes,
     
     x = layers.Flatten(name='flatten')(x)
     x = layers.Dense(4096,
+                     #kernel_initializer=tf.initializers.random_normal(stddev=0.01),
                      kernel_regularizer=_gen_l2_regularizer(use_l2_regularizer),
+                     #bias_regularizer=_gen_l2_regularizer(use_l2_regularizer),
                      name='fc1')(x)
     x = layers.Activation('relu')(x)
     x = layers.Dropout(0.5)(x)
     x = layers.Dense(4096,
+                     #kernel_initializer=tf.initializers.random_normal(stddev=0.01),
                      kernel_regularizer=_gen_l2_regularizer(use_l2_regularizer),
+                     #bias_regularizer=_gen_l2_regularizer(use_l2_regularizer),
                      name='fc2')(x)
     x = layers.Activation('relu')(x)
     x = layers.Dropout(0.5)(x)
     x = layers.Dense(num_classes,
+                     #kernel_initializer=tf.initializers.random_normal(stddev=0.01),
                      kernel_regularizer=_gen_l2_regularizer(use_l2_regularizer),
+                     #bias_regularizer=_gen_l2_regularizer(use_l2_regularizer),                     
                      name='fc1000')(x)
     
     # A softmax that is followed by the model loss must be done cannot be done
