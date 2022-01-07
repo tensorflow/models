@@ -36,6 +36,7 @@ class Convert3d2plus1dTest(tf.test.TestCase):
     model_3d_2plus1d = movinet_model.MovinetClassifier(
         backbone=movinet.Movinet(
             model_id='a0',
+            se_type='2plus3d',
             conv_type='3d_2plus1d'),
         num_classes=600)
     model_3d_2plus1d.build([1, 1, 1, 1, 3])

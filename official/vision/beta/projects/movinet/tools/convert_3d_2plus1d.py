@@ -29,6 +29,8 @@ flags.DEFINE_string(
     'Export path to save the saved_model file.')
 flags.DEFINE_string(
     'model_id', 'a0', 'MoViNet model name.')
+flags.DEFINE_string(
+    'se_type', '2plus3d', 'MoViNet model SE type.')
 flags.DEFINE_bool(
     'causal', True, 'Run the model in causal mode.')
 flags.DEFINE_bool(
@@ -46,6 +48,7 @@ def main(_) -> None:
   backbone_2plus1d = movinet.Movinet(
       model_id=FLAGS.model_id,
       causal=FLAGS.causal,
+      se_type=FLAGS.se_type,
       conv_type='2plus1d',
       use_positional_encoding=FLAGS.use_positional_encoding)
   model_2plus1d = movinet_model.MovinetClassifier(
@@ -56,6 +59,7 @@ def main(_) -> None:
   backbone_3d_2plus1d = movinet.Movinet(
       model_id=FLAGS.model_id,
       causal=FLAGS.causal,
+      se_type=FLAGS.se_type,
       conv_type='3d_2plus1d',
       use_positional_encoding=FLAGS.use_positional_encoding)
   model_3d_2plus1d = movinet_model.MovinetClassifier(
