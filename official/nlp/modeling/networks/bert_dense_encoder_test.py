@@ -20,29 +20,30 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
-from official.nlp.modeling.networks import bert_dense_encoder
+from official.nlp.modeling.networks import bert_encoder
 
 
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
 # guarantees forward compatibility of this code for the V2 switchover.
 @keras_parameterized.run_all_keras_modes
-class BertDenseEncoderTest(keras_parameterized.TestCase):
+class BertEncoderV2Test(keras_parameterized.TestCase):
 
   def tearDown(self):
-    super(BertDenseEncoderTest, self).tearDown()
+    super(BertEncoderV2Test, self).tearDown()
     tf.keras.mixed_precision.set_global_policy("float32")
 
   def test_dict_outputs_network_creation(self):
     hidden_size = 32
     sequence_length = 21
     dense_sequence_length = 20
-    # Create a small dense BertDenseEncoder for testing.
+    # Create a small dense BertEncoderV2 for testing.
     kwargs = {}
-    test_network = bert_dense_encoder.BertDenseEncoder(
+    test_network = bert_encoder.BertEncoderV2(
         vocab_size=100,
         hidden_size=hidden_size,
         num_attention_heads=2,
         num_layers=3,
+        with_dense_inputs=True,
         **kwargs)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -86,12 +87,13 @@ class BertDenseEncoderTest(keras_parameterized.TestCase):
     sequence_length = 21
     dense_sequence_length = 20
     # Create a small BertEncoder for testing.
-    test_network = bert_dense_encoder.BertDenseEncoder(
+    test_network = bert_encoder.BertEncoderV2(
         vocab_size=100,
         hidden_size=hidden_size,
         num_attention_heads=2,
         num_layers=3,
-        dict_outputs=True)
+        dict_outputs=True,
+        with_dense_inputs=True)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -134,12 +136,13 @@ class BertDenseEncoderTest(keras_parameterized.TestCase):
     dense_sequence_length = 20
     tf.keras.mixed_precision.set_global_policy("mixed_float16")
     # Create a small BertEncoder for testing.
-    test_network = bert_dense_encoder.BertDenseEncoder(
+    test_network = bert_encoder.BertEncoderV2(
         vocab_size=100,
         hidden_size=hidden_size,
         num_attention_heads=2,
         num_layers=3,
-        dict_outputs=True)
+        dict_outputs=True,
+        with_dense_inputs=True)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -176,9 +179,8 @@ class BertDenseEncoderTest(keras_parameterized.TestCase):
     self.assertAllEqual(tf.float16, pooled.dtype)
 
   @parameterized.named_parameters(
-      ("all_sequence_encoder_v2", bert_dense_encoder.BertDenseEncoder, None,
-       41),
-      ("output_range_encoder_v2", bert_dense_encoder.BertDenseEncoder, 1, 1),
+      ("all_sequence_encoder_v2", bert_encoder.BertEncoderV2, None, 41),
+      ("output_range_encoder_v2", bert_encoder.BertEncoderV2, 1, 1),
   )
   def test_dict_outputs_network_invocation(
       self, encoder_cls, output_range, out_seq_len):
@@ -195,7 +197,8 @@ class BertDenseEncoderTest(keras_parameterized.TestCase):
         num_layers=3,
         type_vocab_size=num_types,
         output_range=output_range,
-        dict_outputs=True)
+        dict_outputs=True,
+        with_dense_inputs=True)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -276,7 +279,7 @@ class BertDenseEncoderTest(keras_parameterized.TestCase):
 
     # Creates a BertEncoder with embedding_width != hidden_size
     embedding_width = 16
-    test_network = bert_dense_encoder.BertDenseEncoder(
+    test_network = bert_encoder.BertEncoderV2(
         vocab_size=vocab_size,
         hidden_size=hidden_size,
         max_sequence_length=max_sequence_length,
@@ -316,11 +319,12 @@ class BertDenseEncoderTest(keras_parameterized.TestCase):
     sequence_length = 21
     dense_sequence_length = 20
     # Create a small BertEncoder for testing.
-    test_network = bert_dense_encoder.BertDenseEncoder(
+    test_network = bert_encoder.BertEncoderV2(
         vocab_size=100,
         hidden_size=hidden_size,
         num_attention_heads=2,
-        num_layers=3)
+        num_layers=3,
+        with_dense_inputs=True)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
