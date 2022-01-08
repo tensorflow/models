@@ -36,7 +36,7 @@ from official.modeling import hyperparams
 from official.modeling import performance
 from official.utils import hyperparams_flags
 from official.utils.misc import keras_utils
-from official.vision.image_classification.vgg16 import vgg_model
+from official.legacy.image_classification.vgg16 import vgg_model
 
 
 def get_models() -> Mapping[str, tf.keras.Model]:

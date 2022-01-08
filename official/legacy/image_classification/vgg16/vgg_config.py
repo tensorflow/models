@@ -19,9 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import dataclasses
-
+from official.legacy.image_classification.configs import base_configs
 from official.modeling.hyperparams import base_config
-from official.vision.image_classification.configs import base_configs
 
 
 @dataclasses.dataclass
