@@ -361,7 +361,7 @@ class Parser(parser.Parser):
       audio = decoded_tensors[self._audio_feature]
       audio = tf.cast(audio, dtype=self._dtype)
       audio = preprocess_ops_3d.sample_sequence(
-          audio, 20, random=False, stride=1)
+          audio, self._audio_shape[0], random=False, stride=1)
       audio = tf.ensure_shape(audio, self._audio_shape)
       features['audio'] = audio
 
