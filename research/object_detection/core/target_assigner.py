@@ -925,7 +925,9 @@ class CenterNetCenterHeatmapTargetAssigner(object):
                compute_heatmap_sparse=False,
                keypoint_class_id=None,
                keypoint_indices=None,
-               keypoint_weights_for_center=None):
+               keypoint_weights_for_center=None,
+               box_heatmap_type='adaptive_gaussian',
+               heatmap_exponent=1.0):
     """Initializes the target assigner.
 
     Args:
@@ -947,6 +949,17 @@ class CenterNetCenterHeatmapTargetAssigner(object):
         the number of keypoints. The object center is calculated by the weighted
         mean of the keypoint locations. If not provided, the object center is
         determined by the center of the bounding box (default behavior).
+       box_heatmap_type: str, the algorithm used to compute the box heatmap,
+         used when calling the assign_center_targets_from_boxes method.
+         Options are:
+         'adaptaive_gaussian': A box-size adaptive Gaussian from the original
+           paper[1].
+         'iou': IOU based heatmap target where each point is assigned an IOU
+           based on its location, assuming that it produced a box centered at
+           that point with the correct size.
+       heatmap_exponent: float, The generated heatmap is exponentiated with
+         this number. A number > 1 will result in the heatmap being more peaky
+         and a number < 1 will cause the heatmap to be more spreadout.
     """
 
     self._stride = stride
@@ -955,6 +968,8 @@ class CenterNetCenterHeatmapTargetAssigner(object):
     self._keypoint_class_id = keypoint_class_id
     self._keypoint_indices = keypoint_indices
     self._keypoint_weights_for_center = keypoint_weights_for_center
+    self._box_heatmap_type = box_heatmap_type
+    self._heatmap_exponent = heatmap_exponent
 
   def assign_center_targets_from_boxes(self,
                                        height,
@@ -1018,19 +1033,29 @@ class CenterNetCenterHeatmapTargetAssigner(object):
                                              self._min_overlap)
       # Apply the Gaussian kernel to the center coordinates. Returned heatmap
       # has shape of [out_height, out_width, num_classes]
-      heatmap = ta_utils.coordinates_to_heatmap(
-          y_grid=y_grid,
-          x_grid=x_grid,
-          y_coordinates=y_center,
-          x_coordinates=x_center,
-          sigma=sigma,
-          channel_onehot=class_targets,
-          channel_weights=weights,
-          sparse=self._compute_heatmap_sparse)
+
+      if self._box_heatmap_type == 'adaptive_gaussian':
+        heatmap = ta_utils.coordinates_to_heatmap(
+            y_grid=y_grid,
+            x_grid=x_grid,
+            y_coordinates=y_center,
+            x_coordinates=x_center,
+            sigma=sigma,
+            channel_onehot=class_targets,
+            channel_weights=weights,
+            sparse=self._compute_heatmap_sparse)
+      elif self._box_heatmap_type == 'iou':
+        heatmap = ta_utils.coordinates_to_iou(y_grid, x_grid, boxes,
+                                              class_targets, weights)
+      else:
+        raise ValueError(f'Unknown heatmap type - {self._box_heatmap_type}')
+
       heatmaps.append(heatmap)
 
     # Return the stacked heatmaps over the batch.
-    return tf.stack(heatmaps, axis=0)
+    stacked_heatmaps = tf.stack(heatmaps, axis=0)
+    return (tf.pow(stacked_heatmaps, self._heatmap_exponent) if
+            self._heatmap_exponent != 1.0 else stacked_heatmaps)
 
   def assign_center_targets_from_keypoints(self,
                                            height,
