@@ -23,7 +23,7 @@ from absl import app
 from absl import flags
 
 import tensorflow as tf
-from official.legacy.nlp.albert import configs
+from official.legacy.albert import configs
 from official.modeling import tf_utils
 from official.nlp.bert import tf1_checkpoint_converter_lib
 from official.nlp.modeling import models
