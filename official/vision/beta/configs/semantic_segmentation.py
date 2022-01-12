@@ -63,6 +63,7 @@ class SegmentationHead(hyperparams.Config):
   num_convs: int = 2
   num_filters: int = 256
   use_depthwise_convolution: bool = False
+  kernel_size: int = 3
   prediction_kernel_size: int = 1
   upsample_factor: int = 1
   feature_fusion: Optional[
