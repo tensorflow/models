@@ -21,10 +21,10 @@ from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 from absl import logging
 import tensorflow as tf
 
+from official.projects.movinet.configs import movinet as cfg
+from official.projects.movinet.modeling import movinet_layers
 from official.vision.beta.modeling import backbones
 from official.vision.beta.modeling import factory_3d as model_factory
-from official.vision.beta.projects.movinet.configs import movinet as cfg
-from official.vision.beta.projects.movinet.modeling import movinet_layers
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')

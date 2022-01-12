@@ -19,8 +19,8 @@ import tensorflow as tf
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
+from official.projects.movinet.configs import movinet
 from official.vision.beta.configs import video_classification as exp_cfg
-from official.vision.beta.projects.movinet.configs import movinet
 
 
 class MovinetConfigTest(tf.test.TestCase, parameterized.TestCase):

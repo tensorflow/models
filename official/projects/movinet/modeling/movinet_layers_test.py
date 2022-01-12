@@ -18,8 +18,8 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
+from official.projects.movinet.modeling import movinet_layers
 from official.vision.beta.modeling.layers import nn_layers
-from official.vision.beta.projects.movinet.modeling import movinet_layers
 
 
 class MovinetLayersTest(parameterized.TestCase, tf.test.TestCase):

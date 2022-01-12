@@ -24,8 +24,8 @@ from typing import Dict, Mapping, Optional, Sequence, Tuple, Union
 import tensorflow as tf
 
 from official.modeling import hyperparams
+from official.projects.movinet.modeling import movinet_layers
 from official.vision.beta.modeling.backbones import factory
-from official.vision.beta.projects.movinet.modeling import movinet_layers
 
 # Defines a set of kernel sizes and stride sizes to simplify and shorten
 # architecture definitions for configs below.
