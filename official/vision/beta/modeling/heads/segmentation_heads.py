@@ -32,13 +32,14 @@ class SegmentationHead(tf.keras.layers.Layer):
       num_convs: int = 2,
       num_filters: int = 256,
       use_depthwise_convolution: bool = False,
+      kernel_size: int = 3,
       prediction_kernel_size: int = 1,
       upsample_factor: int = 1,
       feature_fusion: Optional[str] = None,
       decoder_min_level: Optional[int] = None,
       decoder_max_level: Optional[int] = None,
-      low_level: int = 2,
-      low_level_num_filters: int = 48,
+      low_level: Union[int, List[int]] = 2,
+      low_level_num_filters: Union[int, List[int]] = 48,
       num_decoder_filters: int = 256,
       activation: str = 'relu',
       use_sync_bn: bool = False,
@@ -59,6 +60,8 @@ class SegmentationHead(tf.keras.layers.Layer):
         Default is 256.
       use_depthwise_convolution: A bool to specify if use depthwise separable
         convolutions.
+      kernel_size:  An `int` number to specify the kernel size of the
+      stacked convolutions before the last prediction layer.
       prediction_kernel_size: An `int` number to specify the kernel size of the
       prediction layer.
       upsample_factor: An `int` number to specify the upsampling factor to
@@ -100,6 +103,7 @@ class SegmentationHead(tf.keras.layers.Layer):
         'num_convs': num_convs,
         'num_filters': num_filters,
         'use_depthwise_convolution': use_depthwise_convolution,
+        'kernel_size': kernel_size,
         'prediction_kernel_size': prediction_kernel_size,
         'upsample_factor': upsample_factor,
         'feature_fusion': feature_fusion,
@@ -123,11 +127,12 @@ class SegmentationHead(tf.keras.layers.Layer):
 
   def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the segmentation head."""
+    kernel_size = self._config_dict['kernel_size']
     use_depthwise_convolution = self._config_dict['use_depthwise_convolution']
     random_initializer = tf.keras.initializers.RandomNormal(stddev=0.01)
     conv_op = tf.keras.layers.Conv2D
     conv_kwargs = {
-        'kernel_size': 3 if not use_depthwise_convolution else 1,
+        'kernel_size': kernel_size if not use_depthwise_convolution else 1,
         'padding': 'same',
         'use_bias': False,
         'kernel_initializer': random_initializer,
@@ -167,6 +172,19 @@ class SegmentationHead(tf.keras.layers.Layer):
           kernel_regularizer=self._config_dict['kernel_regularizer'],
           bias_regularizer=self._config_dict['bias_regularizer'])
 
+    if self._config_dict['feature_fusion'] == 'panoptic_deeplab_fusion':
+      self._panoptic_deeplab_fusion = nn_layers.PanopticDeepLabFusion(
+          level=self._config_dict['level'],
+          low_level=self._config_dict['low_level'],
+          num_projection_filters=self._config_dict['low_level_num_filters'],
+          num_output_filters=self._config_dict['num_filters'],
+          activation=self._config_dict['activation'],
+          use_sync_bn=self._config_dict['use_sync_bn'],
+          norm_momentum=self._config_dict['norm_momentum'],
+          norm_epsilon=self._config_dict['norm_epsilon'],
+          kernel_regularizer=self._config_dict['kernel_regularizer'],
+          bias_regularizer=self._config_dict['bias_regularizer'])
+
     # Segmentation head layers.
     self._convs = []
     self._norms = []
@@ -192,7 +210,7 @@ class SegmentationHead(tf.keras.layers.Layer):
       norm_name = 'segmentation_head_norm_{}'.format(i)
       self._norms.append(bn_op(name=norm_name, **bn_kwargs))
 
-    self._classifier = conv_op(
+    self._prediction_conv = conv_op(
         name='segmentation_output',
         filters=self._config_dict['num_classes'],
         kernel_size=self._config_dict['prediction_kernel_size'],
@@ -204,26 +222,7 @@ class SegmentationHead(tf.keras.layers.Layer):
 
     super(SegmentationHead, self).build(input_shape)
 
-  def call(self, inputs: Tuple[Union[tf.Tensor, Mapping[str, tf.Tensor]],
-                               Union[tf.Tensor, Mapping[str, tf.Tensor]]]):
-    """Forward pass of the segmentation head.
-
-    It supports both a tuple of 2 tensors or 2 dictionaries. The first is
-    backbone endpoints, and the second is decoder endpoints. When inputs are
-    tensors, they are from a single level of feature maps. When inputs are
-    dictionaries, they contain multiple levels of feature maps, where the key
-    is the index of feature map.
-
-    Args:
-      inputs: A tuple of 2 feature map tensors of shape
-        [batch, height_l, width_l, channels] or 2 dictionaries of tensors:
-        - key: A `str` of the level of the multilevel features.
-        - values: A `tf.Tensor` of the feature map tensors, whose shape is
-            [batch, height_l, width_l, channels].
-    Returns:
-      segmentation prediction mask: A `tf.Tensor` of the segmentation mask
-        scores predicted from input features.
-    """
+  def _fuse_features(self, inputs):
     backbone_output = inputs[0]
     decoder_output = inputs[1]
     if self._config_dict['feature_fusion'] == 'deeplabv3plus':
@@ -246,9 +245,34 @@ class SegmentationHead(tf.keras.layers.Layer):
                                            self._config_dict['level'])
     elif self._config_dict['feature_fusion'] == 'panoptic_fpn_fusion':
       x = self._panoptic_fpn_fusion(decoder_output)
+    elif self._config_dict['feature_fusion'] == 'panoptic_deeplab_fusion':
+      x = self._panoptic_deeplab_fusion(inputs)
     else:
       x = decoder_output[str(self._config_dict['level'])] if isinstance(
           decoder_output, dict) else decoder_output
+    return x
+
+  def call(self, inputs: Tuple[Union[tf.Tensor, Mapping[str, tf.Tensor]],
+                               Union[tf.Tensor, Mapping[str, tf.Tensor]]]):
+    """Forward pass of the segmentation head.
+
+    It supports both a tuple of 2 tensors or 2 dictionaries. The first is
+    backbone endpoints, and the second is decoder endpoints. When inputs are
+    tensors, they are from a single level of feature maps. When inputs are
+    dictionaries, they contain multiple levels of feature maps, where the key
+    is the index of feature map.
+
+    Args:
+      inputs: A tuple of 2 feature map tensors of shape
+        [batch, height_l, width_l, channels] or 2 dictionaries of tensors:
+        - key: A `str` of the level of the multilevel features.
+        - values: A `tf.Tensor` of the feature map tensors, whose shape is
+            [batch, height_l, width_l, channels].
+    Returns:
+      segmentation prediction mask: A `tf.Tensor` of the segmentation mask
+        scores predicted from input features.
+    """
+    x = self._fuse_features(inputs)
 
     for conv, norm in zip(self._convs, self._norms):
       x = conv(x)
@@ -258,7 +282,7 @@ class SegmentationHead(tf.keras.layers.Layer):
       x = spatial_transform_ops.nearest_upsampling(
           x, scale=self._config_dict['upsample_factor'])
 
-    return self._classifier(x)
+    return self._prediction_conv(x)
 
   def get_config(self):
     return self._config_dict
