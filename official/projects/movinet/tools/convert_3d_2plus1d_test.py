@@ -19,9 +19,9 @@ import os
 from absl import flags
 import tensorflow as tf
 
-from official.vision.beta.projects.movinet.modeling import movinet
-from official.vision.beta.projects.movinet.modeling import movinet_model
-from official.vision.beta.projects.movinet.tools import convert_3d_2plus1d
+from official.projects.movinet.modeling import movinet
+from official.projects.movinet.modeling import movinet_model
+from official.projects.movinet.tools import convert_3d_2plus1d
 
 FLAGS = flags.FLAGS
 
@@ -36,8 +36,8 @@ class Convert3d2plus1dTest(tf.test.TestCase):
     model_3d_2plus1d = movinet_model.MovinetClassifier(
         backbone=movinet.Movinet(
             model_id='a0',
-            se_type='2plus3d',
-            conv_type='3d_2plus1d'),
+            conv_type='3d_2plus1d',
+            se_type='2plus3d'),
         num_classes=600)
     model_3d_2plus1d.build([1, 1, 1, 1, 3])
     save_checkpoint = tf.train.Checkpoint(model=model_3d_2plus1d)

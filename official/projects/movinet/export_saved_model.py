@@ -55,8 +55,8 @@ from absl import app
 from absl import flags
 import tensorflow as tf
 
-from official.vision.beta.projects.movinet.modeling import movinet
-from official.vision.beta.projects.movinet.modeling import movinet_model
+from official.projects.movinet.modeling import movinet
+from official.projects.movinet.modeling import movinet_model
 
 flags.DEFINE_string(
     'export_path', '/tmp/movinet/',

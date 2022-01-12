@@ -17,8 +17,8 @@ r"""Training driver.
 
 To train:
 
-CONFIG_FILE=official/vision/beta/projects/movinet/configs/yaml/movinet_a0_k600_8x8.yaml
-python3 official/vision/beta/projects/movinet/train.py \
+CONFIG_FILE=official/projects/movinet/configs/yaml/movinet_a0_k600_8x8.yaml
+python3 official/projects/movinet/train.py \
     --experiment=movinet_kinetics600 \
     --mode=train \
     --model_dir=/tmp/movinet/ \
@@ -47,8 +47,8 @@ from official.modeling import performance
 # model garden factory.
 # pylint: disable=unused-import
 # the followings are the necessary imports.
-from official.vision.beta.projects.movinet.modeling import movinet
-from official.vision.beta.projects.movinet.modeling import movinet_model
+from official.projects.movinet.modeling import movinet
+from official.projects.movinet.modeling import movinet_model
 # pylint: enable=unused-import
 
 FLAGS = flags.FLAGS

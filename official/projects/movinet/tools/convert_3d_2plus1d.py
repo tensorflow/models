@@ -18,8 +18,8 @@ from absl import app
 from absl import flags
 import tensorflow as tf
 
-from official.vision.beta.projects.movinet.modeling import movinet
-from official.vision.beta.projects.movinet.modeling import movinet_model
+from official.projects.movinet.modeling import movinet
+from official.projects.movinet.modeling import movinet_model
 
 flags.DEFINE_string(
     'input_checkpoint_path', None,
@@ -48,8 +48,8 @@ def main(_) -> None:
   backbone_2plus1d = movinet.Movinet(
       model_id=FLAGS.model_id,
       causal=FLAGS.causal,
-      se_type=FLAGS.se_type,
       conv_type='2plus1d',
+      se_type=FLAGS.se_type,
       use_positional_encoding=FLAGS.use_positional_encoding)
   model_2plus1d = movinet_model.MovinetClassifier(
       backbone=backbone_2plus1d,
@@ -59,8 +59,8 @@ def main(_) -> None:
   backbone_3d_2plus1d = movinet.Movinet(
       model_id=FLAGS.model_id,
       causal=FLAGS.causal,
-      se_type=FLAGS.se_type,
       conv_type='3d_2plus1d',
+      se_type=FLAGS.se_type,
       use_positional_encoding=FLAGS.use_positional_encoding)
   model_3d_2plus1d = movinet_model.MovinetClassifier(
       backbone=backbone_3d_2plus1d,

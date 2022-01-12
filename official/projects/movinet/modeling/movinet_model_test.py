@@ -19,8 +19,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.projects.movinet.modeling import movinet
-from official.vision.beta.projects.movinet.modeling import movinet_model
+from official.projects.movinet.modeling import movinet
+from official.projects.movinet.modeling import movinet_model
 
 
 class MovinetModelTest(parameterized.TestCase, tf.test.TestCase):
