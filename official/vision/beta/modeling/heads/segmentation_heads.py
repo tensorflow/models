@@ -13,12 +13,182 @@
 # limitations under the License.
 
 """Contains definitions of segmentation heads."""
-from typing import List, Union, Optional, Mapping, Tuple
+from typing import List, Union, Optional, Mapping, Tuple, Any
 import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.vision.beta.modeling.layers import nn_layers
 from official.vision.beta.ops import spatial_transform_ops
+
+
+class MaskScoring(tf.keras.Model):
+  """Creates a mask scoring layer.
+
+  This implements mask scoring layer from the paper:
+
+  Zhaojin Huang, Lichao Huang, Yongchao Gong, Chang Huang, Xinggang Wang.
+  Mask Scoring R-CNN.
+  (https://arxiv.org/pdf/1903.00241.pdf)
+  """
+
+  def __init__(
+      self,
+      num_classes: int,
+      fc_input_size: List[int],
+      num_convs: int = 3,
+      num_filters: int = 256,
+      fc_dims: int = 1024,
+      num_fcs: int = 2,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
+
+    """Initializes mask scoring layer.
+
+    Args:
+      num_classes: An `int` for number of classes.
+      fc_input_size: A List of `int` for the input size of the
+        fully connected layers.
+      num_convs: An`int` for number of conv layers.
+      num_filters: An `int` for the number of filters for conv layers.
+      fc_dims: An `int` number of filters for each fully connected layers.
+      num_fcs: An `int` for number of fully connected layers.
+      activation: A `str` name of the activation function.
+      use_sync_bn: A bool, whether or not to use sync batch normalization.
+      norm_momentum: A float for the momentum in BatchNorm. Defaults to 0.99.
+      norm_epsilon: A float for the epsilon value in BatchNorm. Defaults to
+        0.001.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default is None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      **kwargs: Additional keyword arguments to be passed.
+    """
+    super(MaskScoring, self).__init__(**kwargs)
+
+    self._config_dict = {
+        'num_classes': num_classes,
+        'num_convs': num_convs,
+        'num_filters': num_filters,
+        'fc_input_size': fc_input_size,
+        'fc_dims': fc_dims,
+        'num_fcs': num_fcs,
+        'use_sync_bn': use_sync_bn,
+        'norm_momentum': norm_momentum,
+        'norm_epsilon': norm_epsilon,
+        'activation': activation,
+        'kernel_regularizer': kernel_regularizer,
+        'bias_regularizer': bias_regularizer,
+    }
+
+    if tf.keras.backend.image_data_format() == 'channels_last':
+      self._bn_axis = -1
+    else:
+      self._bn_axis = 1
+    self._activation = tf_utils.get_activation(activation)
+
+  def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
+    """Creates the variables of the mask scoring head."""
+    conv_op = tf.keras.layers.Conv2D
+    conv_kwargs = {
+        'filters': self._config_dict['num_filters'],
+        'kernel_size': 3,
+        'padding': 'same',
+    }
+    conv_kwargs.update({
+        'kernel_initializer': tf.keras.initializers.VarianceScaling(
+            scale=2, mode='fan_out', distribution='untruncated_normal'),
+        'bias_initializer': tf.zeros_initializer(),
+        'kernel_regularizer': self._config_dict['kernel_regularizer'],
+        'bias_regularizer': self._config_dict['bias_regularizer'],
+    })
+    bn_op = (tf.keras.layers.experimental.SyncBatchNormalization
+             if self._config_dict['use_sync_bn']
+             else tf.keras.layers.BatchNormalization)
+    bn_kwargs = {
+        'axis': self._bn_axis,
+        'momentum': self._config_dict['norm_momentum'],
+        'epsilon': self._config_dict['norm_epsilon'],
+    }
+
+    self._convs = []
+    self._conv_norms = []
+    for i in range(self._config_dict['num_convs']):
+      conv_name = 'mask-scoring_{}'.format(i)
+      self._convs.append(conv_op(name=conv_name, **conv_kwargs))
+      bn_name = 'mask-scoring-bn_{}'.format(i)
+      self._conv_norms.append(bn_op(name=bn_name, **bn_kwargs))
+
+    self._fcs = []
+    self._fc_norms = []
+    for i in range(self._config_dict['num_fcs']):
+      fc_name = 'mask-scoring-fc_{}'.format(i)
+      self._fcs.append(
+          tf.keras.layers.Dense(
+              units=self._config_dict['fc_dims'],
+              kernel_initializer=tf.keras.initializers.VarianceScaling(
+                  scale=1 / 3.0, mode='fan_out', distribution='uniform'),
+              kernel_regularizer=self._config_dict['kernel_regularizer'],
+              bias_regularizer=self._config_dict['bias_regularizer'],
+              name=fc_name))
+      bn_name = 'mask-scoring-fc-bn_{}'.format(i)
+      self._fc_norms.append(bn_op(name=bn_name, **bn_kwargs))
+
+    self._classifier = tf.keras.layers.Dense(
+        units=self._config_dict['num_classes'],
+        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        bias_initializer=tf.zeros_initializer(),
+        kernel_regularizer=self._config_dict['kernel_regularizer'],
+        bias_regularizer=self._config_dict['bias_regularizer'],
+        name='iou-scores')
+
+    super(MaskScoring, self).build(input_shape)
+
+  def call(self, inputs: tf.Tensor, training: bool = None):
+    """Forward pass mask scoring head.
+
+    Args:
+      inputs: A `tf.Tensor` of the shape [batch_size, width, size, num_classes],
+      representing the segmentation logits.
+      training: a `bool` indicating whether it is in `training` mode.
+
+    Returns:
+      mask_scores: A `tf.Tensor` of predicted mask scores
+        [batch_size, num_classes].
+    """
+    x = tf.stop_gradient(inputs)
+    for conv, bn in zip(self._convs, self._conv_norms):
+      x = conv(x)
+      x = bn(x)
+      x = self._activation(x)
+
+    # Casts feat to float32 so the resize op can be run on TPU.
+    x = tf.cast(x, tf.float32)
+    x = tf.image.resize(x, size=self._config_dict['fc_input_size'],
+                        method=tf.image.ResizeMethod.BILINEAR)
+    # Casts it back to be compatible with the rest opetations.
+    x = tf.cast(x, inputs.dtype)
+
+    _, h, w, filters = x.get_shape().as_list()
+    x = tf.reshape(x, [-1, h * w * filters])
+
+    for fc, bn in zip(self._fcs, self._fc_norms):
+      x = fc(x)
+      x = bn(x)
+      x = self._activation(x)
+
+    ious = self._classifier(x)
+    return ious
+
+  def get_config(self) -> Mapping[str, Any]:
+    return self._config_dict
+
+  @classmethod
+  def from_config(cls, config, custom_objects=None):
+    return cls(**config)
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -220,7 +390,7 @@ class SegmentationHead(tf.keras.layers.Layer):
         kernel_regularizer=self._config_dict['kernel_regularizer'],
         bias_regularizer=self._config_dict['bias_regularizer'])
 
-    super(SegmentationHead, self).build(input_shape)
+    super().build(input_shape)
 
   def _fuse_features(self, inputs):
     backbone_output = inputs[0]
@@ -285,7 +455,8 @@ class SegmentationHead(tf.keras.layers.Layer):
     return self._prediction_conv(x)
 
   def get_config(self):
-    return self._config_dict
+    base_config = super().get_config()
+    return dict(list(base_config.items()) + list(self._config_dict.items()))
 
   @classmethod
   def from_config(cls, config):

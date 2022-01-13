@@ -370,5 +370,17 @@ def build_segmentation_model(
       norm_epsilon=norm_activation_config.norm_epsilon,
       kernel_regularizer=l2_regularizer)
 
-  model = segmentation_model.SegmentationModel(backbone, decoder, head)
+  mask_scoring_head = None
+  if model_config.mask_scoring_head:
+    mask_scoring_head = segmentation_heads.MaskScoring(
+        num_classes=model_config.num_classes,
+        **model_config.mask_scoring_head.as_dict(),
+        activation=norm_activation_config.activation,
+        use_sync_bn=norm_activation_config.use_sync_bn,
+        norm_momentum=norm_activation_config.norm_momentum,
+        norm_epsilon=norm_activation_config.norm_epsilon,
+        kernel_regularizer=l2_regularizer)
+
+  model = segmentation_model.SegmentationModel(
+      backbone, decoder, head, mask_scoring_head=mask_scoring_head)
   return model

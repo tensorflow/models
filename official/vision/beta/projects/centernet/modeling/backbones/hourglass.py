@@ -48,7 +48,6 @@ HOURGLASS_SPECS = {
 }
 
 
-@tf.keras.utils.register_keras_serializable(package='centernet')
 class Hourglass(tf.keras.Model):
   """CenterNet Hourglass backbone."""
 

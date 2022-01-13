@@ -1,0 +1,61 @@
+task:
+  init_checkpoint: ''
+  model:
+    cls_heads: [{activation: tanh, cls_token_idx: 0, dropout_rate: 0.1, inner_dim: 768, name: next_sentence, num_classes: 2}]
+    encoder:
+      type: any
+      any:
+        attention_dropout_rate: 0.1
+        dropout_rate: 0.1
+        embedding_size: 768
+        hidden_activation: gelu
+        hidden_size: 768
+        initializer_range: 0.02
+        intermediate_size: 3072
+        max_position_embeddings: 512
+        num_attention_heads: 12
+        num_layers: 12
+        type_vocab_size: 2
+        vocab_size: 30522
+  train_data:
+    drop_remainder: true
+    global_batch_size: 256
+    input_path: ''
+    is_training: true
+    max_predictions_per_seq: 76
+    seq_length: 512
+    use_next_sentence_label: true
+    use_position_id: false
+  validation_data:
+    drop_remainder: false
+    global_batch_size: 256
+    input_path: ''
+    is_training: false
+    max_predictions_per_seq: 76
+    seq_length: 512
+    use_next_sentence_label: true
+    use_position_id: false
+trainer:
+  checkpoint_interval: 20000
+  max_to_keep: 5
+  optimizer_config:
+    learning_rate:
+      polynomial:
+        cycle: false
+        decay_steps: 1000000
+        end_learning_rate: 0.0
+        initial_learning_rate: 0.0001
+        power: 1.0
+      type: polynomial
+    optimizer:
+      type: adamw
+    warmup:
+      polynomial:
+        power: 1
+        warmup_steps: 10000
+      type: polynomial
+  steps_per_loop: 50
+  summary_interval: 50
+  train_steps: 1000000
+  validation_interval: 1000
+  validation_steps: 64

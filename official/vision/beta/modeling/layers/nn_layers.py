@@ -30,7 +30,8 @@ Activation = Union[str, Callable]
 
 def make_divisible(value: float,
                    divisor: int,
-                   min_value: Optional[float] = None
+                   min_value: Optional[float] = None,
+                   round_down_protect: bool = True,
                    ) -> int:
   """This is to ensure that all layers have channels that are divisible by 8.
 
@@ -38,6 +39,8 @@ def make_divisible(value: float,
     value: A `float` of original value.
     divisor: An `int` of the divisor that need to be checked upon.
     min_value: A `float` of  minimum value threshold.
+    round_down_protect: A `bool` indicating whether round down more than 10%
+      will be allowed.
 
   Returns:
     The adjusted value in `int` that is divisible against divisor.
@@ -46,7 +49,7 @@ def make_divisible(value: float,
     min_value = divisor
   new_value = max(min_value, int(value + divisor / 2) // divisor * divisor)
   # Make sure that round down does not go down by more than 10%.
-  if new_value < 0.9 * value:
+  if round_down_protect and new_value < 0.9 * value:
     new_value += divisor
   return int(new_value)
 
@@ -55,7 +58,8 @@ def round_filters(filters: int,
                   multiplier: float,
                   divisor: int = 8,
                   min_depth: Optional[int] = None,
-                  skip: bool = False):
+                  round_down_protect: bool = True,
+                  skip: bool = False) -> int:
   """Rounds number of filters based on width multiplier."""
   orig_f = filters
   if skip or not multiplier:
@@ -63,7 +67,8 @@ def round_filters(filters: int,
 
   new_filters = make_divisible(value=filters * multiplier,
                                divisor=divisor,
-                               min_value=min_depth)
+                               min_value=min_depth,
+                               round_down_protect=round_down_protect)
 
   logging.info('round_filter input=%s output=%s', orig_f, new_filters)
   return int(new_filters)
@@ -78,39 +83,6 @@ def get_padding_for_kernel_size(kernel_size):
   else:
     raise ValueError('Padding for kernel size {} not known.'.format(
         kernel_size))
-
-
-def hard_swish(x: tf.Tensor) -> tf.Tensor:
-  """A Swish6/H-Swish activation function.
-
-  Reference: Section 5.2 of Howard et al. "Searching for MobileNet V3."
-  https://arxiv.org/pdf/1905.02244.pdf
-
-  Args:
-    x: the input tensor.
-
-  Returns:
-    The activation output.
-  """
-  return x * tf.nn.relu6(x + 3.) * (1. / 6.)
-
-tf.keras.utils.get_custom_objects().update({'hard_swish': hard_swish})
-
-
-def simple_swish(x: tf.Tensor) -> tf.Tensor:
-  """A swish/silu activation function without custom gradients.
-
-  Useful for exporting to SavedModel to avoid custom gradient warnings.
-
-  Args:
-    x: the input tensor.
-
-  Returns:
-    The activation output.
-  """
-  return x * tf.math.sigmoid(x)
-
-tf.keras.utils.get_custom_objects().update({'simple_swish': simple_swish})
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -128,6 +100,7 @@ class SqueezeExcitation(tf.keras.layers.Layer):
                bias_regularizer=None,
                activation='relu',
                gating_activation='sigmoid',
+               round_down_protect=True,
                **kwargs):
     """Initializes a squeeze and excitation layer.
 
@@ -148,6 +121,8 @@ class SqueezeExcitation(tf.keras.layers.Layer):
       activation: A `str` name of the activation function.
       gating_activation: A `str` name of the activation function for final
         gating function.
+      round_down_protect: A `bool` of whether round down more than 10% will be
+        allowed.
       **kwargs: Additional keyword arguments to be passed.
     """
     super(SqueezeExcitation, self).__init__(**kwargs)
@@ -156,6 +131,7 @@ class SqueezeExcitation(tf.keras.layers.Layer):
     self._out_filters = out_filters
     self._se_ratio = se_ratio
     self._divisible_by = divisible_by
+    self._round_down_protect = round_down_protect
     self._use_3d_input = use_3d_input
     self._activation = activation
     self._gating_activation = gating_activation
@@ -178,7 +154,8 @@ class SqueezeExcitation(tf.keras.layers.Layer):
   def build(self, input_shape):
     num_reduced_filters = make_divisible(
         max(1, int(self._in_filters * self._se_ratio)),
-        divisor=self._divisible_by)
+        divisor=self._divisible_by,
+        round_down_protect=self._round_down_protect)
 
     self._se_reduce = tf.keras.layers.Conv2D(
         filters=num_reduced_filters,
@@ -214,6 +191,7 @@ class SqueezeExcitation(tf.keras.layers.Layer):
         'bias_regularizer': self._bias_regularizer,
         'activation': self._activation,
         'gating_activation': self._gating_activation,
+        'round_down_protect': self._round_down_protect,
     }
     base_config = super(SqueezeExcitation, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -1369,7 +1347,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
 
     self.aspp_layers.append(pooling + [conv2, norm2])
 
-    self._resize_layer = tf.keras.layers.Resizing(
+    self._resizing_layer = tf.keras.layers.Resizing(
         height, width, interpolation=self._interpolation, dtype=tf.float32)
 
     self._projection = [
@@ -1402,7 +1380,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
 
       # Apply resize layer to the end of the last set of layers.
       if i == len(self.aspp_layers) - 1:
-        x = self._resize_layer(x)
+        x = self._resizing_layer(x)
 
       result.append(tf.cast(x, inputs.dtype))
     x = self._concat_layer(result)

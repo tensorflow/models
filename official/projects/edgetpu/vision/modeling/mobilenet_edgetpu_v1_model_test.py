@@ -17,11 +17,10 @@
 import os
 
 import tensorflow as tf
-
+from official.legacy.image_classification import preprocessing
 from official.projects.edgetpu.vision.modeling import common_modules
 from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v1_model
 from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v1_model_blocks
-from official.vision.image_classification import preprocessing
 
 # TODO(b/151324383): Enable once training is supported for mobilenet-edgetpu
 EXAMPLE_IMAGE = ('third_party/tensorflow_models/official/vision/'

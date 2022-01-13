@@ -22,7 +22,6 @@ from official.modeling import tf_utils
 regularizers = tf.keras.regularizers
 
 
-@tf.keras.utils.register_keras_serializable(package='simclr')
 class DenseBN(tf.keras.layers.Layer):
   """Modified Dense layer to help build simclr system.
 

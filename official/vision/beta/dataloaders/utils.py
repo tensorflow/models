@@ -31,7 +31,7 @@ def process_source_id(source_id: tf.Tensor) -> tf.Tensor:
     A formatted source ID.
   """
   if source_id.dtype == tf.string:
-    source_id = tf.cast(tf.strings.to_number(source_id), tf.int64)
+    source_id = tf.strings.to_number(source_id, tf.int64)
   with tf.control_dependencies([source_id]):
     source_id = tf.cond(
         pred=tf.equal(tf.size(input=source_id), 0),

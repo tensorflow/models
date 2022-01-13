@@ -368,7 +368,7 @@ def _generate_detections_v2(boxes: tf.Tensor,
   nmsed_boxes = tf.gather(nmsed_boxes, indices, batch_dims=1, axis=1)
   nmsed_classes = tf.gather(nmsed_classes, indices, batch_dims=1)
   valid_detections = tf.reduce_sum(
-      input_tensor=tf.cast(tf.greater(nmsed_scores, -1), tf.int32), axis=1)
+      input_tensor=tf.cast(tf.greater(nmsed_scores, 0.0), tf.int32), axis=1)
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 

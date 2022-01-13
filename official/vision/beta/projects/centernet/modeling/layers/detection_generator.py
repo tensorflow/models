@@ -30,7 +30,6 @@ from official.vision.beta.projects.centernet.ops import loss_ops
 from official.vision.beta.projects.centernet.ops import nms_ops
 
 
-@tf.keras.utils.register_keras_serializable(package='centernet')
 class CenterNetDetectionGenerator(tf.keras.layers.Layer):
   """CenterNet Detection Generator."""
 

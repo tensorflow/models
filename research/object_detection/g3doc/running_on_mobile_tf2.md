@@ -92,27 +92,15 @@ converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8,
 converter.representative_dataset = <...>
 ```
 
-### Step 3: Add Metadata
+### Step 3: add Metadata to the model
 
-The model needs to be packed with
-[TFLite Metadata](https://www.tensorflow.org/lite/convert/metadata) to enable
-easy integration into mobile apps using the
-[TFLite Task Library](https://www.tensorflow.org/lite/inference_with_metadata/task_library/object_detector).
-This metadata helps the inference code perform the correct pre & post processing
-as required by the model. Use the following code to create the metadata.
-
-```python
-from tflite_support.metadata_writers import object_detector
-from tflite_support.metadata_writers import writer_utils
-
-writer = object_detector.MetadataWriter.create_for_inference(
-    writer_utils.load_file(_TFLITE_MODEL_PATH), input_norm_mean=[0],
-    input_norm_std=[255], label_file_paths=[_TFLITE_LABEL_PATH])
-writer_utils.save_file(writer.populate(), _TFLITE_MODEL_WITH_METADATA_PATH)
-```
-
-See the TFLite Metadata Writer API [documentation](https://www.tensorflow.org/lite/convert/metadata_writer_tutorial#object_detectors)
-for more details.
+To make it easier to use tflite models on mobile, you will need to add
+[metadata](https://www.tensorflow.org/lite/convert/metadata) to your model and
+also
+[pack](https://www.tensorflow.org/lite/convert/metadata#pack_metadata_and_associated_files_into_the_model)
+the associated labels file to it.
+If you need more information, This process is also explained in the
+[Image classification sample](https://github.com/tensorflow/examples/tree/master/lite/examples/image_classification/metadata)
 
 ## Running our model on Android
 
@@ -142,9 +130,9 @@ the
 that support API >= 21. Additional details are available on the
 [TensorFlow Lite example page](https://github.com/tensorflow/examples/tree/master/lite/examples/object_detection/android).
 
-Next we need to point the app to our new detect.tflite file and give it the
-names of our new labels. Specifically, we will copy our TensorFlow Lite
-model with metadata to the app assets directory with the following command:
+Next we need to point the app to our new detect.tflite file . Specifically, we
+will copy our TensorFlow Lite flatbuffer to the app assets directory with the
+following command:
 
 ```shell
 mkdir $TF_EXAMPLES/lite/examples/object_detection/android/app/src/main/assets
@@ -152,21 +140,30 @@ cp /tmp/tflite/detect.tflite \
   $TF_EXAMPLES/lite/examples/object_detection/android/app/src/main/assets
 ```
 
+It's important to notice that the labels file should be packed in the model (as
+mentioned on Step 3)
+
 We will now edit the gradle build file to use these assets. First, open the
 `build.gradle` file
 `$TF_EXAMPLES/lite/examples/object_detection/android/app/build.gradle`. Comment
-out the model download script to avoid your assets being overwritten:
-
-```shell
-// apply from:'download_model.gradle'
-```
+out the model download script to avoid your assets being overwritten: `// apply
+from:'download_model.gradle'` ```
 
 If your model is named `detect.tflite`, the example will use it automatically as
 long as they've been properly copied into the base assets directory. If you need
 to use a custom path or filename, open up the
 $TF_EXAMPLES/lite/examples/object_detection/android/app/src/main/java/org/tensorflow/demo/DetectorActivity.java
-file in a text editor and find the definition of TF_OD_API_MODEL_FILE. Update
-this path to point to your new model file.
+file in a text editor and find the definition of TF_OD_API_MODEL_FILE. Note that
+if your model is quantized, the flag TF_OD_API_IS_QUANTIZED is set to true, and
+if your model is floating point, the flag TF_OD_API_IS_QUANTIZED is set to
+false. This new section of DetectorActivity.java should now look as follows for
+a quantized model:
+
+```shell
+  private static final boolean TF_OD_API_IS_QUANTIZED = true;
+  private static final String TF_OD_API_MODEL_FILE = "detect.tflite";
+  private static final String TF_OD_API_LABELS_FILE = "labels_list.txt";
+```
 
 Once you’ve copied the TensorFlow Lite model and edited the gradle build script
 to not use the downloaded assets, you can build and deploy the app using the

@@ -23,6 +23,8 @@ from official.nlp.modeling import layers
 
 
 _Initializer = Union[str, tf.keras.initializers.Initializer]
+_Activation = Union[str, Callable[..., Any]]
+
 _approx_gelu = lambda x: tf.keras.activations.gelu(x, approximate=True)
 
 
@@ -72,6 +74,7 @@ class BertEncoderV2(tf.keras.layers.Layer):
     norm_first: Whether to normalize inputs to attention and intermediate dense
       layers. If set False, output of attention and intermediate dense layers is
       normalized.
+    with_dense_inputs: Whether to accept dense embeddings as the input.
   """
 
   def __init__(
@@ -83,7 +86,7 @@ class BertEncoderV2(tf.keras.layers.Layer):
       max_sequence_length: int = 512,
       type_vocab_size: int = 16,
       inner_dim: int = 3072,
-      inner_activation: Callable[..., Any] = _approx_gelu,
+      inner_activation: _Activation = _approx_gelu,
       output_dropout: float = 0.1,
       attention_dropout: float = 0.1,
       initializer: _Initializer = tf.keras.initializers.TruncatedNormal(
@@ -92,6 +95,7 @@ class BertEncoderV2(tf.keras.layers.Layer):
       embedding_width: Optional[int] = None,
       embedding_layer: Optional[tf.keras.layers.Layer] = None,
       norm_first: bool = False,
+      with_dense_inputs: bool = False,
       **kwargs):
     # Pops kwargs that are used in V1 implementation.
     if 'dict_outputs' in kwargs:
@@ -190,11 +194,23 @@ class BertEncoderV2(tf.keras.layers.Layer):
         'embedding_width': embedding_width,
         'embedding_layer': embedding_layer,
         'norm_first': norm_first,
+        'with_dense_inputs': with_dense_inputs,
     }
-    self.inputs = dict(
-        input_word_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
-        input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
-        input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32))
+    if with_dense_inputs:
+      self.inputs = dict(
+          input_word_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          dense_inputs=tf.keras.Input(
+              shape=(None, embedding_width), dtype=tf.float32),
+          dense_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          dense_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
+      )
+    else:
+      self.inputs = dict(
+          input_word_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32))
 
   def call(self, inputs):
     word_embeddings = None
@@ -203,11 +219,22 @@ class BertEncoderV2(tf.keras.layers.Layer):
       mask = inputs.get('input_mask')
       type_ids = inputs.get('input_type_ids')
       word_embeddings = inputs.get('input_word_embeddings', None)
+
+      dense_inputs = inputs.get('dense_inputs', None)
+      dense_mask = inputs.get('dense_mask', None)
+      dense_type_ids = inputs.get('dense_type_ids', None)
     else:
       raise ValueError('Unexpected inputs type to %s.' % self.__class__)
 
     if word_embeddings is None:
       word_embeddings = self._embedding_layer(word_ids)
+
+    if dense_inputs is not None:
+      # Concat the dense embeddings at sequence end.
+      word_embeddings = tf.concat([word_embeddings, dense_inputs], axis=1)
+      type_ids = tf.concat([type_ids, dense_type_ids], axis=1)
+      mask = tf.concat([mask, dense_mask], axis=1)
+
     # absolute position embeddings.
     position_embeddings = self._position_embedding_layer(word_embeddings)
     type_embeddings = self._type_embedding_layer(type_ids)

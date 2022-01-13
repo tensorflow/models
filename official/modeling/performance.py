@@ -14,14 +14,19 @@
 
 """Functions and classes related to training performance."""
 
+from absl import logging
 import tensorflow as tf
 
 
 def configure_optimizer(optimizer,
                         use_float16=False,
-                        use_graph_rewrite=False,
-                        loss_scale=None):
+                        loss_scale=None,
+                        use_graph_rewrite=None):
   """Configures optimizer object with performance options."""
+  if use_graph_rewrite is not None:
+    logging.warning('`use_graph_rewrite` is deprecated inside '
+                    '`configure_optimizer`. Please remove the usage.')
+  del use_graph_rewrite
   if use_float16:
     if loss_scale in (None, 'dynamic'):
       optimizer = tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
@@ -29,13 +34,6 @@ def configure_optimizer(optimizer,
       # loss_scale is a number. We interpret that as a fixed loss scale.
       optimizer = tf.keras.mixed_precision.LossScaleOptimizer(
           optimizer, dynamic=False, initial_scale=loss_scale)
-  if use_graph_rewrite:
-    # Note: the model dtype must be 'float32', which will ensure
-    # tf.keras.mixed_precision and enable_mixed_precision_graph_rewrite do not
-    # double up.
-    optimizer = (
-        tf.compat.v1.mixed_precision.enable_mixed_precision_graph_rewrite(
-            optimizer))
   return optimizer
 
 

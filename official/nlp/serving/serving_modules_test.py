@@ -15,8 +15,11 @@
 """Tests for nlp.serving.serving_modules."""
 
 import os
+
 from absl.testing import parameterized
 import tensorflow as tf
+
+from sentencepiece import SentencePieceTrainer
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
 from official.nlp.serving import serving_modules
@@ -24,6 +27,7 @@ from official.nlp.tasks import masked_lm
 from official.nlp.tasks import question_answering
 from official.nlp.tasks import sentence_prediction
 from official.nlp.tasks import tagging
+from official.nlp.tasks import translation
 
 
 def _create_fake_serialized_examples(features_dict):
@@ -57,6 +61,33 @@ def _create_fake_vocab_file(vocab_file_path):
   tokens.extend(["[UNK]", "[CLS]", "[SEP]", "[MASK]", "hello", "world"])
   with tf.io.gfile.GFile(vocab_file_path, "w") as outfile:
     outfile.write("\n".join(tokens))
+
+
+def _train_sentencepiece(input_path, vocab_size, model_path, eos_id=1):
+  argstr = " ".join([
+      f"--input={input_path}", f"--vocab_size={vocab_size}",
+      "--character_coverage=0.995",
+      f"--model_prefix={model_path}", "--model_type=bpe",
+      "--bos_id=-1", "--pad_id=0", f"--eos_id={eos_id}", "--unk_id=2"
+  ])
+  SentencePieceTrainer.Train(argstr)
+
+
+def _generate_line_file(filepath, lines):
+  with tf.io.gfile.GFile(filepath, "w") as f:
+    for l in lines:
+      f.write("{}\n".format(l))
+
+
+def _make_sentencepeice(output_dir):
+  src_lines = ["abc ede fg", "bbcd ef a g", "de f a a g"]
+  tgt_lines = ["dd cc a ef  g", "bcd ef a g", "gef cd ba"]
+  sentencepeice_input_path = os.path.join(output_dir, "inputs.txt")
+  _generate_line_file(sentencepeice_input_path, src_lines + tgt_lines)
+  sentencepeice_model_prefix = os.path.join(output_dir, "sp")
+  _train_sentencepiece(sentencepeice_input_path, 11, sentencepeice_model_prefix)
+  sentencepeice_model_path = "{}.model".format(sentencepeice_model_prefix)
+  return sentencepeice_model_path
 
 
 class ServingModulesTest(tf.test.TestCase, parameterized.TestCase):
@@ -312,6 +343,31 @@ class ServingModulesTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(ValueError):
       _ = export_module.get_inference_signatures({"foo": None})
 
+  def test_translation(self):
+    sp_path = _make_sentencepeice(self.get_temp_dir())
+    encdecoder = translation.EncDecoder(
+        num_attention_heads=4, intermediate_size=256)
+    config = translation.TranslationConfig(
+        model=translation.ModelConfig(
+            encoder=encdecoder,
+            decoder=encdecoder,
+            embedding_width=256,
+            padded_decode=False,
+            decode_max_length=100),
+        sentencepiece_model_path=sp_path,
+    )
+    task = translation.TranslationTask(config)
+    model = task.build_model()
+
+    params = serving_modules.Translation.Params(
+        sentencepiece_model_path=sp_path)
+    export_module = serving_modules.Translation(params=params, model=model)
+    functions = export_module.get_inference_signatures({
+        "serve_text": "serving_default"
+    })
+    outputs = functions["serving_default"](tf.constant(["abcd", "ef gh"]))
+    self.assertEqual(outputs.shape, (2,))
+    self.assertEqual(outputs.dtype, tf.string)
 
 if __name__ == "__main__":
   tf.test.main()

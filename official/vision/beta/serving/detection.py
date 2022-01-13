@@ -52,6 +52,18 @@ class DetectionModule(export_base.ExportModule):
 
     return model
 
+  def _build_anchor_boxes(self):
+    """Builds and returns anchor boxes."""
+    model_params = self.params.task.model
+    input_anchor = anchor.build_anchor_generator(
+        min_level=model_params.min_level,
+        max_level=model_params.max_level,
+        num_scales=model_params.anchor.num_scales,
+        aspect_ratios=model_params.anchor.aspect_ratios,
+        anchor_size=model_params.anchor.anchor_size)
+    return input_anchor(
+        image_size=(self._input_image_size[0], self._input_image_size[1]))
+
   def _build_inputs(self, image):
     """Builds detection model inputs for serving."""
     model_params = self.params.task.model
@@ -67,15 +79,7 @@ class DetectionModule(export_base.ExportModule):
             self._input_image_size, 2**model_params.max_level),
         aug_scale_min=1.0,
         aug_scale_max=1.0)
-
-    input_anchor = anchor.build_anchor_generator(
-        min_level=model_params.min_level,
-        max_level=model_params.max_level,
-        num_scales=model_params.anchor.num_scales,
-        aspect_ratios=model_params.anchor.aspect_ratios,
-        anchor_size=model_params.anchor.anchor_size)
-    anchor_boxes = input_anchor(image_size=(self._input_image_size[0],
-                                            self._input_image_size[1]))
+    anchor_boxes = self._build_anchor_boxes()
 
     return image, anchor_boxes, image_info
 
@@ -133,7 +137,22 @@ class DetectionModule(export_base.ExportModule):
       Tensor holding detection output logits.
     """
 
-    images, anchor_boxes, image_info = self.preprocess(images)
+    # Skip image preprocessing when input_type is tflite so it is compatible
+    # with TFLite quantization.
+    if self._input_type != 'tflite':
+      images, anchor_boxes, image_info = self.preprocess(images)
+    else:
+      with tf.device('cpu:0'):
+        anchor_boxes = self._build_anchor_boxes()
+        # image_info is a 3D tensor of shape [batch_size, 4, 2]. It is in the
+        # format of [[original_height, original_width],
+        # [desired_height, desired_width], [y_scale, x_scale],
+        # [y_offset, x_offset]]. When input_type is tflite, input image is
+        # supposed to be preprocessed already.
+        image_info = tf.convert_to_tensor([[
+            self._input_image_size, self._input_image_size, [1.0, 1.0], [0, 0]
+        ]],
+                                          dtype=tf.float32)
     input_image_shape = image_info[:, 1, :]
 
     # To overcome keras.Model extra limitation to save a model with layers that

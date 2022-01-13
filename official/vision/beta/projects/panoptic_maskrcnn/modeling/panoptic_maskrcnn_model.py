@@ -21,7 +21,6 @@ import tensorflow as tf
 from official.vision.beta.modeling import maskrcnn_model
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
 class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
   """The Panoptic Segmentation model."""
 

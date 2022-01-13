@@ -16,10 +16,13 @@
 
 import abc
 import functools
+import time
 from typing import Any, Callable, Dict, Mapping, List, Optional, Text, Union
 
+from absl import logging
 import tensorflow as tf
-from tensorflow.python.saved_model.model_utils import export_utils
+
+MAX_DIRECTORY_CREATION_ATTEMPTS = 10
 
 
 class ExportModule(tf.Module, metaclass=abc.ABCMeta):
@@ -89,7 +92,8 @@ def export(export_module: ExportModule,
            export_savedmodel_dir: Text,
            checkpoint_path: Optional[Text] = None,
            timestamped: bool = True,
-           save_options: Optional[tf.saved_model.SaveOptions] = None) -> Text:
+           save_options: Optional[tf.saved_model.SaveOptions] = None,
+           checkpoint: Optional[tf.train.Checkpoint] = None) -> Text:
   """Exports to SavedModel format.
 
   Args:
@@ -101,6 +105,8 @@ def export(export_module: ExportModule,
     checkpoint_path: Object-based checkpoint path or directory.
     timestamped: Whether to export the savedmodel to a timestamped directory.
     save_options: `SaveOptions` for `tf.saved_model.save`.
+    checkpoint: An optional tf.train.Checkpoint. If provided, the export module
+      will use it to read the weights.
 
   Returns:
     The savedmodel directory path.
@@ -109,7 +115,8 @@ def export(export_module: ExportModule,
   if ckpt_dir_or_file is not None and tf.io.gfile.isdir(ckpt_dir_or_file):
     ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
   if ckpt_dir_or_file:
-    checkpoint = tf.train.Checkpoint(model=export_module.model)
+    if checkpoint is None:
+      checkpoint = tf.train.Checkpoint(model=export_module.model)
     checkpoint.read(
         ckpt_dir_or_file).assert_existing_objects_matched().expect_partial()
   if isinstance(function_keys, list):
@@ -119,15 +126,48 @@ def export(export_module: ExportModule,
       }
     else:
       raise ValueError(
-          "If the function_keys is a list, it must contain a single element. %s"
+          'If the function_keys is a list, it must contain a single element. %s'
           % function_keys)
 
   signatures = export_module.get_inference_signatures(function_keys)
   if timestamped:
-    export_dir = export_utils.get_timestamped_export_dir(
-        export_savedmodel_dir).decode("utf-8")
+    export_dir = get_timestamped_export_dir(export_savedmodel_dir).decode(
+        'utf-8')
   else:
     export_dir = export_savedmodel_dir
   tf.saved_model.save(
       export_module, export_dir, signatures=signatures, options=save_options)
   return export_dir
+
+
+def get_timestamped_export_dir(export_dir_base):
+  """Builds a path to a new subdirectory within the base directory.
+
+  Args:
+    export_dir_base: A string containing a directory to write the exported graph
+      and checkpoints.
+
+  Returns:
+    The full path of the new subdirectory (which is not actually created yet).
+
+  Raises:
+    RuntimeError: if repeated attempts fail to obtain a unique timestamped
+      directory name.
+  """
+  attempts = 0
+  while attempts < MAX_DIRECTORY_CREATION_ATTEMPTS:
+    timestamp = int(time.time())
+
+    result_dir = tf.io.gfile.join(
+        tf.compat.as_bytes(export_dir_base), tf.compat.as_bytes(str(timestamp)))
+    if not tf.io.gfile.exists(result_dir):
+      # Collisions are still possible (though extremely unlikely): this
+      # directory is not actually created yet, but it will be almost
+      # instantly on return from this function.
+      return result_dir
+    time.sleep(1)
+    attempts += 1
+    logging.warning('Directory %s already exists; retrying (attempt %s/%s)',
+                    str(result_dir), attempts, MAX_DIRECTORY_CREATION_ATTEMPTS)
+  raise RuntimeError('Failed to obtain a unique export directory name after '
+                     f'{MAX_DIRECTORY_CREATION_ATTEMPTS} attempts.')

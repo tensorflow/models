@@ -20,8 +20,8 @@ They can be used to assemble new `tf.keras` layers or models.
 from official.nlp.modeling.layers.attention import *
 from official.nlp.modeling.layers.bigbird_attention import BigBirdAttention
 from official.nlp.modeling.layers.bigbird_attention import BigBirdMasks
+from official.nlp.modeling.layers.block_diag_feedforward import BlockDiagFeedforward
 from official.nlp.modeling.layers.cls_head import *
-from official.nlp.modeling.layers.dense_einsum import DenseEinsum
 from official.nlp.modeling.layers.gated_feedforward import GatedFeedforward
 from official.nlp.modeling.layers.gaussian_process import RandomFeatureGaussianProcess
 from official.nlp.modeling.layers.kernel_attention import KernelAttention
@@ -47,6 +47,7 @@ from official.nlp.modeling.layers.spectral_normalization import *
 from official.nlp.modeling.layers.talking_heads_attention import TalkingHeadsAttention
 from official.nlp.modeling.layers.text_layers import BertPackInputs
 from official.nlp.modeling.layers.text_layers import BertTokenizer
+from official.nlp.modeling.layers.text_layers import FastWordpieceBertTokenizer
 from official.nlp.modeling.layers.text_layers import SentencepieceTokenizer
 from official.nlp.modeling.layers.tn_transformer_expand_condense import TNTransformerExpandCondense
 from official.nlp.modeling.layers.transformer import *

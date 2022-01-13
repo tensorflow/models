@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Contains definitions of Atrous Spatial Pyramid Pooling (ASPP) decoder."""
-from typing import Any, List, Mapping, Optional
+from typing import Any, List, Mapping, Optional, Union
 
 # Import libraries
 
@@ -22,6 +22,9 @@ import tensorflow as tf
 from official.modeling import hyperparams
 from official.vision.beta.modeling.decoders import factory
 from official.vision.beta.modeling.layers import deeplab
+from official.vision.beta.modeling.layers import nn_layers
+
+TensorMapUnion = Union[tf.Tensor, Mapping[str, tf.Tensor]]
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -43,6 +46,8 @@ class ASPP(tf.keras.layers.Layer):
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       interpolation: str = 'bilinear',
       use_depthwise_convolution: bool = False,
+      spp_layer_version: str = 'v1',
+      output_tensor: bool = False,
       **kwargs):
     """Initializes an Atrous Spatial Pyramid Pooling (ASPP) layer.
 
@@ -67,9 +72,12 @@ class ASPP(tf.keras.layers.Layer):
         `gaussian`, or `mitchellcubic`.
       use_depthwise_convolution: If True depthwise separable convolutions will
         be added to the Atrous spatial pyramid pooling.
+     spp_layer_version: A `str` of spatial pyramid pooling layer version.
+     output_tensor: Whether to output a single tensor or a dictionary of tensor.
+       Default is false.
       **kwargs: Additional keyword arguments to be passed.
     """
-    super(ASPP, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self._config_dict = {
         'level': level,
         'dilation_rates': dilation_rates,
@@ -84,7 +92,11 @@ class ASPP(tf.keras.layers.Layer):
         'kernel_regularizer': kernel_regularizer,
         'interpolation': interpolation,
         'use_depthwise_convolution': use_depthwise_convolution,
+        'spp_layer_version': spp_layer_version,
+        'output_tensor': output_tensor
     }
+    self._aspp_layer = deeplab.SpatialPyramidPooling if self._config_dict[
+        'spp_layer_version'] == 'v1' else nn_layers.SpatialPyramidPooling
 
   def build(self, input_shape):
     pool_kernel_size = None
@@ -93,7 +105,8 @@ class ASPP(tf.keras.layers.Layer):
           int(p_size // 2**self._config_dict['level'])
           for p_size in self._config_dict['pool_kernel_size']
       ]
-    self.aspp = deeplab.SpatialPyramidPooling(
+
+    self.aspp = self._aspp_layer(
         output_channels=self._config_dict['num_filters'],
         dilation_rates=self._config_dict['dilation_rates'],
         pool_kernel_size=pool_kernel_size,
@@ -108,31 +121,36 @@ class ASPP(tf.keras.layers.Layer):
         use_depthwise_convolution=self._config_dict['use_depthwise_convolution']
     )
 
-  def call(self, inputs: Mapping[str, tf.Tensor]) -> Mapping[str, tf.Tensor]:
+  def call(self, inputs: TensorMapUnion) -> TensorMapUnion:
     """Calls the Atrous Spatial Pyramid Pooling (ASPP) layer on an input.
 
     The output of ASPP will be a dict of {`level`, `tf.Tensor`} even if only one
-    level is present. Hence, this will be compatible with the rest of the
-    segmentation model interfaces.
+    level is present, if output_tensor is false. Hence, this will be compatible
+    with the rest of the segmentation model interfaces.
+    If output_tensor is true, a single tensot is output.
 
     Args:
-      inputs: A `dict` of `tf.Tensor` where
+      inputs: A `tf.Tensor` of shape [batch, height_l, width_l, filter_size] or
+        a `dict` of `tf.Tensor` where
         - key: A `str` of the level of the multilevel feature maps.
         - values: A `tf.Tensor` of shape [batch, height_l, width_l,
           filter_size].
 
     Returns:
-      A `dict` of `tf.Tensor` where
+      A `tf.Tensor` of shape [batch, height_l, width_l, filter_size] or a `dict`
+        of `tf.Tensor` where
         - key: A `str` of the level of the multilevel feature maps.
         - values: A `tf.Tensor` of output of ASPP module.
     """
     outputs = {}
     level = str(self._config_dict['level'])
-    outputs[level] = self.aspp(inputs[level])
-    return outputs
+    backbone_output = inputs[level] if isinstance(inputs, dict) else inputs
+    outputs = self.aspp(backbone_output)
+    return outputs if self._config_dict['output_tensor'] else {level: outputs}
 
   def get_config(self) -> Mapping[str, Any]:
-    return self._config_dict
+    base_config = super().get_config()
+    return dict(list(base_config.items()) + list(self._config_dict.items()))
 
   @classmethod
   def from_config(cls, config, custom_objects=None):
@@ -180,4 +198,6 @@ def build_aspp_decoder(
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
       activation=norm_activation_config.activation,
-      kernel_regularizer=l2_regularizer)
+      kernel_regularizer=l2_regularizer,
+      spp_layer_version=decoder_cfg.spp_layer_version,
+      output_tensor=decoder_cfg.output_tensor)

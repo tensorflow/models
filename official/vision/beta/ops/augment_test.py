@@ -95,15 +95,7 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
       'reduced_cifar10',
       'svhn',
       'reduced_imagenet',
-  ]
-
-  AVAILABLE_POLICIES = [
-      'v0',
-      'test',
-      'simple',
-      'reduced_cifar10',
-      'svhn',
-      'reduced_imagenet',
+      'detection_v0',
   ]
 
   def test_autoaugment(self):
@@ -116,6 +108,18 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
 
       self.assertEqual((224, 224, 3), aug_image.shape)
 
+  def test_autoaugment_with_bboxes(self):
+    """Smoke test to be sure there are no syntax errors with bboxes."""
+    image = tf.zeros((224, 224, 3), dtype=tf.uint8)
+    bboxes = tf.ones((2, 4), dtype=tf.float32)
+
+    for policy in self.AVAILABLE_POLICIES:
+      augmenter = augment.AutoAugment(augmentation_name=policy)
+      aug_image, aug_bboxes = augmenter.distort_with_boxes(image, bboxes)
+
+      self.assertEqual((224, 224, 3), aug_image.shape)
+      self.assertEqual((2, 4), aug_bboxes.shape)
+
   def test_randaug(self):
     """Smoke test to be sure there are no syntax errors."""
     image = tf.zeros((224, 224, 3), dtype=tf.uint8)
@@ -124,6 +128,17 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
     aug_image = augmenter.distort(image)
 
     self.assertEqual((224, 224, 3), aug_image.shape)
+
+  def test_randaug_with_bboxes(self):
+    """Smoke test to be sure there are no syntax errors with bboxes."""
+    image = tf.zeros((224, 224, 3), dtype=tf.uint8)
+    bboxes = tf.ones((2, 4), dtype=tf.float32)
+
+    augmenter = augment.RandAugment()
+    aug_image, aug_bboxes = augmenter.distort_with_boxes(image, bboxes)
+
+    self.assertEqual((224, 224, 3), aug_image.shape)
+    self.assertEqual((2, 4), aug_bboxes.shape)
 
   def test_all_policy_ops(self):
     """Smoke test to be sure all augmentation functions can execute."""
@@ -135,14 +150,37 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
     translate_const = 250
 
     image = tf.ones((224, 224, 3), dtype=tf.uint8)
+    bboxes = None
+
+    for op_name in augment.NAME_TO_FUNC.keys() - augment.REQUIRE_BOXES_FUNCS:
+      func, _, args = augment._parse_policy_info(op_name, prob, magnitude,
+                                                 replace_value, cutout_const,
+                                                 translate_const)
+      image, bboxes = func(image, bboxes, *args)
+
+    self.assertEqual((224, 224, 3), image.shape)
+    self.assertIsNone(bboxes)
+
+  def test_all_policy_ops_with_bboxes(self):
+    """Smoke test to be sure all augmentation functions can execute."""
+
+    prob = 1
+    magnitude = 10
+    replace_value = [128] * 3
+    cutout_const = 100
+    translate_const = 250
+
+    image = tf.ones((224, 224, 3), dtype=tf.uint8)
+    bboxes = tf.ones((2, 4), dtype=tf.float32)
 
     for op_name in augment.NAME_TO_FUNC:
       func, _, args = augment._parse_policy_info(op_name, prob, magnitude,
                                                  replace_value, cutout_const,
                                                  translate_const)
-      image = func(image, *args)
+      image, bboxes = func(image, bboxes, *args)
 
     self.assertEqual((224, 224, 3), image.shape)
+    self.assertEqual((2, 4), bboxes.shape)
 
   def test_autoaugment_video(self):
     """Smoke test with video to be sure there are no syntax errors."""
@@ -153,6 +191,18 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
       aug_image = augmenter.distort(image)
 
       self.assertEqual((2, 224, 224, 3), aug_image.shape)
+
+  def test_autoaugment_video_with_boxes(self):
+    """Smoke test with video to be sure there are no syntax errors."""
+    image = tf.zeros((2, 224, 224, 3), dtype=tf.uint8)
+    bboxes = tf.ones((2, 2, 4), dtype=tf.float32)
+
+    for policy in self.AVAILABLE_POLICIES:
+      augmenter = augment.AutoAugment(augmentation_name=policy)
+      aug_image, aug_bboxes = augmenter.distort_with_boxes(image, bboxes)
+
+      self.assertEqual((2, 224, 224, 3), aug_image.shape)
+      self.assertEqual((2, 2, 4), aug_bboxes.shape)
 
   def test_randaug_video(self):
     """Smoke test with video to be sure there are no syntax errors."""
@@ -173,14 +223,48 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
     translate_const = 250
 
     image = tf.ones((2, 224, 224, 3), dtype=tf.uint8)
+    bboxes = None
+
+    for op_name in augment.NAME_TO_FUNC.keys() - augment.REQUIRE_BOXES_FUNCS:
+      func, _, args = augment._parse_policy_info(op_name, prob, magnitude,
+                                                 replace_value, cutout_const,
+                                                 translate_const)
+      image, bboxes = func(image, bboxes, *args)
+
+    self.assertEqual((2, 224, 224, 3), image.shape)
+    self.assertIsNone(bboxes)
+
+  def test_all_policy_ops_video_with_bboxes(self):
+    """Smoke test to be sure all video augmentation functions can execute."""
+
+    prob = 1
+    magnitude = 10
+    replace_value = [128] * 3
+    cutout_const = 100
+    translate_const = 250
+
+    image = tf.ones((2, 224, 224, 3), dtype=tf.uint8)
+    bboxes = tf.ones((2, 2, 4), dtype=tf.float32)
 
     for op_name in augment.NAME_TO_FUNC:
       func, _, args = augment._parse_policy_info(op_name, prob, magnitude,
                                                  replace_value, cutout_const,
                                                  translate_const)
-      image = func(image, *args)
+      if op_name in {
+          'Rotate_BBox',
+          'ShearX_BBox',
+          'ShearY_BBox',
+          'TranslateX_BBox',
+          'TranslateY_BBox',
+          'TranslateY_Only_BBoxes',
+      }:
+        with self.assertRaises(ValueError):
+          func(image, bboxes, *args)
+      else:
+        image, bboxes = func(image, bboxes, *args)
 
     self.assertEqual((2, 224, 224, 3), image.shape)
+    self.assertEqual((2, 2, 4), bboxes.shape)
 
   def _generate_test_policy(self):
     """Generate a test policy at random."""

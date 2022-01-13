@@ -135,7 +135,15 @@ class SemanticSegmentationTask(base_task.Task):
         use_groundtruth_dimension=loss_params.use_groundtruth_dimension,
         top_k_percent_pixels=loss_params.top_k_percent_pixels)
 
-    total_loss = segmentation_loss_fn(model_outputs, labels['masks'])
+    total_loss = segmentation_loss_fn(model_outputs['logits'], labels['masks'])
+
+    if 'mask_scores' in model_outputs:
+      mask_scoring_loss_fn = segmentation_losses.MaskScoringLoss(
+          loss_params.ignore_label)
+      total_loss += mask_scoring_loss_fn(
+          model_outputs['mask_scores'],
+          model_outputs['logits'],
+          labels['masks'])
 
     if aux_losses:
       total_loss += tf.add_n(aux_losses)
@@ -143,6 +151,28 @@ class SemanticSegmentationTask(base_task.Task):
     total_loss = loss_params.loss_weight * total_loss
 
     return total_loss
+
+  def process_metrics(self, metrics, labels, model_outputs, **kwargs):
+    """Process and update metrics.
+
+    Called when using custom training loop API.
+
+    Args:
+      metrics: a nested structure of metrics objects. The return of function
+        self.build_metrics.
+      labels: a tensor or a nested structure of tensors.
+      model_outputs: a tensor or a nested structure of tensors. For example,
+        output of the keras model built by self.build_model.
+      **kwargs: other args.
+    """
+    for metric in metrics:
+      if 'mask_scores_mse' is metric.name:
+        actual_mask_scores = segmentation_losses.get_actual_mask_scores(
+            model_outputs['logits'], labels['masks'],
+            self.task_config.losses.ignore_label)
+        metric.update_state(actual_mask_scores, model_outputs['mask_scores'])
+      else:
+        metric.update_state(labels, model_outputs['logits'])
 
   def build_metrics(self, training: bool = True):
     """Gets streaming metrics for training/validation."""
@@ -153,6 +183,9 @@ class SemanticSegmentationTask(base_task.Task):
           num_classes=self.task_config.model.num_classes,
           rescale_predictions=False,
           dtype=tf.float32))
+      if self.task_config.model.get('mask_scoring_head'):
+        metrics.append(
+            tf.keras.metrics.MeanSquaredError(name='mask_scores_mse'))
     else:
       self.iou_metric = segmentation_metrics.PerClassIoU(
           name='per_class_iou',
@@ -160,6 +193,11 @@ class SemanticSegmentationTask(base_task.Task):
           rescale_predictions=not self.task_config.validation_data
           .resize_eval_groundtruth,
           dtype=tf.float32)
+      if self.task_config.validation_data.resize_eval_groundtruth and self.task_config.model.get('mask_scoring_head'):  # pylint: disable=line-too-long
+        # Masks scores metric can only be computed if labels are scaled to match
+        # preticted mask scores.
+        metrics.append(
+            tf.keras.metrics.MeanSquaredError(name='mask_scores_mse'))
 
       # Update state on CPU if TPUStrategy due to dynamic resizing.
       self._process_iou_metric_on_cpu = isinstance(
@@ -194,6 +232,8 @@ class SemanticSegmentationTask(base_task.Task):
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
       outputs = model(features, training=True)
+      if isinstance(outputs, tf.Tensor):
+        outputs = {'logits': outputs}
       # Casting output layer as float32 is necessary when mixed_precision is
       # mixed_float16 or mixed_bfloat16 to ensure output is casted as float32.
       outputs = tf.nest.map_structure(
@@ -249,6 +289,8 @@ class SemanticSegmentationTask(base_task.Task):
           features, input_partition_dims)
 
     outputs = self.inference_step(features, model)
+    if isinstance(outputs, tf.Tensor):
+      outputs = {'logits': outputs}
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
 
     if self.task_config.validation_data.resize_eval_groundtruth:
@@ -260,9 +302,9 @@ class SemanticSegmentationTask(base_task.Task):
     logs = {self.loss: loss}
 
     if self._process_iou_metric_on_cpu:
-      logs.update({self.iou_metric.name: (labels, outputs)})
+      logs.update({self.iou_metric.name: (labels, outputs['logits'])})
     else:
-      self.iou_metric.update_state(labels, outputs)
+      self.iou_metric.update_state(labels, outputs['logits'])
 
     if metrics:
       self.process_metrics(metrics, labels, outputs)

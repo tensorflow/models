@@ -114,6 +114,10 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
       'groundtruth_not_exhaustive_classes': [batch_size, num_classes] K-hot
         representation of 1-indexed classes which don't have all of their
         instances marked exhaustively.
+      'input_data_fields.groundtruth_image_classes': integer representation of
+        the classes that were sent for verification for a given image. Note that
+        this field does not support batching as the number of classes can be
+        variable.
     class_agnostic: Boolean indicating whether detections are class agnostic.
   """
   input_data_fields = fields.InputDataFields()
@@ -135,6 +139,18 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
       input_data_fields.groundtruth_boxes: groundtruth_boxes,
       input_data_fields.groundtruth_classes: groundtruth_classes
   }
+
+  if detection_model.groundtruth_has_field(
+      input_data_fields.groundtruth_image_classes):
+    groundtruth_image_classes_k_hot = tf.stack(
+        detection_model.groundtruth_lists(
+            input_data_fields.groundtruth_image_classes))
+    # We do not add label_id_offset here because it was not added when encoding
+    # groundtruth_image_classes.
+    groundtruth_image_classes = tf.expand_dims(
+        tf.where(groundtruth_image_classes_k_hot > 0)[:, 1], 0)
+    groundtruth[
+        input_data_fields.groundtruth_image_classes] = groundtruth_image_classes
 
   if detection_model.groundtruth_has_field(fields.BoxListFields.masks):
     groundtruth[input_data_fields.groundtruth_instance_masks] = tf.stack(
@@ -303,7 +319,7 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
   return unbatched_tensor_dict
 
 
-def provide_groundtruth(model, labels):
+def provide_groundtruth(model, labels, training_step=None):
   """Provides the labels to a model as groundtruth.
 
   This helper function extracts the corresponding boxes, classes,
@@ -313,6 +329,8 @@ def provide_groundtruth(model, labels):
   Args:
     model: The detection model to provide groundtruth to.
     labels: The labels for the training or evaluation inputs.
+    training_step: int, optional. The training step for the model. Useful
+      for models which want to anneal loss weights.
   """
   gt_boxes_list = labels[fields.InputDataFields.groundtruth_boxes]
   gt_classes_list = labels[fields.InputDataFields.groundtruth_classes]
@@ -382,6 +400,10 @@ def provide_groundtruth(model, labels):
   if fields.InputDataFields.groundtruth_not_exhaustive_classes in labels:
     gt_not_exhaustive_classes = labels[
         fields.InputDataFields.groundtruth_not_exhaustive_classes]
+  groundtruth_image_classes = None
+  if fields.InputDataFields.groundtruth_image_classes in labels:
+    groundtruth_image_classes = labels[
+        fields.InputDataFields.groundtruth_image_classes]
   model.provide_groundtruth(
       groundtruth_boxes_list=gt_boxes_list,
       groundtruth_classes_list=gt_classes_list,
@@ -402,7 +424,9 @@ def provide_groundtruth(model, labels):
       groundtruth_verified_neg_classes=gt_verified_neg_classes,
       groundtruth_not_exhaustive_classes=gt_not_exhaustive_classes,
       groundtruth_keypoint_depths_list=gt_keypoint_depths_list,
-      groundtruth_keypoint_depth_weights_list=gt_keypoint_depth_weights_list)
+      groundtruth_keypoint_depth_weights_list=gt_keypoint_depth_weights_list,
+      groundtruth_image_classes=groundtruth_image_classes,
+      training_step=training_step)
 
 
 def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,

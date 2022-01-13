@@ -15,7 +15,7 @@
 """Preprocessing ops."""
 
 import math
-from typing import Optional
+from typing import Optional, Tuple, Union
 from six.moves import range
 import tensorflow as tf
 
@@ -301,6 +301,86 @@ def resize_and_crop_image_v2(image,
         image_scale,
         tf.cast(offset, tf.float32)])
     return output_image, image_info
+
+
+def resize_image(
+    image: tf.Tensor,
+    size: Union[Tuple[int, int], int],
+    max_size: Optional[int] = None,
+    method: tf.image.ResizeMethod = tf.image.ResizeMethod.BILINEAR):
+  """Resize image with size and max_size.
+
+  Args:
+    image: the image to be resized.
+    size: if list to tuple, resize to it. If scalar, we keep the same
+      aspect ratio and resize the short side to the value.
+    max_size: only used when size is a scalar. When the larger side is larger
+      than max_size after resized with size we used max_size to keep the aspect
+      ratio instead.
+    method: the method argument passed to tf.image.resize.
+
+  Returns:
+    the resized image and image_info to be used for downstream processing.
+    image_info: a 2D `Tensor` that encodes the information of the image and the
+      applied preprocessing. It is in the format of
+      [[original_height, original_width], [resized_height, resized_width],
+      [y_scale, x_scale], [0, 0]], where [resized_height, resized_width]
+      is the actual scaled image size, and [y_scale, x_scale] is the
+      scaling factor, which is the ratio of
+      scaled dimension / original dimension.
+  """
+
+  def get_size_with_aspect_ratio(image_size, size, max_size=None):
+    h = image_size[0]
+    w = image_size[1]
+    if max_size is not None:
+      min_original_size = tf.cast(tf.math.minimum(w, h), dtype=tf.float32)
+      max_original_size = tf.cast(tf.math.maximum(w, h), dtype=tf.float32)
+      if max_original_size / min_original_size * size > max_size:
+        size = tf.cast(
+            tf.math.floor(max_size * min_original_size / max_original_size),
+            dtype=tf.int32)
+      else:
+        size = tf.cast(size, tf.int32)
+
+    else:
+      size = tf.cast(size, tf.int32)
+    if (w <= h and w == size) or (h <= w and h == size):
+      return tf.stack([h, w])
+
+    if w < h:
+      ow = size
+      oh = tf.cast(
+          (tf.cast(size, dtype=tf.float32) * tf.cast(h, dtype=tf.float32) /
+           tf.cast(w, dtype=tf.float32)),
+          dtype=tf.int32)
+    else:
+      oh = size
+      ow = tf.cast(
+          (tf.cast(size, dtype=tf.float32) * tf.cast(w, dtype=tf.float32) /
+           tf.cast(h, dtype=tf.float32)),
+          dtype=tf.int32)
+
+    return tf.stack([oh, ow])
+
+  def get_size(image_size, size, max_size=None):
+    if isinstance(size, (list, tuple)):
+      return size[::-1]
+    else:
+      return get_size_with_aspect_ratio(image_size, size, max_size)
+
+  orignal_size = tf.shape(image)[0:2]
+  size = get_size(orignal_size, size, max_size)
+  rescaled_image = tf.image.resize(
+      image, tf.cast(size, tf.int32), method=method)
+  image_scale = size / orignal_size
+  image_info = tf.stack([
+      tf.cast(orignal_size, dtype=tf.float32),
+      tf.cast(size, dtype=tf.float32),
+      tf.cast(image_scale, tf.float32),
+      tf.constant([0.0, 0.0], dtype=tf.float32)
+  ])
+  return rescaled_image, image_info
 
 
 def center_crop_image(image):

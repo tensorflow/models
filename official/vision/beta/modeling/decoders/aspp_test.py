@@ -26,14 +26,15 @@ from official.vision.beta.modeling.decoders import aspp
 class ASPPTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (3, [6, 12, 18, 24], 128),
-      (3, [6, 12, 18], 128),
-      (3, [6, 12], 256),
-      (4, [6, 12, 18, 24], 128),
-      (4, [6, 12, 18], 128),
-      (4, [6, 12], 256),
+      (3, [6, 12, 18, 24], 128, 'v1'),
+      (3, [6, 12, 18], 128, 'v1'),
+      (3, [6, 12], 256, 'v1'),
+      (4, [6, 12, 18, 24], 128, 'v2'),
+      (4, [6, 12, 18], 128, 'v2'),
+      (4, [6, 12], 256, 'v2'),
   )
-  def test_network_creation(self, level, dilation_rates, num_filters):
+  def test_network_creation(self, level, dilation_rates, num_filters,
+                            spp_layer_version):
     """Test creation of ASPP."""
 
     input_size = 256
@@ -45,7 +46,8 @@ class ASPPTest(parameterized.TestCase, tf.test.TestCase):
     network = aspp.ASPP(
         level=level,
         dilation_rates=dilation_rates,
-        num_filters=num_filters)
+        num_filters=num_filters,
+        spp_layer_version=spp_layer_version)
 
     endpoints = backbone(inputs)
     feats = network(endpoints)
@@ -71,7 +73,11 @@ class ASPPTest(parameterized.TestCase, tf.test.TestCase):
         interpolation='bilinear',
         dropout_rate=0.2,
         use_depthwise_convolution='false',
-    )
+        spp_layer_version='v1',
+        output_tensor=False,
+        dtype='float32',
+        name='aspp',
+        trainable=True)
     network = aspp.ASPP(**kwargs)
 
     expected_config = dict(kwargs)
