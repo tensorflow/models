@@ -152,6 +152,20 @@ python3 classifier_trainer.py \
   --config_file=configs/examples/resnet/imagenet/tpu.yaml
 ```
 
+### VGG-16
+
+#### On GPU:
+```bash
+python3 classifier_trainer.py \
+  --mode=train_and_eval \
+  --model_type=vgg \
+  --dataset=imagenet \
+  --model_dir=$MODEL_DIR \
+  --data_dir=$DATA_DIR \
+  --config_file=configs/examples/vgg/imagenet/gpu.yaml \
+  --params_override='runtime.num_gpus=$NUM_GPUS'
+```
+
 ### EfficientNet
 **Note: EfficientNet development is a work in progress.**
 #### On GPU:
