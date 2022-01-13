@@ -140,6 +140,23 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual((224, 224, 3), aug_image.shape)
     self.assertEqual((2, 4), aug_bboxes.shape)
 
+  def test_randaug_build_for_detection(self):
+    """Smoke test to be sure there are no syntax errors built for detection."""
+    image = tf.zeros((224, 224, 3), dtype=tf.uint8)
+    bboxes = tf.ones((2, 4), dtype=tf.float32)
+
+    augmenter = augment.RandAugment.build_for_detection()
+    self.assertCountEqual(augmenter.available_ops, [
+        'AutoContrast', 'Equalize', 'Invert', 'Posterize', 'Solarize', 'Color',
+        'Contrast', 'Brightness', 'Sharpness', 'Cutout', 'SolarizeAdd',
+        'Rotate_BBox', 'ShearX_BBox', 'ShearY_BBox', 'TranslateX_BBox',
+        'TranslateY_BBox'
+    ])
+
+    aug_image, aug_bboxes = augmenter.distort_with_boxes(image, bboxes)
+    self.assertEqual((224, 224, 3), aug_image.shape)
+    self.assertEqual((2, 4), aug_bboxes.shape)
+
   def test_all_policy_ops(self):
     """Smoke test to be sure all augmentation functions can execute."""
 

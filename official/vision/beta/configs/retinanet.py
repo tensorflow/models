@@ -58,7 +58,6 @@ class Parser(hyperparams.Config):
   skip_crowd_during_training: bool = True
   max_num_instances: int = 100
   # Can choose AutoAugment and RandAugment.
-  # TODO(b/205346436) Support RandAugment.
   aug_type: Optional[common.Augmentation] = None
 
   # Keep for backward compatibility. Not used.
