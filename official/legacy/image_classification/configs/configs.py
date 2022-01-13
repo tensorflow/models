@@ -14,9 +14,6 @@
 
 # Lint as: python3
 """Configuration utils for image classification experiments."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import dataclasses
 
@@ -24,6 +21,7 @@ from official.legacy.image_classification import dataset_factory
 from official.legacy.image_classification.configs import base_configs
 from official.legacy.image_classification.efficientnet import efficientnet_config
 from official.legacy.image_classification.resnet import resnet_config
+from official.legacy.image_classification.vgg import vgg_config
 
 
 @dataclasses.dataclass
@@ -92,12 +90,38 @@ class ResNetImagenetConfig(base_configs.ExperimentConfig):
   model: base_configs.ModelConfig = resnet_config.ResNetModelConfig()
 
 
+@dataclasses.dataclass
+class VGGImagenetConfig(base_configs.ExperimentConfig):
+  """Base configuration to train vgg-16 on ImageNet."""
+  export: base_configs.ExportConfig = base_configs.ExportConfig()
+  runtime: base_configs.RuntimeConfig = base_configs.RuntimeConfig()
+  train_dataset: dataset_factory.DatasetConfig = dataset_factory.ImageNetConfig(
+      split='train', one_hot=False, mean_subtract=True, standardize=True)
+  validation_dataset: dataset_factory.DatasetConfig = dataset_factory.ImageNetConfig(
+      split='validation', one_hot=False, mean_subtract=True, standardize=True)
+  train: base_configs.TrainConfig = base_configs.TrainConfig(
+      resume_checkpoint=True,
+      epochs=90,
+      steps=None,
+      callbacks=base_configs.CallbacksConfig(
+          enable_checkpoint_and_export=True, enable_tensorboard=True),
+      metrics=['accuracy', 'top_5'],
+      time_history=base_configs.TimeHistoryConfig(log_steps=100),
+      tensorboard=base_configs.TensorBoardConfig(
+          track_lr=True, write_model_weights=False),
+      set_epoch_loop=False)
+  evaluation: base_configs.EvalConfig = base_configs.EvalConfig(
+      epochs_between_evals=1, steps=None)
+  model: base_configs.ModelConfig = vgg_config.VGGModelConfig()
+
+
 def get_config(model: str, dataset: str) -> base_configs.ExperimentConfig:
   """Given model and dataset names, return the ExperimentConfig."""
   dataset_model_config_map = {
       'imagenet': {
           'efficientnet': EfficientNetImageNetConfig(),
           'resnet': ResNetImagenetConfig(),
+          'vgg': VGGImagenetConfig(),
       }
   }
   try:
