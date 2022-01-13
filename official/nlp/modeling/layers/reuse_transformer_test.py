@@ -68,7 +68,7 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
     batch_size = 6
-    input_data = 10 * np.random.random_sample(
+    input_data = np.random.random_sample(
         (batch_size, sequence_length, width))
     _ = model.predict(input_data)
 
@@ -89,7 +89,7 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
     batch_size = 6
-    input_data = 10 * np.random.random_sample(
+    input_data = np.random.random_sample(
         (batch_size, sequence_length, width))
     # The attention mask should be of shape (batch, from_seq_len, to_seq_len),
     # which here is (batch, sequence_length, sequence_length)
@@ -104,7 +104,7 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     width = 80
 
     batch_size = 6
-    input_data = 10 * np.random.random_sample(
+    input_data = np.random.random_sample(
         (batch_size, sequence_length, width))
     mask_data = np.random.randint(
         2, size=(batch_size, sequence_length, sequence_length))
@@ -121,7 +121,7 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     new_layer.set_weights(test_layer.get_weights())
     new_output_tensor, _ = new_layer([input_data, mask_data])
     self.assertAllClose(
-        new_output_tensor, output_tensor[:, 0:1, :], atol=5e-5, rtol=0.003)
+        new_output_tensor, output_tensor[:, 0:1, :], atol=0.002, rtol=0.01)
 
   def test_layer_output_range_with_relative_pe(self, transformer_cls):
     test_layer = transformer_cls(
@@ -131,7 +131,7 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     width = 80
 
     batch_size = 6
-    input_data = 10 * np.random.random_sample(
+    input_data = np.random.random_sample(
         (batch_size, sequence_length, width))
     mask_data = np.random.randint(
         2, size=(batch_size, sequence_length, sequence_length))
@@ -149,7 +149,7 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     new_layer.set_weights(test_layer.get_weights())
     new_output_tensor, _ = new_layer([input_data, mask_data])
     self.assertAllClose(
-        new_output_tensor, output_tensor[:, 0:1, :], atol=5e-5, rtol=0.003)
+        new_output_tensor, output_tensor[:, 0:1, :], atol=0.002, rtol=0.01)
 
   def test_layer_output_range_without_mask(self, transformer_cls):
     test_layer = transformer_cls(
@@ -159,7 +159,7 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     width = 80
 
     batch_size = 6
-    input_data = 10 * np.random.random_sample(
+    input_data = np.random.random_sample(
         (batch_size, sequence_length, width))
     output_tensor, _ = test_layer(input_data)
 
@@ -175,7 +175,7 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     new_layer.set_weights(test_layer.get_weights())
     new_output_tensor, _ = new_layer(input_data)
     self.assertAllClose(
-        new_output_tensor, output_tensor[:, 0:1, :], atol=5e-5, rtol=0.003)
+        new_output_tensor, output_tensor[:, 0:1, :], atol=0.002, rtol=0.01)
 
   def test_layer_output_range_with_pre_norm(self, transformer_cls):
     test_layer = transformer_cls(
@@ -185,7 +185,7 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     width = 80
 
     batch_size = 6
-    input_data = 10 * np.random.random_sample(
+    input_data = np.random.random_sample(
         (batch_size, sequence_length, width))
     mask_data = np.random.randint(
         2, size=(batch_size, sequence_length, sequence_length))
@@ -203,7 +203,7 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     new_layer.set_weights(test_layer.get_weights())
     new_output_tensor, _ = new_layer([input_data, mask_data])
     self.assertAllClose(
-        new_output_tensor, output_tensor[:, 0:1, :], atol=5e-5, rtol=0.003)
+        new_output_tensor, output_tensor[:, 0:1, :], atol=0.002, rtol=0.01)
 
   def test_layer_invocation_with_float16_dtype(self, transformer_cls):
     tf.keras.mixed_precision.set_global_policy('mixed_float16')
@@ -223,7 +223,7 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
     batch_size = 6
-    input_data = (10 * np.random.random_sample(
+    input_data = (np.random.random_sample(
         (batch_size, sequence_length, width)))
     # The attention mask should be of shape (batch, from_seq_len, to_seq_len),
     # which here is (batch, sequence_length, sequence_length)
@@ -368,7 +368,7 @@ class ReuseTransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
     batch_size = 6
-    input_data = 10 * np.random.random_sample(
+    input_data = np.random.random_sample(
         (batch_size, sequence_length, width))
     # The attention mask should be of shape (batch, from_seq_len, to_seq_len),
     # which here is (batch, sequence_length, sequence_length)
@@ -404,7 +404,7 @@ class ReuseTransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
     batch_size = 6
-    input_data = (10 * np.random.random_sample(
+    input_data = (np.random.random_sample(
         (batch_size, sequence_length, width)))
     # The attention mask should be of shape (batch, from_seq_len, to_seq_len),
     # which here is (batch, sequence_length, sequence_length)

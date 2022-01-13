@@ -327,6 +327,7 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
       groundtruth_not_exhaustive_classes=None,
       groundtruth_keypoint_depths_list=None,
       groundtruth_keypoint_depth_weights_list=None,
+      groundtruth_image_classes=None,
       training_step=None):
     """Provide groundtruth tensors.
 
@@ -398,6 +399,9 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
       groundtruth_keypoint_depth_weights_list: a list of 2-D tf.float32 tensors
         of shape [num_boxes, num_keypoints] containing the weights of the
         relative depths.
+      groundtruth_image_classes: A list of 1-D tf.float32 tensors of shape
+        [num_classes], containing label indices encoded as k-hot of the classes
+        that are present or not present in the image.
       training_step: An integer denoting the current training step. This is
         useful when models want to anneal loss terms.
     """
@@ -474,6 +478,10 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
       self._groundtruth_lists[
           fields.InputDataFields
           .groundtruth_verified_neg_classes] = groundtruth_verified_neg_classes
+    if groundtruth_image_classes:
+      self._groundtruth_lists[
+          fields.InputDataFields
+          .groundtruth_image_classes] = groundtruth_image_classes
     if groundtruth_not_exhaustive_classes:
       self._groundtruth_lists[
           fields.InputDataFields

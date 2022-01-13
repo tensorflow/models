@@ -22,8 +22,8 @@ from absl import logging
 import numpy as np
 import tensorflow as tf
 
-from official.nlp.transformer import metrics as metrics_v2
-from official.nlp.transformer.utils import metrics
+from official.legacy.transformer import metrics as metrics_v2
+from official.legacy.transformer.utils import metrics
 from official.projects.nhnet import input_pipeline
 from official.projects.nhnet import models
 

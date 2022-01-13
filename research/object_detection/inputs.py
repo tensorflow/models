@@ -668,7 +668,8 @@ def _get_labels_dict(input_dict):
       fields.InputDataFields.groundtruth_dp_surface_coords,
       fields.InputDataFields.groundtruth_track_ids,
       fields.InputDataFields.groundtruth_verified_neg_classes,
-      fields.InputDataFields.groundtruth_not_exhaustive_classes
+      fields.InputDataFields.groundtruth_not_exhaustive_classes,
+      fields.InputDataFields.groundtruth_image_classes,
   ]
 
   for key in optional_label_keys:

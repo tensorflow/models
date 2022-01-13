@@ -14,10 +14,12 @@
 
 """Serving export modules for TF Model Garden NLP models."""
 # pylint:disable=missing-class-docstring
+import dataclasses
 from typing import Dict, List, Optional, Text
 
-import dataclasses
 import tensorflow as tf
+import tensorflow_text as tf_text
+
 from official.core import export_base
 from official.modeling.hyperparams import base_config
 from official.nlp.data import sentence_prediction_dataloader
@@ -406,4 +408,49 @@ class Tagging(export_base.ExportModule):
       if func_key == "serve_examples":
         signatures[signature_key] = self.serve_examples.get_concrete_function(
             tf.TensorSpec(shape=[None], dtype=tf.string, name="examples"))
+    return signatures
+
+
+class Translation(export_base.ExportModule):
+  """The export module for the translation task."""
+
+  @dataclasses.dataclass
+  class Params(base_config.Config):
+    sentencepiece_model_path: str = ""
+
+  def __init__(self, params, model: tf.keras.Model, inference_step=None):
+    super().__init__(params, model, inference_step)
+    self._sp_tokenizer = tf_text.SentencepieceTokenizer(
+        model=tf.io.gfile.GFile(params.sentencepiece_model_path, "rb").read(),
+        add_eos=True)
+    try:
+      empty_str_tokenized = self._sp_tokenizer.tokenize("").numpy()
+    except tf.errors.InternalError:
+      raise ValueError(
+          "EOS token not in tokenizer vocab."
+          "Please make sure the tokenizer generates a single token for an "
+          "empty string.")
+    self._eos_id = empty_str_tokenized.item()
+
+  @tf.function
+  def serve(self, inputs) -> Dict[str, tf.Tensor]:
+    return self.inference_step(inputs)
+
+  @tf.function
+  def serve_text(self, text: tf.Tensor) -> Dict[str, tf.Tensor]:
+    tokenized = self._sp_tokenizer.tokenize(text).to_tensor(0)
+    return self._sp_tokenizer.detokenize(
+        self.serve({"inputs": tokenized})["outputs"])
+
+  def get_inference_signatures(self, function_keys: Dict[Text, Text]):
+    signatures = {}
+    valid_keys = ("serve_text")
+    for func_key, signature_key in function_keys.items():
+      if func_key not in valid_keys:
+        raise ValueError("Invalid function key for the module: %s with key %s. "
+                         "Valid keys are: %s" %
+                         (self.__class__, func_key, valid_keys))
+      if func_key == "serve_text":
+        signatures[signature_key] = self.serve_text.get_concrete_function(
+            tf.TensorSpec(shape=[None], dtype=tf.string, name="text"))
     return signatures

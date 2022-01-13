@@ -870,6 +870,9 @@ class OpenImagesChallengeEvaluator(OpenImagesDetectionEvaluator):
       image_classes = groundtruth_dict[input_fields.groundtruth_image_classes]
     elif input_fields.groundtruth_labeled_classes in groundtruth_dict:
       image_classes = groundtruth_dict[input_fields.groundtruth_labeled_classes]
+    else:
+      logging.warning('No image classes field found for image with id %s!',
+                      image_id)
     image_classes -= self._label_id_offset
     self._evaluatable_labels[image_id] = np.unique(
         np.concatenate((image_classes, groundtruth_classes)))

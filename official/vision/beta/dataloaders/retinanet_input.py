@@ -75,7 +75,7 @@ class Parser(parser.Parser):
         upper-bound threshold to assign negative labels for anchors. An anchor
         with a score below the threshold is labeled negative.
       aug_type: An optional Augmentation object to choose from AutoAugment and
-        RandAugment. The latter is not supported, and will raise ValueError.
+        RandAugment.
       aug_rand_hflip: `bool`, if True, augment training with random horizontal
         flip.
       aug_scale_min: `float`, the minimum scale applied to `output_size` for
@@ -122,8 +122,16 @@ class Parser(parser.Parser):
             augmentation_name=aug_type.autoaug.augmentation_name,
             cutout_const=aug_type.autoaug.cutout_const,
             translate_const=aug_type.autoaug.translate_const)
+      elif aug_type.type == 'randaug':
+        logging.info('Using RandAugment.')
+        self._augmenter = augment.RandAugment.build_for_detection(
+            num_layers=aug_type.randaug.num_layers,
+            magnitude=aug_type.randaug.magnitude,
+            cutout_const=aug_type.randaug.cutout_const,
+            translate_const=aug_type.randaug.translate_const,
+            prob_to_apply=aug_type.randaug.prob_to_apply,
+            exclude_ops=aug_type.randaug.exclude_ops)
       else:
-        # TODO(b/205346436) Support RandAugment.
         raise ValueError(f'Augmentation policy {aug_type.type} not supported.')
 
     # Deprecated. Data Augmentation with AutoAugment.
@@ -162,7 +170,6 @@ class Parser(parser.Parser):
     # Apply autoaug or randaug.
     if self._augmenter is not None:
       image, boxes = self._augmenter.distort_with_boxes(image, boxes)
-
     image_shape = tf.shape(input=image)[0:2]
 
     # Normalizes image with mean and std pixel values.
