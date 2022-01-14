@@ -356,7 +356,6 @@ def build_segmentation_model(
       num_classes=model_config.num_classes,
       level=head_config.level,
       num_convs=head_config.num_convs,
-      kernel_size=head_config.kernel_size,
       prediction_kernel_size=head_config.prediction_kernel_size,
       num_filters=head_config.num_filters,
       use_depthwise_convolution=head_config.use_depthwise_convolution,
