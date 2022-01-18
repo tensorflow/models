@@ -101,9 +101,11 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     ckpt_dir_or_file = self.task_config.init_checkpoint
     logging.info("Trying to load pretrained checkpoint from %s",
                  ckpt_dir_or_file)
-    if tf.io.gfile.isdir(ckpt_dir_or_file):
+    if ckpt_dir_or_file and tf.io.gfile.isdir(ckpt_dir_or_file):
       ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
     if not ckpt_dir_or_file:
+      logging.info("No checkpoint file found from %s. Will not load.",
+                   ckpt_dir_or_file)
       return
 
     if hasattr(model, "checkpoint_items"):

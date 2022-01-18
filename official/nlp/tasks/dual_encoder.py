@@ -187,9 +187,13 @@ class DualEncoderTask(base_task.Task):
   def initialize(self, model):
     """Load a pretrained checkpoint (if exists) and then train from iter 0."""
     ckpt_dir_or_file = self.task_config.init_checkpoint
-    if tf.io.gfile.isdir(ckpt_dir_or_file):
+    logging.info('Trying to load pretrained checkpoint from %s',
+                 ckpt_dir_or_file)
+    if ckpt_dir_or_file and tf.io.gfile.isdir(ckpt_dir_or_file):
       ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
     if not ckpt_dir_or_file:
+      logging.info('No checkpoint file found from %s. Will not load.',
+                   ckpt_dir_or_file)
       return
 
     pretrain2finetune_mapping = {
