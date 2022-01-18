@@ -26,7 +26,7 @@ from official.benchmark import benchmark_wrappers
 from official.benchmark import bert_benchmark_utils as benchmark_utils
 from official.benchmark import owner_utils
 from official.common import distribute_utils
-from official.nlp.bert import run_squad
+from official.legacy.bert import run_squad
 from official.utils.misc import keras_utils
 
 

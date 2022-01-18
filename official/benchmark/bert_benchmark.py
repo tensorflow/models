@@ -14,7 +14,6 @@
 # ==============================================================================
 """Executes BERT benchmarks and accuracy tests."""
 
-import functools
 import json
 import math
 import os
@@ -28,8 +27,8 @@ from official.benchmark import benchmark_wrappers
 from official.benchmark import bert_benchmark_utils as benchmark_utils
 from official.benchmark import owner_utils
 from official.common import distribute_utils
-from official.nlp.bert import configs
-from official.nlp.bert import run_classifier
+from official.legacy.bert import configs
+from official.legacy.bert import run_classifier
 
 # pylint: disable=line-too-long
 PRETRAINED_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16/bert_model.ckpt'
