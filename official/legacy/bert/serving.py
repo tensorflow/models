@@ -18,8 +18,8 @@ from absl import app
 from absl import flags
 import tensorflow as tf
 
-from official.nlp.bert import bert_models
-from official.nlp.bert import configs
+from official.legacy.bert import bert_models
+from official.legacy.bert import configs
 
 flags.DEFINE_integer(
     "sequence_length", None, "Sequence length to parse the tf.Example. If "

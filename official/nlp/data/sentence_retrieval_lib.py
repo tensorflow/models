@@ -17,8 +17,8 @@
 import os
 
 from absl import logging
-from official.nlp.bert import tokenization
 from official.nlp.data import classifier_data_lib
+from official.nlp.tools import tokenization
 
 
 class BuccProcessor(classifier_data_lib.DataProcessor):

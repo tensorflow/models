@@ -28,8 +28,8 @@ import tensorflow as tf
 from tensorflow.core.protobuf import saved_model_pb2
 from tensorflow.python.ops import control_flow_ops
 # pylint: enable=g-direct-tensorflow-import
+from official.legacy.bert import configs
 from official.modeling import tf_utils
-from official.nlp.bert import configs
 from official.nlp.configs import encoders
 from official.nlp.modeling import layers
 from official.nlp.modeling import models

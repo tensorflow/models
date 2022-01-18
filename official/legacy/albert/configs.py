@@ -16,7 +16,7 @@
 
 import six
 
-from official.nlp.bert import configs
+from official.legacy.bert import configs
 
 
 class AlbertConfig(configs.BertConfig):

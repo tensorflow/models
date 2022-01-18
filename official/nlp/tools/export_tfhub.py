@@ -71,8 +71,8 @@ from absl import app
 from absl import flags
 import gin
 
+from official.legacy.bert import configs
 from official.modeling import hyperparams
-from official.nlp.bert import configs
 from official.nlp.configs import encoders
 from official.nlp.tools import export_tfhub_lib
 

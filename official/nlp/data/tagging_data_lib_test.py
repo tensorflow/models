@@ -19,8 +19,8 @@ import random
 from absl.testing import parameterized
 import tensorflow as tf
 
-from official.nlp.bert import tokenization
 from official.nlp.data import tagging_data_lib
+from official.nlp.tools import tokenization
 
 
 def _create_fake_file(filename, labels, is_test):

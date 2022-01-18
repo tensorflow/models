@@ -22,8 +22,8 @@ import urllib.parse
 
 import tensorflow as tf
 
-from official.nlp.bert import tokenization
 from official.nlp.data import classifier_data_lib
+from official.nlp.tools import tokenization
 
 
 class RawDataProcessor(object):

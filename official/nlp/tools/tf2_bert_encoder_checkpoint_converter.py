@@ -25,11 +25,11 @@ from absl import app
 from absl import flags
 
 import tensorflow as tf
+from official.legacy.bert import configs
 from official.modeling import tf_utils
-from official.nlp.bert import configs
-from official.nlp.bert import tf1_checkpoint_converter_lib
 from official.nlp.modeling import models
 from official.nlp.modeling import networks
+from official.nlp.tools import tf1_bert_checkpoint_converter_lib
 
 FLAGS = flags.FLAGS
 
@@ -111,12 +111,13 @@ def convert_checkpoint(bert_config,
   temporary_checkpoint_dir = os.path.join(output_dir, "temp_v1")
   temporary_checkpoint = os.path.join(temporary_checkpoint_dir, "ckpt")
 
-  tf1_checkpoint_converter_lib.convert(
+  tf1_bert_checkpoint_converter_lib.convert(
       checkpoint_from_path=v1_checkpoint,
       checkpoint_to_path=temporary_checkpoint,
       num_heads=bert_config.num_attention_heads,
-      name_replacements=tf1_checkpoint_converter_lib.BERT_V2_NAME_REPLACEMENTS,
-      permutations=tf1_checkpoint_converter_lib.BERT_V2_PERMUTATIONS,
+      name_replacements=(
+          tf1_bert_checkpoint_converter_lib.BERT_V2_NAME_REPLACEMENTS),
+      permutations=tf1_bert_checkpoint_converter_lib.BERT_V2_PERMUTATIONS,
       exclude_patterns=["adam", "Adam"])
 
   if converted_model == "encoder":
@@ -127,9 +128,8 @@ def convert_checkpoint(bert_config,
     raise ValueError("Unsupported converted_model: %s" % converted_model)
 
   # Create a V2 checkpoint from the temporary checkpoint.
-  tf1_checkpoint_converter_lib.create_v2_checkpoint(model, temporary_checkpoint,
-                                                    output_path,
-                                                    checkpoint_model_name)
+  tf1_bert_checkpoint_converter_lib.create_v2_checkpoint(
+      model, temporary_checkpoint, output_path, checkpoint_model_name)
 
   # Clean up the temporary checkpoint, if it exists.
   try:

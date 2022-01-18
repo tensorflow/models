@@ -18,8 +18,8 @@ import gin
 import tensorflow as tf
 import tensorflow_hub as hub
 from official.legacy.albert import configs as albert_configs
+from official.legacy.bert import configs
 from official.modeling import tf_utils
-from official.nlp.bert import configs
 from official.nlp.modeling import models
 from official.nlp.modeling import networks
 

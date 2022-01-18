@@ -24,8 +24,8 @@ import tensorflow_hub as hub
 import tensorflow_text as text
 
 from sentencepiece import SentencePieceTrainer
+from official.legacy.bert import configs
 from official.modeling import tf_utils
-from official.nlp.bert import configs
 from official.nlp.configs import encoders
 from official.nlp.modeling import layers
 from official.nlp.modeling import models

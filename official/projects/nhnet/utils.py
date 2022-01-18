@@ -18,8 +18,8 @@ from typing import Optional, Text
 from absl import logging
 import tensorflow as tf
 
+from official.legacy.bert import configs
 from official.modeling.hyperparams import params_dict
-from official.nlp.bert import configs
 from official.projects.nhnet import configs as nhnet_configs
 
 
