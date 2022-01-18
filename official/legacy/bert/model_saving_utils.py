@@ -15,10 +15,9 @@
 """Utilities to save models."""
 
 import os
-
+import typing
 from absl import logging
 import tensorflow as tf
-import typing
 
 
 def export_bert_model(model_export_path: typing.Text,

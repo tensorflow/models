@@ -25,7 +25,7 @@ import six
 from absl import logging
 import tensorflow as tf
 
-from official.nlp.bert import tokenization
+from official.nlp.tools import tokenization
 
 
 class SquadExample(object):

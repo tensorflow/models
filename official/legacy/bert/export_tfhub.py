@@ -25,8 +25,8 @@ from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
-from official.nlp.bert import bert_models
-from official.nlp.bert import configs
+from official.legacy.bert import bert_models
+from official.legacy.bert import configs
 
 FLAGS = flags.FLAGS
 

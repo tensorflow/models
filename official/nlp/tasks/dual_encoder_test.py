@@ -19,7 +19,7 @@ import os
 from absl.testing import parameterized
 import tensorflow as tf
 
-from official.nlp.bert import configs
+from official.legacy.bert import configs
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
 from official.nlp.data import dual_encoder_dataloader

@@ -21,8 +21,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
 
-from official.nlp.bert import configs
-from official.nlp.bert import export_tfhub
+from official.legacy.bert import configs
+from official.legacy.bert import export_tfhub
 
 
 class ExportTfhubTest(tf.test.TestCase, parameterized.TestCase):

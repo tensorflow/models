@@ -2,7 +2,7 @@
 
 **WARNING**: We are on the way to deprecate most of the code in this directory.
 Please see
-[this link](https://github.com/tensorflow/models/blob/master/official/nlp/docs/train.md)
+[this link](../g3doc/tutorials/bert_new.md)
 for the new tutorial and use the new code in `nlp/modeling`. This README is
 still correct for this legacy implementation.
 

@@ -25,10 +25,10 @@ from absl import logging
 import gin
 import tensorflow as tf
 from official.common import distribute_utils
-from official.nlp.bert import configs as bert_configs
-from official.nlp.bert import run_squad_helper
-from official.nlp.bert import tokenization
+from official.legacy.bert import configs as bert_configs
+from official.legacy.bert import run_squad_helper
 from official.nlp.data import squad_lib as squad_lib_wp
+from official.nlp.tools import tokenization
 from official.utils.misc import keras_utils
 
 

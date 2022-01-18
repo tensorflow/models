@@ -25,8 +25,8 @@ import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
-from official.nlp.bert import common_flags
-from official.nlp.bert import model_training_utils
+from official.legacy.bert import common_flags
+from official.legacy.bert import model_training_utils
 
 
 common_flags.define_common_bert_flags()

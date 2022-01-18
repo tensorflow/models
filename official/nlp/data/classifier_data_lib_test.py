@@ -21,8 +21,8 @@ from absl.testing import parameterized
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from official.nlp.bert import tokenization
 from official.nlp.data import classifier_data_lib
+from official.nlp.tools import tokenization
 
 
 def decode_record(record, name_to_features):

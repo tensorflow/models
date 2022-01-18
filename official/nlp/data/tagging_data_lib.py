@@ -19,8 +19,8 @@ import os
 from absl import logging
 import tensorflow as tf
 
-from official.nlp.bert import tokenization
 from official.nlp.data import classifier_data_lib
+from official.nlp.tools import tokenization
 
 # A negative label id for the padding label, which will not contribute
 # to loss/metrics in training.

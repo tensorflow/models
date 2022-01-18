@@ -21,16 +21,16 @@ import os
 from absl import flags
 from absl import logging
 import tensorflow as tf
+from official.legacy.bert import bert_models
+from official.legacy.bert import common_flags
+from official.legacy.bert import input_pipeline
+from official.legacy.bert import model_saving_utils
+from official.legacy.bert import model_training_utils
 from official.modeling import performance
 from official.nlp import optimization
-from official.nlp.bert import bert_models
-from official.nlp.bert import common_flags
-from official.nlp.bert import input_pipeline
-from official.nlp.bert import model_saving_utils
-from official.nlp.bert import model_training_utils
-from official.nlp.bert import squad_evaluate_v1_1
-from official.nlp.bert import squad_evaluate_v2_0
 from official.nlp.data import squad_lib_sp
+from official.nlp.tools import squad_evaluate_v1_1
+from official.nlp.tools import squad_evaluate_v2_0
 from official.utils.misc import keras_utils
 
 
