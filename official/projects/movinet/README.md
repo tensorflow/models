@@ -186,6 +186,24 @@ single CPU core. Observed latency may differ depending on hardware
 configuration. Measured on a stock Pixel 4 (Android 11) and x86 Intel Xeon
 W-2135 CPU.
 
+### Kinetics 400
+
+We also have checkpoints for Kinetics 600 models available. See the Kinetics 600
+sections for more details. To load checkpoints, set `num_classes=400`.
+
+#### Base Models
+
+| Model Name | Top-1 Accuracy | Top-5 Accuracy | Input Shape | GFLOPs\* | Checkpoint |
+|------------|----------------|----------------|-------------|----------|------------|
+| MoViNet-A0-Base | 69.40 | 89.18 | 50 x 172 x 172  | 2.7 | [checkpoint (12 MB)](https://storage.googleapis.com/tf_model_garden/vision/movinet/movinet_a0_base_k400.tar.gz) |
+| MoViNet-A1-Base | 74.57 | 92.03 | 50 x 172 x 172  | 6.0 | [checkpoint (18 MB)](https://storage.googleapis.com/tf_model_garden/vision/movinet/movinet_a1_base_k400.tar.gz) |
+| MoViNet-A2-Base | 75.91 | 92.63 | 50 x 224 x 224  | 10  | [checkpoint (20 MB)](https://storage.googleapis.com/tf_model_garden/vision/movinet/movinet_a2_base_k400.tar.gz) |
+| MoViNet-A3-Base | 79.34 | 94.52 | 120 x 256 x 256 | 57  | [checkpoint (29 MB)](https://storage.googleapis.com/tf_model_garden/vision/movinet/movinet_a3_base_k400.tar.gz) |
+| MoViNet-A4-Base | 80.64 | 94.93 | 80 x 290 x 290  | 110 | [checkpoint (44 MB)](https://storage.googleapis.com/tf_model_garden/vision/movinet/movinet_a4_base_k400.tar.gz) |
+| MoViNet-A5-Base | 81.39 | 95.06 | 120 x 320 x 320 | 280 | [checkpoint (72 MB)](https://storage.googleapis.com/tf_model_garden/vision/movinet/movinet_a5_base_k400.tar.gz) |
+
+*GFLOPs per video on Kinetics 400.
+
 ## Prediction Examples
 
 Please check out our [Colab Notebook](https://colab.research.google.com/github/tensorflow/models/blob/master/official/projects/movinet/movinet_tutorial.ipynb)
