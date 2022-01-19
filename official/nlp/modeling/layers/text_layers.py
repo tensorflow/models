@@ -57,7 +57,7 @@ def _truncate_row_lengths(ragged_tensor: tf.RaggedTensor,
 
 
 class BertTokenizer(tf.keras.layers.Layer):
-  """Wraps BertTokenizer with pre-defined vocab as a Keras Layer.
+  """Wraps TF.Text's BertTokenizer with pre-defined vocab as a Keras Layer.
 
   Attributes:
     tokenize_with_offsets: If true, calls
