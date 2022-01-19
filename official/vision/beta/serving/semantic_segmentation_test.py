@@ -93,13 +93,15 @@ class SemanticSegmentationExportTest(tf.test.TestCase, parameterized.TestCase):
 
     images = self._get_dummy_input(input_type)
     if input_type != 'tflite':
-      processed_images = tf.nest.map_structure(
+      processed_images, _ = tf.nest.map_structure(
           tf.stop_gradient,
           tf.map_fn(
               module._build_inputs,
               elems=tf.zeros((1, 112, 112, 3), dtype=tf.uint8),
-              fn_output_signature=tf.TensorSpec(
-                  shape=[112, 112, 3], dtype=tf.float32)))
+              fn_output_signature=(tf.TensorSpec(
+                  shape=[112, 112, 3], dtype=tf.float32),
+                                   tf.TensorSpec(
+                                       shape=[4, 2], dtype=tf.float32))))
     else:
       processed_images = images
     expected_output = tf.image.resize(
