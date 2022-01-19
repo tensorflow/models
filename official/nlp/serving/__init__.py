@@ -12,9 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""TensorFlow Models NLP Libraries."""
 
-from official.nlp import tasks
-from official.nlp.configs import encoders
-from official.nlp.modeling import *
-from official.nlp.serving import serving_modules
