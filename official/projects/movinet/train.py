@@ -46,8 +46,6 @@ from official.modeling import performance
 # Import movinet libraries to register the backbone and model into tf.vision
 # model garden factory.
 # pylint: disable=unused-import
-from official.projects.movinet.google.configs import movinet_google
-from official.projects.movinet.google.modeling import movinet_model_google
 from official.projects.movinet.modeling import movinet
 from official.projects.movinet.modeling import movinet_model
 # pylint: enable=unused-import
