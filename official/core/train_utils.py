@@ -101,7 +101,6 @@ def maybe_create_best_ckpt_exporter(params: config_definitions.ExperimentConfig,
   return best_ckpt_exporter
 
 
-# TODO(b/180147589): Add tests for this module.
 class BestCheckpointExporter:
   """Keeps track of the best result, and saves its checkpoint.
 
