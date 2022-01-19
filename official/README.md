@@ -121,7 +121,7 @@ If you are using nlp packages, please also install **tensorflow-text**:
 pip install tensorflow-text
 ```
 
-Please check out our [example](colab/fine_tuning_bert.ipynb)
+Please check out our [example](https://github.com/tensorflow/text/blob/master/docs/tutorials/fine_tune_bert.ipynb)
 to learn how to use a PIP package.
 
 Note that **tf-models-official** may not include the latest changes in this
