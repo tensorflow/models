@@ -370,6 +370,11 @@ class Trainer(_AsyncTrainer):
     """Accesses the training checkpoint."""
     return self._checkpoint
 
+  @property
+  def checkpoint_exporter(self):
+    """Accesses the checkpoint exporter."""
+    return self._checkpoint_exporter
+
   def train_loop_end(self):
     """See base class."""
     self.join()
