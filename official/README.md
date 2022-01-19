@@ -84,7 +84,7 @@ as tagged branches or [downloadable releases](https://github.com/tensorflow/mode
 * Model repository version numbers match the target TensorFlow release,
 such that
 [release v2.5.0](https://github.com/tensorflow/models/releases/tag/v2.5.0)
-are compatible with
+is compatible with
 [TensorFlow v2.5.0](https://github.com/tensorflow/tensorflow/releases/tag/v2.5.0).
 
 Please follow the below steps before running models in this repository.
