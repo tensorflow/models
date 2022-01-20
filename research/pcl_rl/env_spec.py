@@ -175,7 +175,7 @@ class EnvSpec(object):
     if batched:
       return obs
     else:
-      return zip(*obs)[0]
+      return list(zip(*obs))[0]
 
   def initial_act(self, batch_size=None):
     batched = batch_size is not None
@@ -191,7 +191,7 @@ class EnvSpec(object):
     if batched:
       return act
     else:
-      return zip(*act)[0]
+      return list(zip(*act))[0]
 
   def is_discrete(self, typ):
     return typ == spaces.discrete
