@@ -61,7 +61,6 @@ class CenterNetHead(tf.keras.Model):
     self._heatmap_bias = heatmap_bias
     self._num_inputs = len(input_levels)
 
-    input_levels = sorted(self._input_specs.keys())
     inputs = {level: tf.keras.layers.Input(shape=self._input_specs[level][1:])
               for level in input_levels}
     outputs = {}

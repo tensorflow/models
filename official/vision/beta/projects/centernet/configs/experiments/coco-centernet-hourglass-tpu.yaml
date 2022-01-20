@@ -59,11 +59,11 @@ task:
     input_path: 'coco/val*'
     drop_remainder: false
     dtype: 'bfloat16'
-    global_batch_size: 16
+    global_batch_size: 64
     is_training: false
 trainer:
   train_steps: 140000
-  validation_steps: 78  # 5000 / 16
+  validation_steps: 78  # 5000 / 64
   steps_per_loop: 924  # 118287 / 128
   validation_interval: 924
   summary_interval: 924
