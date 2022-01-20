@@ -84,7 +84,7 @@ as tagged branches or [downloadable releases](https://github.com/tensorflow/mode
 * Model repository version numbers match the target TensorFlow release,
 such that
 [release v2.5.0](https://github.com/tensorflow/models/releases/tag/v2.5.0)
-are compatible with
+is compatible with
 [TensorFlow v2.5.0](https://github.com/tensorflow/tensorflow/releases/tag/v2.5.0).
 
 Please follow the below steps before running models in this repository.
@@ -121,7 +121,7 @@ If you are using nlp packages, please also install **tensorflow-text**:
 pip install tensorflow-text
 ```
 
-Please check out our [example](colab/fine_tuning_bert.ipynb)
+Please check out our [example](https://github.com/tensorflow/text/blob/master/docs/tutorials/fine_tune_bert.ipynb)
 to learn how to use a PIP package.
 
 Note that **tf-models-official** may not include the latest changes in this
