@@ -201,7 +201,7 @@ def get_train_actions(
   """Gets train actions for TFM trainer."""
   train_actions = []
   # Adds pruning callback actions.
-  if hasattr(params.task, 'pruning'):
+  if hasattr(params.task, 'pruning') and params.task.pruning:
     train_actions.append(
         PruningAction(
             export_dir=model_dir,
