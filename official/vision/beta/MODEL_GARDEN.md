@@ -1,5 +1,10 @@
 # TF-Vision Model Garden
 
+⚠️ Disclaimer: All datasets hyperlinked from this page are not owned or
+distributed by Google. The dataset is made available by third parties.
+Please review the terms and conditions made available by the third parties
+before using the data.
+
 ## Introduction
 
 TF-Vision modeling library for computer vision provides a collection of
@@ -59,11 +64,12 @@ depth, label smoothing and dropout.
   * [RetinaNet](https://arxiv.org/abs/1708.02002) and [RetinaNet-RS](https://arxiv.org/abs/2107.00057)
   * [Mask R-CNN](https://arxiv.org/abs/1703.06870)
   * [Cascade RCNN](https://arxiv.org/abs/1712.00726) and [Cascade RCNN-RS](https://arxiv.org/abs/2107.00057)
-
-* Models are all trained on COCO train2017 and evaluated on COCO val2017.
+* Models are all trained on [COCO](https://cocodataset.org/) train2017 and
+evaluated on [COCO](https://cocodataset.org/) val2017.
 * Training details:
-  * Models finetuned from ImageNet pretrained checkpoints adopt the 12 or 36
-    epochs schedule. Models trained from scratch adopt the 350 epochs schedule.
+  * Models finetuned from [ImageNet](https://www.image-net.org/) pretrained
+    checkpoints adopt the 12 or 36 epochs schedule. Models trained from scratch
+    adopt the 350 epochs schedule.
   * The default training data augmentation implements horizontal flipping and
     scale jittering with a random scale between [0.5, 2.0].
   * Unless noted, all models are trained with l2 weight regularization and ReLU
@@ -106,18 +112,18 @@ depth, label smoothing and dropout.
 
 | Backbone     | Resolution    | Epochs  | FLOPs (B)  | Params (M) | Box AP | Mask AP | Download |
 | ------------ |:-------------:| -------:|-----------:|-----------:|-------:|--------:|---------:|
-ResNet50-FPN | 640x640    | 350    | 227.7     | 46.3       | 42.3   | 37.6    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/r50fpn_640_coco_scratch_tpu4x4.yaml) |
+| ResNet50-FPN | 640x640    | 350    | 227.7     | 46.3       | 42.3   | 37.6    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/r50fpn_640_coco_scratch_tpu4x4.yaml) |
 | SpineNet-49  | 640x640       |  350    | 215.7      | 40.8       | 42.6   | 37.9    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet49_mrcnn_tpu.yaml) |
-SpineNet-96  | 1024x1024  | 500    | 315.0     | 55.2       | 48.1   | 42.4    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet96_mrcnn_tpu.yaml) |
-SpineNet-143 | 1280x1280  | 500    | 498.8     | 79.2       | 49.3   | 43.4    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet143_mrcnn_tpu.yaml) |
+| SpineNet-96  | 1024x1024  | 500    | 315.0     | 55.2       | 48.1   | 42.4    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet96_mrcnn_tpu.yaml) |
+| SpineNet-143 | 1280x1280  | 500    | 498.8     | 79.2       | 49.3   | 43.4    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet143_mrcnn_tpu.yaml) |
 
 
 #### Cascade RCNN-RS (Trained from scratch)
 
-backbone     | resolution | epochs | params (M) | box AP | mask AP | download
+| Backbone     | Resolution | Epochs | Params (M) | Box AP | Mask AP | Download
 ------------ | :--------: | -----: | ---------: | -----: | ------: | -------:
-SpineNet-49  | 640x640    | 500    | 56.4       | 46.4   | 40.0    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet49_cascadercnn_tpu.yaml)|
-SpineNet-143 | 1280x1280  | 500    | 94.9       | 51.9   | 45.0    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet143_cascadercnn_tpu.yaml)|
+| SpineNet-49  | 640x640    | 500    | 56.4       | 46.4   | 40.0    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet49_cascadercnn_tpu.yaml)|
+| SpineNet-143 | 1280x1280  | 500    | 94.9       | 51.9   | 45.0    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet143_cascadercnn_tpu.yaml)|
 
 ## Semantic Segmentation
 
