@@ -15,4 +15,4 @@
 # Lint as: python3
 """Configs package definition."""
 
-from official.vision.beta.projects.vit.configs import image_classification
+from official.projects.vit.configs import image_classification

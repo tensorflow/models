@@ -18,7 +18,7 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from official.vision.beta.projects.vit.modeling import vit
+from official.projects.vit.modeling import vit
 
 
 class VisionTransformerTest(parameterized.TestCase, tf.test.TestCase):

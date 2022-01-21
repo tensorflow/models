@@ -17,9 +17,9 @@
 import tensorflow as tf
 
 from official.modeling import activations
+from official.projects.vit.modeling import nn_blocks
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_layers
-from official.vision.beta.projects.vit.modeling import nn_blocks
 
 
 layers = tf.keras.layers
