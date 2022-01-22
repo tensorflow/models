@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Panoptic Mask R-CNN configuration definition."""
+"""Panoptic Deeplab configuration definition."""
 
 import dataclasses
-from typing import List, Optional, Union
+from typing import List, Tuple, Union
 
 from official.modeling import hyperparams
 from official.vision.beta.configs import common
 from official.vision.beta.configs import backbones
 from official.vision.beta.configs import decoders
-from official.vision.beta.configs import semantic_segmentation
-
-SEGMENTATION_HEAD = semantic_segmentation.SegmentationHead
 
 _COCO_INPUT_PATH_BASE = 'coco/tfrecords'
 _COCO_TRAIN_EXAMPLES = 118287
@@ -31,17 +28,27 @@ _COCO_VAL_EXAMPLES = 5000
 
 
 @dataclasses.dataclass
-class InstanceCenterHead(semantic_segmentation.SegmentationHead):
-  """Instance Center head config."""
-  # None, deeplabv3plus, panoptic_fpn_fusion, 
-  # panoptic_deeplab_fusion or pyramid_fusion
+class PanopticDeeplabHead(hyperparams.Config):
+  """Panoptic Deeplab head config."""
+  level: int = 3
+  num_convs: int = 2
+  num_filters: int = 256
   kernel_size: int = 5
-  feature_fusion: Optional[str] = None  
-  low_level: Union[int, List[int]] = dataclasses.field(
-      default_factory=lambda: [3, 2])
-  low_level_num_filters: Union[int, List[int]] = dataclasses.field(
-      default_factory=lambda: [64, 32])
+  use_depthwise_convolution: bool = False
+  upsample_factor: int = 1
+  low_level: Union[List[int], Tuple[int]] = (3, 2)
+  low_level_num_filters: Union[List[int], Tuple[int]] = (64, 32)
 
+
+@dataclasses.dataclass
+class SemanticHead(PanopticDeeplabHead):
+  """Semantic head config."""
+  prediction_kernel_size: int = 1
+
+@dataclasses.dataclass
+class InstanceHead(PanopticDeeplabHead):
+  """Instance head config."""
+  prediction_kernel_size: int = 1
 
 # pytype: disable=wrong-keyword-args
 @dataclasses.dataclass
@@ -55,7 +62,6 @@ class PanopticDeeplab(hyperparams.Config):
   backbone: backbones.Backbone = backbones.Backbone(
       type='resnet', resnet=backbones.ResNet())
   decoder: decoders.Decoder = decoders.Decoder(type='aspp')
-  semantic_head: SEGMENTATION_HEAD = SEGMENTATION_HEAD()
-  instance_head: InstanceCenterHead = InstanceCenterHead(
-      low_level=[3, 2])
+  semantic_head: SemanticHead = SemanticHead()
+  instance_head: InstanceHead = InstanceHead()
   shared_decoder: bool = False
