@@ -22,8 +22,7 @@ from tensorflow.python.distribute import combinations
 
 from official.vision.beta.modeling import backbones
 from official.vision.beta.modeling.decoders import aspp
-from official.vision.beta.modeling.heads import segmentation_heads
-from official.vision.beta.projects.panoptic_maskrcnn.modeling.heads import instance_center_head
+from official.vision.beta.projects.panoptic_maskrcnn.modeling.heads import panoptic_deeplab_heads
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_deeplab_model
 
 class PanopticDeeplabNetworkTest(parameterized.TestCase, tf.test.TestCase):
@@ -52,18 +51,16 @@ class PanopticDeeplabNetworkTest(parameterized.TestCase, tf.test.TestCase):
       instance_decoder = aspp.ASPP(
           level=level, dilation_rates=[6, 12, 18])
 
-    semantic_head = segmentation_heads.SegmentationHead(
+    semantic_head = panoptic_deeplab_heads.SemanticHead(
         num_classes,                                    
         level=level,
         low_level=low_level,
-        low_level_num_filters=[64, 32],
-        feature_fusion='panoptic_deeplab_fusion')
+        low_level_num_filters=(64, 32))
 
-    instance_head = instance_center_head.InstanceCenterHead(
+    instance_head = panoptic_deeplab_heads.InstanceHead(
         level=level,
         low_level=low_level,
-        low_level_num_filters=[64, 32],
-        feature_fusion='panoptic_deeplab_fusion')
+        low_level_num_filters=(64, 32))
 
     model = panoptic_deeplab_model.PanopticDeeplabModel(
         backbone=backbone,
@@ -114,18 +111,16 @@ class PanopticDeeplabNetworkTest(parameterized.TestCase, tf.test.TestCase):
       instance_decoder = aspp.ASPP(
           level=level, dilation_rates=[6, 12, 18])
 
-    semantic_head = segmentation_heads.SegmentationHead(
+    semantic_head = panoptic_deeplab_heads.SemanticHead(
         num_classes,
         level=level,
         low_level=low_level,
-        low_level_num_filters=[64, 32],
-        feature_fusion='panoptic_deeplab_fusion')
+        low_level_num_filters=(64, 32))
 
-    instance_head = instance_center_head.InstanceCenterHead(
+    instance_head = panoptic_deeplab_heads.InstanceHead(
         level=level,
         low_level=low_level,
-        low_level_num_filters=[64, 32],
-        feature_fusion='panoptic_deeplab_fusion')
+        low_level_num_filters=(64, 32))
 
     model = panoptic_deeplab_model.PanopticDeeplabModel(
         backbone=backbone,
