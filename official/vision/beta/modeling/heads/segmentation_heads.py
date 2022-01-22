@@ -390,10 +390,12 @@ class SegmentationHead(tf.keras.layers.Layer):
         - key: A `str` of the level of the multilevel features.
         - values: A `tf.Tensor` of the feature map tensors, whose shape is
             [batch, height_l, width_l, channels].
+        The first is backbone endpoints, and the second is decoder endpoints.
     Returns:
       segmentation prediction mask: A `tf.Tensor` of the segmentation mask
         scores predicted from input features.
     """
+
     backbone_output = inputs[0]
     decoder_output = inputs[1]
     if self._config_dict['feature_fusion'] == 'deeplabv3plus':
