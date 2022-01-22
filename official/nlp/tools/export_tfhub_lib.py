@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,8 +28,8 @@ import tensorflow as tf
 from tensorflow.core.protobuf import saved_model_pb2
 from tensorflow.python.ops import control_flow_ops
 # pylint: enable=g-direct-tensorflow-import
+from official.legacy.bert import configs
 from official.modeling import tf_utils
-from official.nlp.bert import configs
 from official.nlp.configs import encoders
 from official.nlp.modeling import layers
 from official.nlp.modeling import models

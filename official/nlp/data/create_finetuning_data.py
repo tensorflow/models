@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import os
 from absl import app
 from absl import flags
 import tensorflow as tf
-from official.nlp.bert import tokenization
 from official.nlp.data import classifier_data_lib
 from official.nlp.data import sentence_retrieval_lib
 # word-piece tokenizer based squad_lib
@@ -30,6 +29,7 @@ from official.nlp.data import squad_lib as squad_lib_wp
 # sentence-piece tokenizer based squad_lib
 from official.nlp.data import squad_lib_sp
 from official.nlp.data import tagging_data_lib
+from official.nlp.tools import tokenization
 
 FLAGS = flags.FLAGS
 

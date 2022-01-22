@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ def _truncate_row_lengths(ragged_tensor: tf.RaggedTensor,
 
 
 class BertTokenizer(tf.keras.layers.Layer):
-  """Wraps BertTokenizer with pre-defined vocab as a Keras Layer.
+  """Wraps TF.Text's BertTokenizer with pre-defined vocab as a Keras Layer.
 
   Attributes:
     tokenize_with_offsets: If true, calls

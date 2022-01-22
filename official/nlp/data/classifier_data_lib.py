@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ from absl import logging
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from official.nlp.bert import tokenization
+from official.nlp.tools import tokenization
 
 
 class InputExample(object):

@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1949,6 +1949,37 @@ class RandAugment(ImageAugment):
       self.available_ops = [
           op for op in self.available_ops if op not in exclude_ops
       ]
+
+  @classmethod
+  def build_for_detection(cls,
+                          num_layers: int = 2,
+                          magnitude: float = 10.,
+                          cutout_const: float = 40.,
+                          translate_const: float = 100.,
+                          magnitude_std: float = 0.0,
+                          prob_to_apply: Optional[float] = None,
+                          exclude_ops: Optional[List[str]] = None):
+    """Builds a RandAugment that modifies bboxes for geometric transforms."""
+    augmenter = cls(
+        num_layers=num_layers,
+        magnitude=magnitude,
+        cutout_const=cutout_const,
+        translate_const=translate_const,
+        magnitude_std=magnitude_std,
+        prob_to_apply=prob_to_apply,
+        exclude_ops=exclude_ops)
+    box_aware_ops_by_base_name = {
+        'Rotate': 'Rotate_BBox',
+        'ShearX': 'ShearX_BBox',
+        'ShearY': 'ShearY_BBox',
+        'TranslateX': 'TranslateX_BBox',
+        'TranslateY': 'TranslateY_BBox',
+    }
+    augmenter.available_ops = [
+        box_aware_ops_by_base_name.get(op_name) or op_name
+        for op_name in augmenter.available_ops
+    ]
+    return augmenter
 
   def _distort_common(
       self,

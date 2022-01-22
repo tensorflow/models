@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -101,7 +101,6 @@ def maybe_create_best_ckpt_exporter(params: config_definitions.ExperimentConfig,
   return best_ckpt_exporter
 
 
-# TODO(b/180147589): Add tests for this module.
 class BestCheckpointExporter:
   """Keeps track of the best result, and saves its checkpoint.
 

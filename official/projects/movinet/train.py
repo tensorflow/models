@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,7 +46,6 @@ from official.modeling import performance
 # Import movinet libraries to register the backbone and model into tf.vision
 # model garden factory.
 # pylint: disable=unused-import
-# the followings are the necessary imports.
 from official.projects.movinet.modeling import movinet
 from official.projects.movinet.modeling import movinet_model
 # pylint: enable=unused-import

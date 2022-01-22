@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -58,7 +58,6 @@ class Parser(hyperparams.Config):
   skip_crowd_during_training: bool = True
   max_num_instances: int = 100
   # Can choose AutoAugment and RandAugment.
-  # TODO(b/205346436) Support RandAugment.
   aug_type: Optional[common.Augmentation] = None
 
   # Keep for backward compatibility. Not used.

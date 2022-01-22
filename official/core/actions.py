@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -201,7 +201,7 @@ def get_train_actions(
   """Gets train actions for TFM trainer."""
   train_actions = []
   # Adds pruning callback actions.
-  if hasattr(params.task, 'pruning'):
+  if hasattr(params.task, 'pruning') and params.task.pruning:
     train_actions.append(
         PruningAction(
             export_dir=model_dir,
