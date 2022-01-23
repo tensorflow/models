@@ -86,7 +86,6 @@ def compute_edges(faces: tf.Tensor, faces_mask: tf.Tensor):
   edges = tf.reshape(edges, shape=[batch_size, -1, 2])
 
   return edges, edges_mask
-import tensorflow as tf
 
 def get_pixel_value(img, x, y):
     """
@@ -223,4 +222,3 @@ def vert_align(feats, verts, return_packed: bool = False, align_corners: bool = 
   feats_sampled = tf.concat(feats_sampled, axis = 2)
 
   return feats_sampled
-  

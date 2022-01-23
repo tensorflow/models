@@ -1,10 +1,12 @@
 """Contains tests for Vertex Alignment Operation"""
-import tensorflow as tf
-import torch
 import numpy as np
 import pytorch3d
 import pytorch3d.ops
+import tensorflow as tf
+import torch
+
 from mesh_ops import vert_align
+
 
 class VertAlignTest(tf.test.TestCase):
   def test_out_shape(self):
