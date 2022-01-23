@@ -25,7 +25,8 @@ def visualize_mesh(verts, faces, verts_mask, faces_mask):
   fig = plt.figure()
   ax = fig.add_subplot(projection="3d")
 
-  pc = art3d.Poly3DCollection(v[new_f], facecolors=(1, 0.5, 1, 0.3), edgecolor="black")
+  pc = art3d.Poly3DCollection(
+    v[new_f], facecolors=(1, 0.5, 1, 0.3), edgecolor="black")
 
   ax.add_collection(pc)
 
@@ -33,6 +34,7 @@ def visualize_mesh(verts, faces, verts_mask, faces_mask):
     if vm[i] > 0:
       ax.scatter(v[i][0], v[i][1], v[i][2], c='green', marker='*', s=50)
 
+  plt.axis('off')
   plt.show()
 
 

@@ -17,8 +17,6 @@ from typing import Tuple
 
 import tensorflow as tf
 
-from collections import defaultdict
-
 # Vertices in the unit cube (x,y,z)
 UNIT_CUBOID_VERTS = tf.constant(
     [
@@ -52,40 +50,6 @@ UNIT_CUBOID_FACES = tf.constant(
     ])
 NUM_FACES_PER_CUBOID = tf.shape(UNIT_CUBOID_FACES)[0]
 
-def hash_flatenned_3d_coords(x: tf.Tensor) -> Tuple[tf.Tensor, int]:
-  """Hashes a rank 2 int Tensor with a last dimension of 3 into a rank 1 Tensor.
-
-  This hashing scheme only works where there is an upper bound max_val on all of
-  the values in the tensor. The input must not contain any negative values.
-  Suppose the input tensor has shape [10, 3], the hashed output will have
-  shape [10].
-
-  Args:
-    x: `Tensor` with rank 2, and 3 as the last dimension.
-
-  Returns:
-    hashed_x: `Tensor` with rank 1 for the hashed output.
-    max_val: `int` that was used to hash the input tensor.
-  """
-  max_val = tf.math.reduce_max(x) + 1
-  hashed_x = x[:, 0] * max_val ** 2 + x[:, 1] * max_val + x[:, 2]
-  return hashed_x, max_val
-
-def unhash_flattened_3d_coords(x: tf.Tensor, max_val: int) -> tf.Tensor:
-  """Undos the hash on a rank 1 Tensor and converts it back ot a rank 2 Tensor.
-
-  Args:
-    x: `Tensor` with rank 1, the hashed tensor.
-    max_val: `int` that was used to hash the tensor.
-
-  Returns:
-    unhashed_x: `Tensor` with rank 1, and 3 as the last dimension.
-  """
-  max_val = tf.cast(max_val, x.dtype)
-  unhashed_x = tf.stack(
-      [x // (max_val ** 2), (x // max_val) % max_val, x % max_val], axis=1)
-  return unhashed_x
-
 def generate_3d_coords(x_max: int, y_max: int, z_max: int,
                        flatten_output: bool = False) -> tf.Tensor:
   """Generates a tensor that containing cartesian coordinates.
@@ -93,7 +57,7 @@ def generate_3d_coords(x_max: int, y_max: int, z_max: int,
   This function has two modes. By default, the returned tensor has shape
   [x_max+1, y_max+1, z_max+1, 3], where last dimension contains the x, y, and z
   values at the specified coordinate (i.e. coords[x, y, z] == [x, y, z]).
-  If flatten_output is True, the output is flattened to a 2D Tensor and the
+  If flatten_output is True, the output is reshaped to a 2D Tensor and the
   inner dimension is 3.
 
   Args:
@@ -159,10 +123,16 @@ def initialize_mesh(grid_dims: int) -> Tuple[tf.Tensor, tf.Tensor]:
   # Map the vertices of each cuboid in the grid to the predefined coords
   cuboid_verts = tf.reshape(cuboid_verts, shape=[-1, 3])
 
-  # Converting to scalar values to save memory when doing tf.equal
-  coords_hashed, _ = hash_flatenned_3d_coords(coords)
-  cuboid_verts_hashed, _ = hash_flatenned_3d_coords(
-      cuboid_verts)
+  # Convert to scalar values to save memory when doing tf.equal
+  coords_max = tf.math.reduce_max(coords) + 1
+  cuboid_verts_max = tf.math.reduce_max(cuboid_verts) + 1
+  coords_hashed = (coords[:, 0] * coords_max ** 2 +
+                   coords[:, 1] * coords_max +
+                   coords[:, 2])
+  cuboid_verts_hashed = (cuboid_verts[:, 0] * cuboid_verts_max ** 2 +
+                         cuboid_verts[:, 1] * cuboid_verts_max +
+                         cuboid_verts[:, 2])
+
   cuboid_verts_hashed = tf.reshape(cuboid_verts_hashed, shape=[-1, 1, 1])
   mask = tf.equal(coords_hashed, cuboid_verts_hashed)
   cuboid_verts = tf.where(mask)[:, -1]
@@ -328,6 +298,7 @@ def cubify(voxels: tf.Tensor,
       z_back_updates,
       z_back_updates]
 
+  updates = tf.cast(updates, tf.int32)
   faces_idx = tf.stack(updates, axis=0)
 
   # faces_idx cuboid ordering: left-to-right, top-to-bot, front-to-back
@@ -360,51 +331,9 @@ def cubify(voxels: tf.Tensor,
   num_verts = (depth+1)**3
   verts_mask = tf.math.bincount(
       tf.cast(tf.reshape(masked_faces, [batch_size, -1]), tf.int32),
-      minlength=num_verts+1, binary_output=True, axis=-1)
+      minlength=num_verts+1, maxlength=num_verts+1, binary_output=True, axis=-1)
 
   # The first index was used for any 0s (masked out faces), which can be ignored
   verts_mask = verts_mask[:, 1:]
 
   return verts, faces, verts_mask, faces_mask
-
-def compute_edges(faces, faces_mask):
-  v0, v1, v2 = tf.split(faces, 3, axis=-1)
-
-  e01 = tf.concat([v0, v1], axis=2)
-  e12 = tf.concat([v1, v2], axis=2)
-  e20 = tf.concat([v2, v0], axis=2)
-
-  edges = tf.concat([e12, e20, e01], axis=1)
-  edges_mask = tf.concat([faces_mask, faces_mask, faces_mask], axis=1)
-  
-  return edges, edges_mask
-
-
-if __name__ == '__main__':
-  def create_voxels(grid_dims, batch_size, occupancy_locs):
-    ones = tf.ones(shape=[len(occupancy_locs)])
-    voxels = tf.scatter_nd(
-        indices=tf.convert_to_tensor(occupancy_locs, tf.int32),
-        updates=ones,
-        shape=[batch_size, grid_dims, grid_dims, grid_dims])
-
-    return voxels
-  
-  grid_dims = 3
-  batch_size = 1
-  occupancy_locs = [
-      [0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0], [0, 0, 1, 1],
-      [0, 1, 0, 0], [0, 1, 0, 1], [0, 1, 1, 0], [0, 1, 1, 1],
-  ]
-
-  voxels = create_voxels(grid_dims, batch_size, occupancy_locs)
-  verts, faces, verts_mask, faces_mask = cubify(voxels, 0.5)
-  
-  edges, edges_mask = compute_edges(faces, faces_mask)
-
-  e = edges.numpy().squeeze()
-  edges_dict = defaultdict(int)
-  for k in e:
-    edges_dict[k[0]] +=1
-    edges_dict[k[1]] +=1
-  print(edges_dict)

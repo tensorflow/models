@@ -18,8 +18,7 @@ import tensorflow as tf
 from absl.testing import parameterized
 
 from official.vision.beta.projects.mesh_rcnn.ops.cubify import (
-    cubify, generate_3d_coords, hash_flatenned_3d_coords, initialize_mesh,
-    unhash_flattened_3d_coords)
+    cubify, generate_3d_coords, initialize_mesh)
 
 
 class CubifyTest(parameterized.TestCase, tf.test.TestCase):
@@ -73,23 +72,6 @@ class CubifyTest(parameterized.TestCase, tf.test.TestCase):
         for y in range(coord_dim[1]+1):
           for z in range(coord_dim[2]+1):
             self.assertAllEqual(output[x, y, z], [x, y, z])
-
-  @parameterized.named_parameters(
-      {'testcase_name': 'hash_and_unhash',
-       'tensor_length': 100,
-       'max_value': 100},
-  )
-  def test_hash_3d_coords(self, tensor_length, max_value):
-    self.skipTest("skipping")
-    input_tensor = tf.random.uniform(
-        [tensor_length, 3], 0, max_value, dtype=tf.int64)
-    hashed_tensor, hash_max = hash_flatenned_3d_coords(input_tensor)
-    self.assertEqual(len(tf.shape(hashed_tensor)), 1)
-    self.assertEqual(tf.shape(hashed_tensor)[0], tf.shape(input_tensor)[0])
-
-    unhashed_tensor = unhash_flattened_3d_coords(hashed_tensor, hash_max)
-    self.assertAllEqual(unhashed_tensor, input_tensor)
-
 
   @parameterized.named_parameters(
       {'testcase_name': 'unit_mesh',
