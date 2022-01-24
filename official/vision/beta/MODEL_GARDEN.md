@@ -137,6 +137,7 @@ evaluated on [COCO](https://cocodataset.org/) val2017.
 | Backbone     | Resolution | Epochs | Params (M) | Box AP | Mask AP | Download
 ------------ | :--------: | -----: | ---------: | -----: | ------: | -------:
 | SpineNet-49  | 640x640    | 500    | 56.4       | 46.4   | 40.0    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet49_cascadercnn_tpu.yaml)|
+| SpineNet-96 | 1024x1024  | 500    | 70.8   | 50.9   | 43.8    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet96_cascadercnn_tpu.yaml)|
 | SpineNet-143 | 1280x1280  | 500    | 94.9       | 51.9   | 45.0    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet143_cascadercnn_tpu.yaml)|
 
 ## Semantic Segmentation

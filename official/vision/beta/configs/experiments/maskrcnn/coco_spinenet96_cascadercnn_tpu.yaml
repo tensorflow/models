@@ -1,3 +1,5 @@
+# --experiment_type=cascadercnn_spinenet_coco
+# Expect to reach: box mAP: 51.9%, mask mAP: 45.0% on COCO
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
@@ -8,12 +10,12 @@ task:
     parser:
       aug_rand_hflip: true
       aug_scale_min: 0.1
-      aug_scale_max: 2.0
+      aug_scale_max: 2.5
   losses:
     l2_weight_decay: 0.00004
   model:
     anchor:
-      anchor_size: 3.0
+      anchor_size: 4.0
       num_scales: 3
     min_level: 3
     max_level: 7
