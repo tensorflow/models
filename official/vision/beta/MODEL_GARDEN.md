@@ -55,6 +55,20 @@ depth, label smoothing and dropout.
 | ResNet-RS-350 | 256x256    |  164.3   | 83.7  | 96.7  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs350_i256.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-350-i256.tar.gz) |
 | ResNet-RS-350 | 320x320    | 164.3   | 84.2  | 96.9  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs420_i256.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-350-i320.tar.gz) |
 
+
+#### Vision Transformer (ViT)
+
+We support [ViT](https://arxiv.org/abs/2010.11929) and [DEIT](https://arxiv.org/abs/2012.12877) implementations in a TF
+Vision
+[project](https://github.com/tensorflow/models/tree/master/official/projects/vit). ViT models trained under the DEIT settings:
+
+model     | resolution | Top-1 | Top-5 |
+--------- | :--------: | ----: | ----: |
+ViT-s16  | 224x224    | 79.4  | 94.7  |
+ViT-b16  | 224x224    | 81.8  | 95.8  |
+ViT-l16  | 224x224    | 82.2  | 95.8  |
+
+
 ## Object Detection and Instance Segmentation
 
 ### Common Settings and Notes
