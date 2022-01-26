@@ -1,72 +1,96 @@
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Script to visualize sampled points and their normals for a given mesh."""
+
+import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 import tensorflow as tf
 from mpl_toolkits.mplot3d import art3d
 
 from official.vision.beta.projects.mesh_rcnn.ops.cubify import cubify
 from official.vision.beta.projects.mesh_rcnn.ops.mesh_sample import \
     sample_meshes
+from official.vision.beta.projects.mesh_rcnn.ops.utils import create_voxels
+
+matplotlib.use("TkAgg")
 
 
-def create_voxels(grid_dims, batch_size, occupancy_locs):
-  ones = tf.ones(shape=[len(occupancy_locs)])
-  voxels = tf.scatter_nd(
-      indices=tf.convert_to_tensor(occupancy_locs, tf.int32),
-      updates=ones,
-      shape=[batch_size, grid_dims, grid_dims, grid_dims])
-    
-  return voxels
+def visualize_mesh(
+    verts: tf.Tensor,
+    faces: tf.Tensor,
+    faces_mask: tf.Tensor,
+    samples: tf.Tensor,
+    normals: tf.Tensor,
+) -> None:
+  """Plot the mesh, the sampled points, and their normals.
 
-def get_face_middle_pt(face, verts):
-  v0, v1, v2 = verts[face[0]], verts[face[1]], verts[face[2]]
-  return (v0 + v1 + v2) / 3
-
-def visualize_mesh(verts, faces, verts_mask, faces_mask, normals):
+  Args:
+    verts: A float `Tensor` of shape [B, Nv, 3], where the last dimension
+      contains all (x,y,z) vertex coordinates in the initial mesh.
+    faces: An int `Tensor` of shape [B, Nf, 3], where the last dimension
+      contains the verts indices that make up the face. This may include
+      duplicate faces.
+    faces_mask: An int `Tensor` of shape [B, Nf], representing a mask for
+      valid faces in the watertight mesh.
+    samples: A float `Tensor` of shape [B, Ns, 3] holding the coordinates
+      of sampled points from each mesh in the batch. A samples matrix for a
+      mesh will be 0 (i.e. samples[i, :, :] = 0) if the mesh is empty
+      (i.e. verts_mask[i,:] all 0).
+    normals:  A float `Tensor` of shape [B, Ns, 3] holding the normal vector
+      for each sampled point. Like `samples`, an empty mesh will correspond
+      to a 0 normals matrix.
+  """
   v = verts.numpy()
   f = faces.numpy()
+  smpls = samples.numpy()
   norms = normals.numpy()
-  vm = verts_mask.numpy() == 1
   fm = faces_mask.numpy() == 1
-
-  new_f = f[fm]
 
   fig = plt.figure()
   ax = fig.add_subplot(projection="3d")
 
-  pc = art3d.Poly3DCollection(v[new_f], facecolors=(1, 0.5, 1, 0.3), edgecolor="black")
+  new_f = f[fm]
+  pc = art3d.Poly3DCollection(
+      v[new_f], facecolors=(1, 0.5, 1, 0.3), edgecolor="black"
+  )
 
   ax.add_collection(pc)
 
-  ################# Debugging - remove later  #################
-  # cnt = 0
-  # desired = 2
-  #############################################################
-  for i in range(fm.size):
-    ################# Debugging - remove later  #################
-    # if cnt > desired:
-    #   break
-    # elif cnt < desired:
-    #   cnt += 1
-    #   continue
-    # else:
-    #   cnt += 1
-    #############################################################
+  # visualize the sampled points and their normals
+  assert np.shape(smpls) == np.shape(norms)
+  for i in range(np.shape(smpls)[0]):
+    # Green points represent the sampled points.
+    ax.scatter(
+        smpls[i][0], smpls[i][1], smpls[i][2], c="green", marker=".", s=30
+    )
+    norm = smpls[i] + norms[i]
+    # Red points represent the tip of the normal vectors of the sampled points.
+    ax.scatter(norm[0], norm[1], norm[2], c="red", marker=".", s=20)
 
-    if fm[i] > 0:
-      mid = get_face_middle_pt(f[i], v)
-      ax.scatter(mid[0], mid[1], mid[2], c='blue', marker='.', s=20)
-      norm = mid + norms[i]
-      ax.scatter(norm[0], norm[1], norm[2], c='red', marker='.', s=20)
-
-  for i in range(vm.size):
-    if vm[i] > 0:
-      ax.scatter(v[i][0], v[i][1], v[i][2], c='green', marker='*', s=50)
-
-  for i in range(0,390,30):
-    ax.view_init(elev=0, azim=i)
-    plt.savefig(f"./official/vision/beta/projects/mesh_rcnn/ops/visualize_sampler_{i}.png")
+  # Option 1: View figure interactively
+  plt.show()
+  # Option 2: Save multiple figures from different camera angles
+  # for i in range(0, 390, 30):
+  #   ax.view_init(elev=0, azim=i)
+  #   plt.savefig(
+  #     f"./official/vision/beta/projects/mesh_rcnn/ops/visualize_sampler_{i}.png"
+  #   )
 
 
-if __name__ == '__main__':
+def main():
   grid_dims = 2
   batch_size = 5
   occupancy_locs = [
@@ -80,24 +104,25 @@ if __name__ == '__main__':
   voxels = create_voxels(grid_dims, batch_size, occupancy_locs)
   verts, faces, verts_mask, faces_mask = cubify(voxels, 0.5)
 
-  verts = tf.cast(verts, dtype=tf.float32)
-  # print(verts)
-  # print("\n\n")
-  faces = tf.cast(faces, dtype=tf.int32)
-  # print(faces)
-  # print("\n\n")
-  # print("\n\n")
-  verts_mask = tf.cast(verts_mask, dtype=tf.int8)
-  faces_mask = tf.cast(faces_mask, dtype=tf.int8)
+  verts = tf.cast(verts, tf.float32)
+  faces = tf.cast(faces, tf.int32)
+  verts_mask = tf.cast(verts_mask, tf.int8)
+  faces_mask = tf.cast(faces_mask, tf.int8)
 
   sample_meshes_graph = tf.function(sample_meshes)
-  samples, normals = sample_meshes_graph(verts, verts_mask, faces,
-                                   faces_mask, num_samples=4)
+  samples, normals = sample_meshes_graph(
+      verts, verts_mask, faces, faces_mask, num_samples=100
+  )
 
   batch_to_view = 1
-  visualize_mesh(verts[batch_to_view, :],
-                 faces[batch_to_view, :],
-                 verts_mask[batch_to_view, :],
-                 faces_mask[batch_to_view, :],
-                 normals[batch_to_view, :]
-                 )
+  visualize_mesh(
+      verts[batch_to_view, :],
+      faces[batch_to_view, :],
+      faces_mask[batch_to_view, :],
+      samples[batch_to_view, :],
+      normals[batch_to_view, :],
+  )
+
+
+if __name__ == "__main__":
+  main()
