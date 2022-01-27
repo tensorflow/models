@@ -714,7 +714,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
         'use_depthwise': self._use_depthwise,
         'use_residual': self._use_residual,
         'norm_momentum': self._norm_momentum,
-        'norm_epsilon': self._norm_epsilon
+        'norm_epsilon': self._norm_epsilon,
+        'output_intermediate_endpoints': self._output_intermediate_endpoints
     }
     base_config = super(InvertedBottleneckBlock, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
