@@ -18,10 +18,10 @@ from typing import List, Mapping, Optional, Union
 
 import tensorflow as tf
 
-from official.vision.beta.modeling import maskrcnn_model
+from official.vision.beta.projects.deepmac_maskrcnn.modeling import maskrcnn_model
 
 
-class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
+class PanopticMaskRCNNModel(maskrcnn_model.DeepMaskRCNNModel):
   """The Panoptic Segmentation model."""
 
   def __init__(
@@ -49,7 +49,8 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
       max_level: Optional[int] = None,
       num_scales: Optional[int] = None,
       aspect_ratios: Optional[List[float]] = None,
-      anchor_size: Optional[float] = None,  # pytype: disable=annotation-type-mismatch  # typed-keras
+      anchor_size: Optional[float] = None,
+      use_gt_boxes_for_masks: bool = False,  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     """Initializes the Panoptic Mask R-CNN model.
 
@@ -94,6 +95,7 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
         aspect_ratios=[1.0, 2.0, 0.5] adds three anchors on each scale level.
       anchor_size: A number representing the scale of size of the base anchor to
         the feature stride 2^level.
+      use_gt_boxes_for_masks: `bool`, whether to use only gt boxes for masks.
       **kwargs: keyword arguments to be passed.
     """
     super(PanopticMaskRCNNModel, self).__init__(
@@ -115,6 +117,7 @@ class PanopticMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
         num_scales=num_scales,
         aspect_ratios=aspect_ratios,
         anchor_size=anchor_size,
+        use_gt_boxes_for_masks=use_gt_boxes_for_masks,
         **kwargs)
 
     self._config_dict.update({
