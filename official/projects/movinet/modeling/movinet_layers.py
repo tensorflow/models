@@ -885,7 +885,8 @@ class MobileBottleneck(tf.keras.layers.Layer):
 
     x = self._expansion_layer(inputs)
     x, states = self._feature_layer(x, states=states)
-    x, states = self._attention_layer(x, states=states)
+    if self._attention_layer is not None:
+      x, states = self._attention_layer(x, states=states)
     x = self._projection_layer(x)
 
     # Add identity so that the ops are ordered as written. This is useful for,
@@ -1136,18 +1137,20 @@ class MovinetBlock(tf.keras.layers.Layer):
         batch_norm_momentum=self._batch_norm_momentum,
         batch_norm_epsilon=self._batch_norm_epsilon,
         name='projection')
-    self._attention = StreamSqueezeExcitation(
-        se_hidden_filters,
-        se_type=se_type,
-        activation=activation,
-        gating_activation=gating_activation,
-        causal=self._causal,
-        conv_type=conv_type,
-        use_positional_encoding=use_positional_encoding,
-        kernel_initializer=kernel_initializer,
-        kernel_regularizer=kernel_regularizer,
-        state_prefix=state_prefix,
-        name='se')
+    self._attention = None
+    if se_type != 'none':
+      self._attention = StreamSqueezeExcitation(
+          se_hidden_filters,
+          se_type=se_type,
+          activation=activation,
+          gating_activation=gating_activation,
+          causal=self._causal,
+          conv_type=conv_type,
+          use_positional_encoding=use_positional_encoding,
+          kernel_initializer=kernel_initializer,
+          kernel_regularizer=kernel_regularizer,
+          state_prefix=state_prefix,
+          name='se')
 
   def get_config(self):
     """Returns a dictionary containing the config used for initialization."""
