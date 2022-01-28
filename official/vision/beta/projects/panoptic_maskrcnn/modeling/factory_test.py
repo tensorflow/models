@@ -15,6 +15,7 @@
 """Tests for factory.py."""
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 from tensorflow.python.distribute import combinations
 
