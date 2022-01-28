@@ -18,7 +18,7 @@ from typing import List, Union, Optional, Mapping, Tuple
 import tensorflow as tf
 
 from official.modeling import tf_utils
-from official.vision.beta.modeling.layers import nn_layers
+from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import fusion_layers
 from official.vision.beta.ops import spatial_transform_ops
 
 
@@ -118,7 +118,7 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
         'epsilon': self._config_dict['norm_epsilon'],
     }
 
-    self._panoptic_deeplab_fusion = nn_layers.PanopticDeepLabFusion(
+    self._panoptic_deeplab_fusion = fusion_layers.PanopticDeepLabFusion(
         level=self._config_dict['level'],
         low_level=self._config_dict['low_level'],
         num_projection_filters=self._config_dict['low_level_num_filters'],
