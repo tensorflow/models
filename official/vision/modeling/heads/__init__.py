@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Vision package definition."""
 # Lint as: python3
-# pylint: disable=unused-import
-from official.vision.beta import configs
-from official.vision.beta import tasks
+"""Heads package definition."""
+
+from official.vision.modeling.heads.dense_prediction_heads import RetinaNetHead
+from official.vision.modeling.heads.dense_prediction_heads import RPNHead
+from official.vision.modeling.heads.instance_heads import DetectionHead
+from official.vision.modeling.heads.instance_heads import MaskHead
+from official.vision.modeling.heads.segmentation_heads import SegmentationHead
