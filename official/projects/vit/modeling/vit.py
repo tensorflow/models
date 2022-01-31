@@ -145,7 +145,7 @@ class Encoder(tf.keras.layers.Layer):
 
     self._encoder_layers = []
     # Set layer norm epsilons to 1e-6 to be consistent with JAX implementation.
-    # https://flax.readthedocs.io/en/latest/_autosummary/flax.nn.LayerNorm.html
+    # https://flax.readthedocs.io/en/latest/_autosummary/flax.deprecated.nn.LayerNorm.html
     for i in range(self._num_layers):
       encoder_layer = nn_blocks.TransformerEncoderBlock(
           inner_activation=activations.gelu,
