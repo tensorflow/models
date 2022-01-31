@@ -64,6 +64,72 @@ class MovinetLayersTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(predicted.shape, expected.shape)
     self.assertAllClose(predicted, expected)
 
+  def test_mobile_conv2d_bn(self):
+    batch_norm_op = tf.keras.layers.BatchNormalization(
+        momentum=0.9,
+        epsilon=1.,
+        name='bn')
+    conv2d = movinet_layers.MobileConv2D(
+        filters=3,
+        kernel_size=(3, 3),
+        strides=(1, 1),
+        padding='same',
+        kernel_initializer='ones',
+        use_bias=False,
+        use_depthwise=False,
+        use_temporal=False,
+        use_buffered_input=True,
+        batch_norm_op=batch_norm_op,
+    )
+
+    inputs = tf.ones([1, 2, 2, 2, 3])
+
+    predicted = conv2d(inputs)
+
+    expected = tf.constant(
+        [[[[[8.48528, 8.48528, 8.48528],
+            [8.48528, 8.48528, 8.48528]],
+           [[8.48528, 8.48528, 8.48528],
+            [8.48528, 8.48528, 8.48528]]],
+          [[[8.48528, 8.48528, 8.48528],
+            [8.48528, 8.48528, 8.48528]],
+           [[8.48528, 8.48528, 8.48528],
+            [8.48528, 8.48528, 8.48528]]]]])
+
+    self.assertEqual(predicted.shape, expected.shape)
+    self.assertAllClose(predicted, expected)
+
+  def test_mobile_conv2d_activation(self):
+    conv2d = movinet_layers.MobileConv2D(
+        filters=3,
+        kernel_size=(3, 3),
+        strides=(1, 1),
+        padding='same',
+        kernel_initializer='ones',
+        use_bias=False,
+        use_depthwise=False,
+        use_temporal=False,
+        use_buffered_input=True,
+        activation_op=tf.nn.relu6,
+    )
+
+    inputs = tf.ones([1, 2, 2, 2, 3])
+
+    predicted = conv2d(inputs)
+
+    expected = tf.constant(
+        [[[[[6., 6., 6.],
+            [6., 6., 6.]],
+           [[6., 6., 6.],
+            [6., 6., 6.]]],
+          [[[6., 6., 6.],
+            [6., 6., 6.]],
+           [[6., 6., 6.],
+            [6., 6., 6.]]]]])
+
+    self.assertEqual(predicted.shape, expected.shape)
+    self.assertAllClose(predicted, expected)
+
   def test_mobile_conv2d_temporal(self):
     conv2d = movinet_layers.MobileConv2D(
         filters=3,
