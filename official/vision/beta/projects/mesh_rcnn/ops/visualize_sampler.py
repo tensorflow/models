@@ -25,7 +25,7 @@ from official.vision.beta.projects.mesh_rcnn.ops.mesh_sample import \
     sample_meshes
 from official.vision.beta.projects.mesh_rcnn.ops.utils import create_voxels
 
-matplotlib.use("TkAgg")
+matplotlib.use("TkAgg") # Needed for showing plot when running from WSL.
 
 
 def visualize_mesh(
@@ -72,25 +72,15 @@ def visualize_mesh(
   # visualize the sampled points and their normals
   assert np.shape(smpls) == np.shape(norms)
   for i in range(np.shape(smpls)[0]):
-    # Green points represent the sampled points.
-    ax.scatter(
-        smpls[i][0], smpls[i][1], smpls[i][2], c="green", marker=".", s=30
-    )
-    norm = smpls[i] + norms[i]
-    # Red points represent the tip of the normal vectors of the sampled points.
-    ax.scatter(norm[0], norm[1], norm[2], c="red", marker=".", s=20)
+    ax.quiver3D(smpls[i][0], smpls[i][1], smpls[i][2],
+                norms[i][0], norms[i][1], norms[i][2])
 
-  # Option 1: View figure interactively
   plt.show()
-  # Option 2: Save multiple figures from different camera angles
-  # for i in range(0, 390, 30):
-  #   ax.view_init(elev=0, azim=i)
-  #   plt.savefig(
-  #     f"./official/vision/beta/projects/mesh_rcnn/ops/visualize_sampler_{i}.png"
-  #   )
 
 
 def main():
+  tf.random.set_seed(1)
+
   grid_dims = 2
   batch_size = 5
   occupancy_locs = [
@@ -109,9 +99,9 @@ def main():
   verts_mask = tf.cast(verts_mask, tf.int8)
   faces_mask = tf.cast(faces_mask, tf.int8)
 
-  sample_meshes_graph = tf.function(sample_meshes)
-  samples, normals = sample_meshes_graph(
-      verts, verts_mask, faces, faces_mask, num_samples=100
+  num_samples = 100
+  samples, normals, _ = sample_meshes(
+      verts, verts_mask, faces, faces_mask, num_samples
   )
 
   batch_to_view = 1
