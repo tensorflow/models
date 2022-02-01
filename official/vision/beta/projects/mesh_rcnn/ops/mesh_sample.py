@@ -15,18 +15,17 @@
 """Utility functions for computing mesh losses.
 
 Note: The following are used as shorthands for dimensions:
-  B: Batch size
+  B: Batch size.
   Nv: Number of vertices. Calculated as `(vox_grid_dim + 1)**3`.
   Nf: Number of faces.  Calculated as `12 * (vox_grid_dim)**3`.
-  Ns: Number of points to sample from mesh
+  Ns: Number of points to sample from mesh.
 """
 
 from typing import Tuple
 
 import tensorflow as tf
-from tensorflow.python.ops.gen_batch_ops import batch
 
-COORD_DIM = 3
+from official.vision.beta.projects.mesh_rcnn.ops.utils import get_face_vertices
 
 
 def sample_meshes(
@@ -35,7 +34,7 @@ def sample_meshes(
   faces: tf.Tensor,
   faces_mask: tf.Tensor,
   num_samples: int,
-) -> Tuple[tf.Tensor, tf.Tensor]:
+) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
   """Uniformly samples points and their normals the surface of meshes.
 
   Args:
@@ -48,69 +47,47 @@ def sample_meshes(
       duplicate faces.
     faces_mask: An int `Tensor` of shape [B, Nf], representing a mask for
       valid faces in the watertight mesh.
-    num_samples: Integer giving the number of point samples per mesh (Ns above).
+    num_samples: `int` giving the number of point samples per mesh (Ns above).
 
   Returns:
     samples: A float `Tensor` of shape [B, Ns, 3] holding the coordinates
       of sampled points from each mesh in the batch. A samples matrix for a
       mesh will be 0 (i.e. samples[i, :, :] = 0) if the mesh is empty
       (i.e. verts_mask[i,:] all 0).
-    normals:  A float `Tensor` of shape [B, Ns, 3] holding the normal vector
+    normals: A float `Tensor` of shape [B, Ns, 3] holding the normal vector
       for each sampled point. Like `samples`, an empty mesh will correspond
       to a 0 normals matrix.
+    sampled_verts_ind: A `Tensor`s of shape [B, Ns, 2] where the first element
+      of each row in each batch is the batch index and the second element is
+      an index of a face in the mesh to sample from.
   """
-  verts_shape = tf.shape(verts)
-  batch_size, num_verts, = verts_shape[0], verts_shape[1]
+  batch_size = tf.shape(verts)[0]
   num_faces = tf.shape(faces)[1]
 
-  v0, v1, v2 = _get_face_vertices(verts, faces, batch_size, num_faces)
-  areas, normals = _get_face_areas_and_normals(v0, v1, v2)
-
-  sample_face_idxs = _sample_faces(areas, batch_size, num_samples)
-
-
-  return tf.constant(0), tf.constant(0)
-
-
-def _get_face_vertices(
-  verts: tf.Tensor, faces: tf.Tensor, batch_size: int, num_faces: int
-) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-  """Extracts three `Tensors` corresponding to the vertices for each face.
-
-  Args:
-    verts: A float `Tensor` of shape [B, Nv, 3], where the last dimension
-      contains all (x,y,z) vertex coordinates in the initial mesh.
-    faces: An int `Tensor` of shape [B, Nf, 3], where the last dimension
-      contains the verts indices that make up the face. This may include
-      duplicate faces.
-    batch_size: `int`, specifies the number of batch elements.
-    batch_size: `int`, specifies the number of faces in each mesh.
-
-  Returns:
-    v0, v1, v2: A tuple of three float `Tensor`s each of shape [B, Nf, 3]
-      holding the ith (0, 1, or 2) vertex for each face of the mesh.
-  """
-  # IntTensor[B, Nf, 1] where the single column for each batch is the batch idx.
-  batch_ind = tf.repeat(
-    tf.expand_dims(tf.expand_dims(tf.range(batch_size), axis=-1), axis=-1),
-    num_faces,
-    axis=1,
+  v0, v1, v2 = get_face_vertices(
+    verts, verts_mask, faces, faces_mask, batch_size, num_faces
   )
+  areas, face_normals = _get_face_areas_and_normals(v0, v1, v2)
 
-  face_verts = [None] * COORD_DIM
-  for i in range(COORD_DIM):
-    # IntTensor[B, Nf, 1] where the element in each row is the ith (0, 1, or 2)
-    # vertex index from `faces`.
-    faces_vert_ind = tf.transpose(
-      tf.expand_dims(faces[:, :, i], axis=0), perm=[1, 2, 0]
-    )
-    # IntTensor[B, Nf, 1]: Concatenated tensor used to index into `verts`.
-    vert_ind = tf.concat((batch_ind, faces_vert_ind), axis=-1)
-    # FloatTensor[B, Nf, 3]: The ith vertex for each face of the mesh.
-    face_verts[i] = tf.gather_nd(verts, vert_ind)
+  sampled_verts_ind = _sample_faces(areas, batch_size, num_faces, num_samples)
 
-  v0, v1, v2 = face_verts
-  return v0, v1, v2
+  # Each FloatTensor[B, Ns, 3]: The ith (0, 1, or 2) vertices for each face of the
+  # sampled mesh.
+  smpl_v0 = tf.gather_nd(v0, sampled_verts_ind)
+  smpl_v1 = tf.gather_nd(v1, sampled_verts_ind)
+  smpl_v2 = tf.gather_nd(v2, sampled_verts_ind)
+  # FloatTensor[B, Ns, 3]: The normals for the sampled mesh faces.
+  normals = tf.gather_nd(face_normals, sampled_verts_ind)
+
+  w0, w1, w2 = _get_rand_barycentric_coords(batch_size, num_samples)
+
+  # FloatTensor[B, Ns, 3]: Each vertex (x,y,z) for each sampled face is
+  # elementwise multiplied with the respective barycentric ‘weight’.
+  # These are added together to produce the N vertices sampled from the
+  # triangle face of each sampled face of each mesh.
+  samples = w0 * smpl_v0 + w1 * smpl_v1 + w2 * smpl_v2
+
+  return samples, normals, sampled_verts_ind
 
 
 def _get_face_areas_and_normals(
@@ -123,11 +100,11 @@ def _get_face_areas_and_normals(
 
   Args:
     v0: A float `Tensor` of shape [B, Nf, 3] corresponding to the 0th vertex
-      for each face in the mesh.
+      for each face in the (masked) mesh.
     v1: A float `Tensor` of shape [B, Nf, 3] corresponding to the 1th vertex
-      for each face in the mesh.
+      for each face in the (masked) mesh.
     v2: A float `Tensor` of shape [B, Nf, 3] corresponding to the 2th vertex
-      for each face in the mesh.
+      for each face in the (masked) mesh.
 
   Returns:
     face_areas, face_normals: Two float `Tensor`s with shape [B, Nf] and
@@ -136,17 +113,25 @@ def _get_face_areas_and_normals(
   """
   vert_normals = tf.linalg.cross((v1 - v0), (v2 - v1))
   face_areas = tf.norm(vert_normals, axis=-1) / 2
-  # Normalize the normal vector calculated from the cross prod of the vertices.
+  # Normalize the normal vector calculated from the cross product of the verts.
   vert_normals_norm = tf.repeat(
-    tf.expand_dims(tf.norm(vert_normals, axis=-1), axis=-1),
-    3,
-    axis=-1)
+    tf.expand_dims(tf.norm(vert_normals, axis=-1), axis=-1), 3, axis=-1
+  )
   face_normals = vert_normals / vert_normals_norm
+  # Replace `nan` for masked out faces with zero vectors
+  face_normals = tf.where(
+    tf.math.is_nan(face_normals), tf.zeros_like(face_normals), face_normals
+  )
   return face_areas, face_normals
 
 
-def _sample_faces(areas: tf.Tensor, batch_size: int, num_samples: int) -> tf.Tensor:
-  """Computes the indices to sample the mesh faces.
+def _sample_faces(
+  areas: tf.Tensor,
+  batch_size: int,
+  num_faces: int,
+  num_samples: int,
+) -> tf.Tensor:
+  """Computes a `Tensor` containing the indices of the sampled faces.
 
   Points are uniformly sampled from the surface of the mesh by sampling a face
   f = (v1, v2, v3) from the mesh where the probability distribution of faces is
@@ -154,14 +139,61 @@ def _sample_faces(areas: tf.Tensor, batch_size: int, num_samples: int) -> tf.Ten
   given by the area of each face.
 
   Args:
-    areas: A float `Tensor` with shape [B, Nf]
+    areas: A float `Tensor` with shape [B, Nf] corresponding to the areas for
+      each face in the mesh.
+    batch_size: `int`, specifies the number of batch elements.
+    num_faces: `int`, specifies the number of faces in each mesh.
+    num_samples: 'int` giving the number of point samples per mesh (Ns above).
 
   Returns:
-    sample_face_idxs: TODO
+    sampled_verts_ind: A `Tensor`s of shape [B, Ns, 2] where the first element
+      of each row in each batch is the batch index and the second element is
+      an index of a face in the mesh to sample from. This is used to gather the
+      vertices and corresponding normal vectors of the sampled mesh faces.
   """
-  return tf.constant(0)
+  # IntTensor[B, Ns, 1] where the single element in the rows for each batch is
+  # the batch idx.
+  batch_ind = tf.repeat(
+    tf.expand_dims(tf.expand_dims(tf.range(batch_size), axis=-1), axis=-1),
+    num_samples,
+    axis=1,
+  )
+  # IntTensor[B, Ns, 1] where the single element in each row is an index of a face
+  # of that mesh to sample from.
+  sample_faces_ind = tf.expand_dims(
+    tf.random.categorical(tf.math.log(areas), num_samples, dtype=tf.int32),
+    axis=-1,
+  )
+  # If all areas are zero (masked off mesh faces), `tf.random.categorical` will
+  # fill each row with the value `Nf` which will cause an out of range error
+  # when using this in the `indices` arg of `tf.gather_nd`. So we should set the
+  # elements corresponding to the masked off faces to zero.
+  sample_faces_ind_mask = tf.cast(sample_faces_ind == num_faces, tf.int32)
+  sample_faces_ind = sample_faces_ind - num_faces * sample_faces_ind_mask
+
+  sampled_verts_ind = tf.concat([batch_ind, sample_faces_ind], -1)
+  return sampled_verts_ind
 
 
-def _get_rand_barycentric_coords() -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-  """TODO"""
-  return tf.constant(0), tf.constant(0), tf.constant(0)
+def _get_rand_barycentric_coords(
+  batch_size: int,
+  num_samples: int,
+) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+  """Computes the three `Tensors` corresponding to the random barycentric
+     coordinates which are uniformly distributed over a triangle.
+
+  Args:
+    batch_size: `int`, specifies the number of batch elements.
+    num_samples: 'int` giving the number of point samples per mesh (Ns above).
+
+  Returns:
+    w0, w1, w2: A tuple of three float `Tensor`s each of shape [B, Ns, 1]
+      giving random barycentric coordinates.
+  """
+  eps1 = tf.random.uniform([batch_size, num_samples, 1], 0, 1)
+  eps2 = tf.random.uniform([batch_size, num_samples, 1], 0, 1)
+  eps1_sqrt = tf.math.sqrt(eps1)
+  w0 = 1.0 - eps1_sqrt
+  w1 = (1.0 - eps2) * eps1_sqrt
+  w2 = eps2 * eps1_sqrt
+  return w0, w1, w2
