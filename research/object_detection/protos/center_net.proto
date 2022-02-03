@@ -403,7 +403,7 @@ message CenterNet {
 
 
   // Mask prediction support using DeepMAC. See https://arxiv.org/abs/2104.00613
-  // Next ID 24
+  // Next ID 25
   message DeepMACMaskEstimation {
     // The loss used for penalizing mask predictions.
     optional ClassificationLoss classification_loss = 1;
@@ -484,6 +484,14 @@ message CenterNet {
     optional int32 color_consistency_warmup_steps = 22 [default=0];
 
     optional int32 color_consistency_warmup_start = 23 [default=0];
+
+    // DeepMAC has been refactored to process the entire batch at once,
+    // instead of the previous (simple) approach of processing one sample at
+    // a time. Because of this, the memory consumption has increased and
+    // it's crucial to only feed the mask head the last stage outputs
+    // from the hourglass. Doing so halves the memory requirement of the
+    // mask head and does not cause a drop in evaluation metrics.
+    optional bool use_only_last_stage = 24 [default=false];
 
   }
 
