@@ -2284,8 +2284,9 @@ class MixupAndCutmix:
         lambda x: _fill_rectangle(*x),
         (images, random_center_width, random_center_height, cut_width // 2,
          cut_height // 2, tf.reverse(images, [0])),
-        dtype=(tf.float32, tf.int32, tf.int32, tf.int32, tf.int32, tf.float32),
-        fn_output_signature=tf.TensorSpec(images.shape[1:], dtype=tf.float32))
+        dtype=(
+            images.dtype, tf.int32, tf.int32, tf.int32, tf.int32, images.dtype),
+        fn_output_signature=tf.TensorSpec(images.shape[1:], dtype=images.dtype))
 
     return images, labels, lam
 
@@ -2294,7 +2295,8 @@ class MixupAndCutmix:
     lam = MixupAndCutmix._sample_from_beta(self.mixup_alpha, self.mixup_alpha,
                                            labels.shape)
     lam = tf.reshape(lam, [-1, 1, 1, 1])
-    images = lam * images + (1. - lam) * tf.reverse(images, [0])
+    lam_cast = tf.cast(lam, dtype=images.dtype)
+    images = lam_cast * images + (1. - lam_cast) * tf.reverse(images, [0])
 
     return images, labels, tf.squeeze(lam)
 
