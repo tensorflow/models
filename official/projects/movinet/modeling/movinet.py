@@ -338,7 +338,7 @@ class Movinet(tf.keras.Model):
         3x3 followed by 5x1 conv). '3d_2plus1d' uses (2+1)D convolution with
         Conv3D and no 2D reshaping (e.g., a 5x3x3 kernel becomes 1x3x3 followed
         by 5x1x1 conv).
-      se_type: '3d', '2d', or '2plus3d'. '3d' uses the default 3D
+      se_type: '3d', '2d', '2plus3d' or 'none'. '3d' uses the default 3D
           spatiotemporal global average pooling for squeeze excitation. '2d'
           uses 2D spatial global average pooling  on each frame. '2plus3d'
           concatenates both 3D and 2D global average pooling.
@@ -369,7 +369,7 @@ class Movinet(tf.keras.Model):
 
     if conv_type not in ('3d', '2plus1d', '3d_2plus1d'):
       raise ValueError('Unknown conv type: {}'.format(conv_type))
-    if se_type not in ('3d', '2d', '2plus3d'):
+    if se_type not in ('3d', '2d', '2plus3d', 'none'):
       raise ValueError('Unknown squeeze excitation type: {}'.format(se_type))
 
     self._model_id = model_id
@@ -602,10 +602,11 @@ class Movinet(tf.keras.Model):
                 expand_filters,
             )
 
-          states[f'{prefix}_pool_buffer'] = (
-              input_shape[0], 1, 1, 1, expand_filters,
-          )
-          states[f'{prefix}_pool_frame_count'] = (1,)
+          if '3d' in self._se_type:
+            states[f'{prefix}_pool_buffer'] = (
+                input_shape[0], 1, 1, 1, expand_filters,
+            )
+            states[f'{prefix}_pool_frame_count'] = (1,)
 
           if use_positional_encoding:
             name = f'{prefix}_pos_enc_frame_count'

@@ -83,6 +83,9 @@ flags.DEFINE_string(
     'activation', 'swish',
     'The main activation to use across layers.')
 flags.DEFINE_string(
+    'classifier_activation', 'swish',
+    'The classifier activation to use.')
+flags.DEFINE_string(
     'gating_activation', 'sigmoid',
     'The gating activation to use in squeeze-excitation layers.')
 flags.DEFINE_bool(
@@ -124,10 +127,14 @@ def main(_) -> None:
   # states. These dimensions can be set to `None` once the model is built.
   input_shape = [1 if s is None else s for s in input_specs.shape]
 
+  # Override swish activation implementation to remove custom gradients
   activation = FLAGS.activation
   if activation == 'swish':
-    # Override swish activation implementation to remove custom gradients
     activation = 'simple_swish'
+
+  classifier_activation = FLAGS.classifier_activation
+  if classifier_activation == 'swish':
+    classifier_activation = 'simple_swish'
 
   backbone = movinet.Movinet(
       model_id=FLAGS.model_id,
@@ -145,9 +152,7 @@ def main(_) -> None:
       num_classes=FLAGS.num_classes,
       output_states=FLAGS.causal,
       input_specs=dict(image=input_specs),
-      # TODO(dankondratyuk): currently set to swish, but will need to
-      # re-train to use other activations.
-      activation='simple_swish')
+      activation=classifier_activation)
   model.build(input_shape)
 
   # Compile model to generate some internal Keras variables.

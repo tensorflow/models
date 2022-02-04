@@ -17,10 +17,10 @@
 import tensorflow as tf
 
 from official.vision.beta.modeling import backbones
-from official.vision.beta.modeling import factory as models_factory
 from official.vision.beta.modeling.decoders import factory as decoder_factory
 from official.vision.beta.modeling.heads import segmentation_heads
 from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_deeplab as panoptic_deeplab_cfg
+from official.vision.beta.projects.deepmac_maskrcnn.tasks import deep_mask_head_rcnn
 from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_maskrcnn as panoptic_maskrcnn_cfg
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_deeplab_model
 from official.vision.beta.projects.panoptic_maskrcnn.modeling.heads import panoptic_deeplab_heads
@@ -50,7 +50,7 @@ def build_panoptic_maskrcnn(
   segmentation_config = model_config.segmentation_model
 
   # Builds the maskrcnn model.
-  maskrcnn_model = models_factory.build_maskrcnn(
+  maskrcnn_model = deep_mask_head_rcnn.build_maskrcnn(
       input_specs=input_specs,
       model_config=model_config,
       l2_regularizer=l2_regularizer)
@@ -120,6 +120,7 @@ def build_panoptic_maskrcnn(
 
   # Combines maskrcnn, and segmentation models to build panoptic segmentation
   # model.
+
   model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
       backbone=maskrcnn_model.backbone,
       decoder=maskrcnn_model.decoder,

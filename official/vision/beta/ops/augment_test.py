@@ -366,14 +366,19 @@ class RandomErasingTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotEqual(0, tf.reduce_max(aug_image))
 
 
-class MixupAndCutmixTest(tf.test.TestCase, parameterized.TestCase):
+@parameterized.named_parameters([
+    ('float16_images', tf.float16),
+    ('bfloat16_images', tf.bfloat16),
+    ('float32_images', tf.float32),
+])
+class MixupAndCutmixTest(parameterized.TestCase, tf.test.TestCase):
 
-  def test_mixup_and_cutmix_smoothes_labels(self):
+  def test_mixup_and_cutmix_smoothes_labels(self, image_dtype):
     batch_size = 12
     num_classes = 1000
     label_smoothing = 0.1
 
-    images = tf.random.normal((batch_size, 224, 224, 3), dtype=tf.float32)
+    images = tf.random.normal((batch_size, 224, 224, 3), dtype=image_dtype)
     labels = tf.range(batch_size)
     augmenter = augment.MixupAndCutmix(
         num_classes=num_classes, label_smoothing=label_smoothing)
@@ -388,12 +393,12 @@ class MixupAndCutmixTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllGreaterEqual(aug_labels, label_smoothing / num_classes -
                                1e4)  # With tolerance
 
-  def test_mixup_changes_image(self):
+  def test_mixup_changes_image(self, image_dtype):
     batch_size = 12
     num_classes = 1000
     label_smoothing = 0.1
 
-    images = tf.random.normal((batch_size, 224, 224, 3), dtype=tf.float32)
+    images = tf.random.normal((batch_size, 224, 224, 3), dtype=image_dtype)
     labels = tf.range(batch_size)
     augmenter = augment.MixupAndCutmix(
         mixup_alpha=1., cutmix_alpha=0., num_classes=num_classes)
@@ -409,12 +414,12 @@ class MixupAndCutmixTest(tf.test.TestCase, parameterized.TestCase):
                                1e4)  # With tolerance
     self.assertFalse(tf.math.reduce_all(images == aug_images))
 
-  def test_cutmix_changes_image(self):
+  def test_cutmix_changes_image(self, image_dtype):
     batch_size = 12
     num_classes = 1000
     label_smoothing = 0.1
 
-    images = tf.random.normal((batch_size, 224, 224, 3), dtype=tf.float32)
+    images = tf.random.normal((batch_size, 224, 224, 3), dtype=image_dtype)
     labels = tf.range(batch_size)
     augmenter = augment.MixupAndCutmix(
         mixup_alpha=0., cutmix_alpha=1., num_classes=num_classes)

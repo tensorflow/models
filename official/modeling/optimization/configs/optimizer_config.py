@@ -54,6 +54,26 @@ class SGDConfig(BaseOptimizerConfig):
   momentum: float = 0.0
 
 
+# TODO(b/216129465): Merge this config with SGDConfig after the experimental
+# optimizer graduates.
+@dataclasses.dataclass
+class SGDExperimentalConfig(BaseOptimizerConfig):
+  """Configuration for SGD optimizer.
+
+  The attributes for this class matches the arguments of
+  `tf.keras.optimizer.experimental.SGD`.
+
+  Attributes:
+    name: name of the optimizer.
+    nesterov: nesterov for SGD optimizer.
+    momentum: momentum for SGD optimizer.
+  """
+  name: str = "SGD"
+  nesterov: bool = False
+  momentum: float = 0.0
+  jit_compile: bool = False
+
+
 @dataclasses.dataclass
 class RMSPropConfig(BaseOptimizerConfig):
   """Configuration for RMSProp optimizer.

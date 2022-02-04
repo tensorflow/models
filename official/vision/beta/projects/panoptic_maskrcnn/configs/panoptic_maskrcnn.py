@@ -25,6 +25,7 @@ from official.modeling import optimization
 from official.vision.beta.configs import common
 from official.vision.beta.configs import maskrcnn
 from official.vision.beta.configs import semantic_segmentation
+from official.vision.beta.projects.deepmac_maskrcnn.configs import deep_mask_head_rcnn as deepmac_maskrcnn
 
 
 SEGMENTATION_MODEL = semantic_segmentation.SemanticSegmentationModel
@@ -89,7 +90,7 @@ class PanopticSegmentationGenerator(hyperparams.Config):
 
 
 @dataclasses.dataclass
-class PanopticMaskRCNN(maskrcnn.MaskRCNN):
+class PanopticMaskRCNN(deepmac_maskrcnn.DeepMaskHeadRCNN):
   """Panoptic Mask R-CNN model config."""
   segmentation_model: semantic_segmentation.SemanticSegmentationModel = (
       SEGMENTATION_MODEL(num_classes=2))

@@ -25,6 +25,7 @@ task:
     norm_activation:
       use_sync_bn: true
     dropout_rate: 0.5
+    activation: 'hard_swish'
   train_data:
     name: kinetics600
     variant_name: rgb

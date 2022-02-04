@@ -61,7 +61,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   def initialize(self, model: tf.keras.Model) -> None:
     """Loading pretrained checkpoint."""
 
-    if not self.task_config.init_checkpoint_modules:
+    if not self.task_config.init_checkpoint:
       return
 
     def _get_checkpoint_path(checkpoint_dir_or_file):

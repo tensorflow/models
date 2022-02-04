@@ -30,6 +30,7 @@ if tf_version.is_tf2():
 
 INSTANCE_EMBEDDING = 'INSTANCE_EMBEDDING'
 PIXEL_EMBEDDING = 'PIXEL_EMBEDDING'
+MASK_LOGITS_GT_BOXES = 'MASK_LOGITS_GT_BOXES'
 DEEP_MASK_ESTIMATION = 'deep_mask_estimation'
 DEEP_MASK_BOX_CONSISTENCY = 'deep_mask_box_consistency'
 DEEP_MASK_COLOR_CONSISTENCY = 'deep_mask_color_consistency'
@@ -50,7 +51,8 @@ DeepMACParams = collections.namedtuple('DeepMACParams', [
         'box_consistency_loss_weight', 'color_consistency_threshold',
         'color_consistency_dilation', 'color_consistency_loss_weight',
         'box_consistency_loss_normalize', 'box_consistency_tightness',
-        'color_consistency_warmup_steps', 'color_consistency_warmup_start'
+        'color_consistency_warmup_steps', 'color_consistency_warmup_start',
+        'use_only_last_stage'
     ])
 
 
@@ -140,33 +142,24 @@ def _get_deepmac_network_by_type(name, num_init_channels, mask_size=None):
   raise ValueError('Unknown network type {}'.format(name))
 
 
-def crop_masks_within_boxes(masks, boxes, output_size):
-  """Crops masks to lie tightly within the boxes.
-
-  Args:
-    masks: A [num_instances, height, width] float tensor of masks.
-    boxes: A [num_instances, 4] sized tensor of normalized bounding boxes.
-    output_size: The height and width of the output masks.
-
-  Returns:
-    masks: A [num_instances, output_size, output_size] tensor of masks which
-      are cropped to be tightly within the gives boxes and resized.
-
-  """
-  masks = spatial_transform_ops.matmul_crop_and_resize(
-      masks[:, :, :, tf.newaxis], boxes[:, tf.newaxis, :],
-      [output_size, output_size])
-  return masks[:, 0, :, :, 0]
+def _resize_instance_masks_non_empty(masks, shape):
+  """Resize a non-empty tensor of masks to the given shape."""
+  height, width = shape
+  flattened_masks, batch_size, num_instances = flatten_first2_dims(masks)
+  flattened_masks = flattened_masks[:, :, :, tf.newaxis]
+  flattened_masks = tf.image.resize(
+      flattened_masks, (height, width),
+      method=tf.image.ResizeMethod.BILINEAR)
+  return unpack_first2_dims(
+      flattened_masks[:, :, :, 0], batch_size, num_instances)
 
 
 def resize_instance_masks(masks, shape):
-  height, width = shape
-  masks_ex = masks[:, :, :, tf.newaxis]
-  masks_ex = tf.image.resize(masks_ex, (height, width),
-                             method=tf.image.ResizeMethod.BILINEAR)
-  masks = masks_ex[:, :, :, 0]
-
-  return masks
+  batch_size, num_instances = tf.shape(masks)[0], tf.shape(masks)[1]
+  return tf.cond(
+      tf.shape(masks)[1] == 0,
+      lambda: tf.zeros((batch_size, num_instances, shape[0], shape[1])),
+      lambda: _resize_instance_masks_non_empty(masks, shape))
 
 
 def filter_masked_classes(masked_class_ids, classes, weights, masks):
@@ -175,94 +168,132 @@ def filter_masked_classes(masked_class_ids, classes, weights, masks):
   Args:
     masked_class_ids: A list of class IDs allowed to have masks. These class IDs
       are 1-indexed.
-    classes: A [num_instances, num_classes] float tensor containing the one-hot
-      encoded classes.
-    weights: A [num_instances] float tensor containing the weights of each
-      sample.
-    masks: A [num_instances, height, width] tensor containing the mask per
-      instance.
+    classes: A [batch_size, num_instances, num_classes] float tensor containing
+      the one-hot encoded classes.
+    weights: A [batch_size, num_instances] float tensor containing the weights
+      of each sample.
+    masks: A [batch_size, num_instances, height, width] tensor containing the
+      mask per instance.
 
   Returns:
-    classes_filtered: A [num_instances, num_classes] float tensor containing the
-       one-hot encoded classes with classes not in masked_class_ids zeroed out.
-    weights_filtered: A [num_instances] float tensor containing the weights of
-      each sample with instances whose classes aren't in masked_class_ids
-      zeroed out.
-    masks_filtered: A [num_instances, height, width] tensor containing the mask
-      per instance with masks not belonging to masked_class_ids zeroed out.
+    classes_filtered: A [batch_size, num_instances, num_classes] float tensor
+       containing the one-hot encoded classes with classes not in
+       masked_class_ids zeroed out.
+    weights_filtered: A [batch_size, num_instances] float tensor containing the
+      weights of each sample with instances whose classes aren't in
+      masked_class_ids zeroed out.
+    masks_filtered: A [batch_size, num_instances, height, width] tensor
+      containing the mask per instance with masks not belonging to
+      masked_class_ids zeroed out.
   """
 
   if len(masked_class_ids) == 0:  # pylint:disable=g-explicit-length-test
     return classes, weights, masks
 
-  if tf.shape(classes)[0] == 0:
+  if tf.shape(classes)[1] == 0:
     return classes, weights, masks
 
   masked_class_ids = tf.constant(np.array(masked_class_ids, dtype=np.int32))
   label_id_offset = 1
   masked_class_ids -= label_id_offset
-  class_ids = tf.argmax(classes, axis=1, output_type=tf.int32)
+  class_ids = tf.argmax(classes, axis=2, output_type=tf.int32)
   matched_classes = tf.equal(
-      class_ids[:, tf.newaxis], masked_class_ids[tf.newaxis, :]
+      class_ids[:, :, tf.newaxis], masked_class_ids[tf.newaxis, tf.newaxis, :]
   )
 
-  matched_classes = tf.reduce_any(matched_classes, axis=1)
+  matched_classes = tf.reduce_any(matched_classes, axis=2)
   matched_classes = tf.cast(matched_classes, tf.float32)
 
   return (
-      classes * matched_classes[:, tf.newaxis],
+      classes * matched_classes[:, :, tf.newaxis],
       weights * matched_classes,
-      masks * matched_classes[:, tf.newaxis, tf.newaxis]
+      masks * matched_classes[:, :, tf.newaxis, tf.newaxis]
   )
 
 
-def crop_and_resize_feature_map(features, boxes, size):
-  """Crop and resize regions from a single feature map given a set of boxes.
+def flatten_first2_dims(tensor):
+  """Flatten first 2 dimensions of a tensor.
 
   Args:
-    features: A [H, W, C] float tensor.
-    boxes: A [N, 4] tensor of norrmalized boxes.
-    size: int, the size of the output features.
+    tensor: A tensor with shape [M, N, ....]
 
   Returns:
-    per_box_features: A [N, size, size, C] tensor of cropped and resized
-      features.
+    flattened_tensor: A tensor of shape [M * N, ...]
+    M: int, the length of the first dimension of the input.
+    N: int, the length of the second dimension of the input.
   """
-  return spatial_transform_ops.matmul_crop_and_resize(
-      features[tf.newaxis], boxes[tf.newaxis], [size, size])[0]
+  shape = tf.shape(tensor)
+  d1, d2, rest = shape[0], shape[1], shape[2:]
+
+  tensor = tf.reshape(
+      tensor, tf.concat([[d1 * d2], rest], axis=0))
+  return tensor, d1, d2
+
+
+def unpack_first2_dims(tensor, dim1, dim2):
+  """Unpack the flattened first dimension of the tensor into 2 dimensions.
+
+  Args:
+    tensor: A tensor of shape [dim1 * dim2, ...]
+    dim1: int, the size of the first dimension.
+    dim2: int, the size of the second dimension.
+
+  Returns:
+    unflattened_tensor: A tensor of shape [dim1, dim2, ...].
+  """
+  shape = tf.shape(tensor)
+  result_shape = tf.concat([[dim1, dim2], shape[1:]], axis=0)
+  return tf.reshape(tensor, result_shape)
 
 
 def crop_and_resize_instance_masks(masks, boxes, mask_size):
   """Crop and resize each mask according to the given boxes.
 
   Args:
-    masks: A [N, H, W] float tensor.
-    boxes: A [N, 4] float tensor of normalized boxes.
+    masks: A [B, N, H, W] float tensor.
+    boxes: A [B, N, 4] float tensor of normalized boxes.
     mask_size: int, the size of the output masks.
 
   Returns:
-    masks: A [N, mask_size, mask_size] float tensor of cropped and resized
+    masks: A [B, N, mask_size, mask_size] float tensor of cropped and resized
       instance masks.
   """
+
+  masks, batch_size, num_instances = flatten_first2_dims(masks)
+  boxes, _, _ = flatten_first2_dims(boxes)
   cropped_masks = spatial_transform_ops.matmul_crop_and_resize(
       masks[:, :, :, tf.newaxis], boxes[:, tf.newaxis, :],
       [mask_size, mask_size])
   cropped_masks = tf.squeeze(cropped_masks, axis=[1, 4])
-
-  return cropped_masks
+  return unpack_first2_dims(cropped_masks, batch_size, num_instances)
 
 
 def fill_boxes(boxes, height, width):
-  """Fills the area included in the box."""
-  blist = box_list.BoxList(boxes)
-  blist = box_list_ops.to_absolute_coordinates(blist, height, width)
-  boxes = blist.get()
+  """Fills the area included in the boxes with 1s.
+
+  Args:
+    boxes: A [batch_size, num_instances, 4] shapes float tensor of boxes given
+      in the normalized coordinate space.
+    height: int, height of the output image.
+    width: int, width of the output image.
+
+  Returns:
+    filled_boxes: A [batch_size, num_instances, height, width] shaped float
+      tensor with 1s in the area that falls inside each box.
+  """
+
   ymin, xmin, ymax, xmax = tf.unstack(
-      boxes[:, tf.newaxis, tf.newaxis, :], 4, axis=3)
+      boxes[:, :, tf.newaxis, tf.newaxis, :], 4, axis=4)
+  height, width = tf.cast(height, tf.float32), tf.cast(width, tf.float32)
+  ymin *= height
+  ymax *= height
+  xmin *= width
+  xmax *= width
 
   ygrid, xgrid = tf.meshgrid(tf.range(height), tf.range(width), indexing='ij')
   ygrid, xgrid = tf.cast(ygrid, tf.float32), tf.cast(xgrid, tf.float32)
-  ygrid, xgrid = ygrid[tf.newaxis, :, :], xgrid[tf.newaxis, :, :]
+  ygrid, xgrid = (ygrid[tf.newaxis, tf.newaxis, :, :],
+                  xgrid[tf.newaxis, tf.newaxis, :, :])
 
   filled_boxes = tf.logical_and(
       tf.logical_and(ygrid >= ymin, ygrid <= ymax),
@@ -289,7 +320,7 @@ def embedding_projection(x, y):
   return  dot
 
 
-def _get_2d_neighbors_kenel():
+def _get_2d_neighbors_kernel():
   """Returns a conv. kernel that when applies generates 2D neighbors.
 
   Returns:
@@ -311,20 +342,34 @@ def generate_2d_neighbors(input_tensor, dilation=2):
   following ops on TPU won't have to pad the last dimension to 128.
 
   Args:
-    input_tensor: A float tensor of shape [height, width, channels].
+    input_tensor: A float tensor of shape [batch_size, height, width, channels].
     dilation: int, the dilation factor for considering neighbors.
 
   Returns:
     output: A float tensor of all 8 2-D neighbors. of shape
-      [8, height, width, channels].
+      [8, batch_size, height, width, channels].
   """
-  input_tensor = tf.transpose(input_tensor, (2, 0, 1))
-  input_tensor = input_tensor[:, :, :, tf.newaxis]
 
-  kernel = _get_2d_neighbors_kenel()
+  # TODO(vighneshb) Minimize tranposing here to save memory.
+
+  # input_tensor: [B, C, H, W]
+  input_tensor = tf.transpose(input_tensor, (0, 3, 1, 2))
+  # input_tensor: [B, C, H, W, 1]
+  input_tensor = input_tensor[:, :, :, :, tf.newaxis]
+
+  # input_tensor: [B * C, H, W, 1]
+  input_tensor, batch_size, channels = flatten_first2_dims(input_tensor)
+
+  kernel = _get_2d_neighbors_kernel()
+
+  # output: [B * C, H, W, 8]
   output = tf.nn.atrous_conv2d(input_tensor, kernel, rate=dilation,
                                padding='SAME')
-  return tf.transpose(output, [3, 1, 2, 0])
+  # output: [B, C, H, W, 8]
+  output = unpack_first2_dims(output, batch_size, channels)
+
+  # return: [8, B, H, W, C]
+  return tf.transpose(output, [4, 0, 2, 3, 1])
 
 
 def gaussian_pixel_similarity(a, b, theta):
@@ -339,12 +384,12 @@ def dilated_cross_pixel_similarity(feature_map, dilation=2, theta=2.0):
   [1]: https://arxiv.org/abs/2012.02310
 
   Args:
-    feature_map: A float tensor of shape [height, width, channels]
+    feature_map: A float tensor of shape [batch_size, height, width, channels]
     dilation: int, the dilation factor.
     theta: The denominator while taking difference inside the gaussian.
 
   Returns:
-    dilated_similarity: A tensor of shape [8, height, width]
+    dilated_similarity: A tensor of shape [8, batch_size, height, width]
   """
   neighbors = generate_2d_neighbors(feature_map, dilation)
   feature_map = feature_map[tf.newaxis]
@@ -358,21 +403,26 @@ def dilated_cross_same_mask_label(instance_masks, dilation=2):
   [1]: https://arxiv.org/abs/2012.02310
 
   Args:
-    instance_masks: A float tensor of shape [num_instances, height, width]
+    instance_masks: A float tensor of shape [batch_size, num_instances,
+      height, width]
     dilation: int, the dilation factor.
 
   Returns:
-    dilated_same_label: A tensor of shape [8, num_instances, height, width]
+    dilated_same_label: A tensor of shape [8, batch_size, num_instances,
+      height, width]
   """
 
-  instance_masks = tf.transpose(instance_masks, (1, 2, 0))
+  # instance_masks: [batch_size, height, width, num_instances]
+  instance_masks = tf.transpose(instance_masks, (0, 2, 3, 1))
 
+  # neighbors: [8, batch_size, height, width, num_instances]
   neighbors = generate_2d_neighbors(instance_masks, dilation)
+  # instance_masks = [1, batch_size, height, width, num_instances]
   instance_masks = instance_masks[tf.newaxis]
   same_mask_prob = ((instance_masks * neighbors) +
                     ((1 - instance_masks) * (1 - neighbors)))
 
-  return tf.transpose(same_mask_prob, (0, 3, 1, 2))
+  return tf.transpose(same_mask_prob, (0, 1, 4, 2, 3))
 
 
 def _per_pixel_single_conv(input_tensor, params, channels):
@@ -722,6 +772,10 @@ class MaskHeadNetwork(tf.keras.layers.Layer):
     return tf.squeeze(out, axis=-1)
 
 
+def _batch_gt_list(gt_list):
+  return tf.stack(gt_list, axis=0)
+
+
 def deepmac_proto_to_params(deepmac_config):
   """Convert proto to named tuple."""
 
@@ -765,7 +819,8 @@ def deepmac_proto_to_params(deepmac_config):
       color_consistency_warmup_steps=
       deepmac_config.color_consistency_warmup_steps,
       color_consistency_warmup_start=
-      deepmac_config.color_consistency_warmup_start
+      deepmac_config.color_consistency_warmup_start,
+      use_only_last_stage=deepmac_config.use_only_last_stage
   )
 
 
@@ -808,8 +863,6 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
             f'pixel_embedding_dim({pixel_embedding_dim}) '
             f'must be same as dim({dim}).')
 
-      loss = self._deepmac_params.classification_loss
-
     super(DeepMACMetaArch, self).__init__(
         is_training=is_training, add_summaries=add_summaries,
         num_classes=num_classes, feature_extractor=feature_extractor,
@@ -847,60 +900,62 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     """Get the input to the mask network, given bounding boxes.
 
     Args:
-      boxes: A [num_instances, 4] float tensor containing bounding boxes in
-        normalized coordinates.
-      pixel_embedding: A [height, width, embedding_size] float tensor
-        containing spatial pixel embeddings.
+      boxes: A [batch_size, num_instances, 4] float tensor containing bounding
+        boxes in normalized coordinates.
+      pixel_embedding: A [batch_size, height, width, embedding_size] float
+        tensor containing spatial pixel embeddings.
 
     Returns:
-      embedding: A [num_instances, mask_height, mask_width, embedding_size + 2]
-        float tensor containing the inputs to the mask network. For each
-        bounding box, we concatenate the normalized box coordinates to the
-        cropped pixel embeddings. If predict_full_resolution_masks is set,
-        mask_height and mask_width are the same as height and width of
-        pixel_embedding. If not, mask_height and mask_width are the same as
-        mask_size.
+      embedding: A [batch_size, num_instances, mask_height, mask_width,
+        embedding_size + 2] float tensor containing the inputs to the mask
+        network. For each bounding box, we concatenate the normalized box
+        coordinates to the cropped pixel embeddings. If
+        predict_full_resolution_masks is set, mask_height and mask_width are
+        the same as height and width of pixel_embedding. If not, mask_height
+        and mask_width are the same as mask_size.
     """
 
-    num_instances = tf.shape(boxes)[0]
+    batch_size, num_instances = tf.shape(boxes)[0], tf.shape(boxes)[1]
     mask_size = self._deepmac_params.mask_size
 
     if self._deepmac_params.predict_full_resolution_masks:
-      num_instances = tf.shape(boxes)[0]
-      pixel_embedding = pixel_embedding[tf.newaxis, :, :, :]
+      num_instances = tf.shape(boxes)[1]
+      pixel_embedding = pixel_embedding[:, tf.newaxis, :, :, :]
       pixel_embeddings_processed = tf.tile(pixel_embedding,
-                                           [num_instances, 1, 1, 1])
+                                           [1, num_instances, 1, 1, 1])
       image_shape = tf.shape(pixel_embeddings_processed)
-      image_height, image_width = image_shape[1], image_shape[2]
+      image_height, image_width = image_shape[2], image_shape[3]
       y_grid, x_grid = tf.meshgrid(tf.linspace(0.0, 1.0, image_height),
                                    tf.linspace(0.0, 1.0, image_width),
                                    indexing='ij')
 
-      blist = box_list.BoxList(boxes)
-      ycenter, xcenter, _, _ = blist.get_center_coordinates_and_sizes()
-      y_grid = y_grid[tf.newaxis, :, :]
-      x_grid = x_grid[tf.newaxis, :, :]
+      ycenter = (boxes[:, :, 0] + boxes[:, :, 2]) / 2.0
+      xcenter = (boxes[:, :, 1] + boxes[:, :, 3]) / 2.0
+      y_grid = y_grid[tf.newaxis, tf.newaxis, :, :]
+      x_grid = x_grid[tf.newaxis, tf.newaxis, :, :]
 
-      y_grid -= ycenter[:, tf.newaxis, tf.newaxis]
-      x_grid -= xcenter[:, tf.newaxis, tf.newaxis]
-      coords = tf.stack([y_grid, x_grid], axis=3)
+      y_grid -= ycenter[:, :, tf.newaxis, tf.newaxis]
+      x_grid -= xcenter[:, :, tf.newaxis, tf.newaxis]
+      coords = tf.stack([y_grid, x_grid], axis=4)
 
     else:
+
       # TODO(vighneshb) Explore multilevel_roi_align and align_corners=False.
-      pixel_embeddings_processed = crop_and_resize_feature_map(
-          pixel_embedding, boxes, mask_size)
+      embeddings = spatial_transform_ops.matmul_crop_and_resize(
+          pixel_embedding, boxes, [mask_size, mask_size])
+      pixel_embeddings_processed = embeddings
       mask_shape = tf.shape(pixel_embeddings_processed)
-      mask_height, mask_width = mask_shape[1], mask_shape[2]
+      mask_height, mask_width = mask_shape[2], mask_shape[3]
+
       y_grid, x_grid = tf.meshgrid(tf.linspace(-1.0, 1.0, mask_height),
                                    tf.linspace(-1.0, 1.0, mask_width),
                                    indexing='ij')
-
       coords = tf.stack([y_grid, x_grid], axis=2)
-      coords = coords[tf.newaxis, :, :, :]
-      coords = tf.tile(coords, [num_instances, 1, 1, 1])
+      coords = coords[tf.newaxis, tf.newaxis, :, :, :]
+      coords = tf.tile(coords, [batch_size, num_instances, 1, 1, 1])
 
     if self._deepmac_params.use_xy:
-      return tf.concat([coords, pixel_embeddings_processed], axis=3)
+      return tf.concat([coords, pixel_embeddings_processed], axis=4)
     else:
       return pixel_embeddings_processed
 
@@ -908,43 +963,94 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     """Return the instance embeddings from bounding box centers.
 
     Args:
-      boxes: A [num_instances, 4] float tensor holding bounding boxes. The
-        coordinates are in normalized input space.
-      instance_embedding: A [height, width, embedding_size] float tensor
-        containing the instance embeddings.
+      boxes: A [batch_size, num_instances, 4] float tensor holding bounding
+        boxes. The coordinates are in normalized input space.
+      instance_embedding: A [batch_size, height, width, embedding_size] float
+        tensor containing the instance embeddings.
 
     Returns:
-      instance_embeddings: A [num_instances, embedding_size] shaped float tensor
-        containing the center embedding for each instance.
+      instance_embeddings: A [batch_size, num_instances, embedding_size]
+        shaped float tensor containing the center embedding for each instance.
     """
-    blist = box_list.BoxList(boxes)
-    output_height = tf.shape(instance_embedding)[0]
-    output_width = tf.shape(instance_embedding)[1]
 
-    blist_output = box_list_ops.to_absolute_coordinates(
-        blist, output_height, output_width, check_range=False)
-    (y_center_output, x_center_output,
-     _, _) = blist_output.get_center_coordinates_and_sizes()
-    center_coords_output = tf.stack([y_center_output, x_center_output], axis=1)
+    output_height = tf.cast(tf.shape(instance_embedding)[1], tf.float32)
+    output_width = tf.cast(tf.shape(instance_embedding)[2], tf.float32)
+    ymin = boxes[:, :, 0]
+    xmin = boxes[:, :, 1]
+    ymax = boxes[:, :, 2]
+    xmax = boxes[:, :, 3]
+
+    y_center_output = (ymin + ymax) * output_height / 2.0
+    x_center_output = (xmin + xmax) * output_width / 2.0
+
+    center_coords_output = tf.stack([y_center_output, x_center_output], axis=2)
     center_coords_output_int = tf.cast(center_coords_output, tf.int32)
-    center_latents = tf.gather_nd(instance_embedding, center_coords_output_int)
+
+    center_latents = tf.gather_nd(instance_embedding, center_coords_output_int,
+                                  batch_dims=1)
 
     return center_latents
+
+  def predict(self, preprocessed_inputs, other_inputs):
+    prediction_dict = super(DeepMACMetaArch, self).predict(
+        preprocessed_inputs, other_inputs)
+    mask_logits = self._predict_mask_logits_from_gt_boxes(prediction_dict)
+    prediction_dict[MASK_LOGITS_GT_BOXES] = mask_logits
+    return prediction_dict
+
+  def _predict_mask_logits_from_embeddings(
+      self, pixel_embedding, instance_embedding, boxes):
+    mask_input = self._get_mask_head_input(boxes, pixel_embedding)
+    mask_input, batch_size, num_instances = flatten_first2_dims(mask_input)
+
+    instance_embeddings = self._get_instance_embeddings(
+        boxes, instance_embedding)
+    instance_embeddings, _, _ = flatten_first2_dims(instance_embeddings)
+
+    mask_logits = self._mask_net(
+        instance_embeddings, mask_input,
+        training=tf.keras.backend.learning_phase())
+    mask_logits = unpack_first2_dims(
+        mask_logits, batch_size, num_instances)
+    return mask_logits
+
+  def _predict_mask_logits_from_gt_boxes(self, prediction_dict):
+
+    mask_logits_list = []
+    boxes = _batch_gt_list(self.groundtruth_lists(fields.BoxListFields.boxes))
+
+    instance_embedding_list = prediction_dict[INSTANCE_EMBEDDING]
+    pixel_embedding_list = prediction_dict[PIXEL_EMBEDDING]
+
+    if self._deepmac_params.use_only_last_stage:
+      instance_embedding_list = [instance_embedding_list[-1]]
+      pixel_embedding_list = [pixel_embedding_list[-1]]
+
+    for (instance_embedding, pixel_embedding) in zip(instance_embedding_list,
+                                                     pixel_embedding_list):
+
+      mask_logits_list.append(
+          self._predict_mask_logits_from_embeddings(
+              pixel_embedding, instance_embedding, boxes))
+
+    return mask_logits_list
 
   def _get_groundtruth_mask_output(self, boxes, masks):
     """Get the expected mask output for each box.
 
     Args:
-      boxes: A [num_instances, 4] float tensor containing bounding boxes in
-        normalized coordinates.
-      masks: A [num_instances, height, width] float tensor containing binary
-        ground truth masks.
+      boxes: A [batch_size, num_instances, 4] float tensor containing bounding
+        boxes in normalized coordinates.
+      masks: A [batch_size, num_instances, height, width] float tensor
+        containing binary ground truth masks.
 
     Returns:
       masks: If predict_full_resolution_masks is set, masks are not resized
-      and the size of this tensor is [num_instances, input_height, input_width].
-      Otherwise, returns a tensor of size [num_instances, mask_size, mask_size].
+      and the size of this tensor is [batch_size, num_instances,
+      input_height, input_width]. Otherwise, returns a tensor of size
+      [batch_size, num_instances, mask_size, mask_size].
     """
+
     mask_size = self._deepmac_params.mask_size
     if self._deepmac_params.predict_full_resolution_masks:
       return masks
@@ -957,9 +1063,7 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
       return cropped_masks
 
   def _resize_logits_like_gt(self, logits, gt):
-
-    height, width = tf.shape(gt)[1], tf.shape(gt)[2]
-
+    height, width = tf.shape(gt)[2], tf.shape(gt)[3]
     return resize_instance_masks(logits, (height, width))
 
   def _aggregate_classification_loss(self, loss, gt, pred, method):
@@ -1016,54 +1120,59 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     else:
       raise ValueError('Unknown loss aggregation - {}'.format(method))
 
-  def _compute_per_instance_mask_prediction_loss(
+  def _compute_mask_prediction_loss(
       self, boxes, mask_logits, mask_gt):
     """Compute the per-instance mask loss.
 
     Args:
-      boxes: A [num_instances, 4] float tensor of GT boxes.
-      mask_logits: A [num_instances, height, width] float tensor of predicted
-        masks
-      mask_gt: The groundtruth mask.
+      boxes: A [batch_size, num_instances, 4] float tensor of GT boxes.
+      mask_logits: A [batch_suze, num_instances, height, width] float tensor of
+        predicted masks
+      mask_gt: The groundtruth mask of same shape as mask_logits.
 
     Returns:
-      loss: A [num_instances] shaped tensor with the loss for each instance.
+      loss: A [batch_size, num_instances] shaped tensor with the loss for each
+        instance.
     """
-    num_instances = tf.shape(boxes)[0]
+    batch_size, num_instances = tf.shape(boxes)[0], tf.shape(boxes)[1]
     mask_logits = self._resize_logits_like_gt(mask_logits, mask_gt)
 
-    mask_logits = tf.reshape(mask_logits, [num_instances, -1, 1])
-    mask_gt = tf.reshape(mask_gt, [num_instances, -1, 1])
+    mask_logits = tf.reshape(mask_logits, [batch_size * num_instances, -1, 1])
+    mask_gt = tf.reshape(mask_gt, [batch_size * num_instances, -1, 1])
     loss = self._deepmac_params.classification_loss(
         prediction_tensor=mask_logits,
         target_tensor=mask_gt,
         weights=tf.ones_like(mask_logits))
 
-    return self._aggregate_classification_loss(
+    loss = self._aggregate_classification_loss(
         loss, mask_gt, mask_logits, 'normalize_auto')
+    return tf.reshape(loss, [batch_size, num_instances])
 
-  def _compute_per_instance_box_consistency_loss(
+  def _compute_box_consistency_loss(
       self, boxes_gt, boxes_for_crop, mask_logits):
     """Compute the per-instance box consistency loss.
 
     Args:
-      boxes_gt: A [num_instances, 4] float tensor of GT boxes.
-      boxes_for_crop: A [num_instances, 4] float tensor of augmented boxes,
-        to be used when using crop-and-resize based mask head.
-      mask_logits: A [num_instances, height, width] float tensor of predicted
-        masks.
+      boxes_gt: A [batch_size, num_instances, 4] float tensor of GT boxes.
+      boxes_for_crop: A [batch_size, num_instances, 4] float tensor of
+        augmented boxes, to be used when using crop-and-resize based mask head.
+      mask_logits: A [batch_size, num_instances, height, width]
+        float tensor of predicted masks.
 
     Returns:
-      loss: A [num_instances] shaped tensor with the loss for each instance.
+      loss: A [batch_size, num_instances] shaped tensor with the loss for
+        each instance in the batch.
     """
 
-    height, width = tf.shape(mask_logits)[1], tf.shape(mask_logits)[2]
-    filled_boxes = fill_boxes(boxes_gt, height, width)[:, :, :, tf.newaxis]
-    mask_logits = mask_logits[:, :, :, tf.newaxis]
+    shape = tf.shape(mask_logits)
+    batch_size, num_instances, height, width = (
+        shape[0], shape[1], shape[2], shape[3])
+    filled_boxes = fill_boxes(boxes_gt, height, width)[:, :, :, :, tf.newaxis]
+    mask_logits = mask_logits[:, :, :, :, tf.newaxis]
 
     if self._deepmac_params.predict_full_resolution_masks:
-      gt_crop = filled_boxes[:, :, :, 0]
-      pred_crop = mask_logits[:, :, :, 0]
+      gt_crop = filled_boxes[:, :, :, :, 0]
+      pred_crop = mask_logits[:, :, :, :, 0]
     else:
       gt_crop = crop_and_resize_instance_masks(
           filled_boxes, boxes_for_crop, self._deepmac_params.mask_size)
@@ -1071,7 +1180,7 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
           mask_logits, boxes_for_crop, self._deepmac_params.mask_size)
 
     loss = 0.0
-    for axis in [1, 2]:
+    for axis in [2, 3]:
 
       if self._deepmac_params.box_consistency_tightness:
         pred_max_raw = tf.reduce_max(pred_crop, axis=axis)
@@ -1083,44 +1192,53 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
       else:
         pred_max = tf.reduce_max(pred_crop, axis=axis)
 
-      pred_max = pred_max[:, :, tf.newaxis]
-      gt_max = tf.reduce_max(gt_crop, axis=axis)[:, :, tf.newaxis]
+      pred_max = pred_max[:, :, :, tf.newaxis]
+      gt_max = tf.reduce_max(gt_crop, axis=axis)[:, :, :, tf.newaxis]
 
+      flat_pred, batch_size, num_instances = flatten_first2_dims(pred_max)
+      flat_gt, _, _ = flatten_first2_dims(gt_max)
+
+      # We use flat tensors while calling loss functions because we
+      # want the loss per-instance to later multiply with the per-instance
+      # weight. Flattening the first 2 dims allows us to represent each instance
+      # in each batch as though they were samples in a larger batch.
       raw_loss = self._deepmac_params.classification_loss(
-          prediction_tensor=pred_max,
-          target_tensor=gt_max,
-          weights=tf.ones_like(pred_max))
+          prediction_tensor=flat_pred,
+          target_tensor=flat_gt,
+          weights=tf.ones_like(flat_pred))
 
-      loss += self._aggregate_classification_loss(
-          raw_loss, gt_max, pred_max,
+      agg_loss = self._aggregate_classification_loss(
+          raw_loss, flat_gt, flat_pred,
           self._deepmac_params.box_consistency_loss_normalize)
+      loss += unpack_first2_dims(agg_loss, batch_size, num_instances)
 
     return loss
 
-  def _compute_per_instance_color_consistency_loss(
+  def _compute_color_consistency_loss(
       self, boxes, preprocessed_image, mask_logits):
     """Compute the per-instance color consistency loss.
 
     Args:
-      boxes: A [num_instances, 4] float tensor of GT boxes.
-      preprocessed_image: A [height, width, 3] float tensor containing the
-        preprocessed image.
-      mask_logits: A [num_instances, height, width] float tensor of predicted
-        masks.
+      boxes: A [batch_size, num_instances, 4] float tensor of GT boxes.
+      preprocessed_image: A [batch_size, height, width, 3]
+        float tensor containing the preprocessed image.
+      mask_logits: A [batch_size, num_instances, height, width] float tensor of
+        predicted masks.
 
     Returns:
-      loss: A [num_instances] shaped tensor with the loss for each instance.
+      loss: A [batch_size, num_instances] shaped tensor with the loss for each
+        instance fpr each sample in the batch.
     """
 
     if not self._deepmac_params.predict_full_resolution_masks:
       logging.info('Color consistency is not implemented with RoIAlign '
                    ', i.e, fixed sized masks. Returning 0 loss.')
-      return tf.zeros(tf.shape(boxes)[0])
+      return tf.zeros(tf.shape(boxes)[:2])
 
     dilation = self._deepmac_params.color_consistency_dilation
 
-    height, width = (tf.shape(preprocessed_image)[0],
-                     tf.shape(preprocessed_image)[1])
+    height, width = (tf.shape(preprocessed_image)[1],
+                     tf.shape(preprocessed_image)[2])
     color_similarity = dilated_cross_pixel_similarity(
         preprocessed_image, dilation=dilation, theta=2.0)
     mask_probs = tf.nn.sigmoid(mask_logits)
@@ -1132,20 +1250,20 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     color_similarity_mask = (
         color_similarity > self._deepmac_params.color_consistency_threshold)
     color_similarity_mask = tf.cast(
-        color_similarity_mask[:, tf.newaxis, :, :], tf.float32)
+        color_similarity_mask[:, :, tf.newaxis, :, :], tf.float32)
     per_pixel_loss = -(color_similarity_mask *
                        tf.math.log(same_mask_label_probability))
     # TODO(vighneshb) explore if shrinking the box by 1px helps.
     box_mask = fill_boxes(boxes, height, width)
-    box_mask_expanded = box_mask[tf.newaxis, :, :, :]
+    box_mask_expanded = box_mask[tf.newaxis]
 
     per_pixel_loss = per_pixel_loss * box_mask_expanded
-    loss = tf.reduce_sum(per_pixel_loss, axis=[0, 2, 3])
-    num_box_pixels = tf.maximum(1.0, tf.reduce_sum(box_mask, axis=[1, 2]))
+    loss = tf.reduce_sum(per_pixel_loss, axis=[0, 3, 4])
+    num_box_pixels = tf.maximum(1.0, tf.reduce_sum(box_mask, axis=[2, 3]))
     loss = loss / num_box_pixels
 
     if ((self._deepmac_params.color_consistency_warmup_steps > 0) and
-        self._is_training):
+        tf.keras.backend.learning_phase()):
       training_step = tf.cast(self.training_step, tf.float32)
       warmup_steps = tf.cast(
           self._deepmac_params.color_consistency_warmup_steps, tf.float32)
@@ -1157,56 +1275,53 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
 
     return loss
 
-  def _compute_per_instance_deepmac_losses(
-      self, boxes, masks, instance_embedding, pixel_embedding,
-      image):
+  def _compute_deepmac_losses(
+      self, boxes, masks_logits, masks_gt, image):
     """Returns the mask loss per instance.
 
     Args:
-      boxes: A [num_instances, 4] float tensor holding bounding boxes. The
-        coordinates are in normalized input space.
-      masks: A [num_instances, input_height, input_width] float tensor
-        containing the instance masks.
-      instance_embedding: A [output_height, output_width, embedding_size]
-        float tensor containing the instance embeddings.
-      pixel_embedding: optional [output_height, output_width,
-        pixel_embedding_size] float tensor containing the per-pixel embeddings.
-      image: [output_height, output_width, channels] float tensor
+      boxes: A [batch_size, num_instances, 4] float tensor holding bounding
+        boxes. The coordinates are in normalized input space.
+      masks_logits: A [batch_size, num_instances, input_height, input_width]
+        float tensor containing the instance mask predictions in their logit
+        form.
+      masks_gt: A [batch_size, num_instances, input_height, input_width] float
+        tensor containing the groundtruth masks.
+      image: [batch_size, output_height, output_width, channels] float tensor
         denoting the input image.
 
     Returns:
-      mask_prediction_loss: A [num_instances] shaped float tensor containing the
-        mask loss for each instance.
-      box_consistency_loss: A [num_instances] shaped float tensor containing
-        the box consistency loss for each instance.
-      box_consistency_loss: A [num_instances] shaped float tensor containing
-        the color consistency loss.
+      mask_prediction_loss: A [batch_size, num_instances] shaped float tensor
+        containing the mask loss for each instance in the batch.
+      box_consistency_loss: A [batch_size, num_instances] shaped float tensor
+        containing the box consistency loss for each instance in the batch.
+      box_consistency_loss: A [batch_size, num_instances] shaped float tensor
+        containing the color consistency loss in the batch.
     """
 
     if tf.keras.backend.learning_phase():
-      boxes_for_crop = preprocessor.random_jitter_boxes(
-          boxes, self._deepmac_params.max_roi_jitter_ratio,
-          jitter_mode=self._deepmac_params.roi_jitter_mode)
+      boxes = tf.stop_gradient(boxes)
+      def jitter_func(boxes):
+        return preprocessor.random_jitter_boxes(
+            boxes, self._deepmac_params.max_roi_jitter_ratio,
+            jitter_mode=self._deepmac_params.roi_jitter_mode)
+
+      boxes_for_crop = tf.map_fn(jitter_func,
+                                 boxes, parallel_iterations=128)
     else:
       boxes_for_crop = boxes
 
-    mask_input = self._get_mask_head_input(
-        boxes_for_crop, pixel_embedding)
-    instance_embeddings = self._get_instance_embeddings(
-        boxes_for_crop, instance_embedding)
-    mask_logits = self._mask_net(
-        instance_embeddings, mask_input,
-        training=tf.keras.backend.learning_phase())
-    mask_gt = self._get_groundtruth_mask_output(boxes_for_crop, masks)
+    mask_gt = self._get_groundtruth_mask_output(
+        boxes_for_crop, masks_gt)
 
-    mask_prediction_loss = self._compute_per_instance_mask_prediction_loss(
-        boxes_for_crop, mask_logits, mask_gt)
+    mask_prediction_loss = self._compute_mask_prediction_loss(
+        boxes_for_crop, masks_logits, mask_gt)
 
-    box_consistency_loss = self._compute_per_instance_box_consistency_loss(
-        boxes, boxes_for_crop, mask_logits)
+    box_consistency_loss = self._compute_box_consistency_loss(
+        boxes, boxes_for_crop, masks_logits)
 
-    color_consistency_loss = self._compute_per_instance_color_consistency_loss(
-        boxes, image, mask_logits)
+    color_consistency_loss = self._compute_color_consistency_loss(
+        boxes, image, masks_logits)
 
     return {
         DEEP_MASK_ESTIMATION: mask_prediction_loss,
@@ -1224,7 +1339,7 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
                                  ' consistency loss is not supported in TF1.'))
     return tfio.experimental.color.rgb_to_lab(raw_image)
 
-  def _compute_instance_masks_loss(self, prediction_dict):
+  def _compute_masks_loss(self, prediction_dict):
     """Computes the mask loss.
 
     Args:
@@ -1236,10 +1351,6 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     Returns:
       loss_dict: A dict mapping string (loss names) to scalar floats.
     """
-    gt_boxes_list = self.groundtruth_lists(fields.BoxListFields.boxes)
-    gt_weights_list = self.groundtruth_lists(fields.BoxListFields.weights)
-    gt_masks_list = self.groundtruth_lists(fields.BoxListFields.masks)
-    gt_classes_list = self.groundtruth_lists(fields.BoxListFields.classes)
 
     allowed_masked_classes_ids = (
         self._deepmac_params.allowed_masked_classes_ids)
@@ -1248,8 +1359,8 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     for loss_name in MASK_LOSSES:
       loss_dict[loss_name] = 0.0
 
-    prediction_shape = tf.shape(prediction_dict[INSTANCE_EMBEDDING][0])
-    height, width = prediction_shape[1], prediction_shape[2]
+    prediction_shape = tf.shape(prediction_dict[MASK_LOGITS_GT_BOXES][0])
+    height, width = prediction_shape[2], prediction_shape[3]
 
     preprocessed_image = tf.image.resize(
         prediction_dict['preprocessed_inputs'], (height, width))
@@ -1258,42 +1369,46 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     # TODO(vighneshb) See if we can save memory by only using the final
     # prediction
     # Iterate over multiple preidctions by backbone (for hourglass length=2)
-    for instance_pred, pixel_pred in zip(
-        prediction_dict[INSTANCE_EMBEDDING],
-        prediction_dict[PIXEL_EMBEDDING]):
-      # Iterate over samples in batch
-      # TODO(vighneshb) find out how autograph is handling this. Converting
-      # to a single op may give speed improvements
-      for i, (boxes, weights, classes, masks) in enumerate(
-          zip(gt_boxes_list, gt_weights_list, gt_classes_list, gt_masks_list)):
 
-        # TODO(vighneshb) Add sub-sampling back if required.
-        classes, valid_mask_weights, masks = filter_masked_classes(
-            allowed_masked_classes_ids, classes, weights, masks)
+    gt_boxes = _batch_gt_list(
+        self.groundtruth_lists(fields.BoxListFields.boxes))
+    gt_weights = _batch_gt_list(
+        self.groundtruth_lists(fields.BoxListFields.weights))
+    gt_masks = _batch_gt_list(
+        self.groundtruth_lists(fields.BoxListFields.masks))
+    gt_classes = _batch_gt_list(
+        self.groundtruth_lists(fields.BoxListFields.classes))
 
-        sample_loss_dict = self._compute_per_instance_deepmac_losses(
-            boxes, masks, instance_pred[i], pixel_pred[i], image[i])
+    mask_logits_list = prediction_dict[MASK_LOGITS_GT_BOXES]
+    for mask_logits in mask_logits_list:
 
-        sample_loss_dict[DEEP_MASK_ESTIMATION] *= valid_mask_weights
-        for loss_name in WEAK_LOSSES:
-          sample_loss_dict[loss_name] *= weights
+      # TODO(vighneshb) Add sub-sampling back if required.
+      _, valid_mask_weights, gt_masks = filter_masked_classes(
+          allowed_masked_classes_ids, gt_classes,
+          gt_weights, gt_masks)
 
-        num_instances = tf.maximum(tf.reduce_sum(weights), 1.0)
-        num_instances_allowed = tf.maximum(
-            tf.reduce_sum(valid_mask_weights), 1.0)
+      sample_loss_dict = self._compute_deepmac_losses(
+          gt_boxes, mask_logits, gt_masks, image)
 
-        loss_dict[DEEP_MASK_ESTIMATION] += (
-            tf.reduce_sum(sample_loss_dict[DEEP_MASK_ESTIMATION]) /
-            num_instances_allowed)
+      sample_loss_dict[DEEP_MASK_ESTIMATION] *= valid_mask_weights
+      for loss_name in WEAK_LOSSES:
+        sample_loss_dict[loss_name] *= gt_weights
 
-        for loss_name in WEAK_LOSSES:
-          loss_dict[loss_name] += (tf.reduce_sum(sample_loss_dict[loss_name]) /
-                                   num_instances)
+      num_instances = tf.maximum(tf.reduce_sum(gt_weights), 1.0)
+      num_instances_allowed = tf.maximum(
+          tf.reduce_sum(valid_mask_weights), 1.0)
 
-    batch_size = len(gt_boxes_list)
-    num_predictions = len(prediction_dict[INSTANCE_EMBEDDING])
+      loss_dict[DEEP_MASK_ESTIMATION] += (
+          tf.reduce_sum(sample_loss_dict[DEEP_MASK_ESTIMATION]) /
+          num_instances_allowed)
 
-    return dict((key, loss / float(batch_size * num_predictions))
+      for loss_name in WEAK_LOSSES:
+        loss_dict[loss_name] += (tf.reduce_sum(sample_loss_dict[loss_name]) /
+                                 num_instances)
+
+    num_predictions = len(mask_logits_list)
+
+    return dict((key, loss / float(num_predictions))
                 for key, loss in loss_dict.items())
 
   def loss(self, prediction_dict, true_image_shapes, scope=None):
@@ -1302,7 +1417,7 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
         prediction_dict, true_image_shapes, scope)
 
     if self._deepmac_params is not None:
-      mask_loss_dict = self._compute_instance_masks_loss(
+      mask_loss_dict = self._compute_masks_loss(
           prediction_dict=prediction_dict)
 
       for loss_name in MASK_LOSSES:
@@ -1363,50 +1478,18 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
         mask_size] containing binary per-box instance masks.
     """
 
-    def process(elems):
-      boxes, instance_embedding, pixel_embedding = elems
-      return self._postprocess_sample(boxes, instance_embedding,
-                                      pixel_embedding)
-
-    max_instances = self._center_params.max_box_predictions
-    return tf.map_fn(process, [boxes_output_stride, instance_embedding,
-                               pixel_embedding],
-                     dtype=tf.float32, parallel_iterations=max_instances)
-
-  def _postprocess_sample(self, boxes_output_stride,
-                          instance_embedding, pixel_embedding):
-    """Post process masks for a single sample.
-
-    Args:
-      boxes_output_stride: A [num_instances, 4] float tensor containing
-        bounding boxes in the absolute output space.
-      instance_embedding: A [output_height, output_width, embedding_size]
-        float tensor containing instance embeddings.
-      pixel_embedding: A [batch_size, output_height, output_width,
-        pixel_embedding_size] float tensor containing the per-pixel embedding.
-
-    Returns:
-      masks: A float tensor of size [num_instances, mask_height, mask_width]
-        containing binary per-box instance masks. If
-        predict_full_resolution_masks is set, the masks will be resized to
-        postprocess_crop_size. Otherwise, mask_height=mask_width=mask_size
-    """
-
-    height, width = (tf.shape(instance_embedding)[0],
-                     tf.shape(instance_embedding)[1])
+    height, width = (tf.shape(instance_embedding)[1],
+                     tf.shape(instance_embedding)[2])
     height, width = tf.cast(height, tf.float32), tf.cast(width, tf.float32)
-    blist = box_list.BoxList(boxes_output_stride)
-    blist = box_list_ops.to_normalized_coordinates(
-        blist, height, width, check_range=False)
-    boxes = blist.get()
+    ymin, xmin, ymax, xmax = tf.unstack(boxes_output_stride, axis=2)
+    ymin /= height
+    ymax /= height
+    xmin /= width
+    xmax /= width
+    boxes = tf.stack([ymin, xmin, ymax, xmax], axis=2)
 
-    mask_input = self._get_mask_head_input(boxes, pixel_embedding)
-    instance_embeddings = self._get_instance_embeddings(
-        boxes, instance_embedding)
-
-    mask_logits = self._mask_net(
-        instance_embeddings, mask_input,
-        training=tf.keras.backend.learning_phase())
+    mask_logits = self._predict_mask_logits_from_embeddings(
+        pixel_embedding, instance_embedding, boxes)
 
     # TODO(vighneshb) Explore sweeping mask thresholds.
 
@@ -1416,7 +1499,8 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
       height *= self._stride
       width *= self._stride
       mask_logits = resize_instance_masks(mask_logits, (height, width))
-      mask_logits = crop_masks_within_boxes(
+
+      mask_logits = crop_and_resize_instance_masks(
           mask_logits, boxes, self._deepmac_params.postprocess_crop_size)
 
     masks_prob = tf.nn.sigmoid(mask_logits)

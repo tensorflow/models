@@ -99,6 +99,49 @@ class MoViNetTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(predicted.shape, expected.shape)
     self.assertAllClose(predicted, expected, 1e-5, 1e-5)
 
+  def test_movinet_stream_nse(self):
+    """Test if the backbone can be run in streaming mode w/o SE layer."""
+    tf.keras.backend.set_image_data_format('channels_last')
+
+    backbone = movinet.Movinet(
+        model_id='a0',
+        causal=True,
+        use_external_states=True,
+        se_type='none',
+    )
+    inputs = tf.ones([1, 5, 128, 128, 3])
+
+    init_states = backbone.init_states(tf.shape(inputs))
+    expected_endpoints, _ = backbone({**init_states, 'image': inputs})
+
+    frames = tf.split(inputs, inputs.shape[1], axis=1)
+
+    states = init_states
+    for frame in frames:
+      output, states = backbone({**states, 'image': frame})
+    predicted_endpoints = output
+
+    predicted = predicted_endpoints['head']
+
+    # The expected final output is simply the mean across frames
+    expected = expected_endpoints['head']
+    expected = tf.reduce_mean(expected, 1, keepdims=True)
+
+    self.assertEqual(predicted.shape, expected.shape)
+    self.assertAllClose(predicted, expected, 1e-5, 1e-5)
+
+    # Check contents in the states dictionary.
+    state_keys = list(init_states.keys())
+    self.assertIn('state_head_pool_buffer', state_keys)
+    self.assertIn('state_head_pool_frame_count', state_keys)
+    state_keys.remove('state_head_pool_buffer')
+    state_keys.remove('state_head_pool_frame_count')
+    # From now on, there are only 'stream_buffer' for the convolutions.
+    for state_key in state_keys:
+      self.assertIn(
+          'stream_buffer', state_key,
+          msg=f'Expecting stream_buffer only, found {state_key}')
+
   def test_movinet_2plus1d_stream(self):
     tf.keras.backend.set_image_data_format('channels_last')
 

@@ -97,6 +97,20 @@ class PanopticSegmentationModule(detection.DetectionModule):
         anchor_boxes=anchor_boxes,
         training=False)
 
+    detections.pop('rpn_boxes')
+    detections.pop('rpn_scores')
+    detections.pop('cls_outputs')
+    detections.pop('box_outputs')
+    detections.pop('backbone_features')
+    detections.pop('decoder_features')
+
+    # Normalize detection boxes to [0, 1]. Here we first map them to the
+    # original image size, then normalize them to [0, 1].
+    detections['detection_boxes'] = (
+        detections['detection_boxes'] /
+        tf.tile(image_info[:, 2:3, :], [1, 1, 2]) /
+        tf.tile(image_info[:, 0:1, :], [1, 1, 2]))
+
     if model_params.detection_generator.apply_nms:
       final_outputs = {
           'detection_boxes': detections['detection_boxes'],
@@ -109,10 +123,15 @@ class PanopticSegmentationModule(detection.DetectionModule):
           'decoded_boxes': detections['decoded_boxes'],
           'decoded_box_scores': detections['decoded_box_scores']
       }
-
+    masks = detections['segmentation_outputs']
+    masks = tf.image.resize(masks, self._input_image_size, method='bilinear')
+    classes = tf.math.argmax(masks, axis=-1)
+    scores = tf.nn.softmax(masks, axis=-1)
     final_outputs.update({
         'detection_masks': detections['detection_masks'],
-        'segmentation_outputs': detections['segmentation_outputs'],
+        'masks': masks,
+        'scores': scores,
+        'classes': classes,
         'image_info': image_info
     })
     if model_params.generate_panoptic_masks:

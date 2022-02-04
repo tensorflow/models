@@ -18,7 +18,7 @@ from absl import flags
 import tensorflow as tf
 import tensorflow_hub as hub
 
-from official.projects.movinet import export_saved_model
+from official.projects.movinet.tools import export_saved_model
 
 FLAGS = flags.FLAGS
 

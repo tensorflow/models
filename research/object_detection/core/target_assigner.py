@@ -1050,6 +1050,8 @@ class CenterNetCenterHeatmapTargetAssigner(object):
       else:
         raise ValueError(f'Unknown heatmap type - {self._box_heatmap_type}')
 
+      heatmap = tf.stop_gradient(heatmap)
+
       heatmaps.append(heatmap)
 
     # Return the stacked heatmaps over the batch.

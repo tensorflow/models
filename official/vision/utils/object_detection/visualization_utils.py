@@ -34,7 +34,7 @@ import PIL.ImageFont as ImageFont
 import six
 import tensorflow as tf
 
-from official.vision.beta.ops import box_ops
+from official.vision.ops import box_ops
 from official.vision.utils.object_detection import shape_utils
 
 _TITLE_LEFT_MARGIN = 10

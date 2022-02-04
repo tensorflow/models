@@ -80,6 +80,7 @@ def set_output_quantized_for_custom_ops(graph_def, use_mlir=True):
       'ExpectedValueOp': [tf.float32.as_datatype_enum],
       'LayerNorm': [tf.float32.as_datatype_enum],
       'UniformCausalAttn': [tf.float32.as_datatype_enum],
+      'DynamicUniformCausalAttn': [tf.float32.as_datatype_enum],
       'RnnDecoderReadState': [tf.float32.as_datatype_enum],
       'RnnDecoderWriteState': [tf.float32.as_datatype_enum],
   }
