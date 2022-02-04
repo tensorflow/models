@@ -19,7 +19,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tensorflow.python.keras.applications import resnet
+from tensorflow.keras.applications import resnet
 
 import tensorflow.compat.v1 as tf
 
