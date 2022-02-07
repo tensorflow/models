@@ -13,5 +13,5 @@
 # limitations under the License.
 
 """TensorFlow Models Vision Libraries."""
-from official.vision.beta import configs
-from official.vision.beta.modeling import *
+from official.vision import configs
+from official.vision.modeling import *
