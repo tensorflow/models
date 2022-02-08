@@ -21,9 +21,8 @@ import tensorflow as tf
 from mpl_toolkits.mplot3d import art3d
 
 from official.vision.beta.projects.mesh_rcnn.ops.cubify import cubify
-from official.vision.beta.projects.mesh_rcnn.ops.mesh_sample import \
-    sample_meshes
-from official.vision.beta.projects.mesh_rcnn.ops.utils import create_voxels
+from official.vision.beta.projects.mesh_rcnn.ops.mesh_sample import MeshSampler
+from official.vision.beta.projects.mesh_rcnn.ops.voxel_ops import create_voxels
 
 matplotlib.use("TkAgg") # Needed for showing plot when running from WSL.
 
@@ -99,9 +98,9 @@ def main():
   verts_mask = tf.cast(verts_mask, tf.int8)
   faces_mask = tf.cast(faces_mask, tf.int8)
 
-  num_samples = 100
-  samples, normals, _ = sample_meshes(
-      verts, verts_mask, faces, faces_mask, num_samples
+  sampler = MeshSampler(num_samples=100)
+  samples, normals, _ = sampler.sample_meshes(
+      verts, verts_mask, faces, faces_mask
   )
 
   batch_to_view = 1

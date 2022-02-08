@@ -23,6 +23,7 @@ def create_voxels(
     grid_dims: int, batch_size: int, occupancy_locs: List[List[int]]
 ) -> tf.Tensor:
   """Creates a `Tensor` representing a batch of voxel grids.
+
   Args:
     grid_dims: An `int` representing the voxel resolution (or number of grid
       units for depth, width, and height) in the voxel grid.
@@ -31,6 +32,7 @@ def create_voxels(
       be occupied within the grid. The format is: [[b, z, y, x], ...] where
       `(x,y,z)` represents the coordinate of an occupied voxel in the grid for
       batch element `b`.
+
   Returns:
     voxels: An int `Tensor` of shape [B, D, H, W] that contains the voxel
       occupancy prediction. D, H, and W are equal.

@@ -20,10 +20,9 @@ import tensorflow as tf
 from absl.testing import parameterized
 
 from official.vision.beta.projects.mesh_rcnn.ops.cubify import cubify
-from official.vision.beta.projects.mesh_rcnn.ops.mesh_sample import \
-    sample_meshes
-from official.vision.beta.projects.mesh_rcnn.ops.utils import (
-    create_voxels, get_face_vertices)
+from official.vision.beta.projects.mesh_rcnn.ops.mesh_sample import (
+    MeshSampler, get_face_vertices)
+from official.vision.beta.projects.mesh_rcnn.ops.voxel_ops import create_voxels
 
 
 @parameterized.named_parameters(
@@ -98,8 +97,9 @@ class MeshSamplerTest(parameterized.TestCase, tf.test.TestCase):
     )
 
 
-    samples, _, sampled_verts_ind = sample_meshes(
-      verts, verts_mask, faces, faces_mask, self._num_samples
+    sampler = MeshSampler(self._num_samples)
+    samples, _, sampled_verts_ind = sampler.sample_meshes(
+      verts, verts_mask, faces, faces_mask,
     )
 
 
@@ -174,8 +174,9 @@ class MeshSamplerTest(parameterized.TestCase, tf.test.TestCase):
     )
 
 
-    _, normals, sampled_verts_ind = sample_meshes(
-      verts, verts_mask, faces, faces_mask, self._num_samples
+    sampler = MeshSampler(self._num_samples)
+    _, normals, sampled_verts_ind = sampler.sample_meshes(
+      verts, verts_mask, faces, faces_mask
     )
 
 

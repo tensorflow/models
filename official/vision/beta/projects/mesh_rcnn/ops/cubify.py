@@ -18,8 +18,6 @@ from typing import Tuple
 
 import tensorflow as tf
 
-from official.vision.beta.projects.mesh_rcnn.ops.utils import create_voxels
-
 # Vertices in the unit cube (x,y,z)
 UNIT_CUBOID_VERTS = tf.constant(
     [
