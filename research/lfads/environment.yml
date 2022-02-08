@@ -1,0 +1,15 @@
+name: lfads
+channels:
+  - conda-forge
+dependencies:
+  - python=2.7
+  - pip
+  - pip:
+    - jupyter
+    - tensorflow==1.5
+    - numpy
+    - scipy
+    - matplotlib
+    - h5py
+    - tqdm
+    - PyYAML

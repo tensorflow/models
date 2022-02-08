@@ -5,7 +5,7 @@
 
 This code implements the model from the paper "[LFADS - Latent Factor Analysis via Dynamical Systems](http://biorxiv.org/content/early/2017/06/20/152884)". It is a sequential variational auto-encoder designed specifically for investigating neuroscience data, but can be applied widely to any time series data. In an unsupervised setting, LFADS is able to decompose time series data into various factors, such as an initial condition, a generative dynamical system, control inputs to that generator, and a low dimensional description of the observed data, called the factors. Additionally, the observation model is a loss on a probability distribution, so when LFADS processes a dataset, a denoised version of the dataset is also created. For example, if the dataset is raw spike counts, then under the negative log-likelihood loss under a Poisson distribution, the denoised data would be the inferred Poisson rates.
 
-
+Edited by Aidan Yokuda for a3d3 neural redout project 2-8-2021
 ## Prerequisites
 
 The code is written in Python 2.7.6. You will also need:
@@ -14,6 +14,10 @@ The code is written in Python 2.7.6. You will also need:
 * **NumPy, SciPy, Matplotlib** ([install SciPy stack](https://www.scipy.org/install.html), contains all of them)
 * **h5py** ([install](https://pypi.python.org/pypi/h5py))
 
+Reccomended to create a anaconda environment by:
+	Downloading Miniconda
+	and run
+	$ conda env create -f enviornment.yml
 
 ## Getting started
 
@@ -25,6 +29,9 @@ $ export PYTHONPATH=$PYTHONPATH:/<b>path/to/your/directory</b>/lfads/
 
 where "path/to/your/directory" is replaced with the path to the LFADS repository (you can get this path by using the `pwd` command). This allows the nested directories to access modules from their parent directory.
 
+-----Aidan's-Example--------
+export PYTHONPATH=$PYTHONPATH:/git/models/research/lfads/
+----------------------------
 ## Generate synthetic data
 
 In order to generate the synthetic datasets first, from the top-level lfads directory, run:
