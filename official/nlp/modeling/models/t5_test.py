@@ -354,6 +354,24 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
     encoded = encoder(tf.zeros((4, 8), dtype=tf.int32))
     self.assertEqual(encoded.shape, (4, 8, config.d_model))
 
+  @parameterized.named_parameters(("bfloat16", tf.bfloat16),
+                                  ("float32", tf.float32))
+  def test_encoder_with_dense(self, dtype):
+    config = t5.T5TransformerParams(
+        num_layers=2,
+        d_model=4,
+        d_kv=3,
+        num_heads=4,
+        d_ff=16,
+        vocab_size=10,
+        vocab_embeddings_initializer=tf.keras.initializers.Ones(),
+        relative_embeddings_initializer=tf.keras.initializers.Ones())
+    encoder = t5.Encoder(config, compute_dtype=dtype)
+    encoded = encoder(
+        tf.zeros((4, 8), dtype=tf.int32),
+        dense_inputs=tf.ones((4, 2, 4), dtype=dtype))
+    self.assertEqual(encoded.shape, (4, 10, config.d_model))
+
   def test_decoder(self):
     max_decode_len = 10
     config = t5.T5TransformerParams(
@@ -433,6 +451,58 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
         batch_size, max_decode_len, config.num_heads, config.d_kv, dtype=dtype)
     outputs = transformer.decode(
         encoder_input_tokens=inputs,
+        encoded=outputs["encoded"],
+        decoder_target_tokens=tf.ones((batch_size, 1), dtype=tf.int32),
+        decode_position=1,
+        decode=True,
+        max_decode_len=max_decode_len,
+        cache=cache)
+    self.assertEqual(outputs["logits"].shape,
+                     (batch_size, 1, config.vocab_size))
+    for v in transformer.trainable_variables:
+      print(v.name, v.shape)
+      self.assertEqual(v.dtype, tf.float32)
+
+  @parameterized.named_parameters(
+      ("t5_10", ("relu",), True, 26, False, tf.float32),)
+  def test_transformer_with_dense(self, ffn_activations, logits_via_embedding,
+                                  expect_num_variables, layer_sharing, dtype):
+    max_decode_len = 10
+    config = t5.T5TransformerParams(
+        num_layers=1,
+        d_model=8,
+        d_kv=4,
+        num_heads=4,
+        d_ff=32,
+        vocab_size=10,
+        shared_embedding=True,
+        layer_sharing=layer_sharing,
+        ffn_activations=ffn_activations,
+        logits_via_embedding=logits_via_embedding)
+    transformer = t5.T5Transformer(config, compute_dtype=dtype)
+    self.assertLen(transformer.trainable_variables, expect_num_variables)
+    inputs = tf.convert_to_tensor(
+        np.array([[2, 2, 1, 3, 1, 0], [3, 3, 1, 2, 2, 1]]))
+    segments = tf.convert_to_tensor(
+        np.array([[1, 1, 1, 2, 2, 0], [1, 1, 1, 2, 2, 2]]))
+
+    dense_inputs = tf.convert_to_tensor(np.random.randn(2, 2, 8), dtype=dtype)
+    dense_segments = tf.convert_to_tensor(np.array([[1, 2], [1, 2]]))
+    outputs = transformer(
+        encoder_input_tokens=inputs,
+        encoder_dense_inputs=dense_inputs,
+        decoder_input_tokens=inputs,
+        decoder_target_tokens=inputs,
+        encoder_segment_ids=segments,
+        encoder_dense_segment_ids=dense_segments,
+        decoder_segment_ids=segments)
+    cache = {}
+    batch_size = 2
+    cache[0] = _create_cache(
+        batch_size, max_decode_len, config.num_heads, config.d_kv, dtype=dtype)
+    outputs = transformer.decode(
+        encoder_input_tokens=inputs,
+        encoder_dense_inputs=dense_inputs,
         encoded=outputs["encoded"],
         decoder_target_tokens=tf.ones((batch_size, 1), dtype=tf.int32),
         decode_position=1,
