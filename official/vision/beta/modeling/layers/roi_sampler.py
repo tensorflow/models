@@ -23,7 +23,7 @@ from official.vision.beta.ops import iou_similarity
 from official.vision.beta.ops import target_gather
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class ROISampler(tf.keras.layers.Layer):
   """Samples ROIs and assigns targets to the sampled ROIs."""
 

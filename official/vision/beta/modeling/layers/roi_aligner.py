@@ -20,7 +20,7 @@ import tensorflow as tf
 from official.vision.beta.ops import spatial_transform_ops
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class MultilevelROIAligner(tf.keras.layers.Layer):
   """Performs ROIAlign for the second stage processing."""
 

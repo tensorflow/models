@@ -20,7 +20,7 @@ import tensorflow as tf
 from official.vision.beta.ops import sampling_ops
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class BoxSampler(tf.keras.layers.Layer):
   """Creates a BoxSampler to sample positive and negative boxes."""
 

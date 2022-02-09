@@ -92,7 +92,7 @@ def block_spec_decoder(specs: List[Tuple[Any, ...]], width_scale: float,
   return decoded_specs
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class EfficientNet(tf.keras.Model):
   """Creates an EfficientNet family model.
 

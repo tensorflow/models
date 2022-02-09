@@ -85,7 +85,7 @@ def get_padding_for_kernel_size(kernel_size):
         kernel_size))
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class SqueezeExcitation(tf.keras.layers.Layer):
   """Creates a squeeze and excitation layer."""
 
@@ -223,7 +223,7 @@ def get_stochastic_depth_rate(init_rate, i, n):
   return rate
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class StochasticDepth(tf.keras.layers.Layer):
   """Creates a stochastic depth layer."""
 
@@ -261,7 +261,7 @@ class StochasticDepth(tf.keras.layers.Layer):
     return output
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 def pyramid_feature_fusion(inputs, target_level):
   """Fuses all feature maps in the feature pyramid at the target level.
 
@@ -403,7 +403,7 @@ class PanopticFPNFusion(tf.keras.Model):
     return self._output_specs
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class Scale(tf.keras.layers.Layer):
   """Scales the input by a trainable scalar weight.
 
@@ -456,7 +456,7 @@ class Scale(tf.keras.layers.Layer):
     return scale * inputs
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class TemporalSoftmaxPool(tf.keras.layers.Layer):
   """Creates a network layer corresponding to temporal softmax pooling.
 
@@ -479,7 +479,7 @@ class TemporalSoftmaxPool(tf.keras.layers.Layer):
     return outputs
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class PositionalEncoding(tf.keras.layers.Layer):
   """Creates a network layer that adds a sinusoidal positional encoding.
 
@@ -647,7 +647,7 @@ class PositionalEncoding(tf.keras.layers.Layer):
     return (outputs, states) if output_states else outputs
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class GlobalAveragePool3D(tf.keras.layers.Layer):
   """Creates a global average pooling layer with causal mode.
 
@@ -781,7 +781,7 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
     return (x, states) if output_states else x
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class SpatialAveragePool3D(tf.keras.layers.Layer):
   """Creates a global average pooling layer pooling across spatial dimentions."""
 
@@ -901,7 +901,7 @@ class CausalConvMixin:
     return spatial_output_shape
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class Conv2D(tf.keras.layers.Conv2D, CausalConvMixin):
   """Conv2D layer supporting CausalConv.
 
@@ -949,7 +949,7 @@ class Conv2D(tf.keras.layers.Conv2D, CausalConvMixin):
     return self._buffered_spatial_output_shape(shape)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class DepthwiseConv2D(tf.keras.layers.DepthwiseConv2D, CausalConvMixin):
   """DepthwiseConv2D layer supporting CausalConv.
 
@@ -1011,7 +1011,7 @@ class DepthwiseConv2D(tf.keras.layers.DepthwiseConv2D, CausalConvMixin):
     return self._buffered_spatial_output_shape(shape)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class Conv3D(tf.keras.layers.Conv3D, CausalConvMixin):
   """Conv3D layer supporting CausalConv.
 
@@ -1067,7 +1067,7 @@ class Conv3D(tf.keras.layers.Conv3D, CausalConvMixin):
     return self._buffered_spatial_output_shape(shape)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class SpatialPyramidPooling(tf.keras.layers.Layer):
   """Implements the Atrous Spatial Pyramid Pooling.
 

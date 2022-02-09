@@ -52,7 +52,7 @@ def _maybe_downsample(x: tf.Tensor, out_filter: int, strides: int,
   return x + 0.
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class ResidualBlock(tf.keras.layers.Layer):
   """A residual block."""
 
@@ -250,7 +250,7 @@ class ResidualBlock(tf.keras.layers.Layer):
     return self._activation_fn(x + shortcut)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class BottleneckBlock(tf.keras.layers.Layer):
   """A standard bottleneck block."""
 
@@ -479,7 +479,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
     return self._activation3(x)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class InvertedBottleneckBlock(tf.keras.layers.Layer):
   """An inverted bottleneck block."""
 
@@ -754,7 +754,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     return x
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class ResidualInner(tf.keras.layers.Layer):
   """Creates a single inner block of a residual.
 
@@ -878,7 +878,7 @@ class ResidualInner(tf.keras.layers.Layer):
     return x
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class BottleneckResidualInner(tf.keras.layers.Layer):
   """Creates a single inner block of a bottleneck.
 
@@ -1018,7 +1018,7 @@ class BottleneckResidualInner(tf.keras.layers.Layer):
     return x
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class ReversibleLayer(tf.keras.layers.Layer):
   """Creates a reversible layer.
 
@@ -1194,7 +1194,7 @@ class ReversibleLayer(tf.keras.layers.Layer):
     return activations
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
   """Creates an depthwise separable convolution block with batch normalization."""
 
@@ -1319,7 +1319,7 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
     return self._activation_fn(x)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class TuckerConvBlock(tf.keras.layers.Layer):
   """An Tucker block (generalized bottleneck)."""
 
