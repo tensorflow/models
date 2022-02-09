@@ -21,7 +21,7 @@ import tensorflow as tf
 layers = tf.keras.layers
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class ClassificationModel(tf.keras.Model):
   """A classification class builder."""
 

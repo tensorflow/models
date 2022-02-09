@@ -21,7 +21,7 @@ import tensorflow as tf
 from official.vision.beta.ops import anchor
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class RetinaNetModel(tf.keras.Model):
   """The RetinaNet model class."""
 

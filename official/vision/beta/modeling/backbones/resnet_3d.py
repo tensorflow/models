@@ -72,7 +72,7 @@ RESNET_SPECS = {
 }
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class ResNet3D(tf.keras.Model):
   """Creates a 3D ResNet family model."""
 

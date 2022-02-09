@@ -61,7 +61,7 @@ def build_block_specs(
   return [BlockSpec(*b) for b in block_specs]
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class NASFPN(tf.keras.Model):
   """Creates a NAS-FPN model.
 

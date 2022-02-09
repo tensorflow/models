@@ -191,7 +191,7 @@ class MaskScoring(tf.keras.Model):
     return cls(**config)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class SegmentationHead(tf.keras.layers.Layer):
   """Creates a segmentation head."""
 

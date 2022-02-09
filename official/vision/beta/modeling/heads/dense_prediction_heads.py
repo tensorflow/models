@@ -24,7 +24,7 @@ import tensorflow as tf
 from official.modeling import tf_utils
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class RetinaNetHead(tf.keras.layers.Layer):
   """Creates a RetinaNet head."""
 
@@ -336,7 +336,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
     return cls(**config)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class RPNHead(tf.keras.layers.Layer):
   """Creates a Region Proposal Network (RPN) head."""
 

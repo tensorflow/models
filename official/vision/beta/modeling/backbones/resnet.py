@@ -95,7 +95,7 @@ RESNET_SPECS = {
 }
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class ResNet(tf.keras.Model):
   """Creates ResNet and ResNet-RS family models.
 
