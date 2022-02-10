@@ -1,7 +1,7 @@
 six
 google-api-python-client>=1.6.7
 kaggle>=1.3.9
-numpy>=1.15.4
+numpy>=1.20
 oauth2client
 pandas>=0.22.0
 psutil>=5.4.3
