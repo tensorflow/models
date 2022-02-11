@@ -148,7 +148,7 @@ def semantic_segmentation() -> cfg.ExperimentConfig:
 # PASCAL VOC 2012 Dataset
 PASCAL_TRAIN_EXAMPLES = 10582
 PASCAL_VAL_EXAMPLES = 1449
-PASCAL_INPUT_PATH_BASE = 'pascal_voc_seg'
+PASCAL_INPUT_PATH_BASE = 'gs://**/pascal_voc_seg'
 
 
 @exp_factory.register_config_factory('seg_deeplabv3_pascal')
