@@ -21,7 +21,7 @@ import tensorflow as tf
 from mpl_toolkits.mplot3d import art3d
 
 from official.vision.beta.projects.mesh_rcnn.ops.cubify import cubify
-from official.vision.beta.projects.mesh_rcnn.ops.mesh_sample import MeshSampler
+from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import MeshSampler
 from official.vision.beta.projects.mesh_rcnn.ops.voxel_ops import create_voxels
 
 matplotlib.use("TkAgg") # Needed for showing plot when running from WSL.
