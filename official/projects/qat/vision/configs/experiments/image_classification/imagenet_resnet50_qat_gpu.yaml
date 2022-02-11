@@ -1,0 +1,52 @@
+runtime:
+  distribution_strategy: 'mirrored'
+  mixed_precision_dtype: 'float32'
+  loss_scale: 'dynamic'
+task:
+  model:
+    num_classes: 1001
+    input_size: [224, 224, 3]
+    backbone:
+      type: 'resnet'
+      resnet:
+        model_id: 50
+  losses:
+    l2_weight_decay: 0.0001
+    one_hot: true
+    label_smoothing: 0.1
+  train_data:
+    input_path: '/readahead/200M/placer/prod/home/distbelief/imagenet-tensorflow/imagenet-2012-tfrecord/train*'
+    is_training: true
+    global_batch_size: 256
+    dtype: 'float32'
+  validation_data:
+    input_path: '/readahead/200M/placer/prod/home/distbelief/imagenet-tensorflow/imagenet-2012-tfrecord/valid*'
+    is_training: false
+    global_batch_size: 256
+    dtype: 'float32'
+    drop_remainder: false
+  quantization:
+    pretrained_original_checkpoint: 'gs://**/resnet_classifier_gpu/ckpt-56160'
+trainer:
+  # With below setting, the accuracy of QAT reaches to Top1-accuracy 0.7720 after 5 days of training
+  # with 8GPUs, which is higher than the non-quantized float32 version Resnet.
+  train_steps: 449280
+  validation_steps: 200
+  validation_interval: 5000
+  steps_per_loop: 5000
+  summary_interval: 5000
+  checkpoint_interval: 5000
+  optimizer_config:
+    optimizer:
+      type: 'sgd'
+      sgd:
+        momentum: 0.9
+    learning_rate:
+      type: 'stepwise'
+      stepwise:
+        boundaries: [150000, 300000, 400000]
+        values: [0.08, 0.008, 0.0008, 0.00008]
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 40000
