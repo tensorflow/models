@@ -32,10 +32,12 @@ def _create_fake_dataset(output_path, seq_length, num_classes, num_examples):
   writer = tf.io.TFRecordWriter(output_path)
 
   def create_int_feature(values):
-    return tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
+    return tf.train.Feature(
+        int64_list=tf.train.Int64List(value=np.ravel(values)))
 
   def create_float_feature(values):
-    return tf.train.Feature(float_list=tf.train.FloatList(value=list(values)))
+    return tf.train.Feature(
+        float_list=tf.train.FloatList(value=np.ravel(values)))
 
   for i in range(num_examples):
     features = {}
