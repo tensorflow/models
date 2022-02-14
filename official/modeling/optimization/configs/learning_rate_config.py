@@ -216,14 +216,14 @@ class StepCosineLrConfig(base_config.Config):
   """Configuration for stepwise learning rate decay.
 
   This class is a container for the piecewise cosine learning rate scheduling
-  configs. It will configure an instance of StepConsineDecayWithOffset keras
+  configs. It will configure an instance of StepCosineDecayWithOffset keras
   learning rate schedule.
 
     ```python
     boundaries: [100000, 110000]
     values: [1.0, 0.5]
     lr_decayed_fn = (
-    lr_schedule.StepConsineDecayWithOffset(
+    lr_schedule.StepCosineDecayWithOffset(
         boundaries,
         values))
     ```
@@ -243,7 +243,7 @@ class StepCosineLrConfig(base_config.Config):
               [boundaries[n], end]               -> values[n+1] to 0.
     offset: An int. The offset applied to steps. Defaults to 0.
   """
-  name: str = 'StepConsineDecayWithOffset'
+  name: str = 'StepCosineDecayWithOffset'
   boundaries: Optional[List[int]] = None
   values: Optional[List[float]] = None
   offset: int = 0

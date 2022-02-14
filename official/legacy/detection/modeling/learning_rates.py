@@ -61,7 +61,7 @@ class CosineLearningRateWithLinearWarmup(
   """Class to generate learning rate tensor."""
 
   def __init__(self, total_steps, params):
-    """Creates the consine learning rate tensor with linear warmup."""
+    """Creates the cosine learning rate tensor with linear warmup."""
     super(CosineLearningRateWithLinearWarmup, self).__init__()
     self._total_steps = total_steps
     assert isinstance(params, (dict, params_dict.ParamsDict))
