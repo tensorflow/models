@@ -386,11 +386,11 @@ class PowerDecayWithOffset(tf.keras.optimizers.schedules.LearningRateSchedule):
     }
 
 
-class StepConsineDecayWithOffset(
+class StepCosineDecayWithOffset(
     tf.keras.optimizers.schedules.LearningRateSchedule):
   """Stepwise cosine learning rate decay with offset.
 
-  Learning rate is equivalent to one or more consine decay(s) starting and
+  Learning rate is equivalent to one or more cosine decay(s) starting and
   ending at each interval.
 
   ExampleL
@@ -399,7 +399,7 @@ class StepConsineDecayWithOffset(
     boundaries: [100000, 110000]
     values: [1.0, 0.5]
     lr_decayed_fn = (
-    lr_schedule.StepConsineDecayWithOffset(
+    lr_schedule.StepCosineDecayWithOffset(
         boundaries,
         values))
     ```
@@ -412,7 +412,7 @@ class StepConsineDecayWithOffset(
                boundaries,
                values,
                offset: int = 0,
-               name: str = "StepConsineDecayWithOffset"):
+               name: str = "StepCosineDecayWithOffset"):
     """Initialize configuration of the learning rate schedule.
 
     Args:
@@ -444,7 +444,7 @@ class StepConsineDecayWithOffset(
         ] + [0])
 
   def __call__(self, global_step):
-    with tf.name_scope(self.name or "StepConsineDecayWithOffset"):
+    with tf.name_scope(self.name or "StepCosineDecayWithOffset"):
       global_step = tf.cast(global_step - self.offset, tf.float32)
       lr_levels = self.values
       lr_steps = self.boundaries

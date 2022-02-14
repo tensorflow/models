@@ -78,7 +78,7 @@ class CosineDecayWithWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
   """Class to generate learning rate tensor."""
 
   def __init__(self, batch_size: int, total_steps: int, warmup_steps: int):
-    """Creates the consine learning rate tensor with linear warmup.
+    """Creates the cosine learning rate tensor with linear warmup.
 
     Args:
       batch_size: The training batch size used in the experiment.
