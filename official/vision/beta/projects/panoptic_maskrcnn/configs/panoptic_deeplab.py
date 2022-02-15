@@ -50,10 +50,20 @@ class InstanceHead(PanopticDeeplabHead):
   """Instance head config."""
   prediction_kernel_size: int = 1
 
-# pytype: disable=wrong-keyword-args
+@dataclasses.dataclass
+class PanopticDeeplabPostProcessor(hyperparams.Config):
+  """Panoptic Deeplab PostProcessing config."""
+  center_score_threshold: float = 0.1
+  thing_class_ids: List[int] = dataclasses.field(default_factory=list)
+  label_divisor: int = 256 * 256 * 256
+  stuff_area_limit: int = 4096
+  ignore_label: int = 0
+  nms_kernel: int = 41
+  keep_k_centers: int = 400
+
 @dataclasses.dataclass
 class PanopticDeeplab(hyperparams.Config):
-  """Panoptic Mask R-CNN model config."""
+  """Panoptic Deeplab model config."""
   num_classes: int = 0
   input_size: List[int] = dataclasses.field(default_factory=list)
   min_level: int = 3
@@ -65,3 +75,4 @@ class PanopticDeeplab(hyperparams.Config):
   semantic_head: SemanticHead = SemanticHead()
   instance_head: InstanceHead = InstanceHead()
   shared_decoder: bool = False
+  post_processor: PanopticDeeplabPostProcessor = PanopticDeeplabPostProcessor()
