@@ -67,6 +67,7 @@ class SGDExperimentalConfig(BaseOptimizerConfig):
     name: name of the optimizer.
     nesterov: nesterov for SGD optimizer.
     momentum: momentum for SGD optimizer.
+    jit_compile: if True, jit compile will be used.
   """
   name: str = "SGD"
   nesterov: bool = False
@@ -133,6 +134,30 @@ class AdamConfig(BaseOptimizerConfig):
   beta_2: float = 0.999
   epsilon: float = 1e-07
   amsgrad: bool = False
+
+
+@dataclasses.dataclass
+class AdamExperimentalConfig(BaseOptimizerConfig):
+  """Configuration for experimental Adam optimizer.
+
+  The attributes for this class matches the arguments of
+  `tf.keras.optimizer.experimental.Adam`.
+
+  Attributes:
+    name: name of the optimizer.
+    beta_1: decay rate for 1st order moments.
+    beta_2: decay rate for 2st order moments.
+    epsilon: epsilon value used for numerical stability in Adam optimizer.
+    amsgrad: boolean. Whether to apply AMSGrad variant of this algorithm from
+      the paper "On the Convergence of Adam and beyond".
+    jit_compile: if True, jit compile will be used.
+  """
+  name: str = "Adam"
+  beta_1: float = 0.9
+  beta_2: float = 0.999
+  epsilon: float = 1e-07
+  amsgrad: bool = False
+  jit_compile: bool = False
 
 
 @dataclasses.dataclass
