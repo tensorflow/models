@@ -20,7 +20,7 @@ import tensorflow as tf
 layers = tf.keras.layers
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class VideoClassificationModel(tf.keras.Model):
   """A video classification class builder."""
 

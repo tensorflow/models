@@ -21,7 +21,7 @@ import tensorflow as tf
 from official.modeling import tf_utils
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class DetectionHead(tf.keras.layers.Layer):
   """Creates a detection head."""
 
@@ -216,7 +216,7 @@ class DetectionHead(tf.keras.layers.Layer):
     return cls(**config)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class MaskHead(tf.keras.layers.Layer):
   """Creates a mask head."""
 

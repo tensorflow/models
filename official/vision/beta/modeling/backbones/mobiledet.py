@@ -344,7 +344,7 @@ def block_spec_decoder(
   return decoded_specs
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class MobileDet(tf.keras.Model):
   """Creates a MobileDet family model."""
 

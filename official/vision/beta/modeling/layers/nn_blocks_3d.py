@@ -20,7 +20,7 @@ from official.modeling import tf_utils
 from official.vision.beta.modeling.layers import nn_layers
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class SelfGating(tf.keras.layers.Layer):
   """Feature gating as used in S3D-G.
 
@@ -67,7 +67,7 @@ class SelfGating(tf.keras.layers.Layer):
     return tf.math.multiply(x, inputs)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class BottleneckBlock3D(tf.keras.layers.Layer):
   """Creates a 3D bottleneck block."""
 

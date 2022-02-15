@@ -220,8 +220,8 @@ message CenterNet {
     //   scores * exp((-distances^2) / (2 * sigma^2))
     // where 'distances' is the distance between the heatmap peak location and
     // the regressed joint location and 'sigma' is the Gaussian standard
-    // deviation used in generating the Gaussian heatmap target multiplied by the
-    // 'std_dev_multiplier'.
+    // deviation used in generating the Gaussian heatmap target multiplied by
+    // the 'std_dev_multiplier'.
     optional float std_dev_multiplier = 29 [default = 1.0];
 
     // The radius (in the unit of output pixel) around heatmap peak to assign
@@ -415,7 +415,7 @@ message CenterNet {
     optional int32 dim = 3 [default = 256];
 
     // The dimension of the per-pixel embedding
-    optional int32 pixel_embedding_dim = 4 [default=16];
+    optional int32 pixel_embedding_dim = 4 [default = 16];
 
     // If set, masks are only kept for classes listed here. Masks are deleted
     // for all other classes. Note that this is only done at training time, eval
@@ -424,75 +424,86 @@ message CenterNet {
 
     // The size of cropped pixel embedding that goes into the 2D mask prediction
     // network (RoI align).
-    optional int32 mask_size = 6 [default=32];
+    optional int32 mask_size = 6 [default = 32];
 
     // If set to a positive value, we subsample instances by this amount to
     // save memory during training.
-    optional int32 mask_num_subsamples = 67[default=-1];
+    optional int32 mask_num_subsamples = 67 [default = -1];
 
     // Whether or not to use (x, y) coordinates as input to mask net.
-    optional bool use_xy = 8 [default=true];
+    optional bool use_xy = 8 [default = true];
 
     // Defines the kind of architecture we want to use for mask network.
-    optional string network_type = 9 [default="hourglass52"];
+    optional string network_type = 9 [default = "hourglass52"];
 
     // Whether or not we want to use instance embedding in mask network.
-    optional bool use_instance_embedding = 10 [default=true];
+    optional bool use_instance_embedding = 10 [default = true];
 
     // Number of channels in the inital block of the mask prediction network.
-    optional int32 num_init_channels = 11 [default=64];
+    optional int32 num_init_channels = 11 [default = 64];
 
     // Whether or not to predict masks at full resolution. If true, we predict
     // masks at the resolution of the output stride. Otherwise, masks are
     // predicted at resolution defined by mask_size
-    optional bool predict_full_resolution_masks = 12 [default=false];
+    optional bool predict_full_resolution_masks = 12 [default = false];
 
     // If predict_full_resolution_masks is set, this parameter controls the size
     // of cropped masks returned by post-process. To be compatible with the rest
     // of the API, masks are always cropped and resized according to detected
     // boxes in postprocess.
-    optional int32 postprocess_crop_size = 13 [default=256];
+    optional int32 postprocess_crop_size = 13 [default = 256];
 
     // The maximum relative amount by which boxes will be jittered before
     // RoI crop happens. The x and y coordinates of the box are jittered
     // relative to width and height respectively.
-    optional float max_roi_jitter_ratio = 14 [default=0.0];
+    optional float max_roi_jitter_ratio = 14 [default = 0.0];
 
     // The mode for jitterting box ROIs. See RandomJitterBoxes in
     // preprocessor.proto for more details
-    optional RandomJitterBoxes.JitterMode jitter_mode = 15 [default=DEFAULT];
+    optional RandomJitterBoxes.JitterMode jitter_mode = 15 [default = DEFAULT];
 
     // Weight for the box consistency loss as described in the BoxInst paper
     // https://arxiv.org/abs/2012.02310
-    optional float box_consistency_loss_weight = 16 [default=0.0];
+    optional float box_consistency_loss_weight = 16 [default = 0.0];
 
-    optional float color_consistency_threshold = 17 [default=0.4];
+    optional float color_consistency_threshold = 17 [default = 0.4];
 
-    optional int32 color_consistency_dilation = 18 [default=2];
+    optional int32 color_consistency_dilation = 18 [default = 2];
 
-    optional float color_consistency_loss_weight = 19 [default=0.0];
+    optional float color_consistency_loss_weight = 19 [default = 0.0];
 
-    optional LossNormalize box_consistency_loss_normalize = 20 [
-      default=NORMALIZE_AUTO];
+    optional LossNormalize box_consistency_loss_normalize = 20
+        [default = NORMALIZE_AUTO];
 
     // If set, will use the bounding box tightness prior approach. This means
     // that the max will be restricted to only be inside the box for both
     // dimensions. See details here:
     // https://papers.nips.cc/paper/2019/hash/e6e713296627dff6475085cc6a224464-Abstract.html
-    optional bool box_consistency_tightness = 21 [default=false];
+    optional bool box_consistency_tightness = 21 [default = false];
 
-    optional int32 color_consistency_warmup_steps = 22 [default=0];
+    optional int32 color_consistency_warmup_steps = 22 [default = 0];
 
-    optional int32 color_consistency_warmup_start = 23 [default=0];
+    optional int32 color_consistency_warmup_start = 23 [default = 0];
+
+    // This flag controls whether or not we use the outputs from only the
+    // last stage of the hourglass for training the mask-heads.
 
     // DeepMAC has been refactored to process the entire batch at once,
     // instead of the previous (simple) approach of processing one sample at
-    // a time. Because of this, the memory consumption has increased and
-    // it's crucial to only feed the mask head the last stage outputs
-    // from the hourglass. Doing so halves the memory requirement of the
-    // mask head and does not cause a drop in evaluation metrics.
-    optional bool use_only_last_stage = 24 [default=false];
+    // a time. Because of this, we need to set this flag to continue using
+    // the old models with the same training hardware.
 
+    // This flag is not needed for 1024x1024 models. The performance and
+    // memory usage are same as before.
+
+    // For 512x512 models
+    // - Setting this flag to true will let the model train on TPU-v3 32
+    //   chips. We observed a small (0.26 mAP) performance drop when doing so.
+    // - Setting this flag to false (default) increases the TPU requirement
+    //   to TPU-v3 128 and reproduces previously demonstrated performance
+    //   within error bars.
+
+    optional bool use_only_last_stage = 24 [default = false];
   }
 
   optional DeepMACMaskEstimation deepmac_mask_estimation = 14;
@@ -506,7 +517,7 @@ message CenterNet {
 }
 
 enum LossNormalize {
-  NORMALIZE_AUTO = 0; // SUM for 2D inputs (dice loss) and MEAN for others.
+  NORMALIZE_AUTO = 0;  // SUM for 2D inputs (dice loss) and MEAN for others.
   NORMALIZE_GROUNDTRUTH_COUNT = 1;
   NORMALIZE_BALANCED = 3;
 }
@@ -546,5 +557,4 @@ message CenterNetFeatureExtractor {
   // can be on of 'nearest' or 'bilinear'.
   optional string upsampling_interpolation = 11 [default = 'nearest'];
 }
-
 

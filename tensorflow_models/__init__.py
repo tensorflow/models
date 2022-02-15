@@ -20,4 +20,4 @@ from tensorflow_models import vision
 from official import core
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.modeling import tf_utils
+from official.modeling import tf_utils as utils

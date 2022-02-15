@@ -33,7 +33,6 @@ from official.nlp.tools import tokenization
 
 FLAGS = flags.FLAGS
 
-# TODO(chendouble): consider moving each task to its own binary.
 flags.DEFINE_enum(
     "fine_tuning_task_type", "classification",
     ["classification", "regression", "squad", "retrieval", "tagging"],

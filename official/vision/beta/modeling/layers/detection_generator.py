@@ -423,7 +423,7 @@ def _generate_detections_batched(boxes: tf.Tensor, scores: tf.Tensor,
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class DetectionGenerator(tf.keras.layers.Layer):
   """Generates the final detected boxes with scores and classes."""
 
@@ -606,7 +606,7 @@ class DetectionGenerator(tf.keras.layers.Layer):
     return cls(**config)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class MultilevelDetectionGenerator(tf.keras.layers.Layer):
   """Generates detected boxes with scores and classes for one-stage detector."""
 

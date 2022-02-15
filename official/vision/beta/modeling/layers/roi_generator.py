@@ -176,7 +176,7 @@ def _multilevel_propose_rois(raw_boxes: Mapping[str, tf.Tensor],
     return selected_rois, selected_roi_scores
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class MultilevelROIGenerator(tf.keras.layers.Layer):
   """Proposes RoIs for the second stage processing."""
 

@@ -100,7 +100,7 @@ def _sample_and_crop_foreground_masks(candidate_rois: tf.Tensor,
   return foreground_rois, foreground_classes, cropped_foreground_masks
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class MaskSampler(tf.keras.layers.Layer):
   """Samples and creates mask training targets."""
 

@@ -46,7 +46,7 @@ RESNET_SPECS = {
 }
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class DilatedResNet(tf.keras.Model):
   """Creates a ResNet model with Deeplabv3 modifications.
 

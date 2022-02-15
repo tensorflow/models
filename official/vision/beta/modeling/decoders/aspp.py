@@ -27,7 +27,7 @@ from official.vision.beta.modeling.layers import nn_layers
 TensorMapUnion = Union[tf.Tensor, Mapping[str, tf.Tensor]]
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class ASPP(tf.keras.layers.Layer):
   """Creates an Atrous Spatial Pyramid Pooling (ASPP) layer."""
 

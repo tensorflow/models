@@ -31,7 +31,7 @@ layers = tf.keras.layers
 #  pylint: disable=pointless-string-statement
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class Conv2DBNBlock(tf.keras.layers.Layer):
   """A convolution block with batch normalization."""
 
@@ -616,7 +616,7 @@ def block_spec_decoder(
   return decoded_specs
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class MobileNet(tf.keras.Model):
   """Creates a MobileNet family model."""
 

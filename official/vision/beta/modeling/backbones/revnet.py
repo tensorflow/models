@@ -49,7 +49,7 @@ REVNET_SPECS = {
 }
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class RevNet(tf.keras.Model):
   """Creates a Reversible ResNet (RevNet) family model.
 

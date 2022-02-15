@@ -22,7 +22,7 @@ from official.vision.beta.ops import anchor
 from official.vision.beta.ops import box_ops
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf.keras.utils.register_keras_serializable(package='Beta')
 class MaskRCNNModel(tf.keras.Model):
   """The Mask R-CNN(-RS) and Cascade RCNN-RS models."""
 
