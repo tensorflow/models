@@ -110,7 +110,7 @@ class DetectionInferenceModule(tf.Module):
         back_prop=False,
         fn_output_signature=(tf.float32, tf.int32))
     return images, true_shapes
-
+    
   def _run_inference_on_images(self, images, true_shapes, **kwargs):
     """Cast image to float and run inference.
 
@@ -135,6 +135,31 @@ class DetectionInferenceModule(tf.Module):
     return detections
 
 
+  # this function was added for use when batching / mapping the input
+  # function to all inputs isn't desired. mapping of the input preprocessing
+  # function results in errors when working with converting the exported model
+  # to other frameworks.
+  
+  # please refer to the following thread for more details:
+  # https://github.com/tensorflow/models/issues/10120
+  def _run_inference_on_image(self, image):
+    label_id_offset = 1
+
+    image = tf.cast(image, tf.float32)
+    image, shapes = self._model.preprocess(image)
+    prediction_dict = self._model.predict(image, shapes)
+    detections = self._model.postprocess(prediction_dict, shapes)
+    classes_field = fields.DetectionResultFields.detection_classes
+    detections[classes_field] = (
+        tf.cast(detections[classes_field], tf.float32) + label_id_offset)
+
+    for key, val in detections.items():
+      detections[key] = tf.cast(val, tf.float32)
+
+    return detections
+
+
+
 class DetectionFromImageModule(DetectionInferenceModule):
   """Detection Inference Module for image inputs."""
 
@@ -146,8 +171,12 @@ class DetectionFromImageModule(DetectionInferenceModule):
     Args:
       detection_model: the detection model to use for inference.
       use_side_inputs: whether to use side inputs.
-      zipped_side_inputs: the zipped side inputs.
+      zipped_side_inputs: the zipped side inputs. 
     """
+
+    # allow_batch_input: flag to control mapping of input preprocessing
+    allow_batch_input=False
+
     if zipped_side_inputs is None:
       zipped_side_inputs = []
     sig = [tf.TensorSpec(shape=[1, None, None, 3],
@@ -159,8 +188,13 @@ class DetectionFromImageModule(DetectionInferenceModule):
 
     def call_func(input_tensor, *side_inputs):
       kwargs = dict(zip(self._side_input_names, side_inputs))
-      images, true_shapes = self._preprocess_input(input_tensor, lambda x: x)
-      return self._run_inference_on_images(images, true_shapes, **kwargs)
+      if allow_batch_input:
+        print('I am entering the allow_batch_input if statement')
+        images, true_shapes = self._preprocess_input(input_tensor, lambda x: x)
+        return self._run_inference_on_images(images, true_shapes, **kwargs)
+      else:
+        print('I am NOT entering the allow_batch_input if statement')
+        return self._run_inference_on_image(input_tensor)
 
     self.__call__ = tf.function(call_func, input_signature=sig)
 
