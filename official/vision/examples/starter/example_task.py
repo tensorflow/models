@@ -21,10 +21,10 @@ from official.common import dataset_fn
 from official.core import base_task
 from official.core import task_factory
 from official.modeling import tf_utils
-from official.vision.beta.dataloaders import input_reader_factory
-from official.vision.beta.projects.example import example_config as exp_cfg
-from official.vision.beta.projects.example import example_input
-from official.vision.beta.projects.example import example_model
+from official.vision.dataloaders import input_reader_factory
+from official.vision.examples.starter import example_config as exp_cfg
+from official.vision.examples.starter import example_input
+from official.vision.examples.starter import example_model
 
 
 @task_factory.register_task_cls(exp_cfg.ExampleTask)

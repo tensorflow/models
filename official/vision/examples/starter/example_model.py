@@ -22,7 +22,7 @@ directly used from `official/vision/beta/modeling` directory.
 from typing import Any, Mapping
 # Import libraries
 import tensorflow as tf
-from official.vision.beta.projects.example import example_config as example_cfg
+from official.vision.examples.starter import example_config as example_cfg
 
 
 class ExampleModel(tf.keras.Model):

@@ -22,7 +22,7 @@ from absl import app
 
 from official.common import flags as tfm_flags
 from official.vision.beta import train
-from official.vision.beta.projects.example import registry_imports  # pylint: disable=unused-import
+from official.vision.examples.starter import registry_imports  # pylint: disable=unused-import
 
 
 if __name__ == '__main__':

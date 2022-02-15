@@ -13,9 +13,8 @@
 # limitations under the License.
 
 """Example experiment configuration definition."""
-from typing import List
-
 import dataclasses
+from typing import List
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
