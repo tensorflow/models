@@ -28,6 +28,40 @@ def _dump_graph_in_text_format(filename, graph_def):
   f.close()
 
 
+def get_mean_stddev_values(min_value_of_features, max_value_of_features):
+  """Gets Mean and Stddev values for given min/max float values."""
+  quant_min = 0
+  quant_max = 255
+
+  min_global = min_value_of_features
+  max_global = max_value_of_features
+
+  quant_min_float = float(quant_min)
+  quant_max_float = float(quant_max)
+
+  nudged_scale = (max_global - min_global) / (quant_max_float - quant_min_float)
+
+  zero_point_from_min = quant_min_float - min_global / nudged_scale
+
+  if zero_point_from_min < quant_min_float:
+    nudged_zero_point = int(quant_min)
+  elif zero_point_from_min > quant_max_float:
+    nudged_zero_point = int(quant_max)
+  else:
+    nudged_zero_point = int(round(zero_point_from_min))
+
+  nudged_min = (quant_min_float - nudged_zero_point) * (nudged_scale)
+  nudged_max = (quant_max_float - nudged_zero_point) * (nudged_scale)
+
+  zero_point = (quant_min - min_global) / (max_global - min_global) * quant_max
+  scale = (nudged_max - nudged_min) / 255.0
+
+  mean_value = zero_point
+  stddev_value = 1 / scale
+
+  return mean_value, stddev_value
+
+
 class InterpreterWithCustomOps(tf.lite.Interpreter):
   """Extended tf.lite.Interpreter."""
 
