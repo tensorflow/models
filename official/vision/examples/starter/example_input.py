@@ -22,9 +22,9 @@ from typing import Mapping, List, Tuple
 # Import libraries
 import tensorflow as tf
 
-from official.vision.beta.dataloaders import decoder
-from official.vision.beta.dataloaders import parser
-from official.vision.beta.ops import preprocess_ops
+from official.vision.dataloaders import decoder
+from official.vision.dataloaders import parser
+from official.vision.ops import preprocess_ops
 
 MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
 STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)

@@ -35,14 +35,14 @@ input and return an `ExampleModel` instance, similar as
 As a simple example, we define a single model. However, you can split the model
 implementation to individual components, such as backbones, decoders, heads, as
 what we do
-[here](https://github.com/tensorflow/models/blob/master/official/vision/beta/modeling).
+[here](https://github.com/tensorflow/models/blob/master/official/vision/modeling).
 And then in `build_example_model` function, you can hook up these components
 together to obtain your full model.
 
 ## Create Dataloader
 
 A dataloader reads, decodes and parses the input data. We have created various
-[dataloaders](https://github.com/tensorflow/models/blob/master/official/vision/beta/dataloaders)
+[dataloaders](https://github.com/tensorflow/models/blob/master/official/vision/dataloaders)
 to handle standard input formats for classification, detection and segmentation.
 If you have non-standard or complex data, you may want to create your own
 dataloader. It contains a `Decoder` and a `Parser`.
@@ -123,10 +123,10 @@ together and is called by the base
 You can create your own task by inheriting from base
 [Task](https://github.com/tensorflow/models/blob/master/official/core/base_task.py),
 or from one of the
-[tasks](https://github.com/tensorflow/models/blob/master/official/vision/beta/tasks/)
+[tasks](https://github.com/tensorflow/models/blob/master/official/vision/tasks/)
 we already defined, if most of the operations can be reused. An `ExampleTask`
 inheriting from
-[ImageClassificationTask](https://github.com/tensorflow/models/blob/master/official/vision/beta/tasks/image_classification.py#L32)
+[ImageClassificationTask](https://github.com/tensorflow/models/blob/master/official/vision/tasks/image_classification.py#L32)
 can be found
 [here](example_task.py).
 We will go through each important components in the task in the following.
@@ -175,7 +175,7 @@ from official.vision.beta.projects.example import example_task
 ## Training
 
 You can create your own trainer by branching from our core
-[trainer](https://github.com/tensorflow/models/blob/master/official/vision/beta/train.py).
+[trainer](https://github.com/tensorflow/models/blob/master/official/vision/train.py).
 Just make sure you import the registry like this:
 
 ```python
@@ -185,7 +185,7 @@ from official.vision.beta.projects.example import registry_imports  # pylint: di
 You can run training locally for testing purpose:
 
 ```bash
-# Assume you are under official/vision/beta/projects.
+# Assume you are under official/vision/projects.
 python3 example/train.py \
   --experiment=tf_vision_example_experiment \
   --config_file=${PWD}/example/example_config_local.yaml \
@@ -210,5 +210,5 @@ python3 example/train.py \
   --mode=train \
   --tpu=$TPU_NAME \
   --model_dir=/tmp/tfvision_test/
-  --config_file=third_party/tensorflow_models/official/vision/beta/projects/example/example_config_tpu.yaml
+  --config_file=third_party/tensorflow_models/official/vision/examples/starter/example_config_tpu.yaml
 ```

@@ -21,7 +21,7 @@ to handle each file separately.
 
 # pylint: disable=unused-import
 from official.common import registry_imports
-from official.vision.beta.projects.example import example_config
-from official.vision.beta.projects.example import example_input
-from official.vision.beta.projects.example import example_model
-from official.vision.beta.projects.example import example_task
+from official.vision.examples.starter import example_config
+from official.vision.examples.starter import example_input
+from official.vision.examples.starter import example_model
+from official.vision.examples.starter import example_task
