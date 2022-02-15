@@ -24,6 +24,7 @@ from official.vision.beta.modeling import backbones
 from official.vision.beta.modeling.decoders import aspp
 from official.vision.beta.projects.panoptic_maskrcnn.modeling.heads import panoptic_deeplab_heads
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_deeplab_model
+from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import panoptic_deeplab_merge
 
 class PanopticDeeplabNetworkTest(parameterized.TestCase, tf.test.TestCase):
 
@@ -37,8 +38,9 @@ class PanopticDeeplabNetworkTest(parameterized.TestCase, tf.test.TestCase):
   def test_panoptic_deeplab_network_creation(
       self, input_size, level, low_level, shared_decoder, training):
     """Test for creation of a panoptic deep lab network."""
+    batch_size = 2 if training else 1
     num_classes = 10
-    inputs = np.random.rand(2, input_size, input_size, 3)
+    inputs = np.random.rand(batch_size, input_size, input_size, 3)
     tf.keras.backend.set_image_data_format('channels_last')
     backbone = backbones.ResNet(model_id=50)
 
@@ -62,35 +64,52 @@ class PanopticDeeplabNetworkTest(parameterized.TestCase, tf.test.TestCase):
         low_level=low_level,
         low_level_num_filters=(64, 32))
 
+    post_processor = panoptic_deeplab_merge.PostProcessor(
+        center_score_threshold=0.1,
+        thing_class_ids=[1, 2, 3, 4],
+        label_divisor=[256],
+        stuff_area_limit=4096,
+        ignore_label=0,
+        nms_kernel=41,
+        keep_k_centers=41)
+
     model = panoptic_deeplab_model.PanopticDeeplabModel(
         backbone=backbone,
         semantic_decoder=semantic_decoder,
         instance_decoder=instance_decoder,
         semantic_head=semantic_head,
-        instance_head=instance_head)
+        instance_head=instance_head,
+        post_processor=post_processor)
 
     outputs = model(inputs, training=training)
 
-      
-    self.assertIn('segmentation_outputs', outputs)
-    self.assertIn('instance_center_prediction', outputs)
-    self.assertIn('instance_center_regression', outputs)
+    if training:
+      self.assertIn('segmentation_outputs', outputs)
+      self.assertIn('instance_center_prediction', outputs)
+      self.assertIn('instance_center_regression', outputs)
 
-    self.assertAllEqual(
-        [2, input_size // (2**low_level[-1]), 
-         input_size //(2**low_level[-1]), 
-         num_classes],
-        outputs['segmentation_outputs'].numpy().shape)
-    self.assertAllEqual(
-        [2, input_size // (2**low_level[-1]),
-         input_size // (2**low_level[-1]),
-         1],
-        outputs['instance_center_prediction'].numpy().shape)
-    self.assertAllEqual(
-        [2, input_size // (2**low_level[-1]),
-         input_size // (2**low_level[-1]),
-         2],
-        outputs['instance_center_regression'].numpy().shape)
+      self.assertAllEqual(
+          [2, input_size // (2**low_level[-1]),
+           input_size //(2**low_level[-1]),
+           num_classes],
+          outputs['segmentation_outputs'].numpy().shape)
+      self.assertAllEqual(
+          [2, input_size // (2**low_level[-1]),
+           input_size // (2**low_level[-1]),
+           1],
+          outputs['instance_center_prediction'].numpy().shape)
+      self.assertAllEqual(
+          [2, input_size // (2**low_level[-1]),
+           input_size // (2**low_level[-1]),
+           2],
+          outputs['instance_center_regression'].numpy().shape)
+
+    else:
+      self.assertIn('panoptic_outputs', outputs)
+      self.assertIn('category_mask', outputs)
+      self.assertIn('instance_mask', outputs)
+      self.assertIn('instance_centers', outputs)
+      self.assertIn('instance_scores', outputs)
 
   @combinations.generate(
       combinations.combine(
@@ -122,12 +141,22 @@ class PanopticDeeplabNetworkTest(parameterized.TestCase, tf.test.TestCase):
         low_level=low_level,
         low_level_num_filters=(64, 32))
 
+    post_processor = panoptic_deeplab_merge.PostProcessor(
+        center_score_threshold=0.1,
+        thing_class_ids=[1, 2, 3, 4],
+        label_divisor=[256],
+        stuff_area_limit=4096,
+        ignore_label=0,
+        nms_kernel=41,
+        keep_k_centers=41)
+
     model = panoptic_deeplab_model.PanopticDeeplabModel(
         backbone=backbone,
         semantic_decoder=semantic_decoder,
         instance_decoder=instance_decoder,
         semantic_head=semantic_head,
-        instance_head=instance_head)
+        instance_head=instance_head,
+        post_processor=post_processor)
 
     config = model.get_config()
     new_model = panoptic_deeplab_model.PanopticDeeplabModel.from_config(config)

@@ -16,7 +16,7 @@
 from typing import Any, Mapping, Optional, Union
 
 import tensorflow as tf
-
+from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import panoptic_deeplab_merge
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class PanopticDeeplabModel(tf.keras.Model):
@@ -29,6 +29,7 @@ class PanopticDeeplabModel(tf.keras.Model):
       semantic_head: tf.keras.layers.Layer,
       instance_head: tf.keras.layers.Layer,
       instance_decoder: Optional[tf.keras.Model] = None,
+      post_processor: Optional[panoptic_deeplab_merge.PostProcessor] = None,
       **kwargs):
     """
     Args:
@@ -46,13 +47,15 @@ class PanopticDeeplabModel(tf.keras.Model):
         'semantic_decoder': semantic_decoder,
         'instance_decoder': instance_decoder,
         'semantic_head': semantic_head,
-        'instance_head': instance_head
+        'instance_head': instance_head,
+        'post_processor': post_processor
     }
     self.backbone = backbone
     self.semantic_decoder = semantic_decoder
     self.instance_decoder = instance_decoder
     self.semantic_head = semantic_head
     self.instance_head = instance_head
+    self.post_processor = post_processor
 
   def call(self, inputs: tf.Tensor, training: bool = None) -> tf.Tensor:
     if training is None:
@@ -83,6 +86,10 @@ class PanopticDeeplabModel(tf.keras.Model):
         'instance_center_regression': 
             instance_outputs['instance_center_regression'],
     }
+    if training:
+      return outputs
+
+    outputs = self.post_processor(outputs)
     return outputs
 
   @property

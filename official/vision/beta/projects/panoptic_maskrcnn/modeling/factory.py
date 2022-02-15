@@ -26,6 +26,7 @@ from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_de
 from official.vision.beta.projects.panoptic_maskrcnn.modeling.heads import panoptic_deeplab_heads
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_maskrcnn_model
 from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import panoptic_segmentation_generator
+from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import panoptic_deeplab_merge
 
 
 def build_panoptic_maskrcnn(
@@ -220,11 +221,22 @@ def build_panoptic_deeplab(
       norm_epsilon=norm_activation_config.norm_epsilon,
       kernel_regularizer=l2_regularizer)
 
+  post_processing_config = model_config.post_processor
+  post_processor = panoptic_deeplab_merge.PostProcessor(
+      center_score_threshold=post_processing_config.center_score_threshold,
+      thing_class_ids=post_processing_config.thing_class_ids,
+      label_divisor=post_processing_config.label_divisor,
+      stuff_area_limit=post_processing_config.stuff_area_limit,
+      ignore_label=post_processing_config.ignore_label,
+      nms_kernel=post_processing_config.nms_kernel,
+      keep_k_centers=post_processing_config.keep_k_centers)
+
   model = panoptic_deeplab_model.PanopticDeeplabModel(
       backbone=backbone, 
       semantic_decoder=semantic_decoder,
       instance_decoder=instance_decoder,
       semantic_head=semantic_head,
-      instance_head=instance_head)
+      instance_head=instance_head, 
+      post_processor=post_processor)
 
   return model
