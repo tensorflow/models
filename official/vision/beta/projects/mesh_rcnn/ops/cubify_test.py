@@ -19,18 +19,11 @@ from absl.testing import parameterized
 
 from official.vision.beta.projects.mesh_rcnn.ops.cubify import (
     cubify, generate_3d_coords, initialize_mesh)
+from official.vision.beta.projects.mesh_rcnn.ops.voxel_ops import create_voxels
 
 
 class CubifyTest(parameterized.TestCase, tf.test.TestCase):
-  def create_voxels(self, grid_dims, batch_size, occupancy_locs):
-    ones = tf.ones(shape=[len(occupancy_locs)])
-    voxels = tf.scatter_nd(
-        indices=tf.convert_to_tensor(occupancy_locs, tf.int32),
-        updates=ones,
-        shape=[batch_size, grid_dims, grid_dims, grid_dims])
-
-    return voxels
-
+  """Test for cubify."""
   @parameterized.named_parameters(
       {'testcase_name': 'unit_coord',
        'coord_dim': (1, 1, 1),
@@ -74,38 +67,16 @@ class CubifyTest(parameterized.TestCase, tf.test.TestCase):
             self.assertAllEqual(output[x, y, z], [x, y, z])
 
   @parameterized.named_parameters(
-      {'testcase_name': 'unit_mesh',
-       'grid_dim': 1},
       {'testcase_name': 'large_mesh',
        'grid_dim': 24}
   )
   def test_initialize_mesh(self, grid_dim):
-    verts, faces = initialize_mesh(grid_dim)
+    verts, faces = initialize_mesh(grid_dim, align='topleft')
 
     self.assertAllEqual(tf.shape(verts), [(grid_dim+1) ** 3, 3])
     self.assertAllEqual(tf.shape(faces), [12*(grid_dim) ** 3, 3])
 
   @parameterized.named_parameters(
-      {'testcase_name': 'unit_mesh',
-       'grid_dims': 1,
-       'batch_size': 1,
-       'occupancy_locs':
-           [
-               [0, 0, 0, 0] # coordinates given in (z, y, x)
-           ],
-       'expected_num_verts': [8],
-       'expected_num_faces': [12],
-      },
-      {'testcase_name': 'batched_unit_mesh',
-       'grid_dims': 1,
-       'batch_size': 2,
-       'occupancy_locs':
-           [
-               [0, 0, 0, 0],
-               [1, 0, 0, 0]
-           ],
-       'expected_num_verts': [8, 8],
-       'expected_num_faces': [12, 12]},
       {'testcase_name': 'batched_small_mesh',
        'grid_dims': 2,
        'batch_size': 2,
@@ -131,16 +102,13 @@ class CubifyTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_cubify(self, grid_dims, batch_size, occupancy_locs,
                   expected_num_faces, expected_num_verts):
-    voxels = self.create_voxels(grid_dims, batch_size, occupancy_locs)
-    verts, faces, verts_mask, faces_mask = cubify(voxels, 0.5)
+    voxels = create_voxels(grid_dims, batch_size, occupancy_locs)
+    verts, faces, verts_mask, faces_mask = cubify(voxels, 0.5, 'topleft')
 
     self.assertAllEqual(tf.shape(verts), [batch_size, (grid_dims+1)**3, 3])
     self.assertAllEqual(tf.shape(faces), [batch_size, (grid_dims**3)*12, 3])
     self.assertAllEqual(tf.shape(verts_mask), [batch_size, (grid_dims+1)**3])
     self.assertAllEqual(tf.shape(faces_mask), [batch_size, (grid_dims**3)*12])
-
-    self.assertAllLessEqual(verts, 1)
-    self.assertAllGreaterEqual(verts, -1)
 
     verts_mask_list = tf.unstack(verts_mask)
     faces_mask_list = tf.unstack(faces_mask)

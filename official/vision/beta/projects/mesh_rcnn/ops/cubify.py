@@ -43,6 +43,8 @@ UNIT_CUBOID_FACES = tf.constant(
         [0, 6, 4],  # front face: 4, 5
         [1, 5, 4],
         [1, 0, 4],  # up face: 6, 7
+        # [0, 5, 1],
+        # [0, 4, 5],  # up face: 6, 7
         [6, 7, 5],
         [6, 5, 4],  # right face: 8, 9
         [1, 7, 3],
@@ -52,7 +54,7 @@ NUM_FACES_PER_CUBOID = tf.shape(UNIT_CUBOID_FACES)[0]
 
 def generate_3d_coords(x_max: int, y_max: int, z_max: int,
                        flatten_output: bool = False) -> tf.Tensor:
-  """Generates a tensor that containing cartesian coordinates.
+  """Generates a tensor containing cartesian coordinates.
 
   This function has two modes. By default, the returned tensor has shape
   [x_max+1, y_max+1, z_max+1, 3], where last dimension contains the x, y, and z
@@ -84,7 +86,7 @@ def generate_3d_coords(x_max: int, y_max: int, z_max: int,
 
   return coords
 
-def initialize_mesh(grid_dims: int) -> Tuple[tf.Tensor, tf.Tensor]:
+def initialize_mesh(grid_dims: int, align: str) -> Tuple[tf.Tensor, tf.Tensor]:
   """Initializes the vertices and faces for a complete cuboid mesh.
 
   This function generates 2 rank 2 Tensors, one for vertices and another for
@@ -93,7 +95,9 @@ def initialize_mesh(grid_dims: int) -> Tuple[tf.Tensor, tf.Tensor]:
   vertices that define the face. Note that there may be duplicate faces.
 
   Args:
-    grid_dims: `int`, specifies the length, width, and depth of the mesh.
+    grid_dims: `int`, specifies the height, width, and depth of the mesh.
+    align: String, one of 'topleft', 'corner', or 'center' that defines the
+      alignment of the mesh vertices
 
   Returns:
     verts: `Tensor` of shape [num_verts, 3], where num_verts = (grid_dim+1)**3.
@@ -103,9 +107,16 @@ def initialize_mesh(grid_dims: int) -> Tuple[tf.Tensor, tf.Tensor]:
 
   # Generate the vertex locations
   coords = generate_3d_coords(grid_dims, grid_dims, grid_dims, True)
+  coords = tf.cast(coords, tf.float32)
 
-  # Normalize the verts so that they fall between -1 and 1
-  verts = coords * 2 / grid_dims - 1
+
+  # Apply alignment and normalize verts
+  if align == 'center':
+    coords -= 0.5
+
+  margin = 0.0 if align == 'corner' else 1.0
+
+  verts = coords * 2.0 / (tf.cast(grid_dims, tf.float32) - margin) - 1.0
 
   # Generate offsets for the unit cube verts for the grid
   offsets = generate_3d_coords(grid_dims-1, grid_dims-1, grid_dims-1)
@@ -134,7 +145,7 @@ def initialize_mesh(grid_dims: int) -> Tuple[tf.Tensor, tf.Tensor]:
                          cuboid_verts[:, 2])
 
   cuboid_verts_hashed = tf.reshape(cuboid_verts_hashed, shape=[-1, 1, 1])
-  mask = tf.equal(coords_hashed, cuboid_verts_hashed)
+  mask = tf.equal(coords_hashed, tf.cast(cuboid_verts_hashed, tf.float32))
   cuboid_verts = tf.where(mask)[:, -1]
 
   # cuboid_verts is a tensor with shape [num_cuboids, 8], where each entry
@@ -198,7 +209,7 @@ def generate_face_bounds(voxels: tf.Tensor, axis: int):
   # Prepare input for 3D convolution
   conv_input = tf.expand_dims(voxels, axis=-1)
 
-  # Generate the weights depending on the direction of interest
+  # Generate the weights depending on the axis of interest
   if axis == 3:
     kernel_shape = [1, 1, 2, 1, 1]
   elif axis == 2:
@@ -209,7 +220,7 @@ def generate_face_bounds(voxels: tf.Tensor, axis: int):
   kernel_weights = tf.constant(value=0.5, shape=kernel_shape)
 
   # Create the mask that finds shared faces
-  adj_mask = tf.nn.conv3d(conv_input, kernel_weights, [1, 1, 1, 1, 1], "VALID")
+  adj_mask = tf.nn.conv3d(conv_input, kernel_weights, [1, 1, 1, 1, 1], 'VALID')
 
   # Since the weights values are 0.5 and the voxels occupancy values are either
   # 0 or 1, any occupied voxel that has an adjacent occupied voxel will be
@@ -236,10 +247,10 @@ def generate_face_bounds(voxels: tf.Tensor, axis: int):
   # be zeroed out
   lower = tf.concat(
       [tf.ones(concat_shape),
-       1-adj_mask], axis=axis)
+       1-adj_mask], axis)
   upper = tf.concat(
       [1-adj_mask,
-       tf.ones(concat_shape)], axis=axis)
+       tf.ones(concat_shape)], axis)
 
   # Zero out any unoccupied voxels
   lower *= voxels
@@ -248,7 +259,8 @@ def generate_face_bounds(voxels: tf.Tensor, axis: int):
   return lower, upper
 
 def cubify(voxels: tf.Tensor,
-           thresh: float):
+           thresh: float,
+           align: str = 'topleft'):
   """Converts a voxel occupancy grid into a mesh.
 
   Args:
@@ -256,6 +268,8 @@ def cubify(voxels: tf.Tensor,
       prediction. D, H, and W must be equal.
     thresh: A `float` that specifies the threshold value of a valid occupied
       voxel.
+    align: String, one of 'topleft', 'corner', or 'center' that defines the
+      alignment of the mesh vertices
 
   Returns:
     verts: A `Tensor` of shape [B, num_verts, 3], where the last dimension
@@ -312,7 +326,7 @@ def cubify(voxels: tf.Tensor,
 
   grid_dim = depth
   # All verts and faces in the mesh
-  verts, faces = initialize_mesh(grid_dim)
+  verts, faces = initialize_mesh(grid_dim, align)
 
   # Batch the initial verts and faces
   verts = tf.expand_dims(verts, axis=0)

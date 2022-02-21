@@ -45,13 +45,13 @@ def compute_edges(faces: tf.Tensor, faces_mask: tf.Tensor):
   faces = faces[0, :]
 
   # Use the 3 vertices of each face to compute the edges
-  v0, v1, v2 = tf.split(faces, 3, axis=-1)
+  v0, v1, v2 = tf.split(faces, 3, -1)
 
-  e01 = tf.concat([v0, v1], axis=1)
-  e12 = tf.concat([v1, v2], axis=1)
-  e20 = tf.concat([v2, v0], axis=1)
+  e01 = tf.concat([v0, v1], 1)
+  e12 = tf.concat([v1, v2], 1)
+  e20 = tf.concat([v2, v0], 1)
 
-  edges = tf.concat([e12, e20, e01], axis=0)
+  edges = tf.concat([e12, e20, e01], 0)
 
   # Create an initial mask for the edges using faces_mask
   edges_mask = tf.repeat(faces_mask, 3, axis=1)
@@ -87,138 +87,117 @@ def compute_edges(faces: tf.Tensor, faces_mask: tf.Tensor):
 
   return edges, edges_mask
 
-def get_pixel_value(img, x, y):
-    """
-    Utility function to get pixel value for coordinate
-    vectors x and y from a  4D tensor image.
-    Input
-    -----
-    - img: tensor of shape (B, H, W, C)
-    - x: flattened tensor of shape (B*H*W,)
-    - y: flattened tensor of shape (B*H*W,)
-    Returns
-    -------
-    - output: tensor of shape (B, H, W, C)
-    """
-    shape = tf.shape(x)
+def vert_align(feature_map: tf.Tensor,
+               verts: tf.Tensor,
+               align_corners: bool = True,
+               padding_mode: str = 'border'):
+  """Samples features corresponding to mesh's coordinates.
+
+  Each vertex in verts is projected onto the image using its (x, y) coordinates.
+  For vertex, a feature is sampled from the feature map is then computed using
+  bilinear interpolation.
+
+  Args:
+    feature_map: A `Tensor` of shape [B, H, W, C] from which to sample features.
+    verts: A `Tensor` of shape [B, V, 3] where the last dimension corresponds
+    to the (x, y, z) coordinates of each vertex.
+    align_corners: A `bool` that determines whether the the vertex extrema
+      coordinates (-1 and 1) will correspond to the corners or centers of the
+      pixels. If set to True, the extrema will correspond to the corners.
+      Otherwise, they will be set to the centers.
+    padding_mode: A `string` that defines the behavior of the sampling for
+      vertices that are not within the range [-1, 1]. Can be one of 'zeros',
+      'border', or 'reflection'. Only 'border' mode is currently supported.
+
+  Returns:
+    verts_features: A `Tensor` of shape [B, V, C], that contains the sampled
+      features for each vertex.
+  """
+  def _get_pixel_value(img, x, y):
+    shape = tf.shape(img)
     batch_size = shape[0]
-    height = shape[1]
-    width = shape[2]
+    num_verts = tf.shape(x)[1]
 
-    batch_idx = tf.range(0, batch_size)
-    batch_idx = tf.reshape(batch_idx, (batch_size, 1, 1))
-    b = tf.tile(batch_idx, (1, height, width))
+    b = tf.range(0, batch_size)
+    batch_repeats = tf.repeat(num_verts, repeats=batch_size)
+    b = tf.repeat(b, repeats=batch_repeats)
+    b = tf.reshape(b, shape=[batch_size, num_verts])
 
-    indices = tf.stack([b, y, x], 3)
+    indices = tf.stack([b, y, x], axis=2)
 
     return tf.gather_nd(img, indices)
 
+  height = tf.shape(feature_map)[1]
+  width = tf.shape(feature_map)[2]
 
-def bilinear_sampler(img, grid, align_corners=False):
-    """
-    Performs bilinear sampling of the input images according to the
-    normalized coordinates provided by the sampling grid. Note that
-    the sampling is done identically for each channel of the input.
-    To test if the function works properly, output image should be
-    identical to input image when theta is initialized to identity
-    transform.
-    Input
-    -----
-    - img: batch of images in (B, H, W, C) layout.
-    - grid: x, y which is the output of affine_grid_generator.
-    Returns
-    -------
-    - out: interpolated images according to grids. Same size as grid.
-    """
-    H = tf.shape(img)[1]
-    W = tf.shape(img)[2]
-    max_y = tf.cast(H, 'int32')
-    max_x = tf.cast(W, 'int32')
-    zero = tf.zeros([], dtype='int32')
+  max_y = tf.cast(height - 1, dtype=tf.int32)
+  max_x = tf.cast(width - 1, dtype=tf.int32)
 
-    x = grid[:,0,:,:]
-    y = grid[:,1,:,:]
+  # Find coordinates that are outside of [-1, 1]
+  neg_out_of_range_mask = tf.cast(verts < -1.0, verts.dtype)
+  pos_out_of_range_mask = tf.cast(verts > 1.0, verts.dtype)
 
-    # rescale x and y to [0, W-1/H-1]
-    x = tf.cast(x, 'float32')
-    y = tf.cast(y, 'float32')
+  # For border padding, clip all out-of-range coordinates to border
+  # For example, the coordinate [1.4, -0.9, -2.1] becomes [1.0, -0.9, -1.0]
+  if padding_mode == 'border':
+    verts = tf.clip_by_value(verts, -1.0, 1.0)
 
-    if align_corners:
-      x = ((x + 1.0) / 2) * tf.cast(max_x-1, 'float32')
-      y = ((y + 1.0) / 2) * tf.cast(max_y-1, 'float32')
-    else:
-      x = ((x + 1.0) * tf.cast(max_x, 'float32') - 1.0) / 2.0
-      y = ((y + 1.0) * tf.cast(max_y, 'float32') - 1.0) / 2.0
+  x, y = verts[..., 0], verts[..., 1]
 
-    # grab 4 nearest corner points for each (x_i, y_i)
-    x0 = tf.cast(tf.floor(x), 'int32')
-    x1 = x0 + 1
-    y0 = tf.cast(tf.floor(y), 'int32')
-    y1 = y0 + 1
+  x = tf.cast(x, 'float32')
+  y = tf.cast(y, 'float32')
 
-    # calculate deltas
-    wa = (tf.cast(x1, 'float32')-x) * (tf.cast(y1, 'float32')-y)
-    wb = (tf.cast(x1, 'float32')-x) * (y-tf.cast(y0, 'float32'))
-    wc = (x-tf.cast(x0, 'float32')) * (tf.cast(y1, 'float32')-y)
-    wd = (x-tf.cast(x0, 'float32')) * (y-tf.cast(y0, 'float32'))
-
-    # add dimension for addition
-    wa = tf.expand_dims(wa, axis=3)
-    wb = tf.expand_dims(wb, axis=3)
-    wc = tf.expand_dims(wc, axis=3)
-    wd = tf.expand_dims(wd, axis=3)
-
-    # clip to range [0, H-1/W-1] to not violate img boundaries
-    
-    x0 = tf.clip_by_value(x0, zero, max_x - 1)
-    x1 = tf.clip_by_value(x1, zero, max_x - 1)
-    y0 = tf.clip_by_value(y0, zero, max_y - 1)
-    y1 = tf.clip_by_value(y1, zero, max_y - 1)
-    
-    # get pixel value at corner coords
-    Ia = get_pixel_value(img, x0, y0)
-    Ib = get_pixel_value(img, x0, y1)
-    Ic = get_pixel_value(img, x1, y0)
-    Id = get_pixel_value(img, x1, y1)
-
-    # recast as float for delta calculation
-    x0 = tf.cast(x0, 'float32')
-    x1 = tf.cast(x1, 'float32')
-    y0 = tf.cast(y0, 'float32')
-    y1 = tf.cast(y1, 'float32')
-
-
-    # compute output
-    out = tf.add_n([wa*Ia, wb*Ib, wc*Ic, wd*Id])
-
-    return out
-
-def vert_align(feats, verts, return_packed: bool = False, align_corners: bool = True):
-  if tf.is_tensor(verts):
-    if len(verts.shape) != 3:
-      raise ValueError("verts tensor should be 3 dimensional")
-    grid = verts
+  # Scale coordinates to feature_map dimensions
+  if align_corners:
+    x = ((x + 1.0) / 2) * tf.cast(max_x, dtype=tf.float32)
+    y = ((y + 1.0) / 2) * tf.cast(max_y, dtype=tf.float32)
   else:
-    raise ValueError(
-        "verts must be a tensor.")
+    x = ((x + 1.0) * tf.cast(max_x, dtype=tf.float32)) / 2.0
+    y = ((y + 1.0) * tf.cast(max_y, dtype=tf.float32)) / 2.0
 
-  grid = grid[:, None, :, :2]
+  # Grab 4 nearest points for each coordinate
+  x0 = tf.cast(tf.floor(x), dtype=tf.int32)
+  x1 = x0 + 1
+  y0 = tf.cast(tf.floor(y), dtype=tf.int32)
+  y1 = y0 + 1
 
-  if tf.is_tensor(feats):
-    feats = [feats]
-  for feat in feats:
-    if len(feat.shape) != 4:
-      raise ValueError("feats.shape (N, C, H, W)")
-    if grid.shape[0] != feat.shape[0]:
-      raise ValueError("inconsistent batch dimension")
+  x0 = tf.clip_by_value(x0, 0, max_x)
+  x1 = tf.clip_by_value(x1, 0, max_x)
+  y0 = tf.clip_by_value(y0, 0, max_y)
+  y1 = tf.clip_by_value(y1, 0, max_y)
 
-  feats_sampled = []
-  for feat in feats:
-    feat_sampled = tf.transpose(
-        bilinear_sampler(tf.transpose(feat, [0, 2, 3, 1]), tf.transpose(grid, [0, 3, 1, 2]), align_corners=align_corners)
-        ,[0, 3, 1, 2])
-    feat_sampled = tf.transpose(tf.squeeze(feat_sampled, axis = 2), [0,2,1])
-    feats_sampled.append(feat_sampled)
-  feats_sampled = tf.concat(feats_sampled, axis = 2)
+  # Get pixel value at corner coords
+  value_a = _get_pixel_value(feature_map, x0, y0)
+  value_b = _get_pixel_value(feature_map, x0, y1)
+  value_c = _get_pixel_value(feature_map, x1, y0)
+  value_d = _get_pixel_value(feature_map, x1, y1)
 
-  return feats_sampled
+  # Recast as float for delta calculation
+  x0 = tf.cast(x0, 'float32')
+  x1 = tf.cast(x1, 'float32')
+  y0 = tf.cast(y0, 'float32')
+  y1 = tf.cast(y1, 'float32')
+
+  # Calculate deltas
+  wa = (x1 - x) * (y1 - y)
+  wb = (x1 - x) * (y - y0)
+  wc = (x - x0) * (y1 - y)
+  wd = (x - x0) * (y - y0)
+
+  # add dimension for addition
+  wa = tf.expand_dims(wa, axis=2)
+  wb = tf.expand_dims(wb, axis=2)
+  wc = tf.expand_dims(wc, axis=2)
+  wd = tf.expand_dims(wd, axis=2)
+
+  verts_features = wa * value_a + wb * value_b + wc * value_c + wd * value_d
+
+  return verts_features
+
+def compute_mesh_shape(batch_size, grid_dims):
+  verts_shape = [batch_size, (grid_dims+1)**3, 3]
+  verts_mask_shape = [batch_size, (grid_dims+1)**3]
+  faces_shape = [batch_size, 12*((grid_dims)**3), 3]
+  faces_mask_shape = [batch_size, 12*((grid_dims)**3)]
+
+  return verts_shape, verts_mask_shape, faces_shape, faces_mask_shape
