@@ -1,7 +1,5 @@
 # Quantization Aware Training Project for Computer Vision Models
 
-[TOC]
-
 ⚠️ Disclaimer: All datasets hyperlinked from this page are not owned or
 distributed by Google. The dataset is made available by third parties.
 Please review the terms and conditions made available by the third parties
