@@ -15,6 +15,7 @@
 # ==============================================================================
 """Resnet50 Keras core benchmark."""
 
+import statistics
 import tempfile
 import time
 
@@ -100,7 +101,7 @@ class Resnet50KerasCoreBenchmark(perfzero_benchmark.PerfZeroBenchmark):
     wall_times = []
     for _ in range(num_trials):
       wall_times.append(_run_benchmark())
-    avg_wall_time = sum(wall_times) / float(len(wall_times))
+    avg_wall_time = statistics.mean(wall_times)
     self.report_benchmark(iters=-1, wall_time=avg_wall_time)
 
   def benchmark_1_gpu_max_3(self):
@@ -110,6 +111,14 @@ class Resnet50KerasCoreBenchmark(perfzero_benchmark.PerfZeroBenchmark):
       wall_times.append(_run_benchmark())
     max_wall_time = max(wall_times)
     self.report_benchmark(iters=-1, wall_time=max_wall_time)
+
+  def benchmark_1_gpu_med_3(self):
+    num_trials = 3
+    wall_times = []
+    for _ in range(num_trials):
+      wall_times.append(_run_benchmark())
+    med_wall_time = statistics.median(wall_times)
+    self.report_benchmark(iters=-1, wall_time=med_wall_time)
 
 if __name__ == "__main__":
   tf.test.main()
