@@ -1,4 +1,4 @@
-# MobileBERT-EdgeTPU-XS model.
+# MobileBERT-EdgeTPU-XXS model.
 task:
   model:
     encoder:
