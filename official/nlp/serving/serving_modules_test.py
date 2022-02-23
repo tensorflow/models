@@ -20,6 +20,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from sentencepiece import SentencePieceTrainer
+from official.core import export_base
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
 from official.nlp.serving import serving_modules
@@ -368,6 +369,19 @@ class ServingModulesTest(tf.test.TestCase, parameterized.TestCase):
     outputs = functions["serving_default"](tf.constant(["abcd", "ef gh"]))
     self.assertEqual(outputs.shape, (2,))
     self.assertEqual(outputs.dtype, tf.string)
+
+    tmp_dir = self.get_temp_dir()
+    export_base_dir = os.path.join(tmp_dir, "export")
+    ckpt_dir = os.path.join(tmp_dir, "ckpt")
+    ckpt_path = tf.train.Checkpoint(model=model).save(ckpt_dir)
+    export_dir = export_base.export(export_module,
+                                    {"serve_text": "serving_default"},
+                                    export_base_dir, ckpt_path)
+    loaded = tf.saved_model.load(export_dir)
+    infer = loaded.signatures["serving_default"]
+    out = infer(text=tf.constant(["abcd", "ef gh"]))
+    self.assertLen(out["output_0"], 2)
+
 
 if __name__ == "__main__":
   tf.test.main()
