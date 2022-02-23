@@ -68,8 +68,17 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
     if inference_step is not None:
       self.inference_step = functools.partial(inference_step, model=self.model)
     else:
-      self.inference_step = functools.partial(
-          self.model.__call__, training=False)
+      if issubclass(type(model), tf.keras.Model):
+        # Default to self.model.call instead of self.model.__call__ to avoid
+        # keras tracing logic designed for training.
+        # Since most of Model Garden's call doesn't not have training kwargs
+        # or the default is False, we don't pass anything here.
+        # Please pass custom inference step if your model has training=True as
+        # default.
+        self.inference_step = self.model.call
+      else:
+        self.inference_step = functools.partial(
+            self.model.__call__, training=False)
     self.preprocessor = preprocessor
     self.postprocessor = postprocessor
 
