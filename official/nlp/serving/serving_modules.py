@@ -417,6 +417,8 @@ class Translation(export_base.ExportModule):
   @dataclasses.dataclass
   class Params(base_config.Config):
     sentencepiece_model_path: str = ""
+    # Needs to be specified if padded_decode is True/on TPUs.
+    batch_size: Optional[int] = None
 
   def __init__(self, params, model: tf.keras.Model, inference_step=None):
     super().__init__(params, model, inference_step)
@@ -431,6 +433,7 @@ class Translation(export_base.ExportModule):
           "Please make sure the tokenizer generates a single token for an "
           "empty string.")
     self._eos_id = empty_str_tokenized.item()
+    self._batch_size = params.batch_size
 
   @tf.function
   def serve(self, inputs) -> Dict[str, tf.Tensor]:
@@ -452,5 +455,6 @@ class Translation(export_base.ExportModule):
                          (self.__class__, func_key, valid_keys))
       if func_key == "serve_text":
         signatures[signature_key] = self.serve_text.get_concrete_function(
-            tf.TensorSpec(shape=[None], dtype=tf.string, name="text"))
+            tf.TensorSpec(shape=[self._batch_size],
+                          dtype=tf.string, name="text"))
     return signatures
