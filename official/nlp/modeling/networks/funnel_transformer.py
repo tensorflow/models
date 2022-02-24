@@ -402,6 +402,11 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
             _transformer_cls2str.get(transformer_cls, str(transformer_cls))
     }
 
+    self.inputs = dict(
+        input_word_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
+        input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
+        input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32))
+
   def call(self, inputs):
     # inputs are [word_ids, mask, type_ids]
     if isinstance(inputs, (list, tuple)):
