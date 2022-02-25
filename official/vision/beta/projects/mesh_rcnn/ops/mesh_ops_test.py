@@ -22,7 +22,7 @@ from absl.testing import parameterized
 
 from official.vision.beta.projects.mesh_rcnn.ops.cubify import cubify
 from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import (
-    MeshSampler, compute_edges, vert_align, get_face_vertices)
+    MeshSampler, compute_edges, vert_align, get_verts_from_indices)
 from official.vision.beta.projects.mesh_rcnn.ops.voxel_ops import create_voxels
 
 
@@ -164,9 +164,8 @@ class MeshSamplerTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(sampled_faces_valid, mesh_is_valid)
 
     # Compute vectors on face of the mesh for asserts below.
-    num_faces = tf.shape(faces)[1]
-    v0, v1, v2 = get_face_vertices(
-        verts, verts_mask, faces, faces_mask, batch_size, num_faces
+    v0, v1, v2 = get_verts_from_indices(
+        verts, verts_mask, faces, faces_mask, num_inds_per_set=3
     )
     va = tf.gather_nd(v0, sampled_verts_ind)
     vb = tf.gather_nd(v1, sampled_verts_ind)
@@ -224,9 +223,8 @@ class MeshSamplerTest(parameterized.TestCase, tf.test.TestCase):
                         [batch_size, self._num_samples, 2])
 
     ## Verify normal vector is actually normal to the face.
-    num_faces = tf.shape(faces)[1]
-    v0, v1, _ = get_face_vertices(
-        verts, verts_mask, faces, faces_mask, batch_size, num_faces
+    v0, v1, _ = get_verts_from_indices(
+        verts, verts_mask, faces, faces_mask, num_inds_per_set=3
     )
     va = tf.gather_nd(v0, sampled_verts_ind)
     vb = tf.gather_nd(v1, sampled_verts_ind)

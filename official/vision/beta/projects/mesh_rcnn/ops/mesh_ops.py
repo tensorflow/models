@@ -21,7 +21,7 @@ Note: The following are used as shorthands for dimensions:
   Ns: Number of points to sample from mesh.
 """
 
-from typing import Tuple
+from typing import List, Tuple
 
 import tensorflow as tf
 
@@ -225,59 +225,69 @@ def compute_edges(faces: tf.Tensor, faces_mask: tf.Tensor) -> tf.Tensor:
 
   return edges, edges_mask
 
-def get_face_vertices(
+def get_verts_from_indices(
     verts: tf.Tensor,
     verts_mask: tf.Tensor,
-    faces: tf.Tensor,
-    faces_mask: tf.Tensor,
-    batch_size: int,
-    num_faces: int,
-) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-  """Extracts three `Tensors` corresponding to the vertices for each face.
+    indices: tf.Tensor,
+    indices_mask: tf.Tensor,
+    num_inds_per_set: int,
+) -> List[tf.Tensor]:
+  """Extracts `num_inds_per_set` `Tensors` representing a set of vertices.
+
+  The set of vertices are either mesh faces or edges given by `indices`.
 
   Args:
     verts: A float `Tensor` of shape [B, Nv, 3], where the last dimension
       contains all (x,y,z) vertex coordinates in the initial mesh.
     verts_mask: An int `Tensor` of shape [B, Nv] representing a mask for
       valid vertices in the watertight mesh.
-    faces: An int `Tensor` of shape [B, Nf, 3], where the last dimension
-      contains the verts indices that make up the face. This may include
-      duplicate faces.
-    faces_mask: An int `Tensor` of shape [B, Nf], representing a mask for
-      valid faces in the watertight mesh.
-    batch_size: `int`, specifies the number of batch elements.
-    num_faces: `int`, specifies the number of faces in each mesh.
+    indices: An int `Tensor` of shape [B, num_sets, num_inds_per_set] where
+      num_sets = Nf or (Nf * 3) and num_inds_per_set = 3 or 2 for faces or
+      edges respectively. For either case, the last dimension contains the
+      verts indices that make up the face/edge. This may include duplicate
+      faces/edges.
+    indices_mask: An int `Tensor` of shape [B, num_sets], representing a mask
+      for valid indices (verts that compose faces/edges) in the mesh.
+    num_inds_per_set: The size of the inner most dimension (e.g. axis=-1). This
+      is the number of indices in each set of indices that compose a face/edge
+      in the mesh.
 
   Returns:
-    v0, v1, v2: A tuple of three float `Tensor`s each of shape [B, Nf, 3]
-      holding the ith (0, 1, or 2) vertex for each face of the mesh.
+    indexed_verts: A list of two or three float `Tensor`s, each of shape
+      [B, num_sets, num_inds_per_set] where each element represents the ith
+      (0, 1(, or 2)) vertex for each face/edge of the mesh.
   """
-  # Zero out unused vertices and faces
-  masked_verts = verts * tf.cast(tf.expand_dims(verts_mask, -1), verts.dtype)
-  masked_faces = faces * tf.cast(tf.expand_dims(faces_mask, -1), faces.dtype)
+  shape = tf.shape(indices)
+  batch_size, num_sets = shape[0], shape[1]
 
-  # IntTensor[B, Nf, 1] where the single element in the rows for each batch is
-  # the batch idx.
+  # Zero out unused vertices and faces/edges
+  masked_verts = verts * tf.cast(tf.expand_dims(verts_mask, -1), verts.dtype)
+  masked_indices = indices * tf.cast(
+      tf.expand_dims(indices_mask, -1), indices.dtype
+  )
+
+  # IntTensor[B, num_sets, 1] where the single element in the rows for
+  # each batch is the batch idx.
   batch_ind = tf.repeat(
       tf.expand_dims(tf.expand_dims(tf.range(batch_size), axis=-1), axis=-1),
-      num_faces,
+      num_sets,
       axis=1,
   )
 
-  face_verts = [None] * COORD_DIM
-  for i in range(COORD_DIM):
-    # IntTensor[B, Nf, 1] where the single element in each row is the ith
-    # (0, 1, or 2) vertex index from `faces`.
-    faces_vert_ind = tf.transpose(
-        tf.expand_dims(masked_faces[:, :, i], axis=0), perm=[1, 2, 0]
+  indexed_verts = [None] * num_inds_per_set
+  for i in range(num_inds_per_set):
+    # IntTensor[B, num_sets, 1] where the single element in each row is the
+    # ith vertex index from `indices` (i.e. indices[:, :, i]).
+    vert_i_index = tf.transpose(
+        tf.expand_dims(masked_indices[:, :, i], axis=0), perm=[1, 2, 0]
     )
-    # IntTensor[B, Nf, 2]: Concatenated tensor used to index into `verts`.
-    vert_ind = tf.concat([batch_ind, faces_vert_ind], axis=-1)
-    # FloatTensor[B, Nf, 3]: The ith vertex for each face of the mesh.
-    face_verts[i] = tf.gather_nd(masked_verts, vert_ind)
+    # IntTensor[B, num_sets, 2]: Concatenated tensor used to index `verts`.
+    vert_ind = tf.concat([batch_ind, vert_i_index], axis=-1)
+    # FloatTensor[B, num_sets, num_inds_per_set]: The ith vertex for each
+    # face/edge of the mesh.
+    indexed_verts[i] = tf.gather_nd(masked_verts, vert_ind)
 
-  v0, v1, v2 = face_verts
-  return v0, v1, v2
+  return indexed_verts
 
 
 class MeshSampler():
@@ -322,11 +332,11 @@ class MeshSampler():
         of each row in each batch is the batch index and the second element is
         an index of a face in the mesh to sample from.
     """
-    batch_size = tf.shape(verts)[0]
-    num_faces = tf.shape(faces)[1]
+    shape = tf.shape(faces)
+    batch_size, num_faces, _ = shape[0], shape[1], shape[2]
 
-    v0, v1, v2 = get_face_vertices(
-        verts, verts_mask, faces, faces_mask, batch_size, num_faces
+    v0, v1, v2 = get_verts_from_indices(
+        verts, verts_mask, faces, faces_mask, num_inds_per_set=3
     )
     areas, face_normals = self._get_face_areas_and_normals(v0, v1, v2)
 
