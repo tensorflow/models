@@ -30,9 +30,11 @@ class LongformerEncoderConfig(encoders.BertEncoderConfig):
   Args:
     attention_window: list of ints representing the window size for each layer.
     global_attention_size: the size of global attention used for each token.
+    pad_token_id: the token id for the pad token
   '''
   attention_window: List[int] = dataclasses.field(default_factory=list)
   global_attention_size: int = 0
+  pad_token_id: int = 1
 
 @gin.configurable
 @base_config.bind(LongformerEncoderConfig)
