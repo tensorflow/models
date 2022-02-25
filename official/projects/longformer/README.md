@@ -15,9 +15,23 @@ tf model.
 The pk file can be generated from `utils/get_parameters_from_pretrained_pytorch_checkpoint.py`.
 There is also a `longformer_tokenizer_to_tfrecord.py` that transformers pytorch longformer tokenized data to tf_records.
 
-## Running
+## Steps to Fine-tune on MNLI
+#### Prepare the pre-trained checkpoint
+Option 1. Use our saved checkpoint of `allenai/longformer-base-4096` stored in cloud storage
 ```bash
-python utils/get_parameters_from_pretrained_pytorch_checkpoint.py
+gsutil cp gs://model-garden-ucsd-zihan/allenai.pk allenai_longformer-base-4096.pk
+```
+Option 2. Create it directly
+```bash
+python3 utils/get_parameters_from_pretrained_pytorch_checkpoint.py
+```
+#### [Optional] Prepare the input file
+```bash
+python3 longformer_tokenizer_to_tfrecord.py
+```
+#### Training
+Here, we use the training data of MNLI that were uploaded to the cloud storage, you can replace it with the input files you generated.
+```bash
 TRAIN_DATA=task.train_data.input_path=gs://model-garden-ucsd-zihan/longformer_allenai_mnli_train.tf_record,task.validation_data.input_path=gs://model-garden-ucsd-zihan/longformer_allenai_mnli_eval.tf_record
 PYTHONPATH=/path/to/model/garden \
     python3 train.py \
@@ -28,3 +42,4 @@ PYTHONPATH=/path/to/model/garden \
     --model_dir=/path/to/outputdir \
     --mode=train_and_eval 
 ```
+This should take an hour or two to run, and give a performance of ~86.
