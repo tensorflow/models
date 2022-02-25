@@ -21,6 +21,7 @@ import tensorflow as tf
 import tensorflow_model_optimization as tfmot
 from official.modeling import tf_utils
 from official.projects.qat.vision.quantization import configs
+from official.projects.qat.vision.quantization import helper
 from official.vision.beta.modeling.decoders import aspp
 from official.vision.beta.modeling.layers import nn_layers
 
@@ -61,7 +62,9 @@ def _quantize_wrapped_layer(cls, quantize_config):
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
-class SqueezeExcitationQuantized(tf.keras.layers.Layer):
+class SqueezeExcitationQuantized(
+    helper.LayerQuantizerHelper,
+    tf.keras.layers.Layer):
   """Creates a squeeze and excitation layer."""
 
   def __init__(self,
@@ -129,9 +132,8 @@ class SqueezeExcitationQuantized(tf.keras.layers.Layer):
       # Convert hard_sigmoid activation to quantizable keras layers so each op
       # can be properly quantized.
       # Formula is hard_sigmoid(x) = relu6(x + 3) * 0.16667.
-      self._add = tfmot.quantization.keras.QuantizeWrapperV2(
-          tf.keras.layers.Add(), configs.Default8BitQuantizeConfig([], [],
-                                                                   True))
+      self._add_quantizer('add_three')
+      self._add_quantizer('divide_six')
       self._relu6 = tfmot.quantization.keras.QuantizeWrapperV2(
           tf_utils.get_activation('relu6', use_keras_layer=True),
           configs.Default8BitActivationQuantizeConfig())
@@ -141,11 +143,12 @@ class SqueezeExcitationQuantized(tf.keras.layers.Layer):
               self._gating_activation, use_keras_layer=True),
           configs.Default8BitActivationQuantizeConfig())
 
-  def _apply_gating_activation_layer(self, x: tf.Tensor) -> tf.Tensor:
+  def _apply_gating_activation_layer(
+      self, x: tf.Tensor, training: bool) -> tf.Tensor:
     if self._gating_activation == 'hard_sigmoid':
-      x = self._add([x, 3.0 * tf.ones_like(x)])
+      x = self._apply_quantizer('add_three', x + 3.0, training)
       x = self._relu6(x)
-      x = self._multiply([x, 0.16667 * tf.ones_like(x)])
+      x = self._apply_quantizer('divide_six', x * 1.6667, training)
     else:
       x = self._gating_activation_layer(x)
     return x
@@ -200,6 +203,7 @@ class SqueezeExcitationQuantized(tf.keras.layers.Layer):
         configs.Default8BitActivationQuantizeConfig())
     self._create_gating_activation_layer()
 
+    self._build_quantizer_vars()
     super().build(input_shape)
 
   def get_config(self):
@@ -224,7 +228,7 @@ class SqueezeExcitationQuantized(tf.keras.layers.Layer):
     x = self._reduce_mean_quantizer(
         x, training, self._reduce_mean_quantizer_vars)
     x = self._activation_layer(self._se_reduce(x))
-    x = self._apply_gating_activation_layer(self._se_expand(x))
+    x = self._apply_gating_activation_layer(self._se_expand(x), training)
     x = self._multiply([x, inputs])
     return x
 

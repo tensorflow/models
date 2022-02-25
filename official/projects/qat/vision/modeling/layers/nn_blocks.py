@@ -435,7 +435,7 @@ class Conv2DBNBlockQuantized(tf.keras.layers.Layer):
     conv2d_quantized = _quantize_wrapped_layer(
         tf.keras.layers.Conv2D,
         configs.Default8BitConvQuantizeConfig(
-            ['kernel'], ['activation'], False))
+            ['kernel'], ['activation'], not self._use_normalization))
     self._conv0 = conv2d_quantized(
         filters=self._filters,
         kernel_size=self._kernel_size,
