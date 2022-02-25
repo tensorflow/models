@@ -33,6 +33,8 @@ LayerPattern = tfmot.quantization.keras.graph_transformations.transforms.LayerPa
 _QUANTIZATION_WEIGHT_NAMES = [
     'output_max', 'output_min', 'optimizer_step',
     'kernel_min', 'kernel_max',
+    'add_three_min', 'add_three_max',
+    'divide_six_min', 'divide_six_max',
     'depthwise_kernel_min', 'depthwise_kernel_max',
     'reduce_mean_quantizer_vars_min', 'reduce_mean_quantizer_vars_max']
 
