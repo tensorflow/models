@@ -24,25 +24,8 @@ import tensorflow as tf
 
 from official.nlp.modeling import layers
 from official.projects.longformer.longformer_encoder_block import LongformerEncoderBlock
+from official.modeling.tf_utils import get_shape_list
 
-def shape_list(tensor: tf.Tensor) -> List[int]:
-  """
-  Deal with dynamic shape in tensorflow cleanly.
-
-  Args:
-      tensor (:obj:`tf.Tensor`): The tensor we want the shape of.
-
-  Returns:
-      :obj:`List[int]`: The shape of the tensor as a list.
-  """
-  dynamic = tf.shape(tensor)
-
-  if tensor.shape == tf.TensorShape(None):
-    return dynamic
-
-  static = tensor.shape.as_list()
-
-  return [dynamic[i] if s is None else s for i, s in enumerate(static)]
 
 
 _Initializer = Union[str, tf.keras.initializers.Initializer]
@@ -262,7 +245,7 @@ class LongformerEncoder(tf.keras.layers.Layer):
     if self._embedding_projection is not None:
       embeddings = self._embedding_projection(embeddings)
 
-    batch_size, seq_len = shape_list(mask)
+    batch_size, seq_len = get_shape_list(mask)
     # create masks with fixed len global_attention_size
     mask = tf.transpose(tf.concat(values=[tf.ones((self._global_attention_size, batch_size), tf.int32) * 2,
                                           tf.transpose(mask)[self._global_attention_size:]], axis=0))
@@ -353,7 +336,7 @@ class LongformerEncoder(tf.keras.layers.Layer):
 
     assert attention_window % 2 == 0, f"`attention_window` should be an even value. Given {attention_window}"
 
-    input_shape = shape_list(word_ids) if word_ids is not None else shape_list(word_embeddings)
+    input_shape = get_shape_list(word_ids) if word_ids is not None else get_shape_list(word_embeddings)
     batch_size, seq_len = input_shape[:2]
     
     if seq_len is not None:

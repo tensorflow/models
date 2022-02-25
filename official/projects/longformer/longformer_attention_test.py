@@ -20,6 +20,7 @@ import tensorflow as tf
 from tensorflow.python.distribute import combinations
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.projects.longformer import longformer_attention
+from official.modeling.tf_utils import get_shape_list
 
 
 def _create_mock_attention_data(
@@ -117,13 +118,13 @@ class LongformerAttentionTest(keras_parameterized.TestCase):
     hidden_states = self._get_hidden_states()
     hidden_states = tf.reshape(hidden_states, (1, 8, 4))  # set seq length = 8, hidden dim = 4
     chunked_hidden_states = longformer_attention.LongformerAttention._chunk(hidden_states, window_overlap=2)
-    window_overlap_size = longformer_attention.shape_list(chunked_hidden_states)[2]
+    window_overlap_size = get_shape_list(chunked_hidden_states)[2]
     self.assertTrue(window_overlap_size == 4)
 
     padded_hidden_states = longformer_attention.LongformerAttention._pad_and_diagonalize(chunked_hidden_states)
 
     self.assertTrue(
-        longformer_attention.shape_list(padded_hidden_states)[-1] == longformer_attention.shape_list(chunked_hidden_states)[-1] + window_overlap_size - 1
+        get_shape_list(padded_hidden_states)[-1] == get_shape_list(chunked_hidden_states)[-1] + window_overlap_size - 1
     )
 
     # first row => [0.4983,  2.6918, -0.0071,  1.0492, 0.0000,  0.0000,  0.0000]
@@ -138,14 +139,14 @@ class LongformerAttentionTest(keras_parameterized.TestCase):
 
   def test_pad_and_transpose_last_two_dims(self):
     hidden_states = self._get_hidden_states()
-    self.assertTrue(longformer_attention.shape_list(hidden_states), [1, 8, 4])
+    self.assertTrue(get_shape_list(hidden_states), [1, 8, 4])
 
     # pad along seq length dim
     paddings = tf.constant([[0, 0], [0, 0], [0, 1], [0, 0]], dtype=tf.dtypes.int32)
 
     hidden_states = longformer_attention.LongformerAttention._chunk(hidden_states, window_overlap=2)
     padded_hidden_states = longformer_attention.LongformerAttention._pad_and_transpose_last_two_dims(hidden_states, paddings)
-    self.assertTrue(longformer_attention.shape_list(padded_hidden_states) == [1, 1, 8, 5])
+    self.assertTrue(get_shape_list(padded_hidden_states) == [1, 1, 8, 5])
 
     expected_added_dim = tf.zeros((5,), dtype=tf.dtypes.float32)
     tf.debugging.assert_near(expected_added_dim, padded_hidden_states[0, 0, -1, :], rtol=1e-6)
@@ -184,7 +185,7 @@ class LongformerAttentionTest(keras_parameterized.TestCase):
     expected_slice_along_seq_length = tf.convert_to_tensor([0.4983, -0.7584, -1.6944], dtype=tf.dtypes.float32)
     expected_slice_along_chunk = tf.convert_to_tensor([0.4983, -1.8348, -0.7584, 2.0514], dtype=tf.dtypes.float32)
 
-    self.assertTrue(longformer_attention.shape_list(chunked_hidden_states) == [1, 3, 4, 4])
+    self.assertTrue(get_shape_list(chunked_hidden_states) == [1, 3, 4, 4])
     tf.debugging.assert_near(chunked_hidden_states[0, :, 0, 0], expected_slice_along_seq_length, rtol=1e-3)
     tf.debugging.assert_near(chunked_hidden_states[0, 0, :, 0], expected_slice_along_chunk, rtol=1e-3)
 
