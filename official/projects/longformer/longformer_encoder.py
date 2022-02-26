@@ -106,19 +106,6 @@ class LongformerEncoder(tf.keras.layers.Layer):
       embedding_layer: Optional[tf.keras.layers.Layer] = None,
       norm_first: bool = False,
       **kwargs):
-    # Pops kwargs that are used in V1 implementation.
-    if 'dict_outputs' in kwargs:
-      kwargs.pop('dict_outputs')
-    if 'return_all_encoder_outputs' in kwargs:
-      kwargs.pop('return_all_encoder_outputs')
-    if 'intermediate_size' in kwargs:
-      inner_dim = kwargs.pop('intermediate_size')
-    if 'activation' in kwargs:
-      inner_activation = kwargs.pop('activation')
-    if 'dropout_rate' in kwargs:
-      output_dropout = kwargs.pop('dropout_rate')
-    if 'attention_dropout_rate' in kwargs:
-      attention_dropout = kwargs.pop('attention_dropout_rate')
     super().__init__(**kwargs)
     # Longformer args
     self._attention_window = attention_window
