@@ -25,7 +25,7 @@ from official.nlp.tasks import masked_lm
 from official.nlp.data import sentence_prediction_dataloader
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
-import official.projects.longformer.sentence_prediction_with_load as sentence_prediction
+import official.projects.longformer.sentence_prediction_with_checkpoint_convert as sentence_prediction
 
 from official.projects.longformer.longformer import LongformerEncoderConfig
 
