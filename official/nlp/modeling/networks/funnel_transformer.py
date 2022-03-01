@@ -226,6 +226,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       funnel encoder relies on.
     share_rezero: bool. Whether to share ReZero alpha between the attention
       layer and the ffn layer. This option is specific to ReZero.
+    with_dense_inputs: Whether to accept dense embeddings as the input.
   """
 
   def __init__(
@@ -413,6 +414,11 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       logging.warning('List inputs to  %s are discouraged.', self.__class__)
       if len(inputs) == 3:
         word_ids, mask, type_ids = inputs
+        dense_inputs = None
+        dense_mask = None
+        dense_type_ids = None
+      elif len(inputs) == 6:
+        word_ids, mask, type_ids, dense_inputs, dense_mask, dense_type_ids = inputs
       else:
         raise ValueError('Unexpected inputs to %s with length at %d.' %
                          (self.__class__, len(inputs)))
@@ -420,10 +426,21 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       word_ids = inputs.get('input_word_ids')
       mask = inputs.get('input_mask')
       type_ids = inputs.get('input_type_ids')
+
+      dense_inputs = inputs.get('dense_inputs', None)
+      dense_mask = inputs.get('dense_mask', None)
+      dense_type_ids = inputs.get('dense_type_ids', None)
     else:
       raise ValueError('Unexpected inputs type to %s.' % self.__class__)
 
     word_embeddings = self._embedding_layer(word_ids)
+
+    if dense_inputs is not None:
+      # Concat the dense embeddings at sequence begin so unpool_len can control
+      # embedding not being pooled.
+      word_embeddings = tf.concat([dense_inputs, word_embeddings], axis=1)
+      type_ids = tf.concat([dense_type_ids, type_ids], axis=1)
+      mask = tf.concat([dense_mask, mask], axis=1)
     # absolute position embeddings
     position_embeddings = self._position_embedding_layer(word_embeddings)
     type_embeddings = self._type_embedding_layer(type_ids)
