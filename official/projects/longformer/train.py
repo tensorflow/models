@@ -24,7 +24,6 @@ from official.core import task_factory
 from official.core import train_lib
 from official.core import train_utils
 from official.modeling import performance
-from official.projects.longformer import longformer_experiments
 
 FLAGS = flags.FLAGS
 
@@ -43,23 +42,24 @@ def main(_):
   # GPUs, and bfloat16 in the case of TPUs. loss_scale takes effect only when
   # dtype is float16
   if params.runtime.mixed_precision_dtype:
-    performance.set_mixed_precision_policy(params.runtime.mixed_precision_dtype)
+    performance.set_mixed_precision_policy(
+      params.runtime.mixed_precision_dtype)
   distribution_strategy = distribute_utils.get_distribution_strategy(
-      distribution_strategy=params.runtime.distribution_strategy,
-      all_reduce_alg=params.runtime.all_reduce_alg,
-      num_gpus=params.runtime.num_gpus,
-      tpu_address=params.runtime.tpu,
-      **params.runtime.model_parallelism())
+    distribution_strategy=params.runtime.distribution_strategy,
+    all_reduce_alg=params.runtime.all_reduce_alg,
+    num_gpus=params.runtime.num_gpus,
+    tpu_address=params.runtime.tpu,
+    **params.runtime.model_parallelism())
 
   with distribution_strategy.scope():
     task = task_factory.get_task(params.task, logging_dir=model_dir)
 
   train_lib.run_experiment(
-      distribution_strategy=distribution_strategy,
-      task=task,
-      mode=FLAGS.mode,
-      params=params,
-      model_dir=model_dir)
+    distribution_strategy=distribution_strategy,
+    task=task,
+    mode=FLAGS.mode,
+    params=params,
+    model_dir=model_dir)
 
   train_utils.save_gin_config(FLAGS.mode, model_dir)
 

@@ -18,26 +18,19 @@ Longformer attention block. Modified From huggingface/transformers
 
 # pylint: disable=g-classes-have-attributes
 
-import collections
 import math
 import string
 
 import tensorflow as tf
 
 import numpy as np
-from keras import constraints
-from keras import initializers
-from keras import regularizers
-from keras.engine.base_layer import Layer
 from keras.layers import core
 from keras.layers import einsum_dense
 from keras.utils import tf_utils
-from tensorflow.python.platform import tf_logging as logging
-from tensorflow.python.util.tf_export import keras_export
 from official.modeling.tf_utils import get_shape_list
-from typing import Dict, List, Optional, Union
 
 _CHR_IDX = string.ascii_lowercase
+
 
 def _build_attention_equation(rank, attn_axes):
   """Builds einsum equations for the attention computation.
@@ -64,7 +57,7 @@ def _build_attention_equation(rank, attn_axes):
   # `batch_dims` includes the head dim.
   batch_dims = tuple(np.delete(range(rank), attn_axes + (rank - 1,)))
   letter_offset = rank
-  source_notation = ""
+  source_notation = ''
   for i in range(rank):
     if i in batch_dims or i == rank - 1:
       source_notation += target_notation[i]
@@ -72,23 +65,21 @@ def _build_attention_equation(rank, attn_axes):
       source_notation += _CHR_IDX[letter_offset]
       letter_offset += 1
 
-  product_notation = "".join([target_notation[i] for i in batch_dims] +
+  product_notation = ''.join([target_notation[i] for i in batch_dims] +
                              [target_notation[i] for i in attn_axes] +
                              [source_notation[i] for i in attn_axes])
-  dot_product_equation = "%s,%s->%s" % (source_notation, target_notation,
-                                        product_notation)
+  dot_product_equation = f'{source_notation},{target_notation}->{product_notation}'
   attn_scores_rank = len(product_notation)
-  combine_equation = "%s,%s->%s" % (product_notation, source_notation,
-                                    target_notation)
+  combine_equation = f'{product_notation},{source_notation}->{target_notation}'
   return dot_product_equation, combine_equation, attn_scores_rank
 
 
 def _build_proj_equation(free_dims, bound_dims, output_dims):
   """Builds an einsum equation for projections inside multi-head attention."""
-  input_str = ""
-  kernel_str = ""
-  output_str = ""
-  bias_axes = ""
+  input_str = ''
+  kernel_str = ''
+  output_str = ''
+  bias_axes = ''
   letter_offset = 0
   for i in range(free_dims):
     char = _CHR_IDX[i + letter_offset]
@@ -107,7 +98,7 @@ def _build_proj_equation(free_dims, bound_dims, output_dims):
     kernel_str += char
     output_str += char
     bias_axes += char
-  equation = "%s,%s->%s" % (input_str, kernel_str, output_str)
+  equation = f'{input_str},{kernel_str}->{output_str}'
 
   return equation, bias_axes, len(output_str)
 
@@ -115,8 +106,17 @@ def _build_proj_equation(free_dims, bound_dims, output_dims):
 def _get_output_shape(output_rank, known_last_dims):
   return [None] * (output_rank - len(known_last_dims)) + list(known_last_dims)
 
+
 @tf.keras.utils.register_keras_serializable(package="Text")
 class LongformerAttention(tf.keras.layers.MultiHeadAttention):
+  """LongformerAttention
+
+    Args:
+      attention_window: int representing the window size for attention.
+      layer_id: int of the id of the layer.
+      global_attention_size: the size of global attention used for each token.
+  """
+
   def __init__(self,
                attention_window,
                layer_id,
@@ -124,14 +124,16 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
                **kwargs):
     super().__init__(**kwargs)
     self._layer_id = layer_id
-    _attention_window = attention_window
+    self._attention_window = attention_window
     assert (
-            _attention_window % 2 == 0
-    ), f"`attention_window` for layer {self._layer_id} has to be an even value. Given {attention_window}"
+            self._attention_window % 2 == 0
+    ), f"`attention_window` for layer {self._layer_id} has to be an even " \
+       f"value. Given {self.attention_window}"
     assert (
-            _attention_window > 0
-    ), f"`attention_window` for layer {self._layer_id} has to be positive. Given {attention_window}"
-    self._one_sided_attn_window_size = _attention_window // 2
+            self._attention_window > 0
+    ), f"`attention_window` for layer {self._layer_id} has to be positive. " \
+       f"Given {self.attention_window}"
+    self._one_sided_attn_window_size = self._attention_window // 2
     self.global_attention_size = global_attention_size
 
   def _build_from_signature(self, query, value, key=None):
@@ -228,16 +230,15 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
       # self._output_dense = self._make_output_dense(
       #   free_dims, common_kwargs, "attention_output")
       self._output_dense = tf.keras.layers.Dense(
-          units=self._num_heads * self._key_dim, name="dense",
-          **common_kwargs
-        )
+        units=self._num_heads * self._key_dim, name="dense",
+        **common_kwargs
+      )
 
   def call(self,
            hidden_states,
            attention_mask=None,
            is_index_masked=None,
            is_index_global_attn=None,
-           is_global_attn=None,
            training=None):
     """Applies Dot-product attention with query, key, value tensors.
     This function defines the computation inside `call` with projected
@@ -256,7 +257,8 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
       attention_scores: Multi-headed attention weights.
     """
     if not self._built_from_signature:
-      self._build_from_signature(query=hidden_states, value=hidden_states, key=hidden_states)
+      self._build_from_signature(query=hidden_states, value=hidden_states,
+                                 key=hidden_states)
 
     #   N = `num_attention_heads`
     #   H = `size_per_head`
@@ -272,7 +274,7 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     # Note: Applying scalar multiply at the smaller end of einsum improves
     # XLA performance, but may introduce slight numeric differences in
     # the Transformer attention head.
-    query = tf.multiply(query, 1.0 / math.sqrt(float(self._key_dim))) # (B, T, N, key_dim)
+    query = tf.multiply(query, 1.0 / math.sqrt(float(self._key_dim)))
     batch_size, seq_len, num_heads, head_dim = get_shape_list(query)
 
     # attn_probs = (batch_size, seq_len, num_heads, window*2+1)
@@ -293,8 +295,12 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     if tf.executing_eagerly():
       tf.debugging.assert_equal(
         get_shape_list(attn_scores),
-        [batch_size, seq_len, self._num_heads, self._one_sided_attn_window_size * 2 + 1],
-        message=f"attn_probs should be of size ({batch_size}, {seq_len}, {num_heads}, {self._one_sided_attn_window_size * 2 + 1}), but is of size {get_shape_list(attn_scores)}",
+        [batch_size, seq_len, self._num_heads,
+         self._one_sided_attn_window_size * 2 + 1],
+        message=f"attn_probs should be of size "
+                f"({batch_size}, {seq_len}, {num_heads}, "
+                f"{self._one_sided_attn_window_size * 2 + 1}),"
+                f" but is of size {get_shape_list(attn_scores)}",
       )
 
     # compute global attn indices required through out forward fn
@@ -303,7 +309,8 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
       is_index_global_attn_nonzero,
       is_local_index_global_attn_nonzero,
       is_local_index_no_global_attn_nonzero,
-    ) = self._get_global_attn_indices(is_index_global_attn, self.global_attention_size)
+    ) = self._get_global_attn_indices(is_index_global_attn,
+                                      self.global_attention_size)
     # this function is only relevant for global attention
     if self.global_attention_size > 0:
       attn_scores = self._concat_with_global_key_attn_probs(
@@ -320,14 +327,18 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
 
     attn_probs = tf.nn.softmax(attn_scores, axis=-1)
 
-    # softmax sometimes inserts NaN if all positions are masked, replace them with 0
+    # softmax sometimes inserts NaN if all positions are masked,
+    # replace them with 0
     # Make sure to create a mask with the proper shape:
-    # if is_global_attn==True => [batch_size, seq_len, self.num_heads, self.one_sided_attn_window_size * 2 + max_num_global_attn_indices + 1]
-    # if is_global_attn==False => [batch_size, seq_len, self.num_heads, self.one_sided_attn_window_size * 2 + 1]
+    # if is_global_attn==True => [batch_size, seq_len, self.num_heads,
+    # self.one_sided_attn_window_size * 2 + max_num_global_attn_indices + 1]
+    # if is_global_attn==False => [batch_size, seq_len, self.num_heads,
+    # self.one_sided_attn_window_size * 2 + 1]
     if self.global_attention_size > 0:
       masked_index = tf.tile(
         is_index_masked[:, :, None, None],
-        (1, 1, self._num_heads, self._one_sided_attn_window_size * 2 + max_num_global_attn_indices + 1),
+        (1, 1, self._num_heads,
+         self._one_sided_attn_window_size * 2 + max_num_global_attn_indices + 1),
       )
     else:
       masked_index = tf.tile(
@@ -347,14 +358,17 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
         tf.debugging.assert_equal(
           get_shape_list(layer_head_mask),
           [self._num_heads],
-          message=f"Head mask for a single layer should be of size {(self._num_heads)}, but is {get_shape_list(layer_head_mask)}",
+          message=f"Head mask for a single layer should be of size "
+                  f"{(self._num_heads)}, but is "
+                  f"{get_shape_list(layer_head_mask)}",
         )
 
       attn_probs = tf.reshape(layer_head_mask, (1, 1, -1, 1)) * attn_probs
 
     # apply dropout
     attn_probs = self._dropout_layer(attn_probs, training=training)
-    value_vectors = tf.reshape(value, (batch_size, seq_len, self._num_heads, self._key_dim))  # TODO: _key_dim == _value_dim
+    value_vectors = tf.reshape(value, (batch_size, seq_len, self._num_heads,
+                                       self._key_dim))
 
     # if global attention, compute sum of global and local attn
     if self.global_attention_size > 0:
@@ -377,33 +391,35 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
         message="Unexpected size",
       )
 
-    attn_output = tf.reshape(attn_output, (batch_size, seq_len, self._num_heads * self._key_dim))  # FIXME
+    attn_output = tf.reshape(attn_output, (
+      batch_size, seq_len, self._num_heads * self._key_dim))  # FIXME
 
     # compute value for global attention and overwrite to attention output
     # TODO: remove the redundant computation
     if self.global_attention_size > 0:
-      attn_output, global_attn_probs = self._compute_global_attn_output_from_hidden(
-        attn_output=attn_output,
-        hidden_states=hidden_states,
-        max_num_global_attn_indices=max_num_global_attn_indices,
-        layer_head_mask=layer_head_mask,
-        is_local_index_global_attn_nonzero=is_local_index_global_attn_nonzero,
-        is_index_global_attn_nonzero=is_index_global_attn_nonzero,
-        is_local_index_no_global_attn_nonzero=is_local_index_no_global_attn_nonzero,
-        is_index_masked=is_index_masked,
-        training=training,
-      )
+      attn_output, global_attn_probs = \
+        self._compute_global_attn_output_from_hidden(
+          attn_output=attn_output,
+          hidden_states=hidden_states,
+          max_num_global_attn_indices=max_num_global_attn_indices,
+          layer_head_mask=layer_head_mask,
+          is_local_index_global_attn_nonzero=is_local_index_global_attn_nonzero,
+          is_index_global_attn_nonzero=is_index_global_attn_nonzero,
+          is_local_index_no_global_attn_nonzero=is_local_index_no_global_attn_nonzero,
+          is_index_masked=is_index_masked,
+          training=training,
+        )
     else:
-      global_attn_probs = tf.zeros((batch_size, self._num_heads, max_num_global_attn_indices, seq_len))
+      global_attn_probs = tf.zeros(
+        (batch_size, self._num_heads, max_num_global_attn_indices, seq_len))
 
-    # make sure that local attention probabilities are set to 0 for indices of global attn
-    # Make sure to create a mask with the proper shape:
-    # if is_global_attn==True => [batch_size, seq_len, self.num_heads, self.one_sided_attn_window_size * 2 + max_num_global_attn_indices + 1]
-    # if is_global_attn==False => [batch_size, seq_len, self.num_heads, self.one_sided_attn_window_size * 2 + 1]
+    # make sure that local attention probabilities are set to 0 for indices of
+    # global attn
     if self.global_attention_size > 0:
       masked_global_attn_index = tf.tile(
         is_index_global_attn[:, :, None, None],
-        (1, 1, self._num_heads, self._one_sided_attn_window_size * 2 + max_num_global_attn_indices + 1),
+        (1, 1, self._num_heads,
+         self._one_sided_attn_window_size * 2 + max_num_global_attn_indices + 1),
       )
     else:
       masked_global_attn_index = tf.tile(
@@ -413,28 +429,30 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
 
     attn_probs = tf.where(
       masked_global_attn_index,
-      tf.zeros(get_shape_list(masked_global_attn_index), dtype=attn_probs.dtype),
+      tf.zeros(get_shape_list(masked_global_attn_index),
+               dtype=attn_probs.dtype),
       attn_probs,
     )
 
     # we can return extra information here
-    attention_output = attn_output # (attn_output, attn_probs, global_attn_probs)
+    attention_output = attn_output  # (attn_output, attn_probs, global_attn_probs)
 
     return attention_output
 
   def get_config(self):
     config = {
-        "layer_id": self._layer_id,
-        "attention_window": self._one_sided_attn_window_size,
+      "layer_id": self._layer_id,
+      "attention_window": self._one_sided_attn_window_size,
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def _sliding_chunks_query_key_matmul(self, query, key, window_overlap):
     """
-    Matrix multiplication of query and key tensors using with a sliding window attention pattern. This
-    implementation splits the input into overlapping chunks of size 2w (e.g. 512 for pretrained Longformer) with an
-    overlap of size window_overlap
+    Matrix multiplication of query and key tensors using with a sliding window
+    attention pattern. This implementation splits the input into overlapping
+    chunks of size 2w (e.g. 512 for pretrained Longformer) with an overlap of
+    size window_overlap
     """
     batch_size, seq_len, num_heads, head_dim = get_shape_list(query)
 
@@ -442,22 +460,26 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
       tf.debugging.assert_equal(
         seq_len % (window_overlap * 2),
         0,
-        message=f"Sequence length should be multiple of {window_overlap * 2}. Given {seq_len}",
+        message=f"Sequence length should be multiple of {window_overlap * 2}. "
+                f"Given {seq_len}",
       )
       tf.debugging.assert_equal(
         get_shape_list(query),
         get_shape_list(key),
-        message=f"Shape of query and key should be equal, but got query: {get_shape_list(query)} and key: {get_shape_list(key)}",
+        message=f"Shape of query and key should be equal, but got query: "
+                f"{get_shape_list(query)} and key: {get_shape_list(key)}",
       )
 
     chunks_count = seq_len // window_overlap - 1
 
-    # group batch_size and num_heads dimensions into one, then chunk seq_len into chunks of size window_overlap * 2
+    # group batch_size and num_heads dimensions into one,
+    # then chunk seq_len into chunks of size window_overlap * 2
     query = tf.reshape(
       tf.transpose(query, (0, 2, 1, 3)),
       (batch_size * num_heads, seq_len, head_dim),
     )
-    key = tf.reshape(tf.transpose(key, (0, 2, 1, 3)), (batch_size * num_heads, seq_len, head_dim))
+    key = tf.reshape(tf.transpose(key, (0, 2, 1, 3)),
+                     (batch_size * num_heads, seq_len, head_dim))
     chunked_query = self._chunk(query, window_overlap)
     chunked_key = self._chunk(key, window_overlap)
 
@@ -466,24 +488,31 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     # bcyd: batch_size * num_heads x chunks x 2window_overlap x head_dim
     # bcxy: batch_size * num_heads x chunks x 2window_overlap x 2window_overlap
     chunked_query = tf.cast(chunked_query, dtype=chunked_key.dtype)
-    chunked_attention_scores = tf.einsum("bcxd,bcyd->bcxy", chunked_query, chunked_key)  # multiply
+    chunked_attention_scores = tf.einsum("bcxd,bcyd->bcxy", chunked_query,
+                                         chunked_key)  # multiply
 
     # convert diagonals into columns
     paddings = tf.convert_to_tensor([[0, 0], [0, 0], [0, 1], [0, 0]])
-    diagonal_chunked_attention_scores = self._pad_and_transpose_last_two_dims(chunked_attention_scores, paddings)
+    diagonal_chunked_attention_scores = self._pad_and_transpose_last_two_dims(
+      chunked_attention_scores, paddings)
 
-    # allocate space for the overall attention matrix where the chunks are combined. The last dimension
-    # has (window_overlap * 2 + 1) columns. The first (window_overlap) columns are the window_overlap lower triangles (attention from a word to
-    # window_overlap previous words). The following column is attention score from each word to itself, then
+    # allocate space for the overall attention matrix where the chunks are
+    # combined. The last dimension
+    # has (window_overlap * 2 + 1) columns. The first (window_overlap) columns
+    # are the window_overlap lower triangles (attention from a word to
+    # window_overlap previous words). The following column is attention score
+    # from each word to itself, then
     # followed by window_overlap columns for the upper triangle.
 
-    # copy parts from diagonal_chunked_attention_scores into the combined matrix of attentions
-    # - copying the main diagonal and the upper triangle
+    # copy parts from diagonal_chunked_attention_scores into the combined matrix
+    # of attentions - copying the main diagonal and the upper triangle
     # TODO: This code is most likely not very efficient and should be improved
     diagonal_attn_scores_up_triang = tf.concat(
       [
-        diagonal_chunked_attention_scores[:, :, :window_overlap, : window_overlap + 1],
-        diagonal_chunked_attention_scores[:, -1:, window_overlap:, : window_overlap + 1],
+        diagonal_chunked_attention_scores[:, :, :window_overlap,
+        : window_overlap + 1],
+        diagonal_chunked_attention_scores[:, -1:, window_overlap:,
+        : window_overlap + 1],
       ],
       axis=1,
     )
@@ -495,7 +524,8 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
           (batch_size * num_heads, 1, window_overlap, window_overlap),
           dtype=diagonal_chunked_attention_scores.dtype,
         ),
-        diagonal_chunked_attention_scores[:, :, -(window_overlap + 1): -1, window_overlap + 1:],
+        diagonal_chunked_attention_scores[:, :, -(window_overlap + 1): -1,
+        window_overlap + 1:],
       ],
       axis=1,
     )
@@ -514,13 +544,13 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
       axis=1,
     )
     first_chunk_mask = (
-      tf.tile(
-        tf.range(chunks_count + 1)[None, :, None, None],
-        (batch_size * num_heads, 1, window_overlap, window_overlap),
-      )
-      < 1
+            tf.tile(
+              tf.range(chunks_count + 1)[None, :, None, None],
+              (batch_size * num_heads, 1, window_overlap, window_overlap),
+            )
+            < 1
     )
-    #first_chunk_mask = tf.repeat(first_chunk_mask, batch_size * num_heads, axis=0)
+
     diagonal_attn_scores_low_triang = tf.where(
       first_chunk_mask,
       diagonal_attn_scores_first_chunk,
@@ -541,7 +571,8 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
       (0, 2, 1, 3),
     )
 
-    diagonal_attention_scores = self._mask_invalid_locations(diagonal_attention_scores, window_overlap)
+    diagonal_attention_scores = self._mask_invalid_locations(
+      diagonal_attention_scores, window_overlap)
 
     return diagonal_attention_scores
 
@@ -549,13 +580,15 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
   def _mask_invalid_locations(input_tensor, window_overlap):
     # create correct upper triangle bool mask
     mask_2d_upper = tf.reverse(
-      tf.linalg.band_part(tf.ones(shape=(window_overlap, window_overlap + 1)), -1, 0),
+      tf.linalg.band_part(tf.ones(shape=(window_overlap, window_overlap + 1)),
+                          -1, 0),
       axis=[0],
     )
 
     # pad to full matrix
     padding = tf.convert_to_tensor(
-      [[0, get_shape_list(input_tensor)[1] - window_overlap], [0, get_shape_list(input_tensor)[3] - window_overlap - 1]]
+      [[0, get_shape_list(input_tensor)[1] - window_overlap],
+       [0, get_shape_list(input_tensor)[3] - window_overlap - 1]]
     )
 
     # create lower mask
@@ -565,20 +598,23 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     mask_2d = mask_2d + tf.reverse(mask_2d, axis=[0, 1])
 
     # broadcast to full matrix
-    mask_4d = tf.tile(mask_2d[None, :, None, :], (get_shape_list(input_tensor)[0], 1, 1, 1))
+    mask_4d = tf.tile(mask_2d[None, :, None, :],
+                      (get_shape_list(input_tensor)[0], 1, 1, 1))
 
     # inf tensor used for masking
     inf_tensor = -float("inf") * tf.ones_like(input_tensor)
 
     # mask
-    input_tensor = tf.where(tf.math.greater(mask_4d, 0), inf_tensor, input_tensor)
+    input_tensor = tf.where(tf.math.greater(mask_4d, 0), inf_tensor,
+                            input_tensor)
 
     return input_tensor
 
-  def _sliding_chunks_matmul_attn_probs_value(self, attn_probs, value, window_overlap):
+  def _sliding_chunks_matmul_attn_probs_value(self, attn_probs, value,
+                                              window_overlap):
     """
-    Same as _sliding_chunks_query_key_matmul but for attn_probs and value tensors. Returned tensor will be of the
-    same shape as `attn_probs`
+    Same as _sliding_chunks_query_key_matmul but for attn_probs and value tensors.
+    Returned tensor will be of the same shape as `attn_probs`
     """
 
     batch_size, seq_len, num_heads, head_dim = get_shape_list(value)
@@ -602,7 +638,8 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
 
     chunks_count = seq_len // window_overlap - 1
 
-    # group batch_size and num_heads dimensions into one, then chunk seq_len into chunks of size 2 window overlap
+    # group batch_size and num_heads dimensions into one, then chunk seq_len
+    # into chunks of size 2 window overlap
     chunked_attn_probs = tf.reshape(
       tf.transpose(attn_probs, (0, 2, 1, 3)),
       (
@@ -619,13 +656,17 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
       (batch_size * num_heads, seq_len, head_dim),
     )
 
-    # pad seq_len with w at the beginning of the sequence and another window overlap at the end
-    paddings = tf.convert_to_tensor([[0, 0], [window_overlap, window_overlap], [0, 0]])
+    # pad seq_len with w at the beginning of the sequence and another window
+    # overlap at the end
+    paddings = tf.convert_to_tensor(
+      [[0, 0], [window_overlap, window_overlap], [0, 0]])
     padded_value = tf.pad(value, paddings, constant_values=-1)
 
-    # chunk padded_value into chunks of size 3 window overlap and an overlap of size window overlap
+    # chunk padded_value into chunks of size 3 window overlap and an overlap of
+    # size window overlap
     frame_size = 3 * window_overlap * head_dim
-    frame_hop_size = (get_shape_list(padded_value)[1] * head_dim - frame_size) // chunks_count
+    frame_hop_size = (get_shape_list(padded_value)[
+                        1] * head_dim - frame_size) // chunks_count
     chunked_value = tf.signal.frame(
       tf.reshape(padded_value, (batch_size * num_heads, -1)),
       frame_size,
@@ -639,7 +680,8 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     if tf.executing_eagerly():
       tf.debugging.assert_equal(
         get_shape_list(chunked_value),
-        [batch_size * num_heads, chunks_count + 1, 3 * window_overlap, head_dim],
+        [batch_size * num_heads, chunks_count + 1, 3 * window_overlap,
+         head_dim],
         message="Chunked value has the wrong shape",
       )
 
@@ -658,8 +700,10 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     hidden_states_padded = tf.pad(
       hidden_states_padded, paddings
     )  # padding value is not important because it will be overwritten
-    batch_size, chunk_size, seq_length, hidden_dim = get_shape_list(hidden_states_padded)
-    hidden_states_padded = tf.reshape(hidden_states_padded, (batch_size, chunk_size, hidden_dim, seq_length))
+    batch_size, chunk_size, seq_length, hidden_dim = get_shape_list(
+      hidden_states_padded)
+    hidden_states_padded = tf.reshape(hidden_states_padded, (
+      batch_size, chunk_size, hidden_dim, seq_length))
 
     return hidden_states_padded
 
@@ -681,21 +725,27 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
            0.0000,  0.0000, -0.7584,  0.4206, -0.0405,  0.1599, 0.0000
            0.0000,  0.0000,  0.0000, 2.0514, -1.1600,  0.5372,  0.2629 ]
     """
-    total_num_heads, num_chunks, window_overlap, hidden_dim = get_shape_list(chunked_hidden_states)
-    paddings = tf.convert_to_tensor([[0, 0], [0, 0], [0, 0], [0, window_overlap + 1]])
+    total_num_heads, num_chunks, window_overlap, hidden_dim = get_shape_list(
+      chunked_hidden_states)
+    paddings = tf.convert_to_tensor(
+      [[0, 0], [0, 0], [0, 0], [0, window_overlap + 1]])
+
     chunked_hidden_states = tf.pad(
       chunked_hidden_states, paddings
-    )  # total_num_heads x num_chunks x window_overlap x (hidden_dim+window_overlap+1). Padding value is not important because it'll be overwritten
+    )
+
     chunked_hidden_states = tf.reshape(
       chunked_hidden_states, (total_num_heads, num_chunks, -1)
-    )  # total_num_heads x num_chunks x window_overlapL+window_overlapwindow_overlap+window_overlap
+    )
     chunked_hidden_states = chunked_hidden_states[
                             :, :, :-window_overlap
-                            ]  # total_num_heads x num_chunks x window_overlapL+window_overlapwindow_overlap
+                            ]
     chunked_hidden_states = tf.reshape(
       chunked_hidden_states,
-      (total_num_heads, num_chunks, window_overlap, window_overlap + hidden_dim),
-    )  # total_num_heads x num_chunks, window_overlap x hidden_dim+window_overlap
+      (
+        total_num_heads, num_chunks, window_overlap,
+        window_overlap + hidden_dim),
+    )
     chunked_hidden_states = chunked_hidden_states[:, :, :, :-1]
 
     return chunked_hidden_states
@@ -709,16 +759,21 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     # define frame size and frame stride (similar to convolution)
     frame_hop_size = window_overlap * hidden_dim
     frame_size = 2 * frame_hop_size
-    hidden_states = tf.reshape(hidden_states, (batch_size, seq_length * hidden_dim))
+    hidden_states = tf.reshape(hidden_states,
+                               (batch_size, seq_length * hidden_dim))
 
     # chunk with overlap
-    chunked_hidden_states = tf.signal.frame(hidden_states, frame_size, frame_hop_size)
+    chunked_hidden_states = tf.signal.frame(hidden_states, frame_size,
+                                            frame_hop_size)
 
     if tf.executing_eagerly():
       tf.debugging.assert_equal(
         get_shape_list(chunked_hidden_states),
         [batch_size, num_output_chunks, frame_size],
-        message=f"Make sure chunking is correctly applied. `Chunked hidden states should have output  dimension {[batch_size, frame_size, num_output_chunks]}, but got {get_shape_list(chunked_hidden_states)}.",
+        message=f"Make sure chunking is correctly applied. `Chunked hidden "
+                f"states should have output dimension"
+                f" {[batch_size, frame_size, num_output_chunks]}, but got "
+                f"{get_shape_list(chunked_hidden_states)}.",
       )
 
     chunked_hidden_states = tf.reshape(
@@ -738,19 +793,25 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     max_num_global_attn_indices = global_attention_size
 
     row_indices = tf.range(batch_size)
-    row_indices = tf.repeat(tf.expand_dims(row_indices, axis=0), repeats=[global_attention_size], axis=0)
-    row_indices = tf.reshape(row_indices, (batch_size * global_attention_size, 1))
+    row_indices = tf.repeat(tf.expand_dims(row_indices, axis=0),
+                            repeats=[global_attention_size], axis=0)
+    row_indices = tf.reshape(row_indices,
+                             (batch_size * global_attention_size, 1))
 
     col_indices = tf.range(global_attention_size)
-    col_indices = tf.repeat(tf.expand_dims(col_indices, axis=1), repeats=[batch_size], axis=0)
+    col_indices = tf.repeat(tf.expand_dims(col_indices, axis=1),
+                            repeats=[batch_size], axis=0)
 
     is_index_global_attn_nonzero = tf.concat((row_indices, col_indices), axis=1)
 
-    # this is actually same as `is_index_global_attn_nonzero`, since we assume all global attention are the same size
-    is_local_index_global_attn_nonzero = tf.concat((row_indices, col_indices), axis=1)
+    # this is actually same as `is_index_global_attn_nonzero`,
+    # since we assume all global attention are the same size
+    is_local_index_global_attn_nonzero = tf.concat((row_indices, col_indices),
+                                                   axis=1)
 
     # empty tensor
-    is_local_index_no_global_attn_nonzero = tf.reshape(tf.expand_dims(tf.range(0), axis=1), (0, 2))
+    is_local_index_no_global_attn_nonzero = tf.reshape(
+      tf.expand_dims(tf.range(0), axis=1), (0, 2))
     return (
       max_num_global_attn_indices,
       is_index_global_attn_nonzero,
@@ -759,14 +820,14 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     )
 
   def _concat_with_global_key_attn_probs(
-    self,
-    attn_scores,
-    key_vectors,
-    query_vectors,
-    max_num_global_attn_indices,
-    is_index_global_attn_nonzero,
-    is_local_index_global_attn_nonzero,
-    is_local_index_no_global_attn_nonzero,
+          self,
+          attn_scores,
+          key_vectors,
+          query_vectors,
+          max_num_global_attn_indices,
+          is_index_global_attn_nonzero,
+          is_local_index_global_attn_nonzero,
+          is_local_index_no_global_attn_nonzero,
   ):
     batch_size = get_shape_list(key_vectors)[0]
 
@@ -786,11 +847,14 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     )
 
     # (batch_size, seq_len, num_heads, max_num_global_attn_indices)
-    attn_probs_from_global_key = tf.einsum("blhd,bshd->blhs", query_vectors, key_vectors_only_global)
+    attn_probs_from_global_key = tf.einsum("blhd,bshd->blhs", query_vectors,
+                                           key_vectors_only_global)
 
     # (batch_size, max_num_global_attn_indices, seq_len, num_heads)
-    attn_probs_from_global_key_trans = tf.transpose(attn_probs_from_global_key, (0, 3, 1, 2))
-    mask_shape = (get_shape_list(is_local_index_no_global_attn_nonzero)[0],) + tuple(
+    attn_probs_from_global_key_trans = tf.transpose(attn_probs_from_global_key,
+                                                    (0, 3, 1, 2))
+    mask_shape = (get_shape_list(is_local_index_no_global_attn_nonzero)[
+                    0],) + tuple(
       get_shape_list(attn_probs_from_global_key_trans)[-2:]
     )
     mask = tf.ones(mask_shape) * -10000.0
@@ -804,7 +868,8 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     )
 
     # (batch_size, seq_len, num_heads, max_num_global_attn_indices)
-    attn_probs_from_global_key = tf.transpose(attn_probs_from_global_key_trans, (0, 2, 3, 1))
+    attn_probs_from_global_key = tf.transpose(attn_probs_from_global_key_trans,
+                                              (0, 2, 3, 1))
 
     # concat to attn_probs
     # (batch_size, seq_len, num_heads, extra attention count + 2*window+1)
@@ -812,21 +877,21 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     return attn_scores
 
   def _compute_attn_output_with_global_indices(
-    self,
-    value_vectors,
-    attn_probs,
-    max_num_global_attn_indices,
-    is_index_global_attn_nonzero,
-    is_local_index_global_attn_nonzero,
+          self,
+          value_vectors,
+          attn_probs,
+          max_num_global_attn_indices,
+          is_index_global_attn_nonzero,
+          is_local_index_global_attn_nonzero,
   ):
     batch_size = get_shape_list(attn_probs)[0]
 
     # cut local attn probs to global only
     attn_probs_only_global = attn_probs[:, :, :, :max_num_global_attn_indices]
-    # attn_probs_only_global = tf.slice(attn_probs, [0, 0, 0, 0], get_shape_list(attn_probs)[: -1] + [max_num_global_attn_indices])
 
     # select global value vectors
-    global_value_vectors = tf.gather_nd(value_vectors, is_index_global_attn_nonzero)
+    global_value_vectors = tf.gather_nd(value_vectors,
+                                        is_index_global_attn_nonzero)
 
     # create only global value vectors
     value_vectors_only_global = tf.scatter_nd(
@@ -841,10 +906,12 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     )
 
     # compute attn output only global
-    attn_output_only_global = tf.einsum("blhs,bshd->blhd", attn_probs_only_global, value_vectors_only_global)
+    attn_output_only_global = tf.einsum("blhs,bshd->blhd",
+                                        attn_probs_only_global,
+                                        value_vectors_only_global)
     # reshape attn probs
-    attn_probs_without_global = attn_probs[:, :, :, max_num_global_attn_indices:]
-    # attn_probs_without_global = tf.slice(attn_probs, [0, 0, 0, max_num_global_attn_indices], get_shape_list(attn_probs)[: -1] + [get_shape_list(attn_probs)[-1] - max_num_global_attn_indices])
+    attn_probs_without_global = attn_probs[:, :, :,
+                                max_num_global_attn_indices:]
 
     # compute attn output with global
     attn_output_without_global = self._sliding_chunks_matmul_attn_probs_value(
@@ -854,29 +921,33 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     return attn_output_only_global + attn_output_without_global
 
   def _compute_global_attn_output_from_hidden(
-    self,
-    attn_output,
-    hidden_states,
-    max_num_global_attn_indices,
-    layer_head_mask,
-    is_local_index_global_attn_nonzero,
-    is_index_global_attn_nonzero,
-    is_local_index_no_global_attn_nonzero,
-    is_index_masked,
-    training,
+          self,
+          attn_output,
+          hidden_states,
+          max_num_global_attn_indices,
+          layer_head_mask,
+          is_local_index_global_attn_nonzero,
+          is_index_global_attn_nonzero,
+          is_local_index_no_global_attn_nonzero,
+          is_index_masked,
+          training,
   ):
     batch_size, seq_len = get_shape_list(hidden_states)[:2]
 
     # prepare global hidden states
-    global_attn_hidden_states = tf.gather_nd(hidden_states, is_index_global_attn_nonzero)
+    global_attn_hidden_states = tf.gather_nd(hidden_states,
+                                             is_index_global_attn_nonzero)
     global_attn_hidden_states = tf.scatter_nd(
       is_local_index_global_attn_nonzero,
       global_attn_hidden_states,
-      shape=(batch_size, max_num_global_attn_indices, self._num_heads * self._key_dim),
+      shape=(
+        batch_size, max_num_global_attn_indices,
+        self._num_heads * self._key_dim),
     )
 
     # global key, query, value
-    global_query_vectors_only_global = self._global_query_dense(global_attn_hidden_states)
+    global_query_vectors_only_global = self._global_query_dense(
+      global_attn_hidden_states)
     global_key_vectors = self._global_key_dense(hidden_states)
     global_value_vectors = self._global_value_dense(hidden_states)
 
@@ -884,18 +955,24 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     global_query_vectors_only_global /= tf.math.sqrt(
       tf.cast(self._key_dim, dtype=global_query_vectors_only_global.dtype)
     )
-    global_query_vectors_only_global = self.reshape_and_transpose(global_query_vectors_only_global, batch_size)
-    global_key_vectors = self.reshape_and_transpose(global_key_vectors, batch_size)
-    global_value_vectors = self.reshape_and_transpose(global_value_vectors, batch_size)
+    global_query_vectors_only_global = self.reshape_and_transpose(
+      global_query_vectors_only_global, batch_size)
+    global_key_vectors = self.reshape_and_transpose(global_key_vectors,
+                                                    batch_size)
+    global_value_vectors = self.reshape_and_transpose(global_value_vectors,
+                                                      batch_size)
 
     # compute attn scores
-    global_attn_scores = tf.matmul(global_query_vectors_only_global, global_key_vectors, transpose_b=True)
+    global_attn_scores = tf.matmul(global_query_vectors_only_global,
+                                   global_key_vectors, transpose_b=True)
 
     if tf.executing_eagerly():
       tf.debugging.assert_equal(
         get_shape_list(global_attn_scores),
         [batch_size * self._num_heads, max_num_global_attn_indices, seq_len],
-        message=f"global_attn_scores have the wrong size. Size should be {(batch_size * self._num_heads, max_num_global_attn_indices, seq_len)}, but is {get_shape_list(global_attn_scores)}.",
+        message=f"global_attn_scores have the wrong size. Size should be"
+                f"{(batch_size * self._num_heads, max_num_global_attn_indices, seq_len)}, "
+                f"but is {get_shape_list(global_attn_scores)}.",
       )
 
     global_attn_scores = tf.reshape(
@@ -903,11 +980,13 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
       (batch_size, self._num_heads, max_num_global_attn_indices, seq_len),
     )
     global_attn_scores_trans = tf.transpose(global_attn_scores, (0, 2, 1, 3))
-    mask_shape = (get_shape_list(is_local_index_no_global_attn_nonzero)[0],) + tuple(
+    mask_shape = (get_shape_list(is_local_index_no_global_attn_nonzero)[
+                    0],) + tuple(
       get_shape_list(global_attn_scores_trans)[-2:]
     )
     global_attn_mask = tf.ones(mask_shape) * -10000.0
-    global_attn_mask = tf.cast(global_attn_mask, dtype=global_attn_scores_trans.dtype)
+    global_attn_mask = tf.cast(global_attn_mask,
+                               dtype=global_attn_scores_trans.dtype)
 
     # scatter mask
     global_attn_scores_trans = tf.tensor_scatter_nd_update(
@@ -916,9 +995,10 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
       global_attn_mask,
     )
     global_attn_scores = tf.transpose(global_attn_scores_trans, (0, 2, 1, 3))
-    
+
     # mask global attn scores
-    attn_mask = tf.tile(is_index_masked[:, None, None, :], (1, get_shape_list(global_attn_scores)[1], 1, 1))
+    attn_mask = tf.tile(is_index_masked[:, None, None, :],
+                        (1, get_shape_list(global_attn_scores)[1], 1, 1))
     global_attn_scores = tf.where(attn_mask, -10000.0, global_attn_scores)
     global_attn_scores = tf.reshape(
       global_attn_scores,
@@ -934,17 +1014,22 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
         tf.debugging.assert_equal(
           get_shape_list(layer_head_mask),
           [self._num_heads],
-          message=f"Head mask for a single layer should be of size {(self._num_heads)}, but is {get_shape_list(layer_head_mask)}",
+          message=f"Head mask for a single layer should be of size "
+                  f"{(self._num_heads)}, but is {get_shape_list(layer_head_mask)}",
         )
-      global_attn_probs_float = tf.reshape(layer_head_mask, (1, -1, 1, 1)) * tf.reshape(
-        global_attn_probs_float, (batch_size, self._num_heads, max_num_global_attn_indices, seq_len)
+      global_attn_probs_float = tf.reshape(layer_head_mask,
+                                           (1, -1, 1, 1)) * tf.reshape(
+        global_attn_probs_float,
+        (batch_size, self._num_heads, max_num_global_attn_indices, seq_len)
       )
       global_attn_probs_float = tf.reshape(
-        global_attn_probs_float, (batch_size * self._num_heads, max_num_global_attn_indices, seq_len)
+        global_attn_probs_float,
+        (batch_size * self._num_heads, max_num_global_attn_indices, seq_len)
       )
 
     # dropout
-    global_attn_probs = self._global_dropout_layer(global_attn_probs_float, training=training)
+    global_attn_probs = self._global_dropout_layer(global_attn_probs_float,
+                                                   training=training)
 
     # global attn output
     global_attn_output = tf.matmul(global_attn_probs, global_value_vectors)
@@ -952,8 +1037,11 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     if tf.executing_eagerly():
       tf.debugging.assert_equal(
         get_shape_list(global_attn_output),
-        [batch_size * self._num_heads, max_num_global_attn_indices, self._key_dim],
-        message=f"global_attn_output tensor has the wrong size. Size should be {(batch_size * self._num_heads, max_num_global_attn_indices, self._key_dim)}, but is {get_shape_list(global_attn_output)}.",
+        [batch_size * self._num_heads, max_num_global_attn_indices,
+         self._key_dim],
+        message=f"global_attn_output tensor has the wrong size. Size should be "
+                f"{(batch_size * self._num_heads, max_num_global_attn_indices, self._key_dim)}, "
+                f"but is {get_shape_list(global_attn_output)}.",
       )
 
     global_attn_output = tf.reshape(
@@ -977,7 +1065,8 @@ class LongformerAttention(tf.keras.layers.MultiHeadAttention):
     )
 
     global_attn_probs = tf.reshape(
-      global_attn_probs, (batch_size, self._num_heads, max_num_global_attn_indices, seq_len)
+      global_attn_probs,
+      (batch_size, self._num_heads, max_num_global_attn_indices, seq_len)
     )
 
     attn_output = self._output_dense(attn_output)

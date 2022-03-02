@@ -34,84 +34,90 @@ AdamWeightDecay = optimization.AdamWeightDecayConfig
 PolynomialLr = optimization.PolynomialLrConfig
 PolynomialWarmupConfig = optimization.PolynomialWarmupConfig
 
+
 @dataclasses.dataclass
 class LongformerOptimizationConfig(optimization.OptimizationConfig):
   optimizer: optimization.OptimizerConfig = optimization.OptimizerConfig(
-      type="adamw",
-      adamw=AdamWeightDecay(
-          weight_decay_rate=0.01,
-          exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"],
-          epsilon=1e-6))
+    type='adamw',
+    adamw=AdamWeightDecay(
+      weight_decay_rate=0.01,
+      exclude_from_weight_decay=['LayerNorm', 'layer_norm', 'bias'],
+      epsilon=1e-6))
   learning_rate: optimization.LrConfig = optimization.LrConfig(
-      type="polynomial",
-      polynomial=PolynomialLr(
-          initial_learning_rate=1e-4,
-          decay_steps=1000000,
-          end_learning_rate=0.0))
+    type='polynomial',
+    polynomial=PolynomialLr(
+      initial_learning_rate=1e-4,
+      decay_steps=1000000,
+      end_learning_rate=0.0))
   warmup: optimization.WarmupConfig = optimization.WarmupConfig(
-      type="polynomial", polynomial=PolynomialWarmupConfig(warmup_steps=10000))
+    type='polynomial', polynomial=PolynomialWarmupConfig(warmup_steps=10000))
+
 
 @exp_factory.register_config_factory('longformer/pretraining')
 def longformer_pretraining() -> cfg.ExperimentConfig:
   """BERT pretraining experiment."""
   config = cfg.ExperimentConfig(
-      runtime=cfg.RuntimeConfig(enable_xla=True),
-      task=masked_lm.MaskedLMConfig(
-          model=bert.PretrainerConfig(
-              encoder=encoders.EncoderConfig(
-                  type="any", any=LongformerEncoderConfig()),
-              cls_heads=[
-                  bert.ClsHeadConfig(
-                      inner_dim=768, num_classes=2, dropout_rate=0.1, name='next_sentence')
-              ]
-          ),
-          train_data=pretrain_dataloader.BertPretrainDataConfig(use_v2_feature_names=True),
-          validation_data=pretrain_dataloader.BertPretrainDataConfig(use_v2_feature_names=True,
-              is_training=False)),
-      trainer=cfg.TrainerConfig(
-          optimizer_config=LongformerOptimizationConfig(), train_steps=1000000),
-      restrictions=[
-          'task.train_data.is_training != None',
-          'task.validation_data.is_training != None'
-      ])
+    runtime=cfg.RuntimeConfig(enable_xla=True),
+    task=masked_lm.MaskedLMConfig(
+      model=bert.PretrainerConfig(
+        encoder=encoders.EncoderConfig(
+          type="any", any=LongformerEncoderConfig()),
+        cls_heads=[
+          bert.ClsHeadConfig(
+            inner_dim=768, num_classes=2, dropout_rate=0.1,
+            name='next_sentence')
+        ]
+      ),
+      train_data=pretrain_dataloader.BertPretrainDataConfig(
+        use_v2_feature_names=True),
+      validation_data=pretrain_dataloader.BertPretrainDataConfig(
+        use_v2_feature_names=True,
+        is_training=False)),
+    trainer=cfg.TrainerConfig(
+      optimizer_config=LongformerOptimizationConfig(), train_steps=1000000),
+    restrictions=[
+      'task.train_data.is_training != None',
+      'task.validation_data.is_training != None'
+    ])
   return config
+
 
 @exp_factory.register_config_factory('longformer/glue')
 def longformer_glue() -> cfg.ExperimentConfig:
   config = cfg.ExperimentConfig(
-      task=sentence_prediction.SentencePredictionConfig(
-          model=sentence_prediction.ModelConfig(
-              encoder=encoders.EncoderConfig(
-                  type="any", any=LongformerEncoderConfig())),
-          train_data=sentence_prediction_dataloader
-          .SentencePredictionDataConfig(),
-          validation_data=sentence_prediction_dataloader
-          .SentencePredictionDataConfig(
-              is_training=False, drop_remainder=False)),
-      trainer=cfg.TrainerConfig(
-          optimizer_config=optimization.OptimizationConfig({
-              'optimizer': {
-                  'type': 'adamw',
-                  'adamw': {
-                      'weight_decay_rate':
-                          0.01,
-                      'exclude_from_weight_decay':
-                          ['LayerNorm', 'layer_norm', 'bias'],
-                  }
-              },
-              'learning_rate': {
-                  'type': 'polynomial',
-                  'polynomial': {
-                      'initial_learning_rate': 3e-5,
-                      'end_learning_rate': 0.0,
-                  }
-              },
-              'warmup': {
-                  'type': 'polynomial'
-              }
-          })),
-      restrictions=[
-          'task.train_data.is_training != None',
-          'task.validation_data.is_training != None'
-      ])
+    task=sentence_prediction.SentencePredictionConfig(
+      model=sentence_prediction.ModelConfig(
+        encoder=encoders.EncoderConfig(
+          type="any", any=LongformerEncoderConfig())),
+      train_data=sentence_prediction_dataloader
+        .SentencePredictionDataConfig(),
+      validation_data=sentence_prediction_dataloader
+        .SentencePredictionDataConfig(
+        is_training=False, drop_remainder=False)),
+    trainer=cfg.TrainerConfig(
+      optimizer_config=optimization.OptimizationConfig({
+        'optimizer': {
+          'type': 'adamw',
+          'adamw': {
+            'weight_decay_rate':
+              0.01,
+            'exclude_from_weight_decay':
+              ['LayerNorm', 'layer_norm', 'bias'],
+          }
+        },
+        'learning_rate': {
+          'type': 'polynomial',
+          'polynomial': {
+            'initial_learning_rate': 3e-5,
+            'end_learning_rate': 0.0,
+          }
+        },
+        'warmup': {
+          'type': 'polynomial'
+        }
+      })),
+    restrictions=[
+      'task.train_data.is_training != None',
+      'task.validation_data.is_training != None'
+    ])
   return config

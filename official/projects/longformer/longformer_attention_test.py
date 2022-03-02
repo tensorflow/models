@@ -12,25 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for the attention layer."""
+"""Tests for official.nlp.projects.longformer.longformer_attention."""
 
 import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
+from tensorflow.python.keras import \
+  keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.projects.longformer import longformer_attention
 from official.modeling.tf_utils import get_shape_list
 
 
 def _create_mock_attention_data(
-    num_heads,
-    key_dim,
-    value_dim,
-    q_seq_length,
-    kv_seq_length,
-    batch_size,
-    include_mask=False):
+        num_heads,
+        key_dim,
+        value_dim,
+        q_seq_length,
+        kv_seq_length,
+        batch_size,
+        include_mask=False):
   """Creates mock testing data.
 
   Args:
@@ -48,15 +49,15 @@ def _create_mock_attention_data(
   value_shape = (batch_size, kv_seq_length, value_dim)
 
   data = dict(
-      query=tf.random.normal(shape=query_shape),
-      value=tf.random.normal(shape=value_shape),
-      key=tf.random.normal(shape=value_shape))
+    query=tf.random.normal(shape=query_shape),
+    value=tf.random.normal(shape=value_shape),
+    key=tf.random.normal(shape=value_shape))
 
   total_seq_length = kv_seq_length
 
   if include_mask:
     mask_shape = (batch_size, num_heads, q_seq_length, total_seq_length)
-    mask_data = np.random.randint(2, size=mask_shape).astype("float32")
+    mask_data = np.random.randint(2, size=mask_shape).astype('float32')
     mask_data = dict(attention_mask=mask_data)
     data.update(mask_data)
 
@@ -65,6 +66,12 @@ def _create_mock_attention_data(
 
 @keras_parameterized.run_all_keras_modes
 class LongformerAttentionTest(keras_parameterized.TestCase):
+
+  def setUp(self):
+    super(LongformerAttentionTest, self).setUp()
+    np.random.seed(0)
+    tf.random.set_seed(0)
+
   def _get_hidden_states(self):
     return tf.convert_to_tensor(
       [
@@ -116,25 +123,33 @@ class LongformerAttentionTest(keras_parameterized.TestCase):
 
   def test_diagonalize(self):
     hidden_states = self._get_hidden_states()
-    hidden_states = tf.reshape(hidden_states, (1, 8, 4))  # set seq length = 8, hidden dim = 4
-    chunked_hidden_states = longformer_attention.LongformerAttention._chunk(hidden_states, window_overlap=2)
+    hidden_states = tf.reshape(hidden_states,
+                               (1, 8, 4))  # set seq length = 8, hidden dim = 4
+    chunked_hidden_states = longformer_attention.LongformerAttention._chunk(
+      hidden_states, window_overlap=2)
     window_overlap_size = get_shape_list(chunked_hidden_states)[2]
     self.assertTrue(window_overlap_size == 4)
 
-    padded_hidden_states = longformer_attention.LongformerAttention._pad_and_diagonalize(chunked_hidden_states)
+    padded_hidden_states = longformer_attention.LongformerAttention._pad_and_diagonalize(
+      chunked_hidden_states)
 
     self.assertTrue(
-        get_shape_list(padded_hidden_states)[-1] == get_shape_list(chunked_hidden_states)[-1] + window_overlap_size - 1
+      get_shape_list(padded_hidden_states)[-1] ==
+      get_shape_list(chunked_hidden_states)[-1] + window_overlap_size - 1
     )
 
     # first row => [0.4983,  2.6918, -0.0071,  1.0492, 0.0000,  0.0000,  0.0000]
-    tf.debugging.assert_near(padded_hidden_states[0, 0, 0, :4], chunked_hidden_states[0, 0, 0], rtol=1e-3)
-    tf.debugging.assert_near(padded_hidden_states[0, 0, 0, 4:], tf.zeros((3,), dtype=tf.dtypes.float32), rtol=1e-3)
+    tf.debugging.assert_near(padded_hidden_states[0, 0, 0, :4],
+                             chunked_hidden_states[0, 0, 0], rtol=1e-3)
+    tf.debugging.assert_near(padded_hidden_states[0, 0, 0, 4:],
+                             tf.zeros((3,), dtype=tf.dtypes.float32), rtol=1e-3)
 
     # last row => [0.0000,  0.0000,  0.0000, 2.0514, -1.1600,  0.5372,  0.2629]
-    tf.debugging.assert_near(padded_hidden_states[0, 0, -1, 3:], chunked_hidden_states[0, 0, -1], rtol=1e-3)
+    tf.debugging.assert_near(padded_hidden_states[0, 0, -1, 3:],
+                             chunked_hidden_states[0, 0, -1], rtol=1e-3)
     tf.debugging.assert_near(
-        padded_hidden_states[0, 0, -1, :3], tf.zeros((3,), dtype=tf.dtypes.float32), rtol=1e-3
+      padded_hidden_states[0, 0, -1, :3],
+      tf.zeros((3,), dtype=tf.dtypes.float32), rtol=1e-3
     )
 
   def test_pad_and_transpose_last_two_dims(self):
@@ -142,16 +157,21 @@ class LongformerAttentionTest(keras_parameterized.TestCase):
     self.assertTrue(get_shape_list(hidden_states), [1, 8, 4])
 
     # pad along seq length dim
-    paddings = tf.constant([[0, 0], [0, 0], [0, 1], [0, 0]], dtype=tf.dtypes.int32)
+    paddings = tf.constant([[0, 0], [0, 0], [0, 1], [0, 0]],
+                           dtype=tf.dtypes.int32)
 
-    hidden_states = longformer_attention.LongformerAttention._chunk(hidden_states, window_overlap=2)
-    padded_hidden_states = longformer_attention.LongformerAttention._pad_and_transpose_last_two_dims(hidden_states, paddings)
+    hidden_states = longformer_attention.LongformerAttention._chunk(
+      hidden_states, window_overlap=2)
+    padded_hidden_states = longformer_attention.LongformerAttention._pad_and_transpose_last_two_dims(
+      hidden_states, paddings)
     self.assertTrue(get_shape_list(padded_hidden_states) == [1, 1, 8, 5])
 
     expected_added_dim = tf.zeros((5,), dtype=tf.dtypes.float32)
-    tf.debugging.assert_near(expected_added_dim, padded_hidden_states[0, 0, -1, :], rtol=1e-6)
+    tf.debugging.assert_near(expected_added_dim,
+                             padded_hidden_states[0, 0, -1, :], rtol=1e-6)
     tf.debugging.assert_near(
-        hidden_states[0, 0, -1, :], tf.reshape(padded_hidden_states, (1, -1))[0, 24:32], rtol=1e-6
+      hidden_states[0, 0, -1, :],
+      tf.reshape(padded_hidden_states, (1, -1))[0, 24:32], rtol=1e-6
     )
 
   def test_mask_invalid_locations(self):
@@ -159,39 +179,55 @@ class LongformerAttentionTest(keras_parameterized.TestCase):
     batch_size = 1
     seq_length = 8
     hidden_size = 4
-    hidden_states = tf.reshape(hidden_states, (batch_size, seq_length, hidden_size))
-    hidden_states = longformer_attention.LongformerAttention._chunk(hidden_states, window_overlap=2)
+    hidden_states = tf.reshape(hidden_states,
+                               (batch_size, seq_length, hidden_size))
+    hidden_states = longformer_attention.LongformerAttention._chunk(
+      hidden_states, window_overlap=2)
 
-    hid_states_1 = longformer_attention.LongformerAttention._mask_invalid_locations(hidden_states, 1)
-    hid_states_2 = longformer_attention.LongformerAttention._mask_invalid_locations(hidden_states, 2)
-    hid_states_3 = longformer_attention.LongformerAttention._mask_invalid_locations(hidden_states[:, :, :, :3], 2)
-    hid_states_4 = longformer_attention.LongformerAttention._mask_invalid_locations(hidden_states[:, :, 2:, :], 2)
+    hid_states_1 = longformer_attention.LongformerAttention._mask_invalid_locations(
+      hidden_states, 1)
+    hid_states_2 = longformer_attention.LongformerAttention._mask_invalid_locations(
+      hidden_states, 2)
+    hid_states_3 = longformer_attention.LongformerAttention._mask_invalid_locations(
+      hidden_states[:, :, :, :3], 2)
+    hid_states_4 = longformer_attention.LongformerAttention._mask_invalid_locations(
+      hidden_states[:, :, 2:, :], 2)
 
-    self.assertTrue(tf.math.reduce_sum(tf.cast(tf.math.is_inf(hid_states_1), tf.dtypes.int32)) == 8)
-    self.assertTrue(tf.math.reduce_sum(tf.cast(tf.math.is_inf(hid_states_2), tf.dtypes.int32)) == 24)
-    self.assertTrue(tf.math.reduce_sum(tf.cast(tf.math.is_inf(hid_states_3), tf.dtypes.int32)) == 24)
-    self.assertTrue(tf.math.reduce_sum(tf.cast(tf.math.is_inf(hid_states_4), tf.dtypes.int32)) == 12)
+    self.assertTrue(tf.math.reduce_sum(
+      tf.cast(tf.math.is_inf(hid_states_1), tf.dtypes.int32)) == 8)
+    self.assertTrue(tf.math.reduce_sum(
+      tf.cast(tf.math.is_inf(hid_states_2), tf.dtypes.int32)) == 24)
+    self.assertTrue(tf.math.reduce_sum(
+      tf.cast(tf.math.is_inf(hid_states_3), tf.dtypes.int32)) == 24)
+    self.assertTrue(tf.math.reduce_sum(
+      tf.cast(tf.math.is_inf(hid_states_4), tf.dtypes.int32)) == 12)
 
   def test_chunk(self):
     hidden_states = self._get_hidden_states()
     batch_size = 1
     seq_length = 8
     hidden_size = 4
-    hidden_states = tf.reshape(hidden_states, (batch_size, seq_length, hidden_size))
+    hidden_states = tf.reshape(hidden_states,
+                               (batch_size, seq_length, hidden_size))
 
-    chunked_hidden_states = longformer_attention.LongformerAttention._chunk(hidden_states, window_overlap=2)
+    chunked_hidden_states = longformer_attention.LongformerAttention._chunk(
+      hidden_states, window_overlap=2)
 
     # expected slices across chunk and seq length dim
-    expected_slice_along_seq_length = tf.convert_to_tensor([0.4983, -0.7584, -1.6944], dtype=tf.dtypes.float32)
-    expected_slice_along_chunk = tf.convert_to_tensor([0.4983, -1.8348, -0.7584, 2.0514], dtype=tf.dtypes.float32)
+    expected_slice_along_seq_length = tf.convert_to_tensor(
+      [0.4983, -0.7584, -1.6944], dtype=tf.dtypes.float32)
+    expected_slice_along_chunk = tf.convert_to_tensor(
+      [0.4983, -1.8348, -0.7584, 2.0514], dtype=tf.dtypes.float32)
 
     self.assertTrue(get_shape_list(chunked_hidden_states) == [1, 3, 4, 4])
-    tf.debugging.assert_near(chunked_hidden_states[0, :, 0, 0], expected_slice_along_seq_length, rtol=1e-3)
-    tf.debugging.assert_near(chunked_hidden_states[0, 0, :, 0], expected_slice_along_chunk, rtol=1e-3)
+    tf.debugging.assert_near(chunked_hidden_states[0, :, 0, 0],
+                             expected_slice_along_seq_length, rtol=1e-3)
+    tf.debugging.assert_near(chunked_hidden_states[0, 0, :, 0],
+                             expected_slice_along_chunk, rtol=1e-3)
 
   def test_layer_local_attn(self):
     hidden_states = self._get_hidden_states()
-    batch_size, seq_length, hidden_size = hidden_states.shape
+    batch_size, seq_length, _ = hidden_states.shape
     layer = longformer_attention.LongformerAttention(
       num_heads=2,
       key_dim=4,
@@ -203,14 +239,15 @@ class LongformerAttentionTest(keras_parameterized.TestCase):
 
     attention_mask = tf.zeros((batch_size, seq_length), dtype=tf.dtypes.float32)
     is_index_global_attn = tf.math.greater(attention_mask, 1)
-    is_global_attn = tf.math.reduce_any(is_index_global_attn)
 
-    attention_mask = tf.where(tf.range(4)[None, :, None, None] > 1, -10000.0, attention_mask[:, :, None, None])
+    attention_mask = tf.where(tf.range(4)[None, :, None, None] > 1, -10000.0,
+                              attention_mask[:, :, None, None])
     is_index_masked = tf.math.less(attention_mask[:, :, 0, 0], 0)
 
     output_hidden_states = layer(
       hidden_states=hidden_states, attention_mask=attention_mask,
-      is_index_masked=is_index_masked, is_index_global_attn=is_index_global_attn, is_global_attn=is_global_attn,
+      is_index_masked=is_index_masked,
+      is_index_global_attn=is_index_global_attn,
     )[0]
 
     self.assertTrue(output_hidden_states.shape, (1, 4, 8))
@@ -226,32 +263,33 @@ class LongformerAttentionTest(keras_parameterized.TestCase):
     )
     hidden_states = self._get_hidden_states()
 
-    hidden_states = tf.concat([self._get_hidden_states(), self._get_hidden_states() - 0.5], axis=0)
+    hidden_states = tf.concat(
+      [self._get_hidden_states(), self._get_hidden_states() - 0.5], axis=0)
     batch_size, seq_length, hidden_size = hidden_states.shape
 
     # create attn mask
     attention_mask_1 = tf.zeros((1, 1, 1, seq_length), dtype=tf.dtypes.float32)
     attention_mask_2 = tf.zeros((1, 1, 1, seq_length), dtype=tf.dtypes.float32)
 
-    attention_mask_1 = tf.where(tf.range(4)[None, :, None, None] == 0, 10000.0, attention_mask_1)
-    attention_mask_1 = tf.where(tf.range(4)[None, :, None, None] > 2, -10000.0, attention_mask_1)
-    attention_mask_2 = tf.where(tf.range(4)[None, :, None, None] == 0, 10000.0, attention_mask_2)
+    attention_mask_1 = tf.where(tf.range(4)[None, :, None, None] == 0, 10000.0,
+                                attention_mask_1)
+    attention_mask_1 = tf.where(tf.range(4)[None, :, None, None] > 2, -10000.0,
+                                attention_mask_1)
+    attention_mask_2 = tf.where(tf.range(4)[None, :, None, None] == 0, 10000.0,
+                                attention_mask_2)
     attention_mask = tf.concat([attention_mask_1, attention_mask_2], axis=0)
 
     is_index_masked = tf.math.less(attention_mask[:, :, 0, 0], 0)
     is_index_global_attn = tf.math.greater(attention_mask[:, :, 0, 0], 0)
-    is_global_attn = tf.math.reduce_any(is_index_global_attn)
 
     output_hidden_states = layer(
-        hidden_states=hidden_states, attention_mask=-tf.math.abs(attention_mask),
-        is_index_masked=is_index_masked, is_index_global_attn=is_index_global_attn, is_global_attn=is_global_attn,
-      )[0]
+      hidden_states=hidden_states, attention_mask=-tf.math.abs(attention_mask),
+      is_index_masked=is_index_masked,
+      is_index_global_attn=is_index_global_attn,
+    )[0]
 
     self.assertTrue(output_hidden_states.shape, (2, 4, 8))
 
 
-if __name__ == "__main__":
-  np.random.seed(0)
-  tf.random.set_seed(0)
+if __name__ == '__main__':
   tf.test.main()
-
