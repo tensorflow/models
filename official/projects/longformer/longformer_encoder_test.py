@@ -24,6 +24,7 @@ from official.projects.longformer.longformer_encoder import LongformerEncoder
 
 @keras_parameterized.run_all_keras_modes
 class LongformerEncoderTest(keras_parameterized.TestCase):
+  
   @combinations.generate(combinations.combine(
       attention_window=[32, 128], global_attention_size=[0, 1, 2]))
   def test_encoder(self, attention_window, global_attention_size):
