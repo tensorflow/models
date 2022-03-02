@@ -61,7 +61,7 @@ def register(registered_collection, reg_key):
             "Duplicate registeration of beta module "
             "name %r new %r old %r", reg_key, collection[leaf_reg_key],
             fn_or_cls.__module__)
-        return
+        return fn_or_cls
       else:
         raise KeyError("Function or class {} registered multiple times.".format(
             leaf_reg_key))
