@@ -184,7 +184,6 @@ class LongformerEncoderBlock(tf.keras.layers.Layer):
     # TFLongformerIntermediate.intermediate_act_fn
     self._intermediate_activation_layer = tf.keras.layers.Activation(
       self._inner_activation, dtype=policy)
-    # ???
     self._inner_dropout_layer = tf.keras.layers.Dropout(
       rate=self._inner_dropout)
     # TFLongformerOutput
