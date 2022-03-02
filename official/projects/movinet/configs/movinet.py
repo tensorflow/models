@@ -28,9 +28,9 @@ import dataclasses
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
-from official.vision.beta.configs import backbones_3d
-from official.vision.beta.configs import common
-from official.vision.beta.configs import video_classification
+from official.vision.configs import backbones_3d
+from official.vision.configs import common
+from official.vision.configs import video_classification
 
 
 @dataclasses.dataclass
