@@ -18,8 +18,8 @@ import dataclasses
 from typing import Text
 
 from official.modeling import hyperparams
-from official.vision.beta.configs import backbones_3d
-from official.vision.beta.configs import video_classification
+from official.vision.configs import backbones_3d
+from official.vision.configs import video_classification
 
 
 @dataclasses.dataclass
@@ -97,4 +97,3 @@ class S3DModel(video_classification.VideoClassificationModel):
   """
   model_type: str = 's3d'
   backbone: Backbone3D = Backbone3D()
-
