@@ -20,8 +20,10 @@ from absl import logging
 import tensorflow as tf
 
 try:
+  # pytype: disable=import-error
   import tensorflow_text as text
   from tensorflow_text.python.ops import bert_tokenizer
+  # pytype: enable=import-error
 except ImportError:
   text = None
   bert_tokenizer = None
