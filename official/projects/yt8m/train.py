@@ -21,7 +21,7 @@ from official.common import flags as tfm_flags
 from official.projects.yt8m.configs import yt8m
 from official.projects.yt8m.tasks import yt8m_task
 # pylint: enable=unused-import
-from official.vision.beta import train
+from official.vision import train
 
 
 if __name__ == '__main__':
