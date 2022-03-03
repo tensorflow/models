@@ -18,10 +18,10 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
+from official import vision
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.projects.video_ssl.configs import video_ssl as exp_cfg
-from official.vision import beta
 
 
 class VideoClassificationConfigTest(tf.test.TestCase, parameterized.TestCase):
