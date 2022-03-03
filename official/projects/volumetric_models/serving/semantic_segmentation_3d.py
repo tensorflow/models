@@ -22,7 +22,7 @@ import tensorflow as tf
 from official.projects.volumetric_models.modeling import backbones
 from official.projects.volumetric_models.modeling import decoders
 from official.projects.volumetric_models.modeling import factory
-from official.vision.beta.serving import export_base
+from official.vision.serving import export_base
 
 
 class SegmentationModule(export_base.ExportModule):

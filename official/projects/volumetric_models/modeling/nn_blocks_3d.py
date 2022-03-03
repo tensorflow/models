@@ -20,7 +20,7 @@ from typing import Sequence, Union
 import tensorflow as tf
 
 from official.modeling import tf_utils
-from official.vision.beta.modeling.layers import nn_layers
+from official.vision.modeling.layers import nn_layers
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')

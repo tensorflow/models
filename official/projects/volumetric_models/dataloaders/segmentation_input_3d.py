@@ -16,8 +16,8 @@
 
 from typing import Any, Dict, Sequence, Tuple
 import tensorflow as tf
-from official.vision.beta.dataloaders import decoder
-from official.vision.beta.dataloaders import parser
+from official.vision.dataloaders import decoder
+from official.vision.dataloaders import parser
 
 
 class Decoder(decoder.Decoder):

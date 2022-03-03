@@ -43,7 +43,7 @@ from official.common import registry_imports  # pylint: disable=unused-import
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.projects.volumetric_models.serving import semantic_segmentation_3d
-from official.vision.beta.serving import export_saved_model_lib
+from official.vision.serving import export_saved_model_lib
 
 FLAGS = flags.FLAGS
 
