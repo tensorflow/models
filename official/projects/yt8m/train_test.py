@@ -22,7 +22,7 @@ from absl.testing import flagsaver
 import numpy as np
 import tensorflow as tf
 from official.projects.yt8m import train as train_lib
-from official.vision.beta.dataloaders import tfexample_utils
+from official.vision.dataloaders import tfexample_utils
 
 FLAGS = flags.FLAGS
 
