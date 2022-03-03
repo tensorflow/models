@@ -57,8 +57,8 @@ import tensorflow as tf
 from official.modeling import hyperparams
 from official.projects.assemblenet.configs import assemblenet as cfg
 from official.projects.assemblenet.modeling import rep_flow_2d_layer as rf
-from official.vision.beta.modeling import factory_3d as model_factory
-from official.vision.beta.modeling.backbones import factory as backbone_factory
+from official.vision.modeling import factory_3d as model_factory
+from official.vision.modeling.backbones import factory as backbone_factory
 
 layers = tf.keras.layers
 intermediate_channel_size = [64, 128, 256, 512]

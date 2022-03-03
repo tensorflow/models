@@ -29,9 +29,6 @@ from absl import flags
 from absl import logging
 import gin
 
-# pylint: disable=unused-import
-from official.common import registry_imports
-# pylint: enable=unused-import
 from official.common import distribute_utils
 from official.common import flags as tfm_flags
 from official.core import task_factory
@@ -42,6 +39,7 @@ from official.modeling import performance
 from official.projects.assemblenet.configs import assemblenet as asn_configs
 from official.projects.assemblenet.modeling import assemblenet as asn
 from official.projects.assemblenet.modeling import assemblenet_plus as asnp
+from official.vision import registry_imports
 # pylint: enable=unused-import
 
 FLAGS = flags.FLAGS
