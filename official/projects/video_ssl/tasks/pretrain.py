@@ -24,9 +24,9 @@ from official.projects.video_ssl.configs import video_ssl as exp_cfg
 from official.projects.video_ssl.dataloaders import video_ssl_input
 from official.projects.video_ssl.losses import losses
 from official.projects.video_ssl.modeling import video_ssl_model
-from official.vision.beta.modeling import factory_3d
-from official.vision.beta.tasks import video_classification
-# pylint: disable=unused-import
+from official.vision.modeling import factory_3d
+from official.vision.tasks import video_classification
+# pylint: enable=unused-import
 
 
 @task_factory.register_task_cls(exp_cfg.VideoSSLPretrainTask)

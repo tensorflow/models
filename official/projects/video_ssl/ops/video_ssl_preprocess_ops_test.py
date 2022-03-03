@@ -14,7 +14,7 @@
 
 import tensorflow as tf
 from official.projects.video_ssl.ops import video_ssl_preprocess_ops
-from official.vision.beta.ops import preprocess_ops_3d
+from official.vision.ops import preprocess_ops_3d
 
 
 class VideoSslPreprocessOpsTest(tf.test.TestCase):

@@ -21,8 +21,8 @@ import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.projects.video_ssl.configs import video_ssl as video_ssl_cfg
-from official.vision.beta.modeling import backbones
-from official.vision.beta.modeling import factory_3d as model_factory
+from official.vision.modeling import backbones
+from official.vision.modeling import factory_3d as model_factory
 
 layers = tf.keras.layers
 

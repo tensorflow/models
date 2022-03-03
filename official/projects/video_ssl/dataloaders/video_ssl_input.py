@@ -21,8 +21,8 @@ from absl import logging
 import tensorflow as tf
 from official.projects.video_ssl.configs import video_ssl as exp_cfg
 from official.projects.video_ssl.ops import video_ssl_preprocess_ops
-from official.vision.beta.dataloaders import video_input
-from official.vision.beta.ops import preprocess_ops_3d
+from official.vision.dataloaders import video_input
+from official.vision.ops import preprocess_ops_3d
 
 IMAGE_KEY = 'image/encoded'
 LABEL_KEY = 'clip/label/index'

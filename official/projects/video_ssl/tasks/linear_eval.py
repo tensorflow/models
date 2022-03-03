@@ -22,7 +22,7 @@ import tensorflow as tf
 from official.core import task_factory
 from official.projects.video_ssl.configs.google import video_ssl as exp_cfg
 from official.projects.video_ssl.modeling import video_ssl_model
-from official.vision.beta.tasks.google import video_classification
+from official.vision.tasks import video_classification
 
 
 @task_factory.register_task_cls(exp_cfg.VideoSSLEvalTask)
