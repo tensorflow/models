@@ -20,8 +20,8 @@ import tensorflow as tf
 
 from official.core import config_definitions as cfg
 from official.core import input_reader
-from official.vision.beta.ops import box_ops
-from official.vision.beta.ops import preprocess_ops
+from official.vision.ops import box_ops
+from official.vision.ops import preprocess_ops
 
 
 @dataclasses.dataclass

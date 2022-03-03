@@ -24,7 +24,7 @@ import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.projects.detr.modeling import transformer
-from official.vision.beta.modeling.backbones import resnet
+from official.vision.modeling.backbones import resnet
 
 
 def position_embedding_sine(attention_mask,
