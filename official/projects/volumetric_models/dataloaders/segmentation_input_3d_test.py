@@ -20,7 +20,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from official.projects.volumetric_models.dataloaders import segmentation_input_3d
-from official.vision.beta.dataloaders import tfexample_utils
+from official.vision.dataloaders import tfexample_utils
 
 
 class InputReaderTest(parameterized.TestCase, tf.test.TestCase):
