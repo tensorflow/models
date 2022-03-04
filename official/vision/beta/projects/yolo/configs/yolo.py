@@ -129,6 +129,7 @@ class DataConfig(cfg.DataConfig):
   tfds_download: bool = True
   cache: bool = False
   drop_remainder: bool = True
+  file_type: str = 'tfrecord'
 
 
 @dataclasses.dataclass

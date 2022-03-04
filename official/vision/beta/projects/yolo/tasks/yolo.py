@@ -20,6 +20,7 @@ from typing import Optional
 from absl import logging
 import tensorflow as tf
 
+from official.common import dataset_fn
 from official.core import base_task
 from official.core import config_definitions
 from official.core import input_reader
@@ -162,7 +163,7 @@ class YoloTask(base_task.Task):
     # init the dataset reader
     reader = input_reader.InputReader(
         params,
-        dataset_fn=tf.data.TFRecordDataset,
+        dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
         sample_fn=sample_fn.mosaic_fn(is_training=params.is_training),
         parser_fn=parser.parse_fn(params.is_training))
