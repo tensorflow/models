@@ -34,9 +34,6 @@ from absl import app
 from absl import flags
 import gin
 
-# pylint: disable=unused-import
-from official.common import registry_imports
-# pylint: enable=unused-import
 from official.common import distribute_utils
 from official.common import flags as tfm_flags
 from official.core import task_factory
@@ -48,6 +45,7 @@ from official.modeling import performance
 # pylint: disable=unused-import
 from official.projects.movinet.modeling import movinet
 from official.projects.movinet.modeling import movinet_model
+from official.vision import registry_imports
 # pylint: enable=unused-import
 
 FLAGS = flags.FLAGS

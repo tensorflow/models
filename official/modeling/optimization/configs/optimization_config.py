@@ -48,6 +48,8 @@ class OptimizerConfig(oneof.OneOfConfig):
   sgd_experimental: opt_cfg.SGDExperimentalConfig = (
       opt_cfg.SGDExperimentalConfig())
   adam: opt_cfg.AdamConfig = opt_cfg.AdamConfig()
+  adam_experimental: opt_cfg.AdamExperimentalConfig = (
+      opt_cfg.AdamExperimentalConfig())
   adamw: opt_cfg.AdamWeightDecayConfig = opt_cfg.AdamWeightDecayConfig()
   lamb: opt_cfg.LAMBConfig = opt_cfg.LAMBConfig()
   rmsprop: opt_cfg.RMSPropConfig = opt_cfg.RMSPropConfig()

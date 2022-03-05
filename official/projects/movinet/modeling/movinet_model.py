@@ -23,8 +23,8 @@ import tensorflow as tf
 
 from official.projects.movinet.configs import movinet as cfg
 from official.projects.movinet.modeling import movinet_layers
-from official.vision.beta.modeling import backbones
-from official.vision.beta.modeling import factory_3d as model_factory
+from official.vision.modeling import backbones
+from official.vision.modeling import factory_3d as model_factory
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')

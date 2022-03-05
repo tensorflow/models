@@ -101,6 +101,55 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(tf.float32, data.dtype)
     self.assertAllEqual(pooled_dtype, pooled.dtype)
 
+  def test_network_creation_dense(self):
+    tf.keras.mixed_precision.set_global_policy("mixed_float16")
+    pool_type = "avg"
+
+    hidden_size = 32
+    sequence_length = 21
+    dense_sequence_length = 3
+    pool_stride = 2
+    num_layers = 3
+    # Create a small FunnelTransformerEncoder for testing.
+    test_network = funnel_transformer.FunnelTransformerEncoder(
+        vocab_size=100,
+        hidden_size=hidden_size,
+        num_attention_heads=2,
+        num_layers=num_layers,
+        pool_stride=pool_stride,
+        pool_type=pool_type,
+        max_sequence_length=sequence_length + dense_sequence_length,
+        unpool_length=0,
+        transformer_cls="TransformerEncoderBlock")
+    # Create the inputs (note that the first dimension is implicit).
+    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+
+    dense_inputs = tf.keras.Input(
+        shape=(dense_sequence_length, hidden_size), dtype=tf.float32)
+    dense_mask = tf.keras.Input(shape=(dense_sequence_length,), dtype=tf.int32)
+    dense_type_ids = tf.keras.Input(
+        shape=(dense_sequence_length,), dtype=tf.int32)
+
+    dict_outputs = test_network(
+        [word_ids, mask, type_ids, dense_inputs, dense_mask, dense_type_ids])
+    data = dict_outputs["sequence_output"]
+    pooled = dict_outputs["pooled_output"]
+
+    self.assertIsInstance(test_network.transformer_layers, list)
+    self.assertLen(test_network.transformer_layers, num_layers)
+    self.assertIsInstance(test_network.pooler_layer, tf.keras.layers.Dense)
+
+    # Stride=2 compresses sequence length to half the size at each layer.
+    # For pool_type = max or avg,
+    # this configuration gives each layer of seq length: 24->12->6->3.
+    expected_data_shape = [None, 3, hidden_size]
+    expected_pooled_shape = [None, hidden_size]
+
+    self.assertAllEqual(expected_data_shape, data.shape.as_list())
+    self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
+
   def test_invalid_stride_and_num_layers(self):
     hidden_size = 32
     num_layers = 3

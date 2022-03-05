@@ -1,0 +1,63 @@
+# MobileNetV3Small ImageNet classification. 67.5% top-1 and 87.6% top-5 accuracy.
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  model:
+    num_classes: 1001
+    input_size: [224, 224, 3]
+    backbone:
+      type: 'mobilenet'
+      mobilenet:
+        model_id: 'MobileNetV3Small'
+        filter_size_scale: 1.0
+    norm_activation:
+      activation: 'relu'
+      norm_momentum: 0.997
+      norm_epsilon: 0.001
+      use_sync_bn: false
+    dropout_rate: 0.2
+  losses:
+    l2_weight_decay: 0.00001
+    one_hot: true
+    label_smoothing: 0.1
+  train_data:
+    input_path: 'imagenet-2012-tfrecord/train*'
+    is_training: true
+    global_batch_size: 4096
+    dtype: 'bfloat16'
+  validation_data:
+    input_path: 'imagenet-2012-tfrecord/valid*'
+    is_training: false
+    global_batch_size: 4096
+    dtype: 'bfloat16'
+    drop_remainder: false
+trainer:
+  train_steps: 312000  # 1000 epochs
+  validation_steps: 12
+  validation_interval: 312
+  steps_per_loop: 312  # NUM_EXAMPLES (1281167) // global_batch_size
+  summary_interval: 312
+  checkpoint_interval: 312
+  optimizer_config:
+    optimizer:
+      type: 'rmsprop'
+      rmsprop:
+        rho: 0.9
+        momentum: 0.9
+        epsilon: 0.002
+    learning_rate:
+      type: 'exponential'
+      exponential:
+        initial_learning_rate: 0.01
+        decay_steps: 936  # 3 * steps_per_epoch
+        decay_rate: 0.99
+        staircase: true
+    ema:
+      average_decay: 0.9999
+      trainable_weights_only: false
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 1560
+        warmup_learning_rate: 0.001

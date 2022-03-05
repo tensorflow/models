@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Registry utility."""
+from absl import logging
 
 
 def register(registered_collection, reg_key):
@@ -54,8 +55,16 @@ def register(registered_collection, reg_key):
       leaf_reg_key = reg_key
 
     if leaf_reg_key in collection:
-      raise KeyError("Function or class {} registered multiple times.".format(
-          leaf_reg_key))
+      if "beta" in fn_or_cls.__module__:
+        # TODO(yeqing): Clean this temporary branch for beta.
+        logging.warn(
+            "Duplicate registeration of beta module "
+            "name %r new %r old %r", reg_key, collection[leaf_reg_key],
+            fn_or_cls.__module__)
+        return fn_or_cls
+      else:
+        raise KeyError("Function or class {} registered multiple times.".format(
+            leaf_reg_key))
 
     collection[leaf_reg_key] = fn_or_cls
     return fn_or_cls

@@ -21,7 +21,7 @@ from absl import logging
 from absl.testing import flagsaver
 import tensorflow as tf
 from official.projects.volumetric_models import train as train_lib
-from official.vision.beta.dataloaders import tfexample_utils
+from official.vision.dataloaders import tfexample_utils
 
 FLAGS = flags.FLAGS
 

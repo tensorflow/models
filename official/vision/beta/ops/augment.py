@@ -2259,7 +2259,7 @@ class MixupAndCutmix:
               labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
     """Apply cutmix."""
     lam = MixupAndCutmix._sample_from_beta(self.cutmix_alpha, self.cutmix_alpha,
-                                           labels.shape)
+                                           tf.shape(labels))
 
     ratio = tf.math.sqrt(1 - lam)
 
@@ -2293,7 +2293,7 @@ class MixupAndCutmix:
   def _mixup(self, images: tf.Tensor,
              labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
     lam = MixupAndCutmix._sample_from_beta(self.mixup_alpha, self.mixup_alpha,
-                                           labels.shape)
+                                           tf.shape(labels))
     lam = tf.reshape(lam, [-1, 1, 1, 1])
     lam_cast = tf.cast(lam, dtype=images.dtype)
     images = lam_cast * images + (1. - lam_cast) * tf.reverse(images, [0])

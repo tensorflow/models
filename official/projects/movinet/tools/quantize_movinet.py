@@ -38,8 +38,8 @@ import numpy as np
 import tensorflow.compat.v2 as tf
 import tensorflow_hub as hub
 
-from official.vision.beta.configs import video_classification as video_classification_configs
-from official.vision.beta.tasks import video_classification
+from official.vision.configs import video_classification as video_classification_configs
+from official.vision.tasks import video_classification
 
 tf.enable_v2_behavior()
 

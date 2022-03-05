@@ -22,8 +22,8 @@ from official.projects.detr.configs import detr as detr_cfg
 from official.projects.detr.dataloaders import coco
 from official.projects.detr.modeling import detr
 from official.projects.detr.ops import matchers
-from official.vision.beta.evaluation import coco_evaluator
-from official.vision.beta.ops import box_ops
+from official.vision.evaluation import coco_evaluator
+from official.vision.ops import box_ops
 
 
 @task_factory.register_task_cls(detr_cfg.DetectionConfig)

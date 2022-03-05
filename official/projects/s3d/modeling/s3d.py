@@ -26,8 +26,8 @@ from official.modeling import hyperparams
 from official.projects.s3d.configs import s3d as cfg
 from official.projects.s3d.modeling import inception_utils
 from official.projects.s3d.modeling import net_utils
-from official.vision.beta.modeling import factory_3d as model_factory
-from official.vision.beta.modeling.backbones import factory as backbone_factory
+from official.vision.modeling import factory_3d as model_factory
+from official.vision.modeling.backbones import factory as backbone_factory
 
 initializers = tf.keras.initializers
 regularizers = tf.keras.regularizers

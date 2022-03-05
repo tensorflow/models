@@ -20,6 +20,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from sentencepiece import SentencePieceTrainer
+from official.core import export_base
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
 from official.nlp.serving import serving_modules
@@ -343,7 +344,10 @@ class ServingModulesTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(ValueError):
       _ = export_module.get_inference_signatures({"foo": None})
 
-  def test_translation(self):
+  @parameterized.parameters(
+      (False, None),
+      (True, 2))
+  def test_translation(self, padded_decode, batch_size):
     sp_path = _make_sentencepeice(self.get_temp_dir())
     encdecoder = translation.EncDecoder(
         num_attention_heads=4, intermediate_size=256)
@@ -352,7 +356,7 @@ class ServingModulesTest(tf.test.TestCase, parameterized.TestCase):
             encoder=encdecoder,
             decoder=encdecoder,
             embedding_width=256,
-            padded_decode=False,
+            padded_decode=padded_decode,
             decode_max_length=100),
         sentencepiece_model_path=sp_path,
     )
@@ -360,7 +364,7 @@ class ServingModulesTest(tf.test.TestCase, parameterized.TestCase):
     model = task.build_model()
 
     params = serving_modules.Translation.Params(
-        sentencepiece_model_path=sp_path)
+        sentencepiece_model_path=sp_path, batch_size=batch_size)
     export_module = serving_modules.Translation(params=params, model=model)
     functions = export_module.get_inference_signatures({
         "serve_text": "serving_default"
@@ -368,6 +372,20 @@ class ServingModulesTest(tf.test.TestCase, parameterized.TestCase):
     outputs = functions["serving_default"](tf.constant(["abcd", "ef gh"]))
     self.assertEqual(outputs.shape, (2,))
     self.assertEqual(outputs.dtype, tf.string)
+
+    tmp_dir = self.get_temp_dir()
+    tmp_dir = os.path.join(tmp_dir, "padded_decode", str(padded_decode))
+    export_base_dir = os.path.join(tmp_dir, "export")
+    ckpt_dir = os.path.join(tmp_dir, "ckpt")
+    ckpt_path = tf.train.Checkpoint(model=model).save(ckpt_dir)
+    export_dir = export_base.export(export_module,
+                                    {"serve_text": "serving_default"},
+                                    export_base_dir, ckpt_path)
+    loaded = tf.saved_model.load(export_dir)
+    infer = loaded.signatures["serving_default"]
+    out = infer(text=tf.constant(["abcd", "ef gh"]))
+    self.assertLen(out["output_0"], 2)
+
 
 if __name__ == "__main__":
   tf.test.main()

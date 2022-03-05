@@ -25,7 +25,7 @@ from typing import Any, Mapping, Sequence
 import tensorflow as tf
 from official.modeling import hyperparams
 from official.projects.volumetric_models.modeling import nn_blocks_3d
-from official.vision.beta.modeling.backbones import factory
+from official.vision.modeling.backbones import factory
 
 layers = tf.keras.layers
 
