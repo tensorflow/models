@@ -107,6 +107,11 @@ def add_pointcloud_distances(dist_a: tf.Tensor,
                              batch_reduction:
                              Union[str, None] = "mean") -> tf.Tensor:
   """TODO"""
+  # Cast int32 tensors to float32.
+  num_points_a = tf.cast(num_points_a, tf.float32)
+  num_points_b = tf.cast(num_points_b, tf.float32)
+  batch_size = tf.cast(batch_size, tf.float32)
+
   # Point reduction: sum all dists into one element per batch.
   dist_a = tf.reduce_sum(dist_a, axis=-1) / num_points_a
   dist_b = tf.reduce_sum(dist_b, axis=-1) / num_points_b
@@ -137,10 +142,6 @@ def chamfer_loss(pointcloud_a: tf.Tensor,
                  weights: Optional[tf.Tensor] = None,
                  batch_reduction: Union[str, None] = "mean") -> tf.Tensor:
   """TODO"""
-  batch_size = tf.shape(pointcloud_a)[0]
-  num_points_a = tf.shape(pointcloud_a)[1]
-  num_points_b = tf.shape(pointcloud_b)[1]
-
   square_distances = compute_square_distances(pointcloud_a, pointcloud_b)
 
   # FloatTensor[B, num_points_a] representing the minimum of the squared
@@ -152,9 +153,13 @@ def chamfer_loss(pointcloud_a: tf.Tensor,
   min_square_dist_b_to_a = tf.reduce_min(input_tensor=square_distances,
                                          axis=-2)
 
+  batch_size = tf.shape(pointcloud_a)[0]
+  num_points_a = tf.shape(pointcloud_a)[1]
+  num_points_b = tf.shape(pointcloud_b)[1]
+
   chamfer_dist = add_pointcloud_distances(
-      min_square_dist_a_to_b, min_square_dist_b_to_a, weights,
-      num_points_a, num_points_b, batch_size, batch_reduction
+      min_square_dist_a_to_b, min_square_dist_b_to_a,
+      num_points_a, num_points_b, batch_size, weights, batch_reduction
   )
   return chamfer_dist
 
@@ -165,10 +170,6 @@ def normal_loss(pointcloud_a: tf.Tensor,
                 weights: Optional[tf.Tensor] = None,
                 batch_reduction: Union[str, None] = "mean") -> tf.Tensor:
   """TODO"""
-  batch_size = tf.shape(pointcloud_a)[0]
-  num_points_a = tf.shape(pointcloud_a)[1]
-  num_points_b = tf.shape(pointcloud_b)[1]
-
   normals_a_nearest_to_b, normals_b_nearest_to_a = \
     get_normals_nearest_neighbors(pointcloud_a, pointcloud_b,
                                   normals_a, normals_b)
@@ -184,9 +185,13 @@ def normal_loss(pointcloud_a: tf.Tensor,
       cosine_similarity(normals_a_nearest_to_b, normals_b)
   )
 
+  batch_size = tf.shape(pointcloud_a)[0]
+  num_points_a = tf.shape(pointcloud_a)[1]
+  num_points_b = tf.shape(pointcloud_b)[1]
+
   normal_dist = add_pointcloud_distances(
-      abs_normal_dist_a, abs_normal_dist_b, weights,
-      num_points_a, num_points_b, batch_size, batch_reduction
+      abs_normal_dist_a, abs_normal_dist_b, num_points_a, num_points_b,
+      batch_size, weights, batch_reduction
   )
   return normal_dist
 
@@ -218,14 +223,14 @@ class MeshLoss(tf.keras.losses.Loss):
                chamfer_weight=1.0,
                normal_weight=0.0,
                edge_weight=0.1,
-               gt_num_samples=5000,
+               true_num_samples=5000,
                pred_num_samples=5000) -> None:
     """TODO"""
     self._voxel_weight = voxel_weight
     self._chamfer_weight = chamfer_weight
     self._normal_weight = normal_weight
     self._edge_weight = edge_weight
-    self._gt_num_samples = gt_num_samples
+    self._true_num_samples = true_num_samples
     self._pred_num_samples = pred_num_samples
     self._binary_crossentropy = tf.keras.losses.BinaryCrossentropy(
         reduction=tf.keras.losses.Reduction.SUM, from_logits=True)
@@ -248,9 +253,9 @@ class MeshLoss(tf.keras.losses.Loss):
           voxels_true, voxels_pred
       )
 
-    gt_sampler = MeshSampler(self._gt_num_samples)
+    true_sampler = MeshSampler(self._true_num_samples)
     pred_sampler = MeshSampler(self._pred_num_samples)
-    pointcloud_true, normals_true, _ = gt_sampler.sample_meshes(
+    pointcloud_true, normals_true, _ = true_sampler.sample_meshes(
         verts, verts_mask_true, faces, faces_mask_true,
     )
     pointcloud_pred, normals_pred, _ = pred_sampler.sample_meshes(
@@ -276,7 +281,7 @@ class MeshLoss(tf.keras.losses.Loss):
         'normal_weight': self._normal_weight,
         'edge_weight': self._edge_weight,
         'voxel_weight': self._voxel_weight,
-        'gt_num_samples': self._gt_num_samples,
+        'true_num_samples': self._true_num_samples,
         'pred_num_samples': self._pred_num_samples,
     }
     base_config = super(MeshLoss, self).get_config()
