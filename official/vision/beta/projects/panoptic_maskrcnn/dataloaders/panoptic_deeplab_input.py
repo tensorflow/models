@@ -239,15 +239,20 @@ class Parser(parser.Parser):
 
     padding_start = int(3 * self._sigma + 1)
     padding_end = int(3 * self._sigma + 2)
+    
+    # padding should be equal to self._gaussian_size which is calculated
+    # as size = int(6 * sigma + 3)
     padding = padding_start + padding_end
 
     centers_heatmap = tf.zeros(
         shape=[height + padding, width + padding],
-        dtype=self._dtype)
+        dtype=tf.float32)
     centers_offset_y = tf.zeros(
-        shape=[height, width])
+        shape=[height, width],
+        dtype=tf.float32)
     centers_offset_x = tf.zeros(
-        shape=[height, width])
+        shape=[height, width],
+        dtype=tf.float32)
 
     unique_instance_ids, _ = tf.unique(tf.reshape(instance_mask, [-1]))
 
@@ -292,5 +297,9 @@ class Parser(parser.Parser):
         padding_start:padding_start + height,
         padding_start:padding_start + width]
     centers_heatmap = tf.expand_dims(centers_heatmap, axis=-1)
-    centers_offset = tf.stack([centers_offset_y, centers_offset_x], axis=-1)
+    
+    centers_offset = tf.stack(
+        [centers_offset_y, centers_offset_x], 
+        axis=-1)
+    
     return centers_heatmap, centers_offset
