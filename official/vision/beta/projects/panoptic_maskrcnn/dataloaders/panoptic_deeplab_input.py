@@ -43,7 +43,7 @@ class TfExampleDecoder(tf_example_decoder.TfExampleDecoder):
               include_mask=True,
               regenerate_source_id=regenerate_source_id)
 
-    self._segmentation_keys_to_features = {
+    self._panoptic_keys_to_features = {
         'image/panoptic/category_mask':
             tf.io.FixedLenFeature((), tf.string, default_value=''),
         'image/panoptic/instance_mask':
@@ -54,7 +54,7 @@ class TfExampleDecoder(tf_example_decoder.TfExampleDecoder):
     decoded_tensors = super(TfExampleDecoder,
                             self).decode(serialized_example)
     parsed_tensors = tf.io.parse_single_example(
-        serialized_example, self._segmentation_keys_to_features)
+        serialized_example, self._panoptic_keys_to_features)
 
     category_mask = tf.io.decode_image(
         parsed_tensors['image/panoptic/category_mask'], channels=1)
