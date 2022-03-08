@@ -24,10 +24,10 @@ from official.core import exp_factory
 from official.core import task_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.vision.beta.configs import common
-from official.vision.beta.configs import image_classification as img_cls_cfg
+from official.vision.configs import common
+from official.vision.configs import image_classification as img_cls_cfg
 from official.projects.vit.configs import backbones
-from official.vision.beta.tasks import image_classification
+from official.vision.tasks import image_classification
 
 DataConfig = img_cls_cfg.DataConfig
 
