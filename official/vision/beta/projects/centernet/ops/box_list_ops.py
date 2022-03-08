@@ -16,8 +16,8 @@
 
 import tensorflow as tf
 
-from official.vision.beta.ops import sampling_ops
 from official.vision.beta.projects.centernet.ops import box_list
+from official.vision.ops import sampling_ops
 
 
 def _copy_extra_fields(boxlist_to_copy_to, boxlist_to_copy_from):
