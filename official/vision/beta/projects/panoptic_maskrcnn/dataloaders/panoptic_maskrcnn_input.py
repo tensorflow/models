@@ -16,9 +16,9 @@
 
 import tensorflow as tf
 
-from official.vision.beta.dataloaders import maskrcnn_input
-from official.vision.beta.dataloaders import tf_example_decoder
-from official.vision.beta.ops import preprocess_ops
+from official.vision.dataloaders import maskrcnn_input
+from official.vision.dataloaders import tf_example_decoder
+from official.vision.ops import preprocess_ops
 
 
 class TfExampleDecoder(tf_example_decoder.TfExampleDecoder):

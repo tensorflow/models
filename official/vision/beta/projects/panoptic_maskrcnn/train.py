@@ -17,7 +17,7 @@
 from absl import app
 
 from official.common import flags as tfm_flags
-from official.vision.beta import train
+from official.vision import train
 from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_maskrcnn as cfg  # pylint: disable=unused-import
 from official.vision.beta.projects.panoptic_maskrcnn.tasks import panoptic_maskrcnn as task  # pylint: disable=unused-import
 

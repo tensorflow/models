@@ -21,7 +21,7 @@ from typing import List, Mapping, Optional, Union
 from absl import logging
 import tensorflow as tf
 
-from official.vision.beta.modeling import maskrcnn_model
+from official.vision.modeling import maskrcnn_model
 
 
 def resize_as(source, size):

@@ -15,25 +15,26 @@
 """Tests for panoptic_maskrcnn_model.py."""
 
 import os
+
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
-from official.vision.beta.modeling.backbones import resnet
-from official.vision.beta.modeling.decoders import aspp
-from official.vision.beta.modeling.decoders import fpn
-from official.vision.beta.modeling.heads import dense_prediction_heads
-from official.vision.beta.modeling.heads import instance_heads
-from official.vision.beta.modeling.heads import segmentation_heads
-from official.vision.beta.modeling.layers import detection_generator
-from official.vision.beta.modeling.layers import mask_sampler
-from official.vision.beta.modeling.layers import roi_aligner
-from official.vision.beta.modeling.layers import roi_generator
-from official.vision.beta.modeling.layers import roi_sampler
-from official.vision.beta.ops import anchor
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_maskrcnn_model
 from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import panoptic_segmentation_generator
+from official.vision.modeling.backbones import resnet
+from official.vision.modeling.decoders import aspp
+from official.vision.modeling.decoders import fpn
+from official.vision.modeling.heads import dense_prediction_heads
+from official.vision.modeling.heads import instance_heads
+from official.vision.modeling.heads import segmentation_heads
+from official.vision.modeling.layers import detection_generator
+from official.vision.modeling.layers import mask_sampler
+from official.vision.modeling.layers import roi_aligner
+from official.vision.modeling.layers import roi_generator
+from official.vision.modeling.layers import roi_sampler
+from official.vision.ops import anchor
 
 
 class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
