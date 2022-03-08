@@ -27,11 +27,11 @@ from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v1_model
 from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v2_model
 from official.projects.edgetpu.vision.modeling.backbones import mobilenet_edgetpu  # pylint: disable=unused-import
 from official.projects.edgetpu.vision.modeling.heads import bifpn_head
-from official.vision.beta.dataloaders import input_reader_factory
-from official.vision.beta.dataloaders import segmentation_input
-from official.vision.beta.dataloaders import tfds_factory
-from official.vision.beta.ops import preprocess_ops
-from official.vision.beta.tasks import semantic_segmentation
+from official.vision.dataloaders import input_reader_factory
+from official.vision.dataloaders import segmentation_input
+from official.vision.dataloaders import tfds_factory
+from official.vision.ops import preprocess_ops
+from official.vision.tasks import semantic_segmentation
 
 
 class ClassMappingParser(segmentation_input.Parser):
