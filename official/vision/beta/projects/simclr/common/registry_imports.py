@@ -15,7 +15,7 @@
 """All necessary imports for registration."""
 
 # pylint: disable=unused-import
-from official.common import registry_imports
+from official.vision import registry_imports
 from official.vision.beta.projects.simclr.configs import simclr
 from official.vision.beta.projects.simclr.losses import contrastive_losses
 from official.vision.beta.projects.simclr.modeling import simclr_model
