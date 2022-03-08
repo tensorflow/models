@@ -17,8 +17,8 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.projects.centernet.ops import target_assigner
+from official.vision.ops import preprocess_ops
 
 
 class TargetAssignerTest(tf.test.TestCase, parameterized.TestCase):

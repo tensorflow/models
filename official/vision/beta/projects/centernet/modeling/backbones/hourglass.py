@@ -19,10 +19,10 @@ from typing import Optional
 import tensorflow as tf
 
 from official.modeling import hyperparams
-from official.vision.beta.modeling.backbones import factory
-from official.vision.beta.modeling.backbones import mobilenet
-from official.vision.beta.modeling.layers import nn_blocks
 from official.vision.beta.projects.centernet.modeling.layers import cn_nn_blocks
+from official.vision.modeling.backbones import factory
+from official.vision.modeling.backbones import mobilenet
+from official.vision.modeling.layers import nn_blocks
 
 HOURGLASS_SPECS = {
     10: {
