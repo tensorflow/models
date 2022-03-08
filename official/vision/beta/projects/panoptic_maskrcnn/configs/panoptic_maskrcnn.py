@@ -22,10 +22,10 @@ from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.vision.beta.configs import common
-from official.vision.beta.configs import maskrcnn
-from official.vision.beta.configs import semantic_segmentation
 from official.vision.beta.projects.deepmac_maskrcnn.configs import deep_mask_head_rcnn as deepmac_maskrcnn
+from official.vision.configs import common
+from official.vision.configs import maskrcnn
+from official.vision.configs import semantic_segmentation
 
 
 SEGMENTATION_MODEL = semantic_segmentation.SemanticSegmentationModel

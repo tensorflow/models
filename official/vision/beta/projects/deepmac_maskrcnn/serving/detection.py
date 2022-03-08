@@ -16,13 +16,14 @@
 """Detection input and model functions for serving/inference."""
 
 from typing import Dict, Mapping, Text
+
 import tensorflow as tf
 
-from official.vision.beta.ops import box_ops
 from official.vision.beta.projects.deepmac_maskrcnn.configs import deep_mask_head_rcnn as cfg
 from official.vision.beta.projects.deepmac_maskrcnn.modeling import maskrcnn_model
 from official.vision.beta.projects.deepmac_maskrcnn.tasks import deep_mask_head_rcnn
-from official.vision.beta.serving import detection
+from official.vision.ops import box_ops
+from official.vision.serving import detection
 
 
 def reverse_input_box_transformation(boxes, image_info):

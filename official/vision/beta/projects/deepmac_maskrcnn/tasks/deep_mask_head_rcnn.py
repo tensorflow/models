@@ -17,19 +17,19 @@
 import tensorflow as tf
 
 from official.core import task_factory
-from official.vision.beta.modeling import backbones
-from official.vision.beta.modeling.decoders import factory as decoder_factory
-from official.vision.beta.modeling.heads import dense_prediction_heads
-from official.vision.beta.modeling.heads import instance_heads
-from official.vision.beta.modeling.layers import detection_generator
-from official.vision.beta.modeling.layers import mask_sampler
-from official.vision.beta.modeling.layers import roi_aligner
-from official.vision.beta.modeling.layers import roi_generator
-from official.vision.beta.modeling.layers import roi_sampler
 from official.vision.beta.projects.deepmac_maskrcnn.configs import deep_mask_head_rcnn as deep_mask_head_rcnn_config
 from official.vision.beta.projects.deepmac_maskrcnn.modeling import maskrcnn_model as deep_maskrcnn_model
 from official.vision.beta.projects.deepmac_maskrcnn.modeling.heads import instance_heads as deep_instance_heads
-from official.vision.beta.tasks import maskrcnn
+from official.vision.modeling import backbones
+from official.vision.modeling.decoders import factory as decoder_factory
+from official.vision.modeling.heads import dense_prediction_heads
+from official.vision.modeling.heads import instance_heads
+from official.vision.modeling.layers import detection_generator
+from official.vision.modeling.layers import mask_sampler
+from official.vision.modeling.layers import roi_aligner
+from official.vision.modeling.layers import roi_generator
+from official.vision.modeling.layers import roi_sampler
+from official.vision.tasks import maskrcnn
 
 
 # Taken from modeling/factory.py

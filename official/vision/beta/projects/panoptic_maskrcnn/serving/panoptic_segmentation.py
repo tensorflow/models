@@ -20,7 +20,7 @@ import tensorflow as tf
 
 from official.core import config_definitions as cfg
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_maskrcnn_model
-from official.vision.beta.serving import detection
+from official.vision.serving import detection
 
 
 class PanopticSegmentationModule(detection.DetectionModule):
