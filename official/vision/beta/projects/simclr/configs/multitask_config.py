@@ -20,10 +20,10 @@ from typing import List, Tuple
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling.multitask import configs as multitask_configs
-from official.vision.beta.configs import backbones
-from official.vision.beta.configs import common
 from official.vision.beta.projects.simclr.configs import simclr as simclr_configs
 from official.vision.beta.projects.simclr.modeling import simclr_model
+from official.vision.configs import backbones
+from official.vision.configs import common
 
 
 @dataclasses.dataclass
