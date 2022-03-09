@@ -40,7 +40,7 @@ from official.core import exp_factory
 from official.modeling import hyperparams
 from official.vision.beta.projects.deepmac_maskrcnn.serving import detection
 from official.vision.beta.projects.deepmac_maskrcnn.tasks import deep_mask_head_rcnn  # pylint: disable=unused-import
-from official.vision.beta.serving import export_saved_model_lib
+from official.vision.serving import export_saved_model_lib
 
 FLAGS = flags.FLAGS
 

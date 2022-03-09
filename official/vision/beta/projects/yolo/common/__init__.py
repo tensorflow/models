@@ -12,24 +12,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Backbones configurations."""
-
-import dataclasses
-
-from official.modeling import hyperparams
-from official.vision.configs import backbones
-
-
-@dataclasses.dataclass
-class Hourglass(hyperparams.Config):
-  """Hourglass config."""
-  model_id: int = 52
-  input_channel_dims: int = 128
-  num_hourglasses: int = 2
-  initial_downsample: bool = True
-  activation: str = 'relu'
-
-
-@dataclasses.dataclass
-class Backbone(backbones.Backbone):
-  hourglass: Hourglass = Hourglass()

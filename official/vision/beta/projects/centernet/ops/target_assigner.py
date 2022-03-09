@@ -18,7 +18,7 @@ from typing import Dict, List
 
 import tensorflow as tf
 
-from official.vision.beta.ops import sampling_ops
+from official.vision.ops import sampling_ops
 
 
 def smallest_positive_root(a, b, c):

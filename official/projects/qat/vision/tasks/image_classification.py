@@ -19,7 +19,7 @@ import tensorflow as tf
 from official.core import task_factory
 from official.projects.qat.vision.configs import image_classification as exp_cfg
 from official.projects.qat.vision.modeling import factory
-from official.vision.beta.tasks import image_classification
+from official.vision.tasks import image_classification
 
 
 @task_factory.register_task_cls(exp_cfg.ImageClassificationTask)

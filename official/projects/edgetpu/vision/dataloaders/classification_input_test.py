@@ -17,8 +17,8 @@
 from absl.testing import parameterized
 import tensorflow as tf
 from official.projects.edgetpu.vision.dataloaders import classification_input
-from official.vision.beta.configs import common
-from official.vision.beta.dataloaders import tfexample_utils
+from official.vision.configs import common
+from official.vision.dataloaders import tfexample_utils
 
 IMAGE_FIELD_KEY = 'image/encoded'
 LABEL_FIELD_KEY = 'image/class/label'

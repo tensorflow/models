@@ -21,12 +21,12 @@ import tensorflow as tf
 
 from official.projects.qat.vision.configs import common
 from official.projects.qat.vision.modeling import factory as qat_factory
-from official.vision.beta.configs import backbones
-from official.vision.beta.configs import decoders
-from official.vision.beta.configs import image_classification as classification_cfg
-from official.vision.beta.configs import retinanet as retinanet_cfg
-from official.vision.beta.configs import semantic_segmentation as semantic_segmentation_cfg
-from official.vision.beta.modeling import factory
+from official.vision.configs import backbones
+from official.vision.configs import decoders
+from official.vision.configs import image_classification as classification_cfg
+from official.vision.configs import retinanet as retinanet_cfg
+from official.vision.configs import semantic_segmentation as semantic_segmentation_cfg
+from official.vision.modeling import factory
 
 
 class ClassificationModelBuilderTest(parameterized.TestCase, tf.test.TestCase):
