@@ -26,8 +26,8 @@ from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.vision.beta.configs import backbones
-from official.vision.beta.configs import semantic_segmentation as base_cfg
+from official.vision.configs import backbones
+from official.vision.configs import semantic_segmentation as base_cfg
 
 # ADE 20K Dataset
 ADE20K_TRAIN_EXAMPLES = 20210

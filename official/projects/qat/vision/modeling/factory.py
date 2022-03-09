@@ -22,12 +22,12 @@ from official.projects.qat.vision.configs import common
 from official.projects.qat.vision.modeling import segmentation_model as qat_segmentation_model
 from official.projects.qat.vision.n_bit import schemes as n_bit_schemes
 from official.projects.qat.vision.quantization import schemes
-from official.vision.beta import configs
-from official.vision.beta.modeling import classification_model
-from official.vision.beta.modeling import retinanet_model
-from official.vision.beta.modeling.decoders import aspp
-from official.vision.beta.modeling.heads import segmentation_heads
-from official.vision.beta.modeling.layers import nn_layers
+from official.vision import configs
+from official.vision.modeling import classification_model
+from official.vision.modeling import retinanet_model
+from official.vision.modeling.decoders import aspp
+from official.vision.modeling.heads import segmentation_heads
+from official.vision.modeling.layers import nn_layers
 
 
 def build_qat_classification_model(

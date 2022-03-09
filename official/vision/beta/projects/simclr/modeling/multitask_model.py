@@ -14,15 +14,15 @@
 
 """Multi-task image multi-taskSimCLR model definition."""
 from typing import Dict, Text
-from absl import logging
 
+from absl import logging
 import tensorflow as tf
 
 from official.modeling.multitask import base_model
-from official.vision.beta.modeling import backbones
 from official.vision.beta.projects.simclr.configs import multitask_config as simclr_multitask_config
 from official.vision.beta.projects.simclr.heads import simclr_head
 from official.vision.beta.projects.simclr.modeling import simclr_model
+from official.vision.modeling import backbones
 
 PROJECTION_OUTPUT_KEY = 'projection_outputs'
 SUPERVISED_OUTPUT_KEY = 'supervised_outputs'
@@ -110,8 +110,9 @@ class SimCLRMTModel(base_model.MultiTaskBaseModel):
       pretrained_items = dict(
           backbone=self._backbone, projection_head=self._projection_head)
     else:
-      assert ("Only 'backbone_projection' or 'backbone' can be used to "
-              'initialize the model.')
+      raise ValueError(
+          "Only 'backbone_projection' or 'backbone' can be used to "
+          'initialize the model.')
 
     ckpt = tf.train.Checkpoint(**pretrained_items)
     status = ckpt.read(ckpt_dir_or_file)

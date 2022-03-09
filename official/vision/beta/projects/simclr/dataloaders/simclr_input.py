@@ -40,11 +40,11 @@ from typing import List
 
 import tensorflow as tf
 
-from official.vision.beta.dataloaders import decoder
-from official.vision.beta.dataloaders import parser
-from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.projects.simclr.dataloaders import preprocess_ops as simclr_preprocess_ops
 from official.vision.beta.projects.simclr.modeling import simclr_model
+from official.vision.dataloaders import decoder
+from official.vision.dataloaders import parser
+from official.vision.ops import preprocess_ops
 
 
 class Decoder(decoder.Decoder):

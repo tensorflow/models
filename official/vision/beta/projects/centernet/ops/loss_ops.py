@@ -16,7 +16,7 @@
 
 import tensorflow as tf
 
-from official.vision.beta.ops import sampling_ops
+from official.vision.ops import sampling_ops
 
 
 def _get_shape(tensor, num_dims):

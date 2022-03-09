@@ -20,11 +20,11 @@ from absl.testing import parameterized
 import orbit
 import tensorflow as tf
 
-from official.common import registry_imports
 from official.core import exp_factory
 from official.modeling import optimization
 from official.projects.edgetpu.vision.configs import mobilenet_edgetpu_config
 from official.projects.edgetpu.vision.tasks import image_classification
+from official.vision import registry_imports
 
 
 # Dummy ImageNet TF dataset.

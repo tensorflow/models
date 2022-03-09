@@ -36,12 +36,12 @@ from official.core import task_factory
 from official.modeling import optimization
 from official.modeling import performance
 from official.modeling import tf_utils
-from official.vision.beta.modeling import backbones
 from official.vision.beta.projects.simclr.configs import simclr as exp_cfg
 from official.vision.beta.projects.simclr.dataloaders import simclr_input
 from official.vision.beta.projects.simclr.heads import simclr_head
 from official.vision.beta.projects.simclr.losses import contrastive_losses
 from official.vision.beta.projects.simclr.modeling import simclr_model
+from official.vision.modeling import backbones
 
 OptimizationConfig = optimization.OptimizationConfig
 RuntimeConfig = config_definitions.RuntimeConfig
@@ -157,7 +157,8 @@ class SimCLRPretrainTask(base_task.Task):
       status = ckpt.read(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     else:
-      assert "Only 'all' or 'backbone' can be used to initialize the model."
+      raise ValueError(
+          "Only 'all' or 'backbone' can be used to initialize the model.")
 
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
@@ -335,7 +336,8 @@ class SimCLRPretrainTask(base_task.Task):
 
   def validation_step(self, inputs, model, metrics=None):
     if self.task_config.model.supervised_head is None:
-      assert 'Skipping eval during pretraining without supervised head.'
+      raise ValueError(
+          'Skipping eval during pretraining without supervised head.')
 
     features, labels = inputs
     if self.task_config.evaluation.one_hot:
@@ -467,7 +469,8 @@ class SimCLRFinetuneTask(base_task.Task):
       status = ckpt.read(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     else:
-      assert "Only 'all' or 'backbone' can be used to initialize the model."
+      raise ValueError(
+          "Only 'all' or 'backbone' can be used to initialize the model.")
 
     # If the checkpoint is from pretraining, reset the following parameters
     model.backbone_trainable = self.task_config.model.backbone_trainable

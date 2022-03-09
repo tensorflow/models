@@ -20,7 +20,7 @@ from absl import app
 from official.common import flags as tfm_flags
 from official.projects.vit import configs  # pylint: disable=unused-import
 from official.projects.vit.modeling import vit  # pylint: disable=unused-import
-from official.vision.beta import train
+from official.vision import train
 
 
 if __name__ == '__main__':

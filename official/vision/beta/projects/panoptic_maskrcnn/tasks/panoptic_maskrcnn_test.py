@@ -18,10 +18,10 @@ import os
 from absl.testing import parameterized
 import tensorflow as tf
 
-from official.vision.beta.configs import decoders as decoder_cfg
-from official.vision.beta.configs import semantic_segmentation as segmentation_cfg
 from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_maskrcnn as cfg
 from official.vision.beta.projects.panoptic_maskrcnn.tasks import panoptic_maskrcnn
+from official.vision.configs import decoders as decoder_cfg
+from official.vision.configs import semantic_segmentation as segmentation_cfg
 
 
 class PanopticMaskRCNNTaskTest(tf.test.TestCase, parameterized.TestCase):

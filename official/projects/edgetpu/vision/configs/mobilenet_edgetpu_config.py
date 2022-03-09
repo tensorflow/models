@@ -24,8 +24,8 @@ from typing import Any, Mapping, Optional
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import optimization
-from official.vision.beta.configs import common
-from official.vision.beta.configs import image_classification as base_config
+from official.vision.configs import common
+from official.vision.configs import image_classification as base_config
 
 
 @dataclasses.dataclass

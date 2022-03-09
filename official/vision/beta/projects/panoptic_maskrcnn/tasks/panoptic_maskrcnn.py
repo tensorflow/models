@@ -13,20 +13,21 @@
 # limitations under the License.
 
 """Panoptic MaskRCNN task definition."""
-from typing import Any, List, Mapping, Optional, Tuple, Dict
+from typing import Any, Dict, List, Mapping, Optional, Tuple
+
 from absl import logging
 import tensorflow as tf
 
 from official.common import dataset_fn
 from official.core import task_factory
-from official.vision.beta.dataloaders import input_reader_factory
-from official.vision.beta.evaluation import panoptic_quality_evaluator
-from official.vision.beta.evaluation import segmentation_metrics
-from official.vision.beta.losses import segmentation_losses
 from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_maskrcnn as exp_cfg
 from official.vision.beta.projects.panoptic_maskrcnn.dataloaders import panoptic_maskrcnn_input
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import factory
-from official.vision.beta.tasks import maskrcnn
+from official.vision.dataloaders import input_reader_factory
+from official.vision.evaluation import panoptic_quality_evaluator
+from official.vision.evaluation import segmentation_metrics
+from official.vision.losses import segmentation_losses
+from official.vision.tasks import maskrcnn
 
 
 @task_factory.register_task_cls(exp_cfg.PanopticMaskRCNNTask)

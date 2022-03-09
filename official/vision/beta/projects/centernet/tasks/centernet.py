@@ -22,11 +22,6 @@ import tensorflow as tf
 from official.core import base_task
 from official.core import input_reader
 from official.core import task_factory
-from official.vision.beta.dataloaders import tf_example_decoder
-from official.vision.beta.dataloaders import tfds_factory
-from official.vision.beta.dataloaders import tf_example_label_map_decoder
-from official.vision.beta.evaluation import coco_evaluator
-from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.projects.centernet.configs import centernet as exp_cfg
 from official.vision.beta.projects.centernet.dataloaders import centernet_input
 from official.vision.beta.projects.centernet.losses import centernet_losses
@@ -35,6 +30,11 @@ from official.vision.beta.projects.centernet.modeling.heads import centernet_hea
 from official.vision.beta.projects.centernet.modeling.layers import detection_generator
 from official.vision.beta.projects.centernet.ops import loss_ops
 from official.vision.beta.projects.centernet.ops import target_assigner
+from official.vision.dataloaders import tf_example_decoder
+from official.vision.dataloaders import tfds_factory
+from official.vision.dataloaders.google import tf_example_label_map_decoder
+from official.vision.evaluation import coco_evaluator
+from official.vision.modeling.backbones import factory
 
 
 @task_factory.register_task_cls(exp_cfg.CenterNetTask)

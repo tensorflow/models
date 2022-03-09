@@ -28,8 +28,8 @@ from official.projects.edgetpu.vision.configs import mobilenet_edgetpu_config as
 from official.projects.edgetpu.vision.dataloaders import classification_input
 from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v1_model
 from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v2_model
-from official.vision.beta.configs import image_classification as base_cfg
-from official.vision.beta.dataloaders import input_reader_factory
+from official.vision.configs import image_classification as base_cfg
+from official.vision.dataloaders import input_reader_factory
 
 
 def _copy_recursively(src: str, dst: str) -> None:

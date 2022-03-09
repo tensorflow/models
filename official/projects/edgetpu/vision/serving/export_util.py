@@ -31,7 +31,7 @@ from official.projects.edgetpu.vision.modeling import custom_layers
 from official.projects.edgetpu.vision.modeling.backbones import mobilenet_edgetpu
 from official.projects.edgetpu.vision.tasks import image_classification
 from official.projects.edgetpu.vision.tasks import semantic_segmentation as edgetpu_semantic_segmentation
-from official.vision.beta.tasks import semantic_segmentation
+from official.vision.tasks import semantic_segmentation
 # pylint: enable=unused-import
 
 MEAN_RGB = [127.5, 127.5, 127.5]

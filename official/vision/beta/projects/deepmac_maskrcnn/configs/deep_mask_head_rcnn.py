@@ -14,19 +14,18 @@
 
 """Configuration for Mask R-CNN with deep mask heads."""
 
+import dataclasses
 import os
 from typing import Optional
-
-import dataclasses
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import optimization
-from official.vision.beta.configs import backbones
-from official.vision.beta.configs import common
-from official.vision.beta.configs import decoders
-from official.vision.beta.configs import maskrcnn as maskrcnn_config
-from official.vision.beta.configs import retinanet as retinanet_config
+from official.vision.configs import backbones
+from official.vision.configs import common
+from official.vision.configs import decoders
+from official.vision.configs import maskrcnn as maskrcnn_config
+from official.vision.configs import retinanet as retinanet_config
 
 
 @dataclasses.dataclass

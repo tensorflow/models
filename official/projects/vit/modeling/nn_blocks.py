@@ -16,7 +16,7 @@
 import tensorflow as tf
 
 from official.nlp import modeling
-from official.vision.beta.modeling.layers.nn_layers import StochasticDepth
+from official.vision.modeling.layers.nn_layers import StochasticDepth
 
 
 class TransformerEncoderBlock(modeling.layers.TransformerEncoderBlock):

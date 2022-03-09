@@ -14,13 +14,12 @@
 
 """Test for SimCLR model."""
 from absl.testing import parameterized
-
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.modeling import backbones
 from official.vision.beta.projects.simclr.heads import simclr_head
 from official.vision.beta.projects.simclr.modeling import simclr_model
+from official.vision.modeling import backbones
 
 
 class SimCLRModelTest(parameterized.TestCase, tf.test.TestCase):

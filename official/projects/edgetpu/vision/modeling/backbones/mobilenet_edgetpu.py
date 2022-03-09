@@ -22,7 +22,7 @@ import tensorflow as tf
 from official.modeling import hyperparams
 from official.projects.edgetpu.vision.modeling.mobilenet_edgetpu_v1_model import MobilenetEdgeTPU
 from official.projects.edgetpu.vision.modeling.mobilenet_edgetpu_v2_model import MobilenetEdgeTPUV2
-from official.vision.beta.modeling.backbones import factory
+from official.vision.modeling.backbones import factory
 
 layers = tf.keras.layers
 
