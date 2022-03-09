@@ -18,7 +18,7 @@ import tensorflow as tf
 from official.core import task_factory
 from official.projects.qat.vision.configs import retinanet as exp_cfg
 from official.projects.qat.vision.modeling import factory
-from official.vision.beta.tasks import retinanet
+from official.vision.tasks import retinanet
 
 
 @task_factory.register_task_cls(exp_cfg.RetinaNetTask)

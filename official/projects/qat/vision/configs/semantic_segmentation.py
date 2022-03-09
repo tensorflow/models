@@ -20,7 +20,7 @@ from typing import Optional
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.projects.qat.vision.configs import common
-from official.vision.beta.configs import semantic_segmentation
+from official.vision.configs import semantic_segmentation
 
 
 @dataclasses.dataclass

@@ -18,7 +18,7 @@ import tensorflow as tf
 from official.core import task_factory
 from official.projects.qat.vision.configs import semantic_segmentation as exp_cfg
 from official.projects.qat.vision.modeling import factory
-from official.vision.beta.tasks import semantic_segmentation
+from official.vision.tasks import semantic_segmentation
 
 
 @task_factory.register_task_cls(exp_cfg.SemanticSegmentationTask)

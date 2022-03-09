@@ -21,7 +21,7 @@ from typing import Optional
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.projects.qat.vision.configs import common
-from official.vision.beta.configs import image_classification
+from official.vision.configs import image_classification
 
 
 @dataclasses.dataclass
