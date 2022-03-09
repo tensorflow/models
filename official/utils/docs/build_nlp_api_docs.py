@@ -21,7 +21,7 @@ $> python build_nlp_api_docs \
  --output_dir=/tmp/api_docs
 """
 
-import os
+import pathlib
 
 from absl import app
 from absl import flags
@@ -29,7 +29,7 @@ from absl import logging
 from tensorflow_docs.api_generator import generate_lib
 from tensorflow_docs.api_generator import public_api
 
-from official.nlp import modeling as tfnlp
+import tensorflow_models as tfm
 import build_api_docs_lib
 
 FLAGS = flags.FLAGS
@@ -37,7 +37,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('output_dir', None, 'Where to write the resulting docs to.')
 flags.DEFINE_string(
     'code_url_prefix',
-    'https://github.com/tensorflow/models/blob/master/official/nlp/modeling',
+    'https://github.com/tensorflow/models/blob/master/tensorflow_models/',
     'The url prefix for links to code.')
 
 flags.DEFINE_bool('search_hints', True,
@@ -47,25 +47,49 @@ flags.DEFINE_string('site_path', '/api_docs/python',
                     'Path prefix in the _toc.yaml')
 
 
-PROJECT_SHORT_NAME = 'tfnlp'
+PROJECT_SHORT_NAME = 'tfm.nlp'
 PROJECT_FULL_NAME = 'TensorFlow Official Models - NLP Modeling Library'
+
+
+def custom_filter(path, parent, children):
+  if len(path) == 1:
+    # Don't filter the contents of the top level `tfm.vision` package.
+    return children
+  else:
+    return public_api.explicit_package_contents_filter(path, parent, children)
 
 
 def gen_api_docs(code_url_prefix, site_path, output_dir, project_short_name,
                  project_full_name, search_hints):
   """Generates api docs for the tensorflow docs package."""
   build_api_docs_lib.hide_module_model_and_layer_methods()
-  del tfnlp.layers.MultiHeadAttention
-  del tfnlp.layers.EinsumDense
+  del tfm.nlp.layers.MultiHeadAttention
+  del tfm.nlp.layers.EinsumDense
+
+  branch = code_url_prefix.strip('/').split('/')[-2]
+  official_url_prefix = (
+      f'https://github.com/tensorflow/models/blob/{branch}/official/')
+
+  nlp_base_dir = pathlib.Path(tfm.nlp.__file__).parent
+
+  # The `layers` submodule (and others) are actually defined in the `official`
+  # package. Find the path to `official`.
+  official_base_dir = [
+      p for p in pathlib.Path(tfm.vision.layers.__file__).parents
+      if p.name == 'official'
+  ][0]
 
   doc_generator = generate_lib.DocGenerator(
       root_title=project_full_name,
-      py_modules=[(project_short_name, tfnlp)],
-      base_dir=os.path.dirname(tfnlp.__file__),
-      code_url_prefix=code_url_prefix,
+      py_modules=[(project_short_name, tfm.nlp)],
+      base_dir=[nlp_base_dir, official_base_dir],
+      code_url_prefix=[
+          code_url_prefix,
+          official_url_prefix,
+      ],
       search_hints=search_hints,
       site_path=site_path,
-      callbacks=[public_api.explicit_package_contents_filter],
+      callbacks=[custom_filter],
   )
 
   doc_generator.build(output_dir)
