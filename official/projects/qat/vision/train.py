@@ -18,7 +18,7 @@ from absl import app
 
 from official.common import flags as tfm_flags
 from official.projects.qat.vision import registry_imports  # pylint: disable=unused-import
-from official.vision.beta import train
+from official.vision import train
 
 
 if __name__ == '__main__':

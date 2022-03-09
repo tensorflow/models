@@ -22,8 +22,8 @@ import tensorflow_model_optimization as tfmot
 from official.modeling import tf_utils
 from official.projects.qat.vision.quantization import configs
 from official.projects.qat.vision.quantization import helper
-from official.vision.beta.modeling.decoders import aspp
-from official.vision.beta.modeling.layers import nn_layers
+from official.vision.modeling.decoders import aspp
+from official.vision.modeling.layers import nn_layers
 
 
 # Type annotations.

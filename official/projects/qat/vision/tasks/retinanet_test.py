@@ -23,7 +23,7 @@ from official.core import exp_factory
 from official.modeling import optimization
 from official.projects.qat.vision.tasks import retinanet
 from official.vision import beta
-from official.vision.beta.configs import retinanet as exp_cfg
+from official.vision.configs import retinanet as exp_cfg
 
 
 class RetinaNetTaskTest(parameterized.TestCase, tf.test.TestCase):

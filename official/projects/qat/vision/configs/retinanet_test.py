@@ -22,7 +22,7 @@ from official.core import exp_factory
 from official.projects.qat.vision.configs import common
 from official.projects.qat.vision.configs import retinanet as qat_exp_cfg
 from official.vision import beta
-from official.vision.beta.configs import retinanet as exp_cfg
+from official.vision.configs import retinanet as exp_cfg
 
 
 class RetinaNetConfigTest(tf.test.TestCase, parameterized.TestCase):
