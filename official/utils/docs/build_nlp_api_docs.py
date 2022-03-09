@@ -37,7 +37,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('output_dir', None, 'Where to write the resulting docs to.')
 flags.DEFINE_string(
     'code_url_prefix',
-    'https://github.com/tensorflow/models/blob/master/official/nlp/modeling/',
+    'https://github.com/tensorflow/models/blob/master/official/nlp/modeling',
     'The url prefix for links to code.')
 
 flags.DEFINE_bool('search_hints', True,
