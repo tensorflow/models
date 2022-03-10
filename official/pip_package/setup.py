@@ -74,7 +74,7 @@ setup(
     description='TensorFlow Official Models',
     long_description=long_description,
     author='Google Inc.',
-    author_email='no-reply@google.com',
+    author_email='packages@tensorflow.org',
     url='https://github.com/tensorflow/models',
     license='Apache 2.0',
     packages=find_packages(exclude=[
