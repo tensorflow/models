@@ -16,7 +16,7 @@
 
 from absl import logging
 
-from official.nlp.xlnet import data_utils
+from official.legacy.xlnet import data_utils
 
 SEG_ID_A = 0
 SEG_ID_B = 1

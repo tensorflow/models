@@ -18,9 +18,8 @@ import copy
 import warnings
 
 import tensorflow as tf
-
+from official.legacy.xlnet import data_utils
 from official.nlp.modeling import networks
-from official.nlp.xlnet import data_utils
 
 
 def gelu(x):

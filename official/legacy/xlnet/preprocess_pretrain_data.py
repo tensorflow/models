@@ -28,7 +28,7 @@ import numpy as np
 
 import tensorflow.compat.v1 as tf
 import sentencepiece as spm
-from official.nlp.xlnet import preprocess_utils
+from official.legacy.xlnet import preprocess_utils
 
 FLAGS = flags.FLAGS
 

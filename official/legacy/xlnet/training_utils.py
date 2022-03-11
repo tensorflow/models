@@ -22,7 +22,7 @@ from absl import logging
 import tensorflow as tf
 
 from official.legacy.bert import model_training_utils
-from official.nlp.xlnet import data_utils
+from official.legacy.xlnet import data_utils
 
 # pytype: disable=attribute-error
 # pylint: disable=g-bare-generic,unused-import
