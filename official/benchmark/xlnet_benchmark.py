@@ -31,8 +31,8 @@ import tensorflow as tf
 
 from official.benchmark import bert_benchmark_utils as benchmark_utils
 from official.benchmark import owner_utils
-from official.nlp.xlnet import run_classifier
-from official.nlp.xlnet import run_squad
+from official.legacy.xlnet import run_classifier
+from official.legacy.xlnet import run_squad
 from official.benchmark import benchmark_wrappers
 
 
