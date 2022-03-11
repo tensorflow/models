@@ -1234,7 +1234,7 @@ class Decoder(Module):
       encoded: the encoder outputs.
       decoder_mask: the decoder self-attention mask.
       encoder_decoder_mask: the cross-attention mask.
-      decode: Whether to perform autoaggressive decoding.
+      decode: Whether to perform autoregressive decoding.
       decode_position: integer, the position to decode.
       cache: The cache dictionary of key, value tensors.
       max_decode_len: An optional integer specifying the maximum decoding
