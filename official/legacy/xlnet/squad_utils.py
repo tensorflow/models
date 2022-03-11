@@ -32,8 +32,8 @@ import numpy as np
 import six
 import tensorflow as tf
 
-from official.nlp.xlnet import data_utils
-from official.nlp.xlnet import preprocess_utils
+from official.legacy.xlnet import data_utils
+from official.legacy.xlnet import preprocess_utils
 
 SPIECE_UNDERLINE = u"▁"
 

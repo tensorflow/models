@@ -28,13 +28,13 @@ import tensorflow as tf
 # pylint: disable=unused-import
 import sentencepiece as spm
 from official.common import distribute_utils
-from official.nlp.xlnet import common_flags
-from official.nlp.xlnet import data_utils
-from official.nlp.xlnet import optimization
-from official.nlp.xlnet import squad_utils
-from official.nlp.xlnet import training_utils
-from official.nlp.xlnet import xlnet_config
-from official.nlp.xlnet import xlnet_modeling as modeling
+from official.legacy.xlnet import common_flags
+from official.legacy.xlnet import data_utils
+from official.legacy.xlnet import optimization
+from official.legacy.xlnet import squad_utils
+from official.legacy.xlnet import training_utils
+from official.legacy.xlnet import xlnet_config
+from official.legacy.xlnet import xlnet_modeling as modeling
 
 flags.DEFINE_string(
     "test_feature_path", default=None, help="Path to feature of test set.")

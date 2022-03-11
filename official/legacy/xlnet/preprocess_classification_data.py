@@ -26,8 +26,8 @@ import numpy as np
 import tensorflow as tf
 
 import sentencepiece as spm
-from official.nlp.xlnet import classifier_utils
-from official.nlp.xlnet import preprocess_utils
+from official.legacy.xlnet import classifier_utils
+from official.legacy.xlnet import preprocess_utils
 
 
 flags.DEFINE_bool(
