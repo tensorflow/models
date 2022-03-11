@@ -16,4 +16,4 @@
 # Lint as: python3
 # pylint: disable=unused-import
 from official.vision import configs
-from official.vision.tasks.google import tasks
+from official.vision import tasks
