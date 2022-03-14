@@ -35,6 +35,7 @@ from official.vision.beta.projects.yolo.configs import yolo as exp_cfg
 from official.vision.beta.projects.yolo.dataloaders import tf_example_decoder
 from official.vision.beta.projects.yolo.dataloaders import yolo_input
 from official.vision.beta.projects.yolo.modeling import factory
+from official.vision.beta.projects.yolo.ops import kmeans_anchors
 from official.vision.beta.projects.yolo.ops import mosaic
 from official.vision.beta.projects.yolo.ops import preprocessing_ops
 from official.vision.beta.projects.yolo.tasks import task_utils
@@ -62,7 +63,47 @@ class YoloTask(base_task.Task):
 
     # globally set the random seed
     preprocessing_ops.set_random_seeds(seed=params.seed)
+
+    if self.task_config.model.anchor_boxes.generate_anchors:
+      self.generate_anchors()
     return
+
+  def generate_anchors(self):
+    """Generate Anchor boxes for an arbitrary object detection dataset."""
+    input_size = self.task_config.model.input_size
+    anchor_cfg = self.task_config.model.anchor_boxes
+    backbone = self.task_config.model.backbone.get()
+
+    dataset = self.task_config.train_data
+    decoder = self._get_data_decoder(dataset)
+
+    num_anchors = backbone.max_level - backbone.min_level + 1
+    num_anchors *= anchor_cfg.anchors_per_scale
+
+    gbs = dataset.global_batch_size
+    dataset.global_batch_size = 1
+    box_reader = kmeans_anchors.BoxGenInputReader(
+        dataset,
+        dataset_fn=tf.data.TFRecordDataset,
+        decoder_fn=decoder.decode)
+
+    boxes = box_reader.read(
+        k=num_anchors,
+        anchors_per_scale=anchor_cfg.anchors_per_scale,
+        image_resolution=input_size,
+        scaling_mode=anchor_cfg.scaling_mode,
+        box_generation_mode=anchor_cfg.box_generation_mode,
+        num_samples=anchor_cfg.num_samples)
+
+    dataset.global_batch_size = gbs
+
+    with open('anchors.txt', 'w') as f:
+      f.write(f'input resolution: {input_size} \n boxes: \n {boxes}')
+      logging.info('INFO: boxes will be saved to anchors.txt, mack sure to save'
+                   'them and update the boxes feild in you yaml config file.')
+
+    anchor_cfg.set_boxes(boxes)
+    return boxes
 
   def build_model(self):
     """Build an instance of Yolo."""

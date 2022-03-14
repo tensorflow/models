@@ -176,40 +176,43 @@ class GridGenerator:
     self._anchors = tf.convert_to_tensor(anchors)
     return
 
-  def _build_grid_points(self, lwidth, lheight, anchors, dtype):
+  def _build_grid_points(self, lheight, lwidth, anchors, dtype):
     """Generate a grid of fixed grid edges for box center decoding."""
     with tf.name_scope('center_grid'):
       y = tf.range(0, lheight)
       x = tf.range(0, lwidth)
-      num = tf.shape(anchors)[0]
       x_left = tf.tile(
-          tf.transpose(tf.expand_dims(y, axis=-1), perm=[1, 0]), [lwidth, 1])
-      y_left = tf.tile(tf.expand_dims(x, axis=-1), [1, lheight])
+          tf.transpose(tf.expand_dims(x, axis=-1), perm=[1, 0]), [lheight, 1])
+      y_left = tf.tile(tf.expand_dims(y, axis=-1), [1, lwidth])
       x_y = tf.stack([x_left, y_left], axis=-1)
       x_y = tf.cast(x_y, dtype=dtype)
+      num = tf.shape(anchors)[0]
       x_y = tf.expand_dims(
           tf.tile(tf.expand_dims(x_y, axis=-2), [1, 1, num, 1]), axis=0)
     return x_y
 
-  def _build_anchor_grid(self, anchors, dtype):
+  def _build_anchor_grid(self, height, width, anchors, dtype):
     """Get the transformed anchor boxes for each dimention."""
     with tf.name_scope('anchor_grid'):
       num = tf.shape(anchors)[0]
       anchors = tf.cast(anchors, dtype=dtype)
       anchors = tf.reshape(anchors, [1, 1, 1, num, 2])
+      anchors = tf.tile(anchors, [1, tf.cast(height, tf.int32),
+                                  tf.cast(width, tf.int32), 1, 1])
     return anchors
 
   def _extend_batch(self, grid, batch_size):
     return tf.tile(grid, [batch_size, 1, 1, 1, 1])
 
-  def __call__(self, width, height, batch_size, dtype=None):
+  def __call__(self, height, width, batch_size, dtype=None):
     if dtype is None:
       self.dtype = tf.keras.backend.floatx()
     else:
       self.dtype = dtype
-    grid_points = self._build_grid_points(width, height, self._anchors,
+    grid_points = self._build_grid_points(height, width, self._anchors,
                                           self.dtype)
     anchor_grid = self._build_anchor_grid(
+        height, width,
         tf.cast(self._anchors, self.dtype) /
         tf.cast(self._scale_anchors, self.dtype), self.dtype)
 
