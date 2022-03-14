@@ -43,6 +43,7 @@ ctpu up --name <tpu-name> --zone <zone> --tpu-size=v3-32 --tf-version nightly
 This model requires TF version `>= 2.5`. Currently, that is only available via a
 `nightly` build on Cloud.
 
+
 ### Install requirements
 
 SSH into the TPU host with `gcloud compute ssh <tpu-name>` and execute the
@@ -60,7 +61,7 @@ The configurations can be found in the `configs/experiments` directory. You can
 launch a training job by executing.
 
 ```shell
-$ export CONFIG=./official/vision/beta/projects/deepmac_maskrcnn/configs/experiments/deep_mask_head_rcnn_voc_r50.yaml
+$ export CONFIG=./official/projects/deepmac_maskrcnn/configs/experiments/deep_mask_head_rcnn_voc_r50.yaml
 $ export MODEL_DIR="gs://<path-for-checkpoints>"
 $ export ANNOTAION_FILE="gs://<path-to-coco-annotation-json>"
 $ export TRAIN_DATA="gs://<path-to-train-data>"
@@ -71,7 +72,7 @@ task.train_data.input_path=${TRAIN_DATA},\
 task.annotation_file=${ANNOTAION_FILE},\
 runtime.distribution_strategy=tpu"
 
-$ python3 -m official.vision.beta.projects.deepmac_maskrcnn.train \
+$ python3 -m official.projects.deepmac_maskrcnn.train \
   --logtostderr \
   --mode=train_and_eval \
   --experiment=deep_mask_head_rcnn_resnetfpn_coco \

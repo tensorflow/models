@@ -20,7 +20,7 @@ from absl import logging
 import tensorflow as tf
 
 from official.modeling import tf_utils
-from official.vision.beta.projects.deepmac_maskrcnn.modeling.heads import hourglass_network
+from official.projects.deepmac_maskrcnn.modeling.heads import hourglass_network
 
 
 class DeepMaskHead(tf.keras.layers.Layer):

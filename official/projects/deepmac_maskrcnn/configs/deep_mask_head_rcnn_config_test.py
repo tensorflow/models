@@ -16,7 +16,7 @@
 
 import tensorflow as tf
 
-from official.vision.beta.projects.deepmac_maskrcnn.configs import deep_mask_head_rcnn
+from official.projects.deepmac_maskrcnn.configs import deep_mask_head_rcnn
 
 
 class DeepMaskHeadRcnnConfigTest(tf.test.TestCase):

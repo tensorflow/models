@@ -15,4 +15,4 @@
 """Imports to configure Mask R-CNN with deep mask heads."""
 
 # pylint: disable=unused-import
-from official.vision.beta.projects.deepmac_maskrcnn.tasks import deep_mask_head_rcnn
+from official.projects.deepmac_maskrcnn.tasks import deep_mask_head_rcnn

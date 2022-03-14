@@ -28,7 +28,7 @@ from official.core import train_lib
 from official.core import train_utils
 from official.modeling import performance
 # pylint: disable=unused-import
-from official.vision.beta.projects.deepmac_maskrcnn.common import registry_imports
+from official.projects.deepmac_maskrcnn.common import registry_imports
 # pylint: enable=unused-import
 
 FLAGS = flags.FLAGS

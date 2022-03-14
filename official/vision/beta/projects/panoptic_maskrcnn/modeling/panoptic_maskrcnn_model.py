@@ -18,7 +18,7 @@ from typing import List, Mapping, Optional, Union
 
 import tensorflow as tf
 
-from official.vision.beta.projects.deepmac_maskrcnn.modeling import maskrcnn_model
+from official.projects.deepmac_maskrcnn.modeling import maskrcnn_model
 
 
 class PanopticMaskRCNNModel(maskrcnn_model.DeepMaskRCNNModel):
