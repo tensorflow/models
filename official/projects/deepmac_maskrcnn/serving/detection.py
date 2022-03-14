@@ -19,9 +19,9 @@ from typing import Dict, Mapping, Text
 
 import tensorflow as tf
 
-from official.vision.beta.projects.deepmac_maskrcnn.configs import deep_mask_head_rcnn as cfg
-from official.vision.beta.projects.deepmac_maskrcnn.modeling import maskrcnn_model
-from official.vision.beta.projects.deepmac_maskrcnn.tasks import deep_mask_head_rcnn
+from official.projects.deepmac_maskrcnn.configs import deep_mask_head_rcnn as cfg
+from official.projects.deepmac_maskrcnn.modeling import maskrcnn_model
+from official.projects.deepmac_maskrcnn.tasks import deep_mask_head_rcnn
 from official.vision.ops import box_ops
 from official.vision.serving import detection
 

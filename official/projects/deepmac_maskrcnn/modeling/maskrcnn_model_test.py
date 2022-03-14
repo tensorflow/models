@@ -21,8 +21,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.projects.deepmac_maskrcnn.modeling import maskrcnn_model
-from official.vision.beta.projects.deepmac_maskrcnn.modeling.heads import instance_heads as deep_instance_heads
+from official.projects.deepmac_maskrcnn.modeling import maskrcnn_model
+from official.projects.deepmac_maskrcnn.modeling.heads import instance_heads as deep_instance_heads
 from official.vision.modeling.backbones import resnet
 from official.vision.modeling.decoders import fpn
 from official.vision.modeling.heads import dense_prediction_heads

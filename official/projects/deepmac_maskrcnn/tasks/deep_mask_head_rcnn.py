@@ -17,9 +17,9 @@
 import tensorflow as tf
 
 from official.core import task_factory
-from official.vision.beta.projects.deepmac_maskrcnn.configs import deep_mask_head_rcnn as deep_mask_head_rcnn_config
-from official.vision.beta.projects.deepmac_maskrcnn.modeling import maskrcnn_model as deep_maskrcnn_model
-from official.vision.beta.projects.deepmac_maskrcnn.modeling.heads import instance_heads as deep_instance_heads
+from official.projects.deepmac_maskrcnn.configs import deep_mask_head_rcnn as deep_mask_head_rcnn_config
+from official.projects.deepmac_maskrcnn.modeling import maskrcnn_model as deep_maskrcnn_model
+from official.projects.deepmac_maskrcnn.modeling.heads import instance_heads as deep_instance_heads
 from official.vision.modeling import backbones
 from official.vision.modeling.decoders import factory as decoder_factory
 from official.vision.modeling.heads import dense_prediction_heads

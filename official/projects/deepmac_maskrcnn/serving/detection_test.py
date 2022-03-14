@@ -24,7 +24,7 @@ from PIL import Image
 import tensorflow as tf
 
 from official.core import exp_factory
-from official.vision.beta.projects.deepmac_maskrcnn.serving import detection
+from official.projects.deepmac_maskrcnn.serving import detection
 
 
 class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):

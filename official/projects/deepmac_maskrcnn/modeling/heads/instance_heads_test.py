@@ -20,7 +20,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.projects.deepmac_maskrcnn.modeling.heads import instance_heads as deep_instance_heads
+from official.projects.deepmac_maskrcnn.modeling.heads import instance_heads as deep_instance_heads
 
 
 class MaskHeadTest(parameterized.TestCase, tf.test.TestCase):
