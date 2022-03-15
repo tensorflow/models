@@ -17,7 +17,7 @@ Recognition](https://arxiv.org/abs/2103.11511).
   <img src="https://storage.googleapis.com/tf_model_garden/vision/movinet/artifacts/hoverboard_stream.gif" height=500>
 </p>
 
-Create your own video plot like the one above with this [Colab notebook](https://colab.research.google.com/github/tensorflow/models/blob/master/official/projects/movinet/plot_movinet_video_stream_predictions.ipynb).
+Create your own video plot like the one above with this [Colab notebook](https://colab.research.google.com/github/tensorflow/models/blob/master/official/projects/movinet/tools/plot_movinet_video_stream_predictions.ipynb).
 
 ## Description
 
