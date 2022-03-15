@@ -78,6 +78,7 @@ mobile-friendly (2+1)D stream.
 - [Requirements](#requirements)
 - [Results and Pretrained Weights](#results-and-pretrained-weights)
   - [Kinetics 600](#kinetics-600)
+  - [Kinetics 400](#kinetics-400)
 - [Prediction Examples](#prediction-examples)
 - [TF Lite Example](#tf-lite-example)
 - [Training and Evaluation](#training-and-evaluation)
@@ -195,7 +196,7 @@ W-2135 CPU.
 
 ### Kinetics 400
 
-We also have checkpoints for Kinetics 600 models available. See the Kinetics 600
+We also have checkpoints for Kinetics 400 models available. See the Kinetics 600
 sections for more details. To load checkpoints, set `num_classes=400`.
 
 #### Base Models
