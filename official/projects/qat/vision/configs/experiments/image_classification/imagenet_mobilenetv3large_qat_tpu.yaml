@@ -21,12 +21,6 @@ task:
     global_batch_size: 4096
     dtype: 'float32'
     aug_rand_hflip: true
-    aug_type:
-      autoaug:
-        augmentation_name: v0
-        cutout_const: 100
-        translate_const: 250
-      type: autoaug
     drop_remainder: true
   validation_data:
     input_path: '/readahead/200M/placer/prod/home/distbelief/imagenet-tensorflow/imagenet-2012-tfrecord/valid*'
