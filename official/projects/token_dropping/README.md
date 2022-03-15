@@ -1,6 +1,9 @@
 # Token Dropping for Efficient BERT Pretraining
 
-The token dropping method aims to accelerate the pretraining of transformer
+This is the official implementation of the token dropping method
+[Pang et al. Token Dropping for Efficient BERT Pretraining. ACL 2022](#reference).
+
+Token dropping aims to accelerate the pretraining of transformer
 models such as BERT without degrading its performance on downstream tasks. In
 particular, we drop unimportant tokens starting from an intermediate layer in
 the model, to make the model focus on important tokens more efficiently with its
@@ -86,3 +89,16 @@ modeling library:
 
   * [train.py](https://github.com/tensorflow/models/blob/master/official/projects/token_dropping/train.py)
   is the program entry.
+
+## Reference
+
+Please cite our paper:
+
+```
+@inproceedings{pang2022,
+  title={Token Dropping for Efficient BERT Pretraining},
+  author={Richard Yuanzhe Pang*, Le Hou*, Tianyi Zhou, Yuexin Wu, Xinying Song, Xiaodan Song, Denny Zhou},
+  year={2022},
+  organization={Association for Computational Linguistics}
+}
+```
