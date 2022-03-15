@@ -1663,6 +1663,7 @@ class AutoAugment(ImageAugment):
 
     tf_policies = self._make_tf_policies()
     image, _ = select_and_apply_random_policy(tf_policies, image, bboxes=None)
+    image = tf.cast(image, dtype=input_image_type)
     return image
 
   def distort_with_boxes(self, image: tf.Tensor,
@@ -2259,7 +2260,7 @@ class MixupAndCutmix:
               labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
     """Apply cutmix."""
     lam = MixupAndCutmix._sample_from_beta(self.cutmix_alpha, self.cutmix_alpha,
-                                           labels.shape)
+                                           tf.shape(labels))
 
     ratio = tf.math.sqrt(1 - lam)
 
@@ -2284,17 +2285,19 @@ class MixupAndCutmix:
         lambda x: _fill_rectangle(*x),
         (images, random_center_width, random_center_height, cut_width // 2,
          cut_height // 2, tf.reverse(images, [0])),
-        dtype=(tf.float32, tf.int32, tf.int32, tf.int32, tf.int32, tf.float32),
-        fn_output_signature=tf.TensorSpec(images.shape[1:], dtype=tf.float32))
+        dtype=(
+            images.dtype, tf.int32, tf.int32, tf.int32, tf.int32, images.dtype),
+        fn_output_signature=tf.TensorSpec(images.shape[1:], dtype=images.dtype))
 
     return images, labels, lam
 
   def _mixup(self, images: tf.Tensor,
              labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
     lam = MixupAndCutmix._sample_from_beta(self.mixup_alpha, self.mixup_alpha,
-                                           labels.shape)
+                                           tf.shape(labels))
     lam = tf.reshape(lam, [-1, 1, 1, 1])
-    images = lam * images + (1. - lam) * tf.reverse(images, [0])
+    lam_cast = tf.cast(lam, dtype=images.dtype)
+    images = lam_cast * images + (1. - lam_cast) * tf.reverse(images, [0])
 
     return images, labels, tf.squeeze(lam)
 
