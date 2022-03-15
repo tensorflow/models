@@ -38,7 +38,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('output_dir', None, 'Where to write the resulting docs to.')
 flags.DEFINE_string(
     'code_url_prefix',
-    'https://github.com/tensorflow/models/blob/master/tensorflow_models/',
+    'https://github.com/tensorflow/models/blob/master/tensorflow_models/vision',
     'The url prefix for links to code.')
 
 flags.DEFINE_bool('search_hints', True,
@@ -64,9 +64,11 @@ def gen_api_docs(code_url_prefix, site_path, output_dir, project_short_name,
   """Generates api docs for the tensorflow docs package."""
   build_api_docs_lib.hide_module_model_and_layer_methods()
 
-  branch = code_url_prefix.strip('/').split('/')[-2]
-  official_url_prefix = (
-      f'https://github.com/tensorflow/models/blob/{branch}/official/')
+  url_parts = code_url_prefix.strip('/').split('/')
+  url_parts = url_parts[:url_parts.index('tensorflow_models')]
+  url_parts.append('official')
+
+  official_url_prefix = '/'.join(url_parts)
 
   vision_base_dir = pathlib.Path(tfm.vision.__file__).parent
 
