@@ -57,7 +57,10 @@ class PanopticDeeplabModel(tf.keras.Model):
     self.instance_head = instance_head
     self.post_processor = post_processor
 
-  def call(self, inputs: tf.Tensor, training: bool = None) -> tf.Tensor:
+  def call(
+      self, inputs: tf.Tensor,
+      image_info: tf.Tensor,
+      training: bool = None) -> tf.Tensor:
     if training is None:
       training = tf.keras.backend.learning_phase()
 
@@ -81,15 +84,18 @@ class PanopticDeeplabModel(tf.keras.Model):
 
     outputs = {
         'segmentation_outputs': segmentation_outputs,
-        'instance_center_prediction': 
-            instance_outputs['instance_center_prediction'],
-        'instance_center_regression': 
-            instance_outputs['instance_center_regression'],
+        'instance_centers_heatmap': 
+            instance_outputs['instance_centers_heatmap'],
+        'instance_centers_offset': 
+            instance_outputs['instance_centers_offset'],
     }
     if training:
       return outputs
 
-    outputs = self.post_processor(outputs)
+    if self.post_processor is not None:
+      panoptic_masks = self.post_processor(outputs, image_info)
+      outputs.update(panoptic_masks)
+      
     return outputs
 
   @property

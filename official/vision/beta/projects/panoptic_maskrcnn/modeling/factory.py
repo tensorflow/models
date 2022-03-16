@@ -222,15 +222,20 @@ def build_panoptic_deeplab(
       norm_epsilon=norm_activation_config.norm_epsilon,
       kernel_regularizer=l2_regularizer)
 
-  post_processing_config = model_config.post_processor
-  post_processor = panoptic_deeplab_merge.PostProcessor(
-      center_score_threshold=post_processing_config.center_score_threshold,
-      thing_class_ids=post_processing_config.thing_class_ids,
-      label_divisor=post_processing_config.label_divisor,
-      stuff_area_limit=post_processing_config.stuff_area_limit,
-      ignore_label=post_processing_config.ignore_label,
-      nms_kernel=post_processing_config.nms_kernel,
-      keep_k_centers=post_processing_config.keep_k_centers)
+  if model_config.generate_panoptic_masks:
+    post_processing_config = model_config.post_processor
+    post_processor = panoptic_deeplab_merge.PostProcessor(
+        output_size=post_processing_config.output_size,
+        center_score_threshold=post_processing_config.center_score_threshold,
+        thing_class_ids=post_processing_config.thing_class_ids,
+        label_divisor=post_processing_config.label_divisor,
+        stuff_area_limit=post_processing_config.stuff_area_limit,
+        ignore_label=post_processing_config.ignore_label,
+        nms_kernel=post_processing_config.nms_kernel,
+        keep_k_centers=post_processing_config.keep_k_centers,
+        rescale_predictions=post_processing_config.rescale_predictions)
+  else:
+    post_processor = None
 
   model = panoptic_deeplab_model.PanopticDeeplabModel(
       backbone=backbone, 
