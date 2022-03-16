@@ -71,10 +71,10 @@ class PanopticDeeplabHeadsTest(parameterized.TestCase, tf.test.TestCase):
           semantic_outputs.numpy().shape,
           [2, h, w, num_classes])
       self.assertAllEqual(
-          instance_outputs['instance_center_prediction'].numpy().shape,
+          instance_outputs['instance_centers_heatmap'].numpy().shape,
           [2, h, w, 1])
       self.assertAllEqual(
-          instance_outputs['instance_center_regression'].numpy().shape,
+          instance_outputs['instance_centers_offset'].numpy().shape,
           [2, h, w, 2])
 
 

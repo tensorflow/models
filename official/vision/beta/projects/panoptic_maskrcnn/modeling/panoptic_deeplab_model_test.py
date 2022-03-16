@@ -41,6 +41,11 @@ class PanopticDeeplabNetworkTest(parameterized.TestCase, tf.test.TestCase):
     batch_size = 2 if training else 1
     num_classes = 10
     inputs = np.random.rand(batch_size, input_size, input_size, 3)
+    
+    image_info = tf.convert_to_tensor(
+        [[[input_size, input_size], [input_size, input_size], [1, 1], [0, 0]]])
+    image_info = tf.tile(image_info, [batch_size, 1, 1])
+
     tf.keras.backend.set_image_data_format('channels_last')
     backbone = backbones.ResNet(model_id=50)
 
@@ -65,13 +70,15 @@ class PanopticDeeplabNetworkTest(parameterized.TestCase, tf.test.TestCase):
         low_level_num_filters=(64, 32))
 
     post_processor = panoptic_deeplab_merge.PostProcessor(
+        output_size=[input_size, input_size],
         center_score_threshold=0.1,
         thing_class_ids=[1, 2, 3, 4],
         label_divisor=[256],
         stuff_area_limit=4096,
         ignore_label=0,
         nms_kernel=41,
-        keep_k_centers=41)
+        keep_k_centers=41,
+        rescale_predictions=True)
 
     model = panoptic_deeplab_model.PanopticDeeplabModel(
         backbone=backbone,
@@ -81,12 +88,15 @@ class PanopticDeeplabNetworkTest(parameterized.TestCase, tf.test.TestCase):
         instance_head=instance_head,
         post_processor=post_processor)
 
-    outputs = model(inputs, training=training)
+    outputs = model(
+        inputs=inputs,
+        image_info=image_info,
+        training=training)
 
     if training:
       self.assertIn('segmentation_outputs', outputs)
-      self.assertIn('instance_center_prediction', outputs)
-      self.assertIn('instance_center_regression', outputs)
+      self.assertIn('instance_centers_heatmap', outputs)
+      self.assertIn('instance_centers_offset', outputs)
 
       self.assertAllEqual(
           [2, input_size // (2**low_level[-1]),
@@ -97,12 +107,12 @@ class PanopticDeeplabNetworkTest(parameterized.TestCase, tf.test.TestCase):
           [2, input_size // (2**low_level[-1]),
            input_size // (2**low_level[-1]),
            1],
-          outputs['instance_center_prediction'].numpy().shape)
+          outputs['instance_centers_heatmap'].numpy().shape)
       self.assertAllEqual(
           [2, input_size // (2**low_level[-1]),
            input_size // (2**low_level[-1]),
            2],
-          outputs['instance_center_regression'].numpy().shape)
+          outputs['instance_centers_offset'].numpy().shape)
 
     else:
       self.assertIn('panoptic_outputs', outputs)
@@ -110,6 +120,8 @@ class PanopticDeeplabNetworkTest(parameterized.TestCase, tf.test.TestCase):
       self.assertIn('instance_mask', outputs)
       self.assertIn('instance_centers', outputs)
       self.assertIn('instance_scores', outputs)
+      self.assertIn('segmentation_outputs', outputs)
+
 
   @combinations.generate(
       combinations.combine(
@@ -142,13 +154,15 @@ class PanopticDeeplabNetworkTest(parameterized.TestCase, tf.test.TestCase):
         low_level_num_filters=(64, 32))
 
     post_processor = panoptic_deeplab_merge.PostProcessor(
+        output_size=[640, 640],
         center_score_threshold=0.1,
         thing_class_ids=[1, 2, 3, 4],
         label_divisor=[256],
         stuff_area_limit=4096,
         ignore_label=0,
         nms_kernel=41,
-        keep_k_centers=41)
+        keep_k_centers=41,
+        rescale_predictions=True)
 
     model = panoptic_deeplab_model.PanopticDeeplabModel(
         backbone=backbone,

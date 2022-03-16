@@ -381,7 +381,7 @@ class InstanceHead(PanopticDeeplabHead):
     """Creates the variables of the instance head."""
     super(InstanceHead, self).build(input_shape)
     self._instance_center_prediction_conv = tf.keras.layers.Conv2D(
-        name='instance_center_prediction',
+        name='instance_centers_heatmap',
         filters=1,
         kernel_size=self._config_dict['prediction_kernel_size'],
         padding='same',
@@ -391,7 +391,7 @@ class InstanceHead(PanopticDeeplabHead):
         bias_regularizer=self._config_dict['bias_regularizer'])
 
     self._instance_center_regression_conv = tf.keras.layers.Conv2D(
-        name='instance_center_regression',
+        name='instance_centers_offset',
         filters=2,
         kernel_size=self._config_dict['prediction_kernel_size'],
         padding='same',
@@ -409,10 +409,10 @@ class InstanceHead(PanopticDeeplabHead):
       training = tf.keras.backend.learning_phase()
 
     x = super(InstanceHead, self).call(inputs, training=training)
-    instance_center_prediction = self._instance_center_prediction_conv(x)
-    instance_center_regression = self._instance_center_regression_conv(x)
+    instance_centers_heatmap = self._instance_center_prediction_conv(x)
+    instance_centers_offset = self._instance_center_regression_conv(x)
     outputs = {
-        'instance_center_prediction': instance_center_prediction,
-        'instance_center_regression': instance_center_regression
+        'instance_centers_heatmap': instance_centers_heatmap,
+        'instance_centers_offset': instance_centers_offset
     }
     return outputs
