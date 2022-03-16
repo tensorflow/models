@@ -19,10 +19,10 @@ from absl.testing import parameterized
 import orbit
 import tensorflow as tf
 
+from official import vision
 from official.core import exp_factory
 from official.modeling import optimization
 from official.projects.qat.vision.tasks import image_classification as img_cls_task
-from official.vision import beta
 
 
 class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
