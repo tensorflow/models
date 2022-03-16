@@ -15,5 +15,5 @@
 """Vision package definition."""
 # Lint as: python3
 # pylint: disable=unused-import
-from official.vision.beta import configs
-from official.vision.beta import tasks
+from official.vision import configs
+from official.vision import tasks

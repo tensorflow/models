@@ -37,7 +37,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('output_dir', None, 'Where to write the resulting docs to.')
 flags.DEFINE_string(
     'code_url_prefix',
-    'https://github.com/tensorflow/models/blob/master/tensorflow_models/',
+    'https://github.com/tensorflow/models/blob/master/tensorflow_models/nlp',
     'The url prefix for links to code.')
 
 flags.DEFINE_bool('search_hints', True,
@@ -66,9 +66,11 @@ def gen_api_docs(code_url_prefix, site_path, output_dir, project_short_name,
   del tfm.nlp.layers.MultiHeadAttention
   del tfm.nlp.layers.EinsumDense
 
-  branch = code_url_prefix.strip('/').split('/')[-2]
-  official_url_prefix = (
-      f'https://github.com/tensorflow/models/blob/{branch}/official/')
+  url_parts = code_url_prefix.strip('/').split('/')
+  url_parts = url_parts[:url_parts.index('tensorflow_models')]
+  url_parts.append('official')
+
+  official_url_prefix = '/'.join(url_parts)
 
   nlp_base_dir = pathlib.Path(tfm.nlp.__file__).parent
 

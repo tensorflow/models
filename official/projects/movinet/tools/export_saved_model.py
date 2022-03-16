@@ -51,6 +51,8 @@ python3 export_saved_model.py \
 To use an exported saved_model, refer to export_saved_model_test.py.
 """
 
+from typing import Optional, Tuple
+
 from absl import app
 from absl import flags
 import tensorflow as tf
@@ -113,62 +115,50 @@ flags.DEFINE_string(
 FLAGS = flags.FLAGS
 
 
-def main(_) -> None:
-  input_specs = tf.keras.layers.InputSpec(shape=[
-      FLAGS.batch_size,
-      FLAGS.num_frames,
-      FLAGS.image_size,
-      FLAGS.image_size,
-      3,
-  ])
+def export_saved_model(
+    model: tf.keras.Model,
+    input_shape: Tuple[int, int, int, int, int],
+    export_path: str = '/tmp/movinet/',
+    causal: bool = False,
+    bundle_input_init_states_fn: bool = True,
+    checkpoint_path: Optional[str] = None) -> None:
+  """Exports a MoViNet model to a saved model.
+
+  Args:
+    model: the tf.keras.Model to export.
+    input_shape: The 5D spatiotemporal input shape of size
+      [batch_size, num_frames, image_height, image_width, num_channels].
+      Set the field or a shape position in the field to None for dynamic input.
+    export_path: Export path to save the saved_model file.
+    causal: Run the model in causal mode.
+    bundle_input_init_states_fn: Add init_states as a function signature to the
+      saved model. This is not necessary if the input shape is static (e.g.,
+      for TF Lite).
+    checkpoint_path: Checkpoint path to load. Leave blank to keep the model's
+      initialization.
+  """
 
   # Use dimensions of 1 except the channels to export faster,
   # since we only really need the last dimension to build and get the output
   # states. These dimensions can be set to `None` once the model is built.
-  input_shape = [1 if s is None else s for s in input_specs.shape]
-
-  # Override swish activation implementation to remove custom gradients
-  activation = FLAGS.activation
-  if activation == 'swish':
-    activation = 'simple_swish'
-
-  classifier_activation = FLAGS.classifier_activation
-  if classifier_activation == 'swish':
-    classifier_activation = 'simple_swish'
-
-  backbone = movinet.Movinet(
-      model_id=FLAGS.model_id,
-      causal=FLAGS.causal,
-      use_positional_encoding=FLAGS.use_positional_encoding,
-      conv_type=FLAGS.conv_type,
-      se_type=FLAGS.se_type,
-      input_specs=input_specs,
-      activation=activation,
-      gating_activation=FLAGS.gating_activation,
-      use_sync_bn=False,
-      use_external_states=FLAGS.causal)
-  model = movinet_model.MovinetClassifier(
-      backbone,
-      num_classes=FLAGS.num_classes,
-      output_states=FLAGS.causal,
-      input_specs=dict(image=input_specs),
-      activation=classifier_activation)
-  model.build(input_shape)
+  input_shape_concrete = [1 if s is None else s for s in input_shape]
+  model.build(input_shape_concrete)
 
   # Compile model to generate some internal Keras variables.
   model.compile()
 
-  if FLAGS.checkpoint_path:
+  if checkpoint_path:
     checkpoint = tf.train.Checkpoint(model=model)
-    status = checkpoint.restore(FLAGS.checkpoint_path)
+    status = checkpoint.restore(checkpoint_path)
     status.assert_existing_objects_matched()
 
-  if FLAGS.causal:
+  if causal:
     # Call the model once to get the output states. Call again with `states`
     # input to ensure that the inputs with the `states` argument is built
     # with the full output state shapes.
-    input_image = tf.ones(input_shape)
-    _, states = model({**model.init_states(input_shape), 'image': input_image})
+    input_image = tf.ones(input_shape_concrete)
+    _, states = model({
+        **model.init_states(input_shape_concrete), 'image': input_image})
     _ = model({**states, 'image': input_image})
 
     # Create a function to explicitly set the names of the outputs
@@ -179,10 +169,10 @@ def main(_) -> None:
     specs = {
         name: tf.TensorSpec(spec.shape, name=name, dtype=spec.dtype)
         for name, spec in model.initial_state_specs(
-            input_specs.shape).items()
+            input_shape).items()
     }
     specs['image'] = tf.TensorSpec(
-        input_specs.shape, dtype=model.dtype, name='image')
+        input_shape, dtype=model.dtype, name='image')
 
     predict_fn = tf.function(predict, jit_compile=True)
     predict_fn = predict_fn.get_concrete_function(specs)
@@ -191,17 +181,118 @@ def main(_) -> None:
     init_states_fn = init_states_fn.get_concrete_function(
         tf.TensorSpec([5], dtype=tf.int32))
 
-    if FLAGS.bundle_input_init_states_fn:
+    if bundle_input_init_states_fn:
       signatures = {'call': predict_fn, 'init_states': init_states_fn}
     else:
       signatures = predict_fn
 
     tf.keras.models.save_model(
-        model, FLAGS.export_path, signatures=signatures)
+        model, export_path, signatures=signatures)
   else:
-    _ = model(tf.ones(input_shape))
-    tf.keras.models.save_model(model, FLAGS.export_path)
+    _ = model(tf.ones(input_shape_concrete))
+    tf.keras.models.save_model(model, export_path)
 
+
+def build_and_export_saved_model(
+    export_path: str = '/tmp/movinet/',
+    model_id: str = 'a0',
+    causal: bool = False,
+    conv_type: str = '3d',
+    se_type: str = '3d',
+    activation: str = 'swish',
+    classifier_activation: str = 'swish',
+    gating_activation: str = 'sigmoid',
+    use_positional_encoding: bool = False,
+    num_classes: int = 600,
+    input_shape: Optional[Tuple[int, int, int, int, int]] = None,
+    bundle_input_init_states_fn: bool = True,
+    checkpoint_path: Optional[str] = None) -> None:
+  """Builds and exports a MoViNet model to a saved model.
+
+  Args:
+    export_path: Export path to save the saved_model file.
+    model_id: MoViNet model name.
+    causal: Run the model in causal mode.
+    conv_type: 3d, 2plus1d, or 3d_2plus1d. 3d configures the network
+      to use the default 3D convolution. 2plus1d uses (2+1)D convolution
+      with Conv2D operations and 2D reshaping (e.g., a 5x3x3 kernel becomes
+      3x3 followed by 5x1 conv). 3d_2plus1d uses (2+1)D convolution with
+      Conv3D and no 2D reshaping (e.g., a 5x3x3 kernel becomes 1x3x3
+      followed by 5x1x1 conv).
+    se_type:
+      3d, 2d, or 2plus3d. 3d uses the default 3D spatiotemporal global average
+      pooling for squeeze excitation. 2d uses 2D spatial global average pooling
+      on each frame. 2plus3d concatenates both 3D and 2D global average
+      pooling.
+    activation: The main activation to use across layers.
+    classifier_activation: The classifier activation to use.
+    gating_activation: The gating activation to use in squeeze-excitation
+      layers.
+    use_positional_encoding: Whether to use positional encoding (only applied
+      when causal=True).
+    num_classes: The number of classes for prediction.
+    input_shape: The 5D spatiotemporal input shape of size
+      [batch_size, num_frames, image_height, image_width, num_channels].
+      Set the field or a shape position in the field to None for dynamic input.
+    bundle_input_init_states_fn: Add init_states as a function signature to the
+      saved model. This is not necessary if the input shape is static (e.g.,
+      for TF Lite).
+    checkpoint_path: Checkpoint path to load. Leave blank for default
+      initialization.
+  """
+
+  input_specs = tf.keras.layers.InputSpec(shape=input_shape)
+
+  # Override swish activation implementation to remove custom gradients
+  if activation == 'swish':
+    activation = 'simple_swish'
+  if classifier_activation == 'swish':
+    classifier_activation = 'simple_swish'
+
+  backbone = movinet.Movinet(
+      model_id=model_id,
+      causal=causal,
+      use_positional_encoding=use_positional_encoding,
+      conv_type=conv_type,
+      se_type=se_type,
+      input_specs=input_specs,
+      activation=activation,
+      gating_activation=gating_activation,
+      use_sync_bn=False,
+      use_external_states=causal)
+  model = movinet_model.MovinetClassifier(
+      backbone,
+      num_classes=num_classes,
+      output_states=causal,
+      input_specs=dict(image=input_specs),
+      activation=classifier_activation)
+
+  export_saved_model(
+      model=model,
+      input_shape=input_shape,
+      export_path=export_path,
+      causal=causal,
+      bundle_input_init_states_fn=bundle_input_init_states_fn,
+      checkpoint_path=checkpoint_path)
+
+
+def main(_) -> None:
+  input_shape = (
+      FLAGS.batch_size, FLAGS.num_frames, FLAGS.image_size, FLAGS.image_size, 3)
+  build_and_export_saved_model(
+      export_path=FLAGS.export_path,
+      model_id=FLAGS.model_id,
+      causal=FLAGS.causal,
+      conv_type=FLAGS.conv_type,
+      se_type=FLAGS.se_type,
+      activation=FLAGS.activation,
+      classifier_activation=FLAGS.classifier_activation,
+      gating_activation=FLAGS.gating_activation,
+      use_positional_encoding=FLAGS.use_positional_encoding,
+      num_classes=FLAGS.num_classes,
+      input_shape=input_shape,
+      bundle_input_init_states_fn=FLAGS.bundle_input_init_states_fn,
+      checkpoint_path=FLAGS.checkpoint_path)
   print(' ----- Done. Saved Model is saved at {}'.format(FLAGS.export_path))
 
 

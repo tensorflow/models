@@ -8,11 +8,16 @@ This repository is the official implementation of
 [MoViNets: Mobile Video Networks for Efficient Video
 Recognition](https://arxiv.org/abs/2103.11511).
 
-**[UPDATE 2021-07-12] Mobile Models Available via [TF Lite](#tf-lite-streaming-models)**
+-   **[UPDATE 2022-03-14] Quantized TF Lite models
+    [available on TF Hub](https://tfhub.dev/s?deployment-format=lite&q=movinet)
+    (also [see table](https://tfhub.dev/google/collections/movinet) for
+    quantized performance)**
 
 <p align="center">
   <img src="https://storage.googleapis.com/tf_model_garden/vision/movinet/artifacts/hoverboard_stream.gif" height=500>
 </p>
+
+Create your own video plot like the one above with this [Colab notebook](https://colab.research.google.com/github/tensorflow/models/blob/master/official/projects/movinet/tools/plot_movinet_video_stream_predictions.ipynb).
 
 ## Description
 
@@ -55,6 +60,8 @@ approach that performs redundant computation and limits temporal scope.
 
 ## History
 
+- **2022-03-14** Support quantized TF Lite models and add/update Colab
+notebooks.
 - **2021-07-12** Add TF Lite support and replace 3D stream models with
 mobile-friendly (2+1)D stream.
 - **2021-05-30** Add streaming MoViNet checkpoints and examples.
@@ -71,6 +78,7 @@ mobile-friendly (2+1)D stream.
 - [Requirements](#requirements)
 - [Results and Pretrained Weights](#results-and-pretrained-weights)
   - [Kinetics 600](#kinetics-600)
+  - [Kinetics 400](#kinetics-400)
 - [Prediction Examples](#prediction-examples)
 - [TF Lite Example](#tf-lite-example)
 - [Training and Evaluation](#training-and-evaluation)
@@ -165,7 +173,7 @@ different architecture. To download the old checkpoints, insert `_legacy` before
 
 For convenience, we provide converted TF Lite models for inference on mobile
 devices. See the [TF Lite Example](#tf-lite-example) to export and run your own
-models.
+models. We also provide [quantized TF Lite binaries via TF Hub](https://tfhub.dev/s?deployment-format=lite&q=movinet).
 
 For reference, MoViNet-A0-Stream runs with a similar latency to
 [MobileNetV3-Large]
@@ -188,7 +196,7 @@ W-2135 CPU.
 
 ### Kinetics 400
 
-We also have checkpoints for Kinetics 600 models available. See the Kinetics 600
+We also have checkpoints for Kinetics 400 models available. See the Kinetics 600
 sections for more details. To load checkpoints, set `num_classes=400`.
 
 #### Base Models
@@ -226,7 +234,7 @@ backbone = movinet.Movinet(
     use_external_states=False,
 )
 model = movinet_model.MovinetClassifier(
-    backbone, num_classes=600, output_states=True)
+    backbone, num_classes=600, output_states=False)
 
 # Create your example input here.
 # Refer to the paper for recommended input shapes.

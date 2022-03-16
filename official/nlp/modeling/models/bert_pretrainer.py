@@ -199,6 +199,7 @@ class BertPretrainerV2(tf.keras.Model):
     self._config = {
         'encoder_network': encoder_network,
         'mlm_initializer': mlm_initializer,
+        'mlm_activation': mlm_activation,
         'classification_heads': classification_heads,
         'name': name,
     }

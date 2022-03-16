@@ -1663,6 +1663,7 @@ class AutoAugment(ImageAugment):
 
     tf_policies = self._make_tf_policies()
     image, _ = select_and_apply_random_policy(tf_policies, image, bboxes=None)
+    image = tf.cast(image, dtype=input_image_type)
     return image
 
   def distort_with_boxes(self, image: tf.Tensor,
