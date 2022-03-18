@@ -142,6 +142,7 @@ class PanopticDeepLabFusion(tf.keras.layers.Layer):
       x = tf.image.resize(
           x, size=[shape[1], shape[2]],
           method=self._config_dict['interpolation'])
+      x = tf.cast(x, dtype=feature.dtype)
       x = tf.concat([x, feature], axis=self._channel_axis)
 
       x = self._fusion_convs[i](x)
