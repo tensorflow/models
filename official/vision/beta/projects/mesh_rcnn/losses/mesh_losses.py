@@ -18,9 +18,8 @@ from typing import Optional, Tuple, Union
 
 import tensorflow as tf
 
-from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import (
-    MeshSampler, get_verts_from_indices)
-
+from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import (MeshSampler,
+                                                                  get_verts_from_indices)
 
 def compute_square_distances(
     pointcloud_a: tf.Tensor,
@@ -77,10 +76,10 @@ def get_normals_nearest_neighbors(
   batch_ind_b = tf.repeat(batch_ind, num_points_b, axis=1)
 
   a_nearest_neighbors_in_b_ind = tf.concat(
-      [batch_ind_a, tf.expand_dims(a_nearest_neighbors_in_b, -1)], -1
+      [batch_ind_a, tf.expand_dims(a_nearest_neighbors_in_b, axis=-1)], axis=-1
   )
   b_nearest_neighbors_in_a_ind = tf.concat(
-      [batch_ind_b, tf.expand_dims(b_nearest_neighbors_in_a, -1)], -1
+      [batch_ind_b, tf.expand_dims(b_nearest_neighbors_in_a, axis=-1)], axis=-1
   )
 
   # FloatTensor[B, num_points_b, 3]: The normals corresponding to the re-ordered
@@ -98,12 +97,14 @@ def cosine_similarity(a: tf.Tensor, b: tf.Tensor) -> tf.Tensor:
   b_norm = tf.linalg.l2_normalize(b, axis=-1)
   return tf.reduce_sum(a_norm * b_norm, axis=-1)
 
+
 def add_pointcloud_distances(dist_a: tf.Tensor,
                              dist_b: tf.Tensor,
                              num_points_a: tf.Tensor,
                              num_points_b: tf.Tensor,
                              batch_size: tf.Tensor,
                              weights: Optional[tf.Tensor],
+                             point_reduction: Union[str, None] = "mean",
                              batch_reduction:
                              Union[str, None] = "mean") -> tf.Tensor:
   """TODO"""
@@ -112,18 +113,19 @@ def add_pointcloud_distances(dist_a: tf.Tensor,
   num_points_b = tf.cast(num_points_b, tf.float32)
   batch_size = tf.cast(batch_size, tf.float32)
 
-  # Point reduction: sum all dists into one element per batch.
-  dist_a = tf.reduce_sum(dist_a, axis=-1) / num_points_a
-  dist_b = tf.reduce_sum(dist_b, axis=-1) / num_points_b
-
   # Apply batch weights.
   if weights is not None:
-    dist_a *= weights
-    dist_b *= weights
+    dist_a *= tf.expand_dims(weights, axis=-1)
+    dist_b *= tf.expand_dims(weights, axis=-1)
 
-  # Normalize with number of points in pointcloud.
-  dist_a /= num_points_a
-  dist_b /= num_points_b
+  # Point reduction: sum all dists into one element per batch.
+  dist_a = tf.reduce_sum(dist_a, axis=-1)
+  dist_b = tf.reduce_sum(dist_b, axis=-1)
+
+  if point_reduction == "mean":
+    # Normalize with number of points in pointcloud.
+    dist_a /= num_points_a
+    dist_b /= num_points_b
 
   # Batch reduction.
   if batch_reduction is not None:
@@ -140,6 +142,7 @@ def add_pointcloud_distances(dist_a: tf.Tensor,
 def chamfer_loss(pointcloud_a: tf.Tensor,
                  pointcloud_b: tf.Tensor,
                  weights: Optional[tf.Tensor] = None,
+                 point_reduction: Union[str, None] = "mean",
                  batch_reduction: Union[str, None] = "mean") -> tf.Tensor:
   """TODO"""
   square_distances = compute_square_distances(pointcloud_a, pointcloud_b)
@@ -159,7 +162,8 @@ def chamfer_loss(pointcloud_a: tf.Tensor,
 
   chamfer_dist = add_pointcloud_distances(
       min_square_dist_a_to_b, min_square_dist_b_to_a,
-      num_points_a, num_points_b, batch_size, weights, batch_reduction
+      num_points_a, num_points_b, batch_size, weights,
+      point_reduction, batch_reduction
   )
   return chamfer_dist
 
@@ -168,6 +172,7 @@ def normal_loss(pointcloud_a: tf.Tensor,
                 normals_a: tf.Tensor,
                 normals_b: tf.Tensor,
                 weights: Optional[tf.Tensor] = None,
+                point_reduction: Union[str, None] = "mean",
                 batch_reduction: Union[str, None] = "mean") -> tf.Tensor:
   """TODO"""
   normals_a_nearest_to_b, normals_b_nearest_to_a = \
@@ -191,7 +196,7 @@ def normal_loss(pointcloud_a: tf.Tensor,
 
   normal_dist = add_pointcloud_distances(
       abs_normal_dist_a, abs_normal_dist_b, num_points_a, num_points_b,
-      batch_size, weights, batch_reduction
+      batch_size, weights, point_reduction, batch_reduction
   )
   return normal_dist
 

@@ -14,28 +14,32 @@
 
 """Differential Tests for Mesh Losses."""
 
+from typing import List, Tuple
+from absl.testing import parameterized
+
 import numpy as np
 import tensorflow as tf
 import torch
-from absl.testing import parameterized
-from typing import List, Tuple
 
-# from pytorch3d.ops import cubify as torch_cubify
-# from pytorch3d.loss import (chamfer_distance as torch_chamfer_and_normal_loss,
-#                             mesh_edge_loss as torch_edge_loss)
-# from pytorch3d.ops import sample_points_from_meshes
-# from pytorch3d.structures import Meshes
-# from torch_mesh_loss import MeshLoss as TorchMeshLoss
-
+from official.vision.beta.projects.mesh_rcnn.losses.mesh_losses import \
+    chamfer_loss as tf_chamfer_loss
+from official.vision.beta.projects.mesh_rcnn.losses.mesh_losses import \
+    edge_loss as tf_edge_loss
+from official.vision.beta.projects.mesh_rcnn.losses.mesh_losses import \
+    normal_loss as tf_normal_loss
 from official.vision.beta.projects.mesh_rcnn.ops.cubify import \
     cubify as tf_cubify
 from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import \
-    (MeshSampler as TfMeshSampler, compute_edges as tf_compute_edges)
+    MeshSampler as TfMeshSampler
+from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import \
+    compute_edges as tf_compute_edges
 from official.vision.beta.projects.mesh_rcnn.ops.voxel_ops import \
     create_voxels as tf_create_voxels
-from official.vision.beta.projects.mesh_rcnn.losses.mesh_losses import \
-    (chamfer_loss as tf_chamfer_loss,
-    normal_loss as tf_normal_loss, edge_loss as tf_edge_loss)
+
+from pytorch3d.loss import (chamfer_distance as torch_chamfer_and_normal_loss,
+                            mesh_edge_loss as torch_edge_loss)
+from pytorch3d.structures import Meshes as TorchMeshes
+
 
 @parameterized.named_parameters(
     {'testcase_name': 'batched_large_mesh_with_empty_samples',
@@ -50,7 +54,7 @@ from official.vision.beta.projects.mesh_rcnn.losses.mesh_losses import \
           ]
     }
 )
-class MeshLossDifferentialTest(parameterized.TestCase, tf.test.TestCase):
+class MeshLossesDifferentialTest(parameterized.TestCase, tf.test.TestCase):
   """Differential Test Mesh Loss Function(s)."""
 
   def __init__(self, *args, **kwargs):
@@ -110,7 +114,7 @@ class MeshLossDifferentialTest(parameterized.TestCase, tf.test.TestCase):
     torch_true_normals = torch.tensor(tf_true_normals.numpy())
     torch_pred_samples = torch.tensor(tf_pred_samples.numpy())
     torch_pred_normals = torch.tensor(tf_pred_normals.numpy())
-
+    
     return (tf_true_samples, tf_true_normals, tf_pred_samples, tf_pred_normals,
             torch_true_samples, torch_true_normals, torch_pred_samples,
             torch_pred_normals)
@@ -137,7 +141,6 @@ class MeshLossDifferentialTest(parameterized.TestCase, tf.test.TestCase):
       )
       self.assertNear(tf_cham_dist, torch_cham_dist, err=1e-5)
 
-
   def test_normal_loss_differential(
       self, grid_dims: int, batch_size: int, occupancy_locs: List[List[int]]
   ) -> None:
@@ -163,6 +166,8 @@ class MeshLossDifferentialTest(parameterized.TestCase, tf.test.TestCase):
       )
       self.assertNear(tf_normal_dist, torch_normal_dist, err=1e-5)
 
+  # NOTE: This one is still failing. Need to merge in the corrected cubify
+  #       and compute edges before further debugging.
   def test_edge_loss_differential(
       self, grid_dims: int, batch_size: int, occupancy_locs: List[List[int]]
   ) -> None:
