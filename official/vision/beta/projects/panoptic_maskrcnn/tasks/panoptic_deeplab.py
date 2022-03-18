@@ -141,22 +141,7 @@ class PanopticDeeplabTask(base_task.Task):
         use_groundtruth_dimension=loss_config.use_groundtruth_dimension)
     instance_center_offset_loss_fn = panoptic_deeplab_losses.CenterOffsetLoss(
         use_groundtruth_dimension=loss_config.use_groundtruth_dimension)
-
-    # outputs = {
-    #     'segmentation_outputs': segmentation_outputs,
-    #     'instance_centers_heatmap':
-    #         instance_outputs['instance_centers_heatmap'],
-    #     'instance_centers_offset':
-    #         instance_outputs['instance_centers_offset'],
-    # }
-    # labels = {
-    #     'category_mask': category_mask,
-    #     'instance_mask': instance_mask,
-    #     'instance_centers_heatmap': instance_centers_heatmap,
-    #     'instance_centers_offset': instance_centers_offset,
-    #     'things_mask': things_mask
-    # }
-    
+   
     segmentation_loss = segmentation_loss_fn(
         model_outputs['segmentation_outputs'],
         labels['category_mask'])
