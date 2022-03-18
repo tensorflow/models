@@ -178,7 +178,7 @@ def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
 
   config = cfg.ExperimentConfig(
       runtime=cfg.RuntimeConfig(
-          mixed_precision_dtype='float32', enable_xla=True),
+          mixed_precision_dtype='bfloat16', enable_xla=True),
       task=PanopticDeeplabTask(
           init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/deeplab/deeplab_resnet101_imagenet/ckpt-62400',  # pylint: disable=line-too-long
           init_checkpoint_modules=['backbone'],
@@ -282,6 +282,7 @@ def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
                   'type': 'adam',
               },
               'learning_rate': {
+                  'type': 'polynomial',
                   'polynomial': {
                       'initial_learning_rate': 0.0005,
                       'decay_steps': train_steps,
