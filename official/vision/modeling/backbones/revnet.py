@@ -208,7 +208,7 @@ class RevNet(tf.keras.Model):
   @property
   def output_specs(self) -> Dict[int, tf.TensorShape]:
     """A dict of {level: TensorShape} pairs for the model output."""
-    return self._output_specs
+    return self._output_specs  # pytype: disable=bad-return-type  # trace-all-classes
 
 
 @factory.register_backbone_builder('revnet')
