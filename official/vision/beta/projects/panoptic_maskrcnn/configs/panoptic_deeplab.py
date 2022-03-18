@@ -283,7 +283,7 @@ def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
               },
               'learning_rate': {
                   'polynomial': {
-                      'initial_learning_rate': 0.001,
+                      'initial_learning_rate': 0.0005,
                       'decay_steps': train_steps,
                       'end_learning_rate': 0.0,
                       'power': 0.9
