@@ -35,6 +35,7 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
       upsample_factor: int = 1,
       low_level: Union[List[int], Tuple[int]] = (3, 2),
       low_level_num_filters: Union[List[int], Tuple[int]] = (64, 32),
+      fusion_num_output_filters: int = 256,
       activation: str = 'relu',
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
@@ -61,6 +62,8 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
       low_level_num_filters: An `int` of reduced number of filters for the low
         level features before fusing it with higher level features. It is only
         used when feature_fusion is set to `deeplabv3plus`.
+      fusion_num_output_filters: An `int` number to specify the number of
+        filters used by output layer of fusion module. Default is 256.
       activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
       use_sync_bn: A `bool` that indicates whether to use synchronized batch
@@ -83,6 +86,7 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
         'upsample_factor': upsample_factor,
         'low_level': low_level,
         'low_level_num_filters': low_level_num_filters,
+        'fusion_num_output_filters': fusion_num_output_filters,
         'activation': activation,
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
@@ -122,7 +126,7 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
         level=self._config_dict['level'],
         low_level=self._config_dict['low_level'],
         num_projection_filters=self._config_dict['low_level_num_filters'],
-        num_output_filters=self._config_dict['num_filters'],
+        num_output_filters=self._config_dict['fusion_num_output_filters'],
         activation=self._config_dict['activation'],
         use_sync_bn=self._config_dict['use_sync_bn'],
         norm_momentum=self._config_dict['norm_momentum'],
@@ -218,6 +222,7 @@ class SemanticHead(PanopticDeeplabHead):
       upsample_factor: int = 1,
       low_level: Union[List[int], Tuple[int]] = (3, 2),
       low_level_num_filters: Union[List[int], Tuple[int]] = (64, 32),
+      fusion_num_output_filters: int = 256,
       activation: str = 'relu',
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
@@ -248,6 +253,8 @@ class SemanticHead(PanopticDeeplabHead):
       low_level_num_filters: An `int` of reduced number of filters for the low
         level features before fusing it with higher level features. It is only
         used when feature_fusion is set to `deeplabv3plus`.
+      fusion_num_output_filters: An `int` number to specify the number of
+        filters used by output layer of fusion module. Default is 256.        
       activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
       use_sync_bn: A `bool` that indicates whether to use synchronized batch
@@ -268,6 +275,7 @@ class SemanticHead(PanopticDeeplabHead):
         upsample_factor=upsample_factor,
         low_level=low_level,
         low_level_num_filters=low_level_num_filters,
+        fusion_num_output_filters=fusion_num_output_filters,
         activation=activation,
         use_sync_bn=use_sync_bn,
         norm_momentum=norm_momentum,
@@ -318,6 +326,7 @@ class InstanceHead(PanopticDeeplabHead):
       upsample_factor: int = 1,
       low_level: Union[List[int], Tuple[int]] = (3, 2),
       low_level_num_filters: Union[List[int], Tuple[int]] = (64, 32),
+      fusion_num_output_filters: int = 256,
       activation: str = 'relu',
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
@@ -346,6 +355,8 @@ class InstanceHead(PanopticDeeplabHead):
       low_level_num_filters: An `int` of reduced number of filters for the low
         level features before fusing it with higher level features. It is only
         used when feature_fusion is set to `deeplabv3plus`.
+      fusion_num_output_filters: An `int` number to specify the number of
+        filters used by output layer of fusion module. Default is 256.        
       activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
       use_sync_bn: A `bool` that indicates whether to use synchronized batch
@@ -366,6 +377,7 @@ class InstanceHead(PanopticDeeplabHead):
         upsample_factor=upsample_factor,
         low_level=low_level,
         low_level_num_filters=low_level_num_filters,
+        fusion_num_output_filters=fusion_num_output_filters,
         activation=activation,
         use_sync_bn=use_sync_bn,
         norm_momentum=norm_momentum,
