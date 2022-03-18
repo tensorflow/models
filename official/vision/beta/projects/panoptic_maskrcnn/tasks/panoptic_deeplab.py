@@ -182,9 +182,9 @@ class PanopticDeeplabTask(base_task.Task):
         loss_config.center_heatmap_loss_weight * instance_center_heatmap_loss +
         loss_config.center_offset_loss_weight * instance_center_offset_loss)
 
+    total_loss = model_loss
     if aux_losses:
-      reg_loss = tf.add_n(aux_losses)
-      total_loss = model_loss + reg_loss
+      total_loss += tf.add_n(aux_losses)
 
     losses = {
         'total_loss': total_loss,
