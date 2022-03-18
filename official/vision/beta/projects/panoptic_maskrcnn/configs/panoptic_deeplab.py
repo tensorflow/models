@@ -173,14 +173,14 @@ def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
   output_stride = 16
   aspp_dilation_rates = [6, 12, 18]
   multigrid = [1, 2, 4]
-  stem_type = 'v1'
+  stem_type = 'v0'
   level = int(np.math.log2(output_stride))
 
   config = cfg.ExperimentConfig(
       runtime=cfg.RuntimeConfig(
           mixed_precision_dtype='bfloat16', enable_xla=True),
       task=PanopticDeeplabTask(
-          init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/deeplab/deeplab_resnet101_imagenet/ckpt-62400',  # pylint: disable=line-too-long
+          init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/deeplab/deeplab_resnet50_imagenet/ckpt-62400',  # pylint: disable=line-too-long
           init_checkpoint_modules=['backbone'],
           model=PanopticDeeplab(
               num_classes=num_panoptic_categories,
