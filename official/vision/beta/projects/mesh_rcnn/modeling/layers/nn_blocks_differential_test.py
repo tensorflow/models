@@ -14,6 +14,7 @@
 
 "Differential Tests for NN Blocks."
 
+from unittest import SkipTest, skip
 import numpy as np
 import tensorflow as tf
 import torch
@@ -29,8 +30,8 @@ class NNBLocksDifferentialTest(parameterized.TestCase, tf.test.TestCase):
   def test_graph_conv(self):
     num_verts = 5
     num_edges = 10
-    input_features = 15
-    output_features = 20
+    input_features = 20
+    output_features = 30
 
     verts = np.random.uniform(
         low=-5.0, high=5.0, size=(num_verts, input_features))
@@ -63,11 +64,11 @@ class NNBLocksDifferentialTest(parameterized.TestCase, tf.test.TestCase):
     torch_layer(torch_verts, torch_edges)
 
     with torch.no_grad():
-      torch_layer.w0.weight.data = torch.nn.Parameter(
+      torch_layer.w0.weight = torch.nn.Parameter(
           torch.as_tensor(w0_weights, dtype=torch.float32))
       torch_layer.w0.bias = torch.nn.Parameter(
           torch.as_tensor(w0_bias, dtype=torch.float32))
-      torch_layer.w1.weight.data = torch.nn.Parameter(
+      torch_layer.w1.weight = torch.nn.Parameter(
           torch.as_tensor(w1_weights, dtype=torch.float32))
       torch_layer.w1.bias = torch.nn.Parameter(
           torch.as_tensor(w1_bias, dtype=torch.float32))
@@ -83,7 +84,7 @@ class NNBLocksDifferentialTest(parameterized.TestCase, tf.test.TestCase):
     torch_outputs = torch_outputs.cpu().detach().numpy()
     tf_outputs = tf_outputs.numpy()
 
-    self.assertAllClose(torch_outputs, tf_outputs, rtol=0.01, atol=0.01)
+    self.assertAllClose(torch_outputs, tf_outputs, atol=1e-2, rtol=1e-2)
 
   def test_graph_conv_with_mask(self):
     num_verts = 5
@@ -151,7 +152,7 @@ class NNBLocksDifferentialTest(parameterized.TestCase, tf.test.TestCase):
     torch_outputs = torch_outputs.cpu().detach().numpy()
     tf_outputs = tf_outputs.numpy()
 
-    self.assertAllClose(torch_outputs, tf_outputs, rtol=0.01, atol=0.01)
+    self.assertAllClose(torch_outputs, tf_outputs, atol=1e-2, rtol=1e-2)
 
 if __name__ == "__main__":
   tf.test.main()

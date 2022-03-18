@@ -42,48 +42,47 @@ def compute_edges(faces: tf.Tensor, faces_mask: tf.Tensor):
   # Faces are identical in the batch, only one is needed to create the edges
   shape = tf.shape(faces)
   batch_size, _, _ = shape[0], shape[1], shape[2]
-  faces = faces[0, :]
+  faces = faces[0]
 
   # Use the 3 vertices of each face to compute the edges
-  v0, v1, v2 = tf.split(faces, 3, -1)
+  v0, v1, v2 = tf.split(faces, 3, axis=-1)
 
-  e01 = tf.concat([v0, v1], 1)
-  e12 = tf.concat([v1, v2], 1)
-  e20 = tf.concat([v2, v0], 1)
+  e01 = tf.concat([v0, v1], axis=-1)
+  e12 = tf.concat([v1, v2], axis=-1)
+  e20 = tf.concat([v2, v0], axis=-1)
 
-  edges = tf.concat([e12, e20, e01], 0)
+  edges = tf.concat([e12, e20, e01], axis=0)
 
   # Create an initial mask for the edges using faces_mask
-  edges_mask = tf.repeat(faces_mask, 3, axis=1)
+  edges_mask = tf.tile(faces_mask, [1, 3])
 
   # Sort vertex ordering in each edge [v0, v1] so that v0 >= v1
   edges = tf.stack(
-      [tf.math.reduce_min(edges, axis=1),
-       tf.math.reduce_max(edges, axis=1)],
+      [tf.math.reduce_min(edges, axis=-1),
+       tf.math.reduce_max(edges, axis=-1)],
       axis=-1
   )
 
   # Convert the edges to scalar values (to be used for sorting)
+  # Multiply the hash by -1 to give valid faces higher priority in sorting
   edges_max = tf.math.reduce_max(edges) + 1
-  edges_hashed = edges[:, 0] * edges_max + edges[:, 1]
 
+  edges_hashed = (edges[..., 0] * edges_max + edges[..., 1]) * (-1 * tf.cast(edges_mask, edges.dtype))
+  
   # Sort the edges in increasing order and update the mask accordingly
-  sorted_edge_indices = tf.argsort(edges_hashed)
-  edges_hashed = tf.gather(edges_hashed, sorted_edge_indices)
+  sorted_edge_indices = tf.argsort(edges_hashed, stable=True)
+  edges_hashed = tf.gather(edges_hashed, sorted_edge_indices, batch_dims=-1)
   edges = tf.gather(edges, sorted_edge_indices)
-  edges_mask = tf.gather(edges_mask, sorted_edge_indices, axis=1)
-
-  # Compare adjacent edges to find the non-unique edges
+  
+  edges_mask = tf.gather(edges_mask, sorted_edge_indices, batch_dims=1, axis=-1)
+  
+  ones = tf.repeat(True, repeats=batch_size)
   unique_edges_mask = tf.concat(
-      [[True], edges_hashed[1:] != edges_hashed[:-1]], axis=0)
-
-  # Multiply the masks to create the edges mask for valid and unique edges
-  edges_mask = edges_mask * tf.cast(unique_edges_mask, edges_mask.dtype)
-
-  # Re-batch the edges
-  edges = tf.expand_dims(edges, axis=-1)
-  edges = tf.tile(edges, multiples=[batch_size, 1, 1])
-  edges = tf.reshape(edges, shape=[batch_size, -1, 2])
+      [tf.reshape(ones, shape=[batch_size, 1]),
+       edges_hashed[..., 1:] != edges_hashed[..., :-1]], axis=-1)
+  
+  # Multiply the masks to create the edges mask for valid and unique edges.
+  edges_mask *= tf.cast(unique_edges_mask, edges_mask.dtype)
 
   return edges, edges_mask
 
@@ -101,7 +100,7 @@ def vert_align(feature_map: tf.Tensor,
     feature_map: A `Tensor` of shape [B, H, W, C] from which to sample features.
     verts: A `Tensor` of shape [B, V, 3] where the last dimension corresponds
     to the (x, y, z) coordinates of each vertex.
-    align_corners: A `bool` that determines whether the the vertex extrema
+    align_corners: A `bool` that indicates whether the vertex extrema
       coordinates (-1 and 1) will correspond to the corners or centers of the
       pixels. If set to True, the extrema will correspond to the corners.
       Otherwise, they will be set to the centers.
@@ -133,15 +132,6 @@ def vert_align(feature_map: tf.Tensor,
   max_y = tf.cast(height - 1, dtype=tf.int32)
   max_x = tf.cast(width - 1, dtype=tf.int32)
 
-  # Find coordinates that are outside of [-1, 1]
-  neg_out_of_range_mask = tf.cast(verts < -1.0, verts.dtype)
-  pos_out_of_range_mask = tf.cast(verts > 1.0, verts.dtype)
-
-  # For border padding, clip all out-of-range coordinates to border
-  # For example, the coordinate [1.4, -0.9, -2.1] becomes [1.0, -0.9, -1.0]
-  if padding_mode == 'border':
-    verts = tf.clip_by_value(verts, -1.0, 1.0)
-
   x, y = verts[..., 0], verts[..., 1]
 
   x = tf.cast(x, 'float32')
@@ -161,17 +151,6 @@ def vert_align(feature_map: tf.Tensor,
   y0 = tf.cast(tf.floor(y), dtype=tf.int32)
   y1 = y0 + 1
 
-  x0 = tf.clip_by_value(x0, 0, max_x)
-  x1 = tf.clip_by_value(x1, 0, max_x)
-  y0 = tf.clip_by_value(y0, 0, max_y)
-  y1 = tf.clip_by_value(y1, 0, max_y)
-
-  # Get pixel value at corner coords
-  value_a = _get_pixel_value(feature_map, x0, y0)
-  value_b = _get_pixel_value(feature_map, x0, y1)
-  value_c = _get_pixel_value(feature_map, x1, y0)
-  value_d = _get_pixel_value(feature_map, x1, y1)
-
   # Recast as float for delta calculation
   x0 = tf.cast(x0, 'float32')
   x1 = tf.cast(x1, 'float32')
@@ -183,6 +162,23 @@ def vert_align(feature_map: tf.Tensor,
   wb = (x1 - x) * (y - y0)
   wc = (x - x0) * (y1 - y)
   wd = (x - x0) * (y - y0)
+
+  if padding_mode == 'border':
+    x0 = tf.clip_by_value(x0, 0.0, tf.cast(max_x, 'float32'))
+    x1 = tf.clip_by_value(x1, 0.0, tf.cast(max_x, 'float32'))
+    y0 = tf.clip_by_value(y0, 0.0, tf.cast(max_y, 'float32'))
+    y1 = tf.clip_by_value(y1, 0.0, tf.cast(max_y, 'float32'))
+
+  x0 = tf.cast(x0, 'int32')
+  x1 = tf.cast(x1, 'int32')
+  y0 = tf.cast(y0, 'int32')
+  y1 = tf.cast(y1, 'int32')
+
+  # Get pixel value at corner coords
+  value_a = _get_pixel_value(feature_map, x0, y0)
+  value_b = _get_pixel_value(feature_map, x0, y1)
+  value_c = _get_pixel_value(feature_map, x1, y0)
+  value_d = _get_pixel_value(feature_map, x1, y1)
 
   # add dimension for addition
   wa = tf.expand_dims(wa, axis=2)

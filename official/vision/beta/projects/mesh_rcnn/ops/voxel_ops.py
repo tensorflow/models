@@ -35,6 +35,9 @@ def create_voxels(
     voxels: An int `Tensor` of shape [B, D, H, W] that contains the voxel
       occupancy prediction. D, H, and W are equal.
   """
+  if len(occupancy_locs) == 0:
+    return tf.zeros(shape=[batch_size, grid_dims, grid_dims, grid_dims])
+
   ones = tf.ones(shape=[len(occupancy_locs)])
   voxels = tf.scatter_nd(
       indices=tf.convert_to_tensor(occupancy_locs, tf.int32),

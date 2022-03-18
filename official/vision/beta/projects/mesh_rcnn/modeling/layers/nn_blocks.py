@@ -106,15 +106,18 @@ class GraphConv(tf.keras.layers.Layer):
     """
     shape = tf.shape(vert_feats)
     batch_size, num_verts, _ = shape[0], shape[1], shape[2]
-    # For empty graphs, return 0 for the features
+  
+    # For empty meshes, return 0 for the features
     if tf.reduce_sum(verts_mask) == 0:
       return tf.zeros(shape=[batch_size, num_verts, self._output_dim])
-
+    
+    # Apply dense layers
     verts_w0 = self._w0(vert_feats)
     verts_w1 = self._w1(vert_feats)
-
+    
     neighbor_sums = self._gather_scatter(
         verts_w1, edges, edges_mask, self._directed)
+    
     out = verts_w0 + neighbor_sums
 
     return out
@@ -146,25 +149,30 @@ class GraphConv(tf.keras.layers.Layer):
     shape = tf.shape(vert_feats)
     batch_size = shape[0]
 
+    # Initialize output
     output = tf.zeros_like(vert_feats)
+
+    # Grab the features of adjacent verts
     edges_mask = tf.expand_dims(edges_mask, axis=-1)
     gather_0 = tf.gather(
         vert_feats, edges[..., 0], axis=1, batch_dims=1)
     gather_1 = tf.gather(
         vert_feats, edges[..., 1], axis=1, batch_dims=1)
 
+    # Mask out unused features
     gather_0 = gather_0 * tf.cast(edges_mask, gather_0.dtype)
     gather_1 = gather_1 * tf.cast(edges_mask, gather_0.dtype)
 
     idx0 = tf.expand_dims(edges[..., 0], axis=-1)
 
+    # Generate the update indices for scatter
     num_edges = tf.shape(edges)[1]
     batch_repeats = tf.repeat(num_edges, repeats=batch_size)
     batch_indices = tf.repeat(tf.range(batch_size), repeats=batch_repeats)
     batch_indices = tf.reshape(batch_indices, tf.shape(idx0))
-    batch_indices = tf.cast(batch_indices, idx0.dtype)
+    idx0 = tf.concat([tf.cast(batch_indices, idx0.dtype), idx0], axis=2)
 
-    idx0 = tf.concat([batch_indices, idx0], axis=2)
+    # Compute sum of adjacent features for each vertex
     output = tf.tensor_scatter_nd_add(output, idx0, gather_1)
 
     if not directed:
@@ -261,20 +269,33 @@ class MeshRefinementStage(tf.keras.layers.Layer):
       vert_feats_nopos: A `Tensor` of shape [B, num_verts, C], that contains
         the new vertex coordinates.
     """
+    verts_mask = tf.expand_dims(verts_mask, axis=-1)
     img_feats = vert_align(feature_map, verts)
-    img_feats = tf.nn.relu((self.bottleneck(img_feats)))
+
+    img_feats = self.bottleneck(img_feats)
+    img_feats = tf.nn.relu(img_feats)
 
     if vert_feats is None:
       vert_feats = tf.concat([img_feats, verts], axis=2)
     else:
       vert_feats = tf.concat([vert_feats, img_feats, verts], axis=2)
 
+    # Mask features before applying graph convolution
+    vert_feats *= tf.cast(verts_mask, vert_feats.dtype)
+  
     for graph_conv in self.gconvs:
       vert_feats_nopos = tf.nn.relu(
           graph_conv(vert_feats, edges, verts_mask, edges_mask))
+ 
+      vert_feats_nopos = vert_feats_nopos * tf.cast(verts_mask, vert_feats_nopos.dtype)
       vert_feats = tf.concat([vert_feats_nopos, verts], axis=2)
 
-    deform = tf.nn.tanh(self.verts_offset(vert_feats))
+      vert_feats *= tf.cast(verts_mask, vert_feats.dtype)
+    
+    vert_feats = self.verts_offset(vert_feats)
+    vert_feats *= tf.cast(verts_mask, vert_feats.dtype) 
+    deform = tf.nn.tanh(vert_feats)
+
     new_verts = verts + deform
 
     return new_verts, vert_feats_nopos

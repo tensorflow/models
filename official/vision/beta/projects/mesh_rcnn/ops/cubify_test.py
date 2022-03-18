@@ -77,6 +77,21 @@ class CubifyTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(tf.shape(faces), [12*(grid_dim) ** 3, 3])
 
   @parameterized.named_parameters(
+      {'testcase_name': 'unit_mesh_empty',
+       'grid_dims': 1,
+       'batch_size': 1,
+       'occupancy_locs': [],
+       'expected_num_verts': [0],
+       'expected_num_faces': [0]},
+      {'testcase_name': 'unit_mesh',
+       'grid_dims': 1,
+       'batch_size': 1,
+       'occupancy_locs':
+           [
+               [0, 0, 0, 0]
+           ],
+       'expected_num_verts': [8],
+       'expected_num_faces': [12]},
       {'testcase_name': 'batched_small_mesh',
        'grid_dims': 2,
        'batch_size': 2,

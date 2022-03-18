@@ -41,10 +41,10 @@ UNIT_CUBOID_FACES = tf.constant(
         [3, 7, 6],  # bottom face: 2, 3
         [0, 2, 6],
         [0, 6, 4],  # front face: 4, 5
-        [1, 5, 4],
-        [1, 0, 4],  # up face: 6, 7
-        # [0, 5, 1],
-        # [0, 4, 5],  # up face: 6, 7
+        # [1, 5, 4],
+        # [1, 0, 4],  # up face: 6, 7
+        [0, 5, 1],
+        [0, 4, 5],  # up face: 6, 7 # PYTORCH VERSION
         [6, 7, 5],
         [6, 5, 4],  # right face: 8, 9
         [1, 7, 3],
@@ -109,13 +109,11 @@ def initialize_mesh(grid_dims: int, align: str) -> Tuple[tf.Tensor, tf.Tensor]:
   coords = generate_3d_coords(grid_dims, grid_dims, grid_dims, True)
   coords = tf.cast(coords, tf.float32)
 
-
   # Apply alignment and normalize verts
   if align == 'center':
     coords -= 0.5
 
   margin = 0.0 if align == 'corner' else 1.0
-
   verts = coords * 2.0 / (tf.cast(grid_dims, tf.float32) - margin) - 1.0
 
   # Generate offsets for the unit cube verts for the grid
@@ -269,18 +267,19 @@ def cubify(voxels: tf.Tensor,
     thresh: A `float` that specifies the threshold value of a valid occupied
       voxel.
     align: String, one of 'topleft', 'corner', or 'center' that defines the
-      alignment of the mesh vertices
+      alignment of the mesh vertices. Currently only 'topleft' is supported.
 
   Returns:
-    verts: A `Tensor` of shape [B, num_verts, 3], where the last dimension
-      contains all (x,y,z) vertex coordinates in the initial mesh mesh.
-    verts_mask: A `Tensor` of shape [B, num_verts], a mask for valid vertices
-      in the watertight mesh.
-    faces: A `Tensor` of shape [B, num_faces, 3], where the last dimension
-      contain the verts indices that make up the face. This may include
-      duplicate faces.
-    faces_mask: A `Tensor` of shape [B, num_faces], a mask for valid faces in
-      the watertight mesh.
+    mesh: A dictinary with the following keys:
+      'verts': A `Tensor` of shape [B, num_verts, 3], where the last dimension
+        contains all (x,y,z) vertex coordinates in the initial mesh mesh.
+      'verts_mask': A `Tensor` of shape [B, num_verts], a mask for valid
+        vertices in the watertight mesh.
+      'faces': A `Tensor` of shape [B, num_faces, 3], where the last dimension
+        contain the verts indices that make up the face. This may include
+        duplicate faces.
+      'faces_mask': A `Tensor` of shape [B, num_faces], a mask for valid faces
+        in the watertight mesh.
   """
   shape = tf.shape(voxels)
   batch_size, depth, _, _ = shape[0], shape[1], shape[2], shape[3]
@@ -350,4 +349,11 @@ def cubify(voxels: tf.Tensor,
   # The first index was used for any 0s (masked out faces), which can be ignored
   verts_mask = verts_mask[:, 1:]
 
-  return verts, faces, verts_mask, faces_mask
+  mesh = {
+    'verts': verts,
+    'faces': faces,
+    'verts_mask': verts_mask,
+    'faces_mask': faces_mask
+  }
+
+  return mesh

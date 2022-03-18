@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Mesh R-CNN Mesh Head"""
+"""Mesh R-CNN Mesh Refinement Head"""
 
 import tensorflow as tf
 
