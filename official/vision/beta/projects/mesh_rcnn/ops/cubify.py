@@ -114,7 +114,11 @@ def initialize_mesh(grid_dims: int, align: str) -> Tuple[tf.Tensor, tf.Tensor]:
     coords -= 0.5
 
   margin = 0.0 if align == 'corner' else 1.0
-  verts = coords * 2.0 / (tf.cast(grid_dims, tf.float32) - margin) - 1.0
+  
+  if grid_dims != 1:
+    verts = coords * 2.0 / (tf.cast(grid_dims, tf.float32) - margin) - 1.0
+  else:
+    verts = coords * 2.0 - 1.0
 
   # Generate offsets for the unit cube verts for the grid
   offsets = generate_3d_coords(grid_dims-1, grid_dims-1, grid_dims-1)

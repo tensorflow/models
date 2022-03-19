@@ -60,12 +60,12 @@ class CubifyDifferentialTest(parameterized.TestCase, tf.test.TestCase):
     torch_faces = torch_mesh.faces_list()
     torch_faces = [f.cpu().detach().numpy() for f in torch_faces]
 
-    tf_all_verts = tf_mesh[0].numpy()
-    tf_verts_mask = tf_mesh[2].numpy()
+    tf_all_verts = tf_mesh['verts'].numpy()
+    tf_verts_mask = tf_mesh['verts_mask'].numpy()
     tf_verts = [v[m == 1] for v, m in zip(tf_all_verts, tf_verts_mask)]
 
-    tf_all_faces = tf_mesh[1].numpy()
-    tf_faces_mask = tf_mesh[3].numpy()
+    tf_all_faces = tf_mesh['faces'].numpy()
+    tf_faces_mask = tf_mesh['faces_mask'].numpy()
     tf_faces = [f[m == 1] for f, m in zip(tf_all_faces, tf_faces_mask)]
     
     # Test each set of vertices in the batch
