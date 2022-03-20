@@ -297,7 +297,7 @@ def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
               'warmup': {
                   'type': 'linear',
                   'linear': {
-                      'warmup_steps': 4 * steps_per_epoch,
+                      'warmup_steps': 0,
                       'warmup_learning_rate': 0
                   }
               }
