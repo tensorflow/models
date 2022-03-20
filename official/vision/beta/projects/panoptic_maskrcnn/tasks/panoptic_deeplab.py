@@ -28,7 +28,6 @@ from official.vision.beta.projects.panoptic_maskrcnn.losses import panoptic_deep
 from official.vision.dataloaders import input_reader_factory
 from official.vision.evaluation import panoptic_quality_evaluator
 from official.vision.evaluation import segmentation_metrics
-from official.vision.losses import segmentation_losses
 
 
 @task_factory.register_task_cls(exp_cfg.PanopticDeeplabTask)
@@ -131,28 +130,29 @@ class PanopticDeeplabTask(base_task.Task):
       The total loss tensor.
     """
     loss_config = self._task_config.losses
-    segmentation_loss_fn = segmentation_losses.SegmentationLoss(
+    segmentation_loss_fn = panoptic_deeplab_losses.WeightedBootstrappedCrossEntropyLoss(
         loss_config.label_smoothing,
         loss_config.class_weights,
         loss_config.ignore_label,
-        use_groundtruth_dimension=loss_config.use_groundtruth_dimension,
         top_k_percent_pixels=loss_config.top_k_percent_pixels)
-    instance_center_heatmap_loss_fn = panoptic_deeplab_losses.CenterHeatmapLoss(
-        use_groundtruth_dimension=loss_config.use_groundtruth_dimension)
-    instance_center_offset_loss_fn = panoptic_deeplab_losses.CenterOffsetLoss(
-        use_groundtruth_dimension=loss_config.use_groundtruth_dimension)
+    instance_center_heatmap_loss_fn = panoptic_deeplab_losses.CenterHeatmapLoss()
+    instance_center_offset_loss_fn = panoptic_deeplab_losses.CenterOffsetLoss()
    
-    segmentation_loss = segmentation_loss_fn(
-        model_outputs['segmentation_outputs'],
-        labels['category_mask'])
 
+    semantic_weights = tf.cast(
+        labels['semantic_weights'],
+        dtype=model_outputs['instance_centers_heatmap'].dtype)
     things_mask = tf.cast(
-        tf.squeeze(labels['things_mask'], axis=3),
+        labels['things_mask'],
         dtype=model_outputs['instance_centers_heatmap'].dtype)
     valid_mask = tf.cast(
-        tf.squeeze(labels['valid_mask'], axis=3),
+        labels['valid_mask'],
         dtype=model_outputs['instance_centers_heatmap'].dtype)
-
+    
+    segmentation_loss = segmentation_loss_fn(
+        model_outputs['segmentation_outputs'],
+        labels['category_mask'],
+        sample_weight=semantic_weights)
     instance_center_heatmap_loss = instance_center_heatmap_loss_fn(
         model_outputs['instance_centers_heatmap'],
         labels['instance_centers_heatmap'],
