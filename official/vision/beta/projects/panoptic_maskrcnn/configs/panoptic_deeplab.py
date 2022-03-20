@@ -45,6 +45,8 @@ class Parser(hyperparams.Config):
   aug_scale_max: float = 1.0
   aug_rand_hflip: bool = True
   sigma: float = 8.0
+  small_instance_area_threshold: int = 4096
+  small_instance_weight: float = 3.0
   dtype = 'float32'
 
 @dataclasses.dataclass
@@ -92,8 +94,8 @@ class PanopticDeeplabPostProcessor(hyperparams.Config):
   label_divisor: int = 256 * 256 * 256
   stuff_area_limit: int = 4096
   ignore_label: int = 0
-  nms_kernel: int = 41
-  keep_k_centers: int = 400
+  nms_kernel: int = 7
+  keep_k_centers: int = 200
   rescale_predictions: bool = True
 
 @dataclasses.dataclass
@@ -119,7 +121,6 @@ class Losses(hyperparams.Config):
   ignore_label: int = 0
   class_weights: List[float] = dataclasses.field(default_factory=list)
   l2_weight_decay: float = 1e-4
-  use_groundtruth_dimension: bool = True
   top_k_percent_pixels: float = 0.15
   segmentation_loss_weight: float = 1.0
   center_heatmap_loss_weight: float = 200
@@ -235,7 +236,6 @@ def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
               label_smoothing=0.0,
               ignore_label=ignore_label,
               l2_weight_decay=0.0,
-              use_groundtruth_dimension=True,
               top_k_percent_pixels=0.2,
               segmentation_loss_weight=1.0,
               center_heatmap_loss_weight=200,
@@ -248,7 +248,9 @@ def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
                   aug_scale_min=0.5,
                   aug_scale_max=1.5,
                   aug_rand_hflip=True,
-                  sigma=8.0)),
+                  sigma=8.0,
+                  small_instance_area_threshold=4096,
+                  small_instance_weight=3.0)),
           validation_data=DataConfig(
               input_path=os.path.join(_COCO_INPUT_PATH_BASE, 'val*'),
               is_training=False,
@@ -259,15 +261,17 @@ def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
                   aug_scale_min=1.0,
                   aug_scale_max=1.0,
                   aug_rand_hflip=False,
-                  sigma=8.0),
+                  sigma=8.0,
+                  small_instance_area_threshold=4096,
+                  small_instance_weight=3.0),
               drop_remainder=False),
           evaluation=Evaluation(
               ignored_label=ignore_label,
               max_instances_per_category=256,
-              offset=256 * 256 * 256,
+              offset=256*256*256,
               is_thing=is_thing,
               rescale_predictions=True,
-              report_per_class_pq=True,
+              report_per_class_pq=False,
               report_per_class_iou=False,
               report_train_mean_iou=False)),
       trainer=cfg.TrainerConfig(
