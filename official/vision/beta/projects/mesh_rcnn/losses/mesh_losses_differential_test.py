@@ -14,12 +14,16 @@
 
 """Differential Tests for Mesh Losses."""
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
+from absl.testing import parameterized
 
 import numpy as np
 import tensorflow as tf
 import torch
-from absl.testing import parameterized
+
+from pytorch3d.loss import chamfer_distance as torch_chamfer_and_normal_loss
+from pytorch3d.loss import mesh_edge_loss as torch_edge_loss
+from pytorch3d.structures import Meshes as TorchMeshes
 
 from official.vision.beta.projects.mesh_rcnn.losses.mesh_losses import \
     chamfer_loss as tf_chamfer_loss
@@ -35,34 +39,30 @@ from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import \
     compute_edges as tf_compute_edges
 from official.vision.beta.projects.mesh_rcnn.ops.voxel_ops import \
     create_voxels as tf_create_voxels
-from pytorch3d.loss import chamfer_distance as torch_chamfer_and_normal_loss
-from pytorch3d.loss import mesh_edge_loss as torch_edge_loss
-from pytorch3d.structures import Meshes as TorchMeshes
 
 CUBIFY_THRESH = 0.5
 
-@parameterized.named_parameters(
+shared_test_cases = [
     {'testcase_name': 'batched_large_mesh_with_empty_samples',
      'grid_dims': 4,
      'batch_size': 5,
      'occupancy_locs':
-          [
-              [0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 3],
-              [1, 0, 0, 0], [1, 1, 1, 0], [1, 1, 0, 0], [1, 1, 0, 1],
-              [3, 0, 0, 0], [3, 0, 0, 1], [3, 0, 1, 0], [3, 0, 1, 1],
-              [3, 1, 0, 0], [3, 1, 0, 1], [3, 1, 1, 0], [3, 1, 1, 1],
-          ]
+         [
+             [0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 3],
+             [1, 0, 0, 0], [1, 1, 1, 0], [1, 1, 0, 0], [1, 1, 0, 1],
+             [3, 0, 0, 0], [3, 0, 0, 1], [3, 0, 1, 0], [3, 0, 1, 1],
+             [3, 1, 0, 0], [3, 1, 0, 1], [3, 1, 1, 0], [3, 1, 1, 1],
+         ]
     }
-)
+]
+chamfer_and_normal_params = {
+    'true_num_samples': 5000,
+    'pred_num_samples': 5000,
+    'weights_list': [None, np.array([1, 3, 0, 0.75, 0.5])]
+}
+
 class MeshLossesDifferentialTest(parameterized.TestCase, tf.test.TestCase):
   """Differential Test Mesh Loss Function(s)."""
-
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    self._true_num_samples = 50 # TODO: Change to 5000
-    self._pred_num_samples = 50 # TODO: Change to 5000
-    self._weights_list = [None, np.array([1, 3, 0, 0.75, 0.5])]
-
 
   def _get_tf_verts_and_faces(
       self, grid_dims: int, batch_size: int, occupancy_locs: List[List[int]]
@@ -89,7 +89,12 @@ class MeshLossesDifferentialTest(parameterized.TestCase, tf.test.TestCase):
     return true_verts, pred_verts, verts_mask, faces, faces_mask
 
   def _get_pointclouds_and_normals(
-      self, grid_dims: int, batch_size: int, occupancy_locs: List[List[int]]
+      self,
+      grid_dims: int,
+      batch_size: int,
+      occupancy_locs: List[List[int]],
+      true_num_samples: int,
+      pred_num_samples: int,
   ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor,
              tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
     # Get the ground truth and predicted pointclouds (samples) and
@@ -97,8 +102,8 @@ class MeshLossesDifferentialTest(parameterized.TestCase, tf.test.TestCase):
     true_verts, pred_verts, verts_mask, faces, faces_mask = \
         self._get_tf_verts_and_faces(grid_dims, batch_size, occupancy_locs)
 
-    true_sampler = TfMeshSampler(self._true_num_samples)
-    pred_sampler = TfMeshSampler(self._pred_num_samples)
+    true_sampler = TfMeshSampler(true_num_samples)
+    pred_sampler = TfMeshSampler(pred_num_samples)
     tf_true_samples, tf_true_normals, _ = true_sampler.sample_meshes(
         true_verts, verts_mask, faces, faces_mask,
     )
@@ -116,15 +121,25 @@ class MeshLossesDifferentialTest(parameterized.TestCase, tf.test.TestCase):
             torch_true_samples, torch_true_normals, torch_pred_samples,
             torch_pred_normals)
 
+  @parameterized.named_parameters(*[
+      {**test, **chamfer_and_normal_params} for test in shared_test_cases
+  ])
   def test_chamfer_loss_differential(
-      self, grid_dims: int, batch_size: int, occupancy_locs: List[List[int]]
+      self,
+      grid_dims: int,
+      batch_size: int,
+      occupancy_locs: List[List[int]],
+      true_num_samples: int,
+      pred_num_samples: int,
+      weights_list: List[Optional[np.array]],
   ) -> None:
     tf_true_samples, _, tf_pred_samples, _, torch_true_samples, _, \
     torch_pred_samples, _ = self._get_pointclouds_and_normals(
-        grid_dims, batch_size, occupancy_locs
+        grid_dims, batch_size, occupancy_locs,
+        true_num_samples, pred_num_samples
     )
 
-    for weights in self._weights_list:
+    for weights in weights_list:
       tf_weights, torch_weights = None, None
       if weights is not None:
         tf_weights = tf.convert_to_tensor(weights, dtype=tf.float32)
@@ -138,16 +153,26 @@ class MeshLossesDifferentialTest(parameterized.TestCase, tf.test.TestCase):
       )
       self.assertNear(tf_cham_dist, torch_cham_dist, err=1e-5)
 
+  @parameterized.named_parameters(*[
+      {**test, **chamfer_and_normal_params} for test in shared_test_cases
+  ])
   def test_normal_loss_differential(
-      self, grid_dims: int, batch_size: int, occupancy_locs: List[List[int]]
+      self,
+      grid_dims: int,
+      batch_size: int,
+      occupancy_locs: List[List[int]],
+      true_num_samples: int,
+      pred_num_samples: int,
+      weights_list: List[Optional[np.array]],
   ) -> None:
     tf_true_samples, tf_true_normals, tf_pred_samples, tf_pred_normals, \
     torch_true_samples, torch_true_normals, torch_pred_samples,         \
     torch_pred_normals = self._get_pointclouds_and_normals(
-        grid_dims, batch_size, occupancy_locs
+        grid_dims, batch_size, occupancy_locs,
+        true_num_samples, pred_num_samples
     )
 
-    for weights in self._weights_list:
+    for weights in weights_list:
       tf_weights, torch_weights = None, None
       if weights is not None:
         tf_weights = tf.convert_to_tensor(weights, dtype=tf.float32)
@@ -163,8 +188,9 @@ class MeshLossesDifferentialTest(parameterized.TestCase, tf.test.TestCase):
       )
       self.assertNear(tf_normal_dist, torch_normal_dist, err=1e-5)
 
+  @parameterized.named_parameters(*shared_test_cases)
   def test_edge_loss_differential(
-      self, grid_dims: int, batch_size: int, occupancy_locs: List[List[int]]
+      self, grid_dims: int, batch_size: int, occupancy_locs: List[List[int]],
   ) -> None:
     ## Get the TF meshes (verts, faces, and edges tensors).
     _, tf_verts, tf_verts_mask, tf_faces, tf_faces_mask = \
@@ -174,17 +200,20 @@ class MeshLossesDifferentialTest(parameterized.TestCase, tf.test.TestCase):
     ## Create the equivalent pytorch3d `Meshes` instance.
     np_verts = tf_verts.numpy()
     np_verts_mask = tf_verts_mask.numpy()
-    np_faces =  tf_faces.numpy()
+    np_faces = tf_faces.numpy()
     np_faces_mask = tf_faces_mask.numpy()
 
-    torch_faces_list = [torch.tensor(f[m == 1]) for f, m, in 
+    torch_faces_list = [torch.tensor(f[m == 1]) for f, m, in
                         zip(np_faces, np_faces_mask)]
     torch_faces_updates = [torch.zeros(t.shape, dtype=torch.int32)
                            for t in torch_faces_list]
 
-    # Compute `torch_verts_list` and `torch_face_updates`.
+    # Compute `torch_verts_list` and `torch_faces_updates`.
     torch_verts_list = []
-    for batch_idx, (verts, verts_masks) in enumerate(zip(np_verts, np_verts_mask)):
+    # pylint: disable=too-many-nested-blocks
+    for batch_idx, (verts, verts_masks) in enumerate(
+        zip(np_verts, np_verts_mask)
+    ):
       # `masked_verts` holds all the vertices that are not masked off/away for
       # the current mesh (batch element).
       masked_verts = []
