@@ -80,7 +80,7 @@ def visualize_mesh(
 def main():
   tf.random.set_seed(1)
 
-  grid_dims = 2
+  grid_dims = 4
   batch_size = 5
   occupancy_locs = [
       [0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 1],
@@ -91,12 +91,12 @@ def main():
       [3, 1, 0, 0], [3, 1, 0, 1], [3, 1, 1, 0], [3, 1, 1, 1],
   ]
   voxels = create_voxels(grid_dims, batch_size, occupancy_locs)
-  verts, faces, verts_mask, faces_mask = cubify(voxels, 0.5)
+  mesh = cubify(voxels, 0)
 
-  verts = tf.cast(verts, tf.float32)
-  faces = tf.cast(faces, tf.int32)
-  verts_mask = tf.cast(verts_mask, tf.int8)
-  faces_mask = tf.cast(faces_mask, tf.int8)
+  verts = tf.cast(mesh['verts'], tf.float32)
+  faces = tf.cast(mesh['faces'], tf.int32)
+  verts_mask = tf.cast(mesh['verts_mask'], tf.int8)
+  faces_mask = tf.cast(mesh['faces_mask'], tf.int8)
 
   sampler = MeshSampler(num_samples=100)
   samples, normals, _ = sampler.sample_meshes(

@@ -15,11 +15,11 @@
 """Differential Tests for Mesh Losses."""
 
 from typing import List, Tuple
-from absl.testing import parameterized
 
 import numpy as np
 import tensorflow as tf
 import torch
+from absl.testing import parameterized
 
 from official.vision.beta.projects.mesh_rcnn.losses.mesh_losses import \
     chamfer_loss as tf_chamfer_loss
@@ -35,11 +35,11 @@ from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import \
     compute_edges as tf_compute_edges
 from official.vision.beta.projects.mesh_rcnn.ops.voxel_ops import \
     create_voxels as tf_create_voxels
-
-from pytorch3d.loss import (chamfer_distance as torch_chamfer_and_normal_loss,
-                            mesh_edge_loss as torch_edge_loss)
+from pytorch3d.loss import chamfer_distance as torch_chamfer_and_normal_loss
+from pytorch3d.loss import mesh_edge_loss as torch_edge_loss
 from pytorch3d.structures import Meshes as TorchMeshes
 
+CUBIFY_THRESH = 0.5
 
 @parameterized.named_parameters(
     {'testcase_name': 'batched_large_mesh_with_empty_samples',
@@ -59,7 +59,6 @@ class MeshLossesDifferentialTest(parameterized.TestCase, tf.test.TestCase):
 
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    self._cubify_thresh = 0.5
     self._true_num_samples = 50 # TODO: Change to 5000
     self._pred_num_samples = 50 # TODO: Change to 5000
     self._weights_list = [None, np.array([1, 3, 0, 0.75, 0.5])]
@@ -71,14 +70,12 @@ class MeshLossesDifferentialTest(parameterized.TestCase, tf.test.TestCase):
     # Create the ground truth and predicted meshes (verts and faces)
     # using the TF cubify.
     voxels = tf_create_voxels(grid_dims, batch_size, occupancy_locs)
-    verts, faces, verts_mask, faces_mask = tf_cubify(
-        voxels, self._cubify_thresh
-    )
+    mesh = tf_cubify(voxels, thresh=CUBIFY_THRESH)
 
-    verts = tf.cast(verts, tf.float32)
-    faces = tf.cast(faces, tf.int32)
-    verts_mask = tf.cast(verts_mask, tf.int8)
-    faces_mask = tf.cast(faces_mask, tf.int8)
+    verts = tf.cast(mesh['verts'], tf.float32)
+    faces = tf.cast(mesh['faces'], tf.int32)
+    verts_mask = tf.cast(mesh['verts_mask'], tf.int8)
+    faces_mask = tf.cast(mesh['faces_mask'], tf.int8)
 
     # Randomly perturb the vert positions so we get more realistic losses.
     true_verts_perturb = tf.random.uniform(verts.shape, minval=-0.2, maxval=0.2,
@@ -114,11 +111,11 @@ class MeshLossesDifferentialTest(parameterized.TestCase, tf.test.TestCase):
     torch_true_normals = torch.tensor(tf_true_normals.numpy())
     torch_pred_samples = torch.tensor(tf_pred_samples.numpy())
     torch_pred_normals = torch.tensor(tf_pred_normals.numpy())
-    
+
     return (tf_true_samples, tf_true_normals, tf_pred_samples, tf_pred_normals,
             torch_true_samples, torch_true_normals, torch_pred_samples,
             torch_pred_normals)
- 
+
   def test_chamfer_loss_differential(
       self, grid_dims: int, batch_size: int, occupancy_locs: List[List[int]]
   ) -> None:
@@ -166,8 +163,6 @@ class MeshLossesDifferentialTest(parameterized.TestCase, tf.test.TestCase):
       )
       self.assertNear(tf_normal_dist, torch_normal_dist, err=1e-5)
 
-  # NOTE: This one is still failing. Need to merge in the corrected cubify
-  #       and compute edges before further debugging.
   def test_edge_loss_differential(
       self, grid_dims: int, batch_size: int, occupancy_locs: List[List[int]]
   ) -> None:
@@ -182,29 +177,10 @@ class MeshLossesDifferentialTest(parameterized.TestCase, tf.test.TestCase):
     np_faces =  tf_faces.numpy()
     np_faces_mask = tf_faces_mask.numpy()
 
-    # tf.print("------------------------------------------------------------")
-    # tf.print("np_verts[1, :]")
-    # tf.print(np_verts[1, :])
-    # tf.print("------------------------------------------------------------")
-    # tf.print("np_verts_mask[1, :]")
-    # tf.print(np_verts_mask[1, :])
-    # tf.print("------------------------------------------------------------")
-    # tf.print("np_faces[1, :]")
-    # tf.print(np_faces[1, :])
-    # tf.print("------------------------------------------------------------")
-    # tf.print("np_faces_mask[1, :]")
-    # tf.print(np_faces_mask[1, :])
-    # tf.print("------------------------------------------------------------")
-
     torch_faces_list = [torch.tensor(f[m == 1]) for f, m, in 
                         zip(np_faces, np_faces_mask)]
     torch_faces_updates = [torch.zeros(t.shape, dtype=torch.int32)
                            for t in torch_faces_list]
-
-    # tf.print("------------------------------------------------------------")
-    # tf.print("torch_faces_list[1]")
-    # tf.print(torch_faces_list[1])
-    # tf.print("------------------------------------------------------------")
 
     # Compute `torch_verts_list` and `torch_face_updates`.
     torch_verts_list = []
@@ -224,18 +200,11 @@ class MeshLossesDifferentialTest(parameterized.TestCase, tf.test.TestCase):
               if cur > vert_idx:
                 torch_faces_updates[batch_idx][face_idx, face_vert_idx] -= 1
       torch_verts_list.append(
-          torch.tensor(masked_verts) if masked_verts else torch.ones((0,3))
+          torch.tensor(masked_verts) if masked_verts else torch.ones((0, 3))
       )
     # Correct the vert indices based on the upate tensor.
-    torch_faces_list = [orig + update for orig, update in 
+    torch_faces_list = [orig + update for orig, update in
                         zip(torch_faces_list, torch_faces_updates)]
-    # tf.print("------------------------------------------------------------")
-    # tf.print("torch_verts_list[1]")
-    # tf.print(torch_verts_list[1])
-    # tf.print("------------------------------------------------------------")
-    # tf.print("torch_faces_list[1]")
-    # tf.print(torch_faces_list[1])
-    # tf.print("------------------------------------------------------------")
     torch_meshes = TorchMeshes(verts=torch_verts_list, faces=torch_faces_list)
 
     ## Compare the edge losses.
@@ -243,7 +212,6 @@ class MeshLossesDifferentialTest(parameterized.TestCase, tf.test.TestCase):
     torch_loss = torch_edge_loss(torch_meshes)
 
     self.assertNear(tf_loss, torch_loss, err=1e-5)
-
 
 if __name__ == "__main__":
   tf.random.set_seed(1)

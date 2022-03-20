@@ -25,9 +25,79 @@ from typing import List, Tuple
 
 import tensorflow as tf
 
+
 # Number of dimensions in coordinate system used.
 COORD_DIM = 3
 
+def compute_edges(faces: tf.Tensor, faces_mask: tf.Tensor) -> tf.Tensor:
+  """Computes the edges of a mesh.
+  The faces of a mesh consists of the 3 integers (v0, v1, v2) for each vertex,
+  the edges for each face are namely (v0, v1), (v1, v2), and (v2, v0).
+  The faces mask is used to create an initial mask for the edges. Since
+  the initial mask contains duplicate edges (along touching faces), the mask
+  is updated to mark only unique valid edges.
+
+  Args:
+    faces: A `Tensor` of shape [B, num_faces, 3], where the last dimension
+      contain the verts indices that make up the face. This may include
+      duplicate faces.
+    faces_mask: A `Tensor` of shape [B, num_faces], a mask for valid faces in
+      the watertight mesh.
+
+  Returns:
+    edges: A `Tensor` of shape [B, num_faces * 3, 2], where the last dimension
+      contain the vertex indices that make up the edge. This may include
+      duplicate edges.
+    edges_mask: A `Tensor` of shape [B, num_faces * 3], a mask for valid edges
+      in the watertight mesh.
+  """
+  # Faces are identical in the batch, only one is needed to create the edges
+  shape = tf.shape(faces)
+  batch_size, _, _ = shape[0], shape[1], shape[2]
+  faces = faces[0]
+
+  # Use the 3 vertices of each face to compute the edges
+  v0, v1, v2 = tf.split(faces, 3, axis=-1)
+
+  e01 = tf.concat([v0, v1], axis=-1)
+  e12 = tf.concat([v1, v2], axis=-1)
+  e20 = tf.concat([v2, v0], axis=-1)
+
+  edges = tf.concat([e12, e20, e01], axis=0)
+
+  # Create an initial mask for the edges using faces_mask
+  edges_mask = tf.tile(faces_mask, [1, 3])
+
+  # Sort vertex ordering in each edge [v0, v1] so that v0 >= v1
+  edges = tf.stack(
+      [tf.math.reduce_min(edges, axis=-1),
+       tf.math.reduce_max(edges, axis=-1)],
+      axis=-1
+  )
+
+  # Convert the edges to scalar values (to be used for sorting)
+  # Multiply the hash by -1 to give valid faces higher priority in sorting
+  edges_max = tf.math.reduce_max(edges) + 1
+
+  edges_hashed = edges[..., 0] * edges_max + edges[..., 1]
+  edges_hashed *= -1 * tf.cast(edges_mask, edges.dtype)
+
+  # Sort the edges in increasing order and update the mask accordingly
+  sorted_edge_indices = tf.argsort(edges_hashed, stable=True)
+  edges_hashed = tf.gather(edges_hashed, sorted_edge_indices, batch_dims=-1)
+  edges = tf.gather(edges, sorted_edge_indices)
+
+  edges_mask = tf.gather(edges_mask, sorted_edge_indices, batch_dims=1, axis=-1)
+
+  ones = tf.repeat(True, repeats=batch_size)
+  unique_edges_mask = tf.concat(
+      [tf.reshape(ones, shape=[batch_size, 1]),
+       edges_hashed[..., 1:] != edges_hashed[..., :-1]], axis=-1)
+
+  # Multiply the masks to create the edges mask for valid and unique edges.
+  edges_mask *= tf.cast(unique_edges_mask, edges_mask.dtype)
+
+  return edges, edges_mask
 
 def vert_align(feature_map: tf.Tensor,
                verts: tf.Tensor,
@@ -153,77 +223,6 @@ def compute_mesh_shape(batch_size: int,
   faces_mask_shape = [batch_size, 12*((grid_dims)**3)]
 
   return verts_shape, verts_mask_shape, faces_shape, faces_mask_shape
-
-def compute_edges(faces: tf.Tensor, faces_mask: tf.Tensor) -> tf.Tensor:
-  """Computes the edges of a mesh.
-
-  The faces of a mesh consists of the 3 integers (v0, v1, v2) for each vertex,
-  the edges for each face are namely (v0, v1), (v1, v2), and (v2, v0).
-  The faces mask is used to create an initial mask for the edges. Since
-  the initial mask contains duplicate edges (along touching faces), the mask
-  is updated to mark only unique valid edges.
-
-  Args:
-    faces: A `Tensor` of shape [B, num_faces, 3], where the last dimension
-      contain the verts indices that make up the face. This may include
-      duplicate faces.
-    faces_mask: A `Tensor` of shape [B, num_faces], a mask for valid faces in
-      the watertight mesh.
-
-  Returns:
-    edges: A `Tensor` of shape [B, num_faces * 3, 2], where the last dimension
-      contain the vertex indices that make up the edge. This may include
-      duplicate edges.
-    edges_mask: A `Tensor` of shape [B, num_faces * 3], a mask for valid edges
-      in the watertight mesh.
-  """
-  # Faces are identical in the batch, only one is needed to create the edges
-  shape = tf.shape(faces)
-  batch_size, _, _ = shape[0], shape[1], shape[2]
-  faces = faces[0]
-
-  # Use the 3 vertices of each face to compute the edges
-  v0, v1, v2 = tf.split(faces, 3, axis=-1)
-
-  e01 = tf.concat([v0, v1], axis=-1)
-  e12 = tf.concat([v1, v2], axis=-1)
-  e20 = tf.concat([v2, v0], axis=-1)
-
-  edges = tf.concat([e12, e20, e01], axis=0)
-
-  # Create an initial mask for the edges using faces_mask
-  edges_mask = tf.tile(faces_mask, [1, 3])
-
-  # Sort vertex ordering in each edge [v0, v1] so that v0 >= v1
-  edges = tf.stack(
-      [tf.math.reduce_min(edges, axis=-1),
-       tf.math.reduce_max(edges, axis=-1)],
-      axis=-1
-  )
-
-  # Convert the edges to scalar values (to be used for sorting)
-  # Multiply the hash by -1 to give valid faces higher priority in sorting
-  edges_max = tf.math.reduce_max(edges) + 1
-
-  edges_hashed = edges[..., 0] * edges_max + edges[..., 1]
-  edges_hashed *= -1 * tf.cast(edges_mask, edges.dtype)
-
-  # Sort the edges in increasing order and update the mask accordingly
-  sorted_edge_indices = tf.argsort(edges_hashed, stable=True)
-  edges_hashed = tf.gather(edges_hashed, sorted_edge_indices, batch_dims=-1)
-  edges = tf.gather(edges, sorted_edge_indices)
-
-  edges_mask = tf.gather(edges_mask, sorted_edge_indices, batch_dims=1, axis=-1)
-
-  ones = tf.repeat(True, repeats=batch_size)
-  unique_edges_mask = tf.concat(
-      [tf.reshape(ones, shape=[batch_size, 1]),
-       edges_hashed[..., 1:] != edges_hashed[..., :-1]], axis=-1)
-
-  # Multiply the masks to create the edges mask for valid and unique edges.
-  edges_mask *= tf.cast(unique_edges_mask, edges_mask.dtype)
-
-  return edges, edges_mask
 
 def get_verts_from_indices(
     verts: tf.Tensor,

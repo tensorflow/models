@@ -107,6 +107,7 @@ class MeshSamplerTest(parameterized.TestCase, tf.test.TestCase):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self._num_samples = 100
+    self._eps = 1e-6
     self._thresh = 0.5
 
   def _get_verts_and_faces(
@@ -115,12 +116,12 @@ class MeshSamplerTest(parameterized.TestCase, tf.test.TestCase):
     """Convert occupancy grid to tensor representing cubified mesh."""
     # pylint: disable=missing-param-doc
     voxels = create_voxels(grid_dims, batch_size, occupancy_locs)
-    verts, faces, verts_mask, faces_mask = cubify(voxels, self._thresh)
+    mesh = cubify(voxels, self._thresh)
 
-    verts = tf.cast(verts, tf.float32)
-    faces = tf.cast(faces, tf.int32)
-    verts_mask = tf.cast(verts_mask, tf.int8)
-    faces_mask = tf.cast(faces_mask, tf.int8)
+    verts = tf.cast(mesh['verts'], tf.float32)
+    faces = tf.cast(mesh['faces'], tf.int32)
+    verts_mask = tf.cast(mesh['verts_mask'], tf.int8)
+    faces_mask = tf.cast(mesh['faces_mask'], tf.int8)
 
     return verts, faces, verts_mask, faces_mask
 
@@ -147,7 +148,7 @@ class MeshSamplerTest(parameterized.TestCase, tf.test.TestCase):
                         [batch_size, self._num_samples, 2])
 
     ## Verify sampled points fall within bounds for vertices.
-    self.assertAllLessEqual(samples, 1)
+    self.assertAllLessEqual(samples, tf.math.reduce_max(verts) + self._eps)
     self.assertAllGreaterEqual(samples, -1)
 
     ## Verify sampled points are on valid faces.

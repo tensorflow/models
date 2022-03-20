@@ -18,10 +18,11 @@ from typing import Optional, Tuple, Union
 
 import tensorflow as tf
 
-from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import (MeshSampler,
-                                                                  get_verts_from_indices)
+from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import (
+    MeshSampler, get_verts_from_indices)
 
-def compute_square_distances(
+
+def _compute_square_distances(
     pointcloud_a: tf.Tensor,
     pointcloud_b: tf.Tensor,
 ) -> tf.Tensor:
@@ -39,7 +40,7 @@ def compute_square_distances(
 
   return square_distances
 
-def get_normals_nearest_neighbors(
+def _get_normals_nearest_neighbors(
     pointcloud_a: tf.Tensor,
     pointcloud_b: tf.Tensor,
     normals_a: tf.Tensor,
@@ -50,16 +51,16 @@ def get_normals_nearest_neighbors(
   num_points_a = tf.shape(pointcloud_a)[1]
   num_points_b = tf.shape(pointcloud_b)[1]
 
-  square_distances = compute_square_distances(pointcloud_a, pointcloud_b)
+  square_distances = _compute_square_distances(pointcloud_a, pointcloud_b)
 
   # IntTensor[B, num_points_a] where the element i of the vector holds the value j
-  # such that point `pointcloud_a[b, i, :]`'s nearest neightbor is
+  # such that point `pointcloud_a[b, i, :]`"s nearest neightbor is
   # `pointcloud_b[b, j, :]`.
   a_nearest_neighbors_in_b = tf.argmin(
       square_distances, axis=-1, output_type=tf.int32
   )
   # IntTensor[B, num_points_b] where the element i of the vector holds the value j
-  # such that point `pointcloud_b[b, i, :]`'s nearest neightbor is
+  # such that point `pointcloud_b[b, i, :]`"s nearest neightbor is
   # `pointcloud_a[b, j, :]`.
   b_nearest_neighbors_in_a = tf.argmin(
       square_distances, axis=-2, output_type=tf.int32
@@ -91,22 +92,21 @@ def get_normals_nearest_neighbors(
 
   return normals_a_nearest_to_b, normals_b_nearest_to_a
 
-def cosine_similarity(a: tf.Tensor, b: tf.Tensor) -> tf.Tensor:
+def _cosine_similarity(a: tf.Tensor, b: tf.Tensor) -> tf.Tensor:
   """TODO"""
   a_norm = tf.linalg.l2_normalize(a, axis=-1)
   b_norm = tf.linalg.l2_normalize(b, axis=-1)
   return tf.reduce_sum(a_norm * b_norm, axis=-1)
 
-
-def add_pointcloud_distances(dist_a: tf.Tensor,
-                             dist_b: tf.Tensor,
-                             num_points_a: tf.Tensor,
-                             num_points_b: tf.Tensor,
-                             batch_size: tf.Tensor,
-                             weights: Optional[tf.Tensor],
-                             point_reduction: Union[str, None] = "mean",
-                             batch_reduction:
-                             Union[str, None] = "mean") -> tf.Tensor:
+def _add_pointcloud_distances(dist_a: tf.Tensor,
+                              dist_b: tf.Tensor,
+                              num_points_a: tf.Tensor,
+                              num_points_b: tf.Tensor,
+                              batch_size: tf.Tensor,
+                              weights: Optional[tf.Tensor],
+                              point_reduction: Union[str, None] = "mean",
+                              batch_reduction:
+                              Union[str, None] = "mean") -> tf.Tensor:
   """TODO"""
   # Cast int32 tensors to float32.
   num_points_a = tf.cast(num_points_a, tf.float32)
@@ -145,7 +145,7 @@ def chamfer_loss(pointcloud_a: tf.Tensor,
                  point_reduction: Union[str, None] = "mean",
                  batch_reduction: Union[str, None] = "mean") -> tf.Tensor:
   """TODO"""
-  square_distances = compute_square_distances(pointcloud_a, pointcloud_b)
+  square_distances = _compute_square_distances(pointcloud_a, pointcloud_b)
 
   # FloatTensor[B, num_points_a] representing the minimum of the squared
   # distance from each point in pointcloud a to each of the points in
@@ -160,7 +160,7 @@ def chamfer_loss(pointcloud_a: tf.Tensor,
   num_points_a = tf.shape(pointcloud_a)[1]
   num_points_b = tf.shape(pointcloud_b)[1]
 
-  chamfer_dist = add_pointcloud_distances(
+  chamfer_dist = _add_pointcloud_distances(
       min_square_dist_a_to_b, min_square_dist_b_to_a,
       num_points_a, num_points_b, batch_size, weights,
       point_reduction, batch_reduction
@@ -176,25 +176,25 @@ def normal_loss(pointcloud_a: tf.Tensor,
                 batch_reduction: Union[str, None] = "mean") -> tf.Tensor:
   """TODO"""
   normals_a_nearest_to_b, normals_b_nearest_to_a = \
-    get_normals_nearest_neighbors(pointcloud_a, pointcloud_b,
-                                  normals_a, normals_b)
+    _get_normals_nearest_neighbors(pointcloud_a, pointcloud_b,
+                                   normals_a, normals_b)
 
   # FloatTensor[B, num_points_a] representing the absolute normal distance
   # between the normals in pointcloud a and the normals of the closest points
   # in pointcloud b.
   abs_normal_dist_a = 1 - tf.math.abs(
-      cosine_similarity(normals_b_nearest_to_a, normals_a)
+      _cosine_similarity(normals_b_nearest_to_a, normals_a)
   )
   # FloatTensor[B, num_points_b]
   abs_normal_dist_b = 1 - tf.math.abs(
-      cosine_similarity(normals_a_nearest_to_b, normals_b)
+      _cosine_similarity(normals_a_nearest_to_b, normals_b)
   )
 
   batch_size = tf.shape(pointcloud_a)[0]
   num_points_a = tf.shape(pointcloud_a)[1]
   num_points_b = tf.shape(pointcloud_b)[1]
 
-  normal_dist = add_pointcloud_distances(
+  normal_dist = _add_pointcloud_distances(
       abs_normal_dist_a, abs_normal_dist_b, num_points_a, num_points_b,
       batch_size, weights, point_reduction, batch_reduction
   )
@@ -243,13 +243,9 @@ class MeshLoss(tf.keras.losses.Loss):
   def call(self,
            voxels_true: tf.Tensor,
            voxels_pred: tf.Tensor,
-           verts: tf.Tensor,
-           verts_mask_true: tf.Tensor,
-           verts_mask_pred: tf.Tensor,
-           faces: tf.Tensor,
-           faces_mask_true: tf.Tensor,
-           faces_mask_pred: tf.Tensor,
-           edges: tf.Tensor,
+           meshes_true: dict,
+           meshes_pred: dict,
+           edges_pred: tf.Tensor,
            edges_mask_pred: tf.Tensor) -> tf.Tensor:
     """TODO"""
     voxel_loss = 0
@@ -261,10 +257,12 @@ class MeshLoss(tf.keras.losses.Loss):
     true_sampler = MeshSampler(self._true_num_samples)
     pred_sampler = MeshSampler(self._pred_num_samples)
     pointcloud_true, normals_true, _ = true_sampler.sample_meshes(
-        verts, verts_mask_true, faces, faces_mask_true,
+        meshes_true["verts"], meshes_true["verts_mask"],
+        meshes_true["faces"], meshes_true["faces_mask"],
     )
     pointcloud_pred, normals_pred, _ = pred_sampler.sample_meshes(
-        verts, verts_mask_pred, faces, faces_mask_pred,
+        meshes_pred["verts"], meshes_pred["verts_mask"],
+        meshes_pred["faces"], meshes_pred["faces_mask"],
     )
 
     chamfer_loss_ = self._chamfer_weight * chamfer_loss(
@@ -274,7 +272,8 @@ class MeshLoss(tf.keras.losses.Loss):
         pointcloud_true, pointcloud_pred, normals_true, normals_pred
     )
     edge_loss_ = self._edge_weight * edge_loss(
-        verts, verts_mask_pred, edges, edges_mask_pred
+        meshes_pred["verts"], meshes_pred["verts_mask"],
+        edges_pred, edges_mask_pred
     )
 
     total_loss = voxel_loss + chamfer_loss_ + normal_loss_ + edge_loss_
@@ -282,12 +281,12 @@ class MeshLoss(tf.keras.losses.Loss):
 
   def get_config(self) -> dict:
     config = {
-        'chamfer_weight': self._chamfer_weight,
-        'normal_weight': self._normal_weight,
-        'edge_weight': self._edge_weight,
-        'voxel_weight': self._voxel_weight,
-        'true_num_samples': self._true_num_samples,
-        'pred_num_samples': self._pred_num_samples,
+        "chamfer_weight": self._chamfer_weight,
+        "normal_weight": self._normal_weight,
+        "edge_weight": self._edge_weight,
+        "voxel_weight": self._voxel_weight,
+        "true_num_samples": self._true_num_samples,
+        "pred_num_samples": self._pred_num_samples,
     }
     base_config = super(MeshLoss, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
