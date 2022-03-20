@@ -86,6 +86,34 @@ def generate_3d_coords(x_max: int, y_max: int, z_max: int,
 
   return coords
 
+def cantor_encode_3d_coordinates(x: tf.Tensor)-> tf.Tensor:
+  """Performs Cantor pairing to encode 3D coordinates into scalar values.
+
+  This function applies the Cantor Pairing Function
+  (https://en.wikipedia.org/wiki/Pairing_function#Cantor_pairing_function) in
+  order to generate a unique scalar value for 3 coordinates.
+
+  Args:
+    x: `Tensor`, of shape [N, 3] where the last dimension corresponds to the
+      (x, y, z) coordinates to encode into a single value.
+
+  Returns:
+    hashed: `Tensor` of shape [N, 1], containing the unique encoding for the
+      coordinate.
+  """
+
+  # Extract the coordinates
+  x = tf.cast(x, tf.float32)
+  k1 = x[:, 0]
+  k2 = x[:, 1]
+  k3 = x[:, 2]
+
+  # Apply two rounds of Cantor's Pairing Function
+  hash_1 = (k1 + k2) * (k1 + k2 + 1) / 2.0 + k2
+  final_hash = (hash_1 + k3) * (hash_1 + k3 + 1) / 2.0 + k3
+
+  return tf.cast(final_hash, tf.int32)
+
 def initialize_mesh(grid_dims: int, align: str) -> Tuple[tf.Tensor, tf.Tensor]:
   """Initializes the vertices and faces for a complete cuboid mesh.
 
@@ -137,17 +165,21 @@ def initialize_mesh(grid_dims: int, align: str) -> Tuple[tf.Tensor, tf.Tensor]:
   cuboid_verts = tf.reshape(cuboid_verts, shape=[-1, 3])
 
   # Convert to scalar values to save memory when doing tf.equal
-  coords_max = tf.math.reduce_max(coords) + 1
-  cuboid_verts_max = tf.math.reduce_max(cuboid_verts) + 1
-  coords_hashed = (coords[:, 0] * coords_max ** 2 +
-                   coords[:, 1] * coords_max +
-                   coords[:, 2])
-  cuboid_verts_hashed = (cuboid_verts[:, 0] * cuboid_verts_max ** 2 +
-                         cuboid_verts[:, 1] * cuboid_verts_max +
-                         cuboid_verts[:, 2])
+
+  # TODO: Remove the old hashing scheme
+  # coords_max = tf.math.reduce_max(coords) + 1
+  # cuboid_verts_max = tf.math.reduce_max(cuboid_verts) + 1
+  # coords_hashed = (coords[:, 0] * coords_max ** 2 +
+  #                  coords[:, 1] * coords_max +
+  #                  coords[:, 2])
+  # cuboid_verts_hashed = (cuboid_verts[:, 0] * cuboid_verts_max ** 2 +
+  #                        cuboid_verts[:, 1] * cuboid_verts_max +
+  #                        cuboid_verts[:, 2])
+  coords_hashed = cantor_encode_3d_coordinates(coords)
+  cuboid_verts_hashed = cantor_encode_3d_coordinates(cuboid_verts)
 
   cuboid_verts_hashed = tf.reshape(cuboid_verts_hashed, shape=[-1, 1, 1])
-  mask = tf.equal(coords_hashed, tf.cast(cuboid_verts_hashed, tf.float32))
+  mask = tf.equal(coords_hashed, cuboid_verts_hashed)
   cuboid_verts = tf.where(mask)[:, -1]
 
   # cuboid_verts is a tensor with shape [num_cuboids, 8], where each entry
