@@ -17,6 +17,7 @@
 
 Note that the postprocessing class and the supporting functions are branched
 from https://github.com/google-research/deeplab2/blob/main/model/post_processor/panoptic_deeplab.py
+with minor changes.
 """
 
 import functools
@@ -24,6 +25,7 @@ from typing import List, Tuple, Dict, Text
 
 import tensorflow as tf
 
+from official.vision.beta.projects.panoptic_maskrcnn.ops import mask_ops
 
 def _add_zero_padding(input_tensor: tf.Tensor, kernel_size: int,
                       rank: int) -> tf.Tensor:
@@ -468,6 +470,36 @@ class PostProcessor(tf.keras.layers.Layer):
         self._config_dict['output_size'][1])
     return mask
 
+  def _resize_and_pad_offset_mask(self, mask, image_info):
+    """Rescales and resizes offset masks to match the original image shape and
+      pads to`output_size`.
+
+    Args:
+      mask: a padded offset mask tensor.
+      image_info: a tensor that holds information about original and
+        preprocessed images.
+    Returns:
+      rescaled, resized and padded masks: tf.Tensor.
+    """
+    rescale_size = tf.cast(
+        tf.math.ceil(image_info[1, :] / image_info[2, :]), tf.int32)
+    image_shape = tf.cast(image_info[0, :], tf.int32)
+    offsets = tf.cast(image_info[3, :], tf.int32)
+
+    mask = mask_ops.resize_and_rescale_offsets(
+        tf.expand_dims(mask, axis=0),
+        rescale_size)[0]
+    mask = tf.image.crop_to_bounding_box(
+        mask,
+        offsets[0], offsets[1],
+        image_shape[0],
+        image_shape[1])
+    mask = tf.image.pad_to_bounding_box(
+        mask, 0, 0,
+        self._config_dict['output_size'][0],
+        self._config_dict['output_size'][1])
+    return mask
+
   def call(
       self, 
       result_dict: Dict[Text, tf.Tensor],  
@@ -490,21 +522,21 @@ class PostProcessor(tf.keras.layers.Layer):
         - instance_score
     """
     if self._config_dict['rescale_predictions']:
-      def _batch_resize_and_pad_masks(mask):
-        mask = tf.map_fn(
-            fn=lambda x: self._resize_and_pad_masks(x[0], x[1]),
-            elems=(mask, image_info),
-            fn_output_signature=tf.float32,
-            parallel_iterations=32)
-        return mask
-
-      segmentation_outputs = _batch_resize_and_pad_masks(
-          result_dict['segmentation_outputs'])
-      instance_centers_heatmap = _batch_resize_and_pad_masks(
-          result_dict['instance_centers_heatmap'])
-      instance_centers_offset = _batch_resize_and_pad_masks(
-          result_dict['instance_centers_offset'])
-      
+      segmentation_outputs = tf.map_fn(
+          fn=lambda x: self._resize_and_pad_masks(x[0], x[1]),
+          elems=(result_dict['segmentation_outputs'], image_info),
+          fn_output_signature=tf.float32,
+          parallel_iterations=32)
+      instance_centers_heatmap = tf.map_fn(
+          fn=lambda x: self._resize_and_pad_masks(x[0], x[1]),
+          elems=(result_dict['instance_centers_heatmap'], image_info),
+          fn_output_signature=tf.float32,
+          parallel_iterations=32)
+      instance_centers_offset = tf.map_fn(
+          fn=lambda x: self._resize_and_pad_offset_mask(x[0], x[1]),
+          elems=(result_dict['instance_centers_offset'], image_info),
+          fn_output_signature=tf.float32,
+          parallel_iterations=32)
     else:
       segmentation_outputs = tf.image.resize(
           result_dict['segmentation_outputs'],
@@ -514,10 +546,9 @@ class PostProcessor(tf.keras.layers.Layer):
           result_dict['instance_centers_heatmap'],
           size=self._config_dict['output_size'],
           method='bilinear')
-      instance_centers_offset = tf.image.resize(
+      instance_centers_offset = mask_ops.resize_and_rescale_offsets(
           result_dict['instance_centers_offset'],
-          size=self._config_dict['output_size'],
-          method='bilinear')
+          target_size=self._config_dict['output_size'])
 
     processed_dict = {}
 
