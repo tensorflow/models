@@ -143,10 +143,10 @@ class PanopticDeeplabTask(base_task.Task):
         labels['semantic_weights'],
         dtype=model_outputs['instance_centers_heatmap'].dtype)
     things_mask = tf.cast(
-        labels['things_mask'],
+        tf.squeeze(labels['things_mask'], axis=3),
         dtype=model_outputs['instance_centers_heatmap'].dtype)
     valid_mask = tf.cast(
-        labels['valid_mask'],
+        tf.squeeze(labels['valid_mask'], axis=3),
         dtype=model_outputs['instance_centers_heatmap'].dtype)
     
     segmentation_loss = segmentation_loss_fn(
