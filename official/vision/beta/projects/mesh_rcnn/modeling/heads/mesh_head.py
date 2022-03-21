@@ -31,10 +31,10 @@ class MeshHead(tf.keras.layers.Layer):
     """Initializes Mesh R-CNN Mesh Head.
 
     Args:
-      num_stages: `int`, number of mesh refinement stages in the branch.
-      stage_depth: `int`, number of graph convolution layers in each stage.
-      output_dim:  `int`, number of output features per vertex.
-      graph_conv_init: `string` to indicate graph convolution initialization
+      num_stages: An `int`, number of mesh refinement stages in the branch.
+      stage_depth: An `int`, number of graph convolution layers in each stage.
+      output_dim: An `int`, number of output features per vertex.
+      graph_conv_init: A `str` to indicate graph convolution initialization
         method. Can be one of 'zero' or 'normal'.
       **kwargs: Additional keyword arguments to be passed.
     """
