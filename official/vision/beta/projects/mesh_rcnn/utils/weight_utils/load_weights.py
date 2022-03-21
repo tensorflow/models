@@ -95,5 +95,5 @@ def load_weights_mesh_head(mesh_head, weights_dict, mesh_head_name):
       i += 1
       
   print("{} Weights have been loaded for {} / {} layers\n".format(
-      n_weights_total, loaded_layers, len(mesh_head.layers)))
+      n_weights_total, loaded_layers, i))
   return n_weights_total

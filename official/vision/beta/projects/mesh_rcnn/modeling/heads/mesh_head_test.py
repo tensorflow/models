@@ -80,6 +80,16 @@ class MeshHeadTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(outputs['verts_mask'], verts_mask)
     self.assertAllEqual(outputs['faces'], faces)
     self.assertAllEqual(outputs['faces_mask'], faces_mask)
+  
+  def test_serialize_deserialize(self):
+    mesh_head = MeshHead(num_stages=3,
+                         stage_depth=3,
+                         output_dim=128,
+                         graph_conv_init='normal')
+    config = mesh_head.get_config()
+    new_mesh_head = MeshHead.from_config(config)
+    self.assertAllEqual(
+        mesh_head.get_config(), new_mesh_head.get_config())
 
 if __name__ == '__main__':
   tf.test.main()

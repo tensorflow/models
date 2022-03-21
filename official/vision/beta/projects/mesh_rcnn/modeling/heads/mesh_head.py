@@ -79,9 +79,8 @@ class MeshHead(tf.keras.layers.Layer):
   
   def get_config(self):
     config = dict(
-        input_specs=self._input_specs,
-        use_fpn=self._num_stages,
-        fpn_depth=self._stage_depth,
+        num_stages=self._num_stages,
+        stage_depth=self._stage_depth,
         output_dim=self._output_dim,
         graph_conv_init=self._graph_conv_init)
     return config
