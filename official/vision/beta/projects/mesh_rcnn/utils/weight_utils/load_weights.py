@@ -86,7 +86,7 @@ def load_weights_mesh_head(mesh_head, weights_dict, mesh_head_name):
   loaded_layers = 0
 
   i = 0
-  for layer in mesh_head.layers:
+  for layer in mesh_head.submodules:
     if isinstance(layer, (MeshRefinementStage)):
       n_weights = cfgs[i].load_weights(layer)
       print("Weights loaded for {}: {}".format(layer.name, n_weights))

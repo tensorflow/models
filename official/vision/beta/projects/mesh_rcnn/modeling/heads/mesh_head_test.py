@@ -34,9 +34,14 @@ class MeshHeadTest(parameterized.TestCase, tf.test.TestCase):
            [0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 1],
            [1, 0, 0, 0], [1, 1, 1, 0], [1, 1, 0, 0], [1, 1, 0, 1]
        ],
+       'num_stages': 3,
+       'stage_depth': 3,
+       'output_dim': 128,
+       'graph_conv_init': 'normal'
       }
   )
-  def test_pass_through(self, grid_dims, batch_size, occupancy_locs):
+  def test_pass_through(self, grid_dims, batch_size, occupancy_locs, num_stages,
+      stage_depth, output_dim, graph_conv_init):
     """Test forward-pass of the mesh head."""
 
     voxels = create_voxels(grid_dims, batch_size, occupancy_locs)
@@ -64,8 +69,9 @@ class MeshHeadTest(parameterized.TestCase, tf.test.TestCase):
         'faces': tf.shape(faces),
         'faces_mask': tf.shape(faces_mask)
     }
-
-    model = MeshHead(input_shape)
+    
+    model = MeshHead(num_stages, stage_depth, output_dim, graph_conv_init)
+    model.build(input_shape)
     outputs = model(inputs)
 
     for v in outputs['verts'].values():

@@ -27,18 +27,19 @@ def test_load_mesh_refinement_branch():
   grid_dims = 24
   mesh_shapes = compute_mesh_shape(1, grid_dims)
   verts_shape, verts_mask_shape, faces_shape, faces_mask_shape = mesh_shapes
-  backbone_shape = [1, 14, 14, 256]
-  input_specs = {
-      'feature_map': backbone_shape,
-      'verts': verts_shape,
-      'verts_mask': verts_mask_shape,
-      'faces': faces_shape,
-      'faces_mask': faces_mask_shape
+  backbone_shape = [14, 14, 256]
+  input_layer = {
+      'feature_map': tf.keras.layers.Input(shape=backbone_shape),
+      'verts': tf.keras.layers.Input(shape=verts_shape[1:]),
+      'verts_mask': tf.keras.layers.Input(shape=verts_mask_shape[1:]),
+      'faces': tf.keras.layers.Input(shape=faces_shape[1:]),
+      'faces_mask': tf.keras.layers.Input(shape=faces_mask_shape[1:])
   }
-  mesh_head = MeshHead(input_specs)
+  mesh_head = MeshHead()(input_layer)
+  model = tf.keras.Model(inputs=[input_layer], outputs=[mesh_head])
 
   n_weights = load_weights_mesh_head(
-      mesh_head, weights_dict['roi_heads']['mesh_head'], 'pix3d')
+      model, weights_dict['roi_heads']['mesh_head'], 'pix3d')
 
   backbone_features = np.load(BACKBONE_FEATURES)
   voxels = np.load(VOXEL_HEAD_OUTPUT)
@@ -62,8 +63,7 @@ def test_load_mesh_refinement_branch():
       'faces_mask': faces_mask
     }
 
-  outputs = mesh_head(inputs)
-
+  outputs = model(inputs)[0]
   new_verts_0 = outputs['verts']['stage_0']
   new_verts_1 = outputs['verts']['stage_1']
   new_verts_2 = outputs['verts']['stage_2']
