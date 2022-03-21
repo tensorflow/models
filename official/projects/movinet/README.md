@@ -176,8 +176,7 @@ devices. See the [TF Lite Example](#tf-lite-example) to export and run your own
 models. We also provide [quantized TF Lite binaries via TF Hub](https://tfhub.dev/s?deployment-format=lite&q=movinet).
 
 For reference, MoViNet-A0-Stream runs with a similar latency to
-[MobileNetV3-Large]
-(https://tfhub.dev/google/imagenet/mobilenet_v3_large_100_224/classification/)
+[MobileNetV3-Large](https://tfhub.dev/google/imagenet/mobilenet_v3_large_100_224/classification/)
 with +5% accuracy on Kinetics 600.
 
 | Model Name | Input Shape | Pixel 4 Latency\* | x86 Latency\* | TF Lite Binary |
