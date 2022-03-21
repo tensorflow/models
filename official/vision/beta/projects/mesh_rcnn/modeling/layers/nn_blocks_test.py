@@ -42,7 +42,13 @@ class GraphConvTest(parameterized.TestCase, tf.test.TestCase):
                         occupancy_locs,
                         output_dim):
     voxels = create_voxels(grid_dims, batch_size, occupancy_locs)
-    verts, faces, verts_mask, faces_mask = cubify(voxels, 0.5)
+
+    mesh = cubify(voxels, 0.5)
+    verts = mesh['verts']
+    faces = mesh['faces']
+    verts_mask = mesh['verts_mask']
+    faces_mask = mesh['faces_mask']
+
     edges, edges_mask = compute_edges(faces, faces_mask)
     vert_feats = tf.random.uniform(shape=tf.shape(verts))
 
@@ -72,7 +78,13 @@ class GraphConvTest(parameterized.TestCase, tf.test.TestCase):
     optimizer = tf.keras.optimizers.SGD()
 
     voxels = create_voxels(grid_dims, batch_size, occupancy_locs)
-    verts, faces, verts_mask, faces_mask = cubify(voxels, 0.5)
+
+    mesh = cubify(voxels, 0.5)
+    verts = mesh['verts']
+    faces = mesh['faces']
+    verts_mask = mesh['verts_mask']
+    faces_mask = mesh['faces_mask']
+
     edges, edges_mask = compute_edges(faces, faces_mask)
     vert_feats = tf.random.uniform(shape=tf.shape(verts))
 
@@ -110,7 +122,13 @@ class MeshRefinementTest(parameterized.TestCase, tf.test.TestCase):
                         stage_depth,
                         output_dim):
     voxels = create_voxels(grid_dims, batch_size, occupancy_locs)
-    verts, faces, verts_mask, faces_mask = cubify(voxels, 0.5)
+
+    mesh = cubify(voxels, 0.5)
+    verts = mesh['verts']
+    faces = mesh['faces']
+    verts_mask = mesh['verts_mask']
+    faces_mask = mesh['faces_mask']
+
     edges, edges_mask = compute_edges(faces, faces_mask)
     backbone_output = tf.random.uniform(shape=[batch_size, 12, 12, 256])
     original_verts_shape = tf.shape(verts)
@@ -149,7 +167,13 @@ class MeshRefinementTest(parameterized.TestCase, tf.test.TestCase):
     optimizer = tf.keras.optimizers.SGD()
 
     voxels = create_voxels(grid_dims, batch_size, occupancy_locs)
-    verts, faces, verts_mask, faces_mask = cubify(voxels, 0.5)
+
+    mesh = cubify(voxels, 0.5)
+    verts = mesh['verts']
+    faces = mesh['faces']
+    verts_mask = mesh['verts_mask']
+    faces_mask = mesh['faces_mask']
+
     edges, edges_mask = compute_edges(faces, faces_mask)
     backbone_output = tf.random.uniform(shape=[batch_size, 12, 12, 256])
 

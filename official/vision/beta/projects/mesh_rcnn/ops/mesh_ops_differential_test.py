@@ -1,22 +1,20 @@
 """Differential Test for Mesh Ops"""
 
+from collections import Counter
+
 import numpy as np
 import tensorflow as tf
 import torch
 from absl.testing import parameterized
-from pytorch3d.ops import vert_align as torch_vert_align
 from pytorch3d.ops import cubify as torch_cubify
-
-from collections import Counter
-
-from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import \
-    vert_align as tf_vert_align
+from pytorch3d.ops import vert_align as torch_vert_align
 
 from official.vision.beta.projects.mesh_rcnn.ops.cubify import \
     cubify as tf_cubify
-
-
 from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import compute_edges
+from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import \
+    vert_align as tf_vert_align
+
 
 class MeshOpsDifferentialTest(parameterized.TestCase, tf.test.TestCase):
 
@@ -57,7 +55,7 @@ class MeshOpsDifferentialTest(parameterized.TestCase, tf.test.TestCase):
                [0, 0, 0, 0],
                [1, 0, 0, 0], [1, 0, 0, 1], [1, 0, 1, 0], [1, 0, 1, 1], 
                [1, 1, 0, 0], [1, 1, 0, 1], [1, 1, 1, 0], [1, 1, 1, 1],
-               [3, 0, 0, 1], [3, 0, 1, 1], [3, 1, 0, 1], [3, 1, 1, 1], 
+               [3, 0, 0, 1], [3, 0, 1, 1], [3, 1, 0, 1], [3, 1, 1, 1],
                [3, 1, 1, 0], 
            ]
       }

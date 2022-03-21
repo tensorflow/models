@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Mesh Ops"""
+from typing import Tuple
+
 import tensorflow as tf
 
 
-def compute_edges(faces: tf.Tensor, faces_mask: tf.Tensor):
+def compute_edges(faces: tf.Tensor, faces_mask: tf.Tensor) -> tf.Tensor:
   """Computes the edges of a mesh.
 
   The faces of a mesh consists of the 3 integers (v0, v1, v2) for each vertex,
@@ -67,20 +69,21 @@ def compute_edges(faces: tf.Tensor, faces_mask: tf.Tensor):
   # Multiply the hash by -1 to give valid faces higher priority in sorting
   edges_max = tf.math.reduce_max(edges) + 1
 
-  edges_hashed = (edges[..., 0] * edges_max + edges[..., 1]) * (-1 * tf.cast(edges_mask, edges.dtype))
-  
+  edges_hashed = edges[..., 0] * edges_max + edges[..., 1]
+  edges_hashed *= -1 * tf.cast(edges_mask, edges.dtype)
+
   # Sort the edges in increasing order and update the mask accordingly
   sorted_edge_indices = tf.argsort(edges_hashed, stable=True)
   edges_hashed = tf.gather(edges_hashed, sorted_edge_indices, batch_dims=-1)
   edges = tf.gather(edges, sorted_edge_indices)
-  
+
   edges_mask = tf.gather(edges_mask, sorted_edge_indices, batch_dims=1, axis=-1)
-  
+
   ones = tf.repeat(True, repeats=batch_size)
   unique_edges_mask = tf.concat(
       [tf.reshape(ones, shape=[batch_size, 1]),
        edges_hashed[..., 1:] != edges_hashed[..., :-1]], axis=-1)
-  
+
   # Multiply the masks to create the edges mask for valid and unique edges.
   edges_mask *= tf.cast(unique_edges_mask, edges_mask.dtype)
 
@@ -89,7 +92,7 @@ def compute_edges(faces: tf.Tensor, faces_mask: tf.Tensor):
 def vert_align(feature_map: tf.Tensor,
                verts: tf.Tensor,
                align_corners: bool = True,
-               padding_mode: str = 'border'):
+               padding_mode: str = 'border') -> tf.Tensor:
   """Samples features corresponding to mesh's coordinates.
 
   Each vertex in verts is projected onto the image using its (x, y) coordinates.
@@ -190,7 +193,20 @@ def vert_align(feature_map: tf.Tensor,
 
   return verts_features
 
-def compute_mesh_shape(batch_size, grid_dims):
+def compute_mesh_shape(batch_size: int,
+                       grid_dims: int) -> Tuple[list, list, list, list]:
+  """Computes the shape of the mesh tensors given a batch size and voxel size.
+
+  Args:
+    batch_size: An `int`, the batch size of the mesh.
+    grid_dims: An `int`, the dimension of the voxels.
+
+  Returns:
+    verts_shape: An `int`, shape of the mesh vertices.
+    verts_mask_shape: An `int`, shape of the mesh vertices mask.
+    faces_shape: An `int`, shape of the mesh faces.
+    faces_mask_shape: An `int`, shape of the mesh faces mask.
+  """
   verts_shape = [batch_size, (grid_dims+1)**3, 3]
   verts_mask_shape = [batch_size, (grid_dims+1)**3]
   faces_shape = [batch_size, 12*((grid_dims)**3), 3]

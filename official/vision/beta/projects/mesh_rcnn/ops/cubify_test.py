@@ -119,12 +119,14 @@ class CubifyTest(parameterized.TestCase, tf.test.TestCase):
                   expected_num_faces, expected_num_verts):
     voxels = create_voxels(grid_dims, batch_size, occupancy_locs)
     mesh = cubify(voxels, 0.5, 'topleft')
-  
+
     verts_mask = mesh['verts_mask']
     faces_mask = mesh['faces_mask']
 
-    self.assertAllEqual(tf.shape(mesh['verts']), [batch_size, (grid_dims+1)**3, 3])
-    self.assertAllEqual(tf.shape(mesh['faces']), [batch_size, (grid_dims**3)*12, 3])
+    self.assertAllEqual(
+        tf.shape(mesh['verts']), [batch_size, (grid_dims+1)**3, 3])
+    self.assertAllEqual(
+        tf.shape(mesh['faces']), [batch_size, (grid_dims**3)*12, 3])
     self.assertAllEqual(tf.shape(verts_mask), [batch_size, (grid_dims+1)**3])
     self.assertAllEqual(tf.shape(faces_mask), [batch_size, (grid_dims**3)*12])
 

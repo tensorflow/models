@@ -1,14 +1,15 @@
+import numpy as np
+import tensorflow as tf
+
 from official.vision.beta.projects.mesh_rcnn.modeling.heads.mesh_head import \
     MeshHead
+from official.vision.beta.projects.mesh_rcnn.ops.cubify import cubify
 from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import \
     compute_mesh_shape
-from official.vision.beta.projects.mesh_rcnn.ops.cubify import cubify
+from official.vision.beta.projects.mesh_rcnn.ops.visualize_mesh import \
+    visualize_mesh
 from official.vision.beta.projects.mesh_rcnn.utils.weight_utils.load_weights import (
     load_weights_mesh_head, pth_to_dict)
-from official.vision.beta.projects.mesh_rcnn.ops.visualize_mesh import visualize_mesh
-
-import tensorflow as tf
-import numpy as np
 
 PTH_PATH = r"C:\ML\Weights\meshrcnn_R50.pth"
 BACKBONE_FEATURES = r"C:\ML\sofa_0134_mesh_features.npy"
@@ -67,7 +68,7 @@ def test_load_mesh_refinement_branch():
   new_verts_1 = outputs['verts']['stage_1']
   new_verts_2 = outputs['verts']['stage_2']
 
-  visualize_mesh(verts[0, :], faces[0, :], verts_mask[0, :], faces_mask[0, :])
+  visualize_mesh(new_verts_2[0, :], faces[0, :], verts_mask[0, :], faces_mask[0, :])
 
 if __name__ == '__main__':
   test_load_mesh_refinement_branch()

@@ -1,9 +1,10 @@
 """Functions to help compare PyTorch and TensorFlow Meshes"""
-from click import pass_context
+import os
+
 import numpy as np
 import tensorflow as tf
 import torch
-import os
+from click import pass_context
 
 TF_OUTPUTS_PATH = r'C:\ML\tf_outputs'
 TORCH_OUTPUTS_PATH = r'C:\ML\torch_outputs'
@@ -67,5 +68,3 @@ if __name__ == '__main__':
   tf_deform, torch_deform = grab_outputs("deform_0")
   tf_deform = apply_mask(tf_deform, tf_verts_mask)
   print("deform differences: ", compare_tensors(tf_deform, torch_deform, tf_ind, torch_ind))
-
-  

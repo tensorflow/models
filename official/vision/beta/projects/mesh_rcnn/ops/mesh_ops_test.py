@@ -23,7 +23,7 @@ from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import (
 
 
 class MeshOpsTest(parameterized.TestCase, tf.test.TestCase):
-
+  """Test for mesh ops."""
   def test_compute_edges(self):
     faces = tf.random.uniform(shape=[2, 1000, 3], maxval=1000, dtype=tf.int32)
     faces_mask = tf.random.uniform(shape=[2, 1000], maxval=1, dtype=tf.int32)

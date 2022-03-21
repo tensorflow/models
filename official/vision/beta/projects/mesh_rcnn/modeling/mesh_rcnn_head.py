@@ -15,6 +15,7 @@
 """Mesh R-CNN Head"""
 import tensorflow as tf
 
+
 class MeshRCNNHead(tf.keras.layers.Layer):
   """Creates a Mesh R-CNN head."""
 
@@ -32,9 +33,9 @@ class MeshRCNNHead(tf.keras.layers.Layer):
     """Initializes a Mesh R-CNN head
 
     Args:
-      cubify_threshold: A `float` specifies threshold for valid occupied voxels.  
+      cubify_threshold: A `float` specifies threshold for valid occupied voxels.
       cubify_alignment: A `str` one of 'topleft', 'corner', or 'center' that
-        defines the alignment of the mesh vertices. 
+        defines the alignment of the mesh vertices.
       vert_align_corners: A `bool` that indicates whether the vertex extrema
         coordinates (-1 and 1) will correspond to the corners or centers of the
         pixels. If set to True, the extrema will correspond to the corners.
@@ -48,8 +49,8 @@ class MeshRCNNHead(tf.keras.layers.Layer):
         per mesh refinement stage.
       refinement_num_output_features: A `int` the number of features extracted
         per vertex.
-      graph_conv_init: A `str` for the graph convolution initialization method, 
-        one of 'zero' or 'normal'
+      graph_conv_init: A `str` for the graph convolution initialization method,
+        one of 'zero' or 'normal'.
       **kwargs: Additional keyword arguments to be passed.
     """
     super(MeshRCNNHead, self).__init__(**kwargs)
@@ -63,9 +64,9 @@ class MeshRCNNHead(tf.keras.layers.Layer):
         'refinement_num_output_features': refinement_num_output_features,
         'graph_conv_init': graph_conv_init
     }
-  
+
   def build(self, input_shape):
     pass
-  
-  def call(self, )
 
+  def call(self, inputs):
+    pass

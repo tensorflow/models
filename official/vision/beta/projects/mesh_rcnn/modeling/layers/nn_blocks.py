@@ -13,16 +13,13 @@
 # limitations under the License.
 
 """Contains common building blocks for Mesh R-CNN."""
-from typing import Union
+from typing import Tuple, Union
 
 import tensorflow as tf
-import tensorflow.keras as ks
-from torch import NoneType
 
 from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import vert_align
 
 
-# @tf.keras.utils.register_keras_serializable(package='mesh_rcnn')
 class GraphConv(tf.keras.layers.Layer):
   """A single graph convolution layer."""
   def __init__(self,
@@ -32,10 +29,10 @@ class GraphConv(tf.keras.layers.Layer):
                **kwargs) -> None:
     """
     Args:
-      output_dim: `int`, number of output features per vertex.
-      init: `string` to indicate initialization method. Can be one of 'zero' or
-        'normal'.
-      directed: `bool` indicating if edges in the graph are directed.
+      output_dim: An `int`, number of output features per vertex.
+      init: A `string` to indicate initialization method. Can be one of 'zero'
+        or 'normal'.
+      directed: A `bool` indicating if edges in the graph are directed.
       **kwargs: Additional keyword arguments.
     Raises:
       ValueError: If an invalid initialization method is used.
@@ -106,18 +103,18 @@ class GraphConv(tf.keras.layers.Layer):
     """
     shape = tf.shape(vert_feats)
     batch_size, num_verts, _ = shape[0], shape[1], shape[2]
-  
+
     # For empty meshes, return 0 for the features
     if tf.reduce_sum(verts_mask) == 0:
       return tf.zeros(shape=[batch_size, num_verts, self._output_dim])
-    
+
     # Apply dense layers
     verts_w0 = self._w0(vert_feats)
     verts_w1 = self._w1(vert_feats)
-    
+
     neighbor_sums = self._gather_scatter(
         verts_w1, edges, edges_mask, self._directed)
-    
+
     out = verts_w0 + neighbor_sums
 
     return out
@@ -177,7 +174,7 @@ class GraphConv(tf.keras.layers.Layer):
 
     if not directed:
       idx1 = tf.expand_dims(edges[..., 1], axis=-1)
-      idx1 = tf.concat([batch_indices, idx1], axis=2)
+      idx1 = tf.concat([tf.cast(batch_indices, idx1.dtype), idx1], axis=2)
       output = tf.tensor_scatter_nd_add(output, idx1, gather_0)
 
     return output
@@ -201,10 +198,10 @@ class MeshRefinementStage(tf.keras.layers.Layer):
                **kwargs):
     """
     Args:
-      stage_depth: `int`, number of GraphConv layers to use in the stage.
-      output_dim: `int` Number of output features to extract for each vertex.
-      graph_conv_init: `string` to indicate initialization method. Can be one of
-        'zero' or 'normal'.
+      stage_depth: An `int`, number of GraphConv layers to use in the stage.
+      output_dim: An `int` Number of output features to extract for each vertex.
+      graph_conv_init: A `string` to indicate initialization method. Can be one
+        of 'zero' or 'normal'.
       **kwargs: Additional keyword arguments.
     """
     self._stage_depth = stage_depth
@@ -220,14 +217,14 @@ class MeshRefinementStage(tf.keras.layers.Layer):
       input_shape: A `list` of `TensorShape`s that specifies the shapes of the
         inputs.
     """
-    self.bottleneck = ks.layers.Dense(
+    self.bottleneck = tf.keras.layers.Dense(
         self._output_dim,
         kernel_initializer=tf.keras.initializers.RandomNormal(
             mean=0.0,
             stddev=0.01),
         bias_initializer='zeros')
 
-    self.verts_offset = ks.layers.Dense(
+    self.verts_offset = tf.keras.layers.Dense(
         3,
         kernel_initializer=tf.keras.initializers.RandomNormal(
             mean=0.0,
@@ -244,9 +241,9 @@ class MeshRefinementStage(tf.keras.layers.Layer):
            feature_map: tf.Tensor,
            verts: tf.Tensor,
            verts_mask: tf.Tensor,
-           vert_feats: Union[tf.Tensor, NoneType],
+           vert_feats: Union[tf.Tensor, None],
            edges: tf.Tensor,
-           edges_mask: tf.Tensor):
+           edges_mask: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
     """
     Args:
       feature_map: A `Tensor` of shape [B, H, W, C], from which to extract
@@ -282,18 +279,19 @@ class MeshRefinementStage(tf.keras.layers.Layer):
 
     # Mask features before applying graph convolution
     vert_feats *= tf.cast(verts_mask, vert_feats.dtype)
-  
+
     for graph_conv in self.gconvs:
       vert_feats_nopos = tf.nn.relu(
           graph_conv(vert_feats, edges, verts_mask, edges_mask))
- 
-      vert_feats_nopos = vert_feats_nopos * tf.cast(verts_mask, vert_feats_nopos.dtype)
+
+      vert_feats_nopos = vert_feats_nopos * tf.cast(
+          verts_mask, vert_feats_nopos.dtype)
       vert_feats = tf.concat([vert_feats_nopos, verts], axis=2)
 
       vert_feats *= tf.cast(verts_mask, vert_feats.dtype)
-    
+
     vert_feats = self.verts_offset(vert_feats)
-    vert_feats *= tf.cast(verts_mask, vert_feats.dtype) 
+    vert_feats *= tf.cast(verts_mask, vert_feats.dtype)
     deform = tf.nn.tanh(vert_feats)
 
     new_verts = verts + deform

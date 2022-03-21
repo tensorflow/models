@@ -41,10 +41,8 @@ UNIT_CUBOID_FACES = tf.constant(
         [3, 7, 6],  # bottom face: 2, 3
         [0, 2, 6],
         [0, 6, 4],  # front face: 4, 5
-        # [1, 5, 4],
-        # [1, 0, 4],  # up face: 6, 7
         [0, 5, 1],
-        [0, 4, 5],  # up face: 6, 7 # PYTORCH VERSION
+        [0, 4, 5],  # up face: 6, 7
         [6, 7, 5],
         [6, 5, 4],  # right face: 8, 9
         [1, 7, 3],
@@ -63,13 +61,13 @@ def generate_3d_coords(x_max: int, y_max: int, z_max: int,
   inner dimension is 3.
 
   Args:
-    x_max: `int`, specifies the maximum x value in the coordinate grid.
-    y_max: `int`, specifies the maximum y value in the coordinate grid.
-    z_max: `int`, specifies the maximum z value in the coordinate grid.
-    flatten_output: `bool`, whether to flatten the output to a 2D Tensor.
+    x_max: An `int`, specifies the maximum x value in the coordinate grid.
+    y_max: An `int`, specifies the maximum y value in the coordinate grid.
+    z_max: An `int`, specifies the maximum z value in the coordinate grid.
+    flatten_output: A `bool`, whether to flatten the output to a 2D Tensor.
 
   Returns:
-    coords: `Tensor` that contains the coordinate values with shape
+    coords: A `Tensor` that contains the coordinate values with shape
       [x_max+1, y_max+1, z_max+1, 3] when flatten_output is False and shape
       [(x_max+1)*(y_max+1)*(z_max+1), 3] when flatten_output is True. The values
       in the last dimension are the x, y, and z values at a coordinate location.
@@ -91,14 +89,14 @@ def cantor_encode_3d_coordinates(x: tf.Tensor)-> tf.Tensor:
 
   This function applies the Cantor Pairing Function
   (https://en.wikipedia.org/wiki/Pairing_function#Cantor_pairing_function) in
-  order to generate a unique scalar value for 3 coordinates.
+  order to generate a unique scalar value for a coordinate triplet.
 
   Args:
-    x: `Tensor`, of shape [N, 3] where the last dimension corresponds to the
+    x: A `Tensor` of shape [N, 3] where the last dimension corresponds to the
       (x, y, z) coordinates to encode into a single value.
 
   Returns:
-    hashed: `Tensor` of shape [N, 1], containing the unique encoding for the
+    hashed: A `Tensor` of shape [N, 1], containing the unique encoding for the
       coordinate.
   """
 
@@ -123,13 +121,15 @@ def initialize_mesh(grid_dims: int, align: str) -> Tuple[tf.Tensor, tf.Tensor]:
   vertices that define the face. Note that there may be duplicate faces.
 
   Args:
-    grid_dims: `int`, specifies the height, width, and depth of the mesh.
-    align: String, one of 'topleft', 'corner', or 'center' that defines the
-      alignment of the mesh vertices
+    grid_dims: An `int`, specifies the height, width, and depth of the mesh.
+    align: A `str`, one of 'topleft', 'corner', or 'center' that defines the
+      desired alignment of the mesh vertices.
 
   Returns:
-    verts: `Tensor` of shape [num_verts, 3], where num_verts = (grid_dim+1)**3.
-    faces: `Tensor` of shape [num_faces, 3], where num_verts = 12*(grid_dim)**3.
+    verts: A `Tensor` of shape [num_verts, 3], where
+      num_verts = (grid_dim+1)**3.
+    faces: A `Tensor` of shape [num_faces, 3], where
+      num_faces = 12*(grid_dim)**3.
   """
   num_cuboids = (grid_dims) ** 3
 
@@ -142,7 +142,7 @@ def initialize_mesh(grid_dims: int, align: str) -> Tuple[tf.Tensor, tf.Tensor]:
     coords -= 0.5
 
   margin = 0.0 if align == 'corner' else 1.0
-  
+
   if grid_dims != 1:
     verts = coords * 2.0 / (tf.cast(grid_dims, tf.float32) - margin) - 1.0
   else:
@@ -165,16 +165,6 @@ def initialize_mesh(grid_dims: int, align: str) -> Tuple[tf.Tensor, tf.Tensor]:
   cuboid_verts = tf.reshape(cuboid_verts, shape=[-1, 3])
 
   # Convert to scalar values to save memory when doing tf.equal
-
-  # TODO: Remove the old hashing scheme
-  # coords_max = tf.math.reduce_max(coords) + 1
-  # cuboid_verts_max = tf.math.reduce_max(cuboid_verts) + 1
-  # coords_hashed = (coords[:, 0] * coords_max ** 2 +
-  #                  coords[:, 1] * coords_max +
-  #                  coords[:, 2])
-  # cuboid_verts_hashed = (cuboid_verts[:, 0] * cuboid_verts_max ** 2 +
-  #                        cuboid_verts[:, 1] * cuboid_verts_max +
-  #                        cuboid_verts[:, 2])
   coords_hashed = cantor_encode_3d_coordinates(coords)
   cuboid_verts_hashed = cantor_encode_3d_coordinates(cuboid_verts)
 
@@ -226,7 +216,7 @@ def generate_face_bounds(voxels: tf.Tensor, axis: int):
   Args:
     voxels: A `Tensor` of shape [B, D, H, W] that contains the thresholded
       voxel occupancies.
-    axis: `int` that indicates the axis of interest. Either 1 for the
+    axis: An `int` that indicates the axis of interest. Either 1 for the
       z-axis, 2 for the y-axis, or 3 for the x-axis.
 
   Returns:
@@ -302,7 +292,7 @@ def cubify(voxels: tf.Tensor,
       prediction. D, H, and W must be equal.
     thresh: A `float` that specifies the threshold value of a valid occupied
       voxel.
-    align: String, one of 'topleft', 'corner', or 'center' that defines the
+    align: A `str`, one of 'topleft', 'corner', or 'center' that defines the
       alignment of the mesh vertices. Currently only 'topleft' is supported.
 
   Returns:
@@ -386,10 +376,10 @@ def cubify(voxels: tf.Tensor,
   verts_mask = verts_mask[:, 1:]
 
   mesh = {
-    'verts': verts,
-    'faces': faces,
-    'verts_mask': verts_mask,
-    'faces_mask': faces_mask
+      'verts': verts,
+      'faces': faces,
+      'verts_mask': verts_mask,
+      'faces_mask': faces_mask
   }
 
   return mesh

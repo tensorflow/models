@@ -40,7 +40,13 @@ class MeshHeadTest(parameterized.TestCase, tf.test.TestCase):
     """Test forward-pass of the mesh head."""
 
     voxels = create_voxels(grid_dims, batch_size, occupancy_locs)
-    verts, faces, verts_mask, faces_mask = cubify(voxels, 0.5)
+
+    mesh = cubify(voxels, 0.5)
+    verts = mesh['verts']
+    faces = mesh['faces']
+    verts_mask = mesh['verts_mask']
+    faces_mask = mesh['faces_mask']
+
     feature_map = tf.random.uniform(shape=[batch_size, 12, 12, 256])
 
     inputs = {
