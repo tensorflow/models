@@ -20,6 +20,7 @@ In the near future, we will add:
 * State-of-the-art language understanding models.
 * State-of-the-art image classification models.
 * State-of-the-art object detection and instance segmentation models.
+* State-of-the-art video classification models.
 
 ## Table of Contents
 
@@ -27,6 +28,7 @@ In the near future, we will add:
   * [Computer Vision](#computer-vision)
     + [Image Classification](#image-classification)
     + [Object Detection and Segmentation](#object-detection-and-segmentation)
+    + [Video Classification](#video-classification)
   * [Natural Language Processing](#natural-language-processing)
   * [Recommendation](#recommendation)
 - [How to get started with the official models](#how-to-get-started-with-the-official-models)
@@ -54,6 +56,12 @@ In the near future, we will add:
 | [ShapeMask](vision/detection) | [ShapeMask: Learning to Segment Novel Objects by Refining Shape Priors](https://arxiv.org/abs/1904.03239) |
 | [SpineNet](vision/beta/MODEL_GARDEN.md) | [SpineNet: Learning Scale-Permuted Backbone for Recognition and Localization](https://arxiv.org/abs/1912.05027) |
 | [Cascade RCNN-RS and RetinaNet-RS](vision/beta/MODEL_GARDEN.md) | [Simple Training Strategies and Model Scaling for Object Detection](https://arxiv.org/abs/2107.00057)|
+
+#### Video Classification
+
+| Model | Reference (Paper) |
+|-------|-------------------|
+| [Mobile Video Networks (MoViNets)](projects/movinet) | [MoViNets: Mobile Video Networks for Efficient Video Recognition](https://arxiv.org/abs/2103.11511) |
 
 ### Natural Language Processing
 

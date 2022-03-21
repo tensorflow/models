@@ -171,8 +171,10 @@ evaluated on [COCO](https://cocodataset.org/) val2017.
         [Spatiotemporal Contrastive Video Representation Learning](https://arxiv.org/abs/2008.03800).
     *   ResNet-3D-RS (R3D-RS) in
         [Revisiting 3D ResNets for Video Recognition](https://arxiv.org/pdf/2109.01696.pdf).
+    *   Mobile Video Networks (MoViNets) in
+        [MoViNets: Mobile Video Networks for Efficient Video Recognition](https://arxiv.org/abs/2103.11511).
 
-* Training and evaluation details:
+* Training and evaluation details (SlowFast and ResNet):
   * All models are trained from scratch with vision modality (RGB) for 200
     epochs.
   * We use batch size of 1024 and cosine learning rate decay with linear warmup
@@ -192,6 +194,12 @@ evaluated on [COCO](https://cocodataset.org/) val2017.
 | R3D-RS-152 | 32 x 2                 | 79.9  | 94.3  | -
 | R3D-RS-200 | 32 x 2                 | 80.4  | 94.4  | -
 | R3D-RS-200 | 48 x 2                 | 81.0  | -     | -
+| MoViNet-A0-Base | 50 x 5            | 69.40 | 89.18 | -
+| MoViNet-A1-Base | 50 x 5            | 74.57 | 92.03 | -
+| MoViNet-A2-Base | 50 x 5            | 75.91 | 92.63 | -
+| MoViNet-A3-Base | 120 x 2           | 79.34 | 94.52 | -
+| MoViNet-A4-Base | 80 x 3            | 80.64 | 94.93 | -
+| MoViNet-A5-Base | 120 x 2           | 81.39 | 95.06 | -
 
 ### Kinetics-600 Action Recognition Baselines
 
@@ -201,3 +209,9 @@ evaluated on [COCO](https://cocodataset.org/) val2017.
 | R3D-50   | 32 x 2                 |  79.5   |  94.8   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k600_3d-resnet50_tpu.yaml) |
 | R3D-RS-200 | 32 x 2                 | 83.1  | -     | -
 | R3D-RS-200 | 48 x 2                 | 83.8  | -     | -
+| MoViNet-A0-Base | 50 x 5            | 72.05 | 90.92 | [config](https://github.com/tensorflow/models/blob/master/official/projects/movinet/configs/yaml/movinet_a0_k600_8x8.yaml) |
+| MoViNet-A1-Base | 50 x 5            | 76.69 | 93.40 | [config](https://github.com/tensorflow/models/blob/master/official/projects/movinet/configs/yaml/movinet_a1_k600_8x8.yaml) |
+| MoViNet-A2-Base | 50 x 5            | 78.62 | 94.17 | [config](https://github.com/tensorflow/models/blob/master/official/projects/movinet/configs/yaml/movinet_a2_k600_8x8.yaml) |
+| MoViNet-A3-Base | 120 x 2           | 81.79 | 95.67 | [config](https://github.com/tensorflow/models/blob/master/official/projects/movinet/configs/yaml/movinet_a3_k600_8x8.yaml) |
+| MoViNet-A4-Base | 80 x 3            | 83.48 | 96.16 | [config](https://github.com/tensorflow/models/blob/master/official/projects/movinet/configs/yaml/movinet_a4_k600_8x8.yaml) |
+| MoViNet-A5-Base | 120 x 2           | 84.27 | 96.39 | [config](https://github.com/tensorflow/models/blob/master/official/projects/movinet/configs/yaml/movinet_a5_k600_8x8.yaml) |
