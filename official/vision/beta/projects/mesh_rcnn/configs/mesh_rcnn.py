@@ -17,6 +17,7 @@ import dataclasses
 
 from official.modeling import hyperparams  # type: ignore
 
+
 @dataclasses.dataclass
 class VoxelHead(hyperparams.Config):
   """Parameterization for the Mesh R-CNN Voxel Branch Prediction Head."""

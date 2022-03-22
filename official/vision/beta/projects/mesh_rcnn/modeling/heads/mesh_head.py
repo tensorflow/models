@@ -20,6 +20,7 @@ from official.vision.beta.projects.mesh_rcnn.modeling.layers.nn_blocks import \
     MeshRefinementStage
 from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import compute_edges
 
+
 class MeshHead(tf.keras.layers.Layer):
   """Mesh R-CNN Mesh Head."""
   def __init__(self,

@@ -1,6 +1,6 @@
-from matplotlib import pyplot as plt
 import numpy as np
 import tensorflow as tf
+from matplotlib import pyplot as plt
 
 from official.vision.beta.projects.mesh_rcnn.modeling.heads.mesh_head import \
     MeshHead
