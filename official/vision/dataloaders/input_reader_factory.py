@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Factory for getting TF-Vision input readers."""
 
 from official.common import dataset_fn as dataset_fn_util

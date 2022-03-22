@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Decoders package definition."""
 
 from official.projects.volumetric_models.modeling.decoders.unet_3d_decoder import UNet3DDecoder

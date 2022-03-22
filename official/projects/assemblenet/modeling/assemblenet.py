@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Contains definitions for the AssembleNet [1] models.
 
 Requires the AssembleNet architecture to be specified in

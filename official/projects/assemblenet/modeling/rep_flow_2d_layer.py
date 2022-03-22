@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Contains definitions for 'Representation Flow' layer [1].
 
 Representation flow layer is a generalization of optical flow extraction; the

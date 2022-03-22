@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Commonly used TensorFlow 2 network blocks."""
 from typing import Any, Text, Sequence, Union
 
