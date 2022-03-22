@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Contains definitions of Mobile Video Networks.
 
 Reference: https://arxiv.org/pdf/2103.11511.pdf
