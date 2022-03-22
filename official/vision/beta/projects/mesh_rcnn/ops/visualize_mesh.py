@@ -46,10 +46,17 @@ if __name__ == '__main__':
       [3, 1, 0, 0], [3, 1, 0, 1], [3, 1, 1, 0], [3, 1, 1, 1],
   ]
   voxels = create_voxels(_grid_dims, _batch_size, _occupancy_locs)
-  _verts, _faces, _verts_mask, _faces_mask = cubify(voxels, 0.5)
+
+  mesh = cubify(voxels, 0.5)
+  _verts = mesh['verts']
+  _faces = mesh['faces']
+  _verts_mask = mesh['verts_mask']
+  _faces_mask = mesh['faces_mask']
 
   batch_to_view = 0
   visualize_mesh(_verts[batch_to_view, :],
                  _faces[batch_to_view, :],
                  _verts_mask[batch_to_view, :],
                  _faces_mask[batch_to_view, :])
+  
+  plt.show()
