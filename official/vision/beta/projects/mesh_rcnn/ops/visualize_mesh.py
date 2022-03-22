@@ -33,8 +33,6 @@ def visualize_mesh(verts, faces, verts_mask, faces_mask):
   ax.add_collection(pc)
 
   plt.axis('off')
-  plt.show()
-
 
 if __name__ == '__main__':
   _grid_dims = 2

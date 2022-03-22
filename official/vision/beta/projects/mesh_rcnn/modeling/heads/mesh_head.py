@@ -21,10 +21,9 @@ from official.vision.beta.projects.mesh_rcnn.modeling.layers.nn_blocks import \
 from official.vision.beta.projects.mesh_rcnn.ops.mesh_ops import compute_edges
 
 
-class MeshHead(tf.keras.Model):
+class MeshHead(tf.keras.layers.Layer):
   """Mesh R-CNN Mesh Head."""
   def __init__(self,
-               input_specs: dict,
                num_stages: int = 3,
                stage_depth: int = 3,
                output_dim: int = 128,
@@ -33,30 +32,30 @@ class MeshHead(tf.keras.Model):
     """Initializes Mesh R-CNN Mesh Head.
 
     Args:
-      input_specs: Dictionary with the following key-value pairs:
-        'feature_map': `Tensor` of shape [B, H, W, D] for the backbone features.
-        'verts': `Tensor` of shape [B, num_verts, 3] for vertex coordinates.
-        'verts_mask': `Tensor` of shape [B, num_verts] for vertex mask.
-        'faces': `Tensor` of shape [B, num_verts, 3] for faces.
-        'faces_mask': `Tensor` of shape [B, num_verts] for faces mask.
-      num_stages: `int`, number of mesh refinement stages in the branch.
-      stage_depth: `int`, number of graph convolution layers in each stage.
-      output_dim:  `int`, number of output features per vertex.
-      graph_conv_init: `string` to indicate graph convolution initialization
+      num_stages: An `int`, number of mesh refinement stages in the branch.
+      stage_depth: An `int`, number of graph convolution layers in each stage.
+      output_dim: An `int`, number of output features per vertex.
+      graph_conv_init: A `str` to indicate graph convolution initialization
         method. Can be one of 'zero' or 'normal'.
       **kwargs: Additional keyword arguments to be passed.
     """
-    self._input_specs = input_specs
+    super().__init__(**kwargs)
+
     self._num_stages = num_stages
     self._stage_depth = stage_depth
     self._output_dim = output_dim
     self._graph_conv_init = graph_conv_init
 
-    inputs = {
-        key: tf.keras.layers.Input(shape=value[1:])
-        for key, value in input_specs.items()
-    }
+  def build(self, input_shape) -> None:
+    self._mesh_refinement_layers = []
 
+    for _ in range(self._num_stages):
+      stage = MeshRefinementStage(
+          self._stage_depth, self._output_dim, self._graph_conv_init)
+
+      self._mesh_refinement_layers.append(stage)
+    
+  def call(self, inputs):
     feature_map = inputs['feature_map']
     verts = inputs['verts']
     verts_mask = tf.cast(inputs['verts_mask'], tf.int32)
@@ -72,23 +71,17 @@ class MeshHead(tf.keras.Model):
     outputs['verts'] = {}
 
     vert_feats = None
-    for i in range(num_stages):
-      verts, vert_feats = MeshRefinementStage(
-          stage_depth, output_dim, graph_conv_init)(feature_map,
-                                                    verts,
-                                                    verts_mask,
-                                                    vert_feats,
-                                                    edges,
-                                                    edges_mask)
+    for i in range(self._num_stages):
+      verts, vert_feats = self._mesh_refinement_layers[i](
+          feature_map, verts, verts_mask, vert_feats, edges, edges_mask)
       outputs['verts']['stage_' + str(i)] = verts
 
-    super().__init__(inputs=inputs, outputs=outputs, name='MeshHead')
-
+    return outputs
+  
   def get_config(self):
     config = dict(
-        input_specs=self._input_specs,
-        use_fpn=self._num_stages,
-        fpn_depth=self._stage_depth,
+        num_stages=self._num_stages,
+        stage_depth=self._stage_depth,
         output_dim=self._output_dim,
         graph_conv_init=self._graph_conv_init)
     return config
