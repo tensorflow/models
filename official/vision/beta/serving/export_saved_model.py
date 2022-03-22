@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 r"""Vision models export binary for serving/inference.
 
 To export a trained checkpoint in saved_model format (shell script):

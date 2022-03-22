@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Contains the Tensorflow 2 version definition of S3D model.
 
 S3D model is described in the following paper:
