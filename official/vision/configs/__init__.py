@@ -15,11 +15,11 @@
 # Lint as: python3
 """Configs package definition."""
 
+from official.vision.configs import backbones
+from official.vision.configs import backbones_3d
 from official.vision.configs import common
 from official.vision.configs import image_classification
 from official.vision.configs import maskrcnn
 from official.vision.configs import retinanet
 from official.vision.configs import semantic_segmentation
 from official.vision.configs import video_classification
-from official.vision.configs.google import backbones
-from official.vision.configs.google import backbones_3d
