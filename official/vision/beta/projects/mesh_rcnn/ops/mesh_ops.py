@@ -237,7 +237,7 @@ def get_verts_from_indices(
 
   Args:
     verts: A float `Tensor` of shape [B, Nv, 3], where the last dimension
-      contains all (x,y,z) vertex coordinates in the initial mesh.
+      contains all (x,y,z) vertex coordinates in the mesh.
     verts_mask: An int `Tensor` of shape [B, Nv] representing a mask for
       valid vertices in the watertight mesh.
     indices: An int `Tensor` of shape [B, num_sets, num_inds_per_set] where
@@ -252,9 +252,9 @@ def get_verts_from_indices(
       in the mesh.
 
   Returns:
-    indexed_verts: A list of two or three float `Tensor`s, each of shape
-      [B, num_sets, num_inds_per_set] where each element represents the ith
-      (0, 1(, or 2)) vertex for each face/edge of the mesh.
+    indexed_verts: A list of `num_inds_per_set` float `Tensor`s, each of shape
+      [B, num_sets, 3] where each element represents the ith (0, 1(, or 2))
+      vertex for each face/edge of the mesh.
   """
   shape = tf.shape(indices)
   batch_size, num_sets = shape[0], shape[1]
