@@ -121,8 +121,6 @@ If you want to contribute, please review the [contribution guidelines](https://g
 
 If you use TensorFlow Model Garden in your research, please cite this repository.
 
-<details>
-
 ```
 @misc{tensorflowmodelgarden2020,
   author = {Hongkun Yu and Chen Chen and Xianzhi Du and Yeqing Li and
@@ -133,5 +131,3 @@ If you use TensorFlow Model Garden in your research, please cite this repository
   year = {2020}
 }
 ```
-
-</details>
