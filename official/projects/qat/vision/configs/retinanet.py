@@ -20,7 +20,7 @@ from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.projects.qat.vision.configs import common
 from official.vision.configs import retinanet
-from official.vision.configs.google import backbones
+from official.vision.configs import backbones
 
 
 @dataclasses.dataclass
