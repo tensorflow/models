@@ -22,8 +22,8 @@ import numpy as np
 from PIL import Image
 import tensorflow as tf
 
-from official.common import registry_imports  # pylint: disable=unused-import
 from official.core import exp_factory
+from official.vision.beta import configs  # pylint: disable=unused-import
 from official.vision.beta.serving import detection
 
 

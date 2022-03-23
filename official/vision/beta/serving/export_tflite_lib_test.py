@@ -19,8 +19,8 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
-from official.common import registry_imports  # pylint: disable=unused-import
 from official.core import exp_factory
+from official.vision.beta import configs  # pylint: disable=unused-import
 from official.vision.beta.dataloaders import tfexample_utils
 from official.vision.beta.serving import detection as detection_serving
 from official.vision.beta.serving import export_tflite_lib
