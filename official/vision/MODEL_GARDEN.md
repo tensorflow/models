@@ -24,10 +24,10 @@ segmentation.
 
 | Model        | Resolution    | Epochs  |  Top-1  |  Top-5  | Download |
 | ------------ |:-------------:|--------:|--------:|--------:|---------:|
-| ResNet-50    | 224x224       |    90    | 76.1 | 92.9 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnet50_tpu.yaml) |
-| ResNet-50    | 224x224       |    200   | 77.1 | 93.5 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnet50_tpu.yaml) |
-| ResNet-101   | 224x224       |    200   | 78.3 | 94.2 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnet101_tpu.yaml) |
-| ResNet-152   | 224x224       |    200   | 78.7 | 94.3 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnet152_tpu.yaml) |
+| ResNet-50    | 224x224       |    90    | 76.1 | 92.9 | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnet50_tpu.yaml) |
+| ResNet-50    | 224x224       |    200   | 77.1 | 93.5 | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnet50_tpu.yaml) |
+| ResNet-101   | 224x224       |    200   | 78.3 | 94.2 | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnet101_tpu.yaml) |
+| ResNet-152   | 224x224       |    200   | 78.7 | 94.3 | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnet152_tpu.yaml) |
 
 #### ResNet-RS models trained with various settings
 
@@ -40,20 +40,20 @@ classification models with features:
 depth, label smoothing and dropout.
 * New training methods including a 350-epoch schedule, cosine learning rate and
   EMA.
-* Configs are in this [directory](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification).
+* Configs are in this [directory](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification).
 
 | Model     | Resolution | Params (M) | Top-1 | Top-5 | Download |
 | --------- | :--------: | ---------: | ----: | ----: | --------:|
-| ResNet-RS-50 | 160x160    | 35.7    | 79.1  | 94.5  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs50_i160.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-50-i160.tar.gz) |
-| ResNet-RS-101 | 160x160    | 63.7    | 80.2  | 94.9  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs101_i160.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-101-i160.tar.gz) |
-| ResNet-RS-101 | 192x192    | 63.7    | 81.3  | 95.6  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs101_i192.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-101-i192.tar.gz) |
-| ResNet-RS-152 | 192x192    | 86.8    | 81.9  | 95.8  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs152_i192.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-152-i192.tar.gz) |
-| ResNet-RS-152 | 224x224    | 86.8    | 82.5  | 96.1  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs152_i224.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-152-i224.tar.gz) |
-| ResNet-RS-152 | 256x256    | 86.8    | 83.1  | 96.3  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs152_i256.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-152-i256.tar.gz) |
-| ResNet-RS-200 | 256x256    | 93.4    | 83.5  | 96.6  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs200_i256.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-200-i256.tar.gz) |
-| ResNet-RS-270 | 256x256    | 130.1    | 83.6  | 96.6  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs270_i256.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-270-i256.tar.gz) |
-| ResNet-RS-350 | 256x256    |  164.3   | 83.7  | 96.7  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs350_i256.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-350-i256.tar.gz) |
-| ResNet-RS-350 | 320x320    | 164.3   | 84.2  | 96.9  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs420_i256.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-350-i320.tar.gz) |
+| ResNet-RS-50 | 160x160    | 35.7    | 79.1  | 94.5  | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnetrs50_i160.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-50-i160.tar.gz) |
+| ResNet-RS-101 | 160x160    | 63.7    | 80.2  | 94.9  | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnetrs101_i160.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-101-i160.tar.gz) |
+| ResNet-RS-101 | 192x192    | 63.7    | 81.3  | 95.6  | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnetrs101_i192.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-101-i192.tar.gz) |
+| ResNet-RS-152 | 192x192    | 86.8    | 81.9  | 95.8  | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnetrs152_i192.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-152-i192.tar.gz) |
+| ResNet-RS-152 | 224x224    | 86.8    | 82.5  | 96.1  | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnetrs152_i224.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-152-i224.tar.gz) |
+| ResNet-RS-152 | 256x256    | 86.8    | 83.1  | 96.3  | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnetrs152_i256.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-152-i256.tar.gz) |
+| ResNet-RS-200 | 256x256    | 93.4    | 83.5  | 96.6  | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnetrs200_i256.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-200-i256.tar.gz) |
+| ResNet-RS-270 | 256x256    | 130.1    | 83.6  | 96.6  | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnetrs270_i256.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-270-i256.tar.gz) |
+| ResNet-RS-350 | 256x256    |  164.3   | 83.7  | 96.7  | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnetrs350_i256.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-350-i256.tar.gz) |
+| ResNet-RS-350 | 320x320    | 164.3   | 84.2  | 96.9  | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnetrs420_i256.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/resnet-rs/resnet-rs-350-i320.tar.gz) |
 
 
 #### Vision Transformer (ViT)
@@ -109,16 +109,16 @@ evaluated on [COCO](https://cocodataset.org/) val2017.
 
 | Backbone     | Resolution    | Epochs  | FLOPs (B)     | Params (M) |  Box AP | Download |
 | ------------ |:-------------:| -------:|--------------:|-----------:|--------:|---------:|
-| SpineNet-49  | 640x640       |    500    | 85.4| 28.5 | 44.2 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet49_tpu.yaml) \| [TB.dev](https://tensorboard.dev/experiment/n2UN83TkTdyKZn3slCWulg/#scalars&_smoothingWeight=0)|
-| SpineNet-96  | 1024x1024     |    500    | 265.4 | 43.0 | 48.5 |  [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet96_tpu.yaml) \| [TB.dev](https://tensorboard.dev/experiment/n2UN83TkTdyKZn3slCWulg/#scalars&_smoothingWeight=0)|
-| SpineNet-143 | 1280x1280     |    500    | 524.0 | 67.0 | 50.0 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet143_tpu.yaml) \| [TB.dev](https://tensorboard.dev/experiment/n2UN83TkTdyKZn3slCWulg/#scalars&_smoothingWeight=0)|
+| SpineNet-49  | 640x640       |    500    | 85.4| 28.5 | 44.2 | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/retinanet/coco_spinenet49_tpu.yaml) \| [TB.dev](https://tensorboard.dev/experiment/n2UN83TkTdyKZn3slCWulg/#scalars&_smoothingWeight=0)|
+| SpineNet-96  | 1024x1024     |    500    | 265.4 | 43.0 | 48.5 |  [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/retinanet/coco_spinenet96_tpu.yaml) \| [TB.dev](https://tensorboard.dev/experiment/n2UN83TkTdyKZn3slCWulg/#scalars&_smoothingWeight=0)|
+| SpineNet-143 | 1280x1280     |    500    | 524.0 | 67.0 | 50.0 | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/retinanet/coco_spinenet143_tpu.yaml) \| [TB.dev](https://tensorboard.dev/experiment/n2UN83TkTdyKZn3slCWulg/#scalars&_smoothingWeight=0)|
 
 #### Mobile-size RetinaNet (Trained from scratch):
 
 | Backbone    | Resolution | Epochs | FLOPs (B) | Params (M) | Box AP | Download |
 | ----------- | :--------: | -----: | --------: | ---------: | -----: | --------:|
-| MobileNetv2 | 256x256    | 600    | -         | 2.27       | 23.5   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_mobilenetv2_tpu.yaml) |
-| Mobile SpineNet-49  | 384x384    | 600    | 1.0      | 2.32       | 28.1   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet49_mobile_tpu.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/retinanet/spinenet49mobile.tar.gz) |
+| MobileNetv2 | 256x256    | 600    | -         | 2.27       | 23.5   | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/retinanet/coco_mobilenetv2_tpu.yaml) |
+| Mobile SpineNet-49  | 384x384    | 600    | 1.0      | 2.32       | 28.1   | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/retinanet/coco_spinenet49_mobile_tpu.yaml) \| [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/retinanet/spinenet49mobile.tar.gz) |
 
 ### Instance Segmentation Baselines
 
@@ -126,19 +126,19 @@ evaluated on [COCO](https://cocodataset.org/) val2017.
 
 | Backbone     | Resolution    | Epochs  | FLOPs (B)  | Params (M) | Box AP | Mask AP | Download |
 | ------------ |:-------------:| -------:|-----------:|-----------:|-------:|--------:|---------:|
-| ResNet50-FPN | 640x640    | 350    | 227.7     | 46.3       | 42.3   | 37.6    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/r50fpn_640_coco_scratch_tpu4x4.yaml) |
-| SpineNet-49  | 640x640       |  350    | 215.7      | 40.8       | 42.6   | 37.9    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet49_mrcnn_tpu.yaml) |
-| SpineNet-96  | 1024x1024  | 500    | 315.0     | 55.2       | 48.1   | 42.4    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet96_mrcnn_tpu.yaml) |
-| SpineNet-143 | 1280x1280  | 500    | 498.8     | 79.2       | 49.3   | 43.4    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet143_mrcnn_tpu.yaml) |
+| ResNet50-FPN | 640x640    | 350    | 227.7     | 46.3       | 42.3   | 37.6    | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/maskrcnn/r50fpn_640_coco_scratch_tpu4x4.yaml) |
+| SpineNet-49  | 640x640       |  350    | 215.7      | 40.8       | 42.6   | 37.9    | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/maskrcnn/coco_spinenet49_mrcnn_tpu.yaml) |
+| SpineNet-96  | 1024x1024  | 500    | 315.0     | 55.2       | 48.1   | 42.4    | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/maskrcnn/coco_spinenet96_mrcnn_tpu.yaml) |
+| SpineNet-143 | 1280x1280  | 500    | 498.8     | 79.2       | 49.3   | 43.4    | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/maskrcnn/coco_spinenet143_mrcnn_tpu.yaml) |
 
 
 #### Cascade RCNN-RS (Trained from scratch)
 
 | Backbone     | Resolution | Epochs | Params (M) | Box AP | Mask AP | Download
 ------------ | :--------: | -----: | ---------: | -----: | ------: | -------:
-| SpineNet-49  | 640x640    | 500    | 56.4       | 46.4   | 40.0    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet49_cascadercnn_tpu.yaml)|
-| SpineNet-96 | 1024x1024  | 500    | 70.8   | 50.9   | 43.8    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet96_cascadercnn_tpu.yaml)|
-| SpineNet-143 | 1280x1280  | 500    | 94.9       | 51.9   | 45.0    | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/maskrcnn/coco_spinenet143_cascadercnn_tpu.yaml)|
+| SpineNet-49  | 640x640    | 500    | 56.4       | 46.4   | 40.0    | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/maskrcnn/coco_spinenet49_cascadercnn_tpu.yaml)|
+| SpineNet-96 | 1024x1024  | 500    | 70.8   | 50.9   | 43.8    | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/maskrcnn/coco_spinenet96_cascadercnn_tpu.yaml)|
+| SpineNet-143 | 1280x1280  | 500    | 94.9       | 51.9   | 45.0    | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/maskrcnn/coco_spinenet143_cascadercnn_tpu.yaml)|
 
 ## Semantic Segmentation
 
@@ -186,10 +186,10 @@ evaluated on [COCO](https://cocodataset.org/) val2017.
 
 | Model    | Input (frame x stride) |  Top-1  |  Top-5  | Download |
 | -------- |:----------------------:|--------:|--------:|---------:|
-| SlowOnly | 8 x 8                  |  74.1   |  91.4   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k400_slowonly8x8_tpu.yaml) |
-| SlowOnly | 16 x 4                 |  75.6   |  92.1   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k400_slowonly16x4_tpu.yaml) |
-| R3D-50   | 32 x 2                 |  77.0   |  93.0   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k400_3d-resnet50_tpu.yaml) |
-| R3D-RS-50   | 32 x 2                 |  78.2   |  93.7   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k400_resnet3drs_50_tpu.yaml) |
+| SlowOnly | 8 x 8                  |  74.1   |  91.4   | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/video_classification/k400_slowonly8x8_tpu.yaml) |
+| SlowOnly | 16 x 4                 |  75.6   |  92.1   | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/video_classification/k400_slowonly16x4_tpu.yaml) |
+| R3D-50   | 32 x 2                 |  77.0   |  93.0   | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/video_classification/k400_3d-resnet50_tpu.yaml) |
+| R3D-RS-50   | 32 x 2                 |  78.2   |  93.7   | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/video_classification/k400_resnet3drs_50_tpu.yaml) |
 | R3D-RS-101 | 32 x 2                 | 79.5  | 94.2  | -
 | R3D-RS-152 | 32 x 2                 | 79.9  | 94.3  | -
 | R3D-RS-200 | 32 x 2                 | 80.4  | 94.4  | -
@@ -205,8 +205,8 @@ evaluated on [COCO](https://cocodataset.org/) val2017.
 
 | Model    | Input (frame x stride) |  Top-1  |  Top-5  | Download |
 | -------- |:----------------------:|--------:|--------:|---------:|
-| SlowOnly | 8 x 8                  |  77.3   |  93.6   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k600_slowonly8x8_tpu.yaml) |
-| R3D-50   | 32 x 2                 |  79.5   |  94.8   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k600_3d-resnet50_tpu.yaml) |
+| SlowOnly | 8 x 8                  |  77.3   |  93.6   | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/video_classification/k600_slowonly8x8_tpu.yaml) |
+| R3D-50   | 32 x 2                 |  79.5   |  94.8   | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/video_classification/k600_3d-resnet50_tpu.yaml) |
 | R3D-RS-200 | 32 x 2                 | 83.1  | -     | -
 | R3D-RS-200 | 48 x 2                 | 83.8  | -     | -
 | MoViNet-A0-Base | 50 x 5            | 72.05 | 90.92 | [config](https://github.com/tensorflow/models/blob/master/official/projects/movinet/configs/yaml/movinet_a0_k600_8x8.yaml) |
