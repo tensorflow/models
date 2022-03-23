@@ -214,6 +214,10 @@ class MaskRCNNTask(cfg.TaskConfig):
   # If set, the Waymo Open Dataset evaluator would be used.
   use_wod_metrics: bool = False
 
+  # If set, freezes the backbone during training.
+  # TODO(crisnv) Add paper link when available.
+  freeze_backbone: bool = False
+
 
 COCO_INPUT_PATH_BASE = 'coco'
 
