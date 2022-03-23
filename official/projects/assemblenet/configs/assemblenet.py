@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Definitions for AssembleNet/++ structures.
 
 This structure is a `list` corresponding to a graph representation of the
