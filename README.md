@@ -30,6 +30,8 @@ To install the current release of tensorflow-models, please follow any one of th
 
 #### Method 1: Install the TensorFlow Model Garden pip package
 
+<details>
+
 **tf-models-official** is the stable Model Garden package.
 pip will install all models and dependencies automatically.
 
@@ -59,8 +61,12 @@ If you are using `nlp` packages, please also install tensorflow-text-nightly
 ```shell
 pip3 install tensorflow-text-nightly
 ```
+</details>
+
 
 #### Method 2: Clone the source
+
+<details>
 
 1. Clone the GitHub repository:
 
@@ -94,6 +100,9 @@ Finally, if you are using nlp packages, please also install
 pip3 install tensorflow-text-nightly
 ```
 
+</details>
+
+
 ## Announcements
 
 Please check [this page](https://github.com/tensorflow/models/wiki/Announcements) for recent announcements.
@@ -112,6 +121,8 @@ If you want to contribute, please review the [contribution guidelines](https://g
 
 If you use TensorFlow Model Garden in your research, please cite this repository.
 
+<details>
+
 ```
 @misc{tensorflowmodelgarden2020,
   author = {Hongkun Yu and Chen Chen and Xianzhi Du and Yeqing Li and
@@ -122,3 +133,5 @@ If you use TensorFlow Model Garden in your research, please cite this repository
   year = {2020}
 }
 ```
+
+</details>
