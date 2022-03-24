@@ -87,17 +87,29 @@ Model                            | Reference (Paper)
 
 ## How to get started with the official models
 
-* The models in the master branch are developed using TensorFlow 2,
-and they target the TensorFlow [nightly binaries](https://github.com/tensorflow/tensorflow#installation)
-built from the
-[master branch of TensorFlow](https://github.com/tensorflow/tensorflow/tree/master).
-* The stable versions targeting releases of TensorFlow are available
-as tagged branches or [downloadable releases](https://github.com/tensorflow/models/releases).
-* Model repository version numbers match the target TensorFlow release,
-such that
-[TensorFlow-models v2.5.0](https://github.com/tensorflow/models/releases/tag/v2.5.0)
-is compatible with
-[TensorFlow v2.5.0](https://github.com/tensorflow/tensorflow/releases/tag/v2.5.0).
+*   The official models in the master branch are developed using
+[master branch of TensorFlow 2](https://github.com/tensorflow/tensorflow/tree/master).
+When you clone (the repository) or download (`pip` binary) master branch of
+official models , master branch of TensorFlow gets downloaded as a
+dependency. This is equivalent to the following.
+
+```shell
+pip3 install tf-models-nightly
+pip3 install tensorflow-text-nightly # when model uses `nlp` packages
+```
+
+*   Incase of stable versions, targeting a specific release, Tensorflow-models
+repository version numbers match with the target TensorFlow release. For
+example, [TensorFlow-models v2.5.0]
+(https://github.com/tensorflow/models/releases/tag/v2.5.0)
+is compatible with [TensorFlow v2.5.0]
+(https://github.com/tensorflow/tensorflow/releases/tag/v2.5.0).
+This is equivalent to the following.
+
+```shell
+pip3 install tf-models-official==2.5.0
+pip3 install tensorflow-text==2.5.0 # when model uses `nlp` packages
+```
 
 Please follow the below steps before running models in this repository.
 
@@ -106,12 +118,6 @@ Please follow the below steps before running models in this repository.
 * The latest TensorFlow Model Garden release and the latest TensorFlow 2
   * If you are on a version of TensorFlow earlier than 2.2, please
 upgrade your TensorFlow to [the latest TensorFlow 2](https://www.tensorflow.org/install/).
-
-```shell
-pip3 install tf-nightly
-# pip3 install tensorflow # for latest stable version
-```
-
 * Python 3.7+
 
 Our integration tests run with Python 3.7. Although Python 3.6 should work, we
@@ -119,7 +125,8 @@ don't recommend earlier versions.
 
 ### Installation
 
-Please check the installation instructions [here](https://github.com/tensorflow/models#Installation)
+Please check [here](https://github.com/tensorflow/models#Installation) for the
+instructions
 
 ## Contributions
 
