@@ -66,8 +66,7 @@ def run_experiment(
   is_training = 'train' in mode
   is_eval = 'eval' in mode
   with distribution_strategy.scope():
-    optimizer = task.create_optimizer(params.trainer.optimizer_config,
-                                      params.runtime)
+    optimizer = train_utils.create_optimizer(task, params)
     kwargs = dict(multi_task=task, multi_task_model=model, optimizer=optimizer)
     if params.trainer.trainer_type == 'interleaving':
       sampler = task_sampler.get_task_sampler(params.trainer.task_sampler,
@@ -183,8 +182,7 @@ def run_experiment_with_multitask_eval(
           config=params,
           task=train_task,
           model=train_task.build_model(),
-          optimizer=train_task.create_optimizer(params.trainer.optimizer_config,
-                                                params.runtime),
+          optimizer=train_utils.create_optimizer(train_task, params),
           train=True,
           evaluate=False)
     else:
