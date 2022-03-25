@@ -49,7 +49,7 @@ RATINGS_FILE = "ratings.csv"
 MOVIES_FILE = "movies.csv"
 
 # URL to download dataset
-_DATA_URL = "http://files.grouplens.org/datasets/movielens/"
+_DATA_URL = "https://files.grouplens.org/datasets/movielens/"
 
 GENRE_COLUMN = "genres"
 ITEM_COLUMN = "item_id"  # movies
