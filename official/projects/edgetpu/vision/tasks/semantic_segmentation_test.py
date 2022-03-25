@@ -19,12 +19,12 @@ from absl.testing import parameterized
 import orbit
 import tensorflow as tf
 
+from official import vision
 from official.core import exp_factory
 from official.modeling import optimization
 from official.projects.edgetpu.vision.configs import semantic_segmentation_config as seg_cfg
 from official.projects.edgetpu.vision.configs import semantic_segmentation_searched_config as autoseg_cfg
 from official.projects.edgetpu.vision.tasks import semantic_segmentation as img_seg_task
-from official.vision import beta
 
 
 # Dummy ADE20K TF dataset.
