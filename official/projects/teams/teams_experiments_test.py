@@ -17,9 +17,7 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-# pylint: disable=unused-import
-from official.common import registry_imports
-# pylint: enable=unused-import
+from official.common import registry_imports  # pylint: disable=unused-import
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 
