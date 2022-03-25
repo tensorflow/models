@@ -388,14 +388,14 @@ class MeshLoss(tf.keras.losses.Loss):
     self._binary_crossentropy = tf.keras.losses.BinaryCrossentropy(
         reduction=tf.keras.losses.Reduction.SUM, from_logits=True)
 
-  def call(self,
-           voxels_true: tf.Tensor,
-           voxels_pred: tf.Tensor,
-           meshes_true: dict,
-           meshes_pred: dict,
-           edges_pred: tf.Tensor,
-           edges_mask_pred: tf.Tensor
-          ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+  def __call__(self,
+               voxels_true: tf.Tensor,
+               voxels_pred: tf.Tensor,
+               meshes_true: dict,
+               meshes_pred: dict,
+               edges_pred: tf.Tensor,
+               edges_mask_pred: tf.Tensor
+              ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
     """Computes the voxel and mesh losses (chamfer, normal, and edge losses).
 
     Args:
