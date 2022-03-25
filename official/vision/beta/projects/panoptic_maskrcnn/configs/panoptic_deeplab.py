@@ -225,8 +225,8 @@ def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
               post_processor=PanopticDeeplabPostProcessor(
                   output_size=input_size[:2],
                   center_score_threshold=0.1,
-                  thing_class_ids=[i for i in range(num_thing_categories)],
-                  label_divisor=256 * 256 * 256,
+                  thing_class_ids=[i for i in range(1, num_thing_categories)],
+                  label_divisor=256,
                   stuff_area_limit=4096,
                   ignore_label=ignore_label,
                   nms_kernel=41,
