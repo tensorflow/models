@@ -265,8 +265,7 @@ def _get_panoptic_predictions(
   panoptic_prediction = _merge_semantic_and_instance_maps(
       semantic_prediction, instance_maps, thing_class_ids, label_divisor,
       stuff_area_limit, void_label)
-  return (panoptic_prediction, semantic_prediction, instance_maps, center_maps,
-          instance_score_maps)
+  return (panoptic_prediction, center_maps, instance_score_maps)
 
 
 @tf.function
@@ -553,15 +552,19 @@ class PostProcessor(tf.keras.layers.Layer):
     processed_dict = {}
 
     (processed_dict['panoptic_outputs'],
-     processed_dict['category_mask'],
-     processed_dict['instance_mask'],
      processed_dict['instance_centers'],
      processed_dict['instance_scores']
      ) = self._post_processor(
          tf.nn.softmax(segmentation_outputs, axis=-1),
          instance_centers_heatmap,
          instance_centers_offset)
-    
+
+    label_divisor = self._config_dict['label_divisor']
+    processed_dict['category_mask'] = (
+        processed_dict['panoptic_outputs'] // label_divisor)
+    processed_dict['instance_mask'] = (
+        processed_dict['panoptic_outputs'] % label_divisor)
+
     processed_dict.update({
         'segmentation_outputs': result_dict['segmentation_outputs']})
 
