@@ -22,7 +22,7 @@ from official.projects.basnet.configs import basnet as basnet_cfg
 from official.projects.basnet.modeling import basnet_model
 from official.projects.basnet.modeling import refunet
 from official.projects.basnet.tasks import basnet as basenet_task
-from official.vision.beta import train
+from official.vision import train
 
 
 if __name__ == '__main__':

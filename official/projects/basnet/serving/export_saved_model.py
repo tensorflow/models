@@ -41,7 +41,7 @@ from absl import flags
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.projects.basnet.serving import basnet
-from official.vision.beta.serving import export_saved_model_lib
+from official.vision.serving import export_saved_model_lib
 
 FLAGS = flags.FLAGS
 
