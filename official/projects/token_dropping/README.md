@@ -95,10 +95,10 @@ modeling library:
 Please cite our paper:
 
 ```
-@inproceedings{pang2022,
+@article{hou2022token,
   title={Token Dropping for Efficient BERT Pretraining},
-  author={Richard Yuanzhe Pang*, Le Hou*, Tianyi Zhou, Yuexin Wu, Xinying Song, Xiaodan Song, Denny Zhou},
-  year={2022},
-  organization={Association for Computational Linguistics}
+  author={Pang, Richard Yuanzhe and Hou, Le and Zhou, Tianyi and Wu, Yuexin and Song, Xinying and Song, Xiaodan and Zhou, Denny},
+  journal={arXiv preprint arXiv:2203.13240},
+  year={2022}
 }
 ```
