@@ -23,6 +23,7 @@ import functools
 import os
 
 import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1 import estimator as tf_estimator
 import tensorflow.compat.v2 as tf2
 import tf_slim as slim
 
@@ -465,7 +466,7 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
     """
     params = params or {}
     total_loss, train_op, detections, export_outputs = None, None, None, None
-    is_training = mode == tf.estimator.ModeKeys.TRAIN
+    is_training = mode == tf_estimator.ModeKeys.TRAIN
 
     # Make sure to set the Keras learning phase. True during training,
     # False for inference.
@@ -479,11 +480,11 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
         is_training=is_training, add_summaries=(not use_tpu))
     scaffold_fn = None
 
-    if mode == tf.estimator.ModeKeys.TRAIN:
+    if mode == tf_estimator.ModeKeys.TRAIN:
       labels = unstack_batch(
           labels,
           unpad_groundtruth_tensors=train_config.unpad_groundtruth_tensors)
-    elif mode == tf.estimator.ModeKeys.EVAL:
+    elif mode == tf_estimator.ModeKeys.EVAL:
       # For evaling on train data, it is necessary to check whether groundtruth
       # must be unpadded.
       boxes_shape = (
@@ -493,7 +494,7 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
       labels = unstack_batch(
           labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
-    if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
+    if mode in (tf_estimator.ModeKeys.TRAIN, tf_estimator.ModeKeys.EVAL):
       provide_groundtruth(detection_model, labels)
 
     preprocessed_images = features[fields.InputDataFields.image]
@@ -514,7 +515,7 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
     def postprocess_wrapper(args):
       return detection_model.postprocess(args[0], args[1])
 
-    if mode in (tf.estimator.ModeKeys.EVAL, tf.estimator.ModeKeys.PREDICT):
+    if mode in (tf_estimator.ModeKeys.EVAL, tf_estimator.ModeKeys.PREDICT):
       if use_tpu and postprocess_on_cpu:
         detections = tf.tpu.outside_compilation(
             postprocess_wrapper,
@@ -525,7 +526,7 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
             prediction_dict,
             features[fields.InputDataFields.true_image_shape]))
 
-    if mode == tf.estimator.ModeKeys.TRAIN:
+    if mode == tf_estimator.ModeKeys.TRAIN:
       load_pretrained = hparams.load_pretrained if hparams else False
       if train_config.fine_tune_checkpoint and load_pretrained:
         if not train_config.fine_tune_checkpoint_type:
@@ -557,8 +558,8 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
           tf.train.init_from_checkpoint(train_config.fine_tune_checkpoint,
                                         available_var_map)
 
-    if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
-      if (mode == tf.estimator.ModeKeys.EVAL and
+    if mode in (tf_estimator.ModeKeys.TRAIN, tf_estimator.ModeKeys.EVAL):
+      if (mode == tf_estimator.ModeKeys.EVAL and
           eval_config.use_dummy_loss_in_eval):
         total_loss = tf.constant(1.0)
         losses_dict = {'Loss/total_loss': total_loss}
@@ -590,7 +591,7 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
       training_optimizer, optimizer_summary_vars = optimizer_builder.build(
           train_config.optimizer)
 
-    if mode == tf.estimator.ModeKeys.TRAIN:
+    if mode == tf_estimator.ModeKeys.TRAIN:
       if use_tpu:
         training_optimizer = tf.tpu.CrossShardOptimizer(training_optimizer)
 
@@ -628,16 +629,16 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
           summaries=summaries,
           name='')  # Preventing scope prefix on all variables.
 
-    if mode == tf.estimator.ModeKeys.PREDICT:
+    if mode == tf_estimator.ModeKeys.PREDICT:
       exported_output = exporter_lib.add_output_tensor_nodes(detections)
       export_outputs = {
           tf.saved_model.signature_constants.PREDICT_METHOD_NAME:
-              tf.estimator.export.PredictOutput(exported_output)
+              tf_estimator.export.PredictOutput(exported_output)
       }
 
     eval_metric_ops = None
     scaffold = None
-    if mode == tf.estimator.ModeKeys.EVAL:
+    if mode == tf_estimator.ModeKeys.EVAL:
       class_agnostic = (
           fields.DetectionResultFields.detection_classes not in detections)
       groundtruth = _prepare_groundtruth_for_eval(
@@ -711,8 +712,8 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
         scaffold = tf.train.Scaffold(saver=saver)
 
     # EVAL executes on CPU, so use regular non-TPU EstimatorSpec.
-    if use_tpu and mode != tf.estimator.ModeKeys.EVAL:
-      return tf.estimator.tpu.TPUEstimatorSpec(
+    if use_tpu and mode != tf_estimator.ModeKeys.EVAL:
+      return tf_estimator.tpu.TPUEstimatorSpec(
           mode=mode,
           scaffold_fn=scaffold_fn,
           predictions=detections,
@@ -730,7 +731,7 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
             save_relative_paths=True)
         tf.add_to_collection(tf.GraphKeys.SAVERS, saver)
         scaffold = tf.train.Scaffold(saver=saver)
-      return tf.estimator.EstimatorSpec(
+      return tf_estimator.EstimatorSpec(
           mode=mode,
           predictions=detections,
           loss=total_loss,
@@ -895,7 +896,7 @@ def create_estimator_and_inputs(run_config,
   model_fn = model_fn_creator(detection_model_fn, configs, hparams, use_tpu,
                               postprocess_on_cpu)
   if use_tpu_estimator:
-    estimator = tf.estimator.tpu.TPUEstimator(
+    estimator = tf_estimator.tpu.TPUEstimator(
         model_fn=model_fn,
         train_batch_size=train_config.batch_size,
         # For each core, only batch size 1 is supported for eval.
@@ -906,7 +907,7 @@ def create_estimator_and_inputs(run_config,
         eval_on_tpu=False,  # Eval runs on CPU, so disable eval on TPU
         params=params if params else {})
   else:
-    estimator = tf.estimator.Estimator(model_fn=model_fn, config=run_config)
+    estimator = tf_estimator.Estimator(model_fn=model_fn, config=run_config)
 
   # Write the as-run pipeline config to disk.
   if run_config.is_chief and save_final_config:
@@ -951,7 +952,7 @@ def create_train_and_eval_specs(train_input_fn,
     True, the last `EvalSpec` in the list will correspond to training data. The
     rest EvalSpecs in the list are evaluation datas.
   """
-  train_spec = tf.estimator.TrainSpec(
+  train_spec = tf_estimator.TrainSpec(
       input_fn=train_input_fn, max_steps=train_steps)
 
   if eval_spec_names is None:
@@ -966,10 +967,10 @@ def create_train_and_eval_specs(train_input_fn,
       exporter_name = final_exporter_name
     else:
       exporter_name = '{}_{}'.format(final_exporter_name, eval_spec_name)
-    exporter = tf.estimator.FinalExporter(
+    exporter = tf_estimator.FinalExporter(
         name=exporter_name, serving_input_receiver_fn=predict_input_fn)
     eval_specs.append(
-        tf.estimator.EvalSpec(
+        tf_estimator.EvalSpec(
             name=eval_spec_name,
             input_fn=eval_input_fn,
             steps=None,
@@ -977,7 +978,7 @@ def create_train_and_eval_specs(train_input_fn,
 
   if eval_on_train_data:
     eval_specs.append(
-        tf.estimator.EvalSpec(
+        tf_estimator.EvalSpec(
             name='eval_on_train', input_fn=eval_on_train_input_fn, steps=None))
 
   return train_spec, eval_specs

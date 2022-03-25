@@ -21,6 +21,7 @@ from __future__ import print_function
 import functools
 
 import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1 import estimator as tf_estimator
 from object_detection.builders import dataset_builder
 from object_detection.builders import image_resizer_builder
 from object_detection.builders import model_builder
@@ -1114,7 +1115,7 @@ def create_predict_input_fn(model_config, predict_input_config):
     true_image_shape = tf.expand_dims(
         input_dict[fields.InputDataFields.true_image_shape], axis=0)
 
-    return tf.estimator.export.ServingInputReceiver(
+    return tf_estimator.export.ServingInputReceiver(
         features={
             fields.InputDataFields.image: images,
             fields.InputDataFields.true_image_shape: true_image_shape},
