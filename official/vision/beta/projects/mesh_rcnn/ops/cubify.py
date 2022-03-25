@@ -114,10 +114,12 @@ def cantor_encode_3d_coordinates(x: tf.Tensor)-> tf.Tensor:
 
 def initialize_mesh(grid_dims: int, align: str) -> Tuple[tf.Tensor, tf.Tensor]:
   """Initializes the vertices and faces for a complete cuboid mesh.
+
   This function generates 2 rank 2 Tensors, one for vertices and another for
   faces. The vertices are the initial (x,y,z) coordinates of each vertex
   in the mesh normalized between -1 and 1. The faces are the indices of the 3
   vertices that define the face. Note that there may be duplicate faces.
+
   Args:
     grid_dims: An `int`, specifies the height, width, and depth of the mesh.
     align: A `str`, one of 'topleft', 'corner', or 'center' that defines the
@@ -203,17 +205,20 @@ def initialize_mesh(grid_dims: int, align: str) -> Tuple[tf.Tensor, tf.Tensor]:
 
 def generate_face_bounds(voxels: tf.Tensor, axis: int):
   """Generates `Tensors` that give masks for boundaries of the voxels.
+
   This function returns 2 `Tensors`, an upper boundary and a lower boundary, for
   the voxel occupancy grid that indicate whether or not the voxel is considered
   an external surface in the mesh. This is done using 3D convolutions to find
   the adjacent voxels that share a face, and masking them out. The direction
   of the lower boundary is left, top, or front for axes 1, 2, 3 respectively.
   Likewise, the direction of the upper boundary is right, bottom, back.
+
   Args:
     voxels: A `Tensor` of shape [B, D, H, W] that contains the thresholded
       voxel occupancies.
     axis: An `int` that indicates the axis of interest. Either 1 for the
       z-axis, 2 for the y-axis, or 3 for the x-axis.
+
   Returns:
     upper: A `Tensor` of shape [B, D, H, W] containing 1s and 0s that indicate
       whether a given voxel has a face present (either right, bottom, or back
@@ -281,6 +286,7 @@ def cubify(voxels: tf.Tensor,
            thresh: float,
            align: str = 'topleft'):
   """Converts a voxel occupancy grid into a mesh.
+
   Args:
     voxels: A `Tensor` of shape [B, D, H, W] that contains the voxel occupancy
       prediction. D, H, and W must be equal.
