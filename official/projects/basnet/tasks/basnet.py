@@ -27,7 +27,7 @@ from official.projects.basnet.evaluation import metrics as basnet_metrics
 from official.projects.basnet.losses import basnet_losses
 from official.projects.basnet.modeling import basnet_model
 from official.projects.basnet.modeling import refunet
-from official.vision.beta.dataloaders import segmentation_input
+from official.vision.dataloaders import segmentation_input
 
 
 def build_basnet_model(
