@@ -19,7 +19,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
 
-from official.vision.beta.ops import box_ops as bbox_ops
+from official.vision.ops import box_ops as bbox_ops
 
 PAD_VALUE = 114
 GLOBAL_SEED_SET = False

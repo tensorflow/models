@@ -15,12 +15,12 @@
 """Detection Data parser and processing for YOLO."""
 import tensorflow as tf
 
-from official.vision.beta.dataloaders import parser
-from official.vision.beta.dataloaders import utils
-from official.vision.beta.ops import box_ops as bbox_ops
-from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.projects.yolo.ops import anchor
 from official.vision.beta.projects.yolo.ops import preprocessing_ops
+from official.vision.dataloaders import parser
+from official.vision.dataloaders import utils
+from official.vision.ops import box_ops as bbox_ops
+from official.vision.ops import preprocess_ops
 
 
 class Parser(parser.Parser):

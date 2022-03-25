@@ -15,13 +15,13 @@
 """Contains common factory functions yolo neural networks."""
 
 from absl import logging
-from official.vision.beta.modeling.backbones import factory as backbone_factory
-from official.vision.beta.modeling.decoders import factory as decoder_factory
 
 from official.vision.beta.projects.yolo.configs import yolo
 from official.vision.beta.projects.yolo.modeling import yolo_model
 from official.vision.beta.projects.yolo.modeling.heads import yolo_head
 from official.vision.beta.projects.yolo.modeling.layers import detection_generator
+from official.vision.modeling.backbones import factory as backbone_factory
+from official.vision.modeling.decoders import factory as decoder_factory
 
 
 def build_yolo_detection_generator(model_config: yolo.Yolo, anchor_boxes):
