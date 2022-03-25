@@ -39,6 +39,7 @@ class PanopticDeepLabFusion(tf.keras.layers.Layer):
       low_level: List[int] = [3, 2],
       num_projection_filters: List[int] = [64, 32],
       num_output_filters: int = 256,
+      use_depthwise_convolution: bool = False,
       activation: str = 'relu',
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
@@ -52,7 +53,11 @@ class PanopticDeepLabFusion(tf.keras.layers.Layer):
     Args:
       level: An `int` level at which the decoder was appled at.
       low_level: A list of `int` of minimum level to use in feature fusion.
-      num_filters: An `int` number of filters in conv2d layers.
+      num_projection_filters: A list of `int` with number of filters for
+        projection conv2d layers.
+      num_output_filters: An `int` number of filters in output conv2d layers.
+      use_depthwise_convolution: A bool to specify if use depthwise separable
+        convolutions.      
       activation: A `str` name of the activation function.
       use_sync_bn: A `bool` that indicates whether to use synchronized batch
         normalization across different replicas.
@@ -75,6 +80,7 @@ class PanopticDeepLabFusion(tf.keras.layers.Layer):
         'low_level': low_level,
         'num_projection_filters': num_projection_filters,
         'num_output_filters': num_output_filters,
+        'use_depthwise_convolution': use_depthwise_convolution,
         'activation': activation,
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
@@ -93,7 +99,7 @@ class PanopticDeepLabFusion(tf.keras.layers.Layer):
     conv_op = tf.keras.layers.Conv2D
     conv_kwargs = {
         'padding': 'same',
-        'use_bias': False,
+        'use_bias': True,
         'kernel_initializer': tf.initializers.VarianceScaling(),
         'kernel_regularizer': self._config_dict['kernel_regularizer'],
     }
@@ -116,11 +122,27 @@ class PanopticDeepLabFusion(tf.keras.layers.Layer):
               filters=self._config_dict['num_projection_filters'][i],
               kernel_size=1,
               **conv_kwargs))
-      self._fusion_convs.append(
-          conv_op(
-              filters=self._config_dict['num_output_filters'],
-              kernel_size=5,
-              **conv_kwargs))
+      if self._config_dict['use_depthwise_convolution']:
+        depthwise_initializer = tf.keras.initializers.RandomNormal(stddev=0.01)
+        fusion_conv = tf.keras.Sequential([
+            tf.keras.layers.DepthwiseConv2D(
+                kernel_size=5,
+                padding='same',
+                use_bias=True,
+                depthwise_initializer=depthwise_initializer,
+                depthwise_regularizer=self._config_dict['kernel_regularizer'],
+                depth_multiplier=1),
+            bn_op(**bn_kwargs),
+            conv_op(
+                filters=self._config_dict['num_output_filters'],
+                kernel_size=1,
+                **conv_kwargs)])
+      else:
+        fusion_conv = conv_op(
+            filters=self._config_dict['num_output_filters'],
+            kernel_size=5,
+            **conv_kwargs)
+      self._fusion_convs.append(fusion_conv)
       self._projection_norms.append(bn_op(**bn_kwargs))
       self._fusion_norms.append(bn_op(**bn_kwargs))
 
