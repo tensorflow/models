@@ -23,9 +23,11 @@ from official.core import task_factory
 from official.modeling import optimization
 from official.modeling.multitask import base_model
 from official.modeling.multitask import configs
+from official.modeling.privacy import configs as dp_configs
 
 OptimizationConfig = optimization.OptimizationConfig
 RuntimeConfig = config_definitions.RuntimeConfig
+DifferentialPrivacyConfig = dp_configs.DifferentialPrivacyConfig
 
 
 class MultiTask(tf.Module, metaclass=abc.ABCMeta):
@@ -93,9 +95,11 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
   @classmethod
   def create_optimizer(cls,
                        optimizer_config: OptimizationConfig,
-                       runtime_config: Optional[RuntimeConfig] = None):
+                       runtime_config: Optional[RuntimeConfig] = None,
+                       dp_config: Optional[DifferentialPrivacyConfig] = None):
     return base_task.Task.create_optimizer(
-        optimizer_config=optimizer_config, runtime_config=runtime_config)
+        optimizer_config=optimizer_config, runtime_config=runtime_config,
+        dp_config=dp_config)
 
   def joint_train_step(self, task_inputs,
                        multi_task_model: base_model.MultiTaskBaseModel,

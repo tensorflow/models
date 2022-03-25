@@ -20,7 +20,7 @@ import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.projects.basnet.modeling import nn_blocks
-from official.vision.beta.modeling.backbones import factory
+from official.vision.modeling.backbones import factory
 
 # Specifications for BASNet encoder.
 # Each element in the block configuration is in the following format:

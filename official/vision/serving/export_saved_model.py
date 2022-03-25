@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 r"""Vision models export binary for serving/inference.
 
 To export a trained checkpoint in saved_model format (shell script):
@@ -46,9 +45,8 @@ from official.vision.serving import export_saved_model_lib
 
 FLAGS = flags.FLAGS
 
-
-flags.DEFINE_string(
-    'experiment', None, 'experiment type, e.g. retinanet_resnetfpn_coco')
+flags.DEFINE_string('experiment', None,
+                    'experiment type, e.g. retinanet_resnetfpn_coco')
 flags.DEFINE_string('export_dir', None, 'The export directory.')
 flags.DEFINE_string('checkpoint_path', None, 'Checkpoint path.')
 flags.DEFINE_multi_string(
@@ -64,8 +62,7 @@ flags.DEFINE_string(
     'params_override', '',
     'The JSON/YAML file or string which specifies the parameter to be overriden'
     ' on top of `config_file` template.')
-flags.DEFINE_integer(
-    'batch_size', None, 'The batch size.')
+flags.DEFINE_integer('batch_size', None, 'The batch size.')
 flags.DEFINE_string(
     'input_type', 'image_tensor',
     'One of `image_tensor`, `image_bytes`, `tf_example` and `tflite`.')
@@ -77,6 +74,8 @@ flags.DEFINE_string('export_checkpoint_subdir', 'checkpoint',
                     'The subdirectory for checkpoints.')
 flags.DEFINE_string('export_saved_model_subdir', 'saved_model',
                     'The subdirectory for saved model.')
+flags.DEFINE_bool('log_model_flops_and_params', False,
+                  'If true, logs model flops and parameters.')
 
 
 def main(_):
@@ -100,7 +99,8 @@ def main(_):
       checkpoint_path=FLAGS.checkpoint_path,
       export_dir=FLAGS.export_dir,
       export_checkpoint_subdir=FLAGS.export_checkpoint_subdir,
-      export_saved_model_subdir=FLAGS.export_saved_model_subdir)
+      export_saved_model_subdir=FLAGS.export_saved_model_subdir,
+      log_model_flops_and_params=FLAGS.log_model_flops_and_params)
 
 
 if __name__ == '__main__':

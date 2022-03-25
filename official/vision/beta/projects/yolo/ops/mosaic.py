@@ -14,12 +14,13 @@
 
 """Mosaic op."""
 import random
+
 import tensorflow as tf
 import tensorflow_addons as tfa
 
-from official.vision.beta.ops import box_ops
-from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.projects.yolo.ops import preprocessing_ops
+from official.vision.ops import box_ops
+from official.vision.ops import preprocess_ops
 
 
 class Mosaic:

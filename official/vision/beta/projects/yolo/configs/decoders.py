@@ -16,7 +16,7 @@
 import dataclasses
 from typing import Optional
 from official.modeling import hyperparams
-from official.vision.beta.configs import decoders
+from official.vision.configs import decoders
 
 
 @dataclasses.dataclass

@@ -17,11 +17,11 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
+from official import vision
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.projects.qat.vision.configs import common
 from official.projects.qat.vision.configs import image_classification as qat_exp_cfg
-from official.vision import beta
 from official.vision.configs import image_classification as exp_cfg
 
 

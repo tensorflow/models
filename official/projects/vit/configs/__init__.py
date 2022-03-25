@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Configs package definition."""
 
 from official.projects.vit.configs import image_classification

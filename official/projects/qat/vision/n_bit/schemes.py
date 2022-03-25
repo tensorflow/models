@@ -199,23 +199,7 @@ class QuantizeLayoutTransform(
             'Vision>Conv2DBNBlock',
             nn_blocks.Conv2DBNBlockNBitQuantized,
             num_bits_weight=self._num_bits_weight,
-            num_bits_activation=self._num_bits_activation),
-        # TODO(yeqing): Remove the `Beta` custom layers.
-        CustomLayerQuantize(
-            'Beta>BottleneckBlock',
-            nn_blocks.BottleneckBlockNBitQuantized,
-            num_bits_weight=self._num_bits_weight,
-            num_bits_activation=self._num_bits_activation),
-        CustomLayerQuantize(
-            'Beta>InvertedBottleneckBlock',
-            nn_blocks.InvertedBottleneckBlockNBitQuantized,
-            num_bits_weight=self._num_bits_weight,
-            num_bits_activation=self._num_bits_activation),
-        CustomLayerQuantize(
-            'Beta>Conv2DBNBlock',
-            nn_blocks.Conv2DBNBlockNBitQuantized,
-            num_bits_weight=self._num_bits_weight,
-            num_bits_activation=self._num_bits_activation),
+            num_bits_activation=self._num_bits_activation)
     ]
     return _ModelTransformer(model, transforms, set(layer_quantize_map.keys()),
                              layer_quantize_map).transform()

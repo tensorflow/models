@@ -180,7 +180,7 @@ def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
       background_iou_low_threshold=(
           roi_sampler_config.background_iou_low_threshold))
   roi_sampler_cascade.append(roi_sampler_obj)
-  # Initialize addtional roi simplers for cascade heads.
+  # Initialize additional roi simplers for cascade heads.
   if roi_sampler_config.cascade_iou_thresholds:
     for iou in roi_sampler_config.cascade_iou_thresholds:
       roi_sampler_obj = roi_sampler.ROISampler(

@@ -82,10 +82,15 @@ class MaskRCNNTask(base_task.Task):
         input_specs=input_specs,
         model_config=self.task_config.model,
         l2_regularizer=l2_regularizer)
+
+    if self.task_config.freeze_backbone:
+      model.backbone.trainable = False
+
     return model
 
   def initialize(self, model: tf.keras.Model):
     """Loading pretrained checkpoint."""
+
     if not self.task_config.init_checkpoint:
       return
 

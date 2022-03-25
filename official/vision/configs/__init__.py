@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Configs package definition."""
 
+from official.vision.configs import backbones
+from official.vision.configs import backbones_3d
+from official.vision.configs import common
 from official.vision.configs import image_classification
 from official.vision.configs import maskrcnn
 from official.vision.configs import retinanet

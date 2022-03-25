@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """S3D model configurations."""
 import dataclasses
 from typing import Text

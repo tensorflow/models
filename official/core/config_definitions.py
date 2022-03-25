@@ -19,6 +19,7 @@ from typing import Optional, Sequence, Union
 
 from official.modeling.hyperparams import base_config
 from official.modeling.optimization.configs import optimization_config
+from official.modeling.privacy import configs as dp_configs
 
 OptimizationConfig = optimization_config.OptimizationConfig
 
@@ -236,6 +237,11 @@ class TrainerConfig(base_config.Config):
   # we will retore the model states.
   recovery_max_trials: int = 0
   validation_summary_subdir: str = "validation"
+  # Configs for differential privacy
+  # These configs are only effective if you use create_optimizer in
+  # tensorflow_models/official/core/base_task.py
+  differential_privacy_config: Optional[
+      dp_configs.DifferentialPrivacyConfig] = None
 
 
 @dataclasses.dataclass

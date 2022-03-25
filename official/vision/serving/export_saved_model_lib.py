@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 r"""Vision models export utility function for serving/inference."""
 
 import os
@@ -43,7 +42,8 @@ def export_inference_graph(
     export_checkpoint_subdir: Optional[str] = None,
     export_saved_model_subdir: Optional[str] = None,
     save_options: Optional[tf.saved_model.SaveOptions] = None,
-    log_model_flops_and_params: bool = False):
+    log_model_flops_and_params: bool = False,
+    checkpoint: Optional[tf.train.Checkpoint] = None):
   """Exports inference graph for the model specified in the exp config.
 
   Saved model is stored at export_dir/saved_model, checkpoint is saved
@@ -67,6 +67,8 @@ def export_inference_graph(
     save_options: `SaveOptions` for `tf.saved_model.save`.
     log_model_flops_and_params: If True, writes model FLOPs to model_flops.txt
       and model parameters to model_params.txt.
+    checkpoint: An optional tf.train.Checkpoint. If provided, the export module
+      will use it to read the weights.
   """
 
   if export_checkpoint_subdir:
@@ -123,6 +125,7 @@ def export_inference_graph(
       export_module,
       function_keys=[input_type],
       export_savedmodel_dir=output_saved_model_directory,
+      checkpoint=checkpoint,
       checkpoint_path=checkpoint_path,
       timestamped=False,
       save_options=save_options)

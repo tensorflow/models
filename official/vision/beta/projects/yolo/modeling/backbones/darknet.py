@@ -36,11 +36,12 @@ Darknets are used mainly for object detection in:
 """
 
 import collections
+
 import tensorflow as tf
 
 from official.modeling import hyperparams
-from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
+from official.vision.modeling.backbones import factory
 
 
 class BlockConfig:

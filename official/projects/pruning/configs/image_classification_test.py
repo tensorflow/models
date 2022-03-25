@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Tests for image_classification."""
 # pylint: disable=unused-import
 from absl.testing import parameterized
 import tensorflow as tf
 
+from official import vision
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.projects.pruning.configs import image_classification as pruning_exp_cfg
-from official.vision import beta
 from official.vision.configs import image_classification as exp_cfg
 
 

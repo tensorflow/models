@@ -102,10 +102,7 @@ class CustomLayerQuantize(
     if bottleneck_layer['class_name'] in [
         'Vision>Conv2DBNBlock', 'Vision>InvertedBottleneckBlock',
         'Vision>SegmentationHead', 'Vision>SpatialPyramidPooling',
-        'Vision>ASPP',
-        # TODO(yeqing): Removes the Beta layers.
-        'Beta>Conv2DBNBlock', 'Beta>InvertedBottleneckBlock',
-        'Beta>SegmentationHead', 'Beta>SpatialPyramidPooling', 'Beta>ASPP'
+        'Vision>ASPP'
     ]:
       layer_metadata = {'quantize_config': configs.NoOpQuantizeConfig()}
     else:
@@ -170,20 +167,7 @@ class QuantizeLayoutTransform(
                             quantized_nn_layers.SegmentationHeadQuantized),
         CustomLayerQuantize('Vision>SpatialPyramidPooling',
                             quantized_nn_layers.SpatialPyramidPoolingQuantized),
-        CustomLayerQuantize('Vision>ASPP', quantized_nn_layers.ASPPQuantized),
-        # TODO(yeqing): Remove the `Beta` components.
-        CustomLayerQuantize('Beta>BottleneckBlock',
-                            quantized_nn_blocks.BottleneckBlockQuantized),
-        CustomLayerQuantize(
-            'Beta>InvertedBottleneckBlock',
-            quantized_nn_blocks.InvertedBottleneckBlockQuantized),
-        CustomLayerQuantize('Beta>Conv2DBNBlock',
-                            quantized_nn_blocks.Conv2DBNBlockQuantized),
-        CustomLayerQuantize('Beta>SegmentationHead',
-                            quantized_nn_layers.SegmentationHeadQuantized),
-        CustomLayerQuantize('Beta>SpatialPyramidPooling',
-                            quantized_nn_layers.SpatialPyramidPoolingQuantized),
-        CustomLayerQuantize('Beta>ASPP', quantized_nn_layers.ASPPQuantized)
+        CustomLayerQuantize('Vision>ASPP', quantized_nn_layers.ASPPQuantized)
     ]
     return tfmot.quantization.keras.graph_transformations.model_transformer.ModelTransformer(
         model, transforms,

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Tests for image classification task."""
 
 # pylint: disable=unused-import
@@ -22,13 +21,13 @@ from absl.testing import parameterized
 import numpy as np
 import orbit
 import tensorflow as tf
-import tensorflow_model_optimization as tfmot
 
+import tensorflow_model_optimization as tfmot
+from official import vision
 from official.core import actions
 from official.core import exp_factory
 from official.modeling import optimization
 from official.projects.pruning.tasks import image_classification as img_cls_task
-from official.vision import beta
 
 
 class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):

@@ -17,7 +17,7 @@
 import tensorflow as tf
 
 from official.projects.basnet.tasks import basnet
-from official.vision.beta.serving import semantic_segmentation
+from official.vision.serving import semantic_segmentation
 
 
 MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)

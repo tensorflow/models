@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Video classification input and model functions for serving/inference."""
 from typing import Mapping, Dict, Text
 

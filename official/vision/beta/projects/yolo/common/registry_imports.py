@@ -16,7 +16,7 @@
 
 # pylint: disable=unused-import
 # pylint: disable=g-bad-import-order
-from official.common import registry_imports
+from official.vision import registry_imports
 
 # import configs
 from official.vision.beta.projects.yolo.configs import darknet_classification

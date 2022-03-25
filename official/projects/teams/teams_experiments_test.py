@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Tests for teams_experiments."""
 
 from absl.testing import parameterized
 import tensorflow as tf
 
-# pylint: disable=unused-import
-from official.common import registry_imports
-# pylint: enable=unused-import
+from official.common import registry_imports  # pylint: disable=unused-import
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Video ssl linear evaluation task definition."""
 from typing import Any, Optional, List, Tuple
 from absl import logging
@@ -20,7 +19,7 @@ import tensorflow as tf
 
 # pylint: disable=unused-import
 from official.core import task_factory
-from official.projects.video_ssl.configs.google import video_ssl as exp_cfg
+from official.projects.video_ssl.configs import video_ssl as exp_cfg
 from official.projects.video_ssl.modeling import video_ssl_model
 from official.vision.tasks import video_classification
 

@@ -20,9 +20,9 @@ from typing import List, Optional
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
-from official.vision.beta.configs import common
-from official.vision.beta.configs import image_classification as imc
 from official.vision.beta.projects.yolo.configs import backbones
+from official.vision.configs import common
+from official.vision.configs import image_classification as imc
 
 
 @dataclasses.dataclass

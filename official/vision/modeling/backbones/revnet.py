@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Contains definitions of RevNet."""
 
 from typing import Any, Callable, Dict, Optional
@@ -208,7 +207,7 @@ class RevNet(tf.keras.Model):
   @property
   def output_specs(self) -> Dict[int, tf.TensorShape]:
     """A dict of {level: TensorShape} pairs for the model output."""
-    return self._output_specs
+    return self._output_specs  # pytype: disable=bad-return-type  # trace-all-classes
 
 
 @factory.register_backbone_builder('revnet')

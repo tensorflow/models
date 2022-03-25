@@ -14,8 +14,8 @@
 
 """Classification decoder and parser."""
 import tensorflow as tf
-from official.vision.beta.dataloaders import classification_input
-from official.vision.beta.ops import preprocess_ops
+from official.vision.dataloaders import classification_input
+from official.vision.ops import preprocess_ops
 
 
 class Parser(classification_input.Parser):
