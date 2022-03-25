@@ -13,7 +13,9 @@
 # limitations under the License.
 
 """Quantization helpers."""
+from typing import Any, Dict
 
+import tensorflow as tf
 import tensorflow_model_optimization as tfmot
 
 
@@ -47,3 +49,37 @@ class LayerQuantizerHelper(object):
     for name in self._quantizers:
       self._quantizer_vars[name] = self._quantizers[name].build(
           tensor_shape=None, name=name, layer=self)
+
+
+class NoOpActivation:
+  """No-op activation which simply returns the incoming tensor.
+
+  This activation is required to distinguish between `keras.activations.linear`
+  which does the same thing. The main difference is that NoOpActivation should
+  not have any quantize operation applied to it.
+  """
+
+  def __call__(self, x: tf.Tensor) -> tf.Tensor:
+    return x
+
+  def get_config(self) -> Dict[str, Any]:
+    """Get a config of this object."""
+    return {}
+
+  def __eq__(self, other: Any) -> bool:
+    if not other or not isinstance(other, NoOpActivation):
+      return False
+
+    return True
+
+  def __ne__(self, other: Any) -> bool:
+    return not self.__eq__(other)
+
+
+def quantize_wrapped_layer(cls, quantize_config):
+
+  def constructor(*arg, **kwargs):
+    return tfmot.quantization.keras.QuantizeWrapperV2(
+        cls(*arg, **kwargs), quantize_config)
+
+  return constructor
