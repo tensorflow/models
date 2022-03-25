@@ -18,7 +18,7 @@ from typing import Callable, List, Tuple
 import tensorflow as tf
 
 from official.modeling import tf_utils
-from official.vision.beta.ops import spatial_transform_ops
+from official.vision.ops import spatial_transform_ops
 
 
 class Identity(tf.keras.layers.Layer):

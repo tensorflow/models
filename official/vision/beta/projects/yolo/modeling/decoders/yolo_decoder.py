@@ -13,13 +13,13 @@
 # limitations under the License.
 
 """Feature Pyramid Network and Path Aggregation variants used in YOLO."""
-from typing import Mapping, Union, Optional
+from typing import Mapping, Optional, Union
 
 import tensorflow as tf
 
 from official.modeling import hyperparams
-from official.vision.beta.modeling.decoders import factory
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
+from official.vision.modeling.decoders import factory
 
 # model configurations
 # the structure is as follows. model version, {v3, v4, v#, ... etc}

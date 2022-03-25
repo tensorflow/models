@@ -17,8 +17,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.ops import box_ops as bbox_ops
 from official.vision.beta.projects.yolo.ops import preprocessing_ops
+from official.vision.ops import box_ops as bbox_ops
 
 
 class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
