@@ -1,7 +1,0 @@
-# Benchmarks runs on same instnace, change eval batch size to fit on 4x4 tpu
-task:
-  validation_data:
-    global_batch_size: 32
-trainer:
-  validation_interval: 1560
-  validation_steps: 156
