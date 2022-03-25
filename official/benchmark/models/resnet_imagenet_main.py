@@ -74,8 +74,6 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
-  keras_utils.set_session_config(
-      enable_xla=flags_obj.enable_xla)
   # Execute flag override logic for better model performance
   if flags_obj.tf_gpu_thread_mode:
     keras_utils.set_gpu_thread_mode_and_count(
@@ -251,7 +249,8 @@ def run(flags_obj):
         optimizer=optimizer,
         metrics=(['sparse_categorical_accuracy']
                  if flags_obj.report_accuracy_metrics else None),
-        run_eagerly=flags_obj.run_eagerly)
+        run_eagerly=flags_obj.run_eagerly,
+        jit_compile=flags_obj.enable_xla)
 
   train_epochs = flags_obj.train_epochs
 
