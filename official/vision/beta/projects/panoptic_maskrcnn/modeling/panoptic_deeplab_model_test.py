@@ -20,8 +20,8 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.distribute import combinations
 
-from official.vision.beta.modeling import backbones
-from official.vision.beta.modeling.decoders import aspp
+from official.vision.modeling import backbones
+from official.vision.modeling.decoders import aspp
 from official.vision.beta.projects.panoptic_maskrcnn.modeling.heads import panoptic_deeplab_heads
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_deeplab_model
 from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import panoptic_deeplab_merge
