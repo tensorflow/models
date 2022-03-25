@@ -27,7 +27,7 @@ from official.core import train_utils
 from official.modeling import performance
 from official.projects.video_ssl.modeling import video_ssl_model
 from official.projects.video_ssl.tasks import linear_eval
-from official.projects.video_ssl.tasks.google import pretrain
+from official.projects.video_ssl.tasks import pretrain
 from official.vision import registry_imports
 # pylint: disable=unused-import
 
