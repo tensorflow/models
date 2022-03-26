@@ -124,19 +124,12 @@ class SqueezeExcitationQuantized(
     return x
 
   def build(self, input_shape):
-    conv2d_quantized = helper.quantize_wrapped_layer(
-        tf.keras.layers.Conv2D,
-        configs.Default8BitConvQuantizeConfig(['kernel'], ['activation'],
-                                              False))
-    conv2d_quantized_output_quantized = helper.quantize_wrapped_layer(
-        tf.keras.layers.Conv2D,
-        configs.Default8BitConvQuantizeConfig(['kernel'], ['activation'], True))
     num_reduced_filters = nn_layers.make_divisible(
         max(1, int(self._in_filters * self._se_ratio)),
         divisor=self._divisible_by,
         round_down_protect=self._round_down_protect)
 
-    self._se_reduce = conv2d_quantized(
+    self._se_reduce = helper.Conv2DQuantized(
         filters=num_reduced_filters,
         kernel_size=1,
         strides=1,
@@ -147,7 +140,7 @@ class SqueezeExcitationQuantized(
         bias_regularizer=self._bias_regularizer,
         activation=helper.NoOpActivation())
 
-    self._se_expand = conv2d_quantized_output_quantized(
+    self._se_expand = helper.Conv2DOutputQuantized(
         filters=self._out_filters,
         kernel_size=1,
         strides=1,
@@ -311,17 +304,6 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
     backbone_shape = input_shape[0]
     use_depthwise_convolution = self._config_dict['use_depthwise_convolution']
     random_initializer = tf.keras.initializers.RandomNormal(stddev=0.01)
-    conv2d_quantized = helper.quantize_wrapped_layer(
-        tf.keras.layers.Conv2D,
-        configs.Default8BitConvQuantizeConfig(['kernel'], ['activation'],
-                                              False))
-    conv2d_quantized_output_quantized = helper.quantize_wrapped_layer(
-        tf.keras.layers.Conv2D,
-        configs.Default8BitConvQuantizeConfig(['kernel'], ['activation'], True))
-    depthwise_conv2d_quantized = helper.quantize_wrapped_layer(
-        tf.keras.layers.DepthwiseConv2D,
-        configs.Default8BitConvQuantizeConfig(['depthwise_kernel'],
-                                              ['activation'], False))
     conv_kwargs = {
         'kernel_size': 3 if not use_depthwise_convolution else 1,
         'padding': 'same',
@@ -334,13 +316,10 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
         tf.keras.layers.experimental.SyncBatchNormalization
         if self._config_dict['use_sync_bn'] else
         tf.keras.layers.BatchNormalization)
-    norm_with_quantize = helper.quantize_wrapped_layer(
-        norm_layer, configs.Default8BitOutputQuantizeConfig())
-    if self._config_dict['activation'] not in ['relu', 'relu6']:
-      norm = norm_with_quantize
-    else:
-      norm = helper.quantize_wrapped_layer(norm_layer,
-                                           configs.NoOpQuantizeConfig())
+    norm_with_quantize = helper.BatchNormalizationQuantized(norm_layer)
+    norm_no_quantize = helper.BatchNormalizationNoQuantized(norm_layer)
+    norm = helper.norm_by_activation(self._config_dict['activation'],
+                                     norm_with_quantize, norm_no_quantize)
 
     bn_kwargs = {
         'axis': self._bn_axis,
@@ -350,7 +329,7 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
 
     if self._config_dict['feature_fusion'] == 'deeplabv3plus':
       # Deeplabv3+ feature fusion layers.
-      self._dlv3p_conv = conv2d_quantized(
+      self._dlv3p_conv = helper.Conv2DQuantized(
           kernel_size=1,
           padding='same',
           use_bias=False,
@@ -369,7 +348,7 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
     for i in range(self._config_dict['num_convs']):
       if use_depthwise_convolution:
         self._convs.append(
-            depthwise_conv2d_quantized(
+            helper.DepthwiseConv2DQuantized(
                 name='segmentation_head_depthwise_conv_{}'.format(i),
                 kernel_size=3,
                 padding='same',
@@ -382,7 +361,7 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
         self._norms.append(norm(name=norm_name, **bn_kwargs))
       conv_name = 'segmentation_head_conv_{}'.format(i)
       self._convs.append(
-          conv2d_quantized(
+          helper.Conv2DQuantized(
               name=conv_name,
               filters=self._config_dict['num_filters'],
               activation=helper.NoOpActivation(),
@@ -390,7 +369,7 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
       norm_name = 'segmentation_head_norm_{}'.format(i)
       self._norms.append(norm(name=norm_name, **bn_kwargs))
 
-    self._classifier = conv2d_quantized_output_quantized(
+    self._classifier = helper.Conv2DOutputQuantized(
         name='segmentation_output',
         filters=self._config_dict['num_classes'],
         kernel_size=self._config_dict['prediction_kernel_size'],
@@ -401,20 +380,14 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
         bias_regularizer=self._config_dict['bias_regularizer'],
         activation=helper.NoOpActivation())
 
-    upsampling = helper.quantize_wrapped_layer(
-        tf.keras.layers.UpSampling2D,
-        configs.Default8BitQuantizeConfig([], [], True))
-    self._upsampling_layer = upsampling(
+    self._upsampling_layer = helper.UpSampling2DQuantized(
         size=(self._config_dict['upsample_factor'],
               self._config_dict['upsample_factor']),
         interpolation='nearest')
     self._resizing_layer = tf.keras.layers.Resizing(
         backbone_shape[1], backbone_shape[2], interpolation='bilinear')
 
-    concat = helper.quantize_wrapped_layer(
-        tf.keras.layers.Concatenate,
-        configs.Default8BitQuantizeConfig([], [], True))
-    self._concat_layer = concat(axis=self._bn_axis)
+    self._concat_layer = helper.ConcatenateQuantized(axis=self._bn_axis)
 
     super().build(input_shape)
 
@@ -560,26 +533,14 @@ class SpatialPyramidPoolingQuantized(nn_layers.SpatialPyramidPooling):
     norm_layer = (
         tf.keras.layers.experimental.SyncBatchNormalization
         if self._use_sync_bn else tf.keras.layers.BatchNormalization)
-    norm_with_quantize = helper.quantize_wrapped_layer(
-        norm_layer, configs.Default8BitOutputQuantizeConfig())
-    if self._activation not in ['relu', 'relu6']:
-      norm = norm_with_quantize
-    else:
-      norm = helper.quantize_wrapped_layer(norm_layer,
-                                           configs.NoOpQuantizeConfig())
-
-    conv2d_quantized = helper.quantize_wrapped_layer(
-        tf.keras.layers.Conv2D,
-        configs.Default8BitConvQuantizeConfig(['kernel'], ['activation'],
-                                              False))
-    depthwise_conv2d_quantized_output_quantized = helper.quantize_wrapped_layer(
-        tf.keras.layers.DepthwiseConv2D,
-        configs.Default8BitConvQuantizeConfig(['depthwise_kernel'],
-                                              ['activation'], True))
+    norm_with_quantize = helper.BatchNormalizationQuantized(norm_layer)
+    norm_no_quantize = helper.BatchNormalizationNoQuantized(norm_layer)
+    norm = helper.norm_by_activation(self._activation, norm_with_quantize,
+                                     norm_no_quantize)
 
     self.aspp_layers = []
 
-    conv1 = conv2d_quantized(
+    conv1 = helper.Conv2DQuantized(
         filters=self._output_channels,
         kernel_size=(1, 1),
         kernel_initializer=self._kernel_initializer,
@@ -598,7 +559,7 @@ class SpatialPyramidPoolingQuantized(nn_layers.SpatialPyramidPooling):
       kernel_size = (3, 3)
       if self._use_depthwise_convolution:
         leading_layers += [
-            depthwise_conv2d_quantized_output_quantized(
+            helper.DepthwiseConv2DOutputQuantized(
                 depth_multiplier=1,
                 kernel_size=kernel_size,
                 padding='same',
@@ -610,7 +571,7 @@ class SpatialPyramidPoolingQuantized(nn_layers.SpatialPyramidPooling):
         ]
         kernel_size = (1, 1)
       conv_dilation = leading_layers + [
-          conv2d_quantized(
+          helper.Conv2DQuantized(
               filters=self._output_channels,
               kernel_size=kernel_size,
               padding='same',
@@ -629,22 +590,13 @@ class SpatialPyramidPoolingQuantized(nn_layers.SpatialPyramidPooling):
 
     if self._pool_kernel_size is None:
       pooling = [
-          helper.quantize_wrapped_layer(
-              tf.keras.layers.GlobalAveragePooling2D,
-              configs.Default8BitQuantizeConfig([], [], True))(),
-          helper.quantize_wrapped_layer(
-              tf.keras.layers.Reshape,
-              configs.Default8BitQuantizeConfig([], [], True))((1, 1, channels))
+          helper.GlobalAveragePooling2DQuantized(),
+          helper.ReshapeQuantized((1, 1, channels))
       ]
     else:
-      pooling = [
-          helper.quantize_wrapped_layer(
-              tf.keras.layers.AveragePooling2D,
-              configs.Default8BitQuantizeConfig([], [],
-                                                True))(self._pool_kernel_size)
-      ]
+      pooling = [helper.AveragePooling2DQuantized(self._pool_kernel_size)]
 
-    conv2 = conv2d_quantized(
+    conv2 = helper.Conv2DQuantized(
         filters=self._output_channels,
         kernel_size=(1, 1),
         kernel_initializer=self._kernel_initializer,
@@ -657,15 +609,11 @@ class SpatialPyramidPoolingQuantized(nn_layers.SpatialPyramidPooling):
         epsilon=self._batchnorm_epsilon)
 
     self.aspp_layers.append(pooling + [conv2, norm2])
-
-    resizing = helper.quantize_wrapped_layer(
-        tf.keras.layers.Resizing, configs.Default8BitQuantizeConfig([], [],
-                                                                    True))
-    self._resizing_layer = resizing(
+    self._resizing_layer = helper.ResizingQuantized(
         height, width, interpolation=self._interpolation)
 
     self._projection = [
-        conv2d_quantized(
+        helper.Conv2DQuantized(
             filters=self._output_channels,
             kernel_size=(1, 1),
             kernel_initializer=self._kernel_initializer,
@@ -678,10 +626,7 @@ class SpatialPyramidPoolingQuantized(nn_layers.SpatialPyramidPooling):
             epsilon=self._batchnorm_epsilon)
     ]
     self._dropout_layer = tf.keras.layers.Dropout(rate=self._dropout)
-    concat = helper.quantize_wrapped_layer(
-        tf.keras.layers.Concatenate,
-        configs.Default8BitQuantizeConfig([], [], True))
-    self._concat_layer = concat(axis=-1)
+    self._concat_layer = helper.ConcatenateQuantized(axis=-1)
 
   def call(self,
            inputs: tf.Tensor,
