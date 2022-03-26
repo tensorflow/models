@@ -16,7 +16,9 @@
 from typing import Any, Dict
 
 import tensorflow as tf
+
 import tensorflow_model_optimization as tfmot
+from official.projects.qat.vision.quantization import configs
 
 
 class LayerQuantizerHelper(object):
@@ -83,3 +85,48 @@ def quantize_wrapped_layer(cls, quantize_config):
         cls(*arg, **kwargs), quantize_config)
 
   return constructor
+
+
+def norm_by_activation(activation, norm_quantized, norm_no_quantized):
+  if activation not in ['relu', 'relu6']:
+    return norm_quantized
+  else:
+    return norm_no_quantized
+
+
+Conv2DQuantized = quantize_wrapped_layer(
+    tf.keras.layers.Conv2D,
+    configs.Default8BitConvQuantizeConfig(['kernel'], ['activation'], False))
+Conv2DOutputQuantized = quantize_wrapped_layer(
+    tf.keras.layers.Conv2D,
+    configs.Default8BitConvQuantizeConfig(['kernel'], ['activation'], True))
+DepthwiseConv2DQuantized = quantize_wrapped_layer(
+    tf.keras.layers.DepthwiseConv2D,
+    configs.Default8BitConvQuantizeConfig(['depthwise_kernel'], ['activation'],
+                                          False))
+DepthwiseConv2DOutputQuantized = quantize_wrapped_layer(
+    tf.keras.layers.DepthwiseConv2D,
+    configs.Default8BitConvQuantizeConfig(['depthwise_kernel'], ['activation'],
+                                          True))
+GlobalAveragePooling2DQuantized = quantize_wrapped_layer(
+    tf.keras.layers.GlobalAveragePooling2D,
+    configs.Default8BitQuantizeConfig([], [], True))
+AveragePooling2DQuantized = quantize_wrapped_layer(
+    tf.keras.layers.AveragePooling2D,
+    configs.Default8BitQuantizeConfig([], [], True))
+ResizingQuantized = quantize_wrapped_layer(
+    tf.keras.layers.Resizing, configs.Default8BitQuantizeConfig([], [], True))
+ConcatenateQuantized = quantize_wrapped_layer(
+    tf.keras.layers.Concatenate, configs.Default8BitQuantizeConfig([], [],
+                                                                   True))
+UpSampling2DQuantized = quantize_wrapped_layer(
+    tf.keras.layers.UpSampling2D, configs.Default8BitQuantizeConfig([], [],
+                                                                    True))
+ReshapeQuantized = quantize_wrapped_layer(
+    tf.keras.layers.Reshape, configs.Default8BitQuantizeConfig([], [], True))
+
+# pylint:disable=g-long-lambda
+BatchNormalizationQuantized = lambda norm_layer: quantize_wrapped_layer(
+    norm_layer, configs.Default8BitOutputQuantizeConfig())
+BatchNormalizationNoQuantized = lambda norm_layer: quantize_wrapped_layer(
+    norm_layer, configs.NoOpQuantizeConfig())

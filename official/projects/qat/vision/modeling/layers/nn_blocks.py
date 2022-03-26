@@ -98,19 +98,13 @@ class BottleneckBlockQuantized(tf.keras.layers.Layer):
     self._norm_epsilon = norm_epsilon
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
-    if use_sync_bn:
-      self._norm = helper.quantize_wrapped_layer(
-          tf.keras.layers.experimental.SyncBatchNormalization,
-          configs.NoOpQuantizeConfig())
-      self._norm_with_quantize = helper.quantize_wrapped_layer(
-          tf.keras.layers.experimental.SyncBatchNormalization,
-          configs.Default8BitOutputQuantizeConfig())
-    else:
-      self._norm = helper.quantize_wrapped_layer(
-          tf.keras.layers.BatchNormalization, configs.NoOpQuantizeConfig())
-      self._norm_with_quantize = helper.quantize_wrapped_layer(
-          tf.keras.layers.BatchNormalization,
-          configs.Default8BitOutputQuantizeConfig())
+
+    norm_layer = (
+        tf.keras.layers.experimental.SyncBatchNormalization
+        if use_sync_bn else tf.keras.layers.BatchNormalization)
+    self._norm_with_quantize = helper.BatchNormalizationQuantized(norm_layer)
+    self._norm = helper.BatchNormalizationNoQuantized(norm_layer)
+
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -119,15 +113,11 @@ class BottleneckBlockQuantized(tf.keras.layers.Layer):
 
   def build(self, input_shape: Optional[Union[Sequence[int], tf.Tensor]]):
     """Build variables and child layers to prepare for calling."""
-    conv2d_quantized = helper.quantize_wrapped_layer(
-        tf.keras.layers.Conv2D,
-        configs.Default8BitConvQuantizeConfig(['kernel'], ['activation'],
-                                              False))
     if self._use_projection:
       if self._resnetd_shortcut:
         self._shortcut0 = tf.keras.layers.AveragePooling2D(
             pool_size=2, strides=self._strides, padding='same')
-        self._shortcut1 = conv2d_quantized(
+        self._shortcut1 = helper.Conv2DQuantized(
             filters=self._filters * 4,
             kernel_size=1,
             strides=1,
@@ -137,7 +127,7 @@ class BottleneckBlockQuantized(tf.keras.layers.Layer):
             bias_regularizer=self._bias_regularizer,
             activation=helper.NoOpActivation())
       else:
-        self._shortcut = conv2d_quantized(
+        self._shortcut = helper.Conv2DQuantized(
             filters=self._filters * 4,
             kernel_size=1,
             strides=self._strides,
@@ -153,7 +143,7 @@ class BottleneckBlockQuantized(tf.keras.layers.Layer):
           epsilon=self._norm_epsilon,
           trainable=self._bn_trainable)
 
-    self._conv1 = conv2d_quantized(
+    self._conv1 = helper.Conv2DQuantized(
         filters=self._filters,
         kernel_size=1,
         strides=1,
@@ -171,7 +161,7 @@ class BottleneckBlockQuantized(tf.keras.layers.Layer):
         tf_utils.get_activation(self._activation, use_keras_layer=True),
         configs.Default8BitActivationQuantizeConfig())
 
-    self._conv2 = conv2d_quantized(
+    self._conv2 = helper.Conv2DQuantized(
         filters=self._filters,
         kernel_size=3,
         strides=self._strides,
@@ -191,7 +181,7 @@ class BottleneckBlockQuantized(tf.keras.layers.Layer):
         tf_utils.get_activation(self._activation, use_keras_layer=True),
         configs.Default8BitActivationQuantizeConfig())
 
-    self._conv3 = conv2d_quantized(
+    self._conv3 = helper.Conv2DQuantized(
         filters=self._filters * 4,
         kernel_size=1,
         strides=1,
@@ -359,10 +349,8 @@ class Conv2DBNBlockQuantized(tf.keras.layers.Layer):
     norm_layer = (
         tf.keras.layers.experimental.SyncBatchNormalization
         if use_sync_bn else tf.keras.layers.BatchNormalization)
-    self._norm_with_quantize = helper.quantize_wrapped_layer(
-        norm_layer, configs.Default8BitOutputQuantizeConfig())
-    self._norm = helper.quantize_wrapped_layer(norm_layer,
-                                               configs.NoOpQuantizeConfig())
+    self._norm_with_quantize = helper.BatchNormalizationQuantized(norm_layer)
+    self._norm = helper.BatchNormalizationNoQuantized(norm_layer)
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
@@ -389,20 +377,15 @@ class Conv2DBNBlockQuantized(tf.keras.layers.Layer):
     base_config = super(Conv2DBNBlockQuantized, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def _norm_by_activation(self, activation):
-    if activation in ['relu', 'relu6']:
-      return self._norm
-    return self._norm_with_quantize
-
   def build(self, input_shape: Optional[Union[Sequence[int], tf.Tensor]]):
     """Build variables and child layers to prepare for calling."""
     if self._use_explicit_padding and self._kernel_size > 1:
       padding_size = nn_layers.get_padding_for_kernel_size(self._kernel_size)
       self._pad = tf.keras.layers.ZeroPadding2D(padding_size)
-    conv2d_quantized = helper.quantize_wrapped_layer(
-        tf.keras.layers.Conv2D,
-        configs.Default8BitConvQuantizeConfig(['kernel'], ['activation'],
-                                              not self._use_normalization))
+    conv2d_quantized = (
+        helper.Conv2DQuantized
+        if self._use_normalization else helper.Conv2DOutputQuantized)
+
     self._conv0 = conv2d_quantized(
         filters=self._filters,
         kernel_size=self._kernel_size,
@@ -414,14 +397,15 @@ class Conv2DBNBlockQuantized(tf.keras.layers.Layer):
         bias_regularizer=self._bias_regularizer,
         activation=helper.NoOpActivation())
     if self._use_normalization:
-      self._norm0 = self._norm_by_activation(self._activation)(
-          axis=self._bn_axis,
-          momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)
+      self._norm0 = helper.norm_by_activation(self._activation,
+                                              self._norm_with_quantize,
+                                              self._norm)(
+                                                  axis=self._bn_axis,
+                                                  momentum=self._norm_momentum,
+                                                  epsilon=self._norm_epsilon)
     self._activation_layer = tfmot.quantization.keras.QuantizeWrapperV2(
         tf_utils.get_activation(self._activation, use_keras_layer=True),
         configs.Default8BitActivationQuantizeConfig())
-
     super(Conv2DBNBlockQuantized, self).build(input_shape)
 
   def call(
@@ -546,10 +530,8 @@ class InvertedBottleneckBlockQuantized(tf.keras.layers.Layer):
     norm_layer = (
         tf.keras.layers.experimental.SyncBatchNormalization
         if use_sync_bn else tf.keras.layers.BatchNormalization)
-    self._norm_with_quantize = helper.quantize_wrapped_layer(
-        norm_layer, configs.Default8BitOutputQuantizeConfig())
-    self._norm = helper.quantize_wrapped_layer(norm_layer,
-                                               configs.NoOpQuantizeConfig())
+    self._norm_with_quantize = helper.BatchNormalizationQuantized(norm_layer)
+    self._norm = helper.BatchNormalizationNoQuantized(norm_layer)
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
@@ -562,21 +544,8 @@ class InvertedBottleneckBlockQuantized(tf.keras.layers.Layer):
     else:
       self._depthsize_regularizer = None
 
-  def _norm_by_activation(self, activation):
-    if activation in ['relu', 'relu6']:
-      return self._norm
-    return self._norm_with_quantize
-
   def build(self, input_shape: Optional[Union[Sequence[int], tf.Tensor]]):
     """Build variables and child layers to prepare for calling."""
-    conv2d_quantized = helper.quantize_wrapped_layer(
-        tf.keras.layers.Conv2D,
-        configs.Default8BitConvQuantizeConfig(['kernel'], ['activation'],
-                                              False))
-    depthwise_conv2d_quantized = helper.quantize_wrapped_layer(
-        tf.keras.layers.DepthwiseConv2D,
-        configs.Default8BitConvQuantizeConfig(['depthwise_kernel'],
-                                              ['activation'], False))
     expand_filters = self._in_filters
     if self._expand_ratio > 1:
       # First 1x1 conv for channel expansion.
@@ -586,7 +555,7 @@ class InvertedBottleneckBlockQuantized(tf.keras.layers.Layer):
       expand_kernel = 1 if self._use_depthwise else self._kernel_size
       expand_stride = 1 if self._use_depthwise else self._strides
 
-      self._conv0 = conv2d_quantized(
+      self._conv0 = helper.Conv2DQuantized(
           filters=expand_filters,
           kernel_size=expand_kernel,
           strides=expand_stride,
@@ -596,17 +565,18 @@ class InvertedBottleneckBlockQuantized(tf.keras.layers.Layer):
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer,
           activation=helper.NoOpActivation())
-      self._norm0 = self._norm_by_activation(self._activation)(
-          axis=self._bn_axis,
-          momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)
+      self._norm0 = helper.norm_by_activation(self._activation,
+                                              self._norm_with_quantize,
+                                              self._norm)(
+                                                  axis=self._bn_axis,
+                                                  momentum=self._norm_momentum,
+                                                  epsilon=self._norm_epsilon)
       self._activation_layer = tfmot.quantization.keras.QuantizeWrapperV2(
           tf_utils.get_activation(self._activation, use_keras_layer=True),
           configs.Default8BitActivationQuantizeConfig())
-
     if self._use_depthwise:
       # Depthwise conv.
-      self._conv1 = depthwise_conv2d_quantized(
+      self._conv1 = helper.DepthwiseConv2DQuantized(
           kernel_size=(self._kernel_size, self._kernel_size),
           strides=self._strides,
           padding='same',
@@ -617,10 +587,12 @@ class InvertedBottleneckBlockQuantized(tf.keras.layers.Layer):
           depthwise_regularizer=self._depthsize_regularizer,
           bias_regularizer=self._bias_regularizer,
           activation=helper.NoOpActivation())
-      self._norm1 = self._norm_by_activation(self._depthwise_activation)(
-          axis=self._bn_axis,
-          momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)
+      self._norm1 = helper.norm_by_activation(self._depthwise_activation,
+                                              self._norm_with_quantize,
+                                              self._norm)(
+                                                  axis=self._bn_axis,
+                                                  momentum=self._norm_momentum,
+                                                  epsilon=self._norm_epsilon)
       self._depthwise_activation_layer = (
           tfmot.quantization.keras.QuantizeWrapperV2(
               tf_utils.get_activation(self._depthwise_activation,
@@ -648,7 +620,7 @@ class InvertedBottleneckBlockQuantized(tf.keras.layers.Layer):
       self._squeeze_excitation = None
 
     # Last 1x1 conv.
-    self._conv2 = conv2d_quantized(
+    self._conv2 = helper.Conv2DQuantized(
         filters=self._out_filters,
         kernel_size=1,
         strides=1,
