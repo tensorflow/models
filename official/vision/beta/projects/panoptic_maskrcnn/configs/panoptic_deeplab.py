@@ -181,7 +181,7 @@ def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
 
   config = cfg.ExperimentConfig(
       runtime=cfg.RuntimeConfig(
-          mixed_precision_dtype='float32', enable_xla=True),
+          mixed_precision_dtype='bfloat16', enable_xla=True),
       task=PanopticDeeplabTask(
           init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/deeplab/deeplab_resnet50_imagenet/ckpt-62400',  # pylint: disable=line-too-long
           init_checkpoint_modules=['backbone'],
