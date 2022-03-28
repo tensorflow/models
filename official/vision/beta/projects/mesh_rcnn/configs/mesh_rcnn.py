@@ -37,3 +37,13 @@ class MeshHead(hyperparams.Config):
   stage_depth: int = 3
   output_dim: int = 128
   graph_conv_init: str = 'normal'
+
+@dataclasses.dataclass
+class MeshLosses(hyperparams.Config):
+  """Parameterization for the Mesh R-CNN Mesh and Voxel Losses."""
+  voxel_weight: float = 0.0
+  chamfer_weight: float = 1.0
+  normal_weight: float = 0.0
+  edge_weight: float = 0.1
+  true_num_samples: int = 5000
+  pred_num_samples: int = 5000
