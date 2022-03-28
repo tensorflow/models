@@ -44,6 +44,7 @@ class Parser(hyperparams.Config):
   aug_scale_min: float = 1.0
   aug_scale_max: float = 1.0
   aug_rand_hflip: bool = True
+  aug_type: common.Augmentation = common.Augmentation()
   sigma: float = 8.0
   small_instance_area_threshold: int = 4096
   small_instance_weight: float = 3.0
@@ -177,9 +178,10 @@ def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
   stem_type = 'v0'
   level = int(np.math.log2(output_stride))
 
+
   config = cfg.ExperimentConfig(
       runtime=cfg.RuntimeConfig(
-          mixed_precision_dtype='bfloat16', enable_xla=True),
+          mixed_precision_dtype='float32', enable_xla=True),
       task=PanopticDeeplabTask(
           init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/deeplab/deeplab_resnet50_imagenet/ckpt-62400',  # pylint: disable=line-too-long
           init_checkpoint_modules=['backbone'],
@@ -248,6 +250,10 @@ def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
                   aug_scale_min=0.5,
                   aug_scale_max=1.5,
                   aug_rand_hflip=True,
+                  aug_type=common.Augmentation(
+                      type='autoaug',
+                      autoaug=common.AutoAugment(
+                          augmentation_name='panoptic_deeplab_policy')),
                   sigma=8.0,
                   small_instance_area_threshold=4096,
                   small_instance_weight=3.0)),
@@ -261,6 +267,7 @@ def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
                   aug_scale_min=1.0,
                   aug_scale_max=1.0,
                   aug_rand_hflip=False,
+                  aug_type=None,
                   sigma=8.0,
                   small_instance_area_threshold=4096,
                   small_instance_weight=3.0),

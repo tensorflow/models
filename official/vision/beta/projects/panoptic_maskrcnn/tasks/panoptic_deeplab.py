@@ -102,6 +102,7 @@ class PanopticDeeplabTask(base_task.Task):
         aug_scale_min=params.parser.aug_scale_min,
         aug_scale_max=params.parser.aug_scale_max,
         aug_rand_hflip=params.parser.aug_rand_hflip,
+        aug_type=params.parser.aug_type,
         sigma=params.parser.sigma,
         dtype=params.parser.dtype)
 
