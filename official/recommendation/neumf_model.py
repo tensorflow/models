@@ -37,6 +37,7 @@ import sys
 
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from typing import Any, Dict, Text
 
 from official.recommendation import constants as rconst
@@ -85,7 +86,7 @@ def neumf_model_fn(features, labels, mode, params):
   # Softmax with the first column of zeros is equivalent to sigmoid.
   softmax_logits = ncf_common.convert_to_softmax_logits(logits)
 
-  if mode == tf.estimator.ModeKeys.EVAL:
+  if mode == tf_estimator.ModeKeys.EVAL:
     duplicate_mask = tf.cast(features[rconst.DUPLICATE_MASK], tf.float32)
     return _get_estimator_spec_with_metrics(
         logits,
@@ -95,7 +96,7 @@ def neumf_model_fn(features, labels, mode, params):
         params["match_mlperf"],
         use_tpu_spec=params["use_tpu"])
 
-  elif mode == tf.estimator.ModeKeys.TRAIN:
+  elif mode == tf_estimator.ModeKeys.TRAIN:
     labels = tf.cast(labels, tf.int32)
     valid_pt_mask = features[rconst.VALID_POINT_MASK]
 
@@ -124,7 +125,7 @@ def neumf_model_fn(features, labels, mode, params):
     update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
     train_op = tf.group(minimize_op, update_ops)
 
-    return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+    return tf_estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
   else:
     raise NotImplementedError
@@ -260,13 +261,13 @@ def _get_estimator_spec_with_metrics(logits: tf.Tensor,
       match_mlperf)
 
   if use_tpu_spec:
-    return tf.estimator.tpu.TPUEstimatorSpec(
-        mode=tf.estimator.ModeKeys.EVAL,
+    return tf_estimator.tpu.TPUEstimatorSpec(
+        mode=tf_estimator.ModeKeys.EVAL,
         loss=cross_entropy,
         eval_metrics=(metric_fn, [in_top_k, ndcg, metric_weights]))
 
-  return tf.estimator.EstimatorSpec(
-      mode=tf.estimator.ModeKeys.EVAL,
+  return tf_estimator.EstimatorSpec(
+      mode=tf_estimator.ModeKeys.EVAL,
       loss=cross_entropy,
       eval_metric_ops=metric_fn(in_top_k, ndcg, metric_weights))
 
