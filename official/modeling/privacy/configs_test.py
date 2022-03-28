@@ -29,10 +29,10 @@ class ConfigsTest(tf.test.TestCase):
     self.assertEqual(0.0, noise_multiplier)
 
   def test_config(self):
-    dp_config = configs.DifferentialPrivacyConfig({
-        'clipping_norm': 1.0,
-        'noise_multiplier': 1.0
-    })
+    dp_config = configs.DifferentialPrivacyConfig(
+        clipping_norm=1.0,
+        noise_multiplier=1.0,
+    )
     self.assertEqual(1.0, dp_config.clipping_norm)
     self.assertEqual(1.0, dp_config.noise_multiplier)
 
