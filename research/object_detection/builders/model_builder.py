@@ -1171,7 +1171,8 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
       temporal_offset_params=temporal_offset_params,
       use_depthwise=center_net_config.use_depthwise,
       compute_heatmap_sparse=center_net_config.compute_heatmap_sparse,
-      non_max_suppression_fn=non_max_suppression_fn)
+      non_max_suppression_fn=non_max_suppression_fn,
+      output_prediction_dict=center_net_config.output_prediction_dict)
 
 
 def _build_center_net_feature_extractor(feature_extractor_config, is_training):
