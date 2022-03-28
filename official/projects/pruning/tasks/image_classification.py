@@ -28,16 +28,25 @@ from official.vision.tasks import image_classification
 class ImageClassificationTask(image_classification.ImageClassificationTask):
   """A task for image classification with pruning."""
   _BLOCK_LAYER_SUFFIX_MAP = {
+      mobilenet.Conv2DBNBlock: ('conv2d/kernel:0',),
       nn_blocks.BottleneckBlock: (
           'conv2d/kernel:0',
           'conv2d_1/kernel:0',
           'conv2d_2/kernel:0',
           'conv2d_3/kernel:0',
       ),
-      nn_blocks.InvertedBottleneckBlock:
-          ('conv2d/kernel:0', 'conv2d_1/kernel:0',
-           'depthwise_conv2d/depthwise_kernel:0'),
-      mobilenet.Conv2DBNBlock: ('conv2d/kernel:0',),
+      nn_blocks.InvertedBottleneckBlock: (
+          'conv2d/kernel:0',
+          'conv2d_1/kernel:0',
+          'conv2d_2/kernel:0',
+          'conv2d_3/kernel:0',
+          'depthwise_conv2d/depthwise_kernel:0',
+      ),
+      nn_blocks.ResidualBlock: (
+          'conv2d/kernel:0',
+          'conv2d_1/kernel:0',
+          'conv2d_2/kernel:0',
+      ),
   }
 
   def build_model(self) -> tf.keras.Model:
