@@ -1583,6 +1583,7 @@ class AutoAugment(ImageAugment):
         'reduced_cifar10': self.policy_reduced_cifar10(),
         'svhn': self.policy_svhn(),
         'reduced_imagenet': self.policy_reduced_imagenet(),
+        'panoptic_deeplab_policy': self.panoptic_deeplab_policy(),
     }
 
     if not policies:
@@ -1886,6 +1887,16 @@ class AutoAugment(ImageAugment):
         [('Posterize', 0.8, 2), ('Solarize', 0.6, 10)],
         [('Solarize', 0.6, 8), ('Equalize', 0.6, 1)],
     ]
+    return policy
+
+  @staticmethod
+  def panoptic_deeplab_policy():
+    policy = [
+        [('Sharpness', 0.4, 1.4), ('Brightness', 0.2, 2.0)],
+        [('Equalize', 0.0, 1.8), ('Contrast', 0.2, 2.0)],
+        [('Sharpness', 0.2, 1.8), ('Color', 0.2, 1.8)],
+        [('Solarize', 0.2, 1.4), ('Equalize', 0.6, 1.8)],
+        [('Sharpness', 0.2, 0.2), ('Equalize', 0.2, 1.4)]]
     return policy
 
   @staticmethod
