@@ -17,9 +17,9 @@
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.dataloaders import parser
-from official.vision.beta.dataloaders import tf_example_decoder
-from official.vision.beta.ops import preprocess_ops
+from official.vision.dataloaders import parser
+from official.vision.dataloaders import tf_example_decoder
+from official.vision.ops import preprocess_ops
 
 
 def _compute_gaussian_from_std(sigma):

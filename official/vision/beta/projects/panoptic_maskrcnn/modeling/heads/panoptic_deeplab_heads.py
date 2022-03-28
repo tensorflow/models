@@ -19,7 +19,7 @@ import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import fusion_layers
-from official.vision.beta.ops import spatial_transform_ops
+from official.vision.ops import spatial_transform_ops
 
 
 class PanopticDeeplabHead(tf.keras.layers.Layer):
@@ -109,7 +109,7 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
     conv_kwargs = {
         'kernel_size': kernel_size if not use_depthwise_convolution else 1,
         'padding': 'same',
-        'use_bias': False,
+        'use_bias': True,
         'kernel_initializer': random_initializer,
         'kernel_regularizer': self._config_dict['kernel_regularizer'],
     }
@@ -127,6 +127,7 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
         low_level=self._config_dict['low_level'],
         num_projection_filters=self._config_dict['low_level_num_filters'],
         num_output_filters=self._config_dict['fusion_num_output_filters'],
+        use_depthwise_convolution=self._config_dict['use_depthwise_convolution'],
         activation=self._config_dict['activation'],
         use_sync_bn=self._config_dict['use_sync_bn'],
         norm_momentum=self._config_dict['norm_momentum'],
@@ -142,9 +143,9 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
         self._convs.append(
             tf.keras.layers.DepthwiseConv2D(
                 name='panoptic_deeplab_head_depthwise_conv_{}'.format(i),
-                kernel_size=3,
+                kernel_size=kernel_size,
                 padding='same',
-                use_bias=False,
+                use_bias=True,
                 depthwise_initializer=random_initializer,
                 depthwise_regularizer=self._config_dict['kernel_regularizer'],
                 depth_multiplier=1))
