@@ -214,11 +214,15 @@ def create_optimizer(task: base_task.Task,
                      ) -> tf.keras.optimizers.Optimizer:
   """A create optimizer util to be backward compatability with new args."""
   if 'dp_config' in inspect.signature(task.create_optimizer).parameters:
+    dp_config = None
+    if hasattr(params.task, 'differential_privacy_config'):
+      dp_config = params.task.differential_privacy_config
     optimizer = task.create_optimizer(
         params.trainer.optimizer_config, params.runtime,
-        params.trainer.differential_privacy_config)
+        dp_config=dp_config)
   else:
-    if params.trainer.differential_privacy_config is not None:
+    if hasattr(params.task, 'differential_privacy_config'
+              ) and params.task.differential_privacy_config is not None:
       raise ValueError('Differential privacy config is specified but '
                        'task.create_optimizer api does not accept it.')
     optimizer = task.create_optimizer(

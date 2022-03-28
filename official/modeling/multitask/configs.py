@@ -19,6 +19,7 @@ import dataclasses
 
 from official.core import config_definitions as cfg
 from official.modeling import hyperparams
+from official.modeling.privacy import configs as dp_configs
 
 
 @dataclasses.dataclass
@@ -35,6 +36,8 @@ class MultiTaskConfig(hyperparams.Config):
   init_checkpoint: str = ""
   model: hyperparams.Config = None
   task_routines: Tuple[TaskRoutine, ...] = ()
+  differential_privacy_config: Optional[
+      dp_configs.DifferentialPrivacyConfig] = None
 
 
 @dataclasses.dataclass
