@@ -263,9 +263,11 @@ if tf_version.is_tf1():
 def _check_feature_extractor_exists(feature_extractor_type):
   feature_extractors = set().union(*FEATURE_EXTRACTOR_MAPS)
   if feature_extractor_type not in feature_extractors:
-    raise ValueError('{} is not supported. See `model_builder.py` for features '
-                     'extractors compatible with different versions of '
-                     'Tensorflow'.format(feature_extractor_type))
+    tf_version_str = '2' if tf_version.is_tf2() else '1'
+    raise ValueError(
+        '{} is not supported for tf version {}. See `model_builder.py` for '
+        'features extractors compatible with different versions of '
+        'Tensorflow'.format(feature_extractor_type, tf_version_str))
 
 
 def _build_ssd_feature_extractor(feature_extractor_config,
