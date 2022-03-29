@@ -111,6 +111,14 @@ class Resnet50KerasCoreBenchmark(perfzero_benchmark.PerfZeroBenchmark):
     max_wall_time = max(wall_times)
     self.report_benchmark(iters=-1, wall_time=max_wall_time)
 
+  def benchmark_1_gpu_min_3(self):
+    num_trials = 3
+    wall_times = []
+    for _ in range(num_trials):
+      wall_times.append(_run_benchmark())
+    min_wall_time = min(wall_times)
+    self.report_benchmark(iters=-1, wall_time=min_wall_time)
+
   def benchmark_1_gpu_med_3(self):
     num_trials = 3
     wall_times = []
