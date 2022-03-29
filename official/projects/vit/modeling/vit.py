@@ -173,6 +173,22 @@ class Encoder(tf.keras.layers.Layer):
     x = self._norm(x)
     return x
 
+  def get_config(self):
+    config = {
+        'num_layers': self._num_layers,
+        'mlp_dim': self._mlp_dim,
+        'num_heads': self._num_heads,
+        'dropout_rate': self._dropout_rate,
+        'attention_dropout_rate': self._attention_dropout_rate,
+        'kernel_regularizer': self._kernel_regularizer,
+        'inputs_positions': self._inputs_positions,
+        'init_stochastic_depth_rate': self._init_stochastic_depth_rate,
+        'kernel_initializer': self._kernel_initializer,
+        'add_pos_embed': self._add_pos_embed,
+    }
+    base_config = super().get_config()
+    return base_config.update(config)
+
 
 class VisionTransformer(tf.keras.Model):
   """Class to build VisionTransformer family model."""
