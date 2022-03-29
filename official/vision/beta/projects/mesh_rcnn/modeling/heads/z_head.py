@@ -1,7 +1,22 @@
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Mesh R-CNN Heads."""
+
 import tensorflow as tf
 
 class ZHead(tf.keras.layers.Layer):
-
+    '''Depth prediction Z Head for Mesh R-CNN model'''
     def __init__(self,
         num_fc: int,
         fc_dim: int,
@@ -16,7 +31,7 @@ class ZHead(tf.keras.layers.Layer):
             cls_agnostic:
             num_classes: number of prediction classes
         """
-        super().__init__(**kwargs)
+        super(ZHead, self).__init__(**kwargs)
 
         self._num_fc = num_fc
         self._fc_dim = fc_dim
@@ -24,31 +39,28 @@ class ZHead(tf.keras.layers.Layer):
         self._num_classes = num_classes
 
     def build(self, input_shape: tf.TensorShape) -> None:
-        # INPUT SHAPE: N x H x W x C
+        '''Build Z Head'''
         self.flatten = tf.keras.layers.Flatten()
 
         self.fcs = []
-        for k in range(self._num_fc):
-            fc = tf.keras.layers.Dense(self._fc_dim)
-            self.fcs.append(fc)
-        
+        for _ in range(self._num_fc):
+            layer = tf.keras.layers.Dense(self._fc_dim,
+                activation='relu',
+                kernel_initializer='he_uniform')
+            self.fcs.append(layer)
         num_z_reg_classes = 1 if self._cls_agnostic else self._num_classes
-        self.z_pred = tf.keras.layers.Dense(num_z_reg_classes, activation='relu')
+        pred_init = tf.keras.initializers.RandomNormal(stddev=0.001)
+        self.z_pred = tf.keras.layers.Dense(num_z_reg_classes,
+            kernel_initializer=pred_init,
+            bias_initializer='zeros')
 
-
-        # MAY HAVE TO DO WEIGHT INIT
-        # for layer in self.fcs:
-        #     weight_init.c2._xavier_fill(layer)
-
-        # nn.init.normal_(self.z_pred.weight, std=0.001)
-        # nn.init.constant_(self.z_pred.bias, 0)    
-
-    def call(self, x):
-        x = self.flatten(x)
+    def call(self, features):
+        '''Forward pass of Z head'''
+        out = self.flatten(features)
         for layer in self.fcs:
-            x = layer(x)
-        x = self.z_pred(x)
-        return x
+            out = layer(out)
+        out = self.z_pred(out)
+        return out
 
     def get_config(self):
         """Get config dict of the ZHead layer."""
@@ -62,4 +74,5 @@ class ZHead(tf.keras.layers.Layer):
 
     @classmethod
     def from_config(cls, config):
-        return (cls(**config))
+        '''Initialize Z head from config'''
+        return cls(**config)
