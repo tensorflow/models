@@ -35,11 +35,12 @@ def resize_and_rescale_offsets(input_tensor: tf.Tensor, target_size):
   """
   input_size_y = tf.shape(input_tensor)[1]
   input_size_x = tf.shape(input_tensor)[2]
+  dtype = input_tensor.dtype
 
-  scale_y = tf.cast(target_size[0] - 1, tf.float32) / tf.cast(
-      input_size_y - 1, tf.float32)
-  scale_x = tf.cast(target_size[1] - 1, tf.float32) / tf.cast(
-      input_size_x - 1, tf.float32)
+  scale_y = tf.cast(target_size[0] - 1, dtype=dtype) / tf.cast(
+      input_size_y - 1, dtype=dtype)
+  scale_x = tf.cast(target_size[1] - 1, dtype=dtype) / tf.cast(
+      input_size_x - 1, dtype=dtype)
 
   target_y, target_x = tf.split(
       value=input_tensor, num_or_size_splits=2, axis=3)
