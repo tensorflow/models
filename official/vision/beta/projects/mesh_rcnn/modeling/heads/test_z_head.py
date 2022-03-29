@@ -82,14 +82,6 @@ class ZHeadTest(parameterized.TestCase, tf.test.TestCase):
 
         self.assertNotIn(None, grad)
 
-    def test_build_from_config(self,
-        num_fc: int,
-        fc_dim: int,
-        cls_agnostic: bool,
-        num_classes: int):
-        '''build Z head from config'''
-        pass
-
 if __name__ == '__main__':
     print("Unit Testing Z Head")
     zht = ZHeadTest()

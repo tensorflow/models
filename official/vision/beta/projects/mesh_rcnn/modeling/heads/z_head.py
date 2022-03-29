@@ -44,9 +44,12 @@ class ZHead(tf.keras.layers.Layer):
 
         self.fcs = []
         for _ in range(self._num_fc):
+            fc_init = tf.keras.initializers.VarianceScaling(scale=1.,
+              mode='fan_in',
+              distribution='truncated_normal')
             layer = tf.keras.layers.Dense(self._fc_dim,
                 activation='relu',
-                kernel_initializer='he_uniform')
+                kernel_initializer=fc_init)
             self.fcs.append(layer)
         num_z_reg_classes = 1 if self._cls_agnostic else self._num_classes
         pred_init = tf.keras.initializers.RandomNormal(stddev=0.001)

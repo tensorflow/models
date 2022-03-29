@@ -1,3 +1,4 @@
+'''Test weightloading for Z head'''
 from official.vision.beta.projects.mesh_rcnn.modeling.heads.z_head import \
     ZHead
 from official.vision.beta.projects.mesh_rcnn.utils.weight_utils.load_weights import (
@@ -8,6 +9,7 @@ from load_weights import load_weights_zhead, pth_to_dict
 PTH_PATH = r"C:\\Users\\johnm\\Downloads\\meshrcnn_R50.pth"
 
 def print_layer_names(layers_dict, offset=0):
+  '''print names of layers from dictionary'''
   if isinstance(layers_dict, dict):
     for k in layers_dict.keys():
       print(" " * offset + k)
