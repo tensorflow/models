@@ -25,9 +25,9 @@ from typing import Any, Mapping
 
 import tensorflow as tf
 
-from official.vision.beta.ops import box_ops
 from official.vision.beta.projects.centernet.ops import loss_ops
 from official.vision.beta.projects.centernet.ops import nms_ops
+from official.vision.ops import box_ops
 
 
 class CenterNetDetectionGenerator(tf.keras.layers.Layer):
