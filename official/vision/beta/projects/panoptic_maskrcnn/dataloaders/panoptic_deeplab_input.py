@@ -14,12 +14,16 @@
 
 """Data parser and processing for Panoptic Deeplab."""
 
+from typing import List, Optional
+
 import numpy as np
 import tensorflow as tf
 
+from official.vision.configs import common
 from official.vision.dataloaders import parser
 from official.vision.dataloaders import tf_example_decoder
 from official.vision.ops import preprocess_ops
+from official.vision.ops import augment
 
 
 def _compute_gaussian_from_std(sigma):
@@ -75,17 +79,18 @@ class Parser(parser.Parser):
 
   def __init__(
       self,
-      output_size,
-      resize_eval_groundtruth=True,
-      groundtruth_padded_size=None,
-      ignore_label=0,
-      aug_rand_hflip=False,
-      aug_scale_min=1.0,
-      aug_scale_max=1.0,
-      sigma=8.0,
-      small_instance_area_threshold=4096,
-      small_instance_weight=3.0,
-      dtype='float32'):
+      output_size: List[int],
+      resize_eval_groundtruth: bool = True,
+      groundtruth_padded_size: Optional[List[int]] = None,
+      ignore_label: int = 0,
+      aug_rand_hflip: bool = False,
+      aug_scale_min: float = 1.0,
+      aug_scale_max: float = 1.0,
+      aug_type: Optional[common.Augmentation] = None,
+      sigma: float = 8.0,
+      small_instance_area_threshold: int = 4096,
+      small_instance_weight: float = 3.0,
+      dtype: str = 'float32'):
     """Initializes parameters for parsing annotations in the dataset.
 
     Args:
@@ -104,6 +109,7 @@ class Parser(parser.Parser):
         data augmentation during training.
       aug_scale_max: `float`, the maximum scale applied to `output_size` for
         data augmentation during training.
+      aug_type: An optional Augmentation object with params for AutoAugment.
       sigma: `float`, standard deviation for generating 2D Gaussian to encode
         centers.
       small_instance_area_threshold: `int`, 
@@ -124,6 +130,18 @@ class Parser(parser.Parser):
     self._aug_scale_min = aug_scale_min
     self._aug_scale_max = aug_scale_max
 
+    if aug_type:
+      if aug_type.type == 'autoaug':
+        self._augmenter = augment.AutoAugment(
+            augmentation_name=aug_type.autoaug.augmentation_name,
+            cutout_const=aug_type.autoaug.cutout_const,
+            translate_const=aug_type.autoaug.translate_const)
+      else:
+        raise ValueError('Augmentation policy {} not supported.'.format(
+            aug_type.type))
+    else:
+      self._augmenter = None
+
     # dtype.
     self._dtype = dtype
 
@@ -133,7 +151,6 @@ class Parser(parser.Parser):
     self._gaussian = tf.reshape(self._gaussian, shape=[-1])
     self._small_instance_area_threshold = small_instance_area_threshold
     self._small_instance_weight = small_instance_weight
-
 
   def _resize_and_crop_mask(self, mask, image_info, is_training):
     """Resizes and crops mask using `image_info` dict"""
@@ -156,7 +173,7 @@ class Parser(parser.Parser):
           self._groundtruth_padded_size[0],
           self._groundtruth_padded_size[1])
     mask -= 1
-    
+
     # Assign ignore label to the padded region.
     mask = tf.where(
         tf.equal(mask, -1),
@@ -167,6 +184,10 @@ class Parser(parser.Parser):
 
   def _parse_data(self, data, is_training):
     image = data['image']
+
+    if self._augmenter is not None and is_training:
+      image = self._augmenter.distort(image)
+
     image = preprocess_ops.normalize_image(image)
 
     category_mask = tf.cast(
@@ -255,7 +276,7 @@ class Parser(parser.Parser):
 
     padding_start = int(3 * self._sigma + 1)
     padding_end = int(3 * self._sigma + 2)
-    
+
     # padding should be equal to self._gaussian_size which is calculated
     # as size = int(6 * sigma + 3)
     padding = padding_start + padding_end
@@ -276,7 +297,7 @@ class Parser(parser.Parser):
     unique_instance_ids, _ = tf.unique(tf.reshape(instance_mask, [-1]))
 
     # The following method for encoding center heatmaps and offets is inspired
-    # by the reference implementation available at 
+    # by the reference implementation available at
     # https://github.com/google-research/deeplab2/blob/main/data/sample_generator.py  # pylint: disable=line-too-long
     for instance_id in unique_instance_ids:
       if instance_id == self._ignore_label:
@@ -327,7 +348,7 @@ class Parser(parser.Parser):
     instance_centers_offset = tf.stack(
         [centers_offset_y, centers_offset_x], 
         axis=-1)
-    
+
     return (instance_centers_heatmap,
             instance_centers_offset,
             semantic_weights)
