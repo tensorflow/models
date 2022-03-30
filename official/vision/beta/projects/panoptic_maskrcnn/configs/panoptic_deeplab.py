@@ -199,7 +199,9 @@ def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
                   aspp=decoders.ASPP(
                       level=level,
                       num_filters=256,
-                      dilation_rates=aspp_dilation_rates)),
+                      pool_kernel_size=input_size[:2],
+                      dilation_rates=aspp_dilation_rates,
+                      dropout_rate=0.1)),
               semantic_head=SemanticHead(
                   level=level,
                   num_convs=1,
