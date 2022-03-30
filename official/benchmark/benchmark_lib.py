@@ -27,6 +27,7 @@ from official.core import task_factory
 from official.core import train_utils
 from official.modeling import performance
 from official.modeling.fast_training import stage_lib
+from official.projects.token_dropping import experiment_configs  # pylint: disable=unused-import
 
 
 def run_benchmark(
