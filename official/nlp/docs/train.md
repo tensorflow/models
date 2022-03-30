@@ -1,12 +1,14 @@
 # Model Garden NLP Common Training Driver
 
-[train.py](https://github.com/tensorflow/models/blob/master/official/nlp/train.py) is the common training driver that supports multiple
+[train.py](https://github.com/tensorflow/models/blob/master/official/nlp/train.py)
+is the common training driver that supports multiple
 NLP tasks (e.g., pre-training, GLUE and SQuAD fine-tuning etc) and multiple
 models (e.g., BERT, ALBERT, MobileBERT etc).
 
 ## Experiment Configuration
 
-[train.py] is driven by configs defined by the [ExperimentConfig](https://github.com/tensorflow/models/blob/master/official/core/config_definitions.py)
+[train.py](https://github.com/tensorflow/models/blob/master/official/nlp/train.py)
+is driven by configs defined by the [ExperimentConfig](https://github.com/tensorflow/models/blob/master/official/core/config_definitions.py)
 including configurations for `task`, `trainer` and `runtime`. The pre-defined
 NLP related [ExperimentConfig](https://github.com/tensorflow/models/blob/master/official/core/config_definitions.py) can be found in
 [configs/experiment_configs.py](https://github.com/tensorflow/models/blob/master/official/nlp/configs/experiment_configs.py).
@@ -78,7 +80,9 @@ setting `task.validation_data.input_path` in `PARAMS`.
 
 ## Run on Cloud TPUs
 
-Next, we will describe how to run the [train.py](https://github.com/tensorflow/models/blob/master/official/nlp/train.py) on Cloud TPUs.
+Next, we will describe how to run
+the [train.py](https://github.com/tensorflow/models/blob/master/official/nlp/train.py)
+on Cloud TPUs.
 
 ### Setup
 First, you need to create a `tf-nightly` TPU with
@@ -98,6 +102,8 @@ pip3 install --user -r official/requirements.txt
 ```
 
 ### Fine-tuning Sentence Classification with BERT from TF-Hub
+
+<details>
 
 This example fine-tunes BERT-base from TF-Hub on the the Multi-Genre Natural
 Language Inference (MultiNLI) corpus using TPUs.
@@ -163,7 +169,11 @@ python3 train.py \
 You can monitor the training progress in the console and find the output
 models in `$OUTPUT_DIR`.
 
+</details>
+
 ### Fine-tuning SQuAD with a pre-trained BERT checkpoint
+
+<details>
 
 This example fine-tunes a pre-trained BERT checkpoint on the
 Stanford Question Answering Dataset (SQuAD) using TPUs.
@@ -218,5 +228,7 @@ python3 train.py \
  --params_override=$PARAMS
 
 ```
+
+</details>
 
 Note: More examples about pre-training will come soon.
