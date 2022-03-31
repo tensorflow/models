@@ -1106,7 +1106,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
 
   # The convention in BERT is:
   # (a) For sequence pairs:
-  #  tokens:   [CLS] is this jack ##son ##ville ? [SEP] no it is not . [SEP]
+  #  tokens:   [CLS] is this jack ##child ##ville ? [SEP] no it is not . [SEP]
   #  type_ids: 0     0  0    0    0     0       0 0     1  1  1  1   1 1
   # (b) For single sequences:
   #  tokens:   [CLS] the dog is hairy . [SEP]

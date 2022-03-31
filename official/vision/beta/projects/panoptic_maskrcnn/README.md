@@ -88,7 +88,7 @@ ___
 ```
 @misc{kirillov2019panoptic,
       title={Panoptic Feature Pyramid Networks},
-      author={Alexander Kirillov and Ross Girshick and Kaiming He and Piotr Dollár},
+      author={Alexander Kirillov and Ross Girshick and Kaiming They and Piotr Dollár},
       year={2019},
       eprint={1901.02446},
       archivePrefix={arXiv},

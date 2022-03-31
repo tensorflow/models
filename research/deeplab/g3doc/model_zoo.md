@@ -237,7 +237,7 @@ Model name                                                                      
     [[link]](http://www.image-net.org/). IJCV, 2015.
 
 10. **Deep Residual Learning for Image Recognition**<br />
-    Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun<br />
+    Kaiming They, Xiangyu Zhang, Shaoqing Ren, Jian Sun<br />
     [[link]](https://arxiv.org/abs/1512.03385). CVPR, 2016.
 
 11. **Pyramid Scene Parsing Network**<br />

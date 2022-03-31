@@ -42,7 +42,7 @@ got you covered.
 **Thanks to contributors**: Akhil Chinnakotla, Allen Lavoie, Anirudh Vegesana,
 Anjali Sridhar, Austin Myers, Dan Kondratyuk, David Ross, Derek Chow, Jaeyoun
 Kim, Jing Li, Jonathan Huang, Jordi Pont-Tuset, Karmel Allison, Kathy Ruan,
-Kaushik Shivakumar, Lu He, Mingxing Tan, Pengchong Jin, Ronny Votel, Sara Beery,
+Kaushik Shivakumar, Lu They, Mingxing Tan, Pengchong Jin, Ronny Votel, Sara Beery,
 Sergi Caelles Prat, Shan Yang, Sudheendra Vijayanarasimhan, Tina Tian, Tomer
 Kaftan, Vighnesh Birodkar, Vishnu Banna, Vivek Rathod, Yanhui Liang, Yiming Shi,
 Yixin Shi, Yu-hui Chen, Zhichao Lu.

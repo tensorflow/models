@@ -287,7 +287,7 @@ metric_values = slim.evaluation.evaluation_loop(
    IJCV, 2005.
 
 2. **Panoptic Segmentation**<br />
-   Alexander Kirillov, Kaiming He, Ross Girshick, Carsten Rother and Piotr
+   Alexander Kirillov, Kaiming They, Ross Girshick, Carsten Rother and Piotr
    Dollár<br />
    arXiv:1801.00868, 2018.
 

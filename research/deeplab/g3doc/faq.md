@@ -75,7 +75,7 @@ ___
 ## References
 
 1. **Deep Residual Learning for Image Recognition**<br />
-   Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun<br />
+   Kaiming They, Xiangyu Zhang, Shaoqing Ren, Jian Sun<br />
    [[link]](https://arxiv.org/abs/1512.03385), In CVPR, 2016.
 
 2. **Semantic Contours from Inverse Detectors**<br />

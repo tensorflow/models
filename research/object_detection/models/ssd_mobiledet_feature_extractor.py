@@ -63,8 +63,8 @@ def _separable_conv(
   if activation_fn is None:
     raise ValueError('Activation function cannot be None. Use tf.identity '
                      'instead to better support quantized training.')
-  # Depthwise variant of He initialization derived under the principle proposed
-  # in the original paper. Note the original He normalization was designed for
+  # Depthwise variant of They initialization derived under the principle proposed
+  # in the original paper. Note the original They normalization was designed for
   # full convolutions and calling tf.initializers.he_normal() can over-estimate
   # the fan-in of a depthwise kernel by orders of magnitude.
   stddev = (2.0 / kernel_size**2)**0.5 / .87962566103423978

@@ -425,5 +425,5 @@ downloaded from the [COCO website](http://cocodataset.org/#download). For custom
 ## References
 
 1.  [Focal Loss for Dense Object Detection](https://arxiv.org/abs/1708.02002).
-    Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He, and Piotr Dollár. IEEE
+    Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming They, and Piotr Dollár. IEEE
     International Conference on Computer Vision (ICCV), 2017.
