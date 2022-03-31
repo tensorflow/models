@@ -237,20 +237,21 @@ class TrainerConfig(base_config.Config):
   # we will retore the model states.
   recovery_max_trials: int = 0
   validation_summary_subdir: str = "validation"
-  # Configs for differential privacy
-  # These configs are only effective if you use create_optimizer in
-  # tensorflow_models/official/core/base_task.py
-  differential_privacy_config: Optional[
-      dp_configs.DifferentialPrivacyConfig] = None
 
 
 @dataclasses.dataclass
 class TaskConfig(base_config.Config):
+  """Config passed to task."""
   init_checkpoint: str = ""
   model: Optional[base_config.Config] = None
   train_data: DataConfig = DataConfig()
   validation_data: DataConfig = DataConfig()
   name: Optional[str] = None
+  # Configs for differential privacy
+  # These configs are only effective if you use create_optimizer in
+  # tensorflow_models/official/core/base_task.py
+  differential_privacy_config: Optional[
+      dp_configs.DifferentialPrivacyConfig] = None
 
 
 @dataclasses.dataclass

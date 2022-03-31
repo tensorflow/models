@@ -11,7 +11,7 @@ import "object_detection/protos/preprocessor.proto";
 // Points" paper [1]
 // [1]: https://arxiv.org/abs/1904.07850
 
-// Next Id = 16
+// Next Id = 26
 message CenterNet {
   // Number of classes to predict.
   optional int32 num_classes = 1;
@@ -504,6 +504,7 @@ message CenterNet {
     //   within error bars.
 
     optional bool use_only_last_stage = 24 [default = false];
+
   }
 
   optional DeepMACMaskEstimation deepmac_mask_estimation = 14;
@@ -514,6 +515,10 @@ message CenterNet {
   // from CenterNet. Use this optional parameter to apply traditional non max
   // suppression and score thresholding.
   optional PostProcessing post_processing = 24;
+
+  // If set, dictionary items returned by the predict() function
+  // are appended to the output of postprocess().
+  optional bool output_prediction_dict = 25 [default = false];
 }
 
 enum LossNormalize {

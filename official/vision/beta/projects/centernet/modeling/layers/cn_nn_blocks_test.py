@@ -21,8 +21,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.modeling.layers import nn_blocks
 from official.vision.beta.projects.centernet.modeling.layers import cn_nn_blocks
+from official.vision.modeling.layers import nn_blocks
 
 
 class HourglassBlockPyTorch(tf.keras.layers.Layer):

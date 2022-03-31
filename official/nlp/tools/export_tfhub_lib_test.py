@@ -20,6 +20,7 @@ import tempfile
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 import tensorflow_hub as hub
 import tensorflow_text as text
 
@@ -1024,10 +1025,10 @@ class ExportPreprocessingTest(tf.test.TestCase, parameterized.TestCase):
 
     def model_fn(features, labels, mode):
       del labels  # Unused.
-      return tf.estimator.EstimatorSpec(
+      return tf_estimator.EstimatorSpec(
           mode=mode, predictions=features["input_word_ids"])
 
-    estimator = tf.estimator.Estimator(model_fn=model_fn)
+    estimator = tf_estimator.Estimator(model_fn=model_fn)
     outputs = list(estimator.predict(input_fn))
     self.assertAllEqual(outputs, np.array([[2, 6, 3, 0], [2, 4, 5, 3]]))
 
