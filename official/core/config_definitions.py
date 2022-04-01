@@ -75,6 +75,10 @@ class DataConfig(base_config.Config):
       features. The main use case is to skip the image/video decoding for better
       performance.
     seed: An optional seed to use for deterministic shuffling/preprocessing.
+    prefetch_buffer_size: An int specifying the buffer size of prefetch
+      datasets. If None, the buffer size is autotuned. Specifying this is useful
+      in case autotuning uses up too much memory by making the buffer size too
+      high.
   """
   input_path: Union[Sequence[str], str, base_config.Config] = ""
   tfds_name: str = ""
@@ -95,6 +99,7 @@ class DataConfig(base_config.Config):
   tfds_as_supervised: bool = False
   tfds_skip_decoding_feature: str = ""
   seed: Optional[int] = None
+  prefetch_buffer_size: Optional[int] = None
 
 
 @dataclasses.dataclass

@@ -19,12 +19,16 @@ task:
     is_training: true
     global_batch_size: 2048
     dtype: 'float16'
+    # Autotuning the prefetch buffer size causes OOMs, so set it to a reasonable
+    # static value: 32. See b/218880025.
+    prefetch_buffer_size: 32
   validation_data:
     input_path: 'imagenet-2012-tfrecord/valid*'
     is_training: false
     global_batch_size: 2048
     dtype: 'float16'
     drop_remainder: false
+    prefetch_buffer_size: 32
 trainer:
   train_steps: 56160
   validation_steps: 25
