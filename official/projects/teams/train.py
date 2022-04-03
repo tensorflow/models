@@ -12,24 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for teams_experiments."""
+"""TensorFlow Model Garden Teams training driver, register Teams configs."""
 
-from absl.testing import parameterized
-import tensorflow as tf
+# pylint: disable=unused-import
+from absl import app
 
-from official.common import registry_imports  # pylint: disable=unused-import
-from official.core import config_definitions as cfg
-from official.core import exp_factory
-
-
-class TeamsExperimentsTest(tf.test.TestCase, parameterized.TestCase):
-
-  @parameterized.parameters(('teams/pretraining',))
-  def test_teams_experiments(self, config_name):
-    config = exp_factory.get_exp_config(config_name)
-    self.assertIsInstance(config, cfg.ExperimentConfig)
-    self.assertIsInstance(config.task.train_data, cfg.DataConfig)
-
+from official.common import flags as tfm_flags
+from official.nlp import tasks
+from official.nlp import train
+from official.projects.teams import teams_experiments
+from official.projects.teams import teams_task
 
 if __name__ == '__main__':
-  tf.test.main()
+  tfm_flags.define_flags()
+  app.run(train.main)
