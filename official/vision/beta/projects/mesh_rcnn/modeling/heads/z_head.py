@@ -18,11 +18,11 @@ import tensorflow as tf
 class ZHead(tf.keras.layers.Layer):
     '''Depth prediction Z Head for Mesh R-CNN model'''
     def __init__(self,
-        num_fc: int,
-        fc_dim: int,
-        cls_agnostic: bool,
-        num_classes: int,
-        **kwargs):
+                 num_fc: int,
+                 fc_dim: int,
+                 cls_agnostic: bool,
+                 num_classes: int,
+                 **kwargs):
         """
         Initialize Z-head
         Args:
@@ -45,8 +45,8 @@ class ZHead(tf.keras.layers.Layer):
         self.fcs = []
         for _ in range(self._num_fc):
             fc_init = tf.keras.initializers.VarianceScaling(scale=1.,
-              mode='fan_in',
-              distribution='truncated_normal')
+                mode='fan_in',
+                distribution='truncated_normal')
             layer = tf.keras.layers.Dense(self._fc_dim,
                 activation='relu',
                 kernel_initializer=fc_init)
