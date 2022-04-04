@@ -80,12 +80,28 @@ if __name__ == '__main__':
     features['image/encoded'].bytes_list.value[0], channels=3, dtype=tf.dtypes.uint8, name=None,
     expand_animations=True
   )
-  # TODO: batch_size
   image = tf.image.resize_with_crop_or_pad(image, 800, 800)
 
   # fileobj = BytesIO(bytes.fromhex(str(encoded_voxel[116:], encoding="utf-8", errors="ignore"))) 
   # voxel = tf.convert_to_tensor(sio.loadmat(fileobj)["voxel"].tolist(), dtype=tf.float16)
   # print(encoded_voxel[116:])
+
+  MAX_FACES = 126748
+  MAX_VERTICES = 108416
+
+  print(faces.shape)
+  print(vertices.shape)
+
+  faces.resize(MAX_FACES, 3)
+  vertics.resize(MAX_VERTICES, 3)
+
+  faces_mask = np.zeros((MAX_FACES,))
+  vertices_mask = np.zeros((MAX_VERTICES,))
+
+  faces_mask[0 : MAX_FACES] = 1
+  vertices_mask[0 : MAX_VERTICES] = 1
+
+
 
   with open("voxel.mat", 'wb') as f:
     f.write(encoded_voxel)
@@ -101,28 +117,28 @@ if __name__ == '__main__':
 
   # down_voxel = voxel_ops.downsample(og_voxel, 5)
 
-  print((voxel.shape))
-  print(verts.shape)
-  print(og_voxel.shape)
-  # print(down_voxel.shape)
-  # print(voxel == og_voxel)
-  print(np.array_equal(voxel, og_voxel))
+  # print((voxel.shape))
+  # print(verts.shape)
+  # print(og_voxel.shape)
+  # # print(down_voxel.shape)
+  # # print(voxel == og_voxel)
+  # print(np.array_equal(voxel, og_voxel))
 
   # #Counting max number of faces for each object
   # print(voxel_ops.num_faces("pix3d/model/bed/IKEA_BEDDINGE/model.obj"))
 
-  max_faces = 0
-  max_vertices = 0
+  # max_faces = 0
+  # max_vertices = 0
 
-  for root, dirs, files in os.walk("pix3d/model", topdown=False):
-   for name in files:
-      if name[-4:] == ".obj":
-        # print(os.path.join(root, name))
-        max_faces = max(max_faces, (voxel_ops.num_faces(os.path.join(root, name))))
-        max_vertices = max(max_vertices, (voxel_ops.num_vertices(os.path.join(root, name))))
+  # for root, dirs, files in os.walk("pix3d/model", topdown=False):
+  #  for name in files:
+  #     if name[-4:] == ".obj":
+  #       # print(os.path.join(root, name))
+  #       max_faces = max(max_faces, (voxel_ops.num_faces(os.path.join(root, name))))
+  #       max_vertices = max(max_vertices, (voxel_ops.num_vertices(os.path.join(root, name))))
 
-  print(max_faces)
-  print(max_vertices)
+  # print(max_faces)
+  # print(max_vertices)
 
 
   # voxel_ops.visualize_voxel(voxel)
