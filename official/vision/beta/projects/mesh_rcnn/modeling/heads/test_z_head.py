@@ -83,9 +83,4 @@ class ZHeadTest(parameterized.TestCase, tf.test.TestCase):
         self.assertNotIn(None, grad)
 
 if __name__ == '__main__':
-    print("Unit Testing Z Head")
-    zht = ZHeadTest()
-    zht.test_output_shape(2, 1024, False, 100)
-    zht.test_serialize_deserialize(2, 1024, False, 100)
-    zht.test_gradient_pass_through(2, 1024, False, 100)
-    print("Tests Successful")
+    tf.test.main()
