@@ -125,6 +125,8 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
                                                  interaction=interaction,
                                                  use_orbit=use_orbit,
                                                  strategy=strategy)
+
+    default_mode = FLAGS.mode
     # Training.
     FLAGS.mode = 'train'
     train.main('unused_args')
@@ -134,6 +136,7 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
     # Evaluation.
     FLAGS.mode = 'eval'
     train.main('unused_args')
+    FLAGS.mode = default_mode
 
 
 if __name__ == '__main__':
