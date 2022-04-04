@@ -25,3 +25,33 @@ class ZHead(hyperparams.Config):
     fc_dim: int = 1024
     cls_agnostic: bool = False
     num_classes: int = 9
+
+@dataclasses.dataclass
+class VoxelHead(hyperparams.Config):
+  """Parameterization for the Mesh R-CNN Voxel Branch Prediction Head."""
+  voxel_depth: int = 28
+  conv_dim: int = 256
+  num_conv: int = 0
+  use_group_norm: bool = False
+  predict_classes: bool = False
+  bilinearly_upscale_input: bool = True
+  class_based_voxel: bool = False
+  num_classes: int = 0
+
+@dataclasses.dataclass
+class MeshHead(hyperparams.Config):
+  """Parameterization for the Mesh R-CNN Mesh Head."""
+  num_stages: int = 3
+  stage_depth: int = 3
+  output_dim: int = 128
+  graph_conv_init: str = 'normal'
+
+@dataclasses.dataclass
+class MeshLosses(hyperparams.Config):
+  """Parameterization for the Mesh R-CNN Mesh and Voxel Losses."""
+  voxel_weight: float = 0.0
+  chamfer_weight: float = 1.0
+  normal_weight: float = 0.0
+  edge_weight: float = 0.1
+  true_num_samples: int = 5000
+  pred_num_samples: int = 5000

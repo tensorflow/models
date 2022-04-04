@@ -97,6 +97,6 @@ ENV/
 # For mac
 .DS_Store
 
-hooks/
+.hooks/
 pylint.sh
 pylintrc
