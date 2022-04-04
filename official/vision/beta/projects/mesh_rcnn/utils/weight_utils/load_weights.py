@@ -7,10 +7,12 @@ import numpy as np
 import tensorflow as tf
 from torch import load
 
+from official.vision.beta.projects.mesh_rcnn.modeling.heads.z_head import \
+    ZHead
 from official.vision.beta.projects.mesh_rcnn.modeling.layers.nn_blocks import \
     MeshRefinementStage
 from official.vision.beta.projects.mesh_rcnn.utils.weight_utils.config_data import \
-    MeshHeadConfigData
+    MeshHeadConfigData, ZHeadConfigData
 
 
 def pth_to_dict(pth_path):
@@ -52,6 +54,39 @@ def pth_to_dict(pth_path):
   return weights_dict, n_read
 
 
+def get_zhead_layer_cfgs(weights_dict, zhead_name):
+  """ Fetches the config classes for the z head.
+  This function generates a list of config classes corresponding to
+  each building block in the z head.
+  Args:
+    weights_dict: Dictionary that stores the z head weights.
+    zhead_name: String, indicating the desired z head configuration.
+  Returns:
+    A list containing the config classes of the mesh head building block.
+  """
+  print("Fetching z head config classes for {}\n".format(zhead_name))
+  cfgs = ZHeadConfigData(weights_dict).get_cfg_list(zhead_name)
+  return cfgs
+
+
+def load_weights_zhead(zhead, weights_dict, zhead_name):
+  """ Loads the weights defined in the weights_dict into the z head.
+  This function loads the z head weights by first fetching the necesary
+  config classes for the backbone, then loads them in one by one for
+  each layer that has weights associated with it.
+  Args:
+    zhead: keras.Model
+    weights_dict: Dictionary that stores the zhead model weights.
+    zhead_name: String, indicating the desired zhead configuration.
+  Returns:
+    Number of weights loaded in.
+  """
+  print("Loading z head weights\n")
+  cfgs = get_zhead_layer_cfgs(weights_dict, zhead_name)
+  cfgs.load_weights(zhead)
+  return
+
+
 def get_mesh_head_layer_cfgs(weights_dict, mesh_head_name):
   """ Fetches the config classes for the mesh head.
   This function generates a list of config classes corresponding to
@@ -62,7 +97,6 @@ def get_mesh_head_layer_cfgs(weights_dict, mesh_head_name):
   Returns:
     A list containing the config classes of the mesh head building block.
   """
-
   print("Fetching mesh head config classes for {}\n".format(mesh_head_name))
   cfgs = MeshHeadConfigData(weights_dict).get_cfg_list(mesh_head_name)
   return cfgs
@@ -97,3 +131,4 @@ def load_weights_mesh_head(mesh_head, weights_dict, mesh_head_name):
   print("{} Weights have been loaded for {} / {} layers\n".format(
       n_weights_total, loaded_layers, i))
   return n_weights_total
+
