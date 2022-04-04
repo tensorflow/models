@@ -16,9 +16,16 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-# from official.vision.beta.projects.mesh_rcnn.modeling.heads import z_head
 import z_head
 
+@parameterized.named_parameters(
+    {'testcase_name': 'pix3d_params',
+     'num_fc': 2,
+     'fc_dim': 1024,
+     'cls_agnostic': False,
+     'num_classes': 9
+    }
+)
 class ZHeadTest(parameterized.TestCase, tf.test.TestCase):
     '''Test for Mesh R-CNN Z head'''
 
