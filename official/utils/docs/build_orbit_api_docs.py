@@ -17,8 +17,7 @@ r"""Tool to generate api_docs for tensorflow_models/official library.
 Example:
 
 $> pip install -U git+https://github.com/tensorflow/docs
-$> python build_orbit_api_docs \
- --output_dir=/tmp/api_docs
+$> python build_orbit_api_docs.py --output_dir=/tmp/api_docs
 """
 from absl import app
 from absl import flags
