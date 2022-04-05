@@ -255,6 +255,7 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
     for image_id in image_ids:
       if image_id in self._image_ids:
         logging.warning('Image with id %s already added.', image_id)
+    self._image_ids.update(image_ids)
 
     self._evaluation.merge_internal_state(state_tuple)
 
@@ -329,8 +330,8 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
     # If the key is not present in the groundtruth_dict or the array is empty
     # (unless there are no annotations for the groundtruth on this image)
     # use values from the dictionary or insert None otherwise.
-    if (standard_fields.InputDataFields.groundtruth_difficult in six.viewkeys(
-        groundtruth_dict) and
+    if (standard_fields.InputDataFields.groundtruth_difficult
+        in six.viewkeys(groundtruth_dict) and
         (groundtruth_dict[standard_fields.InputDataFields.groundtruth_difficult]
          .size or not groundtruth_classes.size)):
       groundtruth_difficult = groundtruth_dict[
@@ -343,8 +344,8 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
             image_id)
     groundtruth_masks = None
     if self._evaluate_masks:
-      if (standard_fields.InputDataFields.groundtruth_instance_masks not in
-          groundtruth_dict):
+      if (standard_fields.InputDataFields.groundtruth_instance_masks
+          not in groundtruth_dict):
         raise ValueError('Instance masks not in groundtruth dictionary.')
       groundtruth_masks = groundtruth_dict[
           standard_fields.InputDataFields.groundtruth_instance_masks]
@@ -1246,7 +1247,6 @@ class ObjectDetectionEvaluation(object):
             groundtruth_is_group_of_list=groundtruth_is_group_of_list,
             detected_masks=detected_masks,
             groundtruth_masks=groundtruth_masks))
-
     for i in range(self.num_class):
       if scores[i].shape[0] > 0:
         self.scores_per_class[i].append(scores[i])

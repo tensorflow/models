@@ -3,7 +3,7 @@ syntax = "proto2";
 package object_detection.protos;
 
 // Message for configuring DetectionModel evaluation jobs (eval.py).
-// Next id - 36
+// Next id - 37
 message EvalConfig {
   optional uint32 batch_size = 25 [default = 1];
   // Number of visualization images to generate.
@@ -118,6 +118,11 @@ message EvalConfig {
   // will be ignored. This is useful for evaluating on test data that are not
   // exhaustively labeled.
   optional bool skip_predictions_for_unlabeled_class = 33 [default = false];
+
+  // If image_classes_field for a given image is empty and this field set to
+  // true, it is interpreted as if the annotations on this image were
+  // exhaustive.
+  optional bool image_classes_field_map_empty_to_ones = 36 [default = true];
 }
 
 // A message to configure parameterized evaluation metric.
