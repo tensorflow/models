@@ -126,13 +126,6 @@ class DetectionGenerator(hyperparams.Config):
   tflite_post_processing: common.TFLitePostProcessingConfig = common.TFLitePostProcessingConfig(
   )
 
-  max_detections: int = 200
-  max_classes_per_detection: int = 5
-  # Regular NMS run in a multi-class fashion and is slow. Setting it to False
-  # uses class-agnostic NMS, which is faster.
-  use_regular_nms: bool = False
-  nms_score_threshold: float = 0.1
-
 
 @dataclasses.dataclass
 class RetinaNet(hyperparams.Config):
