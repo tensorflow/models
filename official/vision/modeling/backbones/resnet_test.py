@@ -74,8 +74,8 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
                                               endpoint_filter_scale):
     """Test creation of ResNet family models."""
     resnet_params = {
-        18: 11699112,
-        34: 21814696,
+        18: 11186112,
+        34: 21301696,
     }
     tf.keras.backend.set_image_data_format('channels_last')
 
