@@ -129,6 +129,7 @@ class ResNet(tf.keras.Model):
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       bn_trainable: bool = True,
+      use_first_projection: bool = True,
       **kwargs):
     """Initializes a ResNet model.
 
@@ -158,6 +159,8 @@ class ResNet(tf.keras.Model):
         Default to None.
       bn_trainable: A `bool` that indicates whether batch norm layers should be
         trainable. Default to True.
+      use_first_projection: A `bool` of whether to use the first projection
+        shortcut for small ResNets. See https://github.com/tensorflow/models/issues/10583.
       **kwargs: Additional keyword arguments to be passed.
     """
     self._model_id = model_id
@@ -181,6 +184,7 @@ class ResNet(tf.keras.Model):
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
     self._bn_trainable = bn_trainable
+    self._use_first_projection = use_first_projection
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       bn_axis = -1
@@ -293,12 +297,17 @@ class ResNet(tf.keras.Model):
         block_fn = nn_blocks.BottleneckBlock
       else:
         raise ValueError('Block fn `{}` is not supported.'.format(spec[0]))
+      use_first_projection = (
+        not(i==0 and spec[0] == 'residual') and
+        not self._use_first_projection
+      )
       x = self._block_group(
           inputs=x,
           filters=int(spec[1] * self._depth_multiplier),
           strides=(1 if i == 0 else 2),
           block_fn=block_fn,
           block_repeats=spec[2],
+          use_first_projection=use_first_projection,
           stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
               self._init_stochastic_depth_rate, i + 2, 5),
           name='block_group_l{}'.format(i + 2))
@@ -314,6 +323,7 @@ class ResNet(tf.keras.Model):
                    strides: int,
                    block_fn: Callable[..., tf.keras.layers.Layer],
                    block_repeats: int = 1,
+                   use_first_projection: bool = True,
                    stochastic_depth_drop_rate: float = 0.0,
                    name: str = 'block_group'):
     """Creates one group of blocks for the ResNet model.
@@ -327,6 +337,8 @@ class ResNet(tf.keras.Model):
       block_fn: The type of block group. Either `nn_blocks.ResidualBlock` or
         `nn_blocks.BottleneckBlock`.
       block_repeats: An `int` number of blocks contained in the layer.
+      use_first_projection: A `bool` to determine whether to use the first
+        projection shortcut.
       stochastic_depth_drop_rate: A `float` of drop rate of the current block
         group.
       name: A `str` name for the block.
@@ -337,7 +349,7 @@ class ResNet(tf.keras.Model):
     x = block_fn(
         filters=filters,
         strides=strides,
-        use_projection=True,
+        use_projection=use_first_projection,
         stochastic_depth_drop_rate=stochastic_depth_drop_rate,
         se_ratio=self._se_ratio,
         resnetd_shortcut=self._resnetd_shortcut,
