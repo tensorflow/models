@@ -18,9 +18,9 @@
 Example usage:
     python create_pix3d_tf_record.py --logtostderr \
       --pix3d_dir="${TRAIN_IMAGE_DIR}" \
+      --pix3d_json_file="${TRAIN_ANNOTATIONS_FILE}" \
       --output_file_prefix="${OUTPUT_DIR/FILE_PREFIX}" \
-      --num_shards=32 \
-      --pix3d_json_file="pix3d_s1_train.json"
+      --num_shards=100 \
 """
 
 import json
@@ -30,6 +30,7 @@ from typing import List, Tuple
 
 import numpy as np
 import tensorflow as tf
+import scipy.io
 from absl import app, flags
 
 from official.vision.beta.data.tfrecord_lib import (image_info_to_feature_dict,
@@ -75,6 +76,9 @@ def convert_to_feature(value, value_type=None):
 
     elif isinstance(element, list):
       value_type = "2d"
+    
+    elif isinstance(element, np.ndarray):
+      value_type = 'ndarray'
 
     elif element is None:
       value_type = "none"
@@ -116,6 +120,13 @@ def convert_to_feature(value, value_type=None):
 
     return tf.train.Feature(
         bytes_list=tf.train.BytesList(value=[serialized_data.numpy()]))
+  
+  elif value_type == "ndarray":
+    data = tf.convert_to_tensor(value)
+    serialized_data = tf.io.serialize_tensor(data)
+
+    return tf.train.Feature(
+        bytes_list=tf.train.BytesList(value=[serialized_data.numpy()]))
 
   elif value_type == "none":
     return tf.train.Feature()
@@ -147,13 +158,19 @@ def create_tf_example(image: dict):
   pix3d_dir = image['pix3d_dir']
   mask_filename = image['segmentation']
   model = image['model']
-  voxel = image['voxel']
+  voxel_file = image['voxel']
 
   with tf.io.gfile.GFile(os.path.join(pix3d_dir, img_filename), 'rb') as fid:
     encoded_img = fid.read()
 
+
+  if 'jpg' in img_filename:
+    img_format = 'jpg'
+  else:
+    img_format = 'png'
+
   feature_dict = image_info_to_feature_dict(
-      img_height, img_width, img_filename, img_category, encoded_img, 'jpg')
+      img_height, img_width, img_filename, img_category, encoded_img, img_format)
 
   with tf.io.gfile.GFile(os.path.join(pix3d_dir, mask_filename), 'rb') as fid:
     encoded_mask = fid.read()
@@ -165,10 +182,9 @@ def create_tf_example(image: dict):
       {'model/vertices': convert_to_feature(model_vertices),
        'model/faces': convert_to_feature(model_faces)})
 
-  with tf.io.gfile.GFile(os.path.join(pix3d_dir, voxel), 'rb') as fid:
-    encoded_voxel = fid.read()
+  voxels = parse_voxel_file(os.path.join(pix3d_dir, voxel_file))
   feature_dict.update(
-      {'model/voxel': convert_to_feature(encoded_voxel)})
+      {'model/voxel': convert_to_feature(voxels)})
 
   rot_mat = image['rot_mat']
   trans_mat = image['trans_mat']
@@ -177,8 +193,7 @@ def create_tf_example(image: dict):
   intrinstic_mat = image['K']
 
   feature_dict.update(
-      {'voxel': convert_to_feature(encoded_voxel),
-       'camera/rot_mat': convert_to_feature(rot_mat),
+      {'camera/rot_mat': convert_to_feature(rot_mat),
        'camera/trans_mat': convert_to_feature(trans_mat),
        'camera/intrinstic_mat': convert_to_feature(intrinstic_mat),
        'image/object/bbox': convert_to_feature(bbox),
@@ -229,7 +244,20 @@ def parse_obj_file(file: str) -> Tuple[List[List[float]], List[List[int]]]:
         face.append(int(f.split("/")[0]))
       faces.append(face)
 
-  return vertices, faces
+  return np.array(vertices), np.array(faces)
+
+def parse_voxel_file(file: str):
+  """
+  Loads a voxel from a .mat file.
+
+  Args:
+    file: String filepath to .mat file.
+
+  Return:
+    voxel: ndarray containing the voxel data.
+  """
+  voxels = scipy.io.loadmat(file)['voxel']
+  return np.array(voxels)
 
 def generate_annotations(annotation_dict: dict, pix3d_dir: str) -> List:
   """Generator for Pix3D annotations.
@@ -292,7 +320,7 @@ def _create_tf_record_from_pix3d_dir(pix3d_dir: str,
 
   num_skipped = write_tf_record_dataset(
       output_path, pix3d_annotations_iter, create_tf_example,
-      num_shards, unpack_arguments=False, use_multiprocessing=True)
+      num_shards, unpack_arguments=False, use_multiprocessing=False)
 
   logging.info('Finished writing, skipped %d annotations.', num_skipped)
 
