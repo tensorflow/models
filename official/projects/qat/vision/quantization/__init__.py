@@ -13,6 +13,3 @@
 # limitations under the License.
 
 """Configs package definition."""
-
-from official.projects.qat.vision.quantization import configs
-from official.projects.qat.vision.quantization import schemes
