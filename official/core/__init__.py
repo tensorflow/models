@@ -12,3 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Core is shared by both `nlp` and `vision`."""
+from official.core import actions
+from official.core import base_task
+from official.core import base_trainer
+from official.core import config_definitions
+from official.core import exp_factory
+from official.core import export_base
+from official.core import input_reader
+from official.core import registry
+from official.core import task_factory
+from official.core import train_lib
+from official.core import train_utils
