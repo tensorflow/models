@@ -1,6 +1,7 @@
 """Tests for google3.third_party.tensorflow_models.object_detection.meta_architectures.deepmac_meta_arch."""
 
 import functools
+import math
 import random
 import unittest
 
@@ -17,35 +18,12 @@ from object_detection.protos import center_net_pb2
 from object_detection.utils import tf_version
 
 
-DEEPMAC_PROTO_TEXT = """
-  dim: 153
-  task_loss_weight: 5.0
-  pixel_embedding_dim: 8
-  use_xy: false
-  use_instance_embedding: false
-  network_type: "cond_inst3"
-  num_init_channels: 8
+def _logit(probability):
+  return math.log(probability / (1. - probability))
 
-  classification_loss {
-    weighted_dice_classification_loss {
-      squared_normalization: false
-      is_prediction_probability: false
-    }
-  }
-  jitter_mode: EXPAND_SYMMETRIC_XY
-  max_roi_jitter_ratio: 0.0
-  predict_full_resolution_masks: true
-  allowed_masked_classes_ids: [99]
-  box_consistency_loss_weight: 1.0
-  color_consistency_loss_weight: 1.0
-  color_consistency_threshold: 0.1
 
-  box_consistency_tightness: false
-  box_consistency_loss_normalize: NORMALIZE_AUTO
-  color_consistency_warmup_steps: 20
-  color_consistency_warmup_start: 10
-  use_only_last_stage: false
-"""
+LOGIT_HALF = _logit(0.5)
+LOGIT_QUARTER = _logit(0.25)
 
 
 class DummyFeatureExtractor(center_net_meta_arch.CenterNetFeatureExtractor):
@@ -122,7 +100,15 @@ def build_meta_arch(**override_params):
       color_consistency_dilation=2,
       color_consistency_warmup_steps=0,
       color_consistency_warmup_start=0,
-      use_only_last_stage=True)
+      use_only_last_stage=True,
+      augmented_self_supervision_max_translation=0.0,
+      augmented_self_supervision_loss_weight=0.0,
+      augmented_self_supervision_flip_probability=0.0,
+      augmented_self_supervision_warmup_start=0,
+      augmented_self_supervision_warmup_steps=0,
+      augmented_self_supervision_loss='loss_dice',
+      augmented_self_supervision_scale_min=1.0,
+      augmented_self_supervision_scale_max=1.0)
 
   params.update(override_params)
 
@@ -176,6 +162,45 @@ def build_meta_arch(**override_params):
       image_resizer_fn=image_resizer_fn)
 
 
+DEEPMAC_PROTO_TEXT = """
+  dim: 153
+  task_loss_weight: 5.0
+  pixel_embedding_dim: 8
+  use_xy: false
+  use_instance_embedding: false
+  network_type: "cond_inst3"
+
+  classification_loss {
+    weighted_dice_classification_loss {
+      squared_normalization: false
+      is_prediction_probability: false
+    }
+  }
+  jitter_mode: EXPAND_SYMMETRIC_XY
+  max_roi_jitter_ratio: 0.0
+  predict_full_resolution_masks: true
+  allowed_masked_classes_ids: [99]
+  box_consistency_loss_weight: 1.0
+  color_consistency_loss_weight: 1.0
+  color_consistency_threshold: 0.1
+
+  box_consistency_tightness: false
+  box_consistency_loss_normalize: NORMALIZE_AUTO
+  color_consistency_warmup_steps: 20
+  color_consistency_warmup_start: 10
+  use_only_last_stage: false
+  augmented_self_supervision_warmup_start: 13
+  augmented_self_supervision_warmup_steps: 14
+  augmented_self_supervision_loss: LOSS_MSE
+  augmented_self_supervision_loss_weight: 11.0
+  augmented_self_supervision_max_translation: 2.5
+  augmented_self_supervision_flip_probability: 0.9
+  augmented_self_supervision_scale_min: 0.42
+  augmented_self_supervision_scale_max: 1.42
+
+"""
+
+
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
 class DeepMACUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
@@ -185,9 +210,21 @@ class DeepMACUtilsTest(tf.test.TestCase, parameterized.TestCase):
     text_format.Parse(DEEPMAC_PROTO_TEXT, proto)
     params = deepmac_meta_arch.deepmac_proto_to_params(proto)
     self.assertIsInstance(params, deepmac_meta_arch.DeepMACParams)
+    self.assertEqual(params.num_init_channels, 64)
     self.assertEqual(params.dim, 153)
     self.assertEqual(params.box_consistency_loss_normalize, 'normalize_auto')
     self.assertFalse(params.use_only_last_stage)
+    self.assertEqual(params.augmented_self_supervision_warmup_start, 13)
+    self.assertEqual(params.augmented_self_supervision_warmup_steps, 14)
+    self.assertEqual(params.augmented_self_supervision_loss, 'loss_mse')
+    self.assertEqual(params.augmented_self_supervision_loss_weight, 11.0)
+    self.assertEqual(params.augmented_self_supervision_max_translation, 2.5)
+    self.assertAlmostEqual(
+        params.augmented_self_supervision_flip_probability, 0.9)
+    self.assertAlmostEqual(
+        params.augmented_self_supervision_scale_min, 0.42)
+    self.assertAlmostEqual(
+        params.augmented_self_supervision_scale_max, 1.42)
 
   def test_subsample_trivial(self):
     """Test subsampling masks."""
@@ -590,6 +627,190 @@ class DeepMACMaskHeadTest(tf.test.TestCase, parameterized.TestCase):
                     tf.zeros((0, 32, 32, input_channels)), training=True)
     self.assertEqual(out.shape, (0, 32, 32))
 
+  @parameterized.parameters(
+      [
+          dict(x=4, y=4, height=4, width=4),
+          dict(x=1, y=2, height=3, width=4),
+          dict(x=14, y=14, height=5, width=5),
+      ]
+  )
+  def test_transform_images_and_boxes_identity(self, x, y, height, width):
+    images = np.zeros((1, 32, 32, 3), dtype=np.float32)
+    images[:, y:y + height, x:x + width, :] = 1.0
+    boxes = tf.constant([[[y / 32., x / 32.,
+                           y / 32. + height/32, x/32. + width / 32]]])
+
+    zeros = tf.zeros(1)
+    ones = tf.ones(1)
+    falses = tf.zeros(1, dtype=tf.bool)
+    images = tf.constant(images)
+    images_out, boxes_out = deepmac_meta_arch.transform_images_and_boxes(
+        images, boxes, zeros, zeros, ones, ones, falses)
+    self.assertAllClose(images, images_out)
+    self.assertAllClose(boxes, boxes_out)
+
+    coords = np.argwhere(images_out.numpy()[0, :, :, 0] > 0.5)
+    self.assertEqual(np.min(coords[:, 0]), y)
+    self.assertEqual(np.min(coords[:, 1]), x)
+    self.assertEqual(np.max(coords[:, 0]), y + height - 1)
+    self.assertEqual(np.max(coords[:, 1]), x + width - 1)
+
+  def test_transform_images_and_boxes(self):
+    images = np.zeros((2, 32, 32, 3), dtype=np.float32)
+    images[:, 14:19, 14:19, :] = 1.0
+    boxes = tf.constant(
+        [[[14.0 / 32, 14.0 / 32, 18.0 / 32, 18.0 / 32]] * 2] * 2)
+    flip = tf.constant([False, False])
+
+    scale_y0 = 2.0
+    translate_y0 = 1.0
+    scale_x0 = 4.0
+    translate_x0 = 4.0
+
+    scale_y1 = 3.0
+    translate_y1 = 3.0
+    scale_x1 = 0.5
+    translate_x1 = 2.0
+    ty = tf.constant([translate_y0/32, translate_y1/32])
+    sy = tf.constant([1./scale_y0, 1.0 / scale_y1])
+
+    tx = tf.constant([translate_x0/32, translate_x1/32])
+    sx = tf.constant([1 / scale_x0, 1.0 / scale_x1])
+
+    images = tf.constant(images)
+    images_out, boxes_out = deepmac_meta_arch.transform_images_and_boxes(
+        images, boxes, tx=tx, ty=ty, sx=sx, sy=sy, flip=flip)
+
+    boxes_out = boxes_out.numpy() * 32
+    coords = np.argwhere(images_out[0, :, :, 0] >= 0.9)
+    ymin = np.min(coords[:, 0])
+    ymax = np.max(coords[:, 0])
+    xmin = np.min(coords[:, 1])
+    xmax = np.max(coords[:, 1])
+
+    self.assertAlmostEqual(
+        ymin, 16 - 2*scale_y0 + translate_y0, delta=1)
+    self.assertAlmostEqual(
+        ymax, 16 + 2*scale_y0 + translate_y0, delta=1)
+    self.assertAlmostEqual(
+        xmin, 16 - 2*scale_x0 + translate_x0, delta=1)
+    self.assertAlmostEqual(
+        xmax, 16 + 2*scale_x0 + translate_x0, delta=1)
+    self.assertAlmostEqual(ymin, boxes_out[0, 0, 0], delta=1)
+    self.assertAlmostEqual(xmin, boxes_out[0, 0, 1], delta=1)
+    self.assertAlmostEqual(ymax, boxes_out[0, 0, 2], delta=1)
+    self.assertAlmostEqual(xmax, boxes_out[0, 0, 3], delta=1)
+
+    coords = np.argwhere(images_out[1, :, :, 0] >= 0.9)
+    ymin = np.min(coords[:, 0])
+    ymax = np.max(coords[:, 0])
+    xmin = np.min(coords[:, 1])
+    xmax = np.max(coords[:, 1])
+
+    self.assertAlmostEqual(
+        ymin, 16 - 2*scale_y1 + translate_y1, delta=1)
+    self.assertAlmostEqual(
+        ymax, 16 + 2*scale_y1 + translate_y1, delta=1)
+    self.assertAlmostEqual(
+        xmin, 16 - 2*scale_x1 + translate_x1, delta=1)
+    self.assertAlmostEqual(
+        xmax, 16 + 2*scale_x1 + translate_x1, delta=1)
+    self.assertAlmostEqual(ymin, boxes_out[1, 0, 0], delta=1)
+    self.assertAlmostEqual(xmin, boxes_out[1, 0, 1], delta=1)
+    self.assertAlmostEqual(ymax, boxes_out[1, 0, 2], delta=1)
+    self.assertAlmostEqual(xmax, boxes_out[1, 0, 3], delta=1)
+
+  def test_transform_images_and_boxes_flip(self):
+    images = np.zeros((2, 2, 2, 1), dtype=np.float32)
+    images[0, :, :, 0] = [[1, 2], [3, 4]]
+    images[1, :, :, 0] = [[1, 2], [3, 4]]
+    images = tf.constant(images)
+
+    boxes = tf.constant(
+        [[[0.1, 0.2, 0.3, 0.4]], [[0.1, 0.2, 0.3, 0.4]]], dtype=tf.float32)
+
+    tx = ty = tf.zeros([2], dtype=tf.float32)
+    sx = sy = tf.ones([2], dtype=tf.float32)
+    flip = tf.constant([True, False])
+
+    output_images, output_boxes = deepmac_meta_arch.transform_images_and_boxes(
+        images, boxes, tx, ty, sx, sy, flip)
+
+    expected_images = np.zeros((2, 2, 2, 1), dtype=np.float32)
+    expected_images[0, :, :, 0] = [[2, 1], [4, 3]]
+    expected_images[1, :, :, 0] = [[1, 2], [3, 4]]
+    self.assertAllClose(output_boxes,
+                        [[[0.1, 0.6, 0.3, 0.8]], [[0.1, 0.2, 0.3, 0.4]]])
+    self.assertAllClose(expected_images, output_images)
+
+  def test_transform_images_and_boxes_tf_function(self):
+    func = tf.function(deepmac_meta_arch.transform_images_and_boxes)
+
+    output, _ = func(images=tf.zeros((2, 32, 32, 3)), boxes=tf.zeros((2, 5, 4)),
+                     tx=tf.zeros(2), ty=tf.zeros(2),
+                     sx=tf.ones(2), sy=tf.ones(2),
+                     flip=tf.zeros(2, dtype=tf.bool))
+    self.assertEqual(output.shape, (2, 32, 32, 3))
+
+  def test_transform_instance_masks(self):
+    instance_masks = np.zeros((2, 10, 32, 32), dtype=np.float32)
+    instance_masks[0, 0, 1, 1] = 1
+    instance_masks[0, 1, 1, 1] = 1
+
+    instance_masks[1, 0, 2, 2] = 1
+    instance_masks[1, 1, 2, 2] = 1
+
+    tx = ty = tf.constant([1., 2.]) / 32.0
+    sx = sy = tf.ones(2, dtype=tf.float32)
+    flip = tf.zeros(2, dtype=tf.bool)
+
+    instance_masks = deepmac_meta_arch.transform_instance_masks(
+        instance_masks, tx, ty, sx, sy, flip=flip)
+    self.assertEqual(instance_masks.shape, (2, 10, 32, 32))
+    self.assertAlmostEqual(
+        instance_masks[0].numpy().sum(), 2.0)
+    self.assertGreater(
+        instance_masks[0, 0, 2, 2].numpy(), 0.5)
+    self.assertGreater(
+        instance_masks[0, 1, 2, 2].numpy(), 0.5)
+
+    self.assertAlmostEqual(
+        instance_masks[1].numpy().sum(), 2.0)
+    self.assertGreater(
+        instance_masks[1, 0, 4, 4].numpy(), 0.5)
+    self.assertGreater(
+        instance_masks[1, 1, 4, 4].numpy(), 0.5)
+
+  def test_augment_image_and_deaugment_mask(self):
+
+    img = np.zeros((1, 32, 32, 3), dtype=np.float32)
+
+    img[0, 10:12, 10:12, :] = 1.0
+
+    tx = ty = tf.constant([1.]) / 32.0
+    sx = sy = tf.constant([1.0 / 2.0])
+    flip = tf.constant([False])
+
+    img = tf.constant(img)
+    img_t, _ = deepmac_meta_arch.transform_images_and_boxes(
+        images=img, boxes=None, tx=tx, ty=ty, sx=sx, sy=sy, flip=flip)
+    self.assertAlmostEqual(img_t.numpy().sum(), 16 * 3)
+
+    # Converting channels of the image to instances.
+    masks = tf.transpose(img_t, (0, 3, 1, 2))
+
+    masks_t = deepmac_meta_arch.transform_instance_masks(
+        masks, tx=-tx, ty=-ty, sx=1.0/sx, sy=1.0/sy, flip=flip)
+
+    self.assertAlmostEqual(masks_t.numpy().sum(), 4 * 3)
+
+    coords = np.argwhere(masks_t[0, 0, :, :] >= 0.5)
+
+    self.assertAlmostEqual(np.min(coords[:, 0]), 10, delta=1)
+    self.assertAlmostEqual(np.max(coords[:, 0]), 12, delta=1)
+    self.assertAlmostEqual(np.min(coords[:, 1]), 10, delta=1)
+    self.assertAlmostEqual(np.max(coords[:, 1]), 12, delta=1)
+
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
 class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
@@ -715,6 +936,24 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     prediction = self.model.predict(tf.zeros((1, 32, 32, 3)), None)
     self.assertEqual(prediction['MASK_LOGITS_GT_BOXES'][0].shape,
                      (1, 5, 16, 16))
+
+  def test_predict_self_supervised_deaugmented_mask_logits(self):
+
+    model = build_meta_arch(
+        augmented_self_supervision_loss_weight=1.0,
+        predict_full_resolution_masks=True)
+
+    model.provide_groundtruth(
+        groundtruth_boxes_list=[tf.convert_to_tensor([[0., 0., 1., 1.]] * 5)],
+        groundtruth_classes_list=[tf.one_hot([1, 0, 1, 1, 1], depth=6)],
+        groundtruth_weights_list=[tf.ones(5)],
+        groundtruth_masks_list=[tf.ones((5, 32, 32))])
+    prediction = model.predict(tf.zeros((1, 32, 32, 3)), None)
+    self.assertEqual(prediction['MASK_LOGITS_GT_BOXES'][0].shape,
+                     (1, 5, 8, 8))
+    self.assertEqual(
+        prediction['SELF_SUPERVISED_DEAUGMENTED_MASK_LOGITS'][0].shape,
+        (1, 5, 8, 8))
 
   def test_loss(self):
 
@@ -1036,14 +1275,182 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     output = self.model._get_lab_image(tf.zeros((2, 4, 4, 3)))
     self.assertEqual(output.shape, (2, 4, 4, 3))
 
+  def test_self_supervised_augmented_loss_identity(self):
+    model = build_meta_arch(predict_full_resolution_masks=True,
+                            augmented_self_supervision_max_translation=0.0)
+
+    x = tf.random.uniform((2, 3, 32, 32), 0, 1)
+    boxes = tf.constant([[0., 0., 1., 1.]] * 6)
+    boxes = tf.reshape(boxes, [2, 3, 4])
+    x = tf.cast(x > 0, tf.float32)
+    x = (x - 0.5) * 2e40  # x is a tensor or large +ve or -ve values.
+    loss = model._compute_self_supervised_augmented_loss(x, x, boxes)
+
+    self.assertAlmostEqual(loss.numpy().sum(), 0.0)
+
+  def test_self_supervised_mse_augmented_loss_0(self):
+    model = build_meta_arch(predict_full_resolution_masks=True,
+                            augmented_self_supervision_max_translation=0.0,
+                            augmented_self_supervision_loss='loss_mse')
+
+    x = tf.random.uniform((2, 3, 32, 32), 0, 1)
+    boxes = tf.constant([[0., 0., 1., 1.]] * 6)
+    boxes = tf.reshape(boxes, [2, 3, 4])
+    loss = model._compute_self_supervised_augmented_loss(x, x, boxes)
+
+    self.assertAlmostEqual(loss.numpy().min(), 0.0)
+    self.assertAlmostEqual(loss.numpy().max(), 0.0)
+
+  def test_self_supervised_mse_loss_scale_equivalent(self):
+    model = build_meta_arch(predict_full_resolution_masks=True,
+                            augmented_self_supervision_max_translation=0.0,
+                            augmented_self_supervision_loss='loss_mse')
+
+    x = np.zeros((1, 3, 32, 32), dtype=np.float32) + 100.0
+    y = 0.0 * x.copy()
+
+    x[0, 0, :8, :8] = 0.0
+    y[0, 0, :8, :8] = 1.0
+    x[0, 1, :16, :16] = 0.0
+    y[0, 1, :16, :16] = 1.0
+    x[0, 2, :16, :16] = 0.0
+    x[0, 2, :8, :8] = 1.0
+    y[0, 2, :16, :16] = 0.0
+
+    boxes = np.array([[0., 0., 0.22, 0.22], [0., 0., 0.47, 0.47],
+                      [0., 0., 0.47, 0.47]],
+                     dtype=np.float32)
+
+    boxes = tf.reshape(tf.constant(boxes), [1, 3, 4])
+    loss = model._compute_self_supervised_augmented_loss(x, y, boxes)
+
+    self.assertEqual(loss.shape, (1, 3))
+    mse_1_minus_0 = (tf.nn.sigmoid(1.0) - tf.nn.sigmoid(0.0)).numpy()**2
+    self.assertAlmostEqual(loss.numpy()[0, 0], mse_1_minus_0)
+    self.assertAlmostEqual(loss.numpy()[0, 1], mse_1_minus_0)
+    self.assertAlmostEqual(loss.numpy()[0, 2], mse_1_minus_0 / 4.0)
+
+  def test_self_supervised_kldiv_augmented_loss_0(self):
+    model = build_meta_arch(predict_full_resolution_masks=True,
+                            augmented_self_supervision_max_translation=0.0,
+                            augmented_self_supervision_loss='loss_kl_div')
+
+    x = tf.random.uniform((2, 3, 32, 32), 0, 1)
+    boxes = tf.constant([[0., 0., 1., 1.]] * 6)
+    boxes = tf.reshape(boxes, [2, 3, 4])
+    loss = model._compute_self_supervised_augmented_loss(x, x, boxes)
+
+    self.assertAlmostEqual(loss.numpy().min(), 0.0)
+    self.assertAlmostEqual(loss.numpy().max(), 0.0)
+
+  def test_self_supervised_kldiv_scale_equivalent(self):
+    model = build_meta_arch(predict_full_resolution_masks=True,
+                            augmented_self_supervision_max_translation=0.0,
+                            augmented_self_supervision_loss='loss_kl_div')
+
+    pred = np.zeros((1, 2, 32, 32), dtype=np.float32) + 100.0
+    true = 0.0 * pred.copy()
+
+    pred[0, 0, :8, :8] = LOGIT_HALF
+    true[0, 0, :8, :8] = LOGIT_QUARTER
+    pred[0, 1, :16, :16] = LOGIT_HALF
+    true[0, 1, :16, :16] = LOGIT_QUARTER
+
+    boxes = np.array([[0., 0., 0.22, 0.22], [0., 0., 0.47, 0.47]],
+                     dtype=np.float32)
+
+    boxes = tf.reshape(tf.constant(boxes), [1, 2, 4])
+    loss = model._compute_self_supervised_augmented_loss(
+        original_logits=pred, deaugmented_logits=true, boxes=boxes)
+
+    self.assertEqual(loss.shape, (1, 2))
+    expected = (3 * math.log(3) - 4 * math.log(2)) / 4.0
+    self.assertAlmostEqual(loss.numpy()[0, 0], expected, places=4)
+    self.assertAlmostEqual(loss.numpy()[0, 1], expected, places=4)
+
+  def test_self_supervision_warmup(self):
+    tf.keras.backend.set_learning_phase(True)
+    model = build_meta_arch(
+        use_dice_loss=True,
+        predict_full_resolution_masks=True,
+        network_type='cond_inst1',
+        dim=9,
+        pixel_embedding_dim=8,
+        use_instance_embedding=False,
+        use_xy=False,
+        augmented_self_supervision_loss_weight=1.0,
+        augmented_self_supervision_max_translation=0.5,
+        augmented_self_supervision_warmup_start=10,
+        augmented_self_supervision_warmup_steps=40)
+    num_stages = 1
+    prediction = {
+        'preprocessed_inputs': tf.random.normal((1, 32, 32, 3)),
+        'MASK_LOGITS_GT_BOXES': [tf.random.normal((1, 5, 8, 8))] * num_stages,
+        'SELF_SUPERVISED_DEAUGMENTED_MASK_LOGITS':
+            [tf.random.normal((1, 5, 8, 8))] * num_stages,
+        'object_center': [tf.random.normal((1, 8, 8, 6))] * num_stages,
+        'box/offset': [tf.random.normal((1, 8, 8, 2))] * num_stages,
+        'box/scale': [tf.random.normal((1, 8, 8, 2))] * num_stages
+    }
+
+    boxes = [tf.convert_to_tensor([[0., 0., 1., 1.]] * 5)]
+    classes = [tf.one_hot([1, 0, 1, 1, 1], depth=6)]
+    weights = [tf.ones(5)]
+    masks = [tf.ones((5, 32, 32))]
+
+    model.provide_groundtruth(
+        groundtruth_boxes_list=boxes,
+        groundtruth_classes_list=classes,
+        groundtruth_weights_list=weights,
+        groundtruth_masks_list=masks,
+        training_step=5)
+    loss_at_5 = model.loss(prediction, tf.constant([[32, 32, 3.0]]))
+
+    model.provide_groundtruth(
+        groundtruth_boxes_list=boxes,
+        groundtruth_classes_list=classes,
+        groundtruth_weights_list=weights,
+        groundtruth_masks_list=masks,
+        training_step=20)
+    loss_at_20 = model.loss(prediction, tf.constant([[32, 32, 3.0]]))
+
+    model.provide_groundtruth(
+        groundtruth_boxes_list=boxes,
+        groundtruth_classes_list=classes,
+        groundtruth_weights_list=weights,
+        groundtruth_masks_list=masks,
+        training_step=50)
+    loss_at_50 = model.loss(prediction, tf.constant([[32, 32, 3.0]]))
+
+    model.provide_groundtruth(
+        groundtruth_boxes_list=boxes,
+        groundtruth_classes_list=classes,
+        groundtruth_weights_list=weights,
+        groundtruth_masks_list=masks,
+        training_step=100)
+    loss_at_100 = model.loss(prediction, tf.constant([[32, 32, 3.0]]))
+
+    loss_key = 'Loss/' + deepmac_meta_arch.DEEP_MASK_AUGMENTED_SELF_SUPERVISION
+    self.assertAlmostEqual(loss_at_5[loss_key].numpy(), 0.0)
+    self.assertGreater(loss_at_20[loss_key], 0.0)
+
+    self.assertAlmostEqual(loss_at_20[loss_key].numpy(),
+                           loss_at_50[loss_key].numpy() / 4.0)
+    self.assertAlmostEqual(loss_at_50[loss_key].numpy(),
+                           loss_at_100[loss_key].numpy())
+
   def test_loss_keys(self):
-    model = build_meta_arch(use_dice_loss=True)
+    model = build_meta_arch(use_dice_loss=True,
+                            augmented_self_supervision_loss_weight=1.0,
+                            augmented_self_supervision_max_translation=0.5)
     prediction = {
         'preprocessed_inputs': tf.random.normal((3, 32, 32, 3)),
         'MASK_LOGITS_GT_BOXES': [tf.random.normal((3, 5, 8, 8))] * 2,
         'object_center': [tf.random.normal((3, 8, 8, 6))] * 2,
         'box/offset': [tf.random.normal((3, 8, 8, 2))] * 2,
-        'box/scale': [tf.random.normal((3, 8, 8, 2))] * 2
+        'box/scale': [tf.random.normal((3, 8, 8, 2))] * 2,
+        'SELF_SUPERVISED_DEAUGMENTED_MASK_LOGITS': (
+            [tf.random.normal((3, 5, 8, 8))] * 2)
     }
     model.provide_groundtruth(
         groundtruth_boxes_list=[
@@ -1061,6 +1468,7 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
                          '{} was <= 0'.format(weak_loss))
 
   def test_loss_weight_response(self):
+    tf.random.set_seed(12)
     model = build_meta_arch(
         use_dice_loss=True,
         predict_full_resolution_masks=True,
@@ -1068,14 +1476,19 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
         dim=9,
         pixel_embedding_dim=8,
         use_instance_embedding=False,
-        use_xy=False)
+        use_xy=False,
+        augmented_self_supervision_loss_weight=1.0,
+        augmented_self_supervision_max_translation=0.5,
+        )
     num_stages = 1
     prediction = {
         'preprocessed_inputs': tf.random.normal((1, 32, 32, 3)),
         'MASK_LOGITS_GT_BOXES': [tf.random.normal((1, 5, 8, 8))] * num_stages,
         'object_center': [tf.random.normal((1, 8, 8, 6))] * num_stages,
         'box/offset': [tf.random.normal((1, 8, 8, 2))] * num_stages,
-        'box/scale': [tf.random.normal((1, 8, 8, 2))] * num_stages
+        'box/scale': [tf.random.normal((1, 8, 8, 2))] * num_stages,
+        'SELF_SUPERVISED_DEAUGMENTED_MASK_LOGITS': (
+            [tf.random.normal((1, 5, 8, 8))] * num_stages)
     }
 
     boxes = [tf.convert_to_tensor([[0., 0., 1., 1.]] * 5)]
@@ -1098,7 +1511,9 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     loss_weights = {
         deepmac_meta_arch.DEEP_MASK_ESTIMATION: rng.uniform(1, 5),
         deepmac_meta_arch.DEEP_MASK_BOX_CONSISTENCY: rng.uniform(1, 5),
-        deepmac_meta_arch.DEEP_MASK_COLOR_CONSISTENCY: rng.uniform(1, 5)
+        deepmac_meta_arch.DEEP_MASK_COLOR_CONSISTENCY: rng.uniform(1, 5),
+        deepmac_meta_arch.DEEP_MASK_AUGMENTED_SELF_SUPERVISION: (
+            rng.uniform(1, 5))
     }
 
     weighted_model = build_meta_arch(
@@ -1113,7 +1528,11 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
         box_consistency_loss_weight=(
             loss_weights[deepmac_meta_arch.DEEP_MASK_BOX_CONSISTENCY]),
         color_consistency_loss_weight=(
-            loss_weights[deepmac_meta_arch.DEEP_MASK_COLOR_CONSISTENCY]))
+            loss_weights[deepmac_meta_arch.DEEP_MASK_COLOR_CONSISTENCY]),
+        augmented_self_supervision_loss_weight=(
+            loss_weights[deepmac_meta_arch.DEEP_MASK_AUGMENTED_SELF_SUPERVISION]
+            )
+        )
 
     weighted_model.provide_groundtruth(
         groundtruth_boxes_list=boxes,
@@ -1188,6 +1607,7 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
 
     loss_key = 'Loss/' + deepmac_meta_arch.DEEP_MASK_COLOR_CONSISTENCY
     self.assertAlmostEqual(loss_at_5[loss_key].numpy(), 0.0)
+    self.assertGreater(loss_at_15[loss_key], 0.0)
     self.assertAlmostEqual(loss_at_15[loss_key].numpy(),
                            loss_at_20[loss_key].numpy() / 2.0)
     self.assertAlmostEqual(loss_at_20[loss_key].numpy(),
