@@ -25,11 +25,13 @@ import pathlib
 from absl import app
 from absl import flags
 from absl import logging
+
+import tensorflow as tf
+from tensorflow_docs.api_generator import doc_controls
 from tensorflow_docs.api_generator import generate_lib
 from tensorflow_docs.api_generator import public_api
 
 import tensorflow_models as tfm
-from official.utils.docs import build_api_docs_lib
 
 FLAGS = flags.FLAGS
 
@@ -47,7 +49,43 @@ flags.DEFINE_string('site_path', '/api_docs/python',
 
 
 PROJECT_SHORT_NAME = 'tfm'
-PROJECT_FULL_NAME = 'TensorFlow Official Models - Modeling Library'
+PROJECT_FULL_NAME = 'TensorFlow Modeling Library'
+
+
+def hide_module_model_and_layer_methods():
+  """Hide methods and properties defined in the base classes of Keras layers.
+
+  We hide all methods and properties of the base classes, except:
+  - `__init__` is always documented.
+  - `call` is always documented, as it can carry important information for
+    complex layers.
+  """
+  module_contents = list(tf.Module.__dict__.items())
+  model_contents = list(tf.keras.Model.__dict__.items())
+  layer_contents = list(tf.keras.layers.Layer.__dict__.items())
+
+  for name, obj in module_contents + layer_contents + model_contents:
+    if name == '__init__':
+      # Always document __init__.
+      continue
+
+    if name == 'call':
+      # Always document `call`.
+      if hasattr(obj, doc_controls._FOR_SUBCLASS_IMPLEMENTERS):  # pylint: disable=protected-access
+        delattr(obj, doc_controls._FOR_SUBCLASS_IMPLEMENTERS)  # pylint: disable=protected-access
+      continue
+
+    # Otherwise, exclude from documentation.
+    if isinstance(obj, property):
+      obj = obj.fget
+
+    if isinstance(obj, (staticmethod, classmethod)):
+      obj = obj.__func__
+
+    try:
+      doc_controls.do_not_doc_in_subclasses(obj)
+    except AttributeError:
+      pass
 
 
 def custom_filter(path, parent, children):
@@ -61,7 +99,7 @@ def custom_filter(path, parent, children):
 def gen_api_docs(code_url_prefix, site_path, output_dir, project_short_name,
                  project_full_name, search_hints):
   """Generates api docs for the tensorflow docs package."""
-  build_api_docs_lib.hide_module_model_and_layer_methods()
+  hide_module_model_and_layer_methods()
   del tfm.nlp.layers.MultiHeadAttention
   del tfm.nlp.layers.EinsumDense
 
