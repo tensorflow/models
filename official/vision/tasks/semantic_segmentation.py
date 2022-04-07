@@ -166,7 +166,7 @@ class SemanticSegmentationTask(base_task.Task):
       **kwargs: other args.
     """
     for metric in metrics:
-      if 'mask_scores_mse' is metric.name:
+      if 'mask_scores_mse' == metric.name:
         actual_mask_scores = segmentation_losses.get_actual_mask_scores(
             model_outputs['logits'], labels['masks'],
             self.task_config.losses.ignore_label)
