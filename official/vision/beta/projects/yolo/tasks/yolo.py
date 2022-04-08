@@ -36,7 +36,7 @@ from official.vision.beta.projects.yolo.ops import mosaic
 from official.vision.beta.projects.yolo.ops import preprocessing_ops
 from official.vision.beta.projects.yolo.tasks import task_utils
 from official.vision.dataloaders import tfds_factory
-from official.vision.dataloaders.google import tf_example_label_map_decoder
+from official.vision.dataloaders import tf_example_label_map_decoder
 from official.vision.evaluation import coco_evaluator
 from official.vision.ops import box_ops
 
