@@ -18,20 +18,21 @@ from typing import Callable, Optional, Union, List, Tuple
 import gin
 import tensorflow as tf
 import tensorflow_addons.optimizers as tfa_optimizers
+
 from official.modeling.optimization import slide_optimizer
 from official.modeling.optimization import adafactor_optimizer
 from official.modeling.optimization import ema_optimizer
 from official.modeling.optimization import lars_optimizer
+from official.modeling.optimization import legacy_adamw
 from official.modeling.optimization import lr_schedule
 from official.modeling.optimization.configs import optimization_config as opt_cfg
-from official.nlp import optimization as nlp_optimization
 
 OPTIMIZERS_CLS = {
     'sgd': tf.keras.optimizers.SGD,
     # TODO(chenmoneygithub): experimental.SGD
     'adam': tf.keras.optimizers.Adam,
     # TODO(chenmoneygithub): experimental.Adam
-    'adamw': nlp_optimization.AdamWeightDecay,
+    'adamw': legacy_adamw.AdamWeightDecay,
     'lamb': tfa_optimizers.LAMB,
     'rmsprop': tf.keras.optimizers.RMSprop,
     'lars': lars_optimizer.LARS,
