@@ -60,6 +60,7 @@ class RetinaNetTaskTest(parameterized.TestCase, tf.test.TestCase):
     config.task.validation_data.shuffle_buffer_size = 2
     config.task.validation_data.input_path = test_tfrecord_file
     config.task.train_data.input_path = test_tfrecord_file
+    config.task.annotation_file = None
     config.train_steps = 1
 
     task = retinanet.RetinaNetTask(config.task)
