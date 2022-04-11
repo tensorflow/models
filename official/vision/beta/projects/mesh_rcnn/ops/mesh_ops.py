@@ -471,3 +471,81 @@ class MeshSampler():
     w1 = (1.0 - eps2) * eps1_sqrt
     w2 = eps2 * eps1_sqrt
     return w0, w1, w2
+
+
+def convert_obj_to_mesh(obj_filename: str,
+                        verts_pad_instances: int,
+                        faces_pad_instances: int) -> dict:
+  """Reads a .obj file and converts its contents into mesh tensors.
+
+  Args:
+    obj_filename: A `str`, .obj file to convert.
+    verts_pad_instances: An `int`, specifies  how many additional entries to
+      pad verts and verts_mask tensors to.
+    faces_pad_instances: An `int`, specifies  how many additional entries to
+      pad faces and faces_mask tensors to.
+
+  Returns:
+    mesh: A dictinary with the following keys:
+      'verts': A `Tensor` of shape [num_verts, 3], where the last dimension
+        contains all (x,y,z) vertex coordinates in the mesh.
+      'verts_mask': A `Tensor` of shape [num_verts], a mask for valid
+        vertices in the mesh.
+      'faces': A `Tensor` of shape [num_faces, 3], where the last dimension
+        contain the verts indices that make up the face.
+      'faces_mask': A `Tensor` of shape [num_faces], a mask for valid faces
+        in the mesh.
+  """
+
+  with open(obj_filename) as f:
+    lines = f.readlines()
+  
+  verts = []
+  faces = []
+
+  # Iterate through each line in the file
+  for line in lines:
+    line = line.split()
+
+    # Vertex entry
+    # Vertices only in the form: v x_coordinate y_coordinate z_coordinate
+    if line[0] == 'v':
+      verts.append([float(line[1]), float(line[2]), float(line[3])])
+    
+    # Face entry
+    # Faces are indices that point to the faces, but can have other properties
+    # delimited by '/' character
+    if line[0] == 'f':
+      faces.append([face_idx.split('/')[0] for face_idx in line])
+
+  num_verts = len(verts)
+  num_faces = len(faces)
+
+  verts = tf.convert_to_tensor(verts, dtype=tf.float32)
+  faces = tf.convert_to_tensor(faces, dtype=tf.int32)
+
+  # Apply padding and create masks for verts and faces
+  if num_verts < verts_pad_instances:
+    num_pad = verts_pad_instances - num_verts
+    verts_padding = tf.zeros(shape=[num_pad, 3], dtype=verts.dtype)
+    verts = tf.concat([verts, verts_padding], axis=0)
+    verts_mask = tf.repeat([1, 0], repeats=[num_verts, num_pad])
+  else:
+    verts_mask = tf.repeat([1], repeats=[num_verts])
+  
+  if num_faces < faces_pad_instances:
+    num_pad = faces_pad_instances - num_faces
+    faces_padding = tf.zeros(shape=[num_pad, 3], dtype=faces.dtype)
+    faces = tf.concat([faces, faces_padding], axis=0)
+    faces_mask = tf.repeat([1, 0], repeats=[num_faces, num_pad])
+  else:
+    faces_mask = tf.repeat([1], repeats=[num_faces])
+  
+  mesh = {
+    'verts': verts,
+    'faces': faces,
+    'verts_mask': verts_mask,
+    'faces_mask': faces_mask,
+  }
+
+  return mesh

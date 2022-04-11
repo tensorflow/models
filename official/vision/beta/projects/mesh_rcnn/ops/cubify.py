@@ -298,14 +298,14 @@ def cubify(voxels: tf.Tensor,
   Returns:
     mesh: A dictinary with the following keys:
       'verts': A `Tensor` of shape [B, num_verts, 3], where the last dimension
-        contains all (x,y,z) vertex coordinates in the initial mesh mesh.
+        contains all (x,y,z) vertex coordinates in the initial mesh.
       'verts_mask': A `Tensor` of shape [B, num_verts], a mask for valid
-        vertices in the watertight mesh.
+        vertices in the mesh.
       'faces': A `Tensor` of shape [B, num_faces, 3], where the last dimension
         contain the verts indices that make up the face. This may include
         duplicate faces.
       'faces_mask': A `Tensor` of shape [B, num_faces], a mask for valid faces
-        in the watertight mesh.
+        in the mesh.
   """
   shape = tf.shape(voxels)
   batch_size, depth, _, _ = shape[0], shape[1], shape[2], shape[3]
