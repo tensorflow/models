@@ -19,6 +19,14 @@ from official.modeling import hyperparams  # type: ignore
 
 
 @dataclasses.dataclass
+class ZHead(hyperparams.Config):
+    """Parameterization for the Mesh R-CNN Z Head."""
+    num_fc: int = 2
+    fc_dim: int = 1024
+    cls_agnostic: bool = False
+    num_classes: int = 9
+
+@dataclasses.dataclass
 class VoxelHead(hyperparams.Config):
   """Parameterization for the Mesh R-CNN Voxel Branch Prediction Head."""
   voxel_depth: int = 28
