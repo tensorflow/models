@@ -47,7 +47,7 @@ class TfrecordLibTest(parameterized.TestCase):
     path = os.path.join(FLAGS.test_tmpdir, 'train')
 
     tfrecord_lib.write_tf_record_dataset(
-        path, data, process_sample, 3, use_multiprocessing=False)
+        path, data, process_sample, 3, multiple_processes=0)
     tfrecord_files = tf.io.gfile.glob(path + '*')
 
     self.assertLen(tfrecord_files, 3)

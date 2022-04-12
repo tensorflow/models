@@ -114,7 +114,7 @@ def encode_mask_as_png(mask):
 
 def write_tf_record_dataset(output_path, annotation_iterator,
                             process_func, num_shards,
-                            use_multiprocessing=True, unpack_arguments=True):
+                            multiple_processes=None, unpack_arguments=True):
   """Iterates over annotations, processes them and writes into TFRecords.
 
   Args:
@@ -125,7 +125,10 @@ def write_tf_record_dataset(output_path, annotation_iterator,
       annotation_iterator as arguments and returns a tuple of (tf.train.Example,
       int). The integer indicates the number of annotations that were skipped.
     num_shards: int, the number of shards to write for the dataset.
-    use_multiprocessing:
+    multiple_processes: integer, the number of multiple parallel processes to
+      use.  If None, uses multi-processing with number of processes equal to
+      `os.cpu_count()`, which is Python's default behavior. If set to 0,
+      multi-processing is disabled.
       Whether or not to use multiple processes to write TF Records.
     unpack_arguments:
       Whether to unpack the tuples from annotation_iterator as individual
@@ -143,8 +146,9 @@ def write_tf_record_dataset(output_path, annotation_iterator,
 
   total_num_annotations_skipped = 0
 
-  if use_multiprocessing:
-    pool = mp.Pool()
+  if multiple_processes is None or multiple_processes > 0:
+    pool = g3_mp.get_context(g3_mp.ABSL_FORKSERVER).Pool(
+        processes=multiple_processes)
     if unpack_arguments:
       tf_example_iterator = pool.starmap(process_func, annotation_iterator)
     else:
@@ -163,7 +167,7 @@ def write_tf_record_dataset(output_path, annotation_iterator,
     total_num_annotations_skipped += num_annotations_skipped
     writers[idx % num_shards].write(tf_example.SerializeToString())
 
-  if use_multiprocessing:
+  if multiple_processes is None or multiple_processes > 0:
     pool.close()
     pool.join()
 
