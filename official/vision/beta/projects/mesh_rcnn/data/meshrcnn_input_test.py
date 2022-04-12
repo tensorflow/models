@@ -82,6 +82,12 @@ if __name__ == '__main__':
   )
   image = tf.image.resize_with_crop_or_pad(image, 800, 800)
 
+  rot_mat = tf.io.parse_tensor(
+        features['camera/rot_mat'].bytes_list.value[0],
+        tf.float32).numpy()
+
+  trans_mat = (features['camera/trans_mat'].float_list.value)
+
   # fileobj = BytesIO(bytes.fromhex(str(encoded_voxel[116:], encoding="utf-8", errors="ignore"))) 
   # voxel = tf.convert_to_tensor(sio.loadmat(fileobj)["voxel"].tolist(), dtype=tf.float16)
   # print(encoded_voxel[116:])
@@ -89,11 +95,11 @@ if __name__ == '__main__':
   MAX_FACES = 126748
   MAX_VERTICES = 108416
 
-  print(faces.shape)
-  print(vertices.shape)
+  # print(faces.shape)
+  # print(vertices.shape)
 
   faces.resize(MAX_FACES, 3)
-  vertics.resize(MAX_VERTICES, 3)
+  vertices.resize(MAX_VERTICES, 3)
 
   faces_mask = np.zeros((MAX_FACES,))
   vertices_mask = np.zeros((MAX_VERTICES,))
@@ -110,15 +116,18 @@ if __name__ == '__main__':
   voxel = mat_contents['voxel']
 
   verts = voxel_ops.read_voxel("voxel.mat")
-  # verts = voxel_ops.transform_verts(verts, None, None)
-  verts = voxel_ops.apply_coords(verts, 128, 128)
+  verts = voxel_ops.transform_verts(verts, rot_mat, trans_mat)
+  verts = voxel_ops.resize_coordinates(verts, 10, 10)
 
-  og_voxel = voxel_ops.verts2voxel(verts, [128, 128, 128])
+  verts = voxel_ops.horizontal_flip_coordinates(verts)
+  print(verts.shape)
+
+  # og_voxel = voxel_ops.verts2voxel(verts, [128, 128, 128])
 
   # down_voxel = voxel_ops.downsample(og_voxel, 5)
 
   # print((voxel.shape))
-  # print(verts.shape)
+  
   # print(og_voxel.shape)
   # # print(down_voxel.shape)
   # # print(voxel == og_voxel)
