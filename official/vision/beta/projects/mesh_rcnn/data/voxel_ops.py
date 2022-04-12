@@ -4,6 +4,43 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
+
+def batch_crop_voxels_within_box(voxels, boxes, Ks, voxel_side_len):
+    """
+    Batched version of :func:`crop_voxel_within_box`.
+    Args:
+        voxels (VoxelInstances): store N voxels for an image
+        boxes (Tensor): store N boxes corresponding to the masks.
+        Ks (Tensor): store N camera matrices
+        voxel_side_len (int): the size of the voxel.
+    Returns:
+        Tensor: A byte tensor of shape (N, voxel_side_len, voxel_side_len, voxel_side_len),
+        where N is the number of predicted boxes for this image.
+    """
+    device = boxes.device
+    im_sizes = Ks[:, 1:] * 2.0
+    voxels_tensor = torch.stack(voxels.data, 0)
+    zranges = torch.stack(
+        [voxels_tensor[:, :, 2].min(1)[0], voxels_tensor[:, :, 2].max(1)[0]], dim=1
+    )
+    cub3D = shape_utils.box2D_to_cuboid3D(zranges, Ks, boxes.clone(), im_sizes)
+    txz, tyz = shape_utils.cuboid3D_to_unitbox3D(cub3D)
+    x, y, z = voxels_tensor.split(1, dim=2)
+    xz = torch.cat([x, z], dim=2)
+    yz = torch.cat([y, z], dim=2)
+    pxz = txz(xz)
+    pyz = tyz(yz)
+    cropped_verts = torch.stack([pxz[:, :, 0], pyz[:, :, 0], pxz[:, :, 1]], dim=2)
+    results = [
+        verts2voxel(cropped_vert, [voxel_side_len] * 3).permute(2, 0, 1)
+        for cropped_vert in cropped_verts
+    ]
+
+    if len(results) == 0:
+        return torch.empty(0, dtype=torch.float32, device=device)
+    return torch.stack(results, dim=0).to(device=device)
+
+    
 def visualize_voxel(voxel):
     ax = plt.figure().add_subplot(projection='3d')
     ax.voxels(voxel, facecolors='red', edgecolor='k')
@@ -135,20 +172,29 @@ def transform_verts(verts, R, t):
     Outputs:
         - rotated_verts (tensor): of shape (N, 3)
     """
-    rot_verts = verts.clone().t()
-    if R is not None:
-        assert R.dim() == 2
-        assert R.size(0) == 3 and R.size(1) == 3
-        rot_verts = torch.mm(R, rot_verts)
-    if t is not None:
-        assert t.dim() == 1
-        assert t.size(0) == 3
-        rot_verts = rot_verts + t.unsqueeze(1)
-    rot_verts = rot_verts.t()
-    return rot_verts
+    rot_verts = np.array(verts)
+    rot_verts = np.transpose(rot_verts)
 
-def apply_coords(coords, new_w, new_h):
+    if R is not None:
+        assert R.ndim == 2
+        assert R.shape[0] == 3 and R.shape[1] == 3
+        rot_verts = np.matmul(R, rot_verts)
+    if t is not None:
+        # assert t.ndim == 1
+        # assert t.shape[0] == 3
+        assert (len(list(t))) == 3
+        rot_verts = rot_verts + np.expand_dims(t, axis=1)
+
+    rot_verts = np.transpose(rot_verts) 
+    return tf.cast(rot_verts, dtype=tf.float32)
+
+def resize_coordinates(coords, new_w, new_h):
     coords = np.array(coords)
     coords[:, 0] = coords[:, 0] * (new_w * 1.0 / coords.shape[0])
     coords[:, 1] = coords[:, 1] * (new_h * 1.0 / coords.shape[1])
-    return coords
+    return tf.cast(coords, dtype=tf.float32)
+
+def horizontal_flip_coordinates(verts):
+    verts = np.array(verts)
+    verts[:, 0] = -verts[:, 0]
+    return tf.cast(verts, dtype=tf.float32)
