@@ -441,4 +441,5 @@ def build_resnet(
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
       kernel_regularizer=l2_regularizer,
-      bn_trainable=backbone_cfg.bn_trainable)
+      bn_trainable=backbone_cfg.bn_trainable,
+      use_first_projection=backbone_cfg.use_first_projection)
