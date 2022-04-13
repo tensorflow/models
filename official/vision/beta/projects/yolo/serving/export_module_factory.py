@@ -19,16 +19,16 @@ from typing import List, Optional
 import tensorflow as tf
 
 from official.core import config_definitions as cfg
-from official.vision.beta import configs
-from official.vision.beta.dataloaders import classification_input
-from official.vision.beta.modeling import factory
+from official.vision import configs
 from official.vision.beta.projects.yolo.configs.yolo import YoloTask
 from official.vision.beta.projects.yolo.modeling import factory as yolo_factory
 from official.vision.beta.projects.yolo.modeling.backbones import darknet  # pylint: disable=unused-import
 from official.vision.beta.projects.yolo.modeling.decoders import yolo_decoder  # pylint: disable=unused-import
 from official.vision.beta.projects.yolo.serving import model_fn as yolo_model_fn
-from official.vision.beta.serving import export_base_v2 as export_base
-from official.vision.beta.serving import export_utils
+from official.vision.dataloaders import classification_input
+from official.vision.modeling import factory
+from official.vision.serving import export_base_v2 as export_base
+from official.vision.serving import export_utils
 
 
 def create_classification_export_module(
