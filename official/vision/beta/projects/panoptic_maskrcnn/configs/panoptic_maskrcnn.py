@@ -59,6 +59,8 @@ class TfExampleDecoder(common.TfExampleDecoder):
   """A simple TF Example decoder config."""
   # Setting this to true will enable decoding category_mask and instance_mask.
   include_panoptic_masks: bool = True
+  panoptic_category_mask_key: str = 'image/panoptic/category_mask'
+  panoptic_instance_mask_key: str = 'image/panoptic/instance_mask'
 
 
 @dataclasses.dataclass
