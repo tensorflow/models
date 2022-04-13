@@ -24,23 +24,30 @@ from official.vision.ops import preprocess_ops
 class TfExampleDecoder(tf_example_decoder.TfExampleDecoder):
   """Tensorflow Example proto decoder."""
 
-  def __init__(self, regenerate_source_id,
-               mask_binarize_threshold, include_panoptic_masks):
+  def __init__(
+      self,
+      regenerate_source_id: bool,
+      mask_binarize_threshold: float,
+      include_panoptic_masks: bool,
+      panoptic_category_mask_key: str = 'image/panoptic/category_mask',
+      panoptic_instance_mask_key: str = 'image/panoptic/instance_mask'):
     super(TfExampleDecoder, self).__init__(
         include_mask=True,
         regenerate_source_id=regenerate_source_id,
         mask_binarize_threshold=None)
 
     self._include_panoptic_masks = include_panoptic_masks
+    self._panoptic_category_mask_key = panoptic_category_mask_key
+    self._panoptic_instance_mask_key = panoptic_instance_mask_key
     keys_to_features = {
         'image/segmentation/class/encoded':
             tf.io.FixedLenFeature((), tf.string, default_value='')}
 
     if include_panoptic_masks:
       keys_to_features.update({
-          'image/panoptic/category_mask':
+          panoptic_category_mask_key:
               tf.io.FixedLenFeature((), tf.string, default_value=''),
-          'image/panoptic/instance_mask':
+          panoptic_instance_mask_key:
               tf.io.FixedLenFeature((), tf.string, default_value='')})
     self._segmentation_keys_to_features = keys_to_features
 
@@ -56,10 +63,10 @@ class TfExampleDecoder(tf_example_decoder.TfExampleDecoder):
 
     if self._include_panoptic_masks:
       category_mask = tf.io.decode_image(
-          parsed_tensors['image/panoptic/category_mask'],
+          parsed_tensors[self._panoptic_category_mask_key],
           channels=1)
       instance_mask = tf.io.decode_image(
-          parsed_tensors['image/panoptic/instance_mask'],
+          parsed_tensors[self._panoptic_instance_mask_key],
           channels=1)
       category_mask.set_shape([None, None, 1])
       instance_mask.set_shape([None, None, 1])
