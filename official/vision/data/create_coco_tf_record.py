@@ -68,7 +68,7 @@ flags.DEFINE_boolean(
     'default: False.')
 flags.DEFINE_string('output_file_prefix', '/tmp/train', 'Path to output file')
 flags.DEFINE_integer('num_shards', 32, 'Number of shards for output file.')
-_NUM_PROCESSES = flags.DEFINE_string(
+_NUM_PROCESSES = flags.DEFINE_integer(
     'num_processes', None,
     ('Number of parallel processes to use. '
      'If set to 0, disables multi-processing.'))
