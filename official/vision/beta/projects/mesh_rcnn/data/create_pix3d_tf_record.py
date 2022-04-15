@@ -160,11 +160,12 @@ def create_tf_example(image: dict):
   model = image['model']
   voxel_file = image['voxel']
 
+
+  # Create image annotation
   with tf.io.gfile.GFile(os.path.join(pix3d_dir, img_filename), 'rb') as fid:
     encoded_img = fid.read()
 
-
-  if 'jpg' in img_filename:
+  if 'jpg' in img_filename or 'jpeg' in img_filename:
     img_format = 'jpg'
   else:
     img_format = 'png'
@@ -172,11 +173,13 @@ def create_tf_example(image: dict):
   feature_dict = image_info_to_feature_dict(
       img_height, img_width, img_filename, img_category, encoded_img, img_format)
 
+  # Create mask annotation
   with tf.io.gfile.GFile(os.path.join(pix3d_dir, mask_filename), 'rb') as fid:
     encoded_mask = fid.read()
 
   feature_dict.update({'image/object/mask': convert_to_feature(encoded_mask)})
 
+  # Create voxel and mesh annotations
   model_vertices, model_faces = parse_obj_file(os.path.join(pix3d_dir, model))
   feature_dict.update(
       {'model/vertices': convert_to_feature(model_vertices),
@@ -185,19 +188,27 @@ def create_tf_example(image: dict):
   voxels = parse_voxel_file(os.path.join(pix3d_dir, voxel_file))
   feature_dict.update(
       {'model/voxel': convert_to_feature(voxels)})
-
+  
+  # Create camera annotations
   rot_mat = image['rot_mat']
   trans_mat = image['trans_mat']
-  bbox = image['bbox']
-  is_crowd = image['iscrowd']
   intrinstic_mat = image['K']
 
   feature_dict.update(
       {'camera/rot_mat': convert_to_feature(rot_mat),
        'camera/trans_mat': convert_to_feature(trans_mat),
-       'camera/intrinstic_mat': convert_to_feature(intrinstic_mat),
-       'image/object/bbox': convert_to_feature(bbox),
-       'is_crowd': convert_to_feature(is_crowd)})
+       'camera/intrinstic_mat': convert_to_feature(intrinstic_mat)})
+
+  # Create bounding box annotations
+  xmin, ymin, xmax, ymax = image['bbox']
+  is_crowd = image['iscrowd']
+
+  feature_dict.update({
+      'image/object/xmin': convert_to_feature(xmin),
+      'image/object/ymin': convert_to_feature(ymin),
+      'image/object/xmax': convert_to_feature(xmax),
+      'image/object/ymax': convert_to_feature(ymax),
+      'is_crowd': convert_to_feature(is_crowd)})
 
   example = tf.train.Example(
       features=tf.train.Features(feature=feature_dict))
