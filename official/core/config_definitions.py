@@ -195,8 +195,8 @@ class TrainerConfig(base_config.Config):
       is only used continuous_train_and_eval and continuous_eval modes. Default
       value is 1 hrs.
     train_steps: number of train steps.
-    validation_steps: number of eval steps. If `None`, the entire eval dataset
-      is used.
+    validation_steps: number of eval steps. If -1, the entire eval dataset is
+      used.
     validation_interval: number of training steps to run between evaluations.
     best_checkpoint_export_subdir: if set, the trainer will keep track of the
       best evaluation metric, and export the corresponding best checkpoint under

@@ -1,4 +1,9 @@
-# TensorFlow NLP Modelling Toolkit
+# TF-NLP Model Garden
+
+⚠️ Disclaimer: All datasets hyperlinked from this page are not owned or
+distributed by Google. The dataset is made available by third parties.
+Please review the terms and conditions made available by the third parties
+before using the data.
 
 This codebase provides a Natrual Language Processing modeling toolkit written in
 [TF2](https://www.tensorflow.org/guide/effective_tf2). It allows researchers and

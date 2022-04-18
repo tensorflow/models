@@ -150,30 +150,6 @@ class MockAsyncTrainer(trainer_lib._AsyncTrainer):
     return self.eval_global_step.numpy()
 
 
-class RecoveryTest(tf.test.TestCase):
-
-  def test_recovery_module(self):
-    ckpt = tf.train.Checkpoint(v=tf.Variable(1, dtype=tf.int32))
-    model_dir = self.get_temp_dir()
-    manager = tf.train.CheckpointManager(ckpt, model_dir, max_to_keep=1)
-    recovery_module = trainer_lib.Recovery(
-        loss_upper_bound=1.0,
-        checkpoint_manager=manager,
-        recovery_begin_steps=1,
-        recovery_max_trials=1)
-    self.assertFalse(recovery_module.should_recover(1.1, 0))
-    self.assertFalse(recovery_module.should_recover(0.1, 1))
-    self.assertTrue(recovery_module.should_recover(1.1, 2))
-
-    # First triggers the recovery once.
-    recovery_module.maybe_recover(1.1, 10)
-
-    # Second time, it raises.
-    with self.assertRaisesRegex(
-        RuntimeError, 'The loss value is NaN .*'):
-      recovery_module.maybe_recover(1.1, 10)
-
-
 class TrainerTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
