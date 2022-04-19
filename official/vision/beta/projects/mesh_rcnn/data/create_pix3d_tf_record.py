@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# https://github.com/PurdueDualityLab/tf-models/blob/master/official/vision/beta/data/create_coco_tf_record.py reference
 
 """Convert raw Pix3D dataset to TFRecord format.
 Example usage:
@@ -160,7 +158,6 @@ def create_tf_example(image: dict):
   model = image['model']
   voxel_file = image['voxel']
 
-
   # Create image annotation
   with tf.io.gfile.GFile(os.path.join(pix3d_dir, img_filename), 'rb') as fid:
     encoded_img = fid.read()
@@ -183,7 +180,8 @@ def create_tf_example(image: dict):
   model_vertices, model_faces = parse_obj_file(os.path.join(pix3d_dir, model))
   feature_dict.update(
       {'model/vertices': convert_to_feature(model_vertices),
-       'model/faces': convert_to_feature(model_faces)})
+       'model/faces': convert_to_feature(model_faces),
+      })
 
   voxels = parse_voxel_file(os.path.join(pix3d_dir, voxel_file))
   feature_dict.update(
