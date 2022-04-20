@@ -14,6 +14,7 @@
 
 """Keras-based TransformerEncoder block layer."""
 
+from absl import logging
 import tensorflow as tf
 
 from official.nlp.modeling.layers import util
@@ -176,9 +177,9 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
       einsum_equation = "...bc,cd->...bd"
     hidden_size = input_tensor_shape[-1]
     if hidden_size % self._num_heads != 0:
-      raise ValueError(
+      logging.warning(
           "The input size (%d) is not a multiple of the number of attention "
-          "heads (%d)" % (hidden_size, self._num_heads))
+          "heads (%d)", hidden_size, self._num_heads)
     if self._key_dim is None:
       self._key_dim = int(hidden_size // self._num_heads)
     if self._output_last_dim is None:
