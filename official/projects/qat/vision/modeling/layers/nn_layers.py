@@ -14,6 +14,7 @@
 
 """Contains common building blocks for neural networks."""
 
+import enum
 from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import tensorflow as tf
@@ -29,6 +30,14 @@ from official.vision.modeling.layers import nn_layers
 # Type annotations.
 States = Dict[str, tf.Tensor]
 Activation = Union[str, Callable]
+
+
+# String constants.
+class FeatureFusion(str, enum.Enum):
+  PYRAMID_FUSION = 'pyramid_fusion'
+  PANOPTIC_FPN_FUSION = 'panoptic_fpn_fusion'
+  DEEPLABV3PLUS = 'deeplabv3plus'
+  DEEPLABV3PLUS_SUM_TO_MERGE = 'deeplabv3plus_sum_to_merge'
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -237,10 +246,11 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
         prediction layer.
       upsample_factor: An `int` number to specify the upsampling factor to
         generate finer mask. Default 1 means no upsampling is applied.
-      feature_fusion: One of `deeplabv3plus`, `pyramid_fusion`, or None. If
-        `deeplabv3plus`, features from decoder_features[level] will be fused
-        with low level feature maps from backbone. If `pyramid_fusion`,
-        multiscale features will be resized and fused at the target level.
+      feature_fusion: One of `deeplabv3plus`, `deeplabv3plus_sum_to_merge`,
+        `pyramid_fusion`, or None. If  `deeplabv3plus`, features from
+        decoder_features[level] will be fused with low level feature maps from
+        backbone. If `pyramid_fusion`, multiscale features will be resized and
+        fused at the target level.
       decoder_min_level: An `int` of minimum level from decoder to use in
         feature fusion. It is only used when feature_fusion is set to
         `panoptic_fpn_fusion`.
@@ -327,7 +337,9 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
         'epsilon': self._config_dict['norm_epsilon'],
     }
 
-    if self._config_dict['feature_fusion'] == 'deeplabv3plus':
+    if self._config_dict['feature_fusion'] in [
+        FeatureFusion.DEEPLABV3PLUS, FeatureFusion.DEEPLABV3PLUS_SUM_TO_MERGE
+    ]:
       # Deeplabv3+ feature fusion layers.
       self._dlv3p_conv = helper.Conv2DQuantized(
           kernel_size=1,
@@ -388,6 +400,7 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
         backbone_shape[1], backbone_shape[2], interpolation='bilinear')
 
     self._concat_layer = helper.ConcatenateQuantized(axis=self._bn_axis)
+    self._add_layer = tf.keras.layers.Add()
 
     super().build(input_shape)
 
@@ -412,14 +425,16 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
       segmentation prediction mask: A `tf.Tensor` of the segmentation mask
         scores predicted from input features.
     """
-    if self._config_dict['feature_fusion'] in ('pyramid_fusion',
-                                               'panoptic_fpn_fusion'):
+    if self._config_dict['feature_fusion'] in (
+        FeatureFusion.PYRAMID_FUSION, FeatureFusion.PANOPTIC_FPN_FUSION):
       raise ValueError(
           'The feature fusion method `pyramid_fusion` is not supported in QAT.')
 
     backbone_output = inputs[0]
     decoder_output = inputs[1]
-    if self._config_dict['feature_fusion'] == 'deeplabv3plus':
+    if self._config_dict['feature_fusion'] in {
+        FeatureFusion.DEEPLABV3PLUS, FeatureFusion.DEEPLABV3PLUS_SUM_TO_MERGE
+    }:
       # deeplabv3+ feature fusion.
       x = decoder_output[str(self._config_dict['level'])] if isinstance(
           decoder_output, dict) else decoder_output
@@ -429,7 +444,10 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
       y = self._activation_layer(y)
       x = self._resizing_layer(x)
       x = tf.cast(x, dtype=y.dtype)
-      x = self._concat_layer([x, y])
+      if self._config_dict['feature_fusion'] == FeatureFusion.DEEPLABV3PLUS:
+        x = self._concat_layer([x, y])
+      else:
+        x = self._add_layer([x, y])
     else:
       x = decoder_output[str(self._config_dict['level'])] if isinstance(
           decoder_output, dict) else decoder_output
