@@ -24,12 +24,15 @@ from official.projects.qat.vision.modeling.layers import nn_layers
 class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      ('deeplabv3plus', 1),
-      ('deeplabv3plus', 2),
-      ('deeplabv3', 1),
-      ('deeplabv3', 2),
+      ('deeplabv3plus', 1, 128, 128),
+      ('deeplabv3plus', 2, 128, 128),
+      ('deeplabv3', 1, 128, 64),
+      ('deeplabv3', 2, 128, 64),
+      ('deeplabv3plus_sum_to_merge', 1, 64, 128),
+      ('deeplabv3plus_sum_to_merge', 2, 64, 128),
   )
-  def test_segmentation_head_creation(self, feature_fusion, upsample_factor):
+  def test_segmentation_head_creation(self, feature_fusion, upsample_factor,
+                                      low_level_num_filters, expected_shape):
     input_size = 128
     decoder_outupt_size = input_size // 2
 
@@ -42,14 +45,11 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
         level=4,
         upsample_factor=upsample_factor,
         low_level=2,
-        low_level_num_filters=128,
+        low_level_num_filters=low_level_num_filters,
         feature_fusion=feature_fusion)
 
     features = segmentation_head((backbone_output, decoder_output))
 
-    expected_shape = (
-        input_size
-        if feature_fusion == 'deeplabv3plus' else decoder_outupt_size)
     self.assertAllEqual([
         2, expected_shape * upsample_factor, expected_shape * upsample_factor, 5
     ], features.shape.as_list())

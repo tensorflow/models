@@ -233,8 +233,9 @@ class SegmentationHead(tf.keras.layers.Layer):
       prediction layer.
       upsample_factor: An `int` number to specify the upsampling factor to
         generate finer mask. Default 1 means no upsampling is applied.
-      feature_fusion: One of `deeplabv3plus`, `pyramid_fusion`,
-        `panoptic_fpn_fusion`, or None. If `deeplabv3plus`, features from
+      feature_fusion: One of the constants in nn_layers.FeatureFusion, namely
+        `deeplabv3plus`, `pyramid_fusion`, `panoptic_fpn_fusion`,
+        `deeplabv3plus_sum_to_merge`, or None. If `deeplabv3plus`, features from
         decoder_features[level] will be fused with low level feature maps from
         backbone. If `pyramid_fusion`, multiscale features will be resized and
         fused at the target level.
@@ -245,10 +246,12 @@ class SegmentationHead(tf.keras.layers.Layer):
         feature fusion. It is only used when feature_fusion is set to
         `panoptic_fpn_fusion`.
       low_level: An `int` of backbone level to be used for feature fusion. It is
-        used when feature_fusion is set to `deeplabv3plus`.
+        used when feature_fusion is set to `deeplabv3plus` or
+        `deeplabv3plus_sum_to_merge`.
       low_level_num_filters: An `int` of reduced number of filters for the low
         level features before fusing it with higher level features. It is only
-        used when feature_fusion is set to `deeplabv3plus`.
+        used when feature_fusion is set to `deeplabv3plus` or
+        `deeplabv3plus_sum_to_merge`.
       num_decoder_filters: An `int` of number of filters in the decoder outputs.
         It is only used when feature_fusion is set to `panoptic_fpn_fusion`.
       activation: A `str` that indicates which activation is used, e.g. 'relu',
@@ -312,7 +315,8 @@ class SegmentationHead(tf.keras.layers.Layer):
         'epsilon': self._config_dict['norm_epsilon'],
     }
 
-    if self._config_dict['feature_fusion'] == 'deeplabv3plus':
+    if self._config_dict['feature_fusion'] in {'deeplabv3plus',
+                                               'deeplabv3plus_sum_to_merge'}:
       # Deeplabv3+ feature fusion layers.
       self._dlv3p_conv = conv_op(
           kernel_size=1,
@@ -398,7 +402,8 @@ class SegmentationHead(tf.keras.layers.Layer):
 
     backbone_output = inputs[0]
     decoder_output = inputs[1]
-    if self._config_dict['feature_fusion'] == 'deeplabv3plus':
+    if self._config_dict['feature_fusion'] in {'deeplabv3plus',
+                                               'deeplabv3plus_sum_to_merge'}:
       # deeplabv3+ feature fusion
       x = decoder_output[str(self._config_dict['level'])] if isinstance(
           decoder_output, dict) else decoder_output
@@ -410,7 +415,10 @@ class SegmentationHead(tf.keras.layers.Layer):
       x = tf.image.resize(
           x, tf.shape(y)[1:3], method=tf.image.ResizeMethod.BILINEAR)
       x = tf.cast(x, dtype=y.dtype)
-      x = tf.concat([x, y], axis=self._bn_axis)
+      if self._config_dict['feature_fusion'] == 'deeplabv3plus':
+        x = tf.concat([x, y], axis=self._bn_axis)
+      else:
+        x = tf.keras.layers.Add()([x, y])
     elif self._config_dict['feature_fusion'] == 'pyramid_fusion':
       if not isinstance(decoder_output, dict):
         raise ValueError('Only support dictionary decoder_output.')
