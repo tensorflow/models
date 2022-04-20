@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """VisionTransformer models."""
+
+import immutabledict
 import tensorflow as tf
 
 from official.modeling import activations
@@ -23,7 +25,7 @@ from official.vision.modeling.layers import nn_layers
 
 layers = tf.keras.layers
 
-VIT_SPECS = {
+VIT_SPECS = immutabledict.immutabledict({
     'vit-ti16':
         dict(
             hidden_size=192,
@@ -72,7 +74,7 @@ VIT_SPECS = {
             patch_size=14,
             transformer=dict(mlp_dim=8192, num_heads=16, num_layers=48),
         ),
-}
+})
 
 
 class AddPositionEmbs(tf.keras.layers.Layer):
