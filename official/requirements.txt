@@ -26,3 +26,5 @@ pycocotools
 seqeval
 sentencepiece
 sacrebleu
+# Projects/vit dependencies
+immutabledict
