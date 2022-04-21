@@ -998,6 +998,10 @@ def nearest_neighbor_upsampling(input_tensor, scale=None, height_scale=None,
     (batch_size, height, width,
      channels) = shape_utils.combined_static_and_dynamic_shape(input_tensor)
     output_tensor = tf.stack([input_tensor] * w_scale, axis=3, name='w_stack')
+    # Adds a reshape op to avoid generating high-dimensional tensors that some
+    # compilers cannot deal with.
+    output_tensor = tf.reshape(output_tensor,
+                               [batch_size, height, width * w_scale, channels])
     output_tensor = tf.stack([output_tensor] * h_scale, axis=2, name='h_stack')
     return tf.reshape(output_tensor,
                       [batch_size, height * h_scale, width * w_scale, channels])
