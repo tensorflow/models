@@ -3,7 +3,8 @@
 </div>
 
 [![Python](https://img.shields.io/pypi/pyversions/tensorflow.svg?style=plastic)](https://badge.fury.io/py/tensorflow)
-[![PyPI](https://badge.fury.io/py/tensorflow.svg)](https://badge.fury.io/py/tensorflow)
+[![tf-models-official PyPI](https://badge.fury.io/py/tf-models-official.svg)](https://badge.fury.io/py/tf-models-official.svg)
+
 
 # Welcome to the Model Garden for TensorFlow
 
@@ -32,7 +33,8 @@ To install the current release of tensorflow-models, please follow any one of th
 
 <details>
 
-**tf-models-official** is the stable Model Garden package.
+**tf-models-official** is the stable Model Garden package. Please check out the [releases](https://github.com/tensorflow/models/releases) to see what are available modules.
+
 pip will install all models and dependencies automatically.
 
 ```shell
