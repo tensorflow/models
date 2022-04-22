@@ -73,7 +73,9 @@ class BaseBenchmark(  # pylint: disable=undefined-variable
   _benchmark_parameters = _get_benchmark_params(
       benchmark_definitions.VISION_BENCHMARKS) + _get_benchmark_params(
           benchmark_definitions.NLP_BENCHMARKS) + _get_benchmark_params(
-              benchmark_definitions.QAT_BENCHMARKS, True)
+              benchmark_definitions.QAT_BENCHMARKS,
+              True) + _get_benchmark_params(
+                  benchmark_definitions.TENSOR_TRACER_BENCHMARKS)
 
   def __init__(self,
                output_dir=None,
