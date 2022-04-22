@@ -396,11 +396,12 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
         size=(self._config_dict['upsample_factor'],
               self._config_dict['upsample_factor']),
         interpolation='nearest')
-    self._resizing_layer = tf.keras.layers.Resizing(
+    self._resizing_layer = helper.ResizingQuantized(
         backbone_shape[1], backbone_shape[2], interpolation='bilinear')
 
     self._concat_layer = helper.ConcatenateQuantized(axis=self._bn_axis)
-    self._add_layer = tf.keras.layers.Add()
+    self._add_layer = tfmot.quantization.keras.QuantizeWrapperV2(
+        tf.keras.layers.Add(), configs.Default8BitQuantizeConfig([], [], True))
 
     super().build(input_shape)
 
@@ -638,7 +639,7 @@ class SpatialPyramidPoolingQuantized(nn_layers.SpatialPyramidPooling):
             kernel_regularizer=self._kernel_regularizer,
             use_bias=False,
             activation=helper.NoOpActivation()),
-        norm_with_quantize(
+        norm(
             axis=self._bn_axis,
             momentum=self._batchnorm_momentum,
             epsilon=self._batchnorm_epsilon)
@@ -667,7 +668,7 @@ class SpatialPyramidPoolingQuantized(nn_layers.SpatialPyramidPooling):
     x = self._concat_layer(result)
     for layer in self._projection:
       x = layer(x, training=training)
-    x = self._activation_fn_no_quant(x)
+    x = self._activation_fn(x)
     return self._dropout_layer(x)
 
 
