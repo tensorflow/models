@@ -167,6 +167,10 @@ class RetinaNetTask(cfg.TaskConfig):
   # If set, the Waymo Open Dataset evaluator would be used.
   use_wod_metrics: bool = False
 
+  # If set, freezes the backbone during training.
+  # TODO(crisnv) Add paper link when available.
+  freeze_backbone: bool = False
+
 
 @exp_factory.register_config_factory('retinanet')
 def retinanet() -> cfg.ExperimentConfig:
