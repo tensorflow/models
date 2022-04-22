@@ -43,7 +43,8 @@ def export_inference_graph(
     export_saved_model_subdir: Optional[str] = None,
     save_options: Optional[tf.saved_model.SaveOptions] = None,
     log_model_flops_and_params: bool = False,
-    checkpoint: Optional[tf.train.Checkpoint] = None):
+    checkpoint: Optional[tf.train.Checkpoint] = None,
+    input_name: Optional[str] = None):
   """Exports inference graph for the model specified in the exp config.
 
   Saved model is stored at export_dir/saved_model, checkpoint is saved
@@ -69,6 +70,8 @@ def export_inference_graph(
       and model parameters to model_params.txt.
     checkpoint: An optional tf.train.Checkpoint. If provided, the export module
       will use it to read the weights.
+    input_name: The input tensor name, default at `None` which produces input
+      tensor name `inputs`.
   """
 
   if export_checkpoint_subdir:
@@ -92,7 +95,8 @@ def export_inference_graph(
           batch_size=batch_size,
           input_image_size=input_image_size,
           input_type=input_type,
-          num_channels=num_channels)
+          num_channels=num_channels,
+          input_name=input_name)
     elif isinstance(params.task, configs.retinanet.RetinaNetTask) or isinstance(
         params.task, configs.maskrcnn.MaskRCNNTask):
       export_module = detection.DetectionModule(
@@ -100,7 +104,8 @@ def export_inference_graph(
           batch_size=batch_size,
           input_image_size=input_image_size,
           input_type=input_type,
-          num_channels=num_channels)
+          num_channels=num_channels,
+          input_name=input_name)
     elif isinstance(params.task,
                     configs.semantic_segmentation.SemanticSegmentationTask):
       export_module = semantic_segmentation.SegmentationModule(
@@ -108,7 +113,8 @@ def export_inference_graph(
           batch_size=batch_size,
           input_image_size=input_image_size,
           input_type=input_type,
-          num_channels=num_channels)
+          num_channels=num_channels,
+          input_name=input_name)
     elif isinstance(params.task,
                     configs.video_classification.VideoClassificationTask):
       export_module = video_classification.VideoClassificationModule(
@@ -116,7 +122,8 @@ def export_inference_graph(
           batch_size=batch_size,
           input_image_size=input_image_size,
           input_type=input_type,
-          num_channels=num_channels)
+          num_channels=num_channels,
+          input_name=input_name)
     else:
       raise ValueError('Export module not implemented for {} task.'.format(
           type(params.task)))
