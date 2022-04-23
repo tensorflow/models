@@ -27,12 +27,12 @@ import os
 from typing import List, Tuple
 
 import numpy as np
-import tensorflow as tf
 import scipy.io
+import tensorflow as tf
 from absl import app, flags
 
-from official.vision.beta.data.tfrecord_lib import (image_info_to_feature_dict,
-                                                    write_tf_record_dataset)
+from official.vision.beta.data.tfrecord_lib import (
+    image_info_to_feature_dict, write_tf_record_dataset)
 
 flags.DEFINE_multi_string('pix3d_dir', '', 'Directory containing Pix3d.')
 flags.DEFINE_string('output_file_prefix', '/tmp/train', 'Path to output file')
@@ -74,7 +74,7 @@ def convert_to_feature(value, value_type=None):
 
     elif isinstance(element, list):
       value_type = "2d"
-    
+
     elif isinstance(element, np.ndarray):
       value_type = 'ndarray'
 
@@ -118,7 +118,7 @@ def convert_to_feature(value, value_type=None):
 
     return tf.train.Feature(
         bytes_list=tf.train.BytesList(value=[serialized_data.numpy()]))
-  
+
   elif value_type == "ndarray":
     data = tf.convert_to_tensor(value)
     serialized_data = tf.io.serialize_tensor(data)
@@ -138,8 +138,8 @@ def create_tf_example(image: dict):
   Args:
     image: dict with keys:
       ['filename, 'height', 'width', 'iscrowd', 'segmentation', 'model',
-          'category_id', 'K', 'bbox', 'trans_mat', 'area', 'image_id',
-          'rot_mat', 'voxel', 'pix3d_dir'].
+        'category_id', 'K', 'bbox', 'trans_mat', 'area', 'image_id',
+        'rot_mat', 'voxel', 'pix3d_dir'].
   Returns:
     example: The converted tf.Example.
     num_annotations_skipped: Number of (invalid) annotations that were
@@ -168,7 +168,8 @@ def create_tf_example(image: dict):
     img_format = 'png'
 
   feature_dict = image_info_to_feature_dict(
-      img_height, img_width, img_filename, img_category, encoded_img, img_format)
+      img_height, img_width, img_filename, img_category, encoded_img,
+      img_format)
 
   # Create mask annotation
   with tf.io.gfile.GFile(os.path.join(pix3d_dir, mask_filename), 'rb') as fid:
@@ -183,10 +184,12 @@ def create_tf_example(image: dict):
        'model/faces': convert_to_feature(model_faces),
       })
 
-  voxels = parse_voxel_file(os.path.join(pix3d_dir, voxel_file))
+  voxel_indices, voxel_shape = parse_voxel_file(
+      os.path.join(pix3d_dir, voxel_file))
   feature_dict.update(
-      {'model/voxel': convert_to_feature(voxels)})
-  
+      {'model/voxel_indices': convert_to_feature(voxel_indices),
+       'model/voxel_shape': convert_to_feature(voxel_shape)})
+
   # Create camera annotations
   rot_mat = image['rot_mat']
   trans_mat = image['trans_mat']
@@ -215,14 +218,14 @@ def create_tf_example(image: dict):
 
 def parse_obj_file(file: str) -> Tuple[List[List[float]], List[List[int]]]:
   """
-  Parses the vertex and face data out of a .obj file.
+  Parses the vertex and face data from a .obj file.
 
   Args:
     file: String filepath to .obj file.
 
   Return:
-    vertices: List of vertices of object.
-    faces: List faces of object.
+    vertices: An ndarray containing the vertices of the object.
+    faces: An ndarray containing the faces of object.
   """
   vertices = []
   faces = []
@@ -263,10 +266,16 @@ def parse_voxel_file(file: str):
     file: String filepath to .mat file.
 
   Return:
-    voxel: ndarray containing the voxel data.
+    voxel_indices: An ndarray containing the indices of the occupied locations
+      in the original voxel.
+    voxel_shape: An ndarray containing the shape of the original voxel.
   """
-  voxels = scipy.io.loadmat(file)['voxel']
-  return np.array(voxels)
+  voxel = scipy.io.loadmat(file)['voxel']
+  voxel = np.rot90(voxel, k=3, axes=(1, 2))
+  voxel_indices = np.argwhere(voxel > 0)
+
+  voxel_shape = voxel.shape
+  return voxel_indices, np.array(voxel_shape)
 
 def generate_annotations(annotation_dict: dict, pix3d_dir: str) -> List:
   """Generator for Pix3D annotations.
@@ -277,7 +286,8 @@ def generate_annotations(annotation_dict: dict, pix3d_dir: str) -> List:
     pix3d_dir: pix3d_dir: String, path to Pix3D download directory.
 
   Return:
-    annotations: List containing the annotations to write to the TFRecord.
+    annotations: List containing the annotations for each image to write to the
+      TFRecord.
   """
 
   raw_annotations = annotation_dict['annotations']

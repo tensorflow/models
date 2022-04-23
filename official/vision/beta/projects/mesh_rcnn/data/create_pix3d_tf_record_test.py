@@ -38,7 +38,7 @@ def get_features_single_instance(tfrecord_filename: str):
     example = tf.train.Example()
     example.ParseFromString(raw_record.numpy())
     features = example.features.feature
-  
+
   return features
 
 class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):

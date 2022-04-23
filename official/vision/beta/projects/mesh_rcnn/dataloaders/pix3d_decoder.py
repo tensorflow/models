@@ -15,7 +15,9 @@
 """Tensorflow decoder for the Pix3D dataset."""
 
 import tensorflow as tf
+
 from official.vision.beta.dataloaders import tf_example_decoder
+
 
 def _generate_source_id(image_bytes):
   # Hashing using 22 bits since float32 has only 23 mantissa bits.
@@ -38,7 +40,7 @@ class Pix3dDecoder(tf_example_decoder.TfExampleDecoder):
             tf.io.FixedLenFeature((), tf.string),
         'model/faces':
             tf.io.FixedLenFeature((), tf.string),
-        'model/voxel':
+        'model/voxel_indices':
             tf.io.FixedLenFeature((), tf.string),
         'camera/rot_mat':
             tf.io.FixedLenFeature((), tf.string),
@@ -47,40 +49,46 @@ class Pix3dDecoder(tf_example_decoder.TfExampleDecoder):
         'camera/intrinstic_mat':
             tf.io.VarLenFeature(tf.float32),
     })
-  
+
   def _decode_mesh(self, parsed_tensors):
     """Decode the mesh data into tensors.
 
     Args:
       parsed_tensors: A `dict` mapping feature keys to corresponding `Tensors`.
     Returns:
-      verts: A `Tensor` of shape [V, 3] containing the vertices data 
-        of the groundtruth mesh, where V is the number of vertices. 
-      faces: A `Tensor` of shape [F, 3] containing the faces data 
-        of the groundtruth mesh, where F is the number of vertices. 
+      verts: A `Tensor` of shape [V, 3] containing the vertices data
+        of the groundtruth mesh, where V is the number of vertices.
+      faces: A `Tensor` of shape [F, 3] containing the faces data
+        of the groundtruth mesh, where F is the number of vertices.
     """
     verts = tf.io.parse_tensor(
         parsed_tensors['model/vertices'], out_type=tf.float64)
+    verts = tf.ensure_shape(verts, [None, 3])
+
     faces = tf.io.parse_tensor(
         parsed_tensors['model/faces'], out_type=tf.int32)
-    
-    return tf.ensure_shape(verts, [None, 3]), tf.ensure_shape(faces, [None, 3])
-  
+    faces = tf.ensure_shape(faces, [None, 3])
+
+    return verts, faces
+
   def _decode_voxel(self, parsed_tensors):
-     """Decode the voxel data into a tensor.
+    """Decode the voxel data into a tensor.
+
     Args:
       parsed_tensors: A `dict` mapping feature keys to corresponding `Tensors`.
     Returns:
       voxel: A `Tensor` of shape [H, W, D] that represents the groundtruth
         voxel occupancies of object.
     """
-     voxel = tf.io.parse_tensor(
-        parsed_tensors['model/voxel'], out_type=tf.uint8)
+    voxel_indices = tf.io.parse_tensor(
+        parsed_tensors['model/voxel_indices'], out_type=tf.int64)
+    voxel_indices = tf.ensure_shape(voxel_indices, [None, 3])
 
-     return tf.ensure_shape(voxel, [None, None, None])
-  
+    return voxel_indices
+
   def _decode_camera(self, parsed_tensors):
     """Decode the camera properties into tensors.
+
     Args:
       parsed_tensors: A `dict` mapping feature keys to corresponding `Tensors`.
     Returns:
@@ -95,14 +103,19 @@ class Pix3dDecoder(tf_example_decoder.TfExampleDecoder):
     """
     rot_mat = tf.io.parse_tensor(
         parsed_tensors['camera/rot_mat'], out_type=tf.float32)
+    rot_mat = tf.ensure_shape(rot_mat, [3, 3])
 
     trans_mat = parsed_tensors['camera/trans_mat']
+    trans_mat = tf.ensure_shape(trans_mat, [3])
+
     intrinstic_mat = parsed_tensors['camera/intrinstic_mat']
+    intrinstic_mat = tf.ensure_shape(intrinstic_mat, [3])
 
     return rot_mat, trans_mat, intrinstic_mat
-  
+
   def decode(self, serialized_example):
     """Decode the serialized example.
+
     Args:
       serialized_example: a single serialized tf.Example string.
     Returns:
@@ -115,6 +128,12 @@ class Pix3dDecoder(tf_example_decoder.TfExampleDecoder):
         - groundtruth_is_crowd: a bool tensor of shape [None].
         - groundtruth_area: a float32 tensor of shape [None].
         - groundtruth_boxes: a float32 tensor of shape [None, 4].
+        - groundtruth_verts: a float32 tensor of shape [None, 3].
+        - groundtruth_faces: a int64 tensor of shape [None, 3].
+        - groundtruth_voxel_indices: a int64 tensor of shape [None, 3].
+        - rot_mat: a float32 tensor of shape [3, 3].
+        - trans_mat: a float32 tensor of shape [3].
+        - intrinstic_mat: a float32 tensor of shape [3].
         - groundtruth_instance_masks: a float32 tensor of shape
             [None, None, None].
         - groundtruth_instance_masks_png: a string tensor of shape [None].
@@ -150,9 +169,9 @@ class Pix3dDecoder(tf_example_decoder.TfExampleDecoder):
 
       if self._mask_binarize_threshold is not None:
         masks = tf.cast(masks > self._mask_binarize_threshold, tf.float32)
-    
+
     verts, faces = self._decode_mesh(parsed_tensors)
-    voxel = self._decode_voxel(parsed_tensors)
+    voxel_indices = self._decode_voxel(parsed_tensors)
     rot_mat, trans_mat, intrinstic_mat = self._decode_camera(parsed_tensors)
 
     decoded_tensors = {
@@ -166,7 +185,7 @@ class Pix3dDecoder(tf_example_decoder.TfExampleDecoder):
         'groundtruth_boxes': boxes,
         'groundtruth_verts': verts,
         'groundtruth_faces': faces,
-        'groundtruth_voxel': voxel,
+        'groundtruth_voxel_indices': voxel_indices,
         'rot_mat': rot_mat,
         'trans_mat': trans_mat,
         'intrinstic_mat': intrinstic_mat

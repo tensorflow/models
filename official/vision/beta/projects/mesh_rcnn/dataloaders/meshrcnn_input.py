@@ -14,16 +14,12 @@
 
 """Data parser and processing for Mask R-CNN."""
 
-# Import libraries
-
 import tensorflow as tf
 
-from official.vision.beta.dataloaders import parser
-from official.vision.beta.dataloaders import utils
-from official.vision.beta.ops import anchor
-from official.vision.beta.ops import box_ops
+from official.vision.beta.dataloaders import parser, utils
+from official.vision.beta.ops import anchor, box_ops, preprocess_ops
 from official.vision.beta.projects.mesh_rcnn.ops import meshrcnn_preprocess_ops
-from official.vision.beta.ops import preprocess_ops
+
 
 class Parser(parser.Parser):
   """Parser to parse an image and its annotations into a dictionary of tensors."""
@@ -79,6 +75,12 @@ class Parser(parser.Parser):
         `is_crowd` equals to 1.
       max_num_instances: `int` number of maximum number of instances in an
         image. The groundtruth data will be padded to `max_num_instances`.
+      max_verts: `int`, maximum number of vertices possible vertices in a mesh.
+        The groundtruth data will be padded to `max_verts`.
+      max_faces: `int`, maximum number of faces possible vertices in a mesh.
+        The groundtruth data will be padded to `max_faces`.
+      max_voxels: `int`, maximum number of occupied voxels possible vertices in
+        a mesh. The groundtruth data will be padded to `max_voxels`.
       include_mask: a bool to indicate whether parse mask groundtruth.
       mask_crop_size: the size which groundtruth mask is cropped to.
       dtype: `str`, data type. One of {`bfloat16`, `float32`, `float16`}.
@@ -158,7 +160,7 @@ class Parser(parser.Parser):
 
     verts = tf.cast(data['groundtruth_verts'], tf.float32)
     faces = tf.cast(data['groundtruth_faces'], tf.int32)
-    voxel = tf.cast(data['groundtruth_voxel'], tf.int32)
+    voxel_indices = tf.cast(data['groundtruth_voxel_indices'], tf.int32)
     rot_mat = tf.cast(data['rot_mat'], tf.float32)
     trans_mat = tf.cast(data['trans_mat'], tf.float32)
     intrinstic_mat = tf.cast(data['intrinstic_mat'], tf.float32)
@@ -191,31 +193,36 @@ class Parser(parser.Parser):
 
     # Generate masks for verts and faces
     verts_mask = tf.ones(shape=[num_verts], dtype=tf.int32)
-    verts_mask = preprocess_ops.clip_or_pad_to_fixed_size(verts_mask, self._max_verts)
+    verts_mask = preprocess_ops.clip_or_pad_to_fixed_size(
+        verts_mask, self._max_verts)
     faces_mask = tf.ones(shape=[num_faces], dtype=tf.int32)
-    faces_mask = preprocess_ops.clip_or_pad_to_fixed_size(faces_mask, self._max_faces)
+    faces_mask = preprocess_ops.clip_or_pad_to_fixed_size(
+        faces_mask, self._max_faces)
 
     # Convert voxels to coordinates to apply data augmentations
-    print(voxel.get_shape())
-    voxel_verts = meshrcnn_preprocess_ops.voxel_to_verts(voxel)
-    voxel_verts = tf.ensure_shape(voxel_verts, [None, 3])
-    voxel_verts = meshrcnn_preprocess_ops.apply_3d_transformations(voxel_verts, rot_mat, trans_mat)
-    num_voxel_verts = tf.shape(voxel_verts)[0]
-    print(voxel_verts.get_shape())
-    voxel_verts = preprocess_ops.clip_or_pad_to_fixed_size(voxel_verts, self._max_voxels)
+    num_voxels = tf.shape(voxel_indices)[0]
+    voxel_verts = meshrcnn_preprocess_ops.center_and_normalize_voxel(
+        voxel_indices)
+    voxel_verts = meshrcnn_preprocess_ops.apply_3d_transformations(
+        voxel_verts, rot_mat, trans_mat)
+    voxel_verts = preprocess_ops.clip_or_pad_to_fixed_size(
+        voxel_verts, self._max_voxels)
 
     # Generate masks for voxels
-    voxel_mask = tf.ones(shape=[num_voxel_verts], dtype=tf.int32)
-    voxel_mask = preprocess_ops.clip_or_pad_to_fixed_size(voxel_mask, self._max_voxels)
+    voxel_mask = tf.ones(shape=[num_voxels], dtype=tf.int32)
+    voxel_mask = preprocess_ops.clip_or_pad_to_fixed_size(
+        voxel_mask, self._max_voxels)
 
     # Flips image randomly during training.
     if self._aug_rand_hflip:
       if self._include_mask:
-        image, boxes, masks, verts, voxel_verts = preprocess_ops.random_horizontal_flip(
-            image, boxes, masks, verts, voxel_verts)
+        image, boxes, masks, verts, voxel_verts = \
+            meshrcnn_preprocess_ops.random_horizontal_flip(
+                image, boxes, masks, verts, voxel_verts)
       else:
-        image, boxes, _, verts, voxel_verts = preprocess_ops.random_horizontal_flip(
-            image, boxes, verts, voxel_verts)
+        image, boxes, _, verts, voxel_verts = \
+            meshrcnn_preprocess_ops.random_horizontal_flip(
+                image, boxes, verts, voxel_verts)
 
     # Converts boxes from normalized coordinates to pixel coordinates.
     # Now the coordinates of boxes are w.r.t. the original image.
@@ -240,7 +247,8 @@ class Parser(parser.Parser):
 
     # Resizes verts and voxel_verts
     verts = meshrcnn_preprocess_ops.resize_coords(verts, image_scale)
-    voxel_verts = meshrcnn_preprocess_ops.resize_coords(voxel_verts, image_scale)
+    voxel_verts = meshrcnn_preprocess_ops.resize_coords(
+        voxel_verts, image_scale)
 
     # Filters out ground truth boxes that are all zeros.
     indices = box_ops.get_non_empty_box_indices(boxes)
