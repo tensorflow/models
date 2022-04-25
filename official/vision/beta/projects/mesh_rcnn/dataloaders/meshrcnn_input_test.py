@@ -44,9 +44,9 @@ class Parser(hyperparams.Config):
   aug_scale_max = 1.0
   skip_crowd_during_training = True
   max_num_instances = 1
-  max_verts = 108416
-  max_faces = 126748
-  max_voxels = 2097152
+  max_num_verts = 108416
+  max_num_faces = 126748
+  max_num_voxels = 2097152
   include_mask = True
   mask_crop_size = 112
   dtype = 'float32'
@@ -88,9 +88,9 @@ class MeshRCNNInputTest(tf.test.TestCase, parameterized.TestCase):
           aug_scale_max=params.parser.aug_scale_max,
           skip_crowd_during_training=params.parser.skip_crowd_during_training,
           max_num_instances=params.parser.max_num_instances,
-          max_verts=params.parser.max_verts,
-          max_faces=params.parser.max_faces,
-          max_voxels=params.parser.max_voxels,
+          max_num_verts=params.parser.max_num_verts,
+          max_num_faces=params.parser.max_num_faces,
+          max_num_voxels=params.parser.max_num_voxels,
           include_mask=params.parser.include_mask,
           mask_crop_size=params.parser.mask_crop_size,
           dtype=params.parser.dtype)
@@ -105,53 +105,84 @@ class MeshRCNNInputTest(tf.test.TestCase, parameterized.TestCase):
       for i, (image, labels) in enumerate(dataset):
         self.assertAllEqual(tf.shape(image), [10, 800, 800, 3])
 
+        if is_training:
+          anchor_boxes = labels['anchor_boxes']
+          rpn_score_targets = labels['rpn_score_targets']
+          rpn_box_targets = labels['rpn_box_targets']
+          gt_boxes = labels['gt_boxes']
+          gt_classes = labels['gt_classes']
+          gt_voxel = labels['gt_voxel']
+          gt_verts = labels['gt_verts']
+          gt_faces = labels['gt_faces']
+          gt_voxel_mask = labels['gt_voxel_mask']
+          gt_verts_mask = labels['gt_verts_mask']
+          gt_faces_mask = labels['gt_faces_mask']
+          rot_mat = labels['rot_mat']
+          trans_mat = labels['trans_mat']
+          trans_mat = labels['trans_mat']
+        else:
+          anchor_boxes = labels['anchor_boxes']
+          gt_boxes = labels['groundtruths']['boxes']
+          gt_classes = labels['groundtruths']['classes']
+          gt_voxel = labels['groundtruths']['voxel']
+          gt_verts = labels['groundtruths']['verts']
+          gt_faces = labels['groundtruths']['faces']
+          gt_voxel_mask = labels['groundtruths']['voxel_mask']
+          gt_verts_mask = labels['groundtruths']['verts_mask']
+          gt_faces_mask = labels['groundtruths']['faces_mask']
+          rot_mat = labels['rot_mat']
+          trans_mat = labels['trans_mat']
+          trans_mat = labels['trans_mat']
+
         for j in range(params.parser.min_level, params.parser.max_level + 1):
           self.assertAllEqual(
-              tf.shape(labels['anchor_boxes'][str(j)]),
+              tf.shape(anchor_boxes[str(j)]),
               [10, 800 / (2 ** j), 800 / (2 ** j), 12])
 
-          self.assertAllEqual(
-              tf.shape(labels['rpn_score_targets'][str(j)]),
-              [10, 800 / (2 ** j), 800 / (2 ** j), 3])
+          if is_training:
+            self.assertAllEqual(
+                tf.shape(rpn_score_targets[str(j)]),
+                [10, 800 / (2 ** j), 800 / (2 ** j), 3])
 
-          self.assertAllEqual(
-              tf.shape(labels['rpn_box_targets'][str(j)]),
-              [10, 800 / (2 ** j), 800 / (2 ** j), 12])
+            self.assertAllEqual(
+                tf.shape(rpn_box_targets[str(j)]),
+                [10, 800 / (2 ** j), 800 / (2 ** j), 12])
 
         self.assertAllEqual(
-            tf.shape(labels['gt_boxes']),
+            tf.shape(gt_boxes),
             [10, params.parser.max_num_instances, 4])
+
         self.assertAllEqual(
-            tf.shape(labels['gt_classes']),
+            tf.shape(gt_classes),
             [10, params.parser.max_num_instances])
 
         self.assertAllEqual(
-            tf.shape(labels['gt_voxel']),
-            [10, params.parser.max_voxels, 3])
+            tf.shape(gt_voxel),
+            [10, params.parser.max_num_voxels, 3])
 
         self.assertAllEqual(
-            tf.shape(labels['gt_verts']),
-            [10, params.parser.max_verts, 3])
+            tf.shape(gt_verts),
+            [10, params.parser.max_num_verts, 3])
 
         self.assertAllEqual(
-            tf.shape(labels['gt_faces']),
-            [10, params.parser.max_faces, 3])
+            tf.shape(gt_faces),
+            [10, params.parser.max_num_faces, 3])
 
         self.assertAllEqual(
-            tf.shape(labels['gt_voxel_mask']),
-            [10, params.parser.max_voxels])
+            tf.shape(gt_voxel_mask),
+            [10, params.parser.max_num_voxels])
 
         self.assertAllEqual(
-            tf.shape(labels['gt_verts_mask']),
-            [10, params.parser.max_verts])
+            tf.shape(gt_verts_mask),
+            [10, params.parser.max_num_verts])
 
         self.assertAllEqual(
-            tf.shape(labels['gt_faces_mask']),
-            [10, params.parser.max_faces])
+            tf.shape(gt_faces_mask),
+            [10, params.parser.max_num_faces])
 
-        self.assertAllEqual(tf.shape(labels['rot_mat']), [10, 3, 3])
-        self.assertAllEqual(tf.shape(labels['trans_mat']), [10, 3])
-        self.assertAllEqual(tf.shape(labels['trans_mat']), [10, 3])
+        self.assertAllEqual(tf.shape(rot_mat), [10, 3, 3])
+        self.assertAllEqual(tf.shape(trans_mat), [10, 3])
+        self.assertAllEqual(tf.shape(trans_mat), [10, 3])
 
         if i >= 5:
           break

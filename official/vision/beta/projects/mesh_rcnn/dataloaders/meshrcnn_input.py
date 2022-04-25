@@ -40,9 +40,9 @@ class Parser(parser.Parser):
                aug_scale_max=1.0,
                skip_crowd_during_training=True,
                max_num_instances=100,
-               max_verts=108416,
-               max_faces=126748,
-               max_voxels=2097152,
+               max_num_verts=108416,
+               max_num_faces=126748,
+               max_num_voxels=2097152,
                include_mask=True,
                mask_crop_size=112,
                dtype='float32'):
@@ -75,21 +75,21 @@ class Parser(parser.Parser):
         `is_crowd` equals to 1.
       max_num_instances: `int` number of maximum number of instances in an
         image. The groundtruth data will be padded to `max_num_instances`.
-      max_verts: `int`, maximum number of vertices possible vertices in a mesh.
-        The groundtruth data will be padded to `max_verts`.
-      max_faces: `int`, maximum number of faces possible vertices in a mesh.
+      max_num_verts: `int`, maximum number of vertices possible vertices in a
+        mesh. The groundtruth data will be padded to `max_verts`.
+      max_num_faces: `int`, maximum number of faces possible vertices in a mesh.
         The groundtruth data will be padded to `max_faces`.
-      max_voxels: `int`, maximum number of occupied voxels possible vertices in
-        a mesh. The groundtruth data will be padded to `max_voxels`.
+      max_num_voxels: `int`, maximum number of occupied voxels in a mesh. The
+        groundtruth data will be padded to `max_voxels`.
       include_mask: a bool to indicate whether parse mask groundtruth.
       mask_crop_size: the size which groundtruth mask is cropped to.
       dtype: `str`, data type. One of {`bfloat16`, `float32`, `float16`}.
     """
 
     self._max_num_instances = max_num_instances
-    self._max_verts = max_verts
-    self._max_faces = max_faces
-    self._max_voxels = max_voxels
+    self._max_num_verts = max_num_verts
+    self._max_num_faces = max_num_faces
+    self._max_num_voxels = max_num_voxels
     self._skip_crowd_during_training = skip_crowd_during_training
 
     # Anchor.
@@ -158,6 +158,7 @@ class Parser(parser.Parser):
 
     is_crowds = data['groundtruth_is_crowd']
 
+    # Gets mesh, voxel, and camera annotations
     verts = tf.cast(data['groundtruth_verts'], tf.float32)
     faces = tf.cast(data['groundtruth_faces'], tf.int32)
     voxel_indices = tf.cast(data['groundtruth_voxel_indices'], tf.int32)
@@ -185,33 +186,18 @@ class Parser(parser.Parser):
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(image)
 
-    # Pad the verts and faces to self._max_verts and self._max_faces
-    num_verts = tf.shape(verts)[0]
-    num_faces = tf.shape(faces)[0]
-    verts = preprocess_ops.clip_or_pad_to_fixed_size(verts, self._max_verts)
-    faces = preprocess_ops.clip_or_pad_to_fixed_size(faces, self._max_faces)
-
     # Generate masks for verts and faces
-    verts_mask = tf.ones(shape=[num_verts], dtype=tf.int32)
-    verts_mask = preprocess_ops.clip_or_pad_to_fixed_size(
-        verts_mask, self._max_verts)
-    faces_mask = tf.ones(shape=[num_faces], dtype=tf.int32)
-    faces_mask = preprocess_ops.clip_or_pad_to_fixed_size(
-        faces_mask, self._max_faces)
+    verts_mask = tf.ones(shape=[tf.shape(verts)[0]], dtype=tf.int32)
+    faces_mask = tf.ones(shape=[tf.shape(faces)[0]], dtype=tf.int32)
 
-    # Convert voxels to coordinates to apply data augmentations
-    num_voxels = tf.shape(voxel_indices)[0]
+    # Convert voxels to coordinates to prepare it for data augmentations
     voxel_verts = meshrcnn_preprocess_ops.center_and_normalize_voxel(
         voxel_indices)
     voxel_verts = meshrcnn_preprocess_ops.apply_3d_transformations(
         voxel_verts, rot_mat, trans_mat)
-    voxel_verts = preprocess_ops.clip_or_pad_to_fixed_size(
-        voxel_verts, self._max_voxels)
 
     # Generate masks for voxels
-    voxel_mask = tf.ones(shape=[num_voxels], dtype=tf.int32)
-    voxel_mask = preprocess_ops.clip_or_pad_to_fixed_size(
-        voxel_mask, self._max_voxels)
+    voxel_mask = tf.ones(shape=[tf.shape(voxel_verts)[0]], dtype=tf.int32)
 
     # Flips image randomly during training.
     if self._aug_rand_hflip:
@@ -309,12 +295,30 @@ class Parser(parser.Parser):
             preprocess_ops.clip_or_pad_to_fixed_size(classes,
                                                      self._max_num_instances,
                                                      -1),
-        'gt_voxel': voxel_verts,
-        'gt_voxel_mask': voxel_mask,
-        'gt_verts': verts,
-        'gt_verts_mask': verts_mask,
-        'gt_faces': faces,
-        'gt_faces_mask': faces_mask,
+        'gt_voxel':
+            preprocess_ops.clip_or_pad_to_fixed_size(voxel_verts,
+                                                     self._max_num_voxels,
+                                                     -1),
+        'gt_voxel_mask':
+            preprocess_ops.clip_or_pad_to_fixed_size(voxel_mask,
+                                                     self._max_num_voxels,
+                                                     -1),
+        'gt_verts':
+            preprocess_ops.clip_or_pad_to_fixed_size(verts,
+                                                     self._max_num_verts,
+                                                     -1),
+        'gt_verts_mask':
+            preprocess_ops.clip_or_pad_to_fixed_size(verts_mask,
+                                                     self._max_num_verts,
+                                                     -1),
+        'gt_faces':
+            preprocess_ops.clip_or_pad_to_fixed_size(faces,
+                                                     self._max_num_faces,
+                                                     -1),
+        'gt_faces_mask':
+            preprocess_ops.clip_or_pad_to_fixed_size(faces_mask,
+                                                     self._max_num_faces,
+                                                     -1),
         'rot_mat': rot_mat,
         'trans_mat': trans_mat,
         'intrinsic_mat': intrinstic_mat
@@ -344,12 +348,33 @@ class Parser(parser.Parser):
           shape [height_l, width_l, 4] representing anchor boxes at each
           level.
     """
+    # Gets mesh, voxel, and camera annotations
+    verts = tf.cast(data['groundtruth_verts'], tf.float32)
+    faces = tf.cast(data['groundtruth_faces'], tf.int32)
+    voxel_indices = tf.cast(data['groundtruth_voxel_indices'], tf.int32)
+    rot_mat = tf.cast(data['rot_mat'], tf.float32)
+    trans_mat = tf.cast(data['trans_mat'], tf.float32)
+    intrinstic_mat = tf.cast(data['intrinstic_mat'], tf.float32)
+
     # Gets original image and its size.
     image = data['image']
     image_shape = tf.shape(image)[0:2]
 
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(image)
+
+    # Generate masks for verts and faces
+    verts_mask = tf.ones(shape=[tf.shape(verts)[0]], dtype=tf.int32)
+    faces_mask = tf.ones(shape=[tf.shape(faces)[0]], dtype=tf.int32)
+
+    # Convert voxels to coordinates to prepare it for data augmentations
+    voxel_verts = meshrcnn_preprocess_ops.center_and_normalize_voxel(
+        voxel_indices)
+    voxel_verts = meshrcnn_preprocess_ops.apply_3d_transformations(
+        voxel_verts, rot_mat, trans_mat)
+
+    # Generate masks for voxels
+    voxel_mask = tf.ones(shape=[tf.shape(voxel_verts)[0]], dtype=tf.int32)
 
     # Resizes and crops image.
     image, image_info = preprocess_ops.resize_and_crop_image(
@@ -367,6 +392,12 @@ class Parser(parser.Parser):
     # Converts boxes from normalized coordinates to pixel coordinates.
     boxes = box_ops.denormalize_boxes(data['groundtruth_boxes'], image_shape)
 
+    # Resizes verts and voxel_verts
+    image_scale = image_info[2, :]
+    verts = meshrcnn_preprocess_ops.resize_coords(verts, image_scale)
+    voxel_verts = meshrcnn_preprocess_ops.resize_coords(
+        voxel_verts, image_scale)
+
     # Compute Anchor boxes.
     input_anchor = anchor.build_anchor_generator(
         min_level=self._min_level,
@@ -379,6 +410,9 @@ class Parser(parser.Parser):
     labels = {
         'image_info': image_info,
         'anchor_boxes': anchor_boxes,
+        'rot_mat': rot_mat,
+        'trans_mat': trans_mat,
+        'intrinsic_mat': intrinstic_mat
     }
 
     groundtruths = {
@@ -390,6 +424,30 @@ class Parser(parser.Parser):
         'classes': data['groundtruth_classes'],
         'areas': data['groundtruth_area'],
         'is_crowds': tf.cast(data['groundtruth_is_crowd'], tf.int32),
+        'voxel':
+            preprocess_ops.clip_or_pad_to_fixed_size(voxel_verts,
+                                                     self._max_num_voxels,
+                                                     -1),
+        'voxel_mask':
+            preprocess_ops.clip_or_pad_to_fixed_size(voxel_mask,
+                                                     self._max_num_voxels,
+                                                     -1),
+        'verts':
+            preprocess_ops.clip_or_pad_to_fixed_size(verts,
+                                                     self._max_num_verts,
+                                                     -1),
+        'verts_mask':
+            preprocess_ops.clip_or_pad_to_fixed_size(verts_mask,
+                                                     self._max_num_verts,
+                                                     -1),
+        'faces':
+            preprocess_ops.clip_or_pad_to_fixed_size(faces,
+                                                     self._max_num_faces,
+                                                     -1),
+        'faces_mask':
+            preprocess_ops.clip_or_pad_to_fixed_size(faces_mask,
+                                                     self._max_num_faces,
+                                                     -1),
     }
     groundtruths['source_id'] = utils.process_source_id(
         groundtruths['source_id'])
