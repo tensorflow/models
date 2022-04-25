@@ -103,6 +103,14 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
     xmax = features['image/object/bbox/xmax'].float_list.value[0]
     ymax = features['image/object/bbox/ymax'].float_list.value[0]
 
+    # Denormalize
+    height = features['image/height'].int64_list.value[0]
+    width = features['image/width'].int64_list.value[0]
+    xmin = round(xmin * width, 0)
+    ymin = round(ymin * height, 0)
+    xmax = round(xmax * width, 0)
+    ymax = round(ymax * height, 0)
+
     self.assertAllEqual(
         (np.array(expected_output)).astype(np.int64), [xmin, ymin, xmax, ymax])
 

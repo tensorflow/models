@@ -151,7 +151,7 @@ class MeshRCNNInputTest(tf.test.TestCase, parameterized.TestCase):
 
         self.assertNotEqual(
             tf.reduce_max(gt_boxes), -1)
-        
+
         self.assertAllEqual(
             tf.shape(gt_boxes),
             [batch_size, params.parser.max_num_instances, 4])
