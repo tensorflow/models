@@ -73,7 +73,7 @@ connected to a new, more powerful backbone if a person chose to.
 | Yolo-v3 tiny     |                  |
 | Yolo-v3 spp      |                  |
 | Yolo-v4          |                  |
-| Yolo-v4 tiny     |                  |
+| Yolo-v4 tiny     | 21.21            | 41.69            |
 | Yolo-v4 csp      |                  |
 | Yolo-v4 large    |                  |
 
