@@ -102,6 +102,7 @@ class MeshRCNNInputTest(tf.test.TestCase, parameterized.TestCase):
           parser_fn=parser.parse_fn(params.is_training))
       dataset = reader.read(input_context=None)
 
+      batch_size = params.global_batch_size
       for i, (image, labels) in enumerate(dataset):
         self.assertAllEqual(tf.shape(image), [10, 800, 800, 3])
 
@@ -137,52 +138,55 @@ class MeshRCNNInputTest(tf.test.TestCase, parameterized.TestCase):
         for j in range(params.parser.min_level, params.parser.max_level + 1):
           self.assertAllEqual(
               tf.shape(anchor_boxes[str(j)]),
-              [10, 800 / (2 ** j), 800 / (2 ** j), 12])
+              [batch_size, 800 / (2 ** j), 800 / (2 ** j), 12])
 
           if is_training:
             self.assertAllEqual(
                 tf.shape(rpn_score_targets[str(j)]),
-                [10, 800 / (2 ** j), 800 / (2 ** j), 3])
+                [batch_size, 800 / (2 ** j), 800 / (2 ** j), 3])
 
             self.assertAllEqual(
                 tf.shape(rpn_box_targets[str(j)]),
-                [10, 800 / (2 ** j), 800 / (2 ** j), 12])
+                [batch_size, 800 / (2 ** j), 800 / (2 ** j), 12])
 
+        self.assertNotEqual(
+            tf.reduce_max(gt_boxes), -1)
+        
         self.assertAllEqual(
             tf.shape(gt_boxes),
-            [10, params.parser.max_num_instances, 4])
+            [batch_size, params.parser.max_num_instances, 4])
 
         self.assertAllEqual(
             tf.shape(gt_classes),
-            [10, params.parser.max_num_instances])
+            [batch_size, params.parser.max_num_instances])
 
         self.assertAllEqual(
             tf.shape(gt_voxel),
-            [10, params.parser.max_num_voxels, 3])
+            [batch_size, params.parser.max_num_voxels, 3])
 
         self.assertAllEqual(
             tf.shape(gt_verts),
-            [10, params.parser.max_num_verts, 3])
+            [batch_size, params.parser.max_num_verts, 3])
 
         self.assertAllEqual(
             tf.shape(gt_faces),
-            [10, params.parser.max_num_faces, 3])
+            [batch_size, params.parser.max_num_faces, 3])
 
         self.assertAllEqual(
             tf.shape(gt_voxel_mask),
-            [10, params.parser.max_num_voxels])
+            [batch_size, params.parser.max_num_voxels])
 
         self.assertAllEqual(
             tf.shape(gt_verts_mask),
-            [10, params.parser.max_num_verts])
+            [batch_size, params.parser.max_num_verts])
 
         self.assertAllEqual(
             tf.shape(gt_faces_mask),
-            [10, params.parser.max_num_faces])
+            [batch_size, params.parser.max_num_faces])
 
-        self.assertAllEqual(tf.shape(rot_mat), [10, 3, 3])
-        self.assertAllEqual(tf.shape(trans_mat), [10, 3])
-        self.assertAllEqual(tf.shape(trans_mat), [10, 3])
+        self.assertAllEqual(tf.shape(rot_mat), [batch_size, 3, 3])
+        self.assertAllEqual(tf.shape(trans_mat), [batch_size, 3])
+        self.assertAllEqual(tf.shape(trans_mat), [batch_size, 3])
 
         if i >= 5:
           break

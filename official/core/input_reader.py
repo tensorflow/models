@@ -238,7 +238,6 @@ class InputReader:
 
     self._tfds_builder = None
     self._matched_files = None
-    print(params.input_path)
     if not params.input_path:
       # Read dataset from TFDS.
       if not params.tfds_split:
