@@ -86,6 +86,8 @@ class OptimizerFactory:
   (4) Build optimizer.
 
   This is a typical example for using this class:
+
+  ```
   params = {
         'optimizer': {
             'type': 'sgd',
@@ -105,6 +107,7 @@ class OptimizerFactory:
   opt_factory = OptimizerFactory(opt_config)
   lr = opt_factory.build_learning_rate()
   optimizer = opt_factory.build_optimizer(lr)
+  ```
   """
 
   def __init__(self, config: opt_cfg.OptimizationConfig):
