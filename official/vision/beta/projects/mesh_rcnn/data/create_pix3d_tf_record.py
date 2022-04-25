@@ -30,7 +30,9 @@ import numpy as np
 import scipy.io
 import tensorflow as tf
 from absl import app, flags
+from pycocotools import mask
 
+from official.vision.beta.data import tfrecord_lib
 from official.vision.beta.data.tfrecord_lib import (
     image_info_to_feature_dict, write_tf_record_dataset)
 
@@ -44,6 +46,15 @@ FLAGS = flags.FLAGS
 
 logger = tf.get_logger()
 logger.setLevel(logging.INFO)
+
+def coco_segmentation_to_mask_png(segmentation, height, width, is_crowd):
+  """Encode a COCO mask segmentation as PNG string."""
+  run_len_encoding = mask.frPyObjects(segmentation, height, width)
+  binary_mask = mask.decode(run_len_encoding)
+  if not is_crowd:
+    binary_mask = np.amax(binary_mask, axis=2)
+
+  return tfrecord_lib.encode_mask_as_png(binary_mask)
 
 def convert_to_feature(value, value_type=None):
   """Converts the given python object to a tf.train.Feature.
@@ -152,7 +163,7 @@ def create_tf_example(image: dict):
   img_height = image['height']
   img_width = image['width']
   img_filename = image['filename']
-  img_category = image['category_id']
+  img_id = image['image_id']
   pix3d_dir = image['pix3d_dir']
   mask_filename = image['segmentation']
   model = image['model']
@@ -168,10 +179,10 @@ def create_tf_example(image: dict):
     img_format = 'png'
 
   feature_dict = image_info_to_feature_dict(
-      img_height, img_width, img_filename, img_category, encoded_img,
+      img_height, img_width, img_filename, img_id, encoded_img,
       img_format)
 
-  # Create mask annotation
+  # Create mask annotation (encoded bytes will be decoded in Pix3dDecoder)
   with tf.io.gfile.GFile(os.path.join(pix3d_dir, mask_filename), 'rb') as fid:
     encoded_mask = fid.read()
 
@@ -202,14 +213,21 @@ def create_tf_example(image: dict):
 
   # Create bounding box annotations
   xmin, ymin, xmax, ymax = image['bbox']
+  xmin = float(xmin) / img_width
+  ymin = float(ymin) / img_height
+  xmax = float(xmax) / img_width
+  ymax = float(ymax) / img_height
+
+  img_class_id = image['category_id']
   is_crowd = image['iscrowd']
 
   feature_dict.update({
-      'image/object/xmin': convert_to_feature(xmin),
-      'image/object/ymin': convert_to_feature(ymin),
-      'image/object/xmax': convert_to_feature(xmax),
-      'image/object/ymax': convert_to_feature(ymax),
-      'is_crowd': convert_to_feature(is_crowd)})
+      'image/object/bbox/xmin': convert_to_feature([float(xmin)]),
+      'image/object/bbox/ymin': convert_to_feature([float(ymin)]),
+      'image/object/bbox/xmax': convert_to_feature([float(xmax)]),
+      'image/object/bbox/ymax': convert_to_feature([float(ymax)]),
+      'image/object/class/label': convert_to_feature([img_class_id]),
+      'image/object/is_crowd': convert_to_feature([is_crowd])})
 
   example = tf.train.Example(
       features=tf.train.Features(feature=feature_dict))
@@ -274,8 +292,8 @@ def parse_voxel_file(file: str):
   voxel = np.rot90(voxel, k=3, axes=(1, 2))
   voxel_indices = np.argwhere(voxel > 0)
 
-  voxel_shape = voxel.shape
-  return voxel_indices, np.array(voxel_shape)
+  voxel_shape = np.shape(voxel)
+  return voxel_indices, list(voxel_shape)
 
 def generate_annotations(annotation_dict: dict, pix3d_dir: str) -> List:
   """Generator for Pix3D annotations.

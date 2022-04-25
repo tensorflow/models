@@ -14,6 +14,8 @@
 
 """Tensorflow decoder for the Pix3D dataset."""
 
+from typing import Union
+
 import tensorflow as tf
 
 from official.vision.beta.dataloaders import tf_example_decoder
@@ -28,9 +30,9 @@ class Pix3dDecoder(tf_example_decoder.TfExampleDecoder):
   """Pix3D Decoder."""
 
   def __init__(self,
-               include_mask=False,
-               regenerate_source_id=False,
-               mask_binarize_threshold=None):
+               include_mask: bool = False,
+               regenerate_source_id: bool = False,
+               mask_binarize_threshold: Union[float, None] = None):
     super(Pix3dDecoder, self).__init__(
         include_mask, regenerate_source_id, mask_binarize_threshold)
 
@@ -50,7 +52,7 @@ class Pix3dDecoder(tf_example_decoder.TfExampleDecoder):
             tf.io.VarLenFeature(tf.float32),
     })
 
-  def _decode_mesh(self, parsed_tensors):
+  def _decode_mesh(self, parsed_tensors: dict):
     """Decode the mesh data into tensors.
 
     Args:
@@ -71,7 +73,7 @@ class Pix3dDecoder(tf_example_decoder.TfExampleDecoder):
 
     return verts, faces
 
-  def _decode_voxel(self, parsed_tensors):
+  def _decode_voxel(self, parsed_tensors: dict):
     """Decode the voxel data into a tensor.
 
     Args:
@@ -86,7 +88,7 @@ class Pix3dDecoder(tf_example_decoder.TfExampleDecoder):
 
     return voxel_indices
 
-  def _decode_camera(self, parsed_tensors):
+  def _decode_camera(self, parsed_tensors: dict):
     """Decode the camera properties into tensors.
 
     Args:
@@ -113,7 +115,7 @@ class Pix3dDecoder(tf_example_decoder.TfExampleDecoder):
 
     return rot_mat, trans_mat, intrinstic_mat
 
-  def decode(self, serialized_example):
+  def decode(self, serialized_example: tf.train.Example):
     """Decode the serialized example.
 
     Args:

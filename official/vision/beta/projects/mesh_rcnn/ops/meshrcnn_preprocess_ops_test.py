@@ -26,6 +26,7 @@ class MeshPreprocessOpsTest(parameterized.TestCase, tf.test.TestCase):
       (2), (50), (100)
   )
   def test_horizontal_flip_coords(self, num_coords):
+    "Test for flipping (x,y,z) coordinates."
     coords = tf.random.uniform(
         shape=[num_coords, 3], minval=-1, maxval=1, dtype=tf.float32, seed=1)
 
@@ -43,6 +44,7 @@ class MeshPreprocessOpsTest(parameterized.TestCase, tf.test.TestCase):
       (50, [2.1, 0.1])
   )
   def test_resize_coords(self, num_coords, scale_factor):
+    "Test for resizing (x,y,z) coordinates."
     coords = tf.random.uniform(
         shape=[num_coords, 3], minval=-1, maxval=1, dtype=tf.float32, seed=1)
 
@@ -54,26 +56,13 @@ class MeshPreprocessOpsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(coords[:, 2], resized_coords[:, 2])
 
   @parameterized.parameters(
-      (2), (24), (128)
-  )
-  def test_voxel_to_verts(self, voxel_dimensions):
-    voxel = tf.random.uniform(
-        shape=[voxel_dimensions, voxel_dimensions, voxel_dimensions],
-        minval=0, maxval=2, dtype=tf.int32, seed=1)
-
-    coords = meshrcnn_preprocess_ops.voxel_to_verts(voxel)
-
-    self.assertEqual(tf.shape(coords)[1], 3)
-    self.assertEqual(tf.math.reduce_sum(voxel), tf.shape(coords)[0])
-    self.assertAllInRange(coords, lower_bound=-1.0, upper_bound=1.0)
-
-  @parameterized.parameters(
       (1, [[-1.6, -0.0, -0.7], [0.3, 0.8, -0.4], [0.6, -1.5, -0.5]],
        [0.1, 0.7, 1.0]),
       (10, [[-1.6, -0.0, -0.7], [0.3, 0.8, -0.4], [0.6, -1.5, -0.5]],
        [0.1, 0.7, 1.0])
   )
   def test_apply_3d_transforms(self, num_coords, rot_mat, trans_mat):
+    "Test for applying transformation matrices to (x,y,z) coordinates."
     coords = tf.random.uniform(
         shape=[num_coords, 3], minval=-1, maxval=1, dtype=tf.float32, seed=1)
 

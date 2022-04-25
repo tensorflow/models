@@ -57,12 +57,12 @@ def resize_coords(coords: tf.Tensor,
 
   return resized_coords
 
-def random_horizontal_flip(image,
-                           normalized_boxes=None,
-                           masks=None,
-                           verts=None,
-                           voxel_verts=None,
-                           seed=1):
+def random_horizontal_flip(image: tf.Tensor,
+                           normalized_boxes: Union[tf.Tensor, None] = None,
+                           masks: Union[tf.Tensor, None] = None,
+                           verts: Union[tf.Tensor, None] = None,
+                           voxel_verts: Union[tf.Tensor, None] = None,
+                           seed: int = 1):
   """Randomly flips input image, bounding boxes, masks, and coordinates."""
   with tf.name_scope('random_horizontal_flip'):
     do_flip = tf.greater(tf.random.uniform([], seed=seed), 0.5)

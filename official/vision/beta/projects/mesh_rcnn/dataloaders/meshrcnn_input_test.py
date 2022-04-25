@@ -47,7 +47,7 @@ class Parser(hyperparams.Config):
   max_verts = 108416
   max_faces = 126748
   max_voxels = 2097152
-  include_mask = False
+  include_mask = True
   mask_crop_size = 112
   dtype = 'float32'
 
@@ -66,7 +66,7 @@ class DataConfig(cfg.DataConfig):
 class MeshRCNNInputTest(tf.test.TestCase, parameterized.TestCase):
   """Mesh R-CNN Data pipeline test"""
 
-  @parameterized.named_parameters(('training', True))
+  @parameterized.named_parameters(('training', True), ('evaluation', False))
   def test_meshrcnn_input(self, is_training):
     with tf.device('/CPU:0'):
       params = DataConfig(is_training=is_training)
@@ -121,7 +121,6 @@ class MeshRCNNInputTest(tf.test.TestCase, parameterized.TestCase):
         self.assertAllEqual(
             tf.shape(labels['gt_boxes']),
             [10, params.parser.max_num_instances, 4])
-
         self.assertAllEqual(
             tf.shape(labels['gt_classes']),
             [10, params.parser.max_num_instances])

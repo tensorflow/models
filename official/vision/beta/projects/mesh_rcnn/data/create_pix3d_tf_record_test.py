@@ -86,25 +86,25 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(
         (np.array(expected_output)).astype(np.float32), trans_mat)
 
-
   @parameterized.parameters(
-      ((4,), [320, 56, 2131, 3609])
+      ((320, 56, 2131, 3609),)
   )
-  def test_bbox(self, expected_shape: tuple,
-                expected_output: list):
+  def test_bbox(self, expected_output: list):
     """Test for bounding boxes.
 
     Args:
-      expected_shape: The expected shape of the bounding box.
       expected_output: The expected values of the bounding box.
     """
     tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
     features = get_features_single_instance(tfrecord_filename=tfrecord_filename)
 
-    bbox = features['image/object/bbox'].int64_list.value
+    xmin = features['image/object/bbox/xmin'].float_list.value[0]
+    ymin = features['image/object/bbox/ymin'].float_list.value[0]
+    xmax = features['image/object/bbox/xmax'].float_list.value[0]
+    ymax = features['image/object/bbox/ymax'].float_list.value[0]
 
-    self.assertAllEqual(expected_shape, np.shape(bbox))
-    self.assertAllEqual((np.array(expected_output)).astype(np.int64), bbox)
+    self.assertAllEqual(
+        (np.array(expected_output)).astype(np.int64), [xmin, ymin, xmax, ymax])
 
   @parameterized.parameters(
       ((3,), [3434.68173275, 1512.0, 2016.0])
@@ -126,34 +126,18 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(
         (np.array(expected_output)).astype(np.float32), intrinstic_mat)
 
-
-  @parameterized.parameters(
-      ((1,), [0])
-  )
-  def test_is_crowd(self, expected_shape: tuple,
-                    expected_output: list):
-    """Test for is_crowd annotation.
-
-    Args:
-      expected_shape: The expected shape of is_crowd.
-      expected_output: The expected value of is_crowd.
-    """
-    tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
-    features = get_features_single_instance(tfrecord_filename=tfrecord_filename)
-
-    is_crowd = features['is_crowd'].int64_list.value
-
-    self.assertAllEqual(expected_shape, np.shape(is_crowd))
-    self.assertAllEqual(expected_output, is_crowd)
-
   def test_voxel(self):
     """Test for encoded voxels."""
     tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
     features = get_features_single_instance(tfrecord_filename=tfrecord_filename)
 
-    voxel_len = len(features['model/voxel'].bytes_list.value[0])
+    voxel_coords = tf.io.parse_tensor(
+        features['model/voxel_indices'].bytes_list.value[0],
+        tf.int64).numpy()
+    voxel_shape = features['model/voxel_shape'].int64_list.value
 
-    self.assertGreater(voxel_len, 0)
+    self.assertAllEqual(voxel_shape, [128, 128, 128])
+    self.assertAllEqual(np.shape(voxel_coords)[1:], [3])
 
   @parameterized.parameters(
       ((49840, 3),)
@@ -169,7 +153,7 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
 
     vertices = tf.io.parse_tensor(
         features['model/vertices'].bytes_list.value[0],
-        tf.float32).numpy()
+        tf.float64).numpy()
 
     self.assertAllEqual(expected_shape, np.shape(vertices))
 
@@ -201,7 +185,27 @@ class TFRecordGeneratorTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertGreater(np.shape(image)[0], 0)
     self.assertGreater(np.shape(image)[1], 0)
-    self.assertAllEqual(np.shape(image)[2], 3)
+    self.assertEqual(np.shape(image)[2], 3)
+
+  def test_mask(self):
+    """Test for mask."""
+    tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
+    features = get_features_single_instance(tfrecord_filename=tfrecord_filename)
+    mask = tf.io.decode_png(
+        features['image/encoded'].bytes_list.value[0],
+        channels=1, dtype=tf.uint8)
+
+    self.assertGreater(np.shape(mask)[0], 0)
+    self.assertGreater(np.shape(mask)[1], 0)
+    self.assertEqual(np.shape(mask)[2], 1)
+
+  def test_class(self):
+    """Test for class."""
+    tfrecord_filename = 'tmp-00000-of-00001.tfrecord'
+    features = get_features_single_instance(tfrecord_filename=tfrecord_filename)
+    class_id = features['image/object/class/label'].int64_list.value[0]
+
+    self.assertEqual(class_id, 3)
 
   @classmethod
   def tearDownClass(cls):
@@ -215,7 +219,7 @@ if __name__ == '__main__':
     tf.io.gfile.makedirs(directory)
 
   # Specify the dataset download directory
-  pix3d_dir = 'pix3d'
+  pix3d_dir = r'C:\ML\Datasets\pix3d'
 
   # Create TF record files
   _create_tf_record_from_pix3d_dir(

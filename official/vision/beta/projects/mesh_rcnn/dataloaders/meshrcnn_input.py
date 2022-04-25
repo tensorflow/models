@@ -43,7 +43,7 @@ class Parser(parser.Parser):
                max_verts=108416,
                max_faces=126748,
                max_voxels=2097152,
-               include_mask=False,
+               include_mask=True,
                mask_crop_size=112,
                dtype='float32'):
     """Initializes parameters for parsing annotations in the dataset.
@@ -330,20 +330,19 @@ class Parser(parser.Parser):
     Args:
       data: the decoded tensor dictionary from TfExampleDecoder.
     Returns:
-      A dictionary of {'images': image, 'labels': labels} where
-        image: image tensor that is preproessed to have normalized value and
-          dimension [output_size[0], output_size[1], 3]
-        labels: a dictionary of tensors used for training. The following
-          describes {key: value} pairs in the dictionary.
-          source_ids: Source image id. Default value -1 if the source id is
-            empty in the groundtruth annotation.
-          image_info: a 2D `Tensor` that encodes the information of the image
-            and the applied preprocessing. It is in the format of
-            [[original_height, original_width], [scaled_height, scaled_width],
-          anchor_boxes: ordered dictionary with keys
-            [min_level, min_level+1, ..., max_level]. The values are tensor with
-            shape [height_l, width_l, 4] representing anchor boxes at each
-            level.
+      image: image tensor that is preproessed to have normalized value and
+        dimension [output_size[0], output_size[1], 3]
+      labels: a dictionary of tensors used for training. The following
+        describes {key: value} pairs in the dictionary.
+        source_ids: Source image id. Default value -1 if the source id is
+          empty in the groundtruth annotation.
+        image_info: a 2D `Tensor` that encodes the information of the image
+          and the applied preprocessing. It is in the format of
+          [[original_height, original_width], [scaled_height, scaled_width],
+        anchor_boxes: ordered dictionary with keys
+          [min_level, min_level+1, ..., max_level]. The values are tensor with
+          shape [height_l, width_l, 4] representing anchor boxes at each
+          level.
     """
     # Gets original image and its size.
     image = data['image']
