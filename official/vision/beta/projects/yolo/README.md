@@ -67,8 +67,8 @@ connected to a new, more powerful backbone if a person chose to.
 
 ## Models in the library
 
-| Object Detectors | AP               | AP50             |
-| :--------------: | :--------------: | :--------------: |
+| Object Detectors | AP               | AP50             | Checkpoint Path  |
+| :--------------: | :--------------: | :--------------: | :--------------: |
 | Yolo-v3          |                  |
 | Yolo-v3 tiny     |                  |
 | Yolo-v3 spp      |                  |
