@@ -15,3 +15,4 @@
 """TensorFlow Models Vision Libraries."""
 from official.vision import configs
 from official.vision.modeling import *
+from official.vision.ops import *

@@ -17,28 +17,25 @@ r"""Tool to generate api_docs for tensorflow_models/official library.
 Example:
 
 $> pip install -U git+https://github.com/tensorflow/docs
-$> python build_nlp_api_docs \
- --output_dir=/tmp/api_docs
+$> python build_orbit_api_docs.py --output_dir=/tmp/api_docs
 """
-
-import pathlib
-
 from absl import app
 from absl import flags
 from absl import logging
+
+import orbit
+
+import tensorflow as tf
+from tensorflow_docs.api_generator import doc_controls
 from tensorflow_docs.api_generator import generate_lib
 from tensorflow_docs.api_generator import public_api
-
-import tensorflow_models as tfm
-import build_api_docs_lib
 
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('output_dir', None, 'Where to write the resulting docs to.')
-flags.DEFINE_string(
-    'code_url_prefix',
-    'https://github.com/tensorflow/models/blob/master/tensorflow_models/nlp',
-    'The url prefix for links to code.')
+flags.DEFINE_string('code_url_prefix',
+                    'https://github.com/tensorflow/models/blob/master/orbit',
+                    'The url prefix for links to code.')
 
 flags.DEFINE_bool('search_hints', True,
                   'Include metadata search hints in the generated files')
@@ -47,51 +44,57 @@ flags.DEFINE_string('site_path', '/api_docs/python',
                     'Path prefix in the _toc.yaml')
 
 
-PROJECT_SHORT_NAME = 'tfm.nlp'
-PROJECT_FULL_NAME = 'TensorFlow Official Models - NLP Modeling Library'
+PROJECT_SHORT_NAME = 'orbit'
+PROJECT_FULL_NAME = 'Orbit'
 
 
-def custom_filter(path, parent, children):
-  if len(path) == 1:
-    # Don't filter the contents of the top level `tfm.vision` package.
-    return children
-  else:
-    return public_api.explicit_package_contents_filter(path, parent, children)
+def hide_module_model_and_layer_methods():
+  """Hide methods and properties defined in the base classes of Keras layers.
+
+  We hide all methods and properties of the base classes, except:
+  - `__init__` is always documented.
+  - `call` is always documented, as it can carry important information for
+    complex layers.
+  """
+  module_contents = list(tf.Module.__dict__.items())
+  model_contents = list(tf.keras.Model.__dict__.items())
+  layer_contents = list(tf.keras.layers.Layer.__dict__.items())
+
+  for name, obj in module_contents + layer_contents + model_contents:
+    if name == '__init__':
+      # Always document __init__.
+      continue
+
+    if name == 'call':
+      # Always document `call`.
+      if hasattr(obj, doc_controls._FOR_SUBCLASS_IMPLEMENTERS):  # pylint: disable=protected-access
+        delattr(obj, doc_controls._FOR_SUBCLASS_IMPLEMENTERS)  # pylint: disable=protected-access
+      continue
+
+    # Otherwise, exclude from documentation.
+    if isinstance(obj, property):
+      obj = obj.fget
+
+    if isinstance(obj, (staticmethod, classmethod)):
+      obj = obj.__func__
+
+    try:
+      doc_controls.do_not_doc_in_subclasses(obj)
+    except AttributeError:
+      pass
 
 
 def gen_api_docs(code_url_prefix, site_path, output_dir, project_short_name,
                  project_full_name, search_hints):
   """Generates api docs for the tensorflow docs package."""
-  build_api_docs_lib.hide_module_model_and_layer_methods()
-  del tfm.nlp.layers.MultiHeadAttention
-  del tfm.nlp.layers.EinsumDense
-
-  url_parts = code_url_prefix.strip('/').split('/')
-  url_parts = url_parts[:url_parts.index('tensorflow_models')]
-  url_parts.append('official')
-
-  official_url_prefix = '/'.join(url_parts)
-
-  nlp_base_dir = pathlib.Path(tfm.nlp.__file__).parent
-
-  # The `layers` submodule (and others) are actually defined in the `official`
-  # package. Find the path to `official`.
-  official_base_dir = [
-      p for p in pathlib.Path(tfm.vision.layers.__file__).parents
-      if p.name == 'official'
-  ][0]
 
   doc_generator = generate_lib.DocGenerator(
       root_title=project_full_name,
-      py_modules=[(project_short_name, tfm.nlp)],
-      base_dir=[nlp_base_dir, official_base_dir],
-      code_url_prefix=[
-          code_url_prefix,
-          official_url_prefix,
-      ],
+      py_modules=[(project_short_name, orbit)],
+      code_url_prefix=code_url_prefix,
       search_hints=search_hints,
       site_path=site_path,
-      callbacks=[custom_filter],
+      callbacks=[public_api.explicit_package_contents_filter],
   )
 
   doc_generator.build(output_dir)

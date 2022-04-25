@@ -15,6 +15,7 @@
 """Tests for image classification task."""
 
 # pylint: disable=unused-import
+import os
 import tempfile
 
 from absl.testing import parameterized
@@ -28,6 +29,7 @@ from official.core import actions
 from official.core import exp_factory
 from official.modeling import optimization
 from official.projects.pruning.tasks import image_classification as img_cls_task
+from official.vision.dataloaders import tfexample_utils
 
 
 class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
@@ -88,11 +90,27 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIn('accuracy', logs)
     self.assertIn('top_5_accuracy', logs)
 
+  def _create_test_tfrecord(self, test_tfrecord_file, num_samples,
+                            input_image_size):
+    example = tf.train.Example.FromString(
+        tfexample_utils.create_classification_example(
+            image_height=input_image_size[0], image_width=input_image_size[1]))
+    examples = [example] * num_samples
+    tfexample_utils.dump_to_tfrecord(
+        record_file=test_tfrecord_file, tf_examples=examples)
+
   @parameterized.parameters(('resnet_imagenet_pruning'),
                             ('mobilenet_imagenet_pruning'))
   def testTaskWithUnstructuredSparsity(self, config_name):
+    test_tfrecord_file = os.path.join(self.get_temp_dir(), 'cls_test.tfrecord')
+    self._create_test_tfrecord(
+        test_tfrecord_file=test_tfrecord_file,
+        num_samples=10,
+        input_image_size=[224, 224])
     config = exp_factory.get_exp_config(config_name)
     config.task.train_data.global_batch_size = 2
+    config.task.validation_data.input_path = test_tfrecord_file
+    config.task.train_data.input_path = test_tfrecord_file
 
     task = img_cls_task.ImageClassificationTask(config.task)
     model = task.build_model()
@@ -129,8 +147,16 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.parameters(('resnet_imagenet_pruning'),
                             ('mobilenet_imagenet_pruning'))
   def testTaskWithStructuredSparsity(self, config_name):
+    test_tfrecord_file = os.path.join(self.get_temp_dir(), 'cls_test.tfrecord')
+    self._create_test_tfrecord(
+        test_tfrecord_file=test_tfrecord_file,
+        num_samples=10,
+        input_image_size=[224, 224])
     config = exp_factory.get_exp_config(config_name)
     config.task.train_data.global_batch_size = 2
+    config.task.validation_data.input_path = test_tfrecord_file
+    config.task.train_data.input_path = test_tfrecord_file
+
     # Add structured sparsity
     config.task.pruning.sparsity_m_by_n = (2, 4)
     config.task.pruning.frequency = 1

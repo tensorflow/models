@@ -403,7 +403,7 @@ message CenterNet {
 
 
   // Mask prediction support using DeepMAC. See https://arxiv.org/abs/2104.00613
-  // Next ID 25
+  // Next ID 33
   message DeepMACMaskEstimation {
     // The loss used for penalizing mask predictions.
     optional ClassificationLoss classification_loss = 1;
@@ -505,6 +505,21 @@ message CenterNet {
 
     optional bool use_only_last_stage = 24 [default = false];
 
+    optional float augmented_self_supervision_max_translation = 25 [default=0.0];
+
+    optional float augmented_self_supervision_flip_probability = 26 [default=0.0];
+
+    optional float augmented_self_supervision_loss_weight = 27 [default=0.0];
+
+    optional int32 augmented_self_supervision_warmup_start = 28 [default=0];
+
+    optional int32 augmented_self_supervision_warmup_steps = 29 [default=0];
+
+    optional  AugmentedSelfSupervisionLoss augmented_self_supervision_loss = 30 [default=LOSS_DICE];
+
+    optional float augmented_self_supervision_scale_min = 31 [default=1.0];
+
+    optional float augmented_self_supervision_scale_max = 32 [default=1.0];
   }
 
   optional DeepMACMaskEstimation deepmac_mask_estimation = 14;
@@ -525,6 +540,13 @@ enum LossNormalize {
   NORMALIZE_AUTO = 0;  // SUM for 2D inputs (dice loss) and MEAN for others.
   NORMALIZE_GROUNDTRUTH_COUNT = 1;
   NORMALIZE_BALANCED = 3;
+}
+
+enum AugmentedSelfSupervisionLoss {
+  LOSS_UNSET = 0;
+  LOSS_DICE = 1;
+  LOSS_MSE = 2;
+  LOSS_KL_DIV = 3;
 }
 
 message CenterNetFeatureExtractor {

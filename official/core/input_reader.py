@@ -292,6 +292,8 @@ class InputReader:
     self._transform_and_batch_fn = transform_and_batch_fn
     self._postprocess_fn = postprocess_fn
     self._seed = params.seed
+    self._prefetch_buffer_size = (params.prefetch_buffer_size or
+                                  tf.data.experimental.AUTOTUNE)
 
     # When tf.data service is enabled, each data service worker should get
     # different random seeds. Thus, we set `seed` to None.
@@ -505,4 +507,4 @@ class InputReader:
       options = tf.data.Options()
       options.experimental_deterministic = self._deterministic
       dataset = dataset.with_options(options)
-    return dataset.prefetch(tf.data.experimental.AUTOTUNE)
+    return dataset.prefetch(self._prefetch_buffer_size)

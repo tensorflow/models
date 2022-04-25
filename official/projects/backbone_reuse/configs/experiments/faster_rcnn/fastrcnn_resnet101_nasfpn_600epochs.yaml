@@ -1,0 +1,41 @@
+task:
+  # init_checkpoint: 'a_pretrained_backbone_checkpoint'
+  init_checkpoint_modules: backbone
+  freeze_backbone: true
+  model:
+    backbone:
+      resnet:
+        model_id: 101
+        replace_stem_max_pool: true
+        resnetd_shortcut: true
+        scale_stem: true
+        se_ratio: 0.25
+        stem_type: v1
+      type: resnet
+    decoder:
+      type: nasfpn
+    detection_head:
+      num_fcs: 2
+    include_mask: false
+    max_level: 7
+    min_level: 3
+    norm_activation:
+      activation: swish
+  train_data:
+    global_batch_size: 64
+    parser:
+      aug_rand_hflip: true
+      aug_scale_max: 2.0
+      aug_scale_min: 0.1
+trainer:
+  optimizer_config:
+    learning_rate:
+      stepwise:
+        boundaries: [1062734, 1090458]
+        name: PiecewiseConstantDecay
+        offset: 0
+        values: [0.16, 0.016, 0.0016]
+      type: stepwise
+  steps_per_loop: 1848
+  summary_interval: 1848
+  train_steps: 1108940

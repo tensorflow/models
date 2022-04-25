@@ -54,18 +54,20 @@ INPUT_BUILDER_UTIL_MAP = {
 }
 
 
-def _multiclass_scores_or_one_hot_labels(multiclass_scores,
-                                         groundtruth_boxes,
+def _multiclass_scores_or_one_hot_labels(multiclass_scores, groundtruth_boxes,
                                          groundtruth_classes, num_classes):
   """Returns one-hot encoding of classes when multiclass_scores is empty."""
+
   # Replace groundtruth_classes tensor with multiclass_scores tensor when its
   # non-empty. If multiclass_scores is empty fall back on groundtruth_classes
   # tensor.
   def true_fn():
     return tf.reshape(multiclass_scores,
                       [tf.shape(groundtruth_boxes)[0], num_classes])
+
   def false_fn():
     return tf.one_hot(groundtruth_classes, num_classes)
+
   return tf.cond(tf.size(multiclass_scores) > 0, true_fn, false_fn)
 
 
@@ -132,8 +134,7 @@ def assert_or_prune_invalid_boxes(boxes):
       This is not supported on TPUs.
   """
 
-  ymin, xmin, ymax, xmax = tf.split(
-      boxes, num_or_size_splits=4, axis=1)
+  ymin, xmin, ymax, xmax = tf.split(boxes, num_or_size_splits=4, axis=1)
 
   height_check = tf.Assert(tf.reduce_all(ymax >= ymin), [ymin, ymax])
   width_check = tf.Assert(tf.reduce_all(xmax >= xmin), [xmin, xmax])
@@ -157,7 +158,8 @@ def transform_input_data(tensor_dict,
                          use_multiclass_scores=False,
                          use_bfloat16=False,
                          retain_original_image_additional_channels=False,
-                         keypoint_type_weight=None):
+                         keypoint_type_weight=None,
+                         image_classes_field_map_empty_to_ones=True):
   """A single function that is responsible for all input data transformations.
 
   Data transformation functions are applied in the following order.
@@ -206,6 +208,9 @@ def transform_input_data(tensor_dict,
     keypoint_type_weight: A list (of length num_keypoints) containing
       groundtruth loss weights to use for each keypoint. If None, will use a
       weight of 1.
+    image_classes_field_map_empty_to_ones: A boolean flag indicating if empty
+      image classes field indicates that all classes have been labeled on this
+      image [true] or none [false].
 
   Returns:
     A dictionary keyed by fields.InputDataFields containing the tensors obtained
@@ -229,11 +234,11 @@ def transform_input_data(tensor_dict,
     raise KeyError('groundtruth_labeled_classes and groundtruth_image_classes'
                    'are provided by the decoder, but only one should be set.')
 
-  for field, map_empty_to_ones in [
-      (labeled_classes_field, True),
-      (image_classes_field, True),
-      (verified_neg_classes_field, False),
-      (not_exhaustive_field, False)]:
+  for field, map_empty_to_ones in [(labeled_classes_field, True),
+                                   (image_classes_field,
+                                    image_classes_field_map_empty_to_ones),
+                                   (verified_neg_classes_field, False),
+                                   (not_exhaustive_field, False)]:
     if field in out_tensor_dict:
       out_tensor_dict[field] = _remove_unrecognized_classes(
           out_tensor_dict[field], unrecognized_label=-1)
@@ -1044,7 +1049,9 @@ def eval_input(eval_config, eval_input_config, model_config,
         retain_original_image=eval_config.retain_original_images,
         retain_original_image_additional_channels=
         eval_config.retain_original_image_additional_channels,
-        keypoint_type_weight=keypoint_type_weight)
+        keypoint_type_weight=keypoint_type_weight,
+        image_classes_field_map_empty_to_ones=eval_config
+        .image_classes_field_map_empty_to_ones)
     tensor_dict = pad_input_data_to_static_shapes(
         tensor_dict=transform_data_fn(tensor_dict),
         max_num_boxes=eval_input_config.max_number_of_boxes,

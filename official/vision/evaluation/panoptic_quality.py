@@ -277,12 +277,12 @@ class PanopticQuality:
                 np.sum(in_category_set.astype(np.int32)),
         })
       else:
-        results[category_set_name] = {
+        results.update({
             f'{category_set_name}_pq': 0.,
             f'{category_set_name}_sq': 0.,
             f'{category_set_name}_rq': 0.,
             f'{category_set_name}_num_categories': 0
-        }
+        })
 
     return results
 

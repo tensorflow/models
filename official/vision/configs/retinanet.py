@@ -126,13 +126,6 @@ class DetectionGenerator(hyperparams.Config):
   tflite_post_processing: common.TFLitePostProcessingConfig = common.TFLitePostProcessingConfig(
   )
 
-  max_detections: int = 200
-  max_classes_per_detection: int = 5
-  # Regular NMS run in a multi-class fashion and is slow. Setting it to False
-  # uses class-agnostic NMS, which is faster.
-  use_regular_nms: bool = False
-  nms_score_threshold: float = 0.1
-
 
 @dataclasses.dataclass
 class RetinaNet(hyperparams.Config):
@@ -173,6 +166,10 @@ class RetinaNetTask(cfg.TaskConfig):
   use_coco_metrics: bool = True
   # If set, the Waymo Open Dataset evaluator would be used.
   use_wod_metrics: bool = False
+
+  # If set, freezes the backbone during training.
+  # TODO(crisnv) Add paper link when available.
+  freeze_backbone: bool = False
 
 
 @exp_factory.register_config_factory('retinanet')

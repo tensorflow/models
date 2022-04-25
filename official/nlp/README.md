@@ -1,4 +1,9 @@
-# TensorFlow NLP Modelling Toolkit
+# TF-NLP Model Garden
+
+⚠️ Disclaimer: All datasets hyperlinked from this page are not owned or
+distributed by Google. The dataset is made available by third parties.
+Please review the terms and conditions made available by the third parties
+before using the data.
 
 This codebase provides a Natrual Language Processing modeling toolkit written in
 [TF2](https://www.tensorflow.org/guide/effective_tf2). It allows researchers and
@@ -30,7 +35,10 @@ research ideas. Detailed intructions can be found in READMEs in each folder.
 
 We provide SoTA model implementations, pre-trained models, training and
 evaluation examples, and command lines. Detail instructions can be found in the
-READMEs for specific papers.
+READMEs for specific papers. Below are some papers implemented in the
+repository and more NLP projects can be found in the
+[`projects`](https://github.com/tensorflow/models/tree/master/official/projects)
+folder:
 
 1.  [BERT](MODEL_GARDEN.md#available-model-configs): [BERT: Pre-training of Deep Bidirectional Transformers for
     Language Understanding](https://arxiv.org/abs/1810.04805) by Devlin et al.,
@@ -38,10 +46,10 @@ READMEs for specific papers.
 2.  [ALBERT](MODEL_GARDEN.md#available-model-configs):
     [A Lite BERT for Self-supervised Learning of Language Representations](https://arxiv.org/abs/1909.11942)
     by Lan et al., 2019
-3.  [XLNet](xlnet):
+3.  [XLNet](MODEL_GARDEN.md):
     [XLNet: Generalized Autoregressive Pretraining for Language Understanding](https://arxiv.org/abs/1906.08237)
     by Yang et al., 2019
-4.  [Transformer for translation](transformer):
+4.  [Transformer for translation](MODEL_GARDEN.md#available-model-configs):
     [Attention Is All You Need](https://arxiv.org/abs/1706.03762) by Vaswani et
     al., 2017
 
