@@ -19,6 +19,7 @@ build:manylinux2010 --crosstool_top=//third_party/toolchains/preconfig/ubuntu16.
 
 build -c opt
 build --cxxopt="-std=c++14"
+build --host_cxxopt="-std=c++14"
 build --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0"
 build --auto_output_filter=subpackages
 build --copt="-Wall" --copt="-Wno-sign-compare"
@@ -59,11 +60,6 @@ build --define=grpc_no_ares=true
 # TODO: Remove this line once TF doesn't depend on Bazel wrapping all library
 # archives in -whole_archive -no_whole_archive.
 build --noincompatible_remove_legacy_whole_archive
-
-# These are bazel 2.0's incompatible flags. Tensorflow needs to use bazel 2.0.0
-# to use cc_shared_library, as part of the Tensorflow Build Improvements RFC:
-# https://github.com/tensorflow/community/pull/179
-build --noincompatible_prohibit_aapt1
 
 # Build TF with C++ 17 features.
 build:c++17 --cxxopt=-std=c++1z

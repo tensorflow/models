@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,8 @@ import sys
 from setuptools import find_packages
 from setuptools import setup
 
-version = '2.5.0'
+version = '2.8.0'
+tf_version = '2.8.0'  # Major version.
 
 project_name = 'tf-models-official'
 
@@ -61,8 +62,8 @@ if project_name == 'tf-models-nightly':
   install_requires.append('tf-nightly')
   install_requires.append('tensorflow-text-nightly')
 else:
-  install_requires.append('tensorflow>=2.4.0')
-  install_requires.append('tensorflow-text>=2.4.0')
+  install_requires.append(f'tensorflow~={tf_version}')
+  install_requires.append(f'tensorflow-text~={tf_version}')
 
 print('install_requires: ', install_requires)
 print('dependency_links: ', dependency_links)
@@ -73,7 +74,7 @@ setup(
     description='TensorFlow Official Models',
     long_description=long_description,
     author='Google Inc.',
-    author_email='no-reply@google.com',
+    author_email='packages@tensorflow.org',
     url='https://github.com/tensorflow/models',
     license='Apache 2.0',
     packages=find_packages(exclude=[
@@ -88,5 +89,5 @@ setup(
     },
     install_requires=install_requires,
     dependency_links=dependency_links,
-    python_requires='>=3.6',
+    python_requires='>=3.7',
 )

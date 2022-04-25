@@ -23,3 +23,12 @@ respectively.
 
 * [`DualEncoder`](dual_encoder.py) implements a dual encoder model, suitbale for
 retrieval tasks.
+
+* [`Seq2SeqTransformer`](seq2seq_transformer.py) implements the original
+Transformer model for seq-to-seq tasks.
+
+* [`T5Transformer`](t5.py) implements a standalone T5 model for seq-to-seq
+tasks. The models are compatible with released T5 architecture and converted
+checkpoints. The modules are implemented as `tf.Module`. To use with Keras,
+users can wrap them within Keras customized layers, i.e. we can define the
+modules inside the `__init__` of Keras layer and call the modules in `call`.

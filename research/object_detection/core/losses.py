@@ -25,6 +25,7 @@ Classification losses:
  * WeightedSoftmaxClassificationLoss
  * WeightedSoftmaxClassificationAgainstLogitsLoss
  * BootstrappedSigmoidClassificationLoss
+ * WeightedDiceClassificationLoss
 """
 from __future__ import absolute_import
 from __future__ import division

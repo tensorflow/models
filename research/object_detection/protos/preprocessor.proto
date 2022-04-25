@@ -67,15 +67,19 @@ message RandomHorizontalFlip {
   // flipped indices. This is used in the event that keypoints are specified,
   // in which case when the image is horizontally flipped the keypoints will
   // need to be permuted. E.g. for keypoints representing left_eye, right_eye,
-  // nose_tip, mouth, left_ear, right_ear (in that order), one might specify
-  // the keypoint_flip_permutation below:
+  // and nose (in that order), one might specify:
+  // keypoint_flip_permutation below:
   // keypoint_flip_permutation: 1
   // keypoint_flip_permutation: 0
   // keypoint_flip_permutation: 2
-  // keypoint_flip_permutation: 3
-  // keypoint_flip_permutation: 5
-  // keypoint_flip_permutation: 4
-  // If nothing is specified the order of keypoint will be mantained.
+  //
+  //         original image         horizontally flipped image
+  //  ___________________________   ___________________________
+  //        /      /      /       |       \      \      \
+  //  left eye, 0    right eye, 1 | left eye, 1    right eye, 0
+  //            nose, 2           |            nose, 2
+  //  ___________________________   ___________________________
+  // If nothing is specified, the order of keypoint will be mantained.
   repeated int32 keypoint_flip_permutation = 1;
 
   // The probability of running this augmentation for each image.
@@ -89,14 +93,20 @@ message RandomVerticalFlip {
   // flipped indices. This is used in the event that keypoints are specified,
   // in which case when the image is vertically flipped the keypoints will
   // need to be permuted. E.g. for keypoints representing left_eye, right_eye,
-  // nose_tip, mouth, left_ear, right_ear (in that order), one might specify
-  // the keypoint_flip_permutation below:
+  // and nose (in that order), one might specify:
   // keypoint_flip_permutation: 1
   // keypoint_flip_permutation: 0
   // keypoint_flip_permutation: 2
-  // keypoint_flip_permutation: 3
-  // keypoint_flip_permutation: 5
-  // keypoint_flip_permutation: 4
+  //  ___________________________
+  //        /      /      /       |  original image
+  //  left eye, 0    right eye, 1 |
+  //            nose, 2           |
+  //  ___________________________
+  //        \      \      \       |  vertically flipped image
+  //            nose, 2           |
+  //  right eye, 0    left eye, 1 |
+  //  ___________________________
+  // If nothing is specified, the order of keypoint will be mantained.
   repeated int32 keypoint_flip_permutation = 1;
 
   // The probability of running this augmentation for each image.

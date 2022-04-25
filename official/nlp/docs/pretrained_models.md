@@ -93,3 +93,28 @@ ALBERT-base English               |  Wiki + Books  | [`ALBERT Base`](https://sto
 ALBERT-large English               |  Wiki + Books  | [`ALBERT Large`](https://storage.googleapis.com/tf_model_garden/nlp/albert/albert_large.tar.gz) | https://tfhub.dev/tensorflow/albert_en_large/3
 ALBERT-xlarge English               |  Wiki + Books  | [`ALBERT XLarge`](https://storage.googleapis.com/tf_model_garden/nlp/albert/albert_xlarge.tar.gz) | https://tfhub.dev/tensorflow/albert_en_xlarge/3
 ALBERT-xxlarge English               |  Wiki + Books  | [`ALBERT XXLarge`](https://storage.googleapis.com/tf_model_garden/nlp/albert/albert_xxlarge.tar.gz) | https://tfhub.dev/tensorflow/albert_en_xxlarge/3
+
+
+## ELECTRA
+
+[ELECTRA](https://arxiv.org/abs/2003.10555), which stands for " Efficiently
+Learning an Encoder that Classifies Token Replacements Accurately", is an
+efficient language pretraining method. In a nutshell, ELECTRA contains two
+transformer models, one called "generator" and the other called "discriminator".
+Given a masked sequence, the generator replaces words in masked positions with
+randomly generated words. The discriminator then takes the corrupted sentence as
+input and predicts whether each word is replaced by the generator or not. During
+the pretraining stage, ELECTRA jointly learns two models (i.e., trains the
+generator using masked language modeling (MLM) task, and trains the
+discriminator using replaced token detection (RTD) task). At the fine-tuning
+stage, the generator is discard and the discriminator is used for downstream
+tasks (e.g., GLUE and SQuAD tasks).
+
+### Checkpoints
+
+The checkpoints are re-trained with the Electra code in this repository.
+
+Model                                    | Training Data | Checkpoint & Vocabulary
+---------------------------------------- | ------------: | ----------------------:
+ELECTRA-small English               |  Wiki + Books  | [`ELECTRA Small`](https://storage.googleapis.com/tf_model_garden/nlp/electra/small.tar.gz): the vocabulary is the same as BERT uncased English.
+ELECTRA-base English               |  Wiki + Books  | [`ELECTRA Base`](https://storage.googleapis.com/tf_model_garden/nlp/electra/base.tar.gz): the vocabulary is the same as BERT uncased English.

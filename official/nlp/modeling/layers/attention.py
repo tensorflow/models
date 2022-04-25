@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ MultiHeadAttention = tf.keras.layers.MultiHeadAttention
 
 @tf.keras.utils.register_keras_serializable(package="Text")
 class CachedAttention(tf.keras.layers.MultiHeadAttention):
-  """Attention layer with cache used for auto-agressive decoding.
+  """Attention layer with cache used for autoregressive decoding.
 
   Arguments are the same as `tf.keras.layers.MultiHeadAttention` layer.
   """

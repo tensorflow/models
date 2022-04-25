@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,6 +25,10 @@ class TaskSampler(tf.Module, metaclass=abc.ABCMeta):
 
   def __init__(self, task_weights: Dict[Text, Union[float, int]]):
     self._task_weights = task_weights
+
+  @property
+  def task_weights(self):
+    return self._task_weights
 
   @abc.abstractmethod
   def task_cumulative_distribution(self, global_step: tf.Tensor) -> tf.Tensor:

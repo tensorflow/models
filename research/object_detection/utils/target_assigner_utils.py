@@ -236,6 +236,77 @@ def compute_floor_offsets_with_indices(y_source,
   return offsets, indices
 
 
+def coordinates_to_iou(y_grid, x_grid, blist,
+                       channels_onehot, weights=None):
+  """Computes a per-pixel IoU with groundtruth boxes.
+
+  At each pixel, we return the IoU assuming that we predicted the
+  ideal height and width for the box at that location.
+
+  Args:
+   y_grid: A 2D tensor with shape [height, width] which contains the grid
+      y-coordinates given in the (output) image dimensions.
+    x_grid: A 2D tensor with shape [height, width] which contains the grid
+      x-coordinates given in the (output) image dimensions.
+    blist: A BoxList object with `num_instances` number of boxes.
+    channels_onehot: A 2D tensor with shape [num_instances, num_channels]
+      representing the one-hot encoded channel labels for each point.
+    weights: A 1D tensor with shape [num_instances] corresponding to the
+      weight of each instance.
+
+  Returns:
+    iou_heatmap: A [height, width, num_channels] shapes float tensor denoting
+      the IoU based heatmap.
+  """
+
+  image_height, image_width = tf.shape(y_grid)[0], tf.shape(y_grid)[1]
+  num_pixels = image_height * image_width
+  _, _, height, width = blist.get_center_coordinates_and_sizes()
+  num_boxes = tf.shape(height)[0]
+
+  per_pixel_ymin = (y_grid[tf.newaxis, :, :] -
+                    (height[:, tf.newaxis, tf.newaxis] / 2.0))
+  per_pixel_xmin = (x_grid[tf.newaxis, :, :] -
+                    (width[:, tf.newaxis, tf.newaxis] / 2.0))
+  per_pixel_ymax = (y_grid[tf.newaxis, :, :] +
+                    (height[:, tf.newaxis, tf.newaxis] / 2.0))
+  per_pixel_xmax = (x_grid[tf.newaxis, :, :] +
+                    (width[:, tf.newaxis, tf.newaxis] / 2.0))
+
+  # [num_boxes, height, width] -> [num_boxes * height * width]
+  per_pixel_ymin = tf.reshape(
+      per_pixel_ymin, [num_pixels * num_boxes])
+  per_pixel_xmin = tf.reshape(
+      per_pixel_xmin, [num_pixels * num_boxes])
+  per_pixel_ymax = tf.reshape(
+      per_pixel_ymax, [num_pixels * num_boxes])
+  per_pixel_xmax = tf.reshape(
+      per_pixel_xmax, [num_pixels * num_boxes])
+  per_pixel_blist = box_list.BoxList(
+      tf.stack([per_pixel_ymin, per_pixel_xmin,
+                per_pixel_ymax, per_pixel_xmax], axis=1))
+
+  target_boxes = tf.tile(
+      blist.get()[:, tf.newaxis, :], [1, num_pixels, 1])
+  # [num_boxes, height * width, 4] -> [num_boxes * height * wdith, 4]
+  target_boxes = tf.reshape(target_boxes,
+                            [num_pixels * num_boxes, 4])
+  target_blist = box_list.BoxList(target_boxes)
+
+  ious = box_list_ops.matched_iou(target_blist, per_pixel_blist)
+  ious = tf.reshape(ious, [num_boxes, image_height, image_width])
+  per_class_iou = (
+      ious[:, :, :, tf.newaxis] *
+      channels_onehot[:, tf.newaxis, tf.newaxis, :])
+
+  if weights is not None:
+    per_class_iou = (
+        per_class_iou * weights[:, tf.newaxis, tf.newaxis, tf.newaxis])
+
+  per_class_iou = tf.maximum(per_class_iou, 0.0)
+  return tf.reduce_max(per_class_iou, axis=0)
+
+
 def get_valid_keypoint_mask_for_class(keypoint_coordinates,
                                       class_id,
                                       class_onehot,

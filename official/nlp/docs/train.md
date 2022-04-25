@@ -1,12 +1,14 @@
 # Model Garden NLP Common Training Driver
 
-[train.py](https://github.com/tensorflow/models/blob/master/official/nlp/train.py) is the common training driver that supports multiple
+[train.py](https://github.com/tensorflow/models/blob/master/official/nlp/train.py)
+is the common training driver that supports multiple
 NLP tasks (e.g., pre-training, GLUE and SQuAD fine-tuning etc) and multiple
 models (e.g., BERT, ALBERT, MobileBERT etc).
 
 ## Experiment Configuration
 
-[train.py] is driven by configs defined by the [ExperimentConfig](https://github.com/tensorflow/models/blob/master/official/core/config_definitions.py)
+[train.py](https://github.com/tensorflow/models/blob/master/official/nlp/train.py)
+is driven by configs defined by the [ExperimentConfig](https://github.com/tensorflow/models/blob/master/official/core/config_definitions.py)
 including configurations for `task`, `trainer` and `runtime`. The pre-defined
 NLP related [ExperimentConfig](https://github.com/tensorflow/models/blob/master/official/core/config_definitions.py) can be found in
 [configs/experiment_configs.py](https://github.com/tensorflow/models/blob/master/official/nlp/configs/experiment_configs.py).
@@ -37,9 +39,50 @@ In addition, experiment configuration can be further overriden by
  --params_override=task.train_data.input_path=/some/path,task.hub_module_url=/some/tfhub
 ```
 
+## Run locally on GPUs
+
+An example command for training a model on local GPUs is below. This command
+trains a BERT-base model on GLUE/MNLI-matched which is a sentence prediction
+task.
+
+```shell
+PARAMS=runtime.distribution_strategy=mirrored  # Train no GPU
+PARAMS=${PARAMS},task.train_data.input_path=/path-to-your-training-data/
+
+python3 train.py \
+  --experiment=bert/sentence_prediction \
+  --mode=train \
+  --model_dir=/a-folder-to-hold-checkpoints-and-logs/ \
+  --config_file=configs/models/bert_en_uncased_base.yaml \
+  --config_file=configs/experiments/glue_mnli_matched.yaml \
+  --params_override=${PARAMS}
+```
+
+Note that you can specify any detailed configuration by appending
+to the `PARAMS` variable. For example, if you want to load from a pretrained
+checkpoint as initialization (instead of random initialization):
+
+```shell
+PARAMS=${PARAMS},task.hub_module_url=https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/4
+```
+
+The configuration entry `task.hub_module_url` uses a URL to a TF-Hub model which
+is officially pretrained. See
+[List of Pretrained Models](https://github.com/tensorflow/models/blob/master/official/nlp/docs/pretrained_models.md)
+for the complete list of pretrained models on TF-Hub. When initializing from a
+pretrained model, the encoder architecture of the pretrained model will be used
+and the encoder architecture you set in the config
+(`configs/models/bert_en_uncased_base.yaml` in this case) will be ignored.
+
+You can change `--mode=train` to `--mode=train_and_eval` if you want to see
+evaluation results. But you need to specify the path to the evaluation data by
+setting `task.validation_data.input_path` in `PARAMS`.
+
 ## Run on Cloud TPUs
 
-Next, we will describe how to run the [train.py](https://github.com/tensorflow/models/blob/master/official/nlp/train.py) on Cloud TPUs.
+Next, we will describe how to run
+the [train.py](https://github.com/tensorflow/models/blob/master/official/nlp/train.py)
+on Cloud TPUs.
 
 ### Setup
 First, you need to create a `tf-nightly` TPU with
@@ -59,6 +102,8 @@ pip3 install --user -r official/requirements.txt
 ```
 
 ### Fine-tuning Sentence Classification with BERT from TF-Hub
+
+<details>
 
 This example fine-tunes BERT-base from TF-Hub on the the Multi-Genre Natural
 Language Inference (MultiNLI) corpus using TPUs.
@@ -113,6 +158,7 @@ python3 train.py \
  --experiment=bert/sentence_prediction \
  --mode=train_and_eval \
  --model_dir=$OUTPUT_DIR \
+ --config_file=configs/models/bert_en_uncased_base.yaml \
  --config_file=configs/experiments/glue_mnli_matched.yaml \
  --tfhub_cache_dir=$OUTPUT_DIR/hub_cache \
  --tpu=${TPU_NAME} \
@@ -123,7 +169,11 @@ python3 train.py \
 You can monitor the training progress in the console and find the output
 models in `$OUTPUT_DIR`.
 
+</details>
+
 ### Fine-tuning SQuAD with a pre-trained BERT checkpoint
+
+<details>
 
 This example fine-tunes a pre-trained BERT checkpoint on the
 Stanford Question Answering Dataset (SQuAD) using TPUs.
@@ -172,10 +222,13 @@ python3 train.py \
  --experiment=bert/squad \
  --mode=train_and_eval \
  --model_dir=$OUTPUT_DIR \
+ --config_file=configs/models/bert_en_uncased_base.yaml \
  --config_file=configs/experiments/squad_v1.1.yaml \
  --tpu=${TPU_NAME} \
  --params_override=$PARAMS
 
 ```
+
+</details>
 
 Note: More examples about pre-training will come soon.

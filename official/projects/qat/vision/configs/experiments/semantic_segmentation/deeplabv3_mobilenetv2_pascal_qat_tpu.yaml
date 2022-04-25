@@ -1,0 +1,80 @@
+# --experiment_type=mnv2_deeplabv3_pascal_qat
+# Use 4x2 DF for training and eval.
+# mIoU (unquantized fp32): 74.69
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'float32'
+task:
+  model:
+    num_classes: 21
+    input_size: [512, 512, 3]
+    backbone:
+      type: 'mobilenet'
+      mobilenet:
+        model_id: 'MobileNetV2'
+        output_stride: 16
+    decoder:
+      aspp:
+        dilation_rates: []
+        level: 4
+        pool_kernel_size: null
+        output_tensor: true
+      type: 'aspp'
+    head:
+      feature_fusion: null
+      num_convs: 0
+    norm_activation:
+      activation: relu
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+  losses:
+    l2_weight_decay: 4.0e-07  # 1/100 of original value.
+  train_data:
+    output_size: [512, 512]
+    crop_size: [512, 512]
+    input_path: 'gs://**/pascal_voc_seg/train_aug*'
+    is_training: true
+    global_batch_size: 16
+    dtype: 'float32'
+    aug_rand_hflip: true
+    aug_scale_max: 2.0
+    aug_scale_min: 0.5
+  validation_data:
+    output_size: [512, 512]
+    input_path: 'gs://**/pascal_voc_seg/val*'
+    is_training: false
+    global_batch_size: 16
+    dtype: 'float32'
+    drop_remainder: false
+    resize_eval_groundtruth: false
+    groundtruth_padded_size: [512, 512]
+  quantization:
+    pretrained_original_checkpoint: 'gs://**/deeplabv3_mobilenetv2_pascal_coco_0.21/29808901/best_ckpt/best_ckpt-54'
+  init_checkpoint: null
+trainer:
+  optimizer_config:
+    learning_rate:
+      polynomial:
+        decay_steps: 13240
+        initial_learning_rate: 0.00007  # 1/100 of original lr.
+        power: 0.9
+      type: polynomial
+    optimizer:
+      sgd:
+        momentum: 0.9
+      type: sgd
+    warmup:
+      linear:
+        name: linear
+        warmup_steps: 0  # No warmup
+      type: linear
+  best_checkpoint_eval_metric: 'mean_iou'
+  best_checkpoint_export_subdir: 'best_ckpt'
+  best_checkpoint_metric_comp: 'higher'
+  steps_per_loop: 662
+  summary_interval: 662
+  train_steps: 13240
+  validation_interval: 662
+  validation_steps: 90
+  checkpoint_interval: 662

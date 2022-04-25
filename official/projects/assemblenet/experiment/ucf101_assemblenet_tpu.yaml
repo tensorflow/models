@@ -1,0 +1,56 @@
+# Assemblenet structure video classificaion on UCF-101 dataset
+# --experiment_type=assemblenet_ucf101
+# device : TPU v3-8
+
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  model:
+    backbone:
+      assemblenet:
+        model_id: 101
+        num_frames: 32
+        combine_method: 'sigmoid'
+      type: 'assemblenet'
+    dropout_rate: 0.5
+    norm_activation:
+      activation: relu
+      norm_momentum: 0.99
+      norm_epsilon: 0.00001
+      use_sync_bn: true
+    max_pool_predictions: true
+  train_data:
+    is_training: true
+    global_batch_size: 32
+    dtype: 'bfloat16'
+    tfds_data_dir: 'gs://oss-yonsei/tensorflow_datasets/'
+  validation_data:
+    is_training: false
+    global_batch_size: 32
+    dtype: 'bfloat16'
+    tfds_data_dir: 'gs://oss-yonsei/tensorflow_datasets/'
+    drop_remainder: true
+trainer:
+  train_steps: 90000  # 500 epochs
+  validation_steps: 288
+  validation_interval: 288
+  steps_per_loop: 288  # NUM_EXAMPLES (9537) // global_batch_size
+  summary_interval: 288
+  checkpoint_interval: 288
+  optimizer_config:
+    optimizer:
+      type: 'sgd'
+      sgd:
+        momentum: 0.9
+    learning_rate:
+      type: 'exponential'
+      exponential:
+        initial_learning_rate: 0.008  # 0.008 * batch_size / 128
+        decay_steps: 1024  # 2.5 * steps_per_epoch
+        decay_rate: 0.96
+        staircase: true
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 50

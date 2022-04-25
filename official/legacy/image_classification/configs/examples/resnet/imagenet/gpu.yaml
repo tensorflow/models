@@ -1,0 +1,49 @@
+# Training configuration for ResNet trained on ImageNet on GPUs.
+# Reaches > 76.1% within 90 epochs.
+# Note: This configuration uses a scaled per-replica batch size based on the number of devices.
+runtime:
+  distribution_strategy: 'mirrored'
+  num_gpus: 1
+  batchnorm_spatial_persistent: true
+train_dataset:
+  name: 'imagenet2012'
+  data_dir: null
+  builder: 'tfds'
+  split: 'train'
+  image_size: 224
+  num_classes: 1000
+  num_examples: 1281167
+  batch_size: 256
+  use_per_replica_batch_size: true
+  dtype: 'float16'
+  mean_subtract: true
+  standardize: true
+validation_dataset:
+  name: 'imagenet2012'
+  data_dir: null
+  builder: 'tfds'
+  split: 'validation'
+  image_size: 224
+  num_classes: 1000
+  num_examples: 50000
+  batch_size: 256
+  use_per_replica_batch_size: true
+  dtype: 'float16'
+  mean_subtract: true
+  standardize: true
+model:
+  name: 'resnet'
+  model_params:
+    rescale_inputs: false
+  optimizer:
+    name: 'momentum'
+    momentum: 0.9
+    decay: 0.9
+    epsilon: 0.001
+  loss:
+    label_smoothing: 0.1
+train:
+  resume_checkpoint: true
+  epochs: 90
+evaluation:
+  epochs_between_evals: 1

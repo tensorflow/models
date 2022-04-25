@@ -90,6 +90,7 @@ py_binary(
     main = "run_tflite.py",
     python_version = "PY3",
     deps = [
+        ":sgnn_projection_op_resolver",
         # Expect numpy installed
         # package TFLite flex delegate
         # package TFLite interpreter

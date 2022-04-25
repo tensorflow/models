@@ -104,6 +104,32 @@ class CenterNetFeatureExtractor(tf.keras.Model):
 
     return (inputs - channel_means)/channel_stds
 
+  def preprocess_reverse(self, preprocessed_inputs):
+    """Undo the preprocessing and return the raw image.
+
+    This is a convenience function for some algorithms that require access
+    to the raw inputs.
+
+    Args:
+      preprocessed_inputs: A [batch_size, height, width, channels] float
+        tensor preprocessed_inputs from the preprocess function.
+
+    Returns:
+      images: A [batch_size, height, width, channels] float tensor with
+        the preprocessing removed.
+    """
+    channel_means = tf.reshape(tf.constant(self._channel_means),
+                               [1, 1, 1, -1])
+    channel_stds = tf.reshape(tf.constant(self._channel_stds),
+                              [1, 1, 1, -1])
+    inputs = (preprocessed_inputs * channel_stds) + channel_means
+
+    if self._bgr_ordering:
+      blue, green, red = tf.unstack(inputs, axis=3)
+      inputs = tf.stack([red, green, blue], axis=3)
+
+    return inputs
+
   @property
   @abc.abstractmethod
   def out_stride(self):
@@ -301,8 +327,21 @@ def top_k_feature_map_locations(feature_map, max_pool_kernel_size=3, k=100,
                                                   perm=[0, 3, 1, 2])
       feature_map_peaks_transposed = tf.reshape(
           feature_map_peaks_transposed, [batch_size, num_channels, -1])
+      # safe_k will be used whenever there are fewer positions in the heatmap
+      # than the requested number of locations to score. In that case, all
+      # positions are returned in sorted order. To ensure consistent shapes for
+      # downstream ops the outputs are padded with zeros. Safe_k is also
+      # fine for TPU because TPUs require a fixed input size so the number of
+      # positions will also be fixed.
+      safe_k = tf.minimum(k, tf.shape(feature_map_peaks_transposed)[-1])
       scores, peak_flat_indices = tf.math.top_k(
-          feature_map_peaks_transposed, k=k)
+          feature_map_peaks_transposed, k=safe_k)
+      scores = tf.pad(scores, [(0, 0), (0, 0), (0, k - safe_k)])
+      peak_flat_indices = tf.pad(peak_flat_indices,
+                                 [(0, 0), (0, 0), (0, k - safe_k)])
+      scores = tf.ensure_shape(scores, (batch_size, num_channels, k))
+      peak_flat_indices = tf.ensure_shape(peak_flat_indices,
+                                          (batch_size, num_channels, k))
     # Convert the indices such that they represent the location in the full
     # (flattened) feature map of size [batch, height * width * channels].
     channel_idx = tf.range(num_channels)[tf.newaxis, :, tf.newaxis]
@@ -2637,7 +2676,8 @@ class CenterNetMetaArch(model.DetectionModel):
                use_depthwise=False,
                compute_heatmap_sparse=False,
                non_max_suppression_fn=None,
-               unit_height_conv=False):
+               unit_height_conv=False,
+               output_prediction_dict=False):
     """Initializes a CenterNet model.
 
     Args:
@@ -2683,6 +2723,8 @@ class CenterNetMetaArch(model.DetectionModel):
       non_max_suppression_fn: Optional Non Max Suppression function to apply.
       unit_height_conv: If True, Conv2Ds in prediction heads have asymmetric
         kernels with height=1.
+      output_prediction_dict: If true, combines all items from the dictionary
+        returned by predict() function into the output of postprocess().
     """
     assert object_detection_params or keypoint_params_dict
     # Shorten the name for convenience and better formatting.
@@ -2708,6 +2750,7 @@ class CenterNetMetaArch(model.DetectionModel):
 
     self._use_depthwise = use_depthwise
     self._compute_heatmap_sparse = compute_heatmap_sparse
+    self._output_prediction_dict = output_prediction_dict
 
     # subclasses may not implement the unit_height_conv arg, so only provide it
     # as a kwarg if it is True.
@@ -3053,7 +3096,8 @@ class CenterNetMetaArch(model.DetectionModel):
     return loss_per_instance
 
   def _compute_object_detection_losses(self, input_height, input_width,
-                                       prediction_dict, per_pixel_weights):
+                                       prediction_dict, per_pixel_weights,
+                                       maximum_normalized_coordinate=1.1):
     """Computes the weighted object detection losses.
 
     This wrapper function calls the function which computes the losses for
@@ -3068,6 +3112,9 @@ class CenterNetMetaArch(model.DetectionModel):
       per_pixel_weights: A float tensor of shape [batch_size,
         out_height * out_width, 1] with 1s in locations where the spatial
         coordinates fall within the height and width in true_image_shapes.
+      maximum_normalized_coordinate: Maximum coordinate value to be considered
+        as normalized, default to 1.1. This is used to check bounds during
+        converting normalized coordinates to absolute coordinates.
 
     Returns:
       A dictionary of scalar float tensors representing the weighted losses for
@@ -3079,7 +3126,8 @@ class CenterNetMetaArch(model.DetectionModel):
         scale_predictions=prediction_dict[BOX_SCALE],
         offset_predictions=prediction_dict[BOX_OFFSET],
         input_height=input_height,
-        input_width=input_width)
+        input_width=input_width,
+        maximum_normalized_coordinate=maximum_normalized_coordinate)
     loss_dict = {}
     loss_dict[BOX_SCALE] = (
         self._od_params.scale_loss_weight * od_scale_loss)
@@ -3088,7 +3136,8 @@ class CenterNetMetaArch(model.DetectionModel):
     return loss_dict
 
   def _compute_box_scale_and_offset_loss(self, input_height, input_width,
-                                         scale_predictions, offset_predictions):
+                                         scale_predictions, offset_predictions,
+                                         maximum_normalized_coordinate=1.1):
     """Computes the scale loss of the object detection task.
 
     Args:
@@ -3100,6 +3149,9 @@ class CenterNetMetaArch(model.DetectionModel):
       offset_predictions: A list of float tensors of shape [batch_size,
         out_height, out_width, 2] representing the prediction heads of the model
         for object offset.
+      maximum_normalized_coordinate: Maximum coordinate value to be considered
+        as normalized, default to 1.1. This is used to check bounds during
+        converting normalized coordinates to absolute coordinates.
 
     Returns:
       A tuple of two losses:
@@ -3120,7 +3172,8 @@ class CenterNetMetaArch(model.DetectionModel):
          height=input_height,
          width=input_width,
          gt_boxes_list=gt_boxes_list,
-         gt_weights_list=gt_weights_list)
+         gt_weights_list=gt_weights_list,
+         maximum_normalized_coordinate=maximum_normalized_coordinate)
     batch_weights = tf.expand_dims(batch_weights, -1)
 
     scale_loss = 0
@@ -3919,7 +3972,8 @@ class CenterNetMetaArch(model.DetectionModel):
           input_height=input_height,
           input_width=input_width,
           prediction_dict=prediction_dict,
-          per_pixel_weights=valid_anchor_weights)
+          per_pixel_weights=valid_anchor_weights,
+          maximum_normalized_coordinate=maximum_normalized_coordinate)
       for key in od_losses:
         od_losses[key] = od_losses[key] * self._od_params.task_loss_weight
       losses.update(od_losses)
@@ -4060,6 +4114,10 @@ class CenterNetMetaArch(model.DetectionModel):
         fields.DetectionResultFields.num_detections: num_detections,
     }
 
+    if self._output_prediction_dict:
+      postprocess_dict.update(prediction_dict)
+      postprocess_dict['true_image_shapes'] = true_image_shapes
+
     boxes_strided = None
     if self._od_params:
       boxes_strided = (
@@ -4072,7 +4130,7 @@ class CenterNetMetaArch(model.DetectionModel):
 
       postprocess_dict.update({
           fields.DetectionResultFields.detection_boxes: boxes,
-          'detection_boxes_strided': boxes_strided
+          'detection_boxes_strided': boxes_strided,
       })
 
     if self._kp_params_dict:
@@ -4121,11 +4179,7 @@ class CenterNetMetaArch(model.DetectionModel):
                 keypoints, keypoint_scores, self._stride, true_image_shapes,
                 clip_out_of_frame_keypoints=clip_keypoints))
 
-      # Update instance scores based on keypoints.
-      scores = self._rescore_instances(
-          channel_indices, detection_scores, keypoint_scores)
       postprocess_dict.update({
-          fields.DetectionResultFields.detection_scores: scores,
           fields.DetectionResultFields.detection_keypoints: keypoints,
           fields.DetectionResultFields.detection_keypoint_scores:
               keypoint_scores
@@ -4203,6 +4257,22 @@ class CenterNetMetaArch(model.DetectionModel):
       postprocess_dict[
           fields.DetectionResultFields.num_detections] = num_detections
       postprocess_dict.update(nmsed_additional_fields)
+
+    # Perform the rescoring once the NMS is applied to make sure the rescored
+    # scores won't be washed out by the NMS function.
+    if self._kp_params_dict:
+      channel_indices = postprocess_dict[
+          fields.DetectionResultFields.detection_classes]
+      detection_scores = postprocess_dict[
+          fields.DetectionResultFields.detection_scores]
+      keypoint_scores = postprocess_dict[
+          fields.DetectionResultFields.detection_keypoint_scores]
+      # Update instance scores based on keypoints.
+      scores = self._rescore_instances(
+          channel_indices, detection_scores, keypoint_scores)
+      postprocess_dict.update({
+          fields.DetectionResultFields.detection_scores: scores,
+      })
     return postprocess_dict
 
   def postprocess_single_instance_keypoints(

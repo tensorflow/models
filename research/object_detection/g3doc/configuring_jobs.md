@@ -104,6 +104,13 @@ increase computation costs. Whereas generating fewer anchors that have a higher
 chance to overlap with ground truth will both improve accuracy and reduce
 computation costs.
 
+And although you can manually select values for both scale and aspect ratios
+that work well for your dataset, there are programmatic techniques you can use
+instead. One such strategy to determine the ideal aspect ratios is to perform
+k-means clustering of all the ground-truth bounding-box ratios, as shown in this
+Colab notebook to [Generate SSD anchor box aspect ratios using k-means
+clustering](https://colab.sandbox.google.com/github/tensorflow/models/blob/master/research/object_detection/colab_tutorials/generate_ssd_anchor_box_aspect_ratios_using_k_means_clustering.ipynb).
+
 
 **Single Shot Detector (SSD) full model:**
 

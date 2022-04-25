@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +28,8 @@
 # ==============================================================================
 """Utility library for picking an appropriate dataset function."""
 
-from typing import Any, Callable, Union, Type
+import functools
+from typing import Any, Callable, Type, Union
 
 import tensorflow as tf
 
@@ -38,5 +39,6 @@ PossibleDatasetType = Union[Type[tf.data.Dataset], Callable[[tf.Tensor], Any]]
 def pick_dataset_fn(file_type: str) -> PossibleDatasetType:
   if file_type == 'tfrecord':
     return tf.data.TFRecordDataset
-
+  if file_type == 'tfrecord_compressed':
+    return functools.partial(tf.data.TFRecordDataset, compression_type='GZIP')
   raise ValueError('Unrecognized file_type: {}'.format(file_type))

@@ -183,7 +183,8 @@ def ExtractGlobalFeatures(image,
                           global_scales_ind,
                           model_fn,
                           multi_scale_pool_type='None',
-                          normalize_global_descriptor=False):
+                          normalize_global_descriptor=False,
+                          normalization_function=gld.NormalizeImages):
   """Extract global features for input image.
 
   Args:
@@ -201,6 +202,7 @@ def ExtractGlobalFeatures(image,
       and a 1D global descriptor is returned.
     normalize_global_descriptor: If True, output global descriptors are
       L2-normalized.
+    normalization_function: Function used for normalization.
 
   Returns:
     global_descriptors: If `multi_scale_pool_type` is 'None', returns a [S, D]
@@ -213,7 +215,7 @@ def ExtractGlobalFeatures(image,
   """
   original_image_shape_float = tf.gather(
       tf.dtypes.cast(tf.shape(image), tf.float32), [0, 1])
-  image_tensor = gld.NormalizeImages(
+  image_tensor = normalization_function(
       image, pixel_value_offset=128.0, pixel_value_scale=128.0)
   image_tensor = tf.expand_dims(image_tensor, 0, name='image/expand_dims')
 

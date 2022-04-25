@@ -1,0 +1,52 @@
+# Training configuration for EfficientNet-b0 trained on ImageNet on GPUs.
+# Takes ~32 minutes per epoch for 8 V100s.
+# Reaches ~76.1% within 350 epochs.
+# Note: This configuration uses a scaled per-replica batch size based on the number of devices.
+runtime:
+  distribution_strategy: 'mirrored'
+  num_gpus: 1
+train_dataset:
+  name: 'imagenet2012'
+  data_dir: null
+  builder: 'records'
+  split: 'train'
+  num_classes: 1000
+  num_examples: 1281167
+  batch_size: 32
+  use_per_replica_batch_size: true
+  dtype: 'float32'
+  augmenter:
+    name: 'autoaugment'
+validation_dataset:
+  name: 'imagenet2012'
+  data_dir: null
+  builder: 'records'
+  split: 'validation'
+  num_classes: 1000
+  num_examples: 50000
+  batch_size: 32
+  use_per_replica_batch_size: true
+  dtype: 'float32'
+model:
+  model_params:
+    model_name: 'efficientnet-b0'
+    overrides:
+      num_classes: 1000
+      batch_norm: 'default'
+      dtype: 'float32'
+      activation: 'swish'
+  optimizer:
+    name: 'rmsprop'
+    momentum: 0.9
+    decay: 0.9
+    moving_average_decay: 0.0
+    lookahead: false
+  learning_rate:
+    name: 'exponential'
+  loss:
+    label_smoothing: 0.1
+train:
+  resume_checkpoint: true
+  epochs: 500
+evaluation:
+  epochs_between_evals: 1

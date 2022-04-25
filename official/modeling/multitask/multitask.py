@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,9 +23,11 @@ from official.core import task_factory
 from official.modeling import optimization
 from official.modeling.multitask import base_model
 from official.modeling.multitask import configs
+from official.modeling.privacy import configs as dp_configs
 
 OptimizationConfig = optimization.OptimizationConfig
 RuntimeConfig = config_definitions.RuntimeConfig
+DifferentialPrivacyConfig = dp_configs.DifferentialPrivacyConfig
 
 
 class MultiTask(tf.Module, metaclass=abc.ABCMeta):
@@ -93,13 +95,16 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
   @classmethod
   def create_optimizer(cls,
                        optimizer_config: OptimizationConfig,
-                       runtime_config: Optional[RuntimeConfig] = None):
+                       runtime_config: Optional[RuntimeConfig] = None,
+                       dp_config: Optional[DifferentialPrivacyConfig] = None):
     return base_task.Task.create_optimizer(
-        optimizer_config=optimizer_config, runtime_config=runtime_config)
+        optimizer_config=optimizer_config, runtime_config=runtime_config,
+        dp_config=dp_config)
 
   def joint_train_step(self, task_inputs,
                        multi_task_model: base_model.MultiTaskBaseModel,
-                       optimizer: tf.keras.optimizers.Optimizer, task_metrics):
+                       optimizer: tf.keras.optimizers.Optimizer, task_metrics,
+                       **kwargs):
     """The joint train step.
 
     Args:
@@ -107,6 +112,7 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
       multi_task_model: a MultiTaskBaseModel instance.
       optimizer: a tf.optimizers.Optimizer.
       task_metrics: a dictionary of task names and per-task metrics.
+      **kwargs: other arguments to pass through.
 
     Returns:
       A dictionary of losses, inculding per-task losses and their weighted sum.
@@ -129,7 +135,8 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
         task_weight = self.task_weight(name)
         total_loss += task_weight * task_loss
         losses[name] = task_loss
-        self.tasks[name].process_metrics(task_metrics[name], labels, outputs)
+        self.tasks[name].process_metrics(task_metrics[name], labels, outputs,
+                                         **kwargs)
 
         # Scales loss as the default gradients allreduce performs sum inside
         # the optimizer.

@@ -23,6 +23,7 @@ import functools
 import os
 
 import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1 import estimator as tf_estimator
 import tensorflow.compat.v2 as tf2
 import tf_slim as slim
 
@@ -62,7 +63,8 @@ MODEL_BUILD_UTIL_MAP = {
         inputs.create_eval_input_fn,
     'create_predict_input_fn':
         inputs.create_predict_input_fn,
-    'detection_model_fn_base': model_builder.build,
+    'detection_model_fn_base':
+        model_builder.build,
 }
 
 
@@ -114,6 +116,10 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
       'groundtruth_not_exhaustive_classes': [batch_size, num_classes] K-hot
         representation of 1-indexed classes which don't have all of their
         instances marked exhaustively.
+      'input_data_fields.groundtruth_image_classes': integer representation of
+        the classes that were sent for verification for a given image. Note that
+        this field does not support batching as the number of classes can be
+        variable.
     class_agnostic: Boolean indicating whether detections are class agnostic.
   """
   input_data_fields = fields.InputDataFields()
@@ -135,6 +141,19 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
       input_data_fields.groundtruth_boxes: groundtruth_boxes,
       input_data_fields.groundtruth_classes: groundtruth_classes
   }
+
+  if detection_model.groundtruth_has_field(
+      input_data_fields.groundtruth_image_classes):
+    groundtruth_image_classes_k_hot = tf.stack(
+        detection_model.groundtruth_lists(
+            input_data_fields.groundtruth_image_classes))
+    groundtruth_image_classes = tf.expand_dims(
+        tf.where(groundtruth_image_classes_k_hot > 0)[:, 1], 0)
+    # Adds back label_id_offset as it is subtracted in
+    # convert_labeled_classes_to_k_hot.
+    groundtruth[
+        input_data_fields.
+        groundtruth_image_classes] = groundtruth_image_classes + label_id_offset
 
   if detection_model.groundtruth_has_field(fields.BoxListFields.masks):
     groundtruth[input_data_fields.groundtruth_instance_masks] = tf.stack(
@@ -175,17 +194,18 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
   if detection_model.groundtruth_has_field(
       input_data_fields.groundtruth_verified_neg_classes):
     groundtruth[input_data_fields.groundtruth_verified_neg_classes] = tf.pad(
-        tf.stack(detection_model.groundtruth_lists(
-            input_data_fields.groundtruth_verified_neg_classes)),
+        tf.stack(
+            detection_model.groundtruth_lists(
+                input_data_fields.groundtruth_verified_neg_classes)),
         label_id_offset_paddings)
 
   if detection_model.groundtruth_has_field(
       input_data_fields.groundtruth_not_exhaustive_classes):
-    groundtruth[
-        input_data_fields.groundtruth_not_exhaustive_classes] = tf.pad(
-            tf.stack(detection_model.groundtruth_lists(
+    groundtruth[input_data_fields.groundtruth_not_exhaustive_classes] = tf.pad(
+        tf.stack(
+            detection_model.groundtruth_lists(
                 input_data_fields.groundtruth_not_exhaustive_classes)),
-            label_id_offset_paddings)
+        label_id_offset_paddings)
 
   if detection_model.groundtruth_has_field(
       fields.BoxListFields.densepose_num_points):
@@ -255,8 +275,8 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
       key: tf.unstack(tensor) for key, tensor in tensor_dict.items()
   }
   if unpad_groundtruth_tensors:
-    if (fields.InputDataFields.num_groundtruth_boxes not in
-        unbatched_tensor_dict):
+    if (fields.InputDataFields.num_groundtruth_boxes
+        not in unbatched_tensor_dict):
       raise ValueError('`num_groundtruth_boxes` not found in tensor_dict. '
                        'Keys available: {}'.format(
                            unbatched_tensor_dict.keys()))
@@ -303,7 +323,7 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
   return unbatched_tensor_dict
 
 
-def provide_groundtruth(model, labels):
+def provide_groundtruth(model, labels, training_step=None):
   """Provides the labels to a model as groundtruth.
 
   This helper function extracts the corresponding boxes, classes,
@@ -313,13 +333,14 @@ def provide_groundtruth(model, labels):
   Args:
     model: The detection model to provide groundtruth to.
     labels: The labels for the training or evaluation inputs.
+    training_step: int, optional. The training step for the model. Useful for
+      models which want to anneal loss weights.
   """
   gt_boxes_list = labels[fields.InputDataFields.groundtruth_boxes]
   gt_classes_list = labels[fields.InputDataFields.groundtruth_classes]
   gt_masks_list = None
   if fields.InputDataFields.groundtruth_instance_masks in labels:
-    gt_masks_list = labels[
-        fields.InputDataFields.groundtruth_instance_masks]
+    gt_masks_list = labels[fields.InputDataFields.groundtruth_instance_masks]
   gt_mask_weights_list = None
   if fields.InputDataFields.groundtruth_instance_mask_weights in labels:
     gt_mask_weights_list = labels[
@@ -344,23 +365,20 @@ def provide_groundtruth(model, labels):
         fields.InputDataFields.groundtruth_dp_num_points]
   gt_dp_part_ids_list = None
   if fields.InputDataFields.groundtruth_dp_part_ids in labels:
-    gt_dp_part_ids_list = labels[
-        fields.InputDataFields.groundtruth_dp_part_ids]
+    gt_dp_part_ids_list = labels[fields.InputDataFields.groundtruth_dp_part_ids]
   gt_dp_surface_coords_list = None
   if fields.InputDataFields.groundtruth_dp_surface_coords in labels:
     gt_dp_surface_coords_list = labels[
         fields.InputDataFields.groundtruth_dp_surface_coords]
   gt_track_ids_list = None
   if fields.InputDataFields.groundtruth_track_ids in labels:
-    gt_track_ids_list = labels[
-        fields.InputDataFields.groundtruth_track_ids]
+    gt_track_ids_list = labels[fields.InputDataFields.groundtruth_track_ids]
   gt_weights_list = None
   if fields.InputDataFields.groundtruth_weights in labels:
     gt_weights_list = labels[fields.InputDataFields.groundtruth_weights]
   gt_confidences_list = None
   if fields.InputDataFields.groundtruth_confidences in labels:
-    gt_confidences_list = labels[
-        fields.InputDataFields.groundtruth_confidences]
+    gt_confidences_list = labels[fields.InputDataFields.groundtruth_confidences]
   gt_is_crowd_list = None
   if fields.InputDataFields.groundtruth_is_crowd in labels:
     gt_is_crowd_list = labels[fields.InputDataFields.groundtruth_is_crowd]
@@ -382,6 +400,10 @@ def provide_groundtruth(model, labels):
   if fields.InputDataFields.groundtruth_not_exhaustive_classes in labels:
     gt_not_exhaustive_classes = labels[
         fields.InputDataFields.groundtruth_not_exhaustive_classes]
+  groundtruth_image_classes = None
+  if fields.InputDataFields.groundtruth_image_classes in labels:
+    groundtruth_image_classes = labels[
+        fields.InputDataFields.groundtruth_image_classes]
   model.provide_groundtruth(
       groundtruth_boxes_list=gt_boxes_list,
       groundtruth_classes_list=gt_classes_list,
@@ -402,10 +424,15 @@ def provide_groundtruth(model, labels):
       groundtruth_verified_neg_classes=gt_verified_neg_classes,
       groundtruth_not_exhaustive_classes=gt_not_exhaustive_classes,
       groundtruth_keypoint_depths_list=gt_keypoint_depths_list,
-      groundtruth_keypoint_depth_weights_list=gt_keypoint_depth_weights_list)
+      groundtruth_keypoint_depth_weights_list=gt_keypoint_depth_weights_list,
+      groundtruth_image_classes=groundtruth_image_classes,
+      training_step=training_step)
 
 
-def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
+def create_model_fn(detection_model_fn,
+                    configs,
+                    hparams=None,
+                    use_tpu=False,
                     postprocess_on_cpu=False):
   """Creates a model function for `Estimator`.
 
@@ -413,10 +440,10 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
     detection_model_fn: Function that returns a `DetectionModel` instance.
     configs: Dictionary of pipeline config objects.
     hparams: `HParams` object.
-    use_tpu: Boolean indicating whether model should be constructed for
-        use on TPU.
+    use_tpu: Boolean indicating whether model should be constructed for use on
+      TPU.
     postprocess_on_cpu: When use_tpu and postprocess_on_cpu is true, postprocess
-        is scheduled on the host cpu.
+      is scheduled on the host cpu.
 
   Returns:
     `model_fn` for `Estimator`.
@@ -441,7 +468,7 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
     """
     params = params or {}
     total_loss, train_op, detections, export_outputs = None, None, None, None
-    is_training = mode == tf.estimator.ModeKeys.TRAIN
+    is_training = mode == tf_estimator.ModeKeys.TRAIN
 
     # Make sure to set the Keras learning phase. True during training,
     # False for inference.
@@ -455,21 +482,21 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
         is_training=is_training, add_summaries=(not use_tpu))
     scaffold_fn = None
 
-    if mode == tf.estimator.ModeKeys.TRAIN:
+    if mode == tf_estimator.ModeKeys.TRAIN:
       labels = unstack_batch(
           labels,
           unpad_groundtruth_tensors=train_config.unpad_groundtruth_tensors)
-    elif mode == tf.estimator.ModeKeys.EVAL:
+    elif mode == tf_estimator.ModeKeys.EVAL:
       # For evaling on train data, it is necessary to check whether groundtruth
       # must be unpadded.
       boxes_shape = (
-          labels[fields.InputDataFields.groundtruth_boxes].get_shape()
-          .as_list())
+          labels[
+              fields.InputDataFields.groundtruth_boxes].get_shape().as_list())
       unpad_groundtruth_tensors = boxes_shape[1] is not None and not use_tpu
       labels = unstack_batch(
           labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
-    if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
+    if mode in (tf_estimator.ModeKeys.TRAIN, tf_estimator.ModeKeys.EVAL):
       provide_groundtruth(detection_model, labels)
 
     preprocessed_images = features[fields.InputDataFields.image]
@@ -490,18 +517,18 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
     def postprocess_wrapper(args):
       return detection_model.postprocess(args[0], args[1])
 
-    if mode in (tf.estimator.ModeKeys.EVAL, tf.estimator.ModeKeys.PREDICT):
+    if mode in (tf_estimator.ModeKeys.EVAL, tf_estimator.ModeKeys.PREDICT):
       if use_tpu and postprocess_on_cpu:
         detections = tf.tpu.outside_compilation(
             postprocess_wrapper,
             (prediction_dict,
              features[fields.InputDataFields.true_image_shape]))
       else:
-        detections = postprocess_wrapper((
-            prediction_dict,
-            features[fields.InputDataFields.true_image_shape]))
+        detections = postprocess_wrapper(
+            (prediction_dict,
+             features[fields.InputDataFields.true_image_shape]))
 
-    if mode == tf.estimator.ModeKeys.TRAIN:
+    if mode == tf_estimator.ModeKeys.TRAIN:
       load_pretrained = hparams.load_pretrained if hparams else False
       if train_config.fine_tune_checkpoint and load_pretrained:
         if not train_config.fine_tune_checkpoint_type:
@@ -533,8 +560,8 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
           tf.train.init_from_checkpoint(train_config.fine_tune_checkpoint,
                                         available_var_map)
 
-    if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
-      if (mode == tf.estimator.ModeKeys.EVAL and
+    if mode in (tf_estimator.ModeKeys.TRAIN, tf_estimator.ModeKeys.EVAL):
+      if (mode == tf_estimator.ModeKeys.EVAL and
           eval_config.use_dummy_loss_in_eval):
         total_loss = tf.constant(1.0)
         losses_dict = {'Loss/total_loss': total_loss}
@@ -566,7 +593,7 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
       training_optimizer, optimizer_summary_vars = optimizer_builder.build(
           train_config.optimizer)
 
-    if mode == tf.estimator.ModeKeys.TRAIN:
+    if mode == tf_estimator.ModeKeys.TRAIN:
       if use_tpu:
         training_optimizer = tf.tpu.CrossShardOptimizer(training_optimizer)
 
@@ -604,16 +631,16 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
           summaries=summaries,
           name='')  # Preventing scope prefix on all variables.
 
-    if mode == tf.estimator.ModeKeys.PREDICT:
+    if mode == tf_estimator.ModeKeys.PREDICT:
       exported_output = exporter_lib.add_output_tensor_nodes(detections)
       export_outputs = {
           tf.saved_model.signature_constants.PREDICT_METHOD_NAME:
-              tf.estimator.export.PredictOutput(exported_output)
+              tf_estimator.export.PredictOutput(exported_output)
       }
 
     eval_metric_ops = None
     scaffold = None
-    if mode == tf.estimator.ModeKeys.EVAL:
+    if mode == tf_estimator.ModeKeys.EVAL:
       class_agnostic = (
           fields.DetectionResultFields.detection_classes not in detections)
       groundtruth = _prepare_groundtruth_for_eval(
@@ -624,8 +651,8 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
         eval_images = features[fields.InputDataFields.original_image]
         true_image_shapes = tf.slice(
             features[fields.InputDataFields.true_image_shape], [0, 0], [-1, 3])
-        original_image_spatial_shapes = features[fields.InputDataFields
-                                                 .original_image_spatial_shape]
+        original_image_spatial_shapes = features[
+            fields.InputDataFields.original_image_spatial_shape]
       else:
         eval_images = features[fields.InputDataFields.image]
         true_image_shapes = None
@@ -652,8 +679,8 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
             eval_input_config.label_map_path)
       vis_metric_ops = None
       if not use_tpu and use_original_images:
-        keypoint_edges = [
-            (kp.start, kp.end) for kp in eval_config.keypoint_edge]
+        keypoint_edges = [(kp.start, kp.end) for kp in eval_config.keypoint_edge
+                         ]
 
         eval_metric_op_vis = vis_utils.VisualizeSingleFrameDetections(
             category_index,
@@ -687,8 +714,8 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
         scaffold = tf.train.Scaffold(saver=saver)
 
     # EVAL executes on CPU, so use regular non-TPU EstimatorSpec.
-    if use_tpu and mode != tf.estimator.ModeKeys.EVAL:
-      return tf.estimator.tpu.TPUEstimatorSpec(
+    if use_tpu and mode != tf_estimator.ModeKeys.EVAL:
+      return tf_estimator.tpu.TPUEstimatorSpec(
           mode=mode,
           scaffold_fn=scaffold_fn,
           predictions=detections,
@@ -706,7 +733,7 @@ def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
             save_relative_paths=True)
         tf.add_to_collection(tf.GraphKeys.SAVERS, saver)
         scaffold = tf.train.Scaffold(saver=saver)
-      return tf.estimator.EstimatorSpec(
+      return tf_estimator.EstimatorSpec(
           mode=mode,
           predictions=detections,
           loss=total_loss,
@@ -752,16 +779,13 @@ def create_estimator_and_inputs(run_config,
       data for evaluation.
     model_fn_creator: A function that creates a `model_fn` for `Estimator`.
       Follows the signature:
-
       * Args:
         * `detection_model_fn`: Function that returns `DetectionModel` instance.
         * `configs`: Dictionary of pipeline config objects.
         * `hparams`: `HParams` object.
-      * Returns:
-        `model_fn` for `Estimator`.
-
-    use_tpu_estimator: Whether a `TPUEstimator` should be returned. If False,
-      an `Estimator` will be returned.
+      * Returns: `model_fn` for `Estimator`.
+    use_tpu_estimator: Whether a `TPUEstimator` should be returned. If False, an
+      `Estimator` will be returned.
     use_tpu: Boolean, whether training and evaluation should run on TPU. Only
       used if `use_tpu_estimator` is True.
     num_shards: Number of shards (TPU cores). Only used if `use_tpu_estimator`
@@ -808,9 +832,7 @@ def create_estimator_and_inputs(run_config,
       'use_bfloat16': configs['train_config'].use_bfloat16 and use_tpu
   })
   if sample_1_of_n_eval_examples >= 1:
-    kwargs.update({
-        'sample_1_of_n_eval_examples': sample_1_of_n_eval_examples
-    })
+    kwargs.update({'sample_1_of_n_eval_examples': sample_1_of_n_eval_examples})
   if override_eval_num_epochs:
     kwargs.update({'eval_num_epochs': 1})
     tf.logging.warning(
@@ -871,7 +893,7 @@ def create_estimator_and_inputs(run_config,
   model_fn = model_fn_creator(detection_model_fn, configs, hparams, use_tpu,
                               postprocess_on_cpu)
   if use_tpu_estimator:
-    estimator = tf.estimator.tpu.TPUEstimator(
+    estimator = tf_estimator.tpu.TPUEstimator(
         model_fn=model_fn,
         train_batch_size=train_config.batch_size,
         # For each core, only batch size 1 is supported for eval.
@@ -882,7 +904,7 @@ def create_estimator_and_inputs(run_config,
         eval_on_tpu=False,  # Eval runs on CPU, so disable eval on TPU
         params=params if params else {})
   else:
-    estimator = tf.estimator.Estimator(model_fn=model_fn, config=run_config)
+    estimator = tf_estimator.Estimator(model_fn=model_fn, config=run_config)
 
   # Write the as-run pipeline config to disk.
   if run_config.is_chief and save_final_config:
@@ -927,25 +949,25 @@ def create_train_and_eval_specs(train_input_fn,
     True, the last `EvalSpec` in the list will correspond to training data. The
     rest EvalSpecs in the list are evaluation datas.
   """
-  train_spec = tf.estimator.TrainSpec(
+  train_spec = tf_estimator.TrainSpec(
       input_fn=train_input_fn, max_steps=train_steps)
 
   if eval_spec_names is None:
     eval_spec_names = [str(i) for i in range(len(eval_input_fns))]
 
   eval_specs = []
-  for index, (eval_spec_name, eval_input_fn) in enumerate(
-      zip(eval_spec_names, eval_input_fns)):
+  for index, (eval_spec_name,
+              eval_input_fn) in enumerate(zip(eval_spec_names, eval_input_fns)):
     # Uses final_exporter_name as exporter_name for the first eval spec for
     # backward compatibility.
     if index == 0:
       exporter_name = final_exporter_name
     else:
       exporter_name = '{}_{}'.format(final_exporter_name, eval_spec_name)
-    exporter = tf.estimator.FinalExporter(
+    exporter = tf_estimator.FinalExporter(
         name=exporter_name, serving_input_receiver_fn=predict_input_fn)
     eval_specs.append(
-        tf.estimator.EvalSpec(
+        tf_estimator.EvalSpec(
             name=eval_spec_name,
             input_fn=eval_input_fn,
             steps=None,
@@ -953,7 +975,7 @@ def create_train_and_eval_specs(train_input_fn,
 
   if eval_on_train_data:
     eval_specs.append(
-        tf.estimator.EvalSpec(
+        tf_estimator.EvalSpec(
             name='eval_on_train', input_fn=eval_on_train_input_fn, steps=None))
 
   return train_spec, eval_specs
@@ -1095,14 +1117,11 @@ def populate_experiment(run_config,
       number of evaluation steps is set from the `EvalConfig` proto.
     model_fn_creator: A function that creates a `model_fn` for `Estimator`.
       Follows the signature:
-
       * Args:
         * `detection_model_fn`: Function that returns `DetectionModel` instance.
         * `configs`: Dictionary of pipeline config objects.
         * `hparams`: `HParams` object.
-      * Returns:
-        `model_fn` for `Estimator`.
-
+      * Returns: `model_fn` for `Estimator`.
     **kwargs: Additional keyword arguments for configuration override.
 
   Returns:

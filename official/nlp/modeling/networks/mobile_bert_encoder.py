@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 import gin
 import tensorflow as tf
 
-from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 
 
@@ -127,8 +126,7 @@ class MobileBERTEncoder(tf.keras.Model):
     self.inputs = [input_ids, input_mask, type_ids]
 
     # The dtype of `attention_mask` will the same as the dtype of `input_mask`.
-    attention_mask = keras_nlp.layers.SelfAttentionMask()(input_mask,
-                                                          input_mask)
+    attention_mask = layers.SelfAttentionMask()(input_mask, input_mask)
 
     # build the computation graph
     all_layer_outputs = []

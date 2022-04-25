@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,57 +31,6 @@ from official.modeling import optimization
 
 ExperimentConfig = config_definitions.ExperimentConfig
 TrainerConfig = config_definitions.TrainerConfig
-
-
-class Recovery:
-  """Built-in model blowup recovery module.
-
-  Checks the loss value by the given threshold. If applicable, recover the
-  model by reading the checkpoint on disk.
-  """
-
-  def __init__(self,
-               loss_upper_bound: float,
-               checkpoint_manager: tf.train.CheckpointManager,
-               recovery_begin_steps: int = 0,
-               recovery_max_trials: int = 3):
-    self.recover_counter = 0
-    self.recovery_begin_steps = recovery_begin_steps
-    self.recovery_max_trials = recovery_max_trials
-    self.loss_upper_bound = loss_upper_bound
-    self.checkpoint_manager = checkpoint_manager
-
-  def should_recover(self, loss_value, global_step):
-    if tf.math.is_nan(loss_value):
-      return True
-    if (global_step >= self.recovery_begin_steps and
-        loss_value > self.loss_upper_bound):
-      return True
-    return False
-
-  def maybe_recover(self, loss_value, global_step):
-    """Conditionally recovers the training by triggering checkpoint restoration.
-
-    Args:
-      loss_value: the loss value as a float.
-      global_step: the number of global training steps.
-
-    Raises:
-      RuntimeError: when recovery happens more than the max number of trials,
-      the job should crash.
-    """
-    if not self.should_recover(loss_value, global_step):
-      return
-    self.recover_counter += 1
-    if self.recover_counter > self.recovery_max_trials:
-      raise RuntimeError(
-          "The loss value is NaN after training loop and it happens %d times." %
-          self.recover_counter)
-    # Loads the previous good checkpoint.
-    checkpoint_path = self.checkpoint_manager.restore_or_initialize()
-    logging.warning(
-        "Recovering the model from checkpoint: %s. The loss value becomes "
-        "%f at step %d.", checkpoint_path, loss_value, global_step)
 
 
 class _AsyncTrainer(orbit.StandardTrainer, orbit.StandardEvaluator):
@@ -247,14 +196,12 @@ class Trainer(_AsyncTrainer):
     self._validation_loss = tf.keras.metrics.Mean(
         "validation_loss", dtype=tf.float32)
     model_metrics = model.metrics if hasattr(model, "metrics") else []
-    self._train_metrics = self.task.build_metrics(
-        training=True) + model_metrics
-    self._validation_metrics = self.task.build_metrics(
-        training=False) + model_metrics
 
     self.init_async()
 
     if train:
+      self._train_metrics = self.task.build_metrics(
+          training=True) + model_metrics
       train_dataset = train_dataset or self.distribute_dataset(
           self.task.build_inputs, self.config.task.train_data)
       orbit.StandardTrainer.__init__(
@@ -266,6 +213,8 @@ class Trainer(_AsyncTrainer):
               use_tpu_summary_optimization=config.trainer.allow_tpu_summary))
 
     if evaluate:
+      self._validation_metrics = self.task.build_metrics(
+          training=False) + model_metrics
       validation_dataset = validation_dataset or self.distribute_dataset(
           self.task.build_inputs, self.config.task.validation_data)
       orbit.StandardEvaluator.__init__(
@@ -370,15 +319,10 @@ class Trainer(_AsyncTrainer):
     """Accesses the training checkpoint."""
     return self._checkpoint
 
-  # TODO(yejiayu): Remove this once all deps are fixed.
-  def add_recovery(self, params: TrainerConfig,
-                   checkpoint_manager: tf.train.CheckpointManager):
-    if params.recovery_max_trials >= 0:
-      self._recovery = Recovery(
-          loss_upper_bound=params.loss_upper_bound,
-          recovery_begin_steps=params.recovery_begin_steps,
-          recovery_max_trials=params.recovery_max_trials,
-          checkpoint_manager=checkpoint_manager)
+  @property
+  def checkpoint_exporter(self):
+    """Accesses the checkpoint exporter."""
+    return self._checkpoint_exporter
 
   def train_loop_end(self):
     """See base class."""

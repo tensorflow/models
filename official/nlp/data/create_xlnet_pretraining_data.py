@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 
 """Create LM TF examples for XLNet."""
 
+import dataclasses
 import json
 import math
 import os
@@ -28,11 +29,10 @@ from absl import app
 from absl import flags
 from absl import logging
 
-import dataclasses
 import numpy as np
 import tensorflow as tf
 
-from official.nlp.bert import tokenization
+from official.nlp.tools import tokenization
 
 special_symbols = {
     "<unk>": 0,

@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@
 
 import tensorflow as tf
 
-from official.vision.beta.modeling import backbones
-from official.vision.beta.modeling import factory as models_factory
-from official.vision.beta.modeling.decoders import factory as decoder_factory
-from official.vision.beta.modeling.heads import segmentation_heads
+from official.projects.deepmac_maskrcnn.tasks import deep_mask_head_rcnn
 from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_maskrcnn as panoptic_maskrcnn_cfg
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_maskrcnn_model
 from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import panoptic_segmentation_generator
+from official.vision.modeling import backbones
+from official.vision.modeling.decoders import factory as decoder_factory
+from official.vision.modeling.heads import segmentation_heads
 
 
 def build_panoptic_maskrcnn(
@@ -47,7 +47,7 @@ def build_panoptic_maskrcnn(
   segmentation_config = model_config.segmentation_model
 
   # Builds the maskrcnn model.
-  maskrcnn_model = models_factory.build_maskrcnn(
+  maskrcnn_model = deep_mask_head_rcnn.build_maskrcnn(
       input_specs=input_specs,
       model_config=model_config,
       l2_regularizer=l2_regularizer)
@@ -69,8 +69,10 @@ def build_panoptic_maskrcnn(
         input_specs=segmentation_decoder_input_specs,
         model_config=segmentation_config,
         l2_regularizer=l2_regularizer)
+    decoder_config = segmentation_decoder.get_config()
   else:
     segmentation_decoder = None
+    decoder_config = maskrcnn_model.decoder.get_config()
 
   segmentation_head_config = segmentation_config.head
   detection_head_config = model_config.detection_head
@@ -84,12 +86,15 @@ def build_panoptic_maskrcnn(
       num_filters=segmentation_head_config.num_filters,
       upsample_factor=segmentation_head_config.upsample_factor,
       feature_fusion=segmentation_head_config.feature_fusion,
+      decoder_min_level=segmentation_head_config.decoder_min_level,
+      decoder_max_level=segmentation_head_config.decoder_max_level,
       low_level=segmentation_head_config.low_level,
       low_level_num_filters=segmentation_head_config.low_level_num_filters,
       activation=norm_activation_config.activation,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
+      num_decoder_filters=decoder_config['num_filters'],
       kernel_regularizer=l2_regularizer)
 
   if model_config.generate_panoptic_masks:
@@ -101,14 +106,18 @@ def build_panoptic_maskrcnn(
         stuff_classes_offset=model_config.stuff_classes_offset,
         mask_binarize_threshold=mask_binarize_threshold,
         score_threshold=postprocessing_config.score_threshold,
+        things_overlap_threshold=postprocessing_config.things_overlap_threshold,
         things_class_label=postprocessing_config.things_class_label,
+        stuff_area_threshold=postprocessing_config.stuff_area_threshold,
         void_class_label=postprocessing_config.void_class_label,
-        void_instance_id=postprocessing_config.void_instance_id)
+        void_instance_id=postprocessing_config.void_instance_id,
+        rescale_predictions=postprocessing_config.rescale_predictions)
   else:
     panoptic_segmentation_generator_obj = None
 
   # Combines maskrcnn, and segmentation models to build panoptic segmentation
   # model.
+
   model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
       backbone=maskrcnn_model.backbone,
       decoder=maskrcnn_model.decoder,

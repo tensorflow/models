@@ -811,7 +811,7 @@ def reframe_image_corners_relative_to_boxes(boxes):
   Returns:
     reframed_boxes: Reframes boxes with same shape as input.
   """
-  ymin, xmin, ymax, xmax = tf.unstack(boxes, axis=1)
+  ymin, xmin, ymax, xmax = (boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3])
 
   height = tf.maximum(ymax - ymin, 1e-4)
   width = tf.maximum(xmax - xmin, 1e-4)
@@ -998,6 +998,10 @@ def nearest_neighbor_upsampling(input_tensor, scale=None, height_scale=None,
     (batch_size, height, width,
      channels) = shape_utils.combined_static_and_dynamic_shape(input_tensor)
     output_tensor = tf.stack([input_tensor] * w_scale, axis=3, name='w_stack')
+    # Adds a reshape op to avoid generating high-dimensional tensors that some
+    # compilers cannot deal with.
+    output_tensor = tf.reshape(output_tensor,
+                               [batch_size, height, width * w_scale, channels])
     output_tensor = tf.stack([output_tensor] * h_scale, axis=2, name='h_stack')
     return tf.reshape(output_tensor,
                       [batch_size, height * h_scale, width * w_scale, channels])

@@ -43,8 +43,6 @@ Hparams = collections.namedtuple(
 
 def preprocess(text):
   """Normalize the text, and return tokens."""
-  assert len(text.get_shape().as_list()) == 2
-  assert text.get_shape().as_list()[-1] == 1
   text = tf.reshape(text, [-1])
   text = tf_text.case_fold_utf8(text)
   tokenizer = tflite_text_api.WhitespaceTokenizer()

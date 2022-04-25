@@ -5,13 +5,13 @@ package object_detection.protos;
 import "object_detection/protos/anchor_generator.proto";
 import "object_detection/protos/box_coder.proto";
 import "object_detection/protos/box_predictor.proto";
+import "object_detection/protos/fpn.proto";
 import "object_detection/protos/hyperparams.proto";
 import "object_detection/protos/image_resizer.proto";
 import "object_detection/protos/losses.proto";
 import "object_detection/protos/matcher.proto";
 import "object_detection/protos/post_processing.proto";
 import "object_detection/protos/region_similarity_calculator.proto";
-import "object_detection/protos/fpn.proto";
 
 // Configuration for Single Shot Detection (SSD) models.
 // Next id: 27
@@ -146,7 +146,7 @@ message Ssd {
   optional MaskHead mask_head_config = 25;
 }
 
-// Next id: 20.
+// Next id: 21.
 message SsdFeatureExtractor {
   reserved 6;
 
@@ -202,5 +202,8 @@ message SsdFeatureExtractor {
   // The number of SSD layers.
   optional int32 num_layers = 12 [default = 6];
 
+
+  // The SpaghettiNet architecture name.
+  optional string spaghettinet_arch_name = 20;
 }
 

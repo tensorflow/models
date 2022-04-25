@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -223,10 +223,14 @@ class SentencePredictionTask(base_task.Task):
   def initialize(self, model):
     """Load a pretrained checkpoint (if exists) and then train from iter 0."""
     ckpt_dir_or_file = self.task_config.init_checkpoint
-    if not ckpt_dir_or_file:
-      return
-    if tf.io.gfile.isdir(ckpt_dir_or_file):
+    logging.info('Trying to load pretrained checkpoint from %s',
+                 ckpt_dir_or_file)
+    if ckpt_dir_or_file and tf.io.gfile.isdir(ckpt_dir_or_file):
       ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
+    if not ckpt_dir_or_file:
+      logging.info('No checkpoint file found from %s. Will not load.',
+                   ckpt_dir_or_file)
+      return
 
     pretrain2finetune_mapping = {
         'encoder': model.checkpoint_items['encoder'],

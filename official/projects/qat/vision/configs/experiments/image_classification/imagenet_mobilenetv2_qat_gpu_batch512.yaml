@@ -1,0 +1,53 @@
+runtime:
+  distribution_strategy: 'mirrored'
+  mixed_precision_dtype: 'float32'
+  loss_scale: 'dynamic'
+task:
+  model:
+    num_classes: 1001
+    input_size: [224, 224, 3]
+    backbone:
+      type: 'mobilenet'
+      mobilenet:
+        model_id: 'MobileNetV2'
+        filter_size_scale: 1.0
+    dropout_rate: 0.0  # changed from 0.2 to 0.0
+  losses:
+    l2_weight_decay: 0.0000001
+    one_hot: true
+    label_smoothing: 0.1
+  train_data:
+    input_path: '/readahead/200M/placer/prod/home/distbelief/imagenet-tensorflow/imagenet-2012-tfrecord/train*'
+    is_training: true
+    global_batch_size: 512
+    dtype: 'float32'
+  validation_data:
+    input_path: '/readahead/200M/placer/prod/home/distbelief/imagenet-tensorflow/imagenet-2012-tfrecord/valid*'
+    is_training: false
+    global_batch_size: 512
+    dtype: 'float32'
+    drop_remainder: false
+  quantization:
+    pretrained_original_checkpoint: 'gs://**/mobilenetv2_gpu/22984194/ckpt-625500'
+trainer:
+  # With below setting, the accuracy of QAT reaches Top1-accuracy 0.7266 at 312750 steps after
+  # 1 day 22 hours of training with 8GPUs, which is higher than the result of PTQ in MobileNetV2.
+  train_steps: 500400  # 200 epochs
+  validation_steps: 98  # NUM_EXAMPLES (50000) // global_batch_size (512)
+  validation_interval: 2502  # 1 epoch
+  steps_per_loop: 2502  # NUM_EXAMPLES (1281167) // global_batch_size (512)
+  summary_interval: 2502  # 1 epoch
+  checkpoint_interval: 2502  # 1 epoch
+  max_to_keep: 200
+  optimizer_config:
+    learning_rate:
+      type: 'exponential'
+      exponential:
+        initial_learning_rate: 0.0002
+        decay_steps: 1251  # steps_per_epoch // 2
+        decay_rate: 0.96
+        staircase: true
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 0
