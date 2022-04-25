@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@ import os
 from absl.testing import parameterized
 import tensorflow as tf
 
-from official.vision.beta.configs import decoders as decoder_cfg
-from official.vision.beta.configs import semantic_segmentation as segmentation_cfg
 from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_maskrcnn as cfg
 from official.vision.beta.projects.panoptic_maskrcnn.tasks import panoptic_maskrcnn
+from official.vision.configs import decoders as decoder_cfg
+from official.vision.configs import semantic_segmentation as segmentation_cfg
 
 
 class PanopticMaskRCNNTaskTest(tf.test.TestCase, parameterized.TestCase):

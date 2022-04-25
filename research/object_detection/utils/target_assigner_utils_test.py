@@ -18,6 +18,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow.compat.v1 as tf
 
+from object_detection.core import box_list
 from object_detection.utils import target_assigner_utils as ta_utils
 from object_detection.utils import test_case
 
@@ -264,6 +265,31 @@ class TargetUtilTest(parameterized.TestCase, test_case.TestCase):
         x_indices,
         np.array([[0.0, 3.0, 4.0, 0.0, 4.0]]))
     self.assertAllEqual(valid, [[False, True, True, False, True]])
+
+  def test_coordinates_to_iou(self):
+
+    def graph_fn():
+      y, x = tf.meshgrid(tf.range(32, dtype=tf.float32),
+                         tf.range(32, dtype=tf.float32))
+      blist = box_list.BoxList(
+          tf.constant([[0., 0., 32., 32.],
+                       [0., 0., 16., 16.],
+                       [0.0, 0.0, 4.0, 4.0]]))
+      classes = tf.constant([[0., 1., 0.],
+                             [1., 0., 0.],
+                             [0., 0., 1.]])
+
+      result = ta_utils.coordinates_to_iou(
+          y, x, blist, classes)
+      return result
+
+    result = self.execute(graph_fn, [])
+    self.assertEqual(result.shape, (32, 32, 3))
+    self.assertAlmostEqual(result[0, 0, 0], 1.0 / 7.0)
+    self.assertAlmostEqual(result[0, 0, 1], 1.0 / 7.0)
+    self.assertAlmostEqual(result[0, 16, 0], 1.0 / 7.0)
+    self.assertAlmostEqual(result[2, 2, 2], 1.0)
+    self.assertAlmostEqual(result[8, 8, 2], 0.0)
 
 
 if __name__ == '__main__':

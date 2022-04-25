@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -45,7 +45,11 @@ class OptimizerConfig(oneof.OneOfConfig):
   """
   type: Optional[str] = None
   sgd: opt_cfg.SGDConfig = opt_cfg.SGDConfig()
+  sgd_experimental: opt_cfg.SGDExperimentalConfig = (
+      opt_cfg.SGDExperimentalConfig())
   adam: opt_cfg.AdamConfig = opt_cfg.AdamConfig()
+  adam_experimental: opt_cfg.AdamExperimentalConfig = (
+      opt_cfg.AdamExperimentalConfig())
   adamw: opt_cfg.AdamWeightDecayConfig = opt_cfg.AdamWeightDecayConfig()
   lamb: opt_cfg.LAMBConfig = opt_cfg.LAMBConfig()
   rmsprop: opt_cfg.RMSPropConfig = opt_cfg.RMSPropConfig()

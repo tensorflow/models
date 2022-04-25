@@ -1,4 +1,4 @@
-# Copyright 2021 The Orbit Authors. All Rights Reserved.
+# Copyright 2022 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -265,7 +265,10 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
 
     Args:
       eval_dataset: A `tf.nest`-compatible structure of `tf.data.Dataset` or
-        `DistributedDataset`.
+        `DistributedDataset`. On TPUs, if users want to exaust the dataset
+        without specifying number of eval steps, it is recommended to set
+        `drop_remainder=False` when batching the dataset, so the infrastructure
+        can handle the last partial batch properly.
       options: An `orbit.StandardEvaluatorOptions` instance.
     """
     options = options or StandardEvaluatorOptions()

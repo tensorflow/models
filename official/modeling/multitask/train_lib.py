@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 """Multitask training driver library."""
 # pytype: disable=attribute-error
 import os
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple
 from absl import logging
 import orbit
 import tensorflow as tf
@@ -36,11 +36,16 @@ TRAINERS = {
 }
 
 
-def run_experiment(*, distribution_strategy: tf.distribute.Strategy,
-                   task: multitask.MultiTask,
-                   model: base_model.MultiTaskBaseModel, mode: str,
-                   params: configs.MultiTaskExperimentConfig,
-                   model_dir: str) -> base_model.MultiTaskBaseModel:
+def run_experiment(
+    *,
+    distribution_strategy: tf.distribute.Strategy,
+    task: multitask.MultiTask,
+    model: base_model.MultiTaskBaseModel,
+    mode: str,
+    params: configs.MultiTaskExperimentConfig,
+    model_dir: str,
+    trainer: base_trainer.MultiTaskBaseTrainer = None
+) -> base_model.MultiTaskBaseModel:
   """Runs train/eval configured by the experiment params.
 
   Args:
@@ -51,6 +56,8 @@ def run_experiment(*, distribution_strategy: tf.distribute.Strategy,
       or 'continuous_eval'.
     params: ExperimentConfig instance.
     model_dir: A 'str', a path to store model checkpoints and summaries.
+    trainer: (optional) A multi-task trainer to use. If none is provided, a
+      default one will be created based on `params`.
 
   Returns:
       model: `base_model.MultiTaskBaseModel` instance.
@@ -59,15 +66,15 @@ def run_experiment(*, distribution_strategy: tf.distribute.Strategy,
   is_training = 'train' in mode
   is_eval = 'eval' in mode
   with distribution_strategy.scope():
-    optimizer = task.create_optimizer(params.trainer.optimizer_config,
-                                      params.runtime)
+    optimizer = train_utils.create_optimizer(task, params)
     kwargs = dict(multi_task=task, multi_task_model=model, optimizer=optimizer)
     if params.trainer.trainer_type == 'interleaving':
       sampler = task_sampler.get_task_sampler(params.trainer.task_sampler,
                                               task.task_weights)
       kwargs.update(dict(task_sampler=sampler))
-    trainer = TRAINERS[params.trainer.trainer_type](
-        **kwargs) if is_training else None
+    if trainer is None:
+      trainer = TRAINERS[params.trainer.trainer_type](
+          **kwargs) if is_training else None
     if is_eval:
       eval_steps = task.task_eval_steps
       evaluator = evaluator_lib.MultiTaskEvaluator(
@@ -145,7 +152,7 @@ def run_experiment_with_multitask_eval(
     model_dir: str,
     run_post_eval: bool = False,
     save_summary: bool = True,
-    trainer: Optional[core_lib.Trainer] = None) -> tf.keras.Model:
+    trainer: Optional[core_lib.Trainer] = None) -> Tuple[Any, Any]:
   """Runs train/eval configured by the experiment params.
 
   Args:
@@ -175,8 +182,7 @@ def run_experiment_with_multitask_eval(
           config=params,
           task=train_task,
           model=train_task.build_model(),
-          optimizer=train_task.create_optimizer(params.trainer.optimizer_config,
-                                                params.runtime),
+          optimizer=train_utils.create_optimizer(train_task, params),
           train=True,
           evaluate=False)
     else:

@@ -21,6 +21,7 @@ from __future__ import print_function
 from absl import flags
 
 import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1 import estimator as tf_estimator
 
 from object_detection import model_lib
 
@@ -59,7 +60,7 @@ FLAGS = flags.FLAGS
 def main(unused_argv):
   flags.mark_flag_as_required('model_dir')
   flags.mark_flag_as_required('pipeline_config_path')
-  config = tf.estimator.RunConfig(model_dir=FLAGS.model_dir)
+  config = tf_estimator.RunConfig(model_dir=FLAGS.model_dir)
 
   train_and_eval_dict = model_lib.create_estimator_and_inputs(
       run_config=config,
@@ -101,7 +102,7 @@ def main(unused_argv):
         eval_on_train_data=False)
 
     # Currently only a single Eval Spec is allowed.
-    tf.estimator.train_and_evaluate(estimator, train_spec, eval_specs[0])
+    tf_estimator.train_and_evaluate(estimator, train_spec, eval_specs[0])
 
 
 if __name__ == '__main__':

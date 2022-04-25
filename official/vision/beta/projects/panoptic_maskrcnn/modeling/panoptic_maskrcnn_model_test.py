@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,26 +15,26 @@
 """Tests for panoptic_maskrcnn_model.py."""
 
 import os
+
 from absl.testing import parameterized
-import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
-from official.vision.beta.modeling.backbones import resnet
-from official.vision.beta.modeling.decoders import aspp
-from official.vision.beta.modeling.decoders import fpn
-from official.vision.beta.modeling.heads import dense_prediction_heads
-from official.vision.beta.modeling.heads import instance_heads
-from official.vision.beta.modeling.heads import segmentation_heads
-from official.vision.beta.modeling.layers import detection_generator
-from official.vision.beta.modeling.layers import mask_sampler
-from official.vision.beta.modeling.layers import roi_aligner
-from official.vision.beta.modeling.layers import roi_generator
-from official.vision.beta.modeling.layers import roi_sampler
-from official.vision.beta.ops import anchor
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_maskrcnn_model
 from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import panoptic_segmentation_generator
+from official.vision.modeling.backbones import resnet
+from official.vision.modeling.decoders import aspp
+from official.vision.modeling.decoders import fpn
+from official.vision.modeling.heads import dense_prediction_heads
+from official.vision.modeling.heads import instance_heads
+from official.vision.modeling.heads import segmentation_heads
+from official.vision.modeling.layers import detection_generator
+from official.vision.modeling.layers import mask_sampler
+from official.vision.modeling.layers import roi_aligner
+from official.vision.modeling.layers import roi_generator
+from official.vision.modeling.layers import roi_sampler
+from official.vision.ops import anchor
 
 
 class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
@@ -45,7 +45,7 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
           build_anchor_boxes=[True, False],
           shared_backbone=[True, False],
           shared_decoder=[True, False],
-          is_training=[True, False]))
+          is_training=[True,]))
   def test_build_model(self,
                        use_separable_conv,
                        build_anchor_boxes,
@@ -53,23 +53,24 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
                        shared_decoder,
                        is_training=True):
     num_classes = 3
-    min_level = 3
-    max_level = 7
+    min_level = 2
+    max_level = 6
     num_scales = 3
     aspect_ratios = [1.0]
     anchor_size = 3
     resnet_model_id = 50
     segmentation_resnet_model_id = 50
-    segmentation_output_stride = 16
     aspp_dilation_rates = [6, 12, 18]
-    aspp_decoder_level = int(np.math.log2(segmentation_output_stride))
-    fpn_decoder_level = 3
+    aspp_decoder_level = 2
+    fpn_decoder_level = 2
     num_anchors_per_location = num_scales * len(aspect_ratios)
     image_size = 128
-    images = np.random.rand(2, image_size, image_size, 3)
-    image_shape = np.array([[image_size, image_size], [image_size, image_size]])
+    images = tf.random.normal([2, image_size, image_size, 3])
+    image_info = tf.convert_to_tensor(
+        [[[image_size, image_size], [image_size, image_size], [1, 1], [0, 0]],
+         [[image_size, image_size], [image_size, image_size], [1, 1], [0, 0]]])
     shared_decoder = shared_decoder and shared_backbone
-    if build_anchor_boxes:
+    if build_anchor_boxes or not is_training:
       anchor_boxes = anchor.Anchor(
           min_level=min_level,
           max_level=max_level,
@@ -115,15 +116,20 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
       segmentation_backbone = resnet.ResNet(
           model_id=segmentation_resnet_model_id)
     if not shared_decoder:
+      feature_fusion = 'deeplabv3plus'
       level = aspp_decoder_level
       segmentation_decoder = aspp.ASPP(
           level=level, dilation_rates=aspp_dilation_rates)
     else:
+      feature_fusion = 'panoptic_fpn_fusion'
       level = fpn_decoder_level
       segmentation_decoder = None
     segmentation_head = segmentation_heads.SegmentationHead(
         num_classes=2,  # stuff and common class for things,
         level=level,
+        feature_fusion=feature_fusion,
+        decoder_min_level=min_level,
+        decoder_max_level=max_level,
         num_convs=2)
 
     model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
@@ -148,17 +154,17 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         aspect_ratios=aspect_ratios,
         anchor_size=anchor_size)
 
-    gt_boxes = np.array(
+    gt_boxes = tf.convert_to_tensor(
         [[[10, 10, 15, 15], [2.5, 2.5, 7.5, 7.5], [-1, -1, -1, -1]],
          [[100, 100, 150, 150], [-1, -1, -1, -1], [-1, -1, -1, -1]]],
-        dtype=np.float32)
-    gt_classes = np.array([[2, 1, -1], [1, -1, -1]], dtype=np.int32)
-    gt_masks = np.ones((2, 3, 100, 100))
+        dtype=tf.float32)
+    gt_classes = tf.convert_to_tensor([[2, 1, -1], [1, -1, -1]], dtype=tf.int32)
+    gt_masks = tf.ones((2, 3, 100, 100))
 
     # Results will be checked in test_forward.
     _ = model(
         images,
-        image_shape,
+        image_info,
         anchor_boxes,
         gt_boxes,
         gt_classes,
@@ -179,23 +185,24 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
                    shared_backbone, shared_decoder,
                    generate_panoptic_masks):
     num_classes = 3
-    min_level = 3
-    max_level = 4
+    min_level = 2
+    max_level = 6
     num_scales = 3
     aspect_ratios = [1.0]
     anchor_size = 3
     segmentation_resnet_model_id = 101
-    segmentation_output_stride = 16
     aspp_dilation_rates = [6, 12, 18]
-    aspp_decoder_level = int(np.math.log2(segmentation_output_stride))
-    fpn_decoder_level = 3
+    aspp_decoder_level = 2
+    fpn_decoder_level = 2
 
     class_agnostic_bbox_pred = False
     cascade_class_ensemble = False
 
     image_size = (256, 256)
-    images = np.random.rand(2, image_size[0], image_size[1], 3)
-    image_shape = np.array([[224, 100], [100, 224]])
+    images = tf.random.normal([2, image_size[0], image_size[1], 3])
+    image_info = tf.convert_to_tensor(
+        [[[224, 100], [224, 100], [1, 1], [0, 0]],
+         [[224, 100], [224, 100], [1, 1], [0, 0]]])
     shared_decoder = shared_decoder and shared_backbone
     with strategy.scope():
 
@@ -250,15 +257,20 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         segmentation_backbone = resnet.ResNet(
             model_id=segmentation_resnet_model_id)
       if not shared_decoder:
+        feature_fusion = 'deeplabv3plus'
         level = aspp_decoder_level
         segmentation_decoder = aspp.ASPP(
             level=level, dilation_rates=aspp_dilation_rates)
       else:
+        feature_fusion = 'panoptic_fpn_fusion'
         level = fpn_decoder_level
         segmentation_decoder = None
       segmentation_head = segmentation_heads.SegmentationHead(
           num_classes=2,  # stuff and common class for things,
           level=level,
+          feature_fusion=feature_fusion,
+          decoder_min_level=min_level,
+          decoder_max_level=max_level,
           num_convs=2)
 
       model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
@@ -285,16 +297,17 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
           aspect_ratios=aspect_ratios,
           anchor_size=anchor_size)
 
-      gt_boxes = np.array(
+      gt_boxes = tf.convert_to_tensor(
           [[[10, 10, 15, 15], [2.5, 2.5, 7.5, 7.5], [-1, -1, -1, -1]],
            [[100, 100, 150, 150], [-1, -1, -1, -1], [-1, -1, -1, -1]]],
-          dtype=np.float32)
-      gt_classes = np.array([[2, 1, -1], [1, -1, -1]], dtype=np.int32)
-      gt_masks = np.ones((2, 3, 100, 100))
+          dtype=tf.float32)
+      gt_classes = tf.convert_to_tensor(
+          [[2, 1, -1], [1, -1, -1]], dtype=tf.int32)
+      gt_masks = tf.ones((2, 3, 100, 100))
 
       results = model(
           images,
-          image_shape,
+          image_info,
           anchor_boxes,
           gt_boxes,
           gt_classes,
@@ -354,10 +367,11 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         max_num_detections=100,
         stuff_classes_offset=90)
     segmentation_resnet_model_id = 101
-    segmentation_output_stride = 16
     aspp_dilation_rates = [6, 12, 18]
-    aspp_decoder_level = int(np.math.log2(segmentation_output_stride))
-    fpn_decoder_level = 3
+    min_level = 2
+    max_level = 6
+    aspp_decoder_level = 2
+    fpn_decoder_level = 2
     shared_decoder = shared_decoder and shared_backbone
     mask_head = instance_heads.MaskHead(num_classes=2, upsample_factor=2)
     mask_sampler_obj = mask_sampler.MaskSampler(
@@ -370,15 +384,20 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
       segmentation_backbone = resnet.ResNet(
           model_id=segmentation_resnet_model_id)
     if not shared_decoder:
+      feature_fusion = 'deeplabv3plus'
       level = aspp_decoder_level
       segmentation_decoder = aspp.ASPP(
           level=level, dilation_rates=aspp_dilation_rates)
     else:
+      feature_fusion = 'panoptic_fpn_fusion'
       level = fpn_decoder_level
       segmentation_decoder = None
     segmentation_head = segmentation_heads.SegmentationHead(
         num_classes=2,  # stuff and common class for things,
         level=level,
+        feature_fusion=feature_fusion,
+        decoder_min_level=min_level,
+        decoder_max_level=max_level,
         num_convs=2)
 
     model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
@@ -397,8 +416,8 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         segmentation_backbone=segmentation_backbone,
         segmentation_decoder=segmentation_decoder,
         segmentation_head=segmentation_head,
-        min_level=3,
-        max_level=7,
+        min_level=min_level,
+        max_level=max_level,
         num_scales=3,
         aspect_ratios=[1.0],
         anchor_size=3)
@@ -433,10 +452,11 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         max_num_detections=100,
         stuff_classes_offset=90)
     segmentation_resnet_model_id = 101
-    segmentation_output_stride = 16
     aspp_dilation_rates = [6, 12, 18]
-    aspp_decoder_level = int(np.math.log2(segmentation_output_stride))
-    fpn_decoder_level = 3
+    min_level = 2
+    max_level = 6
+    aspp_decoder_level = 2
+    fpn_decoder_level = 2
     shared_decoder = shared_decoder and shared_backbone
     mask_head = instance_heads.MaskHead(num_classes=2, upsample_factor=2)
     mask_sampler_obj = mask_sampler.MaskSampler(
@@ -449,15 +469,20 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
       segmentation_backbone = resnet.ResNet(
           model_id=segmentation_resnet_model_id)
     if not shared_decoder:
+      feature_fusion = 'deeplabv3plus'
       level = aspp_decoder_level
       segmentation_decoder = aspp.ASPP(
           level=level, dilation_rates=aspp_dilation_rates)
     else:
+      feature_fusion = 'panoptic_fpn_fusion'
       level = fpn_decoder_level
       segmentation_decoder = None
     segmentation_head = segmentation_heads.SegmentationHead(
         num_classes=2,  # stuff and common class for things,
         level=level,
+        feature_fusion=feature_fusion,
+        decoder_min_level=min_level,
+        decoder_max_level=max_level,
         num_convs=2)
 
     model = panoptic_maskrcnn_model.PanopticMaskRCNNModel(
@@ -476,8 +501,8 @@ class PanopticMaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         segmentation_backbone=segmentation_backbone,
         segmentation_decoder=segmentation_decoder,
         segmentation_head=segmentation_head,
-        min_level=3,
-        max_level=7,
+        min_level=max_level,
+        max_level=max_level,
         num_scales=3,
         aspect_ratios=[1.0],
         anchor_size=3)

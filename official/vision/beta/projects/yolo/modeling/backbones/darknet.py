@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,11 +36,12 @@ Darknets are used mainly for object detection in:
 """
 
 import collections
+
 import tensorflow as tf
 
 from official.modeling import hyperparams
-from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
+from official.vision.modeling.backbones import factory
 
 
 class BlockConfig:
@@ -225,7 +226,7 @@ LARGECSP53 = {
             False
         ],
         [
-            'DarkRes', 'csp', 1, True, 64, None, None, None, None, 'mish', -1,
+            'DarkRes', 'csp', 1, False, 64, None, None, None, None, 'mish', -1,
             1, 1, False
         ],
         [
@@ -371,7 +372,6 @@ BACKBONES = {
 }
 
 
-@tf.keras.utils.register_keras_serializable(package='yolo')
 class Darknet(tf.keras.Model):
   """The Darknet backbone architecture."""
 
@@ -454,6 +454,9 @@ class Darknet(tf.keras.Model):
   def _build_struct(self, net, inputs):
     if self._use_reorg_input:
       inputs = nn_blocks.Reorg()(inputs)
+      net[0].filters = net[1].filters
+      net[0].output_name = net[1].output_name
+      del net[1]
 
     endpoints = collections.OrderedDict()
     stack_outputs = [inputs]

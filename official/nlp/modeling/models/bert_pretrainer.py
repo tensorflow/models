@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -199,10 +199,13 @@ class BertPretrainerV2(tf.keras.Model):
     self._config = {
         'encoder_network': encoder_network,
         'mlm_initializer': mlm_initializer,
+        'mlm_activation': mlm_activation,
         'classification_heads': classification_heads,
         'name': name,
     }
     self.encoder_network = encoder_network
+    # Makes sure the weights are built.
+    _ = self.encoder_network(self.encoder_network.inputs)
     inputs = copy.copy(self.encoder_network.inputs)
     self.classification_heads = classification_heads or []
     if len(set([cls.name for cls in self.classification_heads])) != len(
@@ -216,7 +219,10 @@ class BertPretrainerV2(tf.keras.Model):
         name='cls/predictions')
     masked_lm_positions = tf.keras.layers.Input(
         shape=(None,), name='masked_lm_positions', dtype=tf.int32)
-    inputs.append(masked_lm_positions)
+    if isinstance(inputs, dict):
+      inputs['masked_lm_positions'] = masked_lm_positions
+    else:
+      inputs.append(masked_lm_positions)
     self.inputs = inputs
 
   def call(self, inputs):

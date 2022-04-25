@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,22 @@
 """All necessary imports for registration."""
 
 # pylint: disable=unused-import
-from official.common import registry_imports
+# pylint: disable=g-bad-import-order
+from official.vision import registry_imports
+
+# import configs
 from official.vision.beta.projects.yolo.configs import darknet_classification
+from official.vision.beta.projects.yolo.configs import yolo as yolo_config
+
+# import modeling components
 from official.vision.beta.projects.yolo.modeling.backbones import darknet
+from official.vision.beta.projects.yolo.modeling.decoders import yolo_decoder
+
+# import tasks
 from official.vision.beta.projects.yolo.tasks import image_classification
+from official.vision.beta.projects.yolo.tasks import yolo as yolo_task
+
+# import optimization packages
+from official.vision.beta.projects.yolo.optimization import optimizer_factory
+from official.vision.beta.projects.yolo.optimization.configs import optimizer_config
+from official.vision.beta.projects.yolo.optimization.configs import optimization_config

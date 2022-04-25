@@ -1,0 +1,138 @@
+# --experiment_type=yolo_darknet
+# mAP 43.0
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  smart_bias_lr: 0.0
+  model:
+    darknet_based_model: true
+    input_size: [512, 512, 3]
+    backbone:
+      type: 'darknet'
+      darknet:
+        model_id: 'cspdarknet53'
+        max_level: 5
+        min_level: 3
+    decoder:
+      type: yolo_decoder
+      yolo_decoder:
+        version: v4
+        type: regular
+        activation: leaky
+    head:
+      smart_bias: true
+    detection_generator:
+      box_type:
+        'all': original
+      scale_xy:
+        '5': 1.05
+        '4': 1.1
+        '3': 1.2
+      max_boxes: 200
+      nms_type: iou
+      iou_thresh: 0.001
+      nms_thresh: 0.60
+    loss:
+      use_scaled_loss: false
+      box_loss_type:
+        'all': ciou
+      ignore_thresh:
+        'all': 0.7
+      iou_normalizer:
+        'all': 0.07
+      cls_normalizer:
+        'all': 1.0
+      object_normalizer:
+        'all': 1.0
+      objectness_smooth:
+        'all': 0.0
+      max_delta:
+        'all': 5.0
+    norm_activation:
+      activation: mish
+      norm_epsilon: 0.0001
+      norm_momentum: 0.99
+      use_sync_bn: true
+    num_classes: 80
+    anchor_boxes:
+      anchors_per_scale: 3
+      boxes: [box: [12, 16], box: [19, 36], box: [40, 28],
+              box: [36, 75], box: [76, 55], box: [72, 146],
+              box: [142, 110], box: [192, 243], box: [459, 401]]
+  train_data:
+    global_batch_size: 64
+    dtype: float32
+    input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/train*'
+    is_training: true
+    drop_remainder: true
+    seed: 1000
+    parser:
+      mosaic:
+        mosaic_frequency: 0.75
+        mixup_frequency: 0.0
+        mosaic_crop_mode: 'crop'
+        mosaic_center: 0.2
+        aug_scale_min: 0.2
+        aug_scale_max: 1.6
+        jitter: 0.3
+      max_num_instances: 200
+      letter_box: false
+      random_flip: true
+      aug_rand_saturation: 1.5
+      aug_rand_brightness: 1.5
+      aug_rand_hue: 0.1
+      aug_scale_min: 0.1
+      aug_scale_max: 1.9
+      aug_rand_translate: 0.0
+      jitter: 0.3
+      area_thresh: 0.1
+      random_pad: true
+      use_tie_breaker: true
+      anchor_thresh: 0.4
+  validation_data:
+    global_batch_size: 8
+    dtype: float32
+    input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/val*'
+    is_training: false
+    drop_remainder: true
+    parser:
+      max_num_instances: 200
+      letter_box: false
+      use_tie_breaker: true
+      anchor_thresh: 0.4
+  weight_decay: 0.000
+  init_checkpoint: 'gs://tf_model_garden/vision/yolo/ckpt-15000'
+  init_checkpoint_modules: 'backbone'
+  annotation_file: null
+trainer:
+  train_steps: 555000
+  validation_steps: 625
+  steps_per_loop: 1850
+  summary_interval: 1850
+  validation_interval: 9250
+  checkpoint_interval: 1850
+  optimizer_config:
+    ema:
+      average_decay: 0.9998
+      trainable_weights_only: false
+      dynamic_decay: true
+    learning_rate:
+      type: stepwise
+      stepwise:
+        boundaries: [400000]
+        name: PiecewiseConstantDecay
+        values: [0.00131, 0.000131]
+    optimizer:
+      type: sgd_torch
+      sgd_torch:
+        momentum: 0.949
+        momentum_start: 0.949
+        nesterov: true
+        warmup_steps: 1000
+        weight_decay: 0.0005
+        name: SGD
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 1000  # learning rate rises from 0 to 0.0013 over 1000 steps

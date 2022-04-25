@@ -20,3 +20,21 @@ py_library(
         "//tf_ops:tf_custom_ops_py",  # sequence projection
     ],
 )
+
+py_library(
+    name = "pqrnn",
+    srcs = ["pqrnn.py"],
+    srcs_version = "PY3",
+    deps = [
+        # package absl/logging
+        # package tensorflow
+        "//layers:base_layers",  # sequence projection
+        "//layers:dense_layers",  # sequence projection
+        "//layers:misc_layers",  # sequence projection
+        "//layers:projection_layers",  # sequence projection
+        "//layers:qrnn_layers",  # sequence projection
+        "//layers:quantization_layers",  # sequence projection
+        # "//tf_ops:tf_custom_ops"  # sequence projection
+        "//tf_ops:tf_custom_ops_py",  # sequence projection
+    ],
+)

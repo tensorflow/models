@@ -69,3 +69,27 @@ REGISTER_OP("LayerNorm")
     .Doc(R"doc(
 Dummy layer norm op.
 )doc");
+
+class PoolingOp : public tensorflow::OpKernel {
+ public:
+  explicit PoolingOp(tensorflow::OpKernelConstruction* context)
+      : tensorflow::OpKernel(context) {}
+
+  void Compute(tensorflow::OpKernelContext* ctx) override {}
+};
+
+REGISTER_KERNEL_BUILDER(Name("PoolingOp").Device(::tensorflow::DEVICE_CPU),
+                        PoolingOp);
+
+REGISTER_OP("PoolingOp")
+    .Input("multiplier: float32")
+    .Input("constant: float32")
+    .Input("forward: float32")
+    .Output("state: float32")
+    .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
+      c->set_output(0, c->input(0));
+      return tensorflow::Status::OK();
+    })
+    .Doc(R"doc(
+Dummy pooling op.
+)doc");

@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.projects.basnet.modeling import nn_blocks
-from official.vision.beta.modeling.backbones import factory
+from official.vision.modeling.backbones import factory
 
 # Specifications for BASNet encoder.
 # Each element in the block configuration is in the following format:

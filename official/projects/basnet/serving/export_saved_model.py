@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ from absl import flags
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.projects.basnet.serving import basnet
-from official.vision.beta.serving import export_saved_model_lib
+from official.vision.serving import export_saved_model_lib
 
 FLAGS = flags.FLAGS
 

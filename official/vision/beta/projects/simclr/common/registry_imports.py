@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 """All necessary imports for registration."""
 
 # pylint: disable=unused-import
-from official.common import registry_imports
+from official.vision import registry_imports
 from official.vision.beta.projects.simclr.configs import simclr
 from official.vision.beta.projects.simclr.losses import contrastive_losses
 from official.vision.beta.projects.simclr.modeling import simclr_model

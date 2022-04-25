@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ regularizers = tf.keras.regularizers
 layers = tf.keras.layers
 
 
-@tf.keras.utils.register_keras_serializable(package='simclr')
 class ProjectionHead(tf.keras.layers.Layer):
   """Projection head."""
 
@@ -144,7 +143,6 @@ class ProjectionHead(tf.keras.layers.Layer):
     return proj_head_output, proj_finetune_output
 
 
-@tf.keras.utils.register_keras_serializable(package='simclr')
 class ClassificationHead(tf.keras.layers.Layer):
   """Classification Head."""
 

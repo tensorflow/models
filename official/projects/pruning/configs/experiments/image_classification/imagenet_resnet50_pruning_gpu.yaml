@@ -1,0 +1,60 @@
+runtime:
+  distribution_strategy: 'mirrored'
+  mixed_precision_dtype: 'float32'
+  loss_scale: 'dynamic'
+task:
+  model:
+    num_classes: 1001
+    input_size: [224, 224, 3]
+    backbone:
+      type: 'resnet'
+      resnet:
+        model_id: 50
+  losses:
+    l2_weight_decay: 0
+    one_hot: true
+    label_smoothing: 0.1
+  train_data:
+    input_path: 'imagenet-2012-tfrecord/train*'
+    is_training: true
+    global_batch_size: 1024
+    dtype: 'float32'
+  validation_data:
+    input_path: 'imagenet-2012-tfrecord/valid*'
+    is_training: false
+    global_batch_size: 1024
+    dtype: 'float32'
+    drop_remainder: false
+  pruning:
+    pretrained_original_checkpoint: 'gs://**/resnet_classifier_gpu/ckpt-56160'
+    pruning_schedule: 'PolynomialDecay'
+    begin_step: 0
+    end_step: 40000
+    initial_sparsity: 0.2
+    final_sparsity: 0.8
+    frequency: 40
+trainer:
+  # Top1 accuracy 75.508% after 7hr for 8 GPUs with pruning.
+  # Pretrained network without pruning has Top1 accuracy 76.7%
+  train_steps: 50000
+  validation_steps: 50
+  validation_interval: 1251
+  steps_per_loop: 1251
+  summary_interval: 1251
+  checkpoint_interval: 1251
+  optimizer_config:
+    optimizer:
+      type: 'sgd'
+      sgd:
+        momentum: 0.9
+    learning_rate:
+      type: 'exponential'
+      exponential:
+        initial_learning_rate: 0.01
+        decay_steps: 2502
+        decay_rate: 0.9
+        staircase: true
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 0

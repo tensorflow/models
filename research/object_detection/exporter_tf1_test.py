@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -1169,16 +1168,20 @@ class ExportInferenceGraphTest(tf.test.TestCase):
     g = tf.Graph()
     with g.as_default():
       with tf.name_scope('nearest_upsampling'):
-        x = array_ops.placeholder(dtypes.float32, shape=(8, 10, 10, 8))
-        x_stack = tf.stack([tf.stack([x] * 2, axis=3)] * 2, axis=2)
-        x_reshape = tf.reshape(x_stack, [8, 20, 20, 8])
+        x_1 = array_ops.placeholder(dtypes.float32, shape=(8, 10, 10, 8))
+        x_1_stack_1 = tf.stack([x_1] * 2, axis=3)
+        x_1_reshape_1 = tf.reshape(x_1_stack_1, [8, 10, 20, 8])
+        x_1_stack_2 = tf.stack([x_1_reshape_1] * 2, axis=2)
+        x_1_reshape_2 = tf.reshape(x_1_stack_2, [8, 20, 20, 8])
 
       with tf.name_scope('nearest_upsampling'):
         x_2 = array_ops.placeholder(dtypes.float32, shape=(8, 10, 10, 8))
-        x_stack_2 = tf.stack([tf.stack([x_2] * 2, axis=3)] * 2, axis=2)
-        x_reshape_2 = tf.reshape(x_stack_2, [8, 20, 20, 8])
+        x_2_stack_1 = tf.stack([x_2] * 2, axis=3)
+        x_2_reshape_1 = tf.reshape(x_2_stack_1, [8, 10, 20, 8])
+        x_2_stack_2 = tf.stack([x_2_reshape_1] * 2, axis=2)
+        x_2_reshape_2 = tf.reshape(x_2_stack_2, [8, 20, 20, 8])
 
-      t = x_reshape + x_reshape_2
+      t = x_1_reshape_2 + x_2_reshape_2
 
       exporter.rewrite_nn_resize_op()
 

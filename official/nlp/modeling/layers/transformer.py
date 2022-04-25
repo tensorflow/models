@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,14 +18,14 @@
 import gin
 import tensorflow as tf
 
-from official.nlp import keras_nlp
 from official.nlp.modeling.layers import attention
 from official.nlp.modeling.layers import multi_channel_attention
+from official.nlp.modeling.layers import transformer_encoder_block
 from official.nlp.modeling.layers.util import tf_function_if_eager
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
-class Transformer(keras_nlp.layers.TransformerEncoderBlock):
+class Transformer(transformer_encoder_block.TransformerEncoderBlock):
   """Transformer layer.
 
   This layer implements the Transformer from "Attention Is All You Need".

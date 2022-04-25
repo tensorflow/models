@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.modeling import activations
-from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 from official.nlp.modeling.networks import encoder_scaffold
 
@@ -54,7 +53,7 @@ class ValidatedTransformerLayer(layers.Transformer):
 # boolean 'True'. We register this class as a Keras serializable so we can
 # test serialization below.
 @tf.keras.utils.register_keras_serializable(package="TestOnly")
-class ValidatedMaskLayer(keras_nlp.layers.SelfAttentionMask):
+class ValidatedMaskLayer(layers.SelfAttentionMask):
 
   def __init__(self, call_list, call_class=None, **kwargs):
     super(ValidatedMaskLayer, self).__init__(**kwargs)

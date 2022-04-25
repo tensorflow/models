@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -160,22 +160,44 @@ def _read_tfds(tfds_builder: tfds.core.DatasetBuilder,
   """Reads a dataset from tfds."""
   # No op if exist.
   tfds_builder.download_and_prepare()
-
-  read_config = tfds.ReadConfig(
-      interleave_cycle_length=cycle_length,
-      interleave_block_length=block_length,
-      input_context=input_context,
-      shuffle_seed=seed)
   decoders = {}
   if tfds_skip_decoding_feature:
     for skip_feature in tfds_skip_decoding_feature.split(','):
       decoders[skip_feature.strip()] = tfds.decode.SkipDecoding()
-  dataset = tfds_builder.as_dataset(
-      split=tfds_split,
-      shuffle_files=is_training,
-      as_supervised=tfds_as_supervised,
-      decoders=decoders,
-      read_config=read_config)
+  if tfds_builder.info.splits:
+    num_shards = len(tfds_builder.info.splits[tfds_split].file_instructions)
+  else:
+    # The tfds mock path often does not provide splits.
+    num_shards = 1
+  if input_context and num_shards < input_context.num_input_pipelines:
+    # The number of files in the dataset split is smaller than the number of
+    # input pipelines. We read the entire dataset first and then shard in the
+    # host memory.
+    read_config = tfds.ReadConfig(
+        interleave_cycle_length=cycle_length,
+        interleave_block_length=block_length,
+        input_context=None,
+        shuffle_seed=seed)
+    dataset = tfds_builder.as_dataset(
+        split=tfds_split,
+        shuffle_files=is_training,
+        as_supervised=tfds_as_supervised,
+        decoders=decoders,
+        read_config=read_config)
+    dataset = dataset.shard(input_context.num_input_pipelines,
+                            input_context.input_pipeline_id)
+  else:
+    read_config = tfds.ReadConfig(
+        interleave_cycle_length=cycle_length,
+        interleave_block_length=block_length,
+        input_context=input_context,
+        shuffle_seed=seed)
+    dataset = tfds_builder.as_dataset(
+        split=tfds_split,
+        shuffle_files=is_training,
+        as_supervised=tfds_as_supervised,
+        decoders=decoders,
+        read_config=read_config)
 
   if is_training and not cache:
     dataset = dataset.repeat()
@@ -270,6 +292,8 @@ class InputReader:
     self._transform_and_batch_fn = transform_and_batch_fn
     self._postprocess_fn = postprocess_fn
     self._seed = params.seed
+    self._prefetch_buffer_size = (params.prefetch_buffer_size or
+                                  tf.data.experimental.AUTOTUNE)
 
     # When tf.data service is enabled, each data service worker should get
     # different random seeds. Thus, we set `seed` to None.
@@ -285,8 +309,17 @@ class InputReader:
     if self._enable_tf_data_service:
       # Add a random seed as the tf.data service job name suffix, so tf.data
       # service doesn't reuse the previous state if TPU worker gets preempted.
+      # It's necessary to add global batch size into the tf data service job
+      # name because when tuning batch size with vizier and tf data service is
+      # also enable, the tf data servce job name should be different for
+      # different vizier trials since once batch size is changed, from the
+      # tf.data perspective, the dataset is a different instance, and a
+      # different job name should be used for tf data service. Otherwise, the
+      # model would read tensors from the incorrect tf data service job, which
+      # would causes dimension mismatch on the batch size dimension.
       self._tf_data_service_job_name = (
-          params.tf_data_service_job_name + str(self.static_randnum))
+          f'{params.tf_data_service_job_name}_bs{params.global_batch_size}_'
+          f'{self.static_randnum}')
       self._enable_round_robin_tf_data_service = params.get(
           'enable_round_robin_tf_data_service', False)
 
@@ -463,9 +496,8 @@ class InputReader:
            dataset: Optional[tf.data.Dataset] = None) -> tf.data.Dataset:
     """Generates a tf.data.Dataset object."""
     if dataset is None:
-      dataset = self._read_data_source(
-          self._matched_files, self._dataset_fn, input_context,
-          self._tfds_builder)
+      dataset = self._read_data_source(self._matched_files, self._dataset_fn,
+                                       input_context, self._tfds_builder)
     dataset = self._decode_and_parse_dataset(dataset, self._global_batch_size,
                                              input_context)
     dataset = _maybe_map_fn(dataset, self._postprocess_fn)
@@ -475,4 +507,4 @@ class InputReader:
       options = tf.data.Options()
       options.experimental_deterministic = self._deterministic
       dataset = dataset.with_options(options)
-    return dataset.prefetch(tf.data.experimental.AUTOTUNE)
+    return dataset.prefetch(self._prefetch_buffer_size)

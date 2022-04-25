@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,12 @@
 """Tests for nlp.serving.serving_modules."""
 
 import os
+
 from absl.testing import parameterized
 import tensorflow as tf
+
+from sentencepiece import SentencePieceTrainer
+from official.core import export_base
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
 from official.nlp.serving import serving_modules
@@ -24,6 +28,7 @@ from official.nlp.tasks import masked_lm
 from official.nlp.tasks import question_answering
 from official.nlp.tasks import sentence_prediction
 from official.nlp.tasks import tagging
+from official.nlp.tasks import translation
 
 
 def _create_fake_serialized_examples(features_dict):
@@ -57,6 +62,33 @@ def _create_fake_vocab_file(vocab_file_path):
   tokens.extend(["[UNK]", "[CLS]", "[SEP]", "[MASK]", "hello", "world"])
   with tf.io.gfile.GFile(vocab_file_path, "w") as outfile:
     outfile.write("\n".join(tokens))
+
+
+def _train_sentencepiece(input_path, vocab_size, model_path, eos_id=1):
+  argstr = " ".join([
+      f"--input={input_path}", f"--vocab_size={vocab_size}",
+      "--character_coverage=0.995",
+      f"--model_prefix={model_path}", "--model_type=bpe",
+      "--bos_id=-1", "--pad_id=0", f"--eos_id={eos_id}", "--unk_id=2"
+  ])
+  SentencePieceTrainer.Train(argstr)
+
+
+def _generate_line_file(filepath, lines):
+  with tf.io.gfile.GFile(filepath, "w") as f:
+    for l in lines:
+      f.write("{}\n".format(l))
+
+
+def _make_sentencepeice(output_dir):
+  src_lines = ["abc ede fg", "bbcd ef a g", "de f a a g"]
+  tgt_lines = ["dd cc a ef  g", "bcd ef a g", "gef cd ba"]
+  sentencepeice_input_path = os.path.join(output_dir, "inputs.txt")
+  _generate_line_file(sentencepeice_input_path, src_lines + tgt_lines)
+  sentencepeice_model_prefix = os.path.join(output_dir, "sp")
+  _train_sentencepiece(sentencepeice_input_path, 11, sentencepeice_model_prefix)
+  sentencepeice_model_path = "{}.model".format(sentencepeice_model_prefix)
+  return sentencepeice_model_path
 
 
 class ServingModulesTest(tf.test.TestCase, parameterized.TestCase):
@@ -311,6 +343,48 @@ class ServingModulesTest(tf.test.TestCase, parameterized.TestCase):
 
     with self.assertRaises(ValueError):
       _ = export_module.get_inference_signatures({"foo": None})
+
+  @parameterized.parameters(
+      (False, None),
+      (True, 2))
+  def test_translation(self, padded_decode, batch_size):
+    sp_path = _make_sentencepeice(self.get_temp_dir())
+    encdecoder = translation.EncDecoder(
+        num_attention_heads=4, intermediate_size=256)
+    config = translation.TranslationConfig(
+        model=translation.ModelConfig(
+            encoder=encdecoder,
+            decoder=encdecoder,
+            embedding_width=256,
+            padded_decode=padded_decode,
+            decode_max_length=100),
+        sentencepiece_model_path=sp_path,
+    )
+    task = translation.TranslationTask(config)
+    model = task.build_model()
+
+    params = serving_modules.Translation.Params(
+        sentencepiece_model_path=sp_path, batch_size=batch_size)
+    export_module = serving_modules.Translation(params=params, model=model)
+    functions = export_module.get_inference_signatures({
+        "serve_text": "serving_default"
+    })
+    outputs = functions["serving_default"](tf.constant(["abcd", "ef gh"]))
+    self.assertEqual(outputs.shape, (2,))
+    self.assertEqual(outputs.dtype, tf.string)
+
+    tmp_dir = self.get_temp_dir()
+    tmp_dir = os.path.join(tmp_dir, "padded_decode", str(padded_decode))
+    export_base_dir = os.path.join(tmp_dir, "export")
+    ckpt_dir = os.path.join(tmp_dir, "ckpt")
+    ckpt_path = tf.train.Checkpoint(model=model).save(ckpt_dir)
+    export_dir = export_base.export(export_module,
+                                    {"serve_text": "serving_default"},
+                                    export_base_dir, ckpt_path)
+    loaded = tf.saved_model.load(export_dir)
+    infer = loaded.signatures["serving_default"]
+    out = infer(text=tf.constant(["abcd", "ef gh"]))
+    self.assertLen(out["output_0"], 2)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 
 """Defines the base task abstraction."""
 import abc
+import functools
 from typing import Optional
 
 from absl import logging
@@ -22,9 +23,12 @@ import tensorflow as tf
 from official.core import config_definitions
 from official.modeling import optimization
 from official.modeling import performance
+from official.modeling.privacy import configs
+from official.modeling.privacy import ops
 
 OptimizationConfig = optimization.OptimizationConfig
 RuntimeConfig = config_definitions.RuntimeConfig
+DifferentialPrivacyConfig = configs.DifferentialPrivacyConfig
 
 
 class Task(tf.Module, metaclass=abc.ABCMeta):
@@ -65,18 +69,35 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
 
   @classmethod
   def create_optimizer(cls, optimizer_config: OptimizationConfig,
-                       runtime_config: Optional[RuntimeConfig] = None):
+                       runtime_config: Optional[RuntimeConfig] = None,
+                       dp_config: Optional[DifferentialPrivacyConfig] = None):
     """Creates an TF optimizer from configurations.
 
     Args:
       optimizer_config: the parameters of the Optimization settings.
       runtime_config: the parameters of the runtime.
+      dp_config: the parameter of differential privacy.
 
     Returns:
       A tf.optimizers.Optimizer object.
     """
+    gradient_transformers = None
+    if dp_config is not None:
+      logging.info("Adding differential privacy transform with config %s.",
+                   dp_config.as_dict())
+      noise_stddev = dp_config.clipping_norm * dp_config.noise_multiplier
+      gradient_transformers = [
+          functools.partial(
+              ops.clip_l2_norm, l2_norm_clip=dp_config.clipping_norm),
+          functools.partial(
+              ops.add_noise, noise_stddev=noise_stddev)
+      ]
+
     opt_factory = optimization.OptimizerFactory(optimizer_config)
-    optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
+    optimizer = opt_factory.build_optimizer(
+        opt_factory.build_learning_rate(),
+        gradient_transformers=gradient_transformers
+        )
     # Configuring optimizer when loss_scale is set in runtime config. This helps
     # avoiding overflow/underflow for float16 computations.
     if runtime_config:
@@ -101,9 +122,11 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     ckpt_dir_or_file = self.task_config.init_checkpoint
     logging.info("Trying to load pretrained checkpoint from %s",
                  ckpt_dir_or_file)
-    if tf.io.gfile.isdir(ckpt_dir_or_file):
+    if ckpt_dir_or_file and tf.io.gfile.isdir(ckpt_dir_or_file):
       ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
     if not ckpt_dir_or_file:
+      logging.info("No checkpoint file found from %s. Will not load.",
+                   ckpt_dir_or_file)
       return
 
     if hasattr(model, "checkpoint_items"):
@@ -166,7 +189,7 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     del training
     return []
 
-  def process_metrics(self, metrics, labels, model_outputs):
+  def process_metrics(self, metrics, labels, model_outputs, **kwargs):
     """Process and update metrics.
 
     Called when using custom training loop API.
@@ -177,6 +200,7 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
       labels: a tensor or a nested structure of tensors.
       model_outputs: a tensor or a nested structure of tensors. For example,
         output of the keras model built by self.build_model.
+      **kwargs: other args.
     """
     for metric in metrics:
       metric.update_state(labels, model_outputs)

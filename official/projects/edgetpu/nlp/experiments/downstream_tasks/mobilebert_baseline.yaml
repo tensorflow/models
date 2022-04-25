@@ -1,0 +1,23 @@
+# MobileBERT model from https://arxiv.org/abs/2004.02984.
+task:
+  model:
+    encoder:
+      type: mobilebert
+      mobilebert:
+        word_vocab_size: 30522
+        word_embed_size: 128
+        type_vocab_size: 2
+        max_sequence_length: 512
+        num_blocks: 24
+        hidden_size: 512
+        num_attention_heads: 4
+        intermediate_size: 512
+        hidden_activation: relu
+        hidden_dropout_prob: 0.1
+        attention_probs_dropout_prob: 0.1
+        intra_bottleneck_size: 128
+        initializer_range: 0.02
+        key_query_shared_bottleneck: true
+        num_feedforward_networks: 4
+        normalization_type: no_norm
+        classifier_activation: false
