@@ -17,7 +17,7 @@ from typing import List, Union
 
 import tensorflow as tf
 
-from official.vision.beta.ops import preprocess_ops
+from official.vision.ops import preprocess_ops
 
 
 def horizontal_flip_coords(coords: tf.Tensor) -> tf.Tensor:

@@ -32,8 +32,8 @@ import tensorflow as tf
 from absl import app, flags
 from pycocotools import mask
 
-from official.vision.beta.data import tfrecord_lib
-from official.vision.beta.data.tfrecord_lib import (
+from official.vision.data import tfrecord_lib
+from official.vision.data.tfrecord_lib import (
     image_info_to_feature_dict, write_tf_record_dataset)
 
 flags.DEFINE_multi_string('pix3d_dir', '', 'Directory containing Pix3d.')
@@ -357,7 +357,7 @@ def _create_tf_record_from_pix3d_dir(pix3d_dir: str,
 
   num_skipped = write_tf_record_dataset(
       output_path, pix3d_annotations_iter, create_tf_example,
-      num_shards, unpack_arguments=False, use_multiprocessing=False)
+      num_shards, unpack_arguments=False, multiple_processes=0)
 
   logging.info('Finished writing, skipped %d annotations.', num_skipped)
 

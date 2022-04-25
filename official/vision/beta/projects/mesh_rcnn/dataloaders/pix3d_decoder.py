@@ -18,7 +18,7 @@ from typing import Union
 
 import tensorflow as tf
 
-from official.vision.beta.dataloaders import tf_example_decoder
+from official.vision.dataloaders import tf_example_decoder
 
 
 def _generate_source_id(image_bytes):

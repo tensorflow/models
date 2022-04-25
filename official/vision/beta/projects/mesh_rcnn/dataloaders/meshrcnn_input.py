@@ -16,8 +16,8 @@
 
 import tensorflow as tf
 
-from official.vision.beta.dataloaders import parser, utils
-from official.vision.beta.ops import anchor, box_ops, preprocess_ops
+from official.vision.dataloaders import parser, utils
+from official.vision.ops import anchor, box_ops, preprocess_ops
 from official.vision.beta.projects.mesh_rcnn.ops import meshrcnn_preprocess_ops
 
 
