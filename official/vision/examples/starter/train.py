@@ -21,7 +21,7 @@ branch from `official/vision/beta/train.py` and make changes.
 from absl import app
 
 from official.common import flags as tfm_flags
-from official.vision.beta import train
+from official.vision import train
 from official.vision.examples.starter import registry_imports  # pylint: disable=unused-import
 
 
