@@ -108,7 +108,7 @@ Please see links below for more details
 *   [DeepMAC Colab](./colab_tutorials/deepmac_colab.ipynb) that lets you run a
     pre-trained DeepMAC model on user-specified boxes. Note that you are not
     restricted to COCO classes!
-*   Project website - [git.io/deepmac](https://git.io/deepmac)
+*   Project website - [git.io/deepmac](https://google.github.io/deepmac/)
 
 <b>Thanks to contributors</b>: Vighnesh Birodkar, Zhichao Lu, Siyang Li,
  Vivek Rathod, Jonathan Huang
