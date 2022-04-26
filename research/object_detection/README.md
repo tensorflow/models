@@ -103,7 +103,7 @@ can also be applied to Mask R-CNN or without any detector at all.
 Please see links below for more details
 
 *   [DeepMAC documentation](g3doc/deepmac.md).
-*   [Mask RCNN code](https://github.com/tensorflow/models/tree/master/official/vision/beta/projects/deepmac_maskrcnn)
+*   [Mask RCNN code](https://github.com/tensorflow/models/tree/master/official/projects/deepmac_maskrcnn)
     in TF Model garden code base.
 *   [DeepMAC Colab](./colab_tutorials/deepmac_colab.ipynb) that lets you run a
     pre-trained DeepMAC model on user-specified boxes. Note that you are not
