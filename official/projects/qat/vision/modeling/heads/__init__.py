@@ -15,4 +15,4 @@
 # Lint as: python3
 """Heads package definition."""
 
-from official.vision.beta.modeling.heads.dense_prediction_heads import RetinaNetHead
+from official.projects.qat.vision.modeling.heads.dense_prediction_heads import RetinaNetHeadQuantized
