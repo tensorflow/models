@@ -271,6 +271,7 @@ class Parser(parser.Parser):
     self._min_resize = input_params.min_image_size
     self._crop_size = input_params.feature_shape[1]
     self._num_crops = input_params.num_test_crops
+    self._zero_centering_image = input_params.zero_centering_image
     self._one_hot_label = input_params.one_hot
     self._num_classes = input_params.num_classes
     self._image_key = image_key
@@ -317,7 +318,8 @@ class Parser(parser.Parser):
         max_aspect_ratio=self._max_aspect_ratio,
         min_area_ratio=self._min_area_ratio,
         max_area_ratio=self._max_area_ratio,
-        augmenter=self._augmenter)
+        augmenter=self._augmenter,
+        zero_centering_image=self._zero_centering_image)
     image = tf.cast(image, dtype=self._dtype)
 
     features = {'image': image}
@@ -349,7 +351,8 @@ class Parser(parser.Parser):
         num_test_clips=self._num_test_clips,
         min_resize=self._min_resize,
         crop_size=self._crop_size,
-        num_crops=self._num_crops)
+        num_crops=self._num_crops,
+        zero_centering_image=self._zero_centering_image)
     image = tf.cast(image, dtype=self._dtype)
     features = {'image': image}
 
