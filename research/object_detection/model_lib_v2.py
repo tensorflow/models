@@ -41,6 +41,7 @@ from object_detection.utils import visualization_utils as vutils
 
 MODEL_BUILD_UTIL_MAP = model_lib.MODEL_BUILD_UTIL_MAP
 NUM_STEPS_PER_ITERATION = 100
+LOG_EVERY = 100
 
 
 RESTORE_MAP_ERROR_TEMPLATE = (
@@ -536,8 +537,7 @@ def train_loop(
 
   # Write the as-run pipeline config to disk.
   if save_final_config:
-    tf.logging.info('Saving pipeline config file to directory {}'.format(
-        model_dir))
+    tf.logging.info('Saving pipeline config file to directory %s', model_dir)
     pipeline_config_final = create_pipeline_proto_from_configs(configs)
     config_util.save_pipeline_config(pipeline_config_final, model_dir)
 
@@ -699,7 +699,7 @@ def train_loop(
           for key, val in logged_dict.items():
             tf.compat.v2.summary.scalar(key, val, step=global_step)
 
-          if global_step.value() - logged_step >= 100:
+          if global_step.value() - logged_step >= LOG_EVERY:
             logged_dict_np = {name: value.numpy() for name, value in
                               logged_dict.items()}
             tf.logging.info(
@@ -1091,8 +1091,7 @@ def eval_continuously(
   configs = merge_external_params_with_configs(
       configs, None, kwargs_dict=kwargs)
   if model_dir and save_final_config:
-    tf.logging.info('Saving pipeline config file to directory {}'.format(
-        model_dir))
+    tf.logging.info('Saving pipeline config file to directory %s', model_dir)
     pipeline_config_final = create_pipeline_proto_from_configs(configs)
     config_util.save_pipeline_config(pipeline_config_final, model_dir)
 
@@ -1104,11 +1103,11 @@ def eval_continuously(
   eval_on_train_input_config.sample_1_of_n_examples = (
       sample_1_of_n_eval_on_train_examples)
   if override_eval_num_epochs and eval_on_train_input_config.num_epochs != 1:
-    tf.logging.warning('Expected number of evaluation epochs is 1, but '
-                       'instead encountered `eval_on_train_input_config'
-                       '.num_epochs` = '
-                       '{}. Overwriting `num_epochs` to 1.'.format(
-                           eval_on_train_input_config.num_epochs))
+    tf.logging.warning(
+        ('Expected number of evaluation epochs is 1, but '
+         'instead encountered `eval_on_train_input_config'
+         '.num_epochs` = %d. Overwriting `num_epochs` to 1.'),
+        eval_on_train_input_config.num_epochs)
     eval_on_train_input_config.num_epochs = 1
 
   if kwargs['use_bfloat16']:

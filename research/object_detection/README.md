@@ -103,12 +103,12 @@ can also be applied to Mask R-CNN or without any detector at all.
 Please see links below for more details
 
 *   [DeepMAC documentation](g3doc/deepmac.md).
-*   [Mask RCNN code](https://github.com/tensorflow/models/tree/master/official/projects/deepmac_maskrcnn)
+*   [Mask RCNN code](https://github.com/tensorflow/models/tree/master/official/vision/beta/projects/deepmac_maskrcnn)
     in TF Model garden code base.
 *   [DeepMAC Colab](./colab_tutorials/deepmac_colab.ipynb) that lets you run a
     pre-trained DeepMAC model on user-specified boxes. Note that you are not
     restricted to COCO classes!
-*   Project website - [git.io/deepmac](https://google.github.io/deepmac/)
+*   Project website - [git.io/deepmac](https://git.io/deepmac)
 
 <b>Thanks to contributors</b>: Vighnesh Birodkar, Zhichao Lu, Siyang Li,
  Vivek Rathod, Jonathan Huang
