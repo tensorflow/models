@@ -178,8 +178,7 @@ def build_panoptic_deeplab(
   if model_config.shared_decoder:
     instance_decoder = None
   else:
-    # TODO(srihari-humbarwadi): decouple semantic and 
-    # instance decoder types
+    # semantic and instance share the same decoder type
     instance_decoder = decoder_factory.build_decoder(
         input_specs=backbone.output_specs,
         model_config=model_config,
