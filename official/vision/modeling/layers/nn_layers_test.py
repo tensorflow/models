@@ -134,14 +134,14 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
     inputs = tf.range(4, dtype=tf.float32) + 1.
     inputs = tf.reshape(inputs, [1, 4, 1, 1, 1])
     inputs = tf.tile(inputs, [1, 1, 2, 2, 3])
-    expected, _ = gap(inputs)
+    expected, _ = gap(inputs, output_states=True)
 
     for num_splits in [1, 2, 4]:
       frames = tf.split(inputs, num_splits, axis=1)
       states = {}
       predicted = None
       for frame in frames:
-        predicted, states = gap(frame, states=states)
+        predicted, states = gap(frame, states=states, output_states=True)
 
       self.assertEqual(predicted.shape, expected.shape)
       self.assertAllClose(predicted, expected)
@@ -155,14 +155,14 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
     inputs = tf.range(4, dtype=tf.float32) + 1.
     inputs = tf.reshape(inputs, [1, 4, 1, 1, 1])
     inputs = tf.tile(inputs, [1, 1, 2, 2, 3])
-    expected, _ = gap(inputs)
+    expected, _ = gap(inputs, output_states=True)
 
     for num_splits in [1, 2, 4]:
       frames = tf.split(inputs, num_splits, axis=1)
       states = {}
       predicted = []
       for frame in frames:
-        x, states = gap(frame, states=states)
+        x, states = gap(frame, states=states, output_states=True)
         predicted.append(x)
       predicted = tf.concat(predicted, axis=1)
 
