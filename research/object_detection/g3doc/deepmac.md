@@ -81,7 +81,7 @@ Resolution | Mask head     | Config name                                | Mask m
 
 *   [Mask RCNN code](https://github.com/tensorflow/models/tree/master/official/vision/beta/projects/deepmac_maskrcnn)
     in TF Model garden code base.
-*   Project website - [git.io/deepmac](https://git.io/deepmac)
+*   Project website - [git.io/deepmac](https://google.github.io/deepmac/)
 
 ## Citation
 
