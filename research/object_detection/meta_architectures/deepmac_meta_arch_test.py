@@ -108,7 +108,8 @@ def build_meta_arch(**override_params):
       augmented_self_supervision_warmup_steps=0,
       augmented_self_supervision_loss='loss_dice',
       augmented_self_supervision_scale_min=1.0,
-      augmented_self_supervision_scale_max=1.0)
+      augmented_self_supervision_scale_max=1.0,
+      pointly_supervised_keypoint_loss_weight=1.0)
 
   params.update(override_params)
 
@@ -197,6 +198,7 @@ DEEPMAC_PROTO_TEXT = """
   augmented_self_supervision_flip_probability: 0.9
   augmented_self_supervision_scale_min: 0.42
   augmented_self_supervision_scale_max: 1.42
+  pointly_supervised_keypoint_loss_weight: 0.13
 
 """
 
@@ -225,6 +227,8 @@ class DeepMACUtilsTest(tf.test.TestCase, parameterized.TestCase):
         params.augmented_self_supervision_scale_min, 0.42)
     self.assertAlmostEqual(
         params.augmented_self_supervision_scale_max, 1.42)
+    self.assertAlmostEqual(
+        params.pointly_supervised_keypoint_loss_weight, 0.13)
 
   def test_subsample_trivial(self):
     """Test subsampling masks."""
@@ -1440,9 +1444,12 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
                            loss_at_100[loss_key].numpy())
 
   def test_loss_keys(self):
-    model = build_meta_arch(use_dice_loss=True,
-                            augmented_self_supervision_loss_weight=1.0,
-                            augmented_self_supervision_max_translation=0.5)
+    model = build_meta_arch(
+        use_dice_loss=True,
+        augmented_self_supervision_loss_weight=1.0,
+        augmented_self_supervision_max_translation=0.5,
+        predict_full_resolution_masks=True)
+
     prediction = {
         'preprocessed_inputs': tf.random.normal((3, 32, 32, 3)),
         'MASK_LOGITS_GT_BOXES': [tf.random.normal((3, 5, 8, 8))] * 2,
@@ -1457,7 +1464,9 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
             tf.convert_to_tensor([[0., 0., 1., 1.]] * 5)] * 3,
         groundtruth_classes_list=[tf.one_hot([1, 0, 1, 1, 1], depth=6)] * 3,
         groundtruth_weights_list=[tf.ones(5)] * 3,
-        groundtruth_masks_list=[tf.ones((5, 32, 32))] * 3)
+        groundtruth_masks_list=[tf.ones((5, 32, 32))] * 3,
+        groundtruth_keypoints_list=[tf.zeros((5, 10, 2))] * 3,
+        groundtruth_keypoint_depths_list=[tf.zeros((5, 10))] * 3)
     loss = model.loss(prediction, tf.constant([[32, 32, 3.0]]))
     self.assertGreater(loss['Loss/deep_mask_estimation'], 0.0)
 
@@ -1495,11 +1504,15 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     classes = [tf.one_hot([1, 0, 1, 1, 1], depth=6)]
     weights = [tf.ones(5)]
     masks = [tf.ones((5, 32, 32))]
+    keypoints = [tf.zeros((5, 10, 2))]
+    keypoint_depths = [tf.ones((5, 10))]
     model.provide_groundtruth(
         groundtruth_boxes_list=boxes,
         groundtruth_classes_list=classes,
         groundtruth_weights_list=weights,
-        groundtruth_masks_list=masks)
+        groundtruth_masks_list=masks,
+        groundtruth_keypoints_list=keypoints,
+        groundtruth_keypoint_depths_list=keypoint_depths)
     loss = model.loss(prediction, tf.constant([[32, 32, 3.0]]))
     self.assertGreater(loss['Loss/deep_mask_estimation'], 0.0)
 
@@ -1513,7 +1526,8 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
         deepmac_meta_arch.DEEP_MASK_BOX_CONSISTENCY: rng.uniform(1, 5),
         deepmac_meta_arch.DEEP_MASK_COLOR_CONSISTENCY: rng.uniform(1, 5),
         deepmac_meta_arch.DEEP_MASK_AUGMENTED_SELF_SUPERVISION: (
-            rng.uniform(1, 5))
+            rng.uniform(1, 5)),
+        deepmac_meta_arch.DEEP_MASK_POINTLY_SUPERVISED: rng.uniform(1, 5)
     }
 
     weighted_model = build_meta_arch(
@@ -1531,14 +1545,18 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
             loss_weights[deepmac_meta_arch.DEEP_MASK_COLOR_CONSISTENCY]),
         augmented_self_supervision_loss_weight=(
             loss_weights[deepmac_meta_arch.DEEP_MASK_AUGMENTED_SELF_SUPERVISION]
-            )
+            ),
+        pointly_supervised_keypoint_loss_weight=(
+            loss_weights[deepmac_meta_arch.DEEP_MASK_POINTLY_SUPERVISED])
         )
 
     weighted_model.provide_groundtruth(
         groundtruth_boxes_list=boxes,
         groundtruth_classes_list=classes,
         groundtruth_weights_list=weights,
-        groundtruth_masks_list=masks)
+        groundtruth_masks_list=masks,
+        groundtruth_keypoints_list=keypoints,
+        groundtruth_keypoint_depths_list=keypoint_depths)
 
     weighted_loss = weighted_model.loss(prediction, tf.constant([[32, 32, 3]]))
     for mask_loss in deepmac_meta_arch.MASK_LOSSES:
@@ -1612,6 +1630,36 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
                            loss_at_20[loss_key].numpy() / 2.0)
     self.assertAlmostEqual(loss_at_20[loss_key].numpy(),
                            loss_at_100[loss_key].numpy())
+
+  def test_pointly_supervised_loss(self):
+    tf.keras.backend.set_learning_phase(True)
+    model = build_meta_arch(
+        use_dice_loss=False,
+        predict_full_resolution_masks=True,
+        network_type='cond_inst1',
+        dim=9,
+        pixel_embedding_dim=8,
+        use_instance_embedding=False,
+        use_xy=False,
+        pointly_supervised_keypoint_loss_weight=1.0)
+
+    mask_logits = np.zeros((1, 1, 32, 32), dtype=np.float32)
+    keypoints = np.zeros((1, 1, 1, 2), dtype=np.float32)
+    keypoint_depths = np.zeros((1, 1, 1), dtype=np.float32)
+
+    keypoints[..., 0] = 0.5
+    keypoints[..., 1] = 0.5
+    keypoint_depths[..., 0] = 1.0
+    mask_logits[:, :, 16, 16] = 1.0
+
+    expected_loss = tf.nn.sigmoid_cross_entropy_with_logits(
+        logits=[[1.0]], labels=[[1.0]]
+    ).numpy()
+    loss = model._compute_pointly_supervised_loss_from_keypoints(
+        mask_logits, keypoints, keypoint_depths)
+
+    self.assertEqual(loss.shape, (1, 1))
+    self.assertAllClose(expected_loss, loss)
 
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')

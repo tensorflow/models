@@ -49,6 +49,7 @@ class DataConfig(cfg.DataConfig):
   cycle_length: int = 10
   drop_remainder: bool = True
   min_image_size: int = 256
+  zero_centering_image: bool = False
   is_multilabel: bool = False
   output_audio: bool = False
   audio_feature: str = ''

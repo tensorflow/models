@@ -128,6 +128,9 @@ def _process_image(image: tf.Tensor,
 
   # Self-supervised pre-training augmentations.
   if is_training and is_ssl:
+    if zero_centering_image:
+      image_1 = 0.5 * (image_1 + 1.0)
+      image_2 = 0.5 * (image_2 + 1.0)
     # Temporally consistent color jittering.
     image_1 = video_ssl_preprocess_ops.random_color_jitter_3d(image_1)
     image_2 = video_ssl_preprocess_ops.random_color_jitter_3d(image_2)
@@ -139,6 +142,8 @@ def _process_image(image: tf.Tensor,
     image_2 = video_ssl_preprocess_ops.random_solarization(image_2)
     image = tf.concat([image_1, image_2], axis=0)
     image = tf.clip_by_value(image, 0., 1.)
+    if zero_centering_image:
+      image = 2 * (image - 0.5)
 
   return image
 
@@ -233,7 +238,8 @@ class Parser(video_input.Parser):
         stride=self._stride,
         num_test_clips=self._num_test_clips,
         min_resize=self._min_resize,
-        crop_size=self._crop_size)
+        crop_size=self._crop_size,
+        zero_centering_image=self._zero_centering_image)
     image = tf.cast(image, dtype=self._dtype)
     features = {'image': image}
 
@@ -255,7 +261,8 @@ class Parser(video_input.Parser):
         num_test_clips=self._num_test_clips,
         min_resize=self._min_resize,
         crop_size=self._crop_size,
-        num_crops=self._num_crops)
+        num_crops=self._num_crops,
+        zero_centering_image=self._zero_centering_image)
     image = tf.cast(image, dtype=self._dtype)
     features = {'image': image}
 

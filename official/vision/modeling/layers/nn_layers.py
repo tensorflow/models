@@ -697,7 +697,7 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
   def call(self,
            inputs: tf.Tensor,
            states: Optional[States] = None,
-           output_states: bool = True
+           output_states: bool = False
            ) -> Union[tf.Tensor, Tuple[tf.Tensor, States]]:
     """Calls the layer with the given inputs.
 
@@ -813,13 +813,14 @@ class SpatialAveragePool3D(tf.keras.layers.Layer):
 
     super(SpatialAveragePool3D, self).build(input_shape)
 
-  def call(self, inputs):
+  def call(self, inputs, states=None, output_states: bool = False):
     """Calls the layer with the given inputs."""
     if inputs.shape.rank != 5:
       raise ValueError(
           'Input should have rank {}, got {}'.format(5, inputs.shape.rank))
 
-    return tf.reduce_mean(inputs, axis=(2, 3), keepdims=self._keepdims)
+    output = tf.reduce_mean(inputs, axis=(2, 3), keepdims=self._keepdims)
+    return (output, states) if output_states else output
 
 
 class CausalConvMixin:

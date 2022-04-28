@@ -12,19 +12,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""TensorFlow Model Garden Vision trainer.
-
-All custom registry are imported from registry_imports. Here we use default
-trainer so we directly call train.main. If you need to customize the trainer,
-branch from `official/vision/beta/train.py` and make changes.
-"""
-from absl import app
-
-from official.common import flags as tfm_flags
-from official.vision import train
-from official.vision.examples.starter import registry_imports  # pylint: disable=unused-import
-
-
-if __name__ == '__main__':
-  tfm_flags.define_flags()
-  app.run(train.main)

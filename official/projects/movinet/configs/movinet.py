@@ -53,6 +53,7 @@ class Movinet(hyperparams.Config):
   gating_activation: str = 'sigmoid'
   stochastic_depth_drop_rate: float = 0.2
   use_external_states: bool = False
+  average_pooling_type: str = '3d'
 
 
 @dataclasses.dataclass

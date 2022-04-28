@@ -403,7 +403,7 @@ message CenterNet {
 
 
   // Mask prediction support using DeepMAC. See https://arxiv.org/abs/2104.00613
-  // Next ID 33
+  // Next ID 34
   message DeepMACMaskEstimation {
     // The loss used for penalizing mask predictions.
     optional ClassificationLoss classification_loss = 1;
@@ -520,6 +520,17 @@ message CenterNet {
     optional float augmented_self_supervision_scale_min = 31 [default=1.0];
 
     optional float augmented_self_supervision_scale_max = 32 [default=1.0];
+
+    // The loss weight for the pointly supervised loss as defined in the paper
+    // https://arxiv.org/abs/2104.06404
+
+    // We assume that point supervision is given through a keypoint dataset,
+    // where each keypoint represents a sampled point, and its depth indicates
+    // whether it is a foreground or background point.
+    // Depth = +1 is assumed to be foreground and
+    // Depth = -1 is assumed to be background.
+    optional float pointly_supervised_keypoint_loss_weight = 33 [default = 0.0];
+
   }
 
   optional DeepMACMaskEstimation deepmac_mask_estimation = 14;
