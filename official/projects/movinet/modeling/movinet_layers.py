@@ -802,12 +802,14 @@ class StreamSqueezeExcitation(tf.keras.layers.Layer):
     states = dict(states) if states is not None else {}
 
     if self._se_type == '3d':
-      x, states = self._spatiotemporal_pool(inputs, states=states)
+      x, states = self._spatiotemporal_pool(
+          inputs, states=states, output_states=True)
     elif self._se_type == '2d':
       x = self._spatial_pool(inputs)
     elif self._se_type == '2plus3d':
       x_space = self._spatial_pool(inputs)
-      x, states = self._spatiotemporal_pool(x_space, states=states)
+      x, states = self._spatiotemporal_pool(
+          x_space, states=states, output_states=True)
 
       if not self._causal:
         x = tf.tile(x, [1, tf.shape(inputs)[1], 1, 1, 1])
@@ -1362,6 +1364,7 @@ class Head(tf.keras.layers.Layer):
       tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
+      average_pooling_type: str = '3d',
       state_prefix: Optional[str] = None,  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     """Implementation for video model head.
@@ -1378,6 +1381,8 @@ class Head(tf.keras.layers.Layer):
       batch_norm_layer: class to use for batch norm.
       batch_norm_momentum: momentum of the batch norm operation.
       batch_norm_epsilon: epsilon of the batch norm operation.
+      average_pooling_type: The average pooling type. Currently supporting
+        ['3d', '2d', 'none'].
       state_prefix: a prefix string to identify states.
       **kwargs: keyword arguments to be passed to this layer.
     """
@@ -1404,8 +1409,16 @@ class Head(tf.keras.layers.Layer):
         batch_norm_momentum=self._batch_norm_momentum,
         batch_norm_epsilon=self._batch_norm_epsilon,
         name='project')
-    self._pool = nn_layers.GlobalAveragePool3D(
-        keepdims=True, causal=False, state_prefix=state_prefix)
+    if average_pooling_type.lower() == '3d':
+      self._pool = nn_layers.GlobalAveragePool3D(
+          keepdims=True, causal=False, state_prefix=state_prefix)
+    elif average_pooling_type.lower() == '2d':
+      self._pool = nn_layers.SpatialAveragePool3D(keepdims=True)
+    elif average_pooling_type == 'none':
+      self._pool = None
+    else:
+      raise ValueError(
+          '%s average_pooling_type is not supported.' % average_pooling_type)
 
   def get_config(self):
     """Returns a dictionary containing the config used for initialization."""
@@ -1439,7 +1452,11 @@ class Head(tf.keras.layers.Layer):
     """
     states = dict(states) if states is not None else {}
     x = self._project(inputs)
-    return self._pool(x, states=states)
+    if self._pool is not None:
+      outputs = self._pool(x, states=states, output_states=True)
+    else:
+      outputs = x
+    return outputs
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
