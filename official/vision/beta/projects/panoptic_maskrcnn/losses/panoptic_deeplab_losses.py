@@ -14,7 +14,6 @@
 
 """Losses used for panoptic deeplab model."""
 
-# Import libraries
 import tensorflow as tf
 
 from official.modeling import tf_utils
@@ -109,6 +108,8 @@ class WeightedBootstrappedCrossEntropyLoss:
 
 
 class CenterHeatmapLoss:
+  """Center heatmap loss."""
+
   def __init__(self):
     self._loss_fn = tf.losses.mean_squared_error
 
@@ -127,6 +128,8 @@ class CenterHeatmapLoss:
     return tf_utils.safe_mean(loss)
 
 class CenterOffsetLoss:
+  """Center offset loss."""
+
   def __init__(self):
     self._loss_fn = tf.losses.mean_absolute_error
 
