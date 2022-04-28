@@ -35,13 +35,37 @@ YT8M_VAL_PATH = 'gs://youtube8m-ml/3/frame/validate/validate*.tfrecord'
 
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
-  """The base configuration for building datasets."""
+  """The base configuration for building datasets.
+
+  Attributes:
+    name: Dataset name.
+    split: dataset split, 'train' or 'valid'.
+    feature_sizes: shape(length) of each feature specified in the feature_names.
+    feature_names: names of the features in the tf.SequenceExample.
+    segment_size: Number of frames in each segment.
+    segment_labels: Use segment level label. Default: False, video level label.
+    include_video_id: `True` means include video id (string) in the input to
+      the model.
+    temporal_stride: Not used. Need to deprecated.
+    max_frames: Maxim Number of frames in a input example. It is used to crop
+      the input in the temporal dimension.
+    num_frames: Number of frames in a single input example.
+    num_classes: Number of classes to classify. Assuming it is a classification
+      task.
+    num_devices: Not used. To be deprecated.
+    input_path: The path to the input.
+    is_training: Whether this data is used for training or not.
+    num_examples: Number of examples in the dataset. It is used to compute the
+      steps for train or eval. set the value to `-1` to make the experiment run
+      until the end of dataset.
+  """
   name: Optional[str] = 'yt8m'
   split: Optional[str] = None
   feature_sizes: Tuple[int, ...] = (1024, 128)
   feature_names: Tuple[str, ...] = ('rgb', 'audio')
   segment_size: int = 1
   segment_labels: bool = False
+  include_video_id: bool = False
   temporal_stride: int = 1
   max_frames: int = 300
   num_frames: int = 300  # set smaller to allow random sample (Parser)
@@ -49,7 +73,6 @@ class DataConfig(cfg.DataConfig):
   num_devices: int = 1
   input_path: str = ''
   is_training: bool = True
-  random_seed: int = 123
   num_examples: int = -1
 
 

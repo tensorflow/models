@@ -81,13 +81,14 @@ def _process_segment_and_label(video_matrix, num_frames, contexts,
     num_frames: Number of frames per subclip.
     contexts: context information extracted from decoder
     segment_labels: if we read segment labels instead.
-    segment_size: the segment_size used for reading segments.
+    segment_size: the segment_size used for reading segments. Segment length.
     num_classes: a positive integer for the number of classes.
 
   Returns:
     output: dictionary containing batch information
   """
   # Partition frame-level feature matrix to segment-level feature matrix.
+  batch_video_ids = None
   if segment_labels:
     start_times = contexts["segment_start_times"].values
     # Here we assume all the segments that started at the same start time has
@@ -101,8 +102,9 @@ def _process_segment_and_label(video_matrix, num_frames, contexts,
     batch_video_matrix = tf.gather_nd(video_matrix,
                                       tf.expand_dims(range_mtx, axis=-1))
     num_segment = tf.shape(batch_video_matrix)[0]
-    batch_video_ids = tf.reshape(
-        tf.tile([contexts["id"]], [num_segment]), (num_segment,))
+    if "id" in contexts:
+      batch_video_ids = tf.reshape(
+          tf.tile([contexts["id"]], [num_segment]), (num_segment,))
     batch_frames = tf.reshape(
         tf.tile([segment_size], [num_segment]), (num_segment,))
     batch_frames = tf.cast(tf.expand_dims(batch_frames, 1), tf.float32)
@@ -134,18 +136,20 @@ def _process_segment_and_label(video_matrix, num_frames, contexts,
         sparse_labels, default_value=False, validate_indices=False)
 
     # convert to batch format.
-    batch_video_ids = tf.expand_dims(contexts["id"], 0)
+    if "id" in contexts:
+      batch_video_ids = tf.expand_dims(contexts["id"], 0)
     batch_video_matrix = tf.expand_dims(video_matrix, 0)
     batch_labels = tf.expand_dims(labels, 0)
     batch_frames = tf.expand_dims(num_frames, 0)
     batch_label_weights = None
 
   output_dict = {
-      "video_ids": batch_video_ids,
       "video_matrix": batch_video_matrix,
       "labels": batch_labels,
       "num_frames": batch_frames,
   }
+  if batch_video_ids is not None:
+    output_dict["video_ids"] = batch_video_ids
   if batch_label_weights is not None:
     output_dict["label_weights"] = batch_label_weights
 
@@ -280,12 +284,10 @@ class Parser(parser.Parser):
     self._num_classes = input_params.num_classes
     self._segment_size = input_params.segment_size
     self._segment_labels = input_params.segment_labels
+    self._include_video_id = input_params.include_video_id
     self._feature_names = input_params.feature_names
     self._feature_sizes = input_params.feature_sizes
-    self.stride = input_params.temporal_stride
     self._max_frames = input_params.max_frames
-    self._num_frames = input_params.num_frames
-    self._seed = input_params.random_seed
     self._max_quantized_value = max_quantized_value
     self._min_quantized_value = min_quantized_value
 
@@ -295,6 +297,8 @@ class Parser(parser.Parser):
     self.video_matrix, self.num_frames = _concat_features(
         decoded_tensors["features"], self._feature_names, self._feature_sizes,
         self._max_frames, self._max_quantized_value, self._min_quantized_value)
+    if not self._include_video_id:
+      del decoded_tensors["contexts"]["id"]
     output_dict = _process_segment_and_label(self.video_matrix, self.num_frames,
                                              decoded_tensors["contexts"],
                                              self._segment_labels,
@@ -308,6 +312,8 @@ class Parser(parser.Parser):
     self.video_matrix, self.num_frames = _concat_features(
         decoded_tensors["features"], self._feature_names, self._feature_sizes,
         self._max_frames, self._max_quantized_value, self._min_quantized_value)
+    if not self._include_video_id:
+      del decoded_tensors["contexts"]["id"]
     output_dict = _process_segment_and_label(self.video_matrix, self.num_frames,
                                              decoded_tensors["contexts"],
                                              self._segment_labels,
@@ -347,7 +353,7 @@ class PostBatchProcessor():
 
   def post_fn(self, batched_tensors):
     """Processes batched Tensors."""
-    video_ids = batched_tensors["video_ids"]
+    video_ids = batched_tensors.get("video_ids", None)
     video_matrix = batched_tensors["video_matrix"]
     labels = batched_tensors["labels"]
     num_frames = batched_tensors["num_frames"]
@@ -356,7 +362,8 @@ class PostBatchProcessor():
     if self.segment_labels:
       # [batch x num_segment x segment_size x num_features]
       # -> [batch * num_segment x segment_size x num_features]
-      video_ids = tf.reshape(video_ids, [-1])
+      if video_ids is not None:
+        video_ids = tf.reshape(video_ids, [-1])
       video_matrix = tf.reshape(video_matrix, [-1, self.segment_size, 1152])
       labels = tf.reshape(labels, [-1, self.num_classes])
       num_frames = tf.reshape(num_frames, [-1, 1])
@@ -369,11 +376,12 @@ class PostBatchProcessor():
       labels = tf.squeeze(labels)
 
     batched_tensors = {
-        "video_ids": video_ids,
         "video_matrix": video_matrix,
         "labels": labels,
         "num_frames": num_frames,
     }
+    if video_ids is not None:
+      batched_tensors["video_ids"] = video_ids
 
     if label_weights is not None:
       batched_tensors["label_weights"] = label_weights
@@ -388,6 +396,7 @@ class TransformBatcher():
     self._segment_labels = input_params.segment_labels
     self._global_batch_size = input_params.global_batch_size
     self._is_training = input_params.is_training
+    self._include_video_id = input_params.include_video_id
 
   def batch_fn(self, dataset, input_context):
     """Add padding when segment_labels is true."""
@@ -398,19 +407,20 @@ class TransformBatcher():
     else:
       # add padding
       pad_shapes = {
-          "video_ids": [None],
           "video_matrix": [None, None, None],
           "labels": [None, None],
           "num_frames": [None, None],
           "label_weights": [None, None]
       }
       pad_values = {
-          "video_ids": None,
           "video_matrix": 0.0,
           "labels": -1.0,
           "num_frames": 0.0,
           "label_weights": 0.0
       }
+      if self._include_video_id:
+        pad_shapes["video_ids"] = [None]
+        pad_values["video_ids"] = None
       dataset = dataset.padded_batch(
           per_replica_batch_size,
           padded_shapes=pad_shapes,

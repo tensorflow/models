@@ -38,9 +38,10 @@ class DbofModel(tf.keras.Model):
   def __init__(
       self,
       params: yt8m_cfg.DbofModel,
-      num_frames=30,
-      num_classes=3862,
-      input_specs=layers.InputSpec(shape=[None, None, 1152]),
+      num_frames: int = 30,
+      num_classes: int = 3862,
+      input_specs: layers.InputSpec = layers.InputSpec(
+          shape=[None, None, 1152]),
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       activation: str = "relu",
       use_sync_bn: bool = False,
