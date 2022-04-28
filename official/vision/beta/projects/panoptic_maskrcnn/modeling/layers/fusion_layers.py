@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Contains common building blocks for neural networks."""
+"""Contains feature fusion blocks for panoptic segmentation models."""
 from typing import Any, Callable, Dict, List, Mapping, Optional, Union
 
 import tensorflow as tf
