@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -52,9 +52,15 @@ class Parser(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class TfExampleDecoder(common.TfExampleDecoder):
+  """A simple TF Example decoder config."""
+  panoptic_category_mask_key: str = 'image/panoptic/category_mask'
+  panoptic_instance_mask_key: str = 'image/panoptic/instance_mask'
+
+@dataclasses.dataclass
 class DataDecoder(common.DataDecoder):
   """Data decoder config."""
-  simple_decoder: common.TfExampleDecoder = common.TfExampleDecoder()
+  simple_decoder: TfExampleDecoder = TfExampleDecoder()
 
 
 @dataclasses.dataclass
@@ -164,7 +170,7 @@ class PanopticDeeplabTask(cfg.TaskConfig):
   evaluation: Evaluation = Evaluation()
 
 
-@exp_factory.register_config_factory('panoptic_deeplab_coco')
+@exp_factory.register_config_factory('panoptic_deeplab_resnet_coco')
 def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
   """COCO panoptic segmentation with Panoptic Deeplab."""
   train_steps = 200000

@@ -90,7 +90,9 @@ class PanopticDeeplabTask(base_task.Task):
     
     if params.decoder.type == 'simple_decoder':
       decoder = panoptic_deeplab_input.TfExampleDecoder(
-          regenerate_source_id=decoder_cfg.regenerate_source_id)
+          regenerate_source_id=decoder_cfg.regenerate_source_id,
+          panoptic_category_mask_key=decoder_cfg.panoptic_category_mask_key,
+          panoptic_instance_mask_key=decoder_cfg.panoptic_instance_mask_key)
     else:
       raise ValueError('Unknown decoder type: {}!'.format(params.decoder.type))
 
