@@ -45,12 +45,16 @@ class SegmentationModule(export_base.ExportModule):
                                            offset=MEAN_RGB,
                                            scale=STDDEV_RGB)
 
-    image, image_info = preprocess_ops.resize_and_crop_image(
-        image,
-        self._input_image_size,
-        padded_size=self._input_image_size,
-        aug_scale_min=1.0,
-        aug_scale_max=1.0)
+    if self.params.task.train_data.preserve_aspect_ratio:
+      image, image_info = preprocess_ops.resize_and_crop_image(
+          image,
+          self._input_image_size,
+          padded_size=self._input_image_size,
+          aug_scale_min=1.0,
+          aug_scale_max=1.0)
+    else:
+      image, image_info = preprocess_ops.resize_image(image,
+                                                      self._input_image_size)
     return image, image_info
 
   def serve(self, images):
@@ -80,8 +84,27 @@ class SegmentationModule(export_base.ExportModule):
                 parallel_iterations=32))
 
     outputs = self.inference_step(images)
-    outputs['logits'] = tf.image.resize(
-        outputs['logits'], self._input_image_size, method='bilinear')
+
+    # Optionally resize prediction to the input image size.
+    if self.params.task.export_config.rescale_output:
+      logits = outputs['logits']
+      if logits.shape[0] != 1:
+        raise ValueError('Batch size cannot be more than 1.')
+
+      image_shape = tf.cast(image_info[0, 0, :], tf.int32)
+      if self.params.task.train_data.preserve_aspect_ratio:
+        rescale_size = tf.cast(
+            tf.math.ceil(image_info[0, 1, :] / image_info[0, 2, :]), tf.int32)
+        offsets = tf.cast(image_info[0, 3, :], tf.int32)
+        logits = tf.image.resize(logits, rescale_size, method='bilinear')
+        outputs['logits'] = tf.image.crop_to_bounding_box(
+            logits, offsets[0], offsets[1], image_shape[0], image_shape[1])
+      else:
+        outputs['logits'] = tf.image.resize(
+            logits, [image_shape[0], image_shape[1]], method='bilinear')
+    else:
+      outputs['logits'] = tf.image.resize(
+          outputs['logits'], self._input_image_size, method='bilinear')
 
     if image_info is not None:
       outputs.update({'image_info': image_info})

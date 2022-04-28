@@ -117,6 +117,12 @@ class Evaluation(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class ExportConfig(hyperparams.Config):
+  # Whether to rescale the predicted mask to the original image size.
+  rescale_output: bool = False
+
+
+@dataclasses.dataclass
 class SemanticSegmentationTask(cfg.TaskConfig):
   """The model config."""
   model: SemanticSegmentationModel = SemanticSegmentationModel()
@@ -131,6 +137,7 @@ class SemanticSegmentationTask(cfg.TaskConfig):
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: Union[
       str, List[str]] = 'all'  # all, backbone, and/or decoder
+  export_config: ExportConfig = ExportConfig()
 
 
 @exp_factory.register_config_factory('semantic_segmentation')
