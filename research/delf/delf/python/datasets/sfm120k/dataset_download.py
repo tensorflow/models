@@ -51,7 +51,7 @@ def download_train(data_dir):
     print('>> Image directory does not exist. Creating: {}'.format(dst_dir))
     tf.io.gfile.makedirs(dst_dir)
     print('>> Downloading ims.tar.gz...')
-    wget(src_file, dst_file, bar=False)
+    wget(src_file, dst_file, bar=True)
     print('>> Extracting {}...'.format(dst_file))
     downloaded_tar = tarfile.open(dst_file)
     downloaded_tar.extractall(dst_dir)
