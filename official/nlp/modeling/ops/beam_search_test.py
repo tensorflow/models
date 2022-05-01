@@ -94,6 +94,36 @@ class BeamSearchTests(tf.test.TestCase, parameterized.TestCase):
         dtype=tf.float32)
     self.assertAllEqual([[[0, 1, 0, 1], [0, 1, 1, 2]]], predictions)
 
+  def test_sequence_beam_search_with_truncated_prediction(self):
+      # batch_size*beam_size, max_decode_length, vocab_size
+      probabilities = tf.constant([[[0.2, 0.7, 0.1], [0.2, 0.3, 0.5], [0.1, 0.8, 0.1]]])
+      # batch_size, max_decode_length, num_heads, embed_size per head
+      x = tf.zeros([1, 3, 2, 32], dtype=tf.float32)
+      cache = {'layer_%d' % layer: {'k': x, 'v': x} for layer in range(2)}
+
+      def _get_test_symbols_to_logits_fn():
+          """Test function that returns logits for next token."""
+
+          def symbols_to_logits_fn(_, i, cache):
+              logits = tf.cast(probabilities[:, i, :], tf.float32)
+              return logits, cache
+
+          return symbols_to_logits_fn
+
+      predictions, _ = beam_search.sequence_beam_search(
+          symbols_to_logits_fn=_get_test_symbols_to_logits_fn(),
+          initial_ids=tf.zeros([1], dtype=tf.int32),
+          initial_cache=cache,
+          vocab_size=3,
+          beam_size=1,
+          alpha=0.6,
+          max_decode_length=3,
+          eos_id=2,
+          padded_decode=True,
+          pad_id=42,
+          dtype=tf.float32)
+      self.assertAllEqual([[[0, 1, 2, 42]]], predictions)
+
 
 if __name__ == '__main__':
   tf.test.main()
