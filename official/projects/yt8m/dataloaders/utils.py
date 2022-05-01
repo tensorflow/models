@@ -237,3 +237,30 @@ def MakeYt8mExample(num_segment: int = 5) -> tf.train.SequenceExample:
       seq_example, audio.tobytes(), key="audio", repeat_num=120)
 
   return seq_example
+
+
+# TODO(yeqing): Move the test related functions to test_utils.
+def MakeExampleWithFloatFeatures(
+    num_segment: int = 5) -> tf.train.SequenceExample:
+  """Generate fake data for unit tests."""
+  rgb = np.random.rand(1, 2048).astype(np.float32)
+  audio = np.random.rand(256).astype(np.float32)
+
+  seq_example = tf.train.SequenceExample()
+  seq_example.context.feature["id"].bytes_list.value[:] = [b"id001"]
+  seq_example.context.feature["labels"].int64_list.value[:] = [1, 2, 3, 4]
+  seq_example.context.feature["segment_labels"].int64_list.value[:] = (
+      [4] * num_segment)
+  seq_example.context.feature["segment_start_times"].int64_list.value[:] = [
+      i * 5 for i in range(num_segment)
+  ]
+  seq_example.context.feature["segment_scores"].float_list.value[:] = (
+      [0.] * num_segment)
+  seq_example.context.feature[
+      "VIDEO_EMBEDDING/context_feature/floats"].float_list.value[:] = (
+          audio.tolist())
+
+  tfexample_utils.put_float_list_to_feature(
+      seq_example, rgb.tolist(), key="FEATURE/feature/floats")
+
+  return seq_example

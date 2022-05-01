@@ -42,6 +42,9 @@ class DataConfig(cfg.DataConfig):
     split: dataset split, 'train' or 'valid'.
     feature_sizes: shape(length) of each feature specified in the feature_names.
     feature_names: names of the features in the tf.SequenceExample.
+    feature_sources: if the feature from 'context' or 'features'.
+    feature_dtypes: dtype of decoded feature.
+    feature_from_bytes: decode feature from bytes or as dtype list.
     segment_size: Number of frames in each segment.
     segment_labels: Use segment level label. Default: False, video level label.
     include_video_id: `True` means include video id (string) in the input to
@@ -58,11 +61,15 @@ class DataConfig(cfg.DataConfig):
     num_examples: Number of examples in the dataset. It is used to compute the
       steps for train or eval. set the value to `-1` to make the experiment run
       until the end of dataset.
+    file_type: type of input files.
   """
   name: Optional[str] = 'yt8m'
   split: Optional[str] = None
   feature_sizes: Tuple[int, ...] = (1024, 128)
   feature_names: Tuple[str, ...] = ('rgb', 'audio')
+  feature_sources: Tuple[str, ...] = ('feature', 'feature')
+  feature_dtypes: Tuple[str, ...] = ('uint8', 'uint8')
+  feature_from_bytes: Tuple[bool, ...] = (True, True)
   segment_size: int = 1
   segment_labels: bool = False
   include_video_id: bool = False
@@ -74,6 +81,7 @@ class DataConfig(cfg.DataConfig):
   input_path: str = ''
   is_training: bool = True
   num_examples: int = -1
+  file_type: str = 'tfrecord'
 
 
 def yt8m(is_training):
@@ -152,7 +160,7 @@ def add_trainer(
   experiment.task.train_data.global_batch_size = train_batch_size
   experiment.task.validation_data.global_batch_size = eval_batch_size
   steps_per_epoch = YT8M_TRAIN_EXAMPLES // train_batch_size
-  steps_per_loop = 30
+  steps_per_loop = 500
   experiment.trainer = cfg.TrainerConfig(
       steps_per_loop=steps_per_loop,
       summary_interval=steps_per_loop,
@@ -199,14 +207,16 @@ def yt8m_experiment() -> cfg.ExperimentConfig:
           'task.train_data.num_classes == task.validation_data.num_classes',
           'task.train_data.feature_sizes != None',
           'task.train_data.feature_names != None',
+          'task.train_data.feature_sources != None',
+          'task.train_data.feature_dtypes != None',
       ])
 
   # Per TPUv3 Core batch size 16GB HBM. `factor` in range(1, 26)
   factor = 1
-  num_cores = 32  # for TPU 4x4
+  num_cores = 32  # for TPUv3 4x4
   train_per_core_bs = 32 * factor
   train_bs = train_per_core_bs * num_cores
-  eval_per_core_bs = 32 * 50  # multiplier<=100
+  eval_per_core_bs = 4 * 50  # multiplier<=100
   eval_bs = eval_per_core_bs * num_cores
   # based lr=0.0001 for bs=512
   return add_trainer(
