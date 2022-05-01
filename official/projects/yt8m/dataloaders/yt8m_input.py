@@ -156,14 +156,15 @@ def _process_segment_and_label(video_matrix, num_frames, contexts,
   return output_dict
 
 
-def _get_video_matrix(features, feature_size, max_frames, max_quantized_value,
-                      min_quantized_value):
+def _get_video_matrix(features, feature_size, dtype, max_frames,
+                      max_quantized_value, min_quantized_value):
   """Decodes features from an input string and quantizes it.
 
   Args:
-    features: raw feature values
-    feature_size: length of each frame feature vector
-    max_frames: number of frames (rows) in the output feature_matrix
+    features: raw feature values.
+    feature_size: length of each frame feature vector.
+    dtype: raw type of the feature.
+    max_frames: number of frames (rows) in the output feature_matrix.
     max_quantized_value: the maximum of the quantized value.
     min_quantized_value: the minimum of the quantized value.
 
@@ -171,25 +172,27 @@ def _get_video_matrix(features, feature_size, max_frames, max_quantized_value,
     feature_matrix: matrix of all frame-features
     num_frames: number of frames in the sequence
   """
-  decoded_features = tf.reshape(
-      tf.cast(tf.io.decode_raw(features, tf.uint8), tf.float32),
-      [-1, feature_size])
+  decoded_features = tf.reshape(features, [-1, feature_size])
 
   num_frames = tf.math.minimum(tf.shape(decoded_features)[0], max_frames)
-  feature_matrix = utils.Dequantize(decoded_features, max_quantized_value,
-                                    min_quantized_value)
+  if dtype.is_integer:
+    feature_matrix = utils.Dequantize(decoded_features, max_quantized_value,
+                                      min_quantized_value)
+  else:
+    feature_matrix = decoded_features
   feature_matrix = resize_axis(feature_matrix, 0, max_frames)
   return feature_matrix, num_frames
 
 
-def _concat_features(features, feature_names, feature_sizes, max_frames,
-                     max_quantized_value, min_quantized_value):
+def _concat_features(features, feature_names, feature_sizes, feature_dtypes,
+                     max_frames, max_quantized_value, min_quantized_value):
   """Loads (potentially) different types of features and concatenates them.
 
   Args:
       features: raw feature values
       feature_names: list of feature names
       feature_sizes: list of features sizes
+      feature_dtypes: dtype of the feature.
       max_frames: number of frames in the sequence
       max_quantized_value: the maximum of the quantized value.
       min_quantized_value: the minimum of the quantized value.
@@ -205,17 +208,24 @@ def _concat_features(features, feature_names, feature_sizes, max_frames,
   assert len(feature_names) == len(feature_sizes), (
       "length of feature_names (={}) != length of feature_sizes (={})".format(
           len(feature_names), len(feature_sizes)))
+  assert len(feature_names) == len(feature_dtypes), (
+      "length of feature_names (={}) != length of feature_sizes (={})".format(
+          len(feature_names), len(feature_dtypes)))
 
   num_frames = -1  # the number of frames in the video
   feature_matrices = [None] * num_features  # an array of different features
-  for feature_index in range(num_features):
+  for i in range(num_features):
     feature_matrix, num_frames_in_this_feature = _get_video_matrix(
-        features[feature_names[feature_index]], feature_sizes[feature_index],
-        max_frames, max_quantized_value, min_quantized_value)
+        features[feature_names[i]],
+        feature_sizes[i],
+        tf.dtypes.as_dtype(feature_dtypes[i]),
+        max_frames,
+        max_quantized_value,
+        min_quantized_value)
     if num_frames == -1:
       num_frames = num_frames_in_this_feature
 
-    feature_matrices[feature_index] = feature_matrix
+    feature_matrices[i] = feature_matrix
 
   # cap the number of frames at self.max_frames
   num_frames = tf.minimum(num_frames, max_frames)
@@ -236,9 +246,21 @@ class Decoder(decoder.Decoder):
 
     self._segment_labels = input_params.segment_labels
     self._feature_names = input_params.feature_names
-    self._context_features = {
-        "id": tf.io.FixedLenFeature([], tf.string),
-    }
+    self._feature_sources = input_params.feature_sources
+    self._feature_sizes = input_params.feature_sizes
+    self._feature_dtypes = input_params.feature_dtypes
+    self._feature_from_bytes = input_params.feature_from_bytes
+    self._include_video_id = input_params.include_video_id
+
+    assert len(self._feature_names) == len(self._feature_sources), (
+        "length of feature_names (={}) != length of feature_sizes (={})".format(
+            len(self._feature_names), len(self._feature_sources)))
+
+    self._context_features = {}
+    self._sequence_features = {}
+    if self._include_video_id:
+      self._context_features["id"] = tf.io.FixedLenFeature([], tf.string)
+
     if self._segment_labels:
       self._context_features.update({
           # There is no need to read end-time given we always assume the segment
@@ -250,10 +272,23 @@ class Decoder(decoder.Decoder):
     else:
       self._context_features.update({"labels": tf.io.VarLenFeature(tf.int64)})
 
-    self._sequence_features = {
-        feature_name: tf.io.FixedLenSequenceFeature([], dtype=tf.string)
-        for feature_name in self._feature_names
-    }
+    for i, name in enumerate(self._feature_names):
+      if self._feature_from_bytes[i]:
+        feature_type = tf.io.FixedLenSequenceFeature([], dtype=tf.string)
+      else:
+        dtype = tf.dtypes.as_dtype(self._feature_dtypes[i])
+        feature_shape = [self._feature_sizes[i]]
+        if self._feature_sources[i] == "feature":
+          feature_type = tf.io.FixedLenSequenceFeature(feature_shape, dtype)
+        else:
+          feature_type = tf.io.FixedLenFeature(feature_shape, dtype)
+      if self._feature_sources[i] == "feature":
+        self._sequence_features[name] = feature_type
+      elif self._feature_sources[i] == "context":
+        self._context_features[name] = feature_type
+      else:
+        raise ValueError(
+            f"Unknow feature source {self._feature_sources[i]} for {name}")
 
   def decode(self, serialized_example):
     """Parses a single tf.Example into image and label tensors."""
@@ -263,7 +298,17 @@ class Decoder(decoder.Decoder):
         context_features=self._context_features,
         sequence_features=self._sequence_features)
 
-    return {"contexts": contexts, "features": features}
+    decoded_tensor = {**contexts, **features}
+    for i, name in enumerate(self._feature_names):
+      # Convert the VarLen feature to dense tensor.
+      if self._feature_from_bytes[i]:
+        dtype = tf.dtypes.as_dtype(self._feature_dtypes[i])
+        decoded_tensor[name] = tf.cast(
+            tf.io.decode_raw(decoded_tensor[name], dtype), tf.float32),
+      else:
+        if isinstance(decoded_tensor[name], tf.SparseTensor):
+          decoded_tensor[name] = tf.sparse.to_dense(decoded_tensor[name])
+    return decoded_tensor
 
 
 class Parser(parser.Parser):
@@ -287,6 +332,7 @@ class Parser(parser.Parser):
     self._include_video_id = input_params.include_video_id
     self._feature_names = input_params.feature_names
     self._feature_sizes = input_params.feature_sizes
+    self._feature_dtypes = input_params.feature_dtypes
     self._max_frames = input_params.max_frames
     self._max_quantized_value = max_quantized_value
     self._min_quantized_value = min_quantized_value
@@ -295,12 +341,13 @@ class Parser(parser.Parser):
     """Parses data for training."""
     # loads (potentially) different types of features and concatenates them
     self.video_matrix, self.num_frames = _concat_features(
-        decoded_tensors["features"], self._feature_names, self._feature_sizes,
-        self._max_frames, self._max_quantized_value, self._min_quantized_value)
-    if not self._include_video_id:
-      del decoded_tensors["contexts"]["id"]
+        decoded_tensors, self._feature_names, self._feature_sizes,
+        self._feature_dtypes, self._max_frames, self._max_quantized_value,
+        self._min_quantized_value)
+    if not self._include_video_id and "id" in decoded_tensors:
+      del decoded_tensors["id"]
     output_dict = _process_segment_and_label(self.video_matrix, self.num_frames,
-                                             decoded_tensors["contexts"],
+                                             decoded_tensors,
                                              self._segment_labels,
                                              self._segment_size,
                                              self._num_classes)
@@ -310,12 +357,13 @@ class Parser(parser.Parser):
     """Parses data for evaluation."""
     # loads (potentially) different types of features and concatenates them
     self.video_matrix, self.num_frames = _concat_features(
-        decoded_tensors["features"], self._feature_names, self._feature_sizes,
-        self._max_frames, self._max_quantized_value, self._min_quantized_value)
-    if not self._include_video_id:
-      del decoded_tensors["contexts"]["id"]
+        decoded_tensors, self._feature_names, self._feature_sizes,
+        self._feature_dtypes, self._max_frames, self._max_quantized_value,
+        self._min_quantized_value)
+    if not self._include_video_id and "id" in decoded_tensors:
+      del decoded_tensors["id"]
     output_dict = _process_segment_and_label(self.video_matrix, self.num_frames,
-                                             decoded_tensors["contexts"],
+                                             decoded_tensors,
                                              self._segment_labels,
                                              self._segment_size,
                                              self._num_classes)
