@@ -64,6 +64,10 @@ class SeparableConv2DQuantized(tf.keras.layers.Layer):
     # Depthwise conv input filters is always equal to output filters.
     # This filters argument only needed for the point-wise conv2d op.
     del dwconv_kwargs['filters']
+    dwconv_kwargs.update({
+        'activation': None,
+        'use_bias': False,
+    })
     self.dw_conv = depthwise_conv2d_quantized(name='dw', **dwconv_kwargs)
 
     conv_kwargs = self._conv_kwargs.copy()
