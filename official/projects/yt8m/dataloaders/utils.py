@@ -248,7 +248,9 @@ def MakeExampleWithFloatFeatures(
 
   seq_example = tf.train.SequenceExample()
   seq_example.context.feature["id"].bytes_list.value[:] = [b"id001"]
-  seq_example.context.feature["labels"].int64_list.value[:] = [1, 2, 3, 4]
+  seq_example.context.feature["clip/label/index"].int64_list.value[:] = [
+      1, 2, 3, 4
+  ]
   seq_example.context.feature["segment_labels"].int64_list.value[:] = (
       [4] * num_segment)
   seq_example.context.feature["segment_start_times"].int64_list.value[:] = [

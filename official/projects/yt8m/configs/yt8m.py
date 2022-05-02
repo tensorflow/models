@@ -45,6 +45,7 @@ class DataConfig(cfg.DataConfig):
     feature_sources: if the feature from 'context' or 'features'.
     feature_dtypes: dtype of decoded feature.
     feature_from_bytes: decode feature from bytes or as dtype list.
+    label_fields: name of field to read from tf.SequenceExample.
     segment_size: Number of frames in each segment.
     segment_labels: Use segment level label. Default: False, video level label.
     include_video_id: `True` means include video id (string) in the input to
@@ -70,6 +71,7 @@ class DataConfig(cfg.DataConfig):
   feature_sources: Tuple[str, ...] = ('feature', 'feature')
   feature_dtypes: Tuple[str, ...] = ('uint8', 'uint8')
   feature_from_bytes: Tuple[bool, ...] = (True, True)
+  label_field: str = 'labels'
   segment_size: int = 1
   segment_labels: bool = False
   include_video_id: bool = False

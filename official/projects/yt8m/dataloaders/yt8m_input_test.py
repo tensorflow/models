@@ -16,6 +16,7 @@ import os
 
 from absl import logging
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from official.core import input_reader
@@ -161,17 +162,25 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
     else:
       self.assertCountEqual(['video_matrix', 'labels', 'num_frames'],
                             example.keys())
-    batch_size = params.global_batch_size
+
+    # Check tensor values.
     expected_context = examples[0].context.feature[
         'VIDEO_EMBEDDING/context_feature/floats'].float_list.value
     expected_feature = examples[0].feature_lists.feature_list[
         'FEATURE/feature/floats'].feature[0].float_list.value
+    expected_labels = examples[0].context.feature[
+        params.label_field].int64_list.value
     self.assertAllEqual(
         expected_feature,
         example['video_matrix'][0, 0, params.feature_sizes[0]:])
     self.assertAllEqual(
         expected_context,
         example['video_matrix'][0, 0, :params.feature_sizes[0]])
+    self.assertAllEqual(
+        np.nonzero(example['labels'][0, :].numpy())[0], expected_labels)
+
+    # Check tensor shape.
+    batch_size = params.global_batch_size
     self.assertEqual(
         example['video_matrix'].shape.as_list(),
         [batch_size, params.max_frames, sum(params.feature_sizes)])
