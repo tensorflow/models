@@ -251,6 +251,7 @@ class Decoder(decoder.Decoder):
     self._feature_dtypes = input_params.feature_dtypes
     self._feature_from_bytes = input_params.feature_from_bytes
     self._include_video_id = input_params.include_video_id
+    self._label_field = input_params.label_field
 
     assert len(self._feature_names) == len(self._feature_sources), (
         "length of feature_names (={}) != length of feature_sizes (={})".format(
@@ -270,7 +271,8 @@ class Decoder(decoder.Decoder):
           "segment_scores": tf.io.VarLenFeature(tf.float32)
       })
     else:
-      self._context_features.update({"labels": tf.io.VarLenFeature(tf.int64)})
+      self._context_features.update(
+          {self._label_field: tf.io.VarLenFeature(tf.int64)})
 
     for i, name in enumerate(self._feature_names):
       if self._feature_from_bytes[i]:
@@ -308,6 +310,8 @@ class Decoder(decoder.Decoder):
       else:
         if isinstance(decoded_tensor[name], tf.SparseTensor):
           decoded_tensor[name] = tf.sparse.to_dense(decoded_tensor[name])
+    if not self._segment_labels:
+      decoded_tensor["labels"] = decoded_tensor[self._label_field]
     return decoded_tensor
 
 
