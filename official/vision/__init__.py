@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Vision package definition."""
-# Lint as: python3
 # pylint: disable=unused-import
 from official.vision import configs
 from official.vision import tasks

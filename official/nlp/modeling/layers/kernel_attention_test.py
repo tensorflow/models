@@ -30,9 +30,9 @@ _BEGIN_KERNEL = [0, 512]
 
 class KernelAttentionTest(tf.test.TestCase, parameterized.TestCase):
 
-  @parameterized.parameters(itertools.product(
-      _FEATURE_TRANSFORM, [127], _TRAINING, [True, False],
-      _IS_SHORT_SEQ, _BEGIN_KERNEL))
+  @parameterized.parameters(
+      itertools.product(_FEATURE_TRANSFORM, [127], _TRAINING, [True, False],
+                        _IS_SHORT_SEQ, _BEGIN_KERNEL))
   def test_attention_projection(
       self, feature_transform, num_random_features, training, redraw, is_short,
       begin_kernel):
@@ -89,6 +89,32 @@ class KernelAttentionTest(tf.test.TestCase, parameterized.TestCase):
         attention_mask=masks,
         training=training)
     self.assertEqual(output.shape, [batch_size, seq_length, key_dim])
+
+  @parameterized.parameters([128, 512])
+  def test_attention_scale_by_length(self, seq_length):
+    num_heads = 12
+    key_dim = 64
+    batch_size = 2
+    test_layer = attention.KernelAttention(
+        num_heads=num_heads,
+        key_dim=key_dim,
+        num_random_features=0,
+        scale_by_length=True)
+    query = tf.random.normal(
+        shape=(batch_size, seq_length, key_dim))
+    value = query
+    encoder_inputs_mask = tf.ones((batch_size, seq_length), dtype=tf.int32)
+    masks = tf.cast(encoder_inputs_mask, dtype=tf.float32)
+    output_scale_by_length = test_layer(
+        query=query, value=value, attention_mask=masks)
+
+    test_layer._scale_by_length = False
+    output_no_scale_by_length = test_layer(
+        query=query, value=value, attention_mask=masks)
+    if seq_length == 512:  # Equals because log(seq_length, base=512) = 1.0
+      self.assertAllClose(output_scale_by_length, output_no_scale_by_length)
+    else:
+      self.assertNotAllClose(output_scale_by_length, output_no_scale_by_length)
 
   def test_unsupported_feature_transform(self):
     with self.assertRaisesRegex(ValueError, 'Unsupported feature_transform.*'):

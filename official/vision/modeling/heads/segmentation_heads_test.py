@@ -30,7 +30,9 @@ class SegmentationHeadTest(parameterized.TestCase, tf.test.TestCase):
       (2, 'panoptic_fpn_fusion', 2, 5),
       (2, 'panoptic_fpn_fusion', 2, 6),
       (3, 'panoptic_fpn_fusion', 3, 5),
-      (3, 'panoptic_fpn_fusion', 3, 6))
+      (3, 'panoptic_fpn_fusion', 3, 6),
+      (3, 'deeplabv3plus', 3, 6),
+      (3, 'deeplabv3plus_sum_to_merge', 3, 6))
   def test_forward(self, level, feature_fusion,
                    decoder_min_level, decoder_max_level):
     backbone_features = {
@@ -52,6 +54,8 @@ class SegmentationHeadTest(parameterized.TestCase, tf.test.TestCase):
     head = segmentation_heads.SegmentationHead(
         num_classes=10,
         level=level,
+        low_level=decoder_min_level,
+        low_level_num_filters=64,
         feature_fusion=feature_fusion,
         decoder_min_level=decoder_min_level,
         decoder_max_level=decoder_max_level,

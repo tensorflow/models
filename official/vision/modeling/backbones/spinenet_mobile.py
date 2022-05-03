@@ -243,6 +243,7 @@ class SpineNetMobile(tf.keras.Model):
         in_filters=in_filters,
         out_filters=out_filters,
         strides=strides,
+        se_gating_activation='hard_sigmoid',
         se_ratio=se_ratio,
         expand_ratio=expand_ratio,
         stochastic_depth_drop_rate=stochastic_depth_drop_rate,
@@ -364,15 +365,21 @@ class SpineNetMobile(tf.keras.Model):
         parent_weights = [
             tf.nn.relu(tf.cast(tf.Variable(1.0, name='block{}_fusion{}'.format(
                 i, j)), dtype=dtype)) for j in range(len(parents))]
-        weights_sum = layers.Add()(parent_weights)
+        weights_sum = parent_weights[0]
+        for adder in parent_weights[1:]:
+          weights_sum = layers.Add()([weights_sum, adder])
+
         parents = [
             parents[i] * parent_weights[i] / (weights_sum + 0.0001)
             for i in range(len(parents))
         ]
 
       # Fuse all parent nodes then build a new block.
+      x = parents[0]
+      for adder in parents[1:]:
+        x = layers.Add()([x, adder])
       x = tf_utils.get_activation(
-          self._activation, use_keras_layer=True)(layers.Add()(parents))
+          self._activation, use_keras_layer=True)(x)
       x = self._block_group(
           inputs=x,
           in_filters=target_num_filters,

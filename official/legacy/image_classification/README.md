@@ -1,9 +1,9 @@
 # Image Classification
 
-**Warning:** the features in the `image_classification/` folder have been fully
-integrated into vision/beta. Please use the [new code base](../../vision/beta/README.md).
+**Warning:** the features in the `image_classification/` directory have been
+fully integrated into the [new code base](https://github.com/tensorflow/models/tree/benchmark/official/vision/modeling/backbones).
 
-This folder contains TF 2.0 model examples for image classification:
+This folder contains TF 2 model examples for image classification:
 
 * [MNIST](#mnist)
 * [Classifier Trainer](#classifier-trainer), a framework that uses the Keras
@@ -17,8 +17,7 @@ For more information about other types of models, please refer to this
 
 ## Before you begin
 Please make sure that you have the latest version of TensorFlow
-installed and
-[add the models folder to your Python path](/official/#running-the-models).
+installed and add the models folder to your Python path.
 
 ### ImageNet preparation
 
@@ -70,6 +69,7 @@ available GPUs at each host.
 To download the data and run the MNIST sample model locally for the first time,
 run one of the following command:
 
+<details>
 ```bash
 python3 mnist_main.py \
   --model_dir=$MODEL_DIR \
@@ -79,9 +79,11 @@ python3 mnist_main.py \
   --num_gpus=$NUM_GPUS \
   --download
 ```
+</details>
 
 To train the model on a Cloud TPU, run the following command:
 
+<details>
 ```bash
 python3 mnist_main.py \
   --tpu=$TPU_NAME \
@@ -91,9 +93,9 @@ python3 mnist_main.py \
   --distribution_strategy=tpu \
   --download
 ```
+</details>
 
 Note: the `--download` flag is only required the first time you run the model.
-
 
 ## Classifier Trainer
 The classifier trainer is a unified framework for running image classification
@@ -111,6 +113,8 @@ be 64 * 8 = 512, and for a v3-32, the global batch size is 64 * 32 = 2048.
 ### ResNet50
 
 #### On GPU:
+
+<details>
 ```bash
 python3 classifier_trainer.py \
   --mode=train_and_eval \
@@ -121,11 +125,14 @@ python3 classifier_trainer.py \
   --config_file=configs/examples/resnet/imagenet/gpu.yaml \
   --params_override='runtime.num_gpus=$NUM_GPUS'
 ```
+</details>
 
 To train on multiple hosts, each with GPUs attached using
 [MultiWorkerMirroredStrategy](https://www.tensorflow.org/api_docs/python/tf/distribute/experimental/MultiWorkerMirroredStrategy)
 please update `runtime` section in gpu.yaml
 (or override using `--params_override`) with:
+
+<details>
 
 ```YAML
 # gpu.yaml
@@ -135,12 +142,16 @@ runtime:
   num_gpus: $NUM_GPUS
   task_index: 0
 ```
+</details>
+
 By having `task_index: 0` on the first host and `task_index: 1` on the second
 and so on. `$HOST1` and `$HOST2` are the IP addresses of the hosts, and `port`
 can be chosen any free port on the hosts. Only the first host will write
 TensorBoard Summaries and save checkpoints.
 
 #### On TPU:
+
+<details>
 ```bash
 python3 classifier_trainer.py \
   --mode=train_and_eval \
@@ -152,9 +163,13 @@ python3 classifier_trainer.py \
   --config_file=configs/examples/resnet/imagenet/tpu.yaml
 ```
 
+</details>
+
 ### VGG-16
 
 #### On GPU:
+
+<details>
 ```bash
 python3 classifier_trainer.py \
   --mode=train_and_eval \
@@ -166,9 +181,13 @@ python3 classifier_trainer.py \
   --params_override='runtime.num_gpus=$NUM_GPUS'
 ```
 
+</details>
+
 ### EfficientNet
 **Note: EfficientNet development is a work in progress.**
 #### On GPU:
+
+<details>
 ```bash
 python3 classifier_trainer.py \
   --mode=train_and_eval \
@@ -180,8 +199,11 @@ python3 classifier_trainer.py \
   --params_override='runtime.num_gpus=$NUM_GPUS'
 ```
 
+</details>
 
 #### On TPU:
+
+<details>
 ```bash
 python3 classifier_trainer.py \
   --mode=train_and_eval \
@@ -192,6 +214,7 @@ python3 classifier_trainer.py \
   --data_dir=$DATA_DIR \
   --config_file=configs/examples/efficientnet/imagenet/efficientnet-b0-tpu.yaml
 ```
+</details>
 
 Note that the number of GPU devices can be overridden in the command line using
 `--params_overrides`. The TPU does not need this override as the device is fixed

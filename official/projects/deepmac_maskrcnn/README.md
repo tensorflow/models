@@ -107,7 +107,7 @@ SpienNet-143 | Hourglass-52 | `deep_mask_head_rcnn_voc_spinenet143_hg52.yaml` | 
 
 *   [DeepMAC model](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/deepmac.md)
     in the Object Detection API code base.
-*   Project website - [git.io/deepmac](https://git.io/deepmac)
+*   Project website - [git.io/deepmac](https://google.github.io/deepmac/)
 
 ## Citation
 

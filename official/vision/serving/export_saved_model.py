@@ -45,11 +45,12 @@ from official.vision.serving import export_saved_model_lib
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('experiment', None,
-                    'experiment type, e.g. retinanet_resnetfpn_coco')
-flags.DEFINE_string('export_dir', None, 'The export directory.')
-flags.DEFINE_string('checkpoint_path', None, 'Checkpoint path.')
-flags.DEFINE_multi_string(
+_EXPERIMENT = flags.DEFINE_string(
+    'experiment', None, 'experiment type, e.g. retinanet_resnetfpn_coco')
+_EXPORT_DIR = flags.DEFINE_string('export_dir', None, 'The export directory.')
+_CHECKPOINT_PATH = flags.DEFINE_string('checkpoint_path', None,
+                                       'Checkpoint path.')
+_CONFIG_FILE = flags.DEFINE_multi_string(
     'config_file',
     default=None,
     help='YAML/JSON files which specifies overrides. The override order '
@@ -58,49 +59,57 @@ flags.DEFINE_multi_string(
     'specified in Python. If the same parameter is specified in both '
     '`--config_file` and `--params_override`, `config_file` will be used '
     'first, followed by params_override.')
-flags.DEFINE_string(
+_PARAMS_OVERRIDE = flags.DEFINE_string(
     'params_override', '',
     'The JSON/YAML file or string which specifies the parameter to be overriden'
     ' on top of `config_file` template.')
-flags.DEFINE_integer('batch_size', None, 'The batch size.')
-flags.DEFINE_string(
+_BATCH_SIZSE = flags.DEFINE_integer('batch_size', None, 'The batch size.')
+_IMAGE_TYPE = flags.DEFINE_string(
     'input_type', 'image_tensor',
     'One of `image_tensor`, `image_bytes`, `tf_example` and `tflite`.')
-flags.DEFINE_string(
+_INPUT_IMAGE_SIZE = flags.DEFINE_string(
     'input_image_size', '224,224',
     'The comma-separated string of two integers representing the height,width '
     'of the input to the model.')
-flags.DEFINE_string('export_checkpoint_subdir', 'checkpoint',
-                    'The subdirectory for checkpoints.')
-flags.DEFINE_string('export_saved_model_subdir', 'saved_model',
-                    'The subdirectory for saved model.')
-flags.DEFINE_bool('log_model_flops_and_params', False,
-                  'If true, logs model flops and parameters.')
+_EXPORT_CHECKPOINT_SUBDIR = flags.DEFINE_string(
+    'export_checkpoint_subdir', 'checkpoint',
+    'The subdirectory for checkpoints.')
+_EXPORT_SAVED_MODEL_SUBDIR = flags.DEFINE_string(
+    'export_saved_model_subdir', 'saved_model',
+    'The subdirectory for saved model.')
+_LOG_MODEL_FLOPS_AND_PARAMS = flags.DEFINE_bool(
+    'log_model_flops_and_params', False,
+    'If true, logs model flops and parameters.')
+_INPUT_NAME = flags.DEFINE_string(
+    'input_name', None,
+    'Input tensor name in signature def. Default at None which'
+    'produces input tensor name `inputs`.')
 
 
 def main(_):
 
-  params = exp_factory.get_exp_config(FLAGS.experiment)
-  for config_file in FLAGS.config_file or []:
+  params = exp_factory.get_exp_config(_EXPERIMENT.value)
+  for config_file in _CONFIG_FILE.value or []:
     params = hyperparams.override_params_dict(
         params, config_file, is_strict=True)
-  if FLAGS.params_override:
+  if _PARAMS_OVERRIDE.value:
     params = hyperparams.override_params_dict(
-        params, FLAGS.params_override, is_strict=True)
+        params, _PARAMS_OVERRIDE.value, is_strict=True)
 
   params.validate()
   params.lock()
 
   export_saved_model_lib.export_inference_graph(
-      input_type=FLAGS.input_type,
-      batch_size=FLAGS.batch_size,
-      input_image_size=[int(x) for x in FLAGS.input_image_size.split(',')],
+      input_type=_IMAGE_TYPE.value,
+      batch_size=_BATCH_SIZSE.value,
+      input_image_size=[int(x) for x in _INPUT_IMAGE_SIZE.value.split(',')],
       params=params,
-      checkpoint_path=FLAGS.checkpoint_path,
-      export_dir=FLAGS.export_dir,
-      export_checkpoint_subdir=FLAGS.export_checkpoint_subdir,
-      export_saved_model_subdir=FLAGS.export_saved_model_subdir,
-      log_model_flops_and_params=FLAGS.log_model_flops_and_params)
+      checkpoint_path=_CHECKPOINT_PATH.value,
+      export_dir=_EXPORT_DIR.value,
+      export_checkpoint_subdir=_EXPORT_CHECKPOINT_SUBDIR.value,
+      export_saved_model_subdir=_EXPORT_SAVED_MODEL_SUBDIR.value,
+      log_model_flops_and_params=_LOG_MODEL_FLOPS_AND_PARAMS.value,
+      input_name=_INPUT_NAME.value)
 
 
 if __name__ == '__main__':

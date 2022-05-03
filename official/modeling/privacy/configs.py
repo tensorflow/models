@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Configs for differential privacy."""
+import dataclasses
 
 from official.modeling.hyperparams import base_config
 
 
+@dataclasses.dataclass
 class DifferentialPrivacyConfig(base_config.Config):
   # Applied to the gradients
   # Setting to a large number so nothing is clipped.

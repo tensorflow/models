@@ -861,8 +861,7 @@ class MobileNet(tf.keras.Model):
           net = block(net)
 
       elif block_def.block_fn == 'gpooling':
-        net = layers.GlobalAveragePooling2D()(net)
-        net = layers.Reshape((1, 1, net.shape[1]))(net)
+        net = layers.GlobalAveragePooling2D(keepdims=True)(net)
 
       else:
         raise ValueError('Unknown block type {} for layer {}'.format(

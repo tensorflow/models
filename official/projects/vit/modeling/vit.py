@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """VisionTransformer models."""
+
+import immutabledict
 import tensorflow as tf
 
 from official.modeling import activations
@@ -23,7 +25,7 @@ from official.vision.modeling.layers import nn_layers
 
 layers = tf.keras.layers
 
-VIT_SPECS = {
+VIT_SPECS = immutabledict.immutabledict({
     'vit-ti16':
         dict(
             hidden_size=192,
@@ -72,7 +74,7 @@ VIT_SPECS = {
             patch_size=14,
             transformer=dict(mlp_dim=8192, num_heads=16, num_layers=48),
         ),
-}
+})
 
 
 class AddPositionEmbs(tf.keras.layers.Layer):
@@ -172,6 +174,22 @@ class Encoder(tf.keras.layers.Layer):
       x = encoder_layer(x, training=training)
     x = self._norm(x)
     return x
+
+  def get_config(self):
+    config = {
+        'num_layers': self._num_layers,
+        'mlp_dim': self._mlp_dim,
+        'num_heads': self._num_heads,
+        'dropout_rate': self._dropout_rate,
+        'attention_dropout_rate': self._attention_dropout_rate,
+        'kernel_regularizer': self._kernel_regularizer,
+        'inputs_positions': self._inputs_positions,
+        'init_stochastic_depth_rate': self._init_stochastic_depth_rate,
+        'kernel_initializer': self._kernel_initializer,
+        'add_pos_embed': self._add_pos_embed,
+    }
+    base_config = super().get_config()
+    return base_config.update(config)
 
 
 class VisionTransformer(tf.keras.Model):

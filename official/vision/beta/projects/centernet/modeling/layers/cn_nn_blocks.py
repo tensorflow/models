@@ -18,7 +18,7 @@ from typing import List, Optional
 
 import tensorflow as tf
 
-from official.vision.beta.modeling.layers import nn_blocks
+from official.vision.modeling.layers import nn_blocks
 
 
 def _apply_blocks(inputs, blocks):

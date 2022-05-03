@@ -17,12 +17,12 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from official.vision.beta.configs import common
 from official.vision.beta.projects.centernet.configs import backbones
 from official.vision.beta.projects.centernet.modeling import centernet_model
 from official.vision.beta.projects.centernet.modeling.backbones import hourglass
 from official.vision.beta.projects.centernet.modeling.heads import centernet_head
 from official.vision.beta.projects.centernet.modeling.layers import detection_generator
+from official.vision.configs import common
 
 
 class CenterNetTest(parameterized.TestCase, tf.test.TestCase):

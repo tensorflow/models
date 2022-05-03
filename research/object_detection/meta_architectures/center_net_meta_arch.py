@@ -2676,7 +2676,8 @@ class CenterNetMetaArch(model.DetectionModel):
                use_depthwise=False,
                compute_heatmap_sparse=False,
                non_max_suppression_fn=None,
-               unit_height_conv=False):
+               unit_height_conv=False,
+               output_prediction_dict=False):
     """Initializes a CenterNet model.
 
     Args:
@@ -2722,6 +2723,8 @@ class CenterNetMetaArch(model.DetectionModel):
       non_max_suppression_fn: Optional Non Max Suppression function to apply.
       unit_height_conv: If True, Conv2Ds in prediction heads have asymmetric
         kernels with height=1.
+      output_prediction_dict: If true, combines all items from the dictionary
+        returned by predict() function into the output of postprocess().
     """
     assert object_detection_params or keypoint_params_dict
     # Shorten the name for convenience and better formatting.
@@ -2747,6 +2750,7 @@ class CenterNetMetaArch(model.DetectionModel):
 
     self._use_depthwise = use_depthwise
     self._compute_heatmap_sparse = compute_heatmap_sparse
+    self._output_prediction_dict = output_prediction_dict
 
     # subclasses may not implement the unit_height_conv arg, so only provide it
     # as a kwarg if it is True.
@@ -4110,6 +4114,10 @@ class CenterNetMetaArch(model.DetectionModel):
         fields.DetectionResultFields.num_detections: num_detections,
     }
 
+    if self._output_prediction_dict:
+      postprocess_dict.update(prediction_dict)
+      postprocess_dict['true_image_shapes'] = true_image_shapes
+
     boxes_strided = None
     if self._od_params:
       boxes_strided = (
@@ -4122,7 +4130,7 @@ class CenterNetMetaArch(model.DetectionModel):
 
       postprocess_dict.update({
           fields.DetectionResultFields.detection_boxes: boxes,
-          'detection_boxes_strided': boxes_strided
+          'detection_boxes_strided': boxes_strided,
       })
 
     if self._kp_params_dict:

@@ -129,9 +129,9 @@ class PanopticSegmentationModule(detection.DetectionModule):
     scores = tf.nn.softmax(masks, axis=-1)
     final_outputs.update({
         'detection_masks': detections['detection_masks'],
-        'masks': masks,
-        'scores': scores,
-        'classes': classes,
+        'semantic_logits': masks,
+        'semantic_scores': scores,
+        'semantic_classes': classes,
         'image_info': image_info
     })
     if model_params.generate_panoptic_masks:

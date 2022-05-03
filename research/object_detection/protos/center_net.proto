@@ -11,7 +11,7 @@ import "object_detection/protos/preprocessor.proto";
 // Points" paper [1]
 // [1]: https://arxiv.org/abs/1904.07850
 
-// Next Id = 16
+// Next Id = 26
 message CenterNet {
   // Number of classes to predict.
   optional int32 num_classes = 1;
@@ -403,7 +403,7 @@ message CenterNet {
 
 
   // Mask prediction support using DeepMAC. See https://arxiv.org/abs/2104.00613
-  // Next ID 25
+  // Next ID 34
   message DeepMACMaskEstimation {
     // The loss used for penalizing mask predictions.
     optional ClassificationLoss classification_loss = 1;
@@ -504,6 +504,33 @@ message CenterNet {
     //   within error bars.
 
     optional bool use_only_last_stage = 24 [default = false];
+
+    optional float augmented_self_supervision_max_translation = 25 [default=0.0];
+
+    optional float augmented_self_supervision_flip_probability = 26 [default=0.0];
+
+    optional float augmented_self_supervision_loss_weight = 27 [default=0.0];
+
+    optional int32 augmented_self_supervision_warmup_start = 28 [default=0];
+
+    optional int32 augmented_self_supervision_warmup_steps = 29 [default=0];
+
+    optional  AugmentedSelfSupervisionLoss augmented_self_supervision_loss = 30 [default=LOSS_DICE];
+
+    optional float augmented_self_supervision_scale_min = 31 [default=1.0];
+
+    optional float augmented_self_supervision_scale_max = 32 [default=1.0];
+
+    // The loss weight for the pointly supervised loss as defined in the paper
+    // https://arxiv.org/abs/2104.06404
+
+    // We assume that point supervision is given through a keypoint dataset,
+    // where each keypoint represents a sampled point, and its depth indicates
+    // whether it is a foreground or background point.
+    // Depth = +1 is assumed to be foreground and
+    // Depth = -1 is assumed to be background.
+    optional float pointly_supervised_keypoint_loss_weight = 33 [default = 0.0];
+
   }
 
   optional DeepMACMaskEstimation deepmac_mask_estimation = 14;
@@ -514,12 +541,23 @@ message CenterNet {
   // from CenterNet. Use this optional parameter to apply traditional non max
   // suppression and score thresholding.
   optional PostProcessing post_processing = 24;
+
+  // If set, dictionary items returned by the predict() function
+  // are appended to the output of postprocess().
+  optional bool output_prediction_dict = 25 [default = false];
 }
 
 enum LossNormalize {
   NORMALIZE_AUTO = 0;  // SUM for 2D inputs (dice loss) and MEAN for others.
   NORMALIZE_GROUNDTRUTH_COUNT = 1;
   NORMALIZE_BALANCED = 3;
+}
+
+enum AugmentedSelfSupervisionLoss {
+  LOSS_UNSET = 0;
+  LOSS_DICE = 1;
+  LOSS_MSE = 2;
+  LOSS_KL_DIV = 3;
 }
 
 message CenterNetFeatureExtractor {

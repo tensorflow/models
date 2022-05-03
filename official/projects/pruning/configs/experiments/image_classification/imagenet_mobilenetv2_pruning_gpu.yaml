@@ -18,12 +18,12 @@ task:
     one_hot: true
     label_smoothing: 0.1
   train_data:
-    input_path: '/readahead/200M/placer/prod/home/distbelief/imagenet-tensorflow/imagenet-2012-tfrecord/train*'
+    input_path: 'imagenet-2012-tfrecord/train*'
     is_training: true
     global_batch_size: 1024
     dtype: 'float32'
   validation_data:
-    input_path: '/readahead/200M/placer/prod/home/distbelief/imagenet-tensorflow/imagenet-2012-tfrecord/valid*'
+    input_path: 'imagenet-2012-tfrecord/valid*'
     is_training: false
     global_batch_size: 1024
     dtype: 'float32'

@@ -68,6 +68,11 @@ flags.DEFINE_boolean(
     'default: False.')
 flags.DEFINE_string('output_file_prefix', '/tmp/train', 'Path to output file')
 flags.DEFINE_integer('num_shards', 32, 'Number of shards for output file.')
+_NUM_PROCESSES = flags.DEFINE_integer(
+    'num_processes', None,
+    ('Number of parallel processes to use. '
+     'If set to 0, disables multi-processing.'))
+
 
 FLAGS = flags.FLAGS
 
@@ -518,7 +523,8 @@ def _create_tf_record_from_coco_annotations(images_info_file,
       include_masks=include_masks)
 
   num_skipped = tfrecord_lib.write_tf_record_dataset(
-      output_path, coco_annotations_iter, create_tf_example, num_shards)
+      output_path, coco_annotations_iter, create_tf_example, num_shards,
+      multiple_processes=_NUM_PROCESSES.value)
 
   logging.info('Finished writing, skipped %d annotations.', num_skipped)
 

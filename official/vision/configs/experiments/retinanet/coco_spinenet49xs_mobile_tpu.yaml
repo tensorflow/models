@@ -1,4 +1,5 @@
 # --experiment_type=retinanet_mobile_coco
+# COCO mAP: 16.8
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
@@ -26,7 +27,7 @@ task:
     max_level: 7
     min_level: 3
     norm_activation:
-      activation: 'swish'
+      activation: 'hard_swish'
       norm_epsilon: 0.001
       norm_momentum: 0.99
       use_sync_bn: true

@@ -12,49 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import json
 import os
 
 from absl import flags
 from absl.testing import flagsaver
-import numpy as np
+from absl.testing import parameterized
 import tensorflow as tf
 from official.projects.yt8m import train as train_lib
+from official.projects.yt8m.dataloaders import utils
 from official.vision.dataloaders import tfexample_utils
 
 FLAGS = flags.FLAGS
 
 
-def make_yt8m_example():
-  rgb = np.random.randint(low=256, size=1024, dtype=np.uint8)
-  audio = np.random.randint(low=256, size=128, dtype=np.uint8)
-
-  seq_example = tf.train.SequenceExample()
-  seq_example.context.feature['id'].bytes_list.value[:] = [b'id001']
-  seq_example.context.feature['labels'].int64_list.value[:] = [1, 2, 3, 4]
-  tfexample_utils.put_bytes_list_to_feature(
-      seq_example, rgb.tobytes(), key='rgb', repeat_num=120)
-  tfexample_utils.put_bytes_list_to_feature(
-      seq_example, audio.tobytes(), key='audio', repeat_num=120)
-
-  return seq_example
-
-
-class TrainTest(tf.test.TestCase):
+class TrainTest(parameterized.TestCase, tf.test.TestCase):
 
   def setUp(self):
-    super(TrainTest, self).setUp()
+    super().setUp()
     self._model_dir = os.path.join(self.get_temp_dir(), 'model_dir')
     tf.io.gfile.makedirs(self._model_dir)
 
     data_dir = os.path.join(self.get_temp_dir(), 'data')
     tf.io.gfile.makedirs(data_dir)
     self._data_path = os.path.join(data_dir, 'data.tfrecord')
-    examples = [make_yt8m_example() for _ in range(8)]
+    examples = [utils.MakeYt8mExample() for _ in range(8)]
     tfexample_utils.dump_to_tfrecord(self._data_path, tf_examples=examples)
 
-  def test_run(self):
+  @parameterized.named_parameters(
+      dict(testcase_name='segment', use_segment_level_labels=True),
+      dict(testcase_name='video', use_segment_level_labels=False))
+  def test_train_and_eval(self, use_segment_level_labels):
     saved_flag_values = flagsaver.save_flag_values()
     train_lib.tfm_flags.define_flags()
     FLAGS.mode = 'train'
@@ -87,6 +75,7 @@ class TrainTest(tf.test.TestCase):
             },
             'validation_data': {
                 'input_path': self._data_path,
+                'segment_labels': use_segment_level_labels,
                 'global_batch_size': 4,
             }
         }

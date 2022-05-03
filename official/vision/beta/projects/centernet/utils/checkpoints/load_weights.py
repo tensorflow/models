@@ -14,11 +14,11 @@
 
 """Functions used to load the ODAPI CenterNet checkpoint."""
 
-from official.vision.beta.modeling.backbones import mobilenet
-from official.vision.beta.modeling.layers import nn_blocks
 from official.vision.beta.projects.centernet.modeling.layers import cn_nn_blocks
 from official.vision.beta.projects.centernet.utils.checkpoints import config_classes
 from official.vision.beta.projects.centernet.utils.checkpoints import config_data
+from official.vision.modeling.backbones import mobilenet
+from official.vision.modeling.layers import nn_blocks
 
 Conv2DBNCFG = config_classes.Conv2DBNCFG
 HeadConvCFG = config_classes.HeadConvCFG

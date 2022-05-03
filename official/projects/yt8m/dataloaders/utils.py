@@ -15,8 +15,9 @@
 """Contains a collection of util functions for training and evaluating."""
 
 from absl import logging
-import numpy
+import numpy as np
 import tensorflow as tf
+from official.vision.dataloaders import tfexample_utils
 
 
 def Dequantize(feat_vector, max_quantized_value=2, min_quantized_value=-2):
@@ -113,7 +114,7 @@ def AddEpochSummary(summary_writer,
   avg_loss = epoch_info_dict["avg_loss"]
   aps = epoch_info_dict["aps"]
   gap = epoch_info_dict["gap"]
-  mean_ap = numpy.mean(aps)
+  mean_ap = np.mean(aps)
 
   summary_writer.add_summary(
       MakeSummary("Epoch/" + summary_scope + "_Avg_Hit@1", avg_hit_at_one),
@@ -213,3 +214,55 @@ def CombineGradients(tower_grads):
     ))
 
   return final_grads
+
+
+def MakeYt8mExample(num_segment: int = 5) -> tf.train.SequenceExample:
+  """Generate fake data for unit tests."""
+  rgb = np.random.randint(low=256, size=1024, dtype=np.uint8)
+  audio = np.random.randint(low=256, size=128, dtype=np.uint8)
+
+  seq_example = tf.train.SequenceExample()
+  seq_example.context.feature["id"].bytes_list.value[:] = [b"id001"]
+  seq_example.context.feature["labels"].int64_list.value[:] = [1, 2, 3, 4]
+  seq_example.context.feature["segment_labels"].int64_list.value[:] = (
+      [4] * num_segment)
+  seq_example.context.feature["segment_start_times"].int64_list.value[:] = [
+      i * 5 for i in range(num_segment)
+  ]
+  seq_example.context.feature["segment_scores"].float_list.value[:] = (
+      [0.] * num_segment)
+  tfexample_utils.put_bytes_list_to_feature(
+      seq_example, rgb.tobytes(), key="rgb", repeat_num=120)
+  tfexample_utils.put_bytes_list_to_feature(
+      seq_example, audio.tobytes(), key="audio", repeat_num=120)
+
+  return seq_example
+
+
+# TODO(yeqing): Move the test related functions to test_utils.
+def MakeExampleWithFloatFeatures(
+    num_segment: int = 5) -> tf.train.SequenceExample:
+  """Generate fake data for unit tests."""
+  rgb = np.random.rand(1, 2048).astype(np.float32)
+  audio = np.random.rand(256).astype(np.float32)
+
+  seq_example = tf.train.SequenceExample()
+  seq_example.context.feature["id"].bytes_list.value[:] = [b"id001"]
+  seq_example.context.feature["clip/label/index"].int64_list.value[:] = [
+      1, 2, 3, 4
+  ]
+  seq_example.context.feature["segment_labels"].int64_list.value[:] = (
+      [4] * num_segment)
+  seq_example.context.feature["segment_start_times"].int64_list.value[:] = [
+      i * 5 for i in range(num_segment)
+  ]
+  seq_example.context.feature["segment_scores"].float_list.value[:] = (
+      [0.] * num_segment)
+  seq_example.context.feature[
+      "VIDEO_EMBEDDING/context_feature/floats"].float_list.value[:] = (
+          audio.tolist())
+
+  tfexample_utils.put_float_list_to_feature(
+      seq_example, rgb.tolist(), key="FEATURE/feature/floats")
+
+  return seq_example

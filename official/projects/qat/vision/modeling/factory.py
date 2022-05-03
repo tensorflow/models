@@ -20,12 +20,14 @@ import tensorflow as tf
 import tensorflow_model_optimization as tfmot
 from official.projects.qat.vision.configs import common
 from official.projects.qat.vision.modeling import segmentation_model as qat_segmentation_model
+from official.projects.qat.vision.modeling.heads import dense_prediction_heads as dense_prediction_heads_qat
 from official.projects.qat.vision.n_bit import schemes as n_bit_schemes
 from official.projects.qat.vision.quantization import schemes
 from official.vision import configs
 from official.vision.modeling import classification_model
 from official.vision.modeling import retinanet_model
 from official.vision.modeling.decoders import aspp
+from official.vision.modeling.heads import dense_prediction_heads
 from official.vision.modeling.heads import segmentation_heads
 from official.vision.modeling.layers import nn_layers
 
@@ -148,10 +150,17 @@ def build_qat_retinanet(
     optimized_backbone = tfmot.quantization.keras.quantize_apply(
         annotated_backbone,
         scheme=schemes.Default8BitQuantizeScheme())
+    head = model.head
+    if quantization.quantize_detection_head:
+      if not isinstance(head, dense_prediction_heads.RetinaNetHead):
+        raise ValueError('Currently only supports RetinaNetHead.')
+      head = (
+          dense_prediction_heads_qat.RetinaNetHeadQuantized.from_config(
+              head.get_config()))
   optimized_model = retinanet_model.RetinaNetModel(
       optimized_backbone,
       model.decoder,
-      model.head,
+      head,
       model.detection_generator,
       min_level=model_config.min_level,
       max_level=model_config.max_level,
