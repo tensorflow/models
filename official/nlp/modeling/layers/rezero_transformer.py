@@ -18,6 +18,7 @@
 import gin
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling.layers import util
 
 
@@ -121,8 +122,6 @@ class ReZeroTransformer(tf.keras.layers.Layer):
           "heads (%d)" % (hidden_size, self._num_heads))
     self._attention_head_size = int(hidden_size // self._num_heads)
     common_kwargs = dict(
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
@@ -133,6 +132,8 @@ class ReZeroTransformer(tf.keras.layers.Layer):
         key_dim=self._attention_head_size,
         dropout=self._attention_dropout_rate,
         name="self_attention",
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     if self._use_layer_norm:
@@ -149,6 +150,8 @@ class ReZeroTransformer(tf.keras.layers.Layer):
         output_shape=(None, self._intermediate_size),
         bias_axes="d",
         name="intermediate",
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
     policy = tf.keras.mixed_precision.global_policy()
     if policy.name == "mixed_bfloat16":
@@ -163,6 +166,8 @@ class ReZeroTransformer(tf.keras.layers.Layer):
         output_shape=(None, hidden_size),
         bias_axes="d",
         name="output",
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
     self._output_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     if self._use_layer_norm:

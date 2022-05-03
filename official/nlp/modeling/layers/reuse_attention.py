@@ -22,6 +22,8 @@ import string
 import numpy as np
 import tensorflow as tf
 
+from official.modeling import tf_utils
+
 
 _CHR_IDX = string.ascii_lowercase
 
@@ -347,8 +349,6 @@ class ReuseMultiHeadAttention(tf.keras.layers.Layer):
       self._key_shape = tf.TensorShape(key)
 
     common_kwargs = dict(
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
@@ -368,6 +368,10 @@ class ReuseMultiHeadAttention(tf.keras.layers.Layer):
                 self._num_heads - self._reuse_heads, self._key_dim]),
             bias_axes=bias_axes if self._use_bias else None,
             name="query",
+            kernel_initializer=tf_utils.clone_initializer(
+                self._kernel_initializer),
+            bias_initializer=tf_utils.clone_initializer(
+                self._bias_initializer),
             **common_kwargs)
         einsum_equation, bias_axes, output_rank = _build_proj_equation(
             self._key_shape.rank - 1, bound_dims=1, output_dims=2)
@@ -377,6 +381,10 @@ class ReuseMultiHeadAttention(tf.keras.layers.Layer):
                 self._num_heads - self._reuse_heads, self._key_dim]),
             bias_axes=bias_axes if self._use_bias else None,
             name="key",
+            kernel_initializer=tf_utils.clone_initializer(
+                self._kernel_initializer),
+            bias_initializer=tf_utils.clone_initializer(
+                self._bias_initializer),
             **common_kwargs)
       einsum_equation, bias_axes, output_rank = _build_proj_equation(
           self._value_shape.rank - 1, bound_dims=1, output_dims=2)
@@ -389,6 +397,10 @@ class ReuseMultiHeadAttention(tf.keras.layers.Layer):
                 output_rank - 1, [self._reuse_heads, self._value_dim]),
             bias_axes=bias_axes if self._use_bias else None,
             name="value_reuse",
+            kernel_initializer=tf_utils.clone_initializer(
+                self._kernel_initializer),
+            bias_initializer=tf_utils.clone_initializer(
+                self._bias_initializer),
             **common_kwargs))
       if self._reuse_heads < self._num_heads:
         self._value_dense.append(tf.keras.layers.experimental.EinsumDense(
@@ -397,6 +409,10 @@ class ReuseMultiHeadAttention(tf.keras.layers.Layer):
                 self._num_heads - self._reuse_heads, self._value_dim]),
             bias_axes=bias_axes if self._use_bias else None,
             name="value_new",
+            kernel_initializer=tf_utils.clone_initializer(
+                self._kernel_initializer),
+            bias_initializer=tf_utils.clone_initializer(
+                self._bias_initializer),
             **common_kwargs))
 
       # Builds the attention computations for multi-head dot product attention.
@@ -439,6 +455,10 @@ class ReuseMultiHeadAttention(tf.keras.layers.Layer):
         output_shape=_get_output_shape(output_rank - 1, output_shape),
         bias_axes=bias_axes if (use_bias and self._use_bias) else None,
         name=name,
+        kernel_initializer=tf_utils.clone_initializer(
+            self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(
+            self._bias_initializer),
         **common_kwargs)
 
   def _build_attention(self, rank):

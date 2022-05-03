@@ -18,6 +18,7 @@ from absl import logging
 
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling import layers
 from official.nlp.modeling.layers import transformer_xl
 
@@ -507,7 +508,7 @@ class XLNetBase(tf.keras.layers.Layer):
     self._embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=self._vocab_size,
         embedding_width=embedding_width,
-        initializer=self._initializer,
+        initializer=tf_utils.clone_initializer(self._initializer),
         dtype=tf.float32,
         name="word_embedding")
     self._dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
@@ -666,7 +667,7 @@ class XLNetBase(tf.keras.layers.Layer):
             shape=[self._num_layers, 2, self._num_attention_heads,
                    self._head_size],
             dtype=tf.float32,
-            initializer=self._initializer)
+            initializer=tf_utils.clone_initializer(self._initializer))
 
       segment_embedding = self._segment_embedding
       segment_matrix = _compute_segment_matrix(

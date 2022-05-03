@@ -97,13 +97,13 @@ class PackedSequenceEmbedding(tf.keras.Model):
     embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=vocab_size,
         embedding_width=embedding_width,
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(initializer),
         name='word_embeddings')
     word_embeddings = embedding_layer(word_ids)
 
     # Always uses dynamic slicing for simplicity.
     position_embedding_layer = PositionEmbeddingWithSubSeqMask(
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(initializer),
         use_dynamic_slicing=True,
         max_sequence_length=max_seq_length,
         name='position_embedding')
@@ -114,7 +114,7 @@ class PackedSequenceEmbedding(tf.keras.Model):
         layers.OnDeviceEmbedding(
             vocab_size=type_vocab_size,
             embedding_width=embedding_width,
-            initializer=initializer,
+            initializer=tf_utils.clone_initializer(initializer),
             use_one_hot=True,
             name='type_embeddings')(type_ids))
 
@@ -132,7 +132,7 @@ class PackedSequenceEmbedding(tf.keras.Model):
           '...x,xy->...y',
           output_shape=hidden_size,
           bias_axes=None,
-          kernel_initializer=initializer,
+          kernel_initializer=tf_utils.clone_initializer(initializer),
           name='embedding_projection')(
               embeddings)
 

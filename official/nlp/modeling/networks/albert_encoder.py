@@ -18,6 +18,7 @@ import collections
 import tensorflow as tf
 
 from official.modeling import activations
+from official.modeling import tf_utils
 from official.nlp.modeling import layers
 
 
@@ -92,13 +93,13 @@ class AlbertEncoder(tf.keras.Model):
     embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=vocab_size,
         embedding_width=embedding_width,
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(initializer),
         name='word_embeddings')
     word_embeddings = embedding_layer(word_ids)
 
     # Always uses dynamic slicing for simplicity.
     position_embedding_layer = layers.PositionEmbedding(
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(initializer),
         max_length=max_sequence_length,
         name='position_embedding')
     position_embeddings = position_embedding_layer(word_embeddings)
@@ -107,7 +108,7 @@ class AlbertEncoder(tf.keras.Model):
         layers.OnDeviceEmbedding(
             vocab_size=type_vocab_size,
             embedding_width=embedding_width,
-            initializer=initializer,
+            initializer=tf_utils.clone_initializer(initializer),
             use_one_hot=True,
             name='type_embeddings')(type_ids))
 
@@ -127,7 +128,7 @@ class AlbertEncoder(tf.keras.Model):
           '...x,xy->...y',
           output_shape=hidden_size,
           bias_axes='y',
-          kernel_initializer=initializer,
+          kernel_initializer=tf_utils.clone_initializer(initializer),
           name='embedding_projection')(
               embeddings)
 
@@ -139,7 +140,7 @@ class AlbertEncoder(tf.keras.Model):
         inner_activation=activation,
         output_dropout=dropout_rate,
         attention_dropout=attention_dropout_rate,
-        kernel_initializer=initializer,
+        kernel_initializer=tf_utils.clone_initializer(initializer),
         name='transformer')
     encoder_outputs = []
     for _ in range(num_layers):
@@ -153,7 +154,7 @@ class AlbertEncoder(tf.keras.Model):
     cls_output = tf.keras.layers.Dense(
         units=hidden_size,
         activation='tanh',
-        kernel_initializer=initializer,
+        kernel_initializer=tf_utils.clone_initializer(initializer),
         name='pooler_transform')(
             first_token_tensor)
     if dict_outputs:

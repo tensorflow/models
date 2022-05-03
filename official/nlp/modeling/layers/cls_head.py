@@ -57,12 +57,14 @@ class ClassificationHead(tf.keras.layers.Layer):
       self.dense = tf.keras.layers.Dense(
           units=self.inner_dim,
           activation=self.activation,
-          kernel_initializer=self.initializer,
+          kernel_initializer=tf_utils.clone_initializer(self.initializer),
           name="pooler_dense")
     self.dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
 
     self.out_proj = tf.keras.layers.Dense(
-        units=num_classes, kernel_initializer=self.initializer, name="logits")
+        units=num_classes,
+        kernel_initializer=tf_utils.clone_initializer(self.initializer),
+        name="logits")
 
   def call(self, features: tf.Tensor, only_project: bool = False):
     """Implements call().
@@ -146,14 +148,15 @@ class MultiClsHeads(tf.keras.layers.Layer):
       self.dense = tf.keras.layers.Dense(
           units=inner_dim,
           activation=self.activation,
-          kernel_initializer=self.initializer,
+          kernel_initializer=tf_utils.clone_initializer(self.initializer),
           name="pooler_dense")
     self.dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
     self.out_projs = []
     for name, num_classes in cls_list:
       self.out_projs.append(
           tf.keras.layers.Dense(
-              units=num_classes, kernel_initializer=self.initializer,
+              units=num_classes,
+              kernel_initializer=tf_utils.clone_initializer(self.initializer),
               name=name))
 
   def call(self, features: tf.Tensor, only_project: bool = False):
@@ -277,7 +280,7 @@ class GaussianProcessClassificationHead(ClassificationHead):
     if use_gp_layer:
       self.out_proj = gaussian_process.RandomFeatureGaussianProcess(
           self.num_classes,
-          kernel_initializer=self.initializer,
+          kernel_initializer=tf_utils.clone_initializer(self.initializer),
           name="logits",
           **self.gp_layer_kwargs)
 

@@ -66,7 +66,7 @@ class NormalizationTest(tf.test.TestCase, parameterized.TestCase):
     spectral_norm_computed = _compute_spectral_norm(normalized_kernel)
     spectral_norm_expected = self.norm_multiplier
     self.assertAllClose(
-        spectral_norm_computed, spectral_norm_expected, atol=5e-2)
+        spectral_norm_computed, spectral_norm_expected, atol=1e-1)
 
     # Test that the normalized layer is K-Lipschitz. In particular, if the layer
     # is a function f, then ||f(x1) - f(x2)||_2 <= K * ||(x1 - x2)||_2, where K

@@ -55,6 +55,7 @@ class Module(tf.Module):
                       initializer: Initializer,
                       dtype: tf.DType = tf.float32,
                       **kwargs):
+    initializer = tf_utils.clone_initializer(initializer)
     return tf.Variable(initializer(shape, dtype=dtype, **kwargs), name=name)
 
   def read_variable(self,
@@ -588,7 +589,8 @@ class MultiHeadAttention(Module):
         init_std_rescaling = tf.math.sqrt(tf.cast(self.d_kv, dtype=self.dtype))
         query_w_init = (
             lambda *args, **kwargs: (  # pylint: disable=g-long-lambda
-                weight_initializer(*args, **kwargs) / init_std_rescaling))
+                tf_utils.clone_initializer(weight_initializer)(
+                    *args, **kwargs) / init_std_rescaling))
       self.q = Linear3D(
           self.d_model,
           self.d_kv,

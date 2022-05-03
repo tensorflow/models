@@ -20,6 +20,8 @@ import string
 import gin
 import tensorflow as tf
 
+from official.modeling import tf_utils
+
 _CHR_IDX = string.ascii_lowercase
 
 
@@ -87,7 +89,7 @@ class TalkingHeadsAttention(tf.keras.layers.MultiHeadAttention):
     self._pre_softmax_weight = self.add_weight(
         "pre_softmax_weight",
         shape=(self._num_heads, self._num_heads),
-        initializer=self._kernel_initializer,
+        initializer=tf_utils.clone_initializer(self._kernel_initializer),
         regularizer=self._kernel_regularizer,
         constraint=self._kernel_constraint,
         dtype=self.dtype,
@@ -95,7 +97,7 @@ class TalkingHeadsAttention(tf.keras.layers.MultiHeadAttention):
     self._post_softmax_weight = self.add_weight(
         "post_softmax_weight",
         shape=(self._num_heads, self._num_heads),
-        initializer=self._kernel_initializer,
+        initializer=tf_utils.clone_initializer(self._kernel_initializer),
         regularizer=self._kernel_regularizer,
         constraint=self._kernel_constraint,
         dtype=self.dtype,
