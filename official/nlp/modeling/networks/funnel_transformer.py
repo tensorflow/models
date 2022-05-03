@@ -20,6 +20,7 @@ from absl import logging
 import numpy as np
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling import layers
 
 _Initializer = Union[str, tf.keras.initializers.Initializer]
@@ -265,20 +266,20 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       self._embedding_layer = layers.OnDeviceEmbedding(
           vocab_size=vocab_size,
           embedding_width=embedding_width,
-          initializer=initializer,
+          initializer=tf_utils.clone_initializer(initializer),
           name='word_embeddings')
     else:
       self._embedding_layer = embedding_layer
 
     self._position_embedding_layer = layers.PositionEmbedding(
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(initializer),
         max_length=max_sequence_length,
         name='position_embedding')
 
     self._type_embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=type_vocab_size,
         embedding_width=embedding_width,
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(initializer),
         use_one_hot=True,
         name='type_embeddings')
 
@@ -296,7 +297,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
           '...x,xy->...y',
           output_shape=hidden_size,
           bias_axes='y',
-          kernel_initializer=initializer,
+          kernel_initializer=tf_utils.clone_initializer(initializer),
           name='embedding_projection')
 
     self._transformer_layers = []
@@ -316,7 +317,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
           attention_dropout=attention_dropout,
           norm_first=norm_first,
           output_range=output_range if i == num_layers - 1 else None,
-          kernel_initializer=initializer,
+          kernel_initializer=tf_utils.clone_initializer(initializer),
           share_rezero=share_rezero,
           name='transformer/layer_%d' % i)
       self._transformer_layers.append(layer)
@@ -324,7 +325,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
     self._pooler_layer = tf.keras.layers.Dense(
         units=hidden_size,
         activation='tanh',
-        kernel_initializer=initializer,
+        kernel_initializer=tf_utils.clone_initializer(initializer),
         name='pooler_transform')
     if isinstance(pool_stride, int):
       # TODO(b/197133196): Pooling layer can be shared.

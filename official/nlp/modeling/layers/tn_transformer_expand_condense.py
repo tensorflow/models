@@ -19,6 +19,7 @@
 import gin
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling.layers.tn_expand_condense import TNExpandCondense
 
 
@@ -100,7 +101,8 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
       self._attention_initializer = tf.keras.initializers.get(
           attention_initializer)
     else:
-      self._attention_initializer = self._kernel_initializer
+      self._attention_initializer = tf_utils.clone_initializer(
+          self._kernel_initializer)
 
   def build(self, input_shape):
     input_tensor = input_shape[0] if len(input_shape) == 2 else input_shape
@@ -128,7 +130,6 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
           "heads (%d)" % (hidden_size, self._num_heads))
     self._attention_head_size = int(hidden_size // self._num_heads)
     common_kwargs = dict(
-        bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
@@ -140,6 +141,7 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
         dropout=self._attention_dropout_rate,
         use_bias=self._use_bias,
         kernel_initializer=self._attention_initializer,
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         name="self_attention",
         **common_kwargs)
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
