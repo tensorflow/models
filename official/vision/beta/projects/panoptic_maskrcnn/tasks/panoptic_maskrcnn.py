@@ -176,7 +176,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         class_weights=params.semantic_segmentation_class_weights,
         ignore_label=params.semantic_segmentation_ignore_label,
         use_groundtruth_dimension=use_groundtruth_dimension,
-        top_k_percent_pixels=params.semantic_segmentation_top_k_percent_pixels)
+        top_k_percent_pixels=params.semantic_segmentation_top_k_percent_pixels,
+        compute_per_sample_top_k=params.semantic_segmentation_compute_per_sample_top_k)
 
     instance_segmentation_weight = params.instance_segmentation_weight
     semantic_segmentation_weight = params.semantic_segmentation_weight

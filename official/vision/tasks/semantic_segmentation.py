@@ -133,7 +133,8 @@ class SemanticSegmentationTask(base_task.Task):
         loss_params.class_weights,
         loss_params.ignore_label,
         use_groundtruth_dimension=loss_params.use_groundtruth_dimension,
-        top_k_percent_pixels=loss_params.top_k_percent_pixels)
+        top_k_percent_pixels=loss_params.top_k_percent_pixels,
+        compute_per_sample_top_k=loss_params.compute_per_sample_top_k)
 
     total_loss = segmentation_loss_fn(model_outputs['logits'], labels['masks'])
 

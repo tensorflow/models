@@ -108,6 +108,7 @@ class Losses(hyperparams.Config):
   l2_weight_decay: float = 0.0
   use_groundtruth_dimension: bool = True
   top_k_percent_pixels: float = 1.0
+  compute_per_sample_top_k: bool = False
 
 
 @dataclasses.dataclass

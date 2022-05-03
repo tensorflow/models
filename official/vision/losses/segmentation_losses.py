@@ -26,12 +26,14 @@ class SegmentationLoss:
   """Semantic segmentation loss."""
 
   def __init__(self, label_smoothing, class_weights, ignore_label,
-               use_groundtruth_dimension, top_k_percent_pixels=1.0):
+               use_groundtruth_dimension, top_k_percent_pixels=1.0,
+               compute_per_sample_top_k=False):
     self._top_k_percent_pixels = top_k_percent_pixels
     self._class_weights = class_weights
     self._ignore_label = ignore_label
     self._use_groundtruth_dimension = use_groundtruth_dimension
     self._label_smoothing = label_smoothing
+    self._compute_per_sample_top_k = compute_per_sample_top_k
 
   def __call__(self, logits, labels):
     _, height, width, num_classes = logits.get_shape().as_list()
@@ -78,15 +80,41 @@ class SegmentationLoss:
     if self._top_k_percent_pixels >= 1.0:
       loss = tf.reduce_sum(cross_entropy_loss) / normalizer
     else:
-      cross_entropy_loss = tf.reshape(cross_entropy_loss, shape=[-1])
-      top_k_pixels = tf.cast(
-          self._top_k_percent_pixels *
-          tf.cast(tf.size(cross_entropy_loss), tf.float32), tf.int32)
-      top_k_losses, _ = tf.math.top_k(
-          cross_entropy_loss, k=top_k_pixels, sorted=True)
-      normalizer = tf.reduce_sum(
-          tf.cast(tf.not_equal(top_k_losses, 0.0), tf.float32)) + EPSILON
-      loss = tf.reduce_sum(top_k_losses) / normalizer
+      if self._compute_per_sample_top_k:
+        batch_size = tf.shape(loss)[0]
+        loss = tf.reshape(loss, shape=[batch_size, -1])
+
+        top_k_pixels = tf.cast(
+            self._top_k_percent_pixels *
+            tf.cast(tf.shape(loss)[-1], dtype=tf.float32),
+            dtype=tf.int32)
+
+        # shape: [batch_size, top_k_pixels]
+        per_sample_top_k_loss = tf.map_fn(
+            fn=lambda x: tf.nn.top_k(x, k=top_k_pixels, sorted=False)[0],
+            elems=loss,
+            parallel_iterations=32,
+            fn_output_signature=tf.float32)
+
+        # shape: [batch_size]
+        per_sample_normalizer = tf.reduce_sum(
+            tf.cast(
+                tf.not_equal(per_sample_top_k_loss, 0.0),
+                dtype=tf.float32),
+            axis=-1) + EPSILON
+        per_sample_normalized_loss = tf.reduce_sum(
+            per_sample_top_k_loss, axis=-1) / per_sample_normalizer
+        loss = tf_utils.safe_mean(per_sample_normalized_loss)
+      else:
+        cross_entropy_loss = tf.reshape(cross_entropy_loss, shape=[-1])
+        top_k_pixels = tf.cast(
+            self._top_k_percent_pixels *
+            tf.cast(tf.size(cross_entropy_loss), tf.float32), tf.int32)
+        top_k_losses, _ = tf.math.top_k(
+            cross_entropy_loss, k=top_k_pixels, sorted=True)
+        normalizer = tf.reduce_sum(
+            tf.cast(tf.not_equal(top_k_losses, 0.0), tf.float32)) + EPSILON
+        loss = tf.reduce_sum(top_k_losses) / normalizer
 
     return loss
 
