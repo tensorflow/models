@@ -82,7 +82,8 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
     })
     FLAGS.params_override = params_override
 
-    train_lib.train.main('unused_args')
+    with train_lib.train.gin.unlock_config():
+      train_lib.train.main('unused_args')
 
     FLAGS.mode = 'eval'
 
