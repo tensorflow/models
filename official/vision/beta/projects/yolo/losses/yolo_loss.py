@@ -323,7 +323,7 @@ class DarknetLoss(YoloLossBase):
     grid_points = tf.stop_gradient(grid_points)
     anchor_grid = tf.stop_gradient(anchor_grid)
 
-    # Split all the ground truths to use as seperate items in loss computation.
+    # Split all the ground truths to use as separate items in loss computation.
     (true_box, ind_mask, true_class) = tf.split(y_true, [4, 1, 1], axis=-1)
     true_conf = tf.squeeze(true_conf, axis=-1)
     true_class = tf.squeeze(true_class, axis=-1)

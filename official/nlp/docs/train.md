@@ -105,7 +105,7 @@ pip3 install --user -r official/requirements.txt
 
 <details>
 
-This example fine-tunes BERT-base from TF-Hub on the the Multi-Genre Natural
+This example fine-tunes BERT-base from TF-Hub on the Multi-Genre Natural
 Language Inference (MultiNLI) corpus using TPUs.
 
 Firstly, you can prepare the fine-tuning data using

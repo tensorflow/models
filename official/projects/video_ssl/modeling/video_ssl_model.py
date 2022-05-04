@@ -53,7 +53,7 @@ class VideoSSLModel(tf.keras.Model):
       hidden_dim: `int` number of hidden units in MLP.
       hidden_layer_num: `int` number of hidden layers in MLP.
       hidden_norm_args: `dict` for batchnorm arguments in MLP.
-      projection_dim: `int` number of ouput dimension for MLP.
+      projection_dim: `int` number of output dimension for MLP.
       input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
       dropout_rate: `float` rate for dropout regularization.
       aggregate_endpoints: `bool` aggregate all end ponits or only use the
