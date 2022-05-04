@@ -23,7 +23,7 @@ segmentation task.
     the CenterNet detection architecture.
 *   The proto message `DeepMACMaskEstimation` in `center_net.proto` controls the
     configuration of the mask head used.
-*   The field `allowed_masked_classes_ids` controls which classes recieve mask
+*   The field `allowed_masked_classes_ids` controls which classes receive mask
     supervision during training.
 *   Mask R-CNN based ablations in the paper are implemented in the
     [TF model garden](../../../official/vision/beta/projects/deepmac_maskrcnn)

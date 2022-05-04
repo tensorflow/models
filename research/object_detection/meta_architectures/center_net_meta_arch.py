@@ -2261,7 +2261,7 @@ class KeypointEstimationParams(
         estimation, the class id should correspond to the "human" class. Note
         that the ID is 0-based, meaning that class 0 corresponds to the first
         non-background object class.
-      keypoint_indices: A list of integers representing the indicies of the
+      keypoint_indices: A list of integers representing the indices of the
         keypoints to be considered in this task. This is used to retrieve the
         subset of the keypoints from gt_keypoints that should be considered in
         this task.
@@ -2730,7 +2730,7 @@ class CenterNetMetaArch(model.DetectionModel):
     # Shorten the name for convenience and better formatting.
     self._is_training = is_training
     # The Objects as Points paper attaches loss functions to multiple
-    # (`num_feature_outputs`) feature maps in the the backbone. E.g.
+    # (`num_feature_outputs`) feature maps in the backbone. E.g.
     # for the hourglass  backbone, `num_feature_outputs` is 2.
     self._num_classes = num_classes
     self._feature_extractor = feature_extractor
@@ -2823,7 +2823,7 @@ class CenterNetMetaArch(model.DetectionModel):
       num_classes: An integer indicating how many classes in total to predict.
       num_feature_outputs: An integer indicating how many feature outputs to use
         for calculating the loss. The Objects as Points paper attaches loss
-        functions to multiple (`num_feature_outputs`) feature maps in the the
+        functions to multiple (`num_feature_outputs`) feature maps in the
         backbone. E.g. for the hourglass backbone, `num_feature_outputs` is 2.
       class_prediction_bias_init: float, the initial value of bias in the
         convolutional kernel of the class prediction head. If set to None, the

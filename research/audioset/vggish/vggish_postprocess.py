@@ -70,7 +70,7 @@ class Postprocessor(object):
     # - Transpose to [embedding_size, batch_size].
     # - Subtract pca_means column vector from each column.
     # - Premultiply by PCA matrix of shape [output_dims, input_dims]
-    #   where both are are equal to embedding_size in our case.
+    #   where both are equal to embedding_size in our case.
     # - Transpose result back to [batch_size, embedding_size].
     pca_applied = np.dot(self._pca_matrix,
                          (embeddings_batch.T - self._pca_means)).T

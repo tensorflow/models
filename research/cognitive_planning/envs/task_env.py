@@ -167,7 +167,7 @@ class TaskEnvInterface(object):
 class TaskEnv(gym.Env, TaskEnvInterface):
   """An environment which uses a Task to compute reward.
 
-  The environment implements a a gym interface, as well as EnvTopology. The
+  The environment implements a gym interface, as well as EnvTopology. The
   former makes sure it can be used within an RL training, while the latter
   makes sure it can be used by a Task.
 

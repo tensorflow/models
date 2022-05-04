@@ -193,7 +193,7 @@ def mobilenet_base(  # pylint: disable=invalid-name
       up training instead. This parameter is here for backward compatibility
       only. It is safe to set it to the value matching
       training_scope(is_training=...). It is also safe to explicitly set
-      it to False, even if there is outer training_scope set to to training.
+      it to False, even if there is outer training_scope set to training.
       (The network will be built in inference mode). If this is set to None,
       no arg_scope is added for slim.batch_norm's is_training parameter.
 

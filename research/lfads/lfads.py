@@ -1097,7 +1097,7 @@ class LFADS(object):
     returning those indices as a 2-dim tensor shaped like E/B x B.  Note that
     shape is only correct if E % B == 0.  If not, then an extra row is generated
     so that the remainder of examples is included. The extra examples are
-    explicitly to to the zero index (see randomize_example_idxs_mod_batch_size)
+    explicitly to the zero index (see randomize_example_idxs_mod_batch_size)
     for randomized behavior.
 
     Args:
@@ -1127,7 +1127,7 @@ class LFADS(object):
       batch_size: number of elements in batch
 
     Returns:
-      The randomized, properly shaped indicies.
+      The randomized, properly shaped indices.
     """
     assert nexamples > batch_size, "Problems"
     bmrem = batch_size - nexamples % batch_size

@@ -660,7 +660,7 @@ def position_sensitive_crop_regions(image,
   The output crops are split into `spatial_bins_y` vertical bins
   and `spatial_bins_x` horizontal bins. For each intersection of a vertical
   and a horizontal bin the output values are gathered by performing
-  `tf.image.crop_and_resize` (bilinear resampling) on a a separate subset of
+  `tf.image.crop_and_resize` (bilinear resampling) on a separate subset of
   channels of the image. This reduces `depth` by a factor of
   `(spatial_bins_y * spatial_bins_x)`.
 

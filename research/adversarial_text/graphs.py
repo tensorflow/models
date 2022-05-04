@@ -70,7 +70,7 @@ flags.DEFINE_integer('vocab_size', 86934,
                      'vocabulary used in dataset. Because the last '
                      'indexed vocabulary of the dataset preprocessed by '
                      'my preprocessed code, is always <eos> and here we '
-                     'specify the <eos> with the the index.')
+                     'specify the <eos> with the index.')
 flags.DEFINE_bool('normalize_embeddings', True,
                   'Normalize word embeddings by vocab frequency')
 
