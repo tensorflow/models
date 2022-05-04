@@ -199,5 +199,29 @@ class GaussianProcessClassificationHead(tf.test.TestCase,
     self.assertEqual(layer_config["norm_multiplier"], 1.)
     self.assertEqual(layer_config["num_inducing"], 512)
 
+
+class PerQueryDenseHeadTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(("single_query", 1, 3, False),
+                                  ("multi_queries", 10, 2, False),
+                                  ("with_bias", 10, 2, True))
+  def test_layer_invocation(self, num_queries, features, use_bias):
+    batch_size = 5
+    hidden_size = 10
+    layer = cls_head.PerQueryDenseHead(
+        num_queries=num_queries, features=features, use_bias=use_bias)
+    inputs = tf.zeros(
+        shape=(batch_size, num_queries, hidden_size), dtype=tf.float32)
+    outputs = layer(inputs)
+    self.assertEqual(outputs.shape, [batch_size, num_queries, features])
+
+  def test_layer_serialization(self):
+    layer = cls_head.PerQueryDenseHead(
+        num_queries=10, features=2, use_bias=True)
+    new_layer = cls_head.PerQueryDenseHead.from_config(layer.get_config())
+
+    # If the serialization was successful, the new config should match the old.
+    self.assertAllEqual(layer.get_config(), new_layer.get_config())
+
 if __name__ == "__main__":
   tf.test.main()
