@@ -218,7 +218,7 @@ class ImageClassificationTask(base_task.Task):
     """Does forward and backward.
 
     Args:
-      inputs: A tuple of of input tensors of (features, labels).
+      inputs: A tuple of input tensors of (features, labels).
       model: A tf.keras.Model instance.
       optimizer: The optimizer for this training step.
       metrics: A nested structure of metrics objects.
@@ -278,7 +278,7 @@ class ImageClassificationTask(base_task.Task):
     """Runs validatation step.
 
     Args:
-      inputs: A tuple of of input tensors of (features, labels).
+      inputs: A tuple of input tensors of (features, labels).
       model: A tf.keras.Model instance.
       metrics: A nested structure of metrics objects.
 

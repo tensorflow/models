@@ -33,7 +33,7 @@ from official.vision.dataloaders import parser
 
 
 def resize_axis(tensor, axis, new_size, fill_value=0):
-  """Truncates or pads a tensor to new_size on on a given axis.
+  """Truncates or pads a tensor to new_size on a given axis.
 
   Truncate or extend tensor such that tensor.shape[axis] == new_size. If the
   size increases, the padding will be performed at the end, using fill_value.

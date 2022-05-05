@@ -226,7 +226,7 @@ class RandomFeatureGaussianProcess(tf.keras.layers.Layer):
     """Resets covariance matrix of the GP layer.
 
     This function is useful for reseting the model's covariance matrix at the
-    begining of a new epoch.
+    beginning of a new epoch.
     """
     self._gp_cov_layer.reset_precision_matrix()
 
@@ -380,7 +380,7 @@ class LaplaceRandomFeatureCovariance(tf.keras.layers.Layer):
     """Resets precision matrix to its initial value.
 
     This function is useful for reseting the model's covariance matrix at the
-    begining of a new epoch.
+    beginning of a new epoch.
     """
     precision_matrix_reset_op = self.precision_matrix.assign(
         self.initial_precision_matrix)
