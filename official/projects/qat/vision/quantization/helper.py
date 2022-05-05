@@ -21,6 +21,51 @@ import tensorflow_model_optimization as tfmot
 from official.projects.qat.vision.quantization import configs
 
 
+_QUANTIZATION_WEIGHT_NAMES = [
+    'output_max', 'output_min', 'optimizer_step', 'kernel_min', 'kernel_max',
+    'add_three_min', 'add_three_max', 'divide_six_min', 'divide_six_max',
+    'depthwise_kernel_min', 'depthwise_kernel_max',
+    'reduce_mean_quantizer_vars_min', 'reduce_mean_quantizer_vars_max',
+    'quantize_layer_min', 'quantize_layer_max',
+    'quantize_layer_2_min', 'quantize_layer_2_max',
+    'post_activation_min', 'post_activation_max',
+]
+
+_ORIGINAL_WEIGHT_NAME = [
+    'kernel', 'depthwise_kernel', 'gamma', 'beta', 'moving_mean',
+    'moving_variance', 'bias'
+]
+
+
+def is_quantization_weight_name(name: str) -> bool:
+  simple_name = name.split('/')[-1].split(':')[0]
+  if simple_name in _QUANTIZATION_WEIGHT_NAMES:
+    return True
+  if simple_name in _ORIGINAL_WEIGHT_NAME:
+    return False
+  raise ValueError('Variable name {} is not supported.'.format(simple_name))
+
+
+def copy_original_weights(original_model: tf.keras.Model,
+                          quantized_model: tf.keras.Model):
+  """Helper function that copy the original model weights to quantized model."""
+  original_weight_value = original_model.get_weights()
+  weight_values = quantized_model.get_weights()
+
+  original_idx = 0
+  for idx, weight in enumerate(quantized_model.weights):
+    if not is_quantization_weight_name(weight.name):
+      if original_idx >= len(original_weight_value):
+        raise ValueError('Not enought original model weights.')
+      weight_values[idx] = original_weight_value[original_idx]
+      original_idx = original_idx + 1
+
+  if original_idx < len(original_weight_value):
+    raise ValueError('Not enought quantized model weights.')
+
+  quantized_model.set_weights(weight_values)
+
+
 class LayerQuantizerHelper(object):
   """Helper class that handles quantizers."""
 
