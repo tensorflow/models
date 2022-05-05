@@ -22,6 +22,7 @@ from official.projects.qat.vision.configs import common
 from official.projects.qat.vision.modeling import segmentation_model as qat_segmentation_model
 from official.projects.qat.vision.modeling.heads import dense_prediction_heads as dense_prediction_heads_qat
 from official.projects.qat.vision.n_bit import schemes as n_bit_schemes
+from official.projects.qat.vision.quantization import helper
 from official.projects.qat.vision.quantization import schemes
 from official.vision import configs
 from official.vision.modeling import classification_model
@@ -157,6 +158,7 @@ def build_qat_retinanet(
       head = (
           dense_prediction_heads_qat.RetinaNetHeadQuantized.from_config(
               head.get_config()))
+
   optimized_model = retinanet_model.RetinaNetModel(
       optimized_backbone,
       model.decoder,
@@ -167,6 +169,12 @@ def build_qat_retinanet(
       num_scales=model_config.anchor.num_scales,
       aspect_ratios=model_config.anchor.aspect_ratios,
       anchor_size=model_config.anchor.anchor_size)
+
+  if quantization.quantize_detection_head:
+    # Call the model with dummy input to build the head part.
+    dummpy_input = tf.zeros([1] + model_config.input_size)
+    optimized_model(dummpy_input, training=True)
+    helper.copy_original_weights(model.head, optimized_model.head)
   return optimized_model
 
 

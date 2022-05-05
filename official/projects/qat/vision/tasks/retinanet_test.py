@@ -65,6 +65,7 @@ class RetinaNetTaskTest(parameterized.TestCase, tf.test.TestCase):
 
     task = retinanet.RetinaNetTask(config.task)
     model = task.build_model()
+    self.assertLen(model.weights, 2393)
     metrics = task.build_metrics(training=is_training)
 
     strategy = tf.distribute.get_strategy()

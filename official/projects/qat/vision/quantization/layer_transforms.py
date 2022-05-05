@@ -21,6 +21,7 @@ import tensorflow_model_optimization as tfmot
 from official.projects.qat.vision.modeling.layers import nn_blocks as quantized_nn_blocks
 from official.projects.qat.vision.modeling.layers import nn_layers as quantized_nn_layers
 from official.projects.qat.vision.quantization import configs
+from official.projects.qat.vision.quantization import helper
 
 keras = tf.keras
 LayerNode = tfmot.quantization.keras.graph_transformations.transforms.LayerNode
@@ -29,18 +30,6 @@ LayerPattern = tfmot.quantization.keras.graph_transformations.transforms.LayerPa
 _LAYER_NAMES = [
     'Vision>Conv2DBNBlock', 'Vision>InvertedBottleneckBlock',
     'Vision>SegmentationHead', 'Vision>SpatialPyramidPooling', 'Vision>ASPP'
-]
-
-_QUANTIZATION_WEIGHT_NAMES = [
-    'output_max', 'output_min', 'optimizer_step', 'kernel_min', 'kernel_max',
-    'add_three_min', 'add_three_max', 'divide_six_min', 'divide_six_max',
-    'depthwise_kernel_min', 'depthwise_kernel_max',
-    'reduce_mean_quantizer_vars_min', 'reduce_mean_quantizer_vars_max'
-]
-
-_ORIGINAL_WEIGHT_NAME = [
-    'kernel', 'depthwise_kernel', 'gamma', 'beta', 'moving_mean',
-    'moving_variance', 'bias'
 ]
 
 
@@ -57,16 +46,6 @@ class CustomLayerQuantize(
   def pattern(self) -> LayerPattern:
     """See base class."""
     return LayerPattern(self._original_layer_pattern)
-
-  def _is_quantization_weight_name(self, name):
-    simple_name = name.split('/')[-1].split(':')[0]
-    if simple_name in _QUANTIZATION_WEIGHT_NAMES:
-      return True
-    if simple_name in _ORIGINAL_WEIGHT_NAME:
-      return False
-    raise ValueError('Variable name {} is not supported on '
-                     'CustomLayerQuantize({}) transform.'.format(
-                         simple_name, self._original_layer_pattern))
 
   def _create_layer_metadata(
       self, layer_class_name: str
@@ -97,7 +76,7 @@ class CustomLayerQuantize(
     match_idx = 0
     names_and_weights = []
     for name_and_weight in quantized_names_and_weights:
-      if not self._is_quantization_weight_name(name=name_and_weight[0]):
+      if not helper.is_quantization_weight_name(name=name_and_weight[0]):
         name_and_weight = bottleneck_names_and_weights[match_idx]
         match_idx = match_idx + 1
       names_and_weights.append(name_and_weight)

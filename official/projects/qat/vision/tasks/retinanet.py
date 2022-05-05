@@ -28,6 +28,10 @@ class RetinaNetTask(retinanet.RetinaNetTask):
   def build_model(self) -> tf.keras.Model:
     """Builds RetinaNet model with QAT."""
     model = super(RetinaNetTask, self).build_model()
+    # Call the model with dummy input to build the head part.
+    dummpy_input = tf.zeros([1] + self.task_config.model.input_size)
+    model(dummpy_input, training=True)
+
     if self.task_config.quantization:
       model = factory.build_qat_retinanet(
           model,
