@@ -823,7 +823,7 @@ class CSPStack(tf.keras.layers.Layer):
   make it a cross stage partial. Added for ease of use. you should be able
   to wrap any layer stack with a CSP independent of wether it belongs
   to the Darknet family. if filter_scale = 2, then the blocks in the stack
-  passed into the the CSP stack should also have filters = filters/filter_scale
+  passed into the CSP stack should also have filters = filters/filter_scale
   Cross Stage Partial networks (CSPNets) were proposed in:
 
   [1] Chien-Yao Wang, Hong-Yuan Mark Liao, I-Hau Yeh, Yueh-Hua Wu,

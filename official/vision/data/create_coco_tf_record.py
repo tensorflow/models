@@ -112,7 +112,7 @@ def generate_coco_panoptics_masks(segments_info, mask_path,
       represent "stuff" and "things" classes respectively.
 
   Returns:
-    A dict with with keys: [u'semantic_segmentation_mask', u'category_mask',
+    A dict with keys: [u'semantic_segmentation_mask', u'category_mask',
       u'instance_mask']. The dict contains 'category_mask' and 'instance_mask'
       only if `include_panoptic_eval_masks` is set to True.
   """

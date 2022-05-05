@@ -204,7 +204,7 @@ class SequenceBeamSearch(tf.Module):
       candidate_log_probs = _log_prob_from_logits(logits)
 
       # Calculate new log probabilities if each of the alive sequences were
-      # extended # by the the candidate IDs.
+      # extended # by the candidate IDs.
       # Shape [batch_size, beam_size, vocab_size]
       log_probs = candidate_log_probs + tf.expand_dims(alive_log_probs, axis=2)
 

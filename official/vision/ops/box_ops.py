@@ -616,7 +616,7 @@ def bbox_overlap(boxes, gt_boxes):
         tf.transpose(gt_invalid_mask, [0, 2, 1]))
     iou = tf.where(padding_mask, -tf.ones_like(iou), iou)
 
-    # Fills -1 for for invalid (-1) boxes.
+    # Fills -1 for invalid (-1) boxes.
     boxes_invalid_mask = tf.less(
         tf.reduce_max(boxes, axis=-1, keepdims=True), 0.0)
     iou = tf.where(boxes_invalid_mask, -tf.ones_like(iou), iou)

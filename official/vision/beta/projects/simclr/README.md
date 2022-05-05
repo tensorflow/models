@@ -10,7 +10,7 @@
   An illustration of SimCLR (from <a href="https://ai.googleblog.com/2020/04/advancing-self-supervised-and-semi.html">our blog here</a>).
 </div>
 
-## Enviroment setup
+## Environment setup
 
 The code can be run on multiple GPUs or TPUs with different distribution
 strategies. See the TensorFlow distributed training
