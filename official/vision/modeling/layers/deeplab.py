@@ -16,6 +16,8 @@
 
 import tensorflow as tf
 
+from official.modeling import tf_utils
+
 
 class SpatialPyramidPooling(tf.keras.layers.Layer):
   """Implements the Atrous Spatial Pyramid Pooling.
@@ -103,8 +105,10 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
 
     conv_sequential = tf.keras.Sequential([
         tf.keras.layers.Conv2D(
-            filters=self.output_channels, kernel_size=(1, 1),
-            kernel_initializer=self.kernel_initializer,
+            filters=self.output_channels,
+            kernel_size=(1, 1),
+            kernel_initializer=tf_utils.clone_initializer(
+                self.kernel_initializer),
             kernel_regularizer=self.kernel_regularizer,
             use_bias=False),
         bn_op(
@@ -121,21 +125,32 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
       if self.use_depthwise_convolution:
         leading_layers += [
             tf.keras.layers.DepthwiseConv2D(
-                depth_multiplier=1, kernel_size=kernel_size,
-                padding='same', depthwise_regularizer=self.kernel_regularizer,
-                depthwise_initializer=self.kernel_initializer,
-                dilation_rate=dilation_rate, use_bias=False)
+                depth_multiplier=1,
+                kernel_size=kernel_size,
+                padding='same',
+                depthwise_regularizer=self.kernel_regularizer,
+                depthwise_initializer=tf_utils.clone_initializer(
+                    self.kernel_initializer),
+                dilation_rate=dilation_rate,
+                use_bias=False)
         ]
         kernel_size = (1, 1)
       conv_sequential = tf.keras.Sequential(leading_layers + [
           tf.keras.layers.Conv2D(
-              filters=self.output_channels, kernel_size=kernel_size,
-              padding='same', kernel_regularizer=self.kernel_regularizer,
-              kernel_initializer=self.kernel_initializer,
-              dilation_rate=dilation_rate, use_bias=False),
-          bn_op(axis=bn_axis, momentum=self.batchnorm_momentum,
-                epsilon=self.batchnorm_epsilon),
-          tf.keras.layers.Activation(self.activation)])
+              filters=self.output_channels,
+              kernel_size=kernel_size,
+              padding='same',
+              kernel_regularizer=self.kernel_regularizer,
+              kernel_initializer=tf_utils.clone_initializer(
+                  self.kernel_initializer),
+              dilation_rate=dilation_rate,
+              use_bias=False),
+          bn_op(
+              axis=bn_axis,
+              momentum=self.batchnorm_momentum,
+              epsilon=self.batchnorm_epsilon),
+          tf.keras.layers.Activation(self.activation)
+      ])
       self.aspp_layers.append(conv_sequential)
 
     if self.pool_kernel_size is None:
@@ -151,7 +166,8 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
             tf.keras.layers.Conv2D(
                 filters=self.output_channels,
                 kernel_size=(1, 1),
-                kernel_initializer=self.kernel_initializer,
+                kernel_initializer=tf_utils.clone_initializer(
+                    self.kernel_initializer),
                 kernel_regularizer=self.kernel_regularizer,
                 use_bias=False),
             bn_op(
@@ -170,8 +186,10 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
 
     self.projection = tf.keras.Sequential([
         tf.keras.layers.Conv2D(
-            filters=self.output_channels, kernel_size=(1, 1),
-            kernel_initializer=self.kernel_initializer,
+            filters=self.output_channels,
+            kernel_size=(1, 1),
+            kernel_initializer=tf_utils.clone_initializer(
+                self.kernel_initializer),
             kernel_regularizer=self.kernel_regularizer,
             use_bias=False),
         bn_op(
@@ -179,7 +197,8 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
             momentum=self.batchnorm_momentum,
             epsilon=self.batchnorm_epsilon),
         tf.keras.layers.Activation(self.activation),
-        tf.keras.layers.Dropout(rate=self.dropout)])
+        tf.keras.layers.Dropout(rate=self.dropout)
+    ])
 
   def call(self, inputs, training=None):
     if training is None:

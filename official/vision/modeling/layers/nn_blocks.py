@@ -141,7 +141,8 @@ class ResidualBlock(tf.keras.layers.Layer):
           kernel_size=1,
           strides=self._strides,
           use_bias=False,
-          kernel_initializer=self._kernel_initializer,
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer)
       self._norm0 = self._norm(
@@ -162,7 +163,7 @@ class ResidualBlock(tf.keras.layers.Layer):
         strides=self._strides,
         padding=conv1_padding,
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm1 = self._norm(
@@ -177,7 +178,7 @@ class ResidualBlock(tf.keras.layers.Layer):
         strides=1,
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm2 = self._norm(
@@ -191,7 +192,8 @@ class ResidualBlock(tf.keras.layers.Layer):
           in_filters=self._filters,
           out_filters=self._filters,
           se_ratio=self._se_ratio,
-          kernel_initializer=self._kernel_initializer,
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer)
     else:
@@ -338,7 +340,8 @@ class BottleneckBlock(tf.keras.layers.Layer):
             kernel_size=1,
             strides=1,
             use_bias=False,
-            kernel_initializer=self._kernel_initializer,
+            kernel_initializer=tf_utils.clone_initializer(
+                self._kernel_initializer),
             kernel_regularizer=self._kernel_regularizer,
             bias_regularizer=self._bias_regularizer)
       else:
@@ -347,7 +350,8 @@ class BottleneckBlock(tf.keras.layers.Layer):
             kernel_size=1,
             strides=self._strides,
             use_bias=False,
-            kernel_initializer=self._kernel_initializer,
+            kernel_initializer=tf_utils.clone_initializer(
+                self._kernel_initializer),
             kernel_regularizer=self._kernel_regularizer,
             bias_regularizer=self._bias_regularizer)
 
@@ -362,7 +366,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
         kernel_size=1,
         strides=1,
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm1 = self._norm(
@@ -380,7 +384,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
         dilation_rate=self._dilation_rate,
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm2 = self._norm(
@@ -396,7 +400,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
         kernel_size=1,
         strides=1,
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm3 = self._norm(
@@ -412,7 +416,8 @@ class BottleneckBlock(tf.keras.layers.Layer):
           in_filters=self._filters * 4,
           out_filters=self._filters * 4,
           se_ratio=self._se_ratio,
-          kernel_initializer=self._kernel_initializer,
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer)
     else:
@@ -616,7 +621,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
           strides=expand_stride,
           padding='same',
           use_bias=False,
-          kernel_initializer=self._kernel_initializer,
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer)
       self._norm0 = self._norm(
@@ -635,7 +641,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
           depth_multiplier=1,
           dilation_rate=self._dilation_rate,
           use_bias=False,
-          depthwise_initializer=self._kernel_initializer,
+          depthwise_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
           depthwise_regularizer=self._depthsize_regularizer,
           bias_regularizer=self._bias_regularizer)
       self._norm1 = self._norm(
@@ -657,7 +664,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
           se_ratio=self._se_ratio,
           divisible_by=self._divisible_by,
           round_down_protect=self._se_round_down_protect,
-          kernel_initializer=self._kernel_initializer,
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer,
           activation=self._se_inner_activation,
@@ -672,7 +680,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
         strides=1,
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm2 = self._norm(
@@ -829,7 +837,7 @@ class ResidualInner(tf.keras.layers.Layer):
         strides=self.strides,
         use_bias=False,
         padding='same',
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer)
 
     self._batch_norm_1 = self._norm(
@@ -843,7 +851,7 @@ class ResidualInner(tf.keras.layers.Layer):
         strides=1,
         use_bias=False,
         padding='same',
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer)
 
     super(ResidualInner, self).build(input_shape)
@@ -954,7 +962,7 @@ class BottleneckResidualInner(tf.keras.layers.Layer):
         strides=self.strides,
         use_bias=False,
         padding='same',
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer)
     self._batch_norm_1 = self._norm(
         axis=self._bn_axis,
@@ -966,7 +974,7 @@ class BottleneckResidualInner(tf.keras.layers.Layer):
         strides=1,
         use_bias=False,
         padding='same',
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer)
     self._batch_norm_2 = self._norm(
         axis=self._bn_axis,
@@ -978,7 +986,7 @@ class BottleneckResidualInner(tf.keras.layers.Layer):
         strides=1,
         use_bias=False,
         padding='same',
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer)
 
     super(BottleneckResidualInner, self).build(input_shape)
@@ -1286,7 +1294,7 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
         padding='same',
         depth_multiplier=1,
         dilation_rate=self._dilation_rate,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._depthsize_regularizer,
         use_bias=False)
     self._norm0 = self._norm(
@@ -1300,7 +1308,7 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
         strides=1,
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer)
     self._norm1 = self._norm(
         axis=self._bn_axis,
@@ -1411,7 +1419,7 @@ class TuckerConvBlock(tf.keras.layers.Layer):
         strides=1,
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm0 = self._norm(
@@ -1432,7 +1440,7 @@ class TuckerConvBlock(tf.keras.layers.Layer):
         strides=self._strides,
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm1 = self._norm(
@@ -1449,7 +1457,7 @@ class TuckerConvBlock(tf.keras.layers.Layer):
         strides=1,
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm2 = self._norm(

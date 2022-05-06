@@ -135,25 +135,6 @@ class NASFPN(tf.keras.Model):
     self._conv_op = (tf.keras.layers.SeparableConv2D
                      if self._config_dict['use_separable_conv']
                      else tf.keras.layers.Conv2D)
-    if self._config_dict['use_separable_conv']:
-      self._conv_kwargs = {
-          'depthwise_initializer': tf.keras.initializers.VarianceScaling(
-              scale=2, mode='fan_out', distribution='untruncated_normal'),
-          'pointwise_initializer': tf.keras.initializers.VarianceScaling(
-              scale=2, mode='fan_out', distribution='untruncated_normal'),
-          'bias_initializer': tf.zeros_initializer(),
-          'depthwise_regularizer': self._config_dict['kernel_regularizer'],
-          'pointwise_regularizer': self._config_dict['kernel_regularizer'],
-          'bias_regularizer': self._config_dict['bias_regularizer'],
-      }
-    else:
-      self._conv_kwargs = {
-          'kernel_initializer': tf.keras.initializers.VarianceScaling(
-              scale=2, mode='fan_out', distribution='untruncated_normal'),
-          'bias_initializer': tf.zeros_initializer(),
-          'kernel_regularizer': self._config_dict['kernel_regularizer'],
-          'bias_regularizer': self._config_dict['bias_regularizer'],
-      }
     self._norm_op = (tf.keras.layers.experimental.SyncBatchNormalization
                      if self._config_dict['use_sync_bn']
                      else tf.keras.layers.BatchNormalization)
@@ -239,6 +220,28 @@ class NASFPN(tf.keras.Model):
       return tf.cast(x, dtype=compute_dtype)
     else:
       return x
+
+  @property
+  def _conv_kwargs(self):
+    if self._config_dict['use_separable_conv']:
+      return {
+          'depthwise_initializer': tf.keras.initializers.VarianceScaling(
+              scale=2, mode='fan_out', distribution='untruncated_normal'),
+          'pointwise_initializer': tf.keras.initializers.VarianceScaling(
+              scale=2, mode='fan_out', distribution='untruncated_normal'),
+          'bias_initializer': tf.zeros_initializer(),
+          'depthwise_regularizer': self._config_dict['kernel_regularizer'],
+          'pointwise_regularizer': self._config_dict['kernel_regularizer'],
+          'bias_regularizer': self._config_dict['bias_regularizer'],
+      }
+    else:
+      return {
+          'kernel_initializer': tf.keras.initializers.VarianceScaling(
+              scale=2, mode='fan_out', distribution='untruncated_normal'),
+          'bias_initializer': tf.zeros_initializer(),
+          'kernel_regularizer': self._config_dict['kernel_regularizer'],
+          'bias_regularizer': self._config_dict['bias_regularizer'],
+      }
 
   def _global_attention(self, feat0, feat1):
     m = tf.math.reduce_max(feat0, axis=[1, 2], keepdims=True)

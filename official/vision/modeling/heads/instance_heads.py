@@ -133,6 +133,9 @@ class DetectionHead(tf.keras.layers.Layer):
     self._conv_norms = []
     for i in range(self._config_dict['num_convs']):
       conv_name = 'detection-conv_{}'.format(i)
+      if 'kernel_initializer' in conv_kwargs:
+        conv_kwargs['kernel_initializer'] = tf_utils.clone_initializer(
+            conv_kwargs['kernel_initializer'])
       self._convs.append(conv_op(name=conv_name, **conv_kwargs))
       bn_name = 'detection-conv-bn_{}'.format(i)
       self._conv_norms.append(bn_op(name=bn_name, **bn_kwargs))
@@ -324,6 +327,11 @@ class MaskHead(tf.keras.layers.Layer):
     self._conv_norms = []
     for i in range(self._config_dict['num_convs']):
       conv_name = 'mask-conv_{}'.format(i)
+      for initializer_name in ['kernel_initializer', 'depthwise_initializer',
+                               'pointwise_initializer']:
+        if initializer_name in conv_kwargs:
+          conv_kwargs[initializer_name] = tf_utils.clone_initializer(
+              conv_kwargs[initializer_name])
       self._convs.append(conv_op(name=conv_name, **conv_kwargs))
       bn_name = 'mask-conv-bn_{}'.format(i)
       self._conv_norms.append(bn_op(name=bn_name, **bn_kwargs))

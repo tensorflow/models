@@ -118,6 +118,9 @@ class MaskScoring(tf.keras.Model):
     self._conv_norms = []
     for i in range(self._config_dict['num_convs']):
       conv_name = 'mask-scoring_{}'.format(i)
+      if 'kernel_initializer' in conv_kwargs:
+        conv_kwargs['kernel_initializer'] = tf_utils.clone_initializer(
+            conv_kwargs['kernel_initializer'])
       self._convs.append(conv_op(name=conv_name, **conv_kwargs))
       bn_name = 'mask-scoring-bn_{}'.format(i)
       self._conv_norms.append(bn_op(name=bn_name, **bn_kwargs))
@@ -297,15 +300,7 @@ class SegmentationHead(tf.keras.layers.Layer):
   def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the segmentation head."""
     use_depthwise_convolution = self._config_dict['use_depthwise_convolution']
-    random_initializer = tf.keras.initializers.RandomNormal(stddev=0.01)
     conv_op = tf.keras.layers.Conv2D
-    conv_kwargs = {
-        'kernel_size': 3 if not use_depthwise_convolution else 1,
-        'padding': 'same',
-        'use_bias': False,
-        'kernel_initializer': random_initializer,
-        'kernel_regularizer': self._config_dict['kernel_regularizer'],
-    }
     bn_op = (tf.keras.layers.experimental.SyncBatchNormalization
              if self._config_dict['use_sync_bn']
              else tf.keras.layers.BatchNormalization)
@@ -352,7 +347,8 @@ class SegmentationHead(tf.keras.layers.Layer):
                 kernel_size=3,
                 padding='same',
                 use_bias=False,
-                depthwise_initializer=random_initializer,
+                depthwise_initializer=tf.keras.initializers.RandomNormal(
+                    stddev=0.01),
                 depthwise_regularizer=self._config_dict['kernel_regularizer'],
                 depth_multiplier=1))
         norm_name = 'segmentation_head_depthwise_norm_{}'.format(i)
@@ -362,7 +358,12 @@ class SegmentationHead(tf.keras.layers.Layer):
           conv_op(
               name=conv_name,
               filters=self._config_dict['num_filters'],
-              **conv_kwargs))
+              kernel_size=3 if not use_depthwise_convolution else 1,
+              padding='same',
+              use_bias=False,
+              kernel_initializer=tf.keras.initializers.RandomNormal(
+                  stddev=0.01),
+              kernel_regularizer=self._config_dict['kernel_regularizer']))
       norm_name = 'segmentation_head_norm_{}'.format(i)
       self._norms.append(bn_op(name=norm_name, **bn_kwargs))
 
