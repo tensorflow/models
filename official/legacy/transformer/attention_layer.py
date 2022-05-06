@@ -17,6 +17,8 @@ import math
 
 import tensorflow as tf
 
+from official.modeling import tf_utils
+
 
 class Attention(tf.keras.layers.Layer):
   """Multi-headed attention layer."""
@@ -53,19 +55,19 @@ class Attention(tf.keras.layers.Layer):
     self.query_dense_layer = tf.keras.layers.experimental.EinsumDense(
         "BTE,ENH->BTNH",
         output_shape=(None, self.num_heads, size_per_head),
-        kernel_initializer=attention_initializer,
+        kernel_initializer=tf_utils.clone_initializer(attention_initializer),
         bias_axes=None,
         name="query")
     self.key_dense_layer = tf.keras.layers.experimental.EinsumDense(
         "BTE,ENH->BTNH",
         output_shape=(None, self.num_heads, size_per_head),
-        kernel_initializer=attention_initializer,
+        kernel_initializer=tf_utils.clone_initializer(attention_initializer),
         bias_axes=None,
         name="key")
     self.value_dense_layer = tf.keras.layers.experimental.EinsumDense(
         "BTE,ENH->BTNH",
         output_shape=(None, self.num_heads, size_per_head),
-        kernel_initializer=attention_initializer,
+        kernel_initializer=tf_utils.clone_initializer(attention_initializer),
         bias_axes=None,
         name="value")
 
