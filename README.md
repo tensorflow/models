@@ -84,6 +84,12 @@ os.environ['PYTHONPATH'] += ":/path/to/models"
 pip3 install --user -r official/requirements.txt
 ```
 
+Finally, if you are using nlp packages, please also install
+**tensorflow-text-nightly**:
+
+```shell
+pip3 install tensorflow-text-nightly
+```
 
 </details>
 
