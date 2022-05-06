@@ -140,6 +140,9 @@ class RetinaNetHead(tf.keras.layers.Layer):
       for i in range(self._config_dict['num_convs']):
         if level == self._config_dict['min_level']:
           cls_conv_name = 'classnet-conv_{}'.format(i)
+          if 'kernel_initializer' in conv_kwargs:
+            conv_kwargs['kernel_initializer'] = tf_utils.clone_initializer(
+                conv_kwargs['kernel_initializer'])
           self._cls_convs.append(conv_op(name=cls_conv_name, **conv_kwargs))
         cls_norm_name = 'classnet-conv-norm_{}_{}'.format(level, i)
         this_level_cls_norms.append(bn_op(name=cls_norm_name, **bn_kwargs))
@@ -170,6 +173,9 @@ class RetinaNetHead(tf.keras.layers.Layer):
       for i in range(self._config_dict['num_convs']):
         if level == self._config_dict['min_level']:
           box_conv_name = 'boxnet-conv_{}'.format(i)
+          if 'kernel_initializer' in conv_kwargs:
+            conv_kwargs['kernel_initializer'] = tf_utils.clone_initializer(
+                conv_kwargs['kernel_initializer'])
           self._box_convs.append(conv_op(name=box_conv_name, **conv_kwargs))
         box_norm_name = 'boxnet-conv-norm_{}_{}'.format(level, i)
         this_level_box_norms.append(bn_op(name=box_norm_name, **bn_kwargs))
@@ -211,6 +217,9 @@ class RetinaNetHead(tf.keras.layers.Layer):
           for i in range(self._config_dict['num_convs']):
             if level == self._config_dict['min_level']:
               att_conv_name = '{}-conv_{}'.format(att_name, i)
+              if 'kernel_initializer' in conv_kwargs:
+                conv_kwargs['kernel_initializer'] = tf_utils.clone_initializer(
+                    conv_kwargs['kernel_initializer'])
               att_convs_i.append(conv_op(name=att_conv_name, **conv_kwargs))
             att_norm_name = '{}-conv-norm_{}_{}'.format(att_name, level, i)
             this_level_att_norms.append(bn_op(name=att_norm_name, **bn_kwargs))
@@ -436,6 +445,9 @@ class RPNHead(tf.keras.layers.Layer):
       for i in range(self._config_dict['num_convs']):
         if level == self._config_dict['min_level']:
           conv_name = 'rpn-conv_{}'.format(i)
+          if 'kernel_initializer' in conv_kwargs:
+            conv_kwargs['kernel_initializer'] = tf_utils.clone_initializer(
+                conv_kwargs['kernel_initializer'])
           self._convs.append(conv_op(name=conv_name, **conv_kwargs))
         norm_name = 'rpn-conv-norm_{}_{}'.format(level, i)
         this_level_norms.append(bn_op(name=norm_name, **bn_kwargs))
