@@ -26,5 +26,6 @@ pycocotools
 seqeval
 sentencepiece
 sacrebleu
+tensorflow-text-nightly
 # Projects/vit dependencies
 immutabledict
