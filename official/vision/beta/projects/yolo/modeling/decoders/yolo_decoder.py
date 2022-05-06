@@ -613,7 +613,7 @@ def build_yolo_decoder(
                      '{yolo_model.YOLO_MODELS[decoder_cfg.version].keys()}'
                      'or specify a custom decoder config using YoloDecoder.')
 
-  base_model = YOLO_MODELS[decoder_cfg.version][decoder_cfg.type]
+  base_model = YOLO_MODELS[decoder_cfg.version][decoder_cfg.type].copy()
 
   cfg_dict = decoder_cfg.as_dict()
   for key in base_model:
