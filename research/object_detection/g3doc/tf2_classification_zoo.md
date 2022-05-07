@@ -4,7 +4,7 @@
 [![Python 3.6](https://img.shields.io/badge/Python-3.6-3776AB)](https://www.python.org/downloads/release/python-360/)
 
 We provide a collection of classification models pre-trained on the
-[Imagenet](http://www.image-net.org). These can be used to initilize detection
+[Imagenet](http://www.image-net.org). These can be used to initialize detection
 model parameters.
 
 Model name |
