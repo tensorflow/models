@@ -18,6 +18,7 @@
 import gin
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling.layers import attention
 from official.nlp.modeling.layers import multi_channel_attention
 from official.nlp.modeling.layers import transformer_encoder_block
@@ -226,7 +227,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
       self._attention_initializer = tf.keras.initializers.get(
           attention_initializer)
     else:
-      self._attention_initializer = self._kernel_initializer
+      self._attention_initializer = tf_utils.clone_initializer(
+          self._kernel_initializer)
     if self.multi_channel_cross_attention:
       self._cross_attention_cls = multi_channel_attention.MultiChannelAttention
     else:
@@ -244,7 +246,6 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
           "heads (%d)" % (hidden_size, self.num_attention_heads))
     self.attention_head_size = int(hidden_size) // self.num_attention_heads
     common_kwargs = dict(
-        bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
@@ -256,14 +257,17 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         key_dim=self.attention_head_size,
         dropout=self.attention_dropout_rate,
         use_bias=self._use_bias,
-        kernel_initializer=self._attention_initializer,
+        kernel_initializer=tf_utils.clone_initializer(
+            self._attention_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         name="self_attention",
         **common_kwargs)
     self.self_attention_output_dense = tf.keras.layers.experimental.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
         bias_axes="d",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         name="output",
         **common_kwargs)
     self.self_attention_dropout = tf.keras.layers.Dropout(
@@ -281,7 +285,9 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         dropout=self.attention_dropout_rate,
         output_shape=hidden_size,
         use_bias=self._use_bias,
-        kernel_initializer=self._attention_initializer,
+        kernel_initializer=tf_utils.clone_initializer(
+            self._attention_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         name="attention/encdec",
         **common_kwargs)
 
@@ -299,7 +305,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         "abc,cd->abd",
         output_shape=(None, self.intermediate_size),
         bias_axes="d",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         name="intermediate",
         **common_kwargs)
     self.intermediate_activation_layer = tf.keras.layers.Activation(
@@ -310,7 +317,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         "abc,cd->abd",
         output_shape=(None, hidden_size),
         bias_axes="d",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         name="output",
         **common_kwargs)
     self.output_dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)

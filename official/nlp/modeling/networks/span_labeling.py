@@ -17,6 +17,8 @@
 import collections
 import tensorflow as tf
 
+from official.modeling import tf_utils
+
 
 def _apply_paragraph_mask(logits, paragraph_mask):
   """Applies a position mask to calculated logits."""
@@ -156,12 +158,12 @@ class XLNetSpanLabeling(tf.keras.layers.Layer):
     self._end_n_top = end_n_top
     self.start_logits_dense = tf.keras.layers.Dense(
         units=1,
-        kernel_initializer=initializer,
+        kernel_initializer=tf_utils.clone_initializer(initializer),
         name='predictions/transform/start_logits')
 
     self.end_logits_inner_dense = tf.keras.layers.Dense(
         units=input_width,
-        kernel_initializer=initializer,
+        kernel_initializer=tf_utils.clone_initializer(initializer),
         activation=activation,
         name='predictions/transform/end_logits/inner')
     self.end_logits_layer_norm = tf.keras.layers.LayerNormalization(
@@ -169,18 +171,18 @@ class XLNetSpanLabeling(tf.keras.layers.Layer):
         name='predictions/transform/end_logits/layernorm')
     self.end_logits_output_dense = tf.keras.layers.Dense(
         units=1,
-        kernel_initializer=initializer,
+        kernel_initializer=tf_utils.clone_initializer(initializer),
         name='predictions/transform/end_logits/output')
 
     self.answer_logits_inner = tf.keras.layers.Dense(
         units=input_width,
-        kernel_initializer=initializer,
+        kernel_initializer=tf_utils.clone_initializer(initializer),
         activation=activation,
         name='predictions/transform/answer_logits/inner')
     self.answer_logits_dropout = tf.keras.layers.Dropout(rate=dropout_rate)
     self.answer_logits_output = tf.keras.layers.Dense(
         units=1,
-        kernel_initializer=initializer,
+        kernel_initializer=tf_utils.clone_initializer(initializer),
         use_bias=False,
         name='predictions/transform/answer_logits/output')
 

@@ -123,7 +123,7 @@ class EdgeTPUMultiHeadAttention(tf.keras.layers.MultiHeadAttention):
     """Builds multi-head dot-product attention computations.
 
     This function builds attributes necessary for `_compute_attention` to
-    costomize attention computation to replace the default dot-product
+    customize attention computation to replace the default dot-product
     attention.
 
     Args:

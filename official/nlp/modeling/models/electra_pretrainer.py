@@ -96,21 +96,22 @@ class ElectraPretrainer(tf.keras.Model):
     self.masked_lm = layers.MaskedLM(
         embedding_table=generator_network.get_embedding_table(),
         activation=mlm_activation,
-        initializer=mlm_initializer,
+        initializer=tf_utils.clone_initializer(mlm_initializer),
         output=output_type,
         name='generator_masked_lm')
     self.classification = layers.ClassificationHead(
         inner_dim=generator_network.get_config()['hidden_size'],
         num_classes=num_classes,
-        initializer=mlm_initializer,
+        initializer=tf_utils.clone_initializer(mlm_initializer),
         name='generator_classification_head')
     self.discriminator_projection = tf.keras.layers.Dense(
         units=discriminator_network.get_config()['hidden_size'],
         activation=mlm_activation,
-        kernel_initializer=mlm_initializer,
+        kernel_initializer=tf_utils.clone_initializer(mlm_initializer),
         name='discriminator_projection_head')
     self.discriminator_head = tf.keras.layers.Dense(
-        units=1, kernel_initializer=mlm_initializer)
+        units=1,
+        kernel_initializer=tf_utils.clone_initializer(mlm_initializer))
 
   def call(self, inputs):
     """ELECTRA forward pass.

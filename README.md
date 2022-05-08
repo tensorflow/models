@@ -35,22 +35,16 @@ To install the current release of tensorflow-models, please follow any one of th
 
 **tf-models-official** is the stable Model Garden package. Please check out the [releases](https://github.com/tensorflow/models/releases) to see what are available modules.
 
-pip will install all models and dependencies automatically.
+pip3 will install all models and dependencies automatically.
 
 ```shell
 pip3 install tf-models-official
 ```
 
-If you are using nlp packages, please also install **tensorflow-text**:
-
-```shell
-pip3 install tensorflow-text
-```
-
 Please check out our [example](https://github.com/tensorflow/text/blob/master/docs/tutorials/fine_tune_bert.ipynb)
 to learn how to use a PIP package.
 
-Note that **tf-models-official** may not include the latest changes in this
+Note that **tf-models-official** may not include the latest changes in the master branch of this
 github repo. To include latest changes, you may install **tf-models-nightly**,
 which is the nightly Model Garden package created daily automatically.
 
@@ -58,11 +52,6 @@ which is the nightly Model Garden package created daily automatically.
 pip3 install tf-models-nightly
 ```
 
-If you are using `nlp` packages, please also install tensorflow-text-nightly
-
-```shell
-pip3 install tensorflow-text-nightly
-```
 </details>
 
 

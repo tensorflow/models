@@ -155,7 +155,7 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
             self._temporal_strides, self._spatial_strides, self._spatial_strides
         ],
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm0 = self._norm(
@@ -169,7 +169,7 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
         strides=[self._temporal_strides, 1, 1],
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm1 = self._norm(
@@ -183,7 +183,7 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
         strides=[1, self._spatial_strides, self._spatial_strides],
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm2 = self._norm(
@@ -197,7 +197,7 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
         strides=[1, 1, 1],
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm3 = self._norm(
@@ -211,7 +211,8 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
           out_filters=self._filters * 4,
           se_ratio=self._se_ratio,
           use_3d_input=True,
-          kernel_initializer=self._kernel_initializer,
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer)
     else:

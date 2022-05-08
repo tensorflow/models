@@ -22,7 +22,7 @@ heatmaps (one heatmap for each class) is needed to predict the object. CenterNet
 proves that this can be done without a significant difference in accuracy.
 
 
-## Enviroment setup
+## Environment setup
 
 The code can be run on multiple GPUs or TPUs with different distribution
 strategies. See the TensorFlow distributed training

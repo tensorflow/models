@@ -36,7 +36,7 @@ from sentencepiece import SentencePieceTrainer
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("output_model_path", None,
-                    "Path to save the the sentencepiece model.")
+                    "Path to save the sentencepiece model.")
 flags.mark_flag_as_required("output_model_path")
 
 flags.DEFINE_string("tfds_dir", None, "Directory of the tfds.")

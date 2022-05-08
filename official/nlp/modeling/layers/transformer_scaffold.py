@@ -19,6 +19,7 @@ from absl import logging
 import gin
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling.layers import attention
 
 
@@ -127,8 +128,6 @@ class TransformerScaffold(tf.keras.layers.Layer):
     self._attention_head_size = int(hidden_size // self._num_heads)
 
     common_kwargs = dict(
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
@@ -145,6 +144,9 @@ class TransformerScaffold(tf.keras.layers.Layer):
           return instance_or_cls(**config)
 
     default_attention_cfg = {
+        "kernel_initializer": tf_utils.clone_initializer(
+            self._kernel_initializer),
+        "bias_initializer": tf_utils.clone_initializer(self._bias_initializer),
         "num_heads": self._num_heads,
         "key_dim": self._attention_head_size,
         "dropout": self._attention_dropout_rate,
@@ -158,6 +160,10 @@ class TransformerScaffold(tf.keras.layers.Layer):
 
     if self._feedforward_cls is not None:
       default_feedforward_cfg = {
+          "kernel_initializer": tf_utils.clone_initializer(
+              self._kernel_initializer),
+          "bias_initializer": tf_utils.clone_initializer(
+              self._bias_initializer),
           "intermediate_size": self._intermediate_size,
           "intermediate_activation": self._intermediate_activation,
           "dropout": self._dropout_rate,
@@ -189,6 +195,9 @@ class TransformerScaffold(tf.keras.layers.Layer):
           output_shape=(None, self._intermediate_size),
           bias_axes="d",
           name="intermediate",
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
+          bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
           **common_kwargs)
       policy = tf.keras.mixed_precision.global_policy()
       if policy.name == "mixed_bfloat16":
@@ -203,6 +212,9 @@ class TransformerScaffold(tf.keras.layers.Layer):
           output_shape=(None, hidden_size),
           bias_axes="d",
           name="output",
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
+          bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
           **common_kwargs)
 
     self._output_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)

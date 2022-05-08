@@ -21,12 +21,14 @@ import tensorflow as tf
 
 from official.projects.qat.vision.configs import common
 from official.projects.qat.vision.modeling import factory as qat_factory
+from official.projects.qat.vision.modeling.heads import dense_prediction_heads as qat_dense_prediction_heads
 from official.vision.configs import backbones
 from official.vision.configs import decoders
 from official.vision.configs import image_classification as classification_cfg
 from official.vision.configs import retinanet as retinanet_cfg
 from official.vision.configs import semantic_segmentation as semantic_segmentation_cfg
 from official.vision.modeling import factory
+from official.vision.modeling.heads import dense_prediction_heads
 
 
 class ClassificationModelBuilderTest(parameterized.TestCase, tf.test.TestCase):
@@ -67,9 +69,14 @@ class ClassificationModelBuilderTest(parameterized.TestCase, tf.test.TestCase):
 class RetinaNetBuilderTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      ('spinenet_mobile', (640, 640), False),
+      ('spinenet_mobile', (640, 640), False, False),
+      ('spinenet_mobile', (640, 640), False, True),
   )
-  def test_builder(self, backbone_type, input_size, has_attribute_heads):
+  def test_builder(self,
+                   backbone_type,
+                   input_size,
+                   has_attribute_heads,
+                   quantize_detection_head):
     num_classes = 2
     input_specs = tf.keras.layers.InputSpec(
         shape=[None, input_size[0], input_size[1], 3])
@@ -83,6 +90,7 @@ class RetinaNetBuilderTest(parameterized.TestCase, tf.test.TestCase):
       attribute_heads_config = None
     model_config = retinanet_cfg.RetinaNet(
         num_classes=num_classes,
+        input_size=[input_size[0], input_size[1], 3],
         backbone=backbones.Backbone(
             type=backbone_type,
             spinenet_mobile=backbones.SpineNetMobile(
@@ -92,15 +100,17 @@ class RetinaNetBuilderTest(parameterized.TestCase, tf.test.TestCase):
                 max_level=7,
                 use_keras_upsampling_2d=True)),
         head=retinanet_cfg.RetinaNetHead(
-            attribute_heads=attribute_heads_config))
+            attribute_heads=attribute_heads_config,
+            use_separable_conv=True))
     l2_regularizer = tf.keras.regularizers.l2(5e-5)
-    quantization_config = common.Quantization()
+    quantization_config = common.Quantization(
+        quantize_detection_head=quantize_detection_head)
     model = factory.build_retinanet(
         input_specs=input_specs,
         model_config=model_config,
         l2_regularizer=l2_regularizer)
 
-    _ = qat_factory.build_qat_retinanet(
+    qat_model = qat_factory.build_qat_retinanet(
         model=model,
         quantization=quantization_config,
         model_config=model_config)
@@ -109,6 +119,11 @@ class RetinaNetBuilderTest(parameterized.TestCase, tf.test.TestCase):
                        dict(name='att1', type='regression', size=1))
       self.assertEqual(model_config.head.attribute_heads[1].as_dict(),
                        dict(name='att2', type='classification', size=2))
+    self.assertIsInstance(
+        qat_model.head,
+        (qat_dense_prediction_heads.RetinaNetHeadQuantized
+         if quantize_detection_head else
+         dense_prediction_heads.RetinaNetHead))
 
 
 class SegmentationModelBuilderTest(parameterized.TestCase, tf.test.TestCase):

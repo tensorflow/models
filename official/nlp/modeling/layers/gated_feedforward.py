@@ -18,6 +18,8 @@
 import gin
 import tensorflow as tf
 
+from official.modeling import tf_utils
+
 
 @tf.keras.utils.register_keras_serializable(package="Text")
 @gin.configurable
@@ -95,8 +97,6 @@ class GatedFeedforward(tf.keras.layers.Layer):
     hidden_size = input_shape.as_list()[-1]
 
     common_kwargs = dict(
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
@@ -121,6 +121,10 @@ class GatedFeedforward(tf.keras.layers.Layer):
               output_shape=(None, self._intermediate_size),
               bias_axes="d",
               name="intermediate_%d" % i,
+              kernel_initializer=tf_utils.clone_initializer(
+                  self._kernel_initializer),
+              bias_initializer=tf_utils.clone_initializer(
+                  self._bias_initializer),
               **common_kwargs))
       self._intermediate_activation_layers.append(
           tf.keras.layers.Activation(
@@ -132,6 +136,10 @@ class GatedFeedforward(tf.keras.layers.Layer):
                 output_shape=(None, self._intermediate_size),
                 bias_axes="d",
                 name="gate_%d" % i,
+                kernel_initializer=tf_utils.clone_initializer(
+                    self._kernel_initializer),
+                bias_initializer=tf_utils.clone_initializer(
+                    self._bias_initializer),
                 **common_kwargs))
       self._output_dense.append(
           tf.keras.layers.experimental.EinsumDense(
@@ -139,6 +147,10 @@ class GatedFeedforward(tf.keras.layers.Layer):
               output_shape=(None, hidden_size),
               bias_axes="d",
               name="output_%d" % i,
+              kernel_initializer=tf_utils.clone_initializer(
+                  self._kernel_initializer),
+              bias_initializer=tf_utils.clone_initializer(
+                  self._bias_initializer),
               **common_kwargs))
       self._output_dropout.append(tf.keras.layers.Dropout(rate=self._dropout))
       # Use float32 in layernorm for numeric stability.

@@ -64,7 +64,7 @@ class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
       sorted_indices_tensor: A sorted int32 tensor of shape [N] which contains
         the signed indices of the examples where the sign is based on the label
         value. The examples that cannot be sampled are set to 0. It samples
-        atmost sample_size*positive_fraction positive examples and remaining
+        at most sample_size*positive_fraction positive examples and remaining
         from negative examples.
       sample_size: Size of subsamples.
 

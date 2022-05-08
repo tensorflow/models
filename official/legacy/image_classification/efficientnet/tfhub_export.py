@@ -43,8 +43,8 @@ def export_tfhub(model_path, hub_destination, model_name):
   image_input = tf.keras.layers.Input(
       shape=(None, None, 3), name="image_input", dtype=tf.float32)
   x = image_input * 255.0
-  ouputs = efficientnet_model.efficientnet(x, config)
-  hub_model = tf.keras.Model(image_input, ouputs)
+  outputs = efficientnet_model.efficientnet(x, config)
+  hub_model = tf.keras.Model(image_input, outputs)
   ckpt = tf.train.Checkpoint(model=hub_model)
   ckpt.restore(model_path).assert_existing_objects_matched()
   hub_model.save(

@@ -23,7 +23,7 @@ import tensorflow as tf
 def _make_offset_wrapper(new_class_name: str, base_lr_class):
   """Generates a offset wrapper of learning rate schedule.
 
-  It will returns a subclass of the the `base_lr_class`, the subclass takes an
+  It will returns a subclass of the `base_lr_class`, the subclass takes an
   `offset` argument in the constructor. When the new class instance is called,
   the behavior is:
     new_class_object(step) = base_lr_class_object(step - offset)
