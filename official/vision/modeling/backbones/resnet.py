@@ -400,7 +400,8 @@ class ResNet(tf.keras.Model):
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
-        'bn_trainable': self._bn_trainable
+        'bn_trainable': self._bn_trainable,
+        'use_first_projection': self.use_first_projection,
     }
     return config_dict
 
