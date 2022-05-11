@@ -27,8 +27,8 @@ IMAGE_CLASSIFICATION_BENCHMARKS = {
                 'min_value': 0.76,
                 'max_value': 0.77
             }],
-            config_files=['official/vision/beta/configs/experiments/'
-                          'image_classification/imagenet_resnet50_tpu.yaml']),
+            config_files=[('official/vision/configs/experiments/'
+                           'image_classification/imagenet_resnet50_tpu.yaml')]),
     'image_classification.resnet50.gpu.8.fp16':
         dict(
             experiment_type='resnet_imagenet',
@@ -39,8 +39,8 @@ IMAGE_CLASSIFICATION_BENCHMARKS = {
                 'min_value': 0.76,
                 'max_value': 0.77
             }],
-            config_files=['official/vision/beta/configs/experiments/'
-                          'image_classification/imagenet_resnet50_gpu.yaml'])
+            config_files=[('official/vision/configs/experiments/'
+                           'image_classification/imagenet_resnet50_gpu.yaml')])
 }
 
 
