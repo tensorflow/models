@@ -16,7 +16,7 @@
 
 This is only a dummy example to showcase how a model is composed. It is usually
 not needed to implement a modedl from scratch. Most SoTA models can be found and
-directly used from `official/vision/beta/modeling` directory.
+directly used from `official/vision/modeling` directory.
 """
 
 from typing import Any, Mapping
@@ -84,7 +84,7 @@ def build_example_model(input_specs: tf.keras.layers.InputSpec,
   This function is the main entry point to build a model. Commonly, it build a
   model by building a backbone, decoder and head. An example of building a
   classification model is at
-  third_party/tensorflow_models/official/vision/beta/modeling/backbones/resnet.py.
+  third_party/tensorflow_models/official/vision/modeling/backbones/resnet.py.
   However, it is not mandatory for all models to have these three pieces
   exactly. Depending on the task, model can be as simple as the example model
   here or more complex, such as multi-head architecture.
