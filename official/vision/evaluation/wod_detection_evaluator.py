@@ -148,7 +148,7 @@ class WOD2dDetectionEvaluator(wod_detection_evaluator.WODDetectionEvaluator):
 
   def evaluate(self):
     """Compute the final metrics."""
-    ap, _, _, _, _ = super().evaluate()
+    ap, _, _, _, _, _, _ = super().evaluate()
     metric_dict = {}
     for i, name in enumerate(self._breakdown_names):
       # Skip sign metrics in 2d detection task.
