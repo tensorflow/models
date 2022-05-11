@@ -12,3 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Tools for exporting models."""
+from official.vision.serving import export_saved_model_lib
