@@ -15,7 +15,7 @@
 r"""Vision models export utility function for serving/inference."""
 
 import os
-from typing import Optional, List
+from typing import Optional, List, Union, Text, Dict
 
 import tensorflow as tf
 
@@ -36,6 +36,7 @@ def export(
     export_module: Optional[export_base.ExportModule] = None,
     export_checkpoint_subdir: Optional[str] = None,
     export_saved_model_subdir: Optional[str] = None,
+    function_keys: Optional[Union[List[Text], Dict[Text, Text]]] = None,
     save_options: Optional[tf.saved_model.SaveOptions] = None):
   """Exports the model specified in the exp config.
 
@@ -57,6 +58,9 @@ def export(
       to store checkpoint.
     export_saved_model_subdir: Optional subdirectory under export_dir
       to store saved model.
+    function_keys: a list of string keys to retrieve pre-defined serving
+      signatures. The signaute keys will be set with defaults. If a dictionary
+      is provided, the values will be used as signature keys.
     save_options: `SaveOptions` for `tf.saved_model.save`.
   """
 
@@ -81,7 +85,7 @@ def export(
 
   export_base.export(
       export_module,
-      function_keys=[input_type],
+      function_keys=function_keys if function_keys else [input_type],
       export_savedmodel_dir=output_saved_model_directory,
       checkpoint_path=checkpoint_path,
       timestamped=False,
