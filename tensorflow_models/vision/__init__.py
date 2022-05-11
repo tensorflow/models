@@ -14,4 +14,5 @@
 
 """TensorFlow Models Vision Libraries."""
 from official.vision import configs
+from official.vision import serving
 from official.vision.modeling import *
