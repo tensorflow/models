@@ -311,3 +311,5 @@ class AdafactorConfig(BaseOptimizerConfig):
   min_dim_size_to_factor: int = 128
   epsilon1: float = 1e-30
   epsilon2: float = 1e-3
+  weight_decay: Optional[float] = None
+  include_in_weight_decay: Optional[str] = None
