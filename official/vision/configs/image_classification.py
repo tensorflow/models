@@ -65,6 +65,8 @@ class ImageClassificationModel(hyperparams.Config):
   # Adds a BatchNormalization layer pre-GlobalAveragePooling in classification
   add_head_batch_norm: bool = False
   kernel_initializer: str = 'random_uniform'
+  # Whether to output softmax results instead of logits.
+  output_softmax: bool = False
 
 
 @dataclasses.dataclass
@@ -79,6 +81,7 @@ class Losses(hyperparams.Config):
 @dataclasses.dataclass
 class Evaluation(hyperparams.Config):
   top_k: int = 5
+  precision_and_recall_thresholds: Optional[List[float]] = None
 
 
 @dataclasses.dataclass
