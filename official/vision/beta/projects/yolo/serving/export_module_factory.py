@@ -78,7 +78,7 @@ class ExportModule(export_base.ExportModule):
     return x
 
   def get_inference_signatures(
-      self, function_keys: Dict[Text, Text]) -> dict[Text, Any]:
+      self, function_keys: Dict[Text, Text]):
     """Gets defined function signatures.
 
     Args:
