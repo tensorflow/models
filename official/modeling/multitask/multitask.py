@@ -138,10 +138,10 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
         self.tasks[name].process_metrics(task_metrics[name], labels, outputs,
                                          **kwargs)
 
-        # Scales loss as the default gradients allreduce performs sum inside
-        # the optimizer.
-        scaled_loss = total_loss / tf.distribute.get_strategy(
-        ).num_replicas_in_sync
+      # Scales loss as the default gradients allreduce performs sum inside
+      # the optimizer.
+      scaled_loss = total_loss / tf.distribute.get_strategy(
+      ).num_replicas_in_sync
     tvars = multi_task_model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     optimizer.apply_gradients(list(zip(grads, tvars)))
