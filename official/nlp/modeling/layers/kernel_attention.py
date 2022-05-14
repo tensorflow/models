@@ -117,7 +117,10 @@ _TRANSFORM_MAP = {
             h=lambda x: 1),
     "relu":
         functools.partial(
-            _generalized_kernel, f=tf.keras.activations.relu, h=lambda x: 1),
+            _generalized_kernel,
+            # Improve numerical stability and avoid NaNs in some cases by adding
+            # a tiny epsilon.
+            f=lambda x: tf.keras.activations.relu(x) + 1e-3, h=lambda x: 1),
     "square":
         functools.partial(
             _generalized_kernel, f=tf.math.square, h=lambda x: 1),
