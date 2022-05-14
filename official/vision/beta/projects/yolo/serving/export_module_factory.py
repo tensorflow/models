@@ -61,6 +61,7 @@ class ExportModule(export_base.ExportModule):
         preprocessor=preprocessor,
         inference_step=inference_step,
         postprocessor=postprocessor)
+    self.eval_postprocessor = eval_postprocessor
     self.input_signature = input_signature
 
   @tf.function
