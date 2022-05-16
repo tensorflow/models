@@ -15,7 +15,7 @@
 """Contains common building blocks for neural networks."""
 
 import enum
-from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union, Any
 
 import tensorflow as tf
 
@@ -767,3 +767,23 @@ class ASPPQuantized(aspp.ASPP):
     level = str(self._config_dict['level'])
     backbone_output = inputs[level] if isinstance(inputs, dict) else inputs
     return self.aspp(backbone_output)
+
+
+class BatchNormalizationWrapper(tf.keras.layers.Wrapper):
+  """A BatchNormalizationWrapper that explicitly not folded.
+
+  It just added an identity depthwise conv right before the normalization.
+  As a result, given normalization op just folded into the identity depthwise
+  conv layer.
+
+  Note that it only used when the batch normalization folding is not working.
+  It makes quantize them as a 1x1 depthwise conv layer that just work as same
+  as inference mode for the normalization. (Basically mult and add for the BN.)
+  """
+
+  def call(self, inputs: tf.Tensor, *args: Any, **kwargs: Any) -> tf.Tensor:
+    channels = tf.shape(inputs)[-1]
+    x = tf.nn.depthwise_conv2d(
+        inputs, tf.ones([1, 1, channels, 1]), [1, 1, 1, 1], 'VALID')
+    outputs = self.layer.call(x, *args, **kwargs)
+    return outputs

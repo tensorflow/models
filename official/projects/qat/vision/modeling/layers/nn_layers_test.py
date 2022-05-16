@@ -91,6 +91,17 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual([2, input_size, input_size, num_filters],
                         feats.shape.as_list())
 
+  @parameterized.parameters(False, True)
+  def test_bnorm_wrapper_creation(self, use_sync_bn):
+    inputs = tf.keras.Input(shape=(64, 64, 128), dtype=tf.float32)
+    if use_sync_bn:
+      norm = tf.keras.layers.experimental.SyncBatchNormalization(axis=-1)
+    else:
+      norm = tf.keras.layers.BatchNormalization(axis=-1)
+    layer = nn_layers.BatchNormalizationWrapper(norm)
+    output = layer(inputs)
+    self.assertAllEqual([None, 64, 64, 128], output.shape)
+
 
 if __name__ == '__main__':
   tf.test.main()

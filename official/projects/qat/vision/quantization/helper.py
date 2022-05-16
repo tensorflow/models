@@ -27,7 +27,9 @@ _QUANTIZATION_WEIGHT_NAMES = [
     'depthwise_kernel_min', 'depthwise_kernel_max',
     'reduce_mean_quantizer_vars_min', 'reduce_mean_quantizer_vars_max',
     'quantize_layer_min', 'quantize_layer_max',
+    'quantize_layer_1_min', 'quantize_layer_1_max',
     'quantize_layer_2_min', 'quantize_layer_2_max',
+    'quantize_layer_3_min', 'quantize_layer_3_max',
     'post_activation_min', 'post_activation_max',
 ]
 
