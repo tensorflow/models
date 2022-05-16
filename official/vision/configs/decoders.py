@@ -33,6 +33,7 @@ class FPN(hyperparams.Config):
   num_filters: int = 256
   fusion_type: str = 'sum'
   use_separable_conv: bool = False
+  use_keras_layer: bool = False
 
 
 @dataclasses.dataclass
