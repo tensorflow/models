@@ -41,7 +41,9 @@ pip3 will install all models and dependencies automatically.
 pip3 install tf-models-official
 ```
 
-Please check out our [example](https://github.com/tensorflow/text/blob/master/docs/tutorials/fine_tune_bert.ipynb)
+Please check out our examples:
+  - [basic library import](https://github.com/tensorflow/models/blob/master/tensorflow_models/tensorflow_models_pypi.ipynb)
+  - [nlp model building](https://github.com/tensorflow/models/blob/master/official/colab/nlp/nlp_modeling_library_intro.ipynb)
 to learn how to use a PIP package.
 
 Note that **tf-models-official** may not include the latest changes in the master branch of this
