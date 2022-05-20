@@ -1,6 +1,6 @@
 # Crown-of-Thorns Starfish Detection Pipeline
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tensorflow/models/blob/master/official/projects/cots_detector/crown_of_thorns_starfish_detection_pipeline.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tensorflow/models/blob/master/official/projects/cots_detector/crown_of_thorns_starfish_detection_pipeline.ipynb?force_crab_mode=1)
 
 This repository shows how to detect crown-of-thorns starfish (COTS) using a
 pre-trained COTS detector implemented in TensorFlow.
@@ -28,5 +28,5 @@ control teams to address and prioritize outbreaks.
 
 ## Get started
 
-[Open the notebook in Colab](https://colab.research.google.com/github/tensorflow/models/blob/master/official/projects/cots_detector/crown_of_thorns_starfish_detection_pipeline.ipynb)
+[Open the notebook in Colab](https://colab.research.google.com/github/tensorflow/models/blob/master/official/projects/cots_detector/crown_of_thorns_starfish_detection_pipeline.ipynb?force_crab_mode=1)
 to run the COTS detection pipeline.
