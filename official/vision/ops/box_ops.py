@@ -217,6 +217,28 @@ def denormalize_boxes(boxes, image_shape):
     return denormalized_boxes
 
 
+def horizontal_flip_boxes(normalized_boxes):
+  """Flips normalized boxes horizontally.
+
+  Args:
+    normalized_boxes: the boxes in normalzied coordinates.
+
+  Returns:
+    horizontally flipped boxes.
+  """
+  if normalized_boxes.shape[-1] != 4:
+    raise ValueError('boxes.shape[-1] is {:d}, but must be 4.'.format(
+        normalized_boxes.shape[-1]))
+
+  with tf.name_scope('horizontal_flip_boxes'):
+    ymin, xmin, ymax, xmax = tf.split(
+        value=normalized_boxes, num_or_size_splits=4, axis=-1)
+    flipped_xmin = tf.subtract(1.0, xmax)
+    flipped_xmax = tf.subtract(1.0, xmin)
+    flipped_boxes = tf.concat([ymin, flipped_xmin, ymax, flipped_xmax], axis=-1)
+    return flipped_boxes
+
+
 def clip_boxes(boxes, image_shape):
   """Clips boxes to image boundaries.
 
