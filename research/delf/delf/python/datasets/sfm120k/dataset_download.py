@@ -26,7 +26,7 @@ import tensorflow as tf
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-def wget(src, dst, md5checksum=False):
+def wget(src, dst, sha256checksum=False):
     """Download a file and calculate it's MD5 chacksum"""
 
     # Writing in chunks helps in preventing running out of Memory
@@ -41,12 +41,12 @@ def wget(src, dst, md5checksum=False):
                 size = f.write(chunk)
                 bar.update(size)
 
-    if md5checksum:
-        from hashlib import md5
-        checksum = md5(open(dst,"rb").read()).hexdigest()
-        print("MD5 checksum: ", checksum)
-        f = open(f"{dst}.md5","a")
-        f.write(f"{checksu}  {dst}")
+    if sha256checksum:
+        from hashlib import sha256
+        checksum = sha256(open(dst,"rb").read()).hexdigest()
+        print("SHA256 checksum: ", checksum)
+        f = open(f"{dst}.sha256","a")
+        f.write(f"{checksum}  {dst}")
         f.close()
 
 
@@ -80,7 +80,7 @@ def download_train(data_dir):
     print('>> Image directory does not exist. Creating: {}'.format(dst_dir))
     tf.io.gfile.makedirs(dst_dir)
     print('>> Downloading ims.tar.gz...')
-    wget(src_file, dst_file,md5checksum=True)
+    wget(src_file, dst_file, sha256checksum=True)
     print('>> Extracting {}...'.format(dst_file))
     downloaded_tar = tarfile.open(dst_file)
     downloaded_tar.extractall(dst_dir)
