@@ -27,9 +27,9 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def wget(src, dst, sha256checksum=False):
-    """Download a file and calculate it's MD5 chacksum"""
+    """Download a file and calculate it's SHA256 chacksum"""
 
-    # Writing in chunks helps in preventing running out of Memory
+    # Writing in chunks helps in preventing running out of memory
     with requests.get(src, stream=True, verify=False) as r:
         r.raise_for_status()
         with open(dst, 'wb') as f, tqdm(desc="Downloading",
