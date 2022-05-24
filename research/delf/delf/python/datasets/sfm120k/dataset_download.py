@@ -15,10 +15,39 @@
 """Structure-from-Motion dataset (Sfm120k) download function."""
 
 import os
-import wget
+import urllib3
 import tarfile
+import requests
+from tqdm import tqdm
 
 import tensorflow as tf
+
+# Suppress SSL Warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+
+def wget(src, dst, md5checksum=False):
+    """Download a file and calculate it's MD5 chacksum"""
+
+    # Writing in chunks helps in preventing running out of Memory
+    with requests.get(src, stream=True, verify=False) as r:
+        r.raise_for_status()
+        with open(dst, 'wb') as f, tqdm(desc="Downloading",
+        unit='iB',
+        unit_scale=True,
+        unit_divisor=1024,
+    ) as bar:
+            for chunk in r.iter_content(chunk_size=8192):
+                size = f.write(chunk)
+                bar.update(size)
+
+    if md5checksum:
+        from hashlib import md5
+        checksum = md5(open(dst,"rb").read()).hexdigest()
+        print("MD5 checksum: ", checksum)
+        f = open(f"{dst}.md5","a")
+        f.write(f"{checksu}  {dst}")
+        f.close()
 
 
 def download_train(data_dir):
@@ -51,7 +80,7 @@ def download_train(data_dir):
     print('>> Image directory does not exist. Creating: {}'.format(dst_dir))
     tf.io.gfile.makedirs(dst_dir)
     print('>> Downloading ims.tar.gz...')
-    wget(src_file, dst_file, bar=True)
+    wget(src_file, dst_file,md5checksum=True)
     print('>> Extracting {}...'.format(dst_file))
     downloaded_tar = tarfile.open(dst_file)
     downloaded_tar.extractall(dst_dir)
@@ -105,4 +134,4 @@ def download_train(data_dir):
           eccv2020_dst_file = os.path.join(dst_dir, download_eccv2020)
           eccv2020_src_file = os.path.join(eccv2020_src_dir,
                                            download_eccv2020)
-          wget(eccv2020_src_file, eccv2020_dst_file, bar=False)
+          wget(eccv2020_src_file, eccv2020_dst_file)
