@@ -140,6 +140,25 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
       optimizer_factory.OptimizerFactory(
           optimization_config.OptimizationConfig(params))
 
+  def test_wrong_return_type(self):
+    optimizer_type = 'sgd'
+    params = {
+        'optimizer': {
+            'type': optimizer_type
+        },
+        'learning_rate': {
+            'type': 'constant',
+            'constant': {
+                'learning_rate': 0.1
+            }
+        }
+    }
+
+    opt_config = optimization_config.OptimizationConfig(params)
+    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
+    with self.assertRaises(TypeError):
+      _ = opt_factory.build_optimizer(0.1, postprocessor=lambda x: None)
+
 
 # TODO(b/187559334) refactor lr_schedule tests into `lr_schedule_test.py`.
 

@@ -213,10 +213,17 @@ class OptimizerFactory:
           optimizer, **self._ema_config.as_dict())
     if postprocessor:
       optimizer = postprocessor(optimizer)
-    assert isinstance(
-        optimizer, (tf.keras.optimizers.Optimizer,
-                    tf.keras.optimizers.experimental.Optimizer)
-    ), ('OptimizerFactory.build_optimizer returning a non-optimizer object: '
-        '{}'.format(optimizer))
+    if not isinstance(optimizer, tf.keras.optimizers.Optimizer):
+      # tf.keras.optimizers.experimental only exist in tf-nightly.
+      # The following check makes sure the function wont' break in older TF
+      # version because of missing the experimental package.
+      if hasattr(tf.keras.optimizers, 'experimental'):
+        if not isinstance(optimizer,
+                          tf.keras.optimizers.experimental.Optimizer):
+          raise TypeError('OptimizerFactory.build_optimizer returning a '
+                          'non-optimizer object: {}'.format(optimizer))
+      else:
+        raise TypeError('OptimizerFactory.build_optimizer returning a '
+                        'non-optimizer object: {}'.format(optimizer))
 
     return optimizer
