@@ -25,7 +25,6 @@ install_requires = [
     'tensorflow >= 2.2.0',
     'tf_slim >= 1.1',
     'tensorflow_probability >= 0.9.0',
-    'wget == 3.2',
     'tqdm >= 4.63.2'
 ]
 
