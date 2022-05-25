@@ -1335,7 +1335,8 @@ class ObjectDetectionEvaluation(object):
       average_precision = metrics.compute_average_precision(
           precision_within_bound, recall_within_bound)
       self.average_precision_per_class[class_index] = average_precision
-      logging.info('average_precision: %f', average_precision)
+      logging.info(
+          'class %d average_precision: %f', class_index, average_precision)
 
     self.corloc_per_class = metrics.compute_cor_loc(
         self.num_gt_imgs_per_class,
