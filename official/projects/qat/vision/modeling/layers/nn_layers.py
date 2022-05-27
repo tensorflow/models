@@ -144,7 +144,7 @@ class SqueezeExcitationQuantized(
         strides=1,
         padding='same',
         use_bias=True,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activation=helper.NoOpActivation())
@@ -155,7 +155,7 @@ class SqueezeExcitationQuantized(
         strides=1,
         padding='same',
         use_bias=True,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activation=helper.NoOpActivation())
@@ -345,7 +345,7 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
           kernel_size=1,
           padding='same',
           use_bias=False,
-          kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+          kernel_initializer=tf_utils.clone_initializer(random_initializer),
           kernel_regularizer=self._config_dict['kernel_regularizer'],
           name='segmentation_head_deeplabv3p_fusion_conv',
           filters=self._config_dict['low_level_num_filters'],
@@ -365,7 +365,8 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
                 kernel_size=3,
                 padding='same',
                 use_bias=False,
-                depthwise_initializer=random_initializer,
+                depthwise_initializer=tf_utils.clone_initializer(
+                    random_initializer),
                 depthwise_regularizer=self._config_dict['kernel_regularizer'],
                 depth_multiplier=1,
                 activation=helper.NoOpActivation()))
@@ -387,7 +388,7 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
         kernel_size=self._config_dict['prediction_kernel_size'],
         padding='same',
         bias_initializer=tf.zeros_initializer(),
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        kernel_initializer=tf_utils.clone_initializer(random_initializer),
         kernel_regularizer=self._config_dict['kernel_regularizer'],
         bias_regularizer=self._config_dict['bias_regularizer'],
         activation=helper.NoOpActivation())
@@ -562,7 +563,7 @@ class SpatialPyramidPoolingQuantized(nn_layers.SpatialPyramidPooling):
     conv1 = helper.Conv2DQuantized(
         filters=self._output_channels,
         kernel_size=(1, 1),
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         use_bias=False,
         activation=helper.NoOpActivation())
@@ -583,7 +584,8 @@ class SpatialPyramidPoolingQuantized(nn_layers.SpatialPyramidPooling):
                 kernel_size=kernel_size,
                 padding='same',
                 depthwise_regularizer=self._kernel_regularizer,
-                depthwise_initializer=self._kernel_initializer,
+                depthwise_initializer=tf_utils.clone_initializer(
+                    self._kernel_initializer),
                 dilation_rate=dilation_rate,
                 use_bias=False,
                 activation=helper.NoOpActivation())
@@ -595,7 +597,8 @@ class SpatialPyramidPoolingQuantized(nn_layers.SpatialPyramidPooling):
               kernel_size=kernel_size,
               padding='same',
               kernel_regularizer=self._kernel_regularizer,
-              kernel_initializer=self._kernel_initializer,
+              kernel_initializer=tf_utils.clone_initializer(
+                  self._kernel_initializer),
               dilation_rate=dilation_rate,
               use_bias=False,
               activation=helper.NoOpActivation())
@@ -618,7 +621,8 @@ class SpatialPyramidPoolingQuantized(nn_layers.SpatialPyramidPooling):
     conv2 = helper.Conv2DQuantized(
         filters=self._output_channels,
         kernel_size=(1, 1),
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(
+            self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         use_bias=False,
         activation=helper.NoOpActivation())
@@ -635,7 +639,8 @@ class SpatialPyramidPoolingQuantized(nn_layers.SpatialPyramidPooling):
         helper.Conv2DQuantized(
             filters=self._output_channels,
             kernel_size=(1, 1),
-            kernel_initializer=self._kernel_initializer,
+            kernel_initializer=tf_utils.clone_initializer(
+                self._kernel_initializer),
             kernel_regularizer=self._kernel_regularizer,
             use_bias=False,
             activation=helper.NoOpActivation()),
