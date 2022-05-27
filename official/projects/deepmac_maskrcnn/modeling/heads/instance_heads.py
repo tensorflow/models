@@ -257,12 +257,12 @@ class DeepMaskHead(tf.keras.layers.Layer):
 
     variant = self._config_dict['convnet_variant']
     if variant == 'default':
-      conv_op, conv_kwargs = self._get_conv_op_and_kwargs()
       bn_op, bn_kwargs = self._get_bn_op_and_kwargs()
       self._convs = []
       self._conv_norms = []
       for i in range(self._config_dict['num_convs']):
         conv_name = 'mask-conv_{}'.format(i)
+        conv_op, conv_kwargs = self._get_conv_op_and_kwargs()
         self._convs.append(conv_op(name=conv_name, **conv_kwargs))
         bn_name = 'mask-conv-bn_{}'.format(i)
         self._conv_norms.append(bn_op(name=bn_name, **bn_kwargs))
