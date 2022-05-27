@@ -19,6 +19,7 @@ import collections
 from absl import logging
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling import layers
 from official.projects.roformer import roformer_encoder_block
 
@@ -115,7 +116,7 @@ class RoformerEncoder(tf.keras.Model):
       embedding_layer_inst = layers.on_device_embedding.OnDeviceEmbedding(
           vocab_size=vocab_size,
           embedding_width=embedding_width,
-          initializer=initializer,
+          initializer=tf_utils.clone_initializer(initializer),
           name='word_embeddings')
     else:
       embedding_layer_inst = embedding_layer
@@ -125,7 +126,7 @@ class RoformerEncoder(tf.keras.Model):
     type_embedding_layer = layers.on_device_embedding.OnDeviceEmbedding(
         vocab_size=type_vocab_size,
         embedding_width=embedding_width,
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(initializer),
         use_one_hot=True,
         name='type_embeddings')
     type_embeddings = type_embedding_layer(type_ids)
@@ -146,7 +147,7 @@ class RoformerEncoder(tf.keras.Model):
           '...x,xy->...y',
           output_shape=hidden_size,
           bias_axes='y',
-          kernel_initializer=initializer,
+          kernel_initializer=tf_utils.clone_initializer(initializer),
           name='embedding_projection')
       embeddings = embedding_projection(embeddings)
     else:
@@ -171,7 +172,7 @@ class RoformerEncoder(tf.keras.Model):
           attention_dropout=attention_dropout,
           norm_first=norm_first,
           output_range=transformer_output_range,
-          kernel_initializer=initializer,
+          kernel_initializer=tf_utils.clone_initializer(initializer),
           name='roformer/layer_%d' % i)
       transformer_layers.append(layer)
       data = layer([data, attention_mask])
@@ -185,7 +186,7 @@ class RoformerEncoder(tf.keras.Model):
     pooler_layer = tf.keras.layers.Dense(
         units=hidden_size,
         activation='tanh',
-        kernel_initializer=initializer,
+        kernel_initializer=tf_utils.clone_initializer(initializer),
         name='pooler_transform')
     cls_output = pooler_layer(first_token_tensor)
 
