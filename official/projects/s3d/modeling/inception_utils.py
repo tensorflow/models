@@ -17,6 +17,7 @@ from typing import Callable, Dict, Optional, Sequence, Set, Text, Tuple, Type, U
 
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.projects.s3d.modeling import net_utils
 from official.vision.modeling.layers import nn_blocks_3d
 
@@ -126,7 +127,7 @@ def inception_v1_stem_cells(
       strides=[2, 2, 2],
       padding='same',
       use_bias=False,
-      kernel_initializer=kernel_initializer,
+      kernel_initializer=tf_utils.clone_initializer(kernel_initializer),
       kernel_regularizer=kernel_regularizer,
       name=layer_naming_fn(end_point))(
           inputs)
@@ -161,7 +162,7 @@ def inception_v1_stem_cells(
       kernel_size=[1, 1, 1],
       padding='same',
       use_bias=False,
-      kernel_initializer=kernel_initializer,
+      kernel_initializer=tf_utils.clone_initializer(kernel_initializer),
       kernel_regularizer=kernel_regularizer,
       name=layer_naming_fn(end_point))(
           net)
@@ -191,7 +192,7 @@ def inception_v1_stem_cells(
       norm_momentum=norm_momentum,
       norm_epsilon=norm_epsilon,
       temporal_conv_initializer=temporal_conv_initializer,
-      kernel_initializer=kernel_initializer,
+      kernel_initializer=tf_utils.clone_initializer(kernel_initializer),
       kernel_regularizer=kernel_regularizer,
       name=layer_naming_fn(end_point))(
           net)
@@ -330,7 +331,8 @@ class InceptionV1CellLayer(tf.keras.layers.Layer):
             kernel_size=[1, 1, 1],
             padding='same',
             use_bias=False,
-            kernel_initializer=self._kernel_initializer,
+            kernel_initializer=tf_utils.clone_initializer(
+                self._kernel_initializer),
             kernel_regularizer=self._kernel_regularizer),
         # norm
         dict(
@@ -349,7 +351,8 @@ class InceptionV1CellLayer(tf.keras.layers.Layer):
             kernel_size=[1, 1, 1],
             padding='same',
             use_bias=False,
-            kernel_initializer=self._kernel_initializer,
+            kernel_initializer=tf_utils.clone_initializer(
+                self._kernel_initializer),
             kernel_regularizer=self._kernel_regularizer),
         # norm
         dict(
@@ -371,7 +374,8 @@ class InceptionV1CellLayer(tf.keras.layers.Layer):
             norm_momentum=self._norm_momentum,
             norm_epsilon=self._norm_epsilon,
             temporal_conv_initializer=self._temporal_conv_initializer,
-            kernel_initializer=self._kernel_initializer,
+            kernel_initializer=tf_utils.clone_initializer(
+                self._kernel_initializer),
             kernel_regularizer=self._kernel_regularizer),
     ]
     branch_2_params = [
@@ -381,7 +385,8 @@ class InceptionV1CellLayer(tf.keras.layers.Layer):
             kernel_size=[1, 1, 1],
             padding='same',
             use_bias=False,
-            kernel_initializer=self._kernel_initializer,
+            kernel_initializer=tf_utils.clone_initializer(
+                self._kernel_initializer),
             kernel_regularizer=self._kernel_regularizer),
         # norm
         dict(
@@ -403,7 +408,8 @@ class InceptionV1CellLayer(tf.keras.layers.Layer):
             norm_momentum=self._norm_momentum,
             norm_epsilon=self._norm_epsilon,
             temporal_conv_initializer=self._temporal_conv_initializer,
-            kernel_initializer=self._kernel_initializer,
+            kernel_initializer=tf_utils.clone_initializer(
+                self._kernel_initializer),
             kernel_regularizer=self._kernel_regularizer)
     ]
     branch_3_params = [
@@ -413,7 +419,8 @@ class InceptionV1CellLayer(tf.keras.layers.Layer):
             kernel_size=[1, 1, 1],
             padding='same',
             use_bias=False,
-            kernel_initializer=self._kernel_initializer,
+            kernel_initializer=tf_utils.clone_initializer(
+                self._kernel_initializer),
             kernel_regularizer=self._kernel_regularizer),
         # norm
         dict(
