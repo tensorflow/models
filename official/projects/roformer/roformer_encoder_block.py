@@ -15,6 +15,7 @@
 """Roformer TransformerEncoder block layer."""
 
 import tensorflow as tf
+from official.modeling import tf_utils
 from official.projects.roformer import roformer_attention
 
 
@@ -111,7 +112,8 @@ class RoformerEncoderBlock(tf.keras.layers.Layer):
       self._attention_initializer = tf.keras.initializers.get(
           attention_initializer)
     else:
-      self._attention_initializer = self._kernel_initializer
+      self._attention_initializer = tf_utils.clone_initializer(
+          self._kernel_initializer)
     self._attention_axes = attention_axes
 
   def build(self, input_shape):
@@ -164,7 +166,7 @@ class RoformerEncoderBlock(tf.keras.layers.Layer):
         einsum_equation,
         output_shape=(None, self._inner_dim),
         bias_axes="d",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         name="intermediate",
         **common_kwargs)
     policy = tf.keras.mixed_precision.global_policy()
@@ -182,7 +184,7 @@ class RoformerEncoderBlock(tf.keras.layers.Layer):
         output_shape=(None, hidden_size),
         bias_axes="d",
         name="output",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         **common_kwargs)
     self._output_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
     # Use float32 in layernorm for numeric stability.
