@@ -58,15 +58,16 @@ class ReplacedTokenDetectionHead(tf.keras.layers.Layer):
               intermediate_activation=self.activation,
               dropout_rate=self.hidden_cfg['dropout_rate'],
               attention_dropout_rate=self.hidden_cfg['attention_dropout_rate'],
-              kernel_initializer=self.initializer,
+              kernel_initializer=tf_utils.clone_initializer(self.initializer),
               name='transformer/layer_%d_rtd' % i))
     self.dense = tf.keras.layers.Dense(
         self.hidden_size,
         activation=self.activation,
-        kernel_initializer=self.initializer,
+        kernel_initializer=tf_utils.clone_initializer(self.initializer),
         name='transform/rtd_dense')
     self.rtd_head = tf.keras.layers.Dense(
-        units=1, kernel_initializer=self.initializer,
+        units=1,
+        kernel_initializer=tf_utils.clone_initializer(self.initializer),
         name='transform/rtd_head')
 
     if output not in ('predictions', 'logits'):
