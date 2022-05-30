@@ -2730,7 +2730,7 @@ class CenterNetMetaArch(model.DetectionModel):
     # Shorten the name for convenience and better formatting.
     self._is_training = is_training
     # The Objects as Points paper attaches loss functions to multiple
-    # (`num_feature_outputs`) feature maps in the backbone. E.g.
+    # (`num_feature_outputs`) feature maps in the the backbone. E.g.
     # for the hourglass  backbone, `num_feature_outputs` is 2.
     self._num_classes = num_classes
     self._feature_extractor = feature_extractor
@@ -2823,7 +2823,7 @@ class CenterNetMetaArch(model.DetectionModel):
       num_classes: An integer indicating how many classes in total to predict.
       num_feature_outputs: An integer indicating how many feature outputs to use
         for calculating the loss. The Objects as Points paper attaches loss
-        functions to multiple (`num_feature_outputs`) feature maps in the
+        functions to multiple (`num_feature_outputs`) feature maps in the the
         backbone. E.g. for the hourglass backbone, `num_feature_outputs` is 2.
       class_prediction_bias_init: float, the initial value of bias in the
         convolutional kernel of the class prediction head. If set to None, the
