@@ -370,9 +370,9 @@ flags.DEFINE_float("co_mean_corr_scale", CO_MEAN_CORR_SCALE,
 # If the primary task of LFADS is "filtering" of data and not
 # generation, then it is possible that the KL penalty is too strong.
 # Empirically, we have found this to be the case.  So we add a
-# hyperparameter in front of the two KL terms (one for the initial
+# hyperparameter in front of the the two KL terms (one for the initial
 # conditions to the generator, the other for the controller outputs).
-# You should always think of the default values as 1.0, and that
+# You should always think of the the default values as 1.0, and that
 # leads to a standard VAE formulation whereby the numbers that are
 # optimized are a lower-bound on the log-likelihood of the data. When
 # these 2 HPs deviate from 1.0, one cannot make any statement about

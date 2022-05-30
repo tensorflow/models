@@ -2706,9 +2706,9 @@ def random_downscale_to_target_pixels(image,
     masks: (optional) Rank 3 float32 tensor with shape
       [num_instances, height, width] containing instance masks. The masks are of
       the same height, width as the input `image`.
-    min_target_pixels: Integer. An inclusive lower bound for the target
+    min_target_pixels: Integer. An inclusive lower bound for for the target
       number of pixels.
-    max_target_pixels: Integer. An exclusive upper bound for the target
+    max_target_pixels: Integer. An exclusive upper bound for for the target
       number of pixels.
     random_coef: Float. Random coefficient that defines the chance of getting
       the original image. If random_coef is 0, we will always apply downscaling,

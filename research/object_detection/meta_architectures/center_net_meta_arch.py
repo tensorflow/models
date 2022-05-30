@@ -2261,7 +2261,7 @@ class KeypointEstimationParams(
         estimation, the class id should correspond to the "human" class. Note
         that the ID is 0-based, meaning that class 0 corresponds to the first
         non-background object class.
-      keypoint_indices: A list of integers representing the indices of the
+      keypoint_indices: A list of integers representing the indicies of the
         keypoints to be considered in this task. This is used to retrieve the
         subset of the keypoints from gt_keypoints that should be considered in
         this task.

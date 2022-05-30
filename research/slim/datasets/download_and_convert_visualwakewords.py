@@ -35,7 +35,7 @@ The resulting annotations file has the following fields, where 'images' are
 the same as COCO dataset. 'categories' only contains information about the
 foreground_class_of_interest (e.g. person) and 'annotations' maps an image to
 objects (a list of valid bounding boxes) and label (value is 1 if it has
-at least one valid bounding box, otherwise 0)
+atleast one valid bounding box, otherwise 0)
 
   images[{
   "id", "width", "height", "file_name", "flickr_url", "coco_url",

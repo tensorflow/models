@@ -16,7 +16,7 @@
 """Code to compute segmentation in a "streaming" pattern in Tensorflow.
 
 These aggregate the metric over examples of the evaluation set. Each example is
-assumed to be fed in a stream, and the metric implementation accumulates
+assumed to be fed in in a stream, and the metric implementation accumulates
 across them.
 """
 

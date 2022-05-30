@@ -25,7 +25,7 @@ RUN useradd -ms /bin/bash tensorflow
 USER tensorflow
 WORKDIR /home/tensorflow
 
-# Copy this version of the model garden into the image
+# Copy this version of of the model garden into the image
 COPY --chown=tensorflow . /home/tensorflow/models
 
 # Compile protobuf configs
