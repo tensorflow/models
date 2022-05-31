@@ -201,7 +201,28 @@ class ImageClassificationTask(base_task.Task):
                   name='recall_at_threshold_{}'.format(th),
                   top_k=1) for th in thresholds
           ]
-          # pylint:enable=g-complex-comprehension
+
+          # Add per-class precision and recall.
+          if hasattr(
+              self.task_config.evaluation,
+              'report_per_class_precision_and_recall'
+          ) and self.task_config.evaluation.report_per_class_precision_and_recall:
+            for class_id in range(self.task_config.model.num_classes):
+              metrics += [
+                  tf.keras.metrics.Precision(
+                      thresholds=th,
+                      class_id=class_id,
+                      name=f'precision_at_threshold_{th}/{class_id}',
+                      top_k=1) for th in thresholds
+              ]
+              metrics += [
+                  tf.keras.metrics.Recall(
+                      thresholds=th,
+                      class_id=class_id,
+                      name=f'recall_at_threshold_{th}/{class_id}',
+                      top_k=1) for th in thresholds
+              ]
+              # pylint:enable=g-complex-comprehension
       else:
         metrics = [
             tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),

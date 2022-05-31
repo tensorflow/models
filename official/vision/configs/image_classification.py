@@ -82,6 +82,7 @@ class Losses(hyperparams.Config):
 class Evaluation(hyperparams.Config):
   top_k: int = 5
   precision_and_recall_thresholds: Optional[List[float]] = None
+  report_per_class_precision_and_recall: bool = False
 
 
 @dataclasses.dataclass
