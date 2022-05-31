@@ -191,6 +191,32 @@ class AdamWeightDecayConfig(BaseOptimizerConfig):
 
 
 @dataclasses.dataclass
+class AdamWeightDecayExperimentalConfig(BaseOptimizerConfig):
+  """Configuration for Adam optimizer with weight decay.
+
+  Attributes:
+    name: name of the optimizer.
+    beta_1: decay rate for 1st order moments.
+    beta_2: decay rate for 2st order moments.
+    epsilon: epsilon value used for numerical stability in the optimizer.
+    amsgrad: boolean. Whether to apply AMSGrad variant of this algorithm from
+      the paper "On the Convergence of Adam and beyond".
+    weight_decay: float. Weight decay rate. Default to 0.
+    global_clipnorm: A positive float. Clips the gradients to this maximum
+      L2-norm. Default to 1.0.
+    jit_compile: if True, jit compile will be used.
+  """
+  name: str = "AdamWeightDecayExperimental"
+  beta_1: float = 0.9
+  beta_2: float = 0.999
+  epsilon: float = 1e-07
+  amsgrad: bool = False
+  weight_decay: float = 0.0
+  global_clipnorm: float = 1.0
+  jit_compile: bool = False
+
+
+@dataclasses.dataclass
 class LAMBConfig(BaseOptimizerConfig):
   """Configuration for LAMB optimizer.
 
