@@ -33,6 +33,7 @@ OPTIMIZERS_CLS = {
     'adam': tf.keras.optimizers.Adam,
     # TODO(chenmoneygithub): experimental.Adam
     'adamw': legacy_adamw.AdamWeightDecay,
+    'adamw_experimental': tf.keras.optimizers.experimental.AdamW,
     'lamb': tfa_optimizers.LAMB,
     'rmsprop': tf.keras.optimizers.RMSprop,
     'lars': lars_optimizer.LARS,
