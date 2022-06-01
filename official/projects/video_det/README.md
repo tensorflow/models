@@ -1,3 +1,0 @@
-# Video Detection
-
-TBD
