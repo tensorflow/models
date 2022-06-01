@@ -159,11 +159,14 @@ def create_distillation_example(
       np.uint8(np.random.rand(image_height, image_width, 3) * 255),
       fmt=image_format)
   soft_labels = [0.6] * num_labels
+  labels = [0]
   serialized_example = tf.train.Example(
       features=tf.train.Features(
           feature={
               IMAGE_KEY: (tf.train.Feature(
                   bytes_list=tf.train.BytesList(value=[image]))),
+              CLASSIFICATION_LABEL_KEY: (tf.train.Feature(
+                  int64_list=tf.train.Int64List(value=labels))),
               DISTILATION_LABEL_KEY: (tf.train.Feature(
                   float_list=tf.train.FloatList(value=soft_labels))),
           })).SerializeToString()
