@@ -18,6 +18,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow.python.distribute import combinations
+from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_deeplab as panoptic_deeplab_cfg
 from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_maskrcnn as panoptic_maskrcnn_cfg
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import factory
 from official.vision.configs import backbones
@@ -61,6 +63,52 @@ class PanopticMaskRCNNBuilderTest(parameterized.TestCase, tf.test.TestCase):
         input_specs=input_specs,
         model_config=model_config,
         l2_regularizer=l2_regularizer)
+
+
+class PanopticDeeplabBuilderTest(parameterized.TestCase, tf.test.TestCase):
+
+  @combinations.generate(
+      combinations.combine(
+          input_size=[(640, 640), (512, 512)],
+          backbone_type=['resnet', 'dilated_resnet'],
+          decoder_type=['aspp', 'fpn'],
+          level=[2, 3, 4],
+          low_level=[(4, 3), (3, 2)],
+          shared_decoder=[True, False],
+          generate_panoptic_masks=[True, False]))
+  def test_builder(self, input_size, backbone_type,
+                   level, low_level, decoder_type,
+                   shared_decoder, generate_panoptic_masks):
+    num_classes = 10
+    input_specs = tf.keras.layers.InputSpec(
+        shape=[None, input_size[0], input_size[1], 3])
+
+    model_config = panoptic_deeplab_cfg.PanopticDeeplab(
+        num_classes=num_classes,
+        input_size=input_size,
+        backbone=backbones.Backbone(type=backbone_type),
+        decoder=decoders.Decoder(type=decoder_type),
+        semantic_head=panoptic_deeplab_cfg.SemanticHead(
+            level=level,
+            num_convs=1,
+            kernel_size=5,
+            prediction_kernel_size=1,
+            low_level=low_level),
+        instance_head=panoptic_deeplab_cfg.InstanceHead(
+            level=level,
+            num_convs=1,
+            kernel_size=5,
+            prediction_kernel_size=1,
+            low_level=low_level),
+        shared_decoder=shared_decoder,
+        generate_panoptic_masks=generate_panoptic_masks)
+
+    l2_regularizer = tf.keras.regularizers.l2(5e-5)
+    _ = factory.build_panoptic_deeplab(
+        input_specs=input_specs,
+        model_config=model_config,
+        l2_regularizer=l2_regularizer)
+
 
 if __name__ == '__main__':
   tf.test.main()

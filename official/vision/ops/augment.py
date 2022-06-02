@@ -1583,6 +1583,7 @@ class AutoAugment(ImageAugment):
         'reduced_cifar10': self.policy_reduced_cifar10(),
         'svhn': self.policy_svhn(),
         'reduced_imagenet': self.policy_reduced_imagenet(),
+        'panoptic_deeplab_policy': self.panoptic_deeplab_policy(),
     }
 
     if not policies:
@@ -1889,6 +1890,16 @@ class AutoAugment(ImageAugment):
     return policy
 
   @staticmethod
+  def panoptic_deeplab_policy():
+    policy = [
+        [('Sharpness', 0.4, 1.4), ('Brightness', 0.2, 2.0)],
+        [('Equalize', 0.0, 1.8), ('Contrast', 0.2, 2.0)],
+        [('Sharpness', 0.2, 1.8), ('Color', 0.2, 1.8)],
+        [('Solarize', 0.2, 1.4), ('Equalize', 0.6, 1.8)],
+        [('Sharpness', 0.2, 0.2), ('Equalize', 0.2, 1.4)]]
+    return policy
+
+  @staticmethod
   def policy_test():
     """Autoaugment test policy for debugging."""
     policy = [
@@ -2025,7 +2036,7 @@ class RandAugment(ImageAugment):
       aug_image, aug_bboxes = tf.switch_case(
           branch_index=op_to_select,
           branch_fns=branch_fns,
-          default=lambda: (tf.identity(image), _maybe_identity(bboxes)))
+          default=lambda: (tf.identity(image), _maybe_identity(bboxes)))  # pylint: disable=cell-var-from-loop
 
       if self.prob_to_apply is not None:
         aug_image, aug_bboxes = tf.cond(
