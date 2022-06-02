@@ -1,0 +1,22 @@
+# Defining the input pipeline of unified detector.
+
+# ===== ===== Model ===== =====
+# Internal import 2.
+OcrTask.model_fn = @UniversalDetector
+
+# ===== ===== Data pipeline ===== =====
+InputFn.parser_fn = @UniDetectorParserFn
+InputFn.dataset_type = 'tfrecord'
+InputFn.batch_size = 256
+
+# Internal import 3.
+
+UniDetectorParserFn.output_dimension = 1024
+# Simple data augmentation for now.
+UniDetectorParserFn.rot90_probability = 0.0
+UniDetectorParserFn.use_color_distortion = True
+UniDetectorParserFn.crop_min_scale = 0.5
+UniDetectorParserFn.crop_max_scale = 1.5
+UniDetectorParserFn.crop_min_aspect = 0.8
+UniDetectorParserFn.crop_max_aspect = 1.25
+UniDetectorParserFn.max_num_instance = 384

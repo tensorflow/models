@@ -1,0 +1,43 @@
+# Defining the unified detector models.
+
+# Model
+## Backbone
+num_slots = 384
+SyncBatchNormalization.momentum = 0.95
+
+get_max_deep_lab_backbone.num_slots = %num_slots
+
+## Decoder
+intermediate_filters = 256
+num_entity_class = 3 # C + 1 (bkg) + 1 (void)
+
+_get_decoder_head.atrous_rates = (6, 12, 18)
+_get_decoder_head.pixel_space_dim = 128
+_get_decoder_head.pixel_space_intermediate = %intermediate_filters
+_get_decoder_head.num_classes = %num_entity_class
+_get_decoder_head.aux_sem_intermediate = %intermediate_filters
+_get_decoder_head.low_level = [
+    {'feature_key': 'res3', 'channels_project': 64,},
+    {'feature_key': 'res2', 'channels_project': 32,},]
+_get_decoder_head.norm_fn = @SyncBatchNormalization
+_get_embed_head.norm_fn = @LayerNorm
+
+# Loss
+# pq loss
+alpha = 0.75
+tau = 0.3
+_entity_mask_loss.alpha = %alpha
+_instance_discrimination_loss.tau = %tau
+_paragraph_grouping_loss.tau = %tau
+_paragraph_grouping_loss.loss_mode = 'balanced'
+
+
+# Other Model setting
+UniversalDetector.mask_threshold = 0.4
+UniversalDetector.class_threshold = 0.5
+UniversalDetector.filter_area = 32
+universal_detection_loss_weights.loss_segmentation_word = 1e0
+universal_detection_loss_weights.loss_inst_dist = 1e0
+universal_detection_loss_weights.loss_mask_id = 1e-4
+universal_detection_loss_weights.loss_pq = 3e0
+universal_detection_loss_weights.loss_para = 1e0
