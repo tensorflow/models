@@ -55,6 +55,8 @@ def sample_top_k(logits, top_k):
   Returns:
     Logits with top_k filtering applied.
   """
+  top_k = tf.clip_by_value(
+      top_k, clip_value_min=1, clip_value_max=tf.shape(logits)[-1])
   top_k_logits = tf.math.top_k(logits, k=top_k)
   indices_to_remove = logits < tf.expand_dims(top_k_logits[0][..., -1], -1)
   top_k_logits = set_tensor_by_indices_to_value(logits, indices_to_remove,
