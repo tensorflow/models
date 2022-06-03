@@ -109,7 +109,8 @@ def build_meta_arch(**override_params):
       augmented_self_supervision_loss='loss_dice',
       augmented_self_supervision_scale_min=1.0,
       augmented_self_supervision_scale_max=1.0,
-      pointly_supervised_keypoint_loss_weight=1.0)
+      pointly_supervised_keypoint_loss_weight=1.0,
+      ignore_per_class_box_overlap=False)
 
   params.update(override_params)
 
@@ -199,6 +200,7 @@ DEEPMAC_PROTO_TEXT = """
   augmented_self_supervision_scale_min: 0.42
   augmented_self_supervision_scale_max: 1.42
   pointly_supervised_keypoint_loss_weight: 0.13
+  ignore_per_class_box_overlap: true
 
 """
 
@@ -229,6 +231,7 @@ class DeepMACUtilsTest(tf.test.TestCase, parameterized.TestCase):
         params.augmented_self_supervision_scale_max, 1.42)
     self.assertAlmostEqual(
         params.pointly_supervised_keypoint_loss_weight, 0.13)
+    self.assertTrue(params.ignore_per_class_box_overlap)
 
   def test_subsample_trivial(self):
     """Test subsampling masks."""
@@ -530,6 +533,18 @@ class DeepMACUtilsTest(tf.test.TestCase, parameterized.TestCase):
     expected_output = np.array([1])
     expected_output = np.reshape(expected_output, (1, 1, 1, 1))
     self.assertAllClose(expected_output, out)
+
+  def test_per_instance_no_class_overlap(self):
+    boxes = tf.constant([[[0.0, 0.0, 1.0, 1.0], [0.0, 0.0, 0.4, 0.4]],
+                         [[0.0, 0.0, 1.0, 1.0], [0.0, 0.0, 1.0, 1.0]]],
+                        dtype=tf.float32)
+    classes = tf.constant([[[0, 1, 0], [0, 1, 0]], [[0, 1, 0], [1, 0, 0]]],
+                          dtype=tf.float32)
+    output = deepmac_meta_arch.per_instance_no_class_overlap(
+        classes, boxes, 2, 2)
+    self.assertEqual(output.shape, (2, 2, 2, 2))
+    self.assertAllClose(output[1], np.ones((2, 2, 2)))
+    self.assertAllClose(output[0, 1], [[0., 1.0], [1.0, 1.0]])
 
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
@@ -943,6 +958,7 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_predict_self_supervised_deaugmented_mask_logits(self):
 
+    tf.keras.backend.set_learning_phase(True)
     model = build_meta_arch(
         augmented_self_supervision_loss_weight=1.0,
         predict_full_resolution_masks=True)
@@ -967,9 +983,10 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     masks[0, 0, :16, :16] = 1.0
     masks[0, 1, 16:, 16:] = 1.0
     masks_pred = tf.fill((1, 2, 32, 32), 0.9)
+    classes = tf.zeros((1, 2, 5))
 
     loss_dict = model._compute_deepmac_losses(
-        boxes, masks_pred, masks, tf.zeros((1, 16, 16, 3)))
+        boxes, masks_pred, masks, classes, tf.zeros((1, 16, 16, 3)))
     self.assertAllClose(
         loss_dict[deepmac_meta_arch.DEEP_MASK_ESTIMATION],
         np.zeros((1, 2)) - tf.math.log(tf.nn.sigmoid(0.9)))
@@ -980,9 +997,10 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     boxes = tf.constant([[[0.0, 0.0, 1.0, 1.0], [0.0, 0.0, 1.0, 1.0]]])
     masks = tf.ones((1, 2, 128, 128), dtype=tf.float32)
     masks_pred = tf.fill((1, 2, 32, 32), 0.9)
+    classes = tf.zeros((1, 2, 5))
 
     loss_dict = model._compute_deepmac_losses(
-        boxes, masks_pred, masks, tf.zeros((1, 32, 32, 3)))
+        boxes, masks_pred, masks, classes, tf.zeros((1, 32, 32, 3)))
     self.assertAllClose(
         loss_dict[deepmac_meta_arch.DEEP_MASK_ESTIMATION],
         np.zeros((1, 2)) - tf.math.log(tf.nn.sigmoid(0.9)))
@@ -995,9 +1013,10 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     masks = np.ones((1, 2, 128, 128), dtype=np.float32)
     masks = tf.constant(masks)
     masks_pred = tf.fill((1, 2, 32, 32), 0.9)
+    classes = tf.zeros((1, 2, 5))
 
     loss_dict = model._compute_deepmac_losses(
-        boxes, masks_pred, masks, tf.zeros((1, 32, 32, 3)))
+        boxes, masks_pred, masks, classes, tf.zeros((1, 32, 32, 3)))
     pred = tf.nn.sigmoid(0.9)
     expected = (1.0 - ((2.0 * pred) / (1.0 + pred)))
     self.assertAllClose(loss_dict[deepmac_meta_arch.DEEP_MASK_ESTIMATION],
@@ -1007,9 +1026,10 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
 
     boxes = tf.zeros([1, 0, 4])
     masks = tf.zeros([1, 0, 128, 128])
+    classes = tf.zeros((1, 2, 5))
 
     loss_dict = self.model._compute_deepmac_losses(
-        boxes, masks, masks,
+        boxes, masks, masks, classes,
         tf.zeros((1, 16, 16, 3)))
     self.assertEqual(loss_dict[deepmac_meta_arch.DEEP_MASK_ESTIMATION].shape,
                      (1, 0))
@@ -1476,6 +1496,33 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
       self.assertGreater(loss['Loss/' + weak_loss], 0.0,
                          '{} was <= 0'.format(weak_loss))
 
+  def test_eval_loss_and_postprocess_keys(self):
+
+    model = build_meta_arch(
+        use_dice_loss=True,
+        augmented_self_supervision_loss_weight=1.0,
+        augmented_self_supervision_max_translation=0.5,
+        predict_full_resolution_masks=True)
+
+    true_image_shapes = tf.constant([[32, 32, 3]], dtype=tf.int32)
+    prediction_dict = model.predict(
+        tf.zeros((1, 32, 32, 3)), true_image_shapes)
+    output = model.postprocess(prediction_dict, true_image_shapes)
+    self.assertEqual(output['detection_boxes'].shape, (1, 5, 4))
+    self.assertEqual(output['detection_masks'].shape, (1, 5, 128, 128))
+
+    model.provide_groundtruth(
+        groundtruth_boxes_list=[
+            tf.convert_to_tensor([[0., 0., 1., 1.]] * 5)] * 1,
+        groundtruth_classes_list=[tf.one_hot([1, 0, 1, 1, 1], depth=6)] * 1,
+        groundtruth_weights_list=[tf.ones(5)] * 1,
+        groundtruth_masks_list=[tf.ones((5, 32, 32))] * 1,
+        groundtruth_keypoints_list=[tf.zeros((5, 10, 2))] * 1,
+        groundtruth_keypoint_depths_list=[tf.zeros((5, 10))] * 1)
+    prediction_dict = model.predict(
+        tf.zeros((1, 32, 32, 3)), true_image_shapes)
+    model.loss(prediction_dict, true_image_shapes)
+
   def test_loss_weight_response(self):
     tf.random.set_seed(12)
     model = build_meta_arch(
@@ -1660,6 +1707,30 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertEqual(loss.shape, (1, 1))
     self.assertAllClose(expected_loss, loss)
+
+  def test_ignore_per_class_box_overlap(self):
+    tf.keras.backend.set_learning_phase(True)
+    model = build_meta_arch(
+        use_dice_loss=False,
+        predict_full_resolution_masks=True,
+        network_type='cond_inst1',
+        dim=9,
+        pixel_embedding_dim=8,
+        use_instance_embedding=False,
+        use_xy=False,
+        pointly_supervised_keypoint_loss_weight=1.0,
+        ignore_per_class_box_overlap=True)
+
+    self.assertTrue(model._deepmac_params.ignore_per_class_box_overlap)
+    mask_logits = tf.zeros((2, 3, 16, 16))
+    mask_gt = tf.zeros((2, 3, 32, 32))
+    boxes = tf.zeros((2, 3, 4))
+    classes = tf.zeros((2, 3, 5))
+
+    loss = model._compute_mask_prediction_loss(
+        boxes, mask_logits, mask_gt, classes)
+
+    self.assertEqual(loss.shape, (2, 3))
 
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')

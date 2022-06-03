@@ -403,7 +403,7 @@ message CenterNet {
 
 
   // Mask prediction support using DeepMAC. See https://arxiv.org/abs/2104.00613
-  // Next ID 34
+  // Next ID 35
   message DeepMACMaskEstimation {
     // The loss used for penalizing mask predictions.
     optional ClassificationLoss classification_loss = 1;
@@ -530,6 +530,10 @@ message CenterNet {
     // Depth = +1 is assumed to be foreground and
     // Depth = -1 is assumed to be background.
     optional float pointly_supervised_keypoint_loss_weight = 33 [default = 0.0];
+
+    // When set, loss computation is ignored at pixels that fall within
+    // 2 boxes of the same class.
+    optional bool ignore_per_class_box_overlap = 34 [default = false];
 
   }
 

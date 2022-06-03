@@ -68,7 +68,8 @@ DeepMACParams = collections.namedtuple('DeepMACParams', [
         'augmented_self_supervision_loss',
         'augmented_self_supervision_scale_min',
         'augmented_self_supervision_scale_max',
-        'pointly_supervised_keypoint_loss_weight'
+        'pointly_supervised_keypoint_loss_weight',
+        'ignore_per_class_box_overlap'
     ])
 
 
@@ -252,6 +253,36 @@ def filter_masked_classes(masked_class_ids, classes, weights, masks):
       weights * matched_classes,
       masks * matched_classes[:, :, tf.newaxis, tf.newaxis]
   )
+
+
+def per_instance_no_class_overlap(classes, boxes, height, width):
+  """Returns 1s inside boxes but overlapping boxes of same class are zeroed out.
+
+  Args:
+    classes: A [batch_size, num_instances, num_classes] float tensor containing
+      the one-hot encoded classes.
+    boxes: A [batch_size, num_instances, 4] shaped float tensor of normalized
+      boxes.
+    height: int, height of the desired mask.
+    width: int, width of the desired mask.
+
+  Returns:
+    mask: A [batch_size, num_instances, height, width] float tensor of 0s and
+      1s.
+  """
+  box_mask = fill_boxes(boxes, height, width)
+  per_class_box_mask = (
+      box_mask[:, :, tf.newaxis, :, :] *
+      classes[:, :, :, tf.newaxis, tf.newaxis])
+
+  per_class_instance_count = tf.reduce_sum(per_class_box_mask, axis=1)
+  per_class_valid_map = per_class_instance_count < 2
+  class_indices = tf.argmax(classes, axis=2)
+
+  per_instance_valid_map = tf.gather(
+      per_class_valid_map, class_indices, batch_dims=1)
+
+  return tf.cast(per_instance_valid_map, tf.float32)
 
 
 def flatten_first2_dims(tensor):
@@ -1144,13 +1175,15 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
   def predict(self, preprocessed_inputs, true_image_shapes):
     prediction_dict = super(DeepMACMetaArch, self).predict(
         preprocessed_inputs, true_image_shapes)
-    mask_logits = self._predict_mask_logits_from_gt_boxes(prediction_dict)
-    prediction_dict[MASK_LOGITS_GT_BOXES] = mask_logits
 
-    if self._deepmac_params.augmented_self_supervision_loss_weight > 0.0:
-      prediction_dict[SELF_SUPERVISED_DEAUGMENTED_MASK_LOGITS] = (
-          self._predict_deaugmented_mask_logits_on_augmented_inputs(
-              preprocessed_inputs, true_image_shapes))
+    if self.groundtruth_has_field(fields.BoxListFields.boxes):
+      mask_logits = self._predict_mask_logits_from_gt_boxes(prediction_dict)
+      prediction_dict[MASK_LOGITS_GT_BOXES] = mask_logits
+
+      if self._deepmac_params.augmented_self_supervision_loss_weight > 0.0:
+        prediction_dict[SELF_SUPERVISED_DEAUGMENTED_MASK_LOGITS] = (
+            self._predict_deaugmented_mask_logits_on_augmented_inputs(
+                preprocessed_inputs, true_image_shapes))
     return prediction_dict
 
   def _predict_deaugmented_mask_logits_on_augmented_inputs(
@@ -1349,14 +1382,17 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
       raise ValueError('Unknown loss aggregation - {}'.format(method))
 
   def _compute_mask_prediction_loss(
-      self, boxes, mask_logits, mask_gt):
+      self, boxes, mask_logits, mask_gt, classes):
     """Compute the per-instance mask loss.
 
     Args:
-      boxes: A [batch_size, num_instances, 4] float tensor of GT boxes.
-      mask_logits: A [batch_suze, num_instances, height, width] float tensor of
+      boxes: A [batch_size, num_instances, 4] float tensor of GT boxes in
+        normalized coordinates.
+      mask_logits: A [batch_size, num_instances, height, width] float tensor of
         predicted masks
       mask_gt: The groundtruth mask of same shape as mask_logits.
+      classes: A [batch_size, num_instances, num_classes] shaped tensor of
+        one-hot encoded classes.
 
     Returns:
       loss: A [batch_size, num_instances] shaped tensor with the loss for each
@@ -1369,9 +1405,19 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
 
     batch_size, num_instances = tf.shape(boxes)[0], tf.shape(boxes)[1]
     mask_logits = self._resize_logits_like_gt(mask_logits, mask_gt)
+    height, width = tf.shape(mask_logits)[2], tf.shape(mask_logits)[3]
+
+    if self._deepmac_params.ignore_per_class_box_overlap:
+      mask_logits *= per_instance_no_class_overlap(
+          classes, boxes, height, width)
+
+      height, wdith = tf.shape(mask_gt)[2], tf.shape(mask_gt)[3]
+      mask_logits *= per_instance_no_class_overlap(
+          classes, boxes, height, wdith)
 
     mask_logits = tf.reshape(mask_logits, [batch_size * num_instances, -1, 1])
     mask_gt = tf.reshape(mask_gt, [batch_size * num_instances, -1, 1])
+
     loss = self._deepmac_params.classification_loss(
         prediction_tensor=mask_logits,
         target_tensor=mask_gt,
@@ -1660,7 +1706,7 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     return tf.reshape(loss, [batch_size, num_instances])
 
   def _compute_deepmac_losses(
-      self, boxes, masks_logits, masks_gt, image,
+      self, boxes, masks_logits, masks_gt, classes, image,
       self_supervised_masks_logits=None, keypoints_gt=None,
       keypoints_depth_gt=None):
     """Returns the mask loss per instance.
@@ -1674,6 +1720,8 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
       masks_gt: A [batch_size, num_instances, output_height, output_width] float
         tensor containing the groundtruth masks. If masks_gt is None,
         DEEP_MASK_ESTIMATION is filled with 0s.
+      classes: A [batch_size, num_instances, num_classes] tensor of one-hot
+        encoded classes.
       image: [batch_size, output_height, output_width, channels] float tensor
         denoting the input image.
       self_supervised_masks_logits: Optional self-supervised mask logits to
@@ -1712,7 +1760,7 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
       masks_gt = self._get_groundtruth_mask_output(
           boxes_for_crop, masks_gt)
     mask_prediction_loss = self._compute_mask_prediction_loss(
-        boxes_for_crop, masks_logits, masks_gt)
+        boxes_for_crop, masks_logits, masks_gt, classes)
 
     box_consistency_loss = self._compute_box_consistency_loss(
         boxes, boxes_for_crop, masks_logits)
@@ -1803,7 +1851,8 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
           gt_weights, gt_masks)
 
       sample_loss_dict = self._compute_deepmac_losses(
-          gt_boxes, mask_logits, gt_masks, image,
+          boxes=gt_boxes, masks_logits=mask_logits, masks_gt=gt_masks,
+          classes=gt_classes, image=image,
           self_supervised_masks_logits=self_supervised_mask_logits,
           keypoints_gt=gt_keypoints, keypoints_depth_gt=gt_depths)
 
