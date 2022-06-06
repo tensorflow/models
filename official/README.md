@@ -126,6 +126,13 @@ pip3 install tf-models-official==2.5.0
 pip3 install tensorflow-text==2.5.0 # when model uses `nlp` packages
 ```
 
+Starting from 2.9.x release, we release the modeling library as
+`tensorflow_models` package and users can `import tensorflow_models` directly to
+access to the exported symbols. The API documentation is published to
+[tensorflow.org](https://www.tensorflow.org/api_docs/python/tfm). If you are
+using the latest nightly version or github code directly, please follow the
+docstrings in the github.
+
 Please follow the below steps before running models in this repository.
 
 ### Requirements
