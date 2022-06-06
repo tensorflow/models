@@ -19,7 +19,7 @@ from typing import Any, Dict, Optional, List, Tuple, Mapping
 
 from absl import logging
 import tensorflow as tf
-from official.common import dataset_fn
+from official.common import dataset_fn as dataset_fn_lib
 from official.core import base_task
 from official.core import task_factory
 from official.vision.configs import maskrcnn as exp_cfg
@@ -118,9 +118,11 @@ class MaskRCNNTask(base_task.Task):
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
 
-  def build_inputs(self,
-                   params: exp_cfg.DataConfig,
-                   input_context: Optional[tf.distribute.InputContext] = None):
+  def build_inputs(
+      self,
+      params: exp_cfg.DataConfig,
+      input_context: Optional[tf.distribute.InputContext] = None,
+      dataset_fn: Optional[dataset_fn_lib.PossibleDatasetType] = None):
     """Build input dataset."""
     decoder_cfg = params.decoder.get()
     if params.decoder.type == 'simple_decoder':
@@ -157,9 +159,12 @@ class MaskRCNNTask(base_task.Task):
         include_mask=self._task_config.model.include_mask,
         mask_crop_size=params.parser.mask_crop_size)
 
+    if not dataset_fn:
+      dataset_fn = dataset_fn_lib.pick_dataset_fn(params.file_type)
+
     reader = input_reader_factory.input_reader_generator(
         params,
-        dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
+        dataset_fn=dataset_fn,
         decoder_fn=decoder.decode,
         parser_fn=parser.parse_fn(params.is_training))
     dataset = reader.read(input_context=input_context)
