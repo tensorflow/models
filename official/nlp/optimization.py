@@ -71,13 +71,15 @@ def create_optimizer(init_lr,
                      num_warmup_steps,
                      end_lr=0.0,
                      optimizer_type='adamw',
-                     beta_1=0.9):
+                     beta_1=0.9,
+                     poly_power=1.0):
   """Creates an optimizer with learning rate schedule."""
   # Implements linear decay of the learning rate.
   lr_schedule = tf.keras.optimizers.schedules.PolynomialDecay(
       initial_learning_rate=init_lr,
       decay_steps=num_train_steps,
-      end_learning_rate=end_lr)
+      end_learning_rate=end_lr,
+      power=poly_power)
   if num_warmup_steps:
     lr_schedule = WarmUp(
         initial_learning_rate=init_lr,
