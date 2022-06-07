@@ -34,6 +34,8 @@ from official.nlp.modeling.layers.mobile_bert_layers import MobileBertMaskedLM
 from official.nlp.modeling.layers.mobile_bert_layers import MobileBertTransformer
 from official.nlp.modeling.layers.multi_channel_attention import *
 from official.nlp.modeling.layers.on_device_embedding import OnDeviceEmbedding
+from official.nlp.modeling.layers.pack_optimization import PackBertEmbeddings
+from official.nlp.modeling.layers.pack_optimization import StridedTransformerEncoderBlock
 from official.nlp.modeling.layers.position_embedding import PositionEmbedding
 from official.nlp.modeling.layers.position_embedding import RelativePositionBias
 from official.nlp.modeling.layers.position_embedding import RelativePositionEmbedding
