@@ -1,0 +1,20 @@
+# Expect to reach: box mAP: 33.3%, mask mAP: 29.4% on COCO
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  init_checkpoint: gs://**/mobilenetv2_gpu/22984194/ckpt-625500
+  init_checkpoint_modules: 'backbone'
+  train_data:
+    parser:
+      aug_rand_hflip: true
+      aug_scale_min: 0.1
+      aug_scale_max: 2.0
+  losses:
+    l2_weight_decay: 0.00004
+  model:
+    anchor:
+      anchor_size: 3.0
+      num_scales: 3
+    detection_generator:
+      pre_nms_top_k: 1000
