@@ -29,8 +29,12 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(
       (128, 50, 4, 8),
       (128, 101, 4, 8),
+      (128, 152, 4, 8),
+      (128, 200, 4, 8),
       (128, 50, 4, 16),
       (128, 101, 4, 16),
+      (128, 152, 4, 16),
+      (128, 200, 4, 16),
   )
   def test_network_creation(self, input_size, model_id,
                             endpoint_filter_scale, output_stride):
