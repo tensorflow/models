@@ -262,7 +262,7 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         name="self_attention",
         **common_kwargs)
-    self.self_attention_output_dense = tf.keras.layers.experimental.EinsumDense(
+    self.self_attention_output_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
         bias_axes="d",
@@ -301,7 +301,7 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
             dtype="float32"))
 
     # Feed-forward projection.
-    self.intermediate_dense = tf.keras.layers.experimental.EinsumDense(
+    self.intermediate_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, self.intermediate_size),
         bias_axes="d",
@@ -313,7 +313,7 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         self.intermediate_activation)
     self._intermediate_dropout_layer = tf.keras.layers.Dropout(
         rate=self._intermediate_dropout)
-    self.output_dense = tf.keras.layers.experimental.EinsumDense(
+    self.output_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
         bias_axes="d",

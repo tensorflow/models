@@ -128,7 +128,7 @@ class PackedSequenceEmbedding(tf.keras.Model):
             embeddings)
 
     if embedding_width != hidden_size:
-      embeddings = tf.keras.layers.experimental.EinsumDense(
+      embeddings = tf.keras.layers.EinsumDense(
           '...x,xy->...y',
           output_shape=hidden_size,
           bias_axes=None,

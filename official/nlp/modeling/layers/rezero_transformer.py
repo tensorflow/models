@@ -145,7 +145,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
               axis=-1,
               epsilon=1e-12,
               dtype=tf.float32))
-    self._intermediate_dense = tf.keras.layers.experimental.EinsumDense(
+    self._intermediate_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, self._intermediate_size),
         bias_axes="d",
@@ -161,7 +161,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
       policy = tf.float32
     self._intermediate_activation_layer = tf.keras.layers.Activation(
         self._intermediate_activation, dtype=policy)
-    self._output_dense = tf.keras.layers.experimental.EinsumDense(
+    self._output_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
         bias_axes="d",

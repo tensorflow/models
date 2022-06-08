@@ -88,7 +88,7 @@ class BlockDiagFeedforward(tf.keras.layers.Layer):
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint)
 
-    self._intermediate_dense = tf.keras.layers.experimental.EinsumDense(
+    self._intermediate_dense = tf.keras.layers.EinsumDense(
         "abc,cde->abde",
         output_shape=(None, self._num_blocks,
                       self._intermediate_size // self._num_blocks),
@@ -106,10 +106,9 @@ class BlockDiagFeedforward(tf.keras.layers.Layer):
     self._intermediate_activation_layer = tf.keras.layers.Activation(
         self._intermediate_activation, dtype=policy)
 
-    self._output_dense = tf.keras.layers.experimental.EinsumDense(
+    self._output_dense = tf.keras.layers.EinsumDense(
         "abde,deo->abdo",
-        output_shape=(None, self._num_blocks,
-                      hidden_size // self._num_blocks),
+        output_shape=(None, self._num_blocks, hidden_size // self._num_blocks),
         bias_axes="do",
         name="output",
         kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
@@ -117,7 +116,7 @@ class BlockDiagFeedforward(tf.keras.layers.Layer):
         **common_kwargs)
 
     if self._apply_mixing:
-      self._output_mixing = tf.keras.layers.experimental.EinsumDense(
+      self._output_mixing = tf.keras.layers.EinsumDense(
           "abdo,de->abeo",
           output_shape=(None, self._num_blocks,
                         hidden_size // self._num_blocks),

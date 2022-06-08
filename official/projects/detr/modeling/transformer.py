@@ -283,7 +283,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
             axis=-1,
             epsilon=self._norm_epsilon,
             dtype=tf.float32))
-    self._intermediate_dense = tf.keras.layers.experimental.EinsumDense(
+    self._intermediate_dense = tf.keras.layers.EinsumDense(
         einsum_equation,
         output_shape=(None, self._inner_dim),
         bias_axes="d",
@@ -300,7 +300,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         self._inner_activation, dtype=policy)
     self._inner_dropout_layer = tf.keras.layers.Dropout(
         rate=self._inner_dropout)
-    self._output_dense = tf.keras.layers.experimental.EinsumDense(
+    self._output_dense = tf.keras.layers.EinsumDense(
         einsum_equation,
         output_shape=(None, hidden_size),
         bias_axes="d",
@@ -691,7 +691,7 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         kernel_initializer=self._attention_initializer,
         name="self_attention",
         **common_kwargs)
-    self.self_attention_output_dense = tf.keras.layers.experimental.EinsumDense(
+    self.self_attention_output_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
         bias_axes="d",
@@ -727,7 +727,7 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
             dtype="float32"))
 
     # Feed-forward projection.
-    self.intermediate_dense = tf.keras.layers.experimental.EinsumDense(
+    self.intermediate_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, self.intermediate_size),
         bias_axes="d",
@@ -738,7 +738,7 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         self.intermediate_activation)
     self._intermediate_dropout_layer = tf.keras.layers.Dropout(
         rate=self._intermediate_dropout)
-    self.output_dense = tf.keras.layers.experimental.EinsumDense(
+    self.output_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
         bias_axes="d",
