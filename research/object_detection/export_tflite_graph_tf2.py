@@ -27,7 +27,9 @@ One input:
   NOTE: See the `preprocess` function defined in the feature extractor class
   in the object_detection/models directory.
 
-Four Outputs:
+Outputs:
+If add_postprocessing_op is true: exported adds a
+  TFLite_Detection_PostProcess custom op node which has four outputs:
   detection_boxes: a float32 tensor of shape [1, num_boxes, 4] with box
   locations
   detection_classes: a float32 tensor of shape [1, num_boxes]
@@ -35,6 +37,13 @@ Four Outputs:
   detection_scores: a float32 tensor of shape [1, num_boxes]
   with class scores
   num_boxes: a float32 tensor of size 1 containing the number of detected boxes
+else:
+  the graph has two outputs:
+   'box_encodings': a float32 tensor of shape [1, num_anchors, 4]
+    containing the encoded box predictions.
+   'class_predictions': a float32 tensor of shape
+    [1, num_anchors, num_classes] containing the class scores for each anchor
+    after applying score conversion.
 
 Example Usage:
 --------------
@@ -121,6 +130,8 @@ flags.DEFINE_bool(
     'ssd_use_regular_nms', False,
     'Flag to set postprocessing op to use Regular NMS instead of Fast NMS '
     '(Default false).')
+flags.DEFINE_bool('ssd_add_postprocessing_op', True,
+                  'Add TFLite custom op for postprocessing to the graph.')
 # CenterNet-specific flags
 flags.DEFINE_bool(
     'centernet_include_keypoints', False,
