@@ -161,7 +161,7 @@ class MobileBERTEncoder(tf.keras.Model):
     first_token = tf.squeeze(prev_output[:, 0:1, :], axis=1)
 
     if classifier_activation:
-      self._pooler_layer = tf.keras.layers.experimental.EinsumDense(
+      self._pooler_layer = tf.keras.layers.EinsumDense(
           'ab,bc->ac',
           output_shape=hidden_size,
           activation=tf.tanh,

@@ -16,7 +16,7 @@
 # pylint: disable=g-classes-have-attributes
 import tensorflow as tf
 
-EinsumDense = tf.keras.layers.experimental.EinsumDense
+EinsumDense = tf.keras.layers.EinsumDense
 MultiHeadAttention = tf.keras.layers.MultiHeadAttention
 
 

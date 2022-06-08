@@ -66,7 +66,7 @@ class VotingAttention(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint)
-    self._query_dense = tf.keras.layers.experimental.EinsumDense(
+    self._query_dense = tf.keras.layers.EinsumDense(
         "BAE,ENH->BANH",
         output_shape=(None, self._num_heads, self._head_size),
         bias_axes="NH",
@@ -74,7 +74,7 @@ class VotingAttention(tf.keras.layers.Layer):
         kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
-    self._key_dense = tf.keras.layers.experimental.EinsumDense(
+    self._key_dense = tf.keras.layers.EinsumDense(
         "BAE,ENH->BANH",
         output_shape=(None, self._num_heads, self._head_size),
         bias_axes="NH",

@@ -362,58 +362,61 @@ class ReuseMultiHeadAttention(tf.keras.layers.Layer):
       if self._reuse_heads < self._num_heads:
         einsum_equation, bias_axes, output_rank = _build_proj_equation(
             free_dims, bound_dims=1, output_dims=2)
-        self._query_dense = tf.keras.layers.experimental.EinsumDense(
+        self._query_dense = tf.keras.layers.EinsumDense(
             einsum_equation,
-            output_shape=_get_output_shape(output_rank - 1, [
-                self._num_heads - self._reuse_heads, self._key_dim]),
+            output_shape=_get_output_shape(
+                output_rank - 1,
+                [self._num_heads - self._reuse_heads, self._key_dim]),
             bias_axes=bias_axes if self._use_bias else None,
             name="query",
             kernel_initializer=tf_utils.clone_initializer(
                 self._kernel_initializer),
-            bias_initializer=tf_utils.clone_initializer(
-                self._bias_initializer),
+            bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
             **common_kwargs)
         einsum_equation, bias_axes, output_rank = _build_proj_equation(
             self._key_shape.rank - 1, bound_dims=1, output_dims=2)
-        self._key_dense = tf.keras.layers.experimental.EinsumDense(
+        self._key_dense = tf.keras.layers.EinsumDense(
             einsum_equation,
-            output_shape=_get_output_shape(output_rank - 1, [
-                self._num_heads - self._reuse_heads, self._key_dim]),
+            output_shape=_get_output_shape(
+                output_rank - 1,
+                [self._num_heads - self._reuse_heads, self._key_dim]),
             bias_axes=bias_axes if self._use_bias else None,
             name="key",
             kernel_initializer=tf_utils.clone_initializer(
                 self._kernel_initializer),
-            bias_initializer=tf_utils.clone_initializer(
-                self._bias_initializer),
+            bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
             **common_kwargs)
       einsum_equation, bias_axes, output_rank = _build_proj_equation(
           self._value_shape.rank - 1, bound_dims=1, output_dims=2)
 
       self._value_dense = []
       if self._reuse_heads > 0:
-        self._value_dense.append(tf.keras.layers.experimental.EinsumDense(
-            einsum_equation,
-            output_shape=_get_output_shape(
-                output_rank - 1, [self._reuse_heads, self._value_dim]),
-            bias_axes=bias_axes if self._use_bias else None,
-            name="value_reuse",
-            kernel_initializer=tf_utils.clone_initializer(
-                self._kernel_initializer),
-            bias_initializer=tf_utils.clone_initializer(
-                self._bias_initializer),
-            **common_kwargs))
+        self._value_dense.append(
+            tf.keras.layers.EinsumDense(
+                einsum_equation,
+                output_shape=_get_output_shape(
+                    output_rank - 1, [self._reuse_heads, self._value_dim]),
+                bias_axes=bias_axes if self._use_bias else None,
+                name="value_reuse",
+                kernel_initializer=tf_utils.clone_initializer(
+                    self._kernel_initializer),
+                bias_initializer=tf_utils.clone_initializer(
+                    self._bias_initializer),
+                **common_kwargs))
       if self._reuse_heads < self._num_heads:
-        self._value_dense.append(tf.keras.layers.experimental.EinsumDense(
-            einsum_equation,
-            output_shape=_get_output_shape(output_rank - 1, [
-                self._num_heads - self._reuse_heads, self._value_dim]),
-            bias_axes=bias_axes if self._use_bias else None,
-            name="value_new",
-            kernel_initializer=tf_utils.clone_initializer(
-                self._kernel_initializer),
-            bias_initializer=tf_utils.clone_initializer(
-                self._bias_initializer),
-            **common_kwargs))
+        self._value_dense.append(
+            tf.keras.layers.EinsumDense(
+                einsum_equation,
+                output_shape=_get_output_shape(
+                    output_rank - 1,
+                    [self._num_heads - self._reuse_heads, self._value_dim]),
+                bias_axes=bias_axes if self._use_bias else None,
+                name="value_new",
+                kernel_initializer=tf_utils.clone_initializer(
+                    self._kernel_initializer),
+                bias_initializer=tf_utils.clone_initializer(
+                    self._bias_initializer),
+                **common_kwargs))
 
       # Builds the attention computations for multi-head dot product attention.
       # These computations could be wrapped into the keras attention layer once
@@ -450,15 +453,13 @@ class ReuseMultiHeadAttention(tf.keras.layers.Layer):
       output_shape = [self._query_shape[-1]]
     einsum_equation, bias_axes, output_rank = _build_proj_equation(
         free_dims, bound_dims=2, output_dims=len(output_shape))
-    return tf.keras.layers.experimental.EinsumDense(
+    return tf.keras.layers.EinsumDense(
         einsum_equation,
         output_shape=_get_output_shape(output_rank - 1, output_shape),
         bias_axes=bias_axes if (use_bias and self._use_bias) else None,
         name=name,
-        kernel_initializer=tf_utils.clone_initializer(
-            self._kernel_initializer),
-        bias_initializer=tf_utils.clone_initializer(
-            self._bias_initializer),
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
 
   def _build_attention(self, rank):

@@ -58,7 +58,7 @@ class ValidatedFeedforwardLayer(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     hidden_size = input_shape.as_list()[-1]
-    self._feedforward_dense = tf.keras.layers.experimental.EinsumDense(
+    self._feedforward_dense = tf.keras.layers.EinsumDense(
         '...x,xy->...y',
         output_shape=hidden_size,
         bias_axes='y',

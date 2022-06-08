@@ -158,7 +158,7 @@ class TransformerXLBlock(tf.keras.layers.Layer):
         axis=-1,
         epsilon=self._norm_epsilon,
         dtype=tf.float32)
-    self._inner_dense = tf.keras.layers.experimental.EinsumDense(
+    self._inner_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, self._inner_size),
         bias_axes="d",
@@ -169,7 +169,7 @@ class TransformerXLBlock(tf.keras.layers.Layer):
         self._inner_activation)
     self._inner_dropout_layer = tf.keras.layers.Dropout(
         rate=self._inner_dropout)
-    self._output_dense = tf.keras.layers.experimental.EinsumDense(
+    self._output_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
         bias_axes="d",

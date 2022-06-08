@@ -122,7 +122,7 @@ class MobileBertEmbedding(tf.keras.layers.Layer):
         max_length=max_sequence_length,
         initializer=tf_utils.clone_initializer(self.initializer),
         name='position_embedding')
-    self.word_embedding_proj = tf.keras.layers.experimental.EinsumDense(
+    self.word_embedding_proj = tf.keras.layers.EinsumDense(
         'abc,cd->abd',
         output_shape=[None, self.output_embed_size],
         kernel_initializer=tf_utils.clone_initializer(self.initializer),
@@ -244,7 +244,7 @@ class MobileBertTransformer(tf.keras.layers.Layer):
 
     self.block_layers = {}
     # add input bottleneck
-    dense_layer_2d = tf.keras.layers.experimental.EinsumDense(
+    dense_layer_2d = tf.keras.layers.EinsumDense(
         'abc,cd->abd',
         output_shape=[None, self.intra_bottleneck_size],
         bias_axes='d',
@@ -256,7 +256,7 @@ class MobileBertTransformer(tf.keras.layers.Layer):
                                              layer_norm]
 
     if self.key_query_shared_bottleneck:
-      dense_layer_2d = tf.keras.layers.experimental.EinsumDense(
+      dense_layer_2d = tf.keras.layers.EinsumDense(
           'abc,cd->abd',
           output_shape=[None, self.intra_bottleneck_size],
           bias_axes='d',
@@ -286,7 +286,7 @@ class MobileBertTransformer(tf.keras.layers.Layer):
     for ffn_layer_idx in range(self.num_feedforward_networks):
       layer_prefix = f'ffn_layer_{ffn_layer_idx}'
       layer_name = layer_prefix + '/intermediate_dense'
-      intermediate_layer = tf.keras.layers.experimental.EinsumDense(
+      intermediate_layer = tf.keras.layers.EinsumDense(
           'abc,cd->abd',
           activation=self.intermediate_act_fn,
           output_shape=[None, self.intermediate_size],
@@ -294,7 +294,7 @@ class MobileBertTransformer(tf.keras.layers.Layer):
           kernel_initializer=tf_utils.clone_initializer(self.initializer),
           name=layer_name)
       layer_name = layer_prefix + '/output_dense'
-      output_layer = tf.keras.layers.experimental.EinsumDense(
+      output_layer = tf.keras.layers.EinsumDense(
           'abc,cd->abd',
           output_shape=[None, self.intra_bottleneck_size],
           bias_axes='d',
@@ -308,7 +308,7 @@ class MobileBertTransformer(tf.keras.layers.Layer):
                                        layer_norm])
 
     # add output bottleneck
-    bottleneck = tf.keras.layers.experimental.EinsumDense(
+    bottleneck = tf.keras.layers.EinsumDense(
         'abc,cd->abd',
         output_shape=[None, self.hidden_size],
         activation=None,

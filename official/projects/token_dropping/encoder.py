@@ -65,9 +65,9 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
     token_keep_k: The number of tokens you want to keep in the intermediate
       layers. The rest will be dropped in those layers.
     token_allow_list: The list of token-ids that should not be droped. In the
-      BERT English vocab, token-id from 1 to 998 contains special tokens such
-      as [CLS], [SEP]. By default, token_allow_list contains all of these
-      special tokens.
+      BERT English vocab, token-id from 1 to 998 contains special tokens such as
+      [CLS], [SEP]. By default, token_allow_list contains all of these special
+      tokens.
     token_deny_list: The list of token-ids that should always be droped. In the
       BERT English vocab, token-id=0 means [PAD]. By default, token_deny_list
       contains and only contains [PAD].
@@ -166,7 +166,7 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
     # 'hidden_size'.
     self._embedding_projection = None
     if embedding_width != hidden_size:
-      self._embedding_projection = tf.keras.layers.experimental.EinsumDense(
+      self._embedding_projection = tf.keras.layers.EinsumDense(
           '...x,xy->...y',
           output_shape=hidden_size,
           bias_axes='y',
@@ -386,4 +386,3 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
       logging.warn(warn_string)
 
     return cls(**config)
-
