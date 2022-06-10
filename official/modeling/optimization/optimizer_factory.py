@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,14 +23,17 @@ from official.modeling.optimization import slide_optimizer
 from official.modeling.optimization import adafactor_optimizer
 from official.modeling.optimization import ema_optimizer
 from official.modeling.optimization import lars_optimizer
+from official.modeling.optimization import legacy_adamw
 from official.modeling.optimization import lr_schedule
 from official.modeling.optimization.configs import optimization_config as opt_cfg
-from official.nlp import optimization as nlp_optimization
 
 OPTIMIZERS_CLS = {
     'sgd': tf.keras.optimizers.SGD,
+    # TODO(chenmoneygithub): experimental.SGD
     'adam': tf.keras.optimizers.Adam,
-    'adamw': nlp_optimization.AdamWeightDecay,
+    # TODO(chenmoneygithub): experimental.Adam
+    'adamw': legacy_adamw.AdamWeightDecay,
+    'adamw_experimental': tf.keras.optimizers.experimental.AdamW,
     'lamb': tfa_optimizers.LAMB,
     'rmsprop': tf.keras.optimizers.RMSprop,
     'lars': lars_optimizer.LARS,
@@ -47,7 +50,7 @@ LR_CLS = {
     'power': lr_schedule.DirectPowerDecay,
     'power_linear': lr_schedule.PowerAndLinearDecay,
     'power_with_offset': lr_schedule.PowerDecayWithOffset,
-    'step_cosine_with_offset': lr_schedule.StepConsineDecayWithOffset,
+    'step_cosine_with_offset': lr_schedule.StepCosineDecayWithOffset,
 }
 
 WARMUP_CLS = {
@@ -56,8 +59,8 @@ WARMUP_CLS = {
 }
 
 
-def register_optimizer_cls(
-    key: str, optimizer_config_cls: tf.keras.optimizers.Optimizer):
+def register_optimizer_cls(key: str,
+                           optimizer_config_cls: tf.keras.optimizers.Optimizer):
   """Register customize optimizer cls.
 
   The user will still need to subclass data classes in
@@ -84,6 +87,8 @@ class OptimizerFactory:
   (4) Build optimizer.
 
   This is a typical example for using this class:
+
+  ```
   params = {
         'optimizer': {
             'type': 'sgd',
@@ -103,6 +108,7 @@ class OptimizerFactory:
   opt_factory = OptimizerFactory(opt_config)
   lr = opt_factory.build_learning_rate()
   optimizer = opt_factory.build_optimizer(lr)
+  ```
   """
 
   def __init__(self, config: opt_cfg.OptimizationConfig):
@@ -155,9 +161,12 @@ class OptimizerFactory:
   def build_optimizer(
       self,
       lr: Union[tf.keras.optimizers.schedules.LearningRateSchedule, float],
+      gradient_aggregator: Optional[Callable[
+          [List[Tuple[tf.Tensor, tf.Tensor]]], List[Tuple[tf.Tensor,
+                                                          tf.Tensor]]]] = None,
       gradient_transformers: Optional[List[Callable[
-          [List[Tuple[tf.Tensor, tf.Tensor]]], List[Tuple[tf.Tensor, tf.Tensor]]
-      ]]] = None,
+          [List[Tuple[tf.Tensor, tf.Tensor]]], List[Tuple[tf.Tensor,
+                                                          tf.Tensor]]]]] = None,
       postprocessor: Optional[Callable[[tf.keras.optimizers.Optimizer],
                                        tf.keras.optimizers.Optimizer]] = None):
     """Build optimizer.
@@ -169,6 +178,7 @@ class OptimizerFactory:
     Args:
       lr: A floating point value, or a
         tf.keras.optimizers.schedules.LearningRateSchedule instance.
+      gradient_aggregator: Optional function to overwrite gradient aggregation.
       gradient_transformers: Optional list of functions to use to transform
         gradients before applying updates to Variables. The functions are
         applied after gradient_aggregator. The functions should accept and
@@ -178,7 +188,8 @@ class OptimizerFactory:
         takes an optimizer and returns an optimizer.
 
     Returns:
-      tf.keras.optimizers.Optimizer instance.
+      `tf.keras.optimizers.Optimizer` or
+      `tf.keras.optimizers.experimental.Optimizer` instance.
     """
 
     optimizer_dict = self._optimizer_config.as_dict()
@@ -191,6 +202,8 @@ class OptimizerFactory:
       del optimizer_dict['global_clipnorm']
 
     optimizer_dict['learning_rate'] = lr
+    if gradient_aggregator is not None:
+      optimizer_dict['gradient_aggregator'] = gradient_aggregator
     if gradient_transformers is not None:
       optimizer_dict['gradient_transformers'] = gradient_transformers
 
@@ -201,8 +214,17 @@ class OptimizerFactory:
           optimizer, **self._ema_config.as_dict())
     if postprocessor:
       optimizer = postprocessor(optimizer)
-    assert isinstance(optimizer, tf.keras.optimizers.Optimizer), (
-        'OptimizerFactory.build_optimizer returning a non-optimizer object: '
-        '{}'.format(optimizer))
+    if not isinstance(optimizer, tf.keras.optimizers.Optimizer):
+      # tf.keras.optimizers.experimental only exist in tf-nightly.
+      # The following check makes sure the function wont' break in older TF
+      # version because of missing the experimental package.
+      if hasattr(tf.keras.optimizers, 'experimental'):
+        if not isinstance(optimizer,
+                          tf.keras.optimizers.experimental.Optimizer):
+          raise TypeError('OptimizerFactory.build_optimizer returning a '
+                          'non-optimizer object: {}'.format(optimizer))
+      else:
+        raise TypeError('OptimizerFactory.build_optimizer returning a '
+                        'non-optimizer object: {}'.format(optimizer))
 
     return optimizer

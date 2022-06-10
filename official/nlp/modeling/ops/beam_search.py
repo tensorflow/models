@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -204,7 +204,7 @@ class SequenceBeamSearch(tf.Module):
       candidate_log_probs = _log_prob_from_logits(logits)
 
       # Calculate new log probabilities if each of the alive sequences were
-      # extended # by the the candidate IDs.
+      # extended # by the candidate IDs.
       # Shape [batch_size, beam_size, vocab_size]
       log_probs = candidate_log_probs + tf.expand_dims(alive_log_probs, axis=2)
 

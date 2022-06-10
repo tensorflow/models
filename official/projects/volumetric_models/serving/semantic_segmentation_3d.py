@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import tensorflow as tf
 from official.projects.volumetric_models.modeling import backbones
 from official.projects.volumetric_models.modeling import decoders
 from official.projects.volumetric_models.modeling import factory
-from official.vision.beta.serving import export_base
+from official.vision.serving import export_base
 
 
 class SegmentationModule(export_base.ExportModule):
@@ -56,4 +56,4 @@ class SegmentationModule(export_base.ExportModule):
     outputs = self.inference_step(images)
     output_key = 'logits' if self.params.task.model.head.output_logits else 'probs'
 
-    return {output_key: outputs}
+    return {output_key: outputs['logits']}

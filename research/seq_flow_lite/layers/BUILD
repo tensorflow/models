@@ -76,3 +76,29 @@ py_strict_library(
         "//tf_ops:sequence_string_projection_op_v2_py",  # sequence projection
     ],
 )
+
+py_strict_library(
+    name = "misc_layers",
+    srcs = ["misc_layers.py"],
+    srcs_version = "PY3",
+    deps = [
+        # package tensorflow
+        "//layers:base_layers",  # sequence projection
+        "//layers:dense_layers",  # sequence projection
+        "//layers:quantization_layers",  # sequence projection
+    ],
+)
+
+py_strict_library(
+    name = "qrnn_layers",
+    srcs = ["qrnn_layers.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":base_layers",
+        ":conv_layers",
+        ":dense_layers",
+        ":quantization_layers",
+        # package tensorflow
+        "//tf_ops:tf_custom_ops_py",  # sequence projection
+    ],
+)

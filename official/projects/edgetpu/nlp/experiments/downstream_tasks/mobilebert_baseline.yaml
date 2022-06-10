@@ -13,7 +13,7 @@ task:
         num_attention_heads: 4
         intermediate_size: 512
         hidden_activation: relu
-        hidden_dropout_prob: 0.0
+        hidden_dropout_prob: 0.1
         attention_probs_dropout_prob: 0.1
         intra_bottleneck_size: 128
         initializer_range: 0.02

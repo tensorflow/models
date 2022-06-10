@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Unit tests for the classifier trainer models."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import functools
 import json
@@ -53,6 +48,7 @@ def distribution_strategy_combinations() -> Iterable[Tuple[Any, ...]]:
       model=[
           'efficientnet',
           'resnet',
+          'vgg',
       ],
       dataset=[
           'imagenet',
@@ -149,6 +145,7 @@ class ClassifierTest(tf.test.TestCase, parameterized.TestCase):
           model=[
               'efficientnet',
               'resnet',
+              'vgg',
           ],
           dataset='imagenet',
           dtype='float16',
@@ -193,6 +190,7 @@ class ClassifierTest(tf.test.TestCase, parameterized.TestCase):
           model=[
               'efficientnet',
               'resnet',
+              'vgg',
           ],
           dataset='imagenet',
           dtype='bfloat16',

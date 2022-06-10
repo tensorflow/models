@@ -1,0 +1,8 @@
+tf-nightly
+gin-config
+opencv-python==4.2.0.32
+absl-py>=1.0.0
+shapely>=1.8.1
+apache_beam>=2.37.0
+matplotlib>=3.5.1
+notebook>=6.4.10

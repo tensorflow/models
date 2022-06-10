@@ -1678,6 +1678,66 @@ class CenterNetBoxTargetAssignerTest(test_case.TestCase):
     np.testing.assert_array_equal(preds, [[1, 2], [3, 4], [5, 6], [7, 8]])
 
 
+class CenterNetIOUTargetAssignerTest(test_case.TestCase):
+
+  def setUp(self):
+    super(CenterNetIOUTargetAssignerTest, self).setUp()
+
+    self._box_center = [0.0, 0.0, 1.0, 1.0]
+    self._box_center_small = [0.25, 0.25, 0.75, 0.75]
+    self._box_lower_left = [0.5, 0.0, 1.0, 0.5]
+    self._box_center_offset = [0.1, 0.05, 1.0, 1.0]
+    self._box_odd_coordinates = [0.1625, 0.2125, 0.5625, 0.9625]
+
+  def test_center_location(self):
+    """Test that the centers are at the correct location."""
+    def graph_fn():
+      box_batch = [tf.constant([self._box_center, self._box_lower_left]),
+                   tf.constant([self._box_lower_left, self._box_center])]
+      classes = [
+          tf.one_hot([0, 1], depth=4),
+          tf.one_hot([2, 2], depth=4)
+      ]
+      assigner = targetassigner.CenterNetCenterHeatmapTargetAssigner(
+          4, box_heatmap_type='iou')
+      targets = assigner.assign_center_targets_from_boxes(
+          80, 80, box_batch, classes)
+      return targets
+    targets = self.execute(graph_fn, [])
+    self.assertEqual((10, 10), _array_argmax(targets[0, :, :, 0]))
+    self.assertAlmostEqual(1.0, targets[0, 10, 10, 0])
+    self.assertEqual((15, 5), _array_argmax(targets[0, :, :, 1]))
+    self.assertAlmostEqual(1.0, targets[0, 15, 5, 1])
+
+    self.assertAlmostEqual(1.0, targets[1, 15, 5, 2])
+    self.assertAlmostEqual(1.0, targets[1, 10, 10, 2])
+    self.assertAlmostEqual(0.0, targets[1, 0, 19, 1])
+
+  def test_exponent(self):
+    """Test that the centers are at the correct location."""
+    def graph_fn():
+      box_batch = [tf.constant([self._box_center, self._box_lower_left]),
+                   tf.constant([self._box_lower_left, self._box_center])]
+      classes = [
+          tf.one_hot([0], depth=2),
+      ]
+      assigner = targetassigner.CenterNetCenterHeatmapTargetAssigner(
+          1, box_heatmap_type='iou')
+      targets = assigner.assign_center_targets_from_boxes(
+          4, 4, box_batch, classes)
+
+      assigner = targetassigner.CenterNetCenterHeatmapTargetAssigner(
+          1, box_heatmap_type='iou', heatmap_exponent=0.5)
+      targets_pow = assigner.assign_center_targets_from_boxes(
+          4, 4, box_batch, classes)
+      return targets, targets_pow
+
+    targets, targets_pow = self.execute(graph_fn, [])
+    self.assertLess(targets[0, 2, 3, 0], 1.0)
+    self.assertLess(targets_pow[0, 2, 3, 0], 1.0)
+    self.assertAlmostEqual(targets[0, 2, 3, 0], targets_pow[0, 2, 3, 0] ** 2)
+
+
 class CenterNetKeypointTargetAssignerTest(test_case.TestCase):
 
   def test_keypoint_heatmap_targets(self):

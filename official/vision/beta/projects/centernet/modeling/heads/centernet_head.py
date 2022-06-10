@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -61,7 +61,6 @@ class CenterNetHead(tf.keras.Model):
     self._heatmap_bias = heatmap_bias
     self._num_inputs = len(input_levels)
 
-    input_levels = sorted(self._input_specs.keys())
     inputs = {level: tf.keras.layers.Input(shape=self._input_specs[level][1:])
               for level in input_levels}
     outputs = {}

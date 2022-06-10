@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,11 +36,12 @@ Darknets are used mainly for object detection in:
 """
 
 import collections
+
 import tensorflow as tf
 
 from official.modeling import hyperparams
-from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
+from official.vision.modeling.backbones import factory
 
 
 class BlockConfig:

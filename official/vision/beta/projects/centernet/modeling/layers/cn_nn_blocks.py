@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ from typing import List, Optional
 
 import tensorflow as tf
 
-from official.vision.beta.modeling.layers import nn_blocks
+from official.vision.modeling.layers import nn_blocks
 
 
 def _apply_blocks(inputs, blocks):

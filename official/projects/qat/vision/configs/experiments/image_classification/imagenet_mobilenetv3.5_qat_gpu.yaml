@@ -1,0 +1,53 @@
+runtime:
+  distribution_strategy: 'mirrored'
+  mixed_precision_dtype: 'float32'
+  loss_scale: 'dynamic'
+task:
+  model:
+    num_classes: 1001
+    input_size: [224, 224, 3]
+    backbone:
+      type: 'mobilenet'
+      mobilenet:
+        model_id: 'MobileNetMultiAVG'
+        filter_size_scale: 1.0
+    dropout_rate: 0.3
+  losses:
+    l2_weight_decay: 0.000001
+    one_hot: true
+    label_smoothing: 0.1
+  train_data:
+    input_path: '/readahead/200M/placer/prod/home/distbelief/imagenet-tensorflow/imagenet-2012-tfrecord/train*'
+    is_training: true
+    global_batch_size: 512
+    dtype: 'float32'
+  validation_data:
+    input_path: '/readahead/200M/placer/prod/home/distbelief/imagenet-tensorflow/imagenet-2012-tfrecord/valid*'
+    is_training: false
+    global_batch_size: 512
+    dtype: 'float32'
+    drop_remainder: false
+  quantization:
+    pretrained_original_checkpoint: 'gs://**/tf2_mhave_nobias_bn_aug05/28334857/ckpt-156000'
+trainer:
+  # With below setting, the accuracy of QAT reaches to accuracy 0.7513 after 30 hours with 8 GPUS.
+  train_steps: 250200
+  validation_steps: 98
+  validation_interval: 2502
+  steps_per_loop: 2502
+  summary_interval: 2502
+  checkpoint_interval: 2502
+  optimizer_config:
+    learning_rate:
+      type: 'exponential'
+      exponential:
+        decay_rate: 0.9
+        decay_steps: 1251
+        initial_learning_rate: 0.0004
+        name: 'ExponentialDecay'
+        offset: 0
+        staircase: true
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 0

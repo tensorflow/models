@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,8 +28,8 @@ from official.projects.edgetpu.vision.configs import mobilenet_edgetpu_config as
 from official.projects.edgetpu.vision.dataloaders import classification_input
 from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v1_model
 from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v2_model
-from official.vision.beta.configs import image_classification as base_cfg
-from official.vision.beta.dataloaders import input_reader_factory
+from official.vision.configs import image_classification as base_cfg
+from official.vision.dataloaders import input_reader_factory
 
 
 def _copy_recursively(src: str, dst: str) -> None:
@@ -265,7 +265,7 @@ class EdgeTPUTask(base_task.Task):
     """Does forward and backward.
 
     Args:
-      inputs: A tuple of of input tensors of (features, labels).
+      inputs: A tuple of input tensors of (features, labels).
       model: A tf.keras.Model instance.
       optimizer: The optimizer for this training step.
       metrics: A nested structure of metrics objects.
@@ -319,7 +319,7 @@ class EdgeTPUTask(base_task.Task):
     """Runs validatation step.
 
     Args:
-      inputs: A tuple of of input tensors of (features, labels).
+      inputs: A tuple of input tensors of (features, labels).
       model: A tf.keras.Model instance.
       metrics: A nested structure of metrics objects.
 

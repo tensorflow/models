@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,9 +21,9 @@ from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.vision.beta.configs import backbones
-from official.vision.beta.configs import common
 from official.vision.beta.projects.simclr.modeling import simclr_model
+from official.vision.configs import backbones
+from official.vision.configs import common
 
 
 @dataclasses.dataclass

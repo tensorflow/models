@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ from official.common import flags as tfm_flags
 from official.projects.yt8m.configs import yt8m
 from official.projects.yt8m.tasks import yt8m_task
 # pylint: enable=unused-import
-from official.vision.beta import train
+from official.vision import train
 
 
 if __name__ == '__main__':

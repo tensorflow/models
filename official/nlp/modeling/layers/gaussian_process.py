@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Definitions for random feature Gaussian process layer."""
 import math
 import tensorflow as tf
@@ -227,7 +226,7 @@ class RandomFeatureGaussianProcess(tf.keras.layers.Layer):
     """Resets covariance matrix of the GP layer.
 
     This function is useful for reseting the model's covariance matrix at the
-    begining of a new epoch.
+    beginning of a new epoch.
     """
     self._gp_cov_layer.reset_precision_matrix()
 
@@ -381,7 +380,7 @@ class LaplaceRandomFeatureCovariance(tf.keras.layers.Layer):
     """Resets precision matrix to its initial value.
 
     This function is useful for reseting the model's covariance matrix at the
-    begining of a new epoch.
+    beginning of a new epoch.
     """
     precision_matrix_reset_op = self.precision_matrix.assign(
         self.initial_precision_matrix)

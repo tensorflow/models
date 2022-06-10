@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,20 +13,21 @@
 # limitations under the License.
 
 """Panoptic MaskRCNN task definition."""
-from typing import Any, List, Mapping, Optional, Tuple, Dict
+from typing import Any, Dict, List, Mapping, Optional, Tuple
+
 from absl import logging
 import tensorflow as tf
 
 from official.common import dataset_fn
 from official.core import task_factory
-from official.vision.beta.dataloaders import input_reader_factory
-from official.vision.beta.evaluation import panoptic_quality_evaluator
-from official.vision.beta.evaluation import segmentation_metrics
-from official.vision.beta.losses import segmentation_losses
 from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_maskrcnn as exp_cfg
 from official.vision.beta.projects.panoptic_maskrcnn.dataloaders import panoptic_maskrcnn_input
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import factory
-from official.vision.beta.tasks import maskrcnn
+from official.vision.dataloaders import input_reader_factory
+from official.vision.evaluation import panoptic_quality_evaluator
+from official.vision.evaluation import segmentation_metrics
+from official.vision.losses import segmentation_losses
+from official.vision.tasks import maskrcnn
 
 
 @task_factory.register_task_cls(exp_cfg.PanopticMaskRCNNTask)
@@ -61,7 +62,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   def initialize(self, model: tf.keras.Model) -> None:
     """Loading pretrained checkpoint."""
 
-    if not self.task_config.init_checkpoint_modules:
+    if not self.task_config.init_checkpoint:
       return
 
     def _get_checkpoint_path(checkpoint_dir_or_file):
@@ -122,7 +123,9 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
       decoder = panoptic_maskrcnn_input.TfExampleDecoder(
           regenerate_source_id=decoder_cfg.regenerate_source_id,
           mask_binarize_threshold=decoder_cfg.mask_binarize_threshold,
-          include_panoptic_masks=decoder_cfg.include_panoptic_masks)
+          include_panoptic_masks=decoder_cfg.include_panoptic_masks,
+          panoptic_category_mask_key=decoder_cfg.panoptic_category_mask_key,
+          panoptic_instance_mask_key=decoder_cfg.panoptic_instance_mask_key)
     else:
       raise ValueError('Unknown decoder type: {}!'.format(params.decoder.type))
 
@@ -375,12 +378,12 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         'image_info': labels['image_info']
     }
 
+    logs.update(
+        {self.coco_metric.name: (labels['groundtruths'], coco_model_outputs)})
     if self._process_iou_metric_on_cpu:
       logs.update({
-          self.coco_metric.name: (labels['groundtruths'], coco_model_outputs),
-          self.segmentation_perclass_iou_metric.name: (
-              segmentation_labels,
-              outputs['segmentation_outputs'])
+          self.segmentation_perclass_iou_metric.name:
+              (segmentation_labels, outputs['segmentation_outputs'])
       })
     else:
       self.segmentation_perclass_iou_metric.update_state(

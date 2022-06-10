@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -45,7 +45,8 @@ def define_flags():
       default=None,
       enum_values=[
           'train', 'eval', 'train_and_eval', 'continuous_eval',
-          'continuous_train_and_eval', 'train_and_validate'
+          'continuous_train_and_eval', 'train_and_validate',
+          'train_and_post_eval'
       ],
       help='Mode to run: `train`, `eval`, `train_and_eval`, '
       '`continuous_eval`, `continuous_train_and_eval` and '

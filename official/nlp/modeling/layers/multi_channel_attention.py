@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 import math
 
 import tensorflow as tf
+
 from official.modeling import tf_utils
 from official.nlp.modeling.layers import masked_softmax
 
@@ -60,24 +61,26 @@ class VotingAttention(tf.keras.layers.Layer):
 
   def build(self, unused_input_shapes):
     common_kwargs = dict(
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint)
-    self._query_dense = tf.keras.layers.experimental.EinsumDense(
+    self._query_dense = tf.keras.layers.EinsumDense(
         "BAE,ENH->BANH",
         output_shape=(None, self._num_heads, self._head_size),
         bias_axes="NH",
         name="query",
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
-    self._key_dense = tf.keras.layers.experimental.EinsumDense(
+    self._key_dense = tf.keras.layers.EinsumDense(
         "BAE,ENH->BANH",
         output_shape=(None, self._num_heads, self._head_size),
         bias_axes="NH",
         name="key",
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
     super(VotingAttention, self).build(unused_input_shapes)
 

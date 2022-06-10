@@ -1,4 +1,10 @@
-![Logo](https://storage.googleapis.com/tf_model_garden/tf_model_garden_logo.png)
+<div align="center">
+  <img src="https://storage.googleapis.com/tf_model_garden/tf_model_garden_logo.png">
+</div>
+
+[![Python](https://img.shields.io/pypi/pyversions/tensorflow.svg?style=plastic)](https://badge.fury.io/py/tensorflow)
+[![tf-models-official PyPI](https://badge.fury.io/py/tf-models-official.svg)](https://badge.fury.io/py/tf-models-official)
+
 
 # Welcome to the Model Garden for TensorFlow
 
@@ -19,7 +25,80 @@ extent possible though not all models are suitable.
 | [community](community) | • A curated list of the GitHub repositories with machine learning models and implementations powered by TensorFlow 2 |
 | [orbit](orbit) | • A flexible and lightweight library that users can easily use or fork when writing customized training loop code in TensorFlow 2.x. It seamlessly integrates with `tf.distribute` and supports running on different device types (CPU, GPU, and TPU). |
 
-## [Announcements](https://github.com/tensorflow/models/wiki/Announcements)
+## Installation
+
+To install the current release of tensorflow-models, please follow any one of the methods described below.
+
+#### Method 1: Install the TensorFlow Model Garden pip package
+
+<details>
+
+**tf-models-official** is the stable Model Garden package. Please check out the [releases](https://github.com/tensorflow/models/releases) to see what are available modules.
+
+pip3 will install all models and dependencies automatically.
+
+```shell
+pip3 install tf-models-official
+```
+
+Please check out our examples:
+  - [basic library import](https://github.com/tensorflow/models/blob/master/tensorflow_models/tensorflow_models_pypi.ipynb)
+  - [nlp model building](https://github.com/tensorflow/models/blob/master/official/colab/nlp/nlp_modeling_library_intro.ipynb)
+to learn how to use a PIP package.
+
+Note that **tf-models-official** may not include the latest changes in the master branch of this
+github repo. To include latest changes, you may install **tf-models-nightly**,
+which is the nightly Model Garden package created daily automatically.
+
+```shell
+pip3 install tf-models-nightly
+```
+
+</details>
+
+
+#### Method 2: Clone the source
+
+<details>
+
+1. Clone the GitHub repository:
+
+```shell
+git clone https://github.com/tensorflow/models.git
+```
+
+2. Add the top-level ***/models*** folder to the Python path.
+
+```shell
+export PYTHONPATH=$PYTHONPATH:/path/to/models
+```
+
+If you are using a Colab notebook, please set the Python path with os.environ.
+
+```python
+import os
+os.environ['PYTHONPATH'] += ":/path/to/models"
+```
+
+3. Install other dependencies
+
+```shell
+pip3 install --user -r official/requirements.txt
+```
+
+Finally, if you are using nlp packages, please also install
+**tensorflow-text-nightly**:
+
+```shell
+pip3 install tensorflow-text-nightly
+```
+
+</details>
+
+
+## Announcements
+
+Please check [this page](https://github.com/tensorflow/models/wiki/Announcements) for recent announcements.
 
 ## Contributions
 
@@ -37,9 +116,8 @@ If you use TensorFlow Model Garden in your research, please cite this repository
 
 ```
 @misc{tensorflowmodelgarden2020,
-  author = {Hongkun Yu and Chen Chen and Xianzhi Du and Yeqing Li and
-            Abdullah Rashwan and Le Hou and Pengchong Jin and Fan Yang and
-            Frederick Liu and Jaeyoun Kim and Jing Li},
+  author = {Hongkun Yu, Chen Chen, Xianzhi Du, Yeqing Li, Abdullah Rashwan, Le Hou, Pengchong Jin, Fan Yang,
+            Frederick Liu, Jaeyoun Kim, and Jing Li},
   title = {{TensorFlow Model Garden}},
   howpublished = {\url{https://github.com/tensorflow/models}},
   year = {2020}

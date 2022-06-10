@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Image segmentation task definition."""
 from typing import Any, Dict, Mapping, Optional, Sequence, Union
 
@@ -198,6 +197,8 @@ class SemanticSegmentation3DTask(base_task.Task):
       # Casting output layer as float32 is necessary when mixed_precision is
       # mixed_float16 or mixed_bfloat16 to ensure output is casted as float32.
       outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
+
+      outputs = outputs['logits']
       if self.task_config.model.head.output_logits:
         outputs = tf.nn.softmax(outputs)
 
@@ -258,6 +259,7 @@ class SemanticSegmentation3DTask(base_task.Task):
 
     outputs = self.inference_step(features, model)
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
+    outputs = outputs['logits']
     if self.task_config.model.head.output_logits:
       outputs = tf.nn.softmax(outputs)
 
@@ -268,8 +270,8 @@ class SemanticSegmentation3DTask(base_task.Task):
     # Compute dice score metrics on CPU.
     for metric in self.metrics:
       labels = tf.cast(labels, tf.float32)
-      outputs = tf.cast(outputs, tf.float32)
-      logs.update({metric.name: (labels, outputs)})
+      logits = tf.cast(outputs, tf.float32)
+      logs.update({metric.name: (labels, logits)})
 
     return logs
 

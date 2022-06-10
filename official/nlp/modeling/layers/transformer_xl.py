@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ from absl import logging
 
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling.layers import relative_attention
 
 
@@ -148,7 +149,7 @@ class TransformerXLBlock(tf.keras.layers.Layer):
         value_dim=self._head_size,
         dropout=self._attention_dropout_rate,
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         name="rel_attn")
     self._attention_dropout = tf.keras.layers.Dropout(
         rate=self._attention_dropout_rate)
@@ -157,23 +158,23 @@ class TransformerXLBlock(tf.keras.layers.Layer):
         axis=-1,
         epsilon=self._norm_epsilon,
         dtype=tf.float32)
-    self._inner_dense = tf.keras.layers.experimental.EinsumDense(
+    self._inner_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, self._inner_size),
         bias_axes="d",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         name="inner")
 
     self._inner_activation_layer = tf.keras.layers.Activation(
         self._inner_activation)
     self._inner_dropout_layer = tf.keras.layers.Dropout(
         rate=self._inner_dropout)
-    self._output_dense = tf.keras.layers.experimental.EinsumDense(
+    self._output_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
         bias_axes="d",
         name="output",
-        kernel_initializer=self._kernel_initializer)
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer))
     self._output_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     self._output_layer_norm = tf.keras.layers.LayerNormalization(
         name="output_layer_norm",
@@ -398,17 +399,17 @@ class TransformerXL(tf.keras.layers.Layer):
         "content_attention_bias",
         shape=attention_bias_shape,
         dtype=tf.float32,
-        initializer=self._initializer)
+        initializer=tf_utils.clone_initializer(self._initializer))
     self.positional_attention_bias = self.add_weight(
         "positional_attention_bias",
         shape=attention_bias_shape,
         dtype=tf.float32,
-        initializer=self._initializer)
+        initializer=tf_utils.clone_initializer(self._initializer))
     self.segment_attention_bias = self.add_weight(
         "segment_attention_bias",
         shape=attention_bias_shape,
         dtype=tf.float32,
-        initializer=self._initializer)
+        initializer=tf_utils.clone_initializer(self._initializer))
 
     self.transformer_xl_layers = []
     for i in range(self._num_layers):

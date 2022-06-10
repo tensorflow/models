@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -155,6 +155,7 @@ class SegmentationHead3D(tf.keras.layers.Layer):
         - key: A `str` of the level of the multilevel features.
         - values: A `tf.Tensor` of the feature map tensors, whose shape is
             [batch, height_l, width_l, channels].
+        The first is backbone endpoints, and the second is decoder endpoints.
     Returns:
       segmentation prediction mask: A `tf.Tensor` of the segmentation mask
         scores predicted from input features.

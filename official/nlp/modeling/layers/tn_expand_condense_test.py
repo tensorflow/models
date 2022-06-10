@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ class TNLayerTest(tf.test.TestCase, parameterized.TestCase):
   def test_train(self, input_dim, proj_multiple):
     data = np.random.randint(10, size=(100, input_dim))
     model = self._build_model(data, proj_multiple)
-    tf.random.set_seed(0)
+    tf.keras.utils.set_random_seed(0)
 
     model.compile(
         optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
@@ -81,7 +81,7 @@ class TNLayerTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters((768, 6), (1024, 2))
   def test_weights_change(self, input_dim, proj_multiple):
-    tf.random.set_seed(0)
+    tf.keras.utils.set_random_seed(0)
     data = np.random.randint(10, size=(100, input_dim))
     model = self._build_model(data, proj_multiple)
     model.compile(

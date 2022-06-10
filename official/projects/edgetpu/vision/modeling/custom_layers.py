@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 import inspect
 from typing import Any, MutableMapping, Optional, Union, Tuple
 import tensorflow as tf
+
+from official.modeling import tf_utils
 
 
 class GroupConv2D(tf.keras.layers.Conv2D):
@@ -168,7 +170,7 @@ class GroupConv2D(tf.keras.layers.Conv2D):
           self.add_weight(
               name='kernel_{}'.format(g),
               shape=self.group_kernel_shape,
-              initializer=self.kernel_initializer,
+              initializer=tf_utils.clone_initializer(self.kernel_initializer),
               regularizer=self.kernel_regularizer,
               constraint=self.kernel_constraint,
               trainable=True,
@@ -178,7 +180,7 @@ class GroupConv2D(tf.keras.layers.Conv2D):
             self.add_weight(
                 name='bias_{}'.format(g),
                 shape=(self.group_output_channel,),
-                initializer=self.bias_initializer,
+                initializer=tf_utils.clone_initializer(self.bias_initializer),
                 regularizer=self.bias_regularizer,
                 constraint=self.bias_constraint,
                 trainable=True,

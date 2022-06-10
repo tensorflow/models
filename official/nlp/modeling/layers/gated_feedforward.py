@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 
 import gin
 import tensorflow as tf
+
+from official.modeling import tf_utils
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
@@ -95,8 +97,6 @@ class GatedFeedforward(tf.keras.layers.Layer):
     hidden_size = input_shape.as_list()[-1]
 
     common_kwargs = dict(
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
@@ -116,29 +116,41 @@ class GatedFeedforward(tf.keras.layers.Layer):
       activation_policy = tf.float32
     for i in range(self._num_blocks):
       self._intermediate_dense.append(
-          tf.keras.layers.experimental.EinsumDense(
+          tf.keras.layers.EinsumDense(
               "abc,cd->abd",
               output_shape=(None, self._intermediate_size),
               bias_axes="d",
               name="intermediate_%d" % i,
+              kernel_initializer=tf_utils.clone_initializer(
+                  self._kernel_initializer),
+              bias_initializer=tf_utils.clone_initializer(
+                  self._bias_initializer),
               **common_kwargs))
       self._intermediate_activation_layers.append(
           tf.keras.layers.Activation(
               self._intermediate_activation, dtype=activation_policy))
       if self._use_gate:
         self._gate_dense.append(
-            tf.keras.layers.experimental.EinsumDense(
+            tf.keras.layers.EinsumDense(
                 "abc,cd->abd",
                 output_shape=(None, self._intermediate_size),
                 bias_axes="d",
                 name="gate_%d" % i,
+                kernel_initializer=tf_utils.clone_initializer(
+                    self._kernel_initializer),
+                bias_initializer=tf_utils.clone_initializer(
+                    self._bias_initializer),
                 **common_kwargs))
       self._output_dense.append(
-          tf.keras.layers.experimental.EinsumDense(
+          tf.keras.layers.EinsumDense(
               "abc,cd->abd",
               output_shape=(None, hidden_size),
               bias_axes="d",
               name="output_%d" % i,
+              kernel_initializer=tf_utils.clone_initializer(
+                  self._kernel_initializer),
+              bias_initializer=tf_utils.clone_initializer(
+                  self._bias_initializer),
               **common_kwargs))
       self._output_dropout.append(tf.keras.layers.Dropout(rate=self._dropout))
       # Use float32 in layernorm for numeric stability.

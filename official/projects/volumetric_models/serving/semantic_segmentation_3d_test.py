@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -104,7 +104,8 @@ class SemanticSegmentationExportTest(tf.test.TestCase, parameterized.TestCase):
     # outputs equal.
     expected_output = module.model(image_tensor, training=False)
     out = segmentation_fn(tf.constant(images))
-    self.assertAllClose(out['logits'].numpy(), expected_output.numpy())
+    self.assertAllClose(out['logits'].numpy(),
+                        expected_output['logits'].numpy())
 
 
 if __name__ == '__main__':

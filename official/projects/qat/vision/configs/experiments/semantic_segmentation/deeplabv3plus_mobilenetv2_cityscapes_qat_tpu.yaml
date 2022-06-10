@@ -1,0 +1,89 @@
+# --experiment_type=mnv2_deeplabv3plus_cityscapes_qat
+# Use 4x2 DF for training and eval.
+# mIoU (unquantized fp32): 73.84
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'float32'
+task:
+  model:
+    num_classes: 19
+    input_size: [1024, 2048, 3]
+    backbone:
+      type: 'mobilenet'
+      mobilenet:
+        model_id: 'MobileNetV2'
+        output_stride: 16
+        output_intermediate_endpoints: true
+    decoder:
+      aspp:
+        dilation_rates: []
+        level: 4
+        pool_kernel_size: [512, 1024]
+        output_tensor: true
+      type: 'aspp'
+    head:
+      feature_fusion: 'deeplabv3plus'
+      low_level: '2/depthwise'
+      low_level_num_filters: 48
+      level: 4
+      num_convs: 2
+      use_depthwise_convolution: true
+    norm_activation:
+      activation: relu
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+  losses:
+    l2_weight_decay: 4.0e-07  # 1/100 of original value.
+  train_data:
+    output_size: [1024, 2048]
+    crop_size: []
+    input_path: ''
+    tfds_name: 'cityscapes/semantic_segmentation'
+    tfds_split: 'train'
+    is_training: true
+    global_batch_size: 16
+    dtype: 'float32'
+    aug_rand_hflip: true
+    aug_scale_max: 2.0
+    aug_scale_min: 0.5
+  validation_data:
+    output_size: [1024, 2048]
+    input_path: ''
+    tfds_name: 'cityscapes/semantic_segmentation'
+    tfds_split: 'validation'
+    is_training: false
+    global_batch_size: 16
+    dtype: 'float32'
+    drop_remainder: false
+    resize_eval_groundtruth: true
+  quantization:
+    pretrained_original_checkpoint: 'gs://**/deeplabv3plus_mobilenetv2_cityscapes/29814723/best_ckpt/best_ckpt-408'
+  init_checkpoint: null
+trainer:
+  optimizer_config:
+    learning_rate:
+      polynomial:
+        decay_steps: 20000
+        initial_learning_rate: 0.0001  # 1/100 of original lr.
+        power: 0.9
+      type: polynomial
+    optimizer:
+      sgd:
+        momentum: 0.9
+      type: sgd
+    warmup:
+      linear:
+        name: linear
+        warmup_learning_rate: 0
+        warmup_steps: 0  # No warmup
+      type: linear
+  steps_per_loop: 185
+  summary_interval: 185
+  train_steps: 20000
+  validation_interval: 185
+  validation_steps: 31
+  checkpoint_interval: 185
+  best_checkpoint_export_subdir: 'best_ckpt'
+  best_checkpoint_eval_metric: 'mean_iou'
+  best_checkpoint_metric_comp: 'higher'

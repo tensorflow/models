@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,9 +23,11 @@ from official.core import task_factory
 from official.modeling import optimization
 from official.modeling.multitask import base_model
 from official.modeling.multitask import configs
+from official.modeling.privacy import configs as dp_configs
 
 OptimizationConfig = optimization.OptimizationConfig
 RuntimeConfig = config_definitions.RuntimeConfig
+DifferentialPrivacyConfig = dp_configs.DifferentialPrivacyConfig
 
 
 class MultiTask(tf.Module, metaclass=abc.ABCMeta):
@@ -93,9 +95,11 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
   @classmethod
   def create_optimizer(cls,
                        optimizer_config: OptimizationConfig,
-                       runtime_config: Optional[RuntimeConfig] = None):
+                       runtime_config: Optional[RuntimeConfig] = None,
+                       dp_config: Optional[DifferentialPrivacyConfig] = None):
     return base_task.Task.create_optimizer(
-        optimizer_config=optimizer_config, runtime_config=runtime_config)
+        optimizer_config=optimizer_config, runtime_config=runtime_config,
+        dp_config=dp_config)
 
   def joint_train_step(self, task_inputs,
                        multi_task_model: base_model.MultiTaskBaseModel,
@@ -134,10 +138,10 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
         self.tasks[name].process_metrics(task_metrics[name], labels, outputs,
                                          **kwargs)
 
-        # Scales loss as the default gradients allreduce performs sum inside
-        # the optimizer.
-        scaled_loss = total_loss / tf.distribute.get_strategy(
-        ).num_replicas_in_sync
+      # Scales loss as the default gradients allreduce performs sum inside
+      # the optimizer.
+      scaled_loss = total_loss / tf.distribute.get_strategy(
+      ).num_replicas_in_sync
     tvars = multi_task_model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     optimizer.apply_gradients(list(zip(grads, tvars)))

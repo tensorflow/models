@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 """All necessary imports for registration."""
 
 # pylint: disable=unused-import
-from official.common import registry_imports
 from official.projects.volumetric_models.configs import semantic_segmentation_3d as semantic_segmentation_3d_cfg
 from official.projects.volumetric_models.modeling import backbones
 from official.projects.volumetric_models.modeling import decoders
 from official.projects.volumetric_models.tasks import semantic_segmentation_3d
+from official.vision import registry_imports

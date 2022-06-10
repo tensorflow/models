@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,4 +20,4 @@ from tensorflow_models import vision
 from official import core
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.modeling import tf_utils
+from official.modeling import tf_utils as utils

@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 # pylint: disable=g-classes-have-attributes
 from typing import List, Optional, Text, Any, Dict
 import tensorflow as tf
+
+from official.modeling import tf_utils
 
 Layer = tf.keras.layers.Layer
 activations = tf.keras.activations
@@ -98,24 +100,24 @@ class TNExpandCondense(Layer):
         name='w1',
         shape=(input_shape[-1], input_shape[-1]),
         trainable=True,
-        initializer=self.kernel_initializer)
+        initializer=tf_utils.clone_initializer(self.kernel_initializer))
 
     self.w2 = self.add_weight(
         name='w2',
         shape=(128, (128 * (self.proj_size // input_shape[-1]))),
         trainable=True,
-        initializer=self.kernel_initializer)
+        initializer=tf_utils.clone_initializer(self.kernel_initializer))
 
     self.w3 = self.add_weight(
         name='w3',
         shape=(128 * (self.proj_size // input_shape[-1]), 128),
         trainable=True,
-        initializer=self.kernel_initializer)
+        initializer=tf_utils.clone_initializer(self.kernel_initializer))
     self.w4 = self.add_weight(
         name='w4',
         shape=(input_shape[-1] // 128, 128, input_shape[-1]),
         trainable=True,
-        initializer=self.kernel_initializer)
+        initializer=tf_utils.clone_initializer(self.kernel_initializer))
 
     if self.use_bias:
       self.bias = self.add_weight(

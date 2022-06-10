@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -52,6 +52,27 @@ class SGDConfig(BaseOptimizerConfig):
   decay: float = 0.0
   nesterov: bool = False
   momentum: float = 0.0
+
+
+# TODO(b/216129465): Merge this config with SGDConfig after the experimental
+# optimizer graduates.
+@dataclasses.dataclass
+class SGDExperimentalConfig(BaseOptimizerConfig):
+  """Configuration for SGD optimizer.
+
+  The attributes for this class matches the arguments of
+  `tf.keras.optimizer.experimental.SGD`.
+
+  Attributes:
+    name: name of the optimizer.
+    nesterov: nesterov for SGD optimizer.
+    momentum: momentum for SGD optimizer.
+    jit_compile: if True, jit compile will be used.
+  """
+  name: str = "SGD"
+  nesterov: bool = False
+  momentum: float = 0.0
+  jit_compile: bool = False
 
 
 @dataclasses.dataclass
@@ -116,6 +137,30 @@ class AdamConfig(BaseOptimizerConfig):
 
 
 @dataclasses.dataclass
+class AdamExperimentalConfig(BaseOptimizerConfig):
+  """Configuration for experimental Adam optimizer.
+
+  The attributes for this class matches the arguments of
+  `tf.keras.optimizer.experimental.Adam`.
+
+  Attributes:
+    name: name of the optimizer.
+    beta_1: decay rate for 1st order moments.
+    beta_2: decay rate for 2st order moments.
+    epsilon: epsilon value used for numerical stability in Adam optimizer.
+    amsgrad: boolean. Whether to apply AMSGrad variant of this algorithm from
+      the paper "On the Convergence of Adam and beyond".
+    jit_compile: if True, jit compile will be used.
+  """
+  name: str = "Adam"
+  beta_1: float = 0.9
+  beta_2: float = 0.999
+  epsilon: float = 1e-07
+  amsgrad: bool = False
+  jit_compile: bool = False
+
+
+@dataclasses.dataclass
 class AdamWeightDecayConfig(BaseOptimizerConfig):
   """Configuration for Adam optimizer with weight decay.
 
@@ -143,6 +188,32 @@ class AdamWeightDecayConfig(BaseOptimizerConfig):
   include_in_weight_decay: Optional[List[str]] = None
   exclude_from_weight_decay: Optional[List[str]] = None
   gradient_clip_norm: float = 1.0
+
+
+@dataclasses.dataclass
+class AdamWeightDecayExperimentalConfig(BaseOptimizerConfig):
+  """Configuration for Adam optimizer with weight decay.
+
+  Attributes:
+    name: name of the optimizer.
+    beta_1: decay rate for 1st order moments.
+    beta_2: decay rate for 2st order moments.
+    epsilon: epsilon value used for numerical stability in the optimizer.
+    amsgrad: boolean. Whether to apply AMSGrad variant of this algorithm from
+      the paper "On the Convergence of Adam and beyond".
+    weight_decay: float. Weight decay rate. Default to 0.
+    global_clipnorm: A positive float. Clips the gradients to this maximum
+      L2-norm. Default to 1.0.
+    jit_compile: if True, jit compile will be used.
+  """
+  name: str = "AdamWeightDecayExperimental"
+  beta_1: float = 0.9
+  beta_2: float = 0.999
+  epsilon: float = 1e-07
+  amsgrad: bool = False
+  weight_decay: float = 0.0
+  global_clipnorm: float = 1.0
+  jit_compile: bool = False
 
 
 @dataclasses.dataclass
@@ -266,3 +337,5 @@ class AdafactorConfig(BaseOptimizerConfig):
   min_dim_size_to_factor: int = 128
   epsilon1: float = 1e-30
   epsilon2: float = 1e-3
+  weight_decay: Optional[float] = None
+  include_in_weight_decay: Optional[str] = None

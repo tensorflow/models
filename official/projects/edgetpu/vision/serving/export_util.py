@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ from official.projects.edgetpu.vision.modeling import custom_layers
 from official.projects.edgetpu.vision.modeling.backbones import mobilenet_edgetpu
 from official.projects.edgetpu.vision.tasks import image_classification
 from official.projects.edgetpu.vision.tasks import semantic_segmentation as edgetpu_semantic_segmentation
-from official.vision.beta.tasks import semantic_segmentation
+from official.vision.tasks import semantic_segmentation
 # pylint: enable=unused-import
 
 MEAN_RGB = [127.5, 127.5, 127.5]

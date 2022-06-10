@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ from official.projects.basnet.evaluation import metrics as basnet_metrics
 from official.projects.basnet.losses import basnet_losses
 from official.projects.basnet.modeling import basnet_model
 from official.projects.basnet.modeling import refunet
-from official.vision.beta.dataloaders import segmentation_input
+from official.vision.dataloaders import segmentation_input
 
 
 def build_basnet_model(
@@ -203,8 +203,7 @@ class BASNetTask(base_task.Task):
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(
-          optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
@@ -212,8 +211,7 @@ class BASNetTask(base_task.Task):
 
     # Scales back gradient before apply_gradients when LossScaleOptimizer is
     # used.
-    if isinstance(
-        optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
 
     # Apply gradient clipping.

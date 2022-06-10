@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@ from six.moves import zip
 import tensorflow as tf
 
 from official.common import distribute_utils
+from official.legacy.transformer import metrics as transformer_metrics
 from official.modeling.hyperparams import params_dict
-from official.nlp.transformer import metrics as transformer_metrics
 from official.projects.nhnet import evaluation
 from official.projects.nhnet import input_pipeline
 from official.projects.nhnet import models

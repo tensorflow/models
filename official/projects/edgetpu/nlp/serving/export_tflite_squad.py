@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -135,7 +135,8 @@ def main(argv: Sequence[str]) -> None:
     checkpoint = tf.train.Checkpoint(**checkpoint_dict)
     checkpoint.restore(FLAGS.model_checkpoint).assert_existing_objects_matched()
 
-  model_for_serving = build_model_for_serving(model)
+  model_for_serving = build_model_for_serving(model, FLAGS.sequence_length,
+                                              FLAGS.batch_size)
   model_for_serving.summary()
 
   # TODO(b/194449109): Need to save the model to file and then convert tflite

@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ from absl import logging
 import gin
 import orbit
 import tensorflow as tf
-import tensorflow_model_optimization as tfmot
 
 from official.core import base_trainer
 from official.core import config_definitions
@@ -52,6 +51,8 @@ class PruningAction:
       optimizer: `tf.keras.optimizers.Optimizer` optimizer instance used for
         training. This will be used to find the current training steps.
     """
+    # TODO(b/221490190): Avoid local import when the bug is fixed.
+    import tensorflow_model_optimization as tfmot  # pylint: disable=g-import-not-at-top
     self._optimizer = optimizer
     self.update_pruning_step = tfmot.sparsity.keras.UpdatePruningStep()
     self.update_pruning_step.set_model(model)
@@ -201,7 +202,7 @@ def get_train_actions(
   """Gets train actions for TFM trainer."""
   train_actions = []
   # Adds pruning callback actions.
-  if hasattr(params.task, 'pruning'):
+  if hasattr(params.task, 'pruning') and params.task.pruning:
     train_actions.append(
         PruningAction(
             export_dir=model_dir,

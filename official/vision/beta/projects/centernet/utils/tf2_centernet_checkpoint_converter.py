@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.projects.centernet.common import registry_imports  # pylint: disable=unused-import
 from official.vision.beta.projects.centernet.configs import backbones
 from official.vision.beta.projects.centernet.configs import centernet
@@ -28,6 +27,7 @@ from official.vision.beta.projects.centernet.modeling.heads import centernet_hea
 from official.vision.beta.projects.centernet.modeling.layers import detection_generator
 from official.vision.beta.projects.centernet.utils.checkpoints import load_weights
 from official.vision.beta.projects.centernet.utils.checkpoints import read_checkpoints
+from official.vision.modeling.backbones import factory
 
 FLAGS = flags.FLAGS
 

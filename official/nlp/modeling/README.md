@@ -20,8 +20,7 @@ examples.
 * [`losses`](losses) contains common loss computation used in NLP tasks.
 
 Please see the colab
-[nlp_modeling_library_intro.ipynb]
-(https://colab.sandbox.google.com/github/tensorflow/models/blob/master/official/colab/nlp/nlp_modeling_library_intro.ipynb)
+[nlp_modeling_library_intro.ipynb](https://colab.sandbox.google.com/github/tensorflow/models/blob/master/official/colab/nlp/nlp_modeling_library_intro.ipynb)
 for how to build transformer-based NLP models using above primitives.
 
 Besides the pre-defined primitives, it also provides scaffold classes to allow
@@ -44,8 +43,7 @@ custom hidden layer (which will replace the Transformer instantiation in the
 encoder).
 
 Please see the colab
-[customize_encoder.ipynb]
-(https://colab.sandbox.google.com/github/tensorflow/models/blob/master/official/colab/nlp/customize_encoder.ipynb)
+[customize_encoder.ipynb](https://colab.sandbox.google.com/github/tensorflow/models/blob/master/official/colab/nlp/customize_encoder.ipynb)
 for how to use scaffold classes to build noval achitectures.
 
 BERT and ALBERT models in this repo are implemented using this library.

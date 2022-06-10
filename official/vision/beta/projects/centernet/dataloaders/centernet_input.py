@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,13 +18,13 @@ from typing import Tuple
 
 import tensorflow as tf
 
-from official.vision.beta.dataloaders import parser
-from official.vision.beta.dataloaders import utils
-from official.vision.beta.ops import box_ops
-from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.projects.centernet.ops import box_list
 from official.vision.beta.projects.centernet.ops import box_list_ops
 from official.vision.beta.projects.centernet.ops import preprocess_ops as cn_prep_ops
+from official.vision.dataloaders import parser
+from official.vision.dataloaders import utils
+from official.vision.ops import box_ops
+from official.vision.ops import preprocess_ops
 
 
 CHANNEL_MEANS = (104.01362025, 114.03422265, 119.9165958)

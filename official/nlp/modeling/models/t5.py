@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -55,6 +55,7 @@ class Module(tf.Module):
                       initializer: Initializer,
                       dtype: tf.DType = tf.float32,
                       **kwargs):
+    initializer = tf_utils.clone_initializer(initializer)
     return tf.Variable(initializer(shape, dtype=dtype, **kwargs), name=name)
 
   def read_variable(self,
@@ -588,7 +589,8 @@ class MultiHeadAttention(Module):
         init_std_rescaling = tf.math.sqrt(tf.cast(self.d_kv, dtype=self.dtype))
         query_w_init = (
             lambda *args, **kwargs: (  # pylint: disable=g-long-lambda
-                weight_initializer(*args, **kwargs) / init_std_rescaling))
+                tf_utils.clone_initializer(weight_initializer)(
+                    *args, **kwargs) / init_std_rescaling))
       self.q = Linear3D(
           self.d_model,
           self.d_kv,
@@ -1004,6 +1006,7 @@ class T5TransformerParams:
   num_heads: int
   d_ff: int
   vocab_size: int
+  target_vocab_size: Optional[int] = None
   dropout_rate: float = 0.0
   layer_norm_epsilon: float = 1e-6
   shared_embedding: bool = False
@@ -1086,12 +1089,18 @@ class Encoder(Module):
       self.output_dropout = Dropout(self.config.dropout_rate,)
 
   @tf.Module.with_name_scope
-  def __call__(self, inputs, encoder_mask=None, training=False):
+  def __call__(self,
+               inputs=None,
+               encoder_mask=None,
+               dense_inputs=None,
+               training=False):
     """Applies Transformer model on the inputs.
 
     Args:
-      inputs: input data
+      inputs: input word ids. Optional if dense data are provided.
       encoder_mask: the encoder self-attention mask.
+      dense_inputs: dense input data. Concat after the embedding if word ids
+        are provided.
       training: whether it is training pass, affecting dropouts.
 
     Returns:
@@ -1101,12 +1110,32 @@ class Encoder(Module):
     if encoder_mask is not None:
       encoder_mask = tf.cast(encoder_mask, self.compute_dtype)
     cfg = self.config
-    x = self.input_embed(inputs, one_hot=cfg.one_hot_embedding)
+    inputs_array = []
+    if inputs is not None:
+      inputs_array.append(
+          self.input_embed(inputs, one_hot=cfg.one_hot_embedding))
+    if dense_inputs is not None:
+      inputs_array.append(dense_inputs)
+    if not inputs_array:
+      raise ValueError("At least one of inputs and dense_inputs must not be "
+                       "None.")
+    x = tf.concat(inputs_array, axis=1)
     tensor_shape = tf_utils.get_shape_list(x)
     tensor_shape[-2] = 1
     x = self.input_dropout(x, noise_shape=tensor_shape, training=training)
-    input_length = tf_utils.get_shape_list(inputs)[1]
+    if inputs is not None:
+      input_length = tf_utils.get_shape_list(inputs)[1]
+    else:
+      input_length = 0
     position_bias = self.relative_embedding(input_length, input_length)
+    if dense_inputs is not None:
+      # Here we ignore relative position bias for dense embeddings.
+      # TODO(yejiayu): If we proceed to video use cases, rework this part.
+      dense_input_length = tf_utils.get_shape_list(dense_inputs)[1]
+      # Position bias shape: [batch, 1, len, len]
+      paddings = tf.constant([[0, 0], [0, 0], [0, dense_input_length],
+                              [0, dense_input_length]])
+      position_bias = tf.pad(position_bias, paddings, "CONSTANT")
 
     for i in range(cfg.num_layers):
       x = self.encoder_layers[i](
@@ -1133,11 +1162,15 @@ class Decoder(Module):
     self.compute_dtype = compute_dtype
     if self.config.num_decoder_layers is None:
       self.config.num_decoder_layers = self.config.num_layers
+    if not hasattr(
+        self.config,
+        "target_vocab_size") or self.config.target_vocab_size is None:
+      self.config.target_vocab_size = self.config.vocab_size
     with self.name_scope:
       # Target Embedding.
       if shared_embedding is None:
         self.target_embed = Embed(
-            vocab_size=self.config.vocab_size,
+            vocab_size=self.config.target_vocab_size,
             features=self.config.d_model,
             embeddings_initializer=self.config.vocab_embeddings_initializer,
             dtype=self.dtype,
@@ -1185,7 +1218,7 @@ class Decoder(Module):
       if not self.config.logits_via_embedding:
         self.logits_dense = Linear(
             in_features=self.config.d_model,
-            out_features=self.config.vocab_size,
+            out_features=self.config.target_vocab_size,
             use_bias=False,
             dtype=self.dtype,
             name="logits")
@@ -1208,7 +1241,7 @@ class Decoder(Module):
       encoded: the encoder outputs.
       decoder_mask: the decoder self-attention mask.
       encoder_decoder_mask: the cross-attention mask.
-      decode: Whether to perform autoaggressive decoding.
+      decode: Whether to perform autoregressive decoding.
       decode_position: integer, the position to decode.
       cache: The cache dictionary of key, value tensors.
       max_decode_len: An optional integer specifying the maximum decoding
@@ -1306,33 +1339,72 @@ class T5Transformer(Module):
           compute_dtype=self.compute_dtype)
 
   def encode(self,
-             encoder_input_tokens,
+             encoder_input_tokens=None,
              encoder_segment_ids=None,
+             encoder_dense_inputs=None,
+             encoder_dense_segment_ids=None,
              training=False):
-    eligible_positions = tf.cast(
-        tf.not_equal(encoder_input_tokens, 0), self.compute_dtype)
+    eligible_position_array = []
+    if encoder_input_tokens is not None:
+      eligible_position_array.append(
+          tf.cast(tf.not_equal(encoder_input_tokens, 0), self.compute_dtype))
+    if encoder_dense_inputs is not None:
+      eligible_dense_positions = tf.cast(
+          tf.reduce_any(tf.not_equal(encoder_dense_inputs, 0), axis=-1),
+          self.compute_dtype)
+      eligible_position_array.append(eligible_dense_positions)
+    if not eligible_position_array:
+      raise ValueError("At least one of encoder_input_tokens and"
+                       " encoder_dense_inputs must be provided.")
+
+    eligible_positions = tf.concat(eligible_position_array, axis=1)
     encoder_mask = make_attention_mask(
         eligible_positions, eligible_positions, dtype=tf.bool)
+
+    encoder_segment_id_array = []
     if encoder_segment_ids is not None:
+      encoder_segment_id_array.append(encoder_segment_ids)
+    if encoder_dense_segment_ids is not None:
+      encoder_segment_id_array.append(encoder_dense_segment_ids)
+    if encoder_segment_id_array:
+      encoder_segment_ids = tf.concat(encoder_segment_id_array, axis=1)
       segment_mask = make_attention_mask(
           encoder_segment_ids, encoder_segment_ids, tf.equal, dtype=tf.bool)
       encoder_mask = tf.math.logical_and(encoder_mask, segment_mask)
     encoder_mask = (1.0 - tf.cast(encoder_mask, self.compute_dtype)) * -1e9
-    return self.encoder(encoder_input_tokens, encoder_mask, training=training)
+    return self.encoder(
+        encoder_input_tokens,
+        encoder_mask,
+        encoder_dense_inputs,
+        training=training)
 
   def decode(
       self,
       encoded,
       decoder_target_tokens,
-      encoder_input_tokens,  # only used for masks
+      encoder_input_tokens=None,  # only used for masks
+      encoder_dense_inputs=None,
       decoder_input_tokens=None,
       encoder_segment_ids=None,
+      encoder_dense_segment_ids=None,
       decoder_segment_ids=None,
       decode_position=None,
       cache=None,
       max_decode_len=None,
       decode=False,
       training=False):
+    eligible_inputs_array = []
+    if encoder_input_tokens is not None:
+      eligible_inputs = tf.cast(
+          tf.not_equal(encoder_input_tokens, 0), self.compute_dtype)
+      eligible_inputs_array.append(eligible_inputs)
+    if encoder_dense_inputs is not None:
+      eligible_dense_inputs = tf.cast(
+          tf.reduce_any(tf.not_equal(encoder_dense_inputs, 0), axis=-1),
+          self.compute_dtype)
+      eligible_inputs_array.append(eligible_dense_inputs)
+    eligible_inputs = tf.concat(eligible_inputs_array, axis=1)
+
     if decode:
       # For decoding, the decoder_input_tokens is the decoder_target_tokens.
       decoder_input_tokens = decoder_target_tokens
@@ -1342,14 +1414,12 @@ class T5Transformer(Module):
           tf.cast(
               tf.not_equal(tf.ones_like(decoder_target_tokens), 0),
               self.compute_dtype),
-          tf.cast(tf.not_equal(encoder_input_tokens, 0), self.compute_dtype),
+          eligible_inputs,
           dtype=tf.bool)
     else:
       # Note that, masks should be created using decoder_target_tokens.
       eligible_targets = tf.cast(
           tf.not_equal(decoder_target_tokens, 0), self.compute_dtype)
-      eligible_inputs = tf.cast(
-          tf.not_equal(encoder_input_tokens, 0), self.compute_dtype)
       decoder_mask = tf.math.logical_and(
           make_attention_mask(
               eligible_targets, eligible_targets, dtype=tf.bool),
@@ -1365,6 +1435,9 @@ class T5Transformer(Module):
                   decoder_segment_ids,
                   tf.equal,
                   dtype=tf.bool))
+        if encoder_dense_segment_ids is not None:
+          encoder_segment_ids = tf.concat(
+              [encoder_segment_ids, encoder_dense_segment_ids], axis=1)
         encoder_decoder_mask = tf.math.logical_and(
             encoder_decoder_mask,
             make_attention_mask(
@@ -1390,8 +1463,10 @@ class T5Transformer(Module):
 
   @tf.Module.with_name_scope
   def __call__(self,
-               encoder_input_tokens,
-               decoder_target_tokens,
+               encoder_input_tokens=None,
+               decoder_target_tokens=None,
+               encoder_dense_inputs=None,
+               encoder_dense_segment_ids=None,
                decoder_input_tokens=None,
                encoder_segment_ids=None,
                decoder_segment_ids=None,
@@ -1401,9 +1476,12 @@ class T5Transformer(Module):
     Args:
       encoder_input_tokens: input tokens to the encoder.
       decoder_target_tokens: target tokens to the decoder.
+      encoder_dense_inputs: input dense vectors to the encoder.
+      encoder_dense_segment_ids: dense input segmentation info for packed
       decoder_input_tokens: input tokens to the decoder, only required for
         training.
       encoder_segment_ids: input segmentation info for packed examples.
+        examples.
       decoder_segment_ids: target segmentation info for packed examples.
       training: whether it is training pass, affecting dropouts.
 
@@ -1411,15 +1489,19 @@ class T5Transformer(Module):
       a dictionary of logits/cache.
     """
     encoded = self.encode(
-        encoder_input_tokens,
+        encoder_input_tokens=encoder_input_tokens,
         encoder_segment_ids=encoder_segment_ids,
+        encoder_dense_inputs=encoder_dense_inputs,
+        encoder_dense_segment_ids=encoder_dense_segment_ids,
         training=training)
     outputs = self.decode(
         encoded=encoded,
         decoder_target_tokens=decoder_target_tokens,
         encoder_input_tokens=encoder_input_tokens,  # only used for masks.
+        encoder_dense_inputs=encoder_dense_inputs,  # only used for masks.
         decoder_input_tokens=decoder_input_tokens,
         encoder_segment_ids=encoder_segment_ids,
+        encoder_dense_segment_ids=encoder_dense_segment_ids,
         decoder_segment_ids=decoder_segment_ids,
         training=training)
     outputs["encoded"] = encoded

@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ protos for object detection.
 """
 import tensorflow as tf
 
-from official.vision.beta.dataloaders import tf_example_decoder
+from official.vision.dataloaders import tf_example_decoder
 
 
 def _coco91_to_80(classif, box, areas, iscrowds):

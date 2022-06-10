@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,10 +22,10 @@ import numpy as np
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
-from official.vision.beta.configs import common
 from official.vision.beta.projects.yolo import optimization
 from official.vision.beta.projects.yolo.configs import backbones
 from official.vision.beta.projects.yolo.configs import decoders
+from official.vision.configs import common
 
 
 # pytype: disable=annotation-type-mismatch
@@ -129,6 +129,7 @@ class DataConfig(cfg.DataConfig):
   tfds_download: bool = True
   cache: bool = False
   drop_remainder: bool = True
+  file_type: str = 'tfrecord'
 
 
 @dataclasses.dataclass
@@ -186,6 +187,11 @@ class AnchorBoxes(hyperparams.Config):
   level_limits: Optional[List[int]] = None
   anchors_per_scale: int = 3
 
+  generate_anchors: bool = False
+  scaling_mode: str = 'sqrt'
+  box_generation_mode: str = 'per_level'
+  num_samples: int = 1024
+
   def get(self, min_level, max_level):
     """Distribute them in order to each level.
 
@@ -209,6 +215,9 @@ class AnchorBoxes(hyperparams.Config):
       anchors_per_level[str(i)] = boxes[start:start + self.anchors_per_scale]
       start += self.anchors_per_scale
     return anchors_per_level, self.level_limits
+
+  def set_boxes(self, boxes):
+    self.boxes = [Box(box=box) for box in boxes]
 
 
 @dataclasses.dataclass

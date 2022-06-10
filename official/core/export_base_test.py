@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -120,6 +120,13 @@ class ExportBaseTest(tf.test.TestCase):
         postprocessor=_PostProcessor())
     output = module.serve(inputs)
     self.assertAllClose(output['outputs'].numpy(), 1.11)
+
+  def test_get_timestamped_export_dir(self):
+    export_dir = self.get_temp_dir()
+    timed_dir = export_base.get_timestamped_export_dir(
+        export_dir_base=export_dir)
+    self.assertFalse(tf.io.gfile.exists(timed_dir))
+    self.assertIn(export_dir, str(timed_dir))
 
 
 if __name__ == '__main__':

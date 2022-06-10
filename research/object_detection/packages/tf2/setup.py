@@ -3,9 +3,6 @@ import os
 from setuptools import find_packages
 from setuptools import setup
 
-# Note: adding apache-beam to required packages causes conflict with
-# tf-models-offical requirements. These packages request for incompatible
-# oauth2client package.
 REQUIRED_PACKAGES = [
     # Required for apache-beam with PY3
     'avro-python3',
@@ -23,9 +20,8 @@ REQUIRED_PACKAGES = [
     'pandas',
     'tf-models-official>=2.5.1',
     'tensorflow_io',
-    # Workaround due to
-    # https://github.com/keras-team/keras/issues/15583
-    'keras==2.6.0'
+    'keras',
+    'pyparsing==2.4.7'  # TODO(b/204103388)
 ]
 
 setup(

@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """TensorFlow Model Garden Vision training for MobileNet-EdgeTPU."""
 
 from absl import app
 from absl import flags
 import gin
 
-# pylint: disable=unused-import
-from official.common import registry_imports
-# pylint: enable=unused-import
 from official.common import distribute_utils
 from official.common import flags as tfm_flags
 from official.core import task_factory
@@ -35,6 +31,7 @@ from official.projects.edgetpu.vision.configs import semantic_segmentation_searc
 from official.projects.edgetpu.vision.modeling.backbones import mobilenet_edgetpu
 from official.projects.edgetpu.vision.tasks import image_classification
 from official.projects.edgetpu.vision.tasks import semantic_segmentation
+from official.vision import registry_imports
 # pylint: enable=unused-import
 
 FLAGS = flags.FLAGS

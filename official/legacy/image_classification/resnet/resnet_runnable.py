@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -99,7 +99,8 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
         datasets_num_private_threads=self.flags_obj
         .datasets_num_private_threads,
         dtype=self.dtype,
-        drop_remainder=True)
+        drop_remainder=True,
+        training_dataset_cache=self.flags_obj.training_dataset_cache)
     orbit.StandardTrainer.__init__(
         self,
         train_dataset,

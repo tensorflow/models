@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import gin  # pylint: disable=unused-import
 
 from official.common import flags as tfm_flags
 from official.projects.volumetric_models import registry_imports  # pylint: disable=unused-import
-from official.vision.beta import train
+from official.vision import train
 
 
 def main(_):

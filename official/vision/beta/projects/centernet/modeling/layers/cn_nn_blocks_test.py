@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.modeling.layers import nn_blocks
 from official.vision.beta.projects.centernet.modeling.layers import cn_nn_blocks
+from official.vision.modeling.layers import nn_blocks
 
 
 class HourglassBlockPyTorch(tf.keras.layers.Layer):

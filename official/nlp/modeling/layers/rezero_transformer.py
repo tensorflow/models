@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,9 @@
 
 import gin
 import tensorflow as tf
+
+from official.modeling import tf_utils
+from official.nlp.modeling.layers import util
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
@@ -45,6 +48,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     kernel_constraint: Constraint for dense layer kernels.
     bias_constraint: Constraint for dense layer kernels.
     use_layer_norm: If add layer_norm on top of the ReZero.
+    share_rezero: If attention layer and FFN layer share the same alpha.
   """
 
   def __init__(self,
@@ -62,7 +66,14 @@ class ReZeroTransformer(tf.keras.layers.Layer):
                kernel_constraint=None,
                bias_constraint=None,
                use_layer_norm=False,
+               share_rezero=True,
                **kwargs):
+    # attention_dropout will override attention_dropout_rate.
+    # This is to unify the input params with TransformerEncoderBlock.
+    attention_dropout_rate = kwargs.pop("attention_dropout",
+                                        attention_dropout_rate)
+    dropout_rate = kwargs.pop("output_dropout", dropout_rate)
+    util.filter_kwargs(kwargs)
     super(ReZeroTransformer, self).__init__(**kwargs)
 
     self._num_heads = num_attention_heads
@@ -78,10 +89,18 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     self._kernel_constraint = tf.keras.constraints.get(kernel_constraint)
     self._bias_constraint = tf.keras.constraints.get(bias_constraint)
     self._use_layer_norm = use_layer_norm
+    self._share_rezero = share_rezero
 
   def build(self, input_shape):
-    input_tensor = input_shape[0] if len(input_shape) == 2 else input_shape
-    input_tensor_shape = tf.TensorShape(input_tensor)
+    if isinstance(input_shape, tf.TensorShape):
+      input_tensor_shape = input_shape
+    elif isinstance(input_shape, (list, tuple)):
+      input_tensor_shape = tf.TensorShape(input_shape[0])
+    else:
+      raise ValueError(
+          "The type of input shape argument is not supported, got: %s" %
+          type(input_shape))
+
     if len(input_tensor_shape.as_list()) != 3:
       raise ValueError("TransformerLayer expects a three-dimensional input of "
                        "shape [batch, sequence, width].")
@@ -103,8 +122,6 @@ class ReZeroTransformer(tf.keras.layers.Layer):
           "heads (%d)" % (hidden_size, self._num_heads))
     self._attention_head_size = int(hidden_size // self._num_heads)
     common_kwargs = dict(
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
@@ -115,6 +132,8 @@ class ReZeroTransformer(tf.keras.layers.Layer):
         key_dim=self._attention_head_size,
         dropout=self._attention_dropout_rate,
         name="self_attention",
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     if self._use_layer_norm:
@@ -126,11 +145,13 @@ class ReZeroTransformer(tf.keras.layers.Layer):
               axis=-1,
               epsilon=1e-12,
               dtype=tf.float32))
-    self._intermediate_dense = tf.keras.layers.experimental.EinsumDense(
+    self._intermediate_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, self._intermediate_size),
         bias_axes="d",
         name="intermediate",
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
     policy = tf.keras.mixed_precision.global_policy()
     if policy.name == "mixed_bfloat16":
@@ -140,11 +161,13 @@ class ReZeroTransformer(tf.keras.layers.Layer):
       policy = tf.float32
     self._intermediate_activation_layer = tf.keras.layers.Activation(
         self._intermediate_activation, dtype=policy)
-    self._output_dense = tf.keras.layers.experimental.EinsumDense(
+    self._output_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
         bias_axes="d",
         name="output",
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
     self._output_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     if self._use_layer_norm:
@@ -157,6 +180,15 @@ class ReZeroTransformer(tf.keras.layers.Layer):
         initializer=tf.keras.initializers.Zeros(),
         trainable=True,
         dtype=tf.float32)
+
+    if self._share_rezero:
+      self._rezero_a_ffn = self._rezero_a
+    else:
+      self._rezero_a_ffn = self.add_weight(
+          name="rezero_alpha_ffn",
+          initializer=tf.keras.initializers.Zeros(),
+          trainable=True,
+          dtype=tf.float32)
 
     super(ReZeroTransformer, self).build(input_shape)
 
@@ -176,6 +208,8 @@ class ReZeroTransformer(tf.keras.layers.Layer):
             self._output_range,
         "use_layer_norm":
             self._use_layer_norm,
+        "share_rezero":
+            self._share_rezero,
         "kernel_initializer":
             tf.keras.initializers.serialize(self._kernel_initializer),
         "bias_initializer":
@@ -196,21 +230,34 @@ class ReZeroTransformer(tf.keras.layers.Layer):
 
   def reset_rezero(self):
     self._rezero_a.assign(0.)
+    if not self._share_rezero:
+      self._rezero_a_ffn.assign(0.)
 
   def call(self, inputs):
-    if isinstance(inputs, (list, tuple)) and len(inputs) == 2:
-      input_tensor, attention_mask = inputs
+    if isinstance(inputs, (list, tuple)):
+      if len(inputs) == 2:
+        input_tensor, attention_mask = inputs
+        key_value = None
+      elif len(inputs) == 3:
+        input_tensor, key_value, attention_mask = inputs
+      else:
+        raise ValueError("Unexpected inputs to %s with length at %d" %
+                         (self.__class__, len(inputs)))
     else:
-      input_tensor, attention_mask = (inputs, None)
+      input_tensor, key_value, attention_mask = (inputs, None, None)
 
     if self._output_range:
       target_tensor = input_tensor[:, 0:self._output_range, :]
-      attention_mask = attention_mask[:, 0:self._output_range, :]
+      if attention_mask is not None:
+        attention_mask = attention_mask[:, 0:self._output_range, :]
     else:
       target_tensor = input_tensor
 
+    if key_value is None:
+      key_value = input_tensor
+
     attention_output = self._attention_layer(
-        query=target_tensor, value=input_tensor, attention_mask=attention_mask)
+        query=target_tensor, value=key_value, attention_mask=attention_mask)
     attention_output = self._attention_dropout(attention_output)
     attention_output = target_tensor + self._rezero_a * attention_output
     if self._use_layer_norm:
@@ -225,7 +272,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     layer_output = self._output_dropout(layer_output)
     # During mixed precision training, attention_output is from layer norm and
     # is always fp32 for now. Cast layer_output to fp32 for the subsequent add.
-    layer_output = attention_output + tf.cast(self._rezero_a * layer_output,
+    layer_output = attention_output + tf.cast(self._rezero_a_ffn * layer_output,
                                               tf.float32)
     if self._use_layer_norm:
       layer_output = self._output_layer_norm(layer_output)

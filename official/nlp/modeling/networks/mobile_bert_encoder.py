@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -146,7 +146,7 @@ class MobileBERTEncoder(tf.keras.Model):
     first_token = tf.squeeze(prev_output[:, 0:1, :], axis=1)
 
     if classifier_activation:
-      self._pooler_layer = tf.keras.layers.experimental.EinsumDense(
+      self._pooler_layer = tf.keras.layers.EinsumDense(
           'ab,bc->ac',
           output_shape=hidden_size,
           activation=tf.tanh,

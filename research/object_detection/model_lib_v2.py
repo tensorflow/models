@@ -41,6 +41,7 @@ from object_detection.utils import visualization_utils as vutils
 
 MODEL_BUILD_UTIL_MAP = model_lib.MODEL_BUILD_UTIL_MAP
 NUM_STEPS_PER_ITERATION = 100
+LOG_EVERY = 100
 
 
 RESTORE_MAP_ERROR_TEMPLATE = (
@@ -51,7 +52,7 @@ RESTORE_MAP_ERROR_TEMPLATE = (
 
 
 def _compute_losses_and_predictions_dicts(
-    model, features, labels,
+    model, features, labels, training_step=None,
     add_regularization_loss=True):
   """Computes the losses dict and predictions dict for a model on inputs.
 
@@ -107,6 +108,7 @@ def _compute_losses_and_predictions_dicts(
           float32 tensor containing keypoint depths information.
         labels[fields.InputDataFields.groundtruth_keypoint_depth_weights] is a
           float32 tensor containing the weights of the keypoint depth feature.
+    training_step: int, the current training step.
     add_regularization_loss: Whether or not to include the model's
       regularization loss in the losses dictionary.
 
@@ -116,7 +118,7 @@ def _compute_losses_and_predictions_dicts(
     `model.predict`.
 
   """
-  model_lib.provide_groundtruth(model, labels)
+  model_lib.provide_groundtruth(model, labels, training_step=training_step)
   preprocessed_images = features[fields.InputDataFields.image]
 
   prediction_dict = model.predict(
@@ -166,7 +168,8 @@ def _ensure_model_is_built(model, input_dataset, unpad_groundtruth_tensors):
     labels = model_lib.unstack_batch(
         labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
-    return _compute_losses_and_predictions_dicts(model, features, labels)
+    return _compute_losses_and_predictions_dicts(model, features, labels,
+                                                 training_step=0)
 
   strategy = tf.compat.v2.distribute.get_strategy()
   if hasattr(tf.distribute.Strategy, 'run'):
@@ -208,6 +211,7 @@ def eager_train_step(detection_model,
                      labels,
                      unpad_groundtruth_tensors,
                      optimizer,
+                     training_step,
                      add_regularization_loss=True,
                      clip_gradients_value=None,
                      num_replicas=1.0):
@@ -280,6 +284,7 @@ def eager_train_step(detection_model,
           float32 tensor containing the weights of the keypoint depth feature.
     unpad_groundtruth_tensors: A parameter passed to unstack_batch.
     optimizer: The training optimizer that will update the variables.
+    training_step: int, the training step number.
     add_regularization_loss: Whether or not to include the model's
       regularization loss in the losses dictionary.
     clip_gradients_value: If this is present, clip the gradients global norm
@@ -302,7 +307,9 @@ def eager_train_step(detection_model,
 
   with tf.GradientTape() as tape:
     losses_dict, _ = _compute_losses_and_predictions_dicts(
-        detection_model, features, labels, add_regularization_loss)
+        detection_model, features, labels,
+        training_step=training_step,
+        add_regularization_loss=add_regularization_loss)
 
     losses_dict = normalize_dict(losses_dict, num_replicas)
 
@@ -530,8 +537,7 @@ def train_loop(
 
   # Write the as-run pipeline config to disk.
   if save_final_config:
-    tf.logging.info('Saving pipeline config file to directory {}'.format(
-        model_dir))
+    tf.logging.info('Saving pipeline config file to directory %s', model_dir)
     pipeline_config_final = create_pipeline_proto_from_configs(configs)
     config_util.save_pipeline_config(pipeline_config_final, model_dir)
 
@@ -632,6 +638,7 @@ def train_loop(
               labels,
               unpad_groundtruth_tensors,
               optimizer,
+              training_step=global_step,
               add_regularization_loss=add_regularization_loss,
               clip_gradients_value=clip_gradients_value,
               num_replicas=strategy.num_replicas_in_sync)
@@ -692,7 +699,7 @@ def train_loop(
           for key, val in logged_dict.items():
             tf.compat.v2.summary.scalar(key, val, step=global_step)
 
-          if global_step.value() - logged_step >= 100:
+          if global_step.value() - logged_step >= LOG_EVERY:
             logged_dict_np = {name: value.numpy() for name, value in
                               logged_dict.items()}
             tf.logging.info(
@@ -901,7 +908,8 @@ def eager_eval_loop(
         labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
     losses_dict, prediction_dict = _compute_losses_and_predictions_dicts(
-        detection_model, features, labels, add_regularization_loss)
+        detection_model, features, labels, training_step=None,
+        add_regularization_loss=add_regularization_loss)
     prediction_dict = detection_model.postprocess(
         prediction_dict, features[fields.InputDataFields.true_image_shape])
     eval_features = {
@@ -1083,8 +1091,7 @@ def eval_continuously(
   configs = merge_external_params_with_configs(
       configs, None, kwargs_dict=kwargs)
   if model_dir and save_final_config:
-    tf.logging.info('Saving pipeline config file to directory {}'.format(
-        model_dir))
+    tf.logging.info('Saving pipeline config file to directory %s', model_dir)
     pipeline_config_final = create_pipeline_proto_from_configs(configs)
     config_util.save_pipeline_config(pipeline_config_final, model_dir)
 
@@ -1096,11 +1103,11 @@ def eval_continuously(
   eval_on_train_input_config.sample_1_of_n_examples = (
       sample_1_of_n_eval_on_train_examples)
   if override_eval_num_epochs and eval_on_train_input_config.num_epochs != 1:
-    tf.logging.warning('Expected number of evaluation epochs is 1, but '
-                       'instead encountered `eval_on_train_input_config'
-                       '.num_epochs` = '
-                       '{}. Overwriting `num_epochs` to 1.'.format(
-                           eval_on_train_input_config.num_epochs))
+    tf.logging.warning(
+        ('Expected number of evaluation epochs is 1, but '
+         'instead encountered `eval_on_train_input_config'
+         '.num_epochs` = %d. Overwriting `num_epochs` to 1.'),
+        eval_on_train_input_config.num_epochs)
     eval_on_train_input_config.num_epochs = 1
 
   if kwargs['use_bfloat16']:
@@ -1156,3 +1163,7 @@ def eval_continuously(
           postprocess_on_cpu=postprocess_on_cpu,
           global_step=global_step,
           )
+
+    if global_step.numpy() == configs['train_config'].num_steps:
+      tf.logging.info('Exiting evaluation at step %d', global_step.numpy())
+      return

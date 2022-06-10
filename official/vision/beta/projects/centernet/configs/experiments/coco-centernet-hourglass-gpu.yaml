@@ -38,11 +38,11 @@ task:
   per_category_metrics: false
   weight_decay: 0.0005
   gradient_clip_norm: 10.0
-  annotation_file: 'coco/instances_val2017.json'
-  init_checkpoint: '/placer/prod/scratch/home/tf-model-garden-dev/vision/centernet/extremenet_hg104_512x512_coco17/2021-10-19'
+  annotation_file: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/instances_val2017.json'
+  init_checkpoint: gs://tf_model_garden/vision/centernet/extremenet_hg104_512x512_coco17
   init_checkpoint_modules: 'backbone'
   train_data:
-    input_path: 'coco/train*'
+    input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/train*'
     drop_remainder: true
     dtype: 'float16'
     global_batch_size: 64
@@ -57,7 +57,7 @@ task:
       aug_rand_contrast: true
       odapi_augmentation: true
   validation_data:
-    input_path: 'coco/val*'
+    input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/val*'
     drop_remainder: false
     dtype: 'float16'
     global_batch_size: 16

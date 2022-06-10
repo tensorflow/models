@@ -83,6 +83,12 @@ ResNet-50    | 3x           | `panoptic_fpn_coco`         | 40.64   |   36.29   
 
 **Note**: Here 1x schedule refers to ~12 epochs
 
+### Panoptic Deeplab
+Backbone             | Experiment name                 | Overall PQ | Things PQ | Stuff PQ | Checkpoints
+:---------------------| :-------------------------------| ---------- | --------- | -------- | ------------:
+Dilated ResNet-50     | `panoptic_deeplab_resnet_coco`  |   36.80    |  37.51    |  35.73   | [ckpt](gs://tf_model_garden/vision/panoptic/panoptic_deeplab/coco/resnet50)
+Dilated ResNet-101    | `panoptic_deeplab_resnet_coco`  |   38.39    |  39.47    |  36.75   | [ckpt](gs://tf_model_garden/vision/panoptic/panoptic_deeplab/coco/resnet101)
+
 ___
 ## Citation
 ```
@@ -93,5 +99,13 @@ ___
       eprint={1901.02446},
       archivePrefix={arXiv},
       primaryClass={cs.CV}
+}
+
+@article{Cheng2020PanopticDeepLabAS,
+  title={Panoptic-DeepLab: A Simple, Strong, and Fast Baseline for Bottom-Up Panoptic Segmentation},
+  author={Bowen Cheng and Maxwell D. Collins and Yukun Zhu and Ting Liu and Thomas S. Huang and Hartwig Adam and Liang-Chieh Chen},
+  journal={2020 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year={2020},
+  pages={12472-12482}
 }
 ```

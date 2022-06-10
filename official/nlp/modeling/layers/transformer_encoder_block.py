@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,11 @@
 
 """Keras-based TransformerEncoder block layer."""
 
+from absl import logging
 import tensorflow as tf
+
+from official.modeling import tf_utils
+from official.nlp.modeling.layers import util
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
@@ -52,8 +56,30 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
                inner_dropout=0.0,
                attention_initializer=None,
                attention_axes=None,
+               use_query_residual=True,
+               key_dim=None,
+               value_dim=None,
+               output_last_dim=None,
+               diff_q_kv_att_layer_norm=False,
                **kwargs):
     """Initializes `TransformerEncoderBlock`.
+
+    Note: If `output_last_dim` is used and `use_query_residual` is `True`, the
+    `output_last_dim`'s value must equal the first input's last dimension for
+    the query residual connection to work. This is because the residual
+    connection after the multi-head-attention requires their dimensions to
+    match. If `use_query_residual` is `False`, the `output_last_dim` dictactes
+    the last dimension of the output of this module and the
+    multi-head-attention.
+
+    E.g. let's say input dims are `[batch_size, seq_dim, input_last_dim]`.
+    Scenario 1: If `output_last_dim` is not `None`, then the output dims of this
+    module would be `[batch_size, seq_dim, output_last_dim]`. Note `key_dim` is
+    is overriden by `output_last_dim`.
+    Scenario 2: If `output_last_dim` is `None` and `key_dim` is not `None`, then
+    the output dims of this module would be `[batch_size, seq_dim, key_dim]`.
+    Scenario 3: If the `output_last_dim` and `key_dim` are both `None`, the
+    output dims would be `[batch_size, seq_dim, input_last_dim]`.
 
     Args:
       num_attention_heads: Number of attention heads.
@@ -86,8 +112,21 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         kernel.
       attention_axes: axes over which the attention is applied. `None` means
         attention over all axes, but batch, heads, and features.
-      **kwargs: keyword arguments/
+      use_query_residual: Toggle to execute residual connection after attention.
+      key_dim: `key_dim` for the `tf.keras.layers.MultiHeadAttention`. If
+        `None`, we use the first `input_shape`'s last dim.
+      value_dim: `value_dim` for the `tf.keras.layers.MultiHeadAttention`.
+      output_last_dim: Final dimension of the output of this module. This also
+        dictates the value for the final dimension of the
+        multi-head-attention. When it's `None`, we use, in order of decreasing
+        precedence, `key_dim` * `num_heads` or the first `input_shape`'s last
+        dim as the output's last dim.
+      diff_q_kv_att_layer_norm: If `True`, create a separate attention layer
+        norm layer for query and key-value if `norm_first` is `True`. Invalid
+        to set to `True` if `norm_first` is `False`.
+      **kwargs: keyword arguments.
     """
+    util.filter_kwargs(kwargs)
     super().__init__(**kwargs)
 
     self._num_heads = num_attention_heads
@@ -109,12 +148,22 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     self._norm_first = norm_first
     self._norm_epsilon = norm_epsilon
     self._inner_dropout = inner_dropout
+    self._use_query_residual = use_query_residual
+    self._key_dim = key_dim
+    self._value_dim = value_dim
+    self._output_last_dim = output_last_dim
+    self._diff_q_kv_att_layer_norm = diff_q_kv_att_layer_norm
     if attention_initializer:
       self._attention_initializer = tf.keras.initializers.get(
           attention_initializer)
     else:
-      self._attention_initializer = self._kernel_initializer
+      self._attention_initializer = tf_utils.clone_initializer(
+          self._kernel_initializer)
     self._attention_axes = attention_axes
+
+    if self._diff_q_kv_att_layer_norm and not self._norm_first:
+      raise ValueError("Setting `diff_q_and_kv_attention_layer_norm` to True"
+                       "when `norm_first` is False is invalid.")
 
   def build(self, input_shape):
     if isinstance(input_shape, tf.TensorShape):
@@ -130,24 +179,31 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
       einsum_equation = "...bc,cd->...bd"
     hidden_size = input_tensor_shape[-1]
     if hidden_size % self._num_heads != 0:
-      raise ValueError(
+      logging.warning(
           "The input size (%d) is not a multiple of the number of attention "
-          "heads (%d)" % (hidden_size, self._num_heads))
-    self._attention_head_size = int(hidden_size // self._num_heads)
+          "heads (%d)", hidden_size, self._num_heads)
+    if self._key_dim is None:
+      self._key_dim = int(hidden_size // self._num_heads)
+    if self._output_last_dim is None:
+      last_output_shape = hidden_size
+    else:
+      last_output_shape = self._output_last_dim
+
     common_kwargs = dict(
-        bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint)
     self._attention_layer = tf.keras.layers.MultiHeadAttention(
         num_heads=self._num_heads,
-        key_dim=self._attention_head_size,
+        key_dim=self._key_dim,
+        value_dim=self._value_dim,
         dropout=self._attention_dropout,
         use_bias=self._use_bias,
         kernel_initializer=self._attention_initializer,
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         attention_axes=self._attention_axes,
+        output_shape=self._output_last_dim,
         name="self_attention",
         **common_kwargs)
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
@@ -159,11 +215,21 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
             axis=-1,
             epsilon=self._norm_epsilon,
             dtype=tf.float32))
-    self._intermediate_dense = tf.keras.layers.experimental.EinsumDense(
+    self._attention_layer_norm_kv = self._attention_layer_norm
+    if self._diff_q_kv_att_layer_norm:
+      self._attention_layer_norm_kv = (
+          tf.keras.layers.LayerNormalization(
+              name="self_attention_layer_norm_kv",
+              axis=-1,
+              epsilon=self._norm_epsilon,
+              dtype=tf.float32))
+
+    self._intermediate_dense = tf.keras.layers.EinsumDense(
         einsum_equation,
         output_shape=(None, self._inner_dim),
         bias_axes="d",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         name="intermediate",
         **common_kwargs)
     policy = tf.keras.mixed_precision.global_policy()
@@ -176,12 +242,13 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         self._inner_activation, dtype=policy)
     self._inner_dropout_layer = tf.keras.layers.Dropout(
         rate=self._inner_dropout)
-    self._output_dense = tf.keras.layers.experimental.EinsumDense(
+    self._output_dense = tf.keras.layers.EinsumDense(
         einsum_equation,
-        output_shape=(None, hidden_size),
+        output_shape=(None, last_output_shape),
         bias_axes="d",
         name="output",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
     self._output_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
     # Use float32 in layernorm for numeric stability.
@@ -232,6 +299,16 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         "attention_initializer":
             tf.keras.initializers.serialize(self._attention_initializer),
         "attention_axes": self._attention_axes,
+        "use_query_residual":
+            self._use_query_residual,
+        "key_dim":
+            self._key_dim,
+        "value_dim":
+            self._value_dim,
+        "output_last_dim":
+            self._output_last_dim,
+        "diff_q_kv_att_layer_norm":
+            self._diff_q_kv_att_layer_norm,
     }
     base_config = super(TransformerEncoderBlock, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -268,7 +345,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         source_tensor = input_tensor[:, 0:self._output_range, :]
         input_tensor = self._attention_layer_norm(input_tensor)
         if key_value is not None:
-          key_value = self._attention_layer_norm(key_value)
+          key_value = self._attention_layer_norm_kv(key_value)
       target_tensor = input_tensor[:, 0:self._output_range, :]
       if attention_mask is not None:
         attention_mask = attention_mask[:, 0:self._output_range, :]
@@ -277,7 +354,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         source_tensor = input_tensor
         input_tensor = self._attention_layer_norm(input_tensor)
         if key_value is not None:
-          key_value = self._attention_layer_norm(key_value)
+          key_value = self._attention_layer_norm_kv(key_value)
       target_tensor = input_tensor
 
     if key_value is None:
@@ -285,11 +362,18 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     attention_output = self._attention_layer(
         query=target_tensor, value=key_value, attention_mask=attention_mask)
     attention_output = self._attention_dropout(attention_output)
+
     if self._norm_first:
-      attention_output = source_tensor + attention_output
+      # Important to not combine `self._norm_first` and
+      # `self._use_query_residual` into one if clause because else is only for
+      # `_norm_first == False`.
+      if self._use_query_residual:
+        attention_output = source_tensor + attention_output
     else:
-      attention_output = self._attention_layer_norm(target_tensor +
-                                                    attention_output)
+      if self._use_query_residual:
+        attention_output = target_tensor + attention_output
+      attention_output = self._attention_layer_norm(attention_output)
+
     if self._norm_first:
       source_attention_output = attention_output
       attention_output = self._output_layer_norm(attention_output)

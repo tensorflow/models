@@ -27,7 +27,6 @@ task:
     num_devices: 1
     input_path: 'gs://youtube8m-ml/2/frame/train/train*.tfrecord'
     is_training: true
-    random_seed: 123
   validation_data:
     name: 'yt8m'
     split: 'train'
@@ -46,7 +45,6 @@ task:
     num_devices: 1
     input_path: 'gs://youtube8m-ml/3/frame/validate/validate*.tfrecord'
     is_training: false
-    random_seed: 123
   losses:
     name: 'binary_crossentropy'
     from_logits: false

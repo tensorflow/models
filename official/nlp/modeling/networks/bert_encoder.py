@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,10 +19,13 @@ from typing import Any, Callable, Optional, Union
 from absl import logging
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling import layers
 
 
 _Initializer = Union[str, tf.keras.initializers.Initializer]
+_Activation = Union[str, Callable[..., Any]]
+
 _approx_gelu = lambda x: tf.keras.activations.gelu(x, approximate=True)
 
 
@@ -72,6 +75,7 @@ class BertEncoderV2(tf.keras.layers.Layer):
     norm_first: Whether to normalize inputs to attention and intermediate dense
       layers. If set False, output of attention and intermediate dense layers is
       normalized.
+    with_dense_inputs: Whether to accept dense embeddings as the input.
   """
 
   def __init__(
@@ -83,7 +87,7 @@ class BertEncoderV2(tf.keras.layers.Layer):
       max_sequence_length: int = 512,
       type_vocab_size: int = 16,
       inner_dim: int = 3072,
-      inner_activation: Callable[..., Any] = _approx_gelu,
+      inner_activation: _Activation = _approx_gelu,
       output_dropout: float = 0.1,
       attention_dropout: float = 0.1,
       initializer: _Initializer = tf.keras.initializers.TruncatedNormal(
@@ -92,6 +96,7 @@ class BertEncoderV2(tf.keras.layers.Layer):
       embedding_width: Optional[int] = None,
       embedding_layer: Optional[tf.keras.layers.Layer] = None,
       norm_first: bool = False,
+      with_dense_inputs: bool = False,
       **kwargs):
     # Pops kwargs that are used in V1 implementation.
     if 'dict_outputs' in kwargs:
@@ -118,20 +123,20 @@ class BertEncoderV2(tf.keras.layers.Layer):
       self._embedding_layer = layers.OnDeviceEmbedding(
           vocab_size=vocab_size,
           embedding_width=embedding_width,
-          initializer=initializer,
+          initializer=tf_utils.clone_initializer(initializer),
           name='word_embeddings')
     else:
       self._embedding_layer = embedding_layer
 
     self._position_embedding_layer = layers.PositionEmbedding(
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(initializer),
         max_length=max_sequence_length,
         name='position_embedding')
 
     self._type_embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=type_vocab_size,
         embedding_width=embedding_width,
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(initializer),
         use_one_hot=True,
         name='type_embeddings')
 
@@ -145,11 +150,11 @@ class BertEncoderV2(tf.keras.layers.Layer):
     # 'hidden_size'.
     self._embedding_projection = None
     if embedding_width != hidden_size:
-      self._embedding_projection = tf.keras.layers.experimental.EinsumDense(
+      self._embedding_projection = tf.keras.layers.EinsumDense(
           '...x,xy->...y',
           output_shape=hidden_size,
           bias_axes='y',
-          kernel_initializer=initializer,
+          kernel_initializer=tf_utils.clone_initializer(initializer),
           name='embedding_projection')
 
     self._transformer_layers = []
@@ -164,14 +169,14 @@ class BertEncoderV2(tf.keras.layers.Layer):
           attention_dropout=attention_dropout,
           norm_first=norm_first,
           output_range=output_range if i == num_layers - 1 else None,
-          kernel_initializer=initializer,
+          kernel_initializer=tf_utils.clone_initializer(initializer),
           name='transformer/layer_%d' % i)
       self._transformer_layers.append(layer)
 
     self._pooler_layer = tf.keras.layers.Dense(
         units=hidden_size,
         activation='tanh',
-        kernel_initializer=initializer,
+        kernel_initializer=tf_utils.clone_initializer(initializer),
         name='pooler_transform')
 
     self._config = {
@@ -190,11 +195,23 @@ class BertEncoderV2(tf.keras.layers.Layer):
         'embedding_width': embedding_width,
         'embedding_layer': embedding_layer,
         'norm_first': norm_first,
+        'with_dense_inputs': with_dense_inputs,
     }
-    self.inputs = dict(
-        input_word_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
-        input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
-        input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32))
+    if with_dense_inputs:
+      self.inputs = dict(
+          input_word_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          dense_inputs=tf.keras.Input(
+              shape=(None, embedding_width), dtype=tf.float32),
+          dense_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          dense_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
+      )
+    else:
+      self.inputs = dict(
+          input_word_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32))
 
   def call(self, inputs):
     word_embeddings = None
@@ -203,11 +220,22 @@ class BertEncoderV2(tf.keras.layers.Layer):
       mask = inputs.get('input_mask')
       type_ids = inputs.get('input_type_ids')
       word_embeddings = inputs.get('input_word_embeddings', None)
+
+      dense_inputs = inputs.get('dense_inputs', None)
+      dense_mask = inputs.get('dense_mask', None)
+      dense_type_ids = inputs.get('dense_type_ids', None)
     else:
       raise ValueError('Unexpected inputs type to %s.' % self.__class__)
 
     if word_embeddings is None:
       word_embeddings = self._embedding_layer(word_ids)
+
+    if dense_inputs is not None:
+      # Concat the dense embeddings at sequence end.
+      word_embeddings = tf.concat([word_embeddings, dense_inputs], axis=1)
+      type_ids = tf.concat([type_ids, dense_type_ids], axis=1)
+      mask = tf.concat([mask, dense_mask], axis=1)
+
     # absolute position embeddings.
     position_embeddings = self._position_embedding_layer(word_embeddings)
     type_embeddings = self._type_embedding_layer(type_ids)
@@ -382,7 +410,7 @@ class BertEncoder(tf.keras.Model):
       embedding_layer_inst = layers.OnDeviceEmbedding(
           vocab_size=vocab_size,
           embedding_width=embedding_width,
-          initializer=initializer,
+          initializer=tf_utils.clone_initializer(initializer),
           name='word_embeddings')
     else:
       embedding_layer_inst = embedding_layer
@@ -390,14 +418,14 @@ class BertEncoder(tf.keras.Model):
 
     # Always uses dynamic slicing for simplicity.
     position_embedding_layer = layers.PositionEmbedding(
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(initializer),
         max_length=max_sequence_length,
         name='position_embedding')
     position_embeddings = position_embedding_layer(word_embeddings)
     type_embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=type_vocab_size,
         embedding_width=embedding_width,
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(initializer),
         use_one_hot=True,
         name='type_embeddings')
     type_embeddings = type_embedding_layer(type_ids)
@@ -414,11 +442,11 @@ class BertEncoder(tf.keras.Model):
     # We project the 'embedding' output to 'hidden_size' if it is not already
     # 'hidden_size'.
     if embedding_width != hidden_size:
-      embedding_projection = tf.keras.layers.experimental.EinsumDense(
+      embedding_projection = tf.keras.layers.EinsumDense(
           '...x,xy->...y',
           output_shape=hidden_size,
           bias_axes='y',
-          kernel_initializer=initializer,
+          kernel_initializer=tf_utils.clone_initializer(initializer),
           name='embedding_projection')
       embeddings = embedding_projection(embeddings)
     else:
@@ -441,7 +469,7 @@ class BertEncoder(tf.keras.Model):
           attention_dropout=attention_dropout,
           norm_first=norm_first,
           output_range=transformer_output_range,
-          kernel_initializer=initializer,
+          kernel_initializer=tf_utils.clone_initializer(initializer),
           name='transformer/layer_%d' % i)
       transformer_layers.append(layer)
       data = layer([data, attention_mask])
@@ -455,7 +483,7 @@ class BertEncoder(tf.keras.Model):
     pooler_layer = tf.keras.layers.Dense(
         units=hidden_size,
         activation='tanh',
-        kernel_initializer=initializer,
+        kernel_initializer=tf_utils.clone_initializer(initializer),
         name='pooler_transform')
     cls_output = pooler_layer(first_token_tensor)
 

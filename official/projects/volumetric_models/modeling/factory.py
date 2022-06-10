@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ import tensorflow as tf
 from official.modeling import hyperparams
 from official.projects.volumetric_models.modeling.decoders import factory as decoder_factory
 from official.projects.volumetric_models.modeling.heads import segmentation_heads_3d
-from official.vision.beta.modeling import segmentation_model
-from official.vision.beta.modeling.backbones import factory as backbone_factory
+from official.vision.modeling import segmentation_model
+from official.vision.modeling.backbones import factory as backbone_factory
 
 
 def build_segmentation_model_3d(

@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_mas
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import factory
 from official.vision.beta.projects.panoptic_maskrcnn.serving import panoptic_segmentation
 from official.vision.beta.projects.panoptic_maskrcnn.tasks import panoptic_maskrcnn as task  # pylint: disable=unused-import
-from official.vision.beta.serving import export_saved_model_lib
+from official.vision.serving import export_saved_model_lib
 
 FLAGS = flags.FLAGS
 

@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -124,7 +124,7 @@ class DualEncoderDataLoader(data_loader.DataLoader):
       raise ValueError('Expected {} to start with {}'.format(string, old))
 
     def _switch_key_prefix(d, old, new):
-      return {_switch_prefix(key, old, new): value for key, value in d.items()}
+      return {_switch_prefix(key, old, new): value for key, value in d.items()}  # pytype: disable=attribute-error  # trace-all-classes
 
     model_inputs = _switch_key_prefix(
         self._bert_tokenize(record, self._left_text_fields),

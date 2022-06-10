@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Runs an Image Classification model."""
 
 import os
@@ -32,6 +31,7 @@ from official.legacy.image_classification.configs import configs
 from official.legacy.image_classification.efficientnet import efficientnet_model
 from official.legacy.image_classification.resnet import common
 from official.legacy.image_classification.resnet import resnet_model
+from official.legacy.image_classification.vgg import vgg_model
 from official.modeling import hyperparams
 from official.modeling import performance
 from official.utils import hyperparams_flags
@@ -43,6 +43,7 @@ def get_models() -> Mapping[str, tf.keras.Model]:
   return {
       'efficientnet': efficientnet_model.EfficientNet.from_name,
       'resnet': resnet_model.resnet50,
+      'vgg': vgg_model.vgg16,
   }
 
 

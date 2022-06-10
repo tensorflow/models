@@ -1,4 +1,4 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@ from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.vision.beta.configs import common
-from official.vision.beta.configs import maskrcnn
-from official.vision.beta.configs import semantic_segmentation
+from official.projects.deepmac_maskrcnn.configs import deep_mask_head_rcnn as deepmac_maskrcnn
+from official.vision.configs import common
+from official.vision.configs import maskrcnn
+from official.vision.configs import semantic_segmentation
 
 
 SEGMENTATION_MODEL = semantic_segmentation.SemanticSegmentationModel
@@ -58,6 +59,8 @@ class TfExampleDecoder(common.TfExampleDecoder):
   """A simple TF Example decoder config."""
   # Setting this to true will enable decoding category_mask and instance_mask.
   include_panoptic_masks: bool = True
+  panoptic_category_mask_key: str = 'image/panoptic/category_mask'
+  panoptic_instance_mask_key: str = 'image/panoptic/instance_mask'
 
 
 @dataclasses.dataclass
@@ -89,7 +92,7 @@ class PanopticSegmentationGenerator(hyperparams.Config):
 
 
 @dataclasses.dataclass
-class PanopticMaskRCNN(maskrcnn.MaskRCNN):
+class PanopticMaskRCNN(deepmac_maskrcnn.DeepMaskHeadRCNN):
   """Panoptic Mask R-CNN model config."""
   segmentation_model: semantic_segmentation.SemanticSegmentationModel = (
       SEGMENTATION_MODEL(num_classes=2))
