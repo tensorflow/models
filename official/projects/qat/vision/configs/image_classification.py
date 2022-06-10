@@ -35,6 +35,8 @@ def image_classification_imagenet() -> cfg.ExperimentConfig:
   task = ImageClassificationTask.from_args(
       quantization=common.Quantization(), **config.task.as_dict())
   config.task = task
+  runtime = cfg.RuntimeConfig(enable_xla=False)
+  config.runtime = runtime
 
   return config
 
