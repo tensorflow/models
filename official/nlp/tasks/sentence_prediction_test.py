@@ -162,7 +162,8 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
       self.assertLess(loss, 1.0)
 
   @parameterized.parameters(("matthews_corrcoef", 2),
-                            ("pearson_spearman_corr", 1))
+                            ("pearson_spearman_corr", 1),
+                            ("f1", 2))
   def test_np_metrics(self, metric_type, num_classes):
     config = sentence_prediction.SentencePredictionConfig(
         metric_type=metric_type,
