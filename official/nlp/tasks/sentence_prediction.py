@@ -34,7 +34,7 @@ from official.nlp.modeling import models
 from official.nlp.tasks import utils
 
 METRIC_TYPES = frozenset(
-    ['accuracy', 'matthews_corrcoef', 'pearson_spearman_corr'])
+    ['accuracy', 'f1', 'matthews_corrcoef', 'pearson_spearman_corr'])
 
 
 @dataclasses.dataclass
@@ -180,7 +180,7 @@ class SentencePredictionTask(base_task.Task):
           'labels':
               labels[self.label_field],
       })
-    if self.metric_type == 'pearson_spearman_corr':
+    else:
       logs.update({
           'sentence_prediction': outputs,
           'labels': labels[self.label_field],
@@ -202,18 +202,20 @@ class SentencePredictionTask(base_task.Task):
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     if self.metric_type == 'accuracy':
       return None
+
+    preds = np.concatenate(aggregated_logs['sentence_prediction'], axis=0)
+    labels = np.concatenate(aggregated_logs['labels'], axis=0)
+    if self.metric_type == 'f1':
+      preds = np.argmax(preds, axis=1)
+      return {self.metric_type: 100 * sklearn_metrics.f1_score(labels, preds)}
     elif self.metric_type == 'matthews_corrcoef':
-      preds = np.concatenate(aggregated_logs['sentence_prediction'], axis=0)
       preds = np.reshape(preds, -1)
-      labels = np.concatenate(aggregated_logs['labels'], axis=0)
       labels = np.reshape(labels, -1)
       return {
           self.metric_type: sklearn_metrics.matthews_corrcoef(preds, labels)
       }
     elif self.metric_type == 'pearson_spearman_corr':
-      preds = np.concatenate(aggregated_logs['sentence_prediction'], axis=0)
       preds = np.reshape(preds, -1)
-      labels = np.concatenate(aggregated_logs['labels'], axis=0)
       labels = np.reshape(labels, -1)
       pearson_corr = stats.pearsonr(preds, labels)[0]
       spearman_corr = stats.spearmanr(preds, labels)[0]

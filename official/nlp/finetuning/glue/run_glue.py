@@ -57,7 +57,7 @@ EVAL_METRIC_MAP = {
     'MNLI': 'cls_accuracy',
     'MRPC': 'cls_accuracy',
     'QNLI': 'cls_accuracy',
-    'QQP': 'cls_accuracy',
+    'QQP': 'f1',
     'RTE': 'cls_accuracy',
     'SST-2': 'cls_accuracy',
     'STS-B': 'pearson_spearman_corr',
@@ -93,10 +93,15 @@ def _override_exp_config_by_flags(exp_config, input_meta_data):
         binary_helper.override_sentence_prediction_task_config,
         num_classes=input_meta_data['num_labels'],
         metric_type='matthews_corrcoef')
-  elif FLAGS.task_name in ('MNLI', 'MRPC', 'QNLI', 'QQP', 'RTE', 'SST-2',
+  elif FLAGS.task_name in ('MNLI', 'MRPC', 'QNLI', 'RTE', 'SST-2',
                            'WNLI'):
     override_task_cfg_fn = functools.partial(
         binary_helper.override_sentence_prediction_task_config,
+        num_classes=input_meta_data['num_labels'])
+  elif FLAGS.task_name in ('QQP',):
+    override_task_cfg_fn = functools.partial(
+        binary_helper.override_sentence_prediction_task_config,
+        metric_type='f1',
         num_classes=input_meta_data['num_labels'])
   elif FLAGS.task_name in ('STS-B',):
     override_task_cfg_fn = functools.partial(
