@@ -29,6 +29,10 @@ from official.vision.serving import detection
 
 class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
 
+  def setUp(self):
+    super().setUp()
+    tf.keras.utils.set_random_seed(1)
+
   def _get_detection_module(self, experiment_name, input_type):
     params = exp_factory.get_exp_config(experiment_name)
     params.task.model.backbone.resnet.model_id = 18
