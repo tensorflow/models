@@ -165,14 +165,17 @@ class SentencePredictionTask(base_task.Task):
     compiled_metrics.update_state(labels[self.label_field], model_outputs)
 
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
-    if self.metric_type == 'accuracy':
-      return super(SentencePredictionTask,
-                   self).validation_step(inputs, model, metrics)
     features, labels = inputs, inputs
     outputs = self.inference_step(features, model)
     loss = self.build_losses(
         labels=labels, model_outputs=outputs, aux_losses=model.losses)
     logs = {self.loss: loss}
+    if metrics:
+      self.process_metrics(metrics, labels, outputs)
+    if model.compiled_metrics:
+      self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
+      logs.update({m.name: m.result() for m in metrics or []})
+      logs.update({m.name: m.result() for m in model.metrics})
     if self.metric_type == 'matthews_corrcoef':
       logs.update({
           'sentence_prediction':  # Ensure one prediction along batch dimension.
@@ -207,7 +210,7 @@ class SentencePredictionTask(base_task.Task):
     labels = np.concatenate(aggregated_logs['labels'], axis=0)
     if self.metric_type == 'f1':
       preds = np.argmax(preds, axis=1)
-      return {self.metric_type: 100 * sklearn_metrics.f1_score(labels, preds)}
+      return {self.metric_type: sklearn_metrics.f1_score(labels, preds)}
     elif self.metric_type == 'matthews_corrcoef':
       preds = np.reshape(preds, -1)
       labels = np.reshape(labels, -1)
