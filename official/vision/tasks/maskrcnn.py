@@ -122,7 +122,8 @@ class MaskRCNNTask(base_task.Task):
       self,
       params: exp_cfg.DataConfig,
       input_context: Optional[tf.distribute.InputContext] = None,
-      dataset_fn: Optional[dataset_fn_lib.PossibleDatasetType] = None):
+      dataset_fn: Optional[dataset_fn_lib.PossibleDatasetType] = None
+  ) -> tf.data.Dataset:
     """Build input dataset."""
     decoder_cfg = params.decoder.get()
     if params.decoder.type == 'simple_decoder':
