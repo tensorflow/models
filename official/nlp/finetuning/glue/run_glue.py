@@ -55,7 +55,7 @@ EVAL_METRIC_MAP = {
     'AX': 'matthews_corrcoef',
     'COLA': 'matthews_corrcoef',
     'MNLI': 'cls_accuracy',
-    'MRPC': 'cls_accuracy',
+    'MRPC': 'f1',
     'QNLI': 'cls_accuracy',
     'QQP': 'f1',
     'RTE': 'cls_accuracy',
@@ -93,12 +93,12 @@ def _override_exp_config_by_flags(exp_config, input_meta_data):
         binary_helper.override_sentence_prediction_task_config,
         num_classes=input_meta_data['num_labels'],
         metric_type='matthews_corrcoef')
-  elif FLAGS.task_name in ('MNLI', 'MRPC', 'QNLI', 'RTE', 'SST-2',
+  elif FLAGS.task_name in ('MNLI', 'QNLI', 'RTE', 'SST-2',
                            'WNLI'):
     override_task_cfg_fn = functools.partial(
         binary_helper.override_sentence_prediction_task_config,
         num_classes=input_meta_data['num_labels'])
-  elif FLAGS.task_name in ('QQP',):
+  elif FLAGS.task_name in ('QQP', 'MRPC'):
     override_task_cfg_fn = functools.partial(
         binary_helper.override_sentence_prediction_task_config,
         metric_type='f1',
