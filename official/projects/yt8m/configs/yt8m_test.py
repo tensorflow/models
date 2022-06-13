@@ -26,7 +26,7 @@ class YT8MTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.parameters(
     ('yt8m_experiment',),)
 
-  def test_assemblenet_configs(self, config_name):
+  def test_yt8m_configs(self, config_name):
     config = exp_factory.get_exp_config(config_name)
     self.assertIsInstance(config, cfg.ExperimentConfig)
     self.assertIsInstance(config.task, cfg.TaskConfig)
