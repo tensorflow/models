@@ -21,7 +21,7 @@ from official.projects.yt8m.modeling import yt8m_model_utils as utils
 layers = tf.keras.layers
 
 
-class LogisticModel():
+class Logistic():
   """Logistic model with L2 regularization."""
 
   def create_model(self, model_input, vocab_size, l2_penalty=1e-8):
@@ -45,7 +45,7 @@ class LogisticModel():
     return {"predictions": output}
 
 
-class MoeModel():
+class Moe():
   """A softmax over a mixture of logistic models (with L2 regularization)."""
 
   def create_model(self,

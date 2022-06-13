@@ -37,7 +37,7 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
     tf.io.gfile.makedirs(data_dir)
     self.data_path = os.path.join(data_dir, 'data.tfrecord')
     self.num_segment = 6
-    examples = [utils.MakeYt8mExample(self.num_segment) for _ in range(8)]
+    examples = [utils.make_yt8m_example(self.num_segment) for _ in range(8)]
     tfexample_utils.dump_to_tfrecord(self.data_path, tf_examples=examples)
 
   def create_input_reader(self, params):
@@ -130,7 +130,7 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
     tf.io.gfile.makedirs(data_dir)
     data_path = os.path.join(data_dir, 'data2.tfrecord')
     examples = [
-        utils.MakeExampleWithFloatFeatures(self.num_segment) for _ in range(8)
+        utils.make_example_with_float_features(self.num_segment) for _ in range(8)
     ]
     tfexample_utils.dump_to_tfrecord(data_path, tf_examples=examples)
 
