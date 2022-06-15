@@ -75,7 +75,7 @@ export PYTHONPATH=$PYTHONPATH:/path/to/models
 
 If you are using in a Windows environment, you may need to use the following command with PowerShell:
 ```shell
-$env:PYTHONPATH += "C:\path\to\models"
+$env:PYTHONPATH += ":\path\to\models"
 ```
 
 If you are using a Colab notebook, please set the Python path with os.environ.
