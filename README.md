@@ -73,6 +73,11 @@ git clone https://github.com/tensorflow/models.git
 export PYTHONPATH=$PYTHONPATH:/path/to/models
 ```
 
+If you are using in a Windows environment, you may need to use the following command with PowerShell:
+```shell
+$env:PYTHONPATH += ":\path\to\models"
+```
+
 If you are using a Colab notebook, please set the Python path with os.environ.
 
 ```python
@@ -83,7 +88,7 @@ os.environ['PYTHONPATH'] += ":/path/to/models"
 3. Install other dependencies
 
 ```shell
-pip3 install --user -r official/requirements.txt
+pip3 install --user -r models/official/requirements.txt
 ```
 
 Finally, if you are using nlp packages, please also install
