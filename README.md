@@ -88,7 +88,7 @@ os.environ['PYTHONPATH'] += ":/path/to/models"
 3. Install other dependencies
 
 ```shell
-pip3 install --user -r official/requirements.txt
+pip3 install --user -r models/official/requirements.txt
 ```
 
 Finally, if you are using nlp packages, please also install
