@@ -162,7 +162,8 @@ class SamplingModule(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
                top_p=1.0,
                sample_temperature=0.0,
                enable_greedy: bool = True,
-               dtype: tf.DType = tf.float32):
+               dtype: tf.DType = tf.float32,
+               decoding_name: Optional[str] = None):
     """Initialize sampling module."""
     self.symbols_to_logits_fn = symbols_to_logits_fn
     self.length_normalization_fn = length_normalization_fn
@@ -176,8 +177,11 @@ class SamplingModule(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
     self.sample_temperature = tf.convert_to_tensor(
         sample_temperature, dtype=tf.float32)
     self.enable_greedy = enable_greedy
+    self.decoding_name = decoding_name
     super(SamplingModule, self).__init__(
-        length_normalization_fn=length_normalization_fn, dtype=dtype)
+        length_normalization_fn=length_normalization_fn,
+        dtype=dtype,
+        decoding_name=decoding_name)
 
   def _grow_alive_seq(self,
                       state: Dict[str, Any],

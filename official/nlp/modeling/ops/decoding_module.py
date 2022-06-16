@@ -15,7 +15,7 @@
 """Base class for Decoding Strategies (beam_search, top_k, top_p and greedy)."""
 
 import abc
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import tensorflow as tf
 
@@ -108,7 +108,8 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
 
   def __init__(self,
                length_normalization_fn: Callable[[int, tf.DType], float],
-               dtype: tf.DType = tf.float32):
+               dtype: tf.DType = tf.float32,
+               decoding_name: Optional[str] = None):
     """Initialize the Decoding Module.
 
     Args:
@@ -116,9 +117,11 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
       parameter. Function accepts input as length, dtype and returns float.
       dtype: A tensorflow data type used for score computation. The default is
         tf.float32.
+      decoding_name: an optional name for the decoding loop tensors.
     """
     self.length_normalization_fn = length_normalization_fn
     self.dtype = tf.as_dtype(dtype)
+    self.decoding_name = decoding_name
 
   def generate(self,
                initial_ids: tf.Tensor,
@@ -169,7 +172,8 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
             _generate_step,
             loop_vars=[state],
             shape_invariants=[state_shapes],
-            parallel_iterations=1))
+            parallel_iterations=1,
+            name=self.decoding_name))
     final_state = self._process_finished_state(finished_state[0])
     return final_state
 
@@ -277,6 +281,3 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
       return dtypes.float16.max
     else:
       raise AssertionError("Invalid dtype: %s" % self.dtype)
-
-
-

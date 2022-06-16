@@ -60,10 +60,12 @@ class BeamSearchTests(tf.test.TestCase, parameterized.TestCase):
         y)
 
   @parameterized.named_parameters([
-      ('padded_decode_true', True),
-      ('padded_decode_false', False),
+      ('padded_decode_true_with_name', True, 'decoding'),
+      ('padded_decode_false_with_name', False, 'decoding'),
+      ('padded_decode_true_without_name', True, None),
+      ('padded_decode_false_without_name', False, None),
   ])
-  def test_sequence_beam_search(self, padded_decode):
+  def test_sequence_beam_search(self, padded_decode, name):
     # batch_size*beam_size, max_decode_length, vocab_size
     probabilities = tf.constant([[[0.2, 0.7, 0.1], [0.5, 0.3, 0.2],
                                   [0.1, 0.8, 0.1]],
@@ -91,7 +93,8 @@ class BeamSearchTests(tf.test.TestCase, parameterized.TestCase):
         max_decode_length=3,
         eos_id=9,
         padded_decode=padded_decode,
-        dtype=tf.float32)
+        dtype=tf.float32,
+        decoding_name=name)
     self.assertAllEqual([[[0, 1, 0, 1], [0, 1, 1, 2]]], predictions)
 
 
