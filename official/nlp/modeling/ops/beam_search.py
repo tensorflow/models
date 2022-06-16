@@ -107,18 +107,18 @@ class SequenceBeamSearch(tf.Module):
                max_decode_length,
                eos_id,
                padded_decode,
-               dtype=tf.float32):
+               dtype=tf.float32,
+               decoding_name=None):
     """Initialize sequence beam search.
 
     Args:
-      symbols_to_logits_fn: A function to provide logits, which is the
-        interface to the Transformer model. The passed in arguments are: ids ->
-          A tensor with shape [batch_size * beam_size, index]. index -> A
-          scalar. cache -> A nested dictionary of tensors [batch_size *
-          beam_size, ...].
-        The function must return a tuple of logits and the updated cache: logits
-          -> A tensor with shape [batch * beam_size, vocab_size]. updated cache
-          -> A nested dictionary with the same structure as the input cache.
+      symbols_to_logits_fn: A function to provide logits, which is the interface
+        to the Transformer model. The passed in arguments are: ids -> A tensor
+        with shape [batch_size * beam_size, index]. index -> A scalar. cache ->
+        A nested dictionary of tensors [batch_size * beam_size, ...]. The
+        function must return a tuple of logits and the updated cache: logits ->
+        A tensor with shape [batch * beam_size, vocab_size]. updated cache -> A
+        nested dictionary with the same structure as the input cache.
       vocab_size: An integer, the size of the vocabulary, used for topk
         computation.
       beam_size: An integer, number of beams for beam search.
@@ -130,6 +130,7 @@ class SequenceBeamSearch(tf.Module):
         for beam search.
       dtype: A tensorflow data type used for score computation. The default is
         tf.float32.
+      decoding_name: an optional name for the decoding loop tensors.
     """
     self.symbols_to_logits_fn = symbols_to_logits_fn
     self.vocab_size = vocab_size
@@ -139,6 +140,7 @@ class SequenceBeamSearch(tf.Module):
     self.eos_id = eos_id
     self.padded_decode = padded_decode
     self.dtype = tf.as_dtype(dtype)
+    self.decoding_name = decoding_name
 
   def search(self, initial_ids, initial_cache):
     """Beam search for sequences with highest scores.
@@ -370,7 +372,8 @@ class SequenceBeamSearch(tf.Module):
             _search_step,
             loop_vars=[state],
             shape_invariants=[state_shapes],
-            parallel_iterations=1))
+            parallel_iterations=1,
+            name=self.decoding_name))
     finished_state = finished_state[0]
     return self._process_finished_state(finished_state)
 
@@ -587,7 +590,8 @@ def sequence_beam_search(symbols_to_logits_fn,
                          max_decode_length,
                          eos_id,
                          padded_decode=False,
-                         dtype="float32"):
+                         dtype="float32",
+                         decoding_name=None):
   """Search for sequence of subtoken ids with the largest probability.
 
   Args:
@@ -612,13 +616,15 @@ def sequence_beam_search(symbols_to_logits_fn,
       beam search.
     dtype: A tensorflow data type used for score computation. The default is
       tf.float32.
+    decoding_name: an optional name for the decoding loop tensors.
 
   Returns:
     Top decoded sequences [batch_size, beam_size, max_decode_length]
     sequence scores [batch_size, beam_size]
   """
   sbs = SequenceBeamSearch(symbols_to_logits_fn, vocab_size, beam_size, alpha,
-                           max_decode_length, eos_id, padded_decode, dtype)
+                           max_decode_length, eos_id, padded_decode, dtype,
+                           decoding_name)
   return sbs.search(initial_ids, initial_cache)
 
 
