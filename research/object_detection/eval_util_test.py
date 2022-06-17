@@ -257,6 +257,8 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(
         evaluator_options['precision_at_recall_detection_metrics']
         ['recall_upper_bound'], eval_config.recall_upper_bound)
+    self.assertFalse(evaluator_options['precision_at_recall_detection_metrics']
+                     ['skip_predictions_for_unlabeled_class'])
 
   def test_get_evaluator_with_evaluator_options(self):
     eval_config = eval_pb2.EvalConfig()
@@ -275,6 +277,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
     self.assertTrue(evaluator[0]._include_metrics_per_category)
     self.assertTrue(evaluator[0]._skip_predictions_for_unlabeled_class)
+    self.assertTrue(evaluator[1]._skip_predictions_for_unlabeled_class)
     self.assertAlmostEqual(evaluator[1]._recall_lower_bound,
                            eval_config.recall_lower_bound)
     self.assertAlmostEqual(evaluator[1]._recall_upper_bound,
