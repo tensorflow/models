@@ -1915,7 +1915,7 @@ def _maybe_identity(x: Optional[tf.Tensor]) -> Optional[tf.Tensor]:
 class RandAugment(ImageAugment):
   """Applies the RandAugment policy to images.
 
-  RandAugment is from the paper https://arxiv.org/abs/1909.13719,
+  RandAugment is from the paper https://arxiv.org/abs/1909.13719.
   """
 
   def __init__(self,
