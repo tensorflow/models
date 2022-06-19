@@ -2066,7 +2066,8 @@ class RandomErasing(ImageAugment):
 
   Reference: https://arxiv.org/abs/1708.04896
 
-  Implementaion is inspired by https://github.com/rwightman/pytorch-image-models
+  Implementation is inspired by
+  https://github.com/rwightman/pytorch-image-models.
   """
 
   def __init__(self,
@@ -2190,7 +2191,8 @@ class MixupAndCutmix:
   - Mixup: https://arxiv.org/abs/1710.09412
   - Cutmix: https://arxiv.org/abs/1905.04899
 
-  Implementaion is inspired by https://github.com/rwightman/pytorch-image-models
+  Implementation is inspired by
+  https://github.com/rwightman/pytorch-image-models.
   """
 
   def __init__(self,
