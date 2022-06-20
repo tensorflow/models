@@ -34,8 +34,10 @@ class ReZeroTransformer(tf.keras.layers.Layer):
 
   Args:
     num_attention_heads: Number of attention heads.
-    intermediate_size: Size of the intermediate layer.
-    intermediate_activation: Activation for the intermediate layer.
+    inner_dim: The output dimension of the first Dense layer in a two-layer
+      feedforward network.
+    inner_activation: The activation for the first Dense layer in a two-layer
+      feedforward network.
     dropout_rate: Dropout probability for the post-attention and output dropout.
     attention_dropout_rate: Dropout probability for within the attention layer.
     output_range: the sequence output range, [0, output_range) by slicing the
@@ -53,8 +55,8 @@ class ReZeroTransformer(tf.keras.layers.Layer):
 
   def __init__(self,
                num_attention_heads,
-               intermediate_size,
-               intermediate_activation,
+               inner_dim=768,
+               inner_activation=tf_utils.get_activation("gelu"),
                dropout_rate=0.0,
                attention_dropout_rate=0.0,
                output_range=None,
@@ -73,12 +75,14 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     attention_dropout_rate = kwargs.pop("attention_dropout",
                                         attention_dropout_rate)
     dropout_rate = kwargs.pop("output_dropout", dropout_rate)
+    inner_dim = kwargs.pop("intermediate_size", inner_dim)
+    inner_activation = kwargs.pop("inner_activation", inner_activation)
     util.filter_kwargs(kwargs)
-    super(ReZeroTransformer, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
     self._num_heads = num_attention_heads
-    self._intermediate_size = intermediate_size
-    self._intermediate_activation = intermediate_activation
+    self._inner_dim = inner_dim
+    self._inner_activation = inner_activation
     self._attention_dropout_rate = attention_dropout_rate
     self._dropout_rate = dropout_rate
     self._output_range = output_range
@@ -147,7 +151,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
               dtype=tf.float32))
     self._intermediate_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
-        output_shape=(None, self._intermediate_size),
+        output_shape=(None, self._inner_dim),
         bias_axes="d",
         name="intermediate",
         kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
@@ -159,8 +163,8 @@ class ReZeroTransformer(tf.keras.layers.Layer):
       # as well, so we use float32.
       # TODO(b/154538392): Investigate this.
       policy = tf.float32
-    self._intermediate_activation_layer = tf.keras.layers.Activation(
-        self._intermediate_activation, dtype=policy)
+    self._inner_activation_layer = tf.keras.layers.Activation(
+        self._inner_activation, dtype=policy)
     self._output_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
@@ -190,16 +194,16 @@ class ReZeroTransformer(tf.keras.layers.Layer):
           trainable=True,
           dtype=tf.float32)
 
-    super(ReZeroTransformer, self).build(input_shape)
+    super().build(input_shape)
 
   def get_config(self):
     config = {
         "num_attention_heads":
             self._num_heads,
-        "intermediate_size":
-            self._intermediate_size,
-        "intermediate_activation":
-            self._intermediate_activation,
+        "inner_dim":
+            self._inner_dim,
+        "inner_activation":
+            self._inner_activation,
         "dropout_rate":
             self._dropout_rate,
         "attention_dropout_rate":
@@ -225,7 +229,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
         "bias_constraint":
             tf.keras.constraints.serialize(self._bias_constraint),
     }
-    base_config = super(ReZeroTransformer, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def reset_rezero(self):
@@ -266,7 +270,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
       attention_output = tf.cast(attention_output, tf.float32)
 
     intermediate_output = self._intermediate_dense(attention_output)
-    intermediate_output = self._intermediate_activation_layer(
+    intermediate_output = self._inner_activation_layer(
         intermediate_output)
     layer_output = self._output_dense(intermediate_output)
     layer_output = self._output_dropout(layer_output)
