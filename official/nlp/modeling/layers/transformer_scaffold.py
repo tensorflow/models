@@ -21,6 +21,7 @@ import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.nlp.modeling.layers import attention
+from official.nlp.modeling.layers import util
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
@@ -38,8 +39,10 @@ class TransformerScaffold(tf.keras.layers.Layer):
 
   Args:
     num_attention_heads: Number of attention heads.
-    intermediate_size: Size of the intermediate layer.
-    intermediate_activation: Activation for the intermediate layer.
+    inner_dim: The output dimension of the first Dense layer in a two-layer
+      feedforward network.
+    inner_activation: The activation for the first Dense layer in a two-layer
+      feedforward network.
     attention_cls: A class to instantiate attention layer, or a layer instance.
     attention_cfg: The config with which to instantiate `attention_cls`. Ignored
       if attention_cls is a layer instance or None. If `attention_cls` is a
@@ -59,8 +62,8 @@ class TransformerScaffold(tf.keras.layers.Layer):
       Ignored if feedforward_cls is a layer instance or is None. If
       `feedforward_cls` is a class, but `feedforward_cfg` is None, following
       kwargs will be used to instantiate the feedforward instance: {
-        "intermediate_size": intermediate_size,
-        "intermediate_activation": intermediate_activation,
+        "inner_dim": inner_dim,
+        "inner_activation": inner_activation,
         "dropout": dropout_rate,
         "name": "feedforward" }.
     dropout_rate: Dropout probability for the post-attention and output dropout.
@@ -76,8 +79,8 @@ class TransformerScaffold(tf.keras.layers.Layer):
 
   def __init__(self,
                num_attention_heads,
-               intermediate_size,
-               intermediate_activation,
+               inner_dim=768,
+               inner_activation=tf_utils.get_activation("gelu"),
                attention_cls=attention.MultiHeadAttention,
                attention_cfg=None,
                feedforward_cls=None,
@@ -93,7 +96,10 @@ class TransformerScaffold(tf.keras.layers.Layer):
                kernel_constraint=None,
                bias_constraint=None,
                **kwargs):
-    super(TransformerScaffold, self).__init__(**kwargs)
+    inner_dim = kwargs.pop("intermediate_size", inner_dim)
+    inner_activation = kwargs.pop("inner_activation", inner_activation)
+    util.filter_kwargs(kwargs)
+    super().__init__(**kwargs)
 
     self._attention_cfg = attention_cfg
     self._attention_cls = attention_cls
@@ -101,8 +107,8 @@ class TransformerScaffold(tf.keras.layers.Layer):
     self._feedforward_cfg = feedforward_cfg
     self._norm_first = norm_first
     self._num_heads = num_attention_heads
-    self._intermediate_size = intermediate_size
-    self._intermediate_activation = intermediate_activation
+    self._inner_dim = inner_dim
+    self._inner_activation = inner_activation
     self._attention_dropout_rate = attention_dropout_rate
     self._dropout_rate = dropout_rate
     self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
@@ -164,8 +170,11 @@ class TransformerScaffold(tf.keras.layers.Layer):
               self._kernel_initializer),
           "bias_initializer": tf_utils.clone_initializer(
               self._bias_initializer),
-          "intermediate_size": self._intermediate_size,
-          "intermediate_activation": self._intermediate_activation,
+          "inner_dim": self._inner_dim,
+          "inner_activation": self._inner_activation,
+          # TODO(hongkuny): try to update all ffn block args.
+          "intermediate_size": self._inner_dim,
+          "intermediate_activation": self._inner_activation,
           "dropout": self._dropout_rate,
           "name": "feedforward",
       }
@@ -192,7 +201,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
     if self._feedforward_block is None:
       self._intermediate_dense = tf.keras.layers.EinsumDense(
           "abc,cd->abd",
-          output_shape=(None, self._intermediate_size),
+          output_shape=(None, self._inner_dim),
           bias_axes="d",
           name="intermediate",
           kernel_initializer=tf_utils.clone_initializer(
@@ -206,7 +215,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
         # TODO(b/154538392): Investigate this.
         policy = tf.float32
       self._intermediate_activation_layer = tf.keras.layers.Activation(
-          self._intermediate_activation, dtype=policy)
+          self._inner_activation, dtype=policy)
       self._output_dense = tf.keras.layers.EinsumDense(
           "abc,cd->abd",
           output_shape=(None, hidden_size),
@@ -233,10 +242,10 @@ class TransformerScaffold(tf.keras.layers.Layer):
             self._feedforward_block,
         "num_attention_heads":
             self._num_heads,
-        "intermediate_size":
-            self._intermediate_size,
-        "intermediate_activation":
-            self._intermediate_activation,
+        "inner_dim":
+            self._inner_dim,
+        "inner_activation":
+            self._inner_activation,
         "dropout_rate":
             self._dropout_rate,
         "attention_dropout_rate":
@@ -258,7 +267,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
         "bias_constraint":
             tf.keras.constraints.serialize(self._bias_constraint)
     }
-    base_config = super(TransformerScaffold, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs, training=None):

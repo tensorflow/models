@@ -99,8 +99,8 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         attention_cls=ValidatedAttentionLayer,
         attention_cfg=attention_layer_cfg,
         num_attention_heads=10,
-        intermediate_size=2048,
-        intermediate_activation='relu')
+        inner_dim=2048,
+        inner_activation='relu')
 
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf.keras.Input(shape=(sequence_length, width))
@@ -134,8 +134,8 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         feedforward_cls=ValidatedFeedforwardLayer,
         feedforward_cfg=feedforward_layer_cfg,
         num_attention_heads=10,
-        intermediate_size=None,
-        intermediate_activation=None)
+        inner_dim=None,
+        inner_activation=None)
 
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf.keras.Input(shape=(sequence_length, width))
@@ -165,8 +165,8 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         attention_cls=ValidatedAttentionLayer,
         attention_cfg=attention_layer_cfg,
         num_attention_heads=10,
-        intermediate_size=2048,
-        intermediate_activation='relu')
+        inner_dim=2048,
+        inner_activation='relu')
 
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf.keras.Input(shape=(sequence_length, width))
@@ -194,8 +194,8 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         attention_cls=ValidatedAttentionLayer,
         attention_cfg=attention_layer_cfg,
         num_attention_heads=10,
-        intermediate_size=2048,
-        intermediate_activation='relu')
+        inner_dim=2048,
+        inner_activation='relu')
 
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf.keras.Input(shape=(sequence_length, width))
@@ -236,8 +236,8 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         attention_cfg=attention_layer_cfg,
         feedforward_cls=feedforward_layer,
         num_attention_heads=10,
-        intermediate_size=None,
-        intermediate_activation=None)
+        inner_dim=None,
+        inner_activation=None)
 
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf.keras.Input(shape=(sequence_length, width))
@@ -280,8 +280,8 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         attention_cls=ValidatedAttentionLayer,
         attention_cfg=attention_layer_cfg,
         num_attention_heads=10,
-        intermediate_size=2048,
-        intermediate_activation='relu')
+        inner_dim=2048,
+        inner_activation='relu')
 
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf.keras.Input(shape=(sequence_length, width))
@@ -322,8 +322,8 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         attention_cls=ValidatedAttentionLayer,
         attention_cfg=attention_layer_cfg,
         num_attention_heads=10,
-        intermediate_size=2048,
-        intermediate_activation='relu')
+        inner_dim=2048,
+        inner_activation='relu')
 
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf.keras.Input(shape=(sequence_length, width))
@@ -363,8 +363,8 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         attention_cls=ValidatedAttentionLayer,
         attention_cfg=attention_layer_cfg,
         num_attention_heads=10,
-        intermediate_size=2048,
-        intermediate_activation='relu',
+        inner_dim=2048,
+        inner_activation='relu',
         kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))
 
     # Create a 3-dimensional input (the first dimension is implicit).
@@ -392,8 +392,8 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         attention_cls=ValidatedAttentionLayer,
         attention_cfg=attention_layer_cfg,
         num_attention_heads=10,
-        intermediate_size=2048,
-        intermediate_activation='relu')
+        inner_dim=2048,
+        inner_activation='relu')
 
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf.keras.Input(shape=(sequence_length, width))
@@ -458,8 +458,8 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         feedforward_cls=ValidatedFeedforwardLayer,
         feedforward_cfg=feedforward_layer_cfg,
         num_attention_heads=10,
-        intermediate_size=None,
-        intermediate_activation=None)
+        inner_dim=None,
+        inner_activation=None)
 
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf.keras.Input(shape=(sequence_length, width))
