@@ -37,8 +37,29 @@ class PackOptimizationTest(tf.test.TestCase):
     attention_mask = tf.ones((2, 4, 4), dtype=tf.float32)
     transformer = pack_optimization.StridedTransformerEncoderBlock(
         num_attention_heads=2, inner_dim=4, inner_activation="relu")
-    _ = transformer([inputs, attention_mask],
-                    stride=tf.constant(2, dtype=tf.int32))
+    outputs = transformer([inputs, attention_mask],
+                          stride=tf.constant(2, dtype=tf.int32))
+    self.assertEqual(outputs.shape, (2, 2, 8))
+
+  def test_strided_rezero_transformer(self):
+    inputs = tf.zeros((2, 4, 8), dtype=tf.float32)
+    attention_mask = tf.ones((2, 4, 4), dtype=tf.float32)
+    transformer = pack_optimization.StridedReZeroTransformer(
+        num_attention_heads=2, inner_dim=4, inner_activation="relu")
+    outputs = transformer([inputs, attention_mask],
+                          stride=tf.constant(2, dtype=tf.int32))
+    self.assertEqual(outputs.shape, (2, 2, 8))
+
+  def test_strided_scaffold(self):
+    inputs = tf.zeros((2, 4, 8), dtype=tf.float32)
+    attention_mask = tf.ones((2, 4, 4), dtype=tf.float32)
+    test_layer = pack_optimization.StridedTransformerScaffold(
+        num_attention_heads=2,
+        inner_dim=128,
+        inner_activation="relu")
+    outputs = test_layer([inputs, attention_mask],
+                         stride=tf.constant(2, dtype=tf.int32))
+    self.assertEqual(outputs.shape, (2, 2, 8))
 
 
 if __name__ == "__main__":
