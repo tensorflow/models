@@ -175,6 +175,7 @@ def build_qat_retinanet(
           clone_function=_clone_function_for_fpn,
       )
       decoder = tfmot.quantization.keras.quantize_model(decoder)
+      decoder = tfmot.quantization.keras.remove_input_range(decoder)
 
     head = model.head
     if quantization.quantize_detection_head:
