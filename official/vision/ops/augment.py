@@ -2075,29 +2075,25 @@ class RandomErasing(ImageAugment):
                min_area: float = 0.02,
                max_area: float = 1 / 3,
                min_aspect: float = 0.3,
-               max_aspect=None,
+               max_aspect: Optional[float] = None,
                min_count=1,
                max_count=1,
                trials=10):
     """Applies RandomErasing to a single image.
 
     Args:
-      probability (float, optional): Probability of augmenting the image.
-        Defaults to 0.25.
-      min_area (float, optional): Minimum area of the random erasing rectangle.
-        Defaults to 0.02.
-      max_area (float, optional): Maximum area of the random erasing rectangle.
-        Defaults to 1/3.
-      min_aspect (float, optional): Minimum aspect rate of the random erasing
-        rectangle. Defaults to 0.3.
-      max_aspect ([type], optional): Maximum aspect rate of the random erasing
-        rectangle. Defaults to None.
-      min_count (int, optional): Minimum number of erased rectangles. Defaults
-        to 1.
-      max_count (int, optional):  Maximum number of erased rectangles. Defaults
-        to 1.
-      trials (int, optional): Maximum number of trials to randomly sample a
-        rectangle that fulfills constraint. Defaults to 10.
+      probability: Probability of augmenting the image. Defaults to `0.25`.
+      min_area: Minimum area of the random erasing rectangle. Defaults to
+        `0.02`.
+      max_area: Maximum area of the random erasing rectangle. Defaults to `1/3`.
+      min_aspect: Minimum aspect rate of the random erasing rectangle. Defaults
+        to `0.3`.
+      max_aspect: Maximum aspect rate of the random erasing rectangle. Defaults
+        to `None`.
+      min_count: Minimum number of erased rectangles. Defaults to `1`.
+      max_count: Maximum number of erased rectangles. Defaults to `1`.
+      trials: Maximum number of trials to randomly sample a rectangle that
+        fulfills constraint. Defaults to `10`.
     """
     self._probability = probability
     self._min_area = float(min_area)
@@ -2205,18 +2201,15 @@ class MixupAndCutmix:
     """Applies Mixup and/or Cutmix to a batch of images.
 
     Args:
-      mixup_alpha (float, optional): For drawing a random lambda (`lam`) from a
-        beta distribution (for each image). If zero Mixup is deactivated.
-        Defaults to .8.
-      cutmix_alpha (float, optional): For drawing a random lambda (`lam`) from a
-        beta distribution (for each image). If zero Cutmix is deactivated.
-        Defaults to 1..
-      prob (float, optional): Of augmenting the batch. Defaults to 1.0.
-      switch_prob (float, optional): Probability of applying Cutmix for the
-        batch. Defaults to 0.5.
-      label_smoothing (float, optional): Constant for label smoothing. Defaults
-        to 0.1.
-      num_classes (int, optional): Number of classes. Defaults to 1001.
+      mixup_alpha: For drawing a random lambda (`lam`) from a beta distribution
+        (for each image). If zero Mixup is deactivated. Defaults to `.8`.
+      cutmix_alpha: For drawing a random lambda (`lam`) from a beta distribution
+        (for each image). If zero Cutmix is deactivated. Defaults to `1.`.
+      prob: Of augmenting the batch. Defaults to `1.0`.
+      switch_prob: Probability of applying Cutmix for the batch. Defaults to
+        `0.5`.
+      label_smoothing: Constant for label smoothing. Defaults to `0.1`.
+      num_classes: Number of classes. Defaults to `1001`.
     """
     self.mixup_alpha = mixup_alpha
     self.cutmix_alpha = cutmix_alpha
