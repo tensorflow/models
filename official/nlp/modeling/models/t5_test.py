@@ -403,7 +403,9 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
     batch_size = 4
     targets = tf.zeros((4, 8), dtype=tf.int32)
     encoded = tf.zeros((4, 8, config.d_model), dtype=tf.float32)
-    logits, cache = decoder(targets, encoded)
+    outputs = decoder(targets, encoded)
+    logits = outputs["logits"]
+    cache = outputs["cache"]
     self.assertEqual(logits.shape, (4, 8, config.vocab_size))
 
     cache = {}
@@ -412,13 +414,15 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
     cache[1] = _create_cache(batch_size, max_decode_len, config.num_heads,
                              config.d_kv)
     targets = tf.zeros((4, 1), dtype=tf.int32)
-    logits, cache = decoder(
+    outputs = decoder(
         targets,
         encoded,
         decode_position=2,
         cache=cache,
         decode=True,
         max_decode_len=max_decode_len)
+    logits = outputs["logits"]
+    cache = outputs["cache"]
     self.assertEqual(logits.shape, (batch_size, 1, config.vocab_size))
     for entry in cache.values():
       for tensor in entry.values():
