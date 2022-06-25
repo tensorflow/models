@@ -13,18 +13,24 @@
 # limitations under the License.
 
 """DETR detection task definition."""
+from typing import Any, List, Mapping, Optional, Tuple
 
+from absl import logging
 import tensorflow as tf
 
+from official.common import dataset_fn
 from official.core import base_task
 from official.core import task_factory
 from official.projects.detr.configs import detr as detr_cfg
-from official.projects.detr.dataloaders import coco
 from official.projects.detr.modeling import detr
 from official.projects.detr.ops import matchers
 from official.vision.evaluation import coco_evaluator
 from official.vision.ops import box_ops
-
+from official.vision.dataloaders import input_reader_factory
+from official.vision.dataloaders import tf_example_decoder
+from official.vision.dataloaders import tfds_factory
+from official.vision.dataloaders import tf_example_label_map_decoder
+from official.projects.detr.dataloaders import detr_input
 
 @task_factory.register_task_cls(detr_cfg.DetectionConfig)
 class DectectionTask(base_task.Task):
@@ -47,13 +53,62 @@ class DectectionTask(base_task.Task):
 
   def initialize(self, model: tf.keras.Model):
     """Loading pretrained checkpoint."""
-    ckpt = tf.train.Checkpoint(backbone=model.backbone)
-    status = ckpt.read(self._task_config.init_ckpt)
-    status.expect_partial().assert_existing_objects_matched()
+    if not self._task_config.init_checkpoint:
+      return
 
-  def build_inputs(self, params, input_context=None):
+    ckpt_dir_or_file = self._task_config.init_checkpoint
+
+    # Restoring checkpoint.
+    if tf.io.gfile.isdir(ckpt_dir_or_file):
+      ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
+
+    if self._task_config.init_checkpoint_modules == 'all':
+      ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+      status = ckpt.restore(ckpt_dir_or_file)
+      status.assert_consumed()
+    elif self._task_config.init_checkpoint_modules == 'backbone':
+      ckpt = tf.train.Checkpoint(backbone=model.backbone)
+      status = ckpt.restore(ckpt_dir_or_file)
+      status.expect_partial().assert_existing_objects_matched()
+
+    logging.info('Finished loading pretrained checkpoint from %s',
+                 ckpt_dir_or_file)
+
+  """def build_inputs(self,
+                   params: detr_cfg.DataConfig,
+                   input_context: Optional[tf.distribute.InputContext] = None):
+    return coco.COCODataLoader(params).load(input_context)"""
+  
+  def build_inputs(self,
+                   params,
+                   input_context: Optional[tf.distribute.InputContext] = None):
     """Build input dataset."""
-    return coco.COCODataLoader(params).load(input_context)
+
+    if params.tfds_name:
+      decoder = tfds_factory.get_detection_decoder(params.tfds_name)
+    else:
+      decoder_cfg = params.decoder.get()
+      if params.decoder.type == 'simple_decoder':
+        decoder = tf_example_decoder.TfExampleDecoder(
+            regenerate_source_id=decoder_cfg.regenerate_source_id)
+      elif params.decoder.type == 'label_map_decoder':
+        decoder = tf_example_label_map_decoder.TfExampleDecoderLabelMap(
+            label_map=decoder_cfg.label_map,
+            regenerate_source_id=decoder_cfg.regenerate_source_id)
+      else:
+        raise ValueError('Unknown decoder type: {}!'.format(
+            params.decoder.type))
+    
+    parser = detr_input.Parser()
+
+    reader = input_reader_factory.input_reader_generator(
+        params,
+        dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
+        decoder_fn=decoder.decode,
+        parser_fn=parser.parse_fn(params.is_training))
+    dataset = reader.read(input_context=input_context)
+
+    return dataset
 
   def _compute_cost(self, cls_outputs, box_outputs, cls_targets, box_targets):
     # Approximate classification cost with 1 - prob[target class].
@@ -160,6 +215,7 @@ class DectectionTask(base_task.Task):
         tf.reduce_sum(giou_loss), num_boxes_sum)
 
     aux_losses = tf.add_n(aux_losses) if aux_losses else 0.0
+
     total_loss = cls_loss + box_loss + giou_loss + aux_losses
     return total_loss, cls_loss, box_loss, giou_loss
 
@@ -172,7 +228,7 @@ class DectectionTask(base_task.Task):
 
     if not training:
       self.coco_metric = coco_evaluator.COCOEvaluator(
-          annotation_file='',
+          annotation_file=self._task_config.annotation_file,
           include_mask=False,
           need_rescale_bboxes=True,
           per_category_metrics=self._task_config.per_category_metrics)

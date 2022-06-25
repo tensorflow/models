@@ -13,17 +13,14 @@
 # limitations under the License.
 
 """Tensorflow implementation to solve the Linear Sum Assignment problem.
-
 The Linear Sum Assignment problem involves determining the minimum weight
 matching for bipartite graphs. For example, this problem can be defined by
 a 2D matrix C, where each element i,j determines the cost of matching worker i
 with job j. The solution to the problem is a complete assignment of jobs to
 workers, such that no job is assigned to more than one work and no worker is
 assigned more than one job, with minimum cost.
-
 This implementation builds off of the Hungarian
 Matching Algorithm (https://www.cse.ust.hk/~golin/COMP572/Notes/Matching.pdf).
-
 Based on the original implementation by Jiquan Ngiam <jngiam@google.com>.
 """
 import tensorflow as tf
@@ -32,17 +29,14 @@ from official.modeling import tf_utils
 
 def _prepare(weights):
   """Prepare the cost matrix.
-
   To speed up computational efficiency of the algorithm, all weights are shifted
   to be non-negative. Each element is reduced by the row / column minimum. Note
   that neither operation will effect the resulting solution but will provide
   a better starting point for the greedy assignment. Note this corresponds to
   the pre-processing and step 1 of the Hungarian algorithm from Wikipedia.
-
   Args:
     weights: A float32 [batch_size, num_elems, num_elems] tensor, where each
       inner matrix represents weights to be use for matching.
-
   Returns:
     A prepared weights tensor of the same shape and dtype.
   """
@@ -55,18 +49,15 @@ def _prepare(weights):
 
 def _greedy_assignment(adj_matrix):
   """Greedily assigns workers to jobs based on an adjaceny matrix.
-
   Starting with an adjacency matrix representing the available connections
   in the bi-partite graph, this function greedily chooses elements such
   that each worker is matched to at most one job (or each job is assigned to
   at most one worker). Note, if the adjacency matrix has no available values
   for a particular row/column, the corresponding job/worker may go unassigned.
-
   Args:
     adj_matrix: A bool [batch_size, num_elems, num_elems] tensor, where each
       element of the inner matrix represents whether the worker (row) can be
       matched to the job (column).
-
   Returns:
     A bool [batch_size, num_elems, num_elems] tensor, where each element of the
     inner matrix represents whether the worker has been matched to the job.
@@ -119,15 +110,12 @@ def _greedy_assignment(adj_matrix):
 
 def _find_augmenting_path(assignment, adj_matrix):
   """Finds an augmenting path given an assignment and an adjacency matrix.
-
   The augmenting path search starts from the unassigned workers, then goes on
   to find jobs (via an unassigned pairing), then back again to workers (via an
   existing pairing), and so on. The path alternates between unassigned and
   existing pairings. Returns the state after the search.
-
   Note: In the state the worker and job, indices are 1-indexed so that we can
   use 0 to represent unreachable nodes. State contains the following keys:
-
   - jobs: A [batch_size, 1, num_elems] tensor containing the highest index
       unassigned worker that can reach this job through a path.
   - jobs_from_worker: A [batch_size, num_elems] tensor containing the worker
@@ -138,9 +126,7 @@ def _find_augmenting_path(assignment, adj_matrix):
       reached immediately before this worker.
   - new_jobs: A bool [batch_size, num_elems] tensor containing True if the
       unassigned job can be reached via a path.
-
   State can be used to recover the path via backtracking.
-
   Args:
     assignment: A bool [batch_size, num_elems, num_elems] tensor, where each
       element of the inner matrix represents whether the worker has been matched
@@ -148,7 +134,6 @@ def _find_augmenting_path(assignment, adj_matrix):
     adj_matrix: A bool [batch_size, num_elems, num_elems] tensor, where each
       element of the inner matrix represents whether the worker (row) can be
       matched to the job (column).
-
   Returns:
     A state dict, which represents the outcome of running an augmenting
     path search on the graph given the assignment.
@@ -235,14 +220,12 @@ def _find_augmenting_path(assignment, adj_matrix):
 
 def _improve_assignment(assignment, state):
   """Improves an assignment by backtracking the augmented path using state.
-
   Args:
     assignment: A bool [batch_size, num_elems, num_elems] tensor, where each
       element of the inner matrix represents whether the worker has been matched
       to the job. This may be a partial assignment.
     state: A dict, which represents the outcome of running an augmenting path
       search on the graph given the assignment.
-
   Returns:
     A new assignment matrix of the same shape and type as assignment, where the
     assignment has been updated using the augmented path found.
@@ -317,7 +300,6 @@ def _improve_assignment(assignment, state):
 
 def _maximum_bipartite_matching(adj_matrix, assignment=None):
   """Performs maximum bipartite matching using augmented paths.
-
   Args:
     adj_matrix: A bool [batch_size, num_elems, num_elems] tensor, where each
       element of the inner matrix represents whether the worker (row) can be
@@ -326,7 +308,6 @@ def _maximum_bipartite_matching(adj_matrix, assignment=None):
       where each element of the inner matrix represents whether the worker has
       been matched to the job. This may be a partial assignment. If specified,
       this assignment will be used to seed the iterative algorithm.
-
   Returns:
     A state dict representing the final augmenting path state search, and
     a maximum bipartite matching assignment tensor. Note that the state outcome
@@ -357,11 +338,9 @@ def _maximum_bipartite_matching(adj_matrix, assignment=None):
 
 def _compute_cover(state, assignment):
   """Computes a cover for the bipartite graph.
-
   We compute a cover using the construction provided at
   https://en.wikipedia.org/wiki/K%C5%91nig%27s_theorem_(graph_theory)#Proof
   which uses the outcome from the alternating path search.
-
   Args:
     state: A state dict, which represents the outcome of running an augmenting
       path search on the graph given the assignment.
@@ -369,7 +348,6 @@ def _compute_cover(state, assignment):
       where each element of the inner matrix represents whether the worker has
       been matched to the job. This may be a partial assignment. If specified,
       this assignment will be used to seed the iterative algorithm.
-
   Returns:
     A tuple of (workers_cover, jobs_cover) corresponding to row and column
     covers for the bipartite graph. workers_cover is a boolean tensor of shape
@@ -390,16 +368,13 @@ def _compute_cover(state, assignment):
 
 def _update_weights_using_cover(workers_cover, jobs_cover, weights):
   """Updates weights for hungarian matching using a cover.
-
   We first find the minimum uncovered weight. Then, we subtract this from all
   the uncovered weights, and add it to all the doubly covered weights.
-
   Args:
     workers_cover: A boolean tensor of shape [batch_size, num_elems, 1].
     jobs_cover: A boolean tensor of shape [batch_size, 1, num_elems].
     weights: A float32 [batch_size, num_elems, num_elems] tensor, where each
       inner matrix represents weights to be use for matching.
-
   Returns:
     A new weight matrix with elements adjusted by the cover.
   """
@@ -423,12 +398,10 @@ def _update_weights_using_cover(workers_cover, jobs_cover, weights):
 
 def assert_rank(tensor, expected_rank, name=None):
   """Raises an exception if the tensor rank is not of the expected rank.
-
   Args:
     tensor: A tf.Tensor to check the rank of.
     expected_rank: Python integer or list of integers, expected rank.
     name: Optional name of the tensor for the error message.
-
   Raises:
     ValueError: If the expected shape doesn't match the actual shape.
   """
@@ -449,11 +422,9 @@ def assert_rank(tensor, expected_rank, name=None):
 
 def hungarian_matching(weights):
   """Computes the minimum linear sum assignment using the Hungarian algorithm.
-
   Args:
     weights: A float32 [batch_size, num_elems, num_elems] tensor, where each
       inner matrix represents weights to be use for matching.
-
   Returns:
     A bool [batch_size, num_elems, num_elems] tensor, where each element of the
     inner matrix represents whether the worker has been matched to the job.
@@ -486,4 +457,3 @@ def hungarian_matching(weights):
       (workers_cover, jobs_cover, weights, assignment),
       back_prop=False)
   return weights, assignment
-
