@@ -44,8 +44,8 @@ class GatedFeedforwardTest(keras_parameterized.TestCase):
   def test_layer_creation(self, use_gate, num_blocks, dropout_position, dtype):
     tf.keras.mixed_precision.set_global_policy(dtype)
     kwargs = dict(
-        intermediate_size=128,
-        intermediate_activation="relu",
+        inner_dim=128,
+        inner_activation="relu",
         dropout=0.1,
         use_gate=use_gate,
         num_blocks=num_blocks,
@@ -76,8 +76,8 @@ class GatedFeedforwardTest(keras_parameterized.TestCase):
                             dtype):
     tf.keras.mixed_precision.set_global_policy(dtype)
     kwargs = dict(
-        intermediate_size=16,
-        intermediate_activation="relu",
+        inner_dim=16,
+        inner_activation="relu",
         dropout=0.1,
         use_gate=use_gate,
         num_blocks=num_blocks,
@@ -104,8 +104,8 @@ class GatedFeedforwardTest(keras_parameterized.TestCase):
 
   def test_serialize_deserialize(self):
     kwargs = dict(
-        intermediate_size=16,
-        intermediate_activation="relu",
+        inner_dim=16,
+        inner_activation="relu",
         dropout=0.1,
         use_gate=False,
         num_blocks=4,
