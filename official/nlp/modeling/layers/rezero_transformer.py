@@ -76,7 +76,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
                                         attention_dropout_rate)
     dropout_rate = kwargs.pop("output_dropout", dropout_rate)
     inner_dim = kwargs.pop("intermediate_size", inner_dim)
-    inner_activation = kwargs.pop("inner_activation", inner_activation)
+    inner_activation = kwargs.pop("intermediate_activation", inner_activation)
     util.filter_kwargs(kwargs)
     super().__init__(**kwargs)
 
