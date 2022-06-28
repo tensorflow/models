@@ -254,6 +254,11 @@ class Parser(parser.Parser):
 
     return image
 
+  def parse_train_image(self, decoded_tensors: Dict[str,
+                                                    tf.Tensor]) -> tf.Tensor:
+    """Public interface for parsing image data for training."""
+    return self._parse_train_image(decoded_tensors)
+
   @classmethod
   def inference_fn(cls,
                    image: tf.Tensor,
