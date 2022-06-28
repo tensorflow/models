@@ -15,11 +15,15 @@
 """DETR configurations."""
 
 import dataclasses
+import os
+from typing import List, Optional, Union
+
 from official.core import config_definitions as cfg
 from official.core import exp_factory
+from official.modeling import hyperparams
 from official.projects.detr import optimization
-import os
 from official.vision.configs import common
+from official.vision.configs import backbones
 
 
 # pylint: disable=missing-class-docstring
@@ -53,32 +57,41 @@ class DataConfig(cfg.DataConfig):
   file_type: str = 'tfrecord'
 
 @dataclasses.dataclass
-class DetectionConfig(cfg.TaskConfig):
-  """The translation task config."""
-  annotation_file: str = ''
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
+class Losses(hyperparams.Config):
   lambda_cls: float = 1.0
   lambda_box: float = 5.0
   lambda_giou: float = 2.0
-
-  #init_ckpt: str = ''
-  init_checkpoint: str = 'gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet'
-  init_checkpoint_modules: str = 'backbone'
-  #num_classes: int = 81  # 0: background
-  num_classes: int = 91  # 0: background
   background_cls_weight: float = 0.1
+
+@dataclasses.dataclass
+class Detr(hyperparams.Config):
+  num_queries: int = 100
+  hidden_size: int = 256
+  num_classes: int = 91  # 0: background
   num_encoder_layers: int = 6
   num_decoder_layers: int = 6
+  input_size: List[int] = dataclasses.field(default_factory=list)
+  backbone: backbones.Backbone = backbones.Backbone(
+      type='resnet', resnet=backbones.ResNet(
+          model_id=101,
+          bn_trainable=False))
+  norm_activation: common.NormActivation = common.NormActivation()
 
-  # Make DETRConfig.
-  num_queries: int = 100
-  num_hidden: int = 256
+@dataclasses.dataclass
+class DetrTask(cfg.TaskConfig):
+  model: Detr = Detr()
+  train_data: cfg.DataConfig = cfg.DataConfig()
+  validation_data: cfg.DataConfig = cfg.DataConfig()
+  losses: Losses = Losses()
+  init_checkpoint: Optional[str] = None
+  init_checkpoint_modules: Union[
+      str, List[str]] = 'all'  # all, backbone
+  annotation_file: Optional[str] = None
   per_category_metrics: bool = False
 
 COCO_INPUT_PATH_BASE = 'gs://ghpark-tfrecords/coco'
-#COCO_TRAIN_EXAMPLES = 118287
-COCO_TRAIN_EXAMPLES = 960
+COCO_TRAIN_EXAMPLES = 118287
+#COCO_TRAIN_EXAMPLES = 9600
 COCO_VAL_EXAMPLES = 5000
 
 @exp_factory.register_config_factory('detr_coco')
@@ -91,9 +104,15 @@ def detr_coco() -> cfg.ExperimentConfig:
   train_steps = 300 * steps_per_epoch  # 500 epochs
   decay_at = train_steps - 100 * steps_per_epoch  # 400 epochs
   config = cfg.ExperimentConfig(
-      task=DetectionConfig(
+      task=DetrTask(
+          init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet101_imagenet',
+          init_checkpoint_modules='backbone',
           annotation_file=os.path.join(COCO_INPUT_PATH_BASE,
                                        'instances_val2017.json'),
+          model=Detr(
+              input_size=[1333, 1333, 3],
+              norm_activation=common.NormActivation(use_sync_bn=False)),
+          losses=Losses(),
           train_data=DataConfig(
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'train*'),
               is_training=True,

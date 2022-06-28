@@ -31,8 +31,9 @@ from official.vision.dataloaders import tf_example_decoder
 from official.vision.dataloaders import tfds_factory
 from official.vision.dataloaders import tf_example_label_map_decoder
 from official.projects.detr.dataloaders import detr_input
+from official.vision.modeling import backbones
 
-@task_factory.register_task_cls(detr_cfg.DetectionConfig)
+@task_factory.register_task_cls(detr_cfg.DetrTask)
 class DectectionTask(base_task.Task):
   """A single-replica view of training procedure.
 
@@ -43,12 +44,23 @@ class DectectionTask(base_task.Task):
 
   def build_model(self):
     """Build DETR model."""
+
+    input_specs = tf.keras.layers.InputSpec(
+        shape=[None] + self._task_config.model.input_size)
+
+
+    backbone = backbones.factory.build_backbone(
+        input_specs=input_specs,
+        backbone_config=self._task_config.model.backbone,
+        norm_activation_config=self._task_config.model.norm_activation)
+
     model = detr.DETR(
-        self._task_config.num_queries,
-        self._task_config.num_hidden,
-        self._task_config.num_classes,
-        self._task_config.num_encoder_layers,
-        self._task_config.num_decoder_layers)
+        backbone,
+        self._task_config.model.num_queries,
+        self._task_config.model.hidden_size,
+        self._task_config.model.num_classes,
+        self._task_config.model.num_encoder_layers,
+        self._task_config.model.num_decoder_layers)
     return model
 
   def initialize(self, model: tf.keras.Model):
@@ -99,7 +111,9 @@ class DectectionTask(base_task.Task):
         raise ValueError('Unknown decoder type: {}!'.format(
             params.decoder.type))
     
-    parser = detr_input.Parser()
+    parser = detr_input.Parser(
+        output_size=self._task_config.model.input_size[:2],
+    )
 
     reader = input_reader_factory.input_reader_generator(
         params,
@@ -114,24 +128,24 @@ class DectectionTask(base_task.Task):
     # Approximate classification cost with 1 - prob[target class].
     # The 1 is a constant that doesn't change the matching, it can be ommitted.
     # background: 0
-    cls_cost = self._task_config.lambda_cls * tf.gather(
+    cls_cost = self._task_config.losses.lambda_cls * tf.gather(
         -tf.nn.softmax(cls_outputs), cls_targets, batch_dims=1, axis=-1)
 
     # Compute the L1 cost between boxes,
-    paired_differences = self._task_config.lambda_box * tf.abs(
+    paired_differences = self._task_config.losses.lambda_box * tf.abs(
         tf.expand_dims(box_outputs, 2) - tf.expand_dims(box_targets, 1))
     box_cost = tf.reduce_sum(paired_differences, axis=-1)
 
     # Compute the giou cost betwen boxes
-    giou_cost = self._task_config.lambda_giou * -box_ops.bbox_generalized_overlap(
+    giou_cost = self._task_config.losses.lambda_giou * -box_ops.bbox_generalized_overlap(
         box_ops.cycxhw_to_yxyx(box_outputs),
         box_ops.cycxhw_to_yxyx(box_targets))
 
     total_cost = cls_cost + box_cost + giou_cost
 
     max_cost = (
-        self._task_config.lambda_cls * 0.0 + self._task_config.lambda_box * 4. +
-        self._task_config.lambda_giou * 0.0)
+        self._task_config.losses.lambda_cls * 0.0 + self._task_config.losses.lambda_box * 4. +
+        self._task_config.losses.lambda_giou * 0.0)
 
     # Set pads to large constant
     valid = tf.expand_dims(
@@ -170,20 +184,20 @@ class DectectionTask(base_task.Task):
     # Down-weight background to account for class imbalance.
     xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
         labels=cls_targets, logits=cls_assigned)
-    cls_loss = self._task_config.lambda_cls * tf.where(
+    cls_loss = self._task_config.losses.lambda_cls * tf.where(
         background,
-        self._task_config.background_cls_weight * xentropy,
+        self._task_config.losses.background_cls_weight * xentropy,
         xentropy
         )
     cls_weights = tf.where(
         background,
-        self._task_config.background_cls_weight * tf.ones_like(cls_loss),
+        self._task_config.losses.background_cls_weight * tf.ones_like(cls_loss),
         tf.ones_like(cls_loss)
         )
 
     # Box loss is only calculated on non-background class.
     l_1 = tf.reduce_sum(tf.abs(box_assigned - box_targets), axis=-1)
-    box_loss = self._task_config.lambda_box * tf.where(
+    box_loss = self._task_config.losses.lambda_box * tf.where(
         background,
         tf.zeros_like(l_1),
         l_1
@@ -194,7 +208,7 @@ class DectectionTask(base_task.Task):
         box_ops.cycxhw_to_yxyx(box_assigned),
         box_ops.cycxhw_to_yxyx(box_targets)
         ))
-    giou_loss = self._task_config.lambda_giou * tf.where(
+    giou_loss = self._task_config.losses.lambda_giou * tf.where(
         background,
         tf.zeros_like(giou),
         giou
