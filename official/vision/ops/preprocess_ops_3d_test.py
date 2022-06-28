@@ -72,6 +72,16 @@ class ParserUtilsTest(tf.test.TestCase):
     self.assertBetween(offset_3, 0, 99)
     self.assertAllEqual(sampled_seq_3, range(offset_3, offset_3 + 10))
 
+  def test_sample_segment_sequence(self):
+    sequence = tf.range(100)
+    sampled_seq_1 = preprocess_ops_3d.sample_segment_sequence(
+        sequence, 10, False)
+    sampled_seq_2 = preprocess_ops_3d.sample_segment_sequence(
+        sequence, 10, True)
+    self.assertAllEqual(sampled_seq_1, [5 + i * 10 for i in range(10)])
+    for idx, v in enumerate(sampled_seq_2):
+      self.assertBetween(v - idx * 10, 0, 10)
+
   def test_decode_jpeg(self):
     # Create a random RGB JPEG image.
     random_image = np.random.randint(0, 256, size=(263, 320, 3), dtype=np.uint8)
