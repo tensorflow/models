@@ -80,9 +80,7 @@ class BenchmarkLibTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIn('examples_per_second', benchmark_data)
     self.assertIn('wall_time', benchmark_data)
     self.assertIn('startup_time', benchmark_data)
-
-    if execution_mode == 'accuracy':
-      self.assertIn('metrics', benchmark_data)
+    self.assertIn('metrics', benchmark_data)
 
 
 if __name__ == '__main__':
