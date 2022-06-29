@@ -75,7 +75,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     E.g. let's say input dims are `[batch_size, seq_dim, input_last_dim]`.
     Scenario 1: If `output_last_dim` is not `None`, then the output dims of this
     module would be `[batch_size, seq_dim, output_last_dim]`. Note `key_dim` is
-    is overriden by `output_last_dim`.
+    overriden by `output_last_dim`.
     Scenario 2: If `output_last_dim` is `None` and `key_dim` is not `None`, then
     the output dims of this module would be `[batch_size, seq_dim, key_dim]`.
     Scenario 3: If the `output_last_dim` and `key_dim` are both `None`, the
