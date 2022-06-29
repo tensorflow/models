@@ -88,6 +88,7 @@ class DataConfig(cfg.DataConfig):
 
 def yt8m(is_training):
   """YT8M dataset configs."""
+  # pylint: disable=unexpected-keyword-arg
   return DataConfig(
       num_frames=30,
       temporal_stride=1,
@@ -95,8 +96,10 @@ def yt8m(is_training):
       segment_size=5,
       is_training=is_training,
       split='train' if is_training else 'valid',
+      drop_remainder=is_training,  # pytype: disable=wrong-keyword-args
       num_examples=YT8M_TRAIN_EXAMPLES if is_training else YT8M_VAL_EXAMPLES,
       input_path=YT8M_TRAIN_PATH if is_training else YT8M_VAL_PATH)
+  # pylint: enable=unexpected-keyword-arg
 
 
 @dataclasses.dataclass
