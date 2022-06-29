@@ -424,8 +424,8 @@ class PostBatchProcessor():
                                  [-1, self.num_classes])
 
     else:
-      video_matrix = tf.squeeze(video_matrix)
-      labels = tf.squeeze(labels)
+      video_matrix = tf.squeeze(video_matrix, axis=1)
+      labels = tf.squeeze(labels, axis=1)
 
     batched_tensors = {
         "video_matrix": video_matrix,
