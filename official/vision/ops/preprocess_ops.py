@@ -638,6 +638,53 @@ def random_horizontal_flip(image, normalized_boxes=None, masks=None, seed=1):
     return image, normalized_boxes, masks
 
 
+def random_horizontal_flip_with_roi(
+    image: tf.Tensor,
+    boxes: Optional[tf.Tensor] = None,
+    masks: Optional[tf.Tensor] = None,
+    roi_boxes: Optional[tf.Tensor] = None,
+    seed: int = 1
+) -> Tuple[tf.Tensor, Optional[tf.Tensor], Optional[tf.Tensor],
+           Optional[tf.Tensor]]:
+  """Randomly flips input image and bounding boxes.
+
+  Extends preprocess_ops.random_horizontal_flip to also flip roi_boxes used
+  by ViLD.
+
+  Args:
+    image: `tf.Tensor`, the image to apply the random flip.
+    boxes: `tf.Tensor` or `None`, boxes corresponding to the image.
+    masks: `tf.Tensor` or `None`, masks corresponding to the image.
+    roi_boxes: `tf.Tensor` or `None`, RoIs corresponding to the image.
+    seed: Seed for Tensorflow's random number generator.
+
+  Returns:
+    image: `tf.Tensor`, flipped image.
+    boxes: `tf.Tensor` or `None`, flipped boxes corresponding to the image.
+    masks: `tf.Tensor` or `None`, flipped masks corresponding to the image.
+    roi_boxes: `tf.Tensor` or `None`, flipped RoIs corresponding to the image.
+  """
+  with tf.name_scope('random_horizontal_flip'):
+    do_flip = tf.greater(tf.random.uniform([], seed=seed), 0.5)
+
+    image = tf.cond(do_flip, lambda: horizontal_flip_image(image),
+                    lambda: image)
+
+    if boxes is not None:
+      boxes = tf.cond(do_flip, lambda: horizontal_flip_boxes(boxes),
+                      lambda: boxes)
+
+    if masks is not None:
+      masks = tf.cond(do_flip, lambda: horizontal_flip_masks(masks),
+                      lambda: masks)
+
+    if roi_boxes is not None:
+      roi_boxes = tf.cond(do_flip, lambda: horizontal_flip_boxes(roi_boxes),
+                          lambda: roi_boxes)
+
+    return image, boxes, masks, roi_boxes
+
+
 def color_jitter(image: tf.Tensor,
                  brightness: Optional[float] = 0.,
                  contrast: Optional[float] = 0.,
