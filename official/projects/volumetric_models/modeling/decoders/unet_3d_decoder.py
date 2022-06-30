@@ -95,7 +95,7 @@ class UNet3DDecoder(tf.keras.Model):
       channel_dim = 1
 
     # Build 3D UNet.
-    inputs = self._build_input_pyramid(input_specs, model_id)
+    inputs = self._build_input_pyramid(input_specs, model_id)  # pytype: disable=wrong-arg-types  # dynamic-method-lookup
 
     # Add levels with up-convolution or up-sampling.
     x = inputs[str(model_id)]
