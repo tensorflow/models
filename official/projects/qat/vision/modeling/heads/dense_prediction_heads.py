@@ -124,6 +124,7 @@ class RetinaNetHeadQuantized(tf.keras.layers.Layer):
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       num_params_per_anchor: int = 4,
+      share_classification_heads: bool = False,
       **kwargs):
     """Initializes a RetinaNet quantized head.
 
@@ -156,8 +157,13 @@ class RetinaNetHeadQuantized(tf.keras.layers.Layer):
         box. For example, `num_params_per_anchor` would be 4 for axis-aligned
         anchor boxes specified by their y-centers, x-centers, heights, and
         widths.
+      share_classification_heads: A `bool` that indicates whethere
+        sharing weights among the main and attribute classification heads. Not
+        used in the QAT model.
       **kwargs: Additional keyword arguments to be passed.
     """
+    del share_classification_heads
+
     super().__init__(**kwargs)
     self._config_dict = {
         'min_level': min_level,

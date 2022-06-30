@@ -293,6 +293,7 @@ def build_retinanet(
       attribute_heads=[
           cfg.as_dict() for cfg in (head_config.attribute_heads or [])
       ],
+      share_classification_heads=head_config.share_classification_heads,
       use_separable_conv=head_config.use_separable_conv,
       activation=norm_activation_config.activation,
       use_sync_bn=norm_activation_config.use_sync_bn,
