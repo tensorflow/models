@@ -158,7 +158,7 @@ class MaskRCNNModel(tf.keras.Model):
         matched_gt_classes=intermediate_outputs['matched_gt_classes'],
         gt_masks=gt_masks,
         training=training)
-    model_outputs.update(model_mask_outputs)
+    model_outputs.update(model_mask_outputs)  # pytype: disable=attribute-error  # dynamic-method-lookup
     return model_outputs
 
   def _get_backbone_and_decoder_features(self, images):
