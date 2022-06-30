@@ -37,6 +37,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
       num_convs: int = 4,
       num_filters: int = 256,
       attribute_heads: Optional[List[Dict[str, Any]]] = None,
+      share_classification_heads: bool = False,
       use_separable_conv: bool = False,
       activation: str = 'relu',
       use_sync_bn: bool = False,
@@ -62,6 +63,8 @@ class RetinaNetHead(tf.keras.layers.Layer):
         additional attribute head. Each dict consists of 3 key-value pairs:
         `name`, `type` ('regression' or 'classification'), and `size` (number
         of predicted values for each instance).
+      share_classification_heads: A `bool` that indicates whethere
+        sharing weights among the main and attribute classification heads.
       use_separable_conv: A `bool` that indicates whether the separable
         convolution layers is used.
       activation: A `str` that indicates which activation is used, e.g. 'relu',
@@ -88,6 +91,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
         'num_convs': num_convs,
         'num_filters': num_filters,
         'attribute_heads': attribute_heads,
+        'share_classification_heads': share_classification_heads,
         'use_separable_conv': use_separable_conv,
         'activation': activation,
         'use_sync_bn': use_sync_bn,
@@ -216,7 +220,11 @@ class RetinaNetHead(tf.keras.layers.Layer):
           this_level_att_norms = []
           for i in range(self._config_dict['num_convs']):
             if level == self._config_dict['min_level']:
-              att_conv_name = '{}-conv_{}'.format(att_name, i)
+              if self._config_dict[
+                  'share_classification_heads'] and att_type == 'classification':
+                att_conv_name = 'classnet-conv_{}'.format(i)
+              else:
+                att_conv_name = '{}-conv_{}'.format(att_name, i)
               if 'kernel_initializer' in conv_kwargs:
                 conv_kwargs['kernel_initializer'] = tf_utils.clone_initializer(
                     conv_kwargs['kernel_initializer'])
