@@ -48,12 +48,17 @@ class DectectionTask(base_task.Task):
     input_specs = tf.keras.layers.InputSpec(
         shape=[None] + self._task_config.model.input_size)
 
+    l2_weight_decay = self.task_config.losses.l2_weight_decay
+    # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
+    # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
+    # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
+    l2_regularizer = (tf.keras.regularizers.l2(
+        l2_weight_decay / 2.0) if l2_weight_decay else None)
 
     backbone = backbones.factory.build_backbone(
         input_specs=input_specs,
         backbone_config=self._task_config.model.backbone,
         norm_activation_config=self._task_config.model.norm_activation)
-
     model = detr.DETR(
         backbone,
         self._task_config.model.num_queries,

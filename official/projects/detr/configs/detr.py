@@ -62,6 +62,7 @@ class Losses(hyperparams.Config):
   lambda_box: float = 5.0
   lambda_giou: float = 2.0
   background_cls_weight: float = 0.1
+  l2_weight_decay: float = 1e-4
 
 @dataclasses.dataclass
 class Detr(hyperparams.Config):
@@ -73,7 +74,7 @@ class Detr(hyperparams.Config):
   input_size: List[int] = dataclasses.field(default_factory=list)
   backbone: backbones.Backbone = backbones.Backbone(
       type='resnet', resnet=backbones.ResNet(
-          model_id=101,
+          model_id=50,
           bn_trainable=False))
   norm_activation: common.NormActivation = common.NormActivation()
 
@@ -105,7 +106,7 @@ def detr_coco() -> cfg.ExperimentConfig:
   decay_at = train_steps - 100 * steps_per_epoch  # 400 epochs
   config = cfg.ExperimentConfig(
       task=DetrTask(
-          init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet101_imagenet',
+          init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet',
           init_checkpoint_modules='backbone',
           annotation_file=os.path.join(COCO_INPUT_PATH_BASE,
                                        'instances_val2017.json'),

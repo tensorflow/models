@@ -24,7 +24,7 @@ import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.projects.detr.modeling import transformer
-#from official.vision.modeling.backbones import resnet
+from official.vision.modeling.backbones import resnet
 
 
 def position_embedding_sine(attention_mask,
@@ -116,7 +116,7 @@ class DETR(tf.keras.Model):
       raise ValueError("hidden_size must be a multiple of 2.")
     # TODO(frederickliu): Consider using the backbone factory.
     # TODO(frederickliu): Add to factory once we get skeleton code in.
-    #self._backbone = resnet.ResNet(50, bn_trainable=False)
+    #self._backbone = resnet.ResNet(101, bn_trainable=False)
     # (gunho) use backbone factory
     self._backbone = backbone
 
