@@ -1,4 +1,4 @@
-# MobileNetV3-large_1.0 ImageNet classification: ~75.3% top-1.
+# MobileNetV3-large_1.0 ImageNet classification: ~75.7% top-1.
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
@@ -27,10 +27,10 @@ task:
     dtype: 'bfloat16'
     aug_type:
       autoaug:
-        augmentation_name: v0
+        augmentation_name: 'v0'
         cutout_const: 100
         translate_const: 250
-      type: autoaug
+      type: 'autoaug'
   validation_data:
     input_path: 'imagenet-2012-tfrecord/valid*'
     is_training: false
@@ -38,7 +38,7 @@ task:
     dtype: 'bfloat16'
     drop_remainder: false
 trainer:
-  train_steps: 156000  # 500 epochs
+  train_steps: 218000  # 700 epochs
   validation_steps: 13
   validation_interval: 312
   steps_per_loop: 312  # NUM_EXAMPLES (1281167) // global_batch_size
@@ -48,7 +48,7 @@ trainer:
     learning_rate:
       cosine:
         alpha: 0.0
-        decay_steps: 156000
+        decay_steps: 218000
         initial_learning_rate: 0.004
         name: CosineDecay
         offset: 0
