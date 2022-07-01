@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Provides functions to help with evaluating models."""
+import logging
 import numpy as np
 import tensorflow as tf
 from official.projects.yt8m.eval_utils import average_precision_calculator as ap_calculator
@@ -57,6 +58,9 @@ def calculate_precision_at_equal_recall_rate(predictions, actuals):
   """
   aggregated_precision = 0.0
   num_videos = actuals.shape[0]
+  if num_videos == 0:
+    logging.warning("Num_videos is 0, returning 0.0 aggregated_precision.")
+    return aggregated_precision
   for row in np.arange(num_videos):
     num_labels = int(np.sum(actuals[row]))
     top_indices = np.argpartition(predictions[row], -num_labels)[-num_labels:]
