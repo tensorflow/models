@@ -180,7 +180,7 @@ class PanopticDeeplabTask(cfg.TaskConfig):
 
 
 @exp_factory.register_config_factory('panoptic_deeplab_resnet_coco')
-def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
+def panoptic_deeplab_resnet_coco() -> cfg.ExperimentConfig:
   """COCO panoptic segmentation with Panoptic Deeplab."""
   train_steps = 200000
   train_batch_size = 64
@@ -326,6 +326,330 @@ def panoptic_deeplab_coco() -> cfg.ExperimentConfig:
                   'type': 'polynomial',
                   'polynomial': {
                       'initial_learning_rate': 0.0005,
+                      'decay_steps': train_steps,
+                      'end_learning_rate': 0.0,
+                      'power': 0.9
+                  }
+              },
+              'warmup': {
+                  'type': 'linear',
+                  'linear': {
+                      'warmup_steps': 2000,
+                      'warmup_learning_rate': 0
+                  }
+              }
+          })),
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None'
+      ])
+  return config
+
+
+@exp_factory.register_config_factory('panoptic_deeplab_mobilenetv3_large_coco')
+def panoptic_deeplab_mobilenetv3_large_coco() -> cfg.ExperimentConfig:
+  """COCO panoptic segmentation with Panoptic Deeplab."""
+  train_steps = 200000
+  train_batch_size = 64
+  eval_batch_size = 1
+  steps_per_epoch = _COCO_TRAIN_EXAMPLES // train_batch_size
+  validation_steps = _COCO_VAL_EXAMPLES // eval_batch_size
+
+  num_panoptic_categories = 201
+  num_thing_categories = 91
+  ignore_label = 0
+
+  is_thing = [False]
+  for idx in range(1, num_panoptic_categories):
+    is_thing.append(True if idx <= num_thing_categories else False)
+
+  input_size = [640, 640, 3]
+  output_stride = 16
+  aspp_dilation_rates = [6, 12, 18]
+  level = int(np.math.log2(output_stride))
+
+  config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(
+          mixed_precision_dtype='float32', enable_xla=True),
+      task=PanopticDeeplabTask(
+          init_checkpoint='gs://tf_model_garden/vision/panoptic/panoptic_deeplab/imagenet/mobilenetv3_large/ckpt-156000',
+          init_checkpoint_modules=['backbone'],
+          model=PanopticDeeplab(
+              num_classes=num_panoptic_categories,
+              input_size=input_size,
+              backbone=backbones.Backbone(
+                  type='mobilenet', mobilenet=backbones.MobileNet(
+                      model_id='MobileNetV3Large',
+                      filter_size_scale=1.0,
+                      stochastic_depth_drop_rate=0.0,
+                      output_stride=output_stride)),
+              decoder=decoders.Decoder(
+                  type='aspp',
+                  aspp=decoders.ASPP(
+                      level=level,
+                      num_filters=256,
+                      pool_kernel_size=input_size[:2],
+                      dilation_rates=aspp_dilation_rates,
+                      use_depthwise_convolution=True,
+                      dropout_rate=0.1)),
+              semantic_head=SemanticHead(
+                  level=level,
+                  num_convs=1,
+                  num_filters=256,
+                  kernel_size=5,
+                  use_depthwise_convolution=True,
+                  upsample_factor=1,
+                  low_level=[3, 2],
+                  low_level_num_filters=[64, 32],
+                  fusion_num_output_filters=256,
+                  prediction_kernel_size=1),
+              instance_head=InstanceHead(
+                  level=level,
+                  num_convs=1,
+                  num_filters=32,
+                  kernel_size=5,
+                  use_depthwise_convolution=True,
+                  upsample_factor=1,
+                  low_level=[3, 2],
+                  low_level_num_filters=[32, 16],
+                  fusion_num_output_filters=128,
+                  prediction_kernel_size=1),
+              shared_decoder=False,
+              generate_panoptic_masks=True,
+              post_processor=PanopticDeeplabPostProcessor(
+                  output_size=input_size[:2],
+                  center_score_threshold=0.1,
+                  thing_class_ids=list(range(1, num_thing_categories)),
+                  label_divisor=256,
+                  stuff_area_limit=4096,
+                  ignore_label=ignore_label,
+                  nms_kernel=41,
+                  keep_k_centers=200,
+                  rescale_predictions=True)),
+          losses=Losses(
+              label_smoothing=0.0,
+              ignore_label=ignore_label,
+              l2_weight_decay=0.0,
+              top_k_percent_pixels=0.2,
+              segmentation_loss_weight=1.0,
+              center_heatmap_loss_weight=200,
+              center_offset_loss_weight=0.01),
+          train_data=DataConfig(
+              input_path=os.path.join(_COCO_INPUT_PATH_BASE, 'train*'),
+              is_training=True,
+              global_batch_size=train_batch_size,
+              parser=Parser(
+                  aug_scale_min=0.5,
+                  aug_scale_max=2.0,
+                  aug_rand_hflip=True,
+                  aug_type=common.Augmentation(
+                      type='autoaug',
+                      autoaug=common.AutoAugment(
+                          augmentation_name='panoptic_deeplab_policy')),
+                  sigma=8.0,
+                  small_instance_area_threshold=4096,
+                  small_instance_weight=3.0)),
+          validation_data=DataConfig(
+              input_path=os.path.join(_COCO_INPUT_PATH_BASE, 'val*'),
+              is_training=False,
+              global_batch_size=eval_batch_size,
+              parser=Parser(
+                  resize_eval_groundtruth=False,
+                  groundtruth_padded_size=[640, 640],
+                  aug_scale_min=1.0,
+                  aug_scale_max=1.0,
+                  aug_rand_hflip=False,
+                  aug_type=None,
+                  sigma=8.0,
+                  small_instance_area_threshold=4096,
+                  small_instance_weight=3.0),
+              drop_remainder=False),
+          evaluation=Evaluation(
+              ignored_label=ignore_label,
+              max_instances_per_category=256,
+              offset=256*256*256,
+              is_thing=is_thing,
+              rescale_predictions=True,
+              report_per_class_pq=False,
+              report_per_class_iou=False,
+              report_train_mean_iou=False)),
+      trainer=cfg.TrainerConfig(
+          train_steps=train_steps,
+          validation_steps=validation_steps,
+          validation_interval=steps_per_epoch,
+          steps_per_loop=steps_per_epoch,
+          summary_interval=steps_per_epoch,
+          checkpoint_interval=steps_per_epoch,
+          optimizer_config=optimization.OptimizationConfig({
+              'optimizer': {
+                  'type': 'adam',
+              },
+              'learning_rate': {
+                  'type': 'polynomial',
+                  'polynomial': {
+                      'initial_learning_rate': 0.001,
+                      'decay_steps': train_steps,
+                      'end_learning_rate': 0.0,
+                      'power': 0.9
+                  }
+              },
+              'warmup': {
+                  'type': 'linear',
+                  'linear': {
+                      'warmup_steps': 2000,
+                      'warmup_learning_rate': 0
+                  }
+              }
+          })),
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None'
+      ])
+  return config
+
+
+@exp_factory.register_config_factory('panoptic_deeplab_mobilenetv3_small_coco')
+def panoptic_deeplab_mobilenetv3_small_coco() -> cfg.ExperimentConfig:
+  """COCO panoptic segmentation with Panoptic Deeplab."""
+  train_steps = 200000
+  train_batch_size = 64
+  eval_batch_size = 1
+  steps_per_epoch = _COCO_TRAIN_EXAMPLES // train_batch_size
+  validation_steps = _COCO_VAL_EXAMPLES // eval_batch_size
+
+  num_panoptic_categories = 201
+  num_thing_categories = 91
+  ignore_label = 0
+
+  is_thing = [False]
+  for idx in range(1, num_panoptic_categories):
+    is_thing.append(True if idx <= num_thing_categories else False)
+
+  input_size = [640, 640, 3]
+  output_stride = 16
+  aspp_dilation_rates = [6, 12, 18]
+  level = int(np.math.log2(output_stride))
+
+  config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(
+          mixed_precision_dtype='float32', enable_xla=True),
+      task=PanopticDeeplabTask(
+          init_checkpoint='gs://tf_model_garden/vision/panoptic/panoptic_deeplab/imagenet/mobilenetv3_small/ckpt-312000',
+          init_checkpoint_modules=['backbone'],
+          model=PanopticDeeplab(
+              num_classes=num_panoptic_categories,
+              input_size=input_size,
+              backbone=backbones.Backbone(
+                  type='mobilenet', mobilenet=backbones.MobileNet(
+                      model_id='MobileNetV3Small',
+                      filter_size_scale=1.0,
+                      stochastic_depth_drop_rate=0.0,
+                      output_stride=output_stride)),
+              decoder=decoders.Decoder(
+                  type='aspp',
+                  aspp=decoders.ASPP(
+                      level=level,
+                      num_filters=256,
+                      pool_kernel_size=input_size[:2],
+                      dilation_rates=aspp_dilation_rates,
+                      use_depthwise_convolution=True,
+                      dropout_rate=0.1)),
+              semantic_head=SemanticHead(
+                  level=level,
+                  num_convs=1,
+                  num_filters=256,
+                  kernel_size=5,
+                  use_depthwise_convolution=True,
+                  upsample_factor=1,
+                  low_level=[3, 2],
+                  low_level_num_filters=[64, 32],
+                  fusion_num_output_filters=256,
+                  prediction_kernel_size=1),
+              instance_head=InstanceHead(
+                  level=level,
+                  num_convs=1,
+                  num_filters=32,
+                  kernel_size=5,
+                  use_depthwise_convolution=True,
+                  upsample_factor=1,
+                  low_level=[3, 2],
+                  low_level_num_filters=[32, 16],
+                  fusion_num_output_filters=128,
+                  prediction_kernel_size=1),
+              shared_decoder=False,
+              generate_panoptic_masks=True,
+              post_processor=PanopticDeeplabPostProcessor(
+                  output_size=input_size[:2],
+                  center_score_threshold=0.1,
+                  thing_class_ids=list(range(1, num_thing_categories)),
+                  label_divisor=256,
+                  stuff_area_limit=4096,
+                  ignore_label=ignore_label,
+                  nms_kernel=41,
+                  keep_k_centers=200,
+                  rescale_predictions=True)),
+          losses=Losses(
+              label_smoothing=0.0,
+              ignore_label=ignore_label,
+              l2_weight_decay=0.0,
+              top_k_percent_pixels=0.2,
+              segmentation_loss_weight=1.0,
+              center_heatmap_loss_weight=200,
+              center_offset_loss_weight=0.01),
+          train_data=DataConfig(
+              input_path=os.path.join(_COCO_INPUT_PATH_BASE, 'train*'),
+              is_training=True,
+              global_batch_size=train_batch_size,
+              parser=Parser(
+                  aug_scale_min=0.5,
+                  aug_scale_max=2.0,
+                  aug_rand_hflip=True,
+                  aug_type=common.Augmentation(
+                      type='autoaug',
+                      autoaug=common.AutoAugment(
+                          augmentation_name='panoptic_deeplab_policy')),
+                  sigma=8.0,
+                  small_instance_area_threshold=4096,
+                  small_instance_weight=3.0)),
+          validation_data=DataConfig(
+              input_path=os.path.join(_COCO_INPUT_PATH_BASE, 'val*'),
+              is_training=False,
+              global_batch_size=eval_batch_size,
+              parser=Parser(
+                  resize_eval_groundtruth=False,
+                  groundtruth_padded_size=[640, 640],
+                  aug_scale_min=1.0,
+                  aug_scale_max=1.0,
+                  aug_rand_hflip=False,
+                  aug_type=None,
+                  sigma=8.0,
+                  small_instance_area_threshold=4096,
+                  small_instance_weight=3.0),
+              drop_remainder=False),
+          evaluation=Evaluation(
+              ignored_label=ignore_label,
+              max_instances_per_category=256,
+              offset=256*256*256,
+              is_thing=is_thing,
+              rescale_predictions=True,
+              report_per_class_pq=False,
+              report_per_class_iou=False,
+              report_train_mean_iou=False)),
+      trainer=cfg.TrainerConfig(
+          train_steps=train_steps,
+          validation_steps=validation_steps,
+          validation_interval=steps_per_epoch,
+          steps_per_loop=steps_per_epoch,
+          summary_interval=steps_per_epoch,
+          checkpoint_interval=steps_per_epoch,
+          optimizer_config=optimization.OptimizationConfig({
+              'optimizer': {
+                  'type': 'adam',
+              },
+              'learning_rate': {
+                  'type': 'polynomial',
+                  'polynomial': {
+                      'initial_learning_rate': 0.001,
                       'decay_steps': train_steps,
                       'end_learning_rate': 0.0,
                       'power': 0.9
