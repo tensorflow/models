@@ -97,7 +97,7 @@ COCO_VAL_EXAMPLES = 5000
 @exp_factory.register_config_factory('detr_coco')
 def detr_coco() -> cfg.ExperimentConfig:
   """Config to get results that matches the paper."""
-  train_batch_size = 32
+  train_batch_size = 64
   eval_batch_size = 64
   steps_per_epoch = COCO_TRAIN_EXAMPLES // train_batch_size
   train_steps = 300 * steps_per_epoch  # 300 epochs

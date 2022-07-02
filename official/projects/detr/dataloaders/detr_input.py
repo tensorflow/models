@@ -46,10 +46,6 @@ class Parser(parser.Parser):
     #classes = data['groundtruth_classes'] + 1
     classes = data['groundtruth_classes']
     boxes = data['groundtruth_boxes']
-    # If not empty, `attributes` is a dict of (name, ground_truth) pairs.
-    # `ground_gruth` of attributes is assumed in shape [N, attribute_size].
-    # TODO(xianzhi): support parsing attributes weights.
-    attributes = data.get('groundtruth_attributes', {})
     is_crowd = data['groundtruth_is_crowd']
 
     # Gets original image.
@@ -139,10 +135,6 @@ class Parser(parser.Parser):
     groundtruths = {}
     classes = data['groundtruth_classes']
     boxes = data['groundtruth_boxes']
-    # If not empty, `attributes` is a dict of (name, ground_truth) pairs.
-    # `ground_gruth` of attributes is assumed in shape [N, attribute_size].
-    # TODO(xianzhi): support parsing attributes weights.
-    attributes = data.get('groundtruth_attributes', {})
     is_crowd = data['groundtruth_is_crowd']
 
     # Gets original image and its size.
