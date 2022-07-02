@@ -92,7 +92,6 @@ class DetrTask(cfg.TaskConfig):
 
 COCO_INPUT_PATH_BASE = 'gs://ghpark-tfrecords/coco'
 COCO_TRAIN_EXAMPLES = 118287
-#COCO_TRAIN_EXAMPLES = 9600
 COCO_VAL_EXAMPLES = 5000
 
 @exp_factory.register_config_factory('detr_coco')
@@ -100,10 +99,9 @@ def detr_coco() -> cfg.ExperimentConfig:
   """Config to get results that matches the paper."""
   train_batch_size = 32
   eval_batch_size = 64
-  num_train_data = 118287
   steps_per_epoch = COCO_TRAIN_EXAMPLES // train_batch_size
-  train_steps = 300 * steps_per_epoch  # 500 epochs
-  decay_at = train_steps - 100 * steps_per_epoch  # 400 epochs
+  train_steps = 300 * steps_per_epoch  # 300 epochs
+  decay_at = train_steps - 100 * steps_per_epoch  # 200 epochs
   config = cfg.ExperimentConfig(
       task=DetrTask(
           init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet',
