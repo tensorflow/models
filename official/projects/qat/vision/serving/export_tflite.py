@@ -12,17 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Core is shared by both `nlp` and `vision`."""
+"""Binary to convert a saved model to TFLite model for the QAT model."""
 
-from official.core import actions
-from official.core import base_task
-from official.core import base_trainer
-from official.core import config_definitions
-from official.core import exp_factory
-from official.core import export_base
-from official.core import input_reader
-from official.core import registry
-from official.core import savedmodel_checkpoint_manager
-from official.core import task_factory
-from official.core import train_lib
-from official.core import train_utils
+from absl import app
+
+from official.projects.qat.vision import registry_imports  # pylint: disable=unused-import
+from official.vision.serving import export_tflite
+
+if __name__ == '__main__':
+  app.run(export_tflite.main)

@@ -1,4 +1,4 @@
-# MobileNetV3Small ImageNet classification. 67.5% top-1 and 87.6% top-5 accuracy.
+# MobileNetV3Small ImageNet classification. 67.5% top-1 and 87.7% top-5 accuracy.
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
@@ -34,7 +34,7 @@ task:
     drop_remainder: false
 trainer:
   train_steps: 312000  # 1000 epochs
-  validation_steps: 12
+  validation_steps: 13
   validation_interval: 312
   steps_per_loop: 312  # NUM_EXAMPLES (1281167) // global_batch_size
   summary_interval: 312
@@ -49,7 +49,7 @@ trainer:
     learning_rate:
       type: 'exponential'
       exponential:
-        initial_learning_rate: 0.01
+        initial_learning_rate: 0.426  # 0.02 * (batch_size / 192)
         decay_steps: 936  # 3 * steps_per_epoch
         decay_rate: 0.99
         staircase: true
@@ -60,4 +60,4 @@ trainer:
       type: 'linear'
       linear:
         warmup_steps: 1560
-        warmup_learning_rate: 0.001
+        warmup_learning_rate: 0.0

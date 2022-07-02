@@ -25,14 +25,15 @@ from official.vision.modeling.heads import dense_prediction_heads
 class RetinaNetHeadTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (False, False, False),
-      (False, True, False),
-      (True, False, True),
-      (True, True, True),
+      (False, False, False, None, False),
+      (False, True, False, None, False),
+      (True, False, True, 'regression', False),
+      (True, True, True, 'classification', True),
   )
-  def test_forward(self, use_separable_conv, use_sync_bn, has_att_heads):
+  def test_forward(self, use_separable_conv, use_sync_bn, has_att_heads,
+                   att_type, share_classification_heads):
     if has_att_heads:
-      attribute_heads = [dict(name='depth', type='regression', size=1)]
+      attribute_heads = [dict(name='depth', type=att_type, size=1)]
     else:
       attribute_heads = None
 
@@ -44,6 +45,7 @@ class RetinaNetHeadTest(parameterized.TestCase, tf.test.TestCase):
         num_convs=2,
         num_filters=256,
         attribute_heads=attribute_heads,
+        share_classification_heads=share_classification_heads,
         use_separable_conv=use_separable_conv,
         activation='relu',
         use_sync_bn=use_sync_bn,

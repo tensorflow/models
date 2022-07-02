@@ -22,7 +22,6 @@
   back into a range between min_quantized_value and max_quantized_value.
   link for details: https://research.google.com/youtube8m/download.html
 """
-
 from typing import Dict
 
 import tensorflow as tf
@@ -424,8 +423,9 @@ class PostBatchProcessor():
                                  [-1, self.num_classes])
 
     else:
-      video_matrix = tf.squeeze(video_matrix)
-      labels = tf.squeeze(labels)
+      # NOTE(b/237445211): Must provide axis argument to tf.squeeze.
+      video_matrix = tf.squeeze(video_matrix, axis=1)
+      labels = tf.squeeze(labels, axis=1)
 
     batched_tensors = {
         "video_matrix": video_matrix,
@@ -449,13 +449,15 @@ class TransformBatcher():
     self._global_batch_size = input_params.global_batch_size
     self._is_training = input_params.is_training
     self._include_video_id = input_params.include_video_id
+    self._drop_remainder = input_params.drop_remainder
 
   def batch_fn(self, dataset, input_context):
     """Add padding when segment_labels is true."""
     per_replica_batch_size = input_context.get_per_replica_batch_size(
         self._global_batch_size) if input_context else self._global_batch_size
     if not self._segment_labels:
-      dataset = dataset.batch(per_replica_batch_size, drop_remainder=True)
+      dataset = dataset.batch(
+          per_replica_batch_size, drop_remainder=self._drop_remainder)
     else:
       # add padding
       pad_shapes = {
@@ -476,6 +478,6 @@ class TransformBatcher():
       dataset = dataset.padded_batch(
           per_replica_batch_size,
           padded_shapes=pad_shapes,
-          drop_remainder=True,
+          drop_remainder=self._drop_remainder,
           padding_values=pad_values)
     return dataset

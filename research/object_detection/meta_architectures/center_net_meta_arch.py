@@ -4235,6 +4235,15 @@ class CenterNetMetaArch(model.DetectionModel):
           axis=-2)
       multiclass_scores = postprocess_dict[
           fields.DetectionResultFields.detection_multiclass_scores]
+      num_classes = tf.shape(multiclass_scores)[2]
+      class_mask = tf.cast(
+          tf.one_hot(
+              postprocess_dict[fields.DetectionResultFields.detection_classes],
+              depth=num_classes), tf.bool)
+      # Surpress the scores of those unselected classes to be zeros. Otherwise,
+      # the downstream NMS ops might be confused and introduce issues.
+      multiclass_scores = tf.where(
+          class_mask, multiclass_scores, tf.zeros_like(multiclass_scores))
       num_valid_boxes = postprocess_dict.pop(
           fields.DetectionResultFields.num_detections)
       # Remove scores and classes as NMS will compute these form multiclass
