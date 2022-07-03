@@ -21,10 +21,10 @@ from typing import List, Optional, Union
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
-from official.projects.detr import optimization
 from official.vision.configs import common
 from official.vision.configs import backbones
-
+from official.projects.detr import optimization
+from official.projects.detr.dataloaders import coco
 
 # pylint: disable=missing-class-docstring
 # Keep for backward compatibility.
@@ -90,11 +90,80 @@ class DetrTask(cfg.TaskConfig):
   annotation_file: Optional[str] = None
   per_category_metrics: bool = False
 
+@exp_factory.register_config_factory('detr_coco')
+def detr_coco() -> cfg.ExperimentConfig:
+  """Config to get results that matches the paper."""
+  train_batch_size = 64
+  eval_batch_size = 64
+  num_train_data = 118287
+  num_steps_per_epoch = num_train_data // train_batch_size
+  train_steps = 500 * num_steps_per_epoch  # 500 epochs
+  decay_at = train_steps - 100 * num_steps_per_epoch  # 400 epochs
+  config = cfg.ExperimentConfig(
+      task=DetrTask(
+          init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet',
+          init_checkpoint_modules='backbone',
+          model=Detr(
+              num_classes=81,
+              input_size=[1333, 1333, 3],
+              norm_activation=common.NormActivation(use_sync_bn=False)),
+          losses=Losses(),
+          train_data=coco.COCODataConfig(
+              file_type='tfrecord',
+              tfds_name='coco/2017',
+              tfds_split='train',
+              is_training=True,
+              global_batch_size=train_batch_size,
+              shuffle_buffer_size=1000,
+          ),
+          validation_data=coco.COCODataConfig(
+              file_type='tfrecord',
+              tfds_name='coco/2017',
+              tfds_split='validation',
+              is_training=False,
+              global_batch_size=eval_batch_size,
+              drop_remainder=False
+          )
+      ),
+      trainer=cfg.TrainerConfig(
+          train_steps=train_steps,
+          validation_steps=-1,
+          steps_per_loop=10000,
+          summary_interval=10000,
+          checkpoint_interval=10000,
+          validation_interval=10000,
+          max_to_keep=1,
+          best_checkpoint_export_subdir='best_ckpt',
+          best_checkpoint_eval_metric='AP',
+          optimizer_config=optimization.OptimizationConfig({
+              'optimizer': {
+                  'type': 'detr_adamw',
+                  'detr_adamw': {
+                      'weight_decay_rate': 1e-4,
+                      'global_clipnorm': 0.1,
+                      # Avoid AdamW legacy behavior.
+                      'gradient_clip_norm': 0.0
+                  }
+              },
+              'learning_rate': {
+                  'type': 'stepwise',
+                  'stepwise': {
+                      'boundaries': [decay_at],
+                      'values': [0.0001, 1.0e-05]
+                  }
+              },
+              })
+          ),
+      restrictions=[
+          'task.train_data.is_training != None',
+      ])
+  return config
+
 COCO_INPUT_PATH_BASE = 'gs://ghpark-tfrecords/coco'
 COCO_TRAIN_EXAMPLES = 118287
 COCO_VAL_EXAMPLES = 5000
 
-@exp_factory.register_config_factory('detr_coco')
+@exp_factory.register_config_factory('detr_coco_tfrecord')
 def detr_coco() -> cfg.ExperimentConfig:
   """Config to get results that matches the paper."""
   train_batch_size = 64
