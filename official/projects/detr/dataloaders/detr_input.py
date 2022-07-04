@@ -31,34 +31,28 @@ class Parser(parser.Parser):
   """Parse an image and its annotations into a dictionary of tensors."""
 
   def __init__(self,
+               class_offset: int = 0,
                output_size: Tuple[int, int] = (1333, 1333),
                max_num_boxes: int = 100,
                resize_scales: Tuple[int, ...] = RESIZE_SCALES,
                aug_rand_hflip=True):
+    self._class_offset = class_offset
     self._output_size = output_size
     self._max_num_boxes = max_num_boxes
     self._resize_scales = resize_scales
     self._aug_rand_hflip = aug_rand_hflip
-    
               
   def _parse_train_data(self, data):
     """Parses data for training and evaluation."""
-    #classes = data['groundtruth_classes'] + 1
-    classes = data['groundtruth_classes']
+    classes = data['groundtruth_classes'] + self._class_offset
     boxes = data['groundtruth_boxes']
     is_crowd = data['groundtruth_is_crowd']
 
     # Gets original image.
     image = data['image']
 
-    # Apply autoaug or randaug.
-    #if self._augmenter is not None:
-    #  image, boxes = self._augmenter.distort_with_boxes(image, boxes)
-
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(image)
-
-    
     image, boxes, _ = preprocess_ops.random_horizontal_flip(image, boxes)
 
     do_crop = tf.greater(tf.random.uniform([]), 0.5)

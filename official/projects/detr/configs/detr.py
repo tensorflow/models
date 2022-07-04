@@ -58,6 +58,7 @@ class DataConfig(cfg.DataConfig):
 
 @dataclasses.dataclass
 class Losses(hyperparams.Config):
+  class_offset: int = 0
   lambda_cls: float = 1.0
   lambda_box: float = 5.0
   lambda_giou: float = 2.0
@@ -101,7 +102,7 @@ def detr_coco() -> cfg.ExperimentConfig:
   decay_at = train_steps - 100 * num_steps_per_epoch  # 400 epochs
   config = cfg.ExperimentConfig(
       task=DetrTask(
-          init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet',
+          init_checkpoint='gs://tf_model_garden/vision/resnet50_imagenet/ckpt-62400',
           init_checkpoint_modules='backbone',
           model=Detr(
               num_classes=81,
@@ -109,7 +110,6 @@ def detr_coco() -> cfg.ExperimentConfig:
               norm_activation=common.NormActivation(use_sync_bn=False)),
           losses=Losses(),
           train_data=coco.COCODataConfig(
-              file_type='tfrecord',
               tfds_name='coco/2017',
               tfds_split='train',
               is_training=True,
@@ -117,7 +117,6 @@ def detr_coco() -> cfg.ExperimentConfig:
               shuffle_buffer_size=1000,
           ),
           validation_data=coco.COCODataConfig(
-              file_type='tfrecord',
               tfds_name='coco/2017',
               tfds_split='validation',
               is_training=False,
@@ -159,7 +158,7 @@ def detr_coco() -> cfg.ExperimentConfig:
       ])
   return config
 
-COCO_INPUT_PATH_BASE = 'gs://ghpark-tfrecords/coco'
+COCO_INPUT_PATH_BASE = ''
 COCO_TRAIN_EXAMPLES = 118287
 COCO_VAL_EXAMPLES = 5000
 
@@ -173,7 +172,7 @@ def detr_coco() -> cfg.ExperimentConfig:
   decay_at = train_steps - 100 * steps_per_epoch  # 200 epochs
   config = cfg.ExperimentConfig(
       task=DetrTask(
-          init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet',
+          init_checkpoint='gs://tf_model_garden/vision/resnet50_imagenet/ckpt-62400',
           init_checkpoint_modules='backbone',
           annotation_file=os.path.join(COCO_INPUT_PATH_BASE,
                                        'instances_val2017.json'),
@@ -192,6 +191,74 @@ def detr_coco() -> cfg.ExperimentConfig:
               is_training=False,
               global_batch_size=eval_batch_size,
               drop_remainder=False,
+          )
+      ),
+      trainer=cfg.TrainerConfig(
+          train_steps=train_steps,
+          validation_steps=COCO_VAL_EXAMPLES // eval_batch_size,
+          steps_per_loop=steps_per_epoch,
+          summary_interval=steps_per_epoch,
+          checkpoint_interval=steps_per_epoch,
+          validation_interval=5*steps_per_epoch,
+          max_to_keep=1,
+          best_checkpoint_export_subdir='best_ckpt',
+          best_checkpoint_eval_metric='AP',
+          optimizer_config=optimization.OptimizationConfig({
+              'optimizer': {
+                  'type': 'detr_adamw',
+                  'detr_adamw': {
+                      'weight_decay_rate': 1e-4,
+                      'global_clipnorm': 0.1,
+                      # Avoid AdamW legacy behavior.
+                      'gradient_clip_norm': 0.0
+                  }
+              },
+              'learning_rate': {
+                  'type': 'stepwise',
+                  'stepwise': {
+                      'boundaries': [decay_at],
+                      'values': [0.0001, 1.0e-05]
+                  }
+              },
+              })
+          ),
+      restrictions=[
+          'task.train_data.is_training != None',
+      ])
+  return config
+
+@exp_factory.register_config_factory('detr_coco_tfds')
+def detr_coco() -> cfg.ExperimentConfig:
+  """Config to get results that matches the paper."""
+  train_batch_size = 64
+  eval_batch_size = 64
+  steps_per_epoch = COCO_TRAIN_EXAMPLES // train_batch_size
+  train_steps = 300 * steps_per_epoch  # 300 epochs
+  decay_at = train_steps - 100 * steps_per_epoch  # 200 epochs
+  config = cfg.ExperimentConfig(
+      task=DetrTask(
+          init_checkpoint='gs://tf_model_garden/vision/resnet50_imagenet/ckpt-62400',
+          init_checkpoint_modules='backbone',
+          model=Detr(
+              num_classes=81,
+              input_size=[1333, 1333, 3],
+              norm_activation=common.NormActivation(use_sync_bn=False)),
+          losses=Losses(
+              class_offset=1
+          ),
+          train_data=DataConfig(
+              tfds_name='coco/2017',
+              tfds_split='train',
+              is_training=True,
+              global_batch_size=train_batch_size,
+              shuffle_buffer_size=1000,
+          ),
+          validation_data=DataConfig(
+              tfds_name='coco/2017',
+              tfds_split='validation',
+              is_training=False,
+              global_batch_size=eval_batch_size,
+              drop_remainder=False
           )
       ),
       trainer=cfg.TrainerConfig(

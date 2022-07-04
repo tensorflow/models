@@ -27,7 +27,6 @@ from official.vision.ops import preprocess_ops
 @dataclasses.dataclass
 class COCODataConfig(cfg.DataConfig):
   """Data config for COCO."""
-  file_type: str = 'tfrecord'
   output_size: Tuple[int, int] = (1333, 1333)
   max_num_boxes: int = 100
   resize_scales: Tuple[int, ...] = (
