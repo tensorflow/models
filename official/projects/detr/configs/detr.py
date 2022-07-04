@@ -26,7 +26,6 @@ from official.vision.configs import backbones
 from official.projects.detr import optimization
 from official.projects.detr.dataloaders import coco
 
-# pylint: disable=missing-class-docstring
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
   """Input config for training."""
@@ -35,7 +34,6 @@ class DataConfig(cfg.DataConfig):
   is_training: bool = False
   dtype: str = 'bfloat16'
   decoder: common.DataDecoder = common.DataDecoder()
-  #parser: Parser = Parser()
   shuffle_buffer_size: int = 10000
   file_type: str = 'tfrecord'
 
