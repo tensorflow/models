@@ -27,23 +27,6 @@ from official.projects.detr import optimization
 from official.projects.detr.dataloaders import coco
 
 # pylint: disable=missing-class-docstring
-# Keep for backward compatibility.
-@dataclasses.dataclass
-class TfExampleDecoder(common.TfExampleDecoder):
-  """A simple TF Example decoder config."""
-
-
-# Keep for backward compatibility.
-@dataclasses.dataclass
-class TfExampleDecoderLabelMap(common.TfExampleDecoderLabelMap):
-  """TF Example decoder with label map config."""
-
-
-# Keep for backward compatibility.
-@dataclasses.dataclass
-class DataDecoder(common.DataDecoder):
-  """Data decoder config."""
-
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
   """Input config for training."""
