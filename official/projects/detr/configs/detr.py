@@ -90,7 +90,7 @@ def detr_coco() -> cfg.ExperimentConfig:
           model=Detr(
               num_classes=81,
               input_size=[1333, 1333, 3],
-              norm_activation=common.NormActivation(use_sync_bn=False)),
+              norm_activation=common.NormActivation()),
           losses=Losses(),
           train_data=coco.COCODataConfig(
               tfds_name='coco/2017',
@@ -161,7 +161,7 @@ def detr_coco() -> cfg.ExperimentConfig:
                                        'instances_val2017.json'),
           model=Detr(
               input_size=[1333, 1333, 3],
-              norm_activation=common.NormActivation(use_sync_bn=False)),
+              norm_activation=common.NormActivation()),
           losses=Losses(),
           train_data=DataConfig(
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'train*'),
@@ -225,7 +225,7 @@ def detr_coco() -> cfg.ExperimentConfig:
           model=Detr(
               num_classes=81,
               input_size=[1333, 1333, 3],
-              norm_activation=common.NormActivation(use_sync_bn=False)),
+              norm_activation=common.NormActivation()),
           losses=Losses(
               class_offset=1
           ),
