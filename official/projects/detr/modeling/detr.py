@@ -100,7 +100,7 @@ class DETR(tf.keras.Model):
   class and box heads.
   """
 
-  def __init__(self, backbone, num_queries, hidden_size, num_classes,
+  def __init__(self, num_queries, hidden_size, num_classes,
                num_encoder_layers=6,
                num_decoder_layers=6,
                dropout_rate=0.1,
@@ -116,9 +116,7 @@ class DETR(tf.keras.Model):
       raise ValueError("hidden_size must be a multiple of 2.")
     # TODO(frederickliu): Consider using the backbone factory.
     # TODO(frederickliu): Add to factory once we get skeleton code in.
-    #self._backbone = resnet.ResNet(101, bn_trainable=False)
-    # (gunho) use backbone factory
-    self._backbone = backbone
+    self._backbone = resnet.ResNet(50, bn_trainable=False)
 
   def build(self, input_shape=None):
     self._input_proj = tf.keras.layers.Conv2D(
