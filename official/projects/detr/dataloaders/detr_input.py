@@ -14,15 +14,13 @@
 
 """COCO data loader for DETR."""
 
-from typing import Optional, Tuple
+from typing import Tuple
 import tensorflow as tf
 
 from official.vision.dataloaders import parser
-from official.vision.dataloaders import utils
 
 from official.vision.ops import box_ops
 from official.vision.ops import preprocess_ops
-from official.core import input_reader
 
 RESIZE_SCALES = (
       480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800)
