@@ -25,7 +25,7 @@ from official.modeling import hyperparams
 from official.modeling import optimization
 from official.vision.configs import common
 from official.vision.configs import decoders
-from official.vision.configs.google import backbones
+from official.vision.configs import backbones
 
 
 _COCO_INPUT_PATH_BASE = 'coco/tfrecords'
