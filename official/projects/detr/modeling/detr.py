@@ -114,10 +114,6 @@ class DETR(tf.keras.Model):
     self._dropout_rate = dropout_rate
     if hidden_size % 2 != 0:
       raise ValueError("hidden_size must be a multiple of 2.")
-    # TODO(frederickliu): Consider using the backbone factory.
-    # TODO(frederickliu): Add to factory once we get skeleton code in.
-    #self._backbone = resnet.ResNet(101, bn_trainable=False)
-    # (gunho) use backbone factory
     self._backbone = backbone
 
   def build(self, input_shape=None):

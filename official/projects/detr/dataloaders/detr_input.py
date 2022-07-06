@@ -92,7 +92,6 @@ class Parser(parser.Parser):
 
     image_shape = tf.shape(image)[:2]
     boxes = box_ops.denormalize_boxes(boxes, image_shape)
-    gt_boxes = boxes
     short_side = scales[0]
     image, image_info = preprocess_ops.resize_image(
         image,
@@ -126,7 +125,6 @@ class Parser(parser.Parser):
 
   def _parse_eval_data(self, data):
     """Parses data for training and evaluation."""
-    groundtruths = {}
     classes = data['groundtruth_classes']
     boxes = data['groundtruth_boxes']
     is_crowd = data['groundtruth_is_crowd']
