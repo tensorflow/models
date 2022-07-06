@@ -116,7 +116,7 @@ class DetectionTest(tf.test.TestCase):
       state = task.aggregate_logs(step_outputs=logs)
       task.reduce_aggregated_logs(state)
 
-class DetectionTest_tfds(tf.test.TestCase):
+class DetectionTFDSTest(tf.test.TestCase):
 
   def test_train_step(self):
     config = detr_cfg.DetrTask(
@@ -177,7 +177,7 @@ class DetectionTest_tfds(tf.test.TestCase):
       state = task.aggregate_logs(step_outputs=logs)
       task.reduce_aggregated_logs(state)
 
-class DetectionTest_tfrecord(tf.test.TestCase):
+class DetectionTFRecordTest(tf.test.TestCase):
 
   def test_train_step(self):
     config = detr_cfg.DetrTask(
