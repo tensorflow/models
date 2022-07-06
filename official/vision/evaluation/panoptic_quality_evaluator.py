@@ -181,4 +181,14 @@ class PanopticQualityEvaluator:
         self._pq_metric_module.compare_and_accumulate(
             groundtruths_, predictions_)
     else:
-      self._pq_metric_module.compare_and_accumulate(groundtruths, predictions)
+      for idx in range(len(groundtruths['category_mask'])):
+        groundtruths_ = {
+            'category_mask': groundtruths['category_mask'][idx],
+            'instance_mask': groundtruths['instance_mask'][idx]
+        }
+        predictions_ = {
+            'category_mask': predictions['category_mask'][idx],
+            'instance_mask': predictions['instance_mask'][idx]
+        }
+        self._pq_metric_module.compare_and_accumulate(groundtruths_,
+                                                      predictions_)
