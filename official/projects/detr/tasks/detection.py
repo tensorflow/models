@@ -54,6 +54,7 @@ class DectectionTask(base_task.Task):
         input_specs=input_specs,
         backbone_config=self._task_config.model.backbone,
         norm_activation_config=self._task_config.model.norm_activation)
+
     model = detr.DETR(backbone, self._task_config.model.num_queries,
                       self._task_config.model.hidden_size,
                       self._task_config.model.num_classes,
