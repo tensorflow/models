@@ -58,7 +58,9 @@ class DataConfig(cfg.DataConfig):
   aug_max_aspect_ratio: float = 2.0
   aug_min_area_ratio: float = 0.49
   aug_max_area_ratio: float = 1.0
-  aug_type: Optional[str] = None  # 'autoaug', 'randaug', or None
+  aug_type: Optional[
+      common.Augmentation] = None  # AutoAugment and RandAugment.
+  mixup_and_cutmix: Optional[common.MixupAndCutmix] = None
   image_field_key: str = 'image/encoded'
   label_field_key: str = 'clip/label/index'
 
