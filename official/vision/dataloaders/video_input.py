@@ -286,18 +286,28 @@ class Parser(parser.Parser):
       self._audio_feature = input_params.audio_feature
       self._audio_shape = input_params.audio_feature_shape
 
-    self._augmenter = None
-    if input_params.aug_type is not None:
-      aug_type = input_params.aug_type
-      if aug_type == 'autoaug':
+    aug_type = input_params.aug_type
+    if aug_type is not None:
+      if aug_type.type == 'autoaug':
         logging.info('Using AutoAugment.')
-        self._augmenter = augment.AutoAugment()
-      elif aug_type == 'randaug':
+        self._augmenter = augment.AutoAugment(
+            augmentation_name=aug_type.autoaug.augmentation_name,
+            cutout_const=aug_type.autoaug.cutout_const,
+            translate_const=aug_type.autoaug.translate_const)
+      elif aug_type.type == 'randaug':
         logging.info('Using RandAugment.')
-        self._augmenter = augment.RandAugment()
+        self._augmenter = augment.RandAugment(
+            num_layers=aug_type.randaug.num_layers,
+            magnitude=aug_type.randaug.magnitude,
+            cutout_const=aug_type.randaug.cutout_const,
+            translate_const=aug_type.randaug.translate_const,
+            prob_to_apply=aug_type.randaug.prob_to_apply,
+            exclude_ops=aug_type.randaug.exclude_ops)
       else:
-        raise ValueError('Augmentation policy {} is not supported.'.format(
-            aug_type))
+        raise ValueError(
+            'Augmentation policy {} not supported.'.format(aug_type.type))
+    else:
+      self._augmenter = None
 
   def _parse_train_data(
       self, decoded_tensors: Dict[str, tf.Tensor]

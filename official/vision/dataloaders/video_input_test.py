@@ -21,6 +21,7 @@ from PIL import Image
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+from official.vision.configs import common
 from official.vision.configs import video_classification as exp_cfg
 from official.vision.dataloaders import video_input
 
@@ -173,7 +174,8 @@ class VideoAndLabelParserTest(tf.test.TestCase):
     params.min_image_size = 224
 
     params.temporal_stride = 2
-    params.aug_type = 'autoaug'
+    params.aug_type = common.Augmentation(
+        type='autoaug', autoaug=common.AutoAugment())
 
     decoder = video_input.Decoder()
     parser = video_input.Parser(params).parse_fn(params.is_training)
