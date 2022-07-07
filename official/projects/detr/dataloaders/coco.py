@@ -145,7 +145,7 @@ class COCODataLoader():
         self._params.global_batch_size
     ) if input_context else self._params.global_batch_size
     dataset = dataset.batch(
-        per_replica_batch_size, drop_remainder=self._params.is_training)
+        per_replica_batch_size, drop_remainder=self._params.drop_remainder)
     return dataset
 
   def load(self, input_context: Optional[tf.distribute.InputContext] = None):
