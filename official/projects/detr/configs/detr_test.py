@@ -27,11 +27,21 @@ from official.projects.detr.dataloaders import coco
 class DetrTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(('detr_coco',))
+  def test_detr_configs_tfds(self, config_name):
+    config = exp_factory.get_exp_config(config_name)
+    self.assertIsInstance(config, cfg.ExperimentConfig)
+    self.assertIsInstance(config.task, exp_cfg.DetrTask)
+    self.assertIsInstance(config.task.train_data, coco.COCODataConfig)
+    config.task.train_data.is_training = None
+    with self.assertRaises(KeyError):
+      config.validate()
+
+  @parameterized.parameters(('detr_coco_tfrecord'), ('detr_coco_tfds'))
   def test_detr_configs(self, config_name):
     config = exp_factory.get_exp_config(config_name)
     self.assertIsInstance(config, cfg.ExperimentConfig)
-    self.assertIsInstance(config.task, exp_cfg.DetectionConfig)
-    self.assertIsInstance(config.task.train_data, coco.COCODataConfig)
+    self.assertIsInstance(config.task, exp_cfg.DetrTask)
+    self.assertIsInstance(config.task.train_data, cfg.DataConfig)
     config.task.train_data.is_training = None
     with self.assertRaises(KeyError):
       config.validate()

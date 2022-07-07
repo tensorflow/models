@@ -24,7 +24,6 @@ import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.projects.detr.modeling import transformer
-from official.vision.modeling.backbones import resnet
 
 
 def position_embedding_sine(attention_mask,
@@ -100,7 +99,11 @@ class DETR(tf.keras.Model):
   class and box heads.
   """
 
-  def __init__(self, num_queries, hidden_size, num_classes,
+  def __init__(self,
+               backbone,
+               num_queries,
+               hidden_size,
+               num_classes,
                num_encoder_layers=6,
                num_decoder_layers=6,
                dropout_rate=0.1,
@@ -114,9 +117,7 @@ class DETR(tf.keras.Model):
     self._dropout_rate = dropout_rate
     if hidden_size % 2 != 0:
       raise ValueError("hidden_size must be a multiple of 2.")
-    # TODO(frederickliu): Consider using the backbone factory.
-    # TODO(frederickliu): Add to factory once we get skeleton code in.
-    self._backbone = resnet.ResNet(50, bn_trainable=False)
+    self._backbone = backbone
 
   def build(self, input_shape=None):
     self._input_proj = tf.keras.layers.Conv2D(
@@ -159,6 +160,7 @@ class DETR(tf.keras.Model):
 
   def get_config(self):
     return {
+        "backbone": self._backbone,
         "num_queries": self._num_queries,
         "hidden_size": self._hidden_size,
         "num_classes": self._num_classes,
