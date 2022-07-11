@@ -51,6 +51,9 @@ class CheckpointManagerTest(tf.test.TestCase):
     first_path = manager.save()
     second_path = manager.save()
 
+    savedmodel = savedmodel_checkpoint_manager.make_saved_modules_directory_name(
+        manager.latest_checkpoint)
+    self.assertEqual(savedmodel, manager.latest_savedmodel)
     self.assertTrue(_models_exist(second_path, models.keys()))
     self.assertFalse(_models_exist(first_path, models.keys()))
 
