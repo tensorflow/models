@@ -97,6 +97,7 @@ class ImageClassificationTask(cfg.TaskConfig):
   init_checkpoint_modules: str = 'all'  # all or backbone
   model_output_keys: Optional[List[int]] = dataclasses.field(
       default_factory=list)
+  freeze_backbone: bool = False
 
 
 @exp_factory.register_config_factory('image_classification')
