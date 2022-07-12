@@ -63,6 +63,7 @@ class ImageClassificationTask(cfg.TaskConfig):
   evaluation: Evaluation = Evaluation()
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: str = 'all'  # all or backbone
+  freeze_backbone: bool = False
 
 
 IMAGENET_TRAIN_EXAMPLES = 1281167
