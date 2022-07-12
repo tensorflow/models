@@ -26,18 +26,21 @@ from official.vision.dataloaders import tfexample_utils
 class TfExampleDecoderTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(
-      (100, 100, 0, True),
-      (100, 100, 1, True),
-      (100, 100, 2, True),
-      (100, 100, 0, False),
-      (100, 100, 1, False),
-      (100, 100, 2, False),
+      (100, 100, 0, True, True),
+      (100, 100, 1, True, True),
+      (100, 100, 2, True, True),
+      (100, 100, 0, False, True),
+      (100, 100, 1, False, True),
+      (100, 100, 2, False, True),
+      (100, 100, 0, True, False),
+      (100, 100, 1, True, False),
+      (100, 100, 2, True, False),
+      (100, 100, 0, False, False),
+      (100, 100, 1, False, False),
+      (100, 100, 2, False, False),
   )
-  def test_result_shape(self,
-                        image_height,
-                        image_width,
-                        num_instances,
-                        regenerate_source_id):
+  def test_result_shape(self, image_height, image_width, num_instances,
+                        regenerate_source_id, fill_image_size):
     decoder = tf_example_decoder.TfExampleDecoder(
         include_mask=True, regenerate_source_id=regenerate_source_id)
 
@@ -45,7 +48,9 @@ class TfExampleDecoderTest(tf.test.TestCase, parameterized.TestCase):
         image_height=image_height,
         image_width=image_width,
         image_channel=3,
-        num_instances=num_instances).SerializeToString()
+        num_instances=num_instances,
+        fill_image_size=fill_image_size,
+    ).SerializeToString()
     decoded_tensors = decoder.decode(
         tf.convert_to_tensor(value=serialized_example))
 
