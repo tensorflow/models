@@ -194,9 +194,12 @@ def create_3d_image_test_example(image_height: int, image_width: int,
   return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
-def create_detection_test_example(image_height: int, image_width: int,
-                                  image_channel: int,
-                                  num_instances: int) -> tf.train.Example:
+def create_detection_test_example(
+    image_height: int,
+    image_width: int,
+    image_channel: int,
+    num_instances: int,
+    fill_image_size: bool = True) -> tf.train.Example:
   """Creates and returns a test example containing box and mask annotations.
 
   Args:
@@ -204,6 +207,7 @@ def create_detection_test_example(image_height: int, image_width: int,
     image_width: The width of test image.
     image_channel: The channel of test image.
     num_instances: The number of object instances per image.
+    fill_image_size: If image height and width will be added to the example.
 
   Returns:
     A tf.train.Example for testing.
@@ -233,36 +237,41 @@ def create_detection_test_example(image_height: int, image_width: int,
     for _ in range(num_instances):
       mask = make_image_bytes([image_height, image_width], fmt='PNG')
       masks.append(mask)
-  return tf.train.Example(
-      features=tf.train.Features(
-          feature={
-              'image/encoded': (tf.train.Feature(
-                  bytes_list=tf.train.BytesList(value=[image]))),
-              'image/source_id': (tf.train.Feature(
-                  bytes_list=tf.train.BytesList(value=[DUMP_SOURCE_ID]))),
-              'image/height': (tf.train.Feature(
-                  int64_list=tf.train.Int64List(value=[image_height]))),
-              'image/width': (tf.train.Feature(
-                  int64_list=tf.train.Int64List(value=[image_width]))),
-              'image/object/bbox/xmin': (tf.train.Feature(
-                  float_list=tf.train.FloatList(value=xmins))),
-              'image/object/bbox/xmax': (tf.train.Feature(
-                  float_list=tf.train.FloatList(value=xmaxs))),
-              'image/object/bbox/ymin': (tf.train.Feature(
-                  float_list=tf.train.FloatList(value=ymins))),
-              'image/object/bbox/ymax': (tf.train.Feature(
-                  float_list=tf.train.FloatList(value=ymaxs))),
-              'image/object/class/label': (tf.train.Feature(
-                  int64_list=tf.train.Int64List(value=labels))),
-              'image/object/class/text': (tf.train.Feature(
-                  bytes_list=tf.train.BytesList(value=labels_text))),
-              'image/object/is_crowd': (tf.train.Feature(
-                  int64_list=tf.train.Int64List(value=is_crowds))),
-              'image/object/area': (tf.train.Feature(
-                  float_list=tf.train.FloatList(value=areas))),
-              'image/object/mask': (tf.train.Feature(
-                  bytes_list=tf.train.BytesList(value=masks))),
-          }))
+
+  feature = {
+      'image/encoded':
+          (tf.train.Feature(bytes_list=tf.train.BytesList(value=[image]))),
+      'image/source_id': (tf.train.Feature(
+          bytes_list=tf.train.BytesList(value=[DUMP_SOURCE_ID]))),
+      'image/object/bbox/xmin':
+          (tf.train.Feature(float_list=tf.train.FloatList(value=xmins))),
+      'image/object/bbox/xmax':
+          (tf.train.Feature(float_list=tf.train.FloatList(value=xmaxs))),
+      'image/object/bbox/ymin':
+          (tf.train.Feature(float_list=tf.train.FloatList(value=ymins))),
+      'image/object/bbox/ymax':
+          (tf.train.Feature(float_list=tf.train.FloatList(value=ymaxs))),
+      'image/object/class/label':
+          (tf.train.Feature(int64_list=tf.train.Int64List(value=labels))),
+      'image/object/class/text':
+          (tf.train.Feature(bytes_list=tf.train.BytesList(value=labels_text))),
+      'image/object/is_crowd':
+          (tf.train.Feature(int64_list=tf.train.Int64List(value=is_crowds))),
+      'image/object/area':
+          (tf.train.Feature(float_list=tf.train.FloatList(value=areas))),
+      'image/object/mask':
+          (tf.train.Feature(bytes_list=tf.train.BytesList(value=masks))),
+  }
+
+  if fill_image_size:
+    feature.update({
+        'image/height': (tf.train.Feature(
+            int64_list=tf.train.Int64List(value=[image_height]))),
+        'image/width': (tf.train.Feature(
+            int64_list=tf.train.Int64List(value=[image_width]))),
+    })
+
+  return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
 def create_segmentation_test_example(image_height: int, image_width: int,
