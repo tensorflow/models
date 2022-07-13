@@ -21,7 +21,7 @@ import tensorflow as tf
 from official.nlp.modeling.layers import kernel_attention as attention
 
 
-_FEATURE_TRANSFORM = ['relu', 'elu', 'exp']
+_FEATURE_TRANSFORM = ['relu', 'elu', 'exp', 'expplus']
 _REDRAW = [True, False]
 _TRAINING = [True, False]
 _IS_SHORT_SEQ = [True, False]
