@@ -14,6 +14,7 @@
 
 """Provides the `ExportSavedModel` action and associated helper classes."""
 
+import os
 import re
 
 from typing import Callable, Optional
@@ -77,9 +78,9 @@ class ExportFileManager:
         One common alternative maybe be to use the current global step count,
         for instance passing `next_id_fn=global_step.numpy`.
     """
-    self._base_name = base_name
+    self._base_name = os.path.normpath(base_name)
     self._max_to_keep = max_to_keep
-    self._next_id_fn = next_id_fn or _CounterIdFn(base_name)
+    self._next_id_fn = next_id_fn or _CounterIdFn(self._base_name)
 
   @property
   def managed_files(self):
