@@ -49,8 +49,7 @@ class BertEncoderV2(tf.keras.layers.Layer):
     num_attention_heads: The number of attention heads for each transformer. The
       hidden size must be divisible by the number of attention heads.
     max_sequence_length: The maximum sequence length that this encoder can
-      consume. If None, max_sequence_length uses the value from sequence length.
-      This determines the variable shape for positional embeddings.
+      consume. This determines the variable shape for positional embeddings.
     type_vocab_size: The number of types that the 'type_ids' input can take.
     inner_dim: The output dimension of the first Dense layer in a two-layer
       feedforward network for each transformer.
