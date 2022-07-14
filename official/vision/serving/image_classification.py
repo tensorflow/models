@@ -78,6 +78,9 @@ class ClassificationModule(export_base.ExportModule):
                 parallel_iterations=32))
 
     logits = self.inference_step(images)
-    probs = tf.nn.softmax(logits)
+    if self.params.task.train_data.is_multilabel:
+      probs = tf.math.sigmoid(logits)
+    else:
+      probs = tf.nn.softmax(logits)
 
     return {'logits': logits, 'probs': probs}
