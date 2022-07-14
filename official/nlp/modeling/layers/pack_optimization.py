@@ -202,10 +202,20 @@ class StridedTransformerScaffold(transformer_scaffold.TransformerScaffold):
   """TransformerScaffold for packing optimization to stride over inputs."""
 
   def call(self, inputs, stride: tf.Tensor, training=None):
-    if isinstance(inputs, (list, tuple)) and len(inputs) == 2:
-      input_tensor, attention_mask = inputs
+    if isinstance(inputs, (list, tuple)):
+      if len(inputs) == 2:
+        input_tensor, attention_mask = inputs
+        key_value = None
+      elif len(inputs) == 3:
+        input_tensor, key_value, attention_mask = inputs
+      else:
+        raise ValueError('Unexpected inputs to %s with length at %d' %
+                         (self.__class__, len(inputs)))
     else:
-      input_tensor, attention_mask = (inputs, None)
+      input_tensor, key_value, attention_mask = (inputs, None, None)
+
+    if key_value is None:
+      key_value = input_tensor
 
     if self._norm_first:
       source_tensor = input_tensor[:, ::stride, :]
@@ -215,7 +225,7 @@ class StridedTransformerScaffold(transformer_scaffold.TransformerScaffold):
     target_tensor = input_tensor[:, ::stride, :]
 
     attention_output = self._attention_layer(
-        query=target_tensor, value=input_tensor, attention_mask=attention_mask,
+        query=target_tensor, value=key_value, attention_mask=attention_mask,
         training=training)
     attention_output = self._attention_dropout(attention_output,
                                                training=training)

@@ -119,9 +119,15 @@ class TransformerScaffold(tf.keras.layers.Layer):
     self._bias_constraint = tf.keras.constraints.get(bias_constraint)
 
   def build(self, input_shape):
-    input_tensor_shape = input_shape[0] if (
-        len(input_shape) == 2) else input_shape
-    input_tensor_shape = tf.TensorShape(input_tensor_shape)
+    if isinstance(input_shape, tf.TensorShape):
+      input_tensor_shape = input_shape
+    elif isinstance(input_shape, (list, tuple)):
+      input_tensor_shape = tf.TensorShape(input_shape[0])
+    else:
+      raise ValueError(
+          "The type of input shape argument is not supported, got: %s" %
+          type(input_shape))
+
     if len(input_tensor_shape.as_list()) != 3:
       raise ValueError(
           "TransformerScaffold expects a three-dimensional input of "
@@ -271,17 +277,27 @@ class TransformerScaffold(tf.keras.layers.Layer):
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs, training=None):
-    if isinstance(inputs, (list, tuple)) and len(inputs) == 2:
-      input_tensor, attention_mask = inputs
+    if isinstance(inputs, (list, tuple)):
+      if len(inputs) == 2:
+        input_tensor, attention_mask = inputs
+        key_value = None
+      elif len(inputs) == 3:
+        input_tensor, key_value, attention_mask = inputs
+      else:
+        raise ValueError("Unexpected inputs to %s with length at %d" %
+                         (self.__class__, len(inputs)))
     else:
-      input_tensor, attention_mask = (inputs, None)
+      input_tensor, key_value, attention_mask = (inputs, None, None)
+
+    if key_value is None:
+      key_value = input_tensor
 
     if self._norm_first:
       source_tensor = input_tensor
       input_tensor = self._attention_layer_norm(input_tensor, training=training)
 
     attention_output = self._attention_layer(
-        query=input_tensor, value=input_tensor, attention_mask=attention_mask,
+        query=input_tensor, value=key_value, attention_mask=attention_mask,
         training=training)
     attention_output = self._attention_dropout(attention_output,
                                                training=training)
