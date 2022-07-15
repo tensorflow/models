@@ -103,6 +103,12 @@ ResNet-50    | Hourglass-52 | `deep_mask_head_rcnn_voc_r50_hg52.yaml`         | 
 ResNet-101   | Hourglass-52 | `deep_mask_head_rcnn_voc_r101_hg52.yaml`        | 34.4
 SpienNet-143 | Hourglass-52 | `deep_mask_head_rcnn_voc_spinenet143_hg52.yaml` | 38.7
 
+## Checkpoints
+This model takes Image + boxes as input and produces per-box instance
+masks as output.
+
+*   [Mask-RCNN SpineNet backbone](https://storage.cloud.google.com/tf_model_garden/vision/deepmac_maskrcnn/deepmarc_spinenet.zip)
+
 ## See also
 
 *   [DeepMAC model](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/deepmac.md)
