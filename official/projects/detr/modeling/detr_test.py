@@ -27,7 +27,9 @@ class DetrTest(tf.test.TestCase):
     image_size = 640
     batch_size = 2
     backbone = resnet.ResNet(50, bn_trainable=False)
-    model = detr.DETR(backbone, num_queries, hidden_size, num_classes)
+    backbone_endpoint_name = '5'
+    model = detr.DETR(backbone, backbone_endpoint_name, num_queries,
+                      hidden_size, num_classes)
     outs = model(tf.ones((batch_size, image_size, image_size, 3)))
     self.assertLen(outs, 6)  # intermediate decoded outputs.
     for out in outs:
@@ -50,6 +52,7 @@ class DetrTest(tf.test.TestCase):
   def test_get_from_config_detr(self):
     config = {
         'backbone': resnet.ResNet(50, bn_trainable=False),
+        'backbone_endpoint_name': '5',
         'num_queries': 2,
         'hidden_size': 4,
         'num_classes': 10,

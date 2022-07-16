@@ -36,7 +36,7 @@ from official.vision.ops import box_ops
 
 
 @task_factory.register_task_cls(detr_cfg.DetrTask)
-class DectectionTask(base_task.Task):
+class DetectionTask(base_task.Task):
   """A single-replica view of training procedure.
 
   DETR task provides artifacts for training/evalution procedures, including
@@ -55,7 +55,9 @@ class DectectionTask(base_task.Task):
         backbone_config=self._task_config.model.backbone,
         norm_activation_config=self._task_config.model.norm_activation)
 
-    model = detr.DETR(backbone, self._task_config.model.num_queries,
+    model = detr.DETR(backbone,
+                      self._task_config.model.backbone_endpoint_name,
+                      self._task_config.model.num_queries,
                       self._task_config.model.hidden_size,
                       self._task_config.model.num_classes,
                       self._task_config.model.num_encoder_layers,
