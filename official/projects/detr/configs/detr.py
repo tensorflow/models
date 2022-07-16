@@ -54,6 +54,7 @@ class Losses(hyperparams.Config):
 
 @dataclasses.dataclass
 class Detr(hyperparams.Config):
+  """Detr model definations."""
   num_queries: int = 100
   hidden_size: int = 256
   num_classes: int = 91  # 0: background
@@ -63,6 +64,7 @@ class Detr(hyperparams.Config):
   backbone: backbones.Backbone = backbones.Backbone(
       type='resnet', resnet=backbones.ResNet(model_id=50, bn_trainable=False))
   norm_activation: common.NormActivation = common.NormActivation()
+  backbone_endpoint_name: str = '5'
 
 
 @dataclasses.dataclass
