@@ -1,17 +1,15 @@
 # Waste Identification ML - ( Mask RCNN with TF Lite )
 
-This projects aims to develop a TensorFlow Lite model based Mask RCNN instance
-segmentation model for on-device inference.
+Develop an instance segmentation model for server side and on-device inference.
 
 ## Background
 
-The sustainability team at Google wants to build a computer vision based ML
-model for waste identification. An ML model which detects the trash objects in
-the images and can identify their material type and packaging type. This
-projects aims to accelerate innovation in the waste management industry by
-providing no-cist open sourced ML models. This would help reduce barriers for
-technology adoption, and provide much needed efficientcy, traceability &
-transparency, which inturn can help increase recycling rates.
+This projects aims to accelerate innovation in the waste management industry by
+providing open source ML models for waste identification. Specifically, the
+project uses Computer Vision to identify the material and packaging type of
+trash in images. The goal is to help reduce barriers for technology adoption,
+and provide efficiency, traceability & transparency, which in-turn can help
+increase recycling rates.
 
 ## Code Structure
 This is an implementation of Mask RCNN based on Python 3 and Tensorflow 2.x. The
@@ -26,8 +24,9 @@ object in the image. The repository includes :
 * Evaluation metric of the validation dataset.
 * Example of training on your own custom dataset.
 
-The code is designed in such a way so that it can be extend. If you use in your
-research or industrial solutions then please consider citing this repository.
+The code is designed in such a way so that it can be extended. If you use it in
+your research or industrial solutions, then please consider citing this
+repository.
 
 ## Pre-requisites
 
@@ -64,23 +63,23 @@ research or industrial solutions then please consider citing this repository.
     accordingly.
 
 -   CAREFULLY choose a TPU type which can be turned ON and OFF after usage.
-    Preferred one is below - `bash ctpu up --name waste-identification --zone
+    The preferred one is below - `bash ctpu up --name waste-identification --zone
     us-central1-a --tpu-size=v3-8 --tf-version nightly --project
-    waste-identification-ml` After the execution of the above command you will
+    waste-identification-ml` After the execution of the above command, you will
     see 2 virtual devices with name "waste-identification" each in TPU and
     COMPUTE ENGINE section.
 
 ### ***Get into the virtual machine***
 
-The virtual machine which is a TPU host can be seen in the COMPUTE ENGINE
+The virtual machine, which is a TPU host, can be seen in the COMPUTE ENGINE
 section of GCP. We will use this virtual machine to start the training process.
 This machine will use another virtual instance of TPU that is found in the TPU
 section of the GCP. To get inside the TPU host virtual machine :
 
--   Go the COMPUTE ENGINE section in the GCP
+-   Go to the COMPUTE ENGINE section in the GCP
 -   Find your instance there
--   Under the "Connect" tab of your instance you will see "SSH"
--   click on SSH and it will open another window which will take you inside the
+-   Under the "Connect" tab of your instance, you will see "SSH",
+-   Click on SSH and it will open another window which will take you inside the
     virtual machine.
 -   Use the following commands inside the virtual machine window :
 
@@ -88,13 +87,4 @@ section of the GCP. To get inside the TPU host virtual machine :
 $ git clone https://github.com/tensorflow/models.git
 $ cd models
 $ pip3 install -r official/requirements.txt
-```
-
-## Roadmap
-
--   Provide ML model pre-trained weights with Docker to run for detection of
-    Material type.
-
--   Deploy a model tp detect the packaging type of the objects.
-
--   Deploy a model to detect the brands of the object.
+``
