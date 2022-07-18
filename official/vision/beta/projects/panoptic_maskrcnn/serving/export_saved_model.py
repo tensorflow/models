@@ -39,14 +39,23 @@ import tensorflow as tf
 
 from official.core import exp_factory
 from official.modeling import hyperparams
-from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_maskrcnn as cfg  # pylint: disable=unused-import
+# pylint: disable=unused-import
+from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_deeplab as panoptic_deeplab_cfg
+from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_maskrcnn as panoptic_maskrcnn_cfg
+# pylint: enable=unused-import
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import factory
-from official.vision.beta.projects.panoptic_maskrcnn.serving import panoptic_segmentation
-from official.vision.beta.projects.panoptic_maskrcnn.tasks import panoptic_maskrcnn as task  # pylint: disable=unused-import
+from official.vision.beta.projects.panoptic_maskrcnn.serving import panoptic_deeplab
+from official.vision.beta.projects.panoptic_maskrcnn.serving import panoptic_maskrcnn
+# pylint: disable=unused-import
+from official.vision.beta.projects.panoptic_maskrcnn.tasks import panoptic_deeplab as panoptic_deeplab_task
+from official.vision.beta.projects.panoptic_maskrcnn.tasks import panoptic_maskrcnn as panoptic_maskrcnn_task
+# pylint: enable=unused-import
 from official.vision.serving import export_saved_model_lib
 
 FLAGS = flags.FLAGS
 
+flags.DEFINE_string('model', 'panoptic_maskrcnn',
+                    'model type, one of panoptic_maskrcnn and panoptic_deeplab')
 flags.DEFINE_string('experiment', 'panoptic_fpn_coco',
                     'experiment type, e.g. panoptic_fpn_coco')
 flags.DEFINE_string('export_dir', None, 'The export directory.')
@@ -89,16 +98,23 @@ def main(_):
   input_image_size = [int(x) for x in FLAGS.input_image_size.split(',')]
   input_specs = tf.keras.layers.InputSpec(
       shape=[FLAGS.batch_size, *input_image_size, 3])
-  model = factory.build_panoptic_maskrcnn(
-      input_specs=input_specs, model_config=params.task.model)
 
-  export_module = panoptic_segmentation.PanopticSegmentationModule(
+  if FLAGS.model == 'panoptic_deeplab':
+    build_model = factory.build_panoptic_deeplab
+    panoptic_module = panoptic_deeplab.PanopticSegmentationModule
+  elif FLAGS.model == 'panoptic_maskrcnn':
+    build_model = factory.build_panoptic_maskrcnn
+    panoptic_module = panoptic_maskrcnn.PanopticSegmentationModule
+  else:
+    raise ValueError('Unsupported model type: %s' % FLAGS.model)
+
+  model = build_model(input_specs=input_specs, model_config=params.task.model)
+  export_module = panoptic_module(
       params=params,
       model=model,
       batch_size=FLAGS.batch_size,
       input_image_size=[int(x) for x in FLAGS.input_image_size.split(',')],
       num_channels=3)
-
   export_saved_model_lib.export_inference_graph(
       input_type=FLAGS.input_type,
       batch_size=FLAGS.batch_size,
@@ -109,7 +125,6 @@ def main(_):
       export_module=export_module,
       export_checkpoint_subdir='checkpoint',
       export_saved_model_subdir='saved_model')
-
 
 if __name__ == '__main__':
   app.run(main)
