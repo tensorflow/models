@@ -17,12 +17,12 @@ Mask RCNN is a state-of-art deep learning model for instance image segmentation,
 
 | Model categories | Model backbone | Model type | GCP bucket path |
 | ------ | ------ | ----- | ------ |
-| Material Model | Resnet | saved model | [click here](gs://official_release/version_1/material_model/saved_model/) |
-| | | TFLite | [click here](gs://official_release/version_1/material_model/tflite_model/) |
-| Material Form model | Resnet | saved model | [click here](gs://official_release/version_1/material_form_model/saved_model/) |
-| | |TFLite | [click here](gs://official_release/version_1/material_form_model/tflite_model/) |
-|Plastic model | Resnet| saved model | [click here](gs://official_release/version_1/plastic_types_model/saved_model/) |
-| | |TFLite | [click here](gs://official_release/version_1/plastic_types_model/tflite_model/) |
+| Material Model | Resnet | saved model | gs://official_release/version_1/material_model/saved_model/ |
+| | | TFLite | gs://official_release/version_1/material_model/tflite_model/ |
+| Material Form model | Resnet | saved model | gs://official_release/version_1/material_form_model/saved_model/ |
+| | |TFLite | gs://official_release/version_1/material_form_model/tflite_model/ |
+|Plastic model | Resnet| saved model | gs://official_release/version_1/plastic_types_model/saved_model/ |
+| | |TFLite | gs://official_release/version_1/plastic_types_model/tflite_model/ |
 
 ## Installation & Download
 
