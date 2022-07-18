@@ -258,7 +258,7 @@ class VisionTransformer(tf.keras.Model):
                patch_size=16,
                hidden_size=768,
                representation_size=0,
-               classifier='token',
+               pooler='token',
                kernel_regularizer=None,
                original_init: bool = True,
                pos_embed_shape: Optional[Tuple[int, int]] = None):
@@ -289,7 +289,7 @@ class VisionTransformer(tf.keras.Model):
     x = tf.reshape(x, [-1, seq_len, hidden_size])
 
     # If we want to add a class token, add it here.
-    if classifier == 'token':
+    if pooler == 'token':
       x = TokenLayer(name='cls')(x)
 
     x = Encoder(
@@ -305,12 +305,14 @@ class VisionTransformer(tf.keras.Model):
         pos_embed_origin_shape=pos_embed_shape,
         pos_embed_target_shape=pos_embed_target_shape)(x)
 
-    if classifier == 'token':
+    if pooler == 'token':
       x = x[:, 0]
-    elif classifier == 'gap':
+    elif pooler == 'gap':
       x = tf.reduce_mean(x, axis=1)
+    elif pooler == 'none':
+      x = tf.identity(x, name='encoded_tokens')
     else:
-      raise ValueError(f'unrecognized classifier type: {classifier}')
+      raise ValueError(f'unrecognized pooler type: {pooler}')
 
     if representation_size:
       x = tf.keras.layers.Dense(
@@ -322,11 +324,14 @@ class VisionTransformer(tf.keras.Model):
       x = tf.nn.tanh(x)
     else:
       x = tf.identity(x, name='pre_logits')
-    endpoints = {
-        'pre_logits':
-            tf.reshape(x, [-1, 1, 1, representation_size or hidden_size])
-    }
 
+    if pooler == 'none':
+      endpoints = {'encoded_tokens': x}
+    else:
+      endpoints = {
+          'pre_logits':
+              tf.reshape(x, [-1, 1, 1, representation_size or hidden_size])
+      }
     super(VisionTransformer, self).__init__(inputs=inputs, outputs=endpoints)
 
 
@@ -354,7 +359,7 @@ def build_vit(input_specs,
       patch_size=backbone_cfg.patch_size,
       hidden_size=backbone_cfg.hidden_size,
       representation_size=backbone_cfg.representation_size,
-      classifier=backbone_cfg.classifier,
+      pooler=backbone_cfg.pooler,
       kernel_regularizer=l2_regularizer,
       original_init=backbone_cfg.original_init,
       pos_embed_shape=backbone_cfg.pos_embed_shape)
