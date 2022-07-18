@@ -37,6 +37,21 @@ class VisionTransformerTest(parameterized.TestCase, tf.test.TestCase):
     _ = network(inputs)
     self.assertEqual(network.count_params(), params_count)
 
+  def test_posembedding_interpolation(self):
+    tf.keras.backend.set_image_data_format('channels_last')
+    input_size = 256
+    input_specs = tf.keras.layers.InputSpec(
+        shape=[2, input_size, input_size, 3])
+    network = vit.VisionTransformer(
+        input_specs=input_specs,
+        patch_size=16,
+        classifier='gap',
+        pos_embed_shape=(14, 14))  # (224 // 16)
+
+    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    output = network(inputs)['pre_logits']
+    self.assertEqual(output.shape, [1, 1, 1, 768])
+
 
 if __name__ == '__main__':
   tf.test.main()
