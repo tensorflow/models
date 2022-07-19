@@ -16,9 +16,10 @@
 from typing import Optional
 
 import tensorflow as tf
+
 from official.modeling import tf_utils
 from official.projects.yt8m.configs import yt8m as yt8m_cfg
-from official.projects.yt8m.modeling import yt8m_agg_models
+from official.projects.yt8m.modeling import nn_layers
 from official.projects.yt8m.modeling import yt8m_model_utils as utils
 
 layers = tf.keras.layers
@@ -171,7 +172,7 @@ class DbofModel(tf.keras.Model):
     activation = self._act_fn(activation)
     tf.summary.histogram("hidden1_output", activation)
 
-    aggregated_model = getattr(yt8m_agg_models,
+    aggregated_model = getattr(nn_layers,
                                params.yt8m_agg_classifier_model)
     norm_args = dict(axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)
     output = aggregated_model().create_model(
