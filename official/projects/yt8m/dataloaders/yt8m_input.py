@@ -175,7 +175,7 @@ def _get_video_matrix(features, feature_size, dtype, max_frames,
 
   num_frames = tf.math.minimum(tf.shape(decoded_features)[0], max_frames)
   if dtype.is_integer:
-    feature_matrix = utils.Dequantize(decoded_features, max_quantized_value,
+    feature_matrix = utils.dequantize(decoded_features, max_quantized_value,
                                       min_quantized_value)
   else:
     feature_matrix = decoded_features

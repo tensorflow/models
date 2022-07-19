@@ -268,6 +268,5 @@ class AveragePrecisionCalculator(object):
       The normalized prediction.
     """
     denominator = numpy.max(predictions) - numpy.min(predictions)
-    ret = (predictions - numpy.min(predictions)) / numpy.max(
-        denominator, epsilon)
+    ret = (predictions - numpy.min(predictions)) / max(denominator, epsilon)
     return ret

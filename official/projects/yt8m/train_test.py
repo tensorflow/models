@@ -36,7 +36,7 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
     data_dir = os.path.join(self.get_temp_dir(), 'data')
     tf.io.gfile.makedirs(data_dir)
     self._data_path = os.path.join(data_dir, 'data.tfrecord')
-    examples = [utils.MakeYt8mExample() for _ in range(8)]
+    examples = [utils.make_yt8m_example() for _ in range(8)]
     tfexample_utils.dump_to_tfrecord(self._data_path, tf_examples=examples)
 
   @parameterized.named_parameters(
