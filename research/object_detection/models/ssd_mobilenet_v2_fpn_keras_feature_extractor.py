@@ -136,7 +136,8 @@ class SSDMobileNetV2FpnKerasFeatureExtractor(
         use_explicit_padding=self._use_explicit_padding,
         alpha=self._depth_multiplier,
         min_depth=self._min_depth,
-        include_top=False)
+        include_top=False,
+        input_shape=(None, None, input_shape[-1]))
     layer_names = [layer.name for layer in full_mobilenet_v2.layers]
     outputs = []
     for layer_idx in [4, 7, 14]:
