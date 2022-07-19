@@ -263,6 +263,12 @@ class VisionTransformer(tf.keras.Model):
                original_init: bool = True,
                pos_embed_shape: Optional[Tuple[int, int]] = None):
     """VisionTransformer initialization function."""
+    self._mlp_dim = mlp_dim
+    self._num_heads = num_heads
+    self._num_layers = num_layers
+    self._hidden_size = hidden_size
+    self._patch_size = patch_size
+
     inputs = tf.keras.Input(shape=input_specs.shape[1:])
 
     x = layers.Conv2D(
