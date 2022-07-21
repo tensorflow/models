@@ -132,9 +132,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     self._num_heads = num_attention_heads
     self._inner_dim = inner_dim
     self._inner_activation = inner_activation
-    self._attention_dropout = attention_dropout
     self._attention_dropout_rate = attention_dropout
-    self._output_dropout = output_dropout
     self._output_dropout_rate = output_dropout
     self._output_range = output_range
     self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
@@ -198,7 +196,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         num_heads=self._num_heads,
         key_dim=self._key_dim,
         value_dim=self._value_dim,
-        dropout=self._attention_dropout,
+        dropout=self._attention_dropout_rate,
         use_bias=self._use_bias,
         kernel_initializer=self._attention_initializer,
         bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
@@ -206,7 +204,8 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         output_shape=self._output_last_dim,
         name="self_attention",
         **common_kwargs)
-    self._attention_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
+    self._attention_dropout = tf.keras.layers.Dropout(
+        rate=self._attention_dropout_rate)
     # Use float32 in layernorm for numeric stability.
     # It is probably safe in mixed_float16, but we haven't validated this yet.
     self._attention_layer_norm = (
@@ -250,7 +249,8 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
-    self._output_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
+    self._output_dropout = tf.keras.layers.Dropout(
+        rate=self._output_dropout_rate)
     # Use float32 in layernorm for numeric stability.
     self._output_layer_norm = tf.keras.layers.LayerNormalization(
         name="output_layer_norm",
