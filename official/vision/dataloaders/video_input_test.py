@@ -191,6 +191,28 @@ class VideoAndLabelParserTest(tf.test.TestCase):
     self.assertAllEqual(image.shape, (2, 224, 224, 3))
     self.assertAllEqual(label.shape, (600,))
 
+  def test_video_input_image_shape_label_type(self):
+    params = exp_cfg.kinetics600(is_training=True)
+    params.feature_shape = (2, 168, 224, 1)
+    params.min_image_size = 168
+    params.label_dtype = 'float32'
+    params.one_hot = False
+
+    decoder = video_input.Decoder()
+    parser = video_input.Parser(params).parse_fn(params.is_training)
+
+    seq_example, label = fake_seq_example()
+
+    input_tensor = tf.constant(seq_example.SerializeToString())
+    decoded_tensors = decoder.decode(input_tensor)
+    output_tensor = parser(decoded_tensors)
+    image_features, label = output_tensor
+    image = image_features['image']
+
+    self.assertAllEqual(image.shape, (2, 168, 224, 1))
+    self.assertAllEqual(label.shape, (1,))
+    self.assertDTypeEqual(label, tf.float32)
+
 
 if __name__ == '__main__':
   tf.test.main()

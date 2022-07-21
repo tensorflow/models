@@ -41,6 +41,7 @@ class DataConfig(cfg.DataConfig):
   global_batch_size: int = 128
   data_format: str = 'channels_last'
   dtype: str = 'float32'
+  label_dtype: str = 'int32'
   one_hot: bool = True
   shuffle_buffer_size: int = 64
   cache: bool = False
