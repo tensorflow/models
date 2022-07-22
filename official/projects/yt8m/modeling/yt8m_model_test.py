@@ -34,7 +34,7 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
       num_frames: number of frames.
       feature_dims: indicates total dimension size of the features.
     """
-    input_specs = tf.keras.layers.InputSpec(shape=[num_frames, feature_dims])
+    input_specs = tf.keras.layers.InputSpec(shape=[None, None, feature_dims])
 
     num_classes = 3862
     model = yt8m_model.DbofModel(
@@ -44,7 +44,7 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
         input_specs=input_specs)
 
     # batch = 2 -> arbitrary value for test
-    inputs = np.random.rand(2 * num_frames, feature_dims)
+    inputs = np.random.rand(2, num_frames, feature_dims)
     logits = model(inputs)
     self.assertAllEqual([2, num_classes], logits.numpy().shape)
 
