@@ -125,6 +125,9 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
     self.assertAllClose(
         new_output_tensor, output_tensor[:, 0:1, :], atol=5e-5, rtol=0.003)
 
+    output_tensor = test_layer([input_data, mask_data], output_range=1)
+    self.assertAllClose(new_output_tensor, output_tensor, atol=5e-5, rtol=0.003)
+
   def test_layer_output_range_without_mask(self, transformer_cls):
     test_layer = transformer_cls(
         num_attention_heads=10, inner_dim=2048,
@@ -178,6 +181,9 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
     new_output_tensor = new_layer([input_data, mask_data])
     self.assertAllClose(
         new_output_tensor, output_tensor[:, 0:1, :], atol=5e-5, rtol=0.003)
+
+    output_tensor = test_layer([input_data, mask_data], output_range=1)
+    self.assertAllClose(new_output_tensor, output_tensor, atol=5e-5, rtol=0.003)
 
   def test_layer_invocation_with_float16_dtype(self, transformer_cls):
     tf.keras.mixed_precision.set_global_policy('mixed_float16')

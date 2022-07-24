@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Keras-based TransformerEncoder block layer."""
-
+from typing import Any, Optional
 from absl import logging
 import tensorflow as tf
 
@@ -128,6 +128,11 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     """
     util.filter_kwargs(kwargs)
     super().__init__(**kwargs)
+
+    # Deprecation warning.
+    if output_range is not None:
+      logging.warning("`output_range` is avaliable as an argument for `call()`."
+                      "The `output_range` as __init__ argument is deprecated.")
 
     self._num_heads = num_attention_heads
     self._inner_dim = inner_dim
@@ -258,7 +263,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         epsilon=self._norm_epsilon,
         dtype=tf.float32)
 
-    super(TransformerEncoderBlock, self).build(input_shape)
+    super().build(input_shape)
 
   def get_config(self):
     config = {
@@ -310,10 +315,10 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         "diff_q_kv_att_layer_norm":
             self._diff_q_kv_att_layer_norm,
     }
-    base_config = super(TransformerEncoderBlock, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def call(self, inputs):
+  def call(self, inputs: Any, output_range: Optional[tf.Tensor] = None) -> Any:
     """Transformer self-attention encoder block call.
 
     Args:
@@ -324,6 +329,10 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         [`query tensor`, `key value tensor`, `attention mask`] to have separate
           input streams for the query, and key/value to the multi-head
           attention.
+      output_range: the sequence output range, [0, output_range) for slicing the
+        target sequence. `None` means the target sequence is not sliced. If you
+        would like to have no change to the model training, it is better to only
+        set the `output_range` for serving.
 
     Returns:
       An output tensor with the same dimensions as input/query tensor.
@@ -340,15 +349,16 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     else:
       input_tensor, key_value, attention_mask = (inputs, None, None)
 
-    if self._output_range:
+    output_range = output_range or self._output_range
+    if output_range:
       if self._norm_first:
-        source_tensor = input_tensor[:, 0:self._output_range, :]
+        source_tensor = input_tensor[:, 0:output_range, :]
         input_tensor = self._attention_layer_norm(input_tensor)
         if key_value is not None:
           key_value = self._attention_layer_norm_kv(key_value)
-      target_tensor = input_tensor[:, 0:self._output_range, :]
+      target_tensor = input_tensor[:, 0:output_range, :]
       if attention_mask is not None:
-        attention_mask = attention_mask[:, 0:self._output_range, :]
+        attention_mask = attention_mask[:, 0:output_range, :]
     else:
       if self._norm_first:
         source_tensor = input_tensor
