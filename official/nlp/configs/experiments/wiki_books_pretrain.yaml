@@ -1,0 +1,48 @@
+task:
+  init_checkpoint: ''
+  model:
+    cls_heads: [{activation: tanh, cls_token_idx: 0, dropout_rate: 0.1, inner_dim: 768, name: next_sentence, num_classes: 2}]
+  train_data:
+    drop_remainder: true
+    global_batch_size: 512
+    input_path: '[Your proceed wiki data path]*,[Your proceed books data path]*'
+    is_training: true
+    max_predictions_per_seq: 76
+    seq_length: 512
+    use_next_sentence_label: true
+    use_position_id: false
+    use_v2_feature_names: true
+  validation_data:
+    drop_remainder: false
+    global_batch_size: 512
+    input_path: '[Your proceed wiki data path]-00000-of-00500,[Your proceed books data path]-00000-of-00500'
+    is_training: false
+    max_predictions_per_seq: 76
+    seq_length: 512
+    use_next_sentence_label: true
+    use_position_id: false
+    use_v2_feature_names: true
+trainer:
+  checkpoint_interval: 20000
+  max_to_keep: 5
+  optimizer_config:
+    learning_rate:
+      polynomial:
+        cycle: false
+        decay_steps: 1000000
+        end_learning_rate: 0.0
+        initial_learning_rate: 0.0001
+        power: 1.0
+      type: polynomial
+    optimizer:
+      type: adamw
+    warmup:
+      polynomial:
+        power: 1
+        warmup_steps: 10000
+      type: polynomial
+  steps_per_loop: 1000
+  summary_interval: 1000
+  train_steps: 1000000
+  validation_interval: 1000
+  validation_steps: 64
