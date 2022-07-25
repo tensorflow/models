@@ -298,8 +298,9 @@ class ResNet(tf.keras.Model):
       else:
         raise ValueError('Block fn `{}` is not supported.'.format(spec[0]))
       use_first_projection = (
-          not (i == 0 and spec[0] == 'residual') and
-          not self._use_first_projection
+        spec[0] == 'bottleneck'
+        or i > 0
+        or (i == 0 and self._use_first_projection)
       )
       x = self._block_group(
           inputs=x,
