@@ -17,10 +17,7 @@ from the same short video are pulled together in the embedding space, while
 clips from different videos are pushed away. CVRL significantly closes the gap
 between unsupervised and supervised video representation learning.
 
-We release the code and pre-trained models.
-
-More pre-trained model checkpoints and a detailed instruction about the code
-will be updated.
+Here we release the code and pre-trained models.
 
 
 ## Experimental Results
@@ -35,7 +32,7 @@ will be updated.
 ## Pre-trained Model Checkpoints
 
 We provide model checkpoints pre-trained on unlabeled RGB videos from
-Kinetics-400 and Kinetics-600. All models are trained scratch with random
+Kinetics-400 and Kinetics-600. All models are trained from scratch with random
 initialization.
 
 We also provide a baseline model checkpoint of "ImageNet inflated" we used in
