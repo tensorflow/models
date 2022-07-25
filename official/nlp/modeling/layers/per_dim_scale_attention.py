@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Keras-based attention layer with learnable per dim scaling."""
+import gin
 import numpy as np
 import tensorflow as tf
 
 
+@gin.configurable
 @tf.keras.utils.register_keras_serializable(package='Text')
 class PerDimScaleAttention(tf.keras.layers.MultiHeadAttention):
   """Learn scales for individual dims.
@@ -27,12 +29,13 @@ class PerDimScaleAttention(tf.keras.layers.MultiHeadAttention):
   def _build_from_signature(self, query, value, key=None):
     super()._build_from_signature(query=query, value=value, key=key)  # pytype: disable=attribute-error
     self._scale_dim = self._key_dim
-    self.per_dim_scale = self.add_weight(
-        name='per_dim_scale',
-        shape=(self._scale_dim,),
-        initializer='zeros',
-        dtype=self.dtype,
-        trainable=True)
+    with tf.init_scope():
+      self.per_dim_scale = self.add_weight(
+          name='per_dim_scale',
+          shape=(self._scale_dim,),
+          initializer='zeros',
+          dtype=self.dtype,
+          trainable=True)
 
   def _scale_query(self, query):
     # 1.0/tf.nn.softplus(0.0) = 1.442695041. Hard code this number so that we
