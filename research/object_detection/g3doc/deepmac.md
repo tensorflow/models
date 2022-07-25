@@ -26,14 +26,14 @@ segmentation task.
 *   The field `allowed_masked_classes_ids` controls which classes recieve mask
     supervision during training.
 *   Mask R-CNN based ablations in the paper are implemented in the
-    [TF model garden](../../../official/vision/beta/projects/deepmac_maskrcnn)
+    [TF model garden](../../../official/projects/deepmac_maskrcnn)
     code base.
 
 ## Prerequisites
 
 1.  Follow [TF2 install instructions](tf2.md) to install Object Detection API.
 2.  Generate COCO dataset by using
-    [create_coco_tf_record.py](../../../official/vision/beta/data/create_coco_tf_record.py)
+    [create_coco_tf_record.py](../../../official/vision/data/create_coco_tf_record.py)
 
 ## Configurations
 
@@ -77,7 +77,7 @@ Both these models take Image + boxes as input and produce per-box instance
 masks as output.
 
 *   [CenterNet Hourglass backbone](http://download.tensorflow.org/models/object_detection/tf2/20210329/deepmac_1024x1024_coco17.tar.gz)
-*   [Mask-RCNN SpineNet backbone](https://storage.cloud.google.com/tf_model_garden/vision/deepmac_maskrcnn/deepmarc_spinenet.zip)
+*   [Mask-RCNN SpineNet backbone](https://storage.googleapis.com/tf_model_garden/vision/deepmac_maskrcnn/deepmarc_spinenet.zip)
 
 
 ## See also
