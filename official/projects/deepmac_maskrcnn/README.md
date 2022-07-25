@@ -107,7 +107,7 @@ SpienNet-143 | Hourglass-52 | `deep_mask_head_rcnn_voc_spinenet143_hg52.yaml` | 
 This model takes Image + boxes as input and produces per-box instance
 masks as output.
 
-*   [Mask-RCNN SpineNet backbone](https://storage.cloud.google.com/tf_model_garden/vision/deepmac_maskrcnn/deepmarc_spinenet.zip)
+*   [Mask-RCNN SpineNet backbone](https://storage.googleapis.com/tf_model_garden/vision/deepmac_maskrcnn/deepmarc_spinenet.zip)
 
 ## See also
 
