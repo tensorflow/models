@@ -24,6 +24,9 @@ from official.vision.ops import box_ops
 
 CENTER_CROP_FRACTION = 0.875
 
+# Alias for convenience. PLEASE use `box_ops.horizontal_flip_boxes` directly.
+horizontal_flip_boxes = box_ops.horizontal_flip_boxes
+
 
 def clip_or_pad_to_fixed_size(input_tensor, size, constant_values=0):
   """Pads data to a fixed length at the first dimension.
@@ -596,16 +599,6 @@ def resize_and_crop_masks(masks,
 def horizontal_flip_image(image):
   """Flips image horizontally."""
   return tf.image.flip_left_right(image)
-
-
-def horizontal_flip_boxes(normalized_boxes):
-  """Flips normalized boxes horizontally."""
-  ymin, xmin, ymax, xmax = tf.split(
-      value=normalized_boxes, num_or_size_splits=4, axis=1)
-  flipped_xmin = tf.subtract(1.0, xmax)
-  flipped_xmax = tf.subtract(1.0, xmin)
-  flipped_boxes = tf.concat([ymin, flipped_xmin, ymax, flipped_xmax], 1)
-  return flipped_boxes
 
 
 def horizontal_flip_masks(masks):
