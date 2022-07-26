@@ -300,7 +300,7 @@ class ResNet(tf.keras.Model):
       use_first_projection = (
         spec[0] == 'bottleneck'
         or i > 0
-        or (i == 0 and self._use_first_projection)
+        or self._use_first_projection
       )
       x = self._block_group(
           inputs=x,
