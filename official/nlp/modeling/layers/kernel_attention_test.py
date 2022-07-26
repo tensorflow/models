@@ -60,6 +60,39 @@ class KernelAttentionTest(tf.test.TestCase, parameterized.TestCase):
         training=training)
     self.assertEqual(output.shape, [batch_size, seq_length, key_dim])
 
+  @parameterized.parameters(
+      itertools.product(_FEATURE_TRANSFORM, [127], _TRAINING, [True, False],
+                        [0]))
+  def test_windowed_causal_attention_projection(
+      self, feature_transform, num_random_features, training, redraw,
+      begin_kernel):
+    num_heads = 12
+    key_dim = 64
+    seq_length = 1024
+    batch_size = 2
+    test_layer = attention.KernelAttention(
+        num_heads=num_heads,
+        key_dim=key_dim,
+        feature_transform=feature_transform,
+        num_random_features=num_random_features,
+        redraw=redraw,
+        is_short_seq=False,
+        begin_kernel=begin_kernel,
+        use_windowed_causal=True,
+        chunk_length=8,
+        window_length=3)
+    query = tf.random.normal(
+        shape=(batch_size, seq_length, key_dim))
+    value = query
+    encoder_inputs_mask = tf.zeros((batch_size, seq_length), dtype=tf.int32)
+    masks = tf.cast(encoder_inputs_mask, dtype=tf.float32)
+    output = test_layer(
+        query=query,
+        value=value,
+        attention_mask=masks,
+        training=training)
+    self.assertEqual(output.shape, [batch_size, seq_length, key_dim])
+
   @parameterized.parameters(itertools.product(
       _FEATURE_TRANSFORM, [0], _TRAINING, [False],
       _IS_SHORT_SEQ, _BEGIN_KERNEL))
