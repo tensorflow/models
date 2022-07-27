@@ -14,8 +14,8 @@
 
 """Tasks package definition."""
 
-from official.vision.tasks import image_classification
-from official.vision.tasks import maskrcnn
-from official.vision.tasks import retinanet
-from official.vision.tasks import semantic_segmentation
-from official.vision.tasks import video_classification
+from official.vision.tasks.image_classification import ImageClassificationTask
+from official.vision.tasks.maskrcnn import MaskRCNNTask
+from official.vision.tasks.retinanet import RetinaNetTask
+from official.vision.tasks.semantic_segmentation import SemanticSegmentationTask
+from official.vision.tasks.video_classification import VideoClassificationTask

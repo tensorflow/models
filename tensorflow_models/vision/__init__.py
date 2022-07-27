@@ -17,3 +17,5 @@ from official.vision import configs
 from official.vision import serving
 from official.vision.modeling import *
 from official.vision.ops import *
+from official.vision.tasks import *
+
