@@ -15,7 +15,7 @@
 """Multitask training driver library."""
 # pytype: disable=attribute-error
 import os
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Mapping, Optional, Tuple, Union
 from absl import logging
 import orbit
 import tensorflow as tf
@@ -44,8 +44,10 @@ def run_experiment(
     mode: str,
     params: configs.MultiTaskExperimentConfig,
     model_dir: str,
+    run_post_eval: bool = False,
     trainer: base_trainer.MultiTaskBaseTrainer = None
-) -> base_model.MultiTaskBaseModel:
+    ) -> Union[base_model.MultiTaskBaseModel,
+               Tuple[base_model.MultiTaskBaseModel, Mapping[Any, Any]]]:
   """Runs train/eval configured by the experiment params.
 
   Args:
@@ -56,6 +58,8 @@ def run_experiment(
       or 'continuous_eval'.
     params: ExperimentConfig instance.
     model_dir: A 'str', a path to store model checkpoints and summaries.
+    run_post_eval: Whether to run post eval once after training, metrics logs
+      are returned.
     trainer: (optional) A multi-task trainer to use. If none is provided, a
       default one will be created based on `params`.
 
@@ -139,7 +143,11 @@ def run_experiment(
     else:
       raise NotImplementedError('The mode is not implemented: %s' % mode)
 
-    return model
+    if run_post_eval:
+      return model, evaluator.evaluate(
+          tf.convert_to_tensor(params.trainer.validation_steps))  # pytype: disable=bad-return-type  # typed-keras
+    else:
+      return model
 
 
 def run_experiment_with_multitask_eval(
