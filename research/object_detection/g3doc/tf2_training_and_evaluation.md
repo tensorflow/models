@@ -152,7 +152,6 @@ launched using the following command:
 PIPELINE_CONFIG_PATH={path to pipeline config file}
 MODEL_DIR={path to model directory}
 CHECKPOINT_DIR=${MODEL_DIR}
-MODEL_DIR={path to model directory}
 python object_detection/model_main_tf2.py \
     --pipeline_config_path=${PIPELINE_CONFIG_PATH} \
     --model_dir=${MODEL_DIR} \
