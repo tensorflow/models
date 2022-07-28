@@ -63,7 +63,7 @@ class KernelAttentionTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.parameters(
       itertools.product(_FEATURE_TRANSFORM, [127], _TRAINING, [True, False],
                         [0]))
-  def test_windowed_causal_attention_projection(
+  def test_causal_windowed_attention_projection(
       self, feature_transform, num_random_features, training, redraw,
       begin_kernel):
     num_heads = 12
@@ -78,9 +78,9 @@ class KernelAttentionTest(tf.test.TestCase, parameterized.TestCase):
         redraw=redraw,
         is_short_seq=False,
         begin_kernel=begin_kernel,
-        use_windowed_causal=True,
-        chunk_length=8,
-        window_length=3)
+        use_causal_windowed=True,
+        causal_chunk_length=8,
+        causal_window_length=3)
     query = tf.random.normal(
         shape=(batch_size, seq_length, key_dim))
     value = query
