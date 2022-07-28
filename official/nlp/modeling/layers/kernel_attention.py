@@ -41,7 +41,7 @@ class KernelMask(tf.keras.layers.Layer):
     return mask
 
 
-def pad_to_chunk_length(tensor, axis, chunk_length, pad="right"):
+def pad_to_chunk_length(tensor, axis, chunk_length, padding=None):
   """Pads a tensor so that shape[axis] is divisible by chunk_length.
 
   Args:
@@ -49,9 +49,11 @@ def pad_to_chunk_length(tensor, axis, chunk_length, pad="right"):
     axis: Axis to pad along.
     chunk_length: The output tensor will have shape[axis] divisible by
       chunk_length.
-    pad: Pad the input tensor across the axis from left if pad="left", right if
-      pad="right", or apply no padding if pad=None. In the latter case, the axis
-      dimension of the input tensor must be divisible by the chunk_length.
+    padding: Pad the input tensor across the axis from either left or
+      right if padding is set to "left" or "right"; applies no padding
+      if padding is set to None. In the latter case, the axis
+      dimension of the input tensor must be divisible by the
+      chunk_length.
 
   Returns:
     Padded tensor with shape[axis] divisible by chunk_length.
@@ -62,19 +64,23 @@ def pad_to_chunk_length(tensor, axis, chunk_length, pad="right"):
     axis += rank
   axis_length = shape[axis]
   pad_length = -axis_length % chunk_length
-  if pad == "right":
-    pad_width_2 = [[0, pad_length]]
-  elif pad == "left":
-    pad_width_2 = [[pad_length, 0]]
-  else:
+  if padding == "right":
+    axis_paddings = [[0, pad_length]]
+  elif padding == "left":
+    axis_paddings = [[pad_length, 0]]
+  elif padding is None:
     if pad_length != 0:
-      raise ValueError("When padding is not set, the axis dimension"
+      raise ValueError("When padding is None, the axis dimension"
                        "has to be divisible by the chunk_length.")
     return tensor
-  pad_width = tf.concat(
-      [tf.zeros([axis, 2], dtype=tf.int32), pad_width_2,
+  else:
+    raise ValueError("Illegal padding value; must be one of \"left\""
+                     "\"right\" or None.")
+  paddings = tf.concat(
+      [tf.zeros([axis, 2], dtype=tf.int32),
+       axis_paddings,
        tf.zeros([rank - axis - 1, 2], dtype=tf.int32)], axis=0)
-  return tf.pad(tensor, pad_width)
+  return tf.pad(tensor, paddings)
 
 
 def split_tensor_into_chunks(tensor, axis, chunk_length):
@@ -95,12 +101,12 @@ def split_tensor_into_chunks(tensor, axis, chunk_length):
   return tf.reshape(tensor, new_shape)
 
 
-def windowed_causal_performer_attention(query_matrix,
+def causal_windowed_performer_attention(query_matrix,
                                         key_matrix,
                                         value_matrix,
                                         chunk_length,
                                         window_length,
-                                        pad="right"):
+                                        padding=None):
   """Applies windowed causal kernel attention with query, key, value tensors.
 
   We partition the T-length input sequence into N chunks, each of chunk_length
@@ -113,19 +119,19 @@ def windowed_causal_performer_attention(query_matrix,
   Below is an example with T=9, chunk_length=3, window_length=1. 1 indicates
   attention is computed between the pair while 0 indicates attention is not
   computed between the pairs:
-  111000000
-  111000000
-  111000000
-  111111000
-  111111000
-  111111000
-  000111111
-  000111111
-  000111111
+    111000000
+    111000000
+    111000000
+    111111000
+    111111000
+    111111000
+    000111111
+    000111111
+    000111111
 
   User can ensure sequence_length is divisible by chunk_length or use
-  pad="left"/"right" to pad the sequence length either at the top or bottom
-  respectively and make it divisible by chunk_length.
+  padding="left"/"right" to pad the sequence length either at the left
+  or right respectively and make it divisible by chunk_length.
 
   Args:
     query_matrix: Kernel query `Tensor` of shape `[B, T, N, dim]`.
@@ -133,20 +139,20 @@ def windowed_causal_performer_attention(query_matrix,
     value_matrix: Value `Tensor` of shape `[B, T, N, out_dim]`.
     chunk_length: Length of each chunk in tokens.
     window_length: Length of attention window in chunks.
-    pad: Pad the query, value and key input tensors across the T dimension from
-      left if pad="left", right if pad="right", or apply no padding if pad=None.
-      In the latter case, the T dimension of the input tensors must be divisible
-      by the chunk_length.
+    padding: Pad the query, value and key input tensors across the
+      axis from either left or right if padding is set to "left" or
+      "right"; apply no padding if padding is set to None. In the
+      latter case, the axis dimension of the query, value and key
+      input tensors must be divisible by the chunk_length.
 
   Returns:
     Window causal performer attention of shape `[B, T, N, out_dim]`.
   """
-
   old_shape = tf.shape(value_matrix)
 
-  query_matrix = pad_to_chunk_length(query_matrix, -3, chunk_length, pad)
-  key_matrix = pad_to_chunk_length(key_matrix, -3, chunk_length, pad)
-  value_matrix = pad_to_chunk_length(value_matrix, -3, chunk_length, pad)
+  query_matrix = pad_to_chunk_length(query_matrix, -3, chunk_length, padding)
+  key_matrix = pad_to_chunk_length(key_matrix, -3, chunk_length, padding)
+  value_matrix = pad_to_chunk_length(value_matrix, -3, chunk_length, padding)
 
   new_shape = tf.shape(value_matrix)
   chunked_query_matrix = split_tensor_into_chunks(
@@ -446,16 +452,17 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
                begin_kernel=0,
                scale=None,
                scale_by_length=False,
-               use_windowed_causal=False,
-               chunk_length=1,
-               window_length=3,
+               use_causal_windowed=False,
+               causal_chunk_length=1,
+               causal_window_length=1,
+               causal_padding=None,
                **kwargs):
     r"""Constructor of KernelAttention.
 
     Args:
-      feature_transform: A non-linear transform of the keys and quries. Possible
-        transforms are "elu", "relu", "square", "exp", "expplus", "expmod",
-        "identity".
+      feature_transform: A non-linear transform of the keys and queries.
+        Possible transforms are "elu", "relu", "square", "exp", "expplus",
+        "expmod", "identity".
       num_random_features: Number of random features to be used for projection.
         if num_random_features <= 0, no production is used before transform.
       seed: The seed to begin drawing random features. Once the seed is set, the
@@ -475,11 +482,17 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
         the dot product based on key length. Set as log_512^(n) to stablize
         attention entropy against length. Refer to
         https://kexue.fm/archives/8823 for details.
-      use_windowed_causal: If true perform windowed causal attention. See
-        windowed_causal_performer_attention function docstring for more details.
-      chunk_length: Length of each chunk in tokens.
-      window_length: Length of attention window in chunks.
-      **kwargs: The same arguments `MultiHeadAttention` layer.
+      use_causal_windowed: If true perform windowed causal attention. See
+        causal_windowed_performer_attention function docstring for more details.
+      causal_chunk_length: Length of each chunk in tokens.
+      causal_window_length: Length of attention window in chunks.
+      causal_padding: Pad the query, value and key input tensors
+        across the axis from either left or right if padding is set to
+        "left" or "right"; apply no padding if padding is set to None.
+        In the latter case, the axis dimension of the query, value and
+        key input tensors must be divisible by the chunk_length.
+      **kwargs:
+        The same arguments `MultiHeadAttention` layer.
     """
     if (feature_transform not in _TRANSFORM_MAP and
         feature_transform != "expplus"):
@@ -509,12 +522,13 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
       self._projection_matrix = create_projection_matrix(
           self._num_random_features, self._key_dim,
           tf.constant([self._seed, self._seed + 1]))
-    self.use_windowed_causal = use_windowed_causal
-    self.chunk_length = chunk_length
-    self.window_length = window_length
-    if self.use_windowed_causal and self._is_short_seq:
+    self.use_causal_windowed = use_causal_windowed
+    self.causal_chunk_length = causal_chunk_length
+    self.causal_window_length = causal_window_length
+    self.causal_padding = causal_padding
+    if self.use_causal_windowed and self._is_short_seq:
       raise ValueError(
-          "use_windowed_causal and short_seq methods are mutually exclusive")
+          "use_causal_windowed and short_seq methods are mutually exclusive")
 
   def _compute_attention(self,
                          query,
@@ -590,9 +604,12 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
       attention_scores = tf.einsum("BTNH,BSNH->BTSN", query_prime, key_prime)
       attention_scores = tf.nn.softmax(attention_scores, axis=2)
       attention_output = tf.einsum("BTSN,BSNH->BTNH", attention_scores, value)
-    elif self.use_windowed_causal:
-      attention_output = windowed_causal_performer_attention(
-          query_prime, key_prime, value, self.chunk_length, self.window_length)
+    elif self.use_causal_windowed:
+      attention_output = causal_windowed_performer_attention(
+          query_prime, key_prime, value,
+          chunk_length=self.causal_chunk_length,
+          window_length=self.causal_window_length,
+          padding=self.causal_padding)
     else:
       kv = tf.einsum("BSNH,BSND->BNDH", key_prime, value)
       denominator = 1.0 / (
