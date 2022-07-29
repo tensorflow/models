@@ -19,6 +19,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
+from tensorflow.python.distribute import test_util
 from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_deeplab_model
 from official.vision.beta.projects.panoptic_maskrcnn.modeling.heads import panoptic_deeplab_heads
 from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import panoptic_deeplab_merge
@@ -182,4 +183,4 @@ class PanopticDeeplabNetworkTest(parameterized.TestCase, tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  test_util.main()
