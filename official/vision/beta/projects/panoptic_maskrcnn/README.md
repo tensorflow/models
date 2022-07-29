@@ -88,6 +88,9 @@ Backbone             | Experiment name                 | Overall PQ | Things PQ 
 :---------------------| :-------------------------------| ---------- | --------- | -------- | ------------:
 Dilated ResNet-50     | `panoptic_deeplab_resnet_coco`  |   36.80    |  37.51    |  35.73   | [ckpt](gs://tf_model_garden/vision/panoptic/panoptic_deeplab/coco/resnet50)
 Dilated ResNet-101    | `panoptic_deeplab_resnet_coco`  |   38.39    |  39.47    |  36.75   | [ckpt](gs://tf_model_garden/vision/panoptic/panoptic_deeplab/coco/resnet101)
+MobileNetV3 Large   | `panoptic_deeplab_mobilenetv3_large_coco`  |   30.50    |  30.10    |  31.10   | [ckpt](gs://tf_model_garden/vision/panoptic/panoptic_deeplab/coco/mobilenetv3_large)
+MobileNetV3 Small   | `panoptic_deeplab_mobilenetv3_small_coco`  |   25.06    |  23.46    |  27.48   | [ckpt](gs://tf_model_garden/vision/panoptic/panoptic_deeplab/coco/mobilenetv3_small)
+
 
 ___
 ## Citation
