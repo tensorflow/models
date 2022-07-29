@@ -1,0 +1,37 @@
+
+item {
+id:1
+name:'HDPE'
+}
+item {
+id:2
+name:'PETE'
+}
+item {
+id:3
+name:'LDPE'
+}
+item {
+id:4
+name:'PS'
+}
+item {
+id:5
+name:'PP'
+}
+item {
+id:6
+name:'PVC'
+}
+item {
+id:7
+name:'Others-MLP'
+}
+item {
+id:8
+name:'Others-Tetrapak'
+}
+item {
+id:9
+name:'Others-HIPC'
+}

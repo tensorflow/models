@@ -1,0 +1,137 @@
+
+item {
+id:1
+name:'Flexibles'
+}
+item {
+id:2
+name:'Bottle'
+}
+item {
+id:3
+name:'Jar'
+}
+item {
+id:4
+name:'Carton'
+}
+item {
+id:5
+name:'Sachets-&-Pouch'
+}
+item {
+id:6
+name:'Blister-pack'
+}
+item {
+id:7
+name:'Tray'
+}
+item {
+id:8
+name:'Tube'
+}
+item {
+id:9
+name:'Can'
+}
+item {
+id:10
+name:'Tub'
+}
+item {
+id:11
+name:'Cosmetic'
+}
+item {
+id:12
+name:'Box'
+}
+item {
+id:13
+name:'Clothes'
+}
+item {
+id:14
+name:'Bulb'
+}
+item {
+id:15
+name:'Cup-&-glass'
+}
+item {
+id:16
+name:'Book-&-magazine'
+}
+item {
+id:17
+name:'Bag'
+}
+item {
+id:18
+name:'Lid'
+}
+item {
+id:19
+name:'Clamshell'
+}
+item {
+id:20
+name:'Mirror'
+}
+item {
+id:21
+name:'Tangler'
+}
+item {
+id:22
+name:'Cutlery'
+}
+item {
+id:23
+name:'Cassette-&-tape'
+}
+item {
+id:24
+name:'Electronic-devices'
+}
+item {
+id:25
+name:'Battery'
+}
+item {
+id:26
+name:'Pen-&-pencil'
+}
+item {
+id:27
+name:'Paper-products'
+}
+item {
+id:28
+name:'Foot-wear'
+}
+item {
+id:29
+name:'Scissor'
+}
+item {
+id:30
+name:'Toys'
+}
+item {
+id:31
+name:'Brush'
+}
+item {
+id:32
+name:'Pipe'
+}
+item {
+id:33
+name:'Foil'
+}
+item {
+id:34
+name:'Hangers'
+}

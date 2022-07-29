@@ -20,18 +20,3 @@ Mask RCNN is a state-of-art deep learning model for instance image segmentation,
 | Material Model | Resnet | saved model & TFLite | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/material_model.zip) |
 | Material Form model | Resnet | saved model & TFLite | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/material_form_model.zip) |
 |Plastic model | Resnet| saved model & TFLite | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/plastic_types_model.zip) |
-
-## Installation & Download
-
-You need to use gsutil command line tool to download the deep learning weights from their respective GCP buckets.
-- Start by logging into the [Google Cloud Console and create a project](https://developers.google.com/workspace/guides/create-project).
-- Download and install the Google Cloud SDK from the [official website](https://cloud.google.com/sdk/docs/#mac).
-- You can verity that the install went successfully by opening up a machine terminal and executing the command 
-```sh
-gsutil -v
-```
-- Once your install is successfull you can download the weight from the GCP buckets using gsutil command. For example -
-```sh
-gsutil -m cp -r gs://official_release/version_1/plastic_types_model/saved_model/* .
-```
-- The above command will download the weights in your local directory.

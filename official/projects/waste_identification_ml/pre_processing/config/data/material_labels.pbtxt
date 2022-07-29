@@ -1,0 +1,41 @@
+
+item {
+id:1
+name:'Inorganic-waste'
+}
+item {
+id:2
+name:'Textiles'
+}
+item {
+id:3
+name:'Rubber-and-Leather'
+}
+item {
+id:4
+name:'Wood'
+}
+item {
+id:5
+name:'Food'
+}
+item {
+id:6
+name:'Plastics'
+}
+item {
+id:7
+name:'Yard-trimming'
+}
+item {
+id:8
+name:'Fiber'
+}
+item {
+id:9
+name:'Glass'
+}
+item {
+id:10
+name:'Metals'
+}
