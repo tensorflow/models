@@ -58,6 +58,8 @@ def pad_to_chunk_length(tensor, axis, chunk_length, padding=None):
   Returns:
     Padded tensor with shape[axis] divisible by chunk_length.
   """
+  if padding is None:
+    return tensor
   shape = tf.shape(tensor)
   rank = tf.rank(tensor)
   if axis < 0:
@@ -68,14 +70,9 @@ def pad_to_chunk_length(tensor, axis, chunk_length, padding=None):
     axis_paddings = [[0, pad_length]]
   elif padding == "left":
     axis_paddings = [[pad_length, 0]]
-  elif padding is None:
-    if pad_length != 0:
-      raise ValueError("When padding is None, the axis dimension"
-                       "has to be divisible by the chunk_length.")
-    return tensor
   else:
-    raise ValueError("Illegal padding value; must be one of \"left\""
-                     "\"right\" or None.")
+    raise ValueError(
+        "Illegal padding value; must be one of \"left\", \"right\" or None.")
   paddings = tf.concat(
       [tf.zeros([axis, 2], dtype=tf.int32),
        axis_paddings,
@@ -109,16 +106,18 @@ def causal_windowed_performer_attention(query_matrix,
                                         padding=None):
   """Applies windowed causal kernel attention with query, key, value tensors.
 
-  We partition the T-length input sequence into N chunks, each of chunk_length
-  tokens (thus: T = N * chunk_length). Within each chunk, we apply bidirectional
-  (non-causal) Performers’ implicit attention and we model relationships between
-  different chunks using Performers’ causal attention. We consider windowed
-  causal variant of performer, where the current chunk attends only to the
-  window of window_length of the most recent chunks.
+  We partition the T-length input sequence into N chunks, each of
+  chunk_length tokens (thus: T = N * chunk_length). Within each chunk,
+  we apply bidirectional (non-causal) Performers’ implicit attention
+  and we model relationships between different chunks using
+  Performers’ causal attention. We consider windowed causal variant of
+  performer, where the current chunk attends only to the window of
+  window_length of the most recent chunks.
 
-  Below is an example with T=9, chunk_length=3, window_length=1. 1 indicates
-  attention is computed between the pair while 0 indicates attention is not
-  computed between the pairs:
+  Below is an example with T=9, chunk_length=3, window_length=2. In
+  this example 1 indicates attention is computed between the pair
+  while 0 indicates attention is not computed between the pairs:
+
     111000000
     111000000
     111000000
@@ -454,7 +453,7 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
                scale_by_length=False,
                use_causal_windowed=False,
                causal_chunk_length=1,
-               causal_window_length=1,
+               causal_window_length=3,
                causal_padding=None,
                **kwargs):
     r"""Constructor of KernelAttention.
