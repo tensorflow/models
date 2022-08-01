@@ -78,7 +78,7 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
                intermediate_dropout=0.0,
                attention_initializer=None,
                **kwargs):
-    super(TNTransformerExpandCondense, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
     self._num_heads = num_attention_heads
     self._intermediate_size = intermediate_size
@@ -170,7 +170,7 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
         epsilon=self._norm_epsilon,
         dtype=tf.float32)
 
-    super(TNTransformerExpandCondense, self).build(input_shape)
+    super().build(input_shape)
 
   def get_config(self):
     config = {
@@ -211,7 +211,7 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
         "attention_initializer":
             tf.keras.initializers.serialize(self._attention_initializer)
     }
-    base_config = super(TNTransformerExpandCondense, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs):

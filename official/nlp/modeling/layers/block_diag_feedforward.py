@@ -59,7 +59,7 @@ class BlockDiagFeedforward(tf.keras.layers.Layer):
       kernel_constraint: Optional[tf.keras.constraints.Constraint] = None,
       bias_constraint: Optional[tf.keras.constraints.Constraint] = None,
       **kwargs):  # pylint: disable=g-doc-args
-    super(BlockDiagFeedforward, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self._intermediate_size = intermediate_size
     self._intermediate_activation = intermediate_activation
     self._dropout = dropout
@@ -156,7 +156,7 @@ class BlockDiagFeedforward(tf.keras.layers.Layer):
         "bias_constraint":
             tf.keras.constraints.serialize(self._bias_constraint)
     }
-    base_config = super(BlockDiagFeedforward, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs):

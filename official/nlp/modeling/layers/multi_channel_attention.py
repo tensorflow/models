@@ -49,7 +49,7 @@ class VotingAttention(tf.keras.layers.Layer):
                kernel_constraint=None,
                bias_constraint=None,
                **kwargs):
-    super(VotingAttention, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self._num_heads = num_heads
     self._head_size = head_size
     self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
@@ -82,7 +82,7 @@ class VotingAttention(tf.keras.layers.Layer):
         kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
-    super(VotingAttention, self).build(unused_input_shapes)
+    super().build(unused_input_shapes)
 
   def call(self, encoder_outputs, doc_attention_mask):
     num_docs = tf_utils.get_shape_list(encoder_outputs, expected_rank=[4])[1]
@@ -123,7 +123,7 @@ class MultiChannelAttention(tf.keras.layers.MultiHeadAttention):
   """
 
   def _build_attention(self, rank):
-    super(MultiChannelAttention, self)._build_attention(rank)  # pytype: disable=attribute-error  # typed-keras
+    super()._build_attention(rank)  # pytype: disable=attribute-error  # typed-keras
     self._masked_softmax = masked_softmax.MaskedSoftmax(mask_expansion_axes=[2])
 
   def call(self,
