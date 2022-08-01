@@ -66,7 +66,7 @@ class TNExpandCondense(Layer):
     if 'input_shape' not in kwargs and 'input_dim' in kwargs:
       kwargs['input_shape'] = (kwargs.pop('input_dim'),)
 
-    super(TNExpandCondense, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
     assert proj_multiplier in [
         2, 4, 6, 8, 10, 12
@@ -86,7 +86,7 @@ class TNExpandCondense(Layer):
           'The last dimension of the inputs to `TNExpandCondense` '
           'should be defined. Found `None`.')
 
-    super(TNExpandCondense, self).build(input_shape)
+    super().build(input_shape)
 
     self.proj_size = self.proj_multiplier * input_shape[-1]
 
@@ -178,5 +178,5 @@ class TNExpandCondense(Layer):
           getattr(self, initializer_arg))
 
     # Get base config
-    base_config = super(TNExpandCondense, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))

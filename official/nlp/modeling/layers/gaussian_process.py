@@ -116,7 +116,7 @@ class RandomFeatureGaussianProcess(tf.keras.layers.Layer):
       name: (string) Layer name.
       **gp_output_kwargs: Additional keyword arguments to dense output layer.
     """
-    super(RandomFeatureGaussianProcess, self).__init__(name=name, dtype=dtype)
+    super().__init__(name=name, dtype=dtype)
     self.units = units
     self.num_inducing = num_inducing
 

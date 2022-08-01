@@ -53,7 +53,7 @@ class MaskedSoftmax(tf.keras.layers.Layer):
       self._normalization_axes = (-1,)
     else:
       self._normalization_axes = normalization_axes
-    super(MaskedSoftmax, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
   def call(self, scores, mask=None):
 
@@ -81,5 +81,5 @@ class MaskedSoftmax(tf.keras.layers.Layer):
         'mask_expansion_axes': self._mask_expansion_axes,
         'normalization_axes': self._normalization_axes
     }
-    base_config = super(MaskedSoftmax, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))

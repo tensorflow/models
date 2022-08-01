@@ -103,7 +103,7 @@ class TransformerXLBlock(tf.keras.layers.Layer):
                **kwargs):
     """Initializes TransformerXLBlock layer."""
 
-    super(TransformerXLBlock, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self._vocab_size = vocab_size
     self._num_heads = num_attention_heads
     self._head_size = head_size
@@ -181,7 +181,7 @@ class TransformerXLBlock(tf.keras.layers.Layer):
         axis=-1,
         epsilon=self._norm_epsilon)
 
-    super(TransformerXLBlock, self).build(input_shape)
+    super().build(input_shape)
 
   def get_config(self):
     config = {
@@ -210,7 +210,7 @@ class TransformerXLBlock(tf.keras.layers.Layer):
         "inner_dropout":
             self._inner_dropout,
     }
-    base_config = super(TransformerXLBlock, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self,
@@ -371,7 +371,7 @@ class TransformerXL(tf.keras.layers.Layer):
                inner_activation="relu",
                **kwargs):
     """Initializes TransformerXL."""
-    super(TransformerXL, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
     self._vocab_size = vocab_size
     self._initializer = initializer
@@ -461,7 +461,7 @@ class TransformerXL(tf.keras.layers.Layer):
         "inner_activation":
             self._inner_activation,
     }
-    base_config = super(TransformerXL, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self,

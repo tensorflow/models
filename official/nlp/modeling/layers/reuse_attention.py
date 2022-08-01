@@ -223,7 +223,7 @@ class ReuseMultiHeadAttention(tf.keras.layers.Layer):
                kernel_constraint=None,
                bias_constraint=None,
                **kwargs):
-    super(ReuseMultiHeadAttention, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self._num_heads = num_heads
     self._key_dim = key_dim
     self._value_dim = value_dim if value_dim else key_dim
@@ -301,7 +301,7 @@ class ReuseMultiHeadAttention(tf.keras.layers.Layer):
         "key_shape": self._key_shape,
         "value_shape": self._value_shape,
     }
-    base_config = super(ReuseMultiHeadAttention, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   @classmethod

@@ -47,7 +47,7 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
                scale_factor=None,
                **kwargs):
 
-    super(OnDeviceEmbedding, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self._vocab_size = vocab_size
     self._embedding_width = embedding_width
     self._initializer = initializer
@@ -62,7 +62,7 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
         "use_one_hot": self._use_one_hot,
         "scale_factor": self._scale_factor,
     }
-    base_config = super(OnDeviceEmbedding, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def build(self, input_shape):
@@ -72,7 +72,7 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
         initializer=self._initializer,
         dtype=tf.float32)
 
-    super(OnDeviceEmbedding, self).build(input_shape)
+    super().build(input_shape)
 
   def call(self, inputs):
     flat_inputs = tf.reshape(inputs, [-1])

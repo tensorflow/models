@@ -53,7 +53,7 @@ class PositionEmbedding(tf.keras.layers.Layer):
                seq_axis=1,
                **kwargs):
 
-    super(PositionEmbedding, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     if max_length is None:
       raise ValueError(
           "`max_length` must be an Integer, not `None`."
@@ -81,7 +81,7 @@ class PositionEmbedding(tf.keras.layers.Layer):
         shape=[weight_sequence_length, width],
         initializer=self._initializer)
 
-    super(PositionEmbedding, self).build(input_shape)
+    super().build(input_shape)
 
   def call(self, inputs):
     input_shape = tf.shape(inputs)

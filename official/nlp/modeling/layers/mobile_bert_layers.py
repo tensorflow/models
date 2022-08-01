@@ -26,7 +26,7 @@ class NoNorm(tf.keras.layers.Layer):
   """Apply element-wise linear transformation to the last dimension."""
 
   def __init__(self, name=None):
-    super(NoNorm, self).__init__(name=name)
+    super().__init__(name=name)
 
   def build(self, shape):
     kernal_size = shape[-1]
@@ -98,7 +98,7 @@ class MobileBertEmbedding(tf.keras.layers.Layer):
       dropout_rate: Dropout rate.
       **kwargs: keyword arguments.
     """
-    super(MobileBertEmbedding, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self.word_vocab_size = word_vocab_size
     self.word_embed_size = word_embed_size
     self.type_vocab_size = type_vocab_size
@@ -222,7 +222,7 @@ class MobileBertTransformer(tf.keras.layers.Layer):
     Raises:
       ValueError: A Tensor shape or parameter is invalid.
     """
-    super(MobileBertTransformer, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self.hidden_size = hidden_size
     self.num_attention_heads = num_attention_heads
     self.intermediate_size = intermediate_size
@@ -459,7 +459,7 @@ class MobileBertMaskedLM(tf.keras.layers.Layer):
         `predictions`.
       **kwargs: keyword arguments.
     """
-    super(MobileBertMaskedLM, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self.embedding_table = embedding_table
     self.activation = activation
     self.initializer = tf.keras.initializers.get(initializer)

@@ -74,11 +74,11 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
     if not isinstance(layer, tf.keras.layers.Layer):
       raise ValueError('`layer` must be a `tf.keras.layer.Layer`. '
                        'Observed `{}`'.format(layer))
-    super(SpectralNormalization, self).__init__(
+    super().__init__(
         layer, name=wrapper_name, **kwargs)
 
   def build(self, input_shape):
-    super(SpectralNormalization, self).build(input_shape)
+    super().build(input_shape)
     self.layer.kernel._aggregation = self.aggregation  # pylint: disable=protected-access
     self._dtype = self.layer.kernel.dtype
 
@@ -193,7 +193,7 @@ class SpectralNormalizationConv2D(tf.keras.layers.Wrapper):
       raise ValueError(
           'layer must be a `tf.keras.layer.Conv2D` instance. You passed: {input}'
           .format(input=layer))
-    super(SpectralNormalizationConv2D, self).__init__(layer, **kwargs)
+    super().__init__(layer, **kwargs)
 
   def build(self, input_shape):
     if not self.layer.built:
@@ -238,7 +238,7 @@ class SpectralNormalizationConv2D(tf.keras.layers.Wrapper):
         dtype=self.dtype,
         aggregation=self.aggregation)
 
-    super(SpectralNormalizationConv2D, self).build()
+    super().build()
 
   def call(self, inputs):
     u_update_op, v_update_op, w_update_op = self.update_weights()

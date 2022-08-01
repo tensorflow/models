@@ -47,7 +47,7 @@ class MaskedLM(tf.keras.layers.Layer):
                output='logits',
                name=None,
                **kwargs):
-    super(MaskedLM, self).__init__(name=name, **kwargs)
+    super().__init__(name=name, **kwargs)
     self.embedding_table = embedding_table
     self.activation = activation
     self.initializer = tf.keras.initializers.get(initializer)
@@ -73,7 +73,7 @@ class MaskedLM(tf.keras.layers.Layer):
         initializer='zeros',
         trainable=True)
 
-    super(MaskedLM, self).build(input_shape)
+    super().build(input_shape)
 
   def call(self, sequence_data, masked_positions):
     masked_lm_input = self._gather_indexes(sequence_data, masked_positions)
