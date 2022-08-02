@@ -54,3 +54,52 @@ py_library(
         "//tf_ops:tf_custom_ops_py",
     ],
 )
+
+py_library(
+    name = "charformer",
+    srcs = ["charformer.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":transformer_encoder",
+        # package tensorflow
+        "//layers:base_layers",
+        "//layers:embedding_layers",
+        "//layers:misc_layers",
+        "//layers:normalization_layers",
+        "//layers:quantization_layers",
+        # "//tf_ops:tf_custom_ops",
+        "//tf_ops:tf_custom_ops_py",
+    ],
+)
+
+py_library(
+    name = "transformer_encoder",
+    srcs = ["transformer_encoder.py"],
+    srcs_version = "PY3",
+    deps = [
+        # package absl/logging
+        # package tensorflow
+        "//layers:base_layers",
+        "//layers:embedding_layers",
+        "//layers:transformer_layers",
+        # "//tf_ops:tf_custom_ops",
+        "//tf_ops:tf_custom_ops_py",
+    ],
+)
+
+py_library(
+    name = "transformer_uniform_attn_decoder",
+    srcs = ["transformer_uniform_attn_decoder.py"],
+    srcs_version = "PY3",
+    deps = [
+        # package absl/logging
+        # package tensorflow
+        # tensor2tensor/utils:beam_search",
+        "//layers:base_layers",
+        "//layers:embedding_layers",
+        "//layers:misc_layers",
+        "//layers:transformer_layers",
+        "//tf_ops:tf_custom_ops",
+        "//tf_ops:tf_custom_ops_py",
+    ],
+)
