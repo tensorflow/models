@@ -85,8 +85,9 @@ class DbofModel(tf.keras.Model):
     feature_size = input_specs.shape[-1]
     # shape 'excluding' batch_size
     model_input = tf.keras.Input(shape=self._input_specs.shape[1:])
-    tf.summary.histogram("input_hist", model_input)
-    input_data = model_input
+    # normalize input features
+    input_data = tf.nn.l2_normalize(model_input, -1)
+    tf.summary.histogram("input_hist", input_data)
 
     # configure model
     if params.add_batch_norm:
