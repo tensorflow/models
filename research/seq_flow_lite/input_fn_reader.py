@@ -22,6 +22,7 @@ from absl import logging
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
+import tensorflow_text as tftext
 
 from layers import projection_layers # import seq_flow_lite module
 from utils import misc_utils # import seq_flow_lite module
@@ -61,7 +62,24 @@ def create_input_fn(runner_config, mode, drop_remainder):
     label = tf.reshape(label, [batch_size, num_classes])
     prxlayer = projection_layers.ProjectionLayer(model_config, mode)
     projection, seq_length = prxlayer(text)
-    return {"projection": projection, "seq_length": seq_length, "label": label}
+    gbst_max_token_len = max_seq_len
+    if "gbst_max_token_len" in model_config:
+      gbst_max_token_len = model_config["gbst_max_token_len"]
+    byte_int = tftext.ByteSplitter().split(text).to_tensor(
+        default_value=0, shape=[batch_size, gbst_max_token_len])
+    token_ids = tf.cast(byte_int, tf.int32)
+    token_len = tf.strings.length(text)
+    mask = tf.cast(
+        tf.sequence_mask(token_len, maxlen=gbst_max_token_len), tf.int32)
+    mask *= 3
+    token_ids += mask
+    return {
+        "projection": projection,
+        "seq_length": seq_length,
+        "token_ids": token_ids,
+        "token_len": token_len,
+        "label": label
+    }
 
   def _input_fn(params):
     """Method to be used for reading the data."""
