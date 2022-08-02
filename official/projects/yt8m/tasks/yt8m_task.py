@@ -168,10 +168,6 @@ class YT8MTask(base_task.Task):
     features, labels = inputs['video_matrix'], inputs['labels']
     num_frames = inputs['num_frames']
 
-    # Normalize input features.
-    feature_dim = len(features.shape) - 1
-    features = tf.nn.l2_normalize(features, feature_dim)
-
     # sample random frames / random sequence
     num_frames = tf.cast(num_frames, tf.float32)
     sample_frames = self.task_config.train_data.num_frames
@@ -243,10 +239,6 @@ class YT8MTask(base_task.Task):
     """
     features, labels = inputs['video_matrix'], inputs['labels']
     num_frames = inputs['num_frames']
-
-    # Normalize input features.
-    feature_dim = len(features.shape) - 1
-    features = tf.nn.l2_normalize(features, feature_dim)
 
     # sample random frames (None, 5, 1152) -> (None, 30, 1152)
     sample_frames = self.task_config.validation_data.num_frames
