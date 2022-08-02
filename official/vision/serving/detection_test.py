@@ -124,10 +124,8 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_build_model_fail_with_none_batch_size(self):
     params = exp_factory.get_exp_config('retinanet_resnetfpn_coco')
-    with self.assertRaisesRegex(
-        ValueError, 'batch_size cannot be None for detection models.'):
-      detection.DetectionModule(
-          params, batch_size=None, input_image_size=[640, 640])
+    detection.DetectionModule(
+        params, batch_size=None, input_image_size=[640, 640])
 
 
 if __name__ == '__main__':

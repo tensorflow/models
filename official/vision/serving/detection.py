@@ -15,6 +15,8 @@
 """Detection input and model functions for serving/inference."""
 
 from typing import Mapping, Text
+
+from absl import logging
 import tensorflow as tf
 
 from official.vision import configs
@@ -35,7 +37,12 @@ class DetectionModule(export_base.ExportModule):
   def _build_model(self):
 
     if self._batch_size is None:
-      raise ValueError('batch_size cannot be None for detection models.')
+      # Only batched NMS is supported with dynamic batch size.
+      self.params.task.model.detection_generator.nms_version = 'batched'
+      logging.info(
+          'nms_version is set to `batched` because only batched NMS is '
+          'supported with dynamic batch size.')
+
     input_specs = tf.keras.layers.InputSpec(shape=[self._batch_size] +
                                             self._input_image_size + [3])
 
