@@ -85,6 +85,7 @@ def build_bert_pretrainer(pretrainer_cfg: params.PretrainerModelParams,
       activation=tf_utils.get_activation(pretrainer_cfg.mlm_activation),
       initializer=tf.keras.initializers.TruncatedNormal(
           stddev=pretrainer_cfg.mlm_initializer_range),
+      output_weights_use_proj=pretrainer_cfg.mlm_output_weights_use_proj,
       name='cls/predictions')
 
   pretrainer = edgetpu_pretrainer.MobileBERTEdgeTPUPretrainer(

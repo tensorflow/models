@@ -41,3 +41,5 @@ class PretrainerConfig(base_config.Config):
   cls_heads: List[ClsHeadConfig] = dataclasses.field(default_factory=list)
   mlm_activation: str = "gelu"
   mlm_initializer_range: float = 0.02
+  # Currently only used for mobile bert.
+  mlm_output_weights_use_proj: bool = False

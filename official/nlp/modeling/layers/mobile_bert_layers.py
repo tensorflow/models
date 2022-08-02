@@ -447,6 +447,7 @@ class MobileBertMaskedLM(tf.keras.layers.Layer):
                activation=None,
                initializer='glorot_uniform',
                output='logits',
+               output_weights_use_proj=False,
                **kwargs):
     """Class initialization.
 
@@ -457,6 +458,9 @@ class MobileBertMaskedLM(tf.keras.layers.Layer):
         uniform initializer.
       output: The output style for this layer. Can be either `logits` or
         `predictions`.
+      output_weights_use_proj: Use projection instead of concating extra output
+        weights, this may reduce the MLM task accuracy but will reduce the model
+        params as well.
       **kwargs: keyword arguments.
     """
     super().__init__(**kwargs)
@@ -469,6 +473,7 @@ class MobileBertMaskedLM(tf.keras.layers.Layer):
           ('Unknown `output` value "%s". `output` can be either "logits" or '
            '"predictions"') % output)
     self._output_type = output
+    self._output_weights_use_proj = output_weights_use_proj
 
   def build(self, input_shape):
     self._vocab_size, embedding_width = self.embedding_table.shape
@@ -480,11 +485,18 @@ class MobileBertMaskedLM(tf.keras.layers.Layer):
         name='transform/dense')
 
     if hidden_size > embedding_width:
-      self.extra_output_weights = self.add_weight(
-          'extra_output_weights',
-          shape=(self._vocab_size, hidden_size - embedding_width),
-          initializer=tf_utils.clone_initializer(self.initializer),
-          trainable=True)
+      if self._output_weights_use_proj:
+        self.extra_output_weights = self.add_weight(
+            'output_weights_proj',
+            shape=(embedding_width, hidden_size),
+            initializer=tf_utils.clone_initializer(self.initializer),
+            trainable=True)
+      else:
+        self.extra_output_weights = self.add_weight(
+            'extra_output_weights',
+            shape=(self._vocab_size, hidden_size - embedding_width),
+            initializer=tf_utils.clone_initializer(self.initializer),
+            trainable=True)
     elif hidden_size == embedding_width:
       self.extra_output_weights = None
     else:
@@ -509,10 +521,16 @@ class MobileBertMaskedLM(tf.keras.layers.Layer):
     if self.extra_output_weights is None:
       lm_data = tf.matmul(lm_data, self.embedding_table, transpose_b=True)
     else:
-      lm_data = tf.matmul(
-          lm_data,
-          tf.concat([self.embedding_table, self.extra_output_weights], axis=1),
-          transpose_b=True)
+      if self._output_weights_use_proj:
+        lm_data = tf.matmul(
+            lm_data, self.extra_output_weights, transpose_b=True)
+        lm_data = tf.matmul(lm_data, self.embedding_table, transpose_b=True)
+      else:
+        lm_data = tf.matmul(
+            lm_data,
+            tf.concat([self.embedding_table, self.extra_output_weights],
+                      axis=1),
+            transpose_b=True)
 
     logits = tf.nn.bias_add(lm_data, self.bias)
     masked_positions_length = masked_positions.shape.as_list()[1] or tf.shape(
