@@ -116,3 +116,19 @@ py_strict_library(
         "//layers:quantization_layers",
     ],
 )
+
+py_strict_library(
+    name = "transformer_layers",
+    srcs = ["transformer_layers.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":embedding_layers",
+        # package tensorflow
+        "//layers:base_layers",
+        "//layers:dense_layers",
+        "//layers:normalization_layers",
+        "//layers:quantization_layers",
+        "//tf_ops:tf_custom_ops",
+        "//tf_ops:tf_custom_ops_py",
+    ],
+)
