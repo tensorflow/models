@@ -51,7 +51,10 @@ def load_runner_config():
 def create_model(model, model_config, features, mode):
   """Creates a sequence labeling model."""
   keras_model = model.Encoder(model_config, mode)
-  logits = keras_model(features["projection"], features["seq_length"])
+  if "pqrnn" in model_name:
+    logits = keras_model(features["projection"], features["seq_length"])
+  else:
+    logits = keras_model(features["token_ids"], features["token_len"])
   if mode != tf.estimator.ModeKeys.PREDICT:
     if not model_config["multilabel"]:
       loss = tf.nn.sparse_softmax_cross_entropy_with_logits(

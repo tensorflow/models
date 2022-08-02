@@ -38,3 +38,19 @@ py_library(
         "//tf_ops:tf_custom_ops_py",  # sequence projection
     ],
 )
+
+py_library(
+    name = "byteqrnn",
+    srcs = ["byteqrnn.py"],
+    srcs_version = "PY3",
+    deps = [
+        # package tensorflow
+        "//layers:base_layers",
+        "//layers:dense_layers",
+        "//layers:embedding_layers",
+        "//layers:misc_layers",
+        "//layers:qrnn_layers",
+        # //tf_ops:tf_custom_ops",
+        "//tf_ops:tf_custom_ops_py",
+    ],
+)
