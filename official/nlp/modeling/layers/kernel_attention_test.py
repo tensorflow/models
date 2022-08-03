@@ -61,11 +61,11 @@ class KernelAttentionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(output.shape, [batch_size, seq_length, key_dim])
 
   @parameterized.parameters(
-      itertools.product(_FEATURE_TRANSFORM, [127], _TRAINING, [True, False],
-                        [0], [None, "left", "right"]))
+      itertools.product(["relu", "exp"], [127], _TRAINING, [True, False],
+                        [0], [None, 0.97], [None, "left", "right"]))
   def test_causal_windowed_attention_projection(
       self, feature_transform, num_random_features, training, redraw,
-      begin_kernel, causal_padding):
+      begin_kernel, causal_window_decay, causal_padding):
     num_heads = 12
     key_dim = 64
     seq_length = 1024
@@ -81,6 +81,7 @@ class KernelAttentionTest(tf.test.TestCase, parameterized.TestCase):
         use_causal_windowed=True,
         causal_chunk_length=8,
         causal_window_length=3,
+        causal_window_decay=causal_window_decay,
         causal_padding=causal_padding)
     query = tf.random.normal(
         shape=(batch_size, seq_length, key_dim))
@@ -174,6 +175,27 @@ class KernelAttentionTest(tf.test.TestCase, parameterized.TestCase):
         test_layer.get_config())
     # If the serialization was successful, the new config should match the old.
     self.assertAllEqual(test_layer.get_config(), new_layer.get_config())
+
+  def test_rectangular_window_sum(self):
+    x = tf.ones([2, 5, 2, 2, 2])
+    winsum = attention.rectangular_window_sum(x, 3)
+    self.assertEqual(winsum.shape, x.shape)
+    self.assertAllClose(
+        tf.tile(
+            tf.reshape([1., 2., 3., 3., 3.], [1, -1, 1, 1, 1]),
+            [2, 1, 2, 2, 2]),
+        winsum)
+
+  def test_weighted_window_sum(self):
+    x = tf.ones([2, 5, 2, 2, 2])
+    winsum = attention.weighted_window_sum(x, 3, [0.01, 0.1, 1.])
+    self.assertEqual(winsum.shape, x.shape)
+    self.assertAllClose(
+        tf.tile(
+            tf.reshape([1., 1.1, 1.11, 1.11, 1.11], [1, -1, 1, 1, 1]),
+            [2, 1, 2, 2, 2]),
+        winsum)
+
 
 if __name__ == "__main__":
   tf.test.main()
