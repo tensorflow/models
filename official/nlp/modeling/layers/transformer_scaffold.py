@@ -237,7 +237,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
     self._output_layer_norm = tf.keras.layers.LayerNormalization(
         name="output_layer_norm", axis=-1, epsilon=1e-12, dtype=tf.float32)
 
-    super(TransformerScaffold, self).build(input_shape)
+    super().build(input_shape)
     logging.info("%s configs: %s", self.__class__.__name__, self.get_config())
 
   def get_config(self):

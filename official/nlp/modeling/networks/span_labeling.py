@@ -81,7 +81,7 @@ class SpanLabeling(tf.keras.Model):
     # created using the Functional API. Once super().__init__ is called, we
     # can assign attributes to `self` - note that all `self` assignments are
     # below this line.
-    super(SpanLabeling, self).__init__(
+    super().__init__(
         inputs=[sequence_data], outputs=output_tensors, **kwargs)
     config_dict = {
         'input_width': input_width,

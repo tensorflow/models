@@ -384,7 +384,7 @@ class RelativePositionEncoding(tf.keras.layers.Layer):
   """
 
   def __init__(self, hidden_size, **kwargs):
-    super(RelativePositionEncoding, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self._hidden_size = hidden_size
     self._inv_freq = 1.0 / (10000.0**(
         tf.range(0, self._hidden_size, 2.0) / self._hidden_size))
@@ -476,7 +476,7 @@ class XLNetBase(tf.keras.layers.Layer):
                use_cls_mask=False,
                embedding_width=None,
                **kwargs):
-    super(XLNetBase, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
     self._vocab_size = vocab_size
     self._initializer = initializer
@@ -574,7 +574,7 @@ class XLNetBase(tf.keras.layers.Layer):
         "embedding_width":
             self._embedding_width,
     }
-    base_config = super(XLNetBase, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def get_embedding_lookup_table(self):
@@ -601,7 +601,7 @@ class XLNetBase(tf.keras.layers.Layer):
         "target_mapping": target_mapping,
         "masked_tokens": masked_tokens
     }
-    return super(XLNetBase, self).__call__(inputs, **kwargs)
+    return super().__call__(inputs, **kwargs)
 
   def call(self, inputs):
     """Implements call() for the layer."""
