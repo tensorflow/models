@@ -173,7 +173,7 @@ class AlbertEncoder(tf.keras.Model):
     # created using the Functional API. Once super().__init__ is called, we
     # can assign attributes to `self` - note that all `self` assignments are
     # below this line.
-    super(AlbertEncoder, self).__init__(
+    super().__init__(
         inputs=[word_ids, mask, type_ids], outputs=outputs, **kwargs)
     config_dict = {
         'vocab_size': vocab_size,

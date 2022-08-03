@@ -143,7 +143,7 @@ class PackedSequenceEmbedding(tf.keras.Model):
               [attention_mask, sub_seq_mask])
 
     outputs = [embeddings, attention_mask]
-    super(PackedSequenceEmbedding, self).__init__(
+    super().__init__(
         inputs=inputs, outputs=outputs, **kwargs)
     # TF does not track immutable attrs which do not contain Trackables,
     # so by creating a config namedtuple instead of a dict we avoid tracking it.
@@ -221,7 +221,7 @@ class PositionEmbeddingWithSubSeqMask(tf.keras.layers.Layer):
     if 'dtype' not in kwargs:
       kwargs['dtype'] = 'float32'
 
-    super(PositionEmbeddingWithSubSeqMask, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     if use_dynamic_slicing and max_sequence_length is None:
       raise ValueError(
           'If `use_dynamic_slicing` is True, `max_sequence_length` must be set.'
@@ -236,7 +236,7 @@ class PositionEmbeddingWithSubSeqMask(tf.keras.layers.Layer):
         'initializer': tf.keras.initializers.serialize(self._initializer),
         'use_dynamic_slicing': self._use_dynamic_slicing,
     }
-    base_config = super(PositionEmbeddingWithSubSeqMask, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def build(self, input_shape):
@@ -273,7 +273,7 @@ class PositionEmbeddingWithSubSeqMask(tf.keras.layers.Layer):
         shape=[weight_sequence_length, width],
         initializer=self._initializer)
 
-    super(PositionEmbeddingWithSubSeqMask, self).build(input_shape)
+    super().build(input_shape)
 
   def call(self, inputs, position_ids=None, sub_sequence_mask=None):
     """Implements call() for the layer.

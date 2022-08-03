@@ -74,7 +74,7 @@ class Classification(tf.keras.Model):
           ('Unknown `output` value "%s". `output` can be either "logits" or '
            '"predictions"') % output)
 
-    super(Classification, self).__init__(
+    super().__init__(
         inputs=[cls_output], outputs=output_tensors, **kwargs)
 
     # b/164516224

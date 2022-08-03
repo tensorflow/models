@@ -163,7 +163,7 @@ class MobileBERTEncoder(tf.keras.Model):
         encoder_outputs=all_layer_outputs,
         attention_scores=all_attention_scores)
 
-    super(MobileBERTEncoder, self).__init__(
+    super().__init__(
         inputs=self.inputs, outputs=outputs, **kwargs)
 
   def get_embedding_table(self):
