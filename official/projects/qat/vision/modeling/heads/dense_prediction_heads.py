@@ -54,7 +54,7 @@ class SeparableConv2DQuantized(tf.keras.layers.Layer):
     depthwise_conv2d_quantized = helper.quantize_wrapped_layer(
         tf.keras.layers.DepthwiseConv2D,
         configs.Default8BitConvQuantizeConfig(
-            ['depthwise_kernel'], ['activation'], True))
+            ['depthwise_kernel'], [], True))
     conv2d_quantized = helper.quantize_wrapped_layer(
         tf.keras.layers.Conv2D,
         configs.Default8BitConvQuantizeConfig(
