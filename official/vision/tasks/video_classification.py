@@ -283,9 +283,9 @@ class VideoClassificationTask(base_task.Task):
 
       # Computes per-replica loss.
       if self._is_multilabel():
-        outputs = tf.math.sigmoid(outputs)
+        outputs = tf.nest.map_structure(tf.math.sigmoid, outputs)
       else:
-        outputs = tf.math.softmax(outputs)
+        outputs = tf.nest.map_structure(tf.math.softmax, outputs)
       all_losses = self.build_losses(
           model_outputs=outputs, labels=labels, aux_losses=model.losses)
       loss = all_losses[self.loss]
@@ -354,9 +354,9 @@ class VideoClassificationTask(base_task.Task):
     """Performs the forward step."""
     outputs = model(features, training=False)
     if self._is_multilabel():
-      outputs = tf.math.sigmoid(outputs)
+      outputs = tf.nest.map_structure(tf.math.sigmoid, outputs)
     else:
-      outputs = tf.math.softmax(outputs)
+      outputs = tf.nest.map_structure(tf.math.softmax, outputs)
     num_test_views = self._get_num_test_views()
     if num_test_views > 1:
       # Averaging output probabilities across multiples views.
