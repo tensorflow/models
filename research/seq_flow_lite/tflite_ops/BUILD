@@ -114,3 +114,89 @@ pybind_extension(
         "@pybind11",
     ],
 )
+
+cc_library(
+    name = "tflite_qrnn_pooling",
+    srcs = ["tflite_qrnn_pooling.cc"],
+    hdrs = ["tflite_qrnn_pooling.h"],
+    copts = tflite_copts(),
+    deps = [
+        "//third_party/absl/base:core_headers",
+        "//third_party/tensorflow/lite/kernels:builtin_ops",
+        "//third_party/tensorflow_models/seq_flow_lite/tflite_ops:quantization_util",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
+    name = "tflite_decoder_cache",
+    hdrs = ["tflite_decoder_cache.h"],
+    deps = [
+        "//third_party/tensorflow/lite/c:common",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
+    name = "tflite_decoder_handler",
+    srcs = ["tflite_decoder_handler.cc"],
+    hdrs = ["tflite_decoder_handler.h"],
+    copts = tflite_copts(),
+    deps = [
+        ":tflite_decoder_cache",
+        "//third_party/flatbuffers",
+        "//third_party/tensorflow/lite/c:common",
+        "//third_party/tensorflow/lite/kernels:builtin_ops",
+        "//third_party/tensorflow/lite/kernels:kernel_util",
+        "//third_party/tensorflow/lite/kernels/internal:tensor",
+        "//third_party/tensorflow_models/seq_flow_lite/tflite_ops:quantization_util",
+    ],
+    alwayslink = 1,
+)
+
+cc_test(
+    name = "tflite_decoder_handler_test",
+    size = "small",
+    srcs = ["tflite_decoder_handler_test.cc"],
+    deps = [
+        ":tflite_decoder_handler",
+        "//testing/base/public:gunit",
+        "//third_party/flatbuffers",
+        "//third_party/tensorflow/lite:framework",
+        "//third_party/tensorflow/lite/c:common",
+        "//third_party/tensorflow/lite/kernels:test_util",
+    ],
+)
+
+cc_library(
+    name = "beam_search",
+    srcs = ["beam_search.cc"],
+    hdrs = ["beam_search.h"],
+    copts = tflite_copts(),
+    deps = [
+        "//base",
+        "//third_party/absl/strings",
+        "//third_party/tensorflow/lite/c:common",
+        "//third_party/tensorflow/lite/kernels/internal:tensor",
+        "//third_party/tensorflow/lite/kernels/internal:types",
+        "//third_party/tensorflow_models/seq_flow_lite/tflite_ops:quantization_util",
+    ],
+)
+
+cc_test(
+    name = "beam_search_test",
+    srcs = ["beam_search_test.cc"],
+    copts = tflite_copts(),
+    deps = [
+        ":beam_search",
+        "//testing/base/public:gunit_main",
+        "//third_party/absl/strings",
+        "//third_party/tensorflow/lite/c:c_api_types",
+        "//third_party/tensorflow/lite/c:common",
+        "//third_party/tensorflow/lite/kernels/internal:legacy_reference_base",
+        "//third_party/tensorflow/lite/kernels/internal:optimized_base",
+        "//third_party/tensorflow/lite/kernels/internal:tensor",
+        "//third_party/tensorflow/lite/kernels/internal:types",
+        "//third_party/tensorflow_models/seq_flow_lite/tflite_ops:quantization_util",
+    ],
+)
