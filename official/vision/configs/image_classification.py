@@ -36,6 +36,7 @@ class DataConfig(cfg.DataConfig):
   cycle_length: int = 10
   is_multilabel: bool = False
   aug_rand_hflip: bool = True
+  aug_crop: Optional[bool] = True
   aug_type: Optional[
       common.Augmentation] = None  # Choose from AutoAugment and RandAugment.
   color_jitter: float = 0.
