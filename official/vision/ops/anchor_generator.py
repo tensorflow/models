@@ -47,7 +47,7 @@ class _SingleAnchorGenerator:
       stride: A single int represents the anchor stride size between center of
         each anchor.
       clip_boxes: Boolean to represent whether the anchor coordinates should be
-        clipped to the image size. Defaults to `True`.
+        clipped to the image size. Defaults to `False`.
     Input shape: the size of the image, `[H, W, C]`
     Output shape: the size of anchors, `[(H / stride) * (W / stride), 4]`
     """
