@@ -253,7 +253,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       norm_first: bool = False,
       transformer_cls: Union[
           str, tf.keras.layers.Layer] = layers.TransformerEncoderBlock,
-      share_rezero: bool = True,
+      share_rezero: bool = False,
       **kwargs):
     super().__init__(**kwargs)
     activation = tf.keras.activations.get(inner_activation)
