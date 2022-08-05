@@ -62,7 +62,7 @@ class DataConfig(base_config.Config):
     tf_data_service_address: The URI of a tf.data service to offload
       preprocessing onto during training. The URI should be in the format
       "protocol://address", e.g. "grpc://tf-data-service:5050". It can be
-        overridden by `FLAGS.tf_data_service` flag in the binary.
+      overridden by `FLAGS.tf_data_service` flag in the binary.
     tf_data_service_job_name: The name of the tf.data service job. This argument
       makes it possible for multiple datasets to share the same job. The default
       behavior is that the dataset creates anonymous, exclusively owned jobs.
@@ -75,6 +75,30 @@ class DataConfig(base_config.Config):
       decoding when loading dataset from TFDS. Use comma to separate multiple
       features. The main use case is to skip the image/video decoding for better
       performance.
+    enable_shared_tf_data_service_between_parallel_trainers: A bool. When set to
+      true, only a single tf.data service will be started, and it will be shared
+      between all the trainer run simultaneously, e.g. using vizier to tune
+      hyperparameters. This will save CPU and RAM resources compared to running
+      separate tf.data service for each trainer. Notice that if batch size is
+      different for different trainers, the field
+      apply_tf_data_service_before_batching also needs to be true so that only a
+      single tf.data service instance will be created. In this case, tf.data
+      service will be applied before batching operation. So make sure to not
+      apply any processing steps after batching (e.g. in postprocess_fn) since
+      they wouldn't be paralleled by tf.data service and may slow down your
+      tf.data pipeline. When using shared tf.data service, the tf.data dataset
+      must be infinite, and slow trainer may skip certain training examples.
+      More details about shared tf.data service can be found at:
+      https://www.tensorflow.org/api_docs/python/tf/data/experimental/service?version=nightly#sharing_tfdata_service_with_concurrent_trainers.
+    apply_tf_data_service_before_batching: A bool. If set to True, tf.data
+      service will be applied before batching operation. This is useful to make
+      sure only a single tf.data service instance is created when
+      enable_shared_tf_data_service_between_parallel_trainers is true and batch
+      size is changing between parallel trainers.
+    trainer_id: A string. The id of the trainer if there are multiple parallel
+      trainer running at the same time, e.g. in vizier tuning case. It will be
+      automatically set if this field is needed. Users does not need to set it
+      when creating experiment configs.
     seed: An optional seed to use for deterministic shuffling/preprocessing.
     prefetch_buffer_size: An int specifying the buffer size of prefetch
       datasets. If None, the buffer size is autotuned. Specifying this is useful
@@ -99,6 +123,9 @@ class DataConfig(base_config.Config):
   tfds_data_dir: str = ""
   tfds_as_supervised: bool = False
   tfds_skip_decoding_feature: str = ""
+  enable_shared_tf_data_service_between_parallel_trainers: bool = False
+  apply_tf_data_service_before_batching: bool = False
+  trainer_id: Optional[str] = None
   seed: Optional[int] = None
   prefetch_buffer_size: Optional[int] = None
 
