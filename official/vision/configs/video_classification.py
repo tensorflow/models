@@ -14,7 +14,7 @@
 
 """Video classification configuration definition."""
 import dataclasses
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
@@ -45,7 +45,7 @@ class DataConfig(cfg.DataConfig):
   one_hot: bool = True
   shuffle_buffer_size: int = 64
   cache: bool = False
-  input_path: str = ''
+  input_path: Union[str, cfg.base_config.Config] = ''
   is_training: bool = True
   cycle_length: int = 10
   drop_remainder: bool = True
