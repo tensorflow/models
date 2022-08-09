@@ -29,6 +29,7 @@ class TestSubclass(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
 
   def __init__(self,
                length_normalization_fn=length_normalization,
+               extra_cache_output=True,
                dtype=tf.float32):
     super(TestSubclass, self).__init__(
         length_normalization_fn=length_normalization, dtype=dtype)
