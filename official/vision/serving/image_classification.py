@@ -40,7 +40,8 @@ class ClassificationModule(export_base.ExportModule):
   def _build_inputs(self, image):
     """Builds classification model inputs for serving."""
     # Center crops and resizes image.
-    image = preprocess_ops.center_crop_image(image)
+    if self.params.task.train_data.aug_crop:
+      image = preprocess_ops.center_crop_image(image)
 
     image = tf.image.resize(
         image, self._input_image_size, method=tf.image.ResizeMethod.BILINEAR)
