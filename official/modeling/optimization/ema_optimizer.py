@@ -21,7 +21,7 @@ import tensorflow as tf
 # pylint: disable=protected-access
 
 
-class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
+class ExponentialMovingAverage(tf.keras.optimizers.legacy.Optimizer):
   """Optimizer that computes an exponential moving average of the variables.
 
   Empirically it has been found that using the moving average of the trained
