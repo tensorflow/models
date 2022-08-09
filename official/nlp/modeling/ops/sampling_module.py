@@ -163,7 +163,8 @@ class SamplingModule(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
                sample_temperature=0.0,
                enable_greedy: bool = True,
                dtype: tf.DType = tf.float32,
-               decoding_name: Optional[str] = None):
+               decoding_name: Optional[str] = None,
+               extra_cache_output: bool = False):
     """Initialize sampling module."""
     self.symbols_to_logits_fn = symbols_to_logits_fn
     self.length_normalization_fn = length_normalization_fn
@@ -178,10 +179,12 @@ class SamplingModule(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
         sample_temperature, dtype=tf.float32)
     self.enable_greedy = enable_greedy
     self.decoding_name = decoding_name
+    self.extra_cache_output = extra_cache_output
     super(SamplingModule, self).__init__(
         length_normalization_fn=length_normalization_fn,
         dtype=dtype,
-        decoding_name=decoding_name)
+        decoding_name=decoding_name,
+        extra_cache_output=extra_cache_output)
 
   def _grow_alive_seq(self,
                       state: Dict[str, Any],
@@ -300,16 +303,14 @@ class SamplingModule(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
           decoding_module.StateKeys.CUR_INDEX:
               tf.TensorShape([]),
           decoding_module.StateKeys.ALIVE_SEQ:
-              tf.TensorShape(
-                  [batch_size, self.max_decode_length + 1]),
+              tf.TensorShape([batch_size, self.max_decode_length + 1]),
           decoding_module.StateKeys.ALIVE_LOG_PROBS:
               tf.TensorShape([batch_size, 1]),
           decoding_module.StateKeys.ALIVE_CACHE:
               tf.nest.map_structure(lambda state: state.get_shape(),
                                     alive_cache),
           decoding_module.StateKeys.FINISHED_SEQ:
-              tf.TensorShape(
-                  [batch_size, self.max_decode_length + 1]),
+              tf.TensorShape([batch_size, self.max_decode_length + 1]),
           decoding_module.StateKeys.FINISHED_SCORES:
               tf.TensorShape([batch_size, 1]),
           decoding_module.StateKeys.FINISHED_FLAGS:
@@ -324,9 +325,8 @@ class SamplingModule(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
           decoding_module.StateKeys.ALIVE_LOG_PROBS:
               tf.TensorShape([None, 1]),
           decoding_module.StateKeys.ALIVE_CACHE:
-              tf.nest.map_structure(
-                  decoding_module.get_shape_keep_last_dim,
-                  alive_cache),
+              tf.nest.map_structure(decoding_module.get_shape_keep_last_dim,
+                                    alive_cache),
           decoding_module.StateKeys.FINISHED_SEQ:
               tf.TensorShape([None, None]),
           decoding_module.StateKeys.FINISHED_SCORES:
@@ -334,6 +334,22 @@ class SamplingModule(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
           decoding_module.StateKeys.FINISHED_FLAGS:
               tf.TensorShape([None, 1])
       }
+
+    if self.extra_cache_output:
+      state.update(
+          {decoding_module.StateKeys.INITIAL_OUTPUT_CACHE: alive_cache})
+      if self.padded_decode:
+        state_shape_invariants.update({
+            decoding_module.StateKeys.INITIAL_OUTPUT_CACHE:
+                tf.nest.map_structure(lambda state: state.get_shape(),
+                                      alive_cache)
+        })
+      else:
+        state_shape_invariants.update({
+            decoding_module.StateKeys.INITIAL_OUTPUT_CACHE:
+                tf.nest.map_structure(decoding_module.get_shape_keep_last_dim,
+                                      alive_cache),
+        })
 
     return state, state_shape_invariants
 
@@ -428,6 +444,9 @@ class SamplingModule(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
                                                      finished_scores)
     finished_seq = tf.where(seq_cond, finished_seq, alive_seq)
     finished_scores = tf.where(score_cond, finished_scores, alive_log_probs)
+    if self.extra_cache_output:
+      return finished_seq, finished_scores, finished_state[
+          decoding_module.StateKeys.INITIAL_OUTPUT_CACHE]
     return finished_seq, finished_scores
 
   def _continue_search(self, state) -> tf.Tensor:

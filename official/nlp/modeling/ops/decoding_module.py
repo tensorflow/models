@@ -22,7 +22,7 @@ import tensorflow as tf
 from tensorflow.python.framework import dtypes
 from official.modeling import tf_utils
 
-Output = Tuple[tf.Tensor, tf.Tensor]
+Output = Tuple[tf.Tensor, tf.Tensor, Optional[tf.Tensor]]
 InternalState = Tuple[tf.Tensor, tf.Tensor, tf.Tensor, Dict]
 InitialState = Tuple[Dict[str, Any], Dict[str, Any]]
 
@@ -45,6 +45,10 @@ class StateKeys:
   # the encoder output, attention bias, and the decoder attention output from
   # the previous iteration.
   ALIVE_CACHE = "ALIVE_CACHE"
+
+  # The initial model state/cache after model processing the initial token.
+  # The cache will be filled if extra_cache_output is true.
+  INITIAL_OUTPUT_CACHE = "INITIAL_OUTPUT_CACHE"
 
   # Top finished sequences for each batch item.
   # Has shape [batch_size, beam_size, CUR_INDEX + 1]. Sequences that are
@@ -109,7 +113,8 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
   def __init__(self,
                length_normalization_fn: Callable[[int, tf.DType], float],
                dtype: tf.DType = tf.float32,
-               decoding_name: Optional[str] = None):
+               decoding_name: Optional[str] = None,
+               extra_cache_output: bool = False):
     """Initialize the Decoding Module.
 
     Args:
@@ -118,24 +123,26 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
       dtype: A tensorflow data type used for score computation. The default is
         tf.float32.
       decoding_name: an optional name for the decoding loop tensors.
+      extra_cache_output: If true, the first cache will be in the states.
     """
     self.length_normalization_fn = length_normalization_fn
     self.dtype = tf.as_dtype(dtype)
     self.decoding_name = decoding_name
 
-  def generate(self,
-               initial_ids: tf.Tensor,
+  def generate(self, initial_ids: tf.Tensor,
                initial_cache: Dict[str, tf.Tensor]) -> Output:
     """Implements the decoding strategy (beam_search or sampling).
 
     Args:
-      initial_ids: initial ids to pass into the symbols_to_logits_fn.
-                   int tensor with shape [batch_size, 1]
+      initial_ids: initial ids to pass into the symbols_to_logits_fn. int tensor
+        with shape [batch_size, 1]
       initial_cache: dictionary for caching model outputs from previous step.
+
     Returns:
       Tuple of tensors representing
         finished_sequence: shape [batch, max_seq_length]
         finished_scores: [batch]
+        first_cache: The cache after init token
     """
     batch_size = (
         initial_ids.shape.as_list()[0]
@@ -163,6 +170,17 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
       }
       new_state.update(alive_state)
       new_state.update(finished_state)
+      if self.extra_cache_output:
+        i = state[StateKeys.CUR_INDEX]
+        old_cache = state[StateKeys.INITIAL_OUTPUT_CACHE]
+
+        def update_with_cache(new_state, cache):
+          """Updates new_state with cache."""
+          new_state.update({StateKeys.INITIAL_OUTPUT_CACHE: cache})
+
+        tf.cond(
+            tf.equal(i, 0), lambda: update_with_cache(new_state, new_cache),
+            lambda: update_with_cache(new_state, old_cache))
       return [new_state]
 
     finished_state = tf.nest.map_structure(
