@@ -770,6 +770,32 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
       self.assertIn("eval_loss", output)
       self.assertGreaterEqual(output["eval_loss"], 0)
 
+  def test_step_per_loop_callable(self):
+    test_runner = TestRunner()
+
+    checkpoint = tf.train.Checkpoint(
+        model=test_runner.model, optimizer=test_runner.optimizer)
+    checkpoint_manager = tf.train.CheckpointManager(
+        checkpoint,
+        self.model_dir,
+        max_to_keep=None,
+        step_counter=test_runner.global_step,
+        checkpoint_interval=10)
+
+    def steps_per_loop_fn(global_step):
+      if global_step > 4:
+        return 4
+      return 2
+
+    test_controller = controller.Controller(
+        trainer=test_runner,
+        global_step=test_runner.global_step,
+        steps_per_loop=steps_per_loop_fn,
+        checkpoint_manager=checkpoint_manager,
+    )
+    test_controller.train(steps=10)
+    self.assertEqual(test_runner.global_step, 10)
+
 
 if __name__ == "__main__":
   tf.test.main()
