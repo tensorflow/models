@@ -15,7 +15,7 @@
 """Preprocessing ops."""
 
 import math
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Sequence, Union
 from six.moves import range
 import tensorflow as tf
 
@@ -65,22 +65,42 @@ def clip_or_pad_to_fixed_size(input_tensor, size, constant_values=0):
   return padded_tensor
 
 
-def normalize_image(image,
-                    offset=(0.485, 0.456, 0.406),
-                    scale=(0.229, 0.224, 0.225)):
+def normalize_image(image: tf.Tensor,
+                    offset: Sequence[float] = (0.485, 0.456, 0.406),
+                    scale: Sequence[float] = (0.229, 0.224, 0.225)):
   """Normalizes the image to zero mean and unit variance."""
   with tf.name_scope('normalize_image'):
     image = tf.image.convert_image_dtype(image, dtype=tf.float32)
-    offset = tf.constant(offset)
-    offset = tf.expand_dims(offset, axis=0)
-    offset = tf.expand_dims(offset, axis=0)
-    image -= offset
+    return normalize_scaled_float_image(image, offset, scale)
 
-    scale = tf.constant(scale)
-    scale = tf.expand_dims(scale, axis=0)
-    scale = tf.expand_dims(scale, axis=0)
-    image /= scale
-    return image
+
+def normalize_scaled_float_image(image: tf.Tensor,
+                                 offset: Sequence[float] = (0.485, 0.456,
+                                                            0.406),
+                                 scale: Sequence[float] = (0.229, 0.224,
+                                                           0.225)):
+  """Normalizes a scaled float image to zero mean and unit variance.
+
+  It assumes the input image is float dtype with values in [0, 1).
+
+  Args:
+    image: A tf.Tensor in float32 dtype with values in range [0, 1).
+    offset: A tuple of mean values to be subtracted from the image.
+    scale: A tuple of normalization factors.
+
+  Returns:
+    A normalized image tensor.
+  """
+  offset = tf.constant(offset)
+  offset = tf.expand_dims(offset, axis=0)
+  offset = tf.expand_dims(offset, axis=0)
+  image -= offset
+
+  scale = tf.constant(scale)
+  scale = tf.expand_dims(scale, axis=0)
+  scale = tf.expand_dims(scale, axis=0)
+  image /= scale
+  return image
 
 
 def compute_padded_size(desired_size, stride):
