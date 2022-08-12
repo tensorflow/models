@@ -1455,7 +1455,7 @@ class Head(tf.keras.layers.Layer):
     if self._pool is not None:
       outputs = self._pool(x, states=states, output_states=True)
     else:
-      outputs = x
+      outputs = (x, states)
     return outputs
 
 
