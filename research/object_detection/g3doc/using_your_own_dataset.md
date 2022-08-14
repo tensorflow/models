@@ -3,7 +3,7 @@
 [TOC]
 
 To use your own dataset in TensorFlow Object Detection API, you must convert it
-into the [TFRecord file format](https://www.tensorflow.org/api_guides/python/python_io#tfrecords_format_details).
+into the [TFRecord file format](https://www.tensorflow.org/tutorials/load_data/tfrecord#tfrecords_format_details).
 This document outlines how to write a script to generate the TFRecord file.
 
 ## Label Maps
@@ -173,7 +173,7 @@ dataset into multiple files:
     improves performance of the model slightly.
 
 Instead of writing all tf.Example protos to a single file as shown in
-[conversion script outline](#conversion-script-outline), use the snippet below.
+[conversion script outline](#conversion-script-outline-conversion-script-outline), use the snippet below.
 
 ```python
 import contextlib2
