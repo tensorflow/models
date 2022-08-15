@@ -119,11 +119,11 @@ pip3 install tensorflow-text-nightly # when model uses `nlp` packages
 repository version numbers match with the target TensorFlow release. For
 example, [TensorFlow-models v2.8.x](https://github.com/tensorflow/models/releases/tag/v2.8.0)
 is compatible with [TensorFlow v2.8.x](https://github.com/tensorflow/tensorflow/releases/tag/v2.8.0).
-This is equivalent to the following.
+This is equivalent to the following:
 
 ```shell
-pip3 install tf-models-official==2.5.0
-pip3 install tensorflow-text==2.5.0 # when model uses `nlp` packages
+pip3 install tf-models-official==2.8.0
+pip3 install tensorflow-text==2.8.0 # when models in uses `nlp` packages
 ```
 
 Starting from 2.9.x release, we release the modeling library as
