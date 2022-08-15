@@ -20,6 +20,7 @@ import dataclasses
 import math
 from typing import Dict, Mapping, Optional, Sequence, Tuple, Union
 
+from absl import logging
 import tensorflow as tf
 
 from official.modeling import hyperparams
@@ -49,7 +50,6 @@ TensorMap = Mapping[str, tf.Tensor]
 @dataclasses.dataclass
 class BlockSpec:
   """Configuration of a block."""
-  pass
 
 
 @dataclasses.dataclass
@@ -717,9 +717,9 @@ def build_movinet(
   if backbone_type != 'movinet':
     raise ValueError(f'Inconsistent backbone type {backbone_type}')
   if norm_activation_config.activation is not None:
-    raise ValueError(
-        'norm_activation is not used in MoViNets, but specified: %s' %
-        norm_activation_config.activation)
+    logging.warn('norm_activation is not used in MoViNets, but specified: '
+                 '%s', norm_activation_config.activation)
+    logging.warn('norm_activation is ignored.')
 
   return Movinet(
       model_id=backbone_cfg.model_id,
@@ -730,6 +730,7 @@ def build_movinet(
       input_specs=input_specs,
       activation=backbone_cfg.activation,
       gating_activation=backbone_cfg.gating_activation,
+      output_states=backbone_cfg.output_states,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
