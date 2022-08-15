@@ -12,6 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Create a list of dictionaries for categories according to the taxonomy.
 
 Example usage-
@@ -46,6 +60,11 @@ MATERIAL_SUBCATEGORY_LIST = [
     'Non-ferrous_Zinc'
 ]
 
+PLASTICS_SUBCATEGORY_LIST = [
+    'HDPE', 'PETE', 'LDPE', 'PS', 'PP', 'PVC', 'Others-MLP', 'Others-Tetrapak',
+    'Others-HIPC'
+]
+
 
 def build_material(category_list: List[str],
                    supercategory: str) -> List[Dict[str, Union[int, str]]]:
@@ -53,9 +72,10 @@ def build_material(category_list: List[str],
 
   Args:
     category_list: list of categories from MATERIAL_LIST, MATERIAL_FORM_LIST,
-      MATERIAL_SUBCATEGORY_LIST
+      MATERIAL_SUBCATEGORY_LIST, PLASTICS_SUBCATEGORY_LIST
     supercategory: supercategory can be 'material-types', 'material-form-types',
-      'material-subcategory-types', 'material-form-subcategory-types'
+      'material-subcategory-types', 'material-form-subcategory-types',
+      'plastic-types'
 
   Returns:
     List of dictionaries returning categories with their IDs
