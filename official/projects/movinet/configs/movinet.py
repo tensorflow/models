@@ -54,6 +54,7 @@ class Movinet(hyperparams.Config):
   stochastic_depth_drop_rate: float = 0.2
   use_external_states: bool = False
   average_pooling_type: str = '3d'
+  output_states: bool = True
 
 
 @dataclasses.dataclass
