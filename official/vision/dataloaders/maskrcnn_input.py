@@ -14,13 +14,16 @@
 
 """Data parser and processing for Mask R-CNN."""
 
-# Import libraries
+from typing import Optional
 
+# Import libraries
 import tensorflow as tf
 
+from official.vision.configs import common
 from official.vision.dataloaders import parser
 from official.vision.dataloaders import utils
 from official.vision.ops import anchor
+from official.vision.ops import augment
 from official.vision.ops import box_ops
 from official.vision.ops import preprocess_ops
 
@@ -42,6 +45,7 @@ class Parser(parser.Parser):
                aug_rand_hflip=False,
                aug_scale_min=1.0,
                aug_scale_max=1.0,
+               aug_type: Optional[common.Augmentation] = None,
                skip_crowd_during_training=True,
                max_num_instances=100,
                include_mask=False,
@@ -73,6 +77,9 @@ class Parser(parser.Parser):
         data augmentation during training.
       aug_scale_max: `float`, the maximum scale applied to `output_size` for
         data augmentation during training.
+      aug_type: An optional Augmentation object with params for AutoAugment.
+        The AutoAug policy should not use rotation/translation/shear.
+        Only in-place augmentations can be used.
       skip_crowd_during_training: `bool`, if True, skip annotations labeled with
         `is_crowd` equals to 1.
       max_num_instances: `int` number of maximum number of instances in an
@@ -103,6 +110,26 @@ class Parser(parser.Parser):
     self._aug_rand_hflip = aug_rand_hflip
     self._aug_scale_min = aug_scale_min
     self._aug_scale_max = aug_scale_max
+
+    if aug_type and aug_type.type:
+      if aug_type.type == 'autoaug':
+        self._augmenter = augment.AutoAugment(
+            augmentation_name=aug_type.autoaug.augmentation_name,
+            cutout_const=aug_type.autoaug.cutout_const,
+            translate_const=aug_type.autoaug.translate_const)
+      elif aug_type.type == 'randaug':
+        self._augmenter = augment.RandAugment(
+            num_layers=aug_type.randaug.num_layers,
+            magnitude=aug_type.randaug.magnitude,
+            cutout_const=aug_type.randaug.cutout_const,
+            translate_const=aug_type.randaug.translate_const,
+            prob_to_apply=aug_type.randaug.prob_to_apply,
+            exclude_ops=aug_type.randaug.exclude_ops)
+      else:
+        raise ValueError('Augmentation policy {} not supported.'.format(
+            aug_type.type))
+    else:
+      self._augmenter = None
 
     # Mask.
     self._include_mask = include_mask
@@ -167,6 +194,9 @@ class Parser(parser.Parser):
 
     # Gets original image and its size.
     image = data['image']
+    if self._augmenter is not None:
+      image = self._augmenter.distort(image)
+
     image_shape = tf.shape(image)[0:2]
 
     # Normalizes image with mean and std pixel values.

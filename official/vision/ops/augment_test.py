@@ -96,6 +96,7 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
       'svhn',
       'reduced_imagenet',
       'detection_v0',
+      'vit',
   ]
 
   def test_autoaugment(self):
