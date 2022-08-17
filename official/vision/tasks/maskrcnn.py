@@ -155,6 +155,7 @@ class MaskRCNNTask(base_task.Task):
         aug_rand_hflip=params.parser.aug_rand_hflip,
         aug_scale_min=params.parser.aug_scale_min,
         aug_scale_max=params.parser.aug_scale_max,
+        aug_type=params.parser.aug_type,
         skip_crowd_during_training=params.parser.skip_crowd_during_training,
         max_num_instances=params.parser.max_num_instances,
         include_mask=self._task_config.model.include_mask,

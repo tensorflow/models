@@ -1623,6 +1623,7 @@ class AutoAugment(ImageAugment):
         'svhn': self.policy_svhn(),
         'reduced_imagenet': self.policy_reduced_imagenet(),
         'panoptic_deeplab_policy': self.panoptic_deeplab_policy(),
+        'vit': self.vit(),
     }
 
     if not policies:
@@ -1936,6 +1937,22 @@ class AutoAugment(ImageAugment):
         [('Sharpness', 0.2, 1.8), ('Color', 0.2, 1.8)],
         [('Solarize', 0.2, 1.4), ('Equalize', 0.6, 1.8)],
         [('Sharpness', 0.2, 0.2), ('Equalize', 0.2, 1.4)]]
+    return policy
+
+  @staticmethod
+  def vit():
+    """Autoaugment policy for a generic ViT."""
+    policy = [
+        [('Sharpness', 0.4, 1.4), ('Brightness', 0.2, 2.0), ('Cutout', 0.8, 8)],
+        [('Equalize', 0.0, 1.8), ('Contrast', 0.2, 2.0), ('Cutout', 0.8, 8)],
+        [('Sharpness', 0.2, 1.8), ('Color', 0.2, 1.8), ('Cutout', 0.8, 8)],
+        [('Solarize', 0.2, 1.4), ('Equalize', 0.6, 1.8), ('Cutout', 0.8, 8)],
+        [('Sharpness', 0.2, 0.2), ('Equalize', 0.2, 1.4), ('Cutout', 0.8, 8)],
+        [('Sharpness', 0.4, 7), ('Invert', 0.6, 8), ('Cutout', 0.8, 8)],
+        [('Invert', 0.6, 4), ('Equalize', 1.0, 8), ('Cutout', 0.8, 8)],
+        [('Posterize', 0.6, 7), ('Posterize', 0.6, 6), ('Cutout', 0.8, 8)],
+        [('Solarize', 0.6, 5), ('AutoContrast', 0.6, 5), ('Cutout', 0.8, 8)],
+        ]
     return policy
 
   @staticmethod

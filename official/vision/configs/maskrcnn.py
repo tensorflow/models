@@ -36,6 +36,8 @@ class Parser(hyperparams.Config):
   aug_rand_hflip: bool = False
   aug_scale_min: float = 1.0
   aug_scale_max: float = 1.0
+  aug_type: Optional[
+      common.Augmentation] = None  # Choose from AutoAugment and RandAugment.
   skip_crowd_during_training: bool = True
   max_num_instances: int = 100
   rpn_match_threshold: float = 0.7
