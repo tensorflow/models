@@ -130,7 +130,9 @@ def _clone_function_for_fpn(layer):
     return tfmot.quantization.keras.quantize_annotate_layer(
         qat_nn_layers.BatchNormalizationWrapper(layer),
         qat_configs.Default8BitOutputQuantizeConfig())
-  return layer
+  if isinstance(layer, tf.keras.layers.UpSampling2D):
+    return layer
+  return tfmot.quantization.keras.quantize_annotate_layer(layer)
 
 
 def build_qat_retinanet(
@@ -174,7 +176,7 @@ def build_qat_retinanet(
           decoder,
           clone_function=_clone_function_for_fpn,
       )
-      decoder = tfmot.quantization.keras.quantize_model(decoder)
+      decoder = tfmot.quantization.keras.quantize_apply(decoder)
       decoder = tfmot.quantization.keras.remove_input_range(decoder)
 
     head = model.head
