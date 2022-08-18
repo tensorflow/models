@@ -683,8 +683,14 @@ class DistributedExecutor(object):
       if not checkpoint_path:
         raise ValueError('checkpoint path is empty')
       reader = tf.compat.v1.train.NewCheckpointReader(checkpoint_path)
-      current_step = reader.get_tensor(
-          'optimizer/iter/.ATTRIBUTES/VARIABLE_VALUE')
+      if reader.has_tensor('optimizer/iter/.ATTRIBUTES/VARIABLE_VALUE'):
+        # Legacy keras optimizer iteration.
+        current_step = reader.get_tensor(
+            'optimizer/iter/.ATTRIBUTES/VARIABLE_VALUE')
+      else:
+        # New keras optimizer iteration.
+        current_step = reader.get_tensor(
+            'optimizer/_iterations/.ATTRIBUTES/VARIABLE_VALUE')
       logging.info('Checkpoint file %s found and restoring from '
                    'checkpoint', checkpoint_path)
       status = checkpoint.restore(checkpoint_path)
