@@ -92,7 +92,7 @@ def create_optimizer(init_lr,
         include_in_weight_decay=["r_s_bias", "r_r_bias", "r_w_bias"])
   else:
     logging.info("Using Adam with adam_epsilon=%.9f", (adam_epsilon))
-    optimizer = tf.keras.optimizers.Adam(
+    optimizer = tf.keras.optimizers.legacy.Adam(
         learning_rate=learning_rate_fn, epsilon=adam_epsilon)
 
   return optimizer, learning_rate_fn

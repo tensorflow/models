@@ -83,7 +83,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
         functools.partial(task.build_inputs, config.train_data))
 
     iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     model.save(os.path.join(self.get_temp_dir(), "saved_model"))
     return task.validation_step(next(iterator), model, metrics=metrics)
@@ -120,7 +120,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     dataset = task.build_inputs(config.train_data)
 
     iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
     task.initialize(model)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     task.validation_step(next(iterator), model, metrics=metrics)
@@ -151,7 +151,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
 
     dataset = task.build_inputs(config.train_data)
     iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
 
     logs = task.validation_step(next(iterator), model, metrics=metrics)
