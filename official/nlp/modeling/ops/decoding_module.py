@@ -129,14 +129,18 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
     self.dtype = tf.as_dtype(dtype)
     self.decoding_name = decoding_name
 
-  def generate(self, initial_ids: tf.Tensor,
-               initial_cache: Dict[str, tf.Tensor]) -> Output:
+  def generate(self,
+               initial_ids: tf.Tensor,
+               initial_cache: Dict[str, tf.Tensor],
+               initial_log_probs: Optional[tf.Tensor] = None) -> Output:
     """Implements the decoding strategy (beam_search or sampling).
 
     Args:
       initial_ids: initial ids to pass into the symbols_to_logits_fn. int tensor
         with shape [batch_size, 1]
       initial_cache: dictionary for caching model outputs from previous step.
+      initial_log_probs: Optionally initial log probs if there is a prefix
+        sequence we want to start to decode from.
 
     Returns:
       Tuple of tensors representing
@@ -148,9 +152,9 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
         initial_ids.shape.as_list()[0]
         if self.padded_decode else tf.shape(initial_ids)[0])
 
-    state, state_shapes = self._create_initial_state(initial_ids,
-                                                     initial_cache,
-                                                     batch_size)
+    state, state_shapes = self._create_initial_state(initial_ids, initial_cache,
+                                                     batch_size,
+                                                     initial_log_probs)
 
     def _generate_step(state):
       topk_seq, topk_log_probs, topk_ids, new_cache = self._grow_alive_seq(
@@ -196,10 +200,12 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
     return final_state
 
   @abc.abstractmethod
-  def _create_initial_state(self,
-                            initial_ids: tf.Tensor,
-                            initial_cache: Dict[str, tf.Tensor],
-                            batch_size: int) -> InitialState:
+  def _create_initial_state(
+      self,
+      initial_ids: tf.Tensor,
+      initial_cache: Dict[str, tf.Tensor],
+      batch_size: int,
+      initial_log_probs: Optional[tf.Tensor] = None) -> InitialState:
     """Return initial state dictionary and its shape invariants."""
     pass
 

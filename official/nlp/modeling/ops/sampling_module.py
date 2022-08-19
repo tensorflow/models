@@ -250,10 +250,13 @@ class SamplingModule(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
       topk_seq = tf.concat([alive_seq, topk_ids], axis=-1)
     return topk_seq, topk_log_probs, topk_ids, new_cache
 
-  def _create_initial_state(self,
-                            initial_ids: tf.Tensor,
-                            initial_cache: Dict[str, tf.Tensor],
-                            batch_size: int) -> decoding_module.InitialState:
+  def _create_initial_state(
+      self,
+      initial_ids: tf.Tensor,
+      initial_cache: Dict[str, tf.Tensor],
+      batch_size: int,
+      initial_log_probs: Optional[tf.Tensor] = None
+  ) -> decoding_module.InitialState:
     """Return initial state dictionary and its shape invariants."""
     for key, value in initial_cache.items():
       for inner_value in tf.nest.flatten(value):
@@ -273,8 +276,11 @@ class SamplingModule(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
       alive_seq = tf.tile(alive_seq, [1, self.max_decode_length + 1])
 
     # Initial log probabilities with shape [batch_size, 1].
-    initial_log_probs = tf.constant([[0.]], dtype=self.dtype)
-    alive_log_probs = tf.tile(initial_log_probs, [batch_size, 1])
+    if initial_log_probs is None:
+      initial_log_probs = tf.constant([[0.]], dtype=self.dtype)
+      alive_log_probs = tf.tile(initial_log_probs, [batch_size, 1])
+    else:
+      alive_log_probs = initial_log_probs
 
     alive_cache = initial_cache
 
