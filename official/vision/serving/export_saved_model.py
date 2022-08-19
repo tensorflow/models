@@ -63,7 +63,7 @@ _PARAMS_OVERRIDE = flags.DEFINE_string(
     'params_override', '',
     'The JSON/YAML file or string which specifies the parameter to be overriden'
     ' on top of `config_file` template.')
-_BATCH_SIZSE = flags.DEFINE_integer('batch_size', None, 'The batch size.')
+_BATCH_SIZE = flags.DEFINE_integer('batch_size', None, 'The batch size.')
 _IMAGE_TYPE = flags.DEFINE_string(
     'input_type', 'image_tensor',
     'One of `image_tensor`, `image_bytes`, `tf_example` and `tflite`.')
@@ -101,7 +101,7 @@ def main(_):
 
   export_saved_model_lib.export_inference_graph(
       input_type=_IMAGE_TYPE.value,
-      batch_size=_BATCH_SIZSE.value,
+      batch_size=_BATCH_SIZE.value,
       input_image_size=[int(x) for x in _INPUT_IMAGE_SIZE.value.split(',')],
       params=params,
       checkpoint_path=_CHECKPOINT_PATH.value,
