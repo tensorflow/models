@@ -107,16 +107,17 @@ def convert_tflite_model(saved_model_dir: str,
           representative_dataset,
           params=params,
           calibration_steps=calibration_steps)
-      if quant_type == 'int8_full':
+      if quant_type in ('int8_full', 'int8_fp32_input_output'):
         converter.target_spec.supported_ops = [
             tf.lite.OpsSet.TFLITE_BUILTINS_INT8
         ]
+      if quant_type == 'int8_full':
         converter.inference_input_type = tf.uint8  # or tf.int8
         converter.inference_output_type = tf.uint8  # or tf.int8
     elif quant_type == 'fp16':
       converter.optimizations = [tf.lite.Optimize.DEFAULT]
       converter.target_spec.supported_types = [tf.float16]
-    elif quant_type == 'default':
+    elif quant_type in ('default', 'qat_fp32_input_output'):
       converter.optimizations = [tf.lite.Optimize.DEFAULT]
     elif quant_type == 'qat':
       converter.optimizations = [tf.lite.Optimize.DEFAULT]
