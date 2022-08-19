@@ -76,7 +76,14 @@ class ExportTfliteLibTest(tf.test.TestCase, parameterized.TestCase):
   @combinations.generate(
       combinations.combine(
           experiment=['mobilenet_imagenet'],
-          quant_type=[None, 'default', 'fp16', 'int8', 'int8_full']))
+          quant_type=[
+              None,
+              'default',
+              'fp16',
+              'int8_fp32_fallback',
+              'int8_full',
+              'int8_fp32_input_output',
+          ]))
   def test_export_tflite_image_classification(self, experiment, quant_type):
 
     params = exp_factory.get_exp_config(experiment)
@@ -105,7 +112,14 @@ class ExportTfliteLibTest(tf.test.TestCase, parameterized.TestCase):
   @combinations.generate(
       combinations.combine(
           experiment=['retinanet_mobile_coco'],
-          quant_type=[None, 'default', 'fp16', 'int8', 'int8_full']))
+          quant_type=[
+              None,
+              'default',
+              'fp16',
+              'int8_fp32_fallback',
+              'int8_full',
+              'int8_fp32_input_output',
+          ]))
   def test_export_tflite_detection(self, experiment, quant_type):
 
     params = exp_factory.get_exp_config(experiment)
@@ -138,7 +152,14 @@ class ExportTfliteLibTest(tf.test.TestCase, parameterized.TestCase):
   @combinations.generate(
       combinations.combine(
           experiment=['mnv2_deeplabv3_pascal'],
-          quant_type=[None, 'default', 'fp16', 'int8', 'int8_full']))
+          quant_type=[
+              None,
+              'default',
+              'fp16',
+              'int8_fp32_fallback',
+              'int8_full',
+              'int8_fp32_input_output',
+          ]))
   def test_export_tflite_semantic_segmentation(self, experiment, quant_type):
 
     params = exp_factory.get_exp_config(experiment)
