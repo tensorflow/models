@@ -41,8 +41,9 @@ task:
       aug_scale_min: 0.5
   validation_data:
     dtype: 'bfloat16'
-    global_batch_size: 8
+    global_batch_size: 256
     is_training: false
+    drop_remainder: false
 trainer:
   checkpoint_interval: 462
   optimizer_config:
@@ -58,4 +59,4 @@ trainer:
   steps_per_loop: 462
   train_steps: 277200
   validation_interval: 462
-  validation_steps: 625
+  validation_steps: 20
