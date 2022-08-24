@@ -1,6 +1,9 @@
 name: CI
 on: pull_request
 
+permissions:
+  contents: read
+
 jobs:
   pylint:
     runs-on: ubuntu-latest
