@@ -69,9 +69,9 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     'quant_type',
     default=None,
-    help='Post training quantization type. Support `int8_fp32_fallback`, '
-    '`int8_fp32_input_output`, `int8_full`, `fp16`, `qat`, '
-    '`qat_fp32_input_output`, and `default`. See '
+    help='Post training quantization type. Support `int8_fallback`, '
+    '`int8_full_fp32_io`, `int8_full`, `fp16`, `qat`, `qat_fp32_io`, '
+    '`int8_full_int8_io` and `default`. See '
     'https://www.tensorflow.org/lite/performance/post_training_quantization '
     'for more details.')
 flags.DEFINE_integer('calibration_steps', 500,

@@ -80,9 +80,10 @@ class ExportTfliteLibTest(tf.test.TestCase, parameterized.TestCase):
               None,
               'default',
               'fp16',
-              'int8_fp32_fallback',
+              'int8_fallback',
               'int8_full',
-              'int8_fp32_input_output',
+              'int8_full_fp32_io',
+              'int8_full_int8_io',
           ]))
   def test_export_tflite_image_classification(self, experiment, quant_type):
 
@@ -116,9 +117,10 @@ class ExportTfliteLibTest(tf.test.TestCase, parameterized.TestCase):
               None,
               'default',
               'fp16',
-              'int8_fp32_fallback',
+              'int8_fallback',
               'int8_full',
-              'int8_fp32_input_output',
+              'int8_full_fp32_io',
+              'int8_full_int8_io',
           ]))
   def test_export_tflite_detection(self, experiment, quant_type):
 
@@ -156,9 +158,10 @@ class ExportTfliteLibTest(tf.test.TestCase, parameterized.TestCase):
               None,
               'default',
               'fp16',
-              'int8_fp32_fallback',
+              'int8_fallback',
               'int8_full',
-              'int8_fp32_input_output',
+              'int8_full_fp32_io',
+              'int8_full_int8_io',
           ]))
   def test_export_tflite_semantic_segmentation(self, experiment, quant_type):
 
