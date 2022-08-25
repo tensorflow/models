@@ -104,7 +104,23 @@ processing, training, and model execution.
 
 ## Training loops with Orbit {:#orbit}
 
-The Orbit tool is a flexible, lightweight library designed to make it easier to
+There are two default options for training TensorFlow models:
+
+* Use the high-level Keras
+[Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit)
+function. If your model and training procedure fit the assumptions of Keras'
+`Model.fit` (incremental gradient descent on batches of data) method this can
+be very convenient.
+* Write a custom training loop
+[with keras](https://www.tensorflow.org/guide/keras/writing_a_training_loop_from_scratch),
+or [without](https://www.tensorflow.org/guide/core/logistic_regression_core).
+You can write a custom training loop with low-level TensorFlow methods such as
+`tf.GradientTape` or `tf.function`. However, this approach requires a lot of
+boilerplate code, and doesn't do anything to simplify distributed training.
+
+Orbit tries to provide a third option in between these two extremes.
+
+Orbit is a flexible, lightweight library designed to make it easier to
 write custom training loops in TensorFlow 2.x, and works well with the Model
 Garden [training experiment framework](#training_framework). Orbit handles
 common model training tasks such as saving checkpoints, running model
@@ -114,19 +130,7 @@ GPU, and TPU hardware. The Orbit tool is also [open
 source](https://github.com/tensorflow/models/blob/master/orbit/LICENSE), so you
 can extend and adapt to your model training needs.
 
-You generally train TensorFlow models by writing a
-[custom training loop](https://www.tensorflow.org/guide/keras/writing_a_training_loop_from_scratch),
-or using the high-level Keras
-[Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit)
-function. For simple models, you can define and manage a custom training loop
-with low-level TensorFlow methods such as `tf.GradientTape` or `tf.function`.
-Alternatively, you can use the high-level Keras `Model.fit`.
-
-However, if your model is complex and your training loop requires more flexible
-control or customization, then you should use Orbit. You can define most of your
-training loop by the `orbit.AbstractTrainer` or `orbit.StandardTrainer` class.
-Learn more about the Orbit tool in the
-[Orbit API documentation](https://www.tensorflow.org/api_docs/python/orbit).
+The Orbit guide is available [here](orbit/index.ipynb).
 
 Note: You can customize how the Keras API executes training. Mainly you must
 override the `Model.train_step` method or use `keras.callbacks` like
