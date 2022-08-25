@@ -22,6 +22,7 @@ from official.nlp.modeling.layers.bigbird_attention import BigBirdAttention
 from official.nlp.modeling.layers.bigbird_attention import BigBirdMasks
 from official.nlp.modeling.layers.block_diag_feedforward import BlockDiagFeedforward
 from official.nlp.modeling.layers.cls_head import *
+from official.nlp.modeling.layers.factorized_embedding import FactorizedEmbedding
 from official.nlp.modeling.layers.gated_feedforward import GatedFeedforward
 from official.nlp.modeling.layers.gaussian_process import RandomFeatureGaussianProcess
 from official.nlp.modeling.layers.kernel_attention import KernelAttention

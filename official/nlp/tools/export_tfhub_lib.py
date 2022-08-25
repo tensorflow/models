@@ -133,7 +133,10 @@ def _create_model(
         encoder_network=encoder,
         mlm_activation=tf_utils.get_activation(hidden_act))
 
-    pretrainer_inputs_dict = {x.name: x for x in pretrainer.inputs}
+    if isinstance(pretrainer.inputs, dict):
+      pretrainer_inputs_dict = pretrainer.inputs
+    else:
+      pretrainer_inputs_dict = {x.name: x for x in pretrainer.inputs}
     pretrainer_output_dict = pretrainer(pretrainer_inputs_dict)
     mlm_model = tf.keras.Model(
         inputs=pretrainer_inputs_dict, outputs=pretrainer_output_dict)
