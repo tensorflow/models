@@ -82,12 +82,12 @@ py_strict_library(
     srcs = ["misc_layers.py"],
     srcs_version = "PY3",
     deps = [
-        # package tensorflow
         ":embedding_layers",
+        # package tensorflow
         "//layers:base_layers",  # sequence projection
-        "//layers:conv_layers",
+        "//layers:conv_layers",  # sequence projection
         "//layers:dense_layers",  # sequence projection
-        "//layers:normalization_layers",
+        "//layers:normalization_layers",  # sequence projection
         "//layers:quantization_layers",  # sequence projection
     ],
 )
@@ -112,8 +112,8 @@ py_strict_library(
     srcs_version = "PY3",
     deps = [
         # package tensorflow
-        "//layers:base_layers",
-        "//layers:quantization_layers",
+        "//layers:base_layers",  # sequence projection
+        "//layers:quantization_layers",  # sequence projection
     ],
 )
 
@@ -124,11 +124,11 @@ py_strict_library(
     deps = [
         ":embedding_layers",
         # package tensorflow
-        "//layers:base_layers",
-        "//layers:dense_layers",
-        "//layers:normalization_layers",
-        "//layers:quantization_layers",
-        "//tf_ops:tf_custom_ops",
-        "//tf_ops:tf_custom_ops_py",
+        "//layers:base_layers",  # sequence projection
+        "//layers:dense_layers",  # sequence projection
+        "//layers:normalization_layers",  # sequence projection
+        "//layers:quantization_layers",  # sequence projection
+        # "//tf_ops:tf_custom_ops"  # sequence projection
+        "//tf_ops:tf_custom_ops_py",  # sequence projection
     ],
 )

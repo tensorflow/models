@@ -87,7 +87,7 @@ TEST(LayerNormModelTest, RegularInput) {
                    /*input_max=*/10, /*output_min=*/-10, /*output_max=*/10,
                    /*scale=*/1.0, /*offset=*/0.0, /*axes=*/{2});
   m.SetInput(input);
-  m.Invoke();
+  ASSERT_EQ(m.Invoke(), kTfLiteOk);
   EXPECT_THAT(
       m.GetDequantizedOutput(),
       ElementsAreArray(ArrayFloatNear(expected_output, kQuantizedTolerance)));
@@ -106,7 +106,7 @@ TEST(LayerNormModelTest, NegativeScale) {
                    /*input_max=*/10, /*output_min=*/-10, /*output_max=*/10,
                    /*scale=*/-1.0, /*offset=*/0.0, /*axes=*/{2});
   m.SetInput(input);
-  m.Invoke();
+  ASSERT_EQ(m.Invoke(), kTfLiteOk);
   EXPECT_THAT(
       m.GetDequantizedOutput(),
       ElementsAreArray(ArrayFloatNear(expected_output, kQuantizedTolerance)));
@@ -125,7 +125,7 @@ TEST(LayerNormModelTest, NegativeOffset) {
                    /*input_max=*/10, /*output_min=*/-10, /*output_max=*/10,
                    /*scale=*/1.0, /*offset=*/-1.0, /*axes=*/{2});
   m.SetInput(input);
-  m.Invoke();
+  ASSERT_EQ(m.Invoke(), kTfLiteOk);
   EXPECT_THAT(
       m.GetDequantizedOutput(),
       ElementsAreArray(ArrayFloatNear(expected_output, kQuantizedTolerance)));
@@ -144,7 +144,7 @@ TEST(LayerNormModelTest, NegativeScaleAndOffset) {
                    /*input_max=*/10, /*output_min=*/-10, /*output_max=*/10,
                    /*scale=*/-1.0, /*offset=*/-1.0, /*axes=*/{2});
   m.SetInput(input);
-  m.Invoke();
+  ASSERT_EQ(m.Invoke(), kTfLiteOk);
   EXPECT_THAT(
       m.GetDequantizedOutput(),
       ElementsAreArray(ArrayFloatNear(expected_output, kQuantizedTolerance)));
@@ -163,7 +163,7 @@ TEST(LayerNormModelTest, MultipleAxis) {
                    /*input_max=*/3, /*output_min=*/-3, /*output_max=*/3,
                    /*scale=*/1.0, /*offset=*/0.0, /*axes=*/{1, 3});
   m.SetInput(input);
-  m.Invoke();
+  ASSERT_EQ(m.Invoke(), kTfLiteOk);
   EXPECT_THAT(
       m.GetDequantizedOutput(),
       ElementsAreArray(ArrayFloatNear(expected_output, kQuantizedTolerance)));
@@ -182,7 +182,7 @@ TEST(LayerNormModelTest, MultipleNegativeAxis) {
                    /*input_max=*/3, /*output_min=*/-3, /*output_max=*/3,
                    /*scale=*/1.0, /*offset=*/0.0, /*axes=*/{-3, -1});
   m.SetInput(input);
-  m.Invoke();
+  ASSERT_EQ(m.Invoke(), kTfLiteOk);
   EXPECT_THAT(
       m.GetDequantizedOutput(),
       ElementsAreArray(ArrayFloatNear(expected_output, kQuantizedTolerance)));
@@ -204,7 +204,7 @@ TEST(LayerNormModelTest, MultipleAxisWithLargeDepth) {
                    /*input_max=*/1.0, /*output_min=*/-3.0, /*output_max=*/3.0,
                    /*scale=*/1.0, /*offset=*/0.0, /*axes=*/{1, 3});
   m.SetInput(input);
-  m.Invoke();
+  ASSERT_EQ(m.Invoke(), kTfLiteOk);
   EXPECT_THAT(
       m.GetDequantizedOutput(),
       ElementsAreArray(ArrayFloatNear(expected_output, kQuantizedTolerance)));

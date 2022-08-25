@@ -101,7 +101,7 @@ class ProjectionParams {
                    bool exclude_nonalphaspace_unicodes,
                    const std::string& token_separators,
                    bool normalize_repetition, bool add_first_cap_feature,
-                   bool add_all_caps_feature)
+                   bool add_all_caps_feature, bool normalize_spaces)
       : feature_size_(feature_size),
         unicode_handler_(vocabulary, exclude_nonalphaspace_unicodes),
         hasher_(Hasher::CreateHasher(feature_size, hashtype)),
@@ -130,9 +130,9 @@ class ProjectionParams {
     }
     word_novelty_offset_ = 2.0f / (1 << word_novelty_bits_);
 
-    if (!token_separators.empty() || normalize_repetition) {
+    if (!token_separators.empty() || normalize_repetition || normalize_spaces) {
       projection_normalizer_ = std::make_unique<ProjectionNormalizer>(
-          token_separators, normalize_repetition);
+          token_separators, normalize_repetition, normalize_spaces);
     }
   }
   virtual ~ProjectionParams() {}
@@ -242,7 +242,8 @@ class ProjectionParamsV2 : public ProjectionParams {
                          /*exclude_nonalphaspace_unicodes = */ false,
                          /*token_separators = */ "", normalize_repetition,
                          /*add_first_cap_feature = */ false,
-                         /*add_all_caps_feature = */ false) {}
+                         /*add_all_caps_feature = */ false,
+                         /*normalize_spaces = */ false) {}
   ~ProjectionParamsV2() override {}
 
   TfLiteStatus PreprocessInput(TfLiteTensor* input_t,
@@ -341,6 +342,7 @@ void* Init(TfLiteContext* context, const char* buffer, size_t length) {
   const std::string token_separators =
       m["token_separators"].IsNull() ? "" : m["token_separators"].ToString();
   const bool normalize_repetition = m["normalize_repetition"].AsBool();
+  const bool normalize_spaces = m["normalize_spaces"].AsBool();
   if (!Hasher::SupportedHashType(hashtype)) {
     context->ReportError(context, "Unsupported hashtype %s\n",
                          hashtype.c_str());
@@ -354,7 +356,8 @@ void* Init(TfLiteContext* context, const char* buffer, size_t length) {
       add_bos_tag ? BosTag::kGenerate : BosTag::kNone,
       add_eos_tag ? EosTag::kGenerate : EosTag::kNone,
       exclude_nonalphaspace_unicodes, token_separators, normalize_repetition,
-      add_first_cap_feature == 1.0f, add_all_caps_feature == 1.0f);
+      add_first_cap_feature == 1.0f, add_all_caps_feature == 1.0f,
+      normalize_spaces);
 }
 
 void* InitV2(TfLiteContext* context, const char* buffer, size_t length) {

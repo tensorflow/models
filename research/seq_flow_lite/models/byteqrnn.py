@@ -33,11 +33,11 @@ Sample model params:
 from absl import logging
 import tensorflow as tf
 
-from layers import base_layers
-from layers import dense_layers
-from layers import embedding_layers
-from layers import misc_layers
-from layers import qrnn_layers
+from layers import base_layers # import seq_flow_lite module
+from layers import dense_layers # import seq_flow_lite module
+from layers import embedding_layers # import seq_flow_lite module
+from layers import misc_layers # import seq_flow_lite module
+from layers import qrnn_layers # import seq_flow_lite module
 
 
 class Encoder(tf.keras.layers.Layer):

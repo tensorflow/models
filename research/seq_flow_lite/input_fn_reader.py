@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-# Lint as: python3
 """Methods related to input datasets and readers."""
 
 import functools
@@ -21,6 +20,7 @@ import sys
 from absl import logging
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 import tensorflow_datasets as tfds
 import tensorflow_text as tftext
 
@@ -83,13 +83,13 @@ def create_input_fn(runner_config, mode, drop_remainder):
 
   def _input_fn(params):
     """Method to be used for reading the data."""
-    assert mode != tf.estimator.ModeKeys.PREDICT
-    split = "train" if mode == tf.estimator.ModeKeys.TRAIN else "test"
+    assert mode != tf_estimator.ModeKeys.PREDICT
+    split = "train" if mode == tf_estimator.ModeKeys.TRAIN else "test"
     ds = tfds.load(runner_config["dataset"], split=split)
     ds = ds.batch(params["batch_size"], drop_remainder=drop_remainder)
     ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     ds = ds.shuffle(buffer_size=100)
-    ds = ds.repeat(count=1 if mode == tf.estimator.ModeKeys.EVAL else None)
+    ds = ds.repeat(count=1 if mode == tf_estimator.ModeKeys.EVAL else None)
     ds = ds.map(
         functools.partial(_post_processor, batch_size=params["batch_size"]),
         num_parallel_calls=tf.data.experimental.AUTOTUNE,

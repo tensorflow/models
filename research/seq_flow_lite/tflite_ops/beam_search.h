@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef THIRD_PARTY_TENSORFLOW_MODELS_SEQ_FLOW_LITE_TFLITE_OPS_BEAM_SEARCH_H_
-#define THIRD_PARTY_TENSORFLOW_MODELS_SEQ_FLOW_LITE_TFLITE_OPS_BEAM_SEARCH_H_
+#ifndef TENSORFLOW_MODELS_SEQ_FLOW_LITE_TFLITE_OPS_BEAM_SEARCH_H_
+#define TENSORFLOW_MODELS_SEQ_FLOW_LITE_TFLITE_OPS_BEAM_SEARCH_H_
 
 #include <cstdint>
 #include <functional>
@@ -23,7 +23,7 @@ limitations under the License.
 #include <set>
 #include <vector>
 
-#include "third_party/tensorflow/lite/c/common.h"
+#include "tensorflow/lite/c/common.h"
 
 namespace seq_flow_lite {
 namespace ops {
@@ -110,4 +110,4 @@ class BeamSearch {
 }  // namespace custom
 }  // namespace ops
 }  // namespace seq_flow_lite
-#endif  // THIRD_PARTY_TENSORFLOW_MODELS_SEQ_FLOW_LITE_TFLITE_OPS_BEAM_SEARCH_H_
+#endif  // TENSORFLOW_MODELS_SEQ_FLOW_LITE_TFLITE_OPS_BEAM_SEARCH_H_

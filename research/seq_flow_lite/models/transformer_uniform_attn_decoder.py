@@ -20,12 +20,12 @@ from absl import logging
 from tensor2tensor.utils import beam_search
 import tensorflow as tf
 
-from layers import base_layers
-from layers import dense_layers
-from layers import embedding_layers
-from layers import normalization_layers
-from layers import quantization_layers
-from layers import transformer_layers
+from layers import base_layers # import seq_flow_lite module
+from layers import dense_layers # import seq_flow_lite module
+from layers import embedding_layers # import seq_flow_lite module
+from layers import normalization_layers # import seq_flow_lite module
+from layers import quantization_layers # import seq_flow_lite module
+from layers import transformer_layers # import seq_flow_lite module
 
 
 class TransformerUniformAttnDecoder(base_layers.BaseLayer):

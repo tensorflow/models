@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "third_party/tensorflow_models/seq_flow_lite/tflite_ops/beam_search.h"
+#include "tflite_ops/beam_search.h"  // seq_flow_lite
 
 #include <cstdint>
 #include <functional>
@@ -21,17 +21,17 @@ limitations under the License.
 #include <memory>
 #include <vector>
 
-#include "testing/base/public/gmock.h"
-#include "testing/base/public/gunit.h"
-#include "third_party/absl/strings/str_join.h"
-#include "third_party/tensorflow/lite/c/c_api_types.h"
-#include "third_party/tensorflow/lite/c/common.h"
-#include "third_party/tensorflow/lite/kernels/internal/optimized/optimized_ops.h"
-#include "third_party/tensorflow/lite/kernels/internal/reference/dequantize.h"
-#include "third_party/tensorflow/lite/kernels/internal/reference/reference_ops.h"
-#include "third_party/tensorflow/lite/kernels/internal/tensor_ctypes.h"
-#include "third_party/tensorflow/lite/kernels/internal/types.h"
-#include "third_party/tensorflow_models/seq_flow_lite/tflite_ops/quantization_util.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include "absl/strings/str_join.h"
+#include "tensorflow/lite/c/c_api_types.h"
+#include "tensorflow/lite/c/common.h"
+#include "tensorflow/lite/kernels/internal/optimized/optimized_ops.h"
+#include "tensorflow/lite/kernels/internal/reference/dequantize.h"
+#include "tensorflow/lite/kernels/internal/reference/reference_ops.h"
+#include "tensorflow/lite/kernels/internal/tensor_ctypes.h"
+#include "tensorflow/lite/kernels/internal/types.h"
+#include "tflite_ops/quantization_util.h"  // seq_flow_lite
 
 namespace seq_flow_lite {
 namespace ops {
@@ -76,7 +76,7 @@ class BeamSearchImpl : public BeamSearch {
             cur_cache + (selected_beams[beam] * NumClasses());
         for (int j = 0; j < NumClasses(); ++j, index++) {
           next_cache[index] = (selected[j] + next_cache[index]) / 2;
-          data_ptr[index] = ::seq_flow_lite::PodQuantize(
+          data_ptr[index] = PodQuantize(
               next_cache[index], decoder_output_->params.zero_point,
               1.0f / decoder_output_->params.scale);
         }

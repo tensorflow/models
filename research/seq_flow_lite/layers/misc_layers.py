@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-# Lint as: python3
 """Layers for embedding."""
 import math
 import tensorflow as tf
 
 from layers import base_layers # import seq_flow_lite module
-from layers import conv_layers
+from layers import conv_layers # import seq_flow_lite module
 from layers import dense_layers # import seq_flow_lite module
-from layers import embedding_layers
+from layers import embedding_layers # import seq_flow_lite module
 from layers import quantization_layers # import seq_flow_lite module
 
 

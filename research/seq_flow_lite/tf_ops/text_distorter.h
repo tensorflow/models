@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#ifndef TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TF_OPS_TEXT_DISTORTER_H_
-#define TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TF_OPS_TEXT_DISTORTER_H_
+#ifndef TENSORFLOW_MODELS_SEQ_FLOW_LITE_TF_OPS_TEXT_DISTORTER_H_
+#define TENSORFLOW_MODELS_SEQ_FLOW_LITE_TF_OPS_TEXT_DISTORTER_H_
 
 #include <assert.h>
 
@@ -40,4 +40,4 @@ class TextDistorter {
   UChar32 random_char_ = 0;
 };
 
-#endif  // TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TF_OPS_TEXT_DISTORTER_H_
+#endif  // TENSORFLOW_MODELS_SEQ_FLOW_LITE_TF_OPS_TEXT_DISTORTER_H_

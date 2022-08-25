@@ -13,7 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 
-# Lint as: python3
 """Tests for seq_flow_lite.sgnn."""
 
 import tensorflow as tf

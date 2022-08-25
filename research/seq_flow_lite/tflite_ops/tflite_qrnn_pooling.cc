@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#include "third_party/tensorflow_models/seq_flow_lite/tflite_ops/tflite_qrnn_pooling.h"
-
-#include "third_party/tensorflow_models/seq_flow_lite/tflite_ops/quantization_util.h"
+#include "tflite_ops/quantization_util.h"  // seq_flow_lite
+#include "tflite_ops/tflite_qrnn_pooling.h"  // seq_flow_lite
 
 namespace seq_flow_lite {
+namespace ops {
+namespace custom {
 
 namespace {
 
@@ -126,9 +127,9 @@ TfLiteStatus Invoke(TfLiteContext* context, TfLiteNode* node) {
   return QRNNPooling(context, multiplier, constant, outputs, final_state,
                      (direction->data.uint8[0] == kPoolingForward));
 }
+
 }  // namespace
 
-namespace custom {
 const char kPoolingOp[] = "PoolingOp";
 
 void RegisterQRNNPooling(::tflite::ops::builtin::BuiltinOpResolver* resolver) {
@@ -141,4 +142,5 @@ TfLiteRegistration* Register_QRNN_POOLING() {
 }
 
 }  // namespace custom
+}  // namespace ops
 }  // namespace seq_flow_lite

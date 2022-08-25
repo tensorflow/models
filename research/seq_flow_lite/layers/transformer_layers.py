@@ -16,12 +16,12 @@
 # pylint: disable=arguments-renamed
 import tensorflow as tf
 
-from layers import base_layers
-from layers import dense_layers
-from layers import embedding_layers
-from layers import normalization_layers
-from layers import quantization_layers
-from tf_ops import tf_custom_ops_py
+from layers import base_layers # import seq_flow_lite module
+from layers import dense_layers # import seq_flow_lite module
+from layers import embedding_layers # import seq_flow_lite module
+from layers import normalization_layers # import seq_flow_lite module
+from layers import quantization_layers # import seq_flow_lite module
+from tf_ops import tf_custom_ops_py # import seq_flow_lite module
 
 
 class SelfAttention(base_layers.BaseLayer):

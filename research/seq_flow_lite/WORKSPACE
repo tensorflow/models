@@ -16,13 +16,10 @@ http_archive(
 
 http_archive(
     name = "org_tensorflow",
-    sha256 = "40d3203ab5f246d83bae328288a24209a2b85794f1b3e2cd0329458d8e7c1985",
-    strip_prefix = "tensorflow-2.6.0",
-    urls = [
-        "https://github.com/tensorflow/tensorflow/archive/v2.6.0.zip",
-    ],
+    strip_prefix = "tensorflow-2.9.1",
+    sha256 = "9f2dac244e5af6c6a13a7dad6481e390174ac989931942098e7a4373f1bccfc2",
+    urls = ["https://github.com/tensorflow/tensorflow/archive/v2.9.1.zip"],
 )
-
 
 http_archive(
     name = "org_tflite_support",

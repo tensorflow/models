@@ -309,7 +309,7 @@ void TensorflowTfLiteOpTest::RunTfLiteOp() {
     input_index++;
   }
 
-  tflite_op_.Invoke();
+  ASSERT_EQ(tflite_op_.Invoke(), kTfLiteOk);
 }
 
 void TensorflowTfLiteOpTest::CompareOpOutput() {

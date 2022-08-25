@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-# Lint as: python3
 """Basic dense layers."""
 import tensorflow as tf
 
@@ -30,6 +29,7 @@ class BaseQDense(base_layers.BaseLayer):
                bias=True,
                rank=2,
                normalize=True,
+               quantize_output=True,
                **kwargs):
     self.units = units
     self.rank = rank
@@ -37,7 +37,9 @@ class BaseQDense(base_layers.BaseLayer):
     self.activation = activation
     self.bias = bias
     self.normalize = normalize
-    self.qoutput = quantization_layers.ActivationQuantization(**kwargs)
+    self.quantize_output = quantize_output
+    if quantize_output:
+      self.qoutput = quantization_layers.ActivationQuantization(**kwargs)
     self._create_normalizer(**kwargs)
     super(BaseQDense, self).__init__(**kwargs)
 
@@ -62,7 +64,10 @@ class BaseQDense(base_layers.BaseLayer):
       outputs = normalize_method(outputs)
     if self.activation:
       outputs = self.activation(outputs)
-    return self.qoutput(outputs)
+    if self.quantize_output:
+      return self.qoutput(outputs)
+    else:
+      return outputs
 
   def _dense_r34(self, inputs, normalize_method):
     bsz = self.get_batch_dimension(inputs)
