@@ -222,6 +222,27 @@ class XLNetEncoderConfig(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class QueryBertConfig(hyperparams.Config):
+  """Query BERT encoder configuration."""
+  vocab_size: int = 30522
+  hidden_size: int = 768
+  num_layers: int = 12
+  num_attention_heads: int = 12
+  hidden_activation: str = "gelu"
+  intermediate_size: int = 3072
+  dropout_rate: float = 0.1
+  attention_dropout_rate: float = 0.1
+  max_position_embeddings: int = 512
+  type_vocab_size: int = 2
+  initializer_range: float = 0.02
+  embedding_size: Optional[int] = None
+  output_range: Optional[int] = None
+  return_all_encoder_outputs: bool = False
+  # Pre/Post-LN Transformer
+  norm_first: bool = False
+
+
+@dataclasses.dataclass
 class EncoderConfig(hyperparams.OneOfConfig):
   """Encoder configuration."""
   type: Optional[str] = "bert"
@@ -233,6 +254,7 @@ class EncoderConfig(hyperparams.OneOfConfig):
   mobilebert: MobileBertEncoderConfig = MobileBertEncoderConfig()
   reuse: ReuseEncoderConfig = ReuseEncoderConfig()
   xlnet: XLNetEncoderConfig = XLNetEncoderConfig()
+  query_bert: QueryBertConfig = QueryBertConfig()
   # If `any` is used, the encoder building relies on any.BUILDER.
   any: hyperparams.Config = hyperparams.Config()
 
@@ -512,6 +534,33 @@ def build_encoder(config: EncoderConfig,
         feed_layer_idx=True,
         recursive=True)
     return networks.EncoderScaffold(**kwargs)
+
+  if encoder_type == "query_bert":
+    embedding_layer = layers.FactorizedEmbedding(
+        vocab_size=encoder_cfg.vocab_size,
+        embedding_width=encoder_cfg.embedding_size,
+        output_dim=encoder_cfg.hidden_size,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        name="word_embeddings")
+    return networks.BertEncoderV2(
+        vocab_size=encoder_cfg.vocab_size,
+        hidden_size=encoder_cfg.hidden_size,
+        num_layers=encoder_cfg.num_layers,
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        intermediate_size=encoder_cfg.intermediate_size,
+        activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
+        dropout_rate=encoder_cfg.dropout_rate,
+        attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+        max_sequence_length=encoder_cfg.max_position_embeddings,
+        type_vocab_size=encoder_cfg.type_vocab_size,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        output_range=encoder_cfg.output_range,
+        embedding_layer=embedding_layer,
+        return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs,
+        dict_outputs=True,
+        norm_first=encoder_cfg.norm_first)
 
   bert_encoder_cls = networks.BertEncoder
   if encoder_type == "bert_v2":
