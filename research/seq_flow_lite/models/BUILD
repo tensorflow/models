@@ -45,13 +45,13 @@ py_library(
     srcs_version = "PY3",
     deps = [
         # package tensorflow
-        "//layers:base_layers",
-        "//layers:dense_layers",
-        "//layers:embedding_layers",
-        "//layers:misc_layers",
-        "//layers:qrnn_layers",
-        # //tf_ops:tf_custom_ops",
-        "//tf_ops:tf_custom_ops_py",
+        "//layers:base_layers",  # sequence projection
+        "//layers:dense_layers",  # sequence projection
+        "//layers:embedding_layers",  # sequence projection
+        "//layers:misc_layers",  # sequence projection
+        "//layers:qrnn_layers",  # sequence projection
+        # "//tf_ops:tf_custom_ops"  # sequence projection
+        "//tf_ops:tf_custom_ops_py",  # sequence projection
     ],
 )
 
@@ -62,13 +62,13 @@ py_library(
     deps = [
         ":transformer_encoder",
         # package tensorflow
-        "//layers:base_layers",
-        "//layers:embedding_layers",
-        "//layers:misc_layers",
-        "//layers:normalization_layers",
-        "//layers:quantization_layers",
-        # "//tf_ops:tf_custom_ops",
-        "//tf_ops:tf_custom_ops_py",
+        "//layers:base_layers",  # sequence projection
+        "//layers:embedding_layers",  # sequence projection
+        "//layers:misc_layers",  # sequence projection
+        "//layers:normalization_layers",  # sequence projection
+        "//layers:quantization_layers",  # sequence projection
+        # "//tf_ops:tf_custom_ops"  # sequence projection
+        "//tf_ops:tf_custom_ops_py",  # sequence projection
     ],
 )
 
@@ -79,11 +79,11 @@ py_library(
     deps = [
         # package absl/logging
         # package tensorflow
-        "//layers:base_layers",
-        "//layers:embedding_layers",
-        "//layers:transformer_layers",
-        # "//tf_ops:tf_custom_ops",
-        "//tf_ops:tf_custom_ops_py",
+        "//layers:base_layers",  # sequence projection
+        "//layers:embedding_layers",  # sequence projection
+        "//layers:transformer_layers",  # sequence projection
+        # "//tf_ops:tf_custom_ops"  # sequence projection
+        "//tf_ops:tf_custom_ops_py",  # sequence projection
     ],
 )
 
@@ -93,13 +93,13 @@ py_library(
     srcs_version = "PY3",
     deps = [
         # package absl/logging
+        # package tensor2tensor/utils:beam_search
         # package tensorflow
-        # tensor2tensor/utils:beam_search",
-        "//layers:base_layers",
-        "//layers:embedding_layers",
-        "//layers:misc_layers",
-        "//layers:transformer_layers",
-        "//tf_ops:tf_custom_ops",
-        "//tf_ops:tf_custom_ops_py",
+        "//layers:base_layers",  # sequence projection
+        "//layers:embedding_layers",  # sequence projection
+        "//layers:misc_layers",  # sequence projection
+        "//layers:transformer_layers",  # sequence projection
+        # "//tf_ops:tf_custom_ops"  # sequence projection
+        "//tf_ops:tf_custom_ops_py",  # sequence projection
     ],
 )

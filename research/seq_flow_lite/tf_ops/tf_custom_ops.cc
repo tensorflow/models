@@ -122,4 +122,4 @@ REGISTER_OP("UniformCausalAttn")
     })
     .Doc(R"doc(
 Dummy uniform causal attn op.
-)doc";
+)doc");

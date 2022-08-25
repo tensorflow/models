@@ -16,13 +16,13 @@
 from absl import logging
 import tensorflow as tf
 
-from layers import base_layers
-from layers import dense_layers
-from layers import embedding_layers
-from layers import misc_layers
-from layers import normalization_layers
-from layers import quantization_layers
-from models import transformer_encoder
+from layers import base_layers # import seq_flow_lite module
+from layers import dense_layers # import seq_flow_lite module
+from layers import embedding_layers # import seq_flow_lite module
+from layers import misc_layers # import seq_flow_lite module
+from layers import normalization_layers # import seq_flow_lite module
+from layers import quantization_layers # import seq_flow_lite module
+from models import transformer_encoder # import seq_flow_lite module
 
 
 class Encoder(tf.keras.layers.Layer):

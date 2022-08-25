@@ -121,9 +121,9 @@ cc_library(
     hdrs = ["tflite_qrnn_pooling.h"],
     copts = tflite_copts(),
     deps = [
-        "//third_party/absl/base:core_headers",
-        "//third_party/tensorflow/lite/kernels:builtin_ops",
-        "//third_party/tensorflow_models/seq_flow_lite/tflite_ops:quantization_util",
+        "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
+        "//tflite_ops:quantization_util",  # sequence projection
+        "@com_google_absl//absl/base:core_headers",
     ],
     alwayslink = 1,
 )
@@ -132,7 +132,7 @@ cc_library(
     name = "tflite_decoder_cache",
     hdrs = ["tflite_decoder_cache.h"],
     deps = [
-        "//third_party/tensorflow/lite/c:common",
+        "@org_tensorflow//tensorflow/lite/c:common",
     ],
     alwayslink = 1,
 )
@@ -144,12 +144,12 @@ cc_library(
     copts = tflite_copts(),
     deps = [
         ":tflite_decoder_cache",
-        "//third_party/flatbuffers",
-        "//third_party/tensorflow/lite/c:common",
-        "//third_party/tensorflow/lite/kernels:builtin_ops",
-        "//third_party/tensorflow/lite/kernels:kernel_util",
-        "//third_party/tensorflow/lite/kernels/internal:tensor",
-        "//third_party/tensorflow_models/seq_flow_lite/tflite_ops:quantization_util",
+        "@org_tensorflow//tensorflow/lite/c:common",
+        "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
+        "@org_tensorflow//tensorflow/lite/kernels:kernel_util",
+        "@org_tensorflow//tensorflow/lite/kernels/internal:tensor",
+        "//tflite_ops:quantization_util",  # sequence projection
+        "@flatbuffers",
     ],
     alwayslink = 1,
 )
@@ -160,11 +160,11 @@ cc_test(
     srcs = ["tflite_decoder_handler_test.cc"],
     deps = [
         ":tflite_decoder_handler",
-        "//testing/base/public:gunit",
-        "//third_party/flatbuffers",
-        "//third_party/tensorflow/lite:framework",
-        "//third_party/tensorflow/lite/c:common",
-        "//third_party/tensorflow/lite/kernels:test_util",
+        "@org_tensorflow//tensorflow/lite:framework",
+        "@org_tensorflow//tensorflow/lite/c:common",
+        "@org_tensorflow//tensorflow/lite/kernels:test_util",
+        "@com_google_googletest//:gtest",
+        "@flatbuffers",
     ],
 )
 
@@ -176,10 +176,10 @@ cc_library(
     deps = [
         "//base",
         "//third_party/absl/strings",
-        "//third_party/tensorflow/lite/c:common",
-        "//third_party/tensorflow/lite/kernels/internal:tensor",
-        "//third_party/tensorflow/lite/kernels/internal:types",
-        "//third_party/tensorflow_models/seq_flow_lite/tflite_ops:quantization_util",
+        "@org_tensorflow//tensorflow/lite/c:common",
+        "@org_tensorflow//tensorflow/lite/kernels/internal:tensor",
+        "@org_tensorflow//tensorflow/lite/kernels/internal:types",
+        "//tflite_ops:quantization_util",  # sequence projection
     ],
 )
 
@@ -189,14 +189,14 @@ cc_test(
     copts = tflite_copts(),
     deps = [
         ":beam_search",
-        "//testing/base/public:gunit_main",
         "//third_party/absl/strings",
-        "//third_party/tensorflow/lite/c:c_api_types",
-        "//third_party/tensorflow/lite/c:common",
-        "//third_party/tensorflow/lite/kernels/internal:legacy_reference_base",
-        "//third_party/tensorflow/lite/kernels/internal:optimized_base",
-        "//third_party/tensorflow/lite/kernels/internal:tensor",
-        "//third_party/tensorflow/lite/kernels/internal:types",
-        "//third_party/tensorflow_models/seq_flow_lite/tflite_ops:quantization_util",
+        "@org_tensorflow//tensorflow/lite/c:c_api_types",
+        "@org_tensorflow//tensorflow/lite/c:common",
+        "@org_tensorflow//tensorflow/lite/kernels/internal:legacy_reference_base",
+        "@org_tensorflow//tensorflow/lite/kernels/internal:optimized_base",
+        "@org_tensorflow//tensorflow/lite/kernels/internal:tensor",
+        "@org_tensorflow//tensorflow/lite/kernels/internal:types",
+        "//tflite_ops:quantization_util",  # sequence projection
+        "@com_google_googletest//:gtest_main",
     ],
 )

@@ -15,8 +15,8 @@
 """Layers for embedding."""
 import tensorflow as tf
 
-from layers import base_layers
-from layers import quantization_layers
+from layers import base_layers # import seq_flow_lite module
+from layers import quantization_layers # import seq_flow_lite module
 
 
 class EmbeddingLayer(base_layers.BaseLayer):

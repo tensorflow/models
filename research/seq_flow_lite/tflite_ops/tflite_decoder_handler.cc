@@ -13,15 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "third_party/tensorflow_models/seq_flow_lite/tflite_ops/tflite_decoder_handler.h"
+#include "tflite_ops/tflite_decoder_handler.h"  // seq_flow_lite
 
 #include <cstdint>
 
-#include "third_party/flatbuffers/include/flatbuffers/flexbuffers.h"
-#include "third_party/tensorflow/lite/kernels/internal/tensor_ctypes.h"
-#include "third_party/tensorflow/lite/kernels/kernel_util.h"
-#include "third_party/tensorflow_models/seq_flow_lite/tflite_ops/tflite_decoder_cache.h"
-#include "third_party/tensorflow_models/seq_flow_lite/tflite_ops/quantization_util.h"
+#include "flatbuffers/flexbuffers.h"  // flatbuffer
+#include "tensorflow/lite/kernels/internal/tensor_ctypes.h"
+#include "tensorflow/lite/kernels/kernel_util.h"
+#include "tflite_ops/quantization_util.h"  // seq_flow_lite
+#include "tflite_ops/tflite_decoder_cache.h"  // seq_flow_lite
+
 
 namespace seq_flow_lite {
 namespace ops {

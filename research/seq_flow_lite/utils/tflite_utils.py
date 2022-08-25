@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-# Lint as: python3
 """Utils to convert to a TFLite model."""
 import tensorflow.compat.v1 as tf
 
@@ -65,9 +64,14 @@ def get_mean_stddev_values(min_value_of_features, max_value_of_features):
 class InterpreterWithCustomOps(tf.lite.Interpreter):
   """Extended tf.lite.Interpreter."""
 
-  def __init__(self, model_content, custom_op_registerers=None):
+  def __init__(self,
+               model_content,
+               custom_op_registerers=None,
+               experimental_preserve_all_tensors=False):
     self._custom_op_registerers = custom_op_registerers or []
-    super(InterpreterWithCustomOps, self).__init__(model_content=model_content)
+    super(InterpreterWithCustomOps, self).__init__(
+        model_content=model_content,
+        experimental_preserve_all_tensors=experimental_preserve_all_tensors)
 
   def op_details(self):
     op_details = {}

@@ -18,8 +18,8 @@
 from absl import logging
 import tensorflow as tf
 
-from layers import base_layers
-from layers import transformer_layers
+from layers import base_layers # import seq_flow_lite module
+from layers import transformer_layers # import seq_flow_lite module
 
 
 class Model(tf.keras.layers.Layer):

@@ -13,17 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "third_party/tensorflow_models/seq_flow_lite/tflite_ops/tflite_decoder_handler.h"
+#include "tflite_ops/tflite_decoder_handler.h"  // seq_flow_lite
 
 #include <cstdint>
 #include <cstdlib>
 #include <vector>
 
-#include "testing/base/public/gmock.h"
-#include "testing/base/public/gunit.h"
-#include "third_party/flatbuffers/include/flatbuffers/flexbuffers.h"
-#include "third_party/tensorflow/lite/c/common.h"
-#include "third_party/tensorflow/lite/kernels/test_util.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include "flatbuffers/flexbuffers.h"  // flatbuffer
+#include "tensorflow/lite/c/common.h"
+#include "tensorflow/lite/kernels/test_util.h"
 
 namespace {
 

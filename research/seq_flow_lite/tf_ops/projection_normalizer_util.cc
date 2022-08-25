@@ -26,7 +26,7 @@ limitations under the License.
 bool IsDigit(const std::string& text) {
   Rune rune;
   for (size_t i = 0; i < text.length();) {
-    const int bytes_read = chartorune(&rune, const_cast<char *>(text.data()));
+    const int bytes_read = chartorune(&rune, const_cast<char*>(text.data()));
     if (rune == Runeerror || bytes_read == 0) break;
     if (rune >= static_cast<Rune>('0') && rune <= static_cast<Rune>('9')) {
       return true;
@@ -98,6 +98,29 @@ std::string ContractToken(const char* input_ptr, size_t len, size_t num_chars) {
   return token;
 }
 
+void NormalizeSpaces(std::string& input) {
+  // Whether to copy the next character if it's a space.
+  bool copy_space = false;
+  size_t j = 0;
+  for (size_t i = 0; i < input.length(); ++i) {
+    if (input[i] == ' ') {
+      if (!copy_space) continue;
+      copy_space = false;
+    } else {
+      copy_space = true;
+    }
+
+    if (j != i) {
+      input[j] = input[i];
+    }
+    ++j;
+  }
+  if (j > 0 && input[j - 1] == ' ') {
+    --j;
+  }
+  input.resize(j);
+}
+
 void ProjectionNormalizer::InitializeSeparators(const std::string& separators) {
   for (size_t i = 0; i < separators.length(); ++i) {
     if (separators[i] != ' ') {
@@ -150,9 +173,14 @@ std::string ProjectionNormalizer::Normalize(const char* input_ptr, size_t len,
     normalized = ContractToken(normalized.data(), normalized.length(), 3);
   }
 
+  if (normalize_spaces_) {
+    NormalizeSpaces(normalized);
+  }
+
   if (!separators_.empty()) {
     // Add space around separators_.
     normalized = NormalizeInternal(normalized.data(), normalized.length());
   }
+
   return normalized;
 }
