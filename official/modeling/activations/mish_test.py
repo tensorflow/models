@@ -12,11 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Activations package definition."""
-from official.modeling.activations.gelu import gelu
-from official.modeling.activations.mish import mish
-from official.modeling.activations.relu import relu6
-from official.modeling.activations.sigmoid import hard_sigmoid
-from official.modeling.activations.swish import hard_swish
-from official.modeling.activations.swish import identity
-from official.modeling.activations.swish import simple_swish
+"""Tests for the customized Mish activation."""
+
+import tensorflow as tf
+
+from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
+from official.modeling import activations
+
+
+@keras_parameterized.run_all_keras_modes
+class MishTest(keras_parameterized.TestCase):
+
+  def test_mish(self):
+    x = tf.constant([1.0, 0.0])
+    self.assertAllClose([0.86509839, 0.0], activations.mish(x))
+
+
+if __name__ == '__main__':
+  tf.test.main()
