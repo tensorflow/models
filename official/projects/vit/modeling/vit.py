@@ -17,67 +17,17 @@ from typing import Optional, Tuple
 
 from absl import logging
 
-import immutabledict
+# import immutabledict
 import tensorflow as tf
 
 from official.modeling import activations
 from official.projects.vit.modeling import nn_blocks
+from official.projects.vit.modeling.vit_specs import VIT_SPECS
 from official.vision.modeling.backbones import factory
 from official.vision.modeling.layers import nn_layers
 
 
 layers = tf.keras.layers
-
-VIT_SPECS = immutabledict.immutabledict({
-    'vit-ti16':
-        dict(
-            hidden_size=192,
-            patch_size=16,
-            transformer=dict(mlp_dim=768, num_heads=3, num_layers=12),
-        ),
-    'vit-s16':
-        dict(
-            hidden_size=384,
-            patch_size=16,
-            transformer=dict(mlp_dim=1536, num_heads=6, num_layers=12),
-        ),
-    'vit-b16':
-        dict(
-            hidden_size=768,
-            patch_size=16,
-            transformer=dict(mlp_dim=3072, num_heads=12, num_layers=12),
-        ),
-    'vit-b32':
-        dict(
-            hidden_size=768,
-            patch_size=32,
-            transformer=dict(mlp_dim=3072, num_heads=12, num_layers=12),
-        ),
-    'vit-l16':
-        dict(
-            hidden_size=1024,
-            patch_size=16,
-            transformer=dict(mlp_dim=4096, num_heads=16, num_layers=24),
-        ),
-    'vit-l32':
-        dict(
-            hidden_size=1024,
-            patch_size=32,
-            transformer=dict(mlp_dim=4096, num_heads=16, num_layers=24),
-        ),
-    'vit-h14':
-        dict(
-            hidden_size=1280,
-            patch_size=14,
-            transformer=dict(mlp_dim=5120, num_heads=16, num_layers=32),
-        ),
-    'vit-g14':
-        dict(
-            hidden_size=1664,
-            patch_size=14,
-            transformer=dict(mlp_dim=8192, num_heads=16, num_layers=48),
-        ),
-})
 
 
 class AddPositionEmbs(tf.keras.layers.Layer):
