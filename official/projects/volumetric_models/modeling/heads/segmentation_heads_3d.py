@@ -88,7 +88,7 @@ class SegmentationHead3D(tf.keras.layers.Layer):
       self._bn_axis = -1
     else:
       self._bn_axis = 1
-    self._activation = tf_utils.get_activation(activation)
+    self._activation = tf_utils.get_activation(activation, use_keras_layer=True)
 
   def build(self, input_shape: Union[tf.TensorShape, Sequence[tf.TensorShape]]):
     """Creates the variables of the segmentation head."""

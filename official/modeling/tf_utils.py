@@ -14,6 +14,7 @@
 
 """Common TF utilities."""
 
+import functools
 import six
 import tensorflow as tf
 
@@ -82,19 +83,22 @@ def is_special_none_tensor(tensor):
   return tensor.shape.ndims == 0 and tensor.dtype == tf.int32
 
 
-def get_activation(identifier, use_keras_layer=False):
-  """Maps a identifier to a Python function, e.g., "relu" => `tf.nn.relu`.
+def get_activation(identifier, use_keras_layer=False, **kwargs):
+  """Maps an identifier to a Python function, e.g., "relu" => `tf.nn.relu`.
 
   It checks string first and if it is one of customized activation not in TF,
   the corresponding activation will be returned. For non-customized activation
   names and callable identifiers, always fallback to tf.keras.activations.get.
 
   Prefers using keras layers when use_keras_layer=True. Now it only supports
-  'relu', 'linear', 'identity', 'swish'.
+  'relu', 'linear', 'identity', 'swish', 'mish', 'leaky_relu', and 'gelu'.
 
   Args:
     identifier: String name of the activation function or callable.
     use_keras_layer: If True, use keras layer if identifier is allow-listed.
+    **kwargs: Keyword arguments to use to instantiate an activation function.
+      Available only for 'leaky_relu' and 'gelu' when using keras layers.
+      For example: get_activation('leaky_relu', use_keras_layer=True, alpha=0.1)
 
   Returns:
     A Python function corresponding to the activation function or a keras
@@ -110,8 +114,11 @@ def get_activation(identifier, use_keras_layer=False):
           "swish": "swish",
           "sigmoid": "sigmoid",
           "relu6": tf.nn.relu6,
+          "leaky_relu": functools.partial(tf.nn.leaky_relu, **kwargs),
           "hard_swish": activations.hard_swish,
           "hard_sigmoid": activations.hard_sigmoid,
+          "mish": activations.mish,
+          "gelu": functools.partial(tf.nn.gelu, **kwargs),
       }
       if identifier in keras_layer_allowlist:
         return tf.keras.layers.Activation(keras_layer_allowlist[identifier])
@@ -122,6 +129,7 @@ def get_activation(identifier, use_keras_layer=False):
         "relu6": activations.relu6,
         "hard_sigmoid": activations.hard_sigmoid,
         "identity": activations.identity,
+        "mish": activations.mish,
     }
     if identifier in name_to_fn:
       return tf.keras.activations.get(name_to_fn[identifier])

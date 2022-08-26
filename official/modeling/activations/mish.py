@@ -12,11 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Activations package definition."""
-from official.modeling.activations.gelu import gelu
-from official.modeling.activations.mish import mish
-from official.modeling.activations.relu import relu6
-from official.modeling.activations.sigmoid import hard_sigmoid
-from official.modeling.activations.swish import hard_swish
-from official.modeling.activations.swish import identity
-from official.modeling.activations.swish import simple_swish
+"""Self Regularized Non-Monotonic Activation Function."""
+
+import tensorflow as tf
+
+from tensorflow_addons.utils import types
+
+
+@tf.keras.utils.register_keras_serializable(package='Text')
+def mish(x: types.TensorLike) -> tf.Tensor:
+  """Mish activation function.
+
+     Mish: A Self Regularized Non-Monotonic Activation Function
+     https://arxiv.org/pdf/1908.08681.pdf
+
+     Mish(x) = x * tanh(ln(1+e^x))
+
+  Args:
+    x: A `Tensor` representing preactivation values.
+
+  Returns:
+    The activation value.
+  """
+  x = tf.convert_to_tensor(x)
+  return x * tf.tanh(tf.nn.softplus(x))
