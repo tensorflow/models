@@ -4,4 +4,4 @@ toc:
 - title: "Overview"
   path: /tfmodels/nlp
 - title: "Customize a transformer encoder"
-  path: /tfmodels/customize_encoder
+  path: /tfmodels/nlp/customize_encoder
