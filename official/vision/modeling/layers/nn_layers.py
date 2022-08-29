@@ -241,7 +241,7 @@ class StochasticDepth(tf.keras.layers.Layer):
     self._drop_rate = stochastic_depth_drop_rate
 
   def get_config(self):
-    config = {'drop_rate': self._drop_rate}
+    config = {'stochastic_depth_drop_rate': self._drop_rate}
     base_config = super(StochasticDepth, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
