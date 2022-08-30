@@ -1,4 +1,4 @@
-# --experiment_type=retinanet_spinenet_mobile_coco_qat
+# --experiment_type=retinanet_mobile_coco_qat
 runtime:
   distribution_strategy: 'mirrored'
   mixed_precision_dtype: 'float32'

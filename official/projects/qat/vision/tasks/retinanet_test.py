@@ -36,8 +36,8 @@ class RetinaNetTaskTest(parameterized.TestCase, tf.test.TestCase):
         record_file=tfrecord_file, tf_examples=examples)
 
   @parameterized.parameters(
-      ('retinanet_spinenet_mobile_coco_qat', True),
-      ('retinanet_spinenet_mobile_coco_qat', False),
+      ('retinanet_mobile_coco_qat', True),
+      ('retinanet_mobile_coco_qat', False),
   )
   def test_retinanet_task(self, test_config, is_training):
     """RetinaNet task test for training and val using toy configs."""

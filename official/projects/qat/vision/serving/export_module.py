@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Export modules for QAT model serving/inference."""
-
+from absl import logging
 import tensorflow as tf
 
 from official.projects.qat.vision.modeling import factory as qat_factory
+from official.vision import configs
+from official.vision.serving import detection
 from official.vision.serving import image_classification
 from official.vision.serving import semantic_segmentation
 
@@ -42,3 +44,25 @@ class SegmentationModule(semantic_segmentation.SegmentationModule):
                                             self._input_image_size + [3])
     return qat_factory.build_qat_segmentation_model(
         model, self.params.task.quantization, input_specs)
+
+
+class DetectionModule(detection.DetectionModule):
+  """Detection Module."""
+
+  def _build_model(self):
+    if self.params.task.model.detection_generator.nms_version != 'tflite':
+      self.params.task.model.detection_generator.nms_version = 'tflite'
+      logging.info('Set `nms_version` to `tflite` because only TFLite NMS is '
+                   'supported for QAT detection models.')
+
+    model = super()._build_model()
+
+    if isinstance(self.params.task.model, configs.retinanet.RetinaNet):
+      model = qat_factory.build_qat_retinanet(model,
+                                              self.params.task.quantization,
+                                              self.params.task.model)
+    else:
+      raise ValueError('Detection module not implemented for {} model.'.format(
+          type(self.params.task.model)))
+
+    return model

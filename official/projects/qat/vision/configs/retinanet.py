@@ -28,8 +28,8 @@ class RetinaNetTask(retinanet.RetinaNetTask):
   quantization: Optional[common.Quantization] = None
 
 
-@exp_factory.register_config_factory('retinanet_spinenet_mobile_coco_qat')
-def retinanet_spinenet_mobile_coco() -> cfg.ExperimentConfig:
+@exp_factory.register_config_factory('retinanet_mobile_coco_qat')
+def retinanet_mobile_coco() -> cfg.ExperimentConfig:
   """Generates a config for COCO OD RetinaNet for mobile with QAT."""
   config = retinanet.retinanet_spinenet_mobile_coco()
   task = RetinaNetTask.from_args(
