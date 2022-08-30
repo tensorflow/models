@@ -28,7 +28,7 @@ from official.vision.configs import retinanet as exp_cfg
 class RetinaNetConfigTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(
-      ('retinanet_spinenet_mobile_coco_qat',),
+      ('retinanet_mobile_coco_qat',),
   )
   def test_retinanet_configs(self, config_name):
     config = exp_factory.get_exp_config(config_name)

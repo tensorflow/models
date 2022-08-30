@@ -1,4 +1,4 @@
-# --experiment_type=retinanet_spinenet_mobile_coco_qat
+# --experiment_type=retinanet_mobile_coco_qat
 # COCO mAP: 23.2
 # QAT only supports float32 tpu due to fake-quant op.
 runtime:

@@ -15,4 +15,5 @@
 """Configs package definition."""
 
 from official.projects.qat.vision.configs import image_classification
+from official.projects.qat.vision.configs import retinanet
 from official.projects.qat.vision.configs import semantic_segmentation

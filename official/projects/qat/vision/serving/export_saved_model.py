@@ -34,7 +34,6 @@ imported = tf.saved_model.load(export_dir_path)
 model_fn = imported.signatures['serving_default']
 output = model_fn(input_images)
 """
-
 from absl import app
 from absl import flags
 
@@ -106,6 +105,8 @@ def main(_):
   if isinstance(params.task,
                 configs.image_classification.ImageClassificationTask):
     export_module_cls = export_module.ClassificationModule
+  elif isinstance(params.task, configs.retinanet.RetinaNetTask):
+    export_module_cls = export_module.DetectionModule
   elif isinstance(params.task,
                   configs.semantic_segmentation.SemanticSegmentationTask):
     export_module_cls = export_module.SegmentationModule
