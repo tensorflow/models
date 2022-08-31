@@ -37,7 +37,7 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
             }
         }
     }
-    optimizer_cls = optimizer_factory.OPTIMIZERS_CLS[optimizer_type]
+    optimizer_cls = optimizer_factory.LEGACY_OPTIMIZERS_CLS[optimizer_type]
     expected_optimizer_config = optimizer_cls().get_config()
     expected_optimizer_config['learning_rate'] = 0.1
 
@@ -45,6 +45,33 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     opt_factory = optimizer_factory.OptimizerFactory(opt_config)
     lr = opt_factory.build_learning_rate()
     optimizer = opt_factory.build_optimizer(lr, postprocessor=lambda x: x)
+
+    self.assertIsInstance(optimizer, optimizer_cls)
+    self.assertEqual(expected_optimizer_config, optimizer.get_config())
+
+  @parameterized.parameters(('sgd'), ('rmsprop'), ('adam'), ('adamw'), ('lamb'),
+                            ('lars'), ('adagrad'))
+  def test_new_optimizers(self, optimizer_type):
+    params = {
+        'optimizer': {
+            'type': optimizer_type
+        },
+        'learning_rate': {
+            'type': 'constant',
+            'constant': {
+                'learning_rate': 0.1
+            }
+        }
+    }
+    optimizer_cls = optimizer_factory.NEW_OPTIMIZERS_CLS[optimizer_type]
+    expected_optimizer_config = optimizer_cls().get_config()
+    expected_optimizer_config['learning_rate'] = 0.1
+
+    opt_config = optimization_config.OptimizationConfig(params)
+    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
+    lr = opt_factory.build_learning_rate()
+    optimizer = opt_factory.build_optimizer(
+        lr, postprocessor=lambda x: x, use_legacy_optimizer=False)
 
     self.assertIsInstance(optimizer, optimizer_cls)
     self.assertEqual(expected_optimizer_config, optimizer.get_config())
@@ -491,7 +518,7 @@ class OptimizerFactoryRegistryTest(tf.test.TestCase):
       pass
 
     optimizer_factory.register_optimizer_cls('test', MyClass)
-    self.assertIn('test', optimizer_factory.OPTIMIZERS_CLS)
+    self.assertIn('test', optimizer_factory.LEGACY_OPTIMIZERS_CLS)
     with self.assertRaisesRegex(ValueError, 'test already registered.*'):
       optimizer_factory.register_optimizer_cls('test', MyClass)
 
