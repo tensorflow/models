@@ -14,7 +14,9 @@
 
 """Keras-based rezero-transformer block layer (Transformer with ReZero)."""
 # pylint: disable=g-classes-have-attributes
+from typing import Optional
 
+from absl import logging
 import gin
 import tensorflow as tf
 
@@ -79,6 +81,11 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     inner_activation = kwargs.pop("intermediate_activation", inner_activation)
     util.filter_kwargs(kwargs)
     super().__init__(**kwargs)
+
+    # Deprecation warning.
+    if output_range is not None:
+      logging.warning("`output_range` is avaliable as an argument for `call()`."
+                      "The `output_range` as __init__ argument is deprecated.")
 
     self._num_heads = num_attention_heads
     self._inner_dim = inner_dim
@@ -237,7 +244,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     if not self._share_rezero:
       self._rezero_a_ffn.assign(0.)
 
-  def call(self, inputs):
+  def call(self, inputs, output_range: Optional[tf.Tensor] = None) -> tf.Tensor:
     if isinstance(inputs, (list, tuple)):
       if len(inputs) == 2:
         input_tensor, attention_mask = inputs
@@ -250,10 +257,12 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     else:
       input_tensor, key_value, attention_mask = (inputs, None, None)
 
-    if self._output_range:
-      target_tensor = input_tensor[:, 0:self._output_range, :]
+    if output_range is None:
+      output_range = self._output_range
+    if output_range:
+      target_tensor = input_tensor[:, 0:output_range, :]
       if attention_mask is not None:
-        attention_mask = attention_mask[:, 0:self._output_range, :]
+        attention_mask = attention_mask[:, 0:output_range, :]
     else:
       target_tensor = input_tensor
 
@@ -270,8 +279,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
       attention_output = tf.cast(attention_output, tf.float32)
 
     intermediate_output = self._intermediate_dense(attention_output)
-    intermediate_output = self._inner_activation_layer(
-        intermediate_output)
+    intermediate_output = self._inner_activation_layer(intermediate_output)
     layer_output = self._output_dense(intermediate_output)
     layer_output = self._output_dropout(layer_output)
     # During mixed precision training, attention_output is from layer norm and

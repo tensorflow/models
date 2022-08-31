@@ -349,7 +349,8 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     else:
       input_tensor, key_value, attention_mask = (inputs, None, None)
 
-    output_range = output_range or self._output_range
+    if output_range is None:
+      output_range = self._output_range
     if output_range:
       if self._norm_first:
         source_tensor = input_tensor[:, 0:output_range, :]
