@@ -128,6 +128,9 @@ class TransformerWithReZeroLayerTest(keras_parameterized.TestCase):
     new_output_tensor = new_layer([input_data, mask_data])
     self.assertAllClose(new_output_tensor, output_tensor[:, 0:1, :])
 
+    output_tensor = test_layer([input_data, mask_data], output_range=1)
+    self.assertAllClose(new_output_tensor, output_tensor, atol=5e-5, rtol=0.003)
+
   def test_separate_qkv(self):
     test_layer = rezero_transformer.ReZeroTransformer(
         num_attention_heads=2,
