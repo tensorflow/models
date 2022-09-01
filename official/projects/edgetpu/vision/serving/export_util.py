@@ -107,6 +107,12 @@ class ExportConfig(base_config.Config):
 def finalize_serving(model_output, export_config):
   """Adds extra layers based on the provided configuration."""
 
+  if isinstance(model_output, dict):
+    return {
+        key: finalize_serving(model_output[key], export_config)
+        for key in model_output
+    }
+
   finalize_method = export_config.finalize_method
   output_layer = model_output
   if not finalize_method or finalize_method[0] == 'none':
