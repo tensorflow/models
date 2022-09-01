@@ -19,7 +19,8 @@ import tensorflow as tf
 _EPSILON = 1e-8
 
 
-def _feature_bilinear_interpolation(features, kernel_y, kernel_x):
+def _feature_bilinear_interpolation(features: tf.Tensor, kernel_y: tf.Tensor,
+                                    kernel_x: tf.Tensor) -> tf.Tensor:
   """Feature bilinear interpolation.
 
   The RoIAlign feature f can be computed by bilinear interpolation
@@ -67,8 +68,12 @@ def _feature_bilinear_interpolation(features, kernel_y, kernel_x):
   return features
 
 
-def _compute_grid_positions(boxes, boundaries, output_size, sample_offset):
-  """Computes the grid position w.r.t. the corresponding feature map.
+def _compute_grid_positions(
+    boxes: tf.Tensor, boundaries: tf.Tensor, output_size: int,
+    sample_offset: float) -> tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+  """Computes the grid position w.r.t.
+
+  the corresponding feature map.
 
   Args:
     boxes: a 3-D tensor of shape [batch_size, num_boxes, 4] encoding the
@@ -135,10 +140,10 @@ def _compute_grid_positions(boxes, boundaries, output_size, sample_offset):
   return kernel_y, kernel_x, box_gridy0y1, box_gridx0x1
 
 
-def multilevel_crop_and_resize(features,
-                               boxes,
-                               output_size=7,
-                               sample_offset=0.5):
+def multilevel_crop_and_resize(features: dict[str, tf.Tensor],
+                               boxes: tf.Tensor,
+                               output_size: int = 7,
+                               sample_offset: float = 0.5) -> tf.Tensor:
   """Crop and resize on multilevel feature pyramid.
 
   Generate the (output_size, output_size) set of pixels for each input box
@@ -282,13 +287,13 @@ def multilevel_crop_and_resize(features,
     return features_per_box
 
 
-def _selective_crop_and_resize(features,
-                               boxes,
-                               box_levels,
-                               boundaries,
-                               output_size=7,
-                               sample_offset=0.5,
-                               use_einsum_gather=False):
+def _selective_crop_and_resize(features: tf.Tensor,
+                               boxes: tf.Tensor,
+                               box_levels: tf.Tensor,
+                               boundaries: tf.Tensor,
+                               output_size: int = 7,
+                               sample_offset: float = 0.5,
+                               use_einsum_gather: bool = False) -> tf.Tensor:
   """Crop and resize boxes on a set of feature maps.
 
   Given multiple features maps indexed by different levels, and a set of boxes
@@ -434,12 +439,12 @@ def _selective_crop_and_resize(features,
   return features_per_box
 
 
-def crop_mask_in_target_box(masks,
-                            boxes,
-                            target_boxes,
-                            output_size,
-                            sample_offset=0,
-                            use_einsum=True):
+def crop_mask_in_target_box(masks: tf.Tensor,
+                            boxes: tf.Tensor,
+                            target_boxes: tf.Tensor,
+                            output_size: int,
+                            sample_offset: float = 0.0,
+                            use_einsum: bool = True) -> tf.Tensor:
   """Crop masks in target boxes.
 
   Args:
@@ -515,7 +520,9 @@ def crop_mask_in_target_box(masks,
   return cropped_masks
 
 
-def nearest_upsampling(data, scale, use_keras_layer=False):
+def nearest_upsampling(data: tf.Tensor,
+                       scale: int,
+                       use_keras_layer: bool = False) -> tf.Tensor:
   """Nearest neighbor upsampling implementation.
 
   Args:
@@ -542,3 +549,54 @@ def nearest_upsampling(data, scale, use_keras_layer=False):
     data = tf.tile(
         tf.reshape(data, [bs, h, 1, w, 1, c]), [1, 1, scale, 1, scale, 1])
     return tf.reshape(data, [bs, h * scale, w * scale, c])
+
+
+def _gather_rows_from_matrix(input_matrix: tf.Tensor,
+                             row_indices: tf.Tensor) -> tf.Tensor:
+  """Gather rows from the input matrix (2-D tensor).
+
+  This operation is equivalent to tf.gather(input_matrix, row_indices), but is
+  implemented in sparse matrix multiplication.
+
+  Args:
+    input_matrix: A 2-D tensor in shape (input_h, input_w) from which to gather
+      values. The shape must be 2-D, since sparse matrix multiplication is
+      currently only supported on 2-D matrices.
+    row_indices: A 1-D int tensor in shape (output_h) which stored the row
+      indices of the input.
+
+  Returns:
+    A tensor in shape (output_h, input_w) which stores the gathered rows.
+  """
+  input_matrix_shape = input_matrix.get_shape().as_list()
+  if len(input_matrix_shape) != 2:
+    raise ValueError(
+        'Expected the input_matrix tensor (input_h, input_w) has rank == 2, '
+        'was: %s' % input_matrix_shape)
+  row_indices_shape = row_indices.get_shape().as_list()
+  if len(row_indices_shape) != 1:
+    raise ValueError(
+        'Expected the row_indices tensor (output_h) has rank == 1, was: %s' %
+        row_indices_shape)
+
+  # (output_h, input_h)
+  indices_one_hot = tf.one_hot(
+      row_indices, depth=input_matrix_shape[0], dtype=input_matrix.dtype)
+  # Matrix multiplication: (output_h, input_h) x (input_h, input_w)
+  # (output_h, input_w)
+  return tf.linalg.matmul(indices_one_hot, input_matrix, a_is_sparse=True)
+
+
+def bilinear_resize_to_bbox(images: tf.Tensor, bbox: tf.Tensor,
+                            output_size: tf.Tensor) -> tf.Tensor:
+  # TODO(b/241944792): Implement in follow-up CLs
+  raise NotImplementedError
+
+
+def bilinear_resize_with_crop_and_pad(images: tf.Tensor, *,
+                                      rescale_size: tf.Tensor,
+                                      crop_offset: tf.Tensor,
+                                      crop_size: tf.Tensor,
+                                      output_size: tf.Tensor) -> tf.Tensor:
+  # TODO(b/241944792): Implement in follow-up CLs
+  raise NotImplementedError

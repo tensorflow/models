@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """Tests for mask_ops.py."""
 
 # Import libraries
@@ -49,6 +48,57 @@ class MaskUtilsTest(tf.test.TestCase):
         image_masks[:, 2:8, 0:6],
         np.array(masks > 0.5, dtype=np.uint8),
         1e-5)
+
+  def testBbox2mask(self):
+    bboxes = tf.constant([[1, 2, 4, 4], [-1, -1, 3, 3], [2, 3, 6, 8],
+                          [1, 1, 2, 2], [1, 1, 1, 4]])
+    masks = mask_ops.bbox2mask(
+        bboxes, image_height=5, image_width=6, dtype=tf.int32)
+    expected_masks = tf.constant(
+        [
+            [  # bbox = [1, 2, 4, 4]
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 1, 1, 0, 0],
+                [0, 0, 1, 1, 0, 0],
+                [0, 0, 1, 1, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+            ],
+            [  # bbox = [-1, -1, 3, 3]
+                [1, 1, 1, 0, 0, 0],
+                [1, 1, 1, 0, 0, 0],
+                [1, 1, 1, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+            ],
+            [  # bbox = [2, 3, 6, 8]
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 1, 1, 1],
+                [0, 0, 0, 1, 1, 1],
+                [0, 0, 0, 1, 1, 1],
+            ],
+            [  # bbox =  [1, 1, 2, 2]
+                [0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+            ],
+            [  # bbox = [1, 1, 1, 4]
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+            ]
+        ],
+        dtype=tf.int32)
+    self.assertAllEqual(expected_masks, masks)
+
+  def testBbox2maskInvalidInput(self):
+    bboxes = tf.constant([[1, 2, 4, 4, 4], [-1, -1, 3, 3, 3]])
+    with self.assertRaisesRegex(ValueError, 'bbox.*size == 4'):
+      mask_ops.bbox2mask(bboxes, image_height=5, image_width=6, dtype=tf.int32)
 
 
 if __name__ == '__main__':
