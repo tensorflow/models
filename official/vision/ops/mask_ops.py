@@ -18,12 +18,11 @@ import math
 # Import libraries
 import cv2
 import numpy as np
+import tensorflow as tf
 
 
-def paste_instance_masks(masks,
-                         detected_boxes,
-                         image_height,
-                         image_width):
+def paste_instance_masks(masks: np.ndarray, detected_boxes: np.ndarray,
+                         image_height: int, image_width: int) -> np.ndarray:
   """Paste instance masks to generate the image segmentation results.
 
   Args:
@@ -39,13 +38,13 @@ def paste_instance_masks(masks,
       the instance masks *pasted* on the image canvas.
   """
 
-  def expand_boxes(boxes, scale):
+  def expand_boxes(boxes: np.ndarray, scale: float) -> np.ndarray:
     """Expands an array of boxes by a given scale."""
     # Reference: https://github.com/facebookresearch/Detectron/blob/master/detectron/utils/boxes.py#L227  # pylint: disable=line-too-long
     # The `boxes` in the reference implementation is in [x1, y1, x2, y2] form,
     # whereas `boxes` here is in [x1, y1, w, h] form
-    w_half = boxes[:, 2] * .5
-    h_half = boxes[:, 3] * .5
+    w_half = boxes[:, 2] * 0.5
+    h_half = boxes[:, 3] * 0.5
     x_c = boxes[:, 0] + w_half
     y_c = boxes[:, 1] + h_half
 
@@ -104,10 +103,8 @@ def paste_instance_masks(masks,
   return segms
 
 
-def paste_instance_masks_v2(masks,
-                            detected_boxes,
-                            image_height,
-                            image_width):
+def paste_instance_masks_v2(masks: np.ndarray, detected_boxes: np.ndarray,
+                            image_height: int, image_width: int) -> np.ndarray:
   """Paste instance masks to generate the image segmentation (v2).
 
   Args:
@@ -188,3 +185,65 @@ def paste_instance_masks_v2(masks,
   segms = np.array(segms)
   return segms
 
+
+def bbox2mask(bbox: tf.Tensor,
+              *,
+              image_height: int,
+              image_width: int,
+              dtype: tf.DType = tf.bool) -> tf.Tensor:
+  """Converts bounding boxes to bitmasks.
+
+  Args:
+    bbox: A tensor in shape (..., 4) with arbitrary numbers of batch dimensions,
+      representing the absolute coordinates (ymin, xmin, ymax, xmax) for each
+      bounding box.
+    image_height: an integer representing the height of the image.
+    image_width: an integer representing the width of the image.
+    dtype: DType of the output bitmasks.
+
+  Returns:
+    A tensor in shape (..., height, width) which stores the bitmasks created
+    from the bounding boxes. For example:
+
+    >>> bbox2mask(tf.constant([[1,2,4,4]]),
+                  image_height=5,
+                  image_width=5,
+                  dtype=tf.int32)
+    <tf.Tensor: shape=(1, 5, 5), dtype=int32, numpy=
+    array([[[0, 0, 0, 0, 0],
+            [0, 0, 1, 1, 0],
+            [0, 0, 1, 1, 0],
+            [0, 0, 1, 1, 0],
+            [0, 0, 0, 0, 0]]], dtype=int32)>
+  """
+  bbox_shape = bbox.get_shape().as_list()
+  if bbox_shape[-1] != 4:
+    raise ValueError(
+        'Expected the last dimension of `bbox` has size == 4, but the shape '
+        'of `bbox` was: %s' % bbox_shape)
+
+  # (..., 1)
+  ymin = bbox[..., 0:1]
+  xmin = bbox[..., 1:2]
+  ymax = bbox[..., 2:3]
+  xmax = bbox[..., 3:4]
+  # (..., 1, width)
+  ymin = tf.expand_dims(tf.repeat(ymin, repeats=image_width, axis=-1), axis=-2)
+  # (..., height, 1)
+  xmin = tf.expand_dims(tf.repeat(xmin, repeats=image_height, axis=-1), axis=-1)
+  # (..., 1, width)
+  ymax = tf.expand_dims(tf.repeat(ymax, repeats=image_width, axis=-1), axis=-2)
+  # (..., height, 1)
+  xmax = tf.expand_dims(tf.repeat(xmax, repeats=image_height, axis=-1), axis=-1)
+
+  # (height, 1)
+  y_grid = tf.expand_dims(tf.range(image_height, dtype=bbox.dtype), axis=-1)
+  # (1, width)
+  x_grid = tf.expand_dims(tf.range(image_width, dtype=bbox.dtype), axis=-2)
+
+  # (..., height, width)
+  ymin_mask = y_grid >= ymin
+  xmin_mask = x_grid >= xmin
+  ymax_mask = y_grid < ymax
+  xmax_mask = x_grid < xmax
+  return tf.cast(ymin_mask & xmin_mask & ymax_mask & xmax_mask, dtype)
