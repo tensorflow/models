@@ -783,3 +783,66 @@ def box_matching(boxes, gt_boxes, gt_classes):
 
   return (matched_gt_boxes, matched_gt_classes, matched_gt_indices,
           matched_iou, iou)
+
+
+def bbox2mask(bbox: tf.Tensor,
+              *,
+              image_height: int,
+              image_width: int,
+              dtype: tf.DType = tf.bool) -> tf.Tensor:
+  """Converts bounding boxes to bitmasks.
+
+  Args:
+    bbox: A tensor in shape (..., 4) with arbitrary numbers of batch dimensions,
+      representing the absolute coordinates (ymin, xmin, ymax, xmax) for each
+      bounding box.
+    image_height: an integer representing the height of the image.
+    image_width: an integer representing the width of the image.
+    dtype: DType of the output bitmasks.
+
+  Returns:
+    A tensor in shape (..., height, width) which stores the bitmasks created
+    from the bounding boxes. For example:
+
+    >>> bbox2mask(tf.constant([[1,2,4,4]]),
+                  image_height=5,
+                  image_width=5,
+                  dtype=tf.int32)
+    <tf.Tensor: shape=(1, 5, 5), dtype=int32, numpy=
+    array([[[0, 0, 0, 0, 0],
+            [0, 0, 1, 1, 0],
+            [0, 0, 1, 1, 0],
+            [0, 0, 1, 1, 0],
+            [0, 0, 0, 0, 0]]], dtype=int32)>
+  """
+  bbox_shape = bbox.get_shape().as_list()
+  if bbox_shape[-1] != 4:
+    raise ValueError(
+        'Expected the last dimension of `bbox` has size == 4, but the shape '
+        'of `bbox` was: %s' % bbox_shape)
+
+  # (..., 1)
+  ymin = bbox[..., 0:1]
+  xmin = bbox[..., 1:2]
+  ymax = bbox[..., 2:3]
+  xmax = bbox[..., 3:4]
+  # (..., 1, width)
+  ymin = tf.expand_dims(tf.repeat(ymin, repeats=image_width, axis=-1), axis=-2)
+  # (..., height, 1)
+  xmin = tf.expand_dims(tf.repeat(xmin, repeats=image_height, axis=-1), axis=-1)
+  # (..., 1, width)
+  ymax = tf.expand_dims(tf.repeat(ymax, repeats=image_width, axis=-1), axis=-2)
+  # (..., height, 1)
+  xmax = tf.expand_dims(tf.repeat(xmax, repeats=image_height, axis=-1), axis=-1)
+
+  # (height, 1)
+  y_grid = tf.expand_dims(tf.range(image_height, dtype=bbox.dtype), axis=-1)
+  # (1, width)
+  x_grid = tf.expand_dims(tf.range(image_width, dtype=bbox.dtype), axis=-2)
+
+  # (..., height, width)
+  ymin_mask = y_grid >= ymin
+  xmin_mask = x_grid >= xmin
+  ymax_mask = y_grid < ymax
+  xmax_mask = x_grid < xmax
+  return tf.cast(ymin_mask & xmin_mask & ymax_mask & xmax_mask, dtype)
