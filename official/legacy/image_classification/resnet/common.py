@@ -106,10 +106,14 @@ class PiecewiseConstantDecayWithWarmup(
     }
 
 
-def get_optimizer(learning_rate=0.1):
+def get_optimizer(learning_rate=0.1, use_legacy_optimizer=True):
   """Returns optimizer to use."""
   # The learning_rate is overwritten at the beginning of each step by callback.
-  return tf.keras.optimizers.SGD(learning_rate=learning_rate, momentum=0.9)
+  if use_legacy_optimizer:
+    return tf.keras.optimizers.legacy.SGD(
+        learning_rate=learning_rate, momentum=0.9)
+  else:
+    return tf.keras.optimizers.SGD(learning_rate=learning_rate, momentum=0.9)
 
 
 def get_callbacks(pruning_method=None,
