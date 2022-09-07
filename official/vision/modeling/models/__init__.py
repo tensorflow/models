@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Modeling package definition."""
+"""Models under Vision package."""
 
-from official.vision.modeling import backbones
-from official.vision.modeling import decoders
-from official.vision.modeling import heads
-from official.vision.modeling import layers
-from official.vision.modeling import models
+from official.vision.modeling.classification_model import ClassificationModel
+from official.vision.modeling.maskrcnn_model import MaskRCNNModel
+from official.vision.modeling.retinanet_model import RetinaNetModel
+from official.vision.modeling.segmentation_model import SegmentationModel
+from official.vision.modeling.video_classification_model import VideoClassificationModel
