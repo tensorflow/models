@@ -36,6 +36,9 @@ from official.core import exp_factory
 from official.modeling import hyperparams
 
 
+BEST_CHECKPOINT_NAME = 'best_ckpt'
+
+
 def get_leaf_nested_dict(d: Dict[str, Any], keys: List[str]) -> Dict[str, Any]:
   """Get leaf from a dictionary with arbitrary depth with a list of keys.
 
@@ -138,7 +141,7 @@ class BestCheckpointExporter:
           checkpoint,
           directory=self._export_dir,
           max_to_keep=1,
-          checkpoint_name='best_ckpt')
+          checkpoint_name=BEST_CHECKPOINT_NAME)
 
     return self._checkpoint_manager
 
