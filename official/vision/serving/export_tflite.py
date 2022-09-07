@@ -44,12 +44,12 @@ from official.vision.serving import export_tflite_lib
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string(
+_EXPERIMENT = flags.DEFINE_string(
     'experiment',
     None,
     'experiment type, e.g. retinanet_resnetfpn_coco',
     required=True)
-flags.DEFINE_multi_string(
+_CONFIG_FILE = flags.DEFINE_multi_string(
     'config_file',
     default='',
     help='YAML/JSON files which specifies overrides. The override order '
@@ -58,15 +58,15 @@ flags.DEFINE_multi_string(
     'specified in Python. If the same parameter is specified in both '
     '`--config_file` and `--params_override`, `config_file` will be used '
     'first, followed by params_override.')
-flags.DEFINE_string(
+_PARAMS_OVERRIDE = flags.DEFINE_string(
     'params_override', '',
     'The JSON/YAML file or string which specifies the parameter to be overriden'
     ' on top of `config_file` template.')
-flags.DEFINE_string(
+_SAVED_MODEL_DIR = flags.DEFINE_string(
     'saved_model_dir', None, 'The directory to the saved model.', required=True)
-flags.DEFINE_string(
+_TFLITE_PATH = flags.DEFINE_string(
     'tflite_path', None, 'The path to the output tflite model.', required=True)
-flags.DEFINE_string(
+_QUANT_TYPE = flags.DEFINE_string(
     'quant_type',
     default=None,
     help='Post training quantization type. Support `int8_fallback`, '
@@ -74,35 +74,47 @@ flags.DEFINE_string(
     '`int8_full_int8_io` and `default`. See '
     'https://www.tensorflow.org/lite/performance/post_training_quantization '
     'for more details.')
-flags.DEFINE_integer('calibration_steps', 500,
-                     'The number of calibration steps for integer model.')
+_CALIBRATION_STEPS = flags.DEFINE_integer(
+    'calibration_steps', 500,
+    'The number of calibration steps for integer model.')
+_DENYLISTED_OPS = flags.DEFINE_string(
+    'denylisted_ops', '', 'The comma-separated string of ops '
+    'that are excluded from integer quantization. The name of '
+    'ops should be all capital letters, such as CAST or GREATER.'
+    'This is useful to exclude certains ops that affects quality or latency. '
+    'Valid ops that should not be included are quantization friendly ops, such '
+    'as CONV_2D, DEPTHWISE_CONV_2D, FULLY_CONNECTED, etc.')
 
 
 def main(_) -> None:
-  params = exp_factory.get_exp_config(FLAGS.experiment)
-  if FLAGS.config_file is not None:
-    for config_file in FLAGS.config_file:
+  params = exp_factory.get_exp_config(_EXPERIMENT.value)
+  if _CONFIG_FILE.value is not None:
+    for config_file in _CONFIG_FILE.value:
       params = hyperparams.override_params_dict(
           params, config_file, is_strict=True)
-  if FLAGS.params_override:
+  if _PARAMS_OVERRIDE.value:
     params = hyperparams.override_params_dict(
-        params, FLAGS.params_override, is_strict=True)
+        params, _PARAMS_OVERRIDE.value, is_strict=True)
 
   params.validate()
   params.lock()
 
   logging.info('Converting SavedModel from %s to TFLite model...',
-               FLAGS.saved_model_dir)
-  tflite_model = export_tflite_lib.convert_tflite_model(
-      saved_model_dir=FLAGS.saved_model_dir,
-      quant_type=FLAGS.quant_type,
-      params=params,
-      calibration_steps=FLAGS.calibration_steps)
+               _SAVED_MODEL_DIR.value)
 
-  with tf.io.gfile.GFile(FLAGS.tflite_path, 'wb') as fw:
+  if _DENYLISTED_OPS.value:
+    denylisted_ops = list(_DENYLISTED_OPS.value.split(','))
+  tflite_model = export_tflite_lib.convert_tflite_model(
+      saved_model_dir=_SAVED_MODEL_DIR.value,
+      quant_type=_QUANT_TYPE.value,
+      params=params,
+      calibration_steps=_CALIBRATION_STEPS.value,
+      denylisted_ops=denylisted_ops)
+
+  with tf.io.gfile.GFile(_TFLITE_PATH.value, 'wb') as fw:
     fw.write(tflite_model)
 
-  logging.info('TFLite model converted and saved to %s.', FLAGS.tflite_path)
+  logging.info('TFLite model converted and saved to %s.', _TFLITE_PATH.value)
 
 
 if __name__ == '__main__':
