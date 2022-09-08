@@ -61,6 +61,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
                value_dim=None,
                output_last_dim=None,
                diff_q_kv_att_layer_norm=False,
+               return_attention_scores=False,
                **kwargs):
     """Initializes `TransformerEncoderBlock`.
 
@@ -117,13 +118,16 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         `None`, we use the first `input_shape`'s last dim.
       value_dim: `value_dim` for the `tf.keras.layers.MultiHeadAttention`.
       output_last_dim: Final dimension of the output of this module. This also
-        dictates the value for the final dimension of the
-        multi-head-attention. When it's `None`, we use, in order of decreasing
-        precedence, `key_dim` * `num_heads` or the first `input_shape`'s last
-        dim as the output's last dim.
+        dictates the value for the final dimension of the multi-head-attention.
+        When it's `None`, we use, in order of decreasing precedence, `key_dim` *
+        `num_heads` or the first `input_shape`'s last dim as the output's last
+        dim.
       diff_q_kv_att_layer_norm: If `True`, create a separate attention layer
-        norm layer for query and key-value if `norm_first` is `True`. Invalid
-        to set to `True` if `norm_first` is `False`.
+        norm layer for query and key-value if `norm_first` is `True`. Invalid to
+        set to `True` if `norm_first` is `False`.
+      return_attention_scores: If `True`, the output of this layer will be a
+        tuple and additionally contain the attention scores in the shape of
+        `[batch_size, num_attention_heads, seq_dim, seq_dim]`.
       **kwargs: keyword arguments.
     """
     util.filter_kwargs(kwargs)
@@ -156,6 +160,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     self._value_dim = value_dim
     self._output_last_dim = output_last_dim
     self._diff_q_kv_att_layer_norm = diff_q_kv_att_layer_norm
+    self._return_attention_scores = return_attention_scores
     if attention_initializer:
       self._attention_initializer = tf.keras.initializers.get(
           attention_initializer)
@@ -303,7 +308,8 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
             self._inner_dropout,
         "attention_initializer":
             tf.keras.initializers.serialize(self._attention_initializer),
-        "attention_axes": self._attention_axes,
+        "attention_axes":
+            self._attention_axes,
         "use_query_residual":
             self._use_query_residual,
         "key_dim":
@@ -322,13 +328,11 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     """Transformer self-attention encoder block call.
 
     Args:
-      inputs: a single tensor or a list of tensors.
-        `input tensor` as the single sequence of embeddings.
-        [`input tensor`, `attention mask`] to have the additional attention
-          mask.
-        [`query tensor`, `key value tensor`, `attention mask`] to have separate
-          input streams for the query, and key/value to the multi-head
-          attention.
+      inputs: a single tensor or a list of tensors. `input tensor` as the single
+        sequence of embeddings. [`input tensor`, `attention mask`] to have the
+        additional attention mask. [`query tensor`, `key value tensor`,
+        `attention mask`] to have separate input streams for the query, and
+        key/value to the multi-head attention.
       output_range: the sequence output range, [0, output_range) for slicing the
         target sequence. `None` means the target sequence is not sliced. If you
         would like to have no change to the model training, it is better to only
@@ -370,8 +374,16 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
 
     if key_value is None:
       key_value = input_tensor
-    attention_output = self._attention_layer(
-        query=target_tensor, value=key_value, attention_mask=attention_mask)
+
+    if self._return_attention_scores:
+      attention_output, attention_scores = self._attention_layer(
+          query=target_tensor,
+          value=key_value,
+          attention_mask=attention_mask,
+          return_attention_scores=True)
+    else:
+      attention_output = self._attention_layer(
+          query=target_tensor, value=key_value, attention_mask=attention_mask)
     attention_output = self._attention_dropout(attention_output)
 
     if self._norm_first:
@@ -395,9 +407,14 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     layer_output = self._output_dropout(layer_output)
 
     if self._norm_first:
-      return source_attention_output + layer_output
+      layer_output = source_attention_output + layer_output
+    else:
+      # During mixed precision training, layer norm output is always fp32 for
+      # now. Casts fp32 for the subsequent add.
+      layer_output = tf.cast(layer_output, tf.float32)
+      layer_output = self._output_layer_norm(layer_output + attention_output)
 
-    # During mixed precision training, layer norm output is always fp32 for now.
-    # Casts fp32 for the subsequent add.
-    layer_output = tf.cast(layer_output, tf.float32)
-    return self._output_layer_norm(layer_output + attention_output)
+    if self._return_attention_scores:
+      return layer_output, attention_scores
+    else:
+      return layer_output
