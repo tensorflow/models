@@ -110,6 +110,42 @@ class BertEncoderTest(keras_parameterized.TestCase):
       ("encoder_v2", bert_encoder.BertEncoderV2),
       ("encoder_v1", bert_encoder.BertEncoder),
   )
+  def test_dict_outputs_network_creation_return_attention_scores(
+      self, encoder_cls):
+    hidden_size = 32
+    sequence_length = 21
+    num_attention_heads = 5
+    num_layers = 3
+    # Create a small BertEncoder for testing.
+    test_network = encoder_cls(
+        vocab_size=100,
+        hidden_size=hidden_size,
+        num_attention_heads=num_attention_heads,
+        num_layers=num_layers,
+        return_attention_scores=True,
+        dict_outputs=True)
+    # Create the inputs (note that the first dimension is implicit).
+    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    dict_outputs = test_network(
+        dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids))
+    all_attention_outputs = dict_outputs["attention_scores"]
+
+    expected_data_shape = [
+        None, num_attention_heads, sequence_length, sequence_length
+    ]
+    self.assertLen(all_attention_outputs, num_layers)
+    for data in all_attention_outputs:
+      self.assertAllEqual(expected_data_shape, data.shape.as_list())
+
+    # The default output dtype is float32.
+    self.assertAllEqual(tf.float32, all_attention_outputs[-1].dtype)
+
+  @parameterized.named_parameters(
+      ("encoder_v2", bert_encoder.BertEncoderV2),
+      ("encoder_v1", bert_encoder.BertEncoder),
+  )
   def test_dict_outputs_network_creation_with_float16_dtype(self, encoder_cls):
     hidden_size = 32
     sequence_length = 21
@@ -368,6 +404,34 @@ class BertEncoderTest(keras_parameterized.TestCase):
     # The default output dtype is float32.
     self.assertAllEqual(tf.float32, all_encoder_outputs[-1].dtype)
     self.assertAllEqual(tf.float32, pooled.dtype)
+
+  def test_attention_scores_output_network_creation(self):
+    hidden_size = 32
+    sequence_length = 21
+    num_attention_heads = 5
+    num_layers = 3
+    # Create a small BertEncoder for testing.
+    test_network = bert_encoder.BertEncoder(
+        vocab_size=100,
+        hidden_size=hidden_size,
+        num_attention_heads=num_attention_heads,
+        num_layers=num_layers,
+        return_attention_scores=True)
+    # Create the inputs (note that the first dimension is implicit).
+    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    _, _, all_attention_outputs = test_network([word_ids, mask, type_ids])
+
+    expected_data_shape = [
+        None, num_attention_heads, sequence_length, sequence_length
+    ]
+    self.assertLen(all_attention_outputs, num_layers)
+    for data in all_attention_outputs:
+      self.assertAllEqual(expected_data_shape, data.shape.as_list())
+
+    # The default output dtype is float32.
+    self.assertAllEqual(tf.float32, all_attention_outputs[-1].dtype)
 
   def test_network_creation_with_float16_dtype(self):
     hidden_size = 32
