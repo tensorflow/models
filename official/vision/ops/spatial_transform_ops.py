@@ -14,6 +14,8 @@
 
 """Spatial transform ops."""
 
+from typing import Dict, Tuple
+
 import tensorflow as tf
 
 _EPSILON = 1e-8
@@ -70,7 +72,7 @@ def _feature_bilinear_interpolation(features: tf.Tensor, kernel_y: tf.Tensor,
 
 def _compute_grid_positions(
     boxes: tf.Tensor, boundaries: tf.Tensor, output_size: int,
-    sample_offset: float) -> tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+    sample_offset: float) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
   """Computes the grid position w.r.t.
 
   the corresponding feature map.
@@ -140,7 +142,7 @@ def _compute_grid_positions(
   return kernel_y, kernel_x, box_gridy0y1, box_gridx0x1
 
 
-def multilevel_crop_and_resize(features: dict[str, tf.Tensor],
+def multilevel_crop_and_resize(features: Dict[str, tf.Tensor],
                                boxes: tf.Tensor,
                                output_size: int = 7,
                                sample_offset: float = 0.5) -> tf.Tensor:
