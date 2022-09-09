@@ -16,7 +16,7 @@
 
 import tensorflow as tf
 
-from official.vision.beta.projects.yolo.ops import box_ops
+from official.projects.yolo.ops import box_ops
 
 NMS_TILE_SIZE = 512
 
