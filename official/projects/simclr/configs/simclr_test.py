@@ -19,8 +19,8 @@ import tensorflow as tf
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
-from official.vision.beta.projects.simclr.common import registry_imports  # pylint: disable=unused-import
-from official.vision.beta.projects.simclr.configs import simclr as exp_cfg
+from official.projects.simclr.common import registry_imports  # pylint: disable=unused-import
+from official.projects.simclr.configs import simclr as exp_cfg
 
 
 class SimCLRConfigTest(tf.test.TestCase, parameterized.TestCase):

@@ -18,9 +18,9 @@ import os.path
 
 import tensorflow as tf
 
-from official.vision.beta.projects.simclr.configs import multitask_config
-from official.vision.beta.projects.simclr.modeling import multitask_model
-from official.vision.beta.projects.simclr.modeling import simclr_model
+from official.projects.simclr.configs import multitask_config
+from official.projects.simclr.modeling import multitask_model
+from official.projects.simclr.modeling import simclr_model
 
 
 class MultitaskModelTest(tf.test.TestCase):

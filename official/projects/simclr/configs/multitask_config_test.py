@@ -18,8 +18,8 @@ import tensorflow as tf
 
 from official.core import exp_factory
 from official.modeling.multitask import configs as multitask_configs
-from official.vision.beta.projects.simclr.configs import multitask_config as simclr_multitask_config
-from official.vision.beta.projects.simclr.configs import simclr as exp_cfg
+from official.projects.simclr.configs import multitask_config as simclr_multitask_config
+from official.projects.simclr.configs import simclr as exp_cfg
 
 
 class MultitaskConfigTest(tf.test.TestCase):

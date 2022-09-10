@@ -17,8 +17,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.projects.simclr.heads import simclr_head
-from official.vision.beta.projects.simclr.modeling import simclr_model
+from official.projects.simclr.heads import simclr_head
+from official.projects.simclr.modeling import simclr_model
 from official.vision.modeling import backbones
 
 

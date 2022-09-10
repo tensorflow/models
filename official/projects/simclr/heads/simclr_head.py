@@ -14,11 +14,11 @@
 
 """SimCLR prediction heads."""
 
-from typing import Text, Optional
+from typing import Optional, Text
 
 import tensorflow as tf
 
-from official.vision.beta.projects.simclr.modeling.layers import nn_blocks
+from official.projects.simclr.modeling.layers import nn_blocks
 
 regularizers = tf.keras.regularizers
 layers = tf.keras.layers

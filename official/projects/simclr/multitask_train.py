@@ -25,9 +25,9 @@ from official.modeling.multitask import multitask
 from official.modeling.multitask import train_lib
 
 # pylint: disable=unused-import
-from official.vision.beta.projects.simclr.common import registry_imports
-from official.vision.beta.projects.simclr.configs import multitask_config
-from official.vision.beta.projects.simclr.modeling import multitask_model
+from official.projects.simclr.common import registry_imports
+from official.projects.simclr.configs import multitask_config
+from official.projects.simclr.modeling import multitask_model
 # pylint: enable=unused-import
 
 FLAGS = flags.FLAGS

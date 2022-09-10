@@ -16,7 +16,7 @@ from absl.testing import parameterized
 
 import tensorflow as tf
 
-from official.vision.beta.projects.simclr.modeling.layers import nn_blocks
+from official.projects.simclr.modeling.layers import nn_blocks
 
 
 class DenseBNTest(tf.test.TestCase, parameterized.TestCase):

@@ -17,7 +17,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.projects.simclr.losses import contrastive_losses
+from official.projects.simclr.losses import contrastive_losses
 
 
 class ContrastiveLossesTest(tf.test.TestCase, parameterized.TestCase):
