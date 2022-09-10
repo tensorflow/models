@@ -19,9 +19,9 @@ from absl import logging
 import tensorflow as tf
 
 from official.modeling.multitask import base_model
-from official.vision.beta.projects.simclr.configs import multitask_config as simclr_multitask_config
-from official.vision.beta.projects.simclr.heads import simclr_head
-from official.vision.beta.projects.simclr.modeling import simclr_model
+from official.projects.simclr.configs import multitask_config as simclr_multitask_config
+from official.projects.simclr.heads import simclr_head
+from official.projects.simclr.modeling import simclr_model
 from official.vision.modeling import backbones
 
 PROJECTION_OUTPUT_KEY = 'projection_outputs'

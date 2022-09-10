@@ -36,11 +36,11 @@ from official.core import task_factory
 from official.modeling import optimization
 from official.modeling import performance
 from official.modeling import tf_utils
-from official.vision.beta.projects.simclr.configs import simclr as exp_cfg
-from official.vision.beta.projects.simclr.dataloaders import simclr_input
-from official.vision.beta.projects.simclr.heads import simclr_head
-from official.vision.beta.projects.simclr.losses import contrastive_losses
-from official.vision.beta.projects.simclr.modeling import simclr_model
+from official.projects.simclr.configs import simclr as exp_cfg
+from official.projects.simclr.dataloaders import simclr_input
+from official.projects.simclr.heads import simclr_head
+from official.projects.simclr.losses import contrastive_losses
+from official.projects.simclr.modeling import simclr_model
 from official.vision.modeling import backbones
 
 OptimizationConfig = optimization.OptimizationConfig

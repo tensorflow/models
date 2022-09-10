@@ -25,7 +25,7 @@ install -r ./official/requirements.txt`
 To pretrain the model on Imagenet, try the following command:
 
 ```
-python3 -m official.vision.beta.projects.simclr.train \
+python3 -m official.projects.simclr.train \
   --mode=train_and_eval \
   --experiment=simclr_pretraining \
   --model_dir={MODEL_DIR} \
@@ -44,7 +44,7 @@ You can also find image IDs of these subsets in `imagenet_subsets/`.
 To fine-tune the whole network, refer to the following command:
 
 ```
-python3 -m official.vision.beta.projects.simclr.train \
+python3 -m official.projects.simclr.train \
   --mode=train_and_eval \
   --experiment=simclr_finetuning \
   --model_dir={MODEL_DIR} \
