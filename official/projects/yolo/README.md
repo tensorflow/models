@@ -79,7 +79,3 @@ connected to a new, more powerful backbone if a person chose to.
 ## Requirements
 [![TensorFlow 2.6](https://img.shields.io/badge/TensorFlow-2.6-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.6.0)
 [![Python 3.8](https://img.shields.io/badge/Python-3.8-3776AB)](https://www.python.org/downloads/release/python-380/)
-
-
-DISCLAIMER: this YOLO implementation is still under development. No support
-will be provided during the development phase.
