@@ -17,7 +17,7 @@
 import tensorflow as tf
 
 from official.modeling import tf_utils
-from official.vision.beta.projects.panoptic_maskrcnn.ops import mask_ops
+from official.projects.panoptic.ops import mask_ops
 
 EPSILON = 1e-5
 

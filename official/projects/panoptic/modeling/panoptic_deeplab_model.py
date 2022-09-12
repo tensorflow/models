@@ -16,7 +16,7 @@
 from typing import Any, Mapping, Optional, Union
 
 import tensorflow as tf
-from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import panoptic_deeplab_merge
+from official.projects.panoptic.modeling.layers import panoptic_deeplab_merge
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')

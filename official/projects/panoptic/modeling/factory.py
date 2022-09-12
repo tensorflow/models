@@ -18,13 +18,13 @@ from typing import Optional
 import tensorflow as tf
 
 from official.projects.deepmac_maskrcnn.tasks import deep_mask_head_rcnn
-from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_deeplab as panoptic_deeplab_cfg
-from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_maskrcnn as panoptic_maskrcnn_cfg
-from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_deeplab_model
-from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_maskrcnn_model
-from official.vision.beta.projects.panoptic_maskrcnn.modeling.heads import panoptic_deeplab_heads
-from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import panoptic_deeplab_merge
-from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import panoptic_segmentation_generator
+from official.projects.panoptic.configs import panoptic_deeplab as panoptic_deeplab_cfg
+from official.projects.panoptic.configs import panoptic_maskrcnn as panoptic_maskrcnn_cfg
+from official.projects.panoptic.modeling import panoptic_deeplab_model
+from official.projects.panoptic.modeling import panoptic_maskrcnn_model
+from official.projects.panoptic.modeling.heads import panoptic_deeplab_heads
+from official.projects.panoptic.modeling.layers import panoptic_deeplab_merge
+from official.projects.panoptic.modeling.layers import panoptic_segmentation_generator
 from official.vision.modeling import backbones
 from official.vision.modeling.decoders import factory as decoder_factory
 from official.vision.modeling.heads import segmentation_heads

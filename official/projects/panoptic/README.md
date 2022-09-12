@@ -73,7 +73,7 @@ $ python3 train.py \
   --model_dir $MODEL_DIR \
   --params_override=$OVERRIDES
 ```
-**Note**: The [PanopticSegmentationGenerator](https://github.com/tensorflow/models/blob/ac7f9e7f2d0508913947242bad3e23ef7cae5a43/official/vision/beta/projects/panoptic_maskrcnn/modeling/layers/panoptic_segmentation_generator.py#L22) layer uses dynamic shapes and hence generating panoptic masks is not supported on Cloud TPUs. Running evaluation on Cloud TPUs is not supported for the same reason. However, training is supported on both Cloud TPUs and GPUs.
+**Note**: The [PanopticSegmentationGenerator](https://github.com/tensorflow/models/blob/ac7f9e7f2d0508913947242bad3e23ef7cae5a43/official/projects/panoptic/modeling/layers/panoptic_segmentation_generator.py#L22) layer uses dynamic shapes and hence generating panoptic masks is not supported on Cloud TPUs. Running evaluation on Cloud TPUs is not supported for the same reason. However, training is supported on both Cloud TPUs and GPUs.
 ## Pretrained Models
 ### Panoptic FPN
 Backbone     | Schedule     | Experiment name             | Box mAP |  Mask mAP  | Overall PQ | Things PQ | Stuff PQ | Checkpoints
