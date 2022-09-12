@@ -14,11 +14,11 @@
 
 """Contains definitions for Panoptic Deeplab heads."""
 
-from typing import List, Union, Optional, Mapping, Tuple
+from typing import List, Mapping, Optional, Tuple, Union
 import tensorflow as tf
 
 from official.modeling import tf_utils
-from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import fusion_layers
+from official.projects.panoptic.modeling.layers import fusion_layers
 from official.vision.ops import spatial_transform_ops
 
 

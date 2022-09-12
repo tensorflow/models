@@ -21,11 +21,11 @@ with minor changes.
 """
 
 import functools
-from typing import List, Tuple, Dict, Text
+from typing import Dict, List, Text, Tuple
 
 import tensorflow as tf
 
-from official.vision.beta.projects.panoptic_maskrcnn.ops import mask_ops
+from official.projects.panoptic.ops import mask_ops
 
 
 def _add_zero_padding(input_tensor: tf.Tensor, kernel_size: int,

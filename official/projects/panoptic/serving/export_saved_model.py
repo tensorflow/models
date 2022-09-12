@@ -40,15 +40,15 @@ import tensorflow as tf
 from official.core import exp_factory
 from official.modeling import hyperparams
 # pylint: disable=unused-import
-from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_deeplab as panoptic_deeplab_cfg
-from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_maskrcnn as panoptic_maskrcnn_cfg
+from official.projects.panoptic.configs import panoptic_deeplab as panoptic_deeplab_cfg
+from official.projects.panoptic.configs import panoptic_maskrcnn as panoptic_maskrcnn_cfg
 # pylint: enable=unused-import
-from official.vision.beta.projects.panoptic_maskrcnn.modeling import factory
-from official.vision.beta.projects.panoptic_maskrcnn.serving import panoptic_deeplab
-from official.vision.beta.projects.panoptic_maskrcnn.serving import panoptic_maskrcnn
+from official.projects.panoptic.modeling import factory
+from official.projects.panoptic.serving import panoptic_deeplab
+from official.projects.panoptic.serving import panoptic_maskrcnn
 # pylint: disable=unused-import
-from official.vision.beta.projects.panoptic_maskrcnn.tasks import panoptic_deeplab as panoptic_deeplab_task
-from official.vision.beta.projects.panoptic_maskrcnn.tasks import panoptic_maskrcnn as panoptic_maskrcnn_task
+from official.projects.panoptic.tasks import panoptic_deeplab as panoptic_deeplab_task
+from official.projects.panoptic.tasks import panoptic_maskrcnn as panoptic_maskrcnn_task
 # pylint: enable=unused-import
 from official.vision.serving import export_saved_model_lib
 

@@ -21,10 +21,10 @@ import tensorflow as tf
 from official.common import dataset_fn
 from official.core import base_task
 from official.core import task_factory
-from official.vision.beta.projects.panoptic_maskrcnn.configs import panoptic_deeplab as exp_cfg
-from official.vision.beta.projects.panoptic_maskrcnn.dataloaders import panoptic_deeplab_input
-from official.vision.beta.projects.panoptic_maskrcnn.losses import panoptic_deeplab_losses
-from official.vision.beta.projects.panoptic_maskrcnn.modeling import factory
+from official.projects.panoptic.configs import panoptic_deeplab as exp_cfg
+from official.projects.panoptic.dataloaders import panoptic_deeplab_input
+from official.projects.panoptic.losses import panoptic_deeplab_losses
+from official.projects.panoptic.modeling import factory
 from official.vision.dataloaders import input_reader_factory
 from official.vision.evaluation import panoptic_quality_evaluator
 from official.vision.evaluation import segmentation_metrics

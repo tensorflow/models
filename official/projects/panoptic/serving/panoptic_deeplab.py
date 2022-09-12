@@ -19,8 +19,8 @@ from typing import List
 import tensorflow as tf
 
 from official.core import config_definitions as cfg
-from official.vision.beta.projects.panoptic_maskrcnn.modeling import factory
-from official.vision.beta.projects.panoptic_maskrcnn.modeling import panoptic_deeplab_model
+from official.projects.panoptic.modeling import factory
+from official.projects.panoptic.modeling import panoptic_deeplab_model
 from official.vision.serving import semantic_segmentation
 
 

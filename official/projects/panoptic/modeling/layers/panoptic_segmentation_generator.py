@@ -18,7 +18,7 @@ from typing import List, Optional
 
 import tensorflow as tf
 
-from official.vision.beta.projects.panoptic_maskrcnn.modeling.layers import paste_masks
+from official.projects.panoptic.modeling.layers import paste_masks
 
 
 class PanopticSegmentationGenerator(tf.keras.layers.Layer):
