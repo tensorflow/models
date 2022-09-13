@@ -83,12 +83,12 @@ def build_meta_arch(**override_params):
       use_xy=True,
       pixel_embedding_dim=2,
       dice_loss_prediction_probability=False,
-      color_consistency_threshold=0.5,
+      feature_consistency_threshold=0.5,
       use_dice_loss=False,
       box_consistency_loss_normalize='normalize_auto',
       box_consistency_tightness=False,
       task_loss_weight=1.0,
-      color_consistency_loss_weight=1.0,
+      feature_consistency_loss_weight=1.0,
       box_consistency_loss_weight=1.0,
       num_init_channels=8,
       dim=8,
@@ -97,9 +97,9 @@ def build_meta_arch(**override_params):
       postprocess_crop_size=128,
       max_roi_jitter_ratio=0.0,
       roi_jitter_mode='default',
-      color_consistency_dilation=2,
-      color_consistency_warmup_steps=0,
-      color_consistency_warmup_start=0,
+      feature_consistency_dilation=2,
+      feature_consistency_warmup_steps=0,
+      feature_consistency_warmup_start=0,
       use_only_last_stage=True,
       augmented_self_supervision_max_translation=0.0,
       augmented_self_supervision_loss_weight=0.0,
@@ -110,7 +110,9 @@ def build_meta_arch(**override_params):
       augmented_self_supervision_scale_min=1.0,
       augmented_self_supervision_scale_max=1.0,
       pointly_supervised_keypoint_loss_weight=1.0,
-      ignore_per_class_box_overlap=False)
+      ignore_per_class_box_overlap=False,
+      feature_consistency_type='consistency_default_lab',
+      feature_consistency_comparison='comparison_default_gaussian')
 
   params.update(override_params)
 
@@ -183,13 +185,13 @@ DEEPMAC_PROTO_TEXT = """
   predict_full_resolution_masks: true
   allowed_masked_classes_ids: [99]
   box_consistency_loss_weight: 1.0
-  color_consistency_loss_weight: 1.0
-  color_consistency_threshold: 0.1
+  feature_consistency_loss_weight: 1.0
+  feature_consistency_threshold: 0.1
 
   box_consistency_tightness: false
   box_consistency_loss_normalize: NORMALIZE_AUTO
-  color_consistency_warmup_steps: 20
-  color_consistency_warmup_start: 10
+  feature_consistency_warmup_steps: 20
+  feature_consistency_warmup_start: 10
   use_only_last_stage: false
   augmented_self_supervision_warmup_start: 13
   augmented_self_supervision_warmup_steps: 14
@@ -201,6 +203,8 @@ DEEPMAC_PROTO_TEXT = """
   augmented_self_supervision_scale_max: 1.42
   pointly_supervised_keypoint_loss_weight: 0.13
   ignore_per_class_box_overlap: true
+  feature_consistency_type: CONSISTENCY_FEATURE_MAP
+  feature_consistency_comparison: COMPARISON_NORMALIZED_DOTPROD
 
 """
 
@@ -232,6 +236,9 @@ class DeepMACUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(
         params.pointly_supervised_keypoint_loss_weight, 0.13)
     self.assertTrue(params.ignore_per_class_box_overlap)
+    self.assertEqual(params.feature_consistency_type, 'consistency_feature_map')
+    self.assertEqual(
+        params.feature_consistency_comparison, 'comparison_normalized_dotprod')
 
   def test_subsample_trivial(self):
     """Test subsampling masks."""
@@ -1255,7 +1262,7 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertAllClose(loss, [[yloss + xloss]])
 
-  def test_color_consistency_loss_full_res_shape(self):
+  def test_feature_consistency_loss_full_res_shape(self):
 
     model = build_meta_arch(use_dice_loss=True,
                             predict_full_resolution_masks=True)
@@ -1263,18 +1270,18 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     img = tf.zeros((5, 32, 32, 3))
     mask_logits = tf.zeros((5, 3, 32, 32))
 
-    loss = model._compute_color_consistency_loss(
+    loss = model._compute_feature_consistency_loss(
         boxes, img, mask_logits)
     self.assertEqual([5, 3], loss.shape)
 
-  def test_color_consistency_1_threshold(self):
+  def test_feature_consistency_1_threshold(self):
     model = build_meta_arch(predict_full_resolution_masks=True,
-                            color_consistency_threshold=0.99)
+                            feature_consistency_threshold=0.99)
     boxes = tf.zeros((5, 3, 4))
     img = tf.zeros((5, 32, 32, 3))
     mask_logits = tf.zeros((5, 3, 32, 32)) - 1e4
 
-    loss = model._compute_color_consistency_loss(
+    loss = model._compute_feature_consistency_loss(
         boxes, img, mask_logits)
     self.assertAllClose(loss, np.zeros((5, 3)))
 
@@ -1414,7 +1421,8 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
             [tf.random.normal((1, 5, 8, 8))] * num_stages,
         'object_center': [tf.random.normal((1, 8, 8, 6))] * num_stages,
         'box/offset': [tf.random.normal((1, 8, 8, 2))] * num_stages,
-        'box/scale': [tf.random.normal((1, 8, 8, 2))] * num_stages
+        'box/scale': [tf.random.normal((1, 8, 8, 2))] * num_stages,
+        'extracted_features': [tf.random.normal((3, 32, 32, 7))] * num_stages
     }
 
     boxes = [tf.convert_to_tensor([[0., 0., 1., 1.]] * 5)]
@@ -1477,7 +1485,8 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
         'box/offset': [tf.random.normal((3, 8, 8, 2))] * 2,
         'box/scale': [tf.random.normal((3, 8, 8, 2))] * 2,
         'SELF_SUPERVISED_DEAUGMENTED_MASK_LOGITS': (
-            [tf.random.normal((3, 5, 8, 8))] * 2)
+            [tf.random.normal((3, 5, 8, 8))] * 2),
+        'extracted_features': [tf.random.normal((3, 32, 32, 7))] * 2
     }
     model.provide_groundtruth(
         groundtruth_boxes_list=[
@@ -1491,7 +1500,7 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     self.assertGreater(loss['Loss/deep_mask_estimation'], 0.0)
 
     for weak_loss in deepmac_meta_arch.MASK_LOSSES:
-      if weak_loss == deepmac_meta_arch.DEEP_MASK_COLOR_CONSISTENCY:
+      if weak_loss == deepmac_meta_arch.DEEP_MASK_FEATURE_CONSISTENCY:
         continue
       self.assertGreater(loss['Loss/' + weak_loss], 0.0,
                          '{} was <= 0'.format(weak_loss))
@@ -1544,7 +1553,8 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
         'box/offset': [tf.random.normal((1, 8, 8, 2))] * num_stages,
         'box/scale': [tf.random.normal((1, 8, 8, 2))] * num_stages,
         'SELF_SUPERVISED_DEAUGMENTED_MASK_LOGITS': (
-            [tf.random.normal((1, 5, 8, 8))] * num_stages)
+            [tf.random.normal((1, 5, 8, 8))] * num_stages),
+        'extracted_features': [tf.random.normal((3, 32, 32, 7))] * num_stages
     }
 
     boxes = [tf.convert_to_tensor([[0., 0., 1., 1.]] * 5)]
@@ -1571,7 +1581,7 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
     loss_weights = {
         deepmac_meta_arch.DEEP_MASK_ESTIMATION: rng.uniform(1, 5),
         deepmac_meta_arch.DEEP_MASK_BOX_CONSISTENCY: rng.uniform(1, 5),
-        deepmac_meta_arch.DEEP_MASK_COLOR_CONSISTENCY: rng.uniform(1, 5),
+        deepmac_meta_arch.DEEP_MASK_FEATURE_CONSISTENCY: rng.uniform(1, 5),
         deepmac_meta_arch.DEEP_MASK_AUGMENTED_SELF_SUPERVISION: (
             rng.uniform(1, 5)),
         deepmac_meta_arch.DEEP_MASK_POINTLY_SUPERVISED: rng.uniform(1, 5)
@@ -1588,8 +1598,8 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
         task_loss_weight=loss_weights[deepmac_meta_arch.DEEP_MASK_ESTIMATION],
         box_consistency_loss_weight=(
             loss_weights[deepmac_meta_arch.DEEP_MASK_BOX_CONSISTENCY]),
-        color_consistency_loss_weight=(
-            loss_weights[deepmac_meta_arch.DEEP_MASK_COLOR_CONSISTENCY]),
+        feature_consistency_loss_weight=(
+            loss_weights[deepmac_meta_arch.DEEP_MASK_FEATURE_CONSISTENCY]),
         augmented_self_supervision_loss_weight=(
             loss_weights[deepmac_meta_arch.DEEP_MASK_AUGMENTED_SELF_SUPERVISION]
             ),
@@ -1612,7 +1622,14 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
           weighted_loss[loss_key], loss[loss_key] * loss_weights[mask_loss],
           f'{mask_loss} did not respond to change in weight.')
 
-  def test_color_consistency_warmup(self):
+  @parameterized.parameters(
+      [dict(feature_consistency_type='consistency_default_lab',
+            feature_consistency_comparison='comparison_default_gaussian'),
+       dict(feature_consistency_type='consistency_feature_map',
+            feature_consistency_comparison='comparison_normalized_dotprod')],
+  )
+  def test_feature_consistency_warmup(
+      self, feature_consistency_type, feature_consistency_comparison):
     tf.keras.backend.set_learning_phase(True)
     model = build_meta_arch(
         use_dice_loss=True,
@@ -1622,15 +1639,19 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
         pixel_embedding_dim=8,
         use_instance_embedding=False,
         use_xy=False,
-        color_consistency_warmup_steps=10,
-        color_consistency_warmup_start=10)
+        feature_consistency_warmup_steps=10,
+        feature_consistency_warmup_start=10,
+        feature_consistency_type=feature_consistency_type,
+        feature_consistency_comparison=feature_consistency_comparison)
+
     num_stages = 1
     prediction = {
         'preprocessed_inputs': tf.random.normal((1, 32, 32, 3)),
         'MASK_LOGITS_GT_BOXES': [tf.random.normal((1, 5, 8, 8))] * num_stages,
         'object_center': [tf.random.normal((1, 8, 8, 6))] * num_stages,
         'box/offset': [tf.random.normal((1, 8, 8, 2))] * num_stages,
-        'box/scale': [tf.random.normal((1, 8, 8, 2))] * num_stages
+        'box/scale': [tf.random.normal((1, 8, 8, 2))] * num_stages,
+        'extracted_features': [tf.random.normal((3, 32, 32, 7))] * num_stages
     }
 
     boxes = [tf.convert_to_tensor([[0., 0., 1., 1.]] * 5)]
@@ -1670,7 +1691,7 @@ class DeepMACMetaArchTest(tf.test.TestCase, parameterized.TestCase):
         training_step=100)
     loss_at_100 = model.loss(prediction, tf.constant([[32, 32, 3.0]]))
 
-    loss_key = 'Loss/' + deepmac_meta_arch.DEEP_MASK_COLOR_CONSISTENCY
+    loss_key = 'Loss/' + deepmac_meta_arch.DEEP_MASK_FEATURE_CONSISTENCY
     self.assertAlmostEqual(loss_at_5[loss_key].numpy(), 0.0)
     self.assertGreater(loss_at_15[loss_key], 0.0)
     self.assertAlmostEqual(loss_at_15[loss_key].numpy(),
