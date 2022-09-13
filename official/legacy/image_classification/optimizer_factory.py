@@ -48,7 +48,7 @@ def build_optimizer(
       `ExponentialMovingAverage`.
 
   Returns:
-    A tf.keras.Optimizer.
+    A tf.keras.optimizers.legacy.Optimizer.
 
   Raises:
     ValueError if the provided optimizer_name is not supported.
@@ -60,12 +60,12 @@ def build_optimizer(
   if optimizer_name == 'sgd':
     logging.info('Using SGD optimizer')
     nesterov = params.get('nesterov', False)
-    optimizer = tf.keras.optimizers.SGD(
+    optimizer = tf.keras.optimizers.legacy.SGD(
         learning_rate=base_learning_rate, nesterov=nesterov)
   elif optimizer_name == 'momentum':
     logging.info('Using momentum optimizer')
     nesterov = params.get('nesterov', False)
-    optimizer = tf.keras.optimizers.SGD(
+    optimizer = tf.keras.optimizers.legacy.SGD(
         learning_rate=base_learning_rate,
         momentum=params['momentum'],
         nesterov=nesterov)
@@ -74,7 +74,7 @@ def build_optimizer(
     rho = params.get('decay', None) or params.get('rho', 0.9)
     momentum = params.get('momentum', 0.9)
     epsilon = params.get('epsilon', 1e-07)
-    optimizer = tf.keras.optimizers.RMSprop(
+    optimizer = tf.keras.optimizers.legacy.RMSprop(
         learning_rate=base_learning_rate,
         rho=rho,
         momentum=momentum,
@@ -84,7 +84,7 @@ def build_optimizer(
     beta_1 = params.get('beta_1', 0.9)
     beta_2 = params.get('beta_2', 0.999)
     epsilon = params.get('epsilon', 1e-07)
-    optimizer = tf.keras.optimizers.Adam(
+    optimizer = tf.keras.optimizers.legacy.Adam(
         learning_rate=base_learning_rate,
         beta_1=beta_1,
         beta_2=beta_2,
