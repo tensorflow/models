@@ -25,6 +25,7 @@ pycocotools
 # NLP related dependencies
 seqeval
 sentencepiece
-sacrebleu
+# Remove the version requirement after 2.2.1 installation is fixed.
+sacrebleu==2.2.0
 # Projects/vit dependencies
 immutabledict
