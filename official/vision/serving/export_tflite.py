@@ -104,6 +104,8 @@ def main(_) -> None:
 
   if _DENYLISTED_OPS.value:
     denylisted_ops = list(_DENYLISTED_OPS.value.split(','))
+  else:
+    denylisted_ops = None
   tflite_model = export_tflite_lib.convert_tflite_model(
       saved_model_dir=_SAVED_MODEL_DIR.value,
       quant_type=_QUANT_TYPE.value,
