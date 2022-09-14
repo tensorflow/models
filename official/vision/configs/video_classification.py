@@ -150,6 +150,7 @@ class VideoClassificationTask(cfg.TaskConfig):
   metrics: Metrics = Metrics()
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: str = 'all'  # all or backbone
+  freeze_backbone: bool = False
   # Spatial Partitioning fields.
   train_input_partition_dims: Optional[Tuple[int, ...]] = None
   eval_input_partition_dims: Optional[Tuple[int, ...]] = None

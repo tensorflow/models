@@ -60,7 +60,7 @@ class VideoClassificationTask(base_task.Task):
     input_specs = tf.keras.layers.InputSpec(shape=[None] + common_input_shape)
     logging.info('Build model input %r', common_input_shape)
 
-    l2_weight_decay = self.task_config.losses.l2_weight_decay
+    l2_weight_decay = float(self.task_config.losses.l2_weight_decay)
     # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
@@ -73,6 +73,10 @@ class VideoClassificationTask(base_task.Task):
         model_config=self.task_config.model,
         num_classes=self._get_num_classes(),
         l2_regularizer=l2_regularizer)
+
+    if self.task_config.freeze_backbone:
+      logging.info('Freezing model backbone.')
+      model.backbone.trainable = False
     return model
 
   def initialize(self, model: tf.keras.Model):
