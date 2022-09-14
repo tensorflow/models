@@ -89,7 +89,7 @@ class DataConfig(base_config.Config):
       tf.data pipeline. When using shared tf.data service, the tf.data dataset
       must be infinite, and slow trainer may skip certain training examples.
       More details about shared tf.data service can be found at:
-      https://www.tensorflow.org/api_docs/python/tf/data/experimental/service?version=nightly#sharing_tfdata_service_with_concurrent_trainers.
+      https://www.tensorflow.org/api_docs/python/tf/data/experimental/service#sharing_tfdata_service_with_concurrent_trainers.
     apply_tf_data_service_before_batching: A bool. If set to True, tf.data
       service will be applied before batching operation. This is useful to make
       sure only a single tf.data service instance is created when
