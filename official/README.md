@@ -14,6 +14,9 @@ being easy to read.
 These models are used as end-to-end tests, ensuring that the models run
 with the same or improved speed and performance with each new TensorFlow build.
 
+The API documentation of the latest stable release is published to
+[tensorflow.org](https://www.tensorflow.org/api_docs/python/tfm).
+
 ## More models to come!
 
 The team is actively developing new models.
@@ -128,8 +131,7 @@ pip3 install tensorflow-text==2.8.0 # when models in uses `nlp` packages
 
 Starting from 2.9.x release, we release the modeling library as
 `tensorflow_models` package and users can `import tensorflow_models` directly to
-access to the exported symbols. The API documentation is published to
-[tensorflow.org](https://www.tensorflow.org/api_docs/python/tfm). If you are
+access to the exported symbols. If you are
 using the latest nightly version or github code directly, please follow the
 docstrings in the github.
 
