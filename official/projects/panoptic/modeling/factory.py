@@ -105,18 +105,20 @@ def build_panoptic_maskrcnn(
   if model_config.generate_panoptic_masks:
     max_num_detections = model_config.detection_generator.max_num_detections
     mask_binarize_threshold = postprocessing_config.mask_binarize_threshold
-    panoptic_segmentation_generator_obj = panoptic_segmentation_generator.PanopticSegmentationGenerator(
-        output_size=postprocessing_config.output_size,
-        max_num_detections=max_num_detections,
-        stuff_classes_offset=model_config.stuff_classes_offset,
-        mask_binarize_threshold=mask_binarize_threshold,
-        score_threshold=postprocessing_config.score_threshold,
-        things_overlap_threshold=postprocessing_config.things_overlap_threshold,
-        things_class_label=postprocessing_config.things_class_label,
-        stuff_area_threshold=postprocessing_config.stuff_area_threshold,
-        void_class_label=postprocessing_config.void_class_label,
-        void_instance_id=postprocessing_config.void_instance_id,
-        rescale_predictions=postprocessing_config.rescale_predictions)
+    panoptic_segmentation_generator_obj = (
+        panoptic_segmentation_generator.PanopticSegmentationGeneratorV2(
+            output_size=postprocessing_config.output_size,
+            max_num_detections=max_num_detections,
+            stuff_classes_offset=model_config.stuff_classes_offset,
+            mask_binarize_threshold=mask_binarize_threshold,
+            score_threshold=postprocessing_config.score_threshold,
+            things_overlap_threshold=postprocessing_config
+            .things_overlap_threshold,
+            things_class_label=postprocessing_config.things_class_label,
+            stuff_area_threshold=postprocessing_config.stuff_area_threshold,
+            void_class_label=postprocessing_config.void_class_label,
+            void_instance_id=postprocessing_config.void_instance_id,
+            rescale_predictions=postprocessing_config.rescale_predictions))
   else:
     panoptic_segmentation_generator_obj = None
 
