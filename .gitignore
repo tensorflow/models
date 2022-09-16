@@ -96,3 +96,8 @@ ENV/
 
 # For mac
 .DS_Store
+
+# Data
+*.png
+*.jpg
+models/research/deeplab/datasets/pascal_voc_seg/
