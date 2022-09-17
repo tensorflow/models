@@ -20,9 +20,12 @@ from official.core import base_trainer
 from official.core import config_definitions
 from official.core import exp_factory
 from official.core import export_base
+from official.core import file_writers
 from official.core import input_reader
 from official.core import registry
 from official.core import savedmodel_checkpoint_manager
 from official.core import task_factory
+from official.core import tf_example_builder
+from official.core import tf_example_feature_key
 from official.core import train_lib
 from official.core import train_utils
