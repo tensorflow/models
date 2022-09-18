@@ -260,7 +260,7 @@ def build_retinanet(
     model_config: retinanet_cfg.RetinaNet,
     l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
     backbone: Optional[tf.keras.Model] = None,
-    decoder: Optional[tf.keras.regularizers.Regularizer] = None
+    decoder: Optional[tf.keras.Model] = None
 ) -> tf.keras.Model:
   """Builds RetinaNet model."""
   norm_activation_config = model_config.norm_activation
@@ -335,8 +335,8 @@ def build_segmentation_model(
     input_specs: tf.keras.layers.InputSpec,
     model_config: segmentation_cfg.SemanticSegmentationModel,
     l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-    backbone: Optional[tf.keras.regularizers.Regularizer] = None,
-    decoder: Optional[tf.keras.regularizers.Regularizer] = None
+    backbone: Optional[tf.keras.Model] = None,
+    decoder: Optional[tf.keras.Model] = None
 ) -> tf.keras.Model:
   """Builds Segmentation model."""
   norm_activation_config = model_config.norm_activation
