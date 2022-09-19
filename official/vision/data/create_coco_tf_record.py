@@ -226,7 +226,7 @@ def bbox_annotations_to_feature_dict(
       'image/object/is_crowd':
           tfrecord_lib.convert_to_feature(data['is_crowd']),
       'image/object/area':
-          tfrecord_lib.convert_to_feature(data['area']),
+          tfrecord_lib.convert_to_feature(data['area'], 'float_list')
   }
   if include_masks:
     feature_dict['image/object/mask'] = (
