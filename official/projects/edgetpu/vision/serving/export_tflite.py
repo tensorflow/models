@@ -60,6 +60,8 @@ flags.DEFINE_integer(
     'image_size', 224,
     'Size of the input image. Ideally should be the same as the image_size used '
     'in training config.')
+flags.DEFINE_bool(
+    'fix_batch_size', True, 'Whether to export model with fixed batch size.')
 flags.DEFINE_string(
     'output_layer', None,
     'Layer name to take the output from. Can be used to take the output from '
@@ -146,9 +148,11 @@ def run_export():
     output_layer = model.get_layer(export_config.output_layer)
     model = tf.keras.Model(model.input, output_layer.output)
 
+  batch_size = 1 if FLAGS.fix_batch_size else None
+
   model_input = tf.keras.Input(
       shape=(export_config.image_size, export_config.image_size, 3),
-      batch_size=1)
+      batch_size=batch_size)
   model_output = export_util.finalize_serving(model(model_input), export_config)
   model_for_inference = tf.keras.Model(model_input, model_output)
 
