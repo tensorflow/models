@@ -17,7 +17,6 @@
 import io
 from typing import Optional, Sequence, Union
 
-import riegeli
 import tensorflow as tf
 
 
@@ -75,5 +74,6 @@ def _write_riegeli(examples: Sequence[Union[tf.train.Example,
     output_path: Output path for the dataset.
   """
   with io.FileIO(output_path, 'wb') as fileio:
+    import riegeli  # pylint: disable=g-import-not-at-top
     with riegeli.RecordWriter(fileio) as writer:
       writer.write_messages(examples)
