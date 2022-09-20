@@ -31,7 +31,7 @@ class FileWritersTest(tf.test.TestCase, parameterized.TestCase):
     self._example = example_builder.example
 
   @parameterized.parameters('tfrecord', 'TFRecord', 'tfrecord_compressed',
-                            'TFRecord_Compressed', 'riegeli', 'Riegeli')
+                            'TFRecord_Compressed')
   def test_write_small_dataset_success(self, file_type):
     temp_dir = self.create_tempdir()
     temp_dataset_file = os.path.join(temp_dir.full_path, 'train')
