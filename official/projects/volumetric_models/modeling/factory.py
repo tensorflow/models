@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Factory methods to build models."""
-
+from typing import Sequence, Union
 # Import libraries
 
 import tensorflow as tf
@@ -26,9 +26,11 @@ from official.vision.modeling.backbones import factory as backbone_factory
 
 
 def build_segmentation_model_3d(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: Union[tf.keras.layers.InputSpec,
+                       Sequence[tf.keras.layers.InputSpec]],
     model_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf.keras.regularizers.Regularizer = None
+) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds Segmentation model."""
   norm_activation_config = model_config.norm_activation
   backbone = backbone_factory.build_backbone(
