@@ -119,6 +119,10 @@ class TfExampleBuilder(tf_example_builder.TfExampleBuilder):
     Returns:
       The builder object for subsequent method calls.
     """
+    if image_format == 'RAW':
+      if not (height and width and num_channels):
+        raise ValueError('For raw image feature, height, width and '
+                         'num_channels fields are required.')
     if not all((height, width, num_channels, image_format)):
       (height, width, num_channels, image_format) = (
           image_utils.decode_image_metadata(encoded_image))

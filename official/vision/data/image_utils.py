@@ -17,7 +17,7 @@
 import dataclasses
 import imghdr
 import io
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 from PIL import Image
@@ -35,6 +35,7 @@ class ImageFormat:
   bmp: str = 'BMP'
   png: str = 'PNG'
   jpeg: str = 'JPEG'
+  raw: str = 'RAW'
 
 
 def validate_image_format(format_str: str) -> str:
@@ -66,8 +67,11 @@ def encode_image(image_np: np.ndarray, image_format: str) -> bytes:
     image_format: An enum specifying the format of the generated image.
 
   Returns:
-    Encoded image string
+    Encoded image string.
   """
+  if image_format == 'RAW':
+    return image_np.tobytes()
+
   if len(image_np.shape) > 2 and image_np.shape[2] == 1:
     image_pil = Image.fromarray(np.squeeze(image_np), 'L')
   else:
@@ -77,7 +81,12 @@ def encode_image(image_np: np.ndarray, image_format: str) -> bytes:
     return output.getvalue()
 
 
-def decode_image(image_bytes: bytes) -> np.ndarray:
+def decode_image(image_bytes: bytes,
+                 image_format: Optional[str] = None,
+                 image_dtype: str = 'uint8') -> np.ndarray:
+  """Decodes image_bytes into numpy array."""
+  if image_format == 'RAW':
+    return np.frombuffer(image_bytes, dtype=image_dtype)
   image_pil = Image.open(io.BytesIO(image_bytes))
   image_np = np.array(image_pil)
   if len(image_np.shape) < 3:
@@ -87,6 +96,9 @@ def decode_image(image_bytes: bytes) -> np.ndarray:
 
 def decode_image_metadata(image_bytes: bytes) -> Tuple[int, int, int, str]:
   """Decodes image metadata from encoded image string.
+
+  Note that if the image is encoded in RAW format, the metadata cannot be
+  inferred from the image bytes.
 
   Args:
     image_bytes: Encoded image string.

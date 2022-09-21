@@ -24,6 +24,7 @@ from official.vision.data import tf_example_builder
 class TfExampleBuilderTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('RGB_PNG', 128, 64, 3, 'PNG', '15125990'),
+                                  ('RGB_RAW', 128, 128, 3, 'RAW', '5607919'),
                                   ('RGB_JPEG', 64, 128, 3, 'JPEG', '3107796'))
   def test_add_image_matrix_feature_success(self, height, width, num_channels,
                                             image_format, hashed_image):
@@ -110,6 +111,62 @@ class TfExampleBuilderTest(tf.test.TestCase, parameterized.TestCase):
                         tf.train.Feature(
                             bytes_list=tf.train.BytesList(value=[hashed_image]))
                 })), example)
+
+  def test_add_encoded_raw_image_feature_success(self):
+    height = 128
+    width = 128
+    num_channels = 3
+    image_format = 'RAW'
+    image_bytes = tf.bfloat16.as_numpy_dtype
+    image_np = fake_feature_generator.generate_image_np(height, width,
+                                                        num_channels)
+    image_np = image_np.astype(image_bytes)
+    expected_image_bytes = image_utils.encode_image(image_np, image_format)
+    hashed_image = bytes('3572575', 'ascii')
+
+    example_builder = tf_example_builder.TfExampleBuilder()
+    example_builder.add_encoded_image_feature(expected_image_bytes, 'RAW',
+                                              height, width, num_channels)
+    example = example_builder.example
+
+    self.assertProtoEquals(
+        tf.train.Example(
+            features=tf.train.Features(
+                feature={
+                    'image/encoded':
+                        tf.train.Feature(
+                            bytes_list=tf.train.BytesList(
+                                value=[expected_image_bytes])),
+                    'image/format':
+                        tf.train.Feature(
+                            bytes_list=tf.train.BytesList(
+                                value=[bytes(image_format, 'ascii')])),
+                    'image/height':
+                        tf.train.Feature(
+                            int64_list=tf.train.Int64List(value=[height])),
+                    'image/width':
+                        tf.train.Feature(
+                            int64_list=tf.train.Int64List(value=[width])),
+                    'image/channels':
+                        tf.train.Feature(
+                            int64_list=tf.train.Int64List(
+                                value=[num_channels])),
+                    'image/source_id':
+                        tf.train.Feature(
+                            bytes_list=tf.train.BytesList(value=[hashed_image]))
+                })), example)
+
+  def test_add_encoded_raw_image_feature_valueerror(self):
+    image_format = 'RAW'
+    image_bytes = tf.bfloat16.as_numpy_dtype
+    image_np = fake_feature_generator.generate_image_np(1, 1, 1)
+    image_np = image_np.astype(image_bytes)
+    expected_image_bytes = image_utils.encode_image(image_np, image_format)
+
+    example_builder = tf_example_builder.TfExampleBuilder()
+    with self.assertRaises(ValueError):
+      example_builder.add_encoded_image_feature(expected_image_bytes,
+                                                image_format)
 
   @parameterized.parameters(
       (True, True, True, True, True),
