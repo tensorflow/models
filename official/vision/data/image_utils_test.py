@@ -40,6 +40,21 @@ class ImageUtilsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(actual_image_np.shape, image_np.shape)
 
   @parameterized.named_parameters(
+      ('RGB_RAW', 128, 64, 3, tf.bfloat16.as_numpy_dtype),
+      ('GREY_RAW', 32, 32, 1, tf.uint8.as_numpy_dtype))
+  def test_encode_raw_image_then_decode_raw_image(self, height, width,
+                                                  num_channels, image_dtype):
+    image_np = fake_feature_generator.generate_image_np(height, width,
+                                                        num_channels)
+    image_np = image_np.astype(image_dtype)
+    image_str = image_utils.encode_image(image_np, 'RAW')
+    actual_image_np = image_utils.decode_image(image_str, 'RAW', image_dtype)
+    actual_image_np = actual_image_np.reshape([height, width, num_channels])
+
+    self.assertAllClose(actual_image_np, image_np)
+    self.assertEqual(actual_image_np.shape, image_np.shape)
+
+  @parameterized.named_parameters(
       ('RGB_PNG', 128, 64, 3, 'PNG'), ('RGB_JPEG', 64, 128, 3, 'JPEG'),
       ('GREY_BMP', 32, 32, 1, 'BMP'), ('GREY_PNG', 128, 128, 1, 'png'))
   def test_encode_image_then_decode_image_metadata(self, height, width,
