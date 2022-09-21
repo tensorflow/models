@@ -40,7 +40,7 @@ class ImageClassificationConfigTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(config.task.quantization, common.Quantization)
     self.assertIsInstance(config.task.train_data, exp_cfg.DataConfig)
     config.task.train_data.is_training = None
-    with self.assertRaisesRegex(KeyError, 'Found inconsistncy between key'):
+    with self.assertRaisesRegex(KeyError, 'Found inconsistency between key'):
       config.validate()
 
 

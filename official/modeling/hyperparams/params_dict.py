@@ -288,42 +288,42 @@ class ParamsDict(object):
         _, left_v, _, right_v = _get_kvs(tokens, params_dict)
         if left_v != right_v:
           raise KeyError(
-              'Found inconsistncy between key `{}` and key `{}`.'.format(
+              'Found inconsistency between key `{}` and key `{}`.'.format(
                   tokens[0], tokens[1]))
       elif '!=' in restriction:
         tokens = restriction.split('!=')
         _, left_v, _, right_v = _get_kvs(tokens, params_dict)
         if left_v == right_v:
           raise KeyError(
-              'Found inconsistncy between key `{}` and key `{}`.'.format(
+              'Found inconsistency between key `{}` and key `{}`.'.format(
                   tokens[0], tokens[1]))
       elif '<' in restriction:
         tokens = restriction.split('<')
         _, left_v, _, right_v = _get_kvs(tokens, params_dict)
         if left_v >= right_v:
           raise KeyError(
-              'Found inconsistncy between key `{}` and key `{}`.'.format(
+              'Found inconsistency between key `{}` and key `{}`.'.format(
                   tokens[0], tokens[1]))
       elif '<=' in restriction:
         tokens = restriction.split('<=')
         _, left_v, _, right_v = _get_kvs(tokens, params_dict)
         if left_v > right_v:
           raise KeyError(
-              'Found inconsistncy between key `{}` and key `{}`.'.format(
+              'Found inconsistency between key `{}` and key `{}`.'.format(
                   tokens[0], tokens[1]))
       elif '>' in restriction:
         tokens = restriction.split('>')
         _, left_v, _, right_v = _get_kvs(tokens, params_dict)
         if left_v <= right_v:
           raise KeyError(
-              'Found inconsistncy between key `{}` and key `{}`.'.format(
+              'Found inconsistency between key `{}` and key `{}`.'.format(
                   tokens[0], tokens[1]))
       elif '>=' in restriction:
         tokens = restriction.split('>=')
         _, left_v, _, right_v = _get_kvs(tokens, params_dict)
         if left_v < right_v:
           raise KeyError(
-              'Found inconsistncy between key `{}` and key `{}`.'.format(
+              'Found inconsistency between key `{}` and key `{}`.'.format(
                   tokens[0], tokens[1]))
       else:
         raise ValueError('Unsupported relation in restriction.')
