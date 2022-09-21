@@ -19,14 +19,14 @@ for more details.
     agnostic mode and `task.allowed_mask_class_ids` controls which classes are
     allowed to have masks during training.
 *   Majority of experiments and ablations from the paper are perfomed with the
-    [DeepMAC model](../../../../../research/object_detection/g3doc/deepmac.md)
+    [DeepMAC model](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/deepmac.md)
     in the Object Detection API code base.
 
 ## Prerequisites
 
 ### Prepare dataset
 
-Use [create_coco_tf_record.py](../../data/create_coco_tf_record.py) to create
+Use [create_coco_tf_record.py](https://github.com/tensorflow/models/blob/master/official/vision/data/create_coco_tf_record.py) to create
 the COCO dataset. The data needs to be store in a
 [Google cloud storage bucket](https://cloud.google.com/storage/docs/creating-buckets)
 so that it can be accessed by the TPU.
