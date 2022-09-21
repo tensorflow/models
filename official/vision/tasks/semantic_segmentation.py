@@ -186,14 +186,16 @@ class SemanticSegmentationTask(base_task.Task):
       if self.task_config.model.get('mask_scoring_head'):
         metrics.append(
             tf.keras.metrics.MeanSquaredError(name='mask_scores_mse'))
-    else:
+
+    if not training:
       self.iou_metric = segmentation_metrics.PerClassIoU(
           name='per_class_iou',
           num_classes=self.task_config.model.num_classes,
           rescale_predictions=not self.task_config.validation_data
           .resize_eval_groundtruth,
           dtype=tf.float32)
-      if self.task_config.validation_data.resize_eval_groundtruth and self.task_config.model.get('mask_scoring_head'):  # pylint: disable=line-too-long
+      if (self.task_config.validation_data.resize_eval_groundtruth and
+          self.task_config.model.get('mask_scoring_head')):
         # Masks scores metric can only be computed if labels are scaled to match
         # preticted mask scores.
         metrics.append(
