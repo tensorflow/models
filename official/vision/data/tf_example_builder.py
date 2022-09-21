@@ -43,7 +43,8 @@ class TfExampleBuilder(tf_example_builder.TfExampleBuilder):
       image_matrix: np.ndarray,
       image_format: str = 'PNG',
       image_source_id: Optional[bytes] = None,
-      feature_prefix: Optional[str] = None) -> 'TfExampleBuilder':
+      feature_prefix: Optional[str] = None,
+      label: Optional[Union[int, Sequence[int]]] = None) -> 'TfExampleBuilder':
     """Encodes and adds image features to the example.
 
     See `tf_example_feature_key.EncodedImageFeatureKey` for list of feature keys
@@ -67,6 +68,7 @@ class TfExampleBuilder(tf_example_builder.TfExampleBuilder):
       image_source_id: Unique string ID to identify the image. Hashed image will
         be used if the field is not provided.
       feature_prefix: Feature prefix for image features.
+      label: the label or a list of labels for the image.
 
     Returns:
       The builder object for subsequent method calls.
@@ -76,7 +78,7 @@ class TfExampleBuilder(tf_example_builder.TfExampleBuilder):
 
     return self.add_encoded_image_feature(encoded_image, image_format, height,
                                           width, num_channels, image_source_id,
-                                          feature_prefix)
+                                          feature_prefix, label)
 
   def add_encoded_image_feature(
       self,
@@ -86,7 +88,8 @@ class TfExampleBuilder(tf_example_builder.TfExampleBuilder):
       width: Optional[int] = None,
       num_channels: Optional[int] = None,
       image_source_id: Optional[bytes] = None,
-      feature_prefix: Optional[str] = None) -> 'TfExampleBuilder':
+      feature_prefix: Optional[str] = None,
+      label: Optional[Union[int, Sequence[int]]] = None) -> 'TfExampleBuilder':
     """Adds encoded image features to the example.
 
     See `tf_example_feature_key.EncodedImageFeatureKey` for list of feature keys
@@ -115,6 +118,7 @@ class TfExampleBuilder(tf_example_builder.TfExampleBuilder):
       num_channels: Number of channels.
       image_source_id: Unique string ID to identify the image.
       feature_prefix: Feature prefix for image features.
+      label: the label or a list of labels for the image.
 
     Returns:
       The builder object for subsequent method calls.
@@ -137,6 +141,9 @@ class TfExampleBuilder(tf_example_builder.TfExampleBuilder):
     if not image_source_id:
       hashed_image = int(hashlib.blake2s(encoded_image).hexdigest(), 16)
       image_source_id = _to_bytes(str(hash(hashed_image) % ((1 << 24) + 1)))
+
+    if label is not None:
+      self.add_ints_feature(feature_key.label, label)
 
     return (
         self.add_bytes_feature(feature_key.encoded, encoded_image)
