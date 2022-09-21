@@ -135,7 +135,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
 
     # Deprecation warning.
     if output_range is not None:
-      logging.warning("`output_range` is avaliable as an argument for `call()`."
+      logging.warning("`output_range` is available as an argument for `call()`."
                       "The `output_range` as __init__ argument is deprecated.")
 
     self._num_heads = num_attention_heads

@@ -229,14 +229,14 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
         num_attention_heads=2,
         num_layers=3,
         type_vocab_size=num_types,
-        output_range=output_range,
         pool_stride=pool_stride,
         unpool_length=unpool_length)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    dict_outputs = test_network([word_ids, mask, type_ids])
+    dict_outputs = test_network([word_ids, mask, type_ids],
+                                output_range=output_range)
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
 

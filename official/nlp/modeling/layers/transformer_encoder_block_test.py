@@ -116,11 +116,10 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
     new_layer = transformer_cls(
         num_attention_heads=10,
         inner_dim=2048,
-        inner_activation='relu',
-        output_range=1)
-    _ = new_layer([input_data, mask_data])
+        inner_activation='relu')
+    _ = new_layer([input_data, mask_data], output_range=1)
     new_layer.set_weights(test_layer.get_weights())
-    new_output_tensor = new_layer([input_data, mask_data])
+    new_output_tensor = new_layer([input_data, mask_data], output_range=1)
     self.assertAllClose(
         new_output_tensor, output_tensor[:, 0:1, :], atol=5e-5, rtol=0.003)
 
@@ -147,11 +146,10 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
         num_attention_heads=10,
         inner_dim=2048,
         inner_activation='relu',
-        output_range=1,
         norm_first=True)
-    _ = new_layer(input_data)
+    _ = new_layer(input_data, output_range=1)
     new_layer.set_weights(test_layer.get_weights())
-    new_output_tensor = new_layer(input_data)
+    new_output_tensor = new_layer(input_data, output_range=1)
     self.assertAllClose(
         new_output_tensor, output_tensor[:, 0:1, :], atol=5e-5, rtol=0.003)
 
@@ -177,11 +175,10 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
         num_attention_heads=10,
         inner_dim=2048,
         inner_activation='relu',
-        output_range=1,
         norm_first=True)
-    _ = new_layer([input_data, mask_data])
+    _ = new_layer([input_data, mask_data], output_range=1)
     new_layer.set_weights(test_layer.get_weights())
-    new_output_tensor = new_layer([input_data, mask_data])
+    new_output_tensor = new_layer([input_data, mask_data], output_range=1)
     self.assertAllClose(
         new_output_tensor, output_tensor[:, 0:1, :], atol=5e-5, rtol=0.003)
 
@@ -291,7 +288,6 @@ class TransformerEncoderBlockLayerTestWithoutParams(keras_parameterized.TestCase
         num_attention_heads=2,
         inner_dim=128,
         inner_activation='relu',
-        output_range=output_range,
         norm_first=True)
     # Forward path.
     q_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
@@ -299,7 +295,7 @@ class TransformerEncoderBlockLayerTestWithoutParams(keras_parameterized.TestCase
     dummy_mask = tf.zeros([2, 4, 8], dtype=tf.float32)
     inputs = [q_tensor, kv_tensor, dummy_mask]
     with self.assertRaises(tf.errors.InvalidArgumentError):
-      test_layer(inputs)
+      test_layer(inputs, output_range=output_range)
 
     test_layer = TransformerEncoderBlock(
         num_attention_heads=2,
