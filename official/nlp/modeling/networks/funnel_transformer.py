@@ -256,6 +256,11 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       share_rezero: bool = False,
       **kwargs):
     super().__init__(**kwargs)
+
+    if output_range is not None:
+      logging.warning('`output_range` is available as an argument for `call()`.'
+                      'The `output_range` as __init__ argument is deprecated.')
+
     activation = tf.keras.activations.get(inner_activation)
     initializer = tf.keras.initializers.get(initializer)
 
@@ -306,6 +311,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
     # Will raise an error if the string is not supported.
     if isinstance(transformer_cls, str):
       transformer_cls = _str2transformer_cls[transformer_cls]
+    self._num_layers = num_layers
     for i in range(num_layers):
       layer = transformer_cls(
           num_attention_heads=num_attention_heads,
@@ -316,7 +322,6 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
           output_dropout=output_dropout,
           attention_dropout=attention_dropout,
           norm_first=norm_first,
-          output_range=output_range if i == num_layers - 1 else None,
           kernel_initializer=tf_utils.clone_initializer(initializer),
           share_rezero=share_rezero,
           name='transformer/layer_%d' % i)
@@ -407,7 +412,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
         input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
         input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32))
 
-  def call(self, inputs):
+  def call(self, inputs, output_range: Optional[tf.Tensor] = None):
     # inputs are [word_ids, mask, type_ids]
     if isinstance(inputs, (list, tuple)):
       logging.warning('List inputs to  %s are discouraged.', self.__class__)
@@ -477,7 +482,9 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
                   x[:, :self._unpool_length, :],
                   dtype=pooled_inputs.dtype), pooled_inputs),
               axis=1)
-          x = layer([query_inputs, x, attention_mask])
+          x = layer([query_inputs, x, attention_mask],
+                    output_range=output_range if i == self._num_layers -
+                    1 else None)
         # Pools the corresponding attention_mask.
         if i < len(self._transformer_layers) - 1:
           attention_mask = _pool_and_concat(
@@ -496,9 +503,13 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
                                                     pooling_transforms)
       for i, layer in enumerate(self._transformer_layers):
         attention_mask = attention_masks[i]
+        transformer_output_range = None
+        if i == self._num_layers - 1:
+          transformer_output_range = output_range
         # Bypass no pooling cases.
         if self._pool_strides[i] == 1:
-          x = layer([x, x, attention_mask])
+          x = layer([x, x, attention_mask],
+                    output_range=transformer_output_range)
         else:
           pooled_inputs = tf.einsum(
               'BFD,FT->BTD',
@@ -510,7 +521,8 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
                   x[:, :self._unpool_length, :],
                   dtype=pooled_inputs.dtype), pooled_inputs),
               axis=1)
-          x = layer([query_inputs, x, attention_mask])
+          x = layer([query_inputs, x, attention_mask],
+                    output_range=transformer_output_range)
         encoder_outputs.append(x)
 
     last_encoder_output = encoder_outputs[-1]

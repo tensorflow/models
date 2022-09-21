@@ -129,6 +129,10 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
       attention_dropout = kwargs.pop('attention_dropout_rate')
     super().__init__(**kwargs)
 
+    if output_range is not None:
+      logging.warning('`output_range` is available as an argument for `call()`.'
+                      'The `output_range` as __init__ argument is deprecated.')
+
     activation = tf.keras.activations.get(inner_activation)
     initializer = tf.keras.initializers.get(initializer)
 
@@ -204,7 +208,6 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
           output_dropout=output_dropout,
           attention_dropout=attention_dropout,
           norm_first=norm_first,
-          output_range=output_range if i == num_layers - 1 else None,
           kernel_initializer=tf_utils.clone_initializer(initializer),
           name='transformer/layer_%d' % i)
       self._transformer_layers.append(layer)
@@ -254,7 +257,7 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
           input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
           input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32))
 
-  def call(self, inputs):
+  def call(self, inputs, output_range: Optional[tf.Tensor] = None):
     if isinstance(inputs, dict):
       word_ids = inputs.get('input_word_ids')
       mask = inputs.get('input_mask')
@@ -303,8 +306,11 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
     #   4. Finally, all tokens go through the last layer.
 
     # Step 1.
-    for layer in self._transformer_layers[:self._num_layers // 2 - 1]:
-      x = layer([x, attention_mask])
+    for i, layer in enumerate(self._transformer_layers[:self._num_layers // 2 -
+                                                       1]):
+      x = layer([x, attention_mask],
+                output_range=output_range if i == self._num_layers -
+                1 else None)
       encoder_outputs.append(x)
 
     # Step 2.
@@ -322,12 +328,17 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
 
     # Then, call transformer layer with cross attention.
     x_selected = self._transformer_layers[self._num_layers // 2 - 1](
-        [x_selected, x_all, attention_mask_token_pass])
+        [x_selected, x_all, attention_mask_token_pass],
+        output_range=output_range if self._num_layers // 2 -
+        1 == self._num_layers - 1 else None)
     encoder_outputs.append(x_selected)
 
     # Step 3.
-    for layer in self._transformer_layers[self._num_layers // 2:-1]:
-      x_selected = layer([x_selected, attention_mask_token_drop])
+    for i, layer in enumerate(self._transformer_layers[self._num_layers //
+                                                       2:-1]):
+      x_selected = layer([x_selected, attention_mask_token_drop],
+                         output_range=output_range if i == self._num_layers - 1
+                         else None)
       encoder_outputs.append(x_selected)
 
     # Step 4.
@@ -339,7 +350,8 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
     x = tf.gather(x, reverse_indices, batch_dims=1, axis=1)
 
     # Then, call transformer layer with all tokens.
-    x = self._transformer_layers[-1]([x, attention_mask])
+    x = self._transformer_layers[-1]([x, attention_mask],
+                                     output_range=output_range)
     encoder_outputs.append(x)
 
     last_encoder_output = encoder_outputs[-1]

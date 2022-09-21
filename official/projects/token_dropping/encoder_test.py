@@ -150,7 +150,6 @@ class TokenDropBertEncoderTest(keras_parameterized.TestCase):
         num_attention_heads=2,
         num_layers=3,
         type_vocab_size=num_types,
-        output_range=output_range,
         dict_outputs=True,
         token_keep_k=2,
         token_allow_list=(),
@@ -160,7 +159,8 @@ class TokenDropBertEncoderTest(keras_parameterized.TestCase):
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     dict_outputs = test_network(
-        dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids))
+        dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids),
+        output_range=output_range)
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
 
@@ -349,7 +349,6 @@ class TokenDropBertEncoderTest(keras_parameterized.TestCase):
         num_attention_heads=2,
         num_layers=3,
         type_vocab_size=num_types,
-        output_range=output_range,
         token_keep_k=2,
         token_allow_list=(),
         token_deny_list=())
@@ -358,7 +357,8 @@ class TokenDropBertEncoderTest(keras_parameterized.TestCase):
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     dict_outputs = test_network(
-        dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids))
+        dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids),
+        output_range=output_range)
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
 
