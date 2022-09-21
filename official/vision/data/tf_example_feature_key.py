@@ -40,6 +40,7 @@ class EncodedImageFeatureKey(tf_example_feature_key.TfExampleFeatureKeyBase):
       width: number of columns.
       num_channels: number of channels.
       source_id: Unique string ID to identify the image.
+      label: the label or a list of labels for the image.
   """
   encoded: str = 'image/encoded'
   format: str = 'image/format'
@@ -47,6 +48,7 @@ class EncodedImageFeatureKey(tf_example_feature_key.TfExampleFeatureKeyBase):
   width: str = 'image/width'
   num_channels: str = 'image/channels'
   source_id: str = 'image/source_id'
+  label: str = 'image/class/label'
 
 
 @dataclass
