@@ -109,7 +109,7 @@ class BaseBenchmark(  # pylint: disable=undefined-variable
     elif tensorflow_models_path:
       self._tensorflow_models_path = tensorflow_models_path
     else:
-      self._tensorflow_models_path = None
+      self._tensorflow_models_path = ''
 
   def _get_model_dir(self, folder_name):
     """Returns directory to store info, e.g. saved model and event log."""
