@@ -545,8 +545,7 @@ class BertEncoderV2CompatibilityTest(tf.test.TestCase):
         hidden_size=hidden_size,
         num_attention_heads=2,
         num_layers=3,
-        type_vocab_size=num_types,
-        output_range=None)
+        type_vocab_size=num_types)
 
     word_id_data = np.random.randint(
         vocab_size, size=(batch_size, sequence_length))
@@ -605,8 +604,7 @@ class BertEncoderV2CompatibilityTest(tf.test.TestCase):
         hidden_size=hidden_size,
         num_attention_heads=2,
         num_layers=3,
-        type_vocab_size=num_types,
-        output_range=None)
+        type_vocab_size=num_types)
 
     word_id_data = np.random.randint(
         vocab_size, size=(batch_size, sequence_length))

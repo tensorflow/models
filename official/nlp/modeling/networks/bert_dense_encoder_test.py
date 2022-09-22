@@ -196,9 +196,9 @@ class BertEncoderV2Test(keras_parameterized.TestCase):
         num_attention_heads=2,
         num_layers=3,
         type_vocab_size=num_types,
-        output_range=output_range,
         dict_outputs=True,
-        with_dense_inputs=True)
+        with_dense_inputs=True,
+        output_range=output_range)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
