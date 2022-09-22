@@ -109,6 +109,7 @@ class Losses(maskrcnn.Losses):
   """Panoptic Mask R-CNN loss config."""
   semantic_segmentation_label_smoothing: float = 0.0
   semantic_segmentation_ignore_label: int = 255
+  semantic_segmentation_gt_is_matting_map: bool = False
   semantic_segmentation_class_weights: List[float] = dataclasses.field(
       default_factory=list)
   semantic_segmentation_use_groundtruth_dimension: bool = True
