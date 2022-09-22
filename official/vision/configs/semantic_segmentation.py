@@ -104,6 +104,7 @@ class Losses(hyperparams.Config):
   loss_weight: float = 1.0
   label_smoothing: float = 0.0
   ignore_label: int = 255
+  gt_is_matting_map: bool = False
   class_weights: List[float] = dataclasses.field(default_factory=list)
   l2_weight_decay: float = 0.0
   use_groundtruth_dimension: bool = True
@@ -132,8 +133,7 @@ class SemanticSegmentationTask(cfg.TaskConfig):
   evaluation: Evaluation = Evaluation()
   train_input_partition_dims: List[int] = dataclasses.field(
       default_factory=list)
-  eval_input_partition_dims: List[int] = dataclasses.field(
-      default_factory=list)
+  eval_input_partition_dims: List[int] = dataclasses.field(default_factory=list)
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: Union[
       str, List[str]] = 'all'  # all, backbone, and/or decoder
@@ -150,6 +150,7 @@ def semantic_segmentation() -> cfg.ExperimentConfig:
           'task.train_data.is_training != None',
           'task.validation_data.is_training != None'
       ])
+
 
 # PASCAL VOC 2012 Dataset
 PASCAL_TRAIN_EXAMPLES = 10582
@@ -174,11 +175,15 @@ def seg_deeplabv3_pascal() -> cfg.ExperimentConfig:
               num_classes=21,
               input_size=[None, None, 3],
               backbone=backbones.Backbone(
-                  type='dilated_resnet', dilated_resnet=backbones.DilatedResNet(
-                      model_id=101, output_stride=output_stride,
-                      multigrid=multigrid, stem_type=stem_type)),
+                  type='dilated_resnet',
+                  dilated_resnet=backbones.DilatedResNet(
+                      model_id=101,
+                      output_stride=output_stride,
+                      multigrid=multigrid,
+                      stem_type=stem_type)),
               decoder=decoders.Decoder(
-                  type='aspp', aspp=decoders.ASPP(
+                  type='aspp',
+                  aspp=decoders.ASPP(
                       level=level, dilation_rates=aspp_dilation_rates)),
               head=SegmentationHead(level=level, num_convs=0),
               norm_activation=common.NormActivation(
@@ -262,9 +267,12 @@ def seg_deeplabv3plus_pascal() -> cfg.ExperimentConfig:
               num_classes=21,
               input_size=[None, None, 3],
               backbone=backbones.Backbone(
-                  type='dilated_resnet', dilated_resnet=backbones.DilatedResNet(
-                      model_id=101, output_stride=output_stride,
-                      stem_type=stem_type, multigrid=multigrid)),
+                  type='dilated_resnet',
+                  dilated_resnet=backbones.DilatedResNet(
+                      model_id=101,
+                      output_stride=output_stride,
+                      stem_type=stem_type,
+                      multigrid=multigrid)),
               decoder=decoders.Decoder(
                   type='aspp',
                   aspp=decoders.ASPP(
@@ -356,8 +364,7 @@ def seg_resnetfpn_pascal() -> cfg.ExperimentConfig:
               decoder=decoders.Decoder(type='fpn', fpn=decoders.FPN()),
               head=SegmentationHead(level=3, num_convs=3),
               norm_activation=common.NormActivation(
-                  activation='swish',
-                  use_sync_bn=True)),
+                  activation='swish', use_sync_bn=True)),
           losses=Losses(l2_weight_decay=1e-4),
           train_data=DataConfig(
               input_path=os.path.join(PASCAL_INPUT_PATH_BASE, 'train_aug*'),
@@ -530,13 +537,17 @@ def seg_deeplabv3plus_cityscapes() -> cfg.ExperimentConfig:
               num_classes=19,
               input_size=[None, None, 3],
               backbone=backbones.Backbone(
-                  type='dilated_resnet', dilated_resnet=backbones.DilatedResNet(
-                      model_id=101, output_stride=output_stride,
-                      stem_type=stem_type, multigrid=multigrid)),
+                  type='dilated_resnet',
+                  dilated_resnet=backbones.DilatedResNet(
+                      model_id=101,
+                      output_stride=output_stride,
+                      stem_type=stem_type,
+                      multigrid=multigrid)),
               decoder=decoders.Decoder(
                   type='aspp',
                   aspp=decoders.ASPP(
-                      level=level, dilation_rates=aspp_dilation_rates,
+                      level=level,
+                      dilation_rates=aspp_dilation_rates,
                       pool_kernel_size=[512, 1024])),
               head=SegmentationHead(
                   level=level,

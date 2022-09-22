@@ -17,6 +17,7 @@
 import tensorflow as tf
 from official.vision.dataloaders import decoder
 from official.vision.dataloaders import parser
+from official.vision.dataloaders import utils
 from official.vision.ops import preprocess_ops
 
 
@@ -25,26 +26,29 @@ class Decoder(decoder.Decoder):
 
   def __init__(self):
     self._keys_to_features = {
-        'image/encoded': tf.io.FixedLenFeature((), tf.string, default_value=''),
-        'image/height': tf.io.FixedLenFeature((), tf.int64, default_value=0),
-        'image/width': tf.io.FixedLenFeature((), tf.int64, default_value=0),
+        'image/encoded':
+            tf.io.FixedLenFeature((), tf.string, default_value=''),
+        'image/height':
+            tf.io.FixedLenFeature((), tf.int64, default_value=0),
+        'image/width':
+            tf.io.FixedLenFeature((), tf.int64, default_value=0),
         'image/segmentation/class/encoded':
             tf.io.FixedLenFeature((), tf.string, default_value='')
     }
 
   def decode(self, serialized_example):
-    return tf.io.parse_single_example(
-        serialized_example, self._keys_to_features)
+    return tf.io.parse_single_example(serialized_example,
+                                      self._keys_to_features)
 
 
 class Parser(parser.Parser):
-  """Parser to parse an image and its annotations into a dictionary of tensors.
-  """
+  """Parser to parse an image and its annotations into a dictionary of tensors."""
 
   def __init__(self,
                output_size,
                crop_size=None,
                resize_eval_groundtruth=True,
+               gt_is_matting_map=False,
                groundtruth_padded_size=None,
                ignore_label=255,
                aug_rand_hflip=False,
@@ -63,13 +67,16 @@ class Parser(parser.Parser):
         original image sizes.
       resize_eval_groundtruth: `bool`, if True, eval groundtruth masks are
         resized to output_size.
+      gt_is_matting_map: `bool`, if True, the expected mask is in the range
+        between 0 and 255. The parser will normalize the value of the mask into
+        the range between 0 and 1.
       groundtruth_padded_size: `Tensor` or `list` for [height, width]. When
         resize_eval_groundtruth is set to False, the groundtruth masks are
         padded to this size.
       ignore_label: `int` the pixel with ignore label will not used for training
         and evaluation.
-      aug_rand_hflip: `bool`, if True, augment training with random
-        horizontal flip.
+      aug_rand_hflip: `bool`, if True, augment training with random horizontal
+        flip.
       preserve_aspect_ratio: `bool`, if True, the aspect ratio is preserved,
         otherwise, the image is resized to output_size.
       aug_scale_min: `float`, the minimum scale applied to `output_size` for
@@ -84,6 +91,7 @@ class Parser(parser.Parser):
     if (not resize_eval_groundtruth) and (groundtruth_padded_size is None):
       raise ValueError('groundtruth_padded_size ([height, width]) needs to be'
                        'specified when resize_eval_groundtruth is False.')
+    self._gt_is_matting_map = gt_is_matting_map
     self._groundtruth_padded_size = groundtruth_padded_size
     self._ignore_label = ignore_label
     self._preserve_aspect_ratio = preserve_aspect_ratio
@@ -99,8 +107,8 @@ class Parser(parser.Parser):
   def _prepare_image_and_label(self, data):
     """Prepare normalized image and label."""
     image = tf.io.decode_image(data['image/encoded'], channels=3)
-    label = tf.io.decode_image(data['image/segmentation/class/encoded'],
-                               channels=1)
+    label = tf.io.decode_image(
+        data['image/segmentation/class/encoded'], channels=1)
     height = data['image/height']
     width = data['image/width']
     image = tf.reshape(image, (height, width, 3))
@@ -122,6 +130,16 @@ class Parser(parser.Parser):
     """Parses data for training and evaluation."""
     image, label = self._prepare_image_and_label(data)
 
+    # Normalize the label into the range of 0 and 1 for matting groundtruth.
+    # Note that the input groundtruth labels must be 0 to 255, and do not
+    # contain ignore_label. For gt_is_matting_map case, ignore_label is only
+    # used for padding the labels.
+    if self._gt_is_matting_map:
+      scale = tf.constant(255.0, dtype=tf.float32)
+      scale = tf.expand_dims(scale, axis=0)
+      scale = tf.expand_dims(scale, axis=0)
+      label = tf.cast(label, tf.float32) / scale
+
     if self._crop_size:
 
       label = tf.reshape(label, [data['image/height'], data['image/width'], 1])
@@ -132,8 +150,7 @@ class Parser(parser.Parser):
         label = tf.image.resize(label, self._output_size, method='nearest')
 
       image_mask = tf.concat([image, label], axis=2)
-      image_mask_crop = tf.image.random_crop(image_mask,
-                                             self._crop_size + [4])
+      image_mask_crop = tf.image.random_crop(image_mask, self._crop_size + [4])
       image = image_mask_crop[:, :, :-1]
       label = tf.reshape(image_mask_crop[:, :, -1], [1] + self._crop_size)
 
@@ -159,13 +176,14 @@ class Parser(parser.Parser):
     # The label is first offset by +1 and then padded with 0.
     label += 1
     label = tf.expand_dims(label, axis=3)
-    label = preprocess_ops.resize_and_crop_masks(
-        label, image_scale, train_image_size, offset)
+    label = preprocess_ops.resize_and_crop_masks(label, image_scale,
+                                                 train_image_size, offset)
     label -= 1
-    label = tf.where(tf.equal(label, -1),
-                     self._ignore_label * tf.ones_like(label), label)
+    label = tf.where(
+        tf.equal(label, -1), self._ignore_label * tf.ones_like(label), label)
     label = tf.squeeze(label, axis=0)
     valid_mask = tf.not_equal(label, self._ignore_label)
+
     labels = {
         'masks': label,
         'valid_masks': valid_mask,
@@ -180,6 +198,12 @@ class Parser(parser.Parser):
   def _parse_eval_data(self, data):
     """Parses data for training and evaluation."""
     image, label = self._prepare_image_and_label(data)
+
+    # Binarize mask if groundtruth is a matting map
+    if self._gt_is_matting_map:
+      label = tf.divide(tf.cast(label, dtype=tf.float32), 255.0)
+      label = utils.binarize_matting_map(label)
+
     # The label is first offset by +1 and then padded with 0.
     label += 1
     label = tf.expand_dims(label, axis=3)
@@ -196,13 +220,13 @@ class Parser(parser.Parser):
       label = preprocess_ops.resize_and_crop_masks(label, image_scale,
                                                    self._output_size, offset)
     else:
-      label = tf.image.pad_to_bounding_box(
-          label, 0, 0, self._groundtruth_padded_size[0],
-          self._groundtruth_padded_size[1])
+      label = tf.image.pad_to_bounding_box(label, 0, 0,
+                                           self._groundtruth_padded_size[0],
+                                           self._groundtruth_padded_size[1])
 
     label -= 1
-    label = tf.where(tf.equal(label, -1),
-                     self._ignore_label * tf.ones_like(label), label)
+    label = tf.where(
+        tf.equal(label, -1), self._ignore_label * tf.ones_like(label), label)
     label = tf.squeeze(label, axis=0)
 
     valid_mask = tf.not_equal(label, self._ignore_label)

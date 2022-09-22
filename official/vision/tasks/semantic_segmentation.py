@@ -35,15 +35,16 @@ class SemanticSegmentationTask(base_task.Task):
 
   def build_model(self):
     """Builds segmentation model."""
-    input_specs = tf.keras.layers.InputSpec(
-        shape=[None] + self.task_config.model.input_size)
+    input_specs = tf.keras.layers.InputSpec(shape=[None] +
+                                            self.task_config.model.input_size)
 
     l2_weight_decay = self.task_config.losses.l2_weight_decay
     # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
-    l2_regularizer = (tf.keras.regularizers.l2(
-        l2_weight_decay / 2.0) if l2_weight_decay else None)
+    l2_regularizer = (
+        tf.keras.regularizers.l2(l2_weight_decay /
+                                 2.0) if l2_weight_decay else None)
 
     model = factory.build_segmentation_model(
         input_specs=input_specs,
@@ -85,6 +86,7 @@ class SemanticSegmentationTask(base_task.Task):
     """Builds classification input."""
 
     ignore_label = self.task_config.losses.ignore_label
+    gt_is_matting_map = self.task_config.losses.gt_is_matting_map
 
     if params.tfds_name:
       decoder = tfds_factory.get_segmentation_decoder(params.tfds_name)
@@ -96,6 +98,7 @@ class SemanticSegmentationTask(base_task.Task):
         crop_size=params.crop_size,
         ignore_label=ignore_label,
         resize_eval_groundtruth=params.resize_eval_groundtruth,
+        gt_is_matting_map=gt_is_matting_map,
         groundtruth_padded_size=params.groundtruth_padded_size,
         aug_scale_min=params.aug_scale_min,
         aug_scale_max=params.aug_scale_max,
@@ -132,6 +135,7 @@ class SemanticSegmentationTask(base_task.Task):
         loss_params.label_smoothing,
         loss_params.class_weights,
         loss_params.ignore_label,
+        loss_params.gt_is_matting_map,
         use_groundtruth_dimension=loss_params.use_groundtruth_dimension,
         top_k_percent_pixels=loss_params.top_k_percent_pixels)
 
@@ -140,10 +144,9 @@ class SemanticSegmentationTask(base_task.Task):
     if 'mask_scores' in model_outputs:
       mask_scoring_loss_fn = segmentation_losses.MaskScoringLoss(
           loss_params.ignore_label)
-      total_loss += mask_scoring_loss_fn(
-          model_outputs['mask_scores'],
-          model_outputs['logits'],
-          labels['masks'])
+      total_loss += mask_scoring_loss_fn(model_outputs['mask_scores'],
+                                         model_outputs['logits'],
+                                         labels['masks'])
 
     if aux_losses:
       total_loss += tf.add_n(aux_losses)
@@ -178,11 +181,12 @@ class SemanticSegmentationTask(base_task.Task):
     """Gets streaming metrics for training/validation."""
     metrics = []
     if training and self.task_config.evaluation.report_train_mean_iou:
-      metrics.append(segmentation_metrics.MeanIoU(
-          name='mean_iou',
-          num_classes=self.task_config.model.num_classes,
-          rescale_predictions=False,
-          dtype=tf.float32))
+      metrics.append(
+          segmentation_metrics.MeanIoU(
+              name='mean_iou',
+              num_classes=self.task_config.model.num_classes,
+              rescale_predictions=False,
+              dtype=tf.float32))
       if self.task_config.model.get('mask_scoring_head'):
         metrics.append(
             tf.keras.metrics.MeanSquaredError(name='mask_scores_mse'))
@@ -202,8 +206,8 @@ class SemanticSegmentationTask(base_task.Task):
             tf.keras.metrics.MeanSquaredError(name='mask_scores_mse'))
 
       # Update state on CPU if TPUStrategy due to dynamic resizing.
-      self._process_iou_metric_on_cpu = isinstance(
-          tf.distribute.get_strategy(), tf.distribute.TPUStrategy)
+      self._process_iou_metric_on_cpu = isinstance(tf.distribute.get_strategy(),
+                                                   tf.distribute.TPUStrategy)
 
     return metrics
 
@@ -238,8 +242,7 @@ class SemanticSegmentationTask(base_task.Task):
         outputs = {'logits': outputs}
       # Casting output layer as float32 is necessary when mixed_precision is
       # mixed_float16 or mixed_bfloat16 to ensure output is casted as float32.
-      outputs = tf.nest.map_structure(
-          lambda x: tf.cast(x, tf.float32), outputs)
+      outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
 
       # Computes per-replica loss.
       loss = self.build_losses(
@@ -296,8 +299,8 @@ class SemanticSegmentationTask(base_task.Task):
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
 
     if self.task_config.validation_data.resize_eval_groundtruth:
-      loss = self.build_losses(model_outputs=outputs, labels=labels,
-                               aux_losses=model.losses)
+      loss = self.build_losses(
+          model_outputs=outputs, labels=labels, aux_losses=model.losses)
     else:
       loss = 0
 

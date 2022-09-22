@@ -67,3 +67,20 @@ def pad_groundtruths_to_fixed_size(groundtruths: Dict[str, tf.Tensor],
       groundtruths['attributes'][k] = preprocess_ops.clip_or_pad_to_fixed_size(
           v, size, -1)
   return groundtruths
+
+
+def binarize_matting_map(matting_map: tf.Tensor,
+                         threshold: float = 0.5) -> tf.Tensor:
+  """Binarizes a matting map.
+
+  If the matting_map value is above a threshold, set it as 1 otherwise 0. The
+  binarization is done for every element in the matting_map.
+
+  Args:
+    matting_map: The groundtruth in the matting map format.
+    threshold: The threshold used to binarize the matting map.
+
+  Returns:
+    The binarized labels (0 for BG, 1 for FG) as tf.float32.
+  """
+  return tf.cast(tf.greater(matting_map, threshold), tf.float32)

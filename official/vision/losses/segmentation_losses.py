@@ -17,6 +17,7 @@
 import tensorflow as tf
 
 from official.modeling import tf_utils
+from official.vision.dataloaders import utils
 
 EPSILON = 1e-5
 
@@ -28,6 +29,7 @@ class SegmentationLoss:
                label_smoothing,
                class_weights,
                ignore_label,
+               gt_is_matting_map,
                use_groundtruth_dimension,
                top_k_percent_pixels=1.0):
     """Initializes `SegmentationLoss`.
@@ -37,6 +39,8 @@ class SegmentationLoss:
         spreading the amount of probability to all other label classes.
       class_weights: A float list containing the weight of each class.
       ignore_label: An integer specifying the ignore label.
+      gt_is_matting_map: If or not the groundtruth mask is a matting map. Note
+        that the matting map is only supported for 2 class segmentation.
       use_groundtruth_dimension: A boolean, whether to resize the output to
         match the dimension of the ground truth.
       top_k_percent_pixels: A float, the value lies in [0.0, 1.0]. When its
@@ -46,6 +50,7 @@ class SegmentationLoss:
     self._label_smoothing = label_smoothing
     self._class_weights = class_weights
     self._ignore_label = ignore_label
+    self._gt_is_matting_map = gt_is_matting_map
     self._use_groundtruth_dimension = use_groundtruth_dimension
     self._top_k_percent_pixels = top_k_percent_pixels
 
@@ -73,8 +78,12 @@ class SegmentationLoss:
           labels, (height, width),
           method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
-    labels = tf.cast(labels, tf.int32)
+    # Do not need to cast into int32 if it is a matting map
+    if not self._gt_is_matting_map:
+      labels = tf.cast(labels, tf.int32)
+
     valid_mask = tf.not_equal(labels, self._ignore_label)
+
     cross_entropy_loss = self.compute_pixelwise_loss(labels, logits, valid_mask,
                                                      **kwargs)
 
@@ -119,6 +128,12 @@ class SegmentationLoss:
           'Length of class_weights should be {}'.format(num_classes))
 
     valid_mask = tf.squeeze(tf.cast(valid_mask, tf.float32), axis=-1)
+
+    # If groundtruth is matting map, binarize the value to create the weight
+    # mask
+    if self._gt_is_matting_map:
+      labels = tf.cast(utils.binarize_matting_map(labels), tf.int32)
+
     weight_mask = tf.einsum(
         '...y,y->...',
         tf.one_hot(tf.squeeze(labels, axis=-1), num_classes, dtype=tf.float32),
@@ -131,8 +146,9 @@ class SegmentationLoss:
     This method can be overridden in subclasses for customizing loss function.
 
     Args:
-      labels: An int32 tensor in shape (batch_size, height, width, 1), which is
-        the label map of the ground truth.
+      labels: If groundtruth mask is not matting map, an int32 tensor which is
+      the label map of the groundtruth. If groundtruth mask is matting map,
+      an float32 tensor. The shape is always (batch_size, height, width, 1).
       logits: A float tensor in shape (batch_size, height, width, num_classes)
         which is the output of the network.
       **unused_kwargs: Unused keyword arguments.
@@ -140,10 +156,14 @@ class SegmentationLoss:
     Returns:
        A float tensor in shape (batch_size, height, width, num_classes).
     """
-    labels = tf.squeeze(labels, axis=-1)
     num_classes = logits.get_shape().as_list()[-1]
-    onehot_labels = tf.one_hot(labels, num_classes)
-    return onehot_labels * (
+
+    if self._gt_is_matting_map:
+      train_labels = tf.concat([1 - labels, labels], axis=-1)
+    else:
+      labels = tf.squeeze(labels, axis=-1)
+      train_labels = tf.one_hot(labels, num_classes)
+    return train_labels * (
         1 - self._label_smoothing) + self._label_smoothing / num_classes
 
   def aggregate_loss(self, pixelwise_loss, valid_mask):
