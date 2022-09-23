@@ -135,9 +135,10 @@ class SemanticSegmentationTask(base_task.Task):
         loss_params.label_smoothing,
         loss_params.class_weights,
         loss_params.ignore_label,
-        loss_params.gt_is_matting_map,
         use_groundtruth_dimension=loss_params.use_groundtruth_dimension,
-        top_k_percent_pixels=loss_params.top_k_percent_pixels)
+        top_k_percent_pixels=loss_params.top_k_percent_pixels,
+        gt_is_matting_map=loss_params.gt_is_matting_map
+    )
 
     total_loss = segmentation_loss_fn(model_outputs['logits'], labels['masks'])
 
