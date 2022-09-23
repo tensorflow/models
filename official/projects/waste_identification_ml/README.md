@@ -1,15 +1,6 @@
-# Waste Identification ML - ( Mask RCNN with TF Lite )
+# CircularNet
 
-Develop an instance segmentation model for server side and on-device inference.
-
-## Background
-
-This projects aims to accelerate innovation in the waste management industry by
-providing open source ML models for waste identification. Specifically, the
-project uses Computer Vision to identify the material and packaging type of
-trash in images. The goal is to help reduce barriers for technology adoption,
-and provide efficiency, traceability & transparency, which in-turn can help
-increase recycling rates.
+Instance segmentation models for identification of recyclables on conveyor belts
 
 ## Code Structure
 This is an implementation of Mask RCNN based on Python 3 and Tensorflow 2.x. The
