@@ -338,6 +338,9 @@ class ImageClassificationTask(base_task.Task):
     one_hot = self.task_config.losses.one_hot
     soft_labels = self.task_config.losses.soft_labels
     is_multilabel = self.task_config.train_data.is_multilabel
+    # Note: `soft_labels`` only apply to the training phrase. In the validation
+    # phrase, labels should still be integer ids and need to be converted to
+    # one hot format.
     if (one_hot or soft_labels) and not is_multilabel:
       labels = tf.one_hot(labels, self.task_config.model.num_classes)
 
