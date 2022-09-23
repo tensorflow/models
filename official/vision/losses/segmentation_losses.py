@@ -29,9 +29,10 @@ class SegmentationLoss:
                label_smoothing,
                class_weights,
                ignore_label,
-               gt_is_matting_map,
                use_groundtruth_dimension,
-               top_k_percent_pixels=1.0):
+               top_k_percent_pixels=1.0,
+               gt_is_matting_map=False
+               ):
     """Initializes `SegmentationLoss`.
 
     Args:
@@ -39,20 +40,21 @@ class SegmentationLoss:
         spreading the amount of probability to all other label classes.
       class_weights: A float list containing the weight of each class.
       ignore_label: An integer specifying the ignore label.
-      gt_is_matting_map: If or not the groundtruth mask is a matting map. Note
-        that the matting map is only supported for 2 class segmentation.
+
       use_groundtruth_dimension: A boolean, whether to resize the output to
         match the dimension of the ground truth.
       top_k_percent_pixels: A float, the value lies in [0.0, 1.0]. When its
         value < 1., only compute the loss for the top k percent pixels. This is
         useful for hard pixel mining.
+      gt_is_matting_map: If or not the groundtruth mask is a matting map. Note
+        that the matting map is only supported for 2 class segmentation.
     """
     self._label_smoothing = label_smoothing
     self._class_weights = class_weights
     self._ignore_label = ignore_label
-    self._gt_is_matting_map = gt_is_matting_map
     self._use_groundtruth_dimension = use_groundtruth_dimension
     self._top_k_percent_pixels = top_k_percent_pixels
+    self._gt_is_matting_map = gt_is_matting_map
 
   def __call__(self, logits, labels, **kwargs):
     """Computes `SegmentationLoss`.
