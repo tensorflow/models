@@ -37,3 +37,8 @@ Generalized Autoregressive Pretraining for Language Understanding"
 (https://arxiv.org/abs/1906.08237). It includes embedding lookups,
 relative position encodings, mask computations, segment matrix computations and
 Transformer XL layers using one or two stream relative self-attention.
+
+* [`FNet`](fnet.py) implements the encoder model from ["FNet: Mixing Tokens with
+Fourier Transforms"](https://aclanthology.org/2022.naacl-main.319/). FNet has
+the same structure as a Transformer encoder, except that all or most of the
+self-attention sublayers are replaced with Fourier sublayers.

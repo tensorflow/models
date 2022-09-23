@@ -26,6 +26,7 @@ Note: These mixing layers currently only support encoder stacks. Decoder stacks
 can be supported in the future by utilizing the `value` inputs.
 """
 
+import enum
 import functools
 from typing import Callable, Tuple, Union
 
@@ -38,6 +39,19 @@ from official.modeling import tf_utils
 _Initializer = Union[str, tf.keras.initializers.Initializer]
 
 default_kernel_initializer = tf.keras.initializers.TruncatedNormal(stddev=2e-2)
+
+
+class MixingMechanism(enum.Enum):
+  """Determines the type of mixing layer.
+
+  Possible options:
+    FOURIER: Fourier Transform mixing.
+    LINEAR: Mixing using dense matrix multiplications with learnable weights.
+    HARTLEY: Hartley Transform mixing.
+  """
+  FOURIER = "fourier"
+  HARTLEY = "hartley"
+  LINEAR = "linear"
 
 
 class MixingLayer(tf.keras.layers.Layer):
