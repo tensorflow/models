@@ -30,6 +30,10 @@ from official.nlp.modeling.layers.kernel_attention import KernelMask
 from official.nlp.modeling.layers.masked_lm import MaskedLM
 from official.nlp.modeling.layers.masked_softmax import MaskedSoftmax
 from official.nlp.modeling.layers.mat_mul_with_margin import MatMulWithMargin
+from official.nlp.modeling.layers.mixing import FourierTransformLayer
+from official.nlp.modeling.layers.mixing import HartleyTransformLayer
+from official.nlp.modeling.layers.mixing import LinearTransformLayer
+from official.nlp.modeling.layers.mixing import MixingMechanism
 from official.nlp.modeling.layers.mobile_bert_layers import MobileBertEmbedding
 from official.nlp.modeling.layers.mobile_bert_layers import MobileBertMaskedLM
 from official.nlp.modeling.layers.mobile_bert_layers import MobileBertTransformer
