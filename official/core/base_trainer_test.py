@@ -319,7 +319,9 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
         self.assertFalse(trainer.optimizer.dynamic)
         self.assertEqual(trainer.optimizer.initial_scale, loss_scale)
     else:
-      self.assertIsInstance(trainer.optimizer, tf.keras.optimizers.SGD)
+      self.assertIsInstance(
+          trainer.optimizer,
+          (tf.keras.optimizers.SGD, tf.keras.optimizers.legacy.SGD))
 
     metrics = trainer.train(tf.convert_to_tensor(5, dtype=tf.int32))
     self.assertIn('training_loss', metrics)
