@@ -39,6 +39,8 @@ template <typename T>
                                      const std::vector<bool>& values);
 ::tensorflow::TensorProto IntTensor(const std::vector<int>& shape,
                                     const std::vector<int>& values);
+::tensorflow::TensorProto Int64Tensor(const std::vector<int>& shape,
+                                      const std::vector<int64_t>& values);
 ::tensorflow::TensorProto FloatTensor(const std::vector<int>& shape,
                                       const std::vector<float>& values);
 ::tensorflow::TensorProto StringTensor(const std::vector<int>& shape,

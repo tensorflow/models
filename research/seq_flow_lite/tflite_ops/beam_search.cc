@@ -20,7 +20,7 @@ limitations under the License.
 #include <numeric>
 #include <vector>
 
-#include "base/logging.h"
+#include <glog/logging.h>
 #include "absl/strings/str_join.h"
 #include "tensorflow/lite/kernels/internal/tensor_ctypes.h"
 #include "tensorflow/lite/kernels/internal/types.h"
@@ -114,7 +114,7 @@ void BeamSearch::PopulateSoftmaxLookupTable(const TfLiteTensor &tensor) {
 }
 
 float BeamSearch::InverseLengthPenalty(int step) {
-  return 1.0f / std::powf((5.f + step) / 6.f, alpha_);
+  return 1.0f / std::pow((5.f + step) / 6.f, alpha_);
 }
 
 void BeamSearch::FindTopKFloat(const TfLiteTensor &tensor, int valid_beams,

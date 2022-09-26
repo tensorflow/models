@@ -24,11 +24,12 @@ namespace testing {
 
 using ::tensorflow::TensorProto;
 using ::testing::FloatNear;
-using ::tflite::TensorType_STRING;
-using ::tflite::TensorType_UINT8;
-using ::tflite::TensorType_INT32;
 using ::tflite::TensorType_BOOL;
 using ::tflite::TensorType_FLOAT32;
+using ::tflite::TensorType_INT32;
+using ::tflite::TensorType_INT64;
+using ::tflite::TensorType_STRING;
+using ::tflite::TensorType_UINT8;
 
 ::tflite::TensorType TfTypeToTfLiteType(::tensorflow::DataType dtype) {
   switch (dtype) {
@@ -37,6 +38,9 @@ using ::tflite::TensorType_FLOAT32;
 
     case ::tensorflow::DT_INT32:
       return TensorType_INT32;
+
+    case ::tensorflow::DT_INT64:
+      return TensorType_INT64;
 
     case ::tensorflow::DT_STRING:
       return TensorType_STRING;
@@ -74,6 +78,17 @@ TensorProto IntTensor(const std::vector<int>& shape,
   SetTensorProtoShape(shape, &tensor);
   for (int i : values) {
     tensor.add_int_val(i);
+  }
+  return tensor;
+}
+
+TensorProto Int64Tensor(const std::vector<int>& shape,
+                        const std::vector<int64_t>& values) {
+  TensorProto tensor;
+  tensor.set_dtype(::tensorflow::DT_INT64);
+  SetTensorProtoShape(shape, &tensor);
+  for (int i : values) {
+    tensor.add_int64_val(i);
   }
   return tensor;
 }
@@ -135,6 +150,13 @@ void TensorflowTfLiteOpTest::RunTensorflowOp() {
         AddInput<int>(
             input_tensor.tensor_shape(),
             [&input_tensor](int x) -> int { return input_tensor.int_val(x); });
+        break;
+
+      case ::tensorflow::DT_INT64:
+        AddInput<int64_t>(input_tensor.tensor_shape(),
+                          [&input_tensor](int x) -> int64_t {
+                            return input_tensor.int64_val(x);
+                          });
         break;
 
       case ::tensorflow::DT_STRING:
@@ -288,6 +310,14 @@ void TensorflowTfLiteOpTest::RunTfLiteOp() {
         break;
       }
 
+      case ::tensorflow::DT_INT64: {
+        std::vector<int64_t> int64_val(input_tensor.int64_val().begin(),
+                                       input_tensor.int64_val().end());
+        tflite_op_.PopulateTensor<int64_t>(tflite_inputs_[input_index],
+                                           int64_val);
+        break;
+      }
+
       case ::tensorflow::DT_STRING: {
         std::vector<std::string> string_val(input_tensor.string_val().begin(),
                                             input_tensor.string_val().end());
@@ -357,6 +387,16 @@ void TensorflowTfLiteOpTest::CompareOpOutput() {
         break;
       }
 
+      case ::tensorflow::DT_INT64: {
+        auto tf_output_values = tf_output.flat<int64_t>();
+        auto tflite_output_values =
+            tflite_op_.ExtractVector<int64_t>(tflite_outputs_[i]);
+        for (int i = 0; i < tf_output_values.size(); i++) {
+          EXPECT_EQ(tf_output_values(i), tflite_output_values[i]);
+        }
+        break;
+      }
+
       case ::tensorflow::DT_BOOL: {
         auto tf_output_values = tf_output.flat<bool>();
         auto tflite_output_values =
@@ -384,4 +424,4 @@ void TensorflowTfLiteOpTest::CompareOpOutput() {
 }
 
 }  // namespace testing
-}  // namespace tflite
+}  // namespace seq_flow_lite

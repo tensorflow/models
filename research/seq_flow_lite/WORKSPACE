@@ -5,6 +5,15 @@ load("@//third_party/py:python_configure.bzl", "python_configure")
 
 
 http_archive(
+    name = "com_github_google_glog",
+    sha256 = "8476f6b3be29b3ebecc7de058183d510acec6e6dcef35d416cc3ac407a3a5645",
+    strip_prefix = "glog-a79416bab739907a31a1e139540921ff0492f010",
+    urls = [
+        "https://github.com/google/glog/archive/a79416bab739907a31a1e139540921ff0492f010.zip",
+    ],
+)
+
+http_archive(
     name = "io_bazel_rules_closure",
     sha256 = "5b00383d08dd71f28503736db0500b6fb4dda47489ff5fc6bed42557c07c6ba9",
     strip_prefix = "rules_closure-308b05b2419edb5c8ee0471b67a40403df940149",
@@ -16,9 +25,9 @@ http_archive(
 
 http_archive(
     name = "org_tensorflow",
-    strip_prefix = "tensorflow-2.9.1",
-    sha256 = "9f2dac244e5af6c6a13a7dad6481e390174ac989931942098e7a4373f1bccfc2",
-    urls = ["https://github.com/tensorflow/tensorflow/archive/v2.9.1.zip"],
+    strip_prefix = "tensorflow-2.10.0",
+    sha256 = "d79a95ede8305f14a10dd0409a1e5a228849039c19ccfb90dfe8367295fd04e0",
+    urls = ["https://github.com/tensorflow/tensorflow/archive/v2.10.0.zip"],
 )
 
 http_archive(
