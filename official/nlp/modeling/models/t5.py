@@ -1023,6 +1023,9 @@ class T5TransformerParams:
   num_decoder_layers: Optional[int] = None
   one_hot_embedding: bool = True
   layer_sharing: bool = False
+  # If true, uses one relative embedding for all encoder layers and one for all
+  # decoder layers. Otherwise, have relative embedding for each layer.
+  use_shared_relative_position_bias: bool = True
 
 
 class Encoder(Module):
@@ -1051,17 +1054,34 @@ class Encoder(Module):
         self.input_embed = shared_embedding
       # Creates an alias to the input embed for encoder-only models.
       self.word_embed = self.input_embed
-      self.relative_embedding = RelativePositionEmbedding(
-          num_heads=self.config.num_heads,
-          relative_attention_num_buckets=self.config
-          .relative_attention_num_buckets,
-          relative_attention_max_distance=self.config
-          .relative_attention_max_distance,
-          bidirectional=self.config.bidirectional,
-          embeddings_initializer=self.config.relative_embeddings_initializer,
-          dtype=self.dtype,
-          compute_dtype=self.compute_dtype,
-          name="relative_posemb")
+      if config.use_shared_relative_position_bias:
+        self.relative_embedding = RelativePositionEmbedding(
+            num_heads=self.config.num_heads,
+            relative_attention_num_buckets=self.config
+            .relative_attention_num_buckets,
+            relative_attention_max_distance=self.config
+            .relative_attention_max_distance,
+            bidirectional=self.config.bidirectional,
+            embeddings_initializer=self.config.relative_embeddings_initializer,
+            dtype=self.dtype,
+            compute_dtype=self.compute_dtype,
+            name="relative_posemb")
+      else:
+        self.relative_embeddings = []
+        for layer_idx in range(self.config.num_layers):
+          relative_embedding = RelativePositionEmbedding(
+              num_heads=self.config.num_heads,
+              relative_attention_num_buckets=self.config
+              .relative_attention_num_buckets,
+              relative_attention_max_distance=self.config
+              .relative_attention_max_distance,
+              bidirectional=self.config.bidirectional,
+              embeddings_initializer=self.config
+              .relative_embeddings_initializer,
+              dtype=self.dtype,
+              compute_dtype=self.compute_dtype,
+              name=f"relative_posemb_{layer_idx}")
+          self.relative_embeddings.append(relative_embedding)
       self.input_dropout = Dropout(self.config.dropout_rate,)
       self.encoder_layers = []
       for layer_idx in range(self.config.num_layers):
@@ -1087,6 +1107,26 @@ class Encoder(Module):
           dtype=self.dtype,
           name="final_layer_norm")
       self.output_dropout = Dropout(self.config.dropout_rate,)
+
+  @tf.Module.with_name_scope
+  def get_relpos_bias(self,
+                      input_length: int,
+                      dense_inputs: tf.Tensor,
+                      layer_idx: Optional[int] = None) -> tf.Tensor:
+    if self.config.use_shared_relative_position_bias:
+      position_bias = self.relative_embedding(input_length, input_length)
+    else:
+      position_bias = self.relative_embeddings[layer_idx](input_length,
+                                                          input_length)
+    if dense_inputs is not None:
+      # Here we ignore relative position bias for dense embeddings.
+      # TODO(yejiayu): If we proceed to video use cases, rework this part.
+      dense_input_length = tf_utils.get_shape_list(dense_inputs)[1]
+      # Position bias shape: [batch, 1, len, len]
+      paddings = tf.constant([[0, 0], [0, 0], [0, dense_input_length],
+                              [0, dense_input_length]])
+      position_bias = tf.pad(position_bias, paddings, "CONSTANT")
+    return position_bias
 
   @tf.Module.with_name_scope
   def __call__(self,
@@ -1127,17 +1167,9 @@ class Encoder(Module):
       input_length = tf_utils.get_shape_list(inputs)[1]
     else:
       input_length = 0
-    position_bias = self.relative_embedding(input_length, input_length)
-    if dense_inputs is not None:
-      # Here we ignore relative position bias for dense embeddings.
-      # TODO(yejiayu): If we proceed to video use cases, rework this part.
-      dense_input_length = tf_utils.get_shape_list(dense_inputs)[1]
-      # Position bias shape: [batch, 1, len, len]
-      paddings = tf.constant([[0, 0], [0, 0], [0, dense_input_length],
-                              [0, dense_input_length]])
-      position_bias = tf.pad(position_bias, paddings, "CONSTANT")
 
     for i in range(cfg.num_layers):
+      position_bias = self.get_relpos_bias(input_length, dense_inputs, i)
       x = self.encoder_layers[i](
           x,
           attention_mask=encoder_mask,
@@ -1180,17 +1212,34 @@ class Decoder(Module):
         self.target_embed = shared_embedding
       self.target_dropout = Dropout(self.config.dropout_rate,)
       # Position bias for the target self attention.
-      self.relative_embedding = RelativePositionEmbedding(
-          num_heads=self.config.num_heads,
-          relative_attention_num_buckets=self.config
-          .relative_attention_num_buckets,
-          relative_attention_max_distance=self.config
-          .relative_attention_max_distance,
-          bidirectional=self.config.bidirectional,
-          embeddings_initializer=self.config.relative_embeddings_initializer,
-          dtype=self.dtype,
-          compute_dtype=self.compute_dtype,
-          name="relative_posemb")
+      if config.use_shared_relative_position_bias:
+        self.relative_embedding = RelativePositionEmbedding(
+            num_heads=self.config.num_heads,
+            relative_attention_num_buckets=self.config
+            .relative_attention_num_buckets,
+            relative_attention_max_distance=self.config
+            .relative_attention_max_distance,
+            bidirectional=self.config.bidirectional,
+            embeddings_initializer=self.config.relative_embeddings_initializer,
+            dtype=self.dtype,
+            compute_dtype=self.compute_dtype,
+            name="relative_posemb")
+      else:
+        self.relative_embeddings = []
+        for layer_idx in range(self.config.num_decoder_layers):
+          relative_embedding = RelativePositionEmbedding(
+              num_heads=self.config.num_heads,
+              relative_attention_num_buckets=self.config
+              .relative_attention_num_buckets,
+              relative_attention_max_distance=self.config
+              .relative_attention_max_distance,
+              bidirectional=self.config.bidirectional,
+              embeddings_initializer=self.config
+              .relative_embeddings_initializer,
+              dtype=self.dtype,
+              compute_dtype=self.compute_dtype,
+              name=f"relative_posemb_{layer_idx}")
+          self.relative_embeddings.append(relative_embedding)
       self.decoder_layers = []
       for layer_idx in range(self.config.num_decoder_layers):
         if self.config.layer_sharing and layer_idx > 0:
@@ -1222,6 +1271,13 @@ class Decoder(Module):
             use_bias=False,
             dtype=self.dtype,
             name="logits")
+
+  @tf.Module.with_name_scope
+  def get_relpos_bias(self, input_length: int, layer_idx: int) -> tf.Tensor:
+    if self.config.use_shared_relative_position_bias:
+      return self.relative_embedding(input_length, input_length)
+    else:
+      return self.relative_embeddings[layer_idx](input_length, input_length)
 
   @tf.Module.with_name_scope
   def __call__(self,
@@ -1266,12 +1322,14 @@ class Decoder(Module):
     tensor_shape = tf_utils.get_shape_list(x)
     tensor_shape[-2] = 1
     x = self.target_dropout(x, noise_shape=tensor_shape, training=training)
-    if cache is not None:
-      position_bias = self.relative_embedding(max_decode_len, max_decode_len)
-    else:
-      input_length = tf_utils.get_shape_list(decoder_input_tokens)[1]
-      position_bias = self.relative_embedding(input_length, input_length)
+
     for i in range(cfg.num_decoder_layers):
+      if cache is not None:
+        position_bias = self.get_relpos_bias(max_decode_len, i)
+      else:
+        input_length = tf_utils.get_shape_list(decoder_input_tokens)[1]
+        position_bias = self.get_relpos_bias(input_length, i)
+
       if cache is None:
         x, _ = self.decoder_layers[i](
             x,
