@@ -178,7 +178,7 @@ def make_yt8m_example(num_segment: int = 5) -> tf.train.SequenceExample:
       i * 5 for i in range(num_segment)
   ]
   seq_example.context.feature["segment_scores"].float_list.value[:] = (
-      [0.] * num_segment)
+      [0.5] * num_segment)
   tfexample_utils.put_bytes_list_to_feature(
       seq_example, rgb.tobytes(), key="rgb", repeat_num=120)
   tfexample_utils.put_bytes_list_to_feature(
