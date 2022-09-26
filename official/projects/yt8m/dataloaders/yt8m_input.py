@@ -295,12 +295,10 @@ class Decoder(decoder.Decoder):
   def decode(self,
              serialized_example: tf.train.SequenceExample) -> Dict[str, Any]:
     """Parses a single tf.train.SequenceExample into video and label tensors."""
-
     contexts, features = tf.io.parse_single_sequence_example(
         serialized_example,
         context_features=self._context_features,
         sequence_features=self._sequence_features)
-
     decoded_tensor = {**contexts, **features}
     for i, name in enumerate(self._feature_names):
       # Convert the VarLen feature to dense tensor.
@@ -330,6 +328,7 @@ class Parser(parser.Parser):
       min_quantized_value=-2,
   ):
     self._num_classes = input_params.num_classes
+    self._label_field = input_params.label_field
     self._segment_size = input_params.segment_size
     self._segment_labels = input_params.segment_labels
     self._include_video_id = input_params.include_video_id
@@ -377,6 +376,8 @@ class Parser(parser.Parser):
     Returns:
       output: dictionary containing batch information
     """
+    if self._label_field and not self._segment_labels:
+      contexts["labels"] = contexts[self._label_field]
     output_dict = _process_segment_and_label(video_matrix, num_frames, contexts,
                                              self._segment_labels,
                                              self._segment_size,
