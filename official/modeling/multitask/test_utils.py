@@ -28,6 +28,8 @@ class MockFooModel(tf.keras.Model):
     super().__init__(*args, **kwargs)
     self._share_layer = shared_layer
     self._foo_specific_layer = tf.keras.layers.Dense(1)
+    self.inputs = {"foo": tf.keras.Input(shape=(2,), dtype=tf.float32),
+                   "bar": tf.keras.Input(shape=(2,), dtype=tf.float32)}
 
   def call(self, inputs):
     self.add_loss(tf.zeros((1,), dtype=tf.float32))
@@ -39,11 +41,13 @@ class MockFooModel(tf.keras.Model):
 
 
 class MockBarModel(tf.keras.Model):
+  """A mock model can only consume 'bar' inputs."""
 
   def __init__(self, shared_layer, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self._share_layer = shared_layer
     self._bar_specific_layer = tf.keras.layers.Dense(1)
+    self.inputs = {"bar": tf.keras.Input(shape=(2,), dtype=tf.float32)}
 
   def call(self, inputs):
     self.add_loss(tf.zeros((2,), dtype=tf.float32))

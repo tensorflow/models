@@ -98,7 +98,6 @@ def run_experiment(
     checkpoint = evaluator.checkpoint
     global_step = evaluator.global_step
 
-  # TODO(hongkuny,haozhangthu): Revisit initialization method.
   checkpoint_manager = tf.train.CheckpointManager(
       checkpoint,
       directory=model_dir,
