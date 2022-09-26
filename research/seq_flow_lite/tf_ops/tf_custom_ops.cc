@@ -39,7 +39,7 @@ REGISTER_OP("ExpectedValueOp")
       auto batch_size = c->Dim(c->input(0), 0);
       auto feature_size = c->Dim(c->input(0), 2);
       c->set_output(0, c->MakeShape({batch_size, feature_size}));
-      return tensorflow::Status::OK();
+      return tensorflow::OkStatus();
     })
     .Doc(R"doc(
 Dummy pooling op.
@@ -64,7 +64,7 @@ REGISTER_OP("LayerNorm")
     .Output("result: float32")
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
       c->set_output(0, c->input(0));
-      return tensorflow::Status::OK();
+      return tensorflow::OkStatus();
     })
     .Doc(R"doc(
 Dummy layer norm op.
@@ -88,7 +88,7 @@ REGISTER_OP("PoolingOp")
     .Output("state: float32")
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
       c->set_output(0, c->input(0));
-      return tensorflow::Status::OK();
+      return tensorflow::OkStatus();
     })
     .Doc(R"doc(
 Dummy pooling op.
@@ -118,7 +118,7 @@ REGISTER_OP("UniformCausalAttn")
       int32 feature_size;
       TF_RETURN_IF_ERROR(c->GetAttr("feature_size", &feature_size));
       c->set_output(0, c->MakeShape({batch_size, 1, feature_size}));
-      return tensorflow::Status::OK();
+      return tensorflow::OkStatus();
     })
     .Doc(R"doc(
 Dummy uniform causal attn op.

@@ -343,7 +343,7 @@ REGISTER_OP("SequenceStringProjection")
                                      feature_size}));
       c->set_output(1, c->MakeShape({1}));
       c->set_output(2, c->MakeShape({batch_size}));
-      return tensorflow::Status::OK();
+      return tensorflow::OkStatus();
     })
     .Doc(R"doc(
 This op referred to as Ternary Sequence String Projection op (TSP), tokenizes

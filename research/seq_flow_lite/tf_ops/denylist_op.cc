@@ -257,7 +257,7 @@ Status StringDenylistShapeFn(InferenceContext* context) {
   TF_RETURN_IF_ERROR(context->Concatenate(
       context->input(0), context->MakeShape({categories}), &output_shape));
   context->set_output(0, output_shape);
-  return ::tensorflow::Status::OK();
+  return ::tensorflow::OkStatus();
 }
 
 REGISTER_OP("SkipgramDenylist")
@@ -416,7 +416,7 @@ Status TokenizedDenylistShapeFn(InferenceContext* context) {
       string_tensor_shape, context->MakeShape({categories}), &output_shape));
   context->set_output(0, output_shape);
 
-  return ::tensorflow::Status::OK();
+  return ::tensorflow::OkStatus();
 }
 
 REGISTER_OP("TokenizedDenylist")

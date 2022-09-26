@@ -51,7 +51,7 @@ def load_runner_config():
 def create_model(model, model_config, features, mode, model_name):
   """Creates a sequence labeling model."""
   keras_model = model.Encoder(model_config, mode)
-  if "pqrnn" in model_name:
+  if any(model in model_name for model in ["pqrnn", "prado"]):
     logits = keras_model(features["projection"], features["seq_length"])
   else:
     logits = keras_model(features["token_ids"], features["token_len"])
