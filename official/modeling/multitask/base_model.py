@@ -43,3 +43,12 @@ class MultiTaskBaseModel(tf.Module):
   def initialize(self):
     """Optional function that loads a pre-train checkpoint."""
     return
+
+  def build(self):
+    """Builds the networks for tasks to make sure variables are created."""
+    # Try to build all sub tasks.
+    for task_model in self._sub_tasks.values():
+      # Assumes all the tf.Module models are built because we don't have any
+      # way to check them.
+      if isinstance(task_model, tf.keras.Model) and not task_model.built:
+        _ = task_model(task_model.inputs)
