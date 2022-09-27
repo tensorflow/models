@@ -30,6 +30,64 @@ _BEGIN_KERNEL = [0, 512]
 
 class KernelAttentionTest(tf.test.TestCase, parameterized.TestCase):
 
+  # expplus is only designed for bi-directional use case.
+  # exp can be numeric unstable.
+  @parameterized.parameters(itertools.product(
+      ["relu", "elu"], [1, 4], [0.9]))
+  def test_causal_windowed_attention_projection_streaming(
+      self, feature_transform, causal_chunk_length, causal_weight_decay):
+    num_heads = 12
+    key_dim = 64
+    seq_length = 16
+    num_chunks = seq_length // causal_chunk_length
+    causal_window_length = num_chunks
+    batch_size = 2
+    training = False
+    num_random_features = 0
+    test_layer = attention.KernelAttention(
+        num_heads=num_heads,
+        key_dim=key_dim,
+        feature_transform=feature_transform,
+        num_random_features=num_random_features,
+        redraw=False,
+        is_short_seq=False,
+        begin_kernel=False,
+        use_causal_windowed=True,
+        causal_chunk_length=causal_chunk_length,
+        causal_window_length=causal_window_length,
+        causal_window_decay=causal_weight_decay,
+        causal_padding=None,
+        )
+    query = tf.random.normal(
+        shape=(batch_size, seq_length, key_dim), seed=2)
+    value = query
+    encoder_inputs_mask = tf.ones((batch_size, seq_length), dtype=tf.int32)
+    masks = tf.cast(encoder_inputs_mask, dtype=tf.float32)
+    output = test_layer(
+        query=query,
+        value=value,
+        attention_mask=masks,
+        training=training)
+    kv_cache = tf.zeros(
+        (batch_size, num_heads, key_dim,
+         num_random_features if num_random_features > 0 else key_dim))
+    k_sum_cache = tf.zeros((batch_size, 1, key_dim))
+    stream_output = []
+    cache = {"kv": kv_cache, "k_sum": k_sum_cache}
+    for i in range(num_chunks):
+      stream_output.append(
+          test_layer(
+              query=query[:, i * causal_chunk_length:(i + 1) *
+                          causal_chunk_length, :],
+              value=value[:, i * causal_chunk_length:(i + 1) *
+                          causal_chunk_length, :],
+              attention_mask=masks[:, i * causal_chunk_length:(i + 1) *
+                                   causal_chunk_length],
+              cache=cache,
+              training=training))
+    stream_output = tf.concat(stream_output, axis=1)
+    self.assertAllClose(output, stream_output)
+
   @parameterized.parameters(
       itertools.product(_FEATURE_TRANSFORM, [127], _TRAINING, [True, False],
                         _IS_SHORT_SEQ, _BEGIN_KERNEL))
@@ -195,7 +253,6 @@ class KernelAttentionTest(tf.test.TestCase, parameterized.TestCase):
             tf.reshape([1., 1.1, 1.11, 1.11, 1.11], [1, -1, 1, 1, 1]),
             [2, 1, 2, 2, 2]),
         winsum)
-
 
 if __name__ == "__main__":
   tf.test.main()
