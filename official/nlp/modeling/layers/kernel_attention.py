@@ -160,7 +160,8 @@ def causal_windowed_performer_attention(query_matrix,
                                         chunk_length,
                                         window_length,
                                         window_decay=None,
-                                        padding=None):
+                                        padding=None,
+                                        cache=None):
   """Applies windowed causal kernel attention with query, key, value tensors.
 
   We partition the T-length input sequence into N chunks, each of
@@ -202,55 +203,70 @@ def causal_windowed_performer_attention(query_matrix,
       padding if padding is set to None. In the latter case, the axis dimension
       of the query, value and key input tensors must be divisible by the
       chunk_length.
+    cache: Cache to accumulate history in memory. Used at inferecne time
+      (streaming, decoding) for  causal attention.
 
   Returns:
     Window causal performer attention of shape `[B, T, H, out_dim]`.
   """
-  old_shape = tf.shape(value_matrix)
+  if cache is None:  # Training
+    old_shape = tf.shape(value_matrix)
 
-  query_matrix = pad_to_chunk_length(query_matrix, -3, chunk_length, padding)
-  key_matrix = pad_to_chunk_length(key_matrix, -3, chunk_length, padding)
-  value_matrix = pad_to_chunk_length(value_matrix, -3, chunk_length, padding)
+    query_matrix = pad_to_chunk_length(query_matrix, -3, chunk_length, padding)
+    key_matrix = pad_to_chunk_length(key_matrix, -3, chunk_length, padding)
+    value_matrix = pad_to_chunk_length(value_matrix, -3, chunk_length, padding)
 
-  new_shape = tf.shape(value_matrix)
-  chunked_query_matrix = split_tensor_into_chunks(
-      query_matrix, -3,
-      chunk_length)  # [-1, T//chunk_length, chunk_length, N, dim]
-  chunked_key_matrix = split_tensor_into_chunks(
-      key_matrix, -3,
-      chunk_length)  # [-1, T//chunk_length, chunk_length, N, dim]
-  chunked_value_matrix = split_tensor_into_chunks(
-      value_matrix, -3,
-      chunk_length)  # [-1, T//chunk_length, chunk_length, N, out_dim]
+    new_shape = tf.shape(value_matrix)
+    chunked_query_matrix = split_tensor_into_chunks(
+        query_matrix, -3,
+        chunk_length)  # [-1, T//chunk_length, chunk_length, N, dim]
+    chunked_key_matrix = split_tensor_into_chunks(
+        key_matrix, -3,
+        chunk_length)  # [-1, T//chunk_length, chunk_length, N, dim]
+    chunked_value_matrix = split_tensor_into_chunks(
+        value_matrix, -3,
+        chunk_length)  # [-1, T//chunk_length, chunk_length, N, out_dim]
 
-  kp_v = tf.einsum("BTCHD,BTCHO->BTHDO", chunked_key_matrix,
-                   chunked_value_matrix)
+    kp_v = tf.einsum("BTCHD,BTCHO->BTHDO", chunked_key_matrix,
+                     chunked_value_matrix)
 
-  k_sum = tf.math.reduce_sum(chunked_key_matrix, axis=-3, keepdims=True)
+    k_sum = tf.math.reduce_sum(chunked_key_matrix, axis=-3, keepdims=True)
 
-  if window_decay is None:
-    kp_v_winsum = rectangular_window_sum(kp_v, window_length)
-    k_winsum = rectangular_window_sum(k_sum, window_length)
-  else:
-    # Compute exponentially decaying weights.
-    decaying_weights = tf.math.pow(
-        tf.convert_to_tensor(window_decay, dtype=value_matrix.dtype),
-        tf.range(window_length - 1, -1, delta=-1, dtype=value_matrix.dtype))
-    kp_v_winsum = weighted_window_sum(kp_v, window_length, decaying_weights)
-    k_winsum = weighted_window_sum(k_sum, window_length, decaying_weights)
+    if window_decay is None:
+      kp_v_winsum = rectangular_window_sum(kp_v, window_length)
+      k_winsum = rectangular_window_sum(k_sum, window_length)
+    else:
+      # Compute exponentially decaying weights.
+      decaying_weights = tf.math.pow(
+          tf.convert_to_tensor(window_decay, dtype=value_matrix.dtype),
+          tf.range(window_length - 1, -1, delta=-1, dtype=value_matrix.dtype))
+      kp_v_winsum = weighted_window_sum(kp_v, window_length, decaying_weights)
+      k_winsum = weighted_window_sum(k_sum, window_length, decaying_weights)
 
-  numerator = tf.einsum("BTCHD,BTHDO->BTCHO", chunked_query_matrix, kp_v_winsum)
+    numerator = tf.einsum(
+        "BTCHD,BTHDO->BTCHO", chunked_query_matrix, kp_v_winsum)
 
-  k_winsum = tf.squeeze(k_winsum, -3)
-  denominator = tf.einsum("BTCHD,BTHD->BTCH", chunked_query_matrix, k_winsum)
-  denominator = tf.expand_dims(denominator, -1) + _NUMERIC_STABLER
+    k_winsum = tf.squeeze(k_winsum, -3)
+    denominator = tf.einsum("BTCHD,BTHD->BTCH", chunked_query_matrix, k_winsum)
+    denominator = tf.expand_dims(denominator, -1) + _NUMERIC_STABLER
+    attention = numerator / denominator
+    attention = tf.reshape(attention, new_shape)
 
-  attention = numerator / denominator
-  attention = tf.reshape(attention, new_shape)
+    start = tf.zeros([len(old_shape)], dtype=old_shape.dtype)
+    attention = tf.slice(attention, start, old_shape)
 
-  start = tf.zeros([len(old_shape)], dtype=old_shape.dtype)
-  attention = tf.slice(attention, start, old_shape)
+  # Queued window cache (drop instead of decay) not yet supported.
+  else:  # Streaming
 
+    if window_decay is None or window_decay > 1.0 or window_decay < 0.0:
+      raise ValueError("window_decay should be in (0.0, 1.0) and not None.")
+    kv = cache["kv"] + tf.einsum("BTHD,BTHO->BHOD", key_matrix, value_matrix)
+    cache["kv"] = kv * window_decay
+    k_sum = cache["k_sum"] + tf.reduce_sum(key_matrix, axis=1)
+    cache["k_sum"] = k_sum * window_decay
+    denominator = tf.einsum("BTHD,BHD->BTH", query_matrix, k_sum)
+    attention = tf.einsum("BTHD,BHOD,BTH->BTHO", query_matrix, kv,
+                          1.0 / (denominator + _NUMERIC_STABLER))
   return attention
 
 
@@ -443,7 +459,7 @@ def expplus(data_orig,
 
 
 # pylint: disable=g-long-lambda
-_TRANSFORM_MAP = {
+_CAUSAL_SUPPORT_TRANSFORM_MAP = {
     "elu":
         functools.partial(
             _generalized_kernel,
@@ -476,11 +492,19 @@ _TRANSFORM_MAP = {
             h=lambda x: tf.math.exp(-0.5 * tf.math.sqrt(
                 tf.cast(tf.shape(x)[-1], tf.float32))),
         ),
-    "expplus":
-        expplus,
     "identity":
         functools.partial(_generalized_kernel, f=lambda x: x, h=lambda x: 1)
 }
+
+_NON_CAUSAL_SUPPORT_TRANSFORM_MAP = {
+    "expplus": expplus,
+}
+
+_TRANSFORM_MAP = {
+    **_CAUSAL_SUPPORT_TRANSFORM_MAP,
+    **_NON_CAUSAL_SUPPORT_TRANSFORM_MAP
+}
+
 # pylint: enable=g-long-lambda
 
 
@@ -609,6 +633,7 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
                          feature_transform,
                          is_short_seq,
                          attention_mask=None,
+                         cache=None,
                          training=False,
                          numeric_stabler=_NUMERIC_STABLER):
     """Applies kernel attention with query, key, value tensors.
@@ -628,6 +653,8 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
       attention_mask: a boolean mask of shape `[B, S]`, that prevents attenting
         to masked positions. Note that the mask is only appied to the keys. User
         may want to mask the output if query contains pads.
+      cache: Cache to accumulate history in memory. Used at inferecne time
+        (streaming, decoding) for  causal attention.
       training: Python boolean indicating whether the layer should behave in
         training mode (adding dropout) or in inference mode (doing nothing).
       numeric_stabler: A scalar value added to avoid divide by 0.
@@ -682,7 +709,8 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
           chunk_length=self.causal_chunk_length,
           window_length=self.causal_window_length,
           window_decay=self.causal_window_decay,
-          padding=self.causal_padding)
+          padding=self.causal_padding,
+          cache=cache)
     else:
       kv = tf.einsum("BSNH,BSND->BNDH", key_prime, value)
       denominator = 1.0 / (
@@ -709,7 +737,8 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
           name="attention_output_softmax")
       self._dropout_softmax = tf.keras.layers.Dropout(rate=self._dropout)
 
-  def call(self, query, value, key=None, attention_mask=None, training=False):
+  def call(self, query, value, key=None, attention_mask=None, cache=None,
+           training=False):
     """Compute attention with kernel mechanism.
 
     Args:
@@ -720,12 +749,29 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
       attention_mask: a boolean mask of shape `[B, S]`, that prevents attenting
         to masked positions. Note that the mask is only appied to the keys. User
         may want to mask the output if query contains pads.
+      cache: Cache to accumulate history in memory. Used at inferecne time
+        (streaming, decoding) for  causal attention.
       training: Python boolean indicating whether the layer should behave in
         training mode (adding dropout) or in inference mode (doing nothing).
 
     Returns:
       Multi-headed outputs of attention computation.
     """
+    if cache is not None:
+      if training:
+        raise ValueError(
+            "Cache is not supported when training is True.")
+      if not self.use_causal_windowed:
+        raise ValueError(
+            "Cache is not supported for non use_causal_windowed case.")
+      if self._begin_kernel:
+        raise ValueError(
+            "Cache is not supported when begin_kernel is set since the bahvior "
+            "is too complicated.")
+      if self._feature_transform in _NON_CAUSAL_SUPPORT_TRANSFORM_MAP:
+        raise ValueError("Cache is not supported for feature_transform %s" %
+                         (self._feature_transform))
+
     if not self._built_from_signature:
       self._build_from_signature(query=query, value=value, key=key)
     if key is None:
@@ -761,7 +807,9 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
       attention_output = self._compute_attention(query, key, value,
                                                  self._feature_transform,
                                                  self._is_short_seq,
-                                                 attention_mask, training)
+                                                 attention_mask,
+                                                 cache,
+                                                 training)
       # This is actually dropping out entire tokens to attend to, which might
       # seem a bit unusual, but is taken from the original Transformer paper.
       attention_output = self._dropout_layer(attention_output)
