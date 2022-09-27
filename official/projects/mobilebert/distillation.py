@@ -238,6 +238,9 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
             })
     opt_factory = optimization.OptimizerFactory(params)
     optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
+    if isinstance(optimizer, tf.keras.optimizers.experimental.Optimizer):
+      optimizer = tf.keras.__internal__.optimizers.convert_to_legacy_optimizer(
+          optimizer)
 
     return optimizer
 

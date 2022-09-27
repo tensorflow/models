@@ -153,7 +153,7 @@ class DistillationTest(tf.test.TestCase, parameterized.TestCase):
 
     eval_dataset = bert_distillation_task.get_eval_dataset(stage_id=0)
     eval_iterator = iter(eval_dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    optimizer = tf.keras.optimizers.legacy.SGD(learning_rate=0.1)
 
     # test train/val step for all stages, including the last pretraining stage
     for stage in range(student_block_num + 1):
