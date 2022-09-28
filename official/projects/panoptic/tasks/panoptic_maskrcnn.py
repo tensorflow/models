@@ -175,7 +175,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
     """Build Panoptic Mask R-CNN losses."""
     params = self.task_config.losses
 
-    use_groundtruth_dimension = params.semantic_segmentation_use_groundtruth_dimension
+    use_groundtruth_dimension = (
+        params.semantic_segmentation_use_groundtruth_dimension)
 
     segmentation_loss_fn = segmentation_losses.SegmentationLoss(
         label_smoothing=params.semantic_segmentation_label_smoothing,
@@ -218,7 +219,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
       tf.keras.metrics.Metric]:
     """Build detection metrics."""
     metrics = []
-    num_segmentation_classes = self.task_config.model.segmentation_model.num_classes
+    num_segmentation_classes = (
+        self.task_config.model.segmentation_model.num_classes)
     if training:
       metric_names = [
           'total_loss',
@@ -253,23 +255,19 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
           rescale_predictions=rescale_predictions,
           dtype=tf.float32)
 
-      if isinstance(tf.distribute.get_strategy(), tf.distribute.TPUStrategy):
-        self._process_iou_metric_on_cpu = True
-      else:
-        self._process_iou_metric_on_cpu = False
-
       if self.task_config.model.generate_panoptic_masks:
         if not self.task_config.validation_data.parser.include_panoptic_masks:
           raise ValueError('`include_panoptic_masks` should be set to True when'
                            ' computing panoptic quality.')
         pq_config = self.task_config.panoptic_quality_evaluator
-        self.panoptic_quality_metric = panoptic_quality_evaluator.PanopticQualityEvaluator(
-            num_categories=pq_config.num_categories,
-            ignored_label=pq_config.ignored_label,
-            max_instances_per_category=pq_config.max_instances_per_category,
-            offset=pq_config.offset,
-            is_thing=pq_config.is_thing,
-            rescale_predictions=pq_config.rescale_predictions)
+        self.panoptic_quality_metric = (
+            panoptic_quality_evaluator.PanopticQualityEvaluator(
+                num_categories=pq_config.num_categories,
+                ignored_label=pq_config.ignored_label,
+                max_instances_per_category=pq_config.max_instances_per_category,
+                offset=pq_config.offset,
+                is_thing=pq_config.is_thing,
+                rescale_predictions=pq_config.rescale_predictions))
 
     return metrics
 
@@ -385,24 +383,16 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
 
     logs.update(
         {self.coco_metric.name: (labels['groundtruths'], coco_model_outputs)})
-    if self._process_iou_metric_on_cpu:
-      logs.update({
-          self.segmentation_perclass_iou_metric.name:
-              (segmentation_labels, outputs['segmentation_outputs'])
-      })
-    else:
-      self.segmentation_perclass_iou_metric.update_state(
-          segmentation_labels,
-          outputs['segmentation_outputs'])
+
+    self.segmentation_perclass_iou_metric.update_state(
+        segmentation_labels, outputs['segmentation_outputs'])
 
     if self.task_config.model.generate_panoptic_masks:
       pq_metric_labels = {
-          'category_mask':
-              labels['groundtruths']['gt_panoptic_category_mask'],
-          'instance_mask':
-              labels['groundtruths']['gt_panoptic_instance_mask'],
+          'category_mask': labels['groundtruths']['gt_panoptic_category_mask'],
+          'instance_mask': labels['groundtruths']['gt_panoptic_instance_mask'],
           'image_info': labels['image_info']
-            }
+      }
       logs.update({
           self.panoptic_quality_metric.name:
               (pq_metric_labels, outputs['panoptic_outputs'])})
@@ -420,11 +410,6 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         step_outputs[self.coco_metric.name][0],
         step_outputs[self.coco_metric.name][1])
 
-    if self._process_iou_metric_on_cpu:
-      self.segmentation_perclass_iou_metric.update_state(
-          step_outputs[self.segmentation_perclass_iou_metric.name][0],
-          step_outputs[self.segmentation_perclass_iou_metric.name][1])
-
     if self.task_config.model.generate_panoptic_masks:
       self.panoptic_quality_metric.update_state(
           step_outputs[self.panoptic_quality_metric.name][0],
@@ -433,11 +418,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
-    result = {}
-    result = super(
-        PanopticMaskRCNNTask, self).reduce_aggregated_logs(
-            aggregated_logs=aggregated_logs,
-            global_step=global_step)
+    result = super().reduce_aggregated_logs(
+        aggregated_logs=aggregated_logs, global_step=global_step)
 
     ious = self.segmentation_perclass_iou_metric.result()
     if self.task_config.segmentation_evaluation.report_per_class_iou:
@@ -447,7 +429,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
     result.update({'segmentation_mean_iou': tf.reduce_mean(ious).numpy()})
 
     if self.task_config.model.generate_panoptic_masks:
-      report_per_class_metrics = self.task_config.panoptic_quality_evaluator.report_per_class_metrics
+      report_per_class_metrics = (
+          self.task_config.panoptic_quality_evaluator.report_per_class_metrics)
       panoptic_quality_results = self.panoptic_quality_metric.result()
       for k, value in panoptic_quality_results.items():
         if k.endswith('per_class'):

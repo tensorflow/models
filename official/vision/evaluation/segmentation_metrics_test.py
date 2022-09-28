@@ -15,7 +15,6 @@
 """Tests for segmentation_metrics."""
 
 from absl.testing import parameterized
-import numpy as np
 import tensorflow as tf
 
 from official.vision.evaluation import segmentation_metrics
@@ -24,26 +23,23 @@ from official.vision.evaluation import segmentation_metrics
 class SegmentationMetricsTest(parameterized.TestCase, tf.test.TestCase):
 
   def _create_test_data(self):
-    y_pred_cls0 = np.expand_dims(
-        np.array([[1, 1, 0], [1, 1, 0], [0, 0, 0]], dtype=np.uint16),
-        axis=(0, -1))
-    y_pred_cls1 = np.expand_dims(
-        np.array([[0, 0, 0], [0, 0, 1], [0, 0, 1]], dtype=np.uint16),
-        axis=(0, -1))
-    y_pred = np.concatenate((y_pred_cls0, y_pred_cls1), axis=-1)
+    y_pred_cls0 = tf.constant([[1, 1, 0], [1, 1, 0], [0, 0, 0]],
+                              dtype=tf.uint16)[tf.newaxis, :, :, tf.newaxis]
+    y_pred_cls1 = tf.constant([[0, 0, 0], [0, 0, 1], [0, 0, 1]],
+                              dtype=tf.uint16)[tf.newaxis, :, :, tf.newaxis]
+    y_pred = tf.concat((y_pred_cls0, y_pred_cls1), axis=-1)
 
     y_true = {
         'masks':
-            np.expand_dims(
-                np.array([[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 1, 1],
-                          [0, 0, 0, 1, 1, 1], [0, 0, 0, 1, 1, 1]],
-                         dtype=np.uint16),
-                axis=(0, -1)),
+            tf.constant(
+                [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+                 [0, 0, 0, 1, 1, 1], [0, 0, 0, 1, 1, 1], [0, 0, 0, 1, 1, 1]],
+                dtype=tf.uint16)[tf.newaxis, :, :, tf.newaxis],
         'valid_masks':
-            np.ones([1, 6, 6, 1], dtype=np.uint16),
+            tf.ones([1, 6, 6, 1], dtype=tf.bool),
         'image_info':
-            np.array([[[6, 6], [3, 3], [0.5, 0.5], [0, 0]]], dtype=np.float32)
+            tf.constant([[[6, 6], [3, 3], [0.5, 0.5], [0, 0]]],
+                        dtype=tf.float32)
     }
     return y_pred, y_true
 

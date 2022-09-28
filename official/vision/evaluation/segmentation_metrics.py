@@ -13,9 +13,12 @@
 # limitations under the License.
 
 """Metrics for segmentation."""
+
 import tensorflow as tf
 
 from official.vision.evaluation import iou
+from official.vision.ops import box_ops
+from official.vision.ops import spatial_transform_ops
 
 
 class MeanIoU(tf.keras.metrics.MeanIoU):
@@ -48,8 +51,8 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
 
     Args:
       y_true: `dict`, dictionary with the following name, and key values.
-        - masks: [batch, width, height, 1], groundtruth masks.
-        - valid_masks: [batch, width, height, 1], valid elements in the mask.
+        - masks: [batch, height, width, 1], groundtruth masks.
+        - valid_masks: [batch, height, width, 1], valid elements in the mask.
         - image_info: [batch, 4, 2], a tensor that holds information about
           original and preprocessed images. Each entry is in the format of
           [[original_height, original_width], [input_height, input_width],
@@ -57,7 +60,7 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
           desired_width] is the actual scaled image size, and [y_scale, x_scale]
           is the scaling factor, which is the ratio of scaled dimension /
           original dimension.
-      y_pred: Tensor [batch, width_p, height_p, num_classes], predicated masks.
+      y_pred: Tensor [batch, height_p, width_p, num_classes], predicated masks.
     """
     predictions = y_pred
     masks = y_true['masks']
@@ -72,55 +75,32 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
 
     # Ignore mask elements is set to zero for argmax op.
     masks = tf.where(valid_masks, masks, tf.zeros_like(masks))
+    masks_size = tf.shape(masks)[1:3]
 
     if self._rescale_predictions:
-      # This part can only run on cpu/gpu due to dynamic image resizing.
-      for i in range(tf.shape(predictions)[0]):
-        mask = masks[i]
-        valid_mask = valid_masks[i]
-        predicted_mask = predictions[i]
-        image_info = images_info[i]
-
-        rescale_size = tf.cast(
-            tf.math.ceil(image_info[1, :] / image_info[2, :]), tf.int32)
-        image_shape = tf.cast(image_info[0, :], tf.int32)
-        offsets = tf.cast(image_info[3, :], tf.int32)
-
-        predicted_mask = tf.image.resize(
-            predicted_mask,
-            rescale_size,
-            method=tf.image.ResizeMethod.BILINEAR)
-
-        predicted_mask = tf.image.crop_to_bounding_box(predicted_mask,
-                                                       offsets[0], offsets[1],
-                                                       image_shape[0],
-                                                       image_shape[1])
-        mask = tf.image.crop_to_bounding_box(mask, 0, 0, image_shape[0],
-                                             image_shape[1])
-        valid_mask = tf.image.crop_to_bounding_box(valid_mask, 0, 0,
-                                                   image_shape[0],
-                                                   image_shape[1])
-
-        predicted_mask = tf.argmax(predicted_mask, axis=2)
-        flatten_predictions = tf.reshape(predicted_mask, shape=[1, -1])
-        flatten_masks = tf.reshape(mask, shape=[1, -1])
-        flatten_valid_masks = tf.reshape(valid_mask, shape=[1, -1])
-        super(MeanIoU, self).update_state(
-            flatten_masks, flatten_predictions,
-            tf.cast(flatten_valid_masks, tf.float32))
-
+      # Scale back predictions to original image shapes and pad to mask size.
+      # Note: instead of cropping the masks to image shape (dynamic), here we
+      # pad the rescaled predictions to mask size (fixed). And update the
+      # valid_masks to mask out the pixels outside the original image shape.
+      predictions, image_shape_masks = _rescale_and_pad_predictions(
+          predictions, images_info, output_size=masks_size)
+      # Only the area within the original image shape is valid.
+      # (batch_size, height, width, 1)
+      valid_masks = tf.cast(valid_masks, tf.bool) & tf.expand_dims(
+          image_shape_masks, axis=-1)
     else:
       predictions = tf.image.resize(
-          predictions,
-          tf.shape(masks)[1:3],
-          method=tf.image.ResizeMethod.BILINEAR)
-      predictions = tf.argmax(predictions, axis=3)
-      flatten_predictions = tf.reshape(predictions, shape=[-1])
-      flatten_masks = tf.reshape(masks, shape=[-1])
-      flatten_valid_masks = tf.reshape(valid_masks, shape=[-1])
+          predictions, masks_size, method=tf.image.ResizeMethod.BILINEAR)
 
-      super().update_state(flatten_masks, flatten_predictions,
-                           tf.cast(flatten_valid_masks, tf.float32))
+    predictions = tf.argmax(predictions, axis=3)
+    flatten_predictions = tf.reshape(predictions, shape=[-1])
+    flatten_masks = tf.reshape(masks, shape=[-1])
+    flatten_valid_masks = tf.reshape(valid_masks, shape=[-1])
+
+    super().update_state(
+        y_true=flatten_masks,
+        y_pred=flatten_predictions,
+        sample_weight=tf.cast(flatten_valid_masks, tf.float32))
 
 
 class PerClassIoU(iou.PerClassIoU):
@@ -153,8 +133,8 @@ class PerClassIoU(iou.PerClassIoU):
 
     Args:
       y_true: `dict`, dictionary with the following name, and key values.
-        - masks: [batch, width, height, 1], groundtruth masks.
-        - valid_masks: [batch, width, height, 1], valid elements in the mask.
+        - masks: [batch, height, width, 1], groundtruth masks.
+        - valid_masks: [batch, height, width, 1], valid elements in the mask.
         - image_info: [batch, 4, 2], a tensor that holds information about
           original and preprocessed images. Each entry is in the format of
           [[original_height, original_width], [input_height, input_width],
@@ -162,7 +142,7 @@ class PerClassIoU(iou.PerClassIoU):
           desired_width] is the actual scaled image size, and [y_scale, x_scale]
           is the scaling factor, which is the ratio of scaled dimension /
           original dimension.
-      y_pred: Tensor [batch, width_p, height_p, num_classes], predicated masks.
+      y_pred: Tensor [batch, height_p, width_p, num_classes], predicated masks.
     """
     predictions = y_pred
     masks = y_true['masks']
@@ -177,51 +157,83 @@ class PerClassIoU(iou.PerClassIoU):
 
     # Ignore mask elements is set to zero for argmax op.
     masks = tf.where(valid_masks, masks, tf.zeros_like(masks))
+    masks_size = tf.shape(masks)[1:3]
 
     if self._rescale_predictions:
-      # This part can only run on cpu/gpu due to dynamic image resizing.
-      for i in range(tf.shape(predictions)[0]):
-        mask = masks[i]
-        valid_mask = valid_masks[i]
-        predicted_mask = predictions[i]
-        image_info = images_info[i]
-
-        rescale_size = tf.cast(
-            tf.math.ceil(image_info[1, :] / image_info[2, :]), tf.int32)
-        image_shape = tf.cast(image_info[0, :], tf.int32)
-        offsets = tf.cast(image_info[3, :], tf.int32)
-
-        predicted_mask = tf.image.resize(
-            predicted_mask,
-            rescale_size,
-            method=tf.image.ResizeMethod.BILINEAR)
-
-        predicted_mask = tf.image.crop_to_bounding_box(predicted_mask,
-                                                       offsets[0], offsets[1],
-                                                       image_shape[0],
-                                                       image_shape[1])
-        mask = tf.image.crop_to_bounding_box(mask, 0, 0, image_shape[0],
-                                             image_shape[1])
-        valid_mask = tf.image.crop_to_bounding_box(valid_mask, 0, 0,
-                                                   image_shape[0],
-                                                   image_shape[1])
-
-        predicted_mask = tf.argmax(predicted_mask, axis=2)
-        flatten_predictions = tf.reshape(predicted_mask, shape=[1, -1])
-        flatten_masks = tf.reshape(mask, shape=[1, -1])
-        flatten_valid_masks = tf.reshape(valid_mask, shape=[1, -1])
-        super().update_state(flatten_masks, flatten_predictions,
-                             tf.cast(flatten_valid_masks, tf.float32))
-
+      # Scale back predictions to original image shapes and pad to mask size.
+      # Note: instead of cropping the masks to image shape (dynamic), here we
+      # pad the rescaled predictions to mask size (fixed). And update the
+      # valid_masks to mask out the pixels outside the original image shape.
+      predictions, image_shape_masks = _rescale_and_pad_predictions(
+          predictions, images_info, output_size=masks_size)
+      # Only the area within the original image shape is valid.
+      # (batch_size, height, width, 1)
+      valid_masks = tf.cast(valid_masks, tf.bool) & tf.expand_dims(
+          image_shape_masks, axis=-1)
     else:
       predictions = tf.image.resize(
-          predictions,
-          tf.shape(masks)[1:3],
-          method=tf.image.ResizeMethod.BILINEAR)
-      predictions = tf.argmax(predictions, axis=3)
-      flatten_predictions = tf.reshape(predictions, shape=[-1])
-      flatten_masks = tf.reshape(masks, shape=[-1])
-      flatten_valid_masks = tf.reshape(valid_masks, shape=[-1])
+          predictions, masks_size, method=tf.image.ResizeMethod.BILINEAR)
 
-      super().update_state(flatten_masks, flatten_predictions,
-                           tf.cast(flatten_valid_masks, tf.float32))
+    predictions = tf.argmax(predictions, axis=3)
+    flatten_predictions = tf.reshape(predictions, shape=[-1])
+    flatten_masks = tf.reshape(masks, shape=[-1])
+    flatten_valid_masks = tf.reshape(valid_masks, shape=[-1])
+
+    super().update_state(
+        y_true=flatten_masks,
+        y_pred=flatten_predictions,
+        sample_weight=tf.cast(flatten_valid_masks, tf.float32))
+
+
+def _rescale_and_pad_predictions(predictions, images_info, output_size):
+  """Scales back predictions to original image shapes and pads to output size.
+
+  Args:
+    predictions: A tensor in shape [batch, height, width, num_classes] which
+      stores the model predictions.
+    images_info: A tensor in shape [batch, 4, 2] that holds information about
+      original and preprocessed images. Each entry is in the format of
+      [[original_height, original_width], [input_height, input_width], [y_scale,
+      x_scale], [y_offset, x_offset]], where [desired_height, desired_width] is
+      the actual scaled image size, and [y_scale, x_scale] is the scaling
+      factor, which is the ratio of scaled dimension / original dimension.
+    output_size: A list/tuple/tensor stores the size of the padded output in
+      [output_height, output_width].
+
+  Returns:
+    predictions: A tensor in shape [batch, output_height, output_width,
+      num_classes] which stores the rescaled and padded predictions.
+    image_shape_masks: A bool tensor in shape [batch, output_height,
+      output_width] where the pixels inside the original image shape are true,
+      otherwise false.
+  """
+  # (batch_size, 2)
+  image_shape = tf.cast(images_info[:, 0, :], tf.int32)
+  desired_size = tf.cast(images_info[:, 1, :], tf.float32)
+  image_scale = tf.cast(images_info[:, 2, :], tf.float32)
+  offset = tf.cast(images_info[:, 3, :], tf.int32)
+  rescale_size = tf.cast(tf.math.ceil(desired_size / image_scale), tf.int32)
+
+  # Rescale the predictions, then crop to the original image shape and
+  # finally pad zeros to match the mask size.
+  predictions = (
+      spatial_transform_ops.bilinear_resize_with_crop_and_pad(
+          predictions,
+          rescale_size,
+          crop_offset=offset,
+          crop_size=image_shape,
+          output_size=output_size))
+
+  # (batch_size, 2)
+  y0_x0 = tf.broadcast_to(
+      tf.constant([[0, 0]], dtype=image_shape.dtype), tf.shape(image_shape))
+  # (batch_size, 4)
+  image_shape_bbox = tf.concat([y0_x0, image_shape], axis=1)
+  # (batch_size, height, width)
+  image_shape_masks = box_ops.bbox2mask(
+      bbox=image_shape_bbox,
+      image_height=output_size[0],
+      image_width=output_size[1],
+      dtype=tf.bool)
+
+  return predictions, image_shape_masks
