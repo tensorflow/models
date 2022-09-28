@@ -335,7 +335,9 @@ class TransformerScaffold(tf.keras.layers.Layer):
                                                training=training)
         layer_output += source_attention_output
       else:
-        # if not norm_first, assume that the feedforwad does apply layer norm
+        # Attention: if not norm_first, assume that the feedforwad does apply
+        # layer norm. The feedford also apply residual connection. Please
+        # read  the `GatedFeedforward` as a concrete example.
         layer_output = self._feedforward_block(attention_output,
                                                training=training)
 
