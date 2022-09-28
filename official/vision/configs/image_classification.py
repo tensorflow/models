@@ -15,7 +15,7 @@
 """Image classification configuration definition."""
 import dataclasses
 import os
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -37,6 +37,7 @@ class DataConfig(cfg.DataConfig):
   is_multilabel: bool = False
   aug_rand_hflip: bool = True
   aug_crop: Optional[bool] = True
+  crop_area_range: Optional[Tuple[float, float]] = (0.08, 1.0)
   aug_type: Optional[
       common.Augmentation] = None  # Choose from AutoAugment and RandAugment.
   color_jitter: float = 0.
