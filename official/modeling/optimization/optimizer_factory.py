@@ -29,8 +29,8 @@ from official.modeling.optimization.configs import optimization_config as opt_cf
 
 # Optimizer CLS to be used in both legacy and new path.
 SHARED_OPTIMIZERS = {
-    # TODO(chenmoneygithub): experimental.SGD
-    # TODO(chenmoneygithub): experimental.Adam
+    'sgd_experimental': tf.keras.optimizers.experimental.SGD,
+    'adam_experimental': tf.keras.optimizers.experimental.Adam,
     'adamw': legacy_adamw.AdamWeightDecay,
     'adamw_experimental': tf.keras.optimizers.experimental.AdamW,
     'lamb': tfa_optimizers.LAMB,
