@@ -128,9 +128,6 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
                 depth_multiplier=1,
                 kernel_size=kernel_size,
                 padding='same',
-                depthwise_regularizer=self.kernel_regularizer,
-                depthwise_initializer=tf_utils.clone_initializer(
-                    self.kernel_initializer),
                 dilation_rate=dilation_rate,
                 use_bias=False)
         ]
