@@ -60,7 +60,8 @@ from official.nlp.modeling.layers.text_layers import BertTokenizer
 from official.nlp.modeling.layers.text_layers import FastWordpieceBertTokenizer
 from official.nlp.modeling.layers.text_layers import SentencepieceTokenizer
 from official.nlp.modeling.layers.tn_transformer_expand_condense import TNTransformerExpandCondense
-from official.nlp.modeling.layers.transformer import *
+from official.nlp.modeling.layers.transformer import Transformer
+from official.nlp.modeling.layers.transformer import TransformerDecoderBlock
 from official.nlp.modeling.layers.transformer_encoder_block import TransformerEncoderBlock
 from official.nlp.modeling.layers.transformer_scaffold import TransformerScaffold
 from official.nlp.modeling.layers.transformer_xl import TransformerXL

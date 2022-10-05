@@ -15,6 +15,7 @@
 """Keras-based transformer block layer."""
 # pylint: disable=g-classes-have-attributes
 
+from absl import logging
 import gin
 import tensorflow as tf
 
@@ -31,6 +32,9 @@ class Transformer(transformer_encoder_block.TransformerEncoderBlock):
 
   This layer implements the Transformer from "Attention Is All You Need".
   (https://arxiv.org/abs/1706.03762).
+
+  **Warning: this layer is deprecated. Please don't use it. Use the
+  `TransformerEncoderBlock` layer instead.**
 
   Args:
     num_attention_heads: Number of attention heads.
@@ -98,6 +102,8 @@ class Transformer(transformer_encoder_block.TransformerEncoderBlock):
         inner_dropout=intermediate_dropout,
         attention_initializer=attention_initializer,
         **kwargs)
+    logging.warning("The `Transformer` layer is deprecated. Please directly "
+                    "use `TransformerEncoderBlock`.")
 
   def get_config(self):
     return {
