@@ -308,7 +308,6 @@ class SemanticSegmentationTask(base_task.Task):
       self.iou_metric.update_state(labels, outputs['logits'])
     if metrics:
       self.process_metrics(metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in metrics})
 
     return logs
 
