@@ -549,6 +549,6 @@ class InputReader:
 
     if self._deterministic is not None:
       options = tf.data.Options()
-      options.experimental_deterministic = self._deterministic
+      options.deterministic = self._deterministic
       dataset = dataset.with_options(options)
     return dataset.prefetch(self._prefetch_buffer_size)
