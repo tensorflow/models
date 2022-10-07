@@ -146,7 +146,7 @@ message Ssd {
   optional MaskHead mask_head_config = 25;
 }
 
-// Next id: 21.
+// Next id: 22.
 message SsdFeatureExtractor {
   reserved 6;
 
@@ -205,5 +205,10 @@ message SsdFeatureExtractor {
 
   // The SpaghettiNet architecture name.
   optional string spaghettinet_arch_name = 20;
+
+  // Whether to use hard-swish
+  // (https://pytorch.org/docs/stable/generated/torch.nn.Hardswish.html) instead
+  // of swish for efficientnet backbone.
+  optional bool use_hardswish = 21 [default = false];
 }
 
