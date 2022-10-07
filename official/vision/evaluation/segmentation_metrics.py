@@ -16,7 +16,6 @@
 
 import tensorflow as tf
 
-from official.vision.evaluation import iou
 from official.vision.ops import box_ops
 from official.vision.ops import spatial_transform_ops
 
@@ -31,8 +30,11 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
   size.
   """
 
-  def __init__(
-      self, num_classes, rescale_predictions=False, name=None, dtype=None):
+  def __init__(self,
+               num_classes,
+               rescale_predictions=False,
+               name=None,
+               dtype=None):
     """Constructs Segmentation evaluator class.
 
     Args:
@@ -103,86 +105,23 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
         sample_weight=tf.cast(flatten_valid_masks, tf.float32))
 
 
-class PerClassIoU(iou.PerClassIoU):
-  """Per Class IoU metric for semantic segmentation.
+class PerClassIoU(MeanIoU):
+  """Per class IoU metric for semantic segmentation."""
 
-  This class utilizes iou.PerClassIoU to perform batched per class
-  iou when both input images and groundtruth masks are resized to the same size
-  (rescale_predictions=False). It also computes per class iou on groundtruth
-  original sizes, in which case, each prediction is rescaled back to the
-  original image size.
-  """
+  def result(self):
+    """Compute IoU for each class via the confusion matrix."""
+    sum_over_row = tf.cast(
+        tf.reduce_sum(self.total_cm, axis=0), dtype=self._dtype)
+    sum_over_col = tf.cast(
+        tf.reduce_sum(self.total_cm, axis=1), dtype=self._dtype)
+    true_positives = tf.cast(
+        tf.linalg.tensor_diag_part(self.total_cm), dtype=self._dtype)
 
-  def __init__(
-      self, num_classes, rescale_predictions=False, name=None, dtype=None):
-    """Constructs Segmentation evaluator class.
+    # sum_over_row + sum_over_col =
+    #     2 * true_positives + false_positives + false_negatives.
+    denominator = sum_over_row + sum_over_col - true_positives
 
-    Args:
-      num_classes: `int`, number of classes.
-      rescale_predictions: `bool`, whether to scale back prediction to original
-        image sizes. If True, y_true['image_info'] is used to rescale
-        predictions.
-      name: `str`, name of the metric instance..
-      dtype: data type of the metric result.
-    """
-    self._rescale_predictions = rescale_predictions
-    super().__init__(num_classes=num_classes, name=name, dtype=dtype)
-
-  def update_state(self, y_true, y_pred):
-    """Updates metric state.
-
-    Args:
-      y_true: `dict`, dictionary with the following name, and key values.
-        - masks: [batch, height, width, 1], groundtruth masks.
-        - valid_masks: [batch, height, width, 1], valid elements in the mask.
-        - image_info: [batch, 4, 2], a tensor that holds information about
-          original and preprocessed images. Each entry is in the format of
-          [[original_height, original_width], [input_height, input_width],
-          [y_scale, x_scale], [y_offset, x_offset]], where [desired_height,
-          desired_width] is the actual scaled image size, and [y_scale, x_scale]
-          is the scaling factor, which is the ratio of scaled dimension /
-          original dimension.
-      y_pred: Tensor [batch, height_p, width_p, num_classes], predicated masks.
-    """
-    predictions = y_pred
-    masks = y_true['masks']
-    valid_masks = y_true['valid_masks']
-    images_info = y_true['image_info']
-
-    if isinstance(predictions, tuple) or isinstance(predictions, list):
-      predictions = tf.concat(predictions, axis=0)
-      masks = tf.concat(masks, axis=0)
-      valid_masks = tf.concat(valid_masks, axis=0)
-      images_info = tf.concat(images_info, axis=0)
-
-    # Ignore mask elements is set to zero for argmax op.
-    masks = tf.where(valid_masks, masks, tf.zeros_like(masks))
-    masks_size = tf.shape(masks)[1:3]
-
-    if self._rescale_predictions:
-      # Scale back predictions to original image shapes and pad to mask size.
-      # Note: instead of cropping the masks to image shape (dynamic), here we
-      # pad the rescaled predictions to mask size (fixed). And update the
-      # valid_masks to mask out the pixels outside the original image shape.
-      predictions, image_shape_masks = _rescale_and_pad_predictions(
-          predictions, images_info, output_size=masks_size)
-      # Only the area within the original image shape is valid.
-      # (batch_size, height, width, 1)
-      valid_masks = tf.cast(valid_masks, tf.bool) & tf.expand_dims(
-          image_shape_masks, axis=-1)
-    else:
-      predictions = tf.image.resize(
-          predictions, masks_size, method=tf.image.ResizeMethod.BILINEAR)
-
-    predictions = tf.argmax(predictions, axis=3)
-    flatten_predictions = tf.reshape(predictions, shape=[-1])
-    flatten_masks = tf.reshape(masks, shape=[-1])
-    flatten_valid_masks = tf.reshape(valid_masks, shape=[-1])
-
-    super().update_state(
-        y_true=flatten_masks,
-        y_pred=flatten_predictions,
-        sample_weight=tf.cast(flatten_valid_masks, tf.float32))
+    return tf.math.divide_no_nan(true_positives, denominator)
 
 
 def _rescale_and_pad_predictions(predictions, images_info, output_size):
