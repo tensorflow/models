@@ -345,7 +345,7 @@ def crop_and_resize_instance_masks(masks, boxes, mask_size):
   return unpack_first2_dims(cropped_masks, batch_size, num_instances)
 
 
-def fill_boxes(boxes, height, width):
+def fill_boxes(boxes, height, width, expand=0):
   """Fills the area included in the boxes with 1s.
 
   Args:
@@ -353,12 +353,13 @@ def fill_boxes(boxes, height, width):
       in the normalized coordinate space.
     height: int, height of the output image.
     width: int, width of the output image.
+    expand: int, the number of pixels to expand the box by.
 
   Returns:
     filled_boxes: A [batch_size, num_instances, height, width] shaped float
       tensor with 1s in the area that falls inside each box.
   """
-
+  expand = float(expand)
   boxes_abs = boxes_batch_normalized_to_absolute_coordinates(
       boxes, height, width)
   ymin, xmin, ymax, xmax = tf.unstack(
@@ -368,6 +369,11 @@ def fill_boxes(boxes, height, width):
   ygrid, xgrid = tf.cast(ygrid, tf.float32), tf.cast(xgrid, tf.float32)
   ygrid, xgrid = (ygrid[tf.newaxis, tf.newaxis, :, :],
                   xgrid[tf.newaxis, tf.newaxis, :, :])
+
+  ymin -= expand
+  xmin -= expand
+  ymax += expand
+  xmax += expand
 
   filled_boxes = tf.logical_and(
       tf.logical_and(ygrid >= ymin, ygrid <= ymax),
@@ -1567,7 +1573,7 @@ class DeepMACMetaArch(center_net_meta_arch.CenterNetMetaArch):
     per_pixel_loss = -(similarity_mask *
                        tf.math.log(same_mask_label_probability))
     # TODO(vighneshb) explore if shrinking the box by 1px helps.
-    box_mask = fill_boxes(boxes, height, width)
+    box_mask = fill_boxes(boxes, height, width, expand=2)
     box_mask_expanded = box_mask[tf.newaxis]
 
     per_pixel_loss = per_pixel_loss * box_mask_expanded
