@@ -71,7 +71,7 @@ class KernelAttentionTest(tf.test.TestCase, parameterized.TestCase):
     kv_cache = tf.zeros(
         (batch_size, num_heads, key_dim,
          num_random_features if num_random_features > 0 else key_dim))
-    k_sum_cache = tf.zeros((batch_size, 1, key_dim))
+    k_sum_cache = tf.zeros((batch_size, num_heads, key_dim))
     stream_output = []
     cache = {"kv": kv_cache, "k_sum": k_sum_cache}
     for i in range(num_chunks):
