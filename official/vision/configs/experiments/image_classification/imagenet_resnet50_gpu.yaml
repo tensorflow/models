@@ -15,7 +15,7 @@ task:
     one_hot: true
     label_smoothing: 0.1
   train_data:
-    input_path: 'imagenet-2012-tfrecord/train*'
+    input_path: 'gs://mlcompass-data/imagenet/imagenet-2012-tfrecord/train*'
     is_training: true
     global_batch_size: 2048
     dtype: 'float16'
@@ -23,7 +23,7 @@ task:
     # static value: 32. See b/218880025.
     prefetch_buffer_size: 32
   validation_data:
-    input_path: 'imagenet-2012-tfrecord/valid*'
+    input_path: 'gs://mlcompass-data/imagenet/imagenet-2012-tfrecord/valid*'
     is_training: false
     global_batch_size: 2048
     dtype: 'float16'

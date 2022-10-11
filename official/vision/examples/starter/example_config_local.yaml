@@ -3,12 +3,12 @@ task:
     num_classes: 1001
     input_size: [128, 128, 3]
   train_data:
-    input_path: 'imagenet-2012-tfrecord/train*'
+    input_path: 'gs://mlcompass-data/imagenet/imagenet-2012-tfrecord/train*'
     is_training: true
     global_batch_size: 64
     dtype: 'bfloat16'
   validation_data:
-    input_path: 'imagenet-2012-tfrecord/valid*'
+    input_path: 'gs://mlcompass-data/imagenet/imagenet-2012-tfrecord/valid*'
     is_training: false
     global_batch_size: 64
     dtype: 'bfloat16'
