@@ -24,6 +24,7 @@ import numpy as np
 from orbit import controller
 from orbit import runner
 from orbit import standard_runner
+import orbit.utils
 
 import tensorflow as tf
 
@@ -698,12 +699,22 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertLen(
         summaries_with_matching_keyword("eval_loss", self.model_dir), 2)
 
-  def test_evaluate_with_nested_summaries(self):
+  @parameterized.named_parameters(("DefaultSummary", False),
+                                  ("InjectSummary", True))
+  def test_evaluate_with_nested_summaries(self, inject_summary_manager):
     test_evaluator = TestEvaluatorWithNestedSummary()
+    if inject_summary_manager:
+      summary_manager = orbit.utils.SummaryManager(
+          self.model_dir,
+          tf.summary.scalar,
+          global_step=tf.Variable(0, dtype=tf.int64))
+    else:
+      summary_manager = None
     test_controller = controller.Controller(
         evaluator=test_evaluator,
         global_step=tf.Variable(0, dtype=tf.int64),
-        eval_summary_dir=self.model_dir)
+        eval_summary_dir=self.model_dir,
+        summary_manager=summary_manager)
     test_controller.evaluate(steps=5)
 
     self.assertNotEmpty(

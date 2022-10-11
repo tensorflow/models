@@ -25,5 +25,6 @@ from orbit.utils.loop_fns import create_tf_while_loop_fn
 from orbit.utils.loop_fns import LoopFnWithSummaries
 
 from orbit.utils.summary_manager import SummaryManager
+from orbit.utils.summary_manager_interface import SummaryManagerInterface
 
 from orbit.utils.tpu_summaries import OptionalSummariesFunction
