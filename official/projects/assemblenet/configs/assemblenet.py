@@ -61,7 +61,7 @@ def flat_lists_to_blocks(model_structures, model_edge_weights):
     if node[0] < 0:
       block = BlockSpec(level=node[0], temporal_dilation=node[1])
     else:
-      block = BlockSpec(
+      block = BlockSpec(  # pytype: disable=wrong-arg-types
           level=node[0],
           input_blocks=node[1],
           num_filters=node[2],
