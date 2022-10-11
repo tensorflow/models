@@ -195,11 +195,11 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
       training = tf.keras.backend.learning_phase()
     result = []
     for i, layer in enumerate(self.aspp_layers):
-      result.append(tf.cast(layer(inputs, training=training), inputs.dtype))
+      x = layer(inputs, training=training)
+      # Apply resize layer to the end of the last set of layers.
       if i == len(self.aspp_layers) - 1:
-        input_shape = inputs.get_shape().as_list()
-        height, width = input_shape[1:3]
-        result[-1] = tf.image.resize(result[-1], [height, width])
+        x = tf.image.resize(tf.cast(x, tf.float32), tf.shape(inputs)[1:3])
+      result.append(tf.cast(x, inputs.dtype))
     result = tf.concat(result, axis=-1)
     result = self.projection(result, training=training)
     return result
