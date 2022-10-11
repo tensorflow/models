@@ -17,7 +17,7 @@
 Includes configurations and factory methods.
 """
 import dataclasses
-from typing import Optional
+from typing import Optional, Sequence
 
 import gin
 import tensorflow as tf
@@ -243,6 +243,29 @@ class QueryBertConfig(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class FNetEncoderConfig(hyperparams.Config):
+  """FNet encoder configuration."""
+  vocab_size: int = 30522
+  hidden_size: int = 768
+  num_layers: int = 12
+  num_attention_heads: int = 12
+  inner_activation: str = "gelu"
+  inner_dim: int = 3072
+  output_dropout: float = 0.1
+  attention_dropout: float = 0.1
+  max_sequence_length: int = 512
+  type_vocab_size: int = 2
+  initializer_range: float = 0.02
+  embedding_width: Optional[int] = None
+  output_range: Optional[int] = None
+  return_all_encoder_outputs: bool = False
+  # Pre/Post-LN Transformer
+  norm_first: bool = False
+  use_fft: bool = False
+  attention_layers: Sequence[int] = ()
+
+
+@dataclasses.dataclass
 class EncoderConfig(hyperparams.OneOfConfig):
   """Encoder configuration."""
   type: Optional[str] = "bert"
@@ -255,6 +278,7 @@ class EncoderConfig(hyperparams.OneOfConfig):
   reuse: ReuseEncoderConfig = ReuseEncoderConfig()
   xlnet: XLNetEncoderConfig = XLNetEncoderConfig()
   query_bert: QueryBertConfig = QueryBertConfig()
+  fnet: FNetEncoderConfig = FNetEncoderConfig()
   # If `any` is used, the encoder building relies on any.BUILDER.
   any: hyperparams.Config = hyperparams.Config()
 
@@ -561,6 +585,27 @@ def build_encoder(config: EncoderConfig,
         return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs,
         dict_outputs=True,
         norm_first=encoder_cfg.norm_first)
+
+  if encoder_type == "fnet":
+    return networks.FNet(
+        vocab_size=encoder_cfg.vocab_size,
+        hidden_size=encoder_cfg.hidden_size,
+        num_layers=encoder_cfg.num_layers,
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        inner_dim=encoder_cfg.inner_dim,
+        inner_activation=tf_utils.get_activation(encoder_cfg.inner_activation),
+        output_dropout=encoder_cfg.output_dropout,
+        attention_dropout=encoder_cfg.attention_dropout,
+        max_sequence_length=encoder_cfg.max_sequence_length,
+        type_vocab_size=encoder_cfg.type_vocab_size,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        output_range=encoder_cfg.output_range,
+        embedding_width=encoder_cfg.embedding_width,
+        embedding_layer=embedding_layer,
+        norm_first=encoder_cfg.norm_first,
+        use_fft=encoder_cfg.use_fft,
+        attention_layers=encoder_cfg.attention_layers)
 
   bert_encoder_cls = networks.BertEncoder
   if encoder_type == "bert_v2":
