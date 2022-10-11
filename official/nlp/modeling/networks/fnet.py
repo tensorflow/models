@@ -43,7 +43,7 @@ class FNet(tf.keras.layers.Layer):
   This implementation defaults to the canonical FNet Base model, but the network
   also supports more general mixing models (e.g. 'Linear', 'HNet') and hybrid
   models (e.g. 'FNet-Hybrid') models that use both mixing and self-attention
-  layers.
+  layers. The input length is fixed to 'max_sequence_length'.
 
   Args:
     vocab_size: The size of the token vocabulary.
@@ -61,8 +61,9 @@ class FNet(tf.keras.layers.Layer):
       good rule of thumb is to place them in the final few layers.
     num_attention_heads: The number of attention heads for each transformer. The
       hidden size must be divisible by the number of attention heads.
-    max_sequence_length: The maximum sequence length that this encoder can
-      consume. This determines the variable shape for positional embeddings.
+    max_sequence_length: The only sequence length that this encoder can
+      consume. This determines the variable shape for positional embeddings and
+      the size of the mixing matrices.
     type_vocab_size: The number of types that the 'type_ids' input can take.
     inner_dim: The output dimension of the first Dense layer in a two-layer
       feedforward network for each transformer.
@@ -220,19 +221,28 @@ class FNet(tf.keras.layers.Layer):
 
     if with_dense_inputs:
       self.inputs = dict(
-          input_word_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
-          input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
-          input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          input_word_ids=tf.keras.Input(
+              shape=(max_sequence_length,), dtype=tf.int32),
+          input_mask=tf.keras.Input(
+              shape=(max_sequence_length,), dtype=tf.int32),
+          input_type_ids=tf.keras.Input(
+              shape=(max_sequence_length,), dtype=tf.int32),
           dense_inputs=tf.keras.Input(
-              shape=(None, embedding_width), dtype=tf.float32),
-          dense_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
-          dense_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
+              shape=(max_sequence_length, embedding_width), dtype=tf.float32),
+          dense_mask=tf.keras.Input(
+              shape=(max_sequence_length,), dtype=tf.int32),
+          dense_type_ids=tf.keras.Input(
+              shape=(max_sequence_length,), dtype=tf.int32),
       )
     else:
       self.inputs = dict(
-          input_word_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
-          input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
-          input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32))
+          input_word_ids=tf.keras.Input(
+              shape=(max_sequence_length,), dtype=tf.int32),
+          input_mask=tf.keras.Input(
+              shape=(max_sequence_length,), dtype=tf.int32),
+          input_type_ids=tf.keras.Input(
+              shape=(max_sequence_length,), dtype=tf.int32))
+    self._max_sequence_length = max_sequence_length
 
   def call(self, inputs):
     word_embeddings = None
@@ -257,6 +267,12 @@ class FNet(tf.keras.layers.Layer):
       word_embeddings = tf.concat([word_embeddings, dense_inputs], axis=1)
       type_ids = tf.concat([type_ids, dense_type_ids], axis=1)
       mask = tf.concat([mask, dense_mask], axis=1)
+
+    seq_length = word_embeddings.shape[1]
+    if seq_length != self._max_sequence_length:
+      raise ValueError('FNet: Sequence length must be the same as '
+                       '`max_sequence_length` ({}), but it is {}.'.format(
+                           self._max_sequence_length, seq_length))
 
     # Absolute position embeddings.
     position_embeddings = self._position_embedding_layer(word_embeddings)
