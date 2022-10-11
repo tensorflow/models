@@ -17,7 +17,7 @@
 import pprint
 import time
 
-from typing import Any, Callable, Iterable, Optional, Union
+from typing import Callable, Iterable, Optional, Union
 
 from absl import logging
 
@@ -101,8 +101,8 @@ class Controller:
       summary_dir: Optional[str] = None,
       # Evaluation related
       eval_summary_dir: Optional[str] = None,
-      summary_manager: Optional[Any] = None,
-      eval_summary_manager: Optional[Any] = None):
+      summary_manager: Optional[utils.SummaryManagerInterface] = None,
+      eval_summary_manager: Optional[utils.SummaryManagerInterface] = None):
     """Initializes a `Controller` instance.
 
     Note that if `checkpoint_manager` is provided and there are checkpoints in
