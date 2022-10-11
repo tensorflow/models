@@ -1146,6 +1146,8 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
       self._bn_axis = 1
 
   def build(self, input_shape):
+    height = input_shape[1]
+    width = input_shape[2]
     channels = input_shape[3]
 
     self.aspp_layers = []
@@ -1218,6 +1220,9 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
 
     self.aspp_layers.append(pooling + [conv2, norm2])
 
+    self._resizing_layer = tf.keras.layers.Resizing(
+        height, width, interpolation=self._interpolation, dtype=tf.float32)
+
     self._projection = [
         tf.keras.layers.Conv2D(
             filters=self._output_channels,
@@ -1249,9 +1254,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
 
       # Apply resize layer to the end of the last set of layers.
       if i == len(self.aspp_layers) - 1:
-        input_shape = inputs.get_shape().as_list()
-        height, width = input_shape[1:3]
-        x = tf.image.resize(x, [height, width], self._interpolation)
+        x = self._resizing_layer(x)
 
       result.append(tf.cast(x, inputs.dtype))
     x = self._concat_layer(result)
