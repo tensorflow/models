@@ -85,7 +85,7 @@ configuration objects:
     checkpoints
 
 For a complete example using the Model Garden training experiment framework, see
-the [Image classification with Model Garden](vision/image_classification.ipynb)
+the [Image classification with Model Garden](https://www.tensorflow.org/tfmodels/vision/image_classification)
 tutorial. For information on the training experiment framework, check out the
 [TensorFlow Models API documentation](https://tensorflow.org/api_docs/python/tfm/core).
 If you are looking for a solution to manage training loops for your model
