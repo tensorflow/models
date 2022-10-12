@@ -189,8 +189,7 @@ def representative_dataset_gen(export_config):
   """Gets a python generator of numpy arrays for the given dataset."""
   quantization_config = export_config.quantization_config
   dataset = tfds.builder(
-      quantization_config.dataset_name,
-      data_dir=quantization_config.dataset_dir)
+      quantization_config.dataset_name, try_gcs=True)
   dataset.download_and_prepare()
   data = dataset.as_dataset()[quantization_config.dataset_split]
   iterator = data.as_numpy_iterator()
@@ -207,7 +206,8 @@ def configure_tflite_converter(export_config, converter):
   """Common code for picking up quantization parameters."""
   quantization_config = export_config.quantization_config
   if quantization_config.quantize:
-    if quantization_config.dataset_dir is None:
+    if (quantization_config.dataset_dir is
+        None) and (quantization_config.dataset_name is None):
       raise ValueError(
           'Must provide a representative dataset when quantizing the model.')
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
