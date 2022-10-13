@@ -575,14 +575,11 @@ def resize_and_crop_boxes(boxes,
     return boxes
 
 
-def resize_and_crop_masks(masks,
-                          image_scale,
-                          output_size,
-                          offset):
+def resize_and_crop_masks(masks, image_scale, output_size, offset):
   """Resizes boxes to output size with scale and offset.
 
   Args:
-    masks: `Tensor` of shape [N, H, W, 1] representing ground truth masks.
+    masks: `Tensor` of shape [N, H, W, C] representing ground truth masks.
     image_scale: 2D float `Tensor` representing scale factors that apply to
       [height, width] of input image.
     output_size: 2D `Tensor` or `int` representing [height, width] of target
@@ -591,13 +588,17 @@ def resize_and_crop_masks(masks,
       boxes.
 
   Returns:
-    masks: `Tensor` of shape [N, H, W, 1] representing the scaled masks.
+    masks: `Tensor` of shape [N, H, W, C] representing the scaled masks.
   """
   with tf.name_scope('resize_and_crop_masks'):
     mask_size = tf.cast(tf.shape(masks)[1:3], tf.float32)
+    num_channels = tf.shape(masks)[3]
     # Pad masks to avoid empty mask annotations.
-    masks = tf.concat(
-        [tf.zeros([1, mask_size[0], mask_size[1], 1]), masks], axis=0)
+    masks = tf.concat([
+        tf.zeros([1, mask_size[0], mask_size[1], num_channels],
+                 dtype=masks.dtype), masks
+    ],
+                      axis=0)
 
     scaled_size = tf.cast(image_scale * mask_size, tf.int32)
     scaled_masks = tf.image.resize(
