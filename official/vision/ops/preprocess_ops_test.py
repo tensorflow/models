@@ -241,6 +241,50 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
         np.array(expected_shape[:-1]) / np.array(input_shape[:-1]))
     self.assertAllEqual(image_info[3], [0, 0])
 
+  def test_resize_and_crop_masks(self):
+    # shape: (2, 1, 4, 3)
+    masks = tf.constant([[[
+        [0, 1, 2],
+        [3, 4, 5],
+        [6, 7, 8],
+        [9, 10, 11],
+    ]], [[
+        [12, 13, 14],
+        [15, 16, 17],
+        [18, 19, 20],
+        [21, 22, 23],
+    ]]])
+    output = preprocess_ops.resize_and_crop_masks(
+        masks, image_scale=[2.0, 0.5], output_size=[2, 3], offset=[1, 0])
+    # shape: (2, 2, 3, 3)
+    expected_output = tf.constant([
+        [
+            [
+                [3, 4, 5],
+                [9, 10, 11],
+                [0, 0, 0],
+            ],
+            [
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+            ],
+        ],
+        [
+            [
+                [15, 16, 17],
+                [21, 22, 23],
+                [0, 0, 0],
+            ],
+            [
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+            ],
+        ],
+    ])
+    self.assertAllEqual(expected_output, output)
+
 
 if __name__ == '__main__':
   tf.test.main()
