@@ -554,7 +554,7 @@ def build_spinenet(
   assert backbone_type == 'spinenet', (f'Inconsistent backbone type '
                                        f'{backbone_type}')
 
-  model_id = backbone_cfg.model_id
+  model_id = str(backbone_cfg.model_id)
   if model_id not in SCALING_MAP:
     raise ValueError(
         'SpineNet-{} is not a valid architecture.'.format(model_id))
