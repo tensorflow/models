@@ -24,6 +24,12 @@ from official.vision.ops import box_ops
 
 CENTER_CROP_FRACTION = 0.875
 
+# Calculated from the ImageNet training set
+MEAN_NORM = (0.485, 0.456, 0.406)
+STDDEV_NORM = (0.229, 0.224, 0.225)
+MEAN_RGB = tuple(255 * i for i in MEAN_NORM)
+STDDEV_RGB = tuple(255 * i for i in STDDEV_NORM)
+
 # Alias for convenience. PLEASE use `box_ops.horizontal_flip_boxes` directly.
 horizontal_flip_boxes = box_ops.horizontal_flip_boxes
 
@@ -66,8 +72,8 @@ def clip_or_pad_to_fixed_size(input_tensor, size, constant_values=0):
 
 
 def normalize_image(image: tf.Tensor,
-                    offset: Sequence[float] = (0.485, 0.456, 0.406),
-                    scale: Sequence[float] = (0.229, 0.224, 0.225)):
+                    offset: Sequence[float] = MEAN_NORM,
+                    scale: Sequence[float] = STDDEV_NORM):
   """Normalizes the image to zero mean and unit variance."""
   with tf.name_scope('normalize_image'):
     image = tf.image.convert_image_dtype(image, dtype=tf.float32)
@@ -75,10 +81,8 @@ def normalize_image(image: tf.Tensor,
 
 
 def normalize_scaled_float_image(image: tf.Tensor,
-                                 offset: Sequence[float] = (0.485, 0.456,
-                                                            0.406),
-                                 scale: Sequence[float] = (0.229, 0.224,
-                                                           0.225)):
+                                 offset: Sequence[float] = MEAN_NORM,
+                                 scale: Sequence[float] = STDDEV_NORM):
   """Normalizes a scaled float image to zero mean and unit variance.
 
   It assumes the input image is float dtype with values in [0, 1).
