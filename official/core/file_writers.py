@@ -33,13 +33,14 @@ def write_small_dataset(examples: Sequence[Union[tf.train.Example,
     examples: List of tf.train.Example or tf.train.SequenceExample.
     output_path: Output path for the dataset.
     file_type: A string indicating the file format, could be: 'tfrecord',
-      'tfrecord_compressed', 'riegeli'.
+      'tfrecords', 'tfrecord_compressed', 'tfrecords_gzip', 'riegeli'. The
+      string is case insensitive.
   """
   file_type = file_type.lower()
 
-  if file_type == 'tfrecord':
+  if file_type == 'tfrecord' or file_type == 'tfrecords':
     _write_tfrecord(examples, output_path)
-  elif file_type == 'tfrecord_compressed':
+  elif file_type == 'tfrecord_compressed' or file_type == 'tfrecords_gzip':
     _write_tfrecord(examples, output_path,
                     tf.io.TFRecordOptions(compression_type='GZIP'))
   elif file_type == 'riegeli':
