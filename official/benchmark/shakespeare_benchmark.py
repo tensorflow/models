@@ -331,7 +331,7 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
   def benchmark_xla_8_gpu(self):
     """Benchmark 8 gpu w/xla."""
     self._setup()
-    FLAGS.num_gpus = 1
+    FLAGS.num_gpus = 8
     FLAGS.batch_size = 64 * 8
     FLAGS.log_steps = 10
     FLAGS.enable_xla = True
