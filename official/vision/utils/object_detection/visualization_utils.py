@@ -679,7 +679,7 @@ def add_cdf_image_summary(values, name):
         np.arange(cumulative_values.size, dtype=np.float32) /
         cumulative_values.size)
     fig = plt.figure(frameon=False)
-    ax = fig.add_subplot('111')
+    ax = fig.add_subplot(1, 1, 1)
     ax.plot(fraction_of_examples, cumulative_values)
     ax.set_ylabel('cumulative normalized values')
     ax.set_xlabel('fraction of examples')
@@ -708,7 +708,7 @@ def add_hist_image_summary(values, bins, name):
   def hist_plot(values, bins):
     """Numpy function to plot hist."""
     fig = plt.figure(frameon=False)
-    ax = fig.add_subplot('111')
+    ax = fig.add_subplot(1, 1, 1)
     y, x = np.histogram(values, bins=bins)
     ax.plot(x[:-1], y)
     ax.set_ylabel('count')
