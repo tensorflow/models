@@ -23,3 +23,4 @@ from official.vision.modeling.backbones.resnet_deeplab import DilatedResNet
 from official.vision.modeling.backbones.revnet import RevNet
 from official.vision.modeling.backbones.spinenet import SpineNet
 from official.vision.modeling.backbones.spinenet_mobile import SpineNetMobile
+from official.vision.modeling.backbones.vit import VisionTransformer

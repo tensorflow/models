@@ -28,19 +28,48 @@ from official.vision.modeling import classification_model
 class ClassificationNetworkTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
+      (192 * 4, 3, 12, 192, 5524416),
+      (384 * 4, 6, 12, 384, 21665664),
+  )
+  def test_vision_transformer_creation(self, mlp_dim, num_heads, num_layers,
+                                       hidden_size, num_params):
+    """Test for creation of a Vision Transformer classifier."""
+    inputs = np.random.rand(2, 224, 224, 3)
+
+    tf.keras.backend.set_image_data_format('channels_last')
+
+    backbone = backbones.VisionTransformer(
+        mlp_dim=mlp_dim,
+        num_heads=num_heads,
+        num_layers=num_layers,
+        hidden_size=hidden_size,
+        input_specs=tf.keras.layers.InputSpec(shape=[None, 224, 224, 3]),
+    )
+    self.assertEqual(backbone.count_params(), num_params)
+
+    num_classes = 1000
+    model = classification_model.ClassificationModel(
+        backbone=backbone,
+        num_classes=num_classes,
+        dropout_rate=0.2,
+    )
+
+    logits = model(inputs)
+    self.assertAllEqual([2, num_classes], logits.numpy().shape)
+
+  @parameterized.parameters(
       (128, 50, 'relu'),
       (128, 50, 'relu'),
       (128, 50, 'swish'),
   )
-  def test_resnet_network_creation(
-      self, input_size, resnet_model_id, activation):
+  def test_resnet_network_creation(self, input_size, resnet_model_id,
+                                   activation):
     """Test for creation of a ResNet-50 classifier."""
     inputs = np.random.rand(2, input_size, input_size, 3)
 
     tf.keras.backend.set_image_data_format('channels_last')
 
-    backbone = backbones.ResNet(
-        model_id=resnet_model_id, activation=activation)
+    backbone = backbones.ResNet(model_id=resnet_model_id, activation=activation)
     self.assertEqual(backbone.count_params(), 23561152)
 
     num_classes = 1000

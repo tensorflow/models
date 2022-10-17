@@ -75,7 +75,7 @@ task_factory.register_task_cls(ImageClassificationTask)(
     image_classification.ImageClassificationTask)
 
 
-@exp_factory.register_config_factory('deit_imagenet_pretrain')
+@exp_factory.register_config_factory('legacy_deit_imagenet_pretrain')
 def image_classification_imagenet_deit_pretrain() -> cfg.ExperimentConfig:
   """Image classification on imagenet with vision transformer."""
   train_batch_size = 4096  # originally was 1024 but 4096 better for tpu v3-32
@@ -156,7 +156,7 @@ def image_classification_imagenet_deit_pretrain() -> cfg.ExperimentConfig:
   return config
 
 
-@exp_factory.register_config_factory('vit_imagenet_pretrain')
+@exp_factory.register_config_factory('legacy_vit_imagenet_pretrain')
 def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
   """Image classification on imagenet with vision transformer."""
   train_batch_size = 4096
@@ -220,7 +220,7 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
   return config
 
 
-@exp_factory.register_config_factory('vit_imagenet_finetune')
+@exp_factory.register_config_factory('legacy_vit_imagenet_finetune')
 def image_classification_imagenet_vit_finetune() -> cfg.ExperimentConfig:
   """Image classification on imagenet with vision transformer."""
   train_batch_size = 512

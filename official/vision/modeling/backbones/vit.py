@@ -13,19 +13,17 @@
 # limitations under the License.
 
 """VisionTransformer models."""
+
 from typing import Optional, Tuple
 
 from absl import logging
-
-# import immutabledict
 import tensorflow as tf
 
 from official.modeling import activations
-from official.projects.vit.modeling import nn_blocks
-from official.projects.vit.modeling.vit_specs import VIT_SPECS
 from official.vision.modeling.backbones import factory
+from official.vision.modeling.backbones.vit_specs import VIT_SPECS
+from official.vision.modeling.layers import nn_blocks
 from official.vision.modeling.layers import nn_layers
-
 
 layers = tf.keras.layers
 
@@ -67,9 +65,7 @@ class AddPositionEmbs(tf.keras.layers.Layer):
     self.pos_embedding = self.add_weight(
         'pos_embedding', pos_emb_shape, initializer=self.posemb_init)
 
-  def _interpolate(self,
-                   pos_embedding: tf.Tensor,
-                   from_shape: Tuple[int, int],
+  def _interpolate(self, pos_embedding: tf.Tensor, from_shape: Tuple[int, int],
                    to_shape: Tuple[int, int]) -> tf.Tensor:
     """Interpolates the positional embeddings."""
     logging.info('Interpolating postional embedding from length: %d to %d',
@@ -84,9 +80,10 @@ class AddPositionEmbs(tf.keras.layers.Layer):
     pos_embedding = self.pos_embedding
     # inputs.shape is (batch_size, seq_len, emb_dim).
     if inputs.shape[1] != pos_embedding.shape[1]:
-      pos_embedding = self._interpolate(pos_embedding,
-                                        from_shape=self.posemb_origin_shape,
-                                        to_shape=self.posemb_target_shape)
+      pos_embedding = self._interpolate(
+          pos_embedding,
+          from_shape=self.posemb_origin_shape,
+          to_shape=self.posemb_target_shape)
     pos_embedding = tf.cast(pos_embedding, inputs.dtype)
 
     return inputs + pos_embedding
@@ -262,7 +259,8 @@ class VisionTransformer(tf.keras.Model):
             class_name='TruncatedNormal', config=dict(stddev=.02)),
         init_stochastic_depth_rate=init_stochastic_depth_rate,
         pos_embed_origin_shape=pos_embed_shape,
-        pos_embed_target_shape=pos_embed_target_shape)(x)
+        pos_embed_target_shape=pos_embed_target_shape)(
+            x)
 
     if pooler == 'token':
       x = x[:, 0]
@@ -294,7 +292,7 @@ class VisionTransformer(tf.keras.Model):
     super(VisionTransformer, self).__init__(inputs=inputs, outputs=endpoints)
 
 
-@factory.register_backbone_builder('legacy_vit')
+@factory.register_backbone_builder('vit')
 def build_vit(input_specs,
               backbone_config,
               norm_activation_config,

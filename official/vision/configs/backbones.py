@@ -14,11 +14,35 @@
 
 """Backbones configurations."""
 import dataclasses
-from typing import Optional, List
-
-# Import libraries
+from typing import List, Optional, Tuple
 
 from official.modeling import hyperparams
+
+
+@dataclasses.dataclass
+class Transformer(hyperparams.Config):
+  """Transformer config."""
+  mlp_dim: int = 1
+  num_heads: int = 1
+  num_layers: int = 1
+  attention_dropout_rate: float = 0.0
+  dropout_rate: float = 0.1
+
+
+@dataclasses.dataclass
+class VisionTransformer(hyperparams.Config):
+  """VisionTransformer config."""
+  model_name: str = 'vit-b16'
+  # pylint: disable=line-too-long
+  pooler: str = 'token'  # 'token', 'gap' or 'none'. If set to 'token', an extra classification token is added to sequence.
+  # pylint: enable=line-too-long
+  representation_size: int = 0
+  hidden_size: int = 1
+  patch_size: int = 16
+  transformer: Transformer = Transformer()
+  init_stochastic_depth_rate: float = 0.0
+  original_init: bool = True
+  pos_embed_shape: Optional[Tuple[int, int]] = None
 
 
 @dataclasses.dataclass
@@ -120,6 +144,7 @@ class Backbone(hyperparams.OneOfConfig):
     spinenet_mobile: mobile spinenet backbone config.
     mobilenet: mobilenet backbone config.
     mobiledet: mobiledet backbone config.
+    vit: vision transformer backbone config.
   """
   type: Optional[str] = None
   resnet: ResNet = ResNet()
@@ -130,4 +155,4 @@ class Backbone(hyperparams.OneOfConfig):
   spinenet_mobile: SpineNetMobile = SpineNetMobile()
   mobilenet: MobileNet = MobileNet()
   mobiledet: MobileDet = MobileDet()
-
+  vit: VisionTransformer = VisionTransformer()
