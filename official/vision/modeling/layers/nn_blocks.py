@@ -21,6 +21,7 @@ from absl import logging
 import tensorflow as tf
 
 from official.modeling import tf_utils
+from official.nlp import modeling as nlp_modeling
 from official.vision.modeling.layers import nn_layers
 
 
@@ -538,8 +539,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
       se_inner_activation: A `str` name of squeeze-excitation inner activation.
       se_gating_activation: A `str` name of squeeze-excitation gating
         activation.
-      se_round_down_protect: A `bool` of whether round down more than 10%
-        will be allowed in SE layer.
+      se_round_down_protect: A `bool` of whether round down more than 10% will
+        be allowed in SE layer.
       expand_se_in_filters: A `bool` of whether or not to expand in_filter in
         squeeze and excitation layer.
       depthwise_activation: A `str` name of the activation function for
@@ -547,9 +548,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
       use_sync_bn: A `bool`. If True, use synchronized batch normalization.
       dilation_rate: An `int` that specifies the dilation rate to use for.
       divisible_by: An `int` that ensures all inner dimensions are divisible by
-        this number.
-      dilated convolution: An `int` to specify the same value for all spatial
-        dimensions.
+        this number. dilated convolution: An `int` to specify the same value for
+        all spatial dimensions.
       regularize_depthwise: A `bool` of whether or not apply regularization on
         depthwise.
       use_depthwise: A `bool` of whether to uses fused convolutions instead of
@@ -1048,7 +1048,7 @@ class ReversibleLayer(tf.keras.layers.Layer):
         (bottleneck) residual functions. Where the input to the reversible layer
         is x, the input gets partitioned in the channel dimension and the
         forward pass follows (eq8): x = [x1; x2], z1 = x1 + f(x2), y2 = x2 +
-          g(z1), y1 = stop_gradient(z1).
+        g(z1), y1 = stop_gradient(z1).
       g: A `tf.keras.layers.Layer` instance of `g` inner block referred to in
         paper. Detailed explanation same as above as `f` arg.
       manual_grads: A `bool` [Testing Only] of whether to manually take
@@ -1204,7 +1204,8 @@ class ReversibleLayer(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
-  """Creates an depthwise separable convolution block with batch normalization."""
+  """Creates a depthwise separable convolution block with batch normalization.
+  """
 
   def __init__(
       self,
@@ -1354,10 +1355,10 @@ class TuckerConvBlock(tf.keras.layers.Layer):
     Args:
       in_filters: An `int` number of filters of the input tensor.
       out_filters: An `int` number of filters of the output tensor.
-      input_compression_ratio: An `float` of compression ratio for
-        input filters.
-      output_compression_ratio: An `float` of compression ratio for
-        output filters.
+      input_compression_ratio: An `float` of compression ratio for input
+        filters.
+      output_compression_ratio: An `float` of compression ratio for output
+        filters.
       strides: An `int` block stride. If greater than 1, this block will
         ultimately downsample the input.
       kernel_size: An `int` kernel_size of the depthwise conv layer.
@@ -1510,11 +1511,114 @@ class TuckerConvBlock(tf.keras.layers.Layer):
     x = self._conv2(x)
     x = self._norm2(x)
 
-    if (self._use_residual and
-        self._in_filters == self._out_filters and
+    if (self._use_residual and self._in_filters == self._out_filters and
         self._strides == 1):
       if self._stochastic_depth:
         x = self._stochastic_depth(x, training=training)
       x = self._add([x, shortcut])
 
     return x
+
+
+class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
+  """TransformerEncoderBlock layer with stochastic depth."""
+
+  def __init__(self,
+               *args,
+               stochastic_depth_drop_rate=0.0,
+               return_attention=False,
+               **kwargs):
+    """Initializes TransformerEncoderBlock."""
+    super().__init__(*args, **kwargs)
+    self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
+    self._return_attention = return_attention
+
+  def build(self, input_shape):
+    if self._stochastic_depth_drop_rate:
+      self._stochastic_depth = nn_layers.StochasticDepth(
+          self._stochastic_depth_drop_rate)
+    else:
+      self._stochastic_depth = lambda x, *args, **kwargs: tf.identity(x)
+
+    super().build(input_shape)
+
+  def get_config(self):
+    config = {'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate}
+    base_config = super().get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+  def call(self, inputs, training=None):
+    """Transformer self-attention encoder block call."""
+    if isinstance(inputs, (list, tuple)):
+      if len(inputs) == 2:
+        input_tensor, attention_mask = inputs
+        key_value = None
+      elif len(inputs) == 3:
+        input_tensor, key_value, attention_mask = inputs
+      else:
+        raise ValueError('Unexpected inputs to %s with length at %d' %
+                         (self.__class__, len(inputs)))
+    else:
+      input_tensor, key_value, attention_mask = (inputs, None, None)
+
+    if self._output_range:
+      if self._norm_first:
+        source_tensor = input_tensor[:, 0:self._output_range, :]
+        input_tensor = self._attention_layer_norm(input_tensor)
+        if key_value is not None:
+          key_value = self._attention_layer_norm(key_value)
+      target_tensor = input_tensor[:, 0:self._output_range, :]
+      if attention_mask is not None:
+        attention_mask = attention_mask[:, 0:self._output_range, :]
+    else:
+      if self._norm_first:
+        source_tensor = input_tensor
+        input_tensor = self._attention_layer_norm(input_tensor)
+        if key_value is not None:
+          key_value = self._attention_layer_norm(key_value)
+      target_tensor = input_tensor
+
+    if key_value is None:
+      key_value = input_tensor
+    attention_output, attention_scores = self._attention_layer(
+        query=target_tensor,
+        value=key_value,
+        attention_mask=attention_mask,
+        return_attention_scores=True)
+    attention_output = self._attention_dropout(attention_output)
+
+    if self._norm_first:
+      attention_output = source_tensor + self._stochastic_depth(
+          attention_output, training=training)
+    else:
+      attention_output = self._attention_layer_norm(
+          target_tensor +
+          self._stochastic_depth(attention_output, training=training))
+
+    if self._norm_first:
+      source_attention_output = attention_output
+      attention_output = self._output_layer_norm(attention_output)
+    inner_output = self._intermediate_dense(attention_output)
+    inner_output = self._intermediate_activation_layer(inner_output)
+    inner_output = self._inner_dropout_layer(inner_output)
+    layer_output = self._output_dense(inner_output)
+    layer_output = self._output_dropout(layer_output)
+
+    if self._norm_first:
+      if self._return_attention:
+        return source_attention_output + self._stochastic_depth(
+            layer_output, training=training), attention_scores
+      else:
+        return source_attention_output + self._stochastic_depth(
+            layer_output, training=training)
+
+    # During mixed precision training, layer norm output is always fp32 for now.
+    # Casts fp32 for the subsequent add.
+    layer_output = tf.cast(layer_output, tf.float32)
+    if self._return_attention:
+      return self._output_layer_norm(layer_output + self._stochastic_depth(
+          attention_output, training=training)), attention_scores
+    else:
+      return self._output_layer_norm(
+          layer_output +
+          self._stochastic_depth(attention_output, training=training))

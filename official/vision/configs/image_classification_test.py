@@ -29,7 +29,10 @@ class ImageClassificationConfigTest(tf.test.TestCase, parameterized.TestCase):
       ('resnet_imagenet',),
       ('resnet_rs_imagenet',),
       ('revnet_imagenet',),
-      ('mobilenet_imagenet'),
+      ('mobilenet_imagenet',),
+      ('deit_imagenet_pretrain',),
+      ('vit_imagenet_pretrain',),
+      ('vit_imagenet_finetune',),
   )
   def test_image_classification_configs(self, config_name):
     config = exp_factory.get_exp_config(config_name)
