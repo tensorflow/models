@@ -20,10 +20,6 @@ from official.projects.basnet.tasks import basnet
 from official.vision.serving import semantic_segmentation
 
 
-MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
-STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
-
-
 class BASNetModule(semantic_segmentation.SegmentationModule):
   """BASNet Module."""
 

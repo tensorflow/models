@@ -27,10 +27,6 @@ from official.vision.ops import preprocess_ops
 from official.vision.serving import export_base
 
 
-MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
-STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
-
-
 class DetectionModule(export_base.ExportModule):
   """Detection Module."""
 
@@ -74,9 +70,8 @@ class DetectionModule(export_base.ExportModule):
     """Builds detection model inputs for serving."""
     model_params = self.params.task.model
     # Normalizes image with mean and std pixel values.
-    image = preprocess_ops.normalize_image(image,
-                                           offset=MEAN_RGB,
-                                           scale=STDDEV_RGB)
+    image = preprocess_ops.normalize_image(
+        image, offset=preprocess_ops.MEAN_RGB, scale=preprocess_ops.STDDEV_RGB)
 
     image, image_info = preprocess_ops.resize_and_crop_image(
         image,

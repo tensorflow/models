@@ -23,9 +23,6 @@ from official.vision.dataloaders import parser
 from official.vision.ops import augment
 from official.vision.ops import preprocess_ops
 
-MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
-STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
-
 DEFAULT_IMAGE_FIELD_KEY = 'image/encoded'
 DEFAULT_LABEL_FIELD_KEY = 'image/class/label'
 
@@ -223,7 +220,7 @@ class Parser(parser.Parser):
 
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(
-        image, offset=MEAN_RGB, scale=STDDEV_RGB)
+        image, offset=preprocess_ops.MEAN_RGB, scale=preprocess_ops.STDDEV_RGB)
 
     # Random erasing after the image has been normalized
     if self._random_erasing is not None:
@@ -258,7 +255,7 @@ class Parser(parser.Parser):
 
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(
-        image, offset=MEAN_RGB, scale=STDDEV_RGB)
+        image, offset=preprocess_ops.MEAN_RGB, scale=preprocess_ops.STDDEV_RGB)
 
     # Convert image to self._dtype.
     image = tf.image.convert_image_dtype(image, self._dtype)
@@ -284,6 +281,6 @@ class Parser(parser.Parser):
 
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(
-        image, offset=MEAN_RGB, scale=STDDEV_RGB)
+        image, offset=preprocess_ops.MEAN_RGB, scale=preprocess_ops.STDDEV_RGB)
     image.set_shape(input_image_size + [num_channels])
     return image
