@@ -48,8 +48,8 @@ class DataConfig(cfg.DataConfig):
     label_fields: name of field to read from tf.SequenceExample.
     segment_size: Number of frames in each segment.
     segment_labels: Use segment level label. Default: False, video level label.
-    include_video_id: `True` means include video id (string) in the input to
-      the model.
+    include_video_id: `True` means include video id (string) in the input to the
+      model.
     temporal_stride: Not used. Need to deprecated.
     max_frames: Maxim Number of frames in a input example. It is used to crop
       the input in the temporal dimension.
@@ -136,16 +136,27 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class AveragePrecisionConfig(hyperparams.Config):
+  top_k: int = 20
+  top_n: Optional[int] = None
+
+
+@dataclasses.dataclass
+class Evaluation(hyperparams.Config):
+  average_precision: Optional[AveragePrecisionConfig] = None
+
+
+@dataclasses.dataclass
 class YT8MTask(cfg.TaskConfig):
   """The task config."""
   model: DbofModel = DbofModel()
   train_data: DataConfig = yt8m(is_training=True)
   validation_data: DataConfig = yt8m(is_training=False)
   losses: Losses = Losses()
+  evaluation: Evaluation = Evaluation(
+      average_precision=AveragePrecisionConfig())
   gradient_clip_norm: float = 1.0
   num_readers: int = 8
-  top_k: int = 20
-  top_n: Optional[int] = None
 
 
 def add_trainer(
@@ -156,8 +167,8 @@ def add_trainer(
     train_epochs: int = 50,
     num_train_examples: int = YT8M_TRAIN_EXAMPLES,
     num_val_examples: int = YT8M_VAL_EXAMPLES,
-):
-  """Add and config a trainer to the experiment config."""
+) -> cfg.ExperimentConfig:
+  """Adds and config a trainer to the experiment config."""
   if num_train_examples <= 0:
     raise ValueError('Wrong train dataset size {!r}'.format(
         experiment.task.train_data))

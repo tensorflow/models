@@ -157,10 +157,11 @@ class YT8MTask(base_task.Task):
     for name in metric_names:
       metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
 
-    if not training:  # Cannot run in train step.
+    if self.task_config.evaluation.average_precision is not None and not training:
+      # Cannot run in train step.
       num_classes = self.task_config.validation_data.num_classes
-      top_k = self.task_config.top_k
-      top_n = self.task_config.top_n
+      top_k = self.task_config.evaluation.average_precision.top_k
+      top_n = self.task_config.evaluation.average_precision.top_n
       self.avg_prec_metric = eval_util.EvaluationMetrics(
           num_classes, top_k=top_k, top_n=top_n)
 
@@ -193,7 +194,7 @@ class YT8MTask(base_task.Task):
       model_losses = {}
 
     logs = {}
-    if not training:
+    if self.task_config.evaluation.average_precision is not None and not training:
       logs.update({self.avg_prec_metric.name: (labels, outputs)})
 
     for m in metrics:
@@ -335,14 +336,17 @@ class YT8MTask(base_task.Task):
     return model(inputs, training=False)
 
   def aggregate_logs(self, state=None, step_logs=None):
-    if state is None:
-      state = self.avg_prec_metric
-    self.avg_prec_metric.accumulate(
-        labels=step_logs[self.avg_prec_metric.name][0],
-        predictions=step_logs[self.avg_prec_metric.name][1])
+    if self.task_config.evaluation.average_precision is not None:
+      if state is None:
+        state = self.avg_prec_metric
+      self.avg_prec_metric.accumulate(
+          labels=step_logs[self.avg_prec_metric.name][0],
+          predictions=step_logs[self.avg_prec_metric.name][1])
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
-    avg_prec_metrics = self.avg_prec_metric.get()
-    self.avg_prec_metric.clear()
-    return avg_prec_metrics
+    if self.task_config.evaluation.average_precision is not None:
+      avg_prec_metrics = self.avg_prec_metric.get()
+      self.avg_prec_metric.clear()
+      return avg_prec_metrics
+    return None

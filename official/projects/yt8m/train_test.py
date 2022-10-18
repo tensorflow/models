@@ -19,6 +19,7 @@ from absl import flags
 from absl.testing import flagsaver
 from absl.testing import parameterized
 import tensorflow as tf
+
 from official.projects.yt8m import train as train_lib
 from official.projects.yt8m.dataloaders import utils
 from official.vision.dataloaders import tfexample_utils
@@ -40,9 +41,24 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
     tfexample_utils.dump_to_tfrecord(self._data_path, tf_examples=examples)
 
   @parameterized.named_parameters(
-      dict(testcase_name='segment', use_segment_level_labels=True),
-      dict(testcase_name='video', use_segment_level_labels=False))
-  def test_train_and_eval(self, use_segment_level_labels):
+      dict(
+          testcase_name='segment_with_avg_precison',
+          use_segment_level_labels=True,
+          use_average_precision_metric=True),
+      dict(
+          testcase_name='video_with_avg_precison',
+          use_segment_level_labels=False,
+          use_average_precision_metric=True),
+      dict(
+          testcase_name='segment',
+          use_segment_level_labels=True,
+          use_average_precision_metric=False),
+      dict(
+          testcase_name='video',
+          use_segment_level_labels=False,
+          use_average_precision_metric=False))
+  def test_train_and_eval(self, use_segment_level_labels,
+                          use_average_precision_metric):
     saved_flag_values = flagsaver.save_flag_values()
     train_lib.tfm_flags.define_flags()
     FLAGS.mode = 'train'
@@ -50,6 +66,7 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
     FLAGS.experiment = 'yt8m_experiment'
     FLAGS.tpu = ''
 
+    average_precision = {'top_k': 20} if use_average_precision_metric else None
     params_override = json.dumps({
         'runtime': {
             'distribution_strategy': 'mirrored',
@@ -77,7 +94,10 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
                 'input_path': self._data_path,
                 'segment_labels': use_segment_level_labels,
                 'global_batch_size': 4,
-            }
+            },
+            'evaluation': {
+                'average_precision': average_precision,
+            },
         }
     })
     FLAGS.params_override = params_override
