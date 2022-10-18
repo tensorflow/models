@@ -68,6 +68,9 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     expected_optimizer_config['learning_rate'] = 0.1
 
     opt_config = optimization_config.OptimizationConfig(params)
+    if optimizer_type == 'sgd':
+      # Delete unsupported arg `decay` from SGDConfig.
+      delattr(opt_config.optimizer.sgd, 'decay')
     opt_factory = optimizer_factory.OptimizerFactory(opt_config)
     lr = opt_factory.build_learning_rate()
     optimizer = opt_factory.build_optimizer(

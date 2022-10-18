@@ -236,6 +236,11 @@ class OptimizerFactory:
     if use_legacy_optimizer:
       optimizer = LEGACY_OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
     else:
+      if 'decay' in optimizer_dict:
+        raise ValueError(
+            '`decay` is deprecated in new Keras optimizer, please reflect the '
+            'decay logic in `lr` or set `use_legacy_optimizer=True` to use the '
+            'legacy optimizer.')
       optimizer = NEW_OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
 
     if self._use_ema:
