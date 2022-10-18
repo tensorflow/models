@@ -33,7 +33,7 @@ from official.vision.dataloaders import segmentation_input
 def build_basnet_model(
     input_specs: tf.keras.layers.InputSpec,
     model_config: exp_cfg.BASNetModel,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None):
+    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None):
   """Builds BASNet model."""
   norm_activation_config = model_config.norm_activation
   backbone = basnet_model.BASNetEncoder(

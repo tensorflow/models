@@ -21,10 +21,6 @@ from official.vision.ops import preprocess_ops
 from official.vision.serving import export_base
 
 
-MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
-STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
-
-
 class ClassificationModule(export_base.ExportModule):
   """classification Module."""
 
@@ -50,9 +46,8 @@ class ClassificationModule(export_base.ExportModule):
         image, [self._input_image_size[0], self._input_image_size[1], 3])
 
     # Normalizes image with mean and std pixel values.
-    image = preprocess_ops.normalize_image(image,
-                                           offset=MEAN_RGB,
-                                           scale=STDDEV_RGB)
+    image = preprocess_ops.normalize_image(
+        image, offset=preprocess_ops.MEAN_RGB, scale=preprocess_ops.STDDEV_RGB)
     return image
 
   def serve(self, images):

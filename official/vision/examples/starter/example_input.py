@@ -26,9 +26,6 @@ from official.vision.dataloaders import decoder
 from official.vision.dataloaders import parser
 from official.vision.ops import preprocess_ops
 
-MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
-STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
-
 
 class Decoder(decoder.Decoder):
   """A tf.Example decoder for classification task."""
@@ -102,7 +99,7 @@ class Parser(parser.Parser):
 
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(
-        image, offset=MEAN_RGB, scale=STDDEV_RGB)
+        image, offset=preprocess_ops.MEAN_RGB, scale=preprocess_ops.STDDEV_RGB)
 
     image = tf.image.convert_image_dtype(image, self._dtype)
     return image, label
