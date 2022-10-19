@@ -373,11 +373,18 @@ def _build_ssd_feature_extractor(feature_extractor_config,
 
   if feature_extractor_config.HasField('bifpn'):
     kwargs.update({
-        'bifpn_min_level': feature_extractor_config.bifpn.min_level,
-        'bifpn_max_level': feature_extractor_config.bifpn.max_level,
-        'bifpn_num_iterations': feature_extractor_config.bifpn.num_iterations,
-        'bifpn_num_filters': feature_extractor_config.bifpn.num_filters,
-        'bifpn_combine_method': feature_extractor_config.bifpn.combine_method,
+        'bifpn_min_level':
+            feature_extractor_config.bifpn.min_level,
+        'bifpn_max_level':
+            feature_extractor_config.bifpn.max_level,
+        'bifpn_num_iterations':
+            feature_extractor_config.bifpn.num_iterations,
+        'bifpn_num_filters':
+            feature_extractor_config.bifpn.num_filters,
+        'bifpn_combine_method':
+            feature_extractor_config.bifpn.combine_method,
+        'use_native_resize_op':
+            feature_extractor_config.bifpn.use_native_resize_op,
     })
 
   return feature_extractor_class(**kwargs)
