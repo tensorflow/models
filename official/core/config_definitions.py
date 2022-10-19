@@ -109,7 +109,7 @@ class DataConfig(base_config.Config):
   tfds_name: str = ""
   tfds_split: str = ""
   global_batch_size: int = 0
-  is_training: bool = None
+  is_training: Optional[bool] = None
   drop_remainder: bool = True
   shuffle_buffer_size: int = 100
   cache: bool = False
