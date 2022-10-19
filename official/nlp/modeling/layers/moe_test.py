@@ -14,30 +14,28 @@
 
 """Tests for moe.py."""
 
-import ml_collections
 import numpy as np
 import tensorflow as tf
 
 from official.nlp.modeling.layers import moe
 
 
-def small_config() -> ml_collections.ConfigDict:
+def small_config():
   """Creates a small model config that can be used by all tests."""
-  config = ml_collections.ConfigDict()
+  config = {}
+  config['d_ff'] = 32
+  config['dropout_rate'] = 0.1
 
-  config.d_ff = 32
-  config.dropout_rate = 0.1
+  config['num_experts'] = 2
+  config['expert_d_ff'] = 33
+  config['expert_dropout_rate'] = 0.1
+  config['jitter_noise'] = 0.1
+  config['train_capacity_factor'] = 1.0
+  config['eval_capacity_factor'] = 1.0
+  config['min_expert_capacity'] = 1
+  config['max_group_size'] = 9
 
-  config.num_experts = 2
-  config.expert_d_ff = 33
-  config.expert_dropout_rate = 0.1
-  config.jitter_noise = 0.1
-  config.train_capacity_factor = 1.0
-  config.eval_capacity_factor = 1.0
-  config.min_expert_capacity = 1
-  config.max_group_size = 9
-
-  config.backbone_d_ff = 13
+  config['backbone_d_ff'] = 13
   return config
 
 
@@ -124,58 +122,61 @@ class MoeTest(tf.test.TestCase):
     out_ca = router_mask.combine_array.numpy()
     out_ca = np.dot(out_ca, np.ones((expert_capacity,)))
 
-    expected_combine_array = np.array(
-        [[[0.66, 0.0, 0.0], [0.42, 0.42, 0.16], [0.0, 0.33, 0.33]],
-         [[0.33, 0.33, 0.0], [0.16, 0.42, 0.42], [0.0, 0.0, 0.66]]])
+    expected_combine_array = np.array([[[0.66, 0.0, 0.0], [0.42, 0.42, 0.16],
+                                        [0.0, 0.33, 0.33]],
+                                       [[0.33, 0.33, 0.0], [0.16, 0.42, 0.42],
+                                        [0.0, 0.0, 0.66]]])
     self.assertAllClose(expected_combine_array, out_ca, atol=1e-2)
 
   def test_feed_forward_shape_and_vars(self):
     config = small_config()
-    layer = moe.FeedForward(d_ff=config.d_ff, dropout_rate=config.dropout_rate)
+    layer = moe.FeedForward(
+        d_ff=config['d_ff'], dropout_rate=config['dropout_rate'])
     inputs = make_input_ones()
     outputs = layer(inputs)
     self.assertAllEqual(tf.shape(inputs), tf.shape(outputs))
     var_names = sorted([v.name for v in layer.trainable_variables])
-    self.assertAllEqual(['feed_forward/intermediate/bias:0',
-                         'feed_forward/intermediate/kernel:0',
-                         'feed_forward/output/bias:0',
-                         'feed_forward/output/kernel:0'], var_names)
+    self.assertAllEqual([
+        'feed_forward/intermediate/bias:0',
+        'feed_forward/intermediate/kernel:0', 'feed_forward/output/bias:0',
+        'feed_forward/output/kernel:0'
+    ], var_names)
 
   def test_feed_forward_manual(self):
     config = small_config()
     layer = moe.FeedForward(
-        d_ff=config.d_ff,
-        dropout_rate=config.dropout_rate,
+        d_ff=config['d_ff'],
+        dropout_rate=config['dropout_rate'],
         activation=tf.keras.activations.relu,
         kernel_initializer=tf.keras.initializers.get('ones'),
         bias_initializer=tf.keras.initializers.get('ones'))
     inputs = make_input_ones(1, 2, 3)
     outputs = layer(inputs, training=False)
-    manual_outputs = tf.constant([[[129.0, 129.0, 129.0],
-                                   [129.0, 129.0, 129.0]]])
+    manual_outputs = tf.constant([[[129.0, 129.0, 129.0], [129.0, 129.0,
+                                                           129.0]]])
     self.assertAllClose(manual_outputs, outputs, atol=1e-7)
 
   def test_feed_forward_experts_shape_and_vars(self):
     config = small_config()
     layer = moe.FeedForwardExperts(
-        num_experts=config.num_experts,
-        d_ff=config.expert_d_ff,
-        dropout_rate=config.expert_dropout_rate)
+        num_experts=config['num_experts'],
+        d_ff=config['expert_d_ff'],
+        dropout_rate=config['expert_dropout_rate'])
     inputs = make_experts_input_ones()
     outputs = layer(inputs)
     self.assertAllEqual(tf.shape(inputs), tf.shape(outputs))
     var_names = sorted([v.name for v in layer.trainable_variables])
-    self.assertAllEqual(['experts/intermediate/bias:0',
-                         'experts/intermediate/kernel:0',
-                         'experts/output/bias:0',
-                         'experts/output/kernel:0'], var_names)
+    self.assertAllEqual([
+        'experts/intermediate/bias:0', 'experts/intermediate/kernel:0',
+        'experts/output/bias:0', 'experts/output/kernel:0'
+    ], var_names)
 
   def test_feed_forward_experts_manual(self):
     config = small_config()
     layer = moe.FeedForwardExperts(
         num_experts=1,
-        d_ff=config.expert_d_ff,
-        dropout_rate=config.expert_dropout_rate,
+        d_ff=config['expert_d_ff'],
+        dropout_rate=config['expert_dropout_rate'],
         activation=tf.keras.activations.relu,
         kernel_initializer=tf.keras.initializers.get('ones'),
         bias_initializer=tf.keras.initializers.get('ones'))
@@ -188,38 +189,37 @@ class MoeTest(tf.test.TestCase):
   def test_moe_layer(self):
     config = small_config()
     experts = moe.FeedForwardExperts(
-        num_experts=config.num_experts,
-        d_ff=config.expert_d_ff,
-        dropout_rate=config.expert_dropout_rate)
+        num_experts=config['num_experts'],
+        d_ff=config['expert_d_ff'],
+        dropout_rate=config['expert_dropout_rate'])
     router = moe.ExpertsChooseMaskedRouter(
-        config.num_experts,
-        jitter_noise=config.jitter_noise)
+        config['num_experts'], jitter_noise=config['jitter_noise'])
     moe_layer = moe.MoeLayer(
         experts,
         router,
-        train_capacity_factor=config.train_capacity_factor,
-        eval_capacity_factor=config.eval_capacity_factor,
-        max_group_size=config.max_group_size,
-        min_expert_capacity=config.min_expert_capacity)
+        train_capacity_factor=config['train_capacity_factor'],
+        eval_capacity_factor=config['eval_capacity_factor'],
+        max_group_size=config['max_group_size'],
+        min_expert_capacity=config['min_expert_capacity'])
 
     inputs = make_input_ones()
     with self.assertLogs('absl', level='INFO') as cm:
       outputs = moe_layer(inputs, training=True)
     self.assertAllEqual(tf.shape(inputs), tf.shape(outputs))
 
-    self.assertEqual(cm.output, [
-        ('INFO:absl:Selected group_size=5 and num_groups=4 for input '
-         'num_tokens=20, max_group_size=9, num_experts=2.'),
-        ('INFO:absl:Selected expert_capacity=2 for num_experts=2 and '
-         'training=True.')])
+    self.assertEqual(
+        cm.output,
+        [('INFO:absl:Selected group_size=5 and num_groups=4 for input '
+          'num_tokens=20, max_group_size=9, num_experts=2.'),
+         ('INFO:absl:Selected expert_capacity=2 for num_experts=2 and '
+          'training=True.')])
 
     var_names = sorted([v.name for v in moe_layer.trainable_variables])
-    self.assertAllEqual(['moe/experts/intermediate/bias:0',
-                         'moe/experts/intermediate/kernel:0',
-                         'moe/experts/output/bias:0',
-                         'moe/experts/output/kernel:0',
-                         'moe/router/router_weights/bias:0',
-                         'moe/router/router_weights/kernel:0'], var_names)
+    self.assertAllEqual([
+        'moe/experts/intermediate/bias:0', 'moe/experts/intermediate/kernel:0',
+        'moe/experts/output/bias:0', 'moe/experts/output/kernel:0',
+        'moe/router/router_weights/bias:0', 'moe/router/router_weights/kernel:0'
+    ], var_names)
     self.assertLen(moe_layer.losses, 1)
     metrics = [metric.name for metric in moe_layer.metrics]
     self.assertSetEqual(
@@ -231,20 +231,19 @@ class MoeTest(tf.test.TestCase):
   def test_moe_layer_with_backbone(self):
     config = small_config()
     experts = moe.FeedForwardExperts(
-        num_experts=config.num_experts,
-        d_ff=config.expert_d_ff,
-        dropout_rate=config.expert_dropout_rate)
+        num_experts=config['num_experts'],
+        d_ff=config['expert_d_ff'],
+        dropout_rate=config['expert_dropout_rate'])
     router = moe.ExpertsChooseMaskedRouter(
-        config.num_experts,
-        jitter_noise=config.jitter_noise)
+        config['num_experts'], jitter_noise=config['jitter_noise'])
     moe_layer = moe.MoeLayer(
         experts,
         router,
-        train_capacity_factor=config.train_capacity_factor,
-        eval_capacity_factor=config.eval_capacity_factor,
-        max_group_size=config.max_group_size,
-        min_expert_capacity=config.min_expert_capacity)
-    layer = moe.MoeLayerWithBackbone(moe_layer, config.backbone_d_ff)
+        train_capacity_factor=config['train_capacity_factor'],
+        eval_capacity_factor=config['eval_capacity_factor'],
+        max_group_size=config['max_group_size'],
+        min_expert_capacity=config['min_expert_capacity'])
+    layer = moe.MoeLayerWithBackbone(moe_layer, config['backbone_d_ff'])
 
     inputs = make_input_ones()
     outputs = layer(inputs)
