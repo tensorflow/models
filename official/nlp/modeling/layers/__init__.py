@@ -37,6 +37,10 @@ from official.nlp.modeling.layers.mixing import MixingMechanism
 from official.nlp.modeling.layers.mobile_bert_layers import MobileBertEmbedding
 from official.nlp.modeling.layers.mobile_bert_layers import MobileBertMaskedLM
 from official.nlp.modeling.layers.mobile_bert_layers import MobileBertTransformer
+from official.nlp.modeling.layers.moe import ExpertsChooseMaskedRouter
+from official.nlp.modeling.layers.moe import FeedForwardExperts
+from official.nlp.modeling.layers.moe import MoeLayer
+from official.nlp.modeling.layers.moe import MoeLayerWithBackbone
 from official.nlp.modeling.layers.multi_channel_attention import *
 from official.nlp.modeling.layers.on_device_embedding import OnDeviceEmbedding
 from official.nlp.modeling.layers.pack_optimization import PackBertEmbeddings

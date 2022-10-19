@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""FNet encoder network.
+"""Sparse Mixer encoder network.
 
-Based on ["FNet: Mixing Tokens with Fourier Transforms"]
-(https://aclanthology.org/2022.naacl-main.319/).
+Based on ["Sparse Mixers: Combining MoE and Mixing to build a more efficient
+BERT"](https://arxiv.org/abs/2205.12399).
 """
 # pylint: disable=g-classes-have-attributes
 
@@ -32,38 +32,60 @@ _Initializer = Union[str, tf.keras.initializers.Initializer]
 _approx_gelu = lambda x: tf.keras.activations.gelu(x, approximate=True)
 
 
-class FNet(tf.keras.layers.Layer):
-  """FNet encoder network.
+class SparseMixer(tf.keras.layers.Layer):
+  """Sparse Mixer encoder network.
 
-  Based on ["FNet: Mixing Tokens with Fourier Transforms"]
-  (https://aclanthology.org/2022.naacl-main.319/). FNet is an efficient
-  Transformer-like encoder network that replaces self-attention sublayers with
-  Fourier sublayers.
+  Based on ["Sparse Mixers: Combining MoE and Mixing to build a more efficient
+  BERT"](https://arxiv.org/abs/2205.12399). Sparse Mixer is an efficient
+  encoder network that replaces typical Transformer encoder blocks with a
+  combination of linear mixing and sparsely activated Mixture-of-Experts (MoE)
+  sublayers.
 
-  This implementation defaults to the canonical FNet Base model, but the network
-  also supports more general mixing models (e.g. 'Linear', 'HNet') and hybrid
-  models (e.g. 'FNet-Hybrid') models that use both mixing and self-attention
-  layers. The input length is fixed to 'max_sequence_length'.
+  This implementation defaults to the canonical Sparse Mixer Base model. To use
+  the "Fast Sparse Mixer" configuration, set `*_capacity_factor`=0.5. This
+  yields a sparser and faster variant of the canonical Sparse Mixer model, in
+  which each expert processes roughly 50% less tokens.
+
+  Notes:
+  - The underlying MoeLayer uses the Keras add_loss() and add_metric() APIs to
+    propagate auxiliary MoE losses and metrics. Any model using this network,
+    should collect these losses/metrics.
+  - The input length is fixed to 'max_sequence_length' to accomodate the mixing
+    mechanisms.
 
   Args:
     vocab_size: The size of the token vocabulary.
     hidden_size: The size of the transformer hidden layers.
     num_layers: The number of transformer layers.
-    mixing_mechanism: Type of mixing mechanism used in place of self-attention
-      layers. Defaults to FNet ('Fourier') mixing.
-    use_fft: Only used for spectral mixing mechanisms. Determines whether to use
-      Fast Fourier Transform (True) or the Discrete Fourier Transform (DFT)
-      matrix (False; default) to compute the Fourier Transform. See
-      layers.FourierTransformLayer or layers.HartleyTransformLayer for advice.
+    moe_layers: Specifies which layers, if any, should be sparsely activated
+      Mixture-of-Experts (MoE) layers. The remaining [0, num_layers) setminus
+      moe_layers will use the vanilla MLP sublayers. Defaults to placing MoE
+      layers in the middle of the model.
     attention_layers: Specifies which layers, if any, should be attention layers
       in the encoder. The remaining [0, num_layers) setminus attention_layers
       will use the specified `mixing_mechanism`. If using attention layers, a
       good rule of thumb is to place them in the final few layers.
+    num_experts: Number of experts. Experts are themselves MLP modules, with the
+      same `inner_dim` and `inner_activation` as the vanilla MLP sublayers.
+    train_capacity_factor: Scaling factor to increase the expert token capacity
+      during training. See layers.MoeLayer for further details. The "Fast Sparse
+      Mixer" increases model sparsity (and speed) by using a capacity factor of
+      0.5.
+    eval_capacity_factor: As above, but used during evaluation.
+    max_group_size: The total number of tokens on each device is subdivided into
+      groups of this size. Router computations are then performed on a per-group
+      basis. See layers.MoeLayer for further details.
+    mixing_mechanism: Type of mixing mechanism used in place of self-attention
+      layers. Defaults to 'Linear' mixing.
+    use_fft: Only used for spectral mixing mechanisms. Determines whether to use
+      Fast Fourier Transform (True) or the Discrete Fourier Transform (DFT)
+      matrix (False; default) to compute the Fourier Transform. See
+      layers.FourierTransformLayer or layers.HartleyTransformLayer for advice.
     num_attention_heads: The number of attention heads for each transformer. The
       hidden size must be divisible by the number of attention heads.
-    max_sequence_length: The only sequence length that this encoder can
-      consume. This determines the variable shape for positional embeddings and
-      the size of the mixing matrices.
+    max_sequence_length: The only sequence length that this encoder can consume.
+      This determines the variable shape for positional embeddings and the size
+      of the mixing matrices.
     type_vocab_size: The number of types that the 'type_ids' input can take.
     inner_dim: The output dimension of the first Dense layer in a two-layer
       feedforward network for each transformer.
@@ -94,15 +116,20 @@ class FNet(tf.keras.layers.Layer):
   def __init__(
       self,
       vocab_size: int,
-      hidden_size: int = 768,
-      num_layers: int = 12,
-      mixing_mechanism: layers.MixingMechanism = layers.MixingMechanism.FOURIER,
+      hidden_size: int = 512,
+      num_layers: int = 14,
+      moe_layers: Sequence[int] = (5, 6, 7, 8),
+      attention_layers: Sequence[int] = (10, 11, 12, 13),
+      num_experts: int = 16,
+      train_capacity_factor: float = 1.,
+      eval_capacity_factor: float = 1.,
+      max_group_size: int = 4096,
+      mixing_mechanism: layers.MixingMechanism = layers.MixingMechanism.LINEAR,
       use_fft: bool = False,
-      attention_layers: Sequence[int] = (),
-      num_attention_heads: int = 12,
+      num_attention_heads: int = 8,
       max_sequence_length: int = 512,
       type_vocab_size: int = 16,
-      inner_dim: int = 3072,
+      inner_dim: int = 2056,
       inner_activation: _Activation = _approx_gelu,
       output_dropout: float = 0.1,
       attention_dropout: float = 0.1,
@@ -126,6 +153,11 @@ class FNet(tf.keras.layers.Layer):
         'vocab_size': vocab_size,
         'hidden_size': hidden_size,
         'num_layers': num_layers,
+        'moe_layers': moe_layers,
+        'num_experts': num_experts,
+        'train_capacity_factor': train_capacity_factor,
+        'eval_capacity_factor': eval_capacity_factor,
+        'max_group_size': max_group_size,
         'mixing_mechanism': mixing_mechanism,
         'use_fft': use_fft,
         'attention_layers': attention_layers,
@@ -196,12 +228,32 @@ class FNet(tf.keras.layers.Layer):
       else:
         mixing_layer = self._init_mixing_sublayer(layer)
 
+      if layer in moe_layers:
+        feedforward_layer = layers.MoeLayer(
+            experts=layers.FeedForwardExperts(
+                num_experts=num_experts,
+                d_ff=hidden_size,
+                dropout_rate=output_dropout,
+                activation=inner_activation,
+                kernel_initializer=tf_utils.clone_initializer(initializer),
+                name='experts'),
+            router=layers.ExpertsChooseMaskedRouter(
+                num_experts=num_experts,
+                kernel_initializer=tf_utils.clone_initializer(initializer),
+                name='router'),
+            train_capacity_factor=train_capacity_factor,
+            eval_capacity_factor=eval_capacity_factor,
+            max_group_size=max_group_size,
+            name='moe')
+      else:
+        feedforward_layer = None  # Fallback to default (dense) MLP class
+
       block = layers.TransformerScaffold(
           num_attention_heads=num_attention_heads,
           inner_dim=inner_dim,
           inner_activation=inner_activation,
           attention_cls=mixing_layer,
-          feedforward_cls=None,  # Fallback to default FeedForward class
+          feedforward_cls=feedforward_layer,
           output_dropout=output_dropout,
           attention_dropout=attention_dropout,
           norm_first=norm_first,
@@ -270,7 +322,7 @@ class FNet(tf.keras.layers.Layer):
 
     seq_length = word_embeddings.shape[1]
     if seq_length != self._max_sequence_length:
-      raise ValueError('FNet: Sequence length must be the same as '
+      raise ValueError('Sparse Mixer: Sequence length must be the same as '
                        '`max_sequence_length` ({}), but it is {}.'.format(
                            self._max_sequence_length, seq_length))
 
