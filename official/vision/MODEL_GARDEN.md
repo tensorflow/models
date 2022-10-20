@@ -58,15 +58,15 @@ depth, label smoothing and dropout.
 
 #### Vision Transformer (ViT)
 
-We support [ViT](https://arxiv.org/abs/2010.11929) and [DEIT](https://arxiv.org/abs/2012.12877) implementations in a TF
-Vision
-[project](https://github.com/tensorflow/models/tree/master/official/projects/vit). ViT models trained under the DEIT settings:
+We support [ViT](https://arxiv.org/abs/2010.11929) and [DEIT](https://arxiv.org/abs/2012.12877) implementations.
+ViT models trained under the DEIT settings:
 
-model     | resolution | Top-1 | Top-5 |
---------- | :--------: | ----: | ----: |
-ViT-s16  | 224x224    | 79.4  | 94.7  |
-ViT-b16  | 224x224    | 81.8  | 95.8  |
-ViT-l16  | 224x224    | 82.2  | 95.8  |
+model     | resolution | Top-1 | Top-5 | Download |
+--------- | :--------: | ----: | ----: | :-------: |
+ViT-ti16  | 224x224    | 73.4  | 91.9  | [ckpt](https://storage.googleapis.com/tf_model_garden/vision/vit/vit-deit-imagenet-ti16.tar.gz) |
+ViT-s16  | 224x224    | 79.4  | 94.7  | [ckpt](https://storage.googleapis.com/tf_model_garden/vision/vit/vit-deit-imagenet-s16.tar.gz) |
+ViT-b16  | 224x224    | 81.8  | 95.8  | [ckpt](https://storage.googleapis.com/tf_model_garden/vision/vit/vit-deit-imagenet-b16.tar.gz) |
+ViT-l16  | 224x224    | 82.2  | 95.8  | [ckpt](https://storage.googleapis.com/tf_model_garden/vision/vit/vit-deit-imagenet-l16.tar.gz) |
 
 
 ## Object Detection and Instance Segmentation

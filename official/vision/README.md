@@ -89,9 +89,9 @@ depth, label smoothing and dropout.
 
 <details>
 
-We support [ViT](https://arxiv.org/abs/2010.11929) and [DEIT](https://arxiv.org/abs/2012.12877) implementations in a TF
-Vision
-[project](https://github.com/tensorflow/models/tree/master/official/projects/vit). ViT models trained under the DEIT settings:
+We support [ViT](https://arxiv.org/abs/2010.11929) and
+[DEIT](https://arxiv.org/abs/2012.12877) implementations. ViT models trained
+under the DEIT settings:
 
 model     | resolution | Top-1 | Top-5 |
 --------- | :--------: | ----: | ----: |
