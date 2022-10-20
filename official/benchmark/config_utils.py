@@ -16,9 +16,12 @@
 
 import os
 
+from typing import Optional
+
 
 def get_config_path(
     config_file: str,
-    base_dir: str = '') -> str:
+    base_dir: Optional[str] = None) -> str:
   """Gets the absolute path of the config file."""
-  return os.path.join(base_dir, config_file)
+  resolved_base_dir = '' if base_dir is None else base_dir
+  return os.path.join(resolved_base_dir, config_file)
