@@ -219,6 +219,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
       tf.keras.metrics.Metric]:
     """Build detection metrics."""
     metrics = []
+    self.segmentation_train_mean_iou = None
+
     num_segmentation_classes = (
         self.task_config.model.segmentation_model.num_classes)
     if training:
@@ -327,7 +329,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
       for m in metrics:
         m.update_state(losses[m.name])
 
-    if self.task_config.segmentation_evaluation.report_train_mean_iou:
+    if (self.task_config.segmentation_evaluation.report_train_mean_iou and
+        self.segmentation_train_mean_iou is not None):
       segmentation_labels = {
           'masks': labels['gt_segmentation_mask'],
           'valid_masks': labels['gt_segmentation_valid_mask'],
