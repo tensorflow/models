@@ -212,7 +212,7 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
   gt_annotations = []
   num_batches = len(groundtruths['source_id'])
   for i in range(num_batches):
-    logging.info(
+    logging.debug(
         'convert_groundtruths_to_coco_dataset: Processing annotation %d', i)
     max_num_instances = groundtruths['classes'][i].shape[1]
     batch_size = groundtruths['source_id'][i].shape[0]
@@ -386,7 +386,7 @@ def generate_annotation_file(groundtruth_generator,
   groundtruths = {}
   logging.info('Loading groundtruth annotations from dataset to memory...')
   for i, groundtruth in enumerate(groundtruth_generator()):
-    logging.info('generate_annotation_file: Processing annotation %d', i)
+    logging.debug('generate_annotation_file: Processing annotation %d', i)
     for k, v in six.iteritems(groundtruth):
       if k not in groundtruths:
         groundtruths[k] = [v]
