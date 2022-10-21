@@ -18,13 +18,14 @@ import os
 from typing import List, Optional, Union
 
 import numpy as np
+
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
+from official.vision.configs import backbones
 from official.vision.configs import common
 from official.vision.configs import semantic_segmentation as seg_cfg
-from official.vision.configs.google import backbones
 
 
 @dataclasses.dataclass
