@@ -62,6 +62,29 @@ class YT8MTask(base_task.Task):
         norm_momentum=norm_activation_config.norm_momentum,
         norm_epsilon=norm_activation_config.norm_epsilon,
         kernel_regularizer=l2_regularizer)
+
+    non_trainable_batch_norm_variables = []
+    non_trainable_extra_variables = []
+    for var in model.variables:
+      if not var.trainable:
+        if 'moving_mean' or 'moving_variance' in var.name:
+          non_trainable_batch_norm_variables.append(var)
+        else:
+          non_trainable_extra_variables.append(var)
+
+    logging.info(
+        'Trainable model variables:\n%s', '\n'.join(
+            [f'{var.name}\t{var.shape}' for var in model.trainable_variables]))
+    logging.info(
+        'Non-trainable batch norm variables (get updated in training mode):\n%s',
+        '\n'.join([
+            f'{var.name}\t{var.shape}'
+            for var in non_trainable_batch_norm_variables
+        ]))
+    logging.info(
+        'Non-trainable frozen model variables:\n%s', '\n'.join([
+            f'{var.name}\t{var.shape}' for var in non_trainable_extra_variables
+        ]))
     return model
 
   def build_inputs(self, params: yt8m_cfg.DataConfig, input_context=None):
@@ -150,7 +173,7 @@ class YT8MTask(base_task.Task):
       training: Bool value, true for training mode, false for eval/validation.
 
     Returns:
-      A list of strings that indicate metrics to be used.
+      A list of metrics to be used.
     """
     metrics = []
     metric_names = ['total_loss', 'model_loss']
@@ -198,8 +221,9 @@ class YT8MTask(base_task.Task):
       logs.update({self.avg_prec_metric.name: (labels, outputs)})
 
     for m in metrics:
-      m.update_state(model_losses[m.name])
-      logs[m.name] = m.result()
+      if m.name in model_losses:
+        m.update_state(model_losses[m.name])
+        logs[m.name] = m.result()
     return logs
 
   def train_step(self, inputs, model, optimizer, metrics=None):
@@ -266,7 +290,6 @@ class YT8MTask(base_task.Task):
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
     logs = {self.loss: loss}
-
     logs.update(
         self.process_metrics(
             metrics,
@@ -275,7 +298,6 @@ class YT8MTask(base_task.Task):
             model_losses=all_losses,
             label_weights=label_weights,
             training=True))
-
     return logs
 
   def validation_step(self, inputs, model, metrics=None):
@@ -319,7 +341,6 @@ class YT8MTask(base_task.Task):
         aux_losses=model.losses)
 
     logs = {self.loss: all_losses['total_loss']}
-
     logs.update(
         self.process_metrics(
             metrics,
