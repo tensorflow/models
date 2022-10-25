@@ -96,7 +96,6 @@ from absl import app
 from absl import flags
 
 import tensorflow.compat.v2 as tf
-from google3.image.understanding.object_detection.input_readers import input_reader_google_pb2  # pylint: disable=unused-import
 from google.protobuf import text_format
 from object_detection import export_tflite_graph_lib_tf2
 from object_detection.protos import pipeline_pb2
