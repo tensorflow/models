@@ -226,6 +226,53 @@ class YT8MTask(base_task.Task):
         logs[m.name] = m.result()
     return logs
 
+  def _preprocess_model_inputs(self,
+                               inputs: dict[str, tf.Tensor],
+                               training: bool = True):
+    """Preprocesses input tensors before model on device."""
+    if training:
+      data_config = self.task_config.train_data
+    else:
+      data_config = self.task_config.validation_data
+
+    features = inputs['video_matrix']
+    num_frames = inputs['num_frames']
+
+    # sample random frames / random sequence.
+    num_frames = tf.cast(num_frames, tf.float32)
+    sample_frames = data_config.num_frames
+    if self.task_config.model.sample_random_frames:
+      features = utils.sample_random_frames(features, num_frames, sample_frames)
+    else:
+      features = utils.sample_random_sequence(features, num_frames,
+                                              sample_frames)
+    return features
+
+  def _preprocess_labels(self,
+                         inputs: dict[str, tf.Tensor],
+                         training: bool = True):
+    """Preprocesses labels."""
+    del training  # training is unused in _preprocess_labels in YT8M.
+    labels = inputs['labels']
+    label_weights = inputs.get('label_weights', None)
+
+    return labels, label_weights
+
+  def _postprocess_outputs(self,
+                           inputs,
+                           outputs,
+                           labels,
+                           label_weights,
+                           training: bool = True):
+    """Postprocess model outputs (inputs / labels / label_weights)."""
+    if not training and self.task_config.validation_data.segment_labels:
+      # workaround to ignore the unrated labels.
+      outputs *= label_weights
+      # remove padding
+      outputs = outputs[~tf.reduce_all(labels == -1, axis=1)]
+      labels = labels[~tf.reduce_all(labels == -1, axis=1)]
+    return inputs, outputs, labels, label_weights
+
   def train_step(self, inputs, model, optimizer, metrics=None):
     """Does forward and backward.
 
@@ -240,25 +287,19 @@ class YT8MTask(base_task.Task):
     Returns:
       a dictionary of logs.
     """
-    features, labels = inputs['video_matrix'], inputs['labels']
-    num_frames = inputs['num_frames']
-    label_weights = inputs.get('label_weights', None)
-
-    # sample random frames / random sequence
-    num_frames = tf.cast(num_frames, tf.float32)
-    sample_frames = self.task_config.train_data.num_frames
-    if self.task_config.model.sample_random_frames:
-      features = utils.sample_random_frames(features, num_frames, sample_frames)
-    else:
-      features = utils.sample_random_sequence(features, num_frames,
-                                              sample_frames)
+    model_inputs = self._preprocess_model_inputs(inputs, training=True)
+    labels, label_weights = self._preprocess_labels(inputs, training=True)
 
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
-      outputs = model(features, training=True)
+      outputs = model(model_inputs, training=True)
       # Casting output layer as float32 is necessary when mixed_precision is
       # mixed_float16 or mixed_bfloat16 to ensure output is casted as float32.
       outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
+      # Post-process model / label outputs.
+      inputs, outputs, labels, label_weights = self._postprocess_outputs(
+          inputs, outputs, labels, label_weights, training=True)
+
       # Computes per-replica loss
       all_losses = self.build_losses(
           model_outputs=outputs,
@@ -313,26 +354,13 @@ class YT8MTask(base_task.Task):
     Returns:
       a dictionary of logs.
     """
-    features, labels = inputs['video_matrix'], inputs['labels']
-    num_frames = inputs['num_frames']
-    label_weights = inputs.get('label_weights', None)
+    model_inputs = self._preprocess_model_inputs(inputs, training=False)
+    labels, label_weights = self._preprocess_labels(inputs, training=False)
 
-    # sample random frames (None, 5, 1152) -> (None, 30, 1152)
-    sample_frames = self.task_config.validation_data.num_frames
-    if self.task_config.model.sample_random_frames:
-      features = utils.sample_random_frames(features, num_frames, sample_frames)
-    else:
-      features = utils.sample_random_sequence(features, num_frames,
-                                              sample_frames)
-
-    outputs = self.inference_step(features, model)
+    outputs = self.inference_step(model_inputs, model)
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
-    if self.task_config.validation_data.segment_labels:
-      # workaround to ignore the unrated labels.
-      outputs *= label_weights
-      # remove padding
-      outputs = outputs[~tf.reduce_all(labels == -1, axis=1)]
-      labels = labels[~tf.reduce_all(labels == -1, axis=1)]
+    inputs, outputs, labels, label_weights = self._postprocess_outputs(
+        inputs, outputs, labels, label_weights, training=False)
 
     all_losses = self.build_losses(
         labels=labels,
