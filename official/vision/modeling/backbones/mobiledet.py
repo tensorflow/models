@@ -32,7 +32,7 @@ layers = tf.keras.layers
 #  pylint: disable=pointless-string-statement
 
 """
-Architecture: https://arxiv.org/abs/1704.04861.
+Architecture: https://arxiv.org/abs/2004.14525.
 
 "MobileDets: Searching for Object Detection Architectures for
 Mobile Accelerators" Yunyang Xiong, Hanxiao Liu, Suyog Gupta, Berkin Akin,
