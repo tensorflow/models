@@ -20,18 +20,18 @@ limitations under the License.
 #include <sstream>
 #include <utility>
 
+#include "icu4c/source/common/unicode/utf8.h"
 #include "tf_ops/projection_util.h"  // seq_flow_lite
 
 // Returns true if the given text contains a number.
 bool IsDigit(const std::string& text) {
-  Rune rune;
   for (size_t i = 0; i < text.length();) {
-    const int bytes_read = chartorune(&rune, const_cast<char*>(text.data()));
-    if (rune == Runeerror || bytes_read == 0) break;
-    if (rune >= static_cast<Rune>('0') && rune <= static_cast<Rune>('9')) {
+    UChar32 c;
+    U8_NEXT(text.data(), i, text.length(), c);
+    if (c < 0) break;
+    if (c >= '0' && c <= '9') {
       return true;
     }
-    i += bytes_read;
   }
   return false;
 }

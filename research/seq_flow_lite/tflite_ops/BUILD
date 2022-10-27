@@ -201,14 +201,17 @@ cc_test(
         ":layer_norm",
         "@org_tensorflow//tensorflow/lite/kernels:test_util",
         "@com_google_googletest//:gtest_main",
-        "@flatbuffers",
     ],
 )
 
 cc_library(
     name = "quantization_util",
     hdrs = ["quantization_util.h"],
-    deps = ["@org_tensorflow//tensorflow/lite:context"],
+    deps = [
+        "@org_tensorflow//tensorflow/lite:context",
+        "@org_tensorflow//tensorflow/lite/kernels/internal:tensor",
+        "@com_google_absl//absl/base:core_headers",
+    ],
 )
 
 cc_library(

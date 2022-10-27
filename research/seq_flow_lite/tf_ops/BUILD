@@ -16,7 +16,7 @@ cc_library(
     hdrs = ["projection_normalizer_util.h"],
     deps = [
         ":projection_util",
-        "@utf_archive//:utf",
+        "@icu4c//:icu4c",
     ],
 )
 
@@ -26,7 +26,6 @@ cc_library(
     hdrs = ["projection_tokenizer_util.h"],
     deps = [
         ":projection_util",
-        "@utf_archive//:utf",
     ],
 )
 
@@ -35,7 +34,7 @@ cc_library(
     srcs = ["projection_util.cc"],
     hdrs = ["projection_util.h"],
     deps = [
-        "@utf_archive//:utf",
+        "@icu4c//:icu4c",
     ],
 )
 
@@ -88,7 +87,7 @@ cc_library(
     srcs = ["text_distorter.cc"],
     hdrs = ["text_distorter.h"],
     deps = [
-        "@icu4c",
+        "@icu4c//:icu4c",
         "@tensorflow_includes//:includes",
         "@tensorflow_solib//:framework_lib",
     ],

@@ -23,7 +23,6 @@ limitations under the License.
 #include "tflite_ops/quantization_util.h"  // seq_flow_lite
 #include "tflite_ops/tflite_decoder_cache.h"  // seq_flow_lite
 
-
 namespace seq_flow_lite {
 namespace ops {
 namespace custom {
@@ -78,8 +77,8 @@ void UniformDecoderOp::EvalQuantized(int32_t step,
     const float* selected = cur_cache + (selected_beams[i] * FeatureSize());
     for (int j = 0; j < FeatureSize(); ++j, index++) {
       next_cache[index] =
-          selected[j] + ::seq_flow_lite::PodDequantize(*input, index);
-      result[index] = ::seq_flow_lite::PodQuantize(
+          selected[j] + ::seq_flow_lite::PodDequantize<uint8_t>(*input, index);
+      result[index] = ::seq_flow_lite::PodQuantize<uint8_t>(
           next_cache[index], output->params.zero_point,
           normalizer_and_inverse_scale);
     }

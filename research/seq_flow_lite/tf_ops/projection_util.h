@@ -14,12 +14,13 @@ limitations under the License.
 ==============================================================================*/
 #ifndef TENSORFLOW_MODELS_SEQ_FLOW_LITE_TF_OPS_PROJECTION_UTIL_H_
 #define TENSORFLOW_MODELS_SEQ_FLOW_LITE_TF_OPS_PROJECTION_UTIL_H_
+
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "libutf/utf.h"
+#include "icu4c/source/common/unicode/utf8.h"
 
 inline constexpr int kFirstCapOffset = 3;
 inline constexpr int kAllCapsOffset = 4;
@@ -105,14 +106,14 @@ class ProjectionUnicodeHandler {
 
   // Returns a boolean flag indicating if the unicode segment is part of the
   // vocabulary.
-  bool IsValidUnicode(Rune rune) const {
-    return valid_chars_.find(rune) != valid_chars_.end();
+  bool IsValidUnicode(UChar32 c) const {
+    return valid_chars_.find(c) != valid_chars_.end();
   }
 
   // Returns an index in [0, |vocabulary|), if the unicode is part of the
   // vocabulary and -1 if it's not.
-  int UnicodeIndex(Rune rune) const {
-    return IsValidUnicode(rune) ? valid_chars_.at(rune) : -1;
+  int UnicodeIndex(UChar32 c) const {
+    return IsValidUnicode(c) ? valid_chars_.at(c) : -1;
   }
 
   // Returns |vocabulary|.
@@ -137,9 +138,9 @@ class ProjectionUnicodeHandler {
   // Parses and extracts supported or allowed unicode segments, also referred
   // to as vocabulary, from a utf8 string.
   void InitializeVocabulary(const std::string& vocabulary);
-  // A variable that maps a valid Unicode rune to its index in valid character
-  // vocabulary.
-  std::unordered_map<Rune, int> valid_chars_;
+  // A variable that maps a valid Unicode character to its index in the valid
+  // character vocabulary.
+  std::unordered_map<UChar32, int> valid_chars_;
   // Controls whether to exclude non-alphabetic, non-space characters from the
   // output text.
   bool exclude_nonalphaspace_unicodes_;

@@ -63,16 +63,6 @@ http_archive(
     urls = ["https://github.com/google/glog/archive/v0.4.0.tar.gz"],
 )
 
-http_archive(
-    name = "utf_archive",
-    build_file = "@//third_party:utf.BUILD",
-    sha256 = "262a902f622dcd28e05b8a4be10da0aa3899050d0be8f4a71780eed6b2ea65ca",
-    urls = [
-        "https://mirror.bazel.build/9fans.github.io/plan9port/unix/libutf.tgz",
-        "https://9fans.github.io/plan9port/unix/libutf.tgz",
-    ],
-)
-
 
 load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
 tf_workspace3()

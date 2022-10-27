@@ -44,64 +44,6 @@ def _find_tf_lib_path(repo_ctx):
             .format(exec_result.stderr))
     return exec_result.stdout.splitlines()[-1]
 
-def _find_numpy_include_path(repo_ctx):
-    exec_result = repo_ctx.execute(
-        [
-            get_python_path(repo_ctx),
-            "-c",
-            "import numpy; import sys; " +
-            "sys.stdout.write(numpy.get_include())",
-        ],
-        quiet = True,
-    )
-    if exec_result.return_code != 0:
-        fail("Could not locate numpy includes path:\n{}"
-            .format(exec_result.stderr))
-    return exec_result.stdout.splitlines()[-1]
-
-def _find_python_include_path(repo_ctx):
-    exec_result = repo_ctx.execute(
-        [
-            get_python_path(repo_ctx),
-            "-c",
-            "from distutils import sysconfig; import sys; " +
-            "sys.stdout.write(sysconfig.get_python_inc())",
-        ],
-        quiet = True,
-    )
-    if exec_result.return_code != 0:
-        fail("Could not locate python includes path:\n{}"
-            .format(exec_result.stderr))
-    return exec_result.stdout.splitlines()[-1]
-
-def _find_python_solib_path(repo_ctx):
-    exec_result = repo_ctx.execute(
-        [
-            get_python_path(repo_ctx),
-            "-c",
-            "import sys; vi = sys.version_info; " +
-            "sys.stdout.write('python{}.{}'.format(vi.major, vi.minor))",
-        ],
-    )
-    if exec_result.return_code != 0:
-        fail("Could not locate python shared library path:\n{}"
-            .format(exec_result.stderr))
-    version = exec_result.stdout.splitlines()[-1]
-    basename = "lib{}.so".format(version)
-    exec_result = repo_ctx.execute(
-        ["{}-config".format(version), "--configdir"],
-        quiet = True,
-    )
-    if exec_result.return_code != 0:
-        fail("Could not locate python shared library path:\n{}"
-            .format(exec_result.stderr))
-    solib_dir = exec_result.stdout.splitlines()[-1]
-    full_path = repo_ctx.path("{}/{}".format(solib_dir, basename))
-    if not full_path.exists:
-        fail("Unable to find python shared library file:\n{}/{}"
-            .format(solib_dir, basename))
-    return struct(dir = solib_dir, basename = basename)
-
 def _eigen_archive_repo_impl(repo_ctx):
     tf_include_path = _find_tf_include_path(repo_ctx)
     repo_ctx.symlink(tf_include_path, "tf_includes")
@@ -223,44 +165,9 @@ def _tensorflow_solib_repo_impl(repo_ctx):
 cc_library(
     name = "framework_lib",
     srcs = ["tensorflow_solib/libtensorflow_framework.so.2"],
-    deps = ["@python_includes", "@python_includes//:numpy_includes"],
     visibility = ["//visibility:public"],
 )
 """,
-    )
-
-def _python_includes_repo_impl(repo_ctx):
-    python_include_path = _find_python_include_path(repo_ctx)
-    python_solib = _find_python_solib_path(repo_ctx)
-    repo_ctx.symlink(python_include_path, "python_includes")
-    numpy_include_path = _find_numpy_include_path(repo_ctx)
-    repo_ctx.symlink(numpy_include_path, "numpy_includes")
-    repo_ctx.symlink(
-        "{}/{}".format(python_solib.dir, python_solib.basename),
-        python_solib.basename,
-    )
-
-    # Note, "@python_includes" is a misnomer since we include the
-    # libpythonX.Y.so in the srcs, so we can get access to python's various
-    # symbols at link time.
-    repo_ctx.file(
-        "BUILD",
-        content = """
-cc_library(
-    name = "python_includes",
-    hdrs = glob(["python_includes/**/*.h"]),
-    srcs = ["{}"],
-    includes = ["python_includes"],
-    visibility = ["//visibility:public"],
-)
-cc_library(
-    name = "numpy_includes",
-    hdrs = glob(["numpy_includes/**/*.h"]),
-    includes = ["numpy_includes"],
-    visibility = ["//visibility:public"],
-)
-""".format(python_solib.basename),
-        executable = False,
     )
 
 def cc_tf_configure():
@@ -289,10 +196,6 @@ def cc_tf_configure():
         implementation = _tensorflow_solib_repo_impl,
     )
     make_tflib_repo(name = "tensorflow_solib")
-    make_python_inc_repo = repository_rule(
-        implementation = _python_includes_repo_impl,
-    )
-    make_python_inc_repo(name = "python_includes")
 
 def _reverb_protoc_archive(ctx):
     version = ctx.attr.version

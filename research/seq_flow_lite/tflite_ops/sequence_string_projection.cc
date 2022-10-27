@@ -144,7 +144,7 @@ class ProjectionParams {
   void WordNoveltyFeature(uint8_t* data, int word_count) const {
     float word_novelty_feature;
     WordNoveltyFeature(&word_novelty_feature, word_count);
-    *data = PodQuantize(word_novelty_feature, 127.0f, 127);
+    *data = PodQuantize<uint8_t>(word_novelty_feature, 127.0f, 127);
   }
   bool DocSizeFeatureEnabled() const { return (doc_size_levels_ != 0); }
   bool FirstCap() const { return add_first_cap_feature_; }
@@ -161,7 +161,7 @@ class ProjectionParams {
   void DocSizeFeature(uint8_t* data, int num_tokens) {
     float doc_size_feature;
     DocSizeFeature(&doc_size_feature, num_tokens);
-    *data = PodQuantize(doc_size_feature, 127.0f, 127);
+    *data = PodQuantize<uint8_t>(doc_size_feature, 127.0f, 127);
   }
   void Hash(const std::string& word, std::vector<uint64_t>& hash_codes) {
     hasher_->GetHashCodes(word, hash_codes);

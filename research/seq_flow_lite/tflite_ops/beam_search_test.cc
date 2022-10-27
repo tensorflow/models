@@ -76,7 +76,7 @@ class BeamSearchImpl : public BeamSearch {
             cur_cache + (selected_beams[beam] * NumClasses());
         for (int j = 0; j < NumClasses(); ++j, index++) {
           next_cache[index] = (selected[j] + next_cache[index]) / 2;
-          data_ptr[index] = PodQuantize(
+          data_ptr[index] = PodQuantize<uint8_t>(
               next_cache[index], decoder_output_->params.zero_point,
               1.0f / decoder_output_->params.scale);
         }

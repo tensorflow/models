@@ -19,8 +19,6 @@ limitations under the License.
 #include <unordered_set>
 #include <vector>
 
-#include "libutf/utf.h"
-
 // Tokenizes the input with the given separators. To properly tokenize a text
 // containing contractions in English (e.g. I'm), it combines the apostrophe
 // with the token coming after it. For example, the text "I'm happy" is
