@@ -18,7 +18,7 @@ matplotlib
 # Loader becomes a required positional argument in 6.0 in yaml.load
 pyyaml>=5.1,<6.0
 # CV related dependencies
-opencv-python-headless==4.5.2.52
+opencv-python-headless
 Pillow
 pycocotools
 # NLP related dependencies
