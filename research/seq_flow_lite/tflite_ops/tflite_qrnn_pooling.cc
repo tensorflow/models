@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#include "tflite_ops/quantization_util.h"  // seq_flow_lite
 #include "tflite_ops/tflite_qrnn_pooling.h"  // seq_flow_lite
+
+#include "tflite_ops/quantization_util.h"  // seq_flow_lite
 
 namespace seq_flow_lite {
 namespace ops {
@@ -86,12 +87,12 @@ TfLiteStatus QRNNPooling(TfLiteContext* context, TfLiteTensor* multiplier,
     for (int j = 0; j < state_size; ++j) {
       const int time_index = forward ? i : time_steps - (i + 1);
       const int index = time_index * state_size + j;
-      float multiplier_value = PodDequantize(*multiplier, index);
-      float constant_vale = PodDequantize(*constant, index);
+      float multiplier_value = PodDequantize<uint8_t>(*multiplier, index);
+      float constant_vale = PodDequantize<uint8_t>(*constant, index);
       state[j] = state[j] * multiplier_value + constant_vale;
       if (outputs) {
         out_ptr[index] =
-            PodQuantize(state[j], out_zero_point, out_inverse_scale);
+            PodQuantize<uint8_t>(state[j], out_zero_point, out_inverse_scale);
       }
     }
   }
@@ -101,7 +102,8 @@ TfLiteStatus QRNNPooling(TfLiteContext* context, TfLiteTensor* multiplier,
     const int32_t zero_point = final_state->params.zero_point;
     const float inverse_scale = 1.0f / final_state->params.scale;
     for (int j = 0; j < state_size; ++j) {
-      final_state_ptr[j] = PodQuantize(state[j], zero_point, inverse_scale);
+      final_state_ptr[j] =
+          PodQuantize<uint8_t>(state[j], zero_point, inverse_scale);
     }
   }
 

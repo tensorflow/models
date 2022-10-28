@@ -19,8 +19,6 @@ limitations under the License.
 #include <unordered_set>
 #include <vector>
 
-#include "libutf/utf.h"
-
 // Normalizes the input with the given |separators| by adding a space before and
 // after each separator. When |normalize_repetition| is true, it removes the
 // repeated characters (except numbers) which consecutively appeared more than

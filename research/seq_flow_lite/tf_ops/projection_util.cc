@@ -22,7 +22,11 @@ limitations under the License.
 #include <sstream>
 #include <unordered_set>
 
+#include "icu4c/source/common/unicode/uchar.h"
+#include "icu4c/source/common/unicode/utf8.h"
+
 namespace {
+
 constexpr int kInvalid = -1;
 constexpr char kSpace = ' ';
 
@@ -168,25 +172,33 @@ class UnicodeHash : public HashEngine {
                                      int feature_size) override {
     std::vector<uint64_t> hash_codes;
     hash_codes.reserve(2 * (feature_size / 64 + 1));
-    auto word_ptr = word.c_str();
-    int utflength = utflen(const_cast<char*>(word_ptr));
-    // Both `feature_size` and `bits_per_unicode` are bit lengths.
-    const int max_usable_runes = feature_size * 2 / bits_per_unicode_;
-    if (max_usable_runes < utflength) {
-      const int unicode_skip = (utflength - max_usable_runes) / 2;
+    const char* word_ptr = word.c_str();
+    int word_index = 0;
+    int utflength = 0;
+    while (word_index < word.length()) {
+      UChar32 c;
+      U8_NEXT(word_ptr, word_index, word.length(), c);
+      if (c < 0) break;
+      utflength++;
+    }
+    word_index = 0;
+    //  Both `feature_size` and `bits_per_unicode` are bit lengths.
+    const int max_usable_chars = feature_size * 2 / bits_per_unicode_;
+    if (max_usable_chars < utflength) {
+      const int unicode_skip = (utflength - max_usable_chars) / 2;
       for (int i = 0; i < unicode_skip; ++i) {
-        Rune rune;
-        word_ptr += chartorune(&rune, const_cast<char*>(word_ptr));
+        UChar32 c;
+        U8_NEXT(word_ptr, word_index, word.length(), c);
       }
-      utflength = max_usable_runes;
+      utflength = max_usable_chars;
     }
 
     std::vector<uint64_t> unicode_hashes;
     unicode_hashes.reserve(utflength);
     for (int i = 0; i < utflength; ++i) {
-      Rune rune;
-      word_ptr += chartorune(&rune, const_cast<char*>(word_ptr));
-      unicode_hashes.push_back((rune * kMul) & bit_mask_);
+      UChar32 c;
+      U8_NEXT(word_ptr, word_index, word.length(), c);
+      unicode_hashes.push_back((c * kMul) & bit_mask_);
     }
 
     uint64_t hash = 0;
@@ -252,42 +264,37 @@ std::string ProjectionUnicodeHandler::LowerCaseUTF8WithSupportedUnicodes(
   // is allocated for target.
   const char* csource = source.first;
   int len = source.second;
+  int i = 0;
   auto target = std::unique_ptr<char[]>(new char[len * 4]);
   auto target_ptr = target.get();
-  int i = 0;
+  int target_len = 0;
   bool first_char = true;
   bool first_cap_value = false;
   bool all_caps_value = false;
   while (i < len) {
-    Rune rune;
-    const int bytes_read = chartorune(&rune, const_cast<char*>(csource + i));
-    if (bytes_read == 0 || bytes_read > len - i) {
-      break;
+    UChar32 c;
+    U8_NEXT(csource, i, len, c);
+    if (c < 0) break;
+    UChar32 lower = u_tolower(c);
+    // Skip processing the unicode if exclude_nonalphaspace_unicodes_ is
+    // true and the unicode is not alpha and not space.
+    const UChar32 kSpaceChar = ' ';
+    if (exclude_nonalphaspace_unicodes_ && !u_isUAlphabetic(lower) &&
+        lower != kSpaceChar) {
+      continue;
     }
-    i += bytes_read;
-    if (rune != Runeerror) {
-      Rune lower = tolowerrune(rune);
-      // Skip processing the unicode if exclude_nonalphaspace_unicodes_ is
-      // true and the unicode is not alpha and not space.
-      const Rune kSpaceRune = ' ';
-      if (exclude_nonalphaspace_unicodes_ && !isalpharune(lower) &&
-          lower != kSpaceRune) {
-        continue;
-      }
-      if (IsUnrestrictedVocabulary() || IsValidUnicode(lower)) {
-        const int bytes_written = runetochar(target_ptr, &lower);
-        target_ptr += bytes_written;
+    if (IsUnrestrictedVocabulary() || IsValidUnicode(lower)) {
+      U8_APPEND_UNSAFE(target_ptr, target_len, lower);
 
-        const bool lower_case = (lower == rune);
-        if (first_char) {
-          first_cap_value = !lower_case;
-          all_caps_value = !lower_case;
-        } else {
-          first_cap_value &= lower_case;
-          all_caps_value &= !lower_case;
-        }
-        first_char = false;
+      const bool lower_case = (lower == c);
+      if (first_char) {
+        first_cap_value = !lower_case;
+        all_caps_value = !lower_case;
+      } else {
+        first_cap_value &= lower_case;
+        all_caps_value &= !lower_case;
       }
+      first_char = false;
     }
   }
   if (first_cap) {
@@ -296,28 +303,24 @@ std::string ProjectionUnicodeHandler::LowerCaseUTF8WithSupportedUnicodes(
   if (all_caps) {
     *all_caps = all_caps_value;
   }
-  return std::string(target.get(), target_ptr);
+  return std::string(target_ptr, target_len);
 }
 
 void ProjectionUnicodeHandler::InitializeVocabulary(
     const std::string& vocabulary) {
   for (size_t i = 0, index = 0; i < vocabulary.length();) {
-    Rune rune;
-    const int bytes_read =
-        chartorune(&rune, const_cast<char*>(vocabulary.c_str() + i));
-    if (!bytes_read || bytes_read > (vocabulary.length() - i)) {
-      break;
-    }
-    i += bytes_read;
+    UChar32 c;
+    U8_NEXT(const_cast<char*>(vocabulary.c_str()), i, vocabulary.length(), c);
+    if (c < 0) break;
     // Include novel lower case unicode segments as part of valid chars.
-    if (rune == Runeerror) {
-      std::clog << "Invalid rune in vocabulary.";
-    } else if (IsValidUnicode(rune)) {
-      std::clog << "Duplicate rune " << rune << " found in vocabulary.";
-    } else if (rune != tolowerrune(rune)) {
-      std::clog << "Upper case rune " << rune << " found in vocabulary.";
+    if (c == 0xFFFD) {
+      std::clog << "Invalid character in vocabulary.";
+    } else if (IsValidUnicode(c)) {
+      std::clog << "Duplicate character " << c << " found in vocabulary.";
+    } else if (u_isUUppercase(c)) {
+      std::clog << "Upper case character " << c << " found in vocabulary.";
     } else {
-      valid_chars_[rune] = index++;
+      valid_chars_[c] = index++;
     }
   }
 }
@@ -379,15 +382,15 @@ std::vector<std::string> SplitBySpace(const char* input_ptr, size_t len,
 template <typename T>
 void SplitByCharInternal(std::vector<T>* tokens, const char* input_ptr,
                          size_t len, size_t max_tokens) {
-  Rune rune;
   for (size_t i = 0; i < len;) {
-    auto bytes_read = chartorune(&rune, const_cast<char*>(input_ptr + i));
-    if (bytes_read == 0 || bytes_read > (len - i)) break;
-    tokens->emplace_back(input_ptr + i, bytes_read);
+    UChar32 c;
+    size_t old_i = i;
+    U8_NEXT(input_ptr, i, len, c);
+    if (c < 0) break;
+    tokens->emplace_back(input_ptr + old_i, i - old_i);
     if (max_tokens != kInvalid && tokens->size() == max_tokens) {
       break;
     }
-    i += bytes_read;
   }
 }
 

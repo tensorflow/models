@@ -17,13 +17,17 @@ limitations under the License.
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
+#include "absl/base/macros.h"
 #include "tensorflow/lite/context.h"
+#include "tensorflow/lite/kernels/internal/tensor_ctypes.h"
 
 namespace seq_flow_lite {
 
-// Returns the original (dequantized) value of 8bit value.
-inline float PodDequantizeValue(const TfLiteTensor& tensor, uint8_t value) {
+// Returns the original (dequantized) value.
+template <typename T>
+inline float PodDequantizeValue(const TfLiteTensor& tensor, T value) {
   const int32_t zero_point = tensor.params.zero_point;
   const float scale = tensor.params.scale;
   return (static_cast<int32_t>(value) - zero_point) * scale;
@@ -31,21 +35,42 @@ inline float PodDequantizeValue(const TfLiteTensor& tensor, uint8_t value) {
 
 // Returns the original (dequantized) value of the 'index'-th element of
 // 'tensor.
+template <typename T>
 inline float PodDequantize(const TfLiteTensor& tensor, int index) {
-  return PodDequantizeValue(tensor, tensor.data.uint8[index]);
+  return PodDequantizeValue<T>(tensor,
+                               tflite::GetTensorData<T>(&tensor)[index]);
 }
 
-// Quantizes 'value' to 8bit, given the quantization bias (zero_point) and
-// factor (inverse_scale).
-inline uint8_t PodQuantize(float value, int32_t zero_point,
-                           float inverse_scale) {
+ABSL_DEPRECATED("Use PodDequantizeValue<uint8_t> instead.")
+inline float PodDequantizeValue(const TfLiteTensor& tensor, uint8_t value) {
+  return PodDequantizeValue<uint8_t>(tensor, value);
+}
+
+ABSL_DEPRECATED("Use PodDequantize<uint8_t> instead.")
+inline float PodDequantize(const TfLiteTensor& tensor, int index) {
+  return PodDequantizeValue<uint8_t>(tensor, tensor.data.uint8[index]);
+}
+
+// Quantizes 'value', given the quantization bias (zero_point) and factor
+// (inverse_scale).
+template <typename T>
+inline T PodQuantize(float value, int32_t zero_point, float inverse_scale) {
   const float integer_value_in_float = value * inverse_scale;
   const float offset = (integer_value_in_float >= 0.0) ? 0.5f : -0.5f;
   // NOTE(sfeuz): This assumes value * inverse_scale is within [INT_MIN,
   // INT_MAX].
   int32_t integer_value =
       static_cast<int32_t>(integer_value_in_float + offset) + zero_point;
-  return static_cast<uint8_t>(std::max(std::min(255, integer_value), 0));
+  return static_cast<T>(
+      std::max(std::min(static_cast<int32_t>(std::numeric_limits<T>::max()),
+                        integer_value),
+               static_cast<int32_t>(std::numeric_limits<T>::min())));
+}
+
+ABSL_DEPRECATED("Use PodQuantize<uint8_t> instead.")
+inline uint8_t PodQuantize(float value, int32_t zero_point,
+                           float inverse_scale) {
+  return PodQuantize<uint8_t>(value, zero_point, inverse_scale);
 }
 
 }  // namespace seq_flow_lite

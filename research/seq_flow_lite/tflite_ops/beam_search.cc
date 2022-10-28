@@ -97,7 +97,7 @@ void BeamSearch::PopulateLogLookupTable(const TfLiteTensor &tensor) {
   if (!log_lookup_table_populated_) {
     for (int value = 0; value < 256; ++value) {
       log_lookup_table_[value] =
-          logf(::seq_flow_lite::PodDequantizeValue(tensor, value));
+          logf(::seq_flow_lite::PodDequantizeValue<uint8_t>(tensor, value));
     }
     log_lookup_table_populated_ = true;
   }
