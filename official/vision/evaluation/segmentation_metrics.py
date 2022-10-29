@@ -14,8 +14,11 @@
 
 """Metrics for segmentation."""
 
+from typing import Optional, Sequence, Tuple, Union
+
 import tensorflow as tf
 
+from official.vision.evaluation import iou
 from official.vision.ops import box_ops
 from official.vision.ops import spatial_transform_ops
 
@@ -64,35 +67,11 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
           original dimension.
       y_pred: Tensor [batch, height_p, width_p, num_classes], predicated masks.
     """
-    predictions = y_pred
-    masks = y_true['masks']
-    valid_masks = y_true['valid_masks']
-    images_info = y_true['image_info']
+    predictions, masks, valid_masks = preprocess_inputs(
+        y_true, y_pred, self._rescale_predictions)
 
-    if isinstance(predictions, tuple) or isinstance(predictions, list):
-      predictions = tf.concat(predictions, axis=0)
-      masks = tf.concat(masks, axis=0)
-      valid_masks = tf.concat(valid_masks, axis=0)
-      images_info = tf.concat(images_info, axis=0)
-
-    # Ignore mask elements is set to zero for argmax op.
+    # Ignored mask elements are set to zero for fitting the confusion matrix.
     masks = tf.where(valid_masks, masks, tf.zeros_like(masks))
-    masks_size = tf.shape(masks)[1:3]
-
-    if self._rescale_predictions:
-      # Scale back predictions to original image shapes and pad to mask size.
-      # Note: instead of cropping the masks to image shape (dynamic), here we
-      # pad the rescaled predictions to mask size (fixed). And update the
-      # valid_masks to mask out the pixels outside the original image shape.
-      predictions, image_shape_masks = _rescale_and_pad_predictions(
-          predictions, images_info, output_size=masks_size)
-      # Only the area within the original image shape is valid.
-      # (batch_size, height, width, 1)
-      valid_masks = tf.cast(valid_masks, tf.bool) & tf.expand_dims(
-          image_shape_masks, axis=-1)
-    else:
-      predictions = tf.image.resize(
-          predictions, masks_size, method=tf.image.ResizeMethod.BILINEAR)
 
     predictions = tf.argmax(predictions, axis=3)
     flatten_predictions = tf.reshape(predictions, shape=[-1])
@@ -124,7 +103,156 @@ class PerClassIoU(MeanIoU):
     return tf.math.divide_no_nan(true_positives, denominator)
 
 
-def _rescale_and_pad_predictions(predictions, images_info, output_size):
+class PerClassIoUV2(iou.PerClassIoUV2):
+  """Computes the per-class IoU metric for semantic segmentation.
+
+  This implementation converts predictions and ground truth to binary masks,
+  and uses logical AND and OR to compute intersection and union, which is much
+  faster than the MeanIoU and PerClassIoU (using confusion matrix) above on TPU,
+  but slower on CPU and GPU.
+  """
+
+  def __init__(self,
+               num_classes: int,
+               rescale_predictions: bool = False,
+               name: Optional[str] = None,
+               dtype: Optional[Union[str, tf.dtypes.DType]] = tf.float32,
+               shape: Optional[Sequence[int]] = None,
+               axis: int = -1):
+    """Constructs Segmentation evaluator class.
+
+    Args:
+      num_classes: `int`, number of classes.
+      rescale_predictions: `bool`, whether to scale back prediction to original
+        image sizes. If True, y_true['image_info'] is used to rescale
+        predictions.
+      name: `str`, name of the metric instance.
+      dtype: data type of the metric result.
+      shape: shape of the metrics result.
+      axis: (Optional) Defaults to -1. The dimension containing the one-hot
+        values.
+    """
+    super().__init__(
+        num_classes=num_classes, name=name, dtype=dtype, shape=shape, axis=axis)
+    self._rescale_predictions = rescale_predictions
+
+  def update_state(self, y_true: tf.Tensor, y_pred: tf.Tensor):
+    """Updates metric state.
+
+    Args:
+      y_true: `dict`, dictionary with the following name, and key values.
+        - masks: [batch, height, width, num_layers], groundtruth masks. The
+          num_layers is 1 by default, while all the operations in this function
+          support num_layers > 1.
+        - valid_masks: [batch, height, width, num_layers], valid elements in the
+          mask.
+        - image_info: [batch, 4, 2], a tensor that holds information about
+          original and preprocessed images. Each entry is in the format of
+          [[original_height, original_width], [input_height, input_width],
+          [y_scale, x_scale], [y_offset, x_offset]], where [desired_height,
+          desired_width] is the actual scaled image size, and [y_scale, x_scale]
+          is the scaling factor, which is the ratio of scaled dimension /
+          original dimension.
+      y_pred: Tensor [batch, height_p, width_p, num_classes], predicated masks.
+    """
+    logits, gt_masks, valid_masks = preprocess_inputs(
+        y_true, y_pred, self._rescale_predictions)
+    valid_masks = tf.cast(valid_masks, tf.int32)
+
+    gt_binary_masks = tf.one_hot(
+        tf.cast(gt_masks[..., 0], dtype=tf.int32),
+        self.num_classes,
+        dtype=tf.int32)
+    gt_binary_masks &= valid_masks
+
+    predictions_binary_masks = tf.one_hot(
+        tf.argmax(logits, axis=-1), self.num_classes, dtype=tf.int32)
+    predictions_binary_masks &= valid_masks
+
+    super().update_state(
+        y_true=gt_binary_masks, y_pred=predictions_binary_masks)
+
+
+class MeanIoUV2(PerClassIoUV2):
+  """Computes the mean IoU metric for semantic segmentation."""
+
+  def result(self) -> tf.Tensor:
+    """Average the IoUs of all the classes."""
+    return tf.reduce_mean(super().result())
+
+
+def preprocess_inputs(
+    y_true: tf.Tensor, y_pred: tf.Tensor,
+    rescale_predictions: bool) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+  """Pre-processes the inputs (predictions and ground truth) of the metrics.
+
+  Args:
+    y_true: `dict`, dictionary with the following name, and key values.
+      - masks: [batch, height, width, num_layers], groundtruth masks. The
+        num_layers is 1 by default, while all the operations in this function
+        support num_layers > 1.
+      - valid_masks: [batch, height, width, num_layers], valid elements in the
+        mask.
+      - image_info: [batch, 4, 2], a tensor that holds information about
+        original and preprocessed images. Each entry is in the format of
+        [[original_height, original_width], [input_height, input_width],
+        [y_scale, x_scale], [y_offset, x_offset]], where [desired_height,
+        desired_width] is the actual scaled image size, and [y_scale, x_scale]
+        is the scaling factor, which is the ratio of scaled dimension /
+        original dimension.
+    y_pred: tensor [batch, height_p, width_p, num_classes], predicated masks.
+    rescale_predictions: `bool`, whether to scale back prediction to original
+      image sizes. If True, y_true['image_info'] is used to rescale
+      predictions.
+
+  Returns:
+    logits: a float tensor in shape [batch, height, width, num_classes], which
+      stores the raw output of the model.
+    gt_masks: an int tensor in shape [batch, height, width, 1], which stores the
+      groundtruth masks.
+    valid_masks: a bool tensor in shape [batch, height, width, 1], which
+      indicates the valid elements of the masks.
+  """
+  logits = y_pred
+  gt_masks = y_true['masks']
+  valid_masks = y_true['valid_masks']
+  images_info = y_true['image_info']
+
+  if isinstance(logits, tuple) or isinstance(logits, list):
+    logits = tf.concat(logits, axis=0)
+    gt_masks = tf.concat(gt_masks, axis=0)
+    valid_masks = tf.concat(valid_masks, axis=0)
+    images_info = tf.concat(images_info, axis=0)
+
+  # The pixel is valid if any layer of the masks is valid at that pixel.
+  # (batch_size, height, width)
+  valid_masks = tf.reduce_any(tf.cast(valid_masks, tf.bool), axis=-1)
+
+  gt_masks_size = tf.shape(gt_masks)[1:3]
+  if rescale_predictions:
+    # Scale back predictions to original image shapes and pad to mask size.
+    # Note: instead of cropping the masks to image shape (dynamic), here we
+    # pad the rescaled predictions to mask size (fixed). And update the
+    # valid_masks to mask out the pixels outside the original image shape.
+    logits, image_shape_masks = (
+        _rescale_and_pad_predictions(
+            logits, images_info, output_size=gt_masks_size))
+    # Only the area within the original image shape is valid.
+    # (batch_size, height, width)
+    valid_masks &= image_shape_masks
+  else:
+    logits = tf.image.resize(
+        logits, gt_masks_size, method=tf.image.ResizeMethod.BILINEAR)
+
+  # (batch_size, height, width, 1)
+  valid_masks = valid_masks[..., tf.newaxis]
+
+  return logits, gt_masks, valid_masks
+
+
+def _rescale_and_pad_predictions(
+    predictions: tf.Tensor, images_info: tf.Tensor,
+    output_size: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
   """Scales back predictions to original image shapes and pads to output size.
 
   Args:

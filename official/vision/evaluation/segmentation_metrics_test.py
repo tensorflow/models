@@ -43,11 +43,16 @@ class SegmentationMetricsTest(parameterized.TestCase, tf.test.TestCase):
     }
     return y_pred, y_true
 
-  @parameterized.parameters(True, False)
-  def test_mean_iou_metric(self, rescale_predictions):
+  @parameterized.parameters((True, True), (False, False), (True, False),
+                            (False, True))
+  def test_mean_iou_metric(self, rescale_predictions, use_v2):
     tf.config.experimental_run_functions_eagerly(True)
-    mean_iou_metric = segmentation_metrics.MeanIoU(
-        num_classes=2, rescale_predictions=rescale_predictions)
+    if use_v2:
+      mean_iou_metric = segmentation_metrics.MeanIoUV2(
+          num_classes=2, rescale_predictions=rescale_predictions)
+    else:
+      mean_iou_metric = segmentation_metrics.MeanIoU(
+          num_classes=2, rescale_predictions=rescale_predictions)
     y_pred, y_true = self._create_test_data()
     # Disable autograph for correct coverage statistics.
     update_fn = tf.autograph.experimental.do_not_convert(
@@ -56,10 +61,15 @@ class SegmentationMetricsTest(parameterized.TestCase, tf.test.TestCase):
     miou = mean_iou_metric.result()
     self.assertAlmostEqual(miou.numpy(), 0.762, places=3)
 
-  @parameterized.parameters(True, False)
-  def test_per_class_mean_iou_metric(self, rescale_predictions):
-    per_class_iou_metric = segmentation_metrics.PerClassIoU(
-        num_classes=2, rescale_predictions=rescale_predictions)
+  @parameterized.parameters((True, True), (False, False), (True, False),
+                            (False, True))
+  def test_per_class_mean_iou_metric(self, rescale_predictions, use_v2):
+    if use_v2:
+      per_class_iou_metric = segmentation_metrics.PerClassIoUV2(
+          num_classes=2, rescale_predictions=rescale_predictions)
+    else:
+      per_class_iou_metric = segmentation_metrics.PerClassIoU(
+          num_classes=2, rescale_predictions=rescale_predictions)
     y_pred, y_true = self._create_test_data()
     # Disable autograph for correct coverage statistics.
     update_fn = tf.autograph.experimental.do_not_convert(
