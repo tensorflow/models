@@ -136,6 +136,7 @@ class SemanticSegmentationTask(base_task.Task):
         loss_params.class_weights,
         loss_params.ignore_label,
         use_groundtruth_dimension=loss_params.use_groundtruth_dimension,
+        use_binary_cross_entropy=loss_params.use_binary_cross_entropy,
         top_k_percent_pixels=loss_params.top_k_percent_pixels,
         gt_is_matting_map=loss_params.gt_is_matting_map)
 

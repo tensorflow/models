@@ -113,6 +113,9 @@ class Losses(maskrcnn.Losses):
   semantic_segmentation_class_weights: List[float] = dataclasses.field(
       default_factory=list)
   semantic_segmentation_use_groundtruth_dimension: bool = True
+  # If true, use binary cross entropy (sigmoid) in loss, otherwise, use
+  # categorical cross entropy (softmax).
+  semantic_segmentation_use_binary_cross_entropy: bool = False
   semantic_segmentation_top_k_percent_pixels: float = 1.0
   instance_segmentation_weight: float = 1.0
   semantic_segmentation_weight: float = 0.5

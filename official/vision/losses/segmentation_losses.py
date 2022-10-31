@@ -30,9 +30,9 @@ class SegmentationLoss:
                class_weights,
                ignore_label,
                use_groundtruth_dimension,
+               use_binary_cross_entropy=False,
                top_k_percent_pixels=1.0,
-               gt_is_matting_map=False
-               ):
+               gt_is_matting_map=False):
     """Initializes `SegmentationLoss`.
 
     Args:
@@ -40,9 +40,10 @@ class SegmentationLoss:
         spreading the amount of probability to all other label classes.
       class_weights: A float list containing the weight of each class.
       ignore_label: An integer specifying the ignore label.
-
       use_groundtruth_dimension: A boolean, whether to resize the output to
         match the dimension of the ground truth.
+      use_binary_cross_entropy: A boolean, if true, use binary cross entropy
+        loss, otherwise, use categorical cross entropy.
       top_k_percent_pixels: A float, the value lies in [0.0, 1.0]. When its
         value < 1., only compute the loss for the top k percent pixels. This is
         useful for hard pixel mining.
@@ -53,6 +54,7 @@ class SegmentationLoss:
     self._class_weights = class_weights
     self._ignore_label = ignore_label
     self._use_groundtruth_dimension = use_groundtruth_dimension
+    self._use_binary_cross_entropy = use_binary_cross_entropy
     self._top_k_percent_pixels = top_k_percent_pixels
     self._gt_is_matting_map = gt_is_matting_map
 
@@ -62,14 +64,37 @@ class SegmentationLoss:
     Args:
       logits: A float tensor in shape (batch_size, height, width, num_classes)
         which is the output of the network.
-      labels: A tensor in shape (batch_size, height, width, 1), which is the
-        label mask of the ground truth.
+      labels: A tensor in shape (batch_size, height, width, num_layers), which
+        is the label masks of the ground truth. The num_layers can be > 1 if the
+        pixels are labeled as multiple classes.
       **kwargs: additional keyword arguments.
 
     Returns:
        A 0-D float which stores the overall loss of the batch.
     """
-    _, height, width, _ = logits.get_shape().as_list()
+    _, height, width, num_classes = logits.get_shape().as_list()
+    num_layers = labels.get_shape().as_list()[-1]
+    if not self._use_binary_cross_entropy:
+      if num_layers > 1:
+        raise ValueError(
+            'Groundtruth mask must have only 1 layer if using categorical'
+            'cross entropy, but got {} layers.'.format(num_layers))
+    if self._gt_is_matting_map:
+      if num_classes != 2:
+        raise ValueError(
+            'Groundtruth matting map only supports 2 classes, but got {} '
+            'classes.'.format(num_classes))
+      if num_layers > 1:
+        raise ValueError(
+            'Groundtruth matting map must have only 1 layer, but got {} '
+            'layers.'.format(num_layers))
+
+    class_weights = (
+        self._class_weights if self._class_weights else [1] * num_classes)
+    if num_classes != len(class_weights):
+      raise ValueError(
+          'Length of class_weights should be {}'.format(num_classes))
+    class_weights = tf.constant(class_weights, tf.float32)
 
     if self._use_groundtruth_dimension:
       # TODO(arashwan): Test using align corners to match deeplab alignment.
@@ -80,79 +105,64 @@ class SegmentationLoss:
           labels, (height, width),
           method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
-    # Do not need to cast into int32 if it is a matting map
-    if not self._gt_is_matting_map:
-      labels = tf.cast(labels, tf.int32)
+    if self._gt_is_matting_map:
+      valid_mask = tf.ones_like(labels, dtype=tf.bool)
+    else:
+      valid_mask = tf.not_equal(tf.cast(labels, tf.int32), self._ignore_label)
 
-    valid_mask = tf.not_equal(labels, self._ignore_label)
+    # (batch_size, height, width, num_classes)
+    labels_with_prob = self.get_labels_with_prob(logits, labels, valid_mask,
+                                                 **kwargs)
 
-    cross_entropy_loss = self.compute_pixelwise_loss(labels, logits, valid_mask,
-                                                     **kwargs)
+    if self._use_binary_cross_entropy:
+      # (batch_size, height, width, num_classes)
+      cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(
+          labels=labels_with_prob, logits=logits)
+      # (batch_size, height, width)
+      cross_entropy_loss = tf.reduce_sum(
+          cross_entropy_loss * class_weights, axis=-1)
+    else:
+      # (batch_size, height, width)
+      cross_entropy_loss = tf.nn.softmax_cross_entropy_with_logits(
+          labels=labels_with_prob, logits=logits)
 
+      # If groundtruth is matting map, binarize the value to create the weight
+      # mask
+      if self._gt_is_matting_map:
+        labels = utils.binarize_matting_map(labels)
+
+      # (batch_size, height, width)
+      weight_mask = tf.einsum(
+          '...y,y->...',
+          tf.one_hot(
+              tf.cast(tf.squeeze(labels, axis=-1), tf.int32),
+              depth=num_classes,
+              dtype=tf.float32), class_weights)
+      cross_entropy_loss *= weight_mask
+
+    # The pixel is valid if any layer of the masks is valid at that pixel.
+    # (batch_size, height, width)
+    valid_mask = tf.cast(tf.reduce_any(valid_mask, axis=-1), tf.float32)
+    cross_entropy_loss *= valid_mask
     if self._top_k_percent_pixels < 1.0:
       return self.aggregate_loss_top_k(cross_entropy_loss)
     else:
-      return self.aggregate_loss(cross_entropy_loss, valid_mask)
+      normalizer = tf.reduce_sum(valid_mask) + EPSILON
+      return tf.reduce_sum(cross_entropy_loss) / normalizer
 
-  def compute_pixelwise_loss(self, labels, logits, valid_mask, **kwargs):
-    """Computes the loss for each pixel.
-
-    Args:
-      labels: An int32 tensor in shape (batch_size, height, width, 1), which is
-        the label mask of the ground truth.
-      logits: A float tensor in shape (batch_size, height, width, num_classes)
-        which is the output of the network.
-      valid_mask: A bool tensor in shape (batch_size, height, width, 1) which
-        masks out ignored pixels.
-      **kwargs: additional keyword arguments.
-
-    Returns:
-       A float tensor in shape (batch_size, height, width) which stores the loss
-       value for each pixel.
-    """
-    num_classes = logits.get_shape().as_list()[-1]
-
-    # Assign pixel with ignore label to class 0 (background). The loss on the
-    # pixel will later be masked out.
-    labels = tf.where(valid_mask, labels, tf.zeros_like(labels))
-
-    cross_entropy_loss = tf.nn.softmax_cross_entropy_with_logits(
-        labels=self.get_labels_with_prob(labels, logits, **kwargs),
-        logits=logits)
-
-    if not self._class_weights:
-      class_weights = [1] * num_classes
-    else:
-      class_weights = self._class_weights
-
-    if num_classes != len(class_weights):
-      raise ValueError(
-          'Length of class_weights should be {}'.format(num_classes))
-
-    valid_mask = tf.squeeze(tf.cast(valid_mask, tf.float32), axis=-1)
-
-    # If groundtruth is matting map, binarize the value to create the weight
-    # mask
-    if self._gt_is_matting_map:
-      labels = tf.cast(utils.binarize_matting_map(labels), tf.int32)
-
-    weight_mask = tf.einsum(
-        '...y,y->...',
-        tf.one_hot(tf.squeeze(labels, axis=-1), num_classes, dtype=tf.float32),
-        tf.constant(class_weights, tf.float32))
-    return cross_entropy_loss * valid_mask * weight_mask
-
-  def get_labels_with_prob(self, labels, logits, **unused_kwargs):
+  def get_labels_with_prob(self, logits, labels, valid_mask, **unused_kwargs):
     """Get a tensor representing the probability of each class for each pixel.
 
     This method can be overridden in subclasses for customizing loss function.
 
     Args:
-      labels: If groundtruth mask is not matting map, an int32 tensor which is
-      the label map of the groundtruth. If groundtruth mask is matting map,
-      an float32 tensor. The shape is always (batch_size, height, width, 1).
       logits: A float tensor in shape (batch_size, height, width, num_classes)
         which is the output of the network.
+      labels: A tensor in shape (batch_size, height, width, num_layers), which
+        is the label masks of the ground truth. The num_layers can be > 1 if the
+        pixels are labeled as multiple classes.
+      valid_mask: A bool tensor in shape (batch_size, height, width, num_layers)
+        which indicates the ignored labels in each ground truth layer.
       **unused_kwargs: Unused keyword arguments.
 
     Returns:
@@ -161,27 +171,33 @@ class SegmentationLoss:
     num_classes = logits.get_shape().as_list()[-1]
 
     if self._gt_is_matting_map:
+      # (batch_size, height, width, num_classes=2)
       train_labels = tf.concat([1 - labels, labels], axis=-1)
     else:
-      labels = tf.squeeze(labels, axis=-1)
-      train_labels = tf.one_hot(labels, num_classes)
+      labels = tf.cast(labels, tf.int32)
+      # Assign pixel with ignore label to class -1, which will be ignored by
+      # tf.one_hot operation.
+      # (batch_size, height, width, num_layers)
+      labels = tf.where(valid_mask, labels, -tf.ones_like(labels))
+
+      if self._use_binary_cross_entropy:
+        # (batch_size, height, width, num_layers, num_classes)
+        one_hot_labels_per_layer = tf.one_hot(
+            labels, depth=num_classes, dtype=tf.float32)
+
+        # Aggregate all one-hot labels to get a binary mask in shape
+        # (batch_size, height, width, num_classes), which represents all the
+        # classes that a pixel is labeled as.
+        # For example, if a pixel is labeled as "window" (id=1) and also being a
+        # part of the "building" (id=3), then its train_labels are [0,1,0,1].
+        train_labels = tf.reduce_max(one_hot_labels_per_layer, axis=-2)
+      else:
+        # (batch_size, height, width, num_classes)
+        train_labels = tf.one_hot(
+            tf.squeeze(labels, axis=-1), depth=num_classes, dtype=tf.float32)
+
     return train_labels * (
         1 - self._label_smoothing) + self._label_smoothing / num_classes
-
-  def aggregate_loss(self, pixelwise_loss, valid_mask):
-    """Aggregate the pixelwise loss.
-
-    Args:
-      pixelwise_loss: A float tensor in shape (batch_size, height, width) which
-        stores the loss of each pixel.
-      valid_mask: A bool tensor in shape (batch_size, height, width, 1) which
-        masks out ignored pixels.
-
-    Returns:
-       A 0-D float which stores the overall loss of the batch.
-    """
-    normalizer = tf.reduce_sum(tf.cast(valid_mask, tf.float32)) + EPSILON
-    return tf.reduce_sum(pixelwise_loss) / normalizer
 
   def aggregate_loss_top_k(self, pixelwise_loss):
     """Aggregate the top-k greatest pixelwise loss.
