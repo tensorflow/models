@@ -15,7 +15,7 @@
 """Semantic segmentation configuration definition."""
 import dataclasses
 import os
-from typing import List, Optional, Union
+from typing import List, Optional, Sequence, Union
 
 import numpy as np
 from official.core import config_definitions as cfg
@@ -34,7 +34,7 @@ class DataConfig(cfg.DataConfig):
   # If crop_size is specified, image will be resized first to
   # output_size, then crop of size crop_size will be cropped.
   crop_size: List[int] = dataclasses.field(default_factory=list)
-  input_path: str = ''
+  input_path: Union[Sequence[str], str, hyperparams.Config] = ''
   global_batch_size: int = 0
   is_training: bool = True
   dtype: str = 'float32'
@@ -101,6 +101,7 @@ class SemanticSegmentationModel(hyperparams.Config):
 
 @dataclasses.dataclass
 class Losses(hyperparams.Config):
+  """Loss function config."""
   loss_weight: float = 1.0
   label_smoothing: float = 0.0
   ignore_label: int = 255
@@ -108,17 +109,22 @@ class Losses(hyperparams.Config):
   class_weights: List[float] = dataclasses.field(default_factory=list)
   l2_weight_decay: float = 0.0
   use_groundtruth_dimension: bool = True
+  # If true, use binary cross entropy (sigmoid) in loss, otherwise, use
+  # categorical cross entropy (softmax).
+  use_binary_cross_entropy: bool = False
   top_k_percent_pixels: float = 1.0
 
 
 @dataclasses.dataclass
 class Evaluation(hyperparams.Config):
+  """Evaluation config."""
   report_per_class_iou: bool = True
   report_train_mean_iou: bool = True  # Turning this off can speed up training.
 
 
 @dataclasses.dataclass
 class ExportConfig(hyperparams.Config):
+  """Model export config."""
   # Whether to rescale the predicted mask to the original image size.
   rescale_output: bool = False
 
