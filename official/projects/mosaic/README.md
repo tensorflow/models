@@ -52,7 +52,7 @@ The following table shows the mIoU measured on the `cityscapes` dataset.
 
 | Config                  | Backbone             | Resolution | branch_filter_depths | pyramid_pool_bin_nums | mIoU  | Download |
 |-------------------------|:--------------------:|:----------:|:--------------------:|:---------------------:|:-----:|:--------:|
-| Paper reference config  | MobileNetMultiAVGSeg | 1024x2048  | [32, 32]             | [4, 8, 16]            | 75.98 | [ckpt](https://storage.googleapis.com/tf_model_garden/vision/mosaic/MobileNetMultiAVGSeg-r1024-ebf32-nogp.tar.gz)<br>[tensorboard](https://tensorboard.dev/experiment/okEog90bSwupajFgJwGEIw//#scalars) |
+| Paper reference config  | MobileNetMultiAVGSeg | 1024x2048  | [32, 32]             | [4, 8, 16]            | 75.98 | [ckpt](https://storage.googleapis.com/tf_model_garden/vision/mosaic/MobileNetMultiAVGSeg-r1024-ebf32-nogp.tar.gz)<br>[tensorboard](https://tensorboard.dev/experiment/okEog90bSwupajFgJwGEIw/#scalars) |
 | Current best config     | MobileNetMultiAVGSeg | 1024x2048  | [64, 64]             | [1, 4, 8, 16]         | 77.24 | [ckpt](https://storage.googleapis.com/tf_model_garden/vision/mosaic/MobileNetMultiAVGSeg-r1024-ebf64-gp.tar.gz)<br>[tensorboard](https://tensorboard.dev/experiment/l5hkV7JaQM23EXeOBT6oJg/#scalars)  |
 
 *   `branch_filter_depths`: the number of convolution channels in each branch at
