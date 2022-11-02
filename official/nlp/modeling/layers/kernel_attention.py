@@ -826,6 +826,12 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
         "is_short_seq": self._is_short_seq,
         "begin_kernel": self._begin_kernel,
         "scale": self._scale,
+        "scale_by_length": self._scale_by_length,
+        "use_causal_windowed": self.use_causal_windowed,
+        "causal_chunk_length": self.causal_chunk_length,
+        "causal_window_length": self.causal_window_length,
+        "causal_window_decay": self.causal_window_decay,
+        "causal_padding": self.causal_padding,
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
