@@ -68,7 +68,7 @@ class AddPositionEmbs(tf.keras.layers.Layer):
   def _interpolate(self, pos_embedding: tf.Tensor, from_shape: Tuple[int, int],
                    to_shape: Tuple[int, int]) -> tf.Tensor:
     """Interpolates the positional embeddings."""
-    logging.info('Interpolating postional embedding from length: %d to %d',
+    logging.info('Interpolating postional embedding from length: %s to %s',
                  from_shape, to_shape)
     grid_emb = tf.reshape(pos_embedding, [1] + list(from_shape) + [-1])
     # NOTE: Using BILINEAR interpolation by default.
