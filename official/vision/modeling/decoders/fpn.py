@@ -29,7 +29,7 @@ from official.vision.ops import spatial_transform_ops
 class FPN(tf.keras.Model):
   """Creates a Feature Pyramid Network (FPN).
 
-  This implemets the paper:
+  This implements the paper:
   Tsung-Yi Lin, Piotr Dollar, Ross Girshick, Kaiming He, Bharath Hariharan, and
   Serge Belongie.
   Feature Pyramid Networks for Object Detection.

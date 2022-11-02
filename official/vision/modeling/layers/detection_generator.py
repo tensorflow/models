@@ -876,7 +876,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         num_anchors * 4]`.
       raw_scores: A `dict` with keys representing FPN levels and values
         representing logit tensors of shape `[batch, feature_h, feature_w,
-        num_anchors]`.
+        num_anchors * num_classes]`.
       anchor_boxes: A `dict` with keys representing FPN levels and values
         representing anchor tenors of shape `[batch_size, K, 4]` representing
         the corresponding anchor boxes w.r.t `box_outputs`.
