@@ -30,6 +30,7 @@ import enum
 import functools
 from typing import Callable, Tuple, Union
 
+import gin
 import numpy as np
 from scipy import linalg
 import tensorflow as tf
@@ -41,6 +42,7 @@ _Initializer = Union[str, tf.keras.initializers.Initializer]
 default_kernel_initializer = tf.keras.initializers.TruncatedNormal(stddev=2e-2)
 
 
+@gin.constants_from_enum
 class MixingMechanism(enum.Enum):
   """Determines the type of mixing layer.
 
