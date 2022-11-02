@@ -17,6 +17,7 @@
 import itertools
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 from official.projects.edgetpu.vision.modeling import custom_layers
 
@@ -184,6 +185,71 @@ class ArgmaxTest(parameterized.TestCase, tf.test.TestCase):
       test_output = custom_layers.argmax(
           random_inputs, axis=axis, output_type=output_type)
       self.assertAllEqual(control_output, test_output)
+
+
+def random_boxes(n):
+  a = tf.random.uniform(shape=[n, 2])
+  b = tf.random.uniform(shape=[n, 2])
+  l = tf.minimum(a, b)
+  u = tf.maximum(a, b)
+  return tf.concat([l, u], axis=-1)
+
+
+class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
+
+  @parameterized.parameters((16, 8, 500, 0.016), (31, 17, 300, 0.033),
+                            (71, 41, 300, 0.065), (150, 100, 250, 0.137),
+                            (300, 300, 250, 0.126), (600, 600, 100, 0.213))
+  def test_reference_match(self, n, top, runs, max_deviation):
+    """Compares that new optimized method is close to reference method.
+
+    Runs two algorithms with same sets of input boxes and scores, and measures
+    deviation between returned sets of prunned boxes.
+    (*) Avoid flakiness with safe boundary (go/python-tips/048): deviation
+    between two sets is a positive number, which may vary from test to test.
+    Doing multiple runs expected to reduce average deviation variation following
+    LLN theorem. Therefore by having first test run we know upper deviation
+    bound which algorithm would not exceed until broken (in any feasible amount
+    of time in the future). Use of this safe boundary makes test non-flaky.
+    (**) Parametrized inputs description. See safe deviation choice is higher
+    than absolute deviation to avoid flaky tesing.
+    in # | out # | deflake # | test time | deviation | safe threshold
+    ---- | ----- | --------- | --------- | --------- | --------------
+    18   | 8     | 500       | 6 sec     | 0.4%      | 1.6%
+    31   | 17    | 300       | 7 sec     | 1.0%      | 3.3%
+    71   | 41    | 300       | 7 sec     | 3.4%      | 6.5%
+    150  | 100   | 250       | 7 sec     | 8.2%      | 13.7%
+    300  | 300   | 250       | 10 sec    | 7.4%      | 12.6%
+    600  | 600   | 100       | 9 sec     | 9.6%      | 21.3%
+
+    Args:
+      n: number of boxes and scores on input of the algorithm.
+      top: limit of output boxes count.
+      runs: for the statistical testing number of runs to performs to avoid
+        tests flakiness.
+      max_deviation: mean limit on deviation between optimized and reference
+        algorithms. Please read notes why this number may be set higher to avoid
+        flaky testing.
+    """
+    deviation_rate = 0
+    for _ in range(runs):
+      boxes = random_boxes(n)
+      scores = tf.random.uniform(shape=[n])
+      optimized = custom_layers.non_max_suppression_padded(boxes, scores, top)
+      optimized = {*optimized.numpy().astype(int).tolist()} - {-1}
+      reference = tf.image.non_max_suppression(boxes, scores, top)
+      reference = {*reference.numpy().tolist()}
+      deviation_rate += len(optimized ^ reference) / len(optimized | reference)
+    deviation_rate = deviation_rate / runs
+    # six sigma estimate via LLN theorem
+    safe_margin = 6 * (deviation_rate / np.sqrt(runs) + 1 / runs)
+    self.assertLess(
+        deviation_rate,
+        max_deviation,
+        msg='Deviation rate between optimized and reference implementations is '
+        'higher than expected. If you are tuning the test, recommended safe '
+        'deviation rate is '
+        f'{deviation_rate} + {safe_margin} = {deviation_rate + safe_margin}')
 
 
 if __name__ == '__main__':
