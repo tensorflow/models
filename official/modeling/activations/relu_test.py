@@ -16,13 +16,10 @@
 
 import tensorflow as tf
 
-from tensorflow.python.keras import \
-  keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.modeling import activations
 
 
-@keras_parameterized.run_all_keras_modes
-class CustomizedReluTest(keras_parameterized.TestCase):
+class CustomizedReluTest(tf.test.TestCase):
 
   def test_relu6(self):
     features = [[.25, 0, -.25], [-1, -2, 3]]

@@ -16,12 +16,10 @@
 
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.modeling import activations
 
 
-@keras_parameterized.run_all_keras_modes
-class GeluTest(keras_parameterized.TestCase):
+class GeluTest(tf.test.TestCase):
 
   def test_gelu(self):
     expected_data = [[0.14967535, 0., -0.10032465],
