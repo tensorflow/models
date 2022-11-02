@@ -89,6 +89,8 @@ class FNet(tf.keras.layers.Layer):
       layers. If set False, output of attention and intermediate dense layers is
       normalized.
     with_dense_inputs: Whether to accept dense embeddings as the input.
+    num_dense_tokens: Length of the token dimension of dense inputs if dense
+      inputs are used. This counts towards max_sequence_length.
   """
 
   def __init__(
@@ -113,6 +115,7 @@ class FNet(tf.keras.layers.Layer):
       embedding_layer: Optional[tf.keras.layers.Layer] = None,
       norm_first: bool = False,
       with_dense_inputs: bool = False,
+      num_dense_tokens: int = 0,
       **kwargs):
     super().__init__(**kwargs)
 
@@ -142,6 +145,7 @@ class FNet(tf.keras.layers.Layer):
         'embedding_layer': embedding_layer,
         'norm_first': norm_first,
         'with_dense_inputs': with_dense_inputs,
+        'num_dense_tokens': num_dense_tokens,
     }
 
     if embedding_layer is None:
@@ -220,20 +224,26 @@ class FNet(tf.keras.layers.Layer):
         name='pooler_transform')
 
     if with_dense_inputs:
+      if max_sequence_length - num_dense_tokens < 0:
+        raise ValueError(
+            'FNet: `max_sequence_length` should include dense tokens, but got '
+            '`max_sequence_length` - `num_dense_tokens` = {} - {} < 0.'.format(
+                max_sequence_length, num_dense_tokens))
       self.inputs = dict(
           input_word_ids=tf.keras.Input(
-              shape=(max_sequence_length,), dtype=tf.int32),
+              shape=(max_sequence_length - num_dense_tokens,), dtype=tf.int32),
           input_mask=tf.keras.Input(
-              shape=(max_sequence_length,), dtype=tf.int32),
+              shape=(max_sequence_length - num_dense_tokens,), dtype=tf.int32),
           input_type_ids=tf.keras.Input(
-              shape=(max_sequence_length,), dtype=tf.int32),
+              shape=(max_sequence_length - num_dense_tokens,), dtype=tf.int32),
           dense_inputs=tf.keras.Input(
-              shape=(max_sequence_length, embedding_width), dtype=tf.float32),
+              shape=(num_dense_tokens, embedding_width), dtype=tf.float32),
           dense_mask=tf.keras.Input(
-              shape=(max_sequence_length,), dtype=tf.int32),
+              shape=(num_dense_tokens,), dtype=tf.int32),
           dense_type_ids=tf.keras.Input(
-              shape=(max_sequence_length,), dtype=tf.int32),
+              shape=(num_dense_tokens,), dtype=tf.int32),
       )
+
     else:
       self.inputs = dict(
           input_word_ids=tf.keras.Input(
