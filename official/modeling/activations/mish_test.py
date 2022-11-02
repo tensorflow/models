@@ -16,12 +16,10 @@
 
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.modeling import activations
 
 
-@keras_parameterized.run_all_keras_modes
-class MishTest(keras_parameterized.TestCase):
+class MishTest(tf.test.TestCase):
 
   def test_mish(self):
     x = tf.constant([1.0, 0.0])
