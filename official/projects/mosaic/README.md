@@ -99,6 +99,63 @@ python3 -m official.projects.mosaic.train \
   --config_file=official/projects/mosaic/configs/experiments/mosaic_mnv35_cityscapes_tdfs_tpu.yaml
 ```
 
+## Quantization Aware Training (QAT)
+
+We support quantization aware training (QAT) and convert trained model to a
+TFLite model for on-device inference.
+
+### QAT Training
+```shell
+EXP_TYPE=mosaic_mnv35_cityscapes_qat
+EXP_NAME="<experiment-name>"  # You can give any name to the experiment.
+TPU_NAME="<tpu-name>"  # The name assigned while creating a Cloud TPU
+MODEL_DIR="gs://<path-to-model-directory>"
+NON_QAT_CHECKPOINT="gs://<path-to-checkpoint>"  # The checkpoint of non-qat training
+python3 -m official.projects.mosaic.train \
+  --experiment=$EXP_TYPE \
+  --mode=eval \
+  --tpu=$TPU_NAME \
+  --model_dir=$MODEL_DIR \
+  --config_file=official/projects/mosaic/qat/configs/experiments/semantic_segmentation/mosaic_mnv35_cityscapes_tfds_qat_tpu.yaml \
+  --params_override="task.quantization.pretrained_original_checkpoint=${NON_QAT_CHECKPOINT}"
+```
+
+### Export TFLite
+```shell
+EXP_TYPE=mosaic_mnv35_cityscapes_qat
+QAT_CKPT_PATH="gs://<path-to-checkpoint>"  # The checkpoint of qat training
+EXPORT_PATH="<path-to-export-saved-model>"  # The path of SavedModel to be exported
+INPUT_SIZE="<input-size>"  # The image size that the model is trained on e.g. 1024,2048 for Cityscapes
+python3 -m official.projects.mosaic.qat.serving.export_saved_model \
+--checkpoint_path=${QAT_CKPT_PATH} \
+--config_file=${QAT_CKPT_PATH}/params.yaml \
+--export_dir=${EXPORT_PATH} \
+--experiment=${EXP_TYPE} \
+--input_type=tflite \
+--input_image_size=${INPUT_SIZE} \
+--alsologtostderr
+```
+
+```shell
+EXP_TYPE=mosaic_mnv35_cityscapes_qat
+SAVED_MOODEL_DIR="<path-to-exported-saved-model>"  # The path to the SavedModel exported in the previous step
+TFLITE_PATH="<path-to-export-tflite>"  # The path of TFLite file to be exported
+python3 -m official.projects.mosaic.qat.serving.export_tflite \
+--experiment=${EXP_TYPE} \
+--saved_model_dir=${SAVED_MOODEL_DIR} \
+--tflite_path=${TFLITE_PATH} \
+--quant_type=qat \ 
+--alsologtostderr
+```
+
+### Results
+The benchmark results on Cityscapes are reported below:
+
+model                           | resolution | mIoU  | mIoU (QAT INT8) | Latency (QAT INT8, ms per img on Pixel6)                                         | download (ckpt)                                                                                                                                                                                                                                                                                                                                                                                                                         | download (tflite)
+:------------------------------ | :--------: | ----------: | --------------: | ----------------------------------------------------------------------: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | ----------------:
+MobileNet Multi-HW AVG + MOSAIC | 1024x2048  | 77.24      | 77.13          | 524ms, 327ms (w/o, w/ XNNPACK) | [ckpt](https://storage.googleapis.com/tf_model_garden/vision/mosaic/MobileNetMultiAVGSeg-r1024-ebf64-gp-qat.tar.gz) \| [tensorboard](https://tensorboard.dev/experiment/g0ZzmRDdRdGn5Xn07xXvwg/#scalars)                     | [QAT INT8](https://storage.googleapis.com/tf_model_garden/vision/mosaic/mobilenet_multiavgseg_r1024_ebf64_gp_qat/tflite_model_depthwise_qat_int8.tflite)
+
+
 ## License
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)

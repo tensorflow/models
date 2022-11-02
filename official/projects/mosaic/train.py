@@ -26,11 +26,12 @@ from official.core import task_factory
 from official.core import train_lib
 from official.core import train_utils
 from official.modeling import performance
+
 # Import MOSAIC libraries to register the model into tf.vision
 # model garden factory.
 # pylint: disable=unused-import
 from official.projects.mosaic import mosaic_tasks
-from official.projects.mosaic.modeling import mosaic_model
+from official.projects.mosaic import registry_imports as mosaic_registry_imports
 from official.vision import registry_imports
 # pylint: enable=unused-import
 
