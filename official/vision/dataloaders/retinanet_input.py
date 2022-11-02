@@ -146,19 +146,19 @@ class Parser(parser.Parser):
     classes = data['groundtruth_classes']
     boxes = data['groundtruth_boxes']
     # If not empty, `attributes` is a dict of (name, ground_truth) pairs.
-    # `ground_gruth` of attributes is assumed in shape [N, attribute_size].
+    # `ground_truth` of attributes is assumed in shape [N, attribute_size].
     # TODO(xianzhi): support parsing attributes weights.
     attributes = data.get('groundtruth_attributes', {})
     is_crowds = data['groundtruth_is_crowd']
 
     # Skips annotations with `is_crowd` = True.
     if self._skip_crowd_during_training:
-      num_groundtrtuhs = tf.shape(input=classes)[0]
-      with tf.control_dependencies([num_groundtrtuhs, is_crowds]):
+      num_groundtruths = tf.shape(input=classes)[0]
+      with tf.control_dependencies([num_groundtruths, is_crowds]):
         indices = tf.cond(
             pred=tf.greater(tf.size(input=is_crowds), 0),
             true_fn=lambda: tf.where(tf.logical_not(is_crowds))[:, 0],
-            false_fn=lambda: tf.cast(tf.range(num_groundtrtuhs), tf.int64))
+            false_fn=lambda: tf.cast(tf.range(num_groundtruths), tf.int64))
       classes = tf.gather(classes, indices)
       boxes = tf.gather(boxes, indices)
       for k, v in attributes.items():
@@ -240,7 +240,7 @@ class Parser(parser.Parser):
     classes = data['groundtruth_classes']
     boxes = data['groundtruth_boxes']
     # If not empty, `attributes` is a dict of (name, ground_truth) pairs.
-    # `ground_gruth` of attributes is assumed in shape [N, attribute_size].
+    # `ground_truth` of attributes is assumed in shape [N, attribute_size].
     # TODO(xianzhi): support parsing attributes weights.
     attributes = data.get('groundtruth_attributes', {})
 
