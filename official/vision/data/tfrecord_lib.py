@@ -168,7 +168,8 @@ def write_tf_record_dataset(output_path, annotation_iterator,
       logging.info('On image %d', idx)
 
     total_num_annotations_skipped += num_annotations_skipped
-    writers[idx % num_shards].write(tf_example.SerializeToString())
+    if tf_example:
+      writers[idx % num_shards].write(tf_example.SerializeToString())
 
   if multiple_processes is None or multiple_processes > 0:
     pool.close()
