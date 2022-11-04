@@ -44,6 +44,236 @@ from official.legacy.detection.evaluation import coco_utils
 from official.legacy.detection.utils import class_utils
 
 
+class OlnCOCOevalWrapper(cocoeval.COCOeval):
+  """COCOeval wrapper class.
+
+  Rewritten based on cocoapi: (pycocotools/cocoeval.py)
+
+  This class wraps COCOEVAL API object, which provides the following additional
+  functionalities:
+    1. summarze 'all', 'seen', and 'novel' split output print-out, e.g., AR at
+       different K proposals, AR and AP resutls for 'seen' and 'novel' class
+       splits.
+  """
+
+  def __init__(self, coco_gt, coco_dt, iou_type='box'):
+    super(OlnCOCOevalWrapper, self).__init__(
+        cocoGt=coco_gt, cocoDt=coco_dt, iouType=iou_type)
+
+  def summarize(self):
+    """Compute and display summary metrics for evaluation results.
+
+    Delta to the standard cocoapi function:
+      More Averate Recall metrics are produced with different top-K proposals.
+    Note this functin can *only* be applied on the default parameter
+    setting.
+    Raises:
+      Exception: Please run accumulate() first.
+    """
+
+    def _summarize(ap=1, iou_thr=None, area_rng='all', max_dets=100):
+      p = self.params
+      i_str = (' {:<18} {} @[ IoU={:<9} | area={:>6s} | maxDets={:>3d} ] = '
+               '{:0.3f}')
+      title_str = 'Average Precision' if ap == 1 else 'Average Recall'
+      type_str = '(AP)' if ap == 1 else '(AR)'
+      iou_str = '{:0.2f}:{:0.2f}'.format(
+          p.iouThrs[0],
+          p.iouThrs[-1]) if iou_thr is None else '{:0.2f}'.format(iou_thr)
+
+      aind = [i for i, a_rng in enumerate(p.areaRngLbl) if a_rng == area_rng]
+      mind = [i for i, m_det in enumerate(p.maxDets) if m_det == max_dets]
+      if ap == 1:
+        # dimension of precision: [TxRxKxAxM]
+        s = self.eval['precision']
+        # IoU
+        if iou_thr is not None:
+          t = np.where(iou_thr == p.iouThrs)[0]
+          s = s[t]
+        s = s[:, :, :, aind, mind]
+      else:
+        # dimension of recall: [TxKxAxM]
+        s = self.eval['recall']
+        if iou_thr is not None:
+          t = np.where(iou_thr == p.iouThrs)[0]
+          s = s[t]
+        s = s[:, :, aind, mind]
+
+      if not (s[s > -1]).any():
+        mean_s = -1
+      else:
+        mean_s = np.mean(s[s > -1])
+        print(
+            i_str.format(title_str, type_str, iou_str, area_rng, max_dets,
+                         mean_s))
+      return mean_s
+
+    def _summarize_dets():
+      stats = np.zeros((14,))
+      stats[0] = _summarize(1)
+      stats[1] = _summarize(
+          1,
+          iou_thr=.5,
+      )
+      stats[2] = _summarize(
+          1,
+          iou_thr=.75,
+      )
+      stats[3] = _summarize(
+          1,
+          area_rng='small',
+      )
+      stats[4] = _summarize(
+          1,
+          area_rng='medium',
+      )
+      stats[5] = _summarize(
+          1,
+          area_rng='large',
+      )
+
+      stats[6] = _summarize(0, max_dets=self.params.maxDets[0])  # 10
+      stats[7] = _summarize(0, max_dets=self.params.maxDets[1])  # 20
+      stats[8] = _summarize(0, max_dets=self.params.maxDets[2])  # 50
+      stats[9] = _summarize(0, max_dets=self.params.maxDets[3])  # 100
+      stats[10] = _summarize(0, max_dets=self.params.maxDets[4])  # 200
+
+      stats[11] = _summarize(0, area_rng='small', max_dets=10)
+      stats[12] = _summarize(0, area_rng='medium', max_dets=10)
+      stats[13] = _summarize(0, area_rng='large', max_dets=10)
+      return stats
+
+    if not self.eval:
+      raise Exception('Please run accumulate() first')
+    summarize = _summarize_dets
+    self.stats = summarize()
+
+
+class OlnCOCOevalXclassWrapper(OlnCOCOevalWrapper):
+  """COCOeval wrapper class.
+
+  Rewritten based on cocoapi: (pycocotools/cocoeval.py)
+  Delta to the standard cocoapi:
+    Detections that hit the 'seen' class objects are ignored in top-K proposals.
+
+  This class wraps COCOEVAL API object, which provides the following additional
+  functionalities:
+    1. Include ignore-class split (e.g., 'voc' or 'nonvoc').
+    2. Do not count (or ignore) box proposals hitting ignore-class when
+       evaluating Average Recall at top-K proposals.
+  """
+
+  def __init__(self, coco_gt, coco_dt, iou_type='box'):
+    super(OlnCOCOevalXclassWrapper, self).__init__(
+        coco_gt=coco_gt, coco_dt=coco_dt, iou_type=iou_type)
+
+  def evaluateImg(self, img_id, cat_id, a_rng, max_det):
+    p = self.params
+    if p.useCats:
+      gt = self._gts[img_id, cat_id]
+      dt = self._dts[img_id, cat_id]
+    else:
+      gt, dt = [], []
+      for c_id in p.catIds:
+        gt.extend(self._gts[img_id, c_id])
+        dt.extend(self._dts[img_id, c_id])
+
+    if not gt and not dt:
+      return None
+
+    for g in gt:
+      if g['ignore'] or (g['area'] < a_rng[0] or g['area'] > a_rng[1]):
+        g['_ignore'] = 1
+      else:
+        g['_ignore'] = 0
+      # Class manipulation: ignore the 'ignored_split'.
+      if 'ignored_split' in g and g['ignored_split'] == 1:
+        g['_ignore'] = 1
+
+    # sort dt highest score first, sort gt ignore last
+    gtind = np.argsort([g['_ignore'] for g in gt], kind='mergesort')
+    gt = [gt[i] for i in gtind]
+    dtind = np.argsort([-d['score'] for d in dt], kind='mergesort')
+    dt = [dt[i] for i in dtind[0:max_det]]
+    iscrowd = [int(o['iscrowd']) for o in gt]
+    # load computed ious
+    # ious = self.ious[img_id, cat_id][:, gtind] if len(
+    #     self.ious[img_id, cat_id]) > 0 else self.ious[img_id, cat_id]
+    if self.ious[img_id, cat_id].any():
+      ious = self.ious[img_id, cat_id][:, gtind]
+    else:
+      ious = self.ious[img_id, cat_id]
+
+    tt = len(p.iouThrs)
+    gg = len(gt)
+    dd = len(dt)
+    gtm = np.zeros((tt, gg))
+    dtm = np.zeros((tt, dd))
+    gt_ig = np.array([g['_ignore'] for g in gt])
+    dt_ig = np.zeros((tt, dd))
+    # indicator of whether the gt object class is of ignored_split or not.
+    gt_ig_split = np.array([g['ignored_split'] for g in gt])
+    dt_ig_split = np.zeros((dd))
+
+    if ious.any():
+      for tind, t in enumerate(p.iouThrs):
+        for dind, d in enumerate(dt):
+          # information about best match so far (m=-1 -> unmatched)
+          iou = min([t, 1 - 1e-10])
+          m = -1
+          for gind, g in enumerate(gt):
+            # if this gt already matched, and not a crowd, continue
+            if gtm[tind, gind] > 0 and not iscrowd[gind]:
+              continue
+            # if dt matched to reg gt, and on ignore gt, stop
+            if m > -1 and gt_ig[m] == 0 and gt_ig[gind] == 1:
+              break
+            # continue to next gt unless better match made
+            if ious[dind, gind] < iou:
+              continue
+            # if match successful and best so far, store appropriately
+            iou = ious[dind, gind]
+            m = gind
+          # if match made store id of match for both dt and gt
+          if m == -1:
+            continue
+          dt_ig[tind, dind] = gt_ig[m]
+          dtm[tind, dind] = gt[m]['id']
+          gtm[tind, m] = d['id']
+
+          # Activate to ignore the seen-class detections.
+          if tind == 0:  # Register just only once: tind > 0 is also fine.
+            dt_ig_split[dind] = gt_ig_split[m]
+
+    # set unmatched detections outside of area range to ignore
+    a = np.array([d['area'] < a_rng[0] or d['area'] > a_rng[1] for d in dt
+                 ]).reshape((1, len(dt)))
+    dt_ig = np.logical_or(dt_ig, np.logical_and(dtm == 0, np.repeat(a, tt, 0)))
+
+    # Activate to ignore the seen-class detections.
+    # Take only eval_split (eg, nonvoc) and ignore seen_split (eg, voc).
+    if dt_ig_split.sum() > 0:
+      dtm = dtm[:, dt_ig_split == 0]
+      dt_ig = dt_ig[:, dt_ig_split == 0]
+      len_dt = min(max_det, len(dt))
+      dt = [dt[i] for i in range(len_dt) if dt_ig_split[i] == 0]
+
+    # store results for given image and category
+    return {
+        'image_id': img_id,
+        'category_id': cat_id,
+        'aRng': a_rng,
+        'maxDet': max_det,
+        'dtIds': [d['id'] for d in dt],
+        'gtIds': [g['id'] for g in gt],
+        'dtMatches': dtm,
+        'gtMatches': gtm,
+        'dtScores': [d['score'] for d in dt],
+        'gtIgnore': gt_ig,
+        'dtIgnore': dt_ig,
+    }
+
+
 class MetricWrapper(object):
   """Metric Wrapper of the COCO evaluator."""
   # This is only a wrapper for COCO metric and works on for numpy array. So it
