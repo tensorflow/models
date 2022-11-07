@@ -306,6 +306,11 @@ def build_retinanet(
     decoder_features = decoder(backbone_features)
     _ = head(decoder_features)
 
+  # Add `input_image_size` into `tflite_post_processing_config`.
+  tflite_post_processing_config = generator_config.tflite_post_processing.as_dict(
+  )
+  tflite_post_processing_config['input_image_size'] = (input_specs.shape[1],
+                                                       input_specs.shape[2])
   detection_generator_obj = detection_generator.MultilevelDetectionGenerator(
       apply_nms=generator_config.apply_nms,
       pre_nms_top_k=generator_config.pre_nms_top_k,
@@ -315,8 +320,7 @@ def build_retinanet(
       nms_version=generator_config.nms_version,
       use_cpu_nms=generator_config.use_cpu_nms,
       soft_nms_sigma=generator_config.soft_nms_sigma,
-      tflite_post_processing_config=generator_config.tflite_post_processing
-      .as_dict())
+      tflite_post_processing_config=tflite_post_processing_config)
 
   model = retinanet_model.RetinaNetModel(
       backbone,
