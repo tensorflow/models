@@ -533,6 +533,12 @@ def _generate_detections_tflite(raw_boxes: Mapping[str, tf.Tensor],
   wa = anchors[..., 3] - anchors[..., 1]
   anchors = tf.stack([ycenter_a, xcenter_a, ha, wa], axis=-1)
 
+  # TFLite's object detection APIs require normalized anchors.
+  height, width = config['input_image_size']
+  normalize_factor = tf.constant([height, width, height, width],
+                                 dtype=tf.float32)
+  anchors = anchors / normalize_factor
+
   # There is no TF equivalent for TFLite's custom post-processing op.
   # So we add an 'empty' composite function here, that is legalized to the
   # custom op with MLIR.
