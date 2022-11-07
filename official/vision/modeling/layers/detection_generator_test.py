@@ -148,7 +148,8 @@ class MultilevelDetectionGeneratorTest(
         'max_classes_per_detection': 1,
         'use_regular_nms': use_regular_nms,
         'nms_score_threshold': 0.01,
-        'nms_iou_threshold': 0.5
+        'nms_iou_threshold': 0.5,
+        'input_image_size': [224, 224],
     }
     kwargs = {
         'apply_nms': True,
@@ -253,7 +254,8 @@ class MultilevelDetectionGeneratorTest(
         'max_classes_per_detection': 1,
         'use_regular_nms': True,
         'nms_score_threshold': 0.01,
-        'nms_iou_threshold': 0.5
+        'nms_iou_threshold': 0.5,
+        'input_image_size': [224, 224],
     }
     kwargs = {
         'apply_nms': True,
