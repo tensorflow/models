@@ -213,27 +213,27 @@ def bbox_annotations_to_feature_dict(
   feature_dict = {}
     
   if not (len(bbox_annotations) == num_skipped):
-      feature_dict = {
-          'image/object/bbox/xmin':
-              tfrecord_lib.convert_to_feature(data['xmin']),
-          'image/object/bbox/xmax':
-              tfrecord_lib.convert_to_feature(data['xmax']),
-          'image/object/bbox/ymin':
-              tfrecord_lib.convert_to_feature(data['ymin']),
-          'image/object/bbox/ymax':
-              tfrecord_lib.convert_to_feature(data['ymax']),
-          'image/object/class/text':
-              tfrecord_lib.convert_to_feature(data['category_names']),
-          'image/object/class/label':
-              tfrecord_lib.convert_to_feature(data['category_id']),
-          'image/object/is_crowd':
-              tfrecord_lib.convert_to_feature(data['is_crowd']),
-          'image/object/area':
-              tfrecord_lib.convert_to_feature(data['area'], 'float_list')
-      }
-      if include_masks:
-        feature_dict['image/object/mask'] = (
-            tfrecord_lib.convert_to_feature(data['encoded_mask_png']))
+    feature_dict = {
+        'image/object/bbox/xmin':
+            tfrecord_lib.convert_to_feature(data['xmin']),
+        'image/object/bbox/xmax':
+            tfrecord_lib.convert_to_feature(data['xmax']),
+        'image/object/bbox/ymin':
+            tfrecord_lib.convert_to_feature(data['ymin']),
+        'image/object/bbox/ymax':
+            tfrecord_lib.convert_to_feature(data['ymax']),
+        'image/object/class/text':
+            tfrecord_lib.convert_to_feature(data['category_names']),
+        'image/object/class/label':
+            tfrecord_lib.convert_to_feature(data['category_id']),
+        'image/object/is_crowd':
+            tfrecord_lib.convert_to_feature(data['is_crowd']),
+        'image/object/area':
+            tfrecord_lib.convert_to_feature(data['area'], 'float_list')
+    }
+    if include_masks:
+      feature_dict['image/object/mask'] = (
+          tfrecord_lib.convert_to_feature(data['encoded_mask_png']))
 
   return feature_dict, num_skipped
 
