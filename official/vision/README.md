@@ -293,3 +293,8 @@ training features including:
 | MoViNet-A4-Base | 80 x 3            | 83.48 | 96.16 | [config](https://github.com/tensorflow/models/blob/master/official/projects/movinet/configs/yaml/movinet_a4_k600_8x8.yaml) |
 | MoViNet-A5-Base | 120 x 2           | 84.27 | 96.39 | [config](https://github.com/tensorflow/models/blob/master/official/projects/movinet/configs/yaml/movinet_a5_k600_8x8.yaml) |
 </details>
+
+## More Documentations
+
+Please read through the references in the
+[examples/starter](examples/starter).

@@ -166,10 +166,10 @@ You can see in this file we import all our custom components:
 ```python
 # pylint: disable=unused-import
 from official.common import registry_imports
-from official.vision.beta.projects.example import example_config
-from official.vision.beta.projects.example import example_input
-from official.vision.beta.projects.example import example_model
-from official.vision.beta.projects.example import example_task
+from official.vision.examples.starter import example_config
+from official.vision.examples.starter import example_input
+from official.vision.examples.starter import example_model
+from official.vision.examples.starter import example_task
 ```
 
 ## Training
@@ -179,14 +179,14 @@ You can create your own trainer by branching from our core
 Just make sure you import the registry like this:
 
 ```python
-from official.vision.beta.projects.example import registry_imports  # pylint: disable=unused-import
+from official.vision.examples.starter import registry_imports  # pylint: disable=unused-import
 ```
 
 You can run training locally for testing purpose:
 
 ```bash
-# Assume you are under official/vision/projects.
-python3 example/train.py \
+# Assume you are under official/vision/examples.
+python3 starter/train.py \
   --experiment=tf_vision_example_experiment \
   --config_file=${PWD}/example/example_config_local.yaml \
   --mode=train \
