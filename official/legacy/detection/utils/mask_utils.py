@@ -19,8 +19,8 @@ from __future__ import print_function
 
 import math
 
-import numpy as np
 import cv2
+import numpy as np
 
 
 def paste_instance_masks(masks, detected_boxes, image_height, image_width):
