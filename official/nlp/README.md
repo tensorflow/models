@@ -64,3 +64,8 @@ details.
 We provide a large collection of baselines and checkpoints for NLP pre-trained
 models. Please see [docs/pretrained_models.md](docs/pretrained_models.md) for
 more details.
+
+## More Documentations
+
+Please read through the model training tutorials and references in the
+[docs/ folder](docs/README.md).
