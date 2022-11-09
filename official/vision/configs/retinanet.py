@@ -172,6 +172,9 @@ class RetinaNetTask(cfg.TaskConfig):
   # TODO(crisnv) Add paper link when available.
   freeze_backbone: bool = False
 
+  # Sets maximum number of boxes to be evaluated by coco eval api.
+  max_num_eval_detections: int = 100
+
 
 @exp_factory.register_config_factory('retinanet')
 def retinanet() -> cfg.ExperimentConfig:

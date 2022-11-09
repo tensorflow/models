@@ -246,7 +246,8 @@ class RetinaNetTask(base_task.Task):
         self.coco_metric = coco_evaluator.COCOEvaluator(
             annotation_file=self.task_config.annotation_file,
             include_mask=False,
-            per_category_metrics=self.task_config.per_category_metrics)
+            per_category_metrics=self.task_config.per_category_metrics,
+            max_num_eval_detections=self.task_config.max_num_eval_detections)
       if self._task_config.use_wod_metrics:
         # To use Waymo open dataset metrics, please install one of the pip
         # package `waymo-open-dataset-tf-*` from
