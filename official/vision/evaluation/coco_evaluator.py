@@ -45,7 +45,8 @@ class COCOEvaluator(object):
                annotation_file,
                include_mask,
                need_rescale_bboxes=True,
-               per_category_metrics=False):
+               per_category_metrics=False,
+               max_num_eval_detections=100):
     """Constructs COCO evaluation class.
 
     The class provides the interface to COCO metrics_fn. The
@@ -62,6 +63,10 @@ class COCOEvaluator(object):
       need_rescale_bboxes: If true bboxes in `predictions` will be rescaled back
         to absolute values (`image_info` is needed in this case).
       per_category_metrics: Whether to return per category metrics.
+      max_num_eval_detections: Maximum number of detections to evaluate in coco
+        eval api. Default at 100.
+    Raises:
+      ValueError: if max_num_eval_detections is not an integer.
     """
     if annotation_file:
       if annotation_file.startswith('gs://'):
@@ -78,10 +83,14 @@ class COCOEvaluator(object):
     self._annotation_file = annotation_file
     self._include_mask = include_mask
     self._per_category_metrics = per_category_metrics
+    if max_num_eval_detections is None or not isinstance(
+        max_num_eval_detections, int):
+      raise ValueError('max_num_eval_detections must be an integer.')
     self._metric_names = [
         'AP', 'AP50', 'AP75', 'APs', 'APm', 'APl', 'ARmax1', 'ARmax10',
-        'ARmax100', 'ARs', 'ARm', 'ARl'
+        f'ARmax{max_num_eval_detections}', 'ARs', 'ARm', 'ARl'
     ]
+    self.max_num_eval_detections = max_num_eval_detections
     self._required_prediction_fields = [
         'source_id', 'num_detections', 'detection_classes', 'detection_scores',
         'detection_boxes'
@@ -141,6 +150,7 @@ class COCOEvaluator(object):
 
     coco_eval = cocoeval.COCOeval(coco_gt, coco_dt, iouType='bbox')
     coco_eval.params.imgIds = image_ids
+    coco_eval.params.maxDets[2] = self.max_num_eval_detections
     coco_eval.evaluate()
     coco_eval.accumulate()
     coco_eval.summarize()
