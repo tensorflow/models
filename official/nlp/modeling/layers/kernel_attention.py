@@ -252,7 +252,7 @@ def causal_windowed_performer_attention(query_matrix,
     attention = numerator / denominator
     attention = tf.reshape(attention, new_shape)
 
-    start = tf.zeros([len(old_shape)], dtype=old_shape.dtype)
+    start = tf.zeros([old_shape.shape[0]], dtype=old_shape.dtype)
     attention = tf.slice(attention, start, old_shape)
 
   # Queued window cache (drop instead of decay) not yet supported.
