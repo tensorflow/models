@@ -382,10 +382,7 @@ def decode_boxes(encoded_boxes, anchors, weights=None):
 
   with tf.name_scope('decode_boxes'):
     encoded_boxes = tf.cast(encoded_boxes, dtype=anchors.dtype)
-    dy = encoded_boxes[..., 0:1]
-    dx = encoded_boxes[..., 1:2]
-    dh = encoded_boxes[..., 2:3]
-    dw = encoded_boxes[..., 3:4]
+    dy, dx, dh, dw = tf.split(encoded_boxes, 4, -1)
     if weights:
       dy /= weights[0]
       dx /= weights[1]
@@ -394,10 +391,8 @@ def decode_boxes(encoded_boxes, anchors, weights=None):
     dh = tf.math.minimum(dh, BBOX_XFORM_CLIP)
     dw = tf.math.minimum(dw, BBOX_XFORM_CLIP)
 
-    anchor_ymin = anchors[..., 0:1]
-    anchor_xmin = anchors[..., 1:2]
-    anchor_ymax = anchors[..., 2:3]
-    anchor_xmax = anchors[..., 3:4]
+    anchor_ymin, anchor_xmin, anchor_ymax, anchor_xmax = tf.split(
+        anchors, 4, -1)
     anchor_h = anchor_ymax - anchor_ymin
     anchor_w = anchor_xmax - anchor_xmin
     anchor_yc = anchor_ymin + 0.5 * anchor_h
