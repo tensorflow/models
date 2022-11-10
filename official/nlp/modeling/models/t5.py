@@ -589,8 +589,8 @@ class MultiHeadAttention(Module):
         init_std_rescaling = tf.math.sqrt(tf.cast(self.d_kv, dtype=self.dtype))
         query_w_init = (
             lambda *args, **kwargs: (  # pylint: disable=g-long-lambda
-                tf_utils.clone_initializer(weight_initializer)(
-                    *args, **kwargs) / init_std_rescaling))
+                tf_utils.clone_initializer(weight_initializer)
+                (*args, **kwargs) / init_std_rescaling))
       self.q = Linear3D(
           self.d_model,
           self.d_kv,
@@ -1139,8 +1139,8 @@ class Encoder(Module):
     Args:
       inputs: input word ids. Optional if dense data are provided.
       encoder_mask: the encoder self-attention mask.
-      dense_inputs: dense input data. Concat after the embedding if word ids
-        are provided.
+      dense_inputs: dense input data. Concat after the embedding if word ids are
+        provided.
       training: whether it is training pass, affecting dropouts.
 
     Returns:
