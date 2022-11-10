@@ -576,6 +576,9 @@ def non_max_suppression_padded(boxes: tf.Tensor,
     selected_boxes = tf.gather(boxes, selected_indices)
     ```
 
+  See following documetation for implementation details.
+  third_party/tensorflow_models/official/projects/edgetpu/vision/modeling/g3doc/non_max_suppression.md
+
   Args:
     boxes: A 2-D float `Tensor` of shape `[num_boxes, 4]`.
     scores: A 1-D float `Tensor` of shape `[num_boxes]` representing a single
