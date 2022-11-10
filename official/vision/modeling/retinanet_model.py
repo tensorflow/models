@@ -36,7 +36,7 @@ class RetinaNetModel(tf.keras.Model):
                aspect_ratios: Optional[List[float]] = None,
                anchor_size: Optional[float] = None,
                **kwargs):
-    """Classification initialization function.
+    """Detection initialization function.
 
     Args:
       backbone: `tf.keras.Model` a backbone network.
