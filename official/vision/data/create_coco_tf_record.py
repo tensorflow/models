@@ -319,6 +319,7 @@ def create_tf_example(image,
   feature_dict = tfrecord_lib.image_info_to_feature_dict(
       image_height, image_width, filename, image_id, encoded_jpg, 'jpg')
 
+  feature_dict_len = len(feature_dict)
   num_annotations_skipped = 0
   if bbox_annotations:
     box_feature_dict, num_skipped = bbox_annotations_to_feature_dict(
@@ -352,7 +353,11 @@ def create_tf_example(image,
               encoded_panoptic_masks['instance_mask'])
             })
 
-  example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
+  if feature_dict_len == len(feature_dict):
+    example = None
+  else:
+    example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
+
   return example, num_annotations_skipped
 
 
