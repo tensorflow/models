@@ -16,7 +16,7 @@
 
 import dataclasses
 import os
-from typing import List, Optional, Union
+from typing import List, Optional, Sequence, Union
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -50,7 +50,7 @@ class Parser(hyperparams.Config):
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
   """Input config for training."""
-  input_path: str = ''
+  input_path: Union[Sequence[str], str, hyperparams.base_config.Config] = ''
   global_batch_size: int = 0
   is_training: bool = False
   dtype: str = 'bfloat16'
