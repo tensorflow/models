@@ -356,7 +356,8 @@ def create_tf_example(image,
   if feature_dict_len == len(feature_dict):
     example = None
   else:
-    example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
+    example = tf.train.Example(
+        features=tf.train.Features(feature=feature_dict))
 
   return example, num_annotations_skipped
 

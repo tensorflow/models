@@ -21,7 +21,8 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from official.vision.data import tfrecord_lib
-from official.vision.data.create_coco_tf_record import generate_annotations, create_tf_example
+from official.vision.data.create_coco_tf_record import generate_annotations
+from official.vision.data.create_coco_tf_record import create_tf_example
 
 
 FLAGS = flags.FLAGS
@@ -92,49 +93,43 @@ class TfrecordLibTest(parameterized.TestCase):
   def test_obj_annotation_tf_example(self):
 
     images = [
-                {
-                  "id": 0,
-                  "file_name": "example1.jpg",
-                  "height": 512,
-                  "width": 512,
-                },
-                {
-                  "id": 1,
-                  "file_name": "example2.jpg",
-                  "height": 512,
-                  "width": 512,
-                }
-              ]
+        {
+            "id": 0,
+            "file_name": "example1.jpg",
+            "height": 512,
+            "width": 512,
+        },
+       {
+            "id": 1,
+            "file_name": "example2.jpg",
+            "height": 512,
+            "width": 512,
+        },
+    ]
     img_to_obj_annotation = {
-                              0: 
-                              [
-                                {
-                                  "id": 0,
-                                  "image_id": 0,
-                                  "category_id": 1,
-                                  "bbox": [3, 1, 511, 510],
-                                  "area": 260610.00,
-                                  "segmentation": [],
-                                  "iscrowd": 0
-                                }
-                              ],
-                              1:
-                              [
-                                {
-                                  "id": 1,
-                                  "image_id": 1,
-                                  "category_id": 1,
-                                  "bbox": [1, 1, 100, 150],
-                                  "area": 15000.00,
-                                  "segmentation": [],
-                                  "iscrowd": 0
-                                }
-                              ]
-                            }
+        0: [{
+            "id": 0,
+            "image_id": 0,
+            "category_id": 1,
+            "bbox": [3, 1, 511, 510],
+            "area": 260610.00,
+            "segmentation": [],
+            "iscrowd": 0,
+        }],
+        1: [{
+            "id": 1,
+            "image_id": 1,
+            "category_id": 1,
+            "bbox": [1, 1, 100, 150],
+            "area": 15000.00,
+            "segmentation": [],
+            "iscrowd": 0,
+        }],
+    }
     id_to_name_map = {
-                        0: 'Super-Class', 
-                        1: 'Class-1'
-                      }
+        0: 'Super-Class',
+        1: 'Class-1',
+    }
 
     temp_dir = FLAGS.test_tmpdir
     image_dir = os.path.join(temp_dir, 'data')
@@ -160,7 +155,8 @@ class TfrecordLibTest(parameterized.TestCase):
         include_masks=False)
     
     tfrecord_lib.write_tf_record_dataset(
-        output_path, coco_annotations_iter, create_tf_example, 1, multiple_processes=0)
+        output_path, coco_annotations_iter,
+        create_tf_example, 1, multiple_processes=0)
     
     tfrecord_files = tf.io.gfile.glob(output_path + '*')
 
