@@ -99,7 +99,7 @@ class TfrecordLibTest(parameterized.TestCase):
             "height": 512,
             "width": 512,
         },
-       {
+        {
             "id": 1,
             "file_name": "example2.jpg",
             "height": 512,
@@ -139,7 +139,8 @@ class TfrecordLibTest(parameterized.TestCase):
     for image in images:
       image_path = os.path.join(image_dir, image['file_name'])
       tf.keras.utils.save_img(
-        image_path, tf.ones(shape=(image['height'], image['width'], 3)).numpy())
+          image_path,
+          tf.ones(shape=(image['height'], image['width'], 3)).numpy())
 
     output_path = os.path.join(image_dir, 'train')
     coco_annotations_iter = generate_annotations(
