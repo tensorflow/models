@@ -485,7 +485,9 @@ _reduce_or = tf.reduce_max
 
 
 def _tensor_sum_vectors(a, b):
-  return tf.reshape(a, [1, 1, 1, -1]) + tf.reshape(b, [1, 1, -1, 1])
+  a = tf.tile(tf.reshape(a, [1, -1, 1, a.shape[-1]]), [1, 1, a.shape[-1], 1])
+  b = tf.tile(tf.reshape(b, [1, -1, a.shape[-1], 1]), [1, 1, 1, a.shape[-1]])
+  return a + b
 
 
 def _tensor_product_iou(boxes):
@@ -500,9 +502,15 @@ def _tensor_product_iou(boxes):
     A 4-D float `Tensor` of shape `[1, 1, num_boxes, num_boxes]` containing
     pairwise IOU.
   """
-  boxes = tf.reshape(boxes, [-1, 4])
-  boxes = tf.transpose(boxes, [1, 0])
-  bottom, left, top, right = tf.split(boxes, 4, 0)
+  boxes_size = boxes.shape[-2]
+  # Code below will do frequent operands broadcasting.
+  # TPU compiler has (empirically) less issues broadcasting if
+  # - batch (first) dimension is 1. (Special consideration sharding)
+  # - there are 4 dimensions. (Standard traversal mapping)
+  # - last dimension is not 1. (Structure alignment)
+  tpu_friendly_shape = [1, -1, 1, boxes_size]
+  bottom, left, top, right = (
+      tf.reshape(side, tpu_friendly_shape) for side in tf.split(boxes, 4, -1))
   height, width = top - bottom, right - left
   area = height * width
   area_sum = _tensor_sum_vectors(area, area)
@@ -580,20 +588,28 @@ def non_max_suppression_padded(boxes: tf.Tensor,
   third_party/tensorflow_models/official/projects/edgetpu/vision/modeling/g3doc/non_max_suppression.md
 
   Args:
-    boxes: A 2-D float `Tensor` of shape `[num_boxes, 4]`.
-    scores: A 1-D float `Tensor` of shape `[num_boxes]` representing a single
-      score corresponding to each box (each row of boxes).
+    boxes: A 2-D+ float `Tensor` of shape `[...batch_dims, num_boxes, 4]`.
+    scores: A 1-D+ float `Tensor` of shape `[...batch_dims, num_boxes]`
+      representing a single score corresponding to each box (each row of boxes).
     output_size: A scalar integer `Tensor` representing the maximum number of
       boxes to be selected by non-max suppression.
     iou_threshold: A 0-D float tensor representing the threshold for deciding
       whether boxes overlap too much with respect to IOU.
 
   Returns:
-    selected_indices: A 1-D integer `Tensor` of shape `[output_size]`
-      representing the selected indices from the boxes tensor and `-1` values
-      for the padding.
+    A 1-D+ integer `Tensor` of shape `[...batch_dims, output_size]` representing
+    the selected indices from the boxes tensor and `-1` values for the padding.
   """
-  order = tf.range(tf.size(scores), dtype=tf.float32)
+  batch_shape = boxes.shape[:-2]
+  batch_size = tf.reduce_prod(batch_shape).numpy()
+  boxes_size = boxes.shape[-2]
+  if boxes.shape[-1] != 4:
+    raise ValueError(f'Boxes shape ({boxes.shape}) last dimension must be 4 '
+                     'to represent [y1, x1, y2, x2] boxes coordinates')
+  if scores.shape != boxes.shape[:-1]:
+    raise ValueError(f'Boxes shape ({boxes.shape}) and scores shape '
+                     f'({scores.shape}) do not match.')
+  order = tf.range(boxes_size, dtype=tf.float32)
   relative_order = _tensor_sum_vectors(order, -order)
   relative_scores = _tensor_sum_vectors(scores, -scores)
   similar = _greater(_tensor_product_iou(boxes) - iou_threshold)
@@ -601,9 +617,12 @@ def non_max_suppression_padded(boxes: tf.Tensor,
   same_later = _and(_same(relative_scores), _greater(relative_order))
   similar_worse_or_same_later = _and(similar, _or(worse, same_later))
   prunable = _reduce_or(similar_worse_or_same_later, axis=-1)
-  remaining = (tf.constant(1.) - prunable)
+  remaining = tf.constant(1.) - prunable
+  scores = tf.reshape(tf.exp(scores), [1, 1, batch_size, boxes_size])
+  remaining = tf.reshape(remaining, [1, 1, batch_size, boxes_size])
   # top_k runs on TPU cores, let it happen, TPU tiles implementation is slower.
-  top_k = tf.math.top_k(remaining * tf.exp(scores), output_size)
-  return tf.squeeze(
+  top_k = tf.math.top_k(scores * remaining, output_size)
+  indices = (
       tf.cast(top_k.indices, top_k.values.dtype) * _greater(top_k.values) -
       _same(top_k.values))
+  return tf.reshape(indices, batch_shape + [output_size])
