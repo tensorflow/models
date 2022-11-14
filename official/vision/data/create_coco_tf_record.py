@@ -350,8 +350,7 @@ def create_tf_example(image,
           'image/panoptic/category_mask': tfrecord_lib.convert_to_feature(
               encoded_panoptic_masks['category_mask']),
           'image/panoptic/instance_mask': tfrecord_lib.convert_to_feature(
-              encoded_panoptic_masks['instance_mask'])
-            })
+              encoded_panoptic_masks['instance_mask'])})
 
   if feature_dict_len == len(feature_dict):
     example = None
