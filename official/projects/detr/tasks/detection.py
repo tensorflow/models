@@ -161,7 +161,7 @@ class DetectionTask(base_task.Task):
     return total_cost
 
   def build_losses(self, outputs, labels, aux_losses=None):
-    """Build DETR losses."""
+    """Builds DETR losses."""
     cls_outputs = outputs['cls_outputs']
     box_outputs = outputs['box_outputs']
     cls_targets = labels['classes']
@@ -225,7 +225,7 @@ class DetectionTask(base_task.Task):
     return total_loss, cls_loss, box_loss, giou_loss
 
   def build_metrics(self, training=True):
-    """Build detection metrics."""
+    """Builds detection metrics."""
     metrics = []
     metric_names = ['cls_loss', 'box_loss', 'giou_loss']
     for name in metric_names:
@@ -340,28 +340,26 @@ class DetectionTask(base_task.Task):
 
     predictions = {
         'detection_boxes':
-                box_ops.cycxhw_to_yxyx(outputs['box_outputs'])
-                * tf.expand_dims(
-                    tf.concat([
-                        labels['image_info'][:, 1:2, 0],
-                        labels['image_info'][:, 1:2, 1],
-                        labels['image_info'][:, 1:2, 0],
-                        labels['image_info'][:, 1:2, 1]
-                    ],
-                              axis=1),
-                    axis=1),
+            outputs['detection_boxes'] * tf.expand_dims(
+                tf.concat([
+                    labels['image_info'][:, 1:2,
+                                         0], labels['image_info'][:, 1:2, 1],
+                    labels['image_info'][:, 1:2,
+                                         0], labels['image_info'][:, 1:2, 1]
+                ],
+                          axis=1),
+                axis=1),
         'detection_scores':
-            tf.math.reduce_max(
-                tf.nn.softmax(outputs['cls_outputs'])[:, :, 1:], axis=-1),
+            outputs['detection_scores'],
         'detection_classes':
-            tf.math.argmax(outputs['cls_outputs'][:, :, 1:], axis=-1) + 1,
+            outputs['detection_classes'],
         # Fix this. It's not being used at the moment.
-        'num_detections': tf.reduce_sum(
-            tf.cast(
-                tf.math.greater(tf.math.reduce_max(
-                    outputs['cls_outputs'], axis=-1), 0), tf.int32), axis=-1),
-        'source_id': labels['id'],
-        'image_info': labels['image_info']
+        'num_detections':
+            outputs['num_detections'],
+        'source_id':
+            labels['id'],
+        'image_info':
+            labels['image_info']
     }
     ground_truths = {
         'source_id': labels['id'],
