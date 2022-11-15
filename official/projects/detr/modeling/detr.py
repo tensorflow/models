@@ -26,6 +26,7 @@ import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.projects.detr.modeling import transformer
+from official.vision.ops import box_ops
 
 
 def position_embedding_sine(attention_mask,
@@ -92,6 +93,35 @@ def position_embedding_sine(attention_mask,
 
   embeddings = tf.cast(output, tf.float32)
   return embeddings
+
+
+def postprocess(outputs: dict[str, tf.Tensor]) -> dict[str, tf.Tensor]:
+  """Performs post-processing on model output.
+
+  Args:
+    outputs: The raw model output.
+
+  Returns:
+    Postprocessed model output.
+  """
+  predictions = {
+      "detection_boxes":  # Box coordinates are relative values here.
+          box_ops.cycxhw_to_yxyx(outputs["box_outputs"]),
+      "detection_scores":
+          tf.math.reduce_max(
+              tf.nn.softmax(outputs["cls_outputs"])[:, :, 1:], axis=-1),
+      "detection_classes":
+          tf.math.argmax(outputs["cls_outputs"][:, :, 1:], axis=-1) + 1,
+      # Fix this. It's not being used at the moment.
+      "num_detections":
+          tf.reduce_sum(
+              tf.cast(
+                  tf.math.greater(
+                      tf.math.reduce_max(outputs["cls_outputs"], axis=-1), 0),
+                  tf.int32),
+              axis=-1)
+  }
+  return predictions
 
 
 class DETR(tf.keras.Model):
@@ -192,7 +222,7 @@ class DETR(tf.keras.Model):
         mask, target_shape, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
     return mask
 
-  def call(self, inputs: tf.Tensor) -> List[Any]:
+  def call(self, inputs: tf.Tensor, training: bool = None) -> List[Any]:
     batch_size = tf.shape(inputs)[0]
     features = self._backbone(inputs)[self._backbone_endpoint_name]
     shape = tf.shape(features)
@@ -225,7 +255,10 @@ class DETR(tf.keras.Model):
         box_out = layer(box_out)
       output_coord = self._sigmoid(box_out)
       out = {"cls_outputs": output_class, "box_outputs": output_coord}
+      if not training:
+        out.update(postprocess(out))
       out_list.append(out)
+
     return out_list
 
 
