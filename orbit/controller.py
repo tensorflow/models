@@ -410,8 +410,6 @@ class Controller:
 
     if checkpoint_path is not None:
       _log(f"restored model from {checkpoint_path}.")
-    else:
-      _log("initialized model.")
 
     return checkpoint_path
 
