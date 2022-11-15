@@ -17,10 +17,8 @@
 import abc
 
 
-class Decoder(object):
+class Decoder(metaclass=abc.ABCMeta):
   """Decodes the raw data into tensors."""
-
-  __metaclass__ = abc.ABCMeta
 
   @abc.abstractmethod
   def decode(self, serialized_example):

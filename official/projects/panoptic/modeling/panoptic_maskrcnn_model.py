@@ -50,6 +50,7 @@ class PanopticMaskRCNNModel(maskrcnn_model.DeepMaskRCNNModel):
       num_scales: Optional[int] = None,
       aspect_ratios: Optional[List[float]] = None,
       anchor_size: Optional[float] = None,
+      outer_boxes_scale: float = 1.0,
       use_gt_boxes_for_masks: bool = False,  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     """Initializes the Panoptic Mask R-CNN model.
@@ -95,10 +96,12 @@ class PanopticMaskRCNNModel(maskrcnn_model.DeepMaskRCNNModel):
         aspect_ratios=[1.0, 2.0, 0.5] adds three anchors on each scale level.
       anchor_size: A number representing the scale of size of the base anchor to
         the feature stride 2^level.
+      outer_boxes_scale: a float to scale up the bounding boxes to generate
+        more inclusive masks. The scale is expected to be >=1.0.
       use_gt_boxes_for_masks: `bool`, whether to use only gt boxes for masks.
       **kwargs: keyword arguments to be passed.
     """
-    super(PanopticMaskRCNNModel, self).__init__(
+    super().__init__(
         backbone=backbone,
         decoder=decoder,
         rpn_head=rpn_head,
@@ -117,6 +120,7 @@ class PanopticMaskRCNNModel(maskrcnn_model.DeepMaskRCNNModel):
         num_scales=num_scales,
         aspect_ratios=aspect_ratios,
         anchor_size=anchor_size,
+        outer_boxes_scale=outer_boxes_scale,
         use_gt_boxes_for_masks=use_gt_boxes_for_masks,
         **kwargs)
 
@@ -150,16 +154,21 @@ class PanopticMaskRCNNModel(maskrcnn_model.DeepMaskRCNNModel):
            gt_boxes: Optional[tf.Tensor] = None,
            gt_classes: Optional[tf.Tensor] = None,
            gt_masks: Optional[tf.Tensor] = None,
+           gt_outer_boxes: Optional[tf.Tensor] = None,
            training: Optional[bool] = None) -> Mapping[str, tf.Tensor]:
     image_shape = image_info[:, 1, :]
-    model_outputs = super(PanopticMaskRCNNModel, self).call(
-        images=images,
-        image_shape=image_shape,
-        anchor_boxes=anchor_boxes,
-        gt_boxes=gt_boxes,
-        gt_classes=gt_classes,
-        gt_masks=gt_masks,
-        training=training)
+    model_kwargs = {
+        'images': images,
+        'image_shape': image_shape,
+        'anchor_boxes': anchor_boxes,
+        'gt_boxes': gt_boxes,
+        'gt_classes': gt_classes,
+        'gt_masks': gt_masks,
+        'training': training,
+    }
+    if self.outer_boxes_scale > 1.0:
+      model_kwargs['gt_outer_boxes'] = gt_outer_boxes
+    model_outputs = super().call(**model_kwargs)
 
     if self.segmentation_backbone is not None:
       backbone_features = self.segmentation_backbone(images, training=training)
@@ -190,7 +199,7 @@ class PanopticMaskRCNNModel(maskrcnn_model.DeepMaskRCNNModel):
   def checkpoint_items(
       self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
-    items = super(PanopticMaskRCNNModel, self).checkpoint_items
+    items = super().checkpoint_items
     if self.segmentation_backbone is not None:
       items.update(segmentation_backbone=self.segmentation_backbone)
     if self.segmentation_decoder is not None:

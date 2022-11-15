@@ -31,7 +31,7 @@ class TfExampleDecoder(tf_example_decoder.TfExampleDecoder):
       include_panoptic_masks: bool,
       panoptic_category_mask_key: str = 'image/panoptic/category_mask',
       panoptic_instance_mask_key: str = 'image/panoptic/instance_mask'):
-    super(TfExampleDecoder, self).__init__(
+    super().__init__(
         include_mask=True,
         regenerate_source_id=regenerate_source_id,
         mask_binarize_threshold=None)
@@ -59,7 +59,7 @@ class TfExampleDecoder(tf_example_decoder.TfExampleDecoder):
     return segmentation_mask
 
   def decode(self, serialized_example):
-    decoded_tensors = super(TfExampleDecoder, self).decode(serialized_example)
+    decoded_tensors = super().decode(serialized_example)
     parsed_tensors = tf.io.parse_single_example(
         serialized_example, self._segmentation_keys_to_features)
     decoded_tensors.update({
@@ -104,6 +104,7 @@ class Parser(maskrcnn_input.Parser):
                aug_scale_max=1.0,
                skip_crowd_during_training=True,
                max_num_instances=100,
+               outer_boxes_scale=1.0,
                mask_crop_size=112,
                segmentation_resize_eval_groundtruth=True,
                segmentation_groundtruth_padded_size=None,
@@ -141,6 +142,8 @@ class Parser(maskrcnn_input.Parser):
         `is_crowd` equals to 1.
       max_num_instances: `int` number of maximum number of instances in an
         image. The groundtruth data will be padded to `max_num_instances`.
+      outer_boxes_scale: a float to scale up the bounding boxes to generate
+        more inclusive masks. The scale is expected to be >=1.0.
       mask_crop_size: the size which groundtruth mask is cropped to.
       segmentation_resize_eval_groundtruth: `bool`, if True, eval groundtruth
         masks are resized to output_size.
@@ -155,7 +158,7 @@ class Parser(maskrcnn_input.Parser):
         will be parsed. Set this to true if PQ evaluator is enabled.
       dtype: `str`, data type. One of {`bfloat16`, `float32`, `float16`}.
     """
-    super(Parser, self).__init__(
+    super().__init__(
         output_size=output_size,
         min_level=min_level,
         max_level=max_level,
@@ -172,6 +175,7 @@ class Parser(maskrcnn_input.Parser):
         skip_crowd_during_training=skip_crowd_during_training,
         max_num_instances=max_num_instances,
         include_mask=True,
+        outer_boxes_scale=outer_boxes_scale,
         mask_crop_size=mask_crop_size,
         dtype=dtype)
 
@@ -247,7 +251,7 @@ class Parser(maskrcnn_input.Parser):
       data['groundtruth_boxes'] = boxes
       data['groundtruth_instance_masks'] = masks
 
-    image, labels = super(Parser, self)._parse_train_data(data)
+    image, labels = super()._parse_train_data(data)
 
     image_info = labels['image_info']
     image_scale = image_info[2, :]
@@ -332,7 +336,7 @@ class Parser(maskrcnn_input.Parser):
       mask = tf.squeeze(mask, axis=0)
       return mask
 
-    image, labels = super(Parser, self)._parse_eval_data(data)
+    image, labels = super()._parse_eval_data(data)
     image_info = labels['image_info']
 
     # (height, width, num_channels = 1)

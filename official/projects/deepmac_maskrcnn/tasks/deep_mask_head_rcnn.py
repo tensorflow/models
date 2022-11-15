@@ -162,6 +162,7 @@ def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
       mask_head=mask_head,
       mask_sampler=mask_sampler_obj,
       mask_roi_aligner=mask_roi_aligner_obj,
+      outer_boxes_scale=model_config.outer_boxes_scale,
       use_gt_boxes_for_masks=model_config.use_gt_boxes_for_masks)
   return model
 
@@ -171,7 +172,7 @@ class DeepMaskHeadRCNNTask(maskrcnn.MaskRCNNTask):
   """Mask R-CNN with support for deep mask heads."""
 
   def build_model(self):
-    """Build Mask R-CNN model."""
+    """Builds Mask R-CNN model."""
 
     input_specs = tf.keras.layers.InputSpec(
         shape=[None] + self.task_config.model.input_size)

@@ -41,7 +41,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   """
 
   def build_model(self) -> tf.keras.Model:
-    """Build Panoptic Mask R-CNN model."""
+    """Builds Panoptic Mask R-CNN model."""
 
     input_specs = tf.keras.layers.InputSpec(
         shape=[None] + self.task_config.model.input_size)
@@ -64,7 +64,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
     return model
 
   def initialize(self, model: tf.keras.Model) -> None:
-    """Loading pretrained checkpoint."""
+    """Loads pretrained checkpoint."""
 
     if not self.task_config.init_checkpoint:
       return
@@ -121,7 +121,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
       params: exp_cfg.DataConfig,
       input_context: Optional[tf.distribute.InputContext] = None
   ) -> tf.data.Dataset:
-    """Build input dataset."""
+    """Builds input dataset."""
     decoder_cfg = params.decoder.get()
     if params.decoder.type == 'simple_decoder':
       decoder = panoptic_maskrcnn_input.TfExampleDecoder(
@@ -150,6 +150,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         aug_scale_max=params.parser.aug_scale_max,
         skip_crowd_during_training=params.parser.skip_crowd_during_training,
         max_num_instances=params.parser.max_num_instances,
+        outer_boxes_scale=self.task_config.model.outer_boxes_scale,
         mask_crop_size=params.parser.mask_crop_size,
         segmentation_resize_eval_groundtruth=params.parser
         .segmentation_resize_eval_groundtruth,
@@ -172,7 +173,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
                    outputs: Mapping[str, Any],
                    labels: Mapping[str, Any],
                    aux_losses: Optional[Any] = None) -> Dict[str, tf.Tensor]:
-    """Build Panoptic Mask R-CNN losses."""
+    """Builds Panoptic Mask R-CNN losses."""
     params = self.task_config.losses
 
     use_groundtruth_dimension = (
@@ -191,7 +192,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
     instance_segmentation_weight = params.instance_segmentation_weight
     semantic_segmentation_weight = params.semantic_segmentation_weight
 
-    losses = super(PanopticMaskRCNNTask, self).build_losses(
+    losses = super().build_losses(
         outputs=outputs,
         labels=labels,
         aux_losses=None)
@@ -219,7 +220,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
 
   def build_metrics(self, training: bool = True) -> List[
       tf.keras.metrics.Metric]:
-    """Build detection metrics."""
+    """Builds detection metrics."""
     metrics = []
     self.segmentation_train_mean_iou = None
 
@@ -301,6 +302,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
           image_info=labels['image_info'],
           anchor_boxes=labels['anchor_boxes'],
           gt_boxes=labels['gt_boxes'],
+          gt_outer_boxes=labels['gt_outer_boxes'],
           gt_classes=labels['gt_classes'],
           gt_masks=(labels['gt_masks'] if self.task_config.model.include_mask
                     else None),
@@ -382,6 +384,9 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
           'source_id': labels['groundtruths']['source_id'],
           'image_info': labels['image_info']
       }
+      if 'detection_outer_boxes' in outputs:
+        coco_model_outputs['detection_outer_boxes'] = outputs[
+            'detection_outer_boxes']
       logs.update(
           {self.coco_metric.name: (labels['groundtruths'], coco_model_outputs)})
 

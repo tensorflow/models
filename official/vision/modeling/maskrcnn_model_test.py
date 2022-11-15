@@ -42,9 +42,10 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
           include_mask=[True, False],
           use_separable_conv=[True, False],
           build_anchor_boxes=[True, False],
+          use_outer_boxes=[True, False],
           is_training=[True, False]))
   def test_build_model(self, include_mask, use_separable_conv,
-                       build_anchor_boxes, is_training):
+                       build_anchor_boxes, use_outer_boxes, is_training):
     num_classes = 3
     min_level = 3
     max_level = 7
@@ -119,6 +120,12 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         [[[10, 10, 15, 15], [2.5, 2.5, 7.5, 7.5], [-1, -1, -1, -1]],
          [[100, 100, 150, 150], [-1, -1, -1, -1], [-1, -1, -1, -1]]],
         dtype=np.float32)
+    gt_outer_boxes = None
+    if use_outer_boxes:
+      gt_outer_boxes = np.array(
+          [[[11, 11, 16.5, 16.5], [2.75, 2.75, 8.25, 8.25], [-1, -1, -1, -1]],
+           [[110, 110, 165, 165], [-1, -1, -1, -1], [-1, -1, -1, -1]]],
+          dtype=np.float32)
     gt_classes = np.array([[2, 1, -1], [1, -1, -1]], dtype=np.int32)
     if include_mask:
       gt_masks = np.ones((2, 3, 100, 100))
@@ -133,6 +140,7 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         gt_boxes,
         gt_classes,
         gt_masks,
+        gt_outer_boxes,
         training=is_training)
 
   @combinations.generate(
@@ -242,6 +250,10 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
           [[[10, 10, 15, 15], [2.5, 2.5, 7.5, 7.5], [-1, -1, -1, -1]],
            [[100, 100, 150, 150], [-1, -1, -1, -1], [-1, -1, -1, -1]]],
           dtype=np.float32)
+      gt_outer_boxes = np.array(
+          [[[11, 11, 16.5, 16.5], [2.75, 2.75, 8.25, 8.25], [-1, -1, -1, -1]],
+           [[110, 110, 165, 165], [-1, -1, -1, -1], [-1, -1, -1, -1]]],
+          dtype=np.float32)
       gt_classes = np.array([[2, 1, -1], [1, -1, -1]], dtype=np.int32)
       if include_mask:
         gt_masks = np.ones((2, 3, 100, 100))
@@ -255,6 +267,7 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
           gt_boxes,
           gt_classes,
           gt_masks,
+          gt_outer_boxes,
           training=training)
 
     self.assertIn('rpn_boxes', results)

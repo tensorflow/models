@@ -49,6 +49,7 @@ class Parser(parser.Parser):
                skip_crowd_during_training=True,
                max_num_instances=100,
                include_mask=False,
+               outer_boxes_scale=1.0,
                mask_crop_size=112,
                dtype='float32'):
     """Initializes parameters for parsing annotations in the dataset.
@@ -85,6 +86,8 @@ class Parser(parser.Parser):
       max_num_instances: `int` number of maximum number of instances in an
         image. The groundtruth data will be padded to `max_num_instances`.
       include_mask: a bool to indicate whether parse mask groundtruth.
+      outer_boxes_scale: a float to scale up the bounding boxes to generate
+        more inclusive masks. The scale is expected to be >=1.0.
       mask_crop_size: the size which groundtruth mask is cropped to.
       dtype: `str`, data type. One of {`bfloat16`, `float32`, `float16`}.
     """
@@ -133,6 +136,7 @@ class Parser(parser.Parser):
 
     # Mask.
     self._include_mask = include_mask
+    self._outer_boxes_scale = outer_boxes_scale
     self._mask_crop_size = mask_crop_size
 
     # Image output dtype.
@@ -237,9 +241,12 @@ class Parser(parser.Parser):
     boxes = tf.gather(boxes, indices)
     classes = tf.gather(classes, indices)
     if self._include_mask:
+      outer_boxes = box_ops.compute_outer_boxes(boxes, image_info[1, :],
+                                                self._outer_boxes_scale)
       masks = tf.gather(masks, indices)
       # Transfer boxes to the original image space and do normalization.
-      cropped_boxes = boxes + tf.tile(tf.expand_dims(offset, axis=0), [1, 2])
+      cropped_boxes = outer_boxes + tf.tile(
+          tf.expand_dims(offset, axis=0), [1, 2])
       cropped_boxes /= tf.tile(tf.expand_dims(image_scale, axis=0), [1, 2])
       cropped_boxes = box_ops.normalize_boxes(cropped_boxes, image_shape)
       num_masks = tf.shape(masks)[0]
@@ -272,29 +279,29 @@ class Parser(parser.Parser):
 
     # Casts input image to self._dtype
     image = tf.cast(image, dtype=self._dtype)
+    boxes = preprocess_ops.clip_or_pad_to_fixed_size(
+        boxes, self._max_num_instances, -1)
+    classes = preprocess_ops.clip_or_pad_to_fixed_size(
+        classes, self._max_num_instances, -1)
 
     # Packs labels for model_fn outputs.
     labels = {
-        'anchor_boxes':
-            anchor_boxes,
-        'image_info':
-            image_info,
-        'rpn_score_targets':
-            rpn_score_targets,
-        'rpn_box_targets':
-            rpn_box_targets,
-        'gt_boxes':
-            preprocess_ops.clip_or_pad_to_fixed_size(boxes,
-                                                     self._max_num_instances,
-                                                     -1),
-        'gt_classes':
-            preprocess_ops.clip_or_pad_to_fixed_size(classes,
-                                                     self._max_num_instances,
-                                                     -1),
+        'anchor_boxes': anchor_boxes,
+        'image_info': image_info,
+        'rpn_score_targets': rpn_score_targets,
+        'rpn_box_targets': rpn_box_targets,
+        'gt_boxes': boxes,
+        'gt_classes': classes,
     }
     if self._include_mask:
-      labels['gt_masks'] = preprocess_ops.clip_or_pad_to_fixed_size(
+      outer_boxes = preprocess_ops.clip_or_pad_to_fixed_size(
+          outer_boxes, self._max_num_instances, -1)
+      masks = preprocess_ops.clip_or_pad_to_fixed_size(
           masks, self._max_num_instances, -1)
+      labels.update({
+          'gt_outer_boxes': outer_boxes,
+          'gt_masks': masks,
+      })
 
     return image, labels
 

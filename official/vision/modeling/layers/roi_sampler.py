@@ -13,14 +13,19 @@
 # limitations under the License.
 
 """Contains definitions of ROI sampler."""
+from typing import Optional, Tuple, Union
 # Import libraries
-
 import tensorflow as tf
 
 from official.vision.modeling.layers import box_sampler
 from official.vision.ops import box_matcher
 from official.vision.ops import iou_similarity
 from official.vision.ops import target_gather
+
+# The return type can be a tuple of 4 or 5 tf.Tensor.
+ROISamplerReturnType = Union[
+    Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor],
+    Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]]
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -78,9 +83,14 @@ class ROISampler(tf.keras.layers.Layer):
 
     self._sampler = box_sampler.BoxSampler(
         num_sampled_rois, foreground_fraction)
-    super(ROISampler, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
-  def call(self, boxes: tf.Tensor, gt_boxes: tf.Tensor, gt_classes: tf.Tensor):
+  def call(
+      self,
+      boxes: tf.Tensor,
+      gt_boxes: tf.Tensor,
+      gt_classes: tf.Tensor,
+      gt_outer_boxes: Optional[tf.Tensor] = None) -> ROISamplerReturnType:
     """Assigns the proposals with groundtruth classes and performs subsmpling.
 
     Given `proposed_boxes`, `gt_boxes`, and `gt_classes`, the function uses the
@@ -103,6 +113,10 @@ class ROISampler(tf.keras.layers.Layer):
       gt_classes: A `tf.Tensor` with a shape of [batch_size, MAX_NUM_INSTANCES].
         This tensor might have paddings with values of -1 indicating the invalid
         classes.
+      gt_outer_boxes: A `tf.Tensor` of shape of [batch_size, MAX_NUM_INSTANCES,
+        4]. The corrdinates of gt_outer_boxes are in the pixel coordinates of
+        the scaled image. This tensor might have padding of values -1 indicating
+        the invalid box coordinates. Ignored if not provided.
 
     Returns:
       sampled_rois: A `tf.Tensor` of shape of [batch_size, K, 4], representing
@@ -111,6 +125,9 @@ class ROISampler(tf.keras.layers.Layer):
       sampled_gt_boxes: A `tf.Tensor` of shape of [batch_size, K, 4], storing
         the box coordinates of the matched groundtruth boxes of the samples
         RoIs.
+      sampled_gt_outer_boxes: A `tf.Tensor` of shape of [batch_size, K, 4],
+        storing the box coordinates of the matched groundtruth outer boxes of
+        the samples RoIs. This field is missing if gt_outer_boxes is None.
       sampled_gt_classes: A `tf.Tensor` of shape of [batch_size, K], storing the
         classes of the matched groundtruth boxes of the sampled RoIs.
       sampled_gt_indices: A `tf.Tensor` of shape of [batch_size, K], storing the
@@ -147,13 +164,23 @@ class ROISampler(tf.keras.layers.Layer):
     matched_gt_boxes = tf.where(background_mask,
                                 tf.zeros_like(matched_gt_boxes),
                                 matched_gt_boxes)
+    if gt_outer_boxes is not None:
+      matched_gt_outer_boxes = self._target_gather(
+          gt_outer_boxes, matched_gt_indices, tf.tile(background_mask,
+                                                      [1, 1, 4]))
+      matched_gt_outer_boxes = tf.where(background_mask,
+                                        tf.zeros_like(matched_gt_outer_boxes),
+                                        matched_gt_outer_boxes)
     matched_gt_indices = tf.where(
         tf.squeeze(background_mask, -1), -tf.ones_like(matched_gt_indices),
         matched_gt_indices)
 
     if self._config_dict['skip_subsampling']:
-      return (boxes, matched_gt_boxes, tf.squeeze(matched_gt_classes,
-                                                  axis=-1), matched_gt_indices)
+      matched_gt_classes = tf.squeeze(matched_gt_classes, axis=-1)
+      if gt_outer_boxes is None:
+        return (boxes, matched_gt_boxes, matched_gt_classes, matched_gt_indices)
+      return (boxes, matched_gt_boxes, matched_gt_outer_boxes,
+              matched_gt_classes, matched_gt_indices)
 
     sampled_indices = self._sampler(
         positive_matches, negative_matches, ignored_matches)
@@ -164,8 +191,13 @@ class ROISampler(tf.keras.layers.Layer):
         matched_gt_classes, sampled_indices), axis=-1)
     sampled_gt_indices = tf.squeeze(self._target_gather(
         tf.expand_dims(matched_gt_indices, -1), sampled_indices), axis=-1)
-    return (sampled_rois, sampled_gt_boxes, sampled_gt_classes,
-            sampled_gt_indices)
+    if gt_outer_boxes is None:
+      return (sampled_rois, sampled_gt_boxes, sampled_gt_classes,
+              sampled_gt_indices)
+    sampled_gt_outer_boxes = self._target_gather(matched_gt_outer_boxes,
+                                                 sampled_indices)
+    return (sampled_rois, sampled_gt_boxes, sampled_gt_outer_boxes,
+            sampled_gt_classes, sampled_gt_indices)
 
   def get_config(self):
     return self._config_dict
