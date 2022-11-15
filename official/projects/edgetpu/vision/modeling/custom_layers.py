@@ -560,6 +560,12 @@ def _same(x):
   return tf.constant(1, dtype=x.dtype) + tf.math.floor(-x_clip)
 
 
+# TODO(b/258007436): Number is based on existing compiler limitations while
+# running bf16 NMS on edgetpu. Remove manual sharing when compiler issue will be
+# fixed.
+_RECOMMENDED_NMS_MEMORY = 360000
+
+
 def non_max_suppression_padded(boxes: tf.Tensor,
                                scores: tf.Tensor,
                                output_size: int,
@@ -586,6 +592,58 @@ def non_max_suppression_padded(boxes: tf.Tensor,
 
   See following documetation for implementation details.
   third_party/tensorflow_models/official/projects/edgetpu/vision/modeling/g3doc/non_max_suppression.md
+
+  Args:
+    boxes: A 2-D+ float `Tensor` of shape `[...batch_dims, num_boxes, 4]`.
+    scores: A 1-D+ float `Tensor` of shape `[...batch_dims, num_boxes]`
+      representing a single score corresponding to each box (each row of boxes).
+    output_size: A scalar integer `Tensor` representing the maximum number of
+      boxes to be selected by non-max suppression.
+    iou_threshold: A 0-D float tensor representing the threshold for deciding
+      whether boxes overlap too much with respect to IOU.
+
+  Returns:
+    A 1-D+ integer `Tensor` of shape `[...batch_dims, output_size]` representing
+    the selected indices from the boxes tensor and `-1` values for the padding.
+  """
+  # Does partitioning job to help compiler converge with memory.
+  batch_shape = boxes.shape[:-2]
+  batch_size = tf.reduce_prod(batch_shape).numpy()
+  boxes_size, struct_size = boxes.shape[-2:]
+  boxes = tf.reshape(boxes, [batch_size, boxes_size, struct_size])
+  scores = tf.reshape(scores, [batch_size, boxes_size])
+  block = max(1, _RECOMMENDED_NMS_MEMORY // (boxes_size * boxes_size))
+  if block >= batch_size:
+    indices = _non_max_suppression_as_is(boxes, scores, output_size,
+                                         iou_threshold)
+  else:
+    blocks = batch_size // block
+    remainder = batch_size % block
+    if remainder:
+      boxes = (
+          tf.split(boxes[:blocks * block, :, :], blocks) +
+          [boxes[blocks * block:, :, :]])
+      scores = (
+          tf.split(scores[:blocks * block, :], blocks) +
+          [scores[blocks * block:, :]])
+    else:
+      boxes = tf.split(boxes, blocks)
+      scores = tf.split(scores, blocks)
+    indices = []
+    for boxes_i, scores_i in zip(boxes, scores):
+      indices.append(
+          _non_max_suppression_as_is(boxes_i, scores_i, output_size,
+                                     iou_threshold))
+    indices = tf.concat(indices, axis=0)
+
+  return tf.reshape(indices, batch_shape + [output_size])
+
+
+def _non_max_suppression_as_is(boxes: tf.Tensor,
+                               scores: tf.Tensor,
+                               output_size: int,
+                               iou_threshold: float = 0.5) -> tf.Tensor:
+  """Selects a subset of boxes which have highest score among IOU-similar boxes.
 
   Args:
     boxes: A 2-D+ float `Tensor` of shape `[...batch_dims, num_boxes, 4]`.
