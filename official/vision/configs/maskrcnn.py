@@ -165,6 +165,7 @@ class MaskRCNN(hyperparams.Config):
   max_level: int = 6
   anchor: Anchor = Anchor()
   include_mask: bool = True
+  outer_boxes_scale: float = 1.0
   backbone: backbones.Backbone = backbones.Backbone(
       type='resnet', resnet=backbones.ResNet())
   decoder: decoders.Decoder = decoders.Decoder(

@@ -105,7 +105,7 @@ def cycxhw_to_yxyx(boxes):
 
 
 def jitter_boxes(boxes, noise_scale=0.025):
-  """Jitter the box coordinates by some noise distribution.
+  """Jitters the box coordinates by some noise distribution.
 
   Args:
     boxes: a tensor whose last dimension is 4 representing the coordinates of
@@ -274,7 +274,7 @@ def clip_boxes(boxes, image_shape):
 
 
 def compute_outer_boxes(boxes, image_shape, scale=1.0):
-  """Compute outer box encloses an object with a margin.
+  """Computes outer box encloses an object with a margin.
 
   Args:
     boxes: a tensor whose last dimension is 4 representing the coordinates of
@@ -293,6 +293,8 @@ def compute_outer_boxes(boxes, image_shape, scale=1.0):
     raise ValueError(
         'scale is {}, but outer box scale must be greater than 1.0.'.format(
             scale))
+  if scale == 1.0:
+    return boxes
   centers_y = (boxes[..., 0] + boxes[..., 2]) / 2.0
   centers_x = (boxes[..., 1] + boxes[..., 3]) / 2.0
   box_height = (boxes[..., 2] - boxes[..., 0]) * scale
@@ -300,13 +302,13 @@ def compute_outer_boxes(boxes, image_shape, scale=1.0):
   outer_boxes = tf.stack(
       [centers_y - box_height / 2.0, centers_x - box_width / 2.0,
        centers_y + box_height / 2.0, centers_x + box_width / 2.0],
-      axis=1)
+      axis=-1)
   outer_boxes = clip_boxes(outer_boxes, image_shape)
   return outer_boxes
 
 
 def encode_boxes(boxes, anchors, weights=None):
-  """Encode boxes to targets.
+  """Encodes boxes to targets.
 
   Args:
     boxes: a tensor whose last dimension is 4 representing the coordinates
@@ -362,7 +364,7 @@ def encode_boxes(boxes, anchors, weights=None):
 
 
 def decode_boxes(encoded_boxes, anchors, weights=None):
-  """Decode boxes.
+  """Decodes boxes.
 
   Args:
     encoded_boxes: a tensor whose last dimension is 4 representing the
@@ -416,7 +418,7 @@ def decode_boxes(encoded_boxes, anchors, weights=None):
 
 
 def filter_boxes(boxes, scores, image_shape, min_size_threshold):
-  """Filter and remove boxes that are too small or fall outside the image.
+  """Filters and remove boxes that are too small or fall outside the image.
 
   Args:
     boxes: a tensor whose last dimension is 4 representing the coordinates of
@@ -476,7 +478,7 @@ def filter_boxes(boxes, scores, image_shape, min_size_threshold):
 
 
 def filter_boxes_by_scores(boxes, scores, min_score_threshold):
-  """Filter and remove boxes whose scores are smaller than the threshold.
+  """Filters and remove boxes whose scores are smaller than the threshold.
 
   Args:
     boxes: a tensor whose last dimension is 4 representing the coordinates of
@@ -506,7 +508,7 @@ def filter_boxes_by_scores(boxes, scores, min_score_threshold):
 
 
 def gather_instances(selected_indices, instances, *aux_instances):
-  """Gather instances by indices.
+  """Gathers instances by indices.
 
   Args:
     selected_indices: a Tensor of shape [batch, K] which indicates the selected
@@ -554,7 +556,7 @@ def gather_instances(selected_indices, instances, *aux_instances):
 
 
 def top_k_boxes(boxes, scores, k):
-  """Sort and select top k boxes according to the scores.
+  """Sorts and select top k boxes according to the scores.
 
   Args:
     boxes: a tensor of shape [batch_size, N, 4] representing the coordinate of
@@ -576,7 +578,7 @@ def top_k_boxes(boxes, scores, k):
 
 
 def get_non_empty_box_indices(boxes):
-  """Get indices for non-empty boxes."""
+  """Gets indices for non-empty boxes."""
   # Selects indices if box height or width is 0.
   height = boxes[:, 2] - boxes[:, 0]
   width = boxes[:, 3] - boxes[:, 1]
@@ -712,7 +714,7 @@ def bbox_generalized_overlap(boxes, gt_boxes):
 
 
 def box_matching(boxes, gt_boxes, gt_classes):
-  """Match boxes to groundtruth boxes.
+  """Matches boxes to groundtruth boxes.
 
   Given the proposal boxes and the groundtruth boxes and classes, perform the
   groundtruth matching by taking the argmax of the IoU between boxes and
