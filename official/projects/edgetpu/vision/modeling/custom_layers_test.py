@@ -15,6 +15,7 @@
 """Tests for custom_layers."""
 
 import itertools
+from typing import List
 
 from absl.testing import parameterized
 import numpy as np
@@ -187,12 +188,26 @@ class ArgmaxTest(parameterized.TestCase, tf.test.TestCase):
       self.assertAllEqual(control_output, test_output)
 
 
-def random_boxes(n):
-  a = tf.random.uniform(shape=[n, 2])
-  b = tf.random.uniform(shape=[n, 2])
+def random_boxes(shape):
+  a = tf.random.uniform(shape=shape+[2])
+  b = tf.random.uniform(shape=shape+[2])
   l = tf.minimum(a, b)
   u = tf.maximum(a, b)
   return tf.concat([l, u], axis=-1)
+
+
+def _maximum_activation_size(model):
+  max_size = 0
+  for layer in model.layers:
+    outputs = layer.output
+    if not isinstance(outputs, list):
+      outputs = [outputs]
+    for output in outputs:
+      if hasattr(output, 'shape'):
+        size = np.prod(output.shape)
+        max_size = max(max_size, size)
+        print('Layer', size, output.shape, layer.name)
+  return max_size
 
 
 class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
@@ -215,11 +230,11 @@ class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
     than absolute deviation to avoid flaky tesing.
     in # | out # | deflake # | test time | deviation | safe threshold
     ---- | ----- | --------- | --------- | --------- | --------------
-    18   | 8     | 500       | 6 sec     | 0.4%      | 1.6%
-    31   | 17    | 300       | 7 sec     | 1.0%      | 3.3%
-    71   | 41    | 300       | 7 sec     | 3.4%      | 6.5%
-    150  | 100   | 250       | 7 sec     | 8.2%      | 13.7%
-    300  | 300   | 250       | 10 sec    | 7.4%      | 12.6%
+    18   | 8     | 500       | 1 sec     | 0.4%      | 1.6%
+    31   | 17    | 300       | 1 sec     | 1.0%      | 3.3%
+    71   | 41    | 300       | 1 sec     | 3.4%      | 6.5%
+    150  | 100   | 250       | 1 sec     | 8.2%      | 13.7%
+    300  | 300   | 250       | 3 sec     | 7.4%      | 12.6%
     600  | 600   | 100       | 9 sec     | 9.6%      | 21.3%
 
     Args:
@@ -232,13 +247,13 @@ class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
         flaky testing.
     """
     deviation_rate = 0
-    for _ in range(runs):
-      boxes = random_boxes(n)
-      scores = tf.random.uniform(shape=[n])
-      optimized = custom_layers.non_max_suppression_padded(boxes, scores, top)
-      optimized = {*optimized.numpy().astype(int).tolist()} - {-1}
-      reference = tf.image.non_max_suppression(boxes, scores, top)
+    boxes = random_boxes([runs, n])
+    scores = tf.random.uniform(shape=[runs, n])
+    test = custom_layers.non_max_suppression_padded(boxes, scores, top)
+    for run in range(runs):
+      reference = tf.image.non_max_suppression(boxes[run], scores[run], top)
       reference = {*reference.numpy().tolist()}
+      optimized = {*test[run].numpy().astype(int).tolist()} - {-1}
       deviation_rate += len(optimized ^ reference) / len(optimized | reference)
     deviation_rate = deviation_rate / runs
     # six sigma estimate via LLN theorem
@@ -250,6 +265,37 @@ class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
         'higher than expected. If you are tuning the test, recommended safe '
         'deviation rate is '
         f'{deviation_rate} + {safe_margin} = {deviation_rate + safe_margin}')
+
+  @parameterized.parameters(([16], 8), ([91, 150], 100), ([20, 20, 200], 10))
+  def test_sharded_match(self, shape: List[int], top: int):
+    boxes = random_boxes(shape)
+    scores = tf.random.uniform(shape=shape)
+    optimized = custom_layers.non_max_suppression_padded(boxes, scores, top)
+    reference = custom_layers._non_max_suppression_as_is(boxes, scores, top)
+    self.assertAllEqual(optimized, reference)
+
+  _sharded_nms = custom_layers.non_max_suppression_padded
+  _stright_nms = custom_layers._non_max_suppression_as_is
+
+  @parameterized.parameters(([16], 8, _sharded_nms, True),
+                            ([16], 8, _stright_nms, True),
+                            ([91, 150], 100, _sharded_nms, True),
+                            ([91, 150], 100, _stright_nms, False),
+                            ([20, 20, 200], 10, _sharded_nms, True),
+                            ([20, 20, 200], 10, _stright_nms, False))
+  def test_sharded_size(self, shape: List[int], top: int, algorithm,
+                        fits_as_is: bool):
+    scores = tf.keras.Input(shape=shape, batch_size=1)
+    boxes = tf.keras.Input(shape=shape + [4], batch_size=1)
+    optimized = algorithm(boxes, scores, top)
+    model = tf.keras.Model(inputs=[boxes, scores], outputs=optimized)
+    max_size = _maximum_activation_size(model)
+    if fits_as_is:
+      # Sharding done or not needed.
+      self.assertLessEqual(max_size, custom_layers._RECOMMENDED_NMS_MEMORY)
+    else:
+      # Sharding needed.
+      self.assertGreater(max_size, custom_layers._RECOMMENDED_NMS_MEMORY)
 
 
 if __name__ == '__main__':
