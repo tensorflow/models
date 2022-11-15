@@ -1,63 +1,142 @@
-# Quantization Aware Training Project for Computer Vision Models
+# Quantization Aware Training for Computer Vision Models
 
 ⚠️ Disclaimer: All datasets hyperlinked from this page are not owned or
 distributed by Google. The dataset is made available by third parties.
 Please review the terms and conditions made available by the third parties
 before using the data.
 
-## Overview
+## Description
 
-This project includes quantization aware training code for Computer Vision
+This project includes quantization aware training (QAT) code for computer vision
 models. These are examples to show how to apply the Model Optimization Toolkit's
 [quantization aware training API](https://www.tensorflow.org/model_optimization/guide/quantization/training).
+compared to post-training quantization (PTQ), QAT can minimize the quality loss
+from quantization, while still achieving the speed-up from integer quantization.
+Therefore, it is the preferrable technique to use when there is strict
+requreiment on model latency and quality. Please find our
+[blogpost](https://blog.tensorflow.org/2022/06/Adding-Quantization-aware-Training-and-Pruning-to-the-TensorFlow-Model-Garden.html)
+for more details.
 
-Note: Currently, we support a limited number of ML tasks & models (e.g., image
-classification and semantic segmentation)
-We will keep adding support for other ML tasks and models in the next releases.
+Currently, we support a limited number of vision tasks & models. We will keep
+adding support for other tasks and models in the next releases.
 
-## How to train a model
+## History
 
-```
-EXPERIMENT=xxx  # Change this for your run, for example, 'mobilenet_imagenet_qat'
-CONFIG_FILE=xxx  # Change this for your run, for example, path of imagenet_mobilenetv2_qat_gpu.yaml
-MODEL_DIR=xxx  #  Change this for your run, for example, /tmp/model_dir
-$ python3 train.py \
---experiment=${EXPERIMENT} \
---config_file=${CONFIG_FILE} \
---model_dir=${MODEL_DIR} \
---mode=train_and_eval
-```
+### Jun. 9, 2022
 
-## Image Classification
+-   First release of vision models covering image classification and semantic
+    segmentation tasks. Support ResNet, MobileNetV2, MobileNetV3 large and
+    Multi-hardware MobileNet, and DeepLabV3/V3+.
 
-<figure align="center">
-<img width=70% src=https://storage.googleapis.com/tf_model_garden/models/qat/images/readme-qat-classification-plot.png>
-<figcaption>Comparison of Imagenet top-1 accuracy for the classification models</figcaption>
-</figure>
+### Nov. 30, 2022
 
-Note: The Top-1 model accuracy is measured on the validation set of [ImageNet](https://www.image-net.org/).
+-   Release of support for object detection task (RetinaNet).
+
+## Maintainers
+
+- Jaehong Kim ([Xhark](https://github.com/Xhark))
+* Fang Yang ([fyangf](https://github.com/fyangf))
+* Shixin Luo ([luotigerlsx](https://github.com/luotigerlsx))
+- Rino Lee ([rino20](https://github.com/rino20))
+
+## Requirements
+
+[![Python](https://img.shields.io/pypi/pyversions/tensorflow.svg?style=plastic)](https://badge.fury.io/py/tensorflow)
+[![tf-models-official PyPI](https://badge.fury.io/py/tf-models-official.svg)](https://badge.fury.io/py/tf-models-official)
+
+## Results
+### Image Classification
+
+Model is trained on ImageNet1K train set and evaluated on the validation set.
 
 
-### Pre-trained Models
-
-|Model                 |Resolution|Top-1 Accuracy (FP32)|Top-1 Accuracy (Int8/PTQ)|Top-1 Accuracy (Int8/QAT)|Config                                                                                                                                                              |Download                                                                                                                                        |
+|Model                 |Resolution|Top-1 Accuracy (FP32)|Top-1 Accuracy (INT8)|Top-1 Accuracy (QAT INT8)|Config                                                                                                                                                              |Download                                                                                                                                        |
 |----------------------|----------|---------------------|-------------------------|-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-|MobileNetV2           |224x224   |72.782%              |72.392%                  |72.792%                  |[config](https://github.com/tensorflow/models/blob/master/official/projects/qat/vision/configs/experiments/image_classification/imagenet_mobilenetv2_qat_gpu.yaml)  |[TFLite(Int8/QAT)](https://storage.googleapis.com/tf_model_garden/vision/mobilenet/v2_1.0_int8/mobilenet_v2_1.00_224_int8.tflite)                    |
-|ResNet50              |224x224   |76.710%              |76.420%                  |77.200%                  |[config](https://github.com/tensorflow/models/blob/master/official/projects/qat/vision/configs/experiments/image_classification/imagenet_resnet50_qat_gpu.yaml)     |[TFLite(Int8/QAT)](https://storage.googleapis.com/tf_model_garden/vision/resnet50_imagenet/resnet_50_224_int8.tflite)                                |
-|MobileNetV3.5 MultiAVG|224x224   |75.212%              |74.122%                  |75.130%                  |[config](https://github.com/tensorflow/models/blob/master/official/projects/qat/vision/configs/experiments/image_classification/imagenet_mobilenetv3.5_qat_gpu.yaml)|[TFLite(Int8/QAT)](https://storage.googleapis.com/tf_model_garden/vision/mobilenet/v3.5multiavg_1.0_int8/mobilenet_v3.5multiavg_1.00_224_int8.tflite)|
+|MobileNetV2           |224x224   |72.78              |72.39                 |72.79                  |[config](https://github.com/tensorflow/models/blob/master/official/projects/qat/vision/configs/experiments/image_classification/imagenet_mobilenetv2_qat_gpu.yaml)  |[TFLite(Int8/QAT)](https://storage.googleapis.com/tf_model_garden/vision/mobilenet/v2_1.0_int8/mobilenet_v2_1.00_224_int8.tflite)                    |
+|ResNet50              |224x224   |76.71              |76.42                  |77.20                  |[config](https://github.com/tensorflow/models/blob/master/official/projects/qat/vision/configs/experiments/image_classification/imagenet_resnet50_qat_gpu.yaml)     |[TFLite(Int8/QAT)](https://storage.googleapis.com/tf_model_garden/vision/resnet50_imagenet/resnet_50_224_int8.tflite)                                |
+|MobileNetV3.5 MultiAVG|224x224   |75.21             |74.12                  |75.13                  |[config](https://github.com/tensorflow/models/blob/master/official/projects/qat/vision/configs/experiments/image_classification/imagenet_mobilenetv3.5_qat_gpu.yaml)|[TFLite(Int8/QAT)](https://storage.googleapis.com/tf_model_garden/vision/mobilenet/v3.5multiavg_1.0_int8/mobilenet_v3.5multiavg_1.00_224_int8.tflite)|
 
-## Semantic Segmentation
+### Object Detection
+
+Model is trained on COCO train set from scratch and evaluated on COCO validation
+set.
+
+model                    | resolution | mAP  | mAP (FP32) | mAP (INT8) | mAP (QAT INT8) | download
+:----------------------- | :--------: | ---: | ---------: | ---------: | -------------: | ----------------:
+MobileNet v2 + RetinaNet | 256x256    | 23.3 | 23.3       | 0.04       | 21.7           | [ckpt](https://storage.cloud.google.com/tf_model_garden/vision/qat/mobilenetv2_ssd_coco/mobilenetv2_ssd_i256_qat_ckpt.tar.gz) \| [tensorboard](https://tensorboard.dev/experiment/fAat72iXSqW8ZoTY3clMsg) [FP32](https://storage.cloud.google.com/tf_model_garden/vision/qat/mobilenetv2_ssd_coco/model_fp32.tflite) \| [INT8](https://storage.cloud.google.com/tf_model_garden/vision/qat/mobilenetv2_ssd_coco/model_int8_ptq.tflite) \| [QAT INT8](https://storage.cloud.google.com/tf_model_garden/vision/qat/mobilenetv2_ssd_coco/model_int8_qat.tflite)
+
+### Semantic Segmentation
 
 
 Model is pretrained using COCO train set. Two datasets, Pascal VOC segmentation
-dataset and Cityscapes dataset (only for DeepLab v3+), are used to train and
-evaluate models. Model accuracy is measured on full Pascal VOC segmentation
-validation set.
+dataset and Cityscapes dataset are used to train and
+evaluate models.
 
-### Pre-trained Models
+#### Pascal VOC
 
-model                      | resolution | mIoU  | mIoU (FP32) | mIoU (FP16) | mIoU (INT8) | mIoU (QAT INT8) | download (tflite)|
-:------------------------- | :--------: | ----: | ----------: | ----------: | ----------: | --------------: | ----------------:
-MobileNet v2 + DeepLab v3  | 512x512    | 75.27 | 75.30       | 75.32       | 73.95       | 74.68           | [FP32](https://storage.googleapis.com/tf_model_garden/vision/qat/deeplabv3_mobilenetv2_pascal_coco_0.21/model_none.tflite) \| [FP16](https://storage.googleapis.com/tf_model_garden/vision/qat/deeplabv3_mobilenetv2_pascal_coco_0.21/model_fp16.tflite) \| [INT8](https://storage.googleapis.com/tf_model_garden/vision/qat/deeplabv3_mobilenetv2_pascal_coco_0.21model_int8_full.tflite) \| [QAT INT8](https://storage.googleapis.com/tf_model_garden/vision/qat/deeplabv3_mobilenetv2_pascal_coco_0.21/Fmodel_default.tflite)
-MobileNet v2 + DeepLab v3+ | 1024x2048  | 73.82 | 73.84       | 73.65       | 72.33       | 73.49           | [FP32](https://storage.googleapis.com/tf_model_garden/vision/qat/mnv2_deeplabv3plus_cityscapes/model_none.tflite) \| [FP16](https://storage.googleapis.com/tf_model_garden/vision/qat/mnv2_deeplabv3plus_cityscapes/Fmodel_fp16.tflite) \| [INT8](https://storage.googleapis.com/tf_model_garden/vision/qat/mnv2_deeplabv3plus_cityscapes/model_int8_full.tflite) \| [QAT INT8](https://storage.googleapis.com/tf_model_garden/vision/qat/mnv2_deeplabv3plus_cityscapes/Fmodel_default.tflite)
+model                      | resolution | mIoU  | mIoU (FP32) | mIoU (INT8) | mIoU (QAT INT8) | download (tflite)|
+:------------------------- | :--------: | ----: | ----------: | ----------: | --------------: | ----------------:
+MobileNet v2 + DeepLab v3  | 512x512    | 75.27 | 75.30           | 73.95       | 74.68           | [FP32](https://storage.googleapis.com/tf_model_garden/vision/qat/deeplabv3_mobilenetv2_pascal_coco_0.21/model_none.tflite)  \| [INT8](https://storage.googleapis.com/tf_model_garden/vision/qat/deeplabv3_mobilenetv2_pascal_coco_0.21model_int8_full.tflite) \| [QAT INT8](https://storage.googleapis.com/tf_model_garden/vision/qat/deeplabv3_mobilenetv2_pascal_coco_0.21/Fmodel_default.tflite)
+MobileNet v2 + DeepLab v3+ | 1024x2048  | 73.82 | 73.84           | 72.33       | 73.49           | [FP32](https://storage.googleapis.com/tf_model_garden/vision/qat/mnv2_deeplabv3plus_cityscapes/model_none.tflite)  \| [INT8](https://storage.googleapis.com/tf_model_garden/vision/qat/mnv2_deeplabv3plus_cityscapes/model_int8_full.tflite) \| [QAT INT8](https://storage.googleapis.com/tf_model_garden/vision/qat/mnv2_deeplabv3plus_cityscapes/Fmodel_default.tflite)
+
+#### Cityscapes
+
+model                      | resolution | mIoU  | mIoU (FP32) | mIoU (INT8) | mIoU (QAT INT8) | download (tflite)
+:------------------------- | :--------: | ----: | ----------: | ----------: | --------------: | ----------------:
+MobileNet v2 + DeepLab v3+ | 1024x2048  | 73.82 | 73.84       | 72.33       | 73.49           | [FP32](https://storage.googleapis.com/tf_model_garden/vision/qat/mnv2_deeplabv3plus_cityscapes/model_none.tflite) \| [INT8](https://storage.googleapis.com/tf_model_garden/vision/qat/mnv2_deeplabv3plus_cityscapes/model_int8_full.tflite) \| [QAT INT8](https://storage.googleapis.com/tf_model_garden/vision/qat/mnv2_deeplabv3plus_cityscapes/Fmodel_default.tflite)
+
+## Training
+
+It can run on Google Cloud Platform using Cloud TPU.
+[Here](https://cloud.google.com/tpu/docs/how-to) is the instruction of using
+Cloud TPU. Following the instructions to set up Cloud TPU and launch training,
+using object detection as an exmaple:
+
+```shell
+
+# First download the pre-trained floating point model as QAT needs to finetune it.
+gsutil cp gs://tf_model_garden/vision/qat/mobilenetv2_ssd_coco/mobilenetv2_ssd_i256_ckpt.tar.gz /tmp/qat/
+
+# Extract the checkpoint.
+tar -xvzf /tmp/qat/mobilenetv2_ssd_i256_ckpt.tar.gz
+
+# Launch training. Note that we override the checkpoint path in the config file by "params_override" to supply the correct checkpoint.
+PARAMS_OVERRIDE="task.quantization.pretrained_original_checkpoint=/tmp/qat/mobilenetv2_ssd_i256_ckpt"
+EXPERIMENT=retinanet_mobile_coco_qat  # Change this for your run, for example, 'mobilenet_imagenet_qat'.
+CONFIG_FILE=xxx  # Change this for your run, for example, path of coco_mobilenetv2_qat_tpu_e2e.yaml.
+TPU_NAME="<tpu-name>"  # The name assigned while creating a Cloud TPU.
+MODEL_DIR="gs://<path-to-model-directory>"  #  Change this for your run, for example, /tmp/model_dir.
+$ python3 train.py \
+  --experiment=${EXPERIMENT} \
+  --config_file=${CONFIG_FILE} \
+  --model_dir=${MODEL_DIR} \
+  --tpu=$TPU_NAME \
+  --params_override=${PARAMS_OVERRIDE}
+  --mode=train
+```
+
+## Evaluation
+
+Please run this command line for evaluation.
+
+```shell
+EXPERIMENT=retinanet_mobile_coco  # Change this for your run, for example, 'mobilenet_imagenet_qat'.
+CONFIG_FILE=xxx  # Change this for your run, for example, path of coco_mobilenetv2_qat_tpu_e2e.yaml.
+TPU_NAME="<tpu-name>"  # The name assigned while creating a Cloud TPU.
+MODEL_DIR="gs://<path-to-model-directory>"  #  Change this for your run, for example, /tmp/model_dir.
+$ python3 train.py \
+  --experiment=${EXPERIMENT} \
+  --config_file=${CONFIG_FILE} \
+  --model_dir=${MODEL_DIR} \
+  --tpu=$TPU_NAME \
+  --mode=eval
+```
+
+## License
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+This project is licensed under the terms of the **Apache License 2.0**.
+
+
 
