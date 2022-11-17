@@ -233,7 +233,7 @@ class SparseMixer(tf.keras.layers.Layer):
             experts=layers.FeedForwardExperts(
                 num_experts=num_experts,
                 d_ff=hidden_size,
-                dropout_rate=output_dropout,
+                output_dropout=output_dropout,
                 activation=inner_activation,
                 kernel_initializer=tf_utils.clone_initializer(initializer),
                 name='experts'),
