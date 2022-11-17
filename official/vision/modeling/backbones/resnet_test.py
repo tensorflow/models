@@ -29,6 +29,7 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(
       (128, 10, 1),
       (128, 18, 1),
+      (128, 26, 1),
       (128, 34, 1),
       (128, 50, 4),
       (128, 101, 4),
@@ -40,6 +41,7 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
     resnet_params = {
         10: 4915904,
         18: 11190464,
+        26: 17465024,
         34: 21306048,
         50: 23561152,
         101: 42605504,
