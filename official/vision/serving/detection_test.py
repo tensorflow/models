@@ -29,8 +29,10 @@ from official.vision.serving import detection
 
 class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
 
-  def _get_detection_module(self, experiment_name, input_type):
+  def _get_detection_module(
+      self, experiment_name, input_type, outer_boxes_scale=1.0):
     params = exp_factory.get_exp_config(experiment_name)
+    params.task.model.outer_boxes_scale = outer_boxes_scale
     params.task.model.backbone.resnet.model_id = 18
     params.task.model.detection_generator.nms_version = 'batched'
     detection_module = detection.DetectionModule(
@@ -46,7 +48,7 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
     tf.saved_model.save(module, save_directory, signatures=signatures)
 
   def _get_dummy_input(self, input_type, batch_size, image_size):
-    """Get dummy input for the given input type."""
+    """Gets dummy input for the given input type."""
     h, w = image_size
 
     if input_type == 'image_tensor':
@@ -87,10 +89,14 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
       ('image_bytes', 'retinanet_spinenet_coco', [640, 640]),
       ('tf_example', 'retinanet_spinenet_coco', [640, 384]),
       ('tflite', 'retinanet_spinenet_coco', [640, 640]),
+      ('image_tensor', 'fasterrcnn_resnetfpn_coco', [384, 384], 1.1),
+      ('tf_example', 'maskrcnn_resnetfpn_coco', [640, 640], 1.1),
   )
-  def test_export(self, input_type, experiment_name, image_size):
+  def test_export(
+      self, input_type, experiment_name, image_size, outer_boxes_scale=1.0):
     tmp_dir = self.get_temp_dir()
-    module = self._get_detection_module(experiment_name, input_type)
+    module = self._get_detection_module(
+        experiment_name, input_type, outer_boxes_scale)
 
     self._export_from_module(module, input_type, tmp_dir)
 
@@ -115,6 +121,11 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertAllEqual(outputs['detection_boxes'].numpy(),
                         expected_outputs['detection_boxes'].numpy())
+    # Outer boxes have not been supported in RetinaNet models.
+    if 'retinanet' not in experiment_name:
+      if module.params.task.model.include_mask and outer_boxes_scale > 1.0:
+        self.assertAllEqual(outputs['detection_outer_boxes'].numpy(),
+                            expected_outputs['detection_outer_boxes'].numpy())
     self.assertAllEqual(outputs['detection_classes'].numpy(),
                         expected_outputs['detection_classes'].numpy())
     self.assertAllEqual(outputs['detection_scores'].numpy(),
