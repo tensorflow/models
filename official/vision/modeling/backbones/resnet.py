@@ -44,6 +44,12 @@ RESNET_SPECS = {
         ('residual', 256, 2),
         ('residual', 512, 2),
     ],
+    26: [
+        ('residual', 64, 3),
+        ('residual', 128, 3),
+        ('residual', 256, 3),
+        ('residual', 512, 3),
+    ],
     34: [
         ('residual', 64, 3),
         ('residual', 128, 4),
