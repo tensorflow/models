@@ -328,9 +328,9 @@ class FeedForward(tf.keras.layers.Layer):
       self,
       d_ff: int,
       *,
-      dropout_rate: float = 0.1,
-      activation: Callable[[tf.Tensor],
-                           tf.Tensor] = tf.keras.activations.gelu,
+      inner_dropout: float = 0.0,
+      output_dropout: float = 0.0,
+      activation: Callable[[tf.Tensor], tf.Tensor] = tf.keras.activations.gelu,
       kernel_initializer: _InitializerType = _DEFAULT_KERNEL_INITIALIZER,
       bias_initializer: _InitializerType = _DEFAULT_BIAS_INITIALIZER,
       name: str = "feed_forward",
@@ -339,7 +339,9 @@ class FeedForward(tf.keras.layers.Layer):
 
     Args:
       d_ff: Dimension of feed-forward layer.
-      dropout_rate: The dropout probability.
+      inner_dropout: The dropout probability to be applied after intermediate
+        activations.
+      output_dropout: The dropout probability to be applied after output layer.
       activation: (Nonlinear) transform applied in layer.
       kernel_initializer: Initialization scheme for kernel.
       bias_initializer: Initialization scheme for bias.
@@ -356,7 +358,9 @@ class FeedForward(tf.keras.layers.Layer):
         kernel_initializer=tf_utils.clone_initializer(self.kernel_initializer),
         bias_initializer=tf_utils.clone_initializer(self.bias_initializer),
         name="intermediate")
-    self.dropout_layer = tf.keras.layers.Dropout(dropout_rate)
+    self.inner_dropout_layer = tf.keras.layers.Dropout(
+        inner_dropout)
+    self.output_dropout_layer = tf.keras.layers.Dropout(output_dropout)
 
   def build(self, input_shape: Tuple[int, int, int]):
     """Creates the input shape dependent output weight variables."""
@@ -383,8 +387,9 @@ class FeedForward(tf.keras.layers.Layer):
     """
     x = self.intermediate_layer(inputs)
     x = self.activation(x)
+    x = self.inner_dropout_layer(x, training=training)
     x = self.output_layer(x)
-    x = self.dropout_layer(x, training=training)
+    x = self.output_dropout_layer(x, training=training)
     return x
 
 
@@ -406,9 +411,9 @@ class FeedForwardExperts(tf.keras.layers.Layer):
       num_experts: int,
       d_ff: int,
       *,
-      dropout_rate: float = 0.1,
-      activation: Callable[[tf.Tensor],
-                           tf.Tensor] = tf.keras.activations.gelu,
+      inner_dropout: float = 0.0,
+      output_dropout: float = 0.0,
+      activation: Callable[[tf.Tensor], tf.Tensor] = tf.keras.activations.gelu,
       kernel_initializer: _InitializerType = _DEFAULT_KERNEL_INITIALIZER,
       bias_initializer: _InitializerType = _DEFAULT_BIAS_INITIALIZER,
       name: str = "experts",
@@ -419,7 +424,9 @@ class FeedForwardExperts(tf.keras.layers.Layer):
       num_experts: Number of experts (i.e. number of independent feed-forward
         blocks).
       d_ff: Dimension of feed-forward layer of each expert.
-      dropout_rate: The dropout probability (expert_dropout_rate).
+      inner_dropout: The dropout probability to be applied after intermediate
+        activations.
+      output_dropout: The dropout probability to be applied after output layer.
       activation: (Nonlinear) transform applied in layer.
       kernel_initializer: Initialization scheme for kernel.
       bias_initializer: Initialization scheme for bias.
@@ -439,7 +446,9 @@ class FeedForwardExperts(tf.keras.layers.Layer):
         kernel_initializer=tf_utils.clone_initializer(self.kernel_initializer),
         bias_initializer=tf_utils.clone_initializer(self.bias_initializer),
         name="intermediate")
-    self.dropout_layer = tf.keras.layers.Dropout(dropout_rate)
+    self.inner_dropout_layer = tf.keras.layers.Dropout(
+        inner_dropout)
+    self.output_dropout_layer = tf.keras.layers.Dropout(output_dropout)
 
   def build(self, input_shape: Tuple[int, int, int, int]):
     """Creates the input shape dependent output weight variables."""
@@ -473,8 +482,9 @@ class FeedForwardExperts(tf.keras.layers.Layer):
     """
     x = self.intermediate_layer(inputs)
     x = self.activation(x)
+    x = self.inner_dropout_layer(x, training=training)
     x = self.output_layer(x)
-    x = self.dropout_layer(x, training=training)
+    x = self.output_dropout_layer(x, training=training)
     return x
 
 
@@ -709,7 +719,8 @@ class MoeLayerWithBackbone(tf.keras.layers.Layer):
       moe: MoeLayer,
       backbone_d_ff: int,
       *,
-      dropout_rate: float = 0.1,
+      inner_dropout: float = 0.0,
+      output_dropout: float = 0.0,
       activation: Callable[[tf.Tensor],
                            tf.Tensor] = tf.keras.activations.gelu,
       kernel_initializer: _InitializerType = _DEFAULT_KERNEL_INITIALIZER,
@@ -722,7 +733,10 @@ class MoeLayerWithBackbone(tf.keras.layers.Layer):
       moe: Instance of MoeLayer with experts and router.
       backbone_d_ff: Dimension of feed-forward layer of a lightweight backbone,
         which is evaluated for all tokens.
-      dropout_rate: Dropout rate for the backbone.
+      inner_dropout: The dropout probability to be applied after intermediate
+        activations for the backbone.
+      output_dropout: The dropout probability to be applied after the output
+        of the backbone.
       activation: (Nonlinear) transform applied in the backbone.
       kernel_initializer: Initialization scheme for kernels in the backbone.
       bias_initializer: Initialization scheme for biases in the backbone.
@@ -734,7 +748,8 @@ class MoeLayerWithBackbone(tf.keras.layers.Layer):
 
     self._backbone = FeedForward(
         backbone_d_ff,
-        dropout_rate=dropout_rate,
+        inner_dropout=inner_dropout,
+        output_dropout=output_dropout,
         activation=activation,
         kernel_initializer=tf_utils.clone_initializer(kernel_initializer),
         bias_initializer=tf_utils.clone_initializer(bias_initializer),

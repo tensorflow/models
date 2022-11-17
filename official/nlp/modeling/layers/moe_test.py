@@ -24,7 +24,7 @@ def small_config():
   """Creates a small model config that can be used by all tests."""
   config = {}
   config['d_ff'] = 32
-  config['dropout_rate'] = 0.1
+  config['output_dropout'] = 0.1
 
   config['num_experts'] = 2
   config['expert_d_ff'] = 33
@@ -131,7 +131,7 @@ class MoeTest(tf.test.TestCase):
   def test_feed_forward_shape_and_vars(self):
     config = small_config()
     layer = moe.FeedForward(
-        d_ff=config['d_ff'], dropout_rate=config['dropout_rate'])
+        d_ff=config['d_ff'], output_dropout=config['output_dropout'])
     inputs = make_input_ones()
     outputs = layer(inputs)
     self.assertAllEqual(tf.shape(inputs), tf.shape(outputs))
@@ -146,7 +146,7 @@ class MoeTest(tf.test.TestCase):
     config = small_config()
     layer = moe.FeedForward(
         d_ff=config['d_ff'],
-        dropout_rate=config['dropout_rate'],
+        output_dropout=config['output_dropout'],
         activation=tf.keras.activations.relu,
         kernel_initializer=tf.keras.initializers.get('ones'),
         bias_initializer=tf.keras.initializers.get('ones'))
@@ -161,7 +161,7 @@ class MoeTest(tf.test.TestCase):
     layer = moe.FeedForwardExperts(
         num_experts=config['num_experts'],
         d_ff=config['expert_d_ff'],
-        dropout_rate=config['expert_dropout_rate'])
+        output_dropout=config['expert_dropout_rate'])
     inputs = make_experts_input_ones()
     outputs = layer(inputs)
     self.assertAllEqual(tf.shape(inputs), tf.shape(outputs))
@@ -176,7 +176,7 @@ class MoeTest(tf.test.TestCase):
     layer = moe.FeedForwardExperts(
         num_experts=1,
         d_ff=config['expert_d_ff'],
-        dropout_rate=config['expert_dropout_rate'],
+        output_dropout=config['expert_dropout_rate'],
         activation=tf.keras.activations.relu,
         kernel_initializer=tf.keras.initializers.get('ones'),
         bias_initializer=tf.keras.initializers.get('ones'))
@@ -191,7 +191,7 @@ class MoeTest(tf.test.TestCase):
     experts = moe.FeedForwardExperts(
         num_experts=config['num_experts'],
         d_ff=config['expert_d_ff'],
-        dropout_rate=config['expert_dropout_rate'])
+        output_dropout=config['expert_dropout_rate'])
     router = moe.ExpertsChooseMaskedRouter(
         config['num_experts'], jitter_noise=config['jitter_noise'])
     moe_layer = moe.MoeLayer(
@@ -233,7 +233,7 @@ class MoeTest(tf.test.TestCase):
     experts = moe.FeedForwardExperts(
         num_experts=config['num_experts'],
         d_ff=config['expert_d_ff'],
-        dropout_rate=config['expert_dropout_rate'])
+        output_dropout=config['expert_dropout_rate'])
     router = moe.ExpertsChooseMaskedRouter(
         config['num_experts'], jitter_noise=config['jitter_noise'])
     moe_layer = moe.MoeLayer(
