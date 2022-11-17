@@ -399,7 +399,7 @@ def yolo_darknet() -> cfg.ExperimentConfig:
 def scaled_yolo() -> cfg.ExperimentConfig:
   """COCO object detection with YOLOv4-csp and v4."""
   train_batch_size = 256
-  eval_batch_size = 8
+  eval_batch_size = 256
   train_epochs = 300
   warmup_epochs = 3
 
@@ -413,8 +413,9 @@ def scaled_yolo() -> cfg.ExperimentConfig:
       task=YoloTask(
           smart_bias_lr=0.1,
           init_checkpoint_modules='',
-          annotation_file=None,
           weight_decay=0.0,
+          annotation_file=os.path.join(COCO_INPUT_PATH_BASE,
+                                       'instances_val2017.json'),
           model=Yolo(
               darknet_based_model=False,
               norm_activation=common.NormActivation(
@@ -462,7 +463,7 @@ def scaled_yolo() -> cfg.ExperimentConfig:
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
               is_training=False,
               global_batch_size=eval_batch_size,
-              drop_remainder=True,
+              drop_remainder=False,
               dtype='float32',
               parser=Parser(
                   letter_box=True,
@@ -474,7 +475,7 @@ def scaled_yolo() -> cfg.ExperimentConfig:
               ))),
       trainer=cfg.TrainerConfig(
           train_steps=train_epochs * steps_per_epoch,
-          validation_steps=COCO_VAL_EXAMPLES // eval_batch_size,
+          validation_steps=20,
           validation_interval=validation_interval * steps_per_epoch,
           steps_per_loop=steps_per_epoch,
           summary_interval=steps_per_epoch,

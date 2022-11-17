@@ -14,7 +14,7 @@
 
 """Yolo models."""
 
-from typing import Mapping, Union
+from typing import Mapping, Union, Any, Dict
 import tensorflow as tf
 from official.projects.yolo.modeling.layers import nn_blocks
 
@@ -54,7 +54,10 @@ class Yolo(tf.keras.Model):
     self._fused = False
     return
 
-  def call(self, inputs, training=False):
+  def call(self,
+           inputs: tf.Tensor,
+           training: bool = None,
+           mask: Any = None) -> Dict[str, tf.Tensor]:
     maps = self.backbone(inputs)
     decoded_maps = self.decoder(maps)
     raw_predictions = self.head(decoded_maps)
