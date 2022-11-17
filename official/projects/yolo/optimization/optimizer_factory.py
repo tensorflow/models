@@ -20,11 +20,11 @@ from official.modeling.optimization import ema_optimizer
 from official.modeling.optimization import optimizer_factory
 from official.projects.yolo.optimization import sgd_torch
 
-optimizer_factory.OPTIMIZERS_CLS.update({
+optimizer_factory.LEGACY_OPTIMIZERS_CLS.update({
     'sgd_torch': sgd_torch.SGDTorch,
 })
 
-OPTIMIZERS_CLS = optimizer_factory.OPTIMIZERS_CLS
+OPTIMIZERS_CLS = optimizer_factory.LEGACY_OPTIMIZERS_CLS
 LR_CLS = optimizer_factory.LR_CLS
 WARMUP_CLS = optimizer_factory.WARMUP_CLS
 

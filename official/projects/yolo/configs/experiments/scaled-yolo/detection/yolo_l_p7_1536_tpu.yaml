@@ -2,7 +2,7 @@
 # mAP 54.7%
 runtime:
   distribution_strategy: 'tpu'
-  mixed_precision_dtype: 'float32'
+  mixed_precision_dtype: 'bfloat16'
   tpu_enable_xla_dynamic_padder: false
 task:
   model:
@@ -62,6 +62,7 @@ task:
                box: [812, 393], box: [477, 808], box: [1070, 908], box: [1408, 1408]]
   train_data:
     input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/train*'
+    dtype: bfloat16
     shuffle_buffer_size: 10000
     parser:
       mosaic:
@@ -78,6 +79,7 @@ task:
       area_thresh: 0.1
   validation_data:
     input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/val*'
+    dtype: bfloat16
 trainer:
   best_checkpoint_eval_metric: 'AP'
   best_checkpoint_export_subdir: 'best_ckpt'
