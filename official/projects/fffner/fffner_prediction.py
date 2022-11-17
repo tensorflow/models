@@ -38,8 +38,8 @@ METRIC_TYPES = frozenset(
 @dataclasses.dataclass
 class FFFNerModelConfig(base_config.Config):
   """A classifier/regressor configuration."""
-  num_classes_1: int = 0
-  num_classes_2: int = 0
+  num_classes_is_entity: int = 0
+  num_classes_entity_type: int = 0
   use_encoder_pooler: bool = True
   encoder: encoders.EncoderConfig = encoders.EncoderConfig()
 
@@ -68,8 +68,8 @@ class FFFNerTask(base_task.Task):
     if params.metric_type not in METRIC_TYPES:
       raise ValueError('Invalid metric_type: {}'.format(params.metric_type))
     self.metric_type = params.metric_type
-    self.label_field_1 = 'is_entity_label'
-    self.label_field_2 = 'entity_type_label'
+    self.label_field_is_entity = 'is_entity_label'
+    self.label_field_entity_type = 'entity_type_label'
 
   def build_model(self):
     if self.task_config.hub_module_url and self.task_config.init_checkpoint:
@@ -87,20 +87,20 @@ class FFFNerTask(base_task.Task):
       return fffner_classifier.FFFNerClassifier(
         # encoder_network.inputs
           network=encoder_network,
-          num_classes_1=self.task_config.model.num_classes_1,
-          num_classes_2=self.task_config.model.num_classes_2,
+          num_classes_is_entity=self.task_config.model.num_classes_is_entity,
+          num_classes_entity_type=self.task_config.model.num_classes_entity_type,
           initializer=tf.keras.initializers.TruncatedNormal(
               stddev=encoder_cfg.initializer_range),
           use_encoder_pooler=self.task_config.model.use_encoder_pooler)
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
-    label_ids_1 = labels[self.label_field_1]
-    label_ids_2 = labels[self.label_field_2]
-    loss_1 = tf.keras.losses.sparse_categorical_crossentropy(
-      label_ids_1, tf.cast(model_outputs[0], tf.float32), from_logits=True) #TODO
-    loss_2 = tf.keras.losses.sparse_categorical_crossentropy(
-      label_ids_2, tf.cast(model_outputs[1], tf.float32), from_logits=True)
-    loss = loss_1 + loss_2
+    label_ids_is_entity = labels[self.label_field_is_entity]
+    label_ids_entity_type = labels[self.label_field_entity_type]
+    loss_is_entity = tf.keras.losses.sparse_categorical_crossentropy(
+      label_ids_is_entity, tf.cast(model_outputs[0], tf.float32), from_logits=True) #TODO
+    loss_entity_type = tf.keras.losses.sparse_categorical_crossentropy(
+      label_ids_entity_type, tf.cast(model_outputs[1], tf.float32), from_logits=True)
+    loss = loss_is_entity + loss_entity_type
 
     if aux_losses:
       loss += tf.add_n(aux_losses)
@@ -116,12 +116,12 @@ class FFFNerTask(base_task.Task):
             input_word_ids=dummy_ids,
             input_mask=dummy_ids,
             input_type_ids=dummy_ids,
-            cls_token_pos=tf.zeros((1, 1), dtype=tf.int32),
-            span_start_pos=tf.ones((1, 1), dtype=tf.int32)
+            is_entity_token_pos=tf.zeros((1, 1), dtype=tf.int32),
+            entity_type_token_pos=tf.ones((1, 1), dtype=tf.int32)
         )
 
-        x[self.label_field_1] = tf.zeros((1, 1), dtype=tf.int32)
-        x[self.label_field_2] = tf.zeros((1, 1), dtype=tf.int32)
+        x[self.label_field_is_entity] = tf.zeros((1, 1), dtype=tf.int32)
+        x[self.label_field_entity_type] = tf.zeros((1, 1), dtype=tf.int32)
         return x
 
       dataset = tf.data.Dataset.range(1)
@@ -135,21 +135,21 @@ class FFFNerTask(base_task.Task):
   def build_metrics(self, training=None):
     del training
     metrics = [
-        tf.keras.metrics.SparseCategoricalAccuracy(name='cls_accuracy_1'),
-        tf.keras.metrics.SparseCategoricalAccuracy(name='cls_accuracy_2'),
+        tf.keras.metrics.SparseCategoricalAccuracy(name='cls_accuracy_is_entity'),
+        tf.keras.metrics.SparseCategoricalAccuracy(name='cls_accuracy_entity_type'),
     ]
     return metrics
 
   def process_metrics(self, metrics, labels, model_outputs):
     for metric in metrics:
-      if metric.name == 'cls_accuracy_1':
-        metric.update_state(labels[self.label_field_1], model_outputs[0])
-      if metric.name == 'cls_accuracy_2':
-        metric.update_state(labels[self.label_field_2], model_outputs[1])
+      if metric.name == 'cls_accuracy_is_entity':
+        metric.update_state(labels[self.label_field_is_entity], model_outputs[0])
+      if metric.name == 'cls_accuracy_entity_type':
+        metric.update_state(labels[self.label_field_entity_type], model_outputs[1])
 
   def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
-    compiled_metrics.update_state(labels[self.label_field_1], model_outputs[0])
-    compiled_metrics.update_state(labels[self.label_field_2], model_outputs[1])
+    compiled_metrics.update_state(labels[self.label_field_is_entity], model_outputs[0])
+    compiled_metrics.update_state(labels[self.label_field_entity_type], model_outputs[1])
 
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
     features, labels = inputs, inputs
@@ -164,12 +164,12 @@ class FFFNerTask(base_task.Task):
       logs.update({m.name: m.result() for m in metrics or []})
       logs.update({m.name: m.result() for m in model.metrics})
     logs.update({
-      'sentence_prediction_1': outputs[0],
-      'sentence_prediction_2': outputs[1],
-      'labels_1':
-        labels[self.label_field_1],
-      'labels_2':
-        labels[self.label_field_2],
+      'sentence_prediction_is_entity': outputs[0],
+      'sentence_prediction_entity_type': outputs[1],
+      'labels_is_entity':
+        labels[self.label_field_is_entity],
+      'labels_entity_type':
+        labels[self.label_field_entity_type],
       'id': labels['example_id'],
       'sentence_id': labels['sentence_id'],
       'span_start': labels['span_start'],
@@ -179,18 +179,18 @@ class FFFNerTask(base_task.Task):
 
   def aggregate_logs(self, state=None, step_outputs=None):
     if state is None:
-      state = {'sentence_prediction_1': [], 'sentence_prediction_2': [], 'labels_1': [], 'labels_2': [], 'ids': [],
+      state = {'sentence_prediction_is_entity': [], 'sentence_prediction_entity_type': [], 'labels_is_entity': [], 'labels_entity_type': [], 'ids': [],
                'sentence_id': [], 'span_start': [], 'span_end': []}
-    state['sentence_prediction_1'].append(
-        np.concatenate([v.numpy() for v in step_outputs['sentence_prediction_1']],
+    state['sentence_prediction_is_entity'].append(
+        np.concatenate([v.numpy() for v in step_outputs['sentence_prediction_is_entity']],
                        axis=0))
-    state['sentence_prediction_2'].append(
-      np.concatenate([v.numpy() for v in step_outputs['sentence_prediction_2']],
+    state['sentence_prediction_entity_type'].append(
+      np.concatenate([v.numpy() for v in step_outputs['sentence_prediction_entity_type']],
                      axis=0))
-    state['labels_1'].append(
-        np.concatenate([v.numpy() for v in step_outputs['labels_1']], axis=0))
-    state['labels_2'].append(
-      np.concatenate([v.numpy() for v in step_outputs['labels_2']], axis=0))
+    state['labels_is_entity'].append(
+        np.concatenate([v.numpy() for v in step_outputs['labels_is_entity']], axis=0))
+    state['labels_entity_type'].append(
+      np.concatenate([v.numpy() for v in step_outputs['labels_entity_type']], axis=0))
     state['ids'].append(
       np.concatenate([v.numpy() for v in step_outputs['id']], axis=0))
     state['sentence_id'].append(
@@ -202,14 +202,14 @@ class FFFNerTask(base_task.Task):
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
-    sentence_prediction_1 = np.concatenate(aggregated_logs['sentence_prediction_1'], axis=0)
-    sentence_prediction_1 = np.reshape(sentence_prediction_1, (-1, self.task_config.model.num_classes_1))
-    sentence_prediction_2 = np.concatenate(aggregated_logs['sentence_prediction_2'], axis=0)
-    sentence_prediction_2 = np.reshape(sentence_prediction_2, (-1, self.task_config.model.num_classes_2))
-    labels_1 = np.concatenate(aggregated_logs['labels_1'], axis=0)
-    labels_1 = np.reshape(labels_1, -1)
-    labels_2 = np.concatenate(aggregated_logs['labels_2'], axis=0)
-    labels_2 = np.reshape(labels_2, -1)
+    sentence_prediction_is_entity = np.concatenate(aggregated_logs['sentence_prediction_is_entity'], axis=0)
+    sentence_prediction_is_entity = np.reshape(sentence_prediction_is_entity, (-1, self.task_config.model.num_classes_is_entity))
+    sentence_prediction_entity_type = np.concatenate(aggregated_logs['sentence_prediction_entity_type'], axis=0)
+    sentence_prediction_entity_type = np.reshape(sentence_prediction_entity_type, (-1, self.task_config.model.num_classes_entity_type))
+    labels_is_entity = np.concatenate(aggregated_logs['labels_is_entity'], axis=0)
+    labels_is_entity = np.reshape(labels_is_entity, -1)
+    labels_entity_type = np.concatenate(aggregated_logs['labels_entity_type'], axis=0)
+    labels_entity_type = np.reshape(labels_entity_type, -1)
 
     ids = np.concatenate(aggregated_logs['ids'], axis=0)
     ids = np.reshape(ids, -1)
@@ -259,13 +259,13 @@ class FFFNerTask(base_task.Task):
 
     per_sid_results = defaultdict(list)
     for id, sent_id, sp_start, sp_end, is_entity_label, is_entity_logit, entity_type_label, entity_type_logit in zip(
-            ids, sentence_id, span_start, span_end, labels_1, sentence_prediction_1, labels_2, sentence_prediction_2):
+            ids, sentence_id, span_start, span_end, labels_is_entity, sentence_prediction_is_entity, labels_entity_type, sentence_prediction_entity_type):
       if sent_id > 0:
         per_sid_results[sent_id].append(
           (sp_start, sp_end, is_entity_label, is_entity_logit, entity_type_label, entity_type_logit))
     ground_truth = []
-    prediction_1 = []
-    prediction_2 = []
+    prediction_is_entity = []
+    prediction_entity_type = []
     for key in sorted(list(per_sid_results.keys())):
       results = per_sid_results[key]
       gt_entities = []
@@ -283,12 +283,12 @@ class FFFNerTask(base_task.Task):
         length = max(length, span_end)
       length += 1
       ground_truth.extend([(key, *x) for x in gt_entities])
-      prediction_1.extend([(key, *x) for x in predictied_entities])
+      prediction_is_entity.extend([(key, *x) for x in predictied_entities])
       resolved_predicted = resolve(length, predictied_entities, prediction_confidence)
-      prediction_2.extend([(key, *x) for x in resolved_predicted])
+      prediction_entity_type.extend([(key, *x) for x in resolved_predicted])
 
-    raw = get_p_r_f(ground_truth, prediction_1)
-    resolved = get_p_r_f(ground_truth, prediction_2)
+    raw = get_p_r_f(ground_truth, prediction_is_entity)
+    resolved = get_p_r_f(ground_truth, prediction_entity_type)
     return {
       "raw_f1": raw["f1"],
       "raw_precision": raw["precision"],
@@ -315,7 +315,6 @@ class FFFNerTask(base_task.Task):
     pretrain2finetune_mapping = {
         'encoder': model.checkpoint_items['encoder'],
     }
-    print(pretrain2finetune_mapping)
     if self.task_config.init_cls_pooler:
       # This option is valid when use_encoder_pooler is false.
       pretrain2finetune_mapping[

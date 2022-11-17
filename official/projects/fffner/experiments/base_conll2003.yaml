@@ -1,8 +1,8 @@
 task:
-  init_checkpoint: 'bert-uncased'
+  init_checkpoint: 'tf-bert-uncased'
   model:
-    num_classes_1: 2
-    num_classes_2: 4
+    num_classes_is_entity: 2
+    num_classes_entity_type: 4
     encoder:
       type: any
   metric_type: 'accuracy'

@@ -22,10 +22,7 @@ from official.modeling.hyperparams import base_config
 from official.nlp.configs import encoders
 from official.projects.fffner.fffner_encoder import FFFNerEncoder
 
-
-@dataclasses.dataclass
-class FFFNerEncoderConfig(encoders.BertEncoderConfig):
-  pass
+FFFNerEncoderConfig = encoders.BertEncoderConfig
 
 
 @base_config.bind(FFFNerEncoderConfig)

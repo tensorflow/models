@@ -143,14 +143,14 @@ def convert_checkpoint(huggingface_model_name_or_path, output_path):
       2, size=(batch_size, sequence_length), dtype=np.int32)
   type_id_data = np.random.randint(
       2, size=(batch_size, sequence_length), dtype=np.int32)
-  cls_token_pos = np.zeros((batch_size, 1), dtype=np.int32)
-  span_start_pos = np.ones((batch_size, 1), dtype=np.int32)
+  is_entity_token_pos = np.zeros((batch_size, 1), dtype=np.int32)
+  entity_type_token_pos = np.ones((batch_size, 1), dtype=np.int32)
   inputs = {
       "input_word_ids": word_id_data,
       "input_mask": mask_data,
       "input_type_ids": type_id_data,
-      "cls_token_pos": cls_token_pos,
-      "span_start_pos": span_start_pos,
+      "is_entity_token_pos": is_entity_token_pos,
+      "entity_type_token_pos": entity_type_token_pos,
   }
   encoder(inputs)
   convert(encoder, huggingface_bert_model)

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""BERT cls-token classifier."""
+"""FFF-NER special token classifier."""
 # pylint: disable=g-classes-have-attributes
 import collections
 import tensorflow as tf
@@ -45,31 +45,28 @@ class FFFNerClassifier(tf.keras.Model):
     dropout_rate: The dropout probability of the cls head.
     use_encoder_pooler: Whether to use the pooler layer pre-defined inside the
       encoder.
-    head_name: Name of the classification head.
-    cls_head: (Optional) The layer instance to use for the classifier head.
-      It should take in the output from network and produce the final logits.
-      If set, the arguments ('num_classes', 'initializer', 'dropout_rate',
-      'use_encoder_pooler', 'head_name') will be ignored.
+    head_name_is_entity: Name of the classification head.
+    head_name_entity_type: Name of the classification head.
   """
 
   def __init__(self,
                network,
-               num_classes_1,
-               num_classes_2,
+               num_classes_is_entity,
+               num_classes_entity_type,
                initializer='glorot_uniform',
                dropout_rate=0.1,
                use_encoder_pooler=True,
-               head_name_1='fffner_prediction_1',
-               head_name_2='fffner_prediction_2',
+               head_name_is_entity='fffner_prediction_is_entity',
+               head_name_entity_type='fffner_prediction_entity_type',
                cls_head=None,
                **kwargs):
-    self.num_classes_1 = num_classes_1
-    self.num_classes_2 = num_classes_2
-    self.head_name_1 = head_name_1
-    self.head_name_2 = head_name_2
+    self.num_classes_is_entity = num_classes_is_entity
+    self.num_classes_entity_type = num_classes_entity_type
+    self.head_name_is_entity = head_name_is_entity
+    self.head_name_entity_type = head_name_entity_type
     self.initializer = initializer
     self.use_encoder_pooler = use_encoder_pooler
-    assert use_encoder_pooler and not cls_head, "Customized pooling & classification function is used"
+    assert use_encoder_pooler, "Customized pooling & classification function is used"
 
     # We want to use the inputs of the passed network as the inputs to this
     # Model. To do this, we need to keep a handle to the network inputs for use
@@ -83,32 +80,24 @@ class FFFNerClassifier(tf.keras.Model):
         cls_inputs = outputs['pooled_output']
     cls_inputs = tf.keras.layers.Dropout(rate=dropout_rate)(cls_inputs)
 
-    classifier_1 = layers.ClassificationHead(
+    classifier_is_entity = layers.ClassificationHead(
         inner_dim=0 if use_encoder_pooler else cls_inputs.shape[-1],
-        num_classes=num_classes_1,
+        num_classes=num_classes_is_entity,
         initializer=initializer,
         dropout_rate=dropout_rate,
-        name=head_name_1)
-    classifier_2 = layers.ClassificationHead(
+        name=head_name_is_entity)
+    classifier_entity_type = layers.ClassificationHead(
         inner_dim=0 if use_encoder_pooler else cls_inputs.shape[-1],
-        num_classes=num_classes_2,
+        num_classes=num_classes_entity_type,
         initializer=initializer,
         dropout_rate=dropout_rate,
-        name=head_name_2)
+        name=head_name_entity_type)
 
 
-    predictions_1 = classifier_1(cls_inputs[:, 0, :])
-    predictions_2 = classifier_2(cls_inputs[:, 1, :])
+    predictions_is_entity = classifier_is_entity(cls_inputs[:, 0, :])
+    predictions_entity_type = classifier_entity_type(cls_inputs[:, 1, :])
 
-    # b/164516224
-    # Once we've created the network using the Functional API, we call
-    # super().__init__ as though we were invoking the Functional API Model
-    # constructor, resulting in this object having all the properties of a model
-    # created using the Functional API. Once super().__init__ is called, we
-    # can assign attributes to `self` - note that all `self` assignments are
-    # below this line.
-    super(FFFNerClassifier, self).__init__(
-        inputs=inputs, outputs=[predictions_1, predictions_2], **kwargs)
+    super().__init__(inputs=inputs, outputs=[predictions_is_entity, predictions_entity_type], **kwargs)
     self._network = network
     self._cls_head = cls_head
 
@@ -120,18 +109,18 @@ class FFFNerClassifier(tf.keras.Model):
     # a dict we avoid tracking it.
     config_cls = collections.namedtuple('Config', config_dict.keys())
     self._config = config_cls(**config_dict)
-    self.classifier_1 = classifier_1
-    self.classifier_2 = classifier_2
+    self.classifier_is_entity = classifier_is_entity
+    self.classifier_entity_type = classifier_entity_type
 
   @property
   def checkpoint_items(self):
     items = dict(encoder=self._network)
-    if hasattr(self.classifier_1, 'checkpoint_items'):
-      for key, item in self.classifier_1.checkpoint_items.items():
-        items['.'.join([self.classifier_1.name, key])] = item
-    if hasattr(self.classifier_2, 'checkpoint_items'):
-      for key, item in self.classifier_2.checkpoint_items.items():
-        items['.'.join([self.classifier_2.name, key])] = item
+    if hasattr(self.classifier_is_entity, 'checkpoint_items'):
+      for key, item in self.classifier_is_entity.checkpoint_items.items():
+        items['.'.join([self.classifier_is_entity.name, key])] = item
+    if hasattr(self.classifier_entity_type, 'checkpoint_items'):
+      for key, item in self.classifier_entity_type.checkpoint_items.items():
+        items['.'.join([self.classifier_entity_type.name, key])] = item
     return items
 
   def get_config(self):
@@ -144,11 +133,10 @@ class FFFNerClassifier(tf.keras.Model):
   def _make_config_dict(self):
     return {
         'network': self._network,
-        'num_classes_1': self.num_classes_1,
-        'num_classes_2': self.num_classes_2,
-        'head_name_1': self.head_name_1,
-        'head_name_2': self.head_name_2,
+        'num_classes_is_entity': self.num_classes_is_entity,
+        'num_classes_entity_type': self.num_classes_entity_type,
+        'head_name_is_entity': self.head_name_is_entity,
+        'head_name_entity_type': self.head_name_entity_type,
         'initializer': self.initializer,
         'use_encoder_pooler': self.use_encoder_pooler,
-        'cls_head': self._cls_head,
     }

@@ -47,16 +47,16 @@ class FFFNerEncoderTest(parameterized.TestCase, tf.test.TestCase):
         2, size=(batch_size, sequence_length), dtype=np.int32)
     type_id_data = np.random.randint(
         2, size=(batch_size, sequence_length), dtype=np.int32)
-    cls_token_pos = np.random.randint(
+    is_entity_token_pos = np.random.randint(
         sequence_length, size=(batch_size, ), dtype=np.int32)
-    span_start_pos = np.random.randint(
+    entity_type_token_pos = np.random.randint(
         sequence_length, size=(batch_size, ), dtype=np.int32)
     inputs = {
         'input_word_ids': word_id_data,
         'input_mask': mask_data,
         'input_type_ids': type_id_data,
-        'cls_token_pos': cls_token_pos,
-        'span_start_pos': span_start_pos
+        'is_entity_token_pos': is_entity_token_pos,
+        'entity_type_token_pos': entity_type_token_pos
     }
     outputs = network(inputs)
     self.assertEqual(outputs['sequence_output'].shape,

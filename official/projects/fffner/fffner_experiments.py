@@ -29,7 +29,7 @@ PolynomialLr = optimization.PolynomialLrConfig
 PolynomialWarmupConfig = optimization.PolynomialWarmupConfig
 
 @exp_factory.register_config_factory('fffner/ner')
-def fffner_glue() -> cfg.ExperimentConfig:
+def fffner_ner() -> cfg.ExperimentConfig:
   config = cfg.ExperimentConfig(
       task=fffner_prediction.FFFNerPredictionConfig(
           model=fffner_prediction.FFFNerModelConfig(

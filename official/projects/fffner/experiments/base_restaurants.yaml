@@ -1,8 +1,8 @@
 task:
-  init_checkpoint: 'bert-uncased'
+  init_checkpoint: 'tf-bert-uncased'
   model:
-    num_classes_1: 2
-    num_classes_2: 8
+    num_classes_is_entity: 2
+    num_classes_entity_type: 8
     encoder:
       type: any
   metric_type: 'accuracy'
@@ -41,3 +41,6 @@ trainer:
   # 2686 * 30 / 32
   train_steps: 2518
   validation_interval: 500
+  best_checkpoint_export_subdir: "best_ckpts"
+  best_checkpoint_eval_metric: "overall_f1"
+  best_checkpoint_metric_comp: "higher"

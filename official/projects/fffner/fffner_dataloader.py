@@ -40,8 +40,8 @@ class FFFNerDataConfig(cfg.DataConfig):
   label_type: str = 'int'
   # Whether to include the example id number.
   include_example_id: bool = False
-  label_field_1: str = 'is_entity_label'
-  label_field_2: str = 'entity_type_label'
+  label_field_is_entity: str = 'is_entity_label'
+  label_field_entity_type: str = 'entity_type_label'
   # Maps the key in TfExample to feature name.
   # E.g 'label_ids' to 'next_sentence_labels'
   label_name: Optional[Tuple[str, str]] = None
@@ -57,10 +57,10 @@ class FFFNerDataLoader(data_loader.DataLoader):
     self._params = params
     self._seq_length = params.seq_length
     self._include_example_id = params.include_example_id
-    self._label_field_1 = params.label_field_1
-    self._label_field_2 = params.label_field_2
+    self._label_field_is_entity = params.label_field_is_entity
+    self._label_field_entity_type = params.label_field_entity_type
     if params.label_name:
-      self._label_name_mapping = dict([params.label_name_1, params.label_name_2])
+      self._label_name_mapping = dict([params.label_name_is_entity, params.label_name_entity_type])
     else:
       self._label_name_mapping = dict()
 
@@ -71,10 +71,10 @@ class FFFNerDataLoader(data_loader.DataLoader):
         'input_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
         'input_mask': tf.io.FixedLenFeature([self._seq_length], tf.int64),
         'segment_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
-        'cls_token_pos': tf.io.FixedLenFeature([1], tf.int64),
-        'span_start_pos': tf.io.FixedLenFeature([1], tf.int64),
-        self._label_field_1: tf.io.FixedLenFeature([], label_type),
-        self._label_field_2: tf.io.FixedLenFeature([], label_type),
+        'is_entity_token_pos': tf.io.FixedLenFeature([1], tf.int64),
+        'entity_type_token_pos': tf.io.FixedLenFeature([1], tf.int64),
+        self._label_field_is_entity: tf.io.FixedLenFeature([], label_type),
+        self._label_field_entity_type: tf.io.FixedLenFeature([], label_type),
         'sentence_id': tf.io.FixedLenFeature([1], tf.int64),
         'span_start': tf.io.FixedLenFeature([1], tf.int64),
         'span_end': tf.io.FixedLenFeature([1], tf.int64),
@@ -104,8 +104,8 @@ class FFFNerDataLoader(data_loader.DataLoader):
         'input_ids': 'input_word_ids',
         'input_mask': 'input_mask',
         'segment_ids': 'input_type_ids',
-        'cls_token_pos': 'cls_token_pos',
-        'span_start_pos': 'span_start_pos',
+        'is_entity_token_pos': 'is_entity_token_pos',
+        'entity_type_token_pos': 'entity_type_token_pos',
         'is_entity_label': 'is_entity_label',
         'entity_type_label': 'entity_type_label',
         'sentence_id': 'sentence_id',
