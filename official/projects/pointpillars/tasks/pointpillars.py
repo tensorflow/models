@@ -27,7 +27,6 @@ from official.projects.pointpillars.dataloaders import decoders
 from official.projects.pointpillars.dataloaders import parsers
 from official.projects.pointpillars.modeling import factory
 from official.projects.pointpillars.utils import utils
-from official.projects.pointpillars.utils import wod_detection_evaluator
 from official.vision.dataloaders import input_reader_factory
 from official.vision.losses import focal_loss
 from official.vision.losses import loss_utils
@@ -281,6 +280,18 @@ class PointPillarsTask(base_task.Task):
     # Use a separate metric for WOD validation.
     if not training:
       if self.task_config.use_wod_metrics:
+        # To use Waymo open dataset metrics, please install one of the pip
+        # package `waymo-open-dataset-tf-*` from
+        # https://github.com/waymo-research/waymo-open-dataset/blob/master/docs/quick_start.md#use-pre-compiled-pippip3-packages-for-linux
+        # Note that the package is built with specific tensorflow version and
+        # will produce error if it does not match the tf version that is
+        # currently used.
+        try:
+          from official.projects.pointpillars.utils import wod_detection_evaluator  # pylint: disable=g-import-not-at-top
+        except ModuleNotFoundError:
+          logging.error('waymo-open-dataset should be installed to enable Waymo'
+                        ' evaluator.')
+          raise
         self._wod_metric = wod_detection_evaluator.create_evaluator(
             self.task_config.model)
     return metrics
