@@ -137,7 +137,7 @@ class SpineNetMobile(tf.keras.Model):
           shape=[None, None, None, 3]),
       min_level: int = 3,
       max_level: int = 7,
-      block_specs: List[BlockSpec] = build_block_specs(),
+      block_specs: Optional[List[BlockSpec]] = None,
       endpoints_num_filters: int = 256,
       se_ratio: float = 0.2,
       block_repeats: int = 1,
@@ -187,7 +187,7 @@ class SpineNetMobile(tf.keras.Model):
     self._input_specs = input_specs
     self._min_level = min_level
     self._max_level = max_level
-    self._block_specs = block_specs
+    self._block_specs = build_block_specs() if block_specs is None else block_specs
     self._endpoints_num_filters = endpoints_num_filters
     self._se_ratio = se_ratio
     self._block_repeats = block_repeats
@@ -220,7 +220,7 @@ class SpineNetMobile(tf.keras.Model):
     net = self._build_stem(inputs=inputs)
     input_width = input_specs.shape[2]
     if input_width is None:
-      max_stride = max(map(lambda b: b.level, block_specs))
+      max_stride = max(map(lambda b: b.level, self._block_specs))
       input_width = 2 ** max_stride
     net = self._build_scale_permuted_network(net=net, input_width=input_width)
     endpoints = self._build_endpoints(net=net)
