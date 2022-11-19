@@ -212,30 +212,21 @@ def _maximum_activation_size(model):
 
 class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
 
-  @parameterized.parameters((16, 8, 500, 0.016), (31, 17, 300, 0.033),
-                            (71, 41, 300, 0.065), (150, 100, 250, 0.137),
-                            (300, 300, 250, 0.126), (600, 600, 100, 0.213))
+  @parameterized.parameters((16, 8, 200, 0.009), (31, 17, 100, 0.013),
+                            (71, 41, 100, 0.045), (150, 100, 100, 0.129),
+                            (300, 300, 100, 0.116), (600, 600, 50, 0.176))
   def test_reference_match(self, n, top, runs, max_deviation):
     """Compares that new optimized method is close to reference method.
 
     Runs two algorithms with same sets of input boxes and scores, and measures
     deviation between returned sets of prunned boxes.
+    Read more about test results at ./g3doc/non_max_suppression.md
     (*) Avoid flakiness with safe boundary (go/python-tips/048): deviation
     between two sets is a positive number, which may vary from test to test.
     Doing multiple runs expected to reduce average deviation variation following
     LLN theorem. Therefore by having first test run we know upper deviation
     bound which algorithm would not exceed until broken (in any feasible amount
     of time in the future). Use of this safe boundary makes test non-flaky.
-    (**) Parametrized inputs description. See safe deviation choice is higher
-    than absolute deviation to avoid flaky tesing.
-    in # | out # | deflake # | test time | deviation | safe threshold
-    ---- | ----- | --------- | --------- | --------- | --------------
-    18   | 8     | 500       | 1 sec     | 0.4%      | 1.6%
-    31   | 17    | 300       | 1 sec     | 1.0%      | 3.3%
-    71   | 41    | 300       | 1 sec     | 3.4%      | 6.5%
-    150  | 100   | 250       | 1 sec     | 8.2%      | 13.7%
-    300  | 300   | 250       | 3 sec     | 7.4%      | 12.6%
-    600  | 600   | 100       | 9 sec     | 9.6%      | 21.3%
 
     Args:
       n: number of boxes and scores on input of the algorithm.
@@ -247,6 +238,7 @@ class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
         flaky testing.
     """
     deviation_rate = 0
+    min_union = 2*n
     boxes = random_boxes([runs, n])
     scores = tf.random.uniform(shape=[runs, n])
     test = custom_layers.non_max_suppression_padded(boxes, scores, top)
@@ -254,10 +246,12 @@ class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
       reference = tf.image.non_max_suppression(boxes[run], scores[run], top)
       reference = {*reference.numpy().tolist()}
       optimized = {*test[run].numpy().astype(int).tolist()} - {-1}
-      deviation_rate += len(optimized ^ reference) / len(optimized | reference)
+      union_size = len(optimized | reference)
+      deviation_rate += len(optimized ^ reference) / union_size
+      min_union = min(min_union, union_size)
     deviation_rate = deviation_rate / runs
     # six sigma estimate via LLN theorem
-    safe_margin = 6 * (deviation_rate / np.sqrt(runs) + 1 / runs)
+    safe_margin = 6 * (deviation_rate / np.sqrt(runs) + 1/(runs*min_union))
     self.assertLess(
         deviation_rate,
         max_deviation,
