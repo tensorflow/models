@@ -42,11 +42,13 @@ class OrbitExperimentRunner:
   For example, an experiment runner with customized checkpoint manager:
 
   ```python
-  class MyExpRunnerWithExporter(AbstractExperimentRunner):
+  class MyExpRunnerWithExporter(OrbitExperimentRunner):
     def _maybe_build_checkpoint_manager(sefl):
+      # Replaces the default CheckpointManger with a customized one.
       return MyCheckpointManager(*args)
 
-  # In user code
+  # In user code, instead of the orginal
+  # `OrbitExperimentRunner(..).run(mode)`, now user can do:
   MyExpRunnerWithExporter(**needed_kwargs).run(mode)
   ```
 
@@ -108,22 +110,27 @@ class OrbitExperimentRunner:
 
   @property
   def params(self) -> config_definitions.ExperimentConfig:
+    """The whole experiment parameters object."""
     return self._params
 
   @property
   def model_dir(self) -> str:
+    """Path to the model folder, which stores checkpoints, params, log, etc."""
     return self._model_dir
 
   @property
   def trainer(self) -> base_trainer.Trainer:
+    """The underlying Orbit Trainer object."""
     return self._trainer
 
   @property
   def checkpoint_manager(self) -> tf.train.CheckpointManager:
+    """The CheckpointManager that stores the checkpoints in a train job."""
     return self._checkpoint_manager
 
   @property
   def controller(self) -> orbit.Controller:
+    """The Orbit controller object."""
     return self._controller
 
   def _build_trainer(self, task: base_task.Task, train: bool,
