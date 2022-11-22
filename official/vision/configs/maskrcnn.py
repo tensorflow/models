@@ -135,6 +135,7 @@ class DetectionGenerator(hyperparams.Config):
   nms_version: str = 'v2'  # `v2`, `v1`, `batched`
   use_cpu_nms: bool = False
   soft_nms_sigma: Optional[float] = None  # Only works when nms_version='v1'.
+  use_sigmoid_probability: bool = False
 
 
 @dataclasses.dataclass
@@ -190,6 +191,7 @@ class Losses(hyperparams.Config):
   loss_weight: float = 1.0
   rpn_huber_loss_delta: float = 1. / 9.
   frcnn_huber_loss_delta: float = 1.
+  frcnn_class_use_binary_cross_entropy: bool = False
   l2_weight_decay: float = 0.0
   rpn_score_weight: float = 1.0
   rpn_box_weight: float = 1.0
