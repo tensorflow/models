@@ -131,21 +131,27 @@ class RpnBoxLoss(object):
 class FastrcnnClassLoss(object):
   """Fast R-CNN classification loss function."""
 
-  def __init__(self):
-    self._categorical_crossentropy = tf.keras.losses.CategoricalCrossentropy(
-        reduction=tf.keras.losses.Reduction.SUM, from_logits=True)
+  def __init__(self, use_binary_cross_entropy=False):
+    """Initializes loss computation.
+
+    Args:
+      use_binary_cross_entropy: If true, uses binary cross entropy loss,
+        otherwise uses categorical cross entropy loss.
+    """
+    self._use_binary_cross_entropy = use_binary_cross_entropy
 
   def __call__(self, class_outputs, class_targets):
     """Computes the class loss (Fast-RCNN branch) of Mask-RCNN.
 
     This function implements the classification loss of the Fast-RCNN.
 
-    The classification loss is softmax on all RoIs.
+    The classification loss is categorical (or binary) cross entropy on all
+    RoIs.
     Reference: https://github.com/facebookresearch/Detectron/blob/master/detectron/modeling/fast_rcnn_heads.py  # pylint: disable=line-too-long
 
     Args:
-      class_outputs: a float tensor representing the class prediction for each box
-        with a shape of [batch_size, num_boxes, num_classes].
+      class_outputs: a float tensor representing the class prediction for each
+        box with a shape of [batch_size, num_boxes, num_classes].
       class_targets: a float tensor representing the class label for each box
         with a shape of [batch_size, num_boxes].
 
@@ -153,21 +159,17 @@ class FastrcnnClassLoss(object):
       a scalar tensor representing total class loss.
     """
     with tf.name_scope('fast_rcnn_loss'):
-      batch_size, num_boxes, num_classes = class_outputs.get_shape().as_list()
-      class_targets = tf.cast(class_targets, dtype=tf.int32)
-      class_targets_one_hot = tf.one_hot(class_targets, num_classes)
-      return self._fast_rcnn_class_loss(class_outputs, class_targets_one_hot,
-                                        normalizer=batch_size * num_boxes)
-
-  def _fast_rcnn_class_loss(self, class_outputs, class_targets_one_hot,
-                            normalizer=1.0):
-    """Computes classification loss."""
-    with tf.name_scope('fast_rcnn_class_loss'):
-      class_loss = self._categorical_crossentropy(class_targets_one_hot,
-                                                  class_outputs)
-
-      class_loss /= normalizer
-      return class_loss
+      num_classes = class_outputs.get_shape().as_list()[-1]
+      class_targets_one_hot = tf.one_hot(
+          tf.cast(class_targets, dtype=tf.int32), num_classes)
+      if self._use_binary_cross_entropy:
+        cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(
+            class_targets_one_hot, class_outputs)
+        return tf.reduce_mean(tf.reduce_sum(cross_entropy_loss, axis=-1))
+      else:
+        return tf.reduce_mean(
+            tf.nn.softmax_cross_entropy_with_logits(class_targets_one_hot,
+                                                    class_outputs))
 
 
 class FastrcnnBoxLoss(object):
@@ -227,22 +229,9 @@ class FastrcnnBoxLoss(object):
     num_classes = num_class_specific_boxes // 4
     box_outputs = tf.reshape(box_outputs,
                              [batch_size, num_rois, num_classes, 4])
-
-    box_indices = tf.reshape(
-        class_targets + tf.tile(
-            tf.expand_dims(tf.range(batch_size) * num_rois * num_classes, 1),
-            [1, num_rois]) + tf.tile(
-                tf.expand_dims(tf.range(num_rois) * num_classes, 0),
-                [batch_size, 1]), [-1])
-
-    box_outputs = tf.matmul(
-        tf.one_hot(
-            box_indices,
-            batch_size * num_rois * num_classes,
-            dtype=box_outputs.dtype), tf.reshape(box_outputs, [-1, 4]))
-    box_outputs = tf.reshape(box_outputs, [batch_size, -1, 4])
-
-    return box_outputs
+    class_targets_ont_hot = tf.one_hot(
+        class_targets, num_classes, dtype=box_outputs.dtype)
+    return tf.einsum('bnij,bni->bnj', box_outputs, class_targets_ont_hot)
 
   def _fast_rcnn_box_loss(self, box_outputs, box_targets, class_targets,
                           normalizer=1.0):

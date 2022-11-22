@@ -194,7 +194,9 @@ class MaskRCNNTask(base_task.Task):
     """Builds losses for Fast R-CNN."""
     cascade_ious = self.task_config.model.roi_sampler.cascade_iou_thresholds
 
-    frcnn_cls_loss_fn = maskrcnn_losses.FastrcnnClassLoss()
+    frcnn_cls_loss_fn = maskrcnn_losses.FastrcnnClassLoss(
+        use_binary_cross_entropy=self.task_config.losses
+        .frcnn_class_use_binary_cross_entropy)
     frcnn_box_loss_fn = maskrcnn_losses.FastrcnnBoxLoss(
         self.task_config.losses.frcnn_huber_loss_delta,
         self.task_config.model.detection_head.class_agnostic_bbox_pred)

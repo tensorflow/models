@@ -570,6 +570,7 @@ class DetectionGenerator(tf.keras.layers.Layer):
                nms_version: str = 'v2',
                use_cpu_nms: bool = False,
                soft_nms_sigma: Optional[float] = None,
+               use_sigmoid_probability: bool = False,
                **kwargs):
     """Initializes a detection generator.
 
@@ -588,6 +589,8 @@ class DetectionGenerator(tf.keras.layers.Layer):
       use_cpu_nms: A `bool` of whether or not enforce NMS to run on CPU.
       soft_nms_sigma: A `float` representing the sigma parameter for Soft NMS.
         When soft_nms_sigma=0.0, we fall back to standard NMS.
+      use_sigmoid_probability: A `bool`, if true, use sigmoid to get
+        probability, otherwise use softmax.
       **kwargs: Additional keyword arguments passed to Layer.
     """
     self._config_dict = {
@@ -599,6 +602,7 @@ class DetectionGenerator(tf.keras.layers.Layer):
         'nms_version': nms_version,
         'use_cpu_nms': use_cpu_nms,
         'soft_nms_sigma': soft_nms_sigma,
+        'use_sigmoid_probability': use_sigmoid_probability,
     }
     super(DetectionGenerator, self).__init__(**kwargs)
 
@@ -642,7 +646,10 @@ class DetectionGenerator(tf.keras.layers.Layer):
         `decoded_box_scores`: A `float` tf.Tensor of shape
           [batch, num_raw_boxes] representing socres of all the decoded boxes.
     """
-    box_scores = tf.nn.softmax(raw_scores, axis=-1)
+    if self._config_dict['use_sigmoid_probability']:
+      box_scores = tf.math.sigmoid(raw_scores)
+    else:
+      box_scores = tf.nn.softmax(raw_scores, axis=-1)
 
     # Removes the background class.
     box_scores_shape = tf.shape(box_scores)
