@@ -224,7 +224,7 @@ class MoeTest(tf.test.TestCase):
     metrics = [metric.name for metric in moe_layer.metrics]
     self.assertSetEqual(
         {
-            'router_z_loss', 'load_balancing_loss',
+            'router_z_loss', 'unscaled_router_z_loss', 'load_balancing_loss',
             'fraction_tokens_left_behind', 'router_confidence', 'expert_usage'
         }, set(metrics))
 
