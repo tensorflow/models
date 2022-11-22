@@ -204,7 +204,8 @@ def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
       max_num_detections=generator_config.max_num_detections,
       nms_version=generator_config.nms_version,
       use_cpu_nms=generator_config.use_cpu_nms,
-      soft_nms_sigma=generator_config.soft_nms_sigma)
+      soft_nms_sigma=generator_config.soft_nms_sigma,
+      use_sigmoid_probability=generator_config.use_sigmoid_probability)
 
   if model_config.include_mask:
     mask_head = instance_heads.MaskHead(

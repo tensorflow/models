@@ -46,8 +46,10 @@ class DetectionGeneratorTest(
   @parameterized.product(
       nms_version=['batched', 'v1', 'v2'],
       use_cpu_nms=[True, False],
-      soft_nms_sigma=[None, 0.1])
-  def testDetectionsOutputShape(self, nms_version, use_cpu_nms, soft_nms_sigma):
+      soft_nms_sigma=[None, 0.1],
+      use_sigmoid_probability=[True, False])
+  def testDetectionsOutputShape(self, nms_version, use_cpu_nms, soft_nms_sigma,
+                                use_sigmoid_probability):
     max_num_detections = 10
     num_classes = 4
     pre_nms_top_k = 5000
@@ -62,6 +64,7 @@ class DetectionGeneratorTest(
         'nms_version': nms_version,
         'use_cpu_nms': use_cpu_nms,
         'soft_nms_sigma': soft_nms_sigma,
+        'use_sigmoid_probability': use_sigmoid_probability,
     }
     generator = detection_generator.DetectionGenerator(**kwargs)
 
@@ -103,6 +106,7 @@ class DetectionGeneratorTest(
         'nms_version': 'v2',
         'use_cpu_nms': False,
         'soft_nms_sigma': None,
+        'use_sigmoid_probability': False,
     }
     generator = detection_generator.DetectionGenerator(**kwargs)
 
