@@ -25,7 +25,7 @@ class MosaicModule(semantic_segmentation.SegmentationModule):
   """MOSAIC Module."""
 
   def _build_model(self) -> tf.keras.Model:
-    input_specs = tf.keras.layers.InputSpec(shape=[self._batch_size] +
+    input_specs = tf.keras.layers.InputSpec(shape=[1] +
                                             self._input_image_size + [3])
 
     model = mosaic_model.build_mosaic_segmentation_model(
