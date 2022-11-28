@@ -64,3 +64,6 @@ class SegmentationLossTest(parameterized.TestCase, tf.test.TestCase):
         use_binary_cross_entropy=False,
         top_k_percent_pixels=1.)(logits, labels)
     self.assertEqual(tf.rank(loss), 0)
+
+if __name__ == '__main__':
+  tf.test.main()
