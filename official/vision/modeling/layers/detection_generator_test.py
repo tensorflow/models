@@ -126,6 +126,8 @@ class MultilevelDetectionGeneratorTest(
   @parameterized.parameters(
       ('batched', False, True, None, None),
       ('batched', False, False, None, None),
+      ('v3', False, True, None, None),
+      ('v3', False, False, None, None),
       ('v2', False, True, None, None),
       ('v2', False, False, None, None),
       ('v1', True, True, 0.0, None),
