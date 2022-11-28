@@ -244,8 +244,10 @@ def resize_and_crop_image_v2(image,
   1. For a given image, keep its aspect ratio and first try to rescale the short
      side of the original image to `short_side`.
   2. If the scaled image after 1 has a long side that exceeds `long_side`, keep
-     the aspect ratio and rescal the long side of the image to `long_side`.
-  2. Pad the rescaled image to the padded_size.
+     the aspect ratio and rescale the long side of the image to `long_side`.
+  3. (Optional) Apply random jittering according to `aug_scale_min` and
+    `aug_scale_max`. By default this step is skipped.
+  4. Pad the rescaled image to the padded_size.
 
   Args:
     image: a `Tensor` of shape [height, width, 3] representing an image.
@@ -254,12 +256,11 @@ def resize_and_crop_image_v2(image,
     long_side: a scalar `Tensor` or `int` representing the desired long side to
       be rescaled to.
     padded_size: a `Tensor` or `int` list/tuple of two elements representing
-      [height, width] of the padded output image size. Padding will be applied
-      after scaling the image to the desired_size.
+      [height, width] of the padded output image size.
     aug_scale_min: a `float` with range between [0, 1.0] representing minimum
-      random scale applied to desired_size for training scale jittering.
+      random scale applied for training scale jittering.
     aug_scale_max: a `float` with range between [1.0, inf] representing maximum
-      random scale applied to desired_size for training scale jittering.
+      random scale applied for training scale jittering.
     seed: seed for random scale jittering.
     method: function to resize input image to scaled image.
 
