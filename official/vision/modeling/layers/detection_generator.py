@@ -14,10 +14,11 @@
 
 """Contains definitions of generators to generate the final detections."""
 import contextlib
-from typing import Any, Dict, List, Optional, Mapping, Sequence
+from typing import Any, Dict, List, Optional, Mapping, Sequence, Tuple
 # Import libraries
 import tensorflow as tf
 
+from official.projects.edgetpu.vision.modeling import custom_layers
 from official.vision.ops import box_ops
 from official.vision.ops import nms
 from official.vision.ops import preprocess_ops
@@ -370,6 +371,93 @@ def _generate_detections_v2(boxes: tf.Tensor,
   valid_detections = tf.reduce_sum(
       input_tensor=tf.cast(tf.greater(nmsed_scores, 0.0), tf.int32), axis=1)
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
+
+
+def _generate_detections_v3(
+    boxes: tf.Tensor,
+    scores: tf.Tensor,
+    pre_nms_score_threshold: float = 0.05,
+    nms_iou_threshold: float = 0.5,
+    max_num_detections: int = 100
+) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+  """Generates the detections given the model outputs using NMS for EdgeTPU.
+
+  Args:
+    boxes: A `tf.Tensor` with shape `[batch_size, num_classes, N, 4]` or
+      `[batch_size, 1, N, 4]`, which box predictions on all feature levels. The
+      N is the number of total anchors on all levels.
+    scores: A `tf.Tensor` with shape `[batch_size, num_classes, N]`, which
+      stacks class probability on all feature levels. The N is the number of
+      total anchors on all levels. The num_classes is the number of classes
+      predicted by the model. Note that the class_outputs here is the raw score.
+    pre_nms_score_threshold: A `float` representing the threshold for deciding
+      when to remove boxes based on score.
+    nms_iou_threshold: A `float` representing the threshold for deciding whether
+      boxes overlap too much with respect to IOU.
+    max_num_detections: A `scalar` representing maximum number of boxes retained
+      over all classes.
+
+  Returns:
+    nms_boxes: A `float` tf.Tensor of shape [batch_size, max_num_detections, 4]
+      representing top detected boxes in [y1, x1, y2, x2].
+    nms_scores: A `float` tf.Tensor of shape [batch_size, max_num_detections]
+      representing sorted confidence scores for detected boxes. The values are
+      between [0, 1].
+    nms_classes: An `int` tf.Tensor of shape [batch_size, max_num_detections]
+      representing classes for detected boxes.
+    valid_detections: An `int` tf.Tensor of shape [batch_size] only the top
+      `valid_detections` boxes are valid detections.
+
+  Raises:
+    ValueError if inputs shapes are not valid.
+  """
+  with tf.name_scope('generate_detections'):
+    batch_size, num_box_classes, box_locations, sides = (
+        boxes.get_shape().as_list())
+    if batch_size is None:
+      batch_size = tf.shape(boxes)[0]
+    _, num_classes, locations = scores.get_shape().as_list()
+    if num_box_classes != 1 and num_box_classes != num_classes:
+      raise ValueError('Boxes should have either 1 class or same as scores.')
+    if locations != box_locations:
+      raise ValueError('Number of locations is different.')
+    if sides != 4:
+      raise ValueError('Number of sides is incorrect.')
+    # Selects pre_nms_score_threshold scores before NMS.
+    boxes, scores = box_ops.filter_boxes_by_scores(
+        boxes, scores, min_score_threshold=pre_nms_score_threshold)
+
+    # EdgeTPU-friendly class-wise NMS, -1 for invalid.
+    indices = custom_layers.non_max_suppression_padded(
+        boxes,
+        scores,
+        max_num_detections,
+        iou_threshold=nms_iou_threshold)
+    # Gather NMS-ed boxes and scores.
+    safe_indices = tf.nn.relu(indices)  # 0 for invalid
+    invalid_detections = safe_indices - indices  # 1 for invalid, 0 for valid
+    valid_detections = 1.0 - invalid_detections  # 0 for invalid, 1 for valid
+    safe_indices = tf.cast(safe_indices, tf.int32)
+    boxes = tf.expand_dims(valid_detections, -1) * tf.gather(
+        boxes, safe_indices, axis=2, batch_dims=2)
+    scores = valid_detections * tf.gather(
+        scores, safe_indices, axis=2, batch_dims=2)
+    # Compliment with class numbers.
+    classes = tf.range(num_classes, dtype=tf.float32)
+    classes = tf.reshape(classes, [1, num_classes, 1])
+    classes = tf.tile(classes, [batch_size, 1, max_num_detections])
+    # Flatten classes, locations. Class = -1 for invalid detection
+    scores = tf.reshape(scores, [batch_size, num_classes * max_num_detections])
+    boxes = tf.reshape(boxes, [batch_size, num_classes * max_num_detections, 4])
+    classes = tf.reshape(valid_detections * classes  - invalid_detections,
+                         [batch_size, num_classes * max_num_detections])
+    # Filter top-k across boxes of all classes
+    scores, indices = tf.nn.top_k(scores, k=max_num_detections, sorted=True)
+    boxes = tf.gather(boxes, indices, batch_dims=1, axis=1)
+    classes = tf.gather(classes, indices, batch_dims=1, axis=1)
+    invalid_detections = tf.nn.relu(classes) - classes
+    valid_detections = tf.reduce_sum(1. - invalid_detections, axis=1)
+    return boxes, scores, classes, valid_detections
 
 
 def _generate_detections_batched(boxes: tf.Tensor, scores: tf.Tensor,
@@ -985,6 +1073,19 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
                 boxes,
                 scores,
                 pre_nms_top_k=self._config_dict['pre_nms_top_k'],
+                pre_nms_score_threshold=self
+                ._config_dict['pre_nms_score_threshold'],
+                nms_iou_threshold=self._config_dict['nms_iou_threshold'],
+                max_num_detections=self._config_dict['max_num_detections']))
+        # Set `nmsed_attributes` to None for v2.
+        nmsed_attributes = {}
+      elif self._config_dict['nms_version'] == 'v3':
+        # TODO(tohaspiridonov): add compatible version of
+        # `_decode_multilevel_outputs` in cl/485381750
+        (nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections) = (
+            _generate_detections_v3(
+                tf.transpose(boxes, [0, 2, 1, 3]),
+                tf.transpose(scores, [0, 2, 1]),
                 pre_nms_score_threshold=self
                 ._config_dict['pre_nms_score_threshold'],
                 nms_iou_threshold=self._config_dict['nms_iou_threshold'],
