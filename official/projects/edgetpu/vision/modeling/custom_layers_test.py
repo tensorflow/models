@@ -291,6 +291,18 @@ class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
       # Sharding needed.
       self.assertGreater(max_size, custom_layers._RECOMMENDED_NMS_MEMORY)
 
+  def test_shard_tensors(self):
+    a: tf.Tensor = tf.constant([[0, 1, 2, 3, 4]])
+    b: tf.Tensor = tf.constant([[
+        [0, 1, 2, 3, 4],
+        [5, 6, 7, 8, 9],
+        [10, 11, 12, 13, 14],
+        [15, 16, 17, 18, 19],
+        [20, 21, 22, 23, 24],
+    ]])
+    for i, (a_i, b_i) in enumerate(custom_layers.shard_tensors(1, 3, a, b)):
+      self.assertAllEqual(a_i, a[:, i * 3:i * 3 + 3])
+      self.assertAllEqual(b_i, b[:, i * 3:i * 3 + 3, :])
 
 if __name__ == '__main__':
   tf.test.main()

@@ -15,7 +15,7 @@
 """Customized keras layers used in the EdgeTPU models."""
 
 import inspect
-from typing import Any, MutableMapping, Optional, Union, Tuple
+from typing import Any, Iterable, MutableMapping, Optional, Sequence, Tuple, Union
 import tensorflow as tf
 
 from official.modeling import tf_utils
@@ -560,6 +560,54 @@ def _same(x):
   return tf.constant(1, dtype=x.dtype) + tf.math.floor(-x_clip)
 
 
+def shard_tensors(axis: int, block_size: int,
+                  *tensors: tf.Tensor) -> Iterable[Sequence[tf.Tensor]]:
+  """Consistently splits multiple tensors sharding-style.
+
+  Args:
+    axis: axis to be used to split tensors
+    block_size: block size to split tensors.
+    *tensors: list of tensors.
+
+  Returns:
+    List of shards, each shard has exactly one peace of each input tesnor.
+
+  Raises:
+    ValueError: if input tensors has different size of sharded dimension.
+  """
+  for validate_axis in range(axis + 1):
+    consistent_length: int = tensors[0].shape[validate_axis]
+    for tensor in tensors:
+      if tensor.shape[validate_axis] != consistent_length:
+        raise ValueError('Inconsistent shapes in shard_tensors: first is '
+                         f'{tensors[0].shape} and other is {tensor.shape}')
+  batch_size: int = tensors[0].shape[axis]
+  if block_size >= batch_size:
+    return [tensors]
+  else:
+    blocks = batch_size // block_size
+    remainder = batch_size % block_size
+    if remainder:
+      tensor_parts = []
+      for tensor in tensors:
+        shape: tf.TensorShape = tensor.shape
+        body: tf.Tensor = tf.slice(tensor, [0] * len(shape), [
+            size if i != axis else blocks * block_size
+            for i, size in enumerate(shape)
+        ])
+        tail: tf.Tensor = tf.slice(tensor, [
+            0 if i != axis else (blocks * block_size)
+            for i, _ in enumerate(shape)
+        ], [
+            size if i != axis else (size - blocks * block_size)
+            for i, size in enumerate(shape)
+        ])
+        tensor_parts.append(tf.split(body, blocks, axis) + [tail])
+      return zip(*tensor_parts)
+    else:
+      return zip(*[tf.split(tensor, blocks, axis) for tensor in tensors])
+
+
 # TODO(b/258007436): Number is based on existing compiler limitations while
 # running bf16 NMS on edgetpu. Remove manual sharing when compiler issue will be
 # fixed.
@@ -613,29 +661,12 @@ def non_max_suppression_padded(boxes: tf.Tensor,
   boxes = tf.reshape(boxes, [batch_size, boxes_size, struct_size])
   scores = tf.reshape(scores, [batch_size, boxes_size])
   block = max(1, _RECOMMENDED_NMS_MEMORY // (boxes_size * boxes_size))
-  if block >= batch_size:
-    indices = _non_max_suppression_as_is(boxes, scores, output_size,
-                                         iou_threshold)
-  else:
-    blocks = batch_size // block
-    remainder = batch_size % block
-    if remainder:
-      boxes = (
-          tf.split(boxes[:blocks * block, :, :], blocks) +
-          [boxes[blocks * block:, :, :]])
-      scores = (
-          tf.split(scores[:blocks * block, :], blocks) +
-          [scores[blocks * block:, :]])
-    else:
-      boxes = tf.split(boxes, blocks)
-      scores = tf.split(scores, blocks)
-    indices = []
-    for boxes_i, scores_i in zip(boxes, scores):
-      indices.append(
-          _non_max_suppression_as_is(boxes_i, scores_i, output_size,
-                                     iou_threshold))
-    indices = tf.concat(indices, axis=0)
-
+  indices = []
+  for boxes_i, scores_i in shard_tensors(0, block, boxes, scores):
+    indices.append(
+        _non_max_suppression_as_is(boxes_i, scores_i, output_size,
+                                   iou_threshold))
+  indices = tf.concat(indices, axis=0)
   return tf.reshape(indices, batch_shape + [output_size])
 
 
