@@ -14,8 +14,10 @@
 
 """Customized keras layers used in the EdgeTPU models."""
 
+from collections.abc import Iterable, MutableMapping, Sequence
 import inspect
-from typing import Any, Iterable, MutableMapping, Optional, Sequence, Tuple, Union
+from typing import Any, Optional, Union
+
 import tensorflow as tf
 
 from official.modeling import tf_utils
@@ -26,12 +28,12 @@ class GroupConv2D(tf.keras.layers.Conv2D):
 
   def __init__(self,
                filters: int,
-               kernel_size: Union[int, Tuple[int, int]],
+               kernel_size: Union[int, tuple[int, int]],
                groups: int,
-               strides: Tuple[int, int] = (1, 1),
+               strides: tuple[int, int] = (1, 1),
                padding: str = 'valid',
                data_format: str = 'channels_last',
-               dilation_rate: Tuple[int, int] = (1, 1),
+               dilation_rate: tuple[int, int] = (1, 1),
                activation: Any = None,
                use_bias: bool = True,
                kernel_initializer: Any = 'glorot_uniform',
@@ -149,7 +151,7 @@ class GroupConv2D(tf.keras.layers.Conv2D):
         groups=1,
         **kwargs)  # pytype: disable=bad-return-type  # typed-keras
 
-  def build(self, input_shape: Tuple[int, ...]) -> None:
+  def build(self, input_shape: tuple[int, ...]) -> None:
     """Builds GroupConv2D layer as a collection of smaller Conv2D layers."""
     input_shape = tf.TensorShape(input_shape)
     input_channel = self._get_input_channel(input_shape)
@@ -271,7 +273,7 @@ class GroupConv2DKerasModel(tf.keras.Model):
 
   def __init__(self,
                filters: int,
-               kernel_size: Tuple[int, int],
+               kernel_size: tuple[int, int],
                groups: int,
                batch_norm_layer: Optional[tf.keras.layers.Layer] = None,
                bn_epsilon: float = 1e-3,
@@ -715,3 +717,72 @@ def _non_max_suppression_as_is(boxes: tf.Tensor,
       tf.cast(top_k.indices, top_k.values.dtype) * _greater(top_k.values) -
       _same(top_k.values))
   return tf.reshape(indices, batch_shape + [output_size])
+
+
+def concat_and_top_k(
+    top_k: int, scores_pair: tuple[Optional[tf.Tensor], tf.Tensor],
+    *other_pairs: tuple[Optional[tf.Tensor], tf.Tensor]
+) -> tuple[tf.Tensor, ...]:
+  """Combines shards of top_k operation, when sharded along filtered dimension.
+
+  General idea is that sometimes top_k dimension is very large, while top_k is
+  moderately low. (Keep in mind sample of 15K pre-top_k dimension and 150 top_k)
+  In that case it is possible to break top_k input into groups significantly
+  larger than top_k and significatly lower than pre-top_l (Keep in mind 1500).
+  We do top_k over first 1500 elements, than join 150 remaining with new 1500
+  elements (1750 in total), repeat top_k. This function provides repeatedly used
+  method which will concat and top_k in that case.
+
+  For example with top_k = 2 and scores_pair = ([10, 6], [9, 8, 7]), output
+  scores will be [10, 9].
+
+  Other pairs are filtered using indexes generated from scores. This is a preaty
+  common case of filtering structure by its score.
+
+  For example with one extra pair of box per score:
+  top_k = 2
+  scores_pair =  ([10,             6],
+                  [9,              8,            7])
+  other_pairs = [([[0, 0, 10, 10], [0, 0, 6, 6]],
+                  [[1, 1, 9, 9],   [1, 1, 8, 8], [1, 1, 7, 7]])]
+  Output is:
+  ([10, 9], [[0, 0, 10, 10], [1, 1, 9, 9]])
+
+  See also 'test_top_k_sharded_fusion' unit test with end to end example.
+
+  Args:
+    top_k: is top_k argument of sharded tf.math.top_k.
+    scores_pair: Tuple (<previous shards combination>, <additional shard>)
+      scores to be aggregated using top_k.
+    *other_pairs: Tuples (<previous shards combination>, <additional shard>)
+      other values to be aggregated using indexes of top_k scores.
+
+  Returns:
+    Tuple of scores based top_k aggregations with additional shards.
+  """
+  scores, scores_shard = scores_pair
+  if other_pairs:
+    others, others_shard = zip(*other_pairs)
+  else:
+    others = others_shard = []
+  # Same as tf.rank, but avoiding tensor form for graph mode execution.
+  top_k_dim: int = len(scores_shard.shape) - 1
+  if scores is None:
+    # First shard becomes aggregation
+    scores = scores_shard
+    others = others_shard
+  else:
+    # Merge shard into agregation
+    scores = tf.concat([scores, scores_shard], top_k_dim)
+    others = [
+        tf.concat([other, other_shard], top_k_dim)
+        for other, other_shard in zip(others, others_shard)
+    ]
+  # When shards are uneven some will be smaller than requested top_k
+  if scores.shape[top_k_dim] > top_k:
+    scores, indices = tf.nn.top_k(scores, top_k)
+    others = [
+        tf.gather(other, indices, axis=top_k_dim, batch_dims=top_k_dim)
+        for other in others
+    ]
+  return scores, *others
