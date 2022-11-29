@@ -15,7 +15,7 @@
 """Tests for custom_layers."""
 
 import itertools
-from typing import List
+from typing import Optional
 
 from absl.testing import parameterized
 import numpy as np
@@ -212,6 +212,10 @@ def _maximum_activation_size(model):
 
 class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
 
+  def setUp(self):
+    super().setUp()
+    tf.random.set_seed(42)
+
   @parameterized.parameters((16, 8, 200, 0.009), (31, 17, 100, 0.013),
                             (71, 41, 100, 0.045), (150, 100, 100, 0.129),
                             (300, 300, 100, 0.116), (600, 600, 50, 0.176))
@@ -261,7 +265,7 @@ class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
         f'{deviation_rate} + {safe_margin} = {deviation_rate + safe_margin}')
 
   @parameterized.parameters(([16], 8), ([91, 150], 100), ([20, 20, 200], 10))
-  def test_sharded_match(self, shape: List[int], top: int):
+  def test_sharded_match(self, shape: list[int], top: int):
     boxes = random_boxes(shape)
     scores = tf.random.uniform(shape=shape)
     optimized = custom_layers.non_max_suppression_padded(boxes, scores, top)
@@ -277,7 +281,7 @@ class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
                             ([91, 150], 100, _stright_nms, False),
                             ([20, 20, 200], 10, _sharded_nms, True),
                             ([20, 20, 200], 10, _stright_nms, False))
-  def test_sharded_size(self, shape: List[int], top: int, algorithm,
+  def test_sharded_size(self, shape: list[int], top: int, algorithm,
                         fits_as_is: bool):
     scores = tf.keras.Input(shape=shape, batch_size=1)
     boxes = tf.keras.Input(shape=shape + [4], batch_size=1)
@@ -303,6 +307,49 @@ class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
     for i, (a_i, b_i) in enumerate(custom_layers.shard_tensors(1, 3, a, b)):
       self.assertAllEqual(a_i, a[:, i * 3:i * 3 + 3])
       self.assertAllEqual(b_i, b[:, i * 3:i * 3 + 3, :])
+
+  def test_top_k_sharded_fusion_arguments_validation(self):
+    # Input scores is not pair of agregation and shard.
+    self.assertRaises(ValueError, custom_layers.concat_and_top_k, 100,
+                      tf.zeros(shape=[1000]))
+    # Input other values is not pairs of agregation and shard.
+    self.assertRaises(TypeError, custom_layers.concat_and_top_k, 100,
+                      (None, tf.zeros(shape=[1000])), None,
+                      tf.zeros(shape=[1000]))
+    # Insufficient rank to do top_k
+    self.assertRaises(IndexError, custom_layers.concat_and_top_k, 100,
+                      (None, tf.constant(1.)))
+
+  @parameterized.parameters(0, 1, 2)
+  def test_top_k_sharded_fusion_vs_top_k_unsharded(self, axis: int):
+    r"""Tests `horizontal` sharding using shard_tensors and concat_and_top_k.
+
+    Will generate and test graph (on diagram 4 shards, in test 6 shards):
+    Input
+    -----
+       |
+    +-------+--------------------------------------------
+    | Split |-----------------------                     \
+    +-------+---                    \                     |
+        |       \                    |                    |
+    +-------+ +--------+ +-------+ +--------+ +-------+ +--------+ +-------+
+    | top k |-| concat |-| top k |-| concat |-| top k |-| concat |-| top k |
+    +-------+ +--------+ +-------+ +--------+ +-------+ +--------+ +-------+
+                                                                      |
+                                                                    Output
+                                                                    ------
+
+    Args:
+      axis: test top_k axis (tensor rank will be axis + 1)
+    """
+    sample: tf.Tensor = tf.random.uniform(
+        shape=axis * [1] + [10000], dtype=tf.float32)
+    top_1000_direct: tf.Tensor = tf.math.top_k(sample, 1000).values
+    top_1000_sharded: Optional[tf.Tensor] = None
+    for (piece,) in custom_layers.shard_tensors(axis, 1500, sample):
+      (top_1000_sharded,) = custom_layers.concat_and_top_k(
+          1000, (top_1000_sharded, piece))
+    self.assertAllEqual(top_1000_direct, top_1000_sharded)
 
 if __name__ == '__main__':
   tf.test.main()
