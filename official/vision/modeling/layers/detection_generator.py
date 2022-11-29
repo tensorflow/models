@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, Mapping, Sequence, Tuple
 # Import libraries
 import tensorflow as tf
 
-from official.projects.edgetpu.vision.modeling import custom_layers
+from official.vision.modeling.layers import edgetpu
 from official.vision.ops import box_ops
 from official.vision.ops import nms
 from official.vision.ops import preprocess_ops
@@ -428,7 +428,7 @@ def _generate_detections_v3(
         boxes, scores, min_score_threshold=pre_nms_score_threshold)
 
     # EdgeTPU-friendly class-wise NMS, -1 for invalid.
-    indices = custom_layers.non_max_suppression_padded(
+    indices = edgetpu.non_max_suppression_padded(
         boxes,
         scores,
         max_num_detections,
