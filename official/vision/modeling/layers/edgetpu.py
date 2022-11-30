@@ -160,7 +160,8 @@ _RECOMMENDED_NMS_MEMORY = 360000
 def non_max_suppression_padded(boxes: tf.Tensor,
                                scores: tf.Tensor,
                                output_size: int,
-                               iou_threshold: float = 0.5) -> tf.Tensor:
+                               iou_threshold: float = 0.5,
+                               refinements: int = 0) -> tf.Tensor:
   """Selects a subset of boxes which have highest score among IOU-similar boxes.
 
   Prunes away boxes that have high intersection-over-union (IOU) overlap
@@ -190,8 +191,10 @@ def non_max_suppression_padded(boxes: tf.Tensor,
       representing a single score corresponding to each box (each row of boxes).
     output_size: A scalar integer `Tensor` representing the maximum number of
       boxes to be selected by non-max suppression.
-    iou_threshold: A 0-D float tensor representing the threshold for deciding
-      whether boxes overlap too much with respect to IOU.
+    iou_threshold: A float representing the threshold for deciding whether boxes
+      overlap too much with respect to IOU.
+    refinements: A number of extra refinement steps to make result closer to
+      original sequential NMS.
 
   Returns:
     A 1-D+ integer `Tensor` of shape `[...batch_dims, output_size]` representing
@@ -211,7 +214,7 @@ def non_max_suppression_padded(boxes: tf.Tensor,
   for boxes_i, scores_i in shard_tensors(0, block, boxes, scores):
     indices.append(
         _non_max_suppression_as_is(boxes_i, scores_i, output_size,
-                                   iou_threshold))
+                                   iou_threshold, refinements))
   indices = tf.concat(indices, axis=0)
   return tf.reshape(indices, batch_shape + [output_size])
 
@@ -266,7 +269,8 @@ def _refine_nms_graph_to_original_algorithm(better: tf.Tensor) -> tf.Tensor:
 def _non_max_suppression_as_is(boxes: tf.Tensor,
                                scores: tf.Tensor,
                                output_size: int,
-                               iou_threshold: float = 0.5) -> tf.Tensor:
+                               iou_threshold: float = 0.5,
+                               refinements: int = 0) -> tf.Tensor:
   """Selects a subset of boxes which have highest score among IOU-similar boxes.
 
   Args:
@@ -277,6 +281,8 @@ def _non_max_suppression_as_is(boxes: tf.Tensor,
       boxes to be selected by non-max suppression.
     iou_threshold: A 0-D float tensor representing the threshold for deciding
       whether boxes overlap too much with respect to IOU.
+    refinements: A number of extra refinement steps to make result closer to
+      original sequencial NMS.
 
   Returns:
     A 1-D+ integer `Tensor` of shape `[...batch_dims, output_size]` representing
@@ -299,6 +305,9 @@ def _non_max_suppression_as_is(boxes: tf.Tensor,
   worse = _greater(relative_scores)
   same_later = _and(_same(relative_scores), _greater(relative_order))
   similar_worse_or_same_later = _and(similar, _or(worse, same_later))
+  for _ in range(refinements):
+    similar_worse_or_same_later = _refine_nms_graph_to_original_algorithm(
+        similar_worse_or_same_later)
   prunable = _reduce_or(similar_worse_or_same_later, axis=-1)
   remaining = tf.constant(1, dtype=prunable.dtype) - prunable
   if scores.shape[0] is None:
