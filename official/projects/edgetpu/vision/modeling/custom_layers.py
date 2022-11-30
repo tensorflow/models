@@ -317,7 +317,7 @@ class GroupConv2DKerasModel(tf.keras.Model):
     self.batch_norm_layer = batch_norm_layer
     self.use_batch_norm = False
     if self.batch_norm_layer is not None:
-      if not inspect.isclass(self.batch_norm_layer):
+      if not inspect.isclass(self.batch_norm_layer):  # pytype: disable=not-supported-yet
         raise ValueError('batch_norm_layer is not a class.')
       self.use_batch_norm = True
 
