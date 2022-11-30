@@ -158,7 +158,8 @@ _RECOMMENDED_NMS_MEMORY = 360000
 def non_max_suppression_padded(boxes: tf.Tensor,
                                scores: tf.Tensor,
                                output_size: int,
-                               iou_threshold: float = 0.5) -> tf.Tensor:
+                               iou_threshold: float = 0.5,
+                               refinements: int = 0) -> tf.Tensor:
   """Selects a subset of boxes which have highest score among IOU-similar boxes.
 
   Prunes away boxes that have high intersection-over-union (IOU) overlap
@@ -188,8 +189,10 @@ def non_max_suppression_padded(boxes: tf.Tensor,
       representing a single score corresponding to each box (each row of boxes).
     output_size: A scalar integer `Tensor` representing the maximum number of
       boxes to be selected by non-max suppression.
-    iou_threshold: A 0-D float tensor representing the threshold for deciding
-      whether boxes overlap too much with respect to IOU.
+    iou_threshold: A float representing the threshold for deciding whether boxes
+      overlap too much with respect to IOU.
+    refinements: A number of extra refinement steps to make result closer to
+      original sequential NMS.
 
   Returns:
     A 1-D+ integer `Tensor` of shape `[...batch_dims, output_size]` representing
@@ -206,15 +209,62 @@ def non_max_suppression_padded(boxes: tf.Tensor,
   for boxes_i, scores_i in shard_tensors(0, block, boxes, scores):
     indices.append(
         _non_max_suppression_as_is(boxes_i, scores_i, output_size,
-                                   iou_threshold))
+                                   iou_threshold, refinements))
   indices = tf.concat(indices, axis=0)
   return tf.reshape(indices, batch_shape + [output_size])
+
+
+def _refine_nms_graph_to_original_algorithm(better: tf.Tensor) -> tf.Tensor:
+  """Refines the relationship graph, bringing it closer to the iterative NMS.
+
+  See `test_refinement_sample` unit tests for example, also comments in body of
+  the algorithm, for the intuition.
+
+  Args:
+    better: is a tensor with zeros and ones so that
+      [batch dims ..., box_1, box_2] represents the
+      [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix)
+      for the [relation](https://en.wikipedia.org/wiki/Relation_(mathematics))
+      `better` between boxes box_1 and box_2.
+
+  Returns:
+    Modification of tensor encoding adjacency matrix of `better` relation.
+  """
+  # good_box: is a tensor with zeros and ones so that
+  # [batch dims ..., box_i] represents belonging of a box_i to the `good`
+  # subset. `good` subset is defined as exactly those boxes that do not have any
+  # `better` boxes.
+  # INTUITION: In terms of oriented graph , this is subset of nodes nobody
+  # points to as "I'm better than you". These nodes will never be suppressed in
+  # the original NMS algorithm.
+  good_box = tf.constant(1.) - _reduce_or(better, axis=-1)
+  # good_better: is a tensor with zeros and ones so that
+  # [batch dims ..., box_1, box_2] represents the adjacency matrix for the
+  # `good_better` relation on all boxes set. `good_better` relation is defined
+  # as relation between good box and boxes it is better than.
+  # INTUITION: In terms of oriented graph, this is subset of edges, which
+  # doesn't have any other inbound edges. These edges will represent
+  # suppression actions in the original NMS algorithm.
+  good_better = _and(tf.expand_dims(good_box, axis=-2), better)
+  # not_bad_box: is a tensor with zeros and ones so that
+  # [batch dims ..., box_i] represents belonging of a box_i to the `not_bad`
+  # subset. `not_bad` subset is defined as boxes all that and only those that
+  # does not have any `good_better` boxes.
+  # INTUITION: These nodes are nodes which are not suppressed by `good` boxes
+  # in the original NMS algorithm.
+  not_bad_box = tf.constant(1.) - _reduce_or(good_better, axis=-1)
+  # return: is a tensor with zeros and ones so that
+  # [batch dims ..., box_1, box_2] represents the adjacency matrix for the
+  # `better` relation on all boxes set which is closer to represent suppression
+  # procedure in original NMS algorithm.
+  return _and(tf.expand_dims(not_bad_box, axis=-2), better)
 
 
 def _non_max_suppression_as_is(boxes: tf.Tensor,
                                scores: tf.Tensor,
                                output_size: int,
-                               iou_threshold: float = 0.5) -> tf.Tensor:
+                               iou_threshold: float = 0.5,
+                               refinements: int = 0) -> tf.Tensor:
   """Selects a subset of boxes which have highest score among IOU-similar boxes.
 
   Args:
@@ -225,6 +275,8 @@ def _non_max_suppression_as_is(boxes: tf.Tensor,
       boxes to be selected by non-max suppression.
     iou_threshold: A 0-D float tensor representing the threshold for deciding
       whether boxes overlap too much with respect to IOU.
+    refinements: A number of extra refinement steps to make result closer to
+      original sequencial NMS.
 
   Returns:
     A 1-D+ integer `Tensor` of shape `[...batch_dims, output_size]` representing
@@ -246,6 +298,9 @@ def _non_max_suppression_as_is(boxes: tf.Tensor,
   worse = _greater(relative_scores)
   same_later = _and(_same(relative_scores), _greater(relative_order))
   similar_worse_or_same_later = _and(similar, _or(worse, same_later))
+  for _ in range(refinements):
+    similar_worse_or_same_later = _refine_nms_graph_to_original_algorithm(
+        similar_worse_or_same_later)
   prunable = _reduce_or(similar_worse_or_same_later, axis=-1)
   remaining = tf.constant(1.) - prunable
   scores = tf.reshape(tf.exp(scores), [1, 1, batch_size, boxes_size])
