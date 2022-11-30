@@ -146,6 +146,11 @@ def convert_tflite_model(saved_model_dir: str,
         debugger.run()
         return debugger.get_nondebug_quantized_model()
 
+    elif quant_type == 'uint8':
+      converter.optimizations = [tf.lite.Optimize.DEFAULT]
+      converter.default_ranges_stats = (-10, 10)
+      converter.inference_type = tf.uint8
+      converter.quantized_input_stats = {'input_placeholder': (0., 1.)}
     elif quant_type == 'fp16':
       converter.optimizations = [tf.lite.Optimize.DEFAULT]
       converter.target_spec.supported_types = [tf.float16]
