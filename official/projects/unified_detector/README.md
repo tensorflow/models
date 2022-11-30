@@ -79,6 +79,13 @@ groups as `words`. They are not necessarily at the word granularity, though. We
 visualize lines and paragraphs as groupings of these `words` using axis-aligned
 bounding boxes.
 
+##### FAQ
+1. __Q: What is `ckpt_path`__? A: If you download the checkpoint as instructed
+above, you will obtain two files: `<some-directory>/ckpt.index` and
+`<some-directory>/ckpt.data-00000-of-00001`.
+You need to set `--ckpt_path=<some-directory>/ckpt`, i.e. removing the suffix.
+
+
 ## Inference and Evaluation on the HierText dataset
 
 ### Download the HierText dataset
