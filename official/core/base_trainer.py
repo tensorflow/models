@@ -342,15 +342,13 @@ class Trainer(_AsyncTrainer):
     else:
       logs["learning_rate"] = self.optimizer.learning_rate
     return logs
-
+  
+  @tf.function
   def train_step(self, iterator):
     """See base class."""
 
     def step_fn(inputs):
-      if self.config.runtime.enable_xla and (self.config.runtime.num_gpus > 0):
-        task_train_step = tf.function(self.task.train_step, jit_compile=True)
-      else:
-        task_train_step = self.task.train_step
+      task_train_step = self.task.train_step
       logs = task_train_step(
           inputs,
           model=self.model,
