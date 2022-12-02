@@ -15,7 +15,8 @@
 """TFM common training driver library."""
 # pytype: disable=attribute-error
 import os
-from typing import Any, Mapping, Optional, Tuple, List
+import tempfile
+from typing import Any, List, Mapping, Optional, Tuple
 
 # Import libraries
 
@@ -155,10 +156,23 @@ class OrbitExperimentRunner:
     if self.trainer.checkpoint:
       if self.model_dir is None:
         raise ValueError('model_dir must be specified, but got None')
+
+      if (not self.strategy) or self.strategy.extended.should_checkpoint:
+        ckpt_path = self.model_dir
+        max_to_keep = self.params.trainer.max_to_keep
+      else:
+        # In multi worker training we need every worker to save checkpoint,
+        # because variables can trigger synchronization on read and
+        # synchronization needs all workers to participate. To avoid workers
+        # overriding each other we save to a temporary directory on non-chief
+        # workers.
+        ckpt_path = tempfile.mkdtemp()
+        max_to_keep = 1
+
       checkpoint_manager = tf.train.CheckpointManager(
           self.trainer.checkpoint,
-          directory=self.model_dir,
-          max_to_keep=self.params.trainer.max_to_keep,
+          directory=ckpt_path,
+          max_to_keep=max_to_keep,
           step_counter=self.trainer.global_step,
           checkpoint_interval=self.params.trainer.checkpoint_interval,
           init_fn=self.trainer.initialize)
