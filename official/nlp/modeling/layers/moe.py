@@ -17,8 +17,6 @@
 import dataclasses
 from typing import Any, Callable, Optional, Tuple
 
-from absl import logging
-import numpy as np
 import tensorflow as tf
 
 from official.modeling import tf_utils
@@ -48,11 +46,13 @@ def _router_z_loss(router_logits: tf.Tensor) -> float:
   Returns:
     Scalar router z-loss <float32>.
   """
-  num_groups, tokens_per_group, _ = router_logits.shape
+  num_groups = tf.shape(router_logits)[0]
+  tokens_per_group = router_logits.shape[1]
 
   log_z = tf.math.reduce_logsumexp(router_logits, axis=-1)
   z_loss = log_z**2
-  return tf.math.reduce_sum(z_loss) / (num_groups * tokens_per_group)
+  return tf.math.reduce_sum(z_loss) / tf.cast(
+      num_groups * tokens_per_group, tf.float32)
 
 
 @dataclasses.dataclass
@@ -187,7 +187,7 @@ class Router(tf.keras.layers.Layer):
     """
     if apply_jitter and self.jitter_noise > 0:
       inputs *= tf.random.uniform(
-          inputs.shape,
+          tf.shape(inputs),
           minval=1.0 - self.jitter_noise,
           maxval=1.0 + self.jitter_noise,
           dtype=inputs.dtype)
@@ -259,7 +259,9 @@ class ExpertsChooseMaskedRouter(MaskedRouter):
     Returns:
       Dispatch and combine arrays for routing with masked matmuls.
     """
-    num_groups, tokens_per_group, _ = router_probs.shape
+    num_groups = tf.shape(router_probs)[0]
+    tokens_per_group = router_probs.shape[1]
+
     router_probs_t = tf.transpose(router_probs, perm=[0, 2, 1])
     # router_probs_t: <float32>[num_groups, num_experts, tokens_per_group]
 
@@ -296,8 +298,10 @@ class ExpertsChooseMaskedRouter(MaskedRouter):
     num_tokens = num_groups * tokens_per_group
     num_tokens_dispatched_somewhere = tf.math.reduce_sum(tf.math.reduce_max(
         dispatch_mask, axis=(-1, -2)))
-    fraction_tokens_left_behind = 1.0 - num_tokens_dispatched_somewhere / float(
-        num_tokens)
+    fraction_tokens_left_behind = 1.0 - tf.cast(
+        num_tokens_dispatched_somewhere, tf.float32) / tf.cast(
+            num_tokens, tf.float32)
+
     # Total number of tokens that were dispatched (one token could be
     # dispatched to multiple experts).
     num_tokens_dispatched = tf.math.reduce_sum(dispatch_mask)
@@ -513,9 +517,7 @@ class MoeLayer(tf.keras.layers.Layer):
       *,
       train_capacity_factor: float = 1.0,
       eval_capacity_factor: float = 1.0,
-      min_expert_capacity: int = 4,
-      max_group_size: int = 4096,
-      strict_group_size: bool = False,
+      examples_per_group: float = 1.0,
       name: str = "moe",
       **kwargs):
     """Init.
@@ -537,22 +539,18 @@ class MoeLayer(tf.keras.layers.Layer):
           tokens that an expert will process AND will indirectly increase the
           number of experts that a given token is routed to.
       eval_capacity_factor: As above, but used during evaluation.
-      min_expert_capacity: Minimum token processing capacity for each expert.
-      max_group_size: The total number of tokens on each device is subdivided
-        into groups of this size. Router computations are then performed on a
-        per-group basis. A larger group size will result in slower but more
-        accurate top-k and sorting computations, whereas a smaller group size
-        will result in faster but more approximate (and potentially less stable)
-        routing choices. Note that actual group size may be smaller than
-        max_group_size for consistency with the number of experts and tokens;
-        see also `strict_group_size` attribute. In practice,
-        we find that imperfect routing choices are tolerable and recommend
-        choosing a group size on the order of 4096 tokens, although this number
-        will vary based on model configuration and size.
-      strict_group_size: If True, fail if unable to set the token group size
-        equal to max_group_size. If False (default), the actual group size may
-        be smaller than max_group_size for consistency with the number of
-        experts and tokens.
+      examples_per_group: Number of examples to form a group. Router then
+        performs top_k token selection for each expert on a per group basis.
+        E.g. when `examples_per_group=4.0`, tokens are assigned to experts in
+        groups formed from 4 examples. When `examples_per_group=0.5`,
+        each example is split into 2 groups.
+        `examples_per_group` must divide the local batch size.
+        A larger group size will result in slower but more accurate top-k and
+        sorting computations, whereas a smaller group size will result in faster
+        but more approximate (and potentially less stable) routing choices.
+        In practice, we find that imperfect routing choices are tolerable and
+        recommend choosing a group size on the order of 4096 tokens, although
+        this number will vary based on model configuration and size.
       name: Layer name.
       **kwargs: Forwarded to super.
     """
@@ -565,9 +563,7 @@ class MoeLayer(tf.keras.layers.Layer):
 
     self._train_capacity_factor = train_capacity_factor
     self._eval_capacity_factor = eval_capacity_factor
-    self._max_group_size = max_group_size
-    self._min_expert_capacity = min_expert_capacity
-    self._strict_group_size = strict_group_size
+    self._examples_per_group = examples_per_group
 
   def call(self,
            inputs: tf.Tensor,
@@ -592,10 +588,15 @@ class MoeLayer(tf.keras.layers.Layer):
       training = tf.keras.backend.learning_phase()
 
     # inputs shape [batch_size, seq_length, hidden_dim]
-    per_device_batch_size, seq_length, hidden_dim = inputs.shape
-    num_tokens = per_device_batch_size * seq_length
-    num_groups = self._num_groups(num_tokens, self._max_group_size)
-    tokens_per_group = num_tokens // num_groups
+    batch_size, seq_length, hidden_dim = inputs.shape
+    if batch_size is not None:
+      if self._examples_per_group > batch_size:
+        raise ValueError(
+            f"examples_per_group={self._examples_per_group} is larger than the "
+            "number of examples available in the local (per-device) batch_size="
+            f"{batch_size}. Either decrease examples_per_group or increase the "
+            "batch_size.")
+    tokens_per_group = int(seq_length * self._examples_per_group)
 
     if training:
       capacity_factor = self._train_capacity_factor
@@ -604,70 +605,15 @@ class MoeLayer(tf.keras.layers.Layer):
     # Each group will send expert_capacity tokens to each expert.
     expert_capacity = int(
         round(capacity_factor * tokens_per_group / self.num_experts))
-    expert_capacity = max(expert_capacity, self._min_expert_capacity)
-    logging.info(
-        "Selected expert_capacity=%d for num_experts=%d and training=%r.",
-        expert_capacity, self.num_experts, training)
 
     # Reshape batch and sequence/token dimensions for expert routing.
-    x = tf.reshape(inputs, (num_groups, tokens_per_group, hidden_dim))
+    x = tf.reshape(inputs, (-1, tokens_per_group, hidden_dim))
 
     x = self._mask_and_dispatch_to_experts(x, expert_capacity, training)
 
     # Return to original input shape.
-    x = tf.reshape(x, (per_device_batch_size, seq_length, hidden_dim))
+    x = tf.reshape(x, (-1, seq_length, hidden_dim))
     return x
-
-  def _num_groups(self, num_tokens: int, max_group_size: int) -> int:
-    """Returns the number of token routing groups.
-
-    Note that the quantities are local to the device.
-
-    We select the smallest num_groups such that:
-    - num_groups >= num_tokens / max_group_size (ensuring the group size is no
-      larger than max_group_size),
-    - num_tokens % num_groups = 0 (ensuring that the group size evenly divides
-      into the num_tokens),
-
-    Args:
-      num_tokens: Number of tokens from input batch.
-      max_group_size: Maximum size of each token routing group. Actual group
-        size may end up being smaller unless strict_group_size==True.
-
-    Returns:
-      Number of token routing groups.
-
-    Raises:
-      ValueError if we cannot find a group_size satisfying the above
-        requirements.
-    """
-    # Increase the number of groups (and decrease the group size) until we have
-    # a viable number of groups.
-    min_num_groups = int(np.ceil(num_tokens / max_group_size))
-    num_groups = min_num_groups
-    while num_groups < num_tokens and num_tokens % num_groups != 0:
-      num_groups += 1
-
-    group_size = num_tokens // num_groups
-    logging.info(
-        "Selected group_size=%d and num_groups=%d for input num_tokens=%d, "
-        "max_group_size=%d, num_experts=%d.",
-        group_size, num_groups, num_tokens, max_group_size, self.num_experts)
-
-    if group_size < self._min_expert_capacity:
-      raise ValueError(
-          f"Local (per-device) group_size {group_size} is smaller than "
-          f"min_expert_capacity {self._min_expert_capacity}, which is probably "
-          "not intended. Please increase max_group_size {max_group_size} to"
-          " seq_length or increase batch_size or decrease min_expert_capacity.")
-
-    if self._strict_group_size and group_size != self._max_group_size:
-      raise ValueError(
-          f"Selected group_size={group_size} is less than the "
-          f"max_group_size={max_group_size}. Exiting because strict mode is "
-          "active (strict_group_size=True)")
-
-    return num_groups
 
   def _mask_and_dispatch_to_experts(self, inputs: tf.Tensor,
                                     expert_capacity: int,
