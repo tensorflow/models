@@ -13,5 +13,6 @@
 # limitations under the License.
 
 """Tasks package definition."""
-
 from official.projects.qat.vision.tasks import image_classification
+from official.projects.qat.vision.tasks import retinanet
+from official.projects.qat.vision.tasks import semantic_segmentation
