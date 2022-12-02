@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Layers package definition."""
-
+from official.projects.qat.vision.modeling.layers import nn_layers
 from official.projects.qat.vision.modeling.layers.nn_blocks import BottleneckBlockQuantized
 from official.projects.qat.vision.modeling.layers.nn_blocks import Conv2DBNBlockQuantized
 from official.projects.qat.vision.modeling.layers.nn_blocks import InvertedBottleneckBlockQuantized

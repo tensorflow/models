@@ -13,5 +13,5 @@
 # limitations under the License.
 
 """Modeling package definition."""
-
+from official.projects.qat.vision.modeling import heads
 from official.projects.qat.vision.modeling import layers
