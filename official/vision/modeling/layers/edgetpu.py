@@ -101,14 +101,15 @@ def _same(x):
   return tf.constant(1, dtype=x.dtype) + tf.math.floor(-x_clip)
 
 
-def shard_tensors(axis: int, block_size: int,
-                  *tensors: tf.Tensor) -> Iterable[Sequence[tf.Tensor]]:
+def shard_tensors(
+    axis: int, block_size: int,
+    tensors: Sequence[tf.Tensor]) -> Iterable[Sequence[tf.Tensor]]:
   """Consistently splits multiple tensors sharding-style.
 
   Args:
     axis: axis to be used to split tensors
     block_size: block size to split tensors.
-    *tensors: list of tensors.
+    tensors: list of tensors.
 
   Returns:
     List of shards, each shard has exactly one peace of each input tesnor.
@@ -206,7 +207,7 @@ def non_max_suppression_padded(boxes: tf.Tensor,
   scores = tf.reshape(scores, [batch_size, boxes_size])
   block = max(1, _RECOMMENDED_NMS_MEMORY // (boxes_size * boxes_size))
   indices = []
-  for boxes_i, scores_i in shard_tensors(0, block, boxes, scores):
+  for boxes_i, scores_i in shard_tensors(0, block, (boxes, scores)):
     indices.append(
         _non_max_suppression_as_is(boxes_i, scores_i, output_size,
                                    iou_threshold, refinements))

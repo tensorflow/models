@@ -191,7 +191,7 @@ class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
         [15, 16, 17, 18, 19],
         [20, 21, 22, 23, 24],
     ]])
-    for i, (a_i, b_i) in enumerate(edgetpu.shard_tensors(1, 3, a, b)):
+    for i, (a_i, b_i) in enumerate(edgetpu.shard_tensors(1, 3, (a, b))):
       self.assertAllEqual(a_i, a[:, i * 3:i * 3 + 3])
       self.assertAllEqual(b_i, b[:, i * 3:i * 3 + 3, :])
 
@@ -233,7 +233,7 @@ class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
         shape=axis * [1] + [10000], dtype=tf.float32)
     top_1000_direct: tf.Tensor = tf.math.top_k(sample, 1000).values
     top_1000_sharded: Optional[tf.Tensor] = None
-    for (piece,) in edgetpu.shard_tensors(axis, 1500, sample):
+    for (piece,) in edgetpu.shard_tensors(axis, 1500, (sample,)):
       (top_1000_sharded,) = edgetpu.concat_and_top_k(
           1000, (top_1000_sharded, piece))
     self.assertAllEqual(top_1000_direct, top_1000_sharded)
