@@ -41,7 +41,7 @@ on 1 V100 GPU is 53ms with a batch size 1.
 pip install --upgrade pip
 pip install tensorflow==2.6.0
 pip install tf-models-official==2.7.2
-pip install apache-beam==2.42.0
+pip install apache-beam[gcp]==2.42.0 --user
 ```
 
 ## Prepare dataset
@@ -57,12 +57,13 @@ Then you can use the provided script `tools/process_wod.py` to convert the raw
 into a format which can be fed into the model:
 
 ```shell
+SRC_DIR="gs://waymo_open_dataset_v_1_2_0_individual_files"
 DST_DIR="gs://<path/to/directory>"
 # See https://beam.apache.org/documentation/#runners for distributed runners.
 RUNNER="DirectRunner"
 
 python3 process_wod.py \
---src_dir="gs://waymo_open_dataset_v_1_2_0_individual_files" \
+--src_dir=${SRC_DIR} \
 --dst_dir=${DST_DIR} \
 --pipeline_options="--runner=${RUNNER}"
 ```
