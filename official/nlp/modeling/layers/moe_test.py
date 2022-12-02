@@ -32,14 +32,13 @@ def small_config():
   config['jitter_noise'] = 0.1
   config['train_capacity_factor'] = 1.0
   config['eval_capacity_factor'] = 1.0
-  config['min_expert_capacity'] = 1
-  config['max_group_size'] = 9
+  config['examples_per_group'] = 2.0
 
   config['backbone_d_ff'] = 13
   return config
 
 
-def make_input_ones(batch_size: int = 2,
+def make_input_ones(batch_size: int = 4,
                     seq_length: int = 10,
                     hidden_dim: int = 7) -> tf.Tensor:
   return tf.ones((batch_size, seq_length, hidden_dim), dtype=tf.float32)
@@ -64,11 +63,7 @@ class MoeTest(tf.test.TestCase):
     y = moe._router_z_loss(x)
     expected = (5 + np.log(np.exp(5) + 1))**2
     self.assertAllClose(expected, y, atol=1e-7)
-
-    x = tf.constant([[[10.0, 5.0]]], dtype=tf.bfloat16)
-    y = moe._router_z_loss(x)
-    expected = 100.0
-    self.assertAllClose(expected, y, atol=1e-7)
+    self.assertDTypeEqual(y, tf.float32)
 
   def test_router_z_loss_shape(self):
     x = make_input_ones(2, 5, 7)
@@ -199,20 +194,11 @@ class MoeTest(tf.test.TestCase):
         router,
         train_capacity_factor=config['train_capacity_factor'],
         eval_capacity_factor=config['eval_capacity_factor'],
-        max_group_size=config['max_group_size'],
-        min_expert_capacity=config['min_expert_capacity'])
+        examples_per_group=config['examples_per_group'])
 
     inputs = make_input_ones()
-    with self.assertLogs('absl', level='INFO') as cm:
-      outputs = moe_layer(inputs, training=True)
+    outputs = moe_layer(inputs, training=True)
     self.assertAllEqual(tf.shape(inputs), tf.shape(outputs))
-
-    self.assertEqual(
-        cm.output,
-        [('INFO:absl:Selected group_size=5 and num_groups=4 for input '
-          'num_tokens=20, max_group_size=9, num_experts=2.'),
-         ('INFO:absl:Selected expert_capacity=2 for num_experts=2 and '
-          'training=True.')])
 
     var_names = sorted([v.name for v in moe_layer.trainable_variables])
     self.assertAllEqual([
@@ -241,8 +227,7 @@ class MoeTest(tf.test.TestCase):
         router,
         train_capacity_factor=config['train_capacity_factor'],
         eval_capacity_factor=config['eval_capacity_factor'],
-        max_group_size=config['max_group_size'],
-        min_expert_capacity=config['min_expert_capacity'])
+        examples_per_group=config['examples_per_group'])
     layer = moe.MoeLayerWithBackbone(moe_layer, config['backbone_d_ff'])
 
     inputs = make_input_ones()

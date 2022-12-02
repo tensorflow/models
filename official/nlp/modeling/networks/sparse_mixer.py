@@ -123,7 +123,7 @@ class SparseMixer(tf.keras.layers.Layer):
       num_experts: int = 16,
       train_capacity_factor: float = 1.,
       eval_capacity_factor: float = 1.,
-      max_group_size: int = 4096,
+      examples_per_group: float = 1.,
       mixing_mechanism: layers.MixingMechanism = layers.MixingMechanism.LINEAR,
       use_fft: bool = False,
       num_attention_heads: int = 8,
@@ -157,7 +157,7 @@ class SparseMixer(tf.keras.layers.Layer):
         'num_experts': num_experts,
         'train_capacity_factor': train_capacity_factor,
         'eval_capacity_factor': eval_capacity_factor,
-        'max_group_size': max_group_size,
+        'examples_per_group': examples_per_group,
         'mixing_mechanism': mixing_mechanism,
         'use_fft': use_fft,
         'attention_layers': attention_layers,
@@ -243,7 +243,7 @@ class SparseMixer(tf.keras.layers.Layer):
                 name='router'),
             train_capacity_factor=train_capacity_factor,
             eval_capacity_factor=eval_capacity_factor,
-            max_group_size=max_group_size,
+            examples_per_group=examples_per_group,
             name='moe')
       else:
         feedforward_layer = None  # Fallback to default (dense) MLP class
@@ -273,18 +273,15 @@ class SparseMixer(tf.keras.layers.Layer):
 
     if with_dense_inputs:
       self.inputs = dict(
-          input_word_ids=tf.keras.Input(
-              shape=(max_sequence_length,), dtype=tf.int32),
-          input_mask=tf.keras.Input(
-              shape=(max_sequence_length,), dtype=tf.int32),
-          input_type_ids=tf.keras.Input(
-              shape=(max_sequence_length,), dtype=tf.int32),
+          # The total length of token ids and dense inputs still has to be
+          # max_sequence_length. It is checked in call().
+          input_word_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
           dense_inputs=tf.keras.Input(
-              shape=(max_sequence_length, embedding_width), dtype=tf.float32),
-          dense_mask=tf.keras.Input(
-              shape=(max_sequence_length,), dtype=tf.int32),
-          dense_type_ids=tf.keras.Input(
-              shape=(max_sequence_length,), dtype=tf.int32),
+              shape=(None, embedding_width), dtype=tf.float32),
+          dense_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          dense_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
       )
     else:
       self.inputs = dict(
@@ -320,11 +317,9 @@ class SparseMixer(tf.keras.layers.Layer):
       type_ids = tf.concat([type_ids, dense_type_ids], axis=1)
       mask = tf.concat([mask, dense_mask], axis=1)
 
-    seq_length = word_embeddings.shape[1]
-    if seq_length != self._max_sequence_length:
-      raise ValueError('Sparse Mixer: Sequence length must be the same as '
-                       '`max_sequence_length` ({}), but it is {}.'.format(
-                           self._max_sequence_length, seq_length))
+    # SparseMixer: Sequence length must be the same as `max_sequence_length`.
+    word_embeddings = tf.ensure_shape(word_embeddings,
+                                      [None, self._max_sequence_length, None])
 
     # Absolute position embeddings.
     position_embeddings = self._position_embedding_layer(word_embeddings)
