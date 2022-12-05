@@ -112,6 +112,7 @@ class EfficientNet(tf.keras.Model):
                kernel_regularizer: tf.keras.regularizers.Regularizer = None,
                bias_regularizer: tf.keras.regularizers.Regularizer = None,
                activation: str = 'relu',
+               se_inner_activation: str = 'relu',
                use_sync_bn: bool = False,
                norm_momentum: float = 0.99,
                norm_epsilon: float = 0.001,  # pytype: disable=annotation-type-mismatch  # typed-keras
@@ -131,6 +132,8 @@ class EfficientNet(tf.keras.Model):
       bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
       activation: A `str` of name of the activation function.
+      se_inner_activation: A `str` of name of the activation function used in
+        Sequeeze and Excitation layer.
       use_sync_bn: If True, use synchronized batch normalization.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
@@ -142,6 +145,7 @@ class EfficientNet(tf.keras.Model):
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
     self._use_sync_bn = use_sync_bn
     self._activation = activation
+    self._se_inner_activation = se_inner_activation
     self._kernel_initializer = kernel_initializer
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
@@ -244,6 +248,7 @@ class EfficientNet(tf.keras.Model):
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activation=self._activation,
+        se_inner_activation=self._se_inner_activation,
         use_sync_bn=self._use_sync_bn,
         norm_momentum=self._norm_momentum,
         norm_epsilon=self._norm_epsilon)(
@@ -262,6 +267,7 @@ class EfficientNet(tf.keras.Model):
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer,
           activation=self._activation,
+          se_inner_activation=self._se_inner_activation,
           use_sync_bn=self._use_sync_bn,
           norm_momentum=self._norm_momentum,
           norm_epsilon=self._norm_epsilon)(
@@ -299,7 +305,8 @@ def build_efficientnet(
     input_specs: tf.keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf.keras.regularizers.Regularizer = None,
+    se_inner_activation: str = 'relu') -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds EfficientNet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()
@@ -315,4 +322,5 @@ def build_efficientnet(
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
-      kernel_regularizer=l2_regularizer)
+      kernel_regularizer=l2_regularizer,
+      se_inner_activation=se_inner_activation)
