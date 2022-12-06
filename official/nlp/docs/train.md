@@ -101,6 +101,62 @@ export PYTHONPATH=$PYTHONPATH:/path/to/models
 pip3 install --user -r official/requirements.txt
 ```
 
+### Fine-tuning SQuAD with a pre-trained BERT checkpoint
+
+This example fine-tunes a pre-trained BERT checkpoint on the
+Stanford Question Answering Dataset (SQuAD) using TPUs.
+The [SQuAD website](https://rajpurkar.github.io/SQuAD-explorer/) contains
+detailed information about the SQuAD datasets and evaluation. After downloading
+the SQuAD datasets and the [pre-trained BERT checkpoints](https://github.com/tensorflow/models/blob/master/official/nlp/docs/pretrained_models.md),
+you can run the following command to prepare the `tf_record` files:
+
+```shell
+export SQUAD_DIR=~/squad
+export BERT_DIR=~/uncased_L-12_H-768_A-12
+export OUTPUT_DATA_DIR=gs://some_bucket/datasets
+
+python3 create_finetuning_data.py \
+ --squad_data_file=${SQUAD_DIR}/train-v1.1.json \
+ --vocab_file=${BERT_DIR}/vocab.txt \
+ --train_data_output_path=${OUTPUT_DATA_DIR}/train.tf_record \
+ --meta_data_file_path=${OUTPUT_DATA_DIR}/squad_meta_data \
+ --fine_tuning_task_type=squad --max_seq_length=384
+```
+
+Note: To create fine-tuning data with SQuAD 2.0, you need to add flag `--version_2_with_negative=True`.
+
+Then, you can start the training and evaluation jobs:
+
+```shell
+export SQUAD_DIR=~/squad
+export INPUT_DATA_DIR=gs://some_bucket/datasets
+export OUTPUT_DIR=gs://some_bucket/my_output_dir
+
+# See the following link for more pre-trained checkpoints:
+# https://github.com/tensorflow/models/blob/master/official/nlp/docs/pretrained_models.md
+export BERT_DIR=~/uncased_L-12_H-768_A-12
+
+# Override the configurations by FLAGS. Alternatively, you can directly edit
+# `configs/experiments/squad_v1.1.yaml` to specify corresponding fields.
+# Also note that the training data is the pre-processed tf_record file, while
+# the validation file is the raw json file.
+export PARAMS=task.train_data.input_path=$INPUT_DATA_DIR/train.tf_record
+export PARAMS=$PARAMS,task.validation_data.input_path=$SQUAD_DIR/dev-v1.1.json
+export PARAMS=$PARAMS,task.validation_data.vocab_file=$BERT_DIR/vocab.txt
+export PARAMS=$PARAMS,task.init_checkpoint=$BERT_DIR/bert_model.ckpt
+export PARAMS=$PARAMS,runtime.distribution_strategy=tpu
+
+python3 train.py \
+ --experiment=bert/squad \
+ --mode=train_and_eval \
+ --model_dir=$OUTPUT_DIR \
+ --config_file=configs/models/bert_en_uncased_base.yaml \
+ --config_file=configs/experiments/squad_v1.1.yaml \
+ --tpu=${TPU_NAME} \
+ --params_override=$PARAMS
+
+```
+
 ### Fine-tuning Sentence Classification with BERT from TF-Hub
 
 <details>
@@ -171,74 +227,16 @@ models in `$OUTPUT_DIR`.
 
 </details>
 
-### Fine-tuning SQuAD with a pre-trained BERT checkpoint
-
-<details>
-
-This example fine-tunes a pre-trained BERT checkpoint on the
-Stanford Question Answering Dataset (SQuAD) using TPUs.
-The [SQuAD website](https://rajpurkar.github.io/SQuAD-explorer/) contains
-detailed information about the SQuAD datasets and evaluation. After downloading
-the SQuAD datasets and the [pre-trained BERT checkpoints](https://github.com/tensorflow/models/blob/master/official/nlp/docs/pretrained_models.md),
-you can run the following command to prepare the `tf_record` files:
-
-```shell
-export SQUAD_DIR=~/squad
-export BERT_DIR=~/uncased_L-12_H-768_A-12
-export OUTPUT_DATA_DIR=gs://some_bucket/datasets
-
-python3 create_finetuning_data.py \
- --squad_data_file=${SQUAD_DIR}/train-v1.1.json \
- --vocab_file=${BERT_DIR}/vocab.txt \
- --train_data_output_path=${OUTPUT_DATA_DIR}/train.tf_record \
- --meta_data_file_path=${OUTPUT_DATA_DIR}/squad_meta_data \
- --fine_tuning_task_type=squad --max_seq_length=384
-```
-
-Note: To create fine-tuning data with SQuAD 2.0, you need to add flag `--version_2_with_negative=True`.
-
-Then, you can start the training and evaluation jobs:
-
-```shell
-export SQUAD_DIR=~/squad
-export INPUT_DATA_DIR=gs://some_bucket/datasets
-export OUTPUT_DIR=gs://some_bucket/my_output_dir
-
-# See the following link for more pre-trained checkpoints:
-# https://github.com/tensorflow/models/blob/master/official/nlp/docs/pretrained_models.md
-export BERT_DIR=~/uncased_L-12_H-768_A-12
-
-# Override the configurations by FLAGS. Alternatively, you can directly edit
-# `configs/experiments/squad_v1.1.yaml` to specify corresponding fields.
-# Also note that the training data is the pre-processed tf_record file, while
-# the validation file is the raw json file.
-export PARAMS=task.train_data.input_path=$INPUT_DATA_DIR/train.tf_record
-export PARAMS=$PARAMS,task.validation_data.input_path=$SQUAD_DIR/dev-v1.1.json
-export PARAMS=$PARAMS,task.validation_data.vocab_file=$BERT_DIR/vocab.txt
-export PARAMS=$PARAMS,task.init_checkpoint=$BERT_DIR/bert_model.ckpt
-export PARAMS=$PARAMS,runtime.distribution_strategy=tpu
-
-python3 train.py \
- --experiment=bert/squad \
- --mode=train_and_eval \
- --model_dir=$OUTPUT_DIR \
- --config_file=configs/models/bert_en_uncased_base.yaml \
- --config_file=configs/experiments/squad_v1.1.yaml \
- --tpu=${TPU_NAME} \
- --params_override=$PARAMS
-
-```
-
 ### Pre-train a BERT from scratch
-
-</details>
 
 This example pre-trains a BERT model with Wikipedia and Books datasets used by
 the original BERT paper.
-The [BERT repo](https://github.com/tensorflow/models/blob/master/official/nlp/data/create_pretraining_data.py)
+The [BERT repo](https://github.com/google-research/bert)
 contains detailed information about the Wikipedia dump and
 [BookCorpus](https://yknzhu.wixsite.com/mbweb). Of course, the pre-training
 recipe is generic and you can apply the same recipe to your own corpus.
+
+<details>
 
 Please use the script
 [`create_pretraining_data.py`](https://github.com/tensorflow/models/blob/master/official/nlp/data/create_pretraining_data.py)
@@ -267,7 +265,7 @@ python models/official/nlp/data/create_pretraining_data.py \
 
 Then, you can update the yaml configuration file, e.g.
 `configs/experiments/wiki_books_pretrain.yaml` to specify your data paths and
-update masking-related hyper parameters to match with your specification for 
+update masking-related hyper parameters to match with your specification for
 the pretraining data. When your data have multiple shards, you can
 use `*` to include multiple files.
 
@@ -279,6 +277,8 @@ model:
 ```
 
 to match the hidden dimensions.
+
+</details>
 
 Then, you can start the training and evaluation jobs, which runs the
 [`bert/pretraining`](https://github.com/tensorflow/models/blob/master/official/nlp/configs/pretraining_experiments.py#L51)
