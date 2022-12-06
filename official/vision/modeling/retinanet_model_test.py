@@ -100,7 +100,10 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
       anchor_boxes = None
 
     if has_att_heads:
-      attribute_heads = [dict(name='depth', type='regression', size=1)]
+      attribute_heads = [
+          dict(
+              name='depth', type='regression', size=1, prediction_tower_name='')
+      ]
     else:
       attribute_heads = None
 
@@ -183,7 +186,13 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
           max_level=max_level)
 
       if has_att_heads:
-        attribute_heads = [dict(name='depth', type='regression', size=1)]
+        attribute_heads = [
+            dict(
+                name='depth',
+                type='regression',
+                size=1,
+                prediction_tower_name='')
+        ]
       else:
         attribute_heads = None
       head = dense_prediction_heads.RetinaNetHead(

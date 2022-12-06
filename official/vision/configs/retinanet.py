@@ -99,6 +99,10 @@ class AttributeHead(hyperparams.Config):
   name: str = ''
   type: str = 'regression'
   size: int = 1
+  # Attribute heads of the same "prediction_tower_name" will share the same
+  # prediction tower. If unspecified, they will use their individual prediction
+  # tower.
+  prediction_tower_name: str = ''
 
 
 @dataclasses.dataclass

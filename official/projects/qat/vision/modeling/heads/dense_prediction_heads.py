@@ -417,15 +417,31 @@ class RetinaNetHeadQuantized(tf.keras.layers.Layer):
 
       # attribute nets.
       if self._config_dict['attribute_heads']:
+        prediction_tower_output = {}
         for att_config in self._config_dict['attribute_heads']:
           att_name = att_config['name']
-          x = this_level_features
-          for conv, norm in zip(self._att_convs[att_name],
-                                self._att_norms[att_name][i]):
-            x = conv(x)
-            x = norm(x)
-            x = self._activation(x)
-          attributes[att_name][str(level)] = self._att_predictors[att_name](x)
+
+          def build_prediction_tower(atttribute_name, features, feature_level):
+            x = features
+            for conv, norm in zip(
+                self._att_convs[atttribute_name],
+                self._att_norms[atttribute_name][feature_level]):
+              x = conv(x)
+              x = norm(x)
+              x = self._activation(x)
+            return x
+
+          prediction_tower_name = att_config['prediction_tower_name']
+          if not prediction_tower_name:
+            attributes[att_name][str(level)] = self._att_predictors[att_name](
+                build_prediction_tower(att_name, this_level_features, i))
+          else:
+            if prediction_tower_name not in prediction_tower_output:
+              prediction_tower_output[
+                  prediction_tower_name] = build_prediction_tower(
+                      att_name, this_level_features, i)
+            attributes[att_name][str(level)] = self._att_predictors[att_name](
+                prediction_tower_output[prediction_tower_name])
 
     return scores, boxes, attributes
 
@@ -435,4 +451,3 @@ class RetinaNetHeadQuantized(tf.keras.layers.Layer):
   @classmethod
   def from_config(cls, config):
     return cls(**config)
-
