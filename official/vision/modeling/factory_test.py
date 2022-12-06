@@ -100,10 +100,17 @@ class RetinaNetBuilderTest(parameterized.TestCase, tf.test.TestCase):
         model_config=model_config,
         l2_regularizer=l2_regularizer)
     if has_att_heads:
-      self.assertEqual(model_config.head.attribute_heads[0].as_dict(),
-                       dict(name='att1', type='regression', size=1))
-      self.assertEqual(model_config.head.attribute_heads[1].as_dict(),
-                       dict(name='att2', type='classification', size=2))
+      self.assertEqual(
+          model_config.head.attribute_heads[0].as_dict(),
+          dict(
+              name='att1', type='regression', size=1, prediction_tower_name=''))
+      self.assertEqual(
+          model_config.head.attribute_heads[1].as_dict(),
+          dict(
+              name='att2',
+              type='classification',
+              size=2,
+              prediction_tower_name=''))
 
 
 class VideoClassificationModelBuilderTest(parameterized.TestCase,

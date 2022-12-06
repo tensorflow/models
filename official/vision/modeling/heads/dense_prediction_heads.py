@@ -211,6 +211,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
         att_name = att_config['name']
         att_type = att_config['type']
         att_size = att_config['size']
+        att_prediction_tower_name = att_config['prediction_tower_name']
         att_convs_i = []
         att_norms_i = []
 
@@ -251,6 +252,12 @@ class RetinaNetHead(tf.keras.layers.Layer):
         else:
           raise ValueError(
               'Attribute head type {} not supported.'.format(att_type))
+
+        if att_prediction_tower_name and self._config_dict[
+            'share_classification_heads']:
+          raise ValueError(
+              'share_classification_heads cannot be set as True when att_prediction_tower_name is specified.'
+          )
 
         if not self._config_dict['use_separable_conv']:
           att_predictor_kwargs.update({
@@ -330,6 +337,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
 
       # attribute nets.
       if self._config_dict['attribute_heads']:
+        prediction_tower_output = {}
         for att_config in self._config_dict['attribute_heads']:
           att_name = att_config['name']
           att_type = att_config['type']
@@ -338,13 +346,29 @@ class RetinaNetHead(tf.keras.layers.Layer):
             attributes[att_name][str(level)] = self._att_predictors[att_name](
                 classnet_x)
           else:
-            x = this_level_features
-            for conv, norm in zip(self._att_convs[att_name],
-                                  self._att_norms[att_name][i]):
-              x = conv(x)
-              x = norm(x)
-              x = self._activation(x)
-            attributes[att_name][str(level)] = self._att_predictors[att_name](x)
+
+            def build_prediction_tower(atttribute_name, features,
+                                       feature_level):
+              x = features
+              for conv, norm in zip(
+                  self._att_convs[atttribute_name],
+                  self._att_norms[atttribute_name][feature_level]):
+                x = conv(x)
+                x = norm(x)
+                x = self._activation(x)
+              return x
+
+            prediction_tower_name = att_config['prediction_tower_name']
+            if not prediction_tower_name:
+              attributes[att_name][str(level)] = self._att_predictors[att_name](
+                  build_prediction_tower(att_name, this_level_features, i))
+            else:
+              if prediction_tower_name not in prediction_tower_output:
+                prediction_tower_output[
+                    prediction_tower_name] = build_prediction_tower(
+                        att_name, this_level_features, i)
+              attributes[att_name][str(level)] = self._att_predictors[att_name](
+                  prediction_tower_output[prediction_tower_name])
 
     return scores, boxes, attributes
 
