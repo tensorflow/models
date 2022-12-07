@@ -140,7 +140,7 @@ class TfExampleBuilder(tf_example_builder.TfExampleBuilder):
     # requirement, which will transform the source ID into float32.
     if not image_source_id:
       hashed_image = int(hashlib.blake2s(encoded_image).hexdigest(), 16)
-      image_source_id = _to_bytes(str(hash(hashed_image) % ((1 << 24) + 1)))
+      image_source_id = _to_bytes(str(hashed_image % ((1 << 24) + 1)))
 
     if label is not None:
       self.add_ints_feature(feature_key.label, label)

@@ -23,22 +23,21 @@ from official.vision.data import tf_example_builder
 
 class TfExampleBuilderTest(tf.test.TestCase, parameterized.TestCase):
 
-  @parameterized.named_parameters(
-      ('RGB_PNG', 128, 64, 3, 'PNG', '15125990', 3),
-      ('RGB_RAW', 128, 128, 3, 'RAW', '5607919', 0),
-      ('RGB_JPEG', 64, 128, 3, 'JPEG', '3107796', [2, 5]))
+  @parameterized.named_parameters(('RGB_PNG', 128, 64, 3, 'PNG', 3),
+                                  ('RGB_RAW', 128, 128, 3, 'RAW', 0),
+                                  ('RGB_JPEG', 64, 128, 3, 'JPEG', [2, 5]))
   def test_add_image_matrix_feature_success(self, height, width, num_channels,
-                                            image_format, hashed_image, label):
+                                            image_format, label):
     # Prepare test data.
     image_np = fake_feature_generator.generate_image_np(height, width,
                                                         num_channels)
     expected_image_bytes = image_utils.encode_image(image_np, image_format)
-    hashed_image = bytes(hashed_image, 'ascii')
+    hashed_image = bytes('10242048', 'ascii')
 
     # Run code logic.
     example_builder = tf_example_builder.TfExampleBuilder()
-    example_builder.add_image_matrix_feature(image_np, image_format,
-                                             label=label)
+    example_builder.add_image_matrix_feature(
+        image_np, image_format, hashed_image, label=label)
     example = example_builder.example
 
     # Verify outputs.
@@ -90,11 +89,15 @@ class TfExampleBuilderTest(tf.test.TestCase, parameterized.TestCase):
     image_np = fake_feature_generator.generate_image_np(height, width,
                                                         num_channels)
     expected_image_bytes = image_utils.encode_image(image_np, image_format)
-    hashed_image = bytes('11981843', 'ascii')
+    hashed_image = bytes('10242048', 'ascii')
 
     example_builder = tf_example_builder.TfExampleBuilder()
     example_builder.add_image_matrix_feature(
-        image_np, image_format, feature_prefix=feature_prefix, label=label)
+        image_np,
+        image_format,
+        hashed_image,
+        feature_prefix=feature_prefix,
+        label=label)
     example = example_builder.example
 
     self.assertProtoEquals(
@@ -133,12 +136,8 @@ class TfExampleBuilderTest(tf.test.TestCase, parameterized.TestCase):
     width = 128
     num_channels = 3
     image_format = 'RAW'
-    image_bytes = tf.bfloat16.as_numpy_dtype
-    image_np = fake_feature_generator.generate_image_np(height, width,
-                                                        num_channels)
-    image_np = image_np.astype(image_bytes)
-    expected_image_bytes = image_utils.encode_image(image_np, image_format)
-    hashed_image = bytes('3572575', 'ascii')
+    expected_image_bytes = bytes('image', 'ascii')
+    hashed_image = bytes('16188651', 'ascii')
 
     example_builder = tf_example_builder.TfExampleBuilder()
     example_builder.add_encoded_image_feature(expected_image_bytes, 'RAW',
@@ -184,20 +183,15 @@ class TfExampleBuilderTest(tf.test.TestCase, parameterized.TestCase):
       example_builder.add_encoded_image_feature(expected_image_bytes,
                                                 image_format)
 
-  @parameterized.parameters(
-      (True, True, True, True, True, True),
-      (False, False, False, False, False, False),
-      (True, False, False, False, False, False),
-      (False, True, False, False, False, False),
-      (False, False, True, False, False, False),
-      (False, False, False, True, False, False),
-      (False, False, False, False, True, False),
-      (False, False, False, False, False, True),
-  )
+  @parameterized.product(
+      miss_image_format=(True, False),
+      miss_height=(True, False),
+      miss_width=(True, False),
+      miss_num_channels=(True, False),
+      miss_label=(True, False))
   def test_add_encoded_image_feature_success(self, miss_image_format,
                                              miss_height, miss_width,
                                              miss_num_channels,
-                                             miss_image_source_id,
                                              miss_label):
     height = 64
     width = 64
@@ -206,14 +200,15 @@ class TfExampleBuilderTest(tf.test.TestCase, parameterized.TestCase):
     image_np = fake_feature_generator.generate_image_np(height, width,
                                                         num_channels)
     image_bytes = image_utils.encode_image(image_np, image_format)
-    hashed_image = bytes('2968688', 'ascii')
+    # We don't test on image_source_id because encoding process becomes
+    # non-deterministic.
+    hashed_image = bytes('10242048', 'ascii')
     label = 5
 
     image_format = None if miss_image_format else image_format
     height = None if miss_height else height
     width = None if miss_width else width
     num_channels = None if miss_num_channels else num_channels
-    image_source_id = None if miss_image_source_id else hashed_image
     label = None if miss_label else label
 
     example_builder = tf_example_builder.TfExampleBuilder()
@@ -223,7 +218,7 @@ class TfExampleBuilderTest(tf.test.TestCase, parameterized.TestCase):
         height=height,
         width=width,
         num_channels=num_channels,
-        image_source_id=image_source_id,
+        image_source_id=hashed_image,
         label=label)
     example = example_builder.example
 
