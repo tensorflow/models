@@ -92,6 +92,13 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         status = ckpt.read(checkpoint_path)
         status.expect_partial().assert_existing_objects_matched()
 
+      elif init_module == 'decoder':
+        checkpoint_path = _get_checkpoint_path(
+            self.task_config.init_checkpoint)
+        ckpt = tf.train.Checkpoint(decoder=model.decoder)
+        status = ckpt.read(checkpoint_path)
+        status.expect_partial().assert_existing_objects_matched()
+
       elif init_module == 'segmentation_backbone':
         checkpoint_path = _get_checkpoint_path(
             self.task_config.segmentation_init_checkpoint)
@@ -110,8 +117,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
 
       else:
         raise ValueError(
-            "Only 'all', 'backbone', 'segmentation_backbone' and/or "
-            "segmentation_backbone' can be used to initialize the model, but "
+            "Only 'all', 'backbone', 'decoder', 'segmentation_backbone' and/or "
+            "'segmentation_decoder' can be used to initialize the model, but "
             "got {}".format(init_module))
       logging.info('Finished loading pretrained checkpoint from %s for %s',
                    checkpoint_path, init_module)
