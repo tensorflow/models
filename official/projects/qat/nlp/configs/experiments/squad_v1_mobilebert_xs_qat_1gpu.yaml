@@ -1,0 +1,52 @@
+task:
+  # hub_module_url: 'gs://**/panzf/mobilebert/tfhub/'
+  max_answer_length: 30
+  n_best_size: 20
+  null_score_diff_threshold: 0.0
+  init_checkpoint: gs://**/mobilebert_xs_120_29708148/ckpt-19420-1
+  train_data:
+    drop_remainder: true
+    global_batch_size: 4
+    input_path: gs://**/tp/bert/squad_v1.1/train.tf_record
+    is_training: true
+    seq_length: 384
+  validation_data:
+    do_lower_case: true
+    doc_stride: 128
+    drop_remainder: false
+    global_batch_size: 6
+    input_path: gs://**/squad/dev-v1.1.json
+    is_training: false
+    query_length: 64
+    seq_length: 384
+    tokenization: WordPiece
+    version_2_with_negative: false
+    vocab_file: gs://**/panzf/ttl-30d/mobilebert/tf2_checkpoint/vocab.txt
+trainer:
+  checkpoint_interval: 8000
+  max_to_keep: 5
+  optimizer_config:
+    learning_rate:
+      polynomial:
+        decay_steps: 56000
+        end_learning_rate: 0.0
+        initial_learning_rate: 1.5e-05
+        power: 1.0
+      type: polynomial
+    optimizer:
+      type: adamw
+    warmup:
+      polynomial:
+        power: 1
+        # 10% of total training steps
+        warmup_steps: 5600
+      type: polynomial
+  steps_per_loop: 8000
+  summary_interval: 8000
+  # 7 epochs for training
+  train_steps: 56000
+  validation_interval: 8000
+  validation_steps: 1808
+  best_checkpoint_export_subdir: 'best_ckpt'
+  best_checkpoint_eval_metric: 'final_f1'
+  best_checkpoint_metric_comp: 'higher'
