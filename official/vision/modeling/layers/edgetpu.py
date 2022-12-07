@@ -313,9 +313,9 @@ def _non_max_suppression_as_is(boxes: tf.Tensor,
 
 
 def concat_and_top_k(
-    top_k: int, scores_pair: tuple[Optional[tf.Tensor], tf.Tensor],
-    *other_pairs: tuple[Optional[tf.Tensor], tf.Tensor]
-) -> tuple[tf.Tensor, ...]:
+    top_k: int, scores_pair: 'tuple[Optional[tf.Tensor], tf.Tensor]',
+    *other_pairs: 'tuple[Optional[tf.Tensor], tf.Tensor]'
+) -> 'tuple[tf.Tensor, ...]':
   """Combines shards of top_k operation, when sharded along filtered dimension.
 
   General idea is that sometimes top_k dimension is very large, while top_k is
