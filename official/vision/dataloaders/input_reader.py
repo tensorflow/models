@@ -16,6 +16,7 @@
 
 from typing import Any, Callable, Optional, Tuple
 
+from absl import logging
 import tensorflow as tf
 
 from official.core import config_definitions as cfg
@@ -23,7 +24,8 @@ from official.core import input_reader
 
 
 def calculate_batch_sizes(total_batch_size: int,
-                          pseudo_label_ratio: float) -> Tuple[int, int]:
+                          pseudo_label_ratio: float,
+                          pseudo_label_batch_size: int = 0) -> Tuple[int, int]:
   """Calculates labeled and pseudo-labeled dataset batch sizes.
 
   Returns (labeled_batch_size, pseudo_labeled_batch_size) given a
@@ -31,26 +33,36 @@ def calculate_batch_sizes(total_batch_size: int,
 
   Args:
    total_batch_size: The total batch size for all data.
-   pseudo_label_ratio: A non-negative float ratio of pseudo-labeled
-     to labeled data in a batch.
+   pseudo_label_ratio: A float ratio of pseudo-labeled to labeled data in a
+     batch. If it is negative, use `pseudo_label_batch_size` instead.
+   pseudo_label_batch_size: The batch size of pseudo-labeled data. It is ignored
+     if `pseudo_label_ratio` is valid. If not, it will be used and it cannot be
+     larger than total global batch size or less than 0 if pseudo_label_ratio is
+     also less than 0.
 
   Returns:
     (labeled_batch_size, pseudo_labeled_batch_size) as ints.
 
   Raises:
-    ValueError: If total_batch_size is negative.
-    ValueError: If pseudo_label_ratio is negative.
+    ValueError: If total_batch_size is negative, or both If pseudo_label_ratio
+      is negative and pseudo-label global_batch_size is negative or larger than
+      total batch size.
   """
   if total_batch_size < 0:
     raise ValueError('Invalid total_batch_size: {}'.format(total_batch_size))
-  if pseudo_label_ratio < 0.0:
-    raise ValueError(
-        'Invalid pseudo_label_ratio: {}'.format(pseudo_label_ratio))
-
-  ratio_factor = pseudo_label_ratio / (1.0 + pseudo_label_ratio)
-  pseudo_labeled_batch_size = int(round(total_batch_size * ratio_factor))
-  labeled_batch_size = total_batch_size - pseudo_labeled_batch_size
-  return labeled_batch_size, pseudo_labeled_batch_size
+  if pseudo_label_ratio >= 0.0:
+    ratio_factor = pseudo_label_ratio / (1.0 + pseudo_label_ratio)
+    pseudo_label_batch_size = int(total_batch_size * ratio_factor)
+    label_batch_size = total_batch_size - pseudo_label_batch_size
+  else:
+    if pseudo_label_batch_size > total_batch_size or pseudo_label_batch_size < 0:
+      raise ValueError(
+          'The batch size of pseudo-label dataset should not be larger than '
+          'total global batch size.')
+    logging.info('data_ratio for pseudo-label dataset is less than 0. '
+                 'Use global_batch_size from pseudo_label data config instead.')
+    label_batch_size = total_batch_size - pseudo_label_batch_size
+  return label_batch_size, pseudo_label_batch_size
 
 
 class CombinationDatasetInputReader(input_reader.InputReader):
@@ -112,6 +124,7 @@ class CombinationDatasetInputReader(input_reader.InputReader):
     self._pseudo_label_file_pattern = params.pseudo_label_data.input_path
     self._pseudo_label_dataset_fn = pseudo_label_dataset_fn
     self._pseudo_label_data_ratio = params.pseudo_label_data.data_ratio
+    self._pseudo_label_batch_size = params.pseudo_label_data.global_batch_size
     self._pseudo_label_matched_files = input_reader.match_files(
         self._pseudo_label_file_pattern)
     if not self._drop_remainder:
@@ -125,7 +138,8 @@ class CombinationDatasetInputReader(input_reader.InputReader):
     """Generates a tf.data.Dataset object."""
 
     labeled_batch_size, pl_batch_size = calculate_batch_sizes(
-        self._global_batch_size, self._pseudo_label_data_ratio)
+        self._global_batch_size, self._pseudo_label_data_ratio,
+        self._pseudo_label_batch_size)
 
     if not labeled_batch_size and pl_batch_size:
       raise ValueError(
