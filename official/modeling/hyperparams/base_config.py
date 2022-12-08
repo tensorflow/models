@@ -13,17 +13,20 @@
 # limitations under the License.
 
 """Base configurations to standardize experiments."""
+
 import copy
 import dataclasses
 import functools
 import inspect
-from typing import Any, List, Mapping, Optional, Type
+import typing
+from typing import Any, List, Mapping, Optional, Type, Union
 
 from absl import logging
 import tensorflow as tf
 import yaml
 
 from official.modeling.hyperparams import params_dict
+
 
 _BOUND = set()
 
@@ -52,6 +55,11 @@ def bind(config_cls):
     return builder
 
   return decorator
+
+
+def _is_optional(field):
+  return typing.get_origin(field) is Union and type(None) in typing.get_args(
+      field)
 
 
 @dataclasses.dataclass
@@ -164,18 +172,30 @@ class Config(params_dict.ParamsDict):
     if k in cls.__annotations__:
       # Directly Config subtype.
       type_annotation = cls.__annotations__[k]  # pytype: disable=invalid-annotation
-      if (isinstance(type_annotation, type) and
-          issubclass(type_annotation, Config)):
-        subconfig_type = cls.__annotations__[k]  # pytype: disable=invalid-annotation
-      else:
-        # Check if the field is a sequence of subtypes.
-        field_type = getattr(type_annotation, '__origin__', type(None))
-        if (isinstance(field_type, type) and
-            issubclass(field_type, cls.SEQUENCE_TYPES)):
-          element_type = getattr(type_annotation, '__args__', [type(None)])[0]
-          subconfig_type = (
-              element_type if issubclass(element_type, params_dict.ParamsDict)
-              else subconfig_type)
+      i = 0
+      # Loop for striping the Optional annotation.
+      traverse_in = True
+      while traverse_in:
+        i += 1
+        if (isinstance(type_annotation, type) and
+            issubclass(type_annotation, Config)):
+          subconfig_type = type_annotation
+          break
+        else:
+          # Check if the field is a sequence of subtypes.
+          field_type = typing.get_origin(type_annotation)
+          if (isinstance(field_type, type) and
+              issubclass(field_type, cls.SEQUENCE_TYPES)):
+            element_type = typing.get_args(type_annotation)[0]
+            subconfig_type = (
+                element_type if issubclass(element_type, params_dict.ParamsDict)
+                else subconfig_type)
+            break
+          elif _is_optional(type_annotation):
+            # Strip the `Optional` annotation and process the subtype.
+            type_annotation = typing.get_args(type_annotation)[0]
+            continue
+        traverse_in = False
     return subconfig_type
 
   def _set(self, k, v):

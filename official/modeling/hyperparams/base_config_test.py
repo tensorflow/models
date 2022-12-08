@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import pprint
-from typing import List, Tuple
+import dataclasses
+from typing import List, Optional, Tuple
 
 from absl.testing import parameterized
-import dataclasses
 import tensorflow as tf
+
 from official.modeling.hyperparams import base_config
 
 
@@ -52,6 +53,11 @@ class DumpConfig4(DumpConfig2):
 class DummyConfig5(base_config.Config):
   y: Tuple[DumpConfig2, ...] = (DumpConfig2(), DumpConfig4())
   z: Tuple[str] = ('a',)
+
+
+@dataclasses.dataclass
+class DumpConfig6(base_config.Config):
+  test_config1: Optional[DumpConfig1] = None
 
 
 class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
@@ -379,6 +385,13 @@ class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
     }, is_strict=True)
     self.assertEmpty(config.y)
     self.assertEmpty(config.z)
+
+  def test_correctly_display_optional_field(self):
+    c = DumpConfig6()
+    c.override({'test_config1': {'b': 'abc'}})
+    self.assertEqual(f'{c}',
+                     "DumpConfig6(test_config1=DumpConfig1(a=1, b='abc'))")
+    self.assertIsInstance(c.test_config1, DumpConfig1)
 
 
 if __name__ == '__main__':
