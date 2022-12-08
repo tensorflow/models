@@ -25,16 +25,6 @@ def define_flags():
   # ===========================================================================
   # Glue binary flags.
   # ===========================================================================
-  flags.DEFINE_enum(
-      'mode', 'train_eval_and_predict',
-      ['train_eval_and_predict', 'train_eval', 'predict'],
-      'The mode to run the binary. If `train_eval_and_predict` '
-      'it will (1) train on the training data and (2) evaluate on '
-      'the validation data and (3) finally generate predictions '
-      'on the prediction data; if `train_eval`, it will only '
-      'run training and evaluation; if `predict`, it will only '
-      'run prediction using the model in `model_dir`.')
-
   flags.DEFINE_enum('task_name', None, [
       'AX', 'COLA', 'MNLI', 'MRPC', 'QNLI', 'QQP', 'RTE', 'SST-2', 'STS-B',
       'WNLI'
