@@ -74,7 +74,15 @@ class ClassificationModel(tf.keras.Model):
 
     if add_head_batch_norm:
       x = norm(axis=axis, momentum=norm_momentum, epsilon=norm_epsilon)(x)
-    x = tf.keras.layers.GlobalAveragePooling2D()(x)
+
+    # Depending on the backbone type, backbone's output can be
+    # [batch_size, height, weight, channel_size] or
+    # [batch_size, token_size, hidden_size].
+    if len(x.shape) == 4:
+      x = tf.keras.layers.GlobalAveragePooling2D()(x)
+    elif len(x.shape) == 3:
+      x = tf.keras.layers.GlobalAveragePooling1D()(x)
+
     if not skip_logits_layer:
       x = tf.keras.layers.Dropout(dropout_rate)(x)
       x = tf.keras.layers.Dense(
