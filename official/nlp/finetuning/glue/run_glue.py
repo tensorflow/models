@@ -46,6 +46,16 @@ flags.DEFINE_string(
     'used when creating the Cloud TPU, or a grpc://ip.address.of.tpu:8470 url.')
 flags.DEFINE_integer('num_gpus', 1, 'The number of GPUs to use at each worker.')
 
+_MODE = flags.DEFINE_enum(
+    'mode', 'train_eval_and_predict',
+    ['train_eval_and_predict', 'train_eval', 'predict'],
+    'The mode to run the binary. If `train_eval_and_predict` '
+    'it will (1) train on the training data and (2) evaluate on '
+    'the validation data and (3) finally generate predictions '
+    'on the prediction data; if `train_eval`, it will only '
+    'run training and evaluation; if `predict`, it will only '
+    'run prediction using the model in `model_dir`.')
+
 FLAGS = flags.FLAGS
 
 EXPERIMENT_TYPE = 'bert/sentence_prediction'
@@ -234,7 +244,7 @@ def main(argv):
 
   with distribution_strategy.scope():
     task = None
-    if 'train_eval' in FLAGS.mode:
+    if 'train_eval' in _MODE.value:
       logging.info('Starting training and eval...')
       logging.info('Model dir: %s', FLAGS.model_dir)
 
@@ -250,7 +260,7 @@ def main(argv):
           params=exp_config,
           model_dir=FLAGS.model_dir)
 
-    if 'predict' in FLAGS.mode:
+    if 'predict' in _MODE.value:
       logging.info('Starting predict...')
       # When mode is `predict`, `task` will be None.
       if task is None:
