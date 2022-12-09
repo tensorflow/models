@@ -23,7 +23,7 @@ steps require less than two hours in total on both sets.
 
 ## Installing TensorFlow, the Object Detection API, and Google Cloud SDK
 
-Please run through the [installation instructions](installation.md) to install
+Please run through the [installation instructions](tf2.md) to install
 TensorFlow and all its dependencies. Ensure the Protobuf libraries are compiled
 and the library directories are added to `PYTHONPATH`. You will also need to
 `pip` install `pandas` and `contextlib2`.
