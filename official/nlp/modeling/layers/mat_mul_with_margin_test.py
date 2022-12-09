@@ -16,11 +16,10 @@
 
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.modeling.layers import mat_mul_with_margin
 
 
-class MatMulWithMarginTest(keras_parameterized.TestCase):
+class MatMulWithMarginTest(tf.test.TestCase):
 
   def test_layer_invocation(self):
     """Validate that the Keras object can be created and invoked."""

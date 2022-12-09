@@ -17,14 +17,10 @@
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.modeling.layers import masked_softmax
 
 
-# This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
-# guarantees forward compatibility of this code for the V2 switchover.
-@keras_parameterized.run_all_keras_modes
-class MaskedSoftmaxLayerTest(keras_parameterized.TestCase):
+class MaskedSoftmaxLayerTest(tf.test.TestCase):
 
   def test_non_masked_softmax(self):
     test_layer = masked_softmax.MaskedSoftmax()

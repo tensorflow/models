@@ -17,7 +17,6 @@
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.modeling.layers import attention
 
 
@@ -32,8 +31,7 @@ def _create_cache(batch_size, init_decode_length, num_heads, head_size):
   }
 
 
-@keras_parameterized.run_all_keras_modes
-class CachedAttentionTest(keras_parameterized.TestCase):
+class CachedAttentionTest(tf.test.TestCase):
 
   def test_masked_attention(self):
     """Test with a mask tensor."""

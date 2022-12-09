@@ -19,7 +19,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.modeling import networks
 from official.nlp.modeling.models import xlnet
 
@@ -44,10 +43,7 @@ def _get_xlnet_base() -> tf.keras.layers.Layer:
       inner_activation='relu')
 
 
-# This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
-# guarantees forward compatibility of this code for the V2 switchover.
-@keras_parameterized.run_all_keras_modes
-class XLNetMaskedLMTest(keras_parameterized.TestCase):
+class XLNetMaskedLMTest(tf.test.TestCase):
 
   def test_xlnet_masked_lm_head(self):
     hidden_size = 10
@@ -62,8 +58,7 @@ class XLNetMaskedLMTest(keras_parameterized.TestCase):
     self.assertAllClose(mlm_output.shape, (batch_size, hidden_size))
 
 
-@keras_parameterized.run_all_keras_modes
-class XLNetPretrainerTest(keras_parameterized.TestCase):
+class XLNetPretrainerTest(tf.test.TestCase):
 
   def test_xlnet_trainer(self):
     """Validates that the Keras object can be created."""
@@ -144,8 +139,7 @@ class XLNetPretrainerTest(keras_parameterized.TestCase):
                         new_xlnet_trainer_model.get_config())
 
 
-@keras_parameterized.run_all_keras_modes
-class XLNetClassifierTest(keras_parameterized.TestCase):
+class XLNetClassifierTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_xlnet_trainer(self):
     """Validate that the Keras object can be created."""
@@ -232,8 +226,7 @@ class XLNetClassifierTest(keras_parameterized.TestCase):
                         new_xlnet_trainer_model.get_config())
 
 
-@keras_parameterized.run_all_keras_modes
-class XLNetSpanLabelerTest(keras_parameterized.TestCase):
+class XLNetSpanLabelerTest(tf.test.TestCase):
 
   def test_xlnet_trainer(self):
     """Validate that the Keras object can be created."""

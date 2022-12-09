@@ -17,15 +17,11 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.modeling import networks
 from official.nlp.modeling.models import dual_encoder
 
 
-# This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
-# guarantees forward compatibility of this code for the V2 switchover.
-@keras_parameterized.run_all_keras_modes
-class DualEncoderTest(keras_parameterized.TestCase):
+class DualEncoderTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters((192, 'logits'), (768, 'predictions'))
   def test_dual_encoder(self, hidden_size, output):
@@ -72,6 +68,7 @@ class DualEncoderTest(keras_parameterized.TestCase):
   def test_dual_encoder_tensor_call(self, hidden_size, output):
     """Validate that the Keras object can be invoked."""
     # Build a transformer network to use within the dual encoder model.
+    del hidden_size
     sequence_length = 2
     test_network = networks.BertEncoder(vocab_size=100, num_layers=2)
 
