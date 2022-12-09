@@ -13,16 +13,16 @@
 # limitations under the License.
 
 """Tests for Keras based XLNet model."""
+
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.modeling.networks import xlnet_base
 
 
-@keras_parameterized.run_all_keras_modes
-class RelativePositionEncodingTest(keras_parameterized.TestCase):
+class RelativePositionEncodingTest(tf.test.TestCase):
 
   def test_positional_embedding(self):
     """A low-dimensional example is tested.
@@ -47,7 +47,7 @@ class RelativePositionEncodingTest(keras_parameterized.TestCase):
     self.assertAllClose(encoding, target)
 
 
-class ComputePositionEncodingTest(keras_parameterized.TestCase):
+class ComputePositionEncodingTest(tf.test.TestCase, parameterized.TestCase):
 
   @combinations.generate(combinations.combine(
       attention_type=["uni", "bi"],
@@ -111,7 +111,7 @@ class CausalAttentionMaskTests(tf.test.TestCase):
     self.assertAllClose(causal_attention_mask, expected_output)
 
 
-class MaskComputationTests(keras_parameterized.TestCase):
+class MaskComputationTests(tf.test.TestCase, parameterized.TestCase):
 
   @combinations.generate(combinations.combine(
       use_input_mask=[False, True],

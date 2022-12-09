@@ -17,15 +17,11 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.modeling import networks
 from official.nlp.modeling.models import bert_span_labeler
 
 
-# This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
-# guarantees forward compatibility of this code for the V2 switchover.
-@keras_parameterized.run_all_keras_modes
-class BertSpanLabelerTest(keras_parameterized.TestCase):
+class BertSpanLabelerTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(True, False)
   def test_bert_trainer(self, dict_outputs):
@@ -48,7 +44,7 @@ class BertSpanLabelerTest(keras_parameterized.TestCase):
     cls_outs = bert_trainer_model([word_ids, mask, type_ids])
 
     # Validate that there are 2 outputs are of the expected shape.
-    self.assertEqual(2, len(cls_outs))
+    self.assertLen(cls_outs, 2)
     expected_shape = [None, sequence_length]
     for out in cls_outs:
       self.assertAllEqual(expected_shape, out.shape.as_list())

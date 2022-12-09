@@ -18,7 +18,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.modeling import activations
 from official.nlp.modeling import layers
 from official.nlp.modeling.networks import encoder_scaffold
@@ -76,10 +75,7 @@ class TestLayer(tf.keras.layers.Layer):
   pass
 
 
-# This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
-# guarantees forward compatibility of this code for the V2 switchover.
-@keras_parameterized.run_all_keras_modes
-class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
+class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
 
   def tearDown(self):
     super(EncoderScaffoldLayerClassTest, self).tearDown()
@@ -384,8 +380,7 @@ class Embeddings(tf.keras.Model):
     return word_embeddings, self.attention_mask([word_embeddings, mask])
 
 
-@keras_parameterized.run_all_keras_modes
-class EncoderScaffoldEmbeddingNetworkTest(keras_parameterized.TestCase):
+class EncoderScaffoldEmbeddingNetworkTest(tf.test.TestCase):
 
   def test_network_invocation(self):
     hidden_size = 32
@@ -525,8 +520,8 @@ class EncoderScaffoldEmbeddingNetworkTest(keras_parameterized.TestCase):
       new_network.get_embedding_table()
 
 
-@keras_parameterized.run_all_keras_modes
-class EncoderScaffoldHiddenInstanceTest(keras_parameterized.TestCase):
+class EncoderScaffoldHiddenInstanceTest(
+    tf.test.TestCase, parameterized.TestCase):
 
   def test_network_invocation(self):
     hidden_size = 32

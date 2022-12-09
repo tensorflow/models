@@ -17,7 +17,6 @@
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.modeling.layers import attention
 from official.nlp.modeling.layers import transformer_scaffold
 
@@ -76,10 +75,7 @@ class ValidatedFeedforwardLayer(tf.keras.layers.Layer):
     return config
 
 
-# This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
-# guarantees forward compatibility of this code for the V2 switchover.
-@keras_parameterized.run_all_keras_modes
-class TransformerLayerTest(keras_parameterized.TestCase):
+class TransformerLayerTest(tf.test.TestCase):
 
   def tearDown(self):
     super(TransformerLayerTest, self).tearDown()

@@ -14,22 +14,14 @@
 
 """Tests for ALBERT transformer-based text encoder network."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.modeling.networks import albert_encoder
 
 
-# This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
-# guarantees forward compatibility of this code for the V2 switchover.
-@keras_parameterized.run_all_keras_modes
-class AlbertEncoderTest(keras_parameterized.TestCase):
+class AlbertEncoderTest(tf.test.TestCase, parameterized.TestCase):
 
   def tearDown(self):
     super(AlbertEncoderTest, self).tearDown()

@@ -17,16 +17,12 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.modeling import layers
 from official.nlp.modeling import networks
 from official.nlp.modeling.models import bert_classifier
 
 
-# This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
-# guarantees forward compatibility of this code for the V2 switchover.
-@keras_parameterized.run_all_keras_modes
-class BertClassifierTest(keras_parameterized.TestCase):
+class BertClassifierTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('single_cls', 1, False), ('3_cls', 3, False),
                                   ('3_cls_dictoutputs', 3, True))

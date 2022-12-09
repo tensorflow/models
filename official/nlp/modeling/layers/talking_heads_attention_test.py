@@ -18,15 +18,11 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.modeling.layers import talking_heads_attention
 
 
-# This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
-# guarantees forward compatibility of this code for the V2 switchover.
 # This test is revised base on attention.MultiHeadAttentionTest.
-@keras_parameterized.run_all_keras_modes
-class TalkingHeadsAttentionTest(keras_parameterized.TestCase):
+class TalkingHeadsAttentionTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ("key_value_same_proj", None, None, [40, 80]),

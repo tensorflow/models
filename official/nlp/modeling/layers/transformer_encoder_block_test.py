@@ -18,13 +18,12 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.modeling.layers.transformer_encoder_block import TransformerEncoderBlock
 
 
-@keras_parameterized.run_all_keras_modes
 @parameterized.named_parameters(('base', TransformerEncoderBlock))
-class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
+class TransformerEncoderBlockLayerTest(
+    tf.test.TestCase, parameterized.TestCase):
 
   def tearDown(self):
     super(TransformerEncoderBlockLayerTest, self).tearDown()
@@ -258,9 +257,8 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
     self.assertEqual(output.shape, q_tensor.shape)
 
 
-@keras_parameterized.run_all_keras_modes
-class TransformerEncoderBlockLayerTestWithoutParams(keras_parameterized.TestCase
-                                                   ):
+class TransformerEncoderBlockLayerTestWithoutParams(
+    tf.test.TestCase, parameterized.TestCase):
 
   def tearDown(self):
     super(TransformerEncoderBlockLayerTestWithoutParams, self).tearDown()
@@ -407,8 +405,7 @@ class TransformerEncoderBlockLayerTestWithoutParams(keras_parameterized.TestCase
                      test_layer._attention_layer.get_config()['value_dim'])
 
 
-@keras_parameterized.run_all_keras_modes
-class TransformerArgumentTest(keras_parameterized.TestCase):
+class TransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_use_bias_norm_first(self):
     num_attention_heads = 2
@@ -681,7 +678,7 @@ class TransformerArgumentTest(keras_parameterized.TestCase):
 
     if return_attention_scores:
       self.assertIsInstance(output_tensor, tuple)
-      self.assertEqual(len(output_tensor), 2)
+      self.assertLen(output_tensor, 2)
       # First is the standard output.
       self.assertEqual(output_tensor[0].shape.as_list(),
                        expected_layer_output_shape)
