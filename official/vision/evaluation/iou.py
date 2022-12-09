@@ -94,30 +94,24 @@ class PerClassIoUV2(tf.keras.metrics.Metric):
     """
     super().__init__(name=name, dtype=dtype)
     self.num_classes = num_classes
-    self.shape = shape if shape is not None else [num_classes]
     self.sparse_y_true = sparse_y_true
     self.sparse_y_pred = sparse_y_pred
     self.axis = axis
 
     # Variable to accumulate the intersection & union.
     # intersection = true_positives
+    if not shape:
+      shape = [num_classes]
     self.intersection_per_class = self.add_weight(
-        'intersection_per_class',
-        shape=self.shape,
-        initializer='zeros',
-        dtype=tf.float32)
+        'intersection_per_class', shape, initializer='zeros', dtype=tf.float32)
     # union = true_positives + false_positive + false_negative
     self.union_per_class = self.add_weight(
-        'union_per_class',
-        shape=self.shape,
-        initializer='zeros',
-        dtype=tf.float32)
+        'union_per_class', shape, initializer='zeros', dtype=tf.float32)
 
-  def result(self) -> tf.Tensor:
-    """Computes IoU for each class."""
-    return tf.cast(
-        tf.math.divide_no_nan(self.intersection_per_class,
-                              self.union_per_class), self.dtype)
+  def reset_state(self):
+    """Resets all of the metric state variables."""
+    for v in self.variables:
+      tf.keras.backend.set_value(v, np.zeros(v.shape))
 
   def update_state(self, y_true: tf.Tensor, y_pred: tf.Tensor):
     """Updates metric state by accumulating the variables.
@@ -152,11 +146,11 @@ class PerClassIoUV2(tf.keras.metrics.Metric):
     self.union_per_class.assign_add(
         tf.cast(current_union, self.union_per_class.dtype))
 
-  def reset_state(self):
-    """Resets all of the metric state variables."""
-    tf.keras.backend.set_value(self.intersection_per_class,
-                               np.zeros(self.shape))
-    tf.keras.backend.set_value(self.union_per_class, np.zeros(self.shape))
+  def result(self) -> tf.Tensor:
+    """Computes IoU for each class."""
+    return tf.cast(
+        tf.math.divide_no_nan(self.intersection_per_class,
+                              self.union_per_class), self.dtype)
 
   def get_config(self) -> Dict[str, Any]:
     """Returns the serializable config of the metric."""
@@ -164,7 +158,6 @@ class PerClassIoUV2(tf.keras.metrics.Metric):
         'num_classes': self.num_classes,
         'name': self.name,
         'dtype': self.dtype,
-        'shape': self.shape,
         'sparse_y_true': self.sparse_y_true,
         'sparse_y_pred': self.sparse_y_pred,
         'axis': self.axis,

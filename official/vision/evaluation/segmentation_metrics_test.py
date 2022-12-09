@@ -78,6 +78,18 @@ class SegmentationMetricsTest(parameterized.TestCase, tf.test.TestCase):
     per_class_miou = per_class_iou_metric.result()
     self.assertAllClose(per_class_miou.numpy(), [0.857, 0.667], atol=1e-3)
 
+  def test_mean_iou_metric_v2_target_class_ids(self):
+    tf.config.experimental_run_functions_eagerly(True)
+    mean_iou_metric = segmentation_metrics.MeanIoUV2(
+        num_classes=2, target_class_ids=[0])
+    y_pred, y_true = self._create_test_data()
+    # Disable autograph for correct coverage statistics.
+    update_fn = tf.autograph.experimental.do_not_convert(
+        mean_iou_metric.update_state)
+    update_fn(y_true=y_true, y_pred=y_pred)
+    miou = mean_iou_metric.result()
+    self.assertAlmostEqual(miou.numpy(), 0.857, places=3)
+
 
 if __name__ == '__main__':
   tf.test.main()
