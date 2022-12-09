@@ -155,8 +155,8 @@ class PerClassIoUV2(iou.PerClassIoUV2):
           original dimension.
       y_pred: Tensor [batch, height_p, width_p, num_classes], predicated masks.
     """
-    logits, gt_masks, valid_masks = preprocess_inputs(
-        y_true, y_pred, self._rescale_predictions)
+    logits, gt_masks, valid_masks = preprocess_inputs(y_true, y_pred,
+                                                      self._rescale_predictions)
     valid_masks = tf.cast(valid_masks, tf.int32)
 
     gt_binary_masks = tf.one_hot(
@@ -176,9 +176,36 @@ class PerClassIoUV2(iou.PerClassIoUV2):
 class MeanIoUV2(PerClassIoUV2):
   """Computes the mean IoU metric for semantic segmentation."""
 
+  def __init__(self,
+               target_class_ids: Optional[Tuple[int, ...]] = None,
+               **kwargs):
+    """Initializes the class.
+
+    Args:
+      target_class_ids: computes mean IoU for the target classes. Selects all
+        the if empty.
+      **kwargs: the other arguments for initializing the base class.
+    """
+    super().__init__(**kwargs)
+    self._target_class_ids = target_class_ids
+
   def result(self) -> tf.Tensor:
     """Average the IoUs of all the classes."""
-    return tf.reduce_mean(super().result())
+    # (num_classes, )
+    per_class_ious = super().result()
+    if self._target_class_ids:
+      # (num_classes, )
+      target_class_indicators = tf.reduce_max(
+          tf.one_hot(
+              self._target_class_ids,
+              depth=self.num_classes,
+              dtype=per_class_ious.dtype),
+          axis=0)
+      return tf.math.divide_no_nan(
+          tf.reduce_sum(per_class_ious * target_class_indicators),
+          tf.reduce_sum(target_class_indicators))
+    else:
+      return tf.reduce_mean(per_class_ious)
 
 
 def preprocess_inputs(
@@ -202,8 +229,7 @@ def preprocess_inputs(
         original dimension.
     y_pred: tensor [batch, height_p, width_p, num_classes], predicated masks.
     rescale_predictions: `bool`, whether to scale back prediction to original
-      image sizes. If True, y_true['image_info'] is used to rescale
-      predictions.
+      image sizes. If True, y_true['image_info'] is used to rescale predictions.
 
   Returns:
     logits: a float tensor in shape [batch, height, width, num_classes], which
