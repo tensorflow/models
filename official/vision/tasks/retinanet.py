@@ -20,8 +20,10 @@ import tensorflow as tf
 
 from official.common import dataset_fn
 from official.core import base_task
+from official.core import config_definitions as cfg
 from official.core import task_factory
 from official.vision.configs import retinanet as exp_cfg
+from official.vision.dataloaders import input_reader
 from official.vision.dataloaders import input_reader_factory
 from official.vision.dataloaders import retinanet_input
 from official.vision.dataloaders import tf_example_decoder
@@ -130,10 +132,33 @@ class RetinaNetTask(base_task.Task):
         skip_crowd_during_training=params.parser.skip_crowd_during_training,
         max_num_instances=params.parser.max_num_instances)
 
+    combine_fn = None
+    if params.is_training and params.weights:
+      # Combine multiple datasets using weighted sampling.
+      if (not isinstance(params.input_path, cfg.base_config.Config) or
+          not isinstance(params.weights, cfg.base_config.Config)):
+        raise ValueError(
+            'input_path and weights must both be a Config to use weighted '
+            'sampling.')
+      input_paths = params.input_path.as_dict()
+      weights = params.weights.as_dict()
+      if len(input_paths) != len(weights):
+        raise ValueError(
+            'The number of input_path and weights must be the same, but got %d '
+            'input_paths and %d weights.' % (len(input_paths), len(weights)))
+
+      for k in input_paths.keys():
+        if k not in weights:
+          raise ValueError(
+              'input_path key \'%s\' does not have a corresponding weight.' % k)
+
+      combine_fn = input_reader.build_weighted_sampling_combine_fn(weights)
+
     reader = input_reader_factory.input_reader_generator(
         params,
         dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
+        combine_fn=combine_fn,
         parser_fn=parser.parse_fn(params.is_training))
     dataset = reader.read(input_context=input_context)
 

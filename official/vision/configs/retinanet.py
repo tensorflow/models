@@ -16,12 +16,13 @@
 
 import dataclasses
 import os
-from typing import List, Optional, Union
+from typing import Optional, List, Sequence, Union
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
+from official.modeling.hyperparams import base_config
 from official.vision.configs import common
 from official.vision.configs import decoders
 from official.vision.configs import backbones
@@ -65,8 +66,14 @@ class Parser(hyperparams.Config):
 
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
-  """Input config for training."""
-  input_path: str = ''
+  """Input config for training.
+
+  Attributes:
+    weights: Sampling weights for each corresponding input_path. If used, then
+      input_path must be a config with matching keys.
+  """
+  input_path: Union[Sequence[str], str, base_config.Config] = ''
+  weights: Optional[base_config.Config] = None
   global_batch_size: int = 0
   is_training: bool = False
   dtype: str = 'bfloat16'
