@@ -14,13 +14,30 @@
 
 """Dataset reader for vision model garden."""
 
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Mapping, Optional, Tuple
 
 from absl import logging
 import tensorflow as tf
 
 from official.core import config_definitions as cfg
 from official.core import input_reader
+
+
+def build_weighted_sampling_combine_fn(
+    weights: Mapping[Any, Any]) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
+  """Builds a combine_fn using weighted sampling."""
+
+  def combine_fn(datasets: Mapping[Any, tf.data.Dataset]) -> tf.data.Dataset:
+    """Combines multiple datasets using weighted sampling."""
+    ds = []
+    ws = []
+    for k, dataset in datasets.items():
+      ds.append(dataset)
+      ws.append(weights[k])
+    return tf.data.Dataset.sample_from_datasets(
+        ds, ws, stop_on_empty_dataset=True)
+
+  return combine_fn
 
 
 def calculate_batch_sizes(total_batch_size: int,
