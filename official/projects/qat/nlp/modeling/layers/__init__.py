@@ -12,8 +12,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Layers package definition."""
-
-from official.projects.qat.nlp.modeling.layers.mobile_bert_layers import MobileBertTransformerQuantized
-from official.projects.qat.nlp.modeling.layers.multi_head_attention import MultiHeadAttentionQuantized
-from official.projects.qat.nlp.modeling.layers.transformer_encoder_block import TransformerEncoderBlockQuantized

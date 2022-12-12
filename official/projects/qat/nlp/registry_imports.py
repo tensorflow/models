@@ -14,6 +14,8 @@
 
 """All necessary imports for registration on qat project."""
 # pylint: disable=unused-import
-from official.projects.qat.nlp import configs  # pylint: disable=unused-import
-from official.projects.qat.nlp.modeling import layers  # pylint: disable=unused-import
-from official.projects.qat.nlp.tasks import question_answering  # pylint: disable=unused-import
+from official.projects.qat.nlp import configs
+from official.projects.qat.nlp.modeling.layers import mobile_bert_layers
+from official.projects.qat.nlp.modeling.layers import multi_head_attention
+from official.projects.qat.nlp.modeling.layers import transformer_encoder_block
+from official.projects.qat.nlp.tasks import question_answering
