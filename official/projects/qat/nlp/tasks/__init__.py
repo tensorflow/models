@@ -12,6 +12,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tasks package definition."""
-
-from official.projects.qat.nlp.tasks import question_answering
