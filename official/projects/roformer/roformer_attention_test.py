@@ -14,11 +14,11 @@
 
 """Tests for the attention layer."""
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.projects.roformer import roformer_attention
 
 
@@ -62,8 +62,7 @@ def _create_mock_attention_data(num_heads,
   return data
 
 
-@keras_parameterized.run_all_keras_modes
-class RoformerAttentionTest(keras_parameterized.TestCase):
+class RoformerAttentionTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super(RoformerAttentionTest, self).setUp()
