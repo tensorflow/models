@@ -18,14 +18,13 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.projects.qat.nlp.modeling.layers.transformer_encoder_block import TransformerEncoderBlockQuantized
 
 
-@keras_parameterized.run_all_keras_modes
 @parameterized.named_parameters(
     ('base', TransformerEncoderBlockQuantized))
-class TransformerEncoderBlockQuantizedLayerTest(keras_parameterized.TestCase):
+class TransformerEncoderBlockQuantizedLayerTest(
+    tf.test.TestCase, parameterized.TestCase):
 
   def tearDown(self):
     super(TransformerEncoderBlockQuantizedLayerTest, self).tearDown()
