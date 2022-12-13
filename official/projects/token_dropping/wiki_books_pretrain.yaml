@@ -5,7 +5,8 @@ task:
   train_data:
     drop_remainder: true
     global_batch_size: 512
-    input_path: /path-to-data/wikipedia.tfrecord*,/path-to-data/books.tfrecord*
+    # Use glob pattern to match all shards except 00141-of-00500 which is reserved for validation.
+    input_path: /path-to-data/wikipedia.tfrecord-*-of-00500,/path-to-data/books.tfrecord-*-of-00500
     is_training: true
     max_predictions_per_seq: 76
     seq_length: 512
@@ -15,7 +16,7 @@ task:
   validation_data:
     drop_remainder: false
     global_batch_size: 512
-    input_path: /path-to-data/wikipedia.tfrecord*,/path-to-data/books.tfrecord*
+    input_path: /path-to-data/wikipedia.tfrecord-00141-of-00500-eval,/path-to-data/books.tfrecord-00141-of-00500-eval
     is_training: false
     max_predictions_per_seq: 76
     seq_length: 512
