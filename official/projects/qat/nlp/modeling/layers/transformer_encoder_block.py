@@ -202,9 +202,8 @@ class TransformerEncoderBlockQuantized(tf.keras.layers.Layer):
     self._intermediate_activation_layer = _output_quantize(
         tf.keras.layers.Activation(
             self._inner_activation, dtype=policy))
-    self._inner_dropout_layer = _output_quantize(
-        tf.keras.layers.Dropout(
-            rate=self._inner_dropout))
+    self._inner_dropout_layer = tf.keras.layers.Dropout(
+        rate=self._inner_dropout)
     self._output_dense = _quantized_einsum_dense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
@@ -212,8 +211,7 @@ class TransformerEncoderBlockQuantized(tf.keras.layers.Layer):
         name="output",
         kernel_initializer=self._kernel_initializer,
         **common_kwargs)
-    self._output_dropout = _output_quantize(
-        tf.keras.layers.Dropout(rate=self._output_dropout))
+    self._output_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
     # Use float32 in layernorm for numeric stability.
     self._output_layer_norm = _output_quantize(
         tf.keras.layers.LayerNormalization(

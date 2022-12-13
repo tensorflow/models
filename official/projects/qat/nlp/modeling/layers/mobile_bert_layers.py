@@ -362,10 +362,9 @@ class MobileBertTransformerQuantized(tf.keras.layers.Layer):
         bias_axes='d',
         kernel_initializer=initializer,
         name='bottleneck_output/dense')
-    dropout_layer = _output_quantize(
-        tf.keras.layers.Dropout(
-            self.hidden_dropout_prob,
-            name='bottleneck_output/dropout'))
+    dropout_layer = tf.keras.layers.Dropout(
+        self.hidden_dropout_prob,
+        name='bottleneck_output/dropout')
     layer_norm = _output_quantize(
         _get_norm_layer(self.normalization_type,
                         name='bottleneck_output/norm'))
