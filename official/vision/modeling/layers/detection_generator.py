@@ -849,6 +849,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
                use_cpu_nms: bool = False,
                soft_nms_sigma: Optional[float] = None,
                tflite_post_processing_config: Optional[Dict[str, Any]] = None,
+               pre_nms_top_k_sharding_block: Optional[int] = None,
                **kwargs):
     """Initializes a multi-level detection generator.
 
@@ -869,6 +870,9 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         When soft_nms_sigma=0.0, we fall back to standard NMS.
       tflite_post_processing_config: An optional dictionary containing
         post-processing parameters used for TFLite custom NMS op.
+      pre_nms_top_k_sharding_block: For v3 (edge tpu friendly) NMS, avoids
+        creating long axis for pre_nms_top_k. Will do top_k in shards of size
+        [num_classes, pre_nms_top_k_sharding_block * boxes_per_location]
 
       **kwargs: Additional keyword arguments passed to Layer.
     """
@@ -882,11 +886,15 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         'use_cpu_nms': use_cpu_nms,
         'soft_nms_sigma': soft_nms_sigma
     }
+    # Don't store if were not defined
+    if pre_nms_top_k_sharding_block is not None:
+      self._config_dict[
+          'pre_nms_top_k_sharding_block'] = pre_nms_top_k_sharding_block
 
     if tflite_post_processing_config is not None:
       self._config_dict.update(
           {'tflite_post_processing_config': tflite_post_processing_config})
-    super(MultilevelDetectionGenerator, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
   def _decode_multilevel_outputs(
       self,
@@ -963,12 +971,74 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
 
     return boxes, scores, attributes
 
-  def __call__(self,
-               raw_boxes: Mapping[str, tf.Tensor],
-               raw_scores: Mapping[str, tf.Tensor],
-               anchor_boxes: Mapping[str, tf.Tensor],
-               image_shape: tf.Tensor,
-               raw_attributes: Optional[Mapping[str, tf.Tensor]] = None):
+  def _decode_multilevel_outputs_and_pre_nms_top_k(
+      self, raw_boxes: Mapping[str, tf.Tensor],
+      raw_scores: Mapping[str, tf.Tensor], anchor_boxes: Mapping[str,
+                                                                 tf.Tensor],
+      image_shape: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+    """Collects dict of multilevel boxes, scores into lists."""
+    boxes = None
+    scores = None
+
+    pre_nms_top_k = self._config_dict['pre_nms_top_k']
+    # TODO(b/258007436): consider removing when compiler be able to handle
+    # it on its own.
+    pre_nms_top_k_sharding_block = self._config_dict.get(
+        'pre_nms_top_k_sharding_block', 128)
+    levels = list(raw_boxes.keys())
+    min_level = int(min(levels))
+    max_level = int(max(levels))
+    for i in range(max_level, min_level - 1, -1):
+      (_, unsharded_h, unsharded_w, num_anchors_per_locations_times_4
+      ) = raw_boxes[str(i)].get_shape().as_list()
+      block = max(1, pre_nms_top_k_sharding_block // unsharded_w)
+      anchor_boxes_unsharded = tf.reshape(
+          anchor_boxes[str(i)],
+          [1, unsharded_h, unsharded_w, num_anchors_per_locations_times_4])
+      for (raw_scores_i, raw_boxes_i, anchor_boxes_i) in edgetpu.shard_tensors(
+          1, block,
+          (raw_scores[str(i)], raw_boxes[str(i)], anchor_boxes_unsharded)):
+        batch_size = tf.shape(raw_boxes_i)[0]
+        (_, feature_h_i, feature_w_i, _) = raw_boxes_i.get_shape().as_list()
+        num_locations = feature_h_i * feature_w_i
+        num_anchors_per_locations = num_anchors_per_locations_times_4 // 4
+        num_classes = raw_scores_i.get_shape().as_list(
+        )[-1] // num_anchors_per_locations
+
+        # Applies score transformation and remove the implicit background class.
+        scores_i = tf.slice(
+            tf.transpose(
+                tf.reshape(raw_scores_i, [
+                    batch_size, num_locations * num_anchors_per_locations,
+                    num_classes
+                ]), [0, 2, 1]), [0, 1, 0], [-1, -1, -1])
+
+        # Box decoding.
+        # The anchor boxes are shared for all data in a batch.
+        # One stage detector only supports class agnostic box regression.
+        boxes_shape = [batch_size, num_locations * num_anchors_per_locations, 4]
+        boxes_i = tf.tile(
+            tf.expand_dims(
+                box_ops.decode_boxes(
+                    tf.reshape(raw_boxes_i, boxes_shape),
+                    tf.reshape(anchor_boxes_i, boxes_shape)),
+                axis=1), [1, num_classes - 1, 1, 1])
+        scores, boxes = edgetpu.concat_and_top_k(pre_nms_top_k,
+                                                 (scores, scores_i),
+                                                 (boxes, boxes_i))
+
+    return (box_ops.clip_boxes(boxes,
+                               tf.expand_dims(image_shape,
+                                              axis=1)), tf.sigmoid(scores))
+
+  def __call__(
+      self,
+      raw_boxes: Mapping[str, tf.Tensor],
+      raw_scores: Mapping[str, tf.Tensor],
+      anchor_boxes: Mapping[str, tf.Tensor],
+      image_shape: tf.Tensor,
+      raw_attributes: Optional[Mapping[str, tf.Tensor]] = None
+  ) -> Mapping[str, Any]:
     """Generates final detections.
 
     Args:
@@ -1025,8 +1095,13 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
           'detection_scores': scores
       }
 
-    boxes, scores, attributes = self._decode_multilevel_outputs(
-        raw_boxes, raw_scores, anchor_boxes, image_shape, raw_attributes)
+    if self._config_dict['nms_version'] != 'v3':
+      boxes, scores, attributes = self._decode_multilevel_outputs(
+          raw_boxes, raw_scores, anchor_boxes, image_shape, raw_attributes)
+    else:
+      attributes = None
+      boxes, scores = self._decode_multilevel_outputs_and_pre_nms_top_k(
+          raw_boxes, raw_scores, anchor_boxes, image_shape)
 
     if not self._config_dict['apply_nms']:
       return {
@@ -1080,17 +1155,15 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         # Set `nmsed_attributes` to None for v2.
         nmsed_attributes = {}
       elif self._config_dict['nms_version'] == 'v3':
-        # TODO(tohaspiridonov): add compatible version of
-        # `_decode_multilevel_outputs` in cl/485381750
         (nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections) = (
             _generate_detections_v3(
-                tf.transpose(boxes, [0, 2, 1, 3]),
-                tf.transpose(scores, [0, 2, 1]),
+                boxes,
+                scores,
                 pre_nms_score_threshold=self
                 ._config_dict['pre_nms_score_threshold'],
                 nms_iou_threshold=self._config_dict['nms_iou_threshold'],
                 max_num_detections=self._config_dict['max_num_detections']))
-        # Set `nmsed_attributes` to None for v2.
+        # Set `nmsed_attributes` to None for v3.
         nmsed_attributes = {}
       else:
         raise ValueError('NMS version {} not supported.'.format(

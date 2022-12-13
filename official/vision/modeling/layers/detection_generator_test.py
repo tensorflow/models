@@ -254,6 +254,69 @@ class MultilevelDetectionGeneratorTest(
           self.assertEqual(att.numpy().shape,
                            (batch_size, max_num_detections, 1))
 
+  def test_decode_multilevel_outputs_and_pre_nms_top_k(self):
+    named_params = {
+        'apply_nms': True,
+        'pre_nms_top_k': 5,
+        'pre_nms_score_threshold': 0.05,
+        'nms_iou_threshold': 0.5,
+        'max_num_detections': 2,
+        'nms_version': 'v3',
+        'use_cpu_nms': False,
+        'soft_nms_sigma': None,
+    }
+    generator = detection_generator.MultilevelDetectionGenerator(**named_params)
+    # 2 classes, 3 boxes per pixel, 2 levels '1': 2x2, '2':1x1
+    background = [1, 0, 0]
+    first = [0, 1, 0]
+    second = [0, 0, 1]
+    some = [0, 0.5, 0.5]
+    class_outputs = {
+        '1':
+            tf.constant([[[
+                first + background + first, first + background + second
+            ], [second + background + first, second + background + second]]],
+                        dtype=tf.float32),
+        '2':
+            tf.constant([[[background + some + background]]], dtype=tf.float32),
+    }
+    box_outputs = {
+        '1': tf.zeros(shape=[1, 2, 2, 12], dtype=tf.float32),
+        '2': tf.zeros(shape=[1, 1, 1, 12], dtype=tf.float32)
+    }
+    anchor_boxes = {
+        '1':
+            tf.random.uniform(
+                shape=[2, 2, 12], minval=1., maxval=99., dtype=tf.float32),
+        '2':
+            tf.random.uniform(
+                shape=[1, 1, 12], minval=1., maxval=99., dtype=tf.float32),
+    }
+    boxes, scores = generator._decode_multilevel_outputs_and_pre_nms_top_k(
+        box_outputs, class_outputs, anchor_boxes,
+        tf.constant([[100, 100]], dtype=tf.float32))
+    self.assertAllClose(
+        scores,
+        tf.sigmoid(
+            tf.constant([[[1, 1, 1, 1, 0.5], [1, 1, 1, 1, 0.5]]],
+                        dtype=tf.float32)))
+    self.assertAllClose(
+        tf.squeeze(boxes),
+        tf.stack([
+            # Where the first is + some as last
+            tf.stack([
+                anchor_boxes['1'][0, 0, 0:4], anchor_boxes['1'][0, 0, 8:12],
+                anchor_boxes['1'][0, 1, 0:4], anchor_boxes['1'][1, 0, 8:12],
+                anchor_boxes['2'][0, 0, 4:8]
+            ]),
+            # Where the second is + some as last
+            tf.stack([
+                anchor_boxes['1'][0, 1, 8:12], anchor_boxes['1'][1, 0, 0:4],
+                anchor_boxes['1'][1, 1, 0:4], anchor_boxes['1'][1, 1, 8:12],
+                anchor_boxes['2'][0, 0, 4:8]
+            ]),
+        ]))
+
   def test_serialize_deserialize(self):
     tflite_post_processing_config = {
         'max_detections': 100,
