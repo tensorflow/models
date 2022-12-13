@@ -232,7 +232,7 @@ class SparseMixer(tf.keras.layers.Layer):
         feedforward_layer = layers.MoeLayer(
             experts=layers.FeedForwardExperts(
                 num_experts=num_experts,
-                d_ff=hidden_size,
+                d_ff=inner_dim,
                 output_dropout=output_dropout,
                 activation=inner_activation,
                 kernel_initializer=tf_utils.clone_initializer(initializer),
