@@ -145,9 +145,10 @@ class SemanticSegmentationTask(base_task.Task):
     if 'mask_scores' in model_outputs:
       mask_scoring_loss_fn = segmentation_losses.MaskScoringLoss(
           loss_params.ignore_label)
-      total_loss += mask_scoring_loss_fn(model_outputs['mask_scores'],
-                                         model_outputs['logits'],
-                                         labels['masks'])
+      total_loss += loss_params.mask_scoring_weight * mask_scoring_loss_fn(
+          model_outputs['mask_scores'],
+          model_outputs['logits'],
+          labels['masks'])
 
     if aux_losses:
       total_loss += tf.add_n(aux_losses)

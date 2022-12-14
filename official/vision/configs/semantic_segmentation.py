@@ -113,6 +113,7 @@ class Losses(hyperparams.Config):
   # categorical cross entropy (softmax).
   use_binary_cross_entropy: bool = False
   top_k_percent_pixels: float = 1.0
+  mask_scoring_weight: float = 1.0
 
 
 @dataclasses.dataclass
