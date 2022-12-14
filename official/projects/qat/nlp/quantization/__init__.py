@@ -12,8 +12,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Quantization package definition."""
-
-from official.projects.qat.nlp.quantization import configs
-from official.projects.qat.nlp.quantization import schemes
-from official.projects.qat.nlp.quantization import wrappers
