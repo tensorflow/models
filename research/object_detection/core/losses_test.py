@@ -838,7 +838,6 @@ class WeightedSoftmaxClassificationLossTest(test_case.TestCase):
   def testReturnsCorrectAnchorWiseLossWithHighLogitScaleSetting(self):
     """At very high logit_scale, all predictions will be ~0.33."""
     def graph_fn():
-      # TODO(yonib): Also test logit_scale with anchorwise=False.
       logit_scale = 10e16
       prediction_tensor = tf.constant([[[-100, 100, -100],
                                         [100, -100, -100],
