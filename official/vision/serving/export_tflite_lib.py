@@ -90,7 +90,7 @@ def convert_tflite_model(saved_model_dir: str,
                          params: Optional[cfg.ExperimentConfig] = None,
                          task: Optional[base_task.Task] = None,
                          calibration_steps: Optional[int] = 2000,
-                         denylisted_ops: Optional[list[str]] = None) -> bytes:
+                         denylisted_ops: Optional[List[str]] = None) -> 'bytes':
   """Converts and returns a TFLite model.
 
   Args:
