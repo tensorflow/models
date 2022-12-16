@@ -29,7 +29,7 @@ ActivationAndQuantizer = Tuple[Activation, Quantizer]
 class _QuantizeHelper(object):
   """Mixin with helper functions for quantizers."""
 
-  def _add_range_weights(self, layer, name):
+  def _add_range_weights(self, layer, name, per_axis=False, tensor_shape=None):
     """Add min and max vars to layer."""
     # Added naming index to avoid duplicated.
     if hasattr(layer, 'quantize_helper_weight_idx'):
@@ -38,31 +38,38 @@ class _QuantizeHelper(object):
     else:
       layer.quantize_helper_weight_idx = 0
 
+    shape = None
+    if per_axis and tensor_shape is not None:
+      shape = (tensor_shape[-1])
+
     min_weight = layer.add_weight(
         name + '_min',
         initializer=tf.keras.initializers.Constant(-6.0),
-        trainable=False)
+        trainable=False,
+        shape=shape)
     max_weight = layer.add_weight(
         name + '_max',
         initializer=tf.keras.initializers.Constant(6.0),
-        trainable=False)
+        trainable=False,
+        shape=shape)
 
     return {'min_var': min_weight, 'max_var': max_weight}
 
 
 class LastValueQuantizer(
-    tfmot.quantization.keras.quantizers.LastValueQuantizer,
-    _QuantizeHelper):
+    _QuantizeHelper,
+    tfmot.quantization.keras.quantizers.LastValueQuantizer):
   pass
 
 
 class MovingAverageQuantizer(
-    tfmot.quantization.keras.quantizers.MovingAverageQuantizer,
-    _QuantizeHelper):
+    _QuantizeHelper,
+    tfmot.quantization.keras.quantizers.MovingAverageQuantizer):
   pass
 
 
 class NoQuantizer(tfmot.quantization.keras.quantizers.Quantizer):
+  """Dummy quantizer do nothing."""
 
   def __call__(self, inputs, training, weights, **kwargs):
     return tf.identity(inputs)
@@ -72,6 +79,15 @@ class NoQuantizer(tfmot.quantization.keras.quantizers.Quantizer):
 
   def build(self, tensor_shape, name, layer):
     return {}
+
+  def __eq__(self, other):
+    if not isinstance(other, NoQuantizer):
+      return False
+
+    return True
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
 
 
 class DefaultEinsumDenseQuantizeConfig(tfmot.quantization.keras.QuantizeConfig):
@@ -386,6 +402,10 @@ def _types_dict():
   return {
       'NoQuantizer':
           NoQuantizer,
+      'LastValueQuantizer':
+          LastValueQuantizer,
+      'MovingAverageQuantizer':
+          MovingAverageQuantizer,
       'DefaultEinsumDenseQuantizeConfig':
           DefaultEinsumDenseQuantizeConfig,
       'DefaultMultiHeadAttentionQuantizeConfig':

@@ -15,6 +15,7 @@
 """Tests for configs.py."""
 
 # Import libraries
+from absl.testing import parameterized
 
 import numpy as np
 import tensorflow as tf
@@ -197,6 +198,82 @@ class Default8BitQuantizeConfigTest(tf.test.TestCase, _TestHelper):
 
     self.assertEqual(quantize_config, quantize_config_from_config)
 
+
+@parameterized.parameters(
+    configs.LastValueQuantizer,
+    configs.MovingAverageQuantizer,
+    configs.NoQuantizer)
+class QuantizersTest(tf.test.TestCase, parameterized.TestCase):
+
+  def _simple_dense_layer(self):
+    layer = tf.keras.layers.Dense(2)
+    layer.build(input_shape=(3,))
+    return layer
+
+  def _get_quant_params(self, quantizer_type):
+    if quantizer_type == configs.NoQuantizer:
+      return {}
+
+    return {
+        'num_bits': 8,
+        'per_axis': False,
+        'symmetric': False,
+        'narrow_range': False
+    }
+
+  def _test_quantizer(self, quantizer):
+    inputs = tf.Variable(
+        np.array([[-1.0, 0.5], [0.0, 1.0]]),
+        name='inputs',
+        dtype=tf.dtypes.float32)
+    min_var = tf.Variable(0.0)
+    max_var = tf.Variable(0.0)
+
+    weights = {'min_var': min_var, 'max_var': max_var}
+    quant_tensor = quantizer(inputs, training=True, weights=weights)
+
+    results = self.evaluate(quant_tensor)
+    min_max_values = self.evaluate([min_var, max_var])
+
+    # TODO(pulkitb): Assert on expected values for testing.
+    # Since the underlying code is already tested in quant_ops_test.py, this
+    # just ensures the Quantizers code is wired properly.
+    print('Result: ', results)
+    print('min_var: ', min_max_values[0])
+    print('max_var: ', min_max_values[1])
+
+    layer = self._simple_dense_layer()
+    weights = quantizer.build(tf.TensorShape([1, 1, 1]), 'test', layer)
+    if isinstance(quantizer, (
+        configs.LastValueQuantizer, configs.MovingAverageQuantizer)):
+      self.assertLen(weights, 2)
+      self.assertFalse(weights['min_var'].trainable)
+      self.assertFalse(weights['max_var'].trainable)
+    elif isinstance(quantizer, configs.NoQuantizer):
+      self.assertEmpty(weights)
+
+  def testQuantizer(self, quantizer_type):
+    quantizer = quantizer_type(**self._get_quant_params(quantizer_type))
+
+    self._test_quantizer(quantizer)
+
+  def testSerialization(self, quantizer_type):
+    quantizer = quantizer_type(**self._get_quant_params(quantizer_type))
+
+    expected_config = {
+        'class_name': quantizer_type.__name__,
+        'config': self._get_quant_params(quantizer_type),
+    }
+    serialized_quantizer = tf.keras.utils.serialize_keras_object(quantizer)
+
+    self.assertEqual(expected_config, serialized_quantizer)
+
+    quantizer_from_config = tf.keras.utils.deserialize_keras_object(
+        serialized_quantizer,
+        module_objects=globals(),
+        custom_objects=configs._types_dict())
+
+    self.assertEqual(quantizer, quantizer_from_config)
 
 if __name__ == '__main__':
   tf.test.main()
