@@ -23,8 +23,8 @@ from tensorflow.python.ops import special_math_ops
 from official.projects.qat.nlp.quantization import helper
 
 
-# -Inf ~= -120.0 for mask adder before softmax on int8 model.
-_MASK_CONSTANT_FOR_INT8_QUANTIZATION = 120
+# -6 for mask adder before softmax on int8 model. (e^-6 < 1/256)
+_MASK_CONSTANT_FOR_INT8_QUANTIZATION = 6
 
 
 class MultiHeadAttentionQuantized(helper.LayerQuantizerHelper,
@@ -48,6 +48,11 @@ class MultiHeadAttentionQuantized(helper.LayerQuantizerHelper,
 
     self._add_quantizer('masked_softmax_attention_mask',
                         all_value_quantizer=True)
+    self._add_quantizer('masked_softmax_sub1')
+    self._add_quantizer('masked_softmax_mask1')
+    self._add_quantizer('masked_softmax_sub2')
+    self._add_quantizer('masked_softmax_clamp', all_value_quantizer=True)
+    self._add_quantizer('masked_softmax_mask2', all_value_quantizer=True)
     self._add_quantizer('masked_softmax_adder_sub', all_value_quantizer=True)
     self._add_quantizer('masked_softmax_adder_mul', all_value_quantizer=True)
     self._add_quantizer('masked_softmax_add', all_value_quantizer=True)
@@ -70,11 +75,37 @@ class MultiHeadAttentionQuantized(helper.LayerQuantizerHelper,
     attention_mask = self._apply_quantizer(
         'masked_softmax_attention_mask', attention_mask, training)
 
+    # Makes attention_scores >= 0 to avoid masked maximum value be 0.
+    attention_scores -= math_ops.reduce_min(
+        attention_scores, axis=-1, keepdims=True)
+    attention_scores = self._apply_quantizer(
+        'masked_softmax_sub1', attention_scores, training)
+    attention_scores *= attention_mask
+    attention_scores = self._apply_quantizer(
+        'masked_softmax_mask1', attention_scores, training)
+
+    # Makes attention_scores <= 0, and become max value be 0.
+    attention_scores -= math_ops.reduce_max(
+        attention_scores, axis=-1, keepdims=True)
+    attention_scores = self._apply_quantizer(
+        'masked_softmax_sub2', attention_scores, training)
+
+    # Clip the range of values [-6, 0].
+    attention_scores = tf.clip_by_value(
+        attention_scores, clip_value_min=-6, clip_value_max=0)
+    attention_scores = self._apply_quantizer(
+        'masked_softmax_clamp', attention_scores, training)
+    # We basically hard-code the to-be-masked-out part have -6.
+    # Maximum number is 0. It"s reasonable for 8 bit quantization because
+    # e^(0) / e^(-6) < 1/256
+    attention_scores *= attention_mask
+    attention_scores = self._apply_quantizer(
+        'masked_softmax_mask2', attention_scores, training)
     adder = attention_mask - 1.0
     adder = self._apply_quantizer('masked_softmax_adder_sub', adder, training)
-    adder = adder * _MASK_CONSTANT_FOR_INT8_QUANTIZATION
+    adder *= _MASK_CONSTANT_FOR_INT8_QUANTIZATION
     adder = self._apply_quantizer('masked_softmax_adder_mul', adder, training)
-    attention_scores = attention_scores + adder
+    attention_scores += adder
     attention_scores = self._apply_quantizer(
         'masked_softmax_add', attention_scores, training)
 
