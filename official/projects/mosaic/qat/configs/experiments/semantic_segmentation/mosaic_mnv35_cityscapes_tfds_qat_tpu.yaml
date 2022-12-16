@@ -1,0 +1,86 @@
+# Using Tensorflow datasets: 'cityscapes/semantic_segmentation'
+# Some expected flags to use:
+#  --experiment=mosaic_mnv35_cityscapes_qat
+# mIoU (unquantized fp32): 77.24
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'float32'
+task:
+  model:
+    num_classes: 19
+    input_size: [null, null, 3]
+    backbone:
+      type: 'mobilenet'
+      mobilenet:
+        model_id: 'MobileNetMultiAVGSeg'
+        output_stride: 16
+    neck:
+      branch_filter_depths: [64, 64]
+      conv_kernel_sizes: [3, 5]
+      pyramid_pool_bin_nums: [1, 4, 8, 16]
+      dropout_rate: 0.0
+    head:
+      num_classes: 19
+      decoder_input_levels: ['3/depthwise', '2/depthwise']
+      decoder_stage_merge_styles: ['concat_merge', 'sum_merge']
+      decoder_filters: [64, 64]
+      decoder_projected_filters: [19, 19]
+    norm_activation:
+      activation: relu
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+  losses:
+    l2_weight_decay: 1.0e-06  # 1/100 of original value.
+  quantization:
+    pretrained_original_checkpoint: 'gs://tf_model_garden/vision/mosaic/mobilenet_multiavgseg_r1024_ebf64_gp/best_ckpt-857'
+  init_checkpoint: null
+  train_data:
+    output_size: [1024, 2048]
+    crop_size: [1024, 2048]
+    input_path: ''
+    tfds_name: 'cityscapes/semantic_segmentation'
+    tfds_split: 'train'
+    is_training: true
+    global_batch_size: 32
+    dtype: 'float32'
+    aug_rand_hflip: true
+    aug_scale_max: 2.0
+    aug_scale_min: 0.5
+  validation_data:
+    output_size: [1024, 2048]
+    input_path: ''
+    tfds_name: 'cityscapes/semantic_segmentation'
+    tfds_split: 'validation'
+    is_training: false
+    global_batch_size: 32
+    dtype: 'float32'
+    drop_remainder: false
+    resize_eval_groundtruth: true
+trainer:
+  optimizer_config:
+    learning_rate:
+      polynomial:
+        decay_steps: 20000
+        initial_learning_rate: 0.001  # 1/100 of original lr.
+        power: 0.9
+      type: polynomial
+    optimizer:
+      sgd:
+        momentum: 0.9
+      type: sgd
+    warmup:
+      linear:
+        name: linear
+        warmup_learning_rate: 0
+        warmup_steps: 0  # No warmup
+      type: linear
+  steps_per_loop: 92  # 2975 / 32 = 92
+  summary_interval: 92
+  train_steps: 20000
+  validation_interval: 92
+  validation_steps: 16  # 500 / 32 = 16
+  checkpoint_interval: 92
+  best_checkpoint_export_subdir: 'best_ckpt'
+  best_checkpoint_eval_metric: 'mean_iou'
+  best_checkpoint_metric_comp: 'higher'
