@@ -24,6 +24,7 @@ version = '2.11.2'
 tf_version = '2.11.0'  # Major version.
 
 project_name = 'tf-models-official'
+# Use project_name = 'tf-models-no-deps' for Mac release.
 
 long_description = """The TensorFlow official models are a collection of
 models that use TensorFlow's high-level APIs.
@@ -61,7 +62,7 @@ if project_name == 'tf-models-nightly':
   version += '.dev' + datetime.datetime.now().strftime('%Y%m%d')
   install_requires.append('tf-nightly')
   install_requires.append('tensorflow-text-nightly')
-else:
+elif project_name == 'tf-models-official':
   install_requires.append(f'tensorflow~={tf_version}')
   install_requires.append(f'tensorflow-text~={tf_version}')
 
