@@ -150,7 +150,15 @@ don't recommend earlier versions.
 ### Installation
 
 Please check [here](https://github.com/tensorflow/models#Installation) for the
-instructions
+instructions.
+
+Available pypi packages:
+
+* [tf-models-official](https://pypi.org/project/tf-models-official/)
+* [tf-models-nightly](https://pypi.org/project/tf-models-nightly/): nightly
+release with the latest changes.
+* [tf-models-no-deps](https://pypi.org/project/tf-models-no-deps/): without
+`tensorflow` and `tensorflow-text` in the `install_requires` list.
 
 ## Contributions
 
