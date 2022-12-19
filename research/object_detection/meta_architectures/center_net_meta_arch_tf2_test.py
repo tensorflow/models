@@ -57,9 +57,9 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
   def test_row_col_channel_indices_from_flattened_indices(self):
     """Tests that the computation of row, col, channel indices is correct."""
 
-    r_grid, c_grid, ch_grid = (np.zeros((5, 4, 3), dtype=np.int),
-                               np.zeros((5, 4, 3), dtype=np.int),
-                               np.zeros((5, 4, 3), dtype=np.int))
+    r_grid, c_grid, ch_grid = (np.zeros((5, 4, 3), dtype=int),
+                               np.zeros((5, 4, 3), dtype=int),
+                               np.zeros((5, 4, 3), dtype=int))
 
     r_grid[..., 0] = r_grid[..., 1] = r_grid[..., 2] = np.array(
         [[0, 0, 0, 0],
@@ -123,7 +123,7 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
   def test_get_valid_anchor_weights_in_flattened_image(self):
     """Tests that the anchor weights are valid upon flattening out."""
 
-    valid_weights = np.zeros((2, 5, 5), dtype=np.float)
+    valid_weights = np.zeros((2, 5, 5), dtype=float)
 
     valid_weights[0, :3, :4] = 1.0
     valid_weights[1, :2, :2] = 1.0
@@ -2342,11 +2342,11 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
       # All keypoint outputs should be zeros.
       np.testing.assert_allclose(
           detections['detection_keypoints'][0][0],
-          np.zeros([num_keypoints, 2], np.float),
+          np.zeros([num_keypoints, 2], float),
           rtol=1e-6)
       np.testing.assert_allclose(
           detections['detection_keypoint_scores'][0][0],
-          np.zeros([num_keypoints], np.float),
+          np.zeros([num_keypoints], float),
           rtol=1e-6)
       # Binary segmentation mask.
       self.assertSameElements(

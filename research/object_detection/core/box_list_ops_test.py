@@ -432,7 +432,7 @@ class BoxListOpsTest(test_case.TestCase):
     corners = np.array(
         [4 * [0.0], 4 * [1.0], 4 * [2.0], 4 * [3.0], 4 * [4.0]],
         dtype=np.float32)
-    indicator = np.array([True, False, True, False, True], dtype=np.bool)
+    indicator = np.array([True, False, True, False, True], dtype=bool)
     weights = np.array([[.1], [.3], [.5], [.7], [.9]], dtype=np.float32)
     result_boxes, result_weights = self.execute_cpu(
         graph_fn, [corners, weights, indicator])

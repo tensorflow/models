@@ -1763,12 +1763,12 @@ class CocoPanopticSegmentationEvaluator(
           "The number of masks doesn't match the number of labels.")
     if crowd_gt_indices is None:
       # All gts are treated as normal
-      crowd_gt_indices = np.zeros(groundtruth_masks.shape, dtype=np.bool)
+      crowd_gt_indices = np.zeros(groundtruth_masks.shape, dtype=bool)
     else:
       if groundtruth_masks.shape[0] != crowd_gt_indices.shape[0]:
         raise ValueError(
             "The number of masks doesn't match the number of is_crowd labels.")
-      crowd_gt_indices = crowd_gt_indices.astype(np.bool)
+      crowd_gt_indices = crowd_gt_indices.astype(bool)
     normal_gt_indices = np.logical_not(crowd_gt_indices)
     if normal_gt_indices.size:
       normal_gt_masks = groundtruth_masks[normal_gt_indices, :, :]
@@ -1826,8 +1826,8 @@ class CocoPanopticSegmentationEvaluator(
     if predicted_masks.shape[0] != predicted_classes.shape[0]:
       raise ValueError(
           "The number of predicted masks doesn't match the number of labels.")
-    gt_matched = np.zeros(groundtruth_classes.shape, dtype=np.bool)
-    pred_matched = np.zeros(predicted_classes.shape, dtype=np.bool)
+    gt_matched = np.zeros(groundtruth_classes.shape, dtype=bool)
+    pred_matched = np.zeros(predicted_classes.shape, dtype=bool)
     best_overlaps = np.zeros(predicted_classes.shape)
     for pid in range(predicted_classes.shape[0]):
       best_overlap = 0

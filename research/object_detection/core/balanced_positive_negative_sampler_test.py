@@ -27,10 +27,10 @@ class BalancedPositiveNegativeSamplerTest(test_case.TestCase):
   def test_subsample_all_examples(self):
     if self.has_tpu(): return
     numpy_labels = np.random.permutation(300)
-    indicator = np.array(np.ones(300) == 1, np.bool)
+    indicator = np.array(np.ones(300) == 1, bool)
     numpy_labels = (numpy_labels - 200) > 0
 
-    labels = np.array(numpy_labels, np.bool)
+    labels = np.array(numpy_labels, bool)
 
     def graph_fn(indicator, labels):
       sampler = (
@@ -46,10 +46,10 @@ class BalancedPositiveNegativeSamplerTest(test_case.TestCase):
   def test_subsample_all_examples_static(self):
     if not self.has_tpu(): return
     numpy_labels = np.random.permutation(300)
-    indicator = np.array(np.ones(300) == 1, np.bool)
+    indicator = np.array(np.ones(300) == 1, bool)
     numpy_labels = (numpy_labels - 200) > 0
 
-    labels = np.array(numpy_labels, np.bool)
+    labels = np.array(numpy_labels, bool)
 
     def graph_fn(indicator, labels):
       sampler = (
@@ -69,10 +69,10 @@ class BalancedPositiveNegativeSamplerTest(test_case.TestCase):
     # 100 samples, 20 positives, 10 positives cannot be sampled.
     numpy_labels = np.arange(100)
     numpy_indicator = numpy_labels < 90
-    indicator = np.array(numpy_indicator, np.bool)
+    indicator = np.array(numpy_indicator, bool)
     numpy_labels = (numpy_labels - 80) >= 0
 
-    labels = np.array(numpy_labels, np.bool)
+    labels = np.array(numpy_labels, bool)
 
     def graph_fn(indicator, labels):
       sampler = (
@@ -92,10 +92,10 @@ class BalancedPositiveNegativeSamplerTest(test_case.TestCase):
     # 100 samples, 20 positives, 10 positives cannot be sampled.
     numpy_labels = np.arange(100)
     numpy_indicator = numpy_labels < 90
-    indicator = np.array(numpy_indicator, np.bool)
+    indicator = np.array(numpy_indicator, bool)
     numpy_labels = (numpy_labels - 80) >= 0
 
-    labels = np.array(numpy_labels, np.bool)
+    labels = np.array(numpy_labels, bool)
 
     def graph_fn(indicator, labels):
       sampler = (
@@ -119,10 +119,10 @@ class BalancedPositiveNegativeSamplerTest(test_case.TestCase):
     # sampled.
     numpy_labels = np.arange(100)
     numpy_indicator = numpy_labels < 60
-    indicator = np.array(numpy_indicator, np.bool)
+    indicator = np.array(numpy_indicator, bool)
     numpy_labels = (numpy_labels - 50) >= 0
 
-    labels = np.array(numpy_labels, np.bool)
+    labels = np.array(numpy_labels, bool)
 
     def graph_fn(indicator, labels):
       sampler = (
@@ -145,10 +145,10 @@ class BalancedPositiveNegativeSamplerTest(test_case.TestCase):
     # sampled.
     numpy_labels = np.arange(100)
     numpy_indicator = numpy_labels < 60
-    indicator = np.array(numpy_indicator, np.bool)
+    indicator = np.array(numpy_indicator, bool)
     numpy_labels = (numpy_labels - 50) >= 0
 
-    labels = np.array(numpy_labels, np.bool)
+    labels = np.array(numpy_labels, bool)
 
     def graph_fn(indicator, labels):
       sampler = (

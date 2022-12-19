@@ -58,7 +58,7 @@ class MinibatchSamplerTest(test_case.TestCase):
         samples_out)
 
   def test_subsample_indicator_when_indicator_all_false(self):
-    indicator_empty = np.zeros([0], dtype=np.bool)
+    indicator_empty = np.zeros([0], dtype=bool)
     def graph_fn(indicator):
       samples_empty = minibatch_sampler.MinibatchSampler.subsample_indicator(
           indicator, 4)

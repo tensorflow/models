@@ -463,9 +463,9 @@ class GroundtruthFilterTest(test_case.TestCase):
     input_boxes = np.array([[0.2, 0.4, 0.1, 0.8], [0.2, 0.4, 1.0, 0.8]],
                            dtype=np.float32)
     input_classes = np.array([1, 2], dtype=np.int32)
-    input_is_crowd = np.array([False, True], dtype=np.bool)
+    input_is_crowd = np.array([False, True], dtype=bool)
     input_area = np.array([32, 48], dtype=np.float32)
-    input_difficult = np.array([True, False], dtype=np.bool)
+    input_difficult = np.array([True, False], dtype=bool)
     input_label_types = np.array(['APPROPRIATE', 'INCORRECT'],
                                  dtype=np.string_)
     input_confidences = np.array([0.99, 0.5], dtype=np.float32)
@@ -502,7 +502,7 @@ class GroundtruthFilterTest(test_case.TestCase):
   def test_filter_with_missing_fields(self):
 
     input_boxes = np.array([[0.2, 0.4, 0.1, 0.8], [0.2, 0.4, 1.0, 0.8]],
-                           dtype=np.float)
+                           dtype=float)
     input_classes = np.array([1, 2], dtype=np.int32)
     valid_indices = np.array([0], dtype=np.int32)
 
@@ -545,9 +545,9 @@ class GroundtruthFilterTest(test_case.TestCase):
       return output_tensors
 
     input_boxes = np.array([[0.2, 0.4, 0.1, 0.8], [0.2, 0.4, 1.0, 0.8]],
-                           dtype=np.float)
+                           dtype=float)
     input_classes = np.array([1, 2], dtype=np.int32)
-    input_is_crowd = np.array([False, True], dtype=np.bool)
+    input_is_crowd = np.array([False, True], dtype=bool)
     input_area = np.array([], dtype=np.float32)
     input_difficult = np.array([], dtype=np.float32)
     input_confidences = np.array([0.99, 0.5], dtype=np.float32)
@@ -588,9 +588,9 @@ class GroundtruthFilterTest(test_case.TestCase):
       output_tensors = ops.retain_groundtruth(input_tensors, valid_indices)
       return output_tensors
 
-    input_boxes = np.array([], dtype=np.float).reshape(0, 4)
+    input_boxes = np.array([], dtype=float).reshape(0, 4)
     input_classes = np.array([], dtype=np.int32)
-    input_is_crowd = np.array([], dtype=np.bool)
+    input_is_crowd = np.array([], dtype=bool)
     input_area = np.array([], dtype=np.float32)
     input_difficult = np.array([], dtype=np.float32)
     input_confidences = np.array([], dtype=np.float32)
@@ -631,11 +631,11 @@ class RetainGroundTruthWithPositiveClasses(test_case.TestCase):
 
     input_image = np.random.rand(224, 224, 3)
     input_boxes = np.array([[0.2, 0.4, 0.1, 0.8], [0.2, 0.4, 1.0, 0.8]],
-                           dtype=np.float)
+                           dtype=float)
     input_classes = np.array([1, 0], dtype=np.int32)
-    input_is_crowd = np.array([False, True], dtype=np.bool)
+    input_is_crowd = np.array([False, True], dtype=bool)
     input_area = np.array([32, 48], dtype=np.float32)
-    input_difficult = np.array([True, False], dtype=np.bool)
+    input_difficult = np.array([True, False], dtype=bool)
     input_label_types = np.array(['APPROPRIATE', 'INCORRECT'],
                                  dtype=np.string_)
     input_confidences = np.array([0.99, 0.5], dtype=np.float32)
