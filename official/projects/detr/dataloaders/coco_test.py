@@ -31,7 +31,7 @@ def _gen_fn():
       'image/id': np.random.randint(0, 100),
       'image/filename': 'test',
       'objects': {
-          'is_crowd': np.ones(shape=(num_boxes), dtype=np.bool),
+          'is_crowd': np.ones(shape=(num_boxes), dtype=bool),
           'bbox': np.ones(shape=(num_boxes, 4), dtype=np.float32),
           'label': np.ones(shape=(num_boxes), dtype=np.int64),
           'id': np.ones(shape=(num_boxes), dtype=np.int64),

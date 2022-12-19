@@ -205,7 +205,7 @@ class TfExampleBuilder(tf_example_builder.TfExampleBuilder):
       self, instance_mask_matrices: np.ndarray) -> Sequence[float]:
     return np.sum(
         instance_mask_matrices, axis=(1, 2, 3),
-        dtype=np.float).flatten().tolist()
+        dtype=float).flatten().tolist()
 
   def add_instance_mask_matrices_feature(
       self,
