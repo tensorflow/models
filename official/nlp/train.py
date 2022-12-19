@@ -16,7 +16,9 @@
 
 from absl import app
 from absl import flags
+from absl import logging
 import gin
+import tensorflow as tf
 
 from official.common import distribute_utils
 # pylint: disable=unused-import
@@ -35,6 +37,41 @@ flags.DEFINE_integer(
     'pretrain_steps',
     default=None,
     help='The number of total training steps for the pretraining job.')
+
+
+def _run_experiment_with_preemption_recovery(params, model_dir):
+  """Runs experiment and tries to reconnect when encounting a preemption."""
+  keep_training = True
+  while keep_training:
+    preemption_watcher = None
+    try:
+      distribution_strategy = distribute_utils.get_distribution_strategy(
+          distribution_strategy=params.runtime.distribution_strategy,
+          all_reduce_alg=params.runtime.all_reduce_alg,
+          num_gpus=params.runtime.num_gpus,
+          tpu_address=params.runtime.tpu,
+          **params.runtime.model_parallelism())
+      with distribution_strategy.scope():
+        task = task_factory.get_task(params.task, logging_dir=model_dir)
+      preemption_watcher = tf.distribute.experimental.PreemptionWatcher()
+
+      train_lib.run_experiment(
+          distribution_strategy=distribution_strategy,
+          task=task,
+          mode=FLAGS.mode,
+          params=params,
+          model_dir=model_dir)
+
+      keep_training = False
+    except tf.errors.OpError as e:
+      if preemption_watcher and preemption_watcher.preemption_message:
+        logging.info(
+            'Some TPU workers had been preempted (message: %s), '
+            'retarting training from the last checkpoint...',
+            preemption_watcher.preemption_message)
+        keep_training = True
+      else:
+        raise e from None
 
 
 def main(_):
@@ -58,21 +95,7 @@ def main(_):
     if params.runtime.mixed_precision_dtype:
       performance.set_mixed_precision_policy(
           params.runtime.mixed_precision_dtype)
-    distribution_strategy = distribute_utils.get_distribution_strategy(
-        distribution_strategy=params.runtime.distribution_strategy,
-        all_reduce_alg=params.runtime.all_reduce_alg,
-        num_gpus=params.runtime.num_gpus,
-        tpu_address=params.runtime.tpu,
-        **params.runtime.model_parallelism())
-    with distribution_strategy.scope():
-      task = task_factory.get_task(params.task, logging_dir=model_dir)
-
-    train_lib.run_experiment(
-        distribution_strategy=distribution_strategy,
-        task=task,
-        mode=FLAGS.mode,
-        params=params,
-        model_dir=model_dir)
+    _run_experiment_with_preemption_recovery(params, model_dir)
 
   train_utils.save_gin_config(FLAGS.mode, model_dir)
 
