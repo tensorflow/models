@@ -225,7 +225,7 @@ def preprocess_and_tokenize_input_files(
         continue
       total_number_of_lines += line_count
       all_tokens = np.array(all_tokens, dtype=np.int64)
-      all_sentence_ids = np.array(all_sentence_ids, dtype=np.bool)
+      all_sentence_ids = np.array(all_sentence_ids, dtype=bool)
       all_data.append((all_tokens, all_sentence_ids))
 
   logging.info("Completed text preprocessing. Total number of lines: %d",

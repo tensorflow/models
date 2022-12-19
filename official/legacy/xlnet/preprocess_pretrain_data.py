@@ -129,7 +129,7 @@ def _create_data(idx, input_paths):
       continue
 
     input_data = np.array(input_data, dtype=np.int64)
-    sent_ids = np.array(sent_ids, dtype=np.bool)
+    sent_ids = np.array(sent_ids, dtype=bool)
 
     total_line_cnt += line_cnt
     input_shards.append((input_data, sent_ids))
@@ -348,7 +348,7 @@ def _is_start_piece(piece):
 def _sample_mask(sp, seg, reverse=False, max_gram=5, goal_num_predict=None):
   """Samples `goal_num_predict` tokens for partial prediction."""
   seg_len = len(seg)
-  mask = np.array([False] * seg_len, dtype=np.bool)
+  mask = np.array([False] * seg_len, dtype=bool)
 
   num_predict = 0
 
@@ -411,7 +411,7 @@ def _sample_mask_ngram(sp, seg, reverse=False, max_gram=5,
   """Sample `goal_num_predict` tokens for partial prediction."""
 
   seg_len = len(seg)
-  mask = np.array([False] * seg_len, dtype=np.bool)
+  mask = np.array([False] * seg_len, dtype=bool)
 
   num_predict = 0
 

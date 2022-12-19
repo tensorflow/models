@@ -91,7 +91,7 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
             embedded_inputs=np.zeros(
                 (batch_size, decode_max_length, embedding_width),
                 dtype=np.float32),
-            input_masks=np.ones((batch_size, decode_max_length), dtype=np.bool))
+            input_masks=np.ones((batch_size, decode_max_length), dtype=bool))
       else:
         fake_inputs = dict(
             inputs=np.zeros((batch_size, decode_max_length), dtype=np.int32))
