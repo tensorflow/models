@@ -178,7 +178,7 @@ class YoloLoss(hyperparams.Config):
 
 @dataclasses.dataclass
 class Box(hyperparams.Config):
-  box: List[int] = dataclasses.field(default=list)
+  box: List[int] = dataclasses.field(default_factory=list)
 
 
 @dataclasses.dataclass
@@ -256,6 +256,8 @@ class YoloTask(cfg.TaskConfig):
       str, List[str]] = 'all'  # all, backbone, and/or decoder
   gradient_clip_norm: float = 0.0
   seed = GLOBAL_SEED
+  # Sets maximum number of boxes to be evaluated by coco eval api.
+  max_num_eval_detections: int = 100
 
 
 COCO_INPUT_PATH_BASE = 'coco'

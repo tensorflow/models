@@ -239,7 +239,8 @@ class YoloTask(base_task.Task):
           annotation_file=annotation_file,
           include_mask=False,
           need_rescale_bboxes=False,
-          per_category_metrics=self._task_config.per_category_metrics)
+          per_category_metrics=self._task_config.per_category_metrics,
+          max_num_eval_detections=self.task_config.max_num_eval_detections)
 
     return metrics
 
