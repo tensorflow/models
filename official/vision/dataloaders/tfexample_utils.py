@@ -42,7 +42,7 @@ class FooTrainTest(tf.test.TestCase):
 ```
 
 """
-from typing import Sequence, Union
+from typing import Mapping, Optional, Sequence, Union
 
 import numpy as np
 import tensorflow as tf
@@ -286,7 +286,8 @@ def create_segmentation_test_example(
     image_height: int,
     image_width: int,
     image_channel: int,
-    output_serialized_example: bool = False) -> tf.train.Example:
+    output_serialized_example: bool = False,
+    dense_features: Optional[Mapping[str, int]] = None) -> tf.train.Example:
   """Creates and returns a test example containing mask annotations.
 
   Args:
@@ -295,7 +296,9 @@ def create_segmentation_test_example(
     image_channel: The channel of test image.
     output_serialized_example: A boolean flag represents whether to return a
       serialized example.
-
+    dense_features: An optional dictionary of additional dense features, where
+      the key is the prefix of the feature key in tf.Example and the value is
+      the number of the channels of this feature.
   Returns:
     A tf.train.Example for testing.
   """
@@ -304,9 +307,19 @@ def create_segmentation_test_example(
   mask = fake_feature_generator.generate_semantic_mask_np(
       image_height, image_width, 3)
   builder = tf_example_builder.TfExampleBuilder()
-  example = builder.add_image_matrix_feature(
-      image, image_source_id=DUMP_SOURCE_ID).add_semantic_mask_matrix_feature(
-          mask).example
+  builder.add_image_matrix_feature(
+      image,
+      image_source_id=DUMP_SOURCE_ID).add_semantic_mask_matrix_feature(mask)
+
+  if dense_features:
+    for prefix, channel in dense_features.items():
+      dense_feature = fake_feature_generator.generate_semantic_mask_np(
+          image_height, image_width, channel)
+      builder.add_semantic_mask_matrix_feature(
+          dense_feature, feature_prefix=prefix)
+
+  example = builder.example
+
   if output_serialized_example:
     return example.SerializeToString()
   return example

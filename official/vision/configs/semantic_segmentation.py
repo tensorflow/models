@@ -26,10 +26,39 @@ from official.vision.configs import common
 from official.vision.configs import decoders
 from official.vision.configs import backbones
 
+# These values are from ImageNet dataset.
+_RGB_MEAN = [123.675, 116.28, 103.53]
+_RGB_STDDEV = [58.395, 57.12, 57.375]
+
+
+@dataclasses.dataclass
+class DenseFeatureConfig(hyperparams.Config):
+  """Config for dense features, such as RGB pixels, masks, heatmaps.
+
+  The dense features are encoded images in TF examples. Thus they are
+  1-, 3- or 4-channel. For features with another channel number (e.g.
+  optical flow), they could be encoded in multiple 1-channel features.
+  The default config is for RGB input, with mean and stddev from ImageNet
+  datasets. Only supports 8-bit encoded features with the maximum value = 255.
+
+  Attributes:
+    feature_name: The key of the feature in TF examples.
+    num_channels: An `int` specifying the number of channels of the feature.
+    mean: A list of floats in the range of [0, 255] representing the mean value
+      of each channel. The length of the list should match num_channels.
+    stddev: A list of floats in the range of [0, 255] representing the standard
+      deviation of each channel. The length should match num_channels.
+  """
+  feature_name: str = 'image/encoded'
+  num_channels: int = 3
+  mean: List[float] = dataclasses.field(default_factory=lambda: _RGB_MEAN)
+  stddev: List[float] = dataclasses.field(default_factory=lambda: _RGB_STDDEV)
+
 
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
   """Input config for training."""
+  image_feature: DenseFeatureConfig = DenseFeatureConfig()
   output_size: List[int] = dataclasses.field(default_factory=list)
   # If crop_size is specified, image will be resized first to
   # output_size, then crop of size crop_size will be cropped.
@@ -53,6 +82,8 @@ class DataConfig(cfg.DataConfig):
   drop_remainder: bool = True
   file_type: str = 'tfrecord'
   decoder: Optional[common.DataDecoder] = common.DataDecoder()
+  additional_dense_features: List[DenseFeatureConfig] = dataclasses.field(
+      default_factory=list)
 
 
 @dataclasses.dataclass

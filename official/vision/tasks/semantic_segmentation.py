@@ -91,7 +91,9 @@ class SemanticSegmentationTask(base_task.Task):
     if params.tfds_name:
       decoder = tfds_factory.get_segmentation_decoder(params.tfds_name)
     else:
-      decoder = segmentation_input.Decoder()
+      decoder = segmentation_input.Decoder(
+          image_feature=params.image_feature,
+          additional_dense_features=params.additional_dense_features)
 
     parser = segmentation_input.Parser(
         output_size=params.output_size,
@@ -104,7 +106,9 @@ class SemanticSegmentationTask(base_task.Task):
         aug_scale_max=params.aug_scale_max,
         aug_rand_hflip=params.aug_rand_hflip,
         preserve_aspect_ratio=params.preserve_aspect_ratio,
-        dtype=params.dtype)
+        dtype=params.dtype,
+        image_feature=params.image_feature,
+        additional_dense_features=params.additional_dense_features)
 
     reader = input_reader_factory.input_reader_generator(
         params,
