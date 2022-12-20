@@ -212,8 +212,10 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
   gt_annotations = []
   num_batches = len(groundtruths['source_id'])
   for i in range(num_batches):
-    logging.debug(
-        'convert_groundtruths_to_coco_dataset: Processing annotation %d', i)
+    logging.log_every_n(
+        logging.INFO,
+        'convert_groundtruths_to_coco_dataset: Processing annotation %d', 100,
+        i)
     max_num_instances = groundtruths['classes'][i].shape[1]
     batch_size = groundtruths['source_id'][i].shape[0]
     for j in range(batch_size):
@@ -247,17 +249,10 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
           if isinstance(groundtruths['masks'][i][j, k], tf.Tensor):
             mask = Image.open(
                 six.BytesIO(groundtruths['masks'][i][j, k].numpy()))
-            width, height = mask.size
-            np_mask = (
-                np.array(mask.getdata()).reshape(height,
-                                                 width).astype(np.uint8))
           else:
             mask = Image.open(
                 six.BytesIO(groundtruths['masks'][i][j, k]))
-            width, height = mask.size
-            np_mask = (
-                np.array(mask.getdata()).reshape(height,
-                                                 width).astype(np.uint8))
+          np_mask = np.array(mask).astype(np.uint8)
           np_mask[np_mask > 0] = 255
           encoded_mask = mask_api.encode(np.asfortranarray(np_mask))
           ann['segmentation'] = encoded_mask
@@ -386,7 +381,9 @@ def generate_annotation_file(groundtruth_generator,
   groundtruths = {}
   logging.info('Loading groundtruth annotations from dataset to memory...')
   for i, groundtruth in enumerate(groundtruth_generator()):
-    logging.debug('generate_annotation_file: Processing annotation %d', i)
+    logging.log_every_n(logging.INFO,
+                        'generate_annotation_file: Processing annotation %d',
+                        100, i)
     for k, v in six.iteritems(groundtruth):
       if k not in groundtruths:
         groundtruths[k] = [v]
