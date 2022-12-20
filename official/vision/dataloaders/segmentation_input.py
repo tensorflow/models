@@ -15,6 +15,7 @@
 """Data parser and processing for segmentation datasets."""
 
 import tensorflow as tf
+from official.vision.configs import semantic_segmentation as config_lib
 from official.vision.dataloaders import decoder
 from official.vision.dataloaders import parser
 from official.vision.dataloaders import utils
@@ -24,7 +25,9 @@ from official.vision.ops import preprocess_ops
 class Decoder(decoder.Decoder):
   """A tf.Example decoder for segmentation task."""
 
-  def __init__(self):
+  def __init__(self,
+               image_feature=config_lib.DenseFeatureConfig(),
+               additional_dense_features=None):
     self._keys_to_features = {
         'image/encoded':
             tf.io.FixedLenFeature((), tf.string, default_value=''),
@@ -33,8 +36,14 @@ class Decoder(decoder.Decoder):
         'image/width':
             tf.io.FixedLenFeature((), tf.int64, default_value=0),
         'image/segmentation/class/encoded':
+            tf.io.FixedLenFeature((), tf.string, default_value=''),
+        image_feature.feature_name:
             tf.io.FixedLenFeature((), tf.string, default_value='')
     }
+    if additional_dense_features:
+      for feature in additional_dense_features:
+        self._keys_to_features[feature.feature_name] = tf.io.FixedLenFeature(
+            (), tf.string, default_value='')
 
   def decode(self, serialized_example):
     return tf.io.parse_single_example(serialized_example,
@@ -55,7 +64,9 @@ class Parser(parser.Parser):
                preserve_aspect_ratio=True,
                aug_scale_min=1.0,
                aug_scale_max=1.0,
-               dtype='float32'):
+               dtype='float32',
+               image_feature=config_lib.DenseFeatureConfig(),
+               additional_dense_features=None):
     """Initializes parameters for parsing annotations in the dataset.
 
     Args:
@@ -84,6 +95,11 @@ class Parser(parser.Parser):
       aug_scale_max: `float`, the maximum scale applied to `output_size` for
         data augmentation during training.
       dtype: `str`, data type. One of {`bfloat16`, `float32`, `float16`}.
+      image_feature: the config for the image input (usually RGB). Defaults to
+        the config for a 3-channel image with key = `image/encoded` and ImageNet
+        dataset mean/stddev.
+      additional_dense_features: `list` of DenseFeatureConfig for additional
+        dense features.
     """
     self._output_size = output_size
     self._crop_size = crop_size
@@ -104,27 +120,55 @@ class Parser(parser.Parser):
     # dtype.
     self._dtype = dtype
 
+    self._image_feature = image_feature
+    self._additional_dense_features = additional_dense_features
+
   def _prepare_image_and_label(self, data):
     """Prepare normalized image and label."""
-    image = tf.io.decode_image(data['image/encoded'], channels=3)
-    label = tf.io.decode_image(
-        data['image/segmentation/class/encoded'], channels=1)
     height = data['image/height']
     width = data['image/width']
-    image = tf.reshape(image, (height, width, 3))
 
+    label = tf.io.decode_image(
+        data['image/segmentation/class/encoded'], channels=1)
     label = tf.reshape(label, (1, height, width))
     label = tf.cast(label, tf.float32)
-    # Normalizes image with mean and std pixel values.
-    image = preprocess_ops.normalize_image(image)
+
+    image = tf.io.decode_image(
+        data[self._image_feature.feature_name],
+        channels=self._image_feature.num_channels,
+        dtype=tf.uint8)
+    image = tf.reshape(image, (height, width, self._image_feature.num_channels))
+    # Normalizes the image feature with mean and std values, which are divided
+    # by 255 because an uint8 image are re-scaled automatically. Images other
+    # than uint8 type will be wrongly normalized.
+    image = preprocess_ops.normalize_image(
+        image, [mean / 255.0 for mean in self._image_feature.mean],
+        [stddev / 255.0 for stddev in self._image_feature.stddev])
+
+    if self._additional_dense_features:
+      input_list = [image]
+      for feature_cfg in self._additional_dense_features:
+        feature = tf.io.decode_image(
+            data[feature_cfg.feature_name],
+            channels=feature_cfg.num_channels,
+            dtype=tf.uint8)
+        feature = tf.reshape(feature, (height, width, feature_cfg.num_channels))
+        feature = preprocess_ops.normalize_image(
+            feature, [mean / 255.0 for mean in feature_cfg.mean],
+            [stddev / 255.0 for stddev in feature_cfg.stddev])
+        input_list.append(feature)
+      concat_input = tf.concat(input_list, axis=2)
+    else:
+      concat_input = image
 
     if not self._preserve_aspect_ratio:
       label = tf.reshape(label, [data['image/height'], data['image/width'], 1])
-      image = tf.image.resize(image, self._output_size, method='bilinear')
+      concat_input = tf.image.resize(
+          concat_input, self._output_size, method='bilinear')
       label = tf.image.resize(label, self._output_size, method='nearest')
       label = tf.reshape(label[:, :, -1], [1] + self._output_size)
 
-    return image, label
+    return concat_input, label
 
   def _parse_train_data(self, data):
     """Parses data for training and evaluation."""
@@ -150,7 +194,8 @@ class Parser(parser.Parser):
         label = tf.image.resize(label, self._output_size, method='nearest')
 
       image_mask = tf.concat([image, label], axis=2)
-      image_mask_crop = tf.image.random_crop(image_mask, self._crop_size + [4])
+      image_mask_crop = tf.image.random_crop(
+          image_mask, self._crop_size + [tf.shape(image_mask)[-1]])
       image = image_mask_crop[:, :, :-1]
       label = tf.reshape(image_mask_crop[:, :, -1], [1] + self._crop_size)
 
