@@ -15,7 +15,7 @@
 """Image classification configuration definition."""
 import dataclasses
 import os
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union, Sequence
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -28,7 +28,8 @@ from official.vision.configs import backbones
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
   """Input config for training."""
-  input_path: str = ''
+  input_path: Union[Sequence[str], str, hyperparams.Config] = ''
+  weights: Optional[hyperparams.base_config.Config] = None
   global_batch_size: int = 0
   is_training: bool = True
   dtype: str = 'float32'

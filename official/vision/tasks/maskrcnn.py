@@ -15,14 +15,16 @@
 """MaskRCNN task definition."""
 
 import os
-from typing import Any, Dict, Optional, List, Tuple, Mapping
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from absl import logging
 import tensorflow as tf
+
 from official.common import dataset_fn as dataset_fn_lib
 from official.core import base_task
 from official.core import task_factory
 from official.vision.configs import maskrcnn as exp_cfg
+from official.vision.dataloaders import input_reader
 from official.vision.dataloaders import input_reader_factory
 from official.vision.dataloaders import maskrcnn_input
 from official.vision.dataloaders import tf_example_decoder
@@ -169,6 +171,7 @@ class MaskRCNNTask(base_task.Task):
         params,
         dataset_fn=dataset_fn,
         decoder_fn=decoder.decode,
+        combine_fn=input_reader.create_combine_fn(params),
         parser_fn=parser.parse_fn(params.is_training))
     dataset = reader.read(input_context=input_context)
 

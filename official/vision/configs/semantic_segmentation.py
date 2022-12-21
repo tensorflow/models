@@ -64,6 +64,7 @@ class DataConfig(cfg.DataConfig):
   # output_size, then crop of size crop_size will be cropped.
   crop_size: List[int] = dataclasses.field(default_factory=list)
   input_path: Union[Sequence[str], str, hyperparams.Config] = ''
+  weights: Optional[hyperparams.Config] = None
   global_batch_size: int = 0
   is_training: bool = True
   dtype: str = 'float32'
