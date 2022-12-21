@@ -44,8 +44,4 @@ RUN cd /tmp/od/ && protoc object_detection/protos/*.proto --python_out=. \
     && pip3 --disable-pip-version-check --no-cache-dir install --use-feature=2020-resolver . \
     && rm -rf /tmp/od
 
-COPY delf/ /home/delf
-RUN pip3 --disable-pip-version-check --no-cache-dir install matplotlib numpy scikit-image scipy \
-    && cd /home/delf && protoc delf/protos/*.proto --python_out=. \
-    && pip3 --disable-pip-version-check --no-cache-dir install .
-
+RUN pip3 --disable-pip-version-check --no-cache-dir install matplotlib numpy scikit-image scipy

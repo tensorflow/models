@@ -48,7 +48,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "pip3 install --user -r requirements.txt",
+	"postCreateCommand": "./.devcontainer/postCreateCommand.sh",
 
 	"runArgs": [ 
 		"--cap-add=SYS_PTRACE",
