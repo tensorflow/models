@@ -24,9 +24,9 @@ adding support for other tasks and models in the next releases.
 ## Results
 ### MobileBERT
 
-Model name            | SQUAD F1 (float) | SQUAD F1 (PTQ) | SQUAD F1 (QAT) | download
-:-------------------- | ---------------: | -------------: | -------------: | ---------:
-MobileBERT-EdgeTPU-XS | 88.02%           | 84.96%         | 86.26%         | [FP32](https://storage.googleapis.com/tf_model_garden/nlp/qat/mobilebert/model_fp32.tflite) \| [INT8](https://storage.googleapis.com/tf_model_garden/nlp/qat/mobilebert/model_int8_ptq.tflite) \| [QAT INT8](https://storage.googleapis.com/tf_model_garden/nlp/qat/mobilebert/model_int8_qat.tflite)
+Model name            | SQUAD F1 (float) | SQUAD F1 (PTQ) | SQUAD F1 (QAT) | download   | links
+:-------------------- | ---------------: | -------------: | -------------: | ---------: | ----:
+MobileBERT-EdgeTPU-XS | 88.02%           | 84.96%         | 85.42%         | [FP32](https://storage.googleapis.com/tf_model_garden/nlp/qat/mobilebert/model_fp32.tflite) \| [INT8](https://storage.googleapis.com/tf_model_garden/nlp/qat/mobilebert/model_int8_ptq.tflite) \| [QAT INT8](https://storage.googleapis.com/tf_model_garden/nlp/qat/mobilebert/model_qat.tflite) ([ckpt](https://storage.googleapis.com/tf_model_garden/nlp/qat/mobilebert/mobilebert_qat.tar.gz)) | [tensorboard](https://tensorboard.dev/experiment/ky0gSa6nQva2a5ppL4Mtzw/#scalars)
 
 ## Training
 
