@@ -13,10 +13,10 @@
 # limitations under the License.
 
 """Loads dataset for the sentence prediction (classification) task."""
+import dataclasses
 import functools
 from typing import List, Mapping, Optional, Tuple
 
-import dataclasses
 import tensorflow as tf
 import tensorflow_hub as hub
 

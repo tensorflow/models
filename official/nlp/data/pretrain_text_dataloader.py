@@ -16,9 +16,10 @@
 import dataclasses
 from typing import List, Mapping, Optional, Text
 
-# Import libraries
 import tensorflow as tf
 import tensorflow_text as tf_text
+
+from official.common import dataset_fn
 from official.core import config_definitions as cfg
 from official.core import input_reader
 from official.nlp.data import data_loader
@@ -44,6 +45,7 @@ class BertPretrainTextDataConfig(cfg.DataConfig):
   vocab_file_path: str = ""
   masking_rate: float = 0.15
   use_whole_word_masking: bool = False
+  file_type: str = "tfrecord"
 
 
 _CLS_TOKEN = b"[CLS]"
@@ -210,6 +212,7 @@ class BertPretrainTextDataLoader(data_loader.DataLoader):
 
     reader = input_reader.InputReader(
         params=self._params,
+        dataset_fn=dataset_fn.pick_dataset_fn(self._params.file_type),
         decoder_fn=self._decode if self._params.input_path else None,
         transform_and_batch_fn=_batch_docs
         if self._use_next_sentence_label else None,
