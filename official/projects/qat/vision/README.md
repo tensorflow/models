@@ -12,13 +12,17 @@ models. These are examples to show how to apply the Model Optimization Toolkit's
 [quantization aware training API](https://www.tensorflow.org/model_optimization/guide/quantization/training).
 compared to post-training quantization (PTQ), QAT can minimize the quality loss
 from quantization, while still achieving the speed-up from integer quantization.
-Therefore, it is the preferrable technique to use when there is strict
-requreiment on model latency and quality. Please find our
+Therefore, it is the preferable technique to use when there is strict
+requirement on model latency and quality. Please find our
 [blogpost](https://blog.tensorflow.org/2022/06/Adding-Quantization-aware-Training-and-Pruning-to-the-TensorFlow-Model-Garden.html)
 for more details.
 
 Currently, we support a limited number of vision tasks & models. We will keep
 adding support for other tasks and models in the next releases.
+
+You can follow this
+[Colab notebook](https://colab.research.google.com/github/tensorflow/models/blob/master/official/projects/qat/vision/docs/qat_tutorial.ipynb)
+to try QAT.
 
 ## History
 
@@ -90,7 +94,7 @@ MobileNet v2 + DeepLab v3+ | 1024x2048  | 73.82 | 73.84       | 72.33       | 73
 It can run on Google Cloud Platform using Cloud TPU.
 [Here](https://cloud.google.com/tpu/docs/how-to) is the instruction of using
 Cloud TPU. Following the instructions to set up Cloud TPU and launch training,
-using object detection as an exmaple:
+using object detection as an example:
 
 ```shell
 
