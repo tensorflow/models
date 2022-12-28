@@ -290,7 +290,7 @@ class BoxGenInputReader(input_reader.InputReader):
         k-means for.
       num_samples: `Optional[int]` for the number of samples to use for kmeans,
         typically about 5000 samples are all that are needed, but for the best
-        results use None to run the entire dataset.
+        results use -1 to run the entire dataset.
 
     Returns:
       boxes: `List[List[int]]` of shape [k, 2] for the anchor boxes to use for
