@@ -84,7 +84,8 @@ class YoloTask(base_task.Task):
     dataset.global_batch_size = 1
     box_reader = kmeans_anchors.BoxGenInputReader(
         dataset,
-        dataset_fn=tf.data.TFRecordDataset,
+        dataset_fn=dataset_fn.pick_dataset_fn(
+            self.task_config.train_data.file_type),
         decoder_fn=decoder.decode)
 
     boxes = box_reader.read(
