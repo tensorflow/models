@@ -147,7 +147,7 @@ class FPN(tf.keras.Model):
       else:
         raise ValueError('Fusion type {} not supported.'.format(fusion_type))
 
-    # TODO(xianzhi): consider to remove bias in conv2d.
+    # TODO(fyangf): experiment with removing bias in conv2d.
     # Build post-hoc 3x3 convolution kernel.
     for level in range(min_level, backbone_max_level + 1):
       feats[str(level)] = conv2d(
@@ -160,7 +160,7 @@ class FPN(tf.keras.Model):
           bias_regularizer=bias_regularizer)(
               feats[str(level)])
 
-    # TODO(xianzhi): consider to remove bias in conv2d.
+    # TODO(fyangf): experiment with removing bias in conv2d.
     # Build coarser FPN levels introduced for RetinaNet.
     for level in range(backbone_max_level + 1, max_level + 1):
       feats_in = feats[str(level - 1)]
