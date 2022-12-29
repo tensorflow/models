@@ -134,7 +134,7 @@ class MaskRCNNModel(tf.keras.Model):
       raise ValueError('`mask_roi_aligner` is not provided in Mask R-CNN.')
     self.mask_roi_aligner = mask_roi_aligner
     # Weights for the regression losses for each FRCNN layer.
-    # TODO(xianzhi): Make the weights configurable.
+    # TODO(jiageng): Make the weights configurable.
     self._cascade_layer_to_weights = [
         [10.0, 10.0, 5.0, 5.0],
         [20.0, 20.0, 10.0, 10.0],
