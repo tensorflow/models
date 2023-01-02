@@ -28,6 +28,10 @@ Model name            | SQUAD F1 (float) | SQUAD F1 (PTQ) | SQUAD F1 (QAT) | dow
 :-------------------- | ---------------: | -------------: | -------------: | ---------: | ----:
 MobileBERT-EdgeTPU-XS | 88.02%           | 84.96%         | 85.42%         | [FP32](https://storage.googleapis.com/tf_model_garden/nlp/qat/mobilebert/model_fp32.tflite) \| [INT8](https://storage.googleapis.com/tf_model_garden/nlp/qat/mobilebert/model_int8_ptq.tflite) \| [QAT INT8](https://storage.googleapis.com/tf_model_garden/nlp/qat/mobilebert/model_qat.tflite) ([ckpt](https://storage.googleapis.com/tf_model_garden/nlp/qat/mobilebert/mobilebert_qat.tar.gz)) | [tensorboard](https://tensorboard.dev/experiment/ky0gSa6nQva2a5ppL4Mtzw/#scalars)
 
+Please follow
+[MobileBERT QAT Tutorial Colab notebook](https://colab.research.google.com/github/tensorflow/models/blob/master/official/projects/qat/nlp/docs/MobileBERT_QAT_tutorial.ipynb)
+to try exported models.
+
 ## Training
 
 It can run on Google Cloud Platform using Cloud TPU.
