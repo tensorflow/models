@@ -35,7 +35,7 @@ class RpnScoreLoss(object):
       score_outputs: an OrderDict with keys representing levels and values
         representing scores in [batch_size, height, width, num_anchors].
       labels: the dictionary that returned from dataloader that includes
-        groundturth targets.
+        groundtruth targets.
 
     Returns:
       rpn_score_loss: a scalar tensor representing total score loss.
@@ -52,7 +52,7 @@ class RpnScoreLoss(object):
                 normalizer=tf.cast(
                     tf.shape(score_outputs[level])[0] *
                     self._rpn_batch_size_per_im,
-                    dtype=tf.float32)))
+                    dtype=score_outputs[level].dtype)))
 
       # Sums per level losses to total loss.
       return tf.math.add_n(score_losses)
@@ -96,10 +96,10 @@ class RpnBoxLoss(object):
 
     Args:
       box_outputs: an OrderDict with keys representing levels and values
-        representing box regression targets in
-        [batch_size, height, width, num_anchors * 4].
+        representing box regression targets in [batch_size, height, width,
+        num_anchors * 4].
       labels: the dictionary that returned from dataloader that includes
-        groundturth targets.
+        groundtruth targets.
 
     Returns:
       rpn_box_loss: a scalar tensor representing total box regression loss.
@@ -117,14 +117,27 @@ class RpnBoxLoss(object):
   def _rpn_box_loss(self, box_outputs, box_targets, normalizer=1.0):
     """Computes box regression loss."""
     with tf.name_scope('rpn_box_loss'):
-      mask = tf.cast(tf.not_equal(box_targets, 0.0), dtype=tf.float32)
+      _, height, width, num_anchors_vertices = box_targets.get_shape().as_list()
+      # (batch_size, height, width, num_anchors, 4)
+      reshaped_box_targets = tf.reshape(
+          box_targets, [-1, height, width, num_anchors_vertices // 4, 4])
+      # The box is valid if at least one of the ymin, xmin, ymax, ymax is not 0.
+      # (batch_size, height, width, num_anchors)
+      valid_mask = tf.reduce_any(
+          tf.math.abs(reshaped_box_targets) > 1e-6, axis=-1)
+      # (batch_size, height, width, num_anchors * 4)
+      valid_mask = tf.cast(
+          tf.repeat(valid_mask, 4, axis=-1), dtype=box_outputs.dtype)
+      # (batch_size, height, width, num_anchors * 4, 1)
       box_targets = tf.expand_dims(box_targets, axis=-1)
+      # (batch_size, height, width, num_anchors * 4, 1)
       box_outputs = tf.expand_dims(box_outputs, axis=-1)
-      box_loss = self._huber_loss(box_targets, box_outputs, sample_weight=mask)
+      box_loss = self._huber_loss(
+          box_targets, box_outputs, sample_weight=valid_mask)
       # The loss is normalized by the sum of non-zero weights and additional
       # normalizer provided by the function caller. Using + 0.01 here to avoid
       # division by zero.
-      box_loss /= normalizer * (tf.reduce_sum(mask) + 0.01)
+      box_loss /= normalizer * (tf.reduce_sum(valid_mask) + 0.01)
       return box_loss
 
 
@@ -237,9 +250,9 @@ class FastrcnnBoxLoss(object):
                           normalizer=1.0):
     """Computes box regression loss."""
     with tf.name_scope('fast_rcnn_box_loss'):
-      mask = tf.tile(tf.expand_dims(tf.greater(class_targets, 0), axis=2),
-                     [1, 1, 4])
-      mask = tf.cast(mask, dtype=tf.float32)
+      mask = tf.tile(
+          tf.expand_dims(tf.greater(class_targets, 0), axis=2), [1, 1, 4])
+      mask = tf.cast(mask, dtype=box_outputs.dtype)
       box_targets = tf.expand_dims(box_targets, axis=-1)
       box_outputs = tf.expand_dims(box_outputs, axis=-1)
       box_loss = self._huber_loss(box_targets, box_outputs, sample_weight=mask)
@@ -264,9 +277,10 @@ class MaskrcnnLoss(object):
     produces `num_classes` masks for each RoI, the reference model expands
     `mask_targets` to match the shape of `mask_outputs` and selects only the
     target that the RoI has a maximum overlap. (Reference: https://github.com/facebookresearch/Detectron/blob/master/detectron/roi_data/mask_rcnn.py)  # pylint: disable=line-too-long
-    Instead, this implementation selects the `mask_outputs` by the `class_targets`
-    so that it doesn't expand `mask_targets`. Note that the selection logic is
-    done in the post-processing of mask_rcnn_fn in mask_rcnn_architecture.py.
+    Instead, this implementation selects the `mask_outputs` by the
+    `class_targets` so that it doesn't expand `mask_targets`. Note that the
+    selection logic is done in the post-processing of mask_rcnn_fn in
+    mask_rcnn_architecture.py.
 
     Args:
       mask_outputs: a float tensor representing the prediction for each mask,
@@ -289,7 +303,7 @@ class MaskrcnnLoss(object):
           tf.reshape(tf.greater(select_class_targets, 0),
                      [batch_size, num_masks, 1, 1]),
           [1, 1, mask_height, mask_width])
-      weights = tf.cast(weights, dtype=tf.float32)
+      weights = tf.cast(weights, dtype=mask_outputs.dtype)
 
       mask_targets = tf.expand_dims(mask_targets, axis=-1)
       mask_outputs = tf.expand_dims(mask_outputs, axis=-1)
