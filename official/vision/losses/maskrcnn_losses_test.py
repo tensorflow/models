@@ -54,6 +54,18 @@ class MaskrcnnLossesTest(parameterized.TestCase, tf.test.TestCase):
     loss_fn = maskrcnn_losses.RpnBoxLoss(huber_loss_delta=1. / 9.)
     self.assertEqual(tf.rank(loss_fn(box_outputs, box_targets)), 0)
 
+  def testRpnBoxLossValidBox(self):
+    box_outputs = {'1': tf.constant([[[[0.2, 0.2, 1.4, 1.4]]]])}
+    box_targets = {'1': tf.constant([[[[0., 0., 1., 1.]]]])}
+    loss_fn = maskrcnn_losses.RpnBoxLoss(huber_loss_delta=1. / 9.)
+    self.assertAllClose(loss_fn(box_outputs, box_targets), 0.027093, atol=1e-4)
+
+  def testRpnBoxLossInvalidBox(self):
+    box_outputs = {'1': tf.constant([[[[0.2, 0.2, 1.4, 1.4]]]])}
+    box_targets = {'1': tf.constant([[[[0., 0., 0., 0.]]]])}
+    loss_fn = maskrcnn_losses.RpnBoxLoss(huber_loss_delta=1. / 9.)
+    self.assertAllClose(loss_fn(box_outputs, box_targets), 0., atol=1e-4)
+
   @parameterized.parameters(True, False)
   def testFastrcnnClassLoss(self, use_binary_cross_entropy):
     batch_size = 2
