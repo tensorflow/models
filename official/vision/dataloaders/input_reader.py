@@ -117,6 +117,7 @@ class CombinationDatasetInputReader(input_reader.InputReader):
                dataset_fn=tf.data.TFRecordDataset,
                pseudo_label_dataset_fn=tf.data.TFRecordDataset,
                decoder_fn: Optional[Callable[..., Any]] = None,
+               combine_fn: Optional[Callable[..., Any]] = None,
                sample_fn: Optional[Callable[..., Any]] = None,
                parser_fn: Optional[Callable[..., Any]] = None,
                transform_and_batch_fn: Optional[Callable[
@@ -139,6 +140,9 @@ class CombinationDatasetInputReader(input_reader.InputReader):
         files. For example, it can be `tf.data.TFRecordDataset`.
       decoder_fn: An optional `callable` that takes the serialized data string
         and decodes them into the raw tensor dictionary.
+      combine_fn: An optional `callable` that takes a dictionarty of
+        `tf.data.Dataset` objects as input and outputs a combined dataset. It
+        will be executed after the decoder_fn and before the sample_fn.
       sample_fn: An optional `callable` that takes a `tf.data.Dataset` object as
         input and outputs the transformed dataset. It performs sampling on the
         decoded raw tensors dict before the parser_fn.
@@ -157,13 +161,15 @@ class CombinationDatasetInputReader(input_reader.InputReader):
     Raises:
       ValueError: If drop_remainder is False.
     """
-    super().__init__(params=params,
-                     dataset_fn=dataset_fn,
-                     decoder_fn=decoder_fn,
-                     sample_fn=sample_fn,
-                     parser_fn=parser_fn,
-                     transform_and_batch_fn=transform_and_batch_fn,
-                     postprocess_fn=postprocess_fn)
+    super().__init__(
+        params=params,
+        dataset_fn=dataset_fn,
+        decoder_fn=decoder_fn,
+        combine_fn=combine_fn,
+        sample_fn=sample_fn,
+        parser_fn=parser_fn,
+        transform_and_batch_fn=transform_and_batch_fn,
+        postprocess_fn=postprocess_fn)
 
     self._pseudo_label_file_pattern = params.pseudo_label_data.input_path
     self._pseudo_label_dataset_fn = pseudo_label_dataset_fn
