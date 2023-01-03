@@ -258,7 +258,7 @@ class Parser(maskrcnn_input.Parser):
     offset = image_info[3, :]
 
     # (height, width, num_channels = 1)
-    segmentation_mask = tf.cast(segmentation_mask, tf.float32)
+    segmentation_mask = tf.cast(segmentation_mask, tf.int32)
 
     # Pad label and make sure the padded region assigned to the ignore label.
     # The label is first offset by +1 and then padded with 0.
@@ -309,7 +309,7 @@ class Parser(maskrcnn_input.Parser):
     def _process_mask(mask, ignore_label, image_info):
       # (height, width, num_channels = 1)
       # All the operations below support num_channels >= 1.
-      mask = tf.cast(mask, dtype=tf.float32)
+      mask = tf.cast(mask, dtype=tf.int32)
       # (1, height, width, num_channels = 1)
       mask = tf.expand_dims(mask, axis=0)
       mask += 1
