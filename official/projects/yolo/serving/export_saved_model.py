@@ -69,6 +69,13 @@ flags.DEFINE_string(
     'input_image_size', '224,224',
     'The comma-separated string of two integers representing the height,width '
     'of the input to the model.')
+_EXPORT_SAVED_MODEL_SUBDIR = flags.DEFINE_string(
+    'export_saved_model_subdir', 'saved_model',
+    'The subdirectory for saved model.')
+_INPUT_NAME = flags.DEFINE_string(
+    'input_name', None,
+    'Input tensor name in signature def. Default at None which'
+    'produces input tensor name `inputs`.')
 
 
 def main(_):
@@ -91,7 +98,8 @@ def main(_):
       input_type=FLAGS.input_type,
       batch_size=FLAGS.batch_size,
       input_image_size=[int(x) for x in FLAGS.input_image_size.split(',')],
-      num_channels=3)
+      num_channels=3,
+      input_name=_INPUT_NAME.value)
 
   export_saved_model_lib.export_inference_graph(
       input_type=FLAGS.input_type,
@@ -100,7 +108,8 @@ def main(_):
       params=params,
       checkpoint_path=FLAGS.checkpoint_path,
       export_dir=FLAGS.export_dir,
-      export_module=export_module)
+      export_module=export_module,
+      export_saved_model_subdir=_EXPORT_SAVED_MODEL_SUBDIR.value)
 
 
 if __name__ == '__main__':

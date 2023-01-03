@@ -106,10 +106,11 @@ def create_classification_export_module(
     input_type: str,
     batch_size: int,
     input_image_size: List[int],
-    num_channels: int = 3) -> ExportModule:
+    num_channels: int = 3,
+    input_name: Optional[str] = None) -> ExportModule:
   """Creates classification export module."""
   input_signature = export_utils.get_image_input_signatures(
-      input_type, batch_size, input_image_size, num_channels)
+      input_type, batch_size, input_image_size, num_channels, input_name)
   input_specs = tf.keras.layers.InputSpec(shape=[batch_size] +
                                           input_image_size + [num_channels])
 
@@ -155,10 +156,11 @@ def create_yolo_export_module(
     input_type: str,
     batch_size: int,
     input_image_size: List[int],
-    num_channels: int = 3) -> ExportModule:
+    num_channels: int = 3,
+    input_name: Optional[str] = None) -> ExportModule:
   """Creates YOLO export module."""
   input_signature = export_utils.get_image_input_signatures(
-      input_type, batch_size, input_image_size, num_channels)
+      input_type, batch_size, input_image_size, num_channels, input_name)
   input_specs = tf.keras.layers.InputSpec(shape=[batch_size] +
                                           input_image_size + [num_channels])
   model, _ = yolo_factory.build_yolo(
@@ -228,17 +230,20 @@ def get_export_module(params: cfg.ExperimentConfig,
                       input_type: str,
                       batch_size: Optional[int],
                       input_image_size: List[int],
-                      num_channels: int = 3) -> ExportModule:
+                      num_channels: int = 3,
+                      input_name: Optional[str] = None) -> ExportModule:
   """Factory for export modules."""
   if isinstance(params.task,
                 configs.image_classification.ImageClassificationTask):
     export_module = create_classification_export_module(params, input_type,
                                                         batch_size,
                                                         input_image_size,
-                                                        num_channels)
+                                                        num_channels,
+                                                        input_name)
   elif isinstance(params.task, YoloTask):
     export_module = create_yolo_export_module(params, input_type, batch_size,
-                                              input_image_size, num_channels)
+                                              input_image_size, num_channels,
+                                              input_name)
   else:
     raise ValueError('Export module not implemented for {} task.'.format(
         type(params.task)))
