@@ -253,10 +253,11 @@ class InputReader:
                        'specified, but got %s and %s.' %
                        (params.input_path, params.tfds_name))
 
-    if isinstance(params.input_path,
-                  cfg.base_config.Config) and combine_fn is None:
+    if (isinstance(params.input_path, cfg.base_config.Config) or
+        isinstance(params.tfds_name, cfg.base_config.Config)
+        ) and combine_fn is None:
       raise ValueError(
-          'A `combine_fn` is required if the `input_path` is a dictionary.')
+          'A combine_fn is required if `input_path` or `tfds_name` is a dict.')
 
     self._tfds_builder = None
     self._matched_files = None
@@ -266,8 +267,14 @@ class InputReader:
         raise ValueError(
             '`tfds_name` is %s, but `tfds_split` is not specified.' %
             params.tfds_name)
-      self._tfds_builder = tfds.builder(
-          params.tfds_name, data_dir=params.tfds_data_dir)
+      if isinstance(params.tfds_name, cfg.base_config.Config):
+        self._tfds_builder = {}
+        for k, tfds_name in params.tfds_name.as_dict().items():
+          self._tfds_builder[k] = tfds.builder(
+              tfds_name, data_dir=params.tfds_data_dir)
+      else:
+        self._tfds_builder = tfds.builder(
+            params.tfds_name, data_dir=params.tfds_data_dir)
     else:
       self._matched_files = self.get_files(params.input_path)
 
@@ -338,10 +345,17 @@ class InputReader:
             f'{params.tf_data_service_job_name}_{self.static_randnum}')
 
   @property
-  def tfds_info(self) -> tfds.core.DatasetInfo:
+  def tfds_info(self) -> Union[tfds.core.DatasetInfo,
+                               dict[str, tfds.core.DatasetInfo]]:
     """Returns TFDS dataset info, if available."""
     if self._tfds_builder:
-      return self._tfds_builder.info
+      if isinstance(self._tfds_builder, dict):
+        info = {}
+        for k, builder in self._tfds_builder.items():
+          info[k] = builder.info
+        return info
+      else:
+        return self._tfds_builder.info
     else:
       raise ValueError('tfds_info is not available, because the dataset '
                        'is not loaded from tfds.')
@@ -365,7 +379,9 @@ class InputReader:
       matched_files: Union[Dict[str, List[str]], List[str]],
       dataset_fn,
       input_context: Optional[tf.distribute.InputContext] = None,
-      tfds_builder: Optional[tfds.core.DatasetBuilder] = None):
+      tfds_builder: Optional[
+          Union[tfds.core.DatasetBuilder,
+                dict[str, tfds.core.DatasetBuilder]]] = None):
     """Reads the data source (files/tfds) to a dataset."""
 
     def _files_to_dataset(files: List[str]) -> tf.data.Dataset:
@@ -406,17 +422,32 @@ class InputReader:
                          'there is also no `files`.')
 
     if tfds_builder:
-      dataset = _read_tfds(
-          tfds_builder=self._tfds_builder,
-          tfds_split=self._tfds_split,
-          tfds_skip_decoding_feature=self._tfds_skip_decoding_feature,
-          tfds_as_supervised=self._tfds_as_supervised,
-          input_context=input_context,
-          seed=self._seed,
-          is_training=self._is_training,
-          cache=self._cache,
-          cycle_length=self._cycle_length,
-          block_length=self._block_length)
+      if isinstance(tfds_builder, dict):
+        dataset = {}
+        for k, builder in tfds_builder.items():
+          dataset[k] = _read_tfds(
+              tfds_builder=builder,
+              tfds_split=self._tfds_split,
+              tfds_skip_decoding_feature=self._tfds_skip_decoding_feature,
+              tfds_as_supervised=self._tfds_as_supervised,
+              input_context=input_context,
+              seed=self._seed,
+              is_training=self._is_training,
+              cache=self._cache,
+              cycle_length=self._cycle_length,
+              block_length=self._block_length)
+      else:
+        dataset = _read_tfds(
+            tfds_builder=self._tfds_builder,
+            tfds_split=self._tfds_split,
+            tfds_skip_decoding_feature=self._tfds_skip_decoding_feature,
+            tfds_as_supervised=self._tfds_as_supervised,
+            input_context=input_context,
+            seed=self._seed,
+            is_training=self._is_training,
+            cache=self._cache,
+            cycle_length=self._cycle_length,
+            block_length=self._block_length)
     elif isinstance(matched_files, (list, tuple)):
       dataset = _files_to_dataset(matched_files)
     elif isinstance(matched_files, dict):
