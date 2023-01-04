@@ -133,8 +133,10 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(outputs['num_detections'].numpy(),
                         expected_outputs['num_detections'].numpy())
 
-  def test_build_model_fail_with_none_batch_size(self):
-    params = exp_factory.get_exp_config('retinanet_resnetfpn_coco')
+  @parameterized.parameters(('retinanet_resnetfpn_coco',),
+                            ('maskrcnn_spinenet_coco',))
+  def test_build_model_pass_with_none_batch_size(self, experiment_type):
+    params = exp_factory.get_exp_config(experiment_type)
     detection.DetectionModule(
         params, batch_size=None, input_image_size=[640, 640])
 
