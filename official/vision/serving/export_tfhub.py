@@ -18,13 +18,10 @@
 from absl import app
 from absl import flags
 
-import tensorflow as tf
-
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.vision import registry_imports  # pylint: disable=unused-import
-from official.vision.modeling import factory
-
+from official.vision.serving import export_tfhub_lib
 
 FLAGS = flags.FLAGS
 
@@ -60,26 +57,6 @@ flags.DEFINE_boolean(
     'Whether to skip the prediction layer and only output the feature vector.')
 
 
-def export_model_to_tfhub(params,
-                          batch_size,
-                          input_image_size,
-                          skip_logits_layer,
-                          checkpoint_path,
-                          export_path):
-  """Export an image classification model to TF-Hub."""
-  input_specs = tf.keras.layers.InputSpec(shape=[batch_size] +
-                                          input_image_size + [3])
-
-  model = factory.build_classification_model(
-      input_specs=input_specs,
-      model_config=params.task.model,
-      l2_regularizer=None,
-      skip_logits_layer=skip_logits_layer)
-  checkpoint = tf.train.Checkpoint(model=model)
-  checkpoint.restore(checkpoint_path).assert_existing_objects_matched()
-  model.save(export_path, include_optimizer=False, save_format='tf')
-
-
 def main(_):
   params = exp_factory.get_exp_config(FLAGS.experiment)
   for config_file in FLAGS.config_file or []:
@@ -91,13 +68,14 @@ def main(_):
   params.validate()
   params.lock()
 
-  export_model_to_tfhub(
+  export_tfhub_lib.export_model_to_tfhub(
       params=params,
       batch_size=FLAGS.batch_size,
       input_image_size=[int(x) for x in FLAGS.input_image_size.split(',')],
-      skip_logits_layer=FLAGS.skip_logits_layer,
       checkpoint_path=FLAGS.checkpoint_path,
-      export_path=FLAGS.export_path)
+      export_path=FLAGS.export_path,
+      num_channels=3,
+      skip_logits_layer=FLAGS.skip_logits_layer)
 
 
 if __name__ == '__main__':
