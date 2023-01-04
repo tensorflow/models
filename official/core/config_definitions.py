@@ -106,7 +106,7 @@ class DataConfig(base_config.Config):
       high.
   """
   input_path: Union[Sequence[str], str, base_config.Config] = ""
-  tfds_name: str = ""
+  tfds_name: Union[str, base_config.Config] = ""
   tfds_split: str = ""
   global_batch_size: int = 0
   is_training: Optional[bool] = None
