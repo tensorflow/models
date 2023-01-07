@@ -1,8 +1,6 @@
 licenses(["notice"])
 
-package(
-    default_visibility = ["//:friends"],  # sequence projection
-)
+package(default_visibility = ["//:friends"])  # sequence projection
 
 py_library(
     name = "prado",
@@ -35,7 +33,6 @@ py_library(
         "//layers:qrnn_layers",  # sequence projection
         "//layers:quantization_layers",  # sequence projection
         # "//tf_ops:tf_custom_ops"  # sequence projection
-        "//tf_ops:tf_custom_ops_py",  # sequence projection
     ],
 )
 

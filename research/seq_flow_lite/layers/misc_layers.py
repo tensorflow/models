@@ -26,7 +26,7 @@ from layers import quantization_layers # import seq_flow_lite module
 class AttentionPooling(base_layers.BaseLayer):
   """A basic attention pooling layer."""
 
-  def __init__(self, scalar=True, **kwargs):
+  def __init__(self, scalar=True, normalize=True, **kwargs):
     self.scalar = scalar
     # Attention logits should not have activation post linear layer so it can
     # be positive or negative. This would enable the attention distribution to
@@ -36,7 +36,8 @@ class AttentionPooling(base_layers.BaseLayer):
     # emphasized for making classification decision, all other outputs have
     # a non zero probability of influencing the class. This seems to result
     # in better backprop.
-    self.attention = dense_layers.BaseQDenseVarLen(units=1, rank=3, **kwargs)
+    self.attention = dense_layers.BaseQDenseVarLen(
+        units=1, rank=3, normalize=normalize, **kwargs)
     self.qactivation = quantization_layers.ActivationQuantization(**kwargs)
     super(AttentionPooling, self).__init__(**kwargs)
 

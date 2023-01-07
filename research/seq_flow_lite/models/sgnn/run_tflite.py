@@ -40,7 +40,7 @@ def main(argv):
   interpreter.allocate_tensors()
   input_string = ' '.join(argv[1:])
   print('Input: "{}"'.format(input_string))
-  input_array = np.array([[input_string]], dtype=np.str)
+  input_array = np.array([[input_string]], dtype=str)
   interpreter.set_tensor(interpreter.get_input_details()[0]['index'],
                          input_array)
   interpreter.invoke()

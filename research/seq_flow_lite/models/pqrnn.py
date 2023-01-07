@@ -43,10 +43,11 @@ class Encoder(tf.keras.layers.Layer):
     _get_params("qrnn_zoneout_probability")
     _get_params("number_qrnn_layers")
     _get_params("labels", [])
+    _get_params("num_labels", None)
     _get_params("regularizer_scale")
     _get_params("quantize")
 
-    self.num_classes = len(self.labels)
+    self.num_classes = self.num_labels or len(self.labels)
     self.parameters = base_layers.Parameters(
         mode, quantize=self.quantize, regularizer_scale=self.regularizer_scale)
 
