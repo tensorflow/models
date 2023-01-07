@@ -2,9 +2,7 @@ py_strict_library = py_library
 
 licenses(["notice"])
 
-package(
-    default_visibility = ["//:friends"],  # sequence projection
-)
+package(default_visibility = ["//:friends"])  # sequence projection
 
 py_strict_library(
     name = "tflite_utils",

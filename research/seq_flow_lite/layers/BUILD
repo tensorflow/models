@@ -2,9 +2,7 @@ py_strict_library = py_library
 
 licenses(["notice"])
 
-package(
-    default_visibility = ["//:friends"],  # sequence projection
-)
+package(default_visibility = ["//:friends"])  # sequence projection
 
 py_strict_library(
     name = "base_layers",
@@ -87,7 +85,6 @@ py_strict_library(
         "//layers:base_layers",  # sequence projection
         "//layers:conv_layers",  # sequence projection
         "//layers:dense_layers",  # sequence projection
-        "//layers:normalization_layers",  # sequence projection
         "//layers:quantization_layers",  # sequence projection
     ],
 )

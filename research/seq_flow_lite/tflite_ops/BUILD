@@ -4,9 +4,7 @@ load("@org_tensorflow//tensorflow/lite:build_def.bzl", "tflite_copts")
 
 licenses(["notice"])
 
-package(
-    default_visibility = ["//:friends"],  # sequence projection
-)
+package(default_visibility = ["//:friends"])  # sequence projection
 
 cc_library(
     name = "beam_search",
@@ -237,15 +235,15 @@ cc_test(
     deps = [
         ":sequence_string_projection",
         ":tf_tflite_diff_test_util",
-        "@flatbuffers",
         "@org_tensorflow//tensorflow/lite:framework",
         "@org_tensorflow//tensorflow/lite:string_util",
         "@org_tensorflow//tensorflow/lite/core/api",
         "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
         "@org_tensorflow//tensorflow/lite/kernels:test_util",
         "//tf_ops:projection_util",  # sequence projection
-        # "//tf_ops:sequence_string_projection_op"  # sequence projection
-        # "//tf_ops:sequence_string_projection_op_v2"  # sequence projection
+        "//tf_ops:sequence_string_projection_op",  # sequence projection
+        "//tf_ops:sequence_string_projection_op_v2",  # sequence projection
+        "@flatbuffers",
     ],
 )
 
