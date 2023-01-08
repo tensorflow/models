@@ -13,9 +13,8 @@
 # limitations under the License.
 
 """EdgeTPU oriented layers and tools."""
-
 from collections.abc import Iterable, Sequence
-from typing import Optional
+from typing import List, Optional, Union
 
 import numpy as np
 import tensorflow as tf
@@ -51,7 +50,8 @@ def _tensor_product_iou(boxes):
   # - last dimension is not 1. (Structure alignment)
   tpu_friendly_shape = [1, -1, 1, boxes_size]
   bottom, left, top, right = (
-      tf.reshape(side, tpu_friendly_shape) for side in tf.split(boxes, 4, -1))
+      tf.reshape(side, tpu_friendly_shape)
+      for side in tf.split(boxes, 4, -1))
   height, width = top - bottom, right - left
   area = height * width
   area_sum = _tensor_sum_vectors(area, area)
@@ -116,6 +116,8 @@ def shard_tensors(axis: int, block_size: int,
   Raises:
     ValueError: if input tensors has different size of sharded dimension.
   """
+  if not all(tensor.shape.is_fully_defined() for tensor in tensors):
+    return [tensors]
   for validate_axis in range(axis + 1):
     consistent_length: int = tensors[0].shape[validate_axis]
     for tensor in tensors:
@@ -195,6 +197,8 @@ def non_max_suppression_padded(boxes: tf.Tensor,
     A 1-D+ integer `Tensor` of shape `[...batch_dims, output_size]` representing
     the selected indices from the boxes tensor and `-1` values for the padding.
   """
+  if not boxes.shape.is_fully_defined():
+    return _non_max_suppression_as_is(boxes, scores, output_size, iou_threshold)
   # Does partitioning job to help compiler converge with memory.
   batch_shape = boxes.shape[:-2]
   batch_size = np.prod(batch_shape, dtype=np.int32)
@@ -209,6 +213,52 @@ def non_max_suppression_padded(boxes: tf.Tensor,
                                    iou_threshold))
   indices = tf.concat(indices, axis=0)
   return tf.reshape(indices, batch_shape + [output_size])
+
+
+def _refine_nms_graph_to_original_algorithm(better: tf.Tensor) -> tf.Tensor:
+  """Refines the relationship graph, bringing it closer to the iterative NMS.
+
+  See `test_refinement_sample` unit tests for example, also comments in body of
+  the algorithm, for the intuition.
+
+  Args:
+    better: is a tensor with zeros and ones so that [batch dims ..., box_1,
+      box_2] represents the [adjacency
+      matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) for the
+      [relation](https://en.wikipedia.org/wiki/Relation_(mathematics)) `better`
+      between boxes box_1 and box_2.
+
+  Returns:
+    Modification of tensor encoding adjacency matrix of `better` relation.
+  """
+  # good_box: is a tensor with zeros and ones so that
+  # [batch dims ..., box_i] represents belonging of a box_i to the `good`
+  # subset. `good` subset is defined as exactly those boxes that do not have any
+  # `better` boxes.
+  # INTUITION: In terms of oriented graph , this is subset of nodes nobody
+  # points to as "I'm better than you". These nodes will never be suppressed in
+  # the original NMS algorithm.
+  good_box = tf.constant(1.) - _reduce_or(better, axis=-1)
+  # good_better: is a tensor with zeros and ones so that
+  # [batch dims ..., box_1, box_2] represents the adjacency matrix for the
+  # `good_better` relation on all boxes set. `good_better` relation is defined
+  # as relation between good box and boxes it is better than.
+  # INTUITION: In terms of oriented graph, this is subset of edges, which
+  # doesn't have any other inbound edges. These edges will represent
+  # suppression actions in the original NMS algorithm.
+  good_better = _and(tf.expand_dims(good_box, axis=-2), better)
+  # not_bad_box: is a tensor with zeros and ones so that
+  # [batch dims ..., box_i] represents belonging of a box_i to the `not_bad`
+  # subset. `not_bad` subset is defined as boxes all that and only those that
+  # does not have any `good_better` boxes.
+  # INTUITION: These nodes are nodes which are not suppressed by `good` boxes
+  # in the original NMS algorithm.
+  not_bad_box = tf.constant(1.) - _reduce_or(good_better, axis=-1)
+  # return: is a tensor with zeros and ones so that
+  # [batch dims ..., box_1, box_2] represents the adjacency matrix for the
+  # `better` relation on all boxes set which is closer to represent suppression
+  # procedure in original NMS algorithm.
+  return _and(tf.expand_dims(not_bad_box, axis=-2), better)
 
 
 def _non_max_suppression_as_is(boxes: tf.Tensor,
@@ -230,8 +280,6 @@ def _non_max_suppression_as_is(boxes: tf.Tensor,
     A 1-D+ integer `Tensor` of shape `[...batch_dims, output_size]` representing
     the selected indices from the boxes tensor and `-1` values for the padding.
   """
-  batch_shape = boxes.shape[:-2]
-  batch_size = np.prod(batch_shape, dtype=np.int32)
   boxes_size = boxes.shape[-2]
   if boxes.shape[-1] != 4:
     raise ValueError(f'Boxes shape ({boxes.shape}) last dimension must be 4 '
@@ -239,23 +287,27 @@ def _non_max_suppression_as_is(boxes: tf.Tensor,
   if scores.shape != boxes.shape[:-1]:
     raise ValueError(f'Boxes shape ({boxes.shape}) and scores shape '
                      f'({scores.shape}) do not match.')
-  order = tf.range(boxes_size, dtype=tf.float32)
+  order = tf.constant(np.arange(boxes_size), dtype=scores.dtype)
   relative_order = _tensor_sum_vectors(order, -order)
   relative_scores = _tensor_sum_vectors(scores, -scores)
-  similar = _greater(_tensor_product_iou(boxes) - iou_threshold)
+  similar = tf.cast(
+      _greater(
+          _tensor_product_iou(boxes) -
+          tf.constant(iou_threshold, dtype=boxes.dtype)), scores.dtype)
   worse = _greater(relative_scores)
   same_later = _and(_same(relative_scores), _greater(relative_order))
   similar_worse_or_same_later = _and(similar, _or(worse, same_later))
   prunable = _reduce_or(similar_worse_or_same_later, axis=-1)
-  remaining = tf.constant(1.) - prunable
-  scores = tf.reshape(tf.exp(scores), [1, 1, batch_size, boxes_size])
-  remaining = tf.reshape(remaining, [1, 1, batch_size, boxes_size])
+  remaining = tf.constant(1, dtype=prunable.dtype) - prunable
+  if scores.shape[0] is None:
+    # Prefer the most of tesnor shape defined, so that error messages are clear.
+    remaining = tf.reshape(remaining, [tf.shape(scores)[0], *scores.shape[1:]])
+  else:
+    remaining = tf.reshape(remaining, scores.shape)
   # top_k runs on TPU cores, let it happen, TPU tiles implementation is slower.
   top_k = tf.math.top_k(scores * remaining, output_size)
-  indices = (
-      tf.cast(top_k.indices, top_k.values.dtype) * _greater(top_k.values) -
-      _same(top_k.values))
-  return tf.reshape(indices, batch_shape + [output_size])
+  return (tf.cast(top_k.indices, top_k.values.dtype) * _greater(top_k.values) -
+          _same(top_k.values))
 
 
 def concat_and_top_k(
