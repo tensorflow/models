@@ -13,9 +13,13 @@
 # limitations under the License.
 
 """Contains definitions of generators to generate the final detections."""
+from collections.abc import Mapping, Sequence
 import contextlib
-from typing import Any, Dict, List, Optional, Mapping, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 # Import libraries
+
+import numpy as np
 import tensorflow as tf
 
 from official.vision.modeling.layers import edgetpu
@@ -411,6 +415,7 @@ def _generate_detections_v3(
   Raises:
     ValueError if inputs shapes are not valid.
   """
+  one = tf.constant(1, dtype=scores.dtype)
   with tf.name_scope('generate_detections'):
     batch_size, num_box_classes, box_locations, sides = (
         boxes.get_shape().as_list())
@@ -436,14 +441,14 @@ def _generate_detections_v3(
     # Gather NMS-ed boxes and scores.
     safe_indices = tf.nn.relu(indices)  # 0 for invalid
     invalid_detections = safe_indices - indices  # 1 for invalid, 0 for valid
-    valid_detections = 1.0 - invalid_detections  # 0 for invalid, 1 for valid
+    valid_detections = one - invalid_detections  # 0 for invalid, 1 for valid
     safe_indices = tf.cast(safe_indices, tf.int32)
-    boxes = tf.expand_dims(valid_detections, -1) * tf.gather(
-        boxes, safe_indices, axis=2, batch_dims=2)
+    boxes = tf.gather(boxes, safe_indices, axis=2, batch_dims=2)
+    boxes = tf.cast(tf.expand_dims(valid_detections, -1), boxes.dtype) * boxes
     scores = valid_detections * tf.gather(
         scores, safe_indices, axis=2, batch_dims=2)
     # Compliment with class numbers.
-    classes = tf.range(num_classes, dtype=tf.float32)
+    classes = tf.constant(np.arange(num_classes), dtype=scores.dtype)
     classes = tf.reshape(classes, [1, num_classes, 1])
     classes = tf.tile(classes, [batch_size, 1, max_num_detections])
     # Flatten classes, locations. Class = -1 for invalid detection
@@ -456,7 +461,7 @@ def _generate_detections_v3(
     boxes = tf.gather(boxes, indices, batch_dims=1, axis=1)
     classes = tf.gather(classes, indices, batch_dims=1, axis=1)
     invalid_detections = tf.nn.relu(classes) - classes
-    valid_detections = tf.reduce_sum(1. - invalid_detections, axis=1)
+    valid_detections = tf.reduce_sum(one - invalid_detections, axis=1)
     return boxes, scores, classes, valid_detections
 
 
@@ -989,16 +994,18 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
     min_level = int(min(levels))
     max_level = int(max(levels))
     for i in range(max_level, min_level - 1, -1):
-      (_, unsharded_h, unsharded_w, num_anchors_per_locations_times_4
+      (batch_size, unsharded_h, unsharded_w, num_anchors_per_locations_times_4
       ) = raw_boxes[str(i)].get_shape().as_list()
+      if batch_size is None:
+        batch_size = tf.shape(raw_boxes[str(i)])[0]
       block = max(1, pre_nms_top_k_sharding_block // unsharded_w)
-      anchor_boxes_unsharded = tf.reshape(
-          anchor_boxes[str(i)],
-          [1, unsharded_h, unsharded_w, num_anchors_per_locations_times_4])
+      anchor_boxes_unsharded = tf.reshape(anchor_boxes[str(i)], [
+          batch_size, unsharded_h, unsharded_w,
+          num_anchors_per_locations_times_4
+      ])
       for (raw_scores_i, raw_boxes_i, anchor_boxes_i) in edgetpu.shard_tensors(
           1, block,
           (raw_scores[str(i)], raw_boxes[str(i)], anchor_boxes_unsharded)):
-        batch_size = tf.shape(raw_boxes_i)[0]
         (_, feature_h_i, feature_w_i, _) = raw_boxes_i.get_shape().as_list()
         num_locations = feature_h_i * feature_w_i
         num_anchors_per_locations = num_anchors_per_locations_times_4 // 4
@@ -1026,10 +1033,8 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         scores, boxes = edgetpu.concat_and_top_k(pre_nms_top_k,
                                                  (scores, scores_i),
                                                  (boxes, boxes_i))
-
-    return (box_ops.clip_boxes(boxes,
-                               tf.expand_dims(image_shape,
-                                              axis=1)), tf.sigmoid(scores))
+    clip_shape = tf.expand_dims(tf.expand_dims(image_shape, axis=1), axis=1)
+    return box_ops.clip_boxes(boxes, clip_shape), tf.sigmoid(scores)
 
   def __call__(
       self,
