@@ -32,12 +32,13 @@ class DetectionModule(export_base.ExportModule):
 
   def _build_model(self):
 
-    if self._batch_size is None:
-      # Only batched NMS is supported with dynamic batch size.
+    nms_versions_supporting_dynamic_batch_size = {'batched', 'v3'}
+    nms_version = self.params.task.model.detection_generator.nms_version
+    if (self._batch_size is None and
+        nms_version not in nms_versions_supporting_dynamic_batch_size):
+      logging.info('nms_version is set to `batched` because `%s` '
+                   'does not support with dynamic batch size.', nms_version)
       self.params.task.model.detection_generator.nms_version = 'batched'
-      logging.info(
-          'nms_version is set to `batched` because only batched NMS is '
-          'supported with dynamic batch size.')
 
     input_specs = tf.keras.layers.InputSpec(shape=[self._batch_size] +
                                             self._input_image_size + [3])

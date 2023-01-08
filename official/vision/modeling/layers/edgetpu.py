@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """EdgeTPU oriented layers and tools."""
-from typing import List, Optional, Sequence, Union, Iterable
+from collections.abc import Iterable, Sequence
+from typing import List, Optional, Union
 
 import numpy as np
 import tensorflow as tf
@@ -49,7 +50,8 @@ def _tensor_product_iou(boxes):
   # - last dimension is not 1. (Structure alignment)
   tpu_friendly_shape = [1, -1, 1, boxes_size]
   bottom, left, top, right = (
-      tf.reshape(side, tpu_friendly_shape) for side in tf.split(boxes, 4, -1))
+      tf.reshape(side, tpu_friendly_shape)
+      for side in tf.split(boxes, 4, -1))
   height, width = top - bottom, right - left
   area = height * width
   area_sum = _tensor_sum_vectors(area, area)
@@ -115,6 +117,8 @@ def shard_tensors(
   Raises:
     ValueError: if input tensors has different size of sharded dimension.
   """
+  if not all(tensor.shape.is_fully_defined() for tensor in tensors):
+    return [tensors]
   for validate_axis in range(axis + 1):
     consistent_length: int = tensors[0].shape[validate_axis]
     for tensor in tensors:
@@ -197,6 +201,8 @@ def non_max_suppression_padded(boxes: tf.Tensor,
     A 1-D+ integer `Tensor` of shape `[...batch_dims, output_size]` representing
     the selected indices from the boxes tensor and `-1` values for the padding.
   """
+  if not boxes.shape.is_fully_defined():
+    return _non_max_suppression_as_is(boxes, scores, output_size, iou_threshold)
   # Does partitioning job to help compiler converge with memory.
   batch_shape = boxes.shape[:-2]
   batch_size = np.prod(batch_shape, dtype=np.int32)
@@ -220,11 +226,11 @@ def _refine_nms_graph_to_original_algorithm(better: tf.Tensor) -> tf.Tensor:
   the algorithm, for the intuition.
 
   Args:
-    better: is a tensor with zeros and ones so that
-      [batch dims ..., box_1, box_2] represents the
-      [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix)
-      for the [relation](https://en.wikipedia.org/wiki/Relation_(mathematics))
-      `better` between boxes box_1 and box_2.
+    better: is a tensor with zeros and ones so that [batch dims ..., box_1,
+      box_2] represents the [adjacency
+      matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) for the
+      [relation](https://en.wikipedia.org/wiki/Relation_(mathematics)) `better`
+      between boxes box_1 and box_2.
 
   Returns:
     Modification of tensor encoding adjacency matrix of `better` relation.
@@ -281,8 +287,6 @@ def _non_max_suppression_as_is(boxes: tf.Tensor,
     A 1-D+ integer `Tensor` of shape `[...batch_dims, output_size]` representing
     the selected indices from the boxes tensor and `-1` values for the padding.
   """
-  batch_shape = boxes.shape[:-2]
-  batch_size = np.prod(batch_shape, dtype=np.int32)
   boxes_size = boxes.shape[-2]
   if boxes.shape[-1] != 4:
     raise ValueError(f'Boxes shape ({boxes.shape}) last dimension must be 4 '
@@ -290,10 +294,13 @@ def _non_max_suppression_as_is(boxes: tf.Tensor,
   if scores.shape != boxes.shape[:-1]:
     raise ValueError(f'Boxes shape ({boxes.shape}) and scores shape '
                      f'({scores.shape}) do not match.')
-  order = tf.range(boxes_size, dtype=tf.float32)
+  order = tf.constant(np.arange(boxes_size), dtype=scores.dtype)
   relative_order = _tensor_sum_vectors(order, -order)
   relative_scores = _tensor_sum_vectors(scores, -scores)
-  similar = _greater(_tensor_product_iou(boxes) - iou_threshold)
+  similar = tf.cast(
+      _greater(
+          _tensor_product_iou(boxes) -
+          tf.constant(iou_threshold, dtype=boxes.dtype)), scores.dtype)
   worse = _greater(relative_scores)
   same_later = _and(_same(relative_scores), _greater(relative_order))
   similar_worse_or_same_later = _and(similar, _or(worse, same_later))
@@ -301,15 +308,16 @@ def _non_max_suppression_as_is(boxes: tf.Tensor,
     similar_worse_or_same_later = _refine_nms_graph_to_original_algorithm(
         similar_worse_or_same_later)
   prunable = _reduce_or(similar_worse_or_same_later, axis=-1)
-  remaining = tf.constant(1.) - prunable
-  scores = tf.reshape(tf.exp(scores), [1, 1, batch_size, boxes_size])
-  remaining = tf.reshape(remaining, [1, 1, batch_size, boxes_size])
+  remaining = tf.constant(1, dtype=prunable.dtype) - prunable
+  if scores.shape[0] is None:
+    # Prefer the most of tesnor shape defined, so that error messages are clear.
+    remaining = tf.reshape(remaining, [tf.shape(scores)[0], *scores.shape[1:]])
+  else:
+    remaining = tf.reshape(remaining, scores.shape)
   # top_k runs on TPU cores, let it happen, TPU tiles implementation is slower.
   top_k = tf.math.top_k(scores * remaining, output_size)
-  indices = (
-      tf.cast(top_k.indices, top_k.values.dtype) * _greater(top_k.values) -
-      _same(top_k.values))
-  return tf.reshape(indices, batch_shape + [output_size])
+  return (tf.cast(top_k.indices, top_k.values.dtype) * _greater(top_k.values) -
+          _same(top_k.values))
 
 
 def concat_and_top_k(
