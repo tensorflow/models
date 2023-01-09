@@ -202,7 +202,8 @@ def non_max_suppression_padded(boxes: tf.Tensor,
     the selected indices from the boxes tensor and `-1` values for the padding.
   """
   if not boxes.shape.is_fully_defined():
-    return _non_max_suppression_as_is(boxes, scores, output_size, iou_threshold)
+    return _non_max_suppression_as_is(boxes, scores, output_size, iou_threshold,
+                                      refinements)
   # Does partitioning job to help compiler converge with memory.
   batch_shape = boxes.shape[:-2]
   batch_size = np.prod(batch_shape, dtype=np.int32)
@@ -235,6 +236,7 @@ def _refine_nms_graph_to_original_algorithm(better: tf.Tensor) -> tf.Tensor:
   Returns:
     Modification of tensor encoding adjacency matrix of `better` relation.
   """
+  one = tf.constant(1, dtype=better.dtype)
   # good_box: is a tensor with zeros and ones so that
   # [batch dims ..., box_i] represents belonging of a box_i to the `good`
   # subset. `good` subset is defined as exactly those boxes that do not have any
@@ -242,7 +244,7 @@ def _refine_nms_graph_to_original_algorithm(better: tf.Tensor) -> tf.Tensor:
   # INTUITION: In terms of oriented graph , this is subset of nodes nobody
   # points to as "I'm better than you". These nodes will never be suppressed in
   # the original NMS algorithm.
-  good_box = tf.constant(1.) - _reduce_or(better, axis=-1)
+  good_box = one - _reduce_or(better, axis=-1)
   # good_better: is a tensor with zeros and ones so that
   # [batch dims ..., box_1, box_2] represents the adjacency matrix for the
   # `good_better` relation on all boxes set. `good_better` relation is defined
@@ -257,7 +259,7 @@ def _refine_nms_graph_to_original_algorithm(better: tf.Tensor) -> tf.Tensor:
   # does not have any `good_better` boxes.
   # INTUITION: These nodes are nodes which are not suppressed by `good` boxes
   # in the original NMS algorithm.
-  not_bad_box = tf.constant(1.) - _reduce_or(good_better, axis=-1)
+  not_bad_box = one - _reduce_or(good_better, axis=-1)
   # return: is a tensor with zeros and ones so that
   # [batch dims ..., box_1, box_2] represents the adjacency matrix for the
   # `better` relation on all boxes set which is closer to represent suppression
@@ -316,8 +318,9 @@ def _non_max_suppression_as_is(boxes: tf.Tensor,
     remaining = tf.reshape(remaining, scores.shape)
   # top_k runs on TPU cores, let it happen, TPU tiles implementation is slower.
   top_k = tf.math.top_k(scores * remaining, output_size)
-  return (tf.cast(top_k.indices, top_k.values.dtype) * _greater(top_k.values) -
-          _same(top_k.values))
+  valid = _greater(top_k.values)
+  return (tf.cast(top_k.indices, top_k.values.dtype) * valid + valid -
+          tf.constant(1, dtype=top_k.values.dtype))
 
 
 def concat_and_top_k(

@@ -382,7 +382,8 @@ def _generate_detections_v3(
     scores: tf.Tensor,
     pre_nms_score_threshold: float = 0.05,
     nms_iou_threshold: float = 0.5,
-    max_num_detections: int = 100
+    max_num_detections: int = 100,
+    refinements: int = 2,
 ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
   """Generates the detections given the model outputs using NMS for EdgeTPU.
 
@@ -400,6 +401,7 @@ def _generate_detections_v3(
       boxes overlap too much with respect to IOU.
     max_num_detections: A `scalar` representing maximum number of boxes retained
       over all classes.
+    refinements: Quality parameter for NMS algorithm.
 
   Returns:
     nms_boxes: A `float` tf.Tensor of shape [batch_size, max_num_detections, 4]
@@ -434,10 +436,8 @@ def _generate_detections_v3(
 
     # EdgeTPU-friendly class-wise NMS, -1 for invalid.
     indices = edgetpu.non_max_suppression_padded(
-        boxes,
-        scores,
-        max_num_detections,
-        iou_threshold=nms_iou_threshold)
+        boxes, scores, max_num_detections, iou_threshold=nms_iou_threshold,
+        refinements=refinements)
     # Gather NMS-ed boxes and scores.
     safe_indices = tf.nn.relu(indices)  # 0 for invalid
     invalid_detections = safe_indices - indices  # 1 for invalid, 0 for valid
@@ -855,6 +855,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
                soft_nms_sigma: Optional[float] = None,
                tflite_post_processing_config: Optional[Dict[str, Any]] = None,
                pre_nms_top_k_sharding_block: Optional[int] = None,
+               nms_v3_refinements: Optional[int] = None,
                **kwargs):
     """Initializes a multi-level detection generator.
 
@@ -878,6 +879,12 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
       pre_nms_top_k_sharding_block: For v3 (edge tpu friendly) NMS, avoids
         creating long axis for pre_nms_top_k. Will do top_k in shards of size
         [num_classes, pre_nms_top_k_sharding_block * boxes_per_location]
+      nms_v3_refinements: For v3 (edge tpu friendly) NMS, sets how close result
+        should be to standard NMS. When None, 2 is used. Here is some
+        experimental deviations for different refinement values:
+        if == 0, AP is reduced 1.0%, AR is reduced 5% on COCO
+        if == 1, AP is reduced 0.2%, AR is reduced 2% on COCO
+        if == 2, AP is reduced <0.1%, AR is reduced <1% on COCO
 
       **kwargs: Additional keyword arguments passed to Layer.
     """
@@ -895,6 +902,9 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
     if pre_nms_top_k_sharding_block is not None:
       self._config_dict[
           'pre_nms_top_k_sharding_block'] = pre_nms_top_k_sharding_block
+    if nms_v3_refinements is not None:
+      self._config_dict[
+          'nms_v3_refinements'] = nms_v3_refinements
 
     if tflite_post_processing_config is not None:
       self._config_dict.update(
@@ -993,22 +1003,26 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
     levels = list(raw_boxes.keys())
     min_level = int(min(levels))
     max_level = int(max(levels))
+    clip_shape = tf.expand_dims(tf.expand_dims(image_shape, axis=1), axis=1)
     for i in range(max_level, min_level - 1, -1):
       (batch_size, unsharded_h, unsharded_w, num_anchors_per_locations_times_4
       ) = raw_boxes[str(i)].get_shape().as_list()
+      num_anchors_per_locations = num_anchors_per_locations_times_4 // 4
       if batch_size is None:
         batch_size = tf.shape(raw_boxes[str(i)])[0]
       block = max(1, pre_nms_top_k_sharding_block // unsharded_w)
-      anchor_boxes_unsharded = tf.reshape(anchor_boxes[str(i)], [
-          batch_size, unsharded_h, unsharded_w,
-          num_anchors_per_locations_times_4
-      ])
-      for (raw_scores_i, raw_boxes_i, anchor_boxes_i) in edgetpu.shard_tensors(
+      boxes_shape = [
+          batch_size, unsharded_h, unsharded_w * num_anchors_per_locations, 4
+      ]
+      decoded_boxes = box_ops.clip_boxes(
+          box_ops.decode_boxes(
+              tf.reshape(raw_boxes[str(i)], boxes_shape),
+              tf.reshape(anchor_boxes[str(i)], boxes_shape)), clip_shape)
+      for (raw_scores_i, decoded_boxes_i) in edgetpu.shard_tensors(
           1, block,
-          (raw_scores[str(i)], raw_boxes[str(i)], anchor_boxes_unsharded)):
-        (_, feature_h_i, feature_w_i, _) = raw_boxes_i.get_shape().as_list()
+          (raw_scores[str(i)], decoded_boxes)):
+        (_, feature_h_i, feature_w_i, _) = raw_scores_i.get_shape().as_list()
         num_locations = feature_h_i * feature_w_i
-        num_anchors_per_locations = num_anchors_per_locations_times_4 // 4
         num_classes = raw_scores_i.get_shape().as_list(
         )[-1] // num_anchors_per_locations
 
@@ -1023,18 +1037,16 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         # Box decoding.
         # The anchor boxes are shared for all data in a batch.
         # One stage detector only supports class agnostic box regression.
-        boxes_shape = [batch_size, num_locations * num_anchors_per_locations, 4]
         boxes_i = tf.tile(
-            tf.expand_dims(
-                box_ops.decode_boxes(
-                    tf.reshape(raw_boxes_i, boxes_shape),
-                    tf.reshape(anchor_boxes_i, boxes_shape)),
-                axis=1), [1, num_classes - 1, 1, 1])
+            tf.reshape(
+                decoded_boxes_i,
+                [batch_size, 1, num_locations * num_anchors_per_locations, 4]),
+            [1, num_classes - 1, 1, 1])
         scores, boxes = edgetpu.concat_and_top_k(pre_nms_top_k,
                                                  (scores, scores_i),
                                                  (boxes, boxes_i))
-    clip_shape = tf.expand_dims(tf.expand_dims(image_shape, axis=1), axis=1)
-    return box_ops.clip_boxes(boxes, clip_shape), tf.sigmoid(scores)
+    boxes: tf.Tensor = boxes  # pytype: disable=annotation-type-mismatch
+    return boxes, tf.sigmoid(scores)
 
   def __call__(
       self,
@@ -1167,7 +1179,8 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
                 pre_nms_score_threshold=self
                 ._config_dict['pre_nms_score_threshold'],
                 nms_iou_threshold=self._config_dict['nms_iou_threshold'],
-                max_num_detections=self._config_dict['max_num_detections']))
+                max_num_detections=self._config_dict['max_num_detections'],
+                refinements=self._config_dict.get('nms_v3_refinements', 2)))
         # Set `nmsed_attributes` to None for v3.
         nmsed_attributes = {}
       else:
