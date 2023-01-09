@@ -345,8 +345,9 @@ class InputReader:
             f'{params.tf_data_service_job_name}_{self.static_randnum}')
 
   @property
-  def tfds_info(self) -> Union[tfds.core.DatasetInfo,
-                               dict[str, tfds.core.DatasetInfo]]:
+  def tfds_info(
+      self,
+  ) -> Union[tfds.core.DatasetInfo, Dict[str, tfds.core.DatasetInfo]]:
     """Returns TFDS dataset info, if available."""
     if self._tfds_builder:
       if isinstance(self._tfds_builder, dict):
@@ -380,8 +381,9 @@ class InputReader:
       dataset_fn,
       input_context: Optional[tf.distribute.InputContext] = None,
       tfds_builder: Optional[
-          Union[tfds.core.DatasetBuilder,
-                dict[str, tfds.core.DatasetBuilder]]] = None):
+          Union[tfds.core.DatasetBuilder, Dict[str, tfds.core.DatasetBuilder]]
+      ] = None,
+  ):
     """Reads the data source (files/tfds) to a dataset."""
 
     def _files_to_dataset(files: List[str]) -> tf.data.Dataset:
