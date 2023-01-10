@@ -13,8 +13,7 @@
 # limitations under the License.
 
 """EdgeTPU oriented layers and tools."""
-from collections.abc import Iterable, Sequence
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Iterable, Sequence
 
 import numpy as np
 import tensorflow as tf
@@ -102,7 +101,7 @@ def _same(x):
 
 
 def shard_tensors(
-    axis: int, block_size: int, tensors: Sequence[tf.Tensor]
+    axis: int, block_size: int, tensors: 'Sequence[tf.Tensor]'
 ) -> Union[List[Sequence[tf.Tensor]], 'Iterable[Sequence[tf.Tensor]]']:
   """Consistently splits multiple tensors sharding-style.
 
