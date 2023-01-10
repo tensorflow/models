@@ -152,7 +152,6 @@ class TransformerEncoder(tf.keras.layers.Layer):
                                                activation='tanh',
                                                kernel_initializer=initializer,
                                                name='pooler_transform')
-
     self._config = {
         'vocab_size': vocab_size,
         'hidden_size': hidden_size,

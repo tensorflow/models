@@ -43,7 +43,8 @@ trainer:
         power: 0.5
       type: polynomial
     optimizer:
-      type: adamw
+      adamw:
+        weight_decay_rate: 0.1
     warmup:
       polynomial:
         power: 1

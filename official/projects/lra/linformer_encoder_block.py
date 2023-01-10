@@ -40,7 +40,6 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
                inner_dim,
                inner_activation,
                low_rank_features,
-               output_range=None,
                kernel_initializer="glorot_uniform",
                bias_initializer="zeros",
                kernel_regularizer=None,
@@ -134,18 +133,12 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
     util.filter_kwargs(kwargs)
     super().__init__(**kwargs)
 
-    # Deprecation warning.
-    if output_range is not None:
-      logging.warning("`output_range` is available as an argument for `call()`."
-                      "The `output_range` as __init__ argument is deprecated.")
-
     self._num_heads = num_attention_heads
     self._low_rank_features = low_rank_features
     self._inner_dim = inner_dim
     self._inner_activation = inner_activation
     self._attention_dropout_rate = attention_dropout
     self._output_dropout_rate = output_dropout
-    self._output_range = output_range
     self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
     self._bias_initializer = tf.keras.initializers.get(bias_initializer)
     self._kernel_regularizer = tf.keras.regularizers.get(kernel_regularizer)
@@ -299,8 +292,6 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
             self._output_dropout_rate,
         "attention_dropout":
             self._attention_dropout_rate,
-        "output_range":
-            self._output_range,
         "kernel_initializer":
             tf.keras.initializers.serialize(self._kernel_initializer),
         "bias_initializer":
@@ -370,8 +361,6 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
     else:
       input_tensor, key_value, attention_mask = (inputs, None, None)
 
-    if output_range is None:
-      output_range = self._output_range
     if output_range:
       if self._norm_first:
         source_tensor = input_tensor[:, 0:output_range, :]
@@ -396,7 +385,6 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
     key = self._key_projection(key_value)
     value = self._value_projection(input_tensor)
     ## Low Rank Projection Done
-    ## WARNING: ATTENTION MASK
 
     if self._return_attention_scores:
       attention_output, attention_scores = self._attention_layer(

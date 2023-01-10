@@ -13,8 +13,6 @@
 # limitations under the License.
 """Transformer experiments."""
 # pylint: disable=g-doc-return-or-yield,line-too-long
-import dataclasses
-
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import optimization
@@ -30,23 +28,28 @@ AdamWeightDecay = optimization.AdamWeightDecayConfig
 PolynomialLr = optimization.PolynomialLrConfig
 PolynomialWarmupConfig = optimization.PolynomialWarmupConfig
 
-
-@dataclasses.dataclass
-class TransformerOptimizationConfig(optimization.OptimizationConfig):
-  """Transformer optimization configuration."""
-  optimizer: optimization.OptimizerConfig = optimization.OptimizerConfig(
-      type='adamw',
-      adamw=AdamWeightDecay(
-          weight_decay_rate=0.01,
-          exclude_from_weight_decay=['LayerNorm', 'layer_norm', 'bias'],
-          epsilon=1e-6))
-  learning_rate: optimization.LrConfig = optimization.LrConfig(
-      type='polynomial',
-      polynomial=PolynomialLr(initial_learning_rate=1e-4,
-                              decay_steps=1000000,
-                              end_learning_rate=0.0))
-  warmup: optimization.WarmupConfig = optimization.WarmupConfig(
-      type='polynomial', polynomial=PolynomialWarmupConfig(warmup_steps=10000))
+_TRAINER = cfg.TrainerConfig(
+    optimizer_config=optimization.OptimizationConfig({
+          'optimizer': {
+              'type': 'adamw',
+              'adamw': {
+                  'weight_decay_rate':
+                      0.01,
+                  'exclude_from_weight_decay':
+                      ['LayerNorm', 'layer_norm', 'bias'],
+              }
+          },
+          'learning_rate': {
+              'type': 'polynomial',
+              'polynomial': {
+                  'initial_learning_rate': 3e-5,
+                  'end_learning_rate': 0.0,
+              }
+          },
+          'warmup': {
+              'type': 'polynomial'
+          }
+      }))
 
 
 @exp_factory.register_config_factory('transformer/lra_listops')
@@ -61,28 +64,7 @@ def transformer_listops() -> cfg.ExperimentConfig:
           validation_data=sentence_prediction_dataloader.
           SentencePredictionDataConfig(is_training=False,
                                        drop_remainder=False)),
-      trainer=cfg.TrainerConfig(
-          optimizer_config=optimization.OptimizationConfig({
-              'optimizer': {
-                  'type': 'adamw',
-                  'adamw': {
-                      'weight_decay_rate':
-                          0.01,
-                      'exclude_from_weight_decay':
-                          ['LayerNorm', 'layer_norm', 'bias'],
-                  }
-              },
-              'learning_rate': {
-                  'type': 'polynomial',
-                  'polynomial': {
-                      'initial_learning_rate': 3e-5,
-                      'end_learning_rate': 0.0,
-                  }
-              },
-              'warmup': {
-                  'type': 'polynomial'
-              }
-          })))
+      trainer=_TRAINER)
   return config
 
 
@@ -98,28 +80,7 @@ def transformer_imdb() -> cfg.ExperimentConfig:
           validation_data=sentence_prediction_dataloader.
           SentencePredictionDataConfig(is_training=False,
                                        drop_remainder=False)),
-      trainer=cfg.TrainerConfig(
-          optimizer_config=optimization.OptimizationConfig({
-              'optimizer': {
-                  'type': 'adamw',
-                  'adamw': {
-                      'weight_decay_rate':
-                          0.01,
-                      'exclude_from_weight_decay':
-                          ['LayerNorm', 'layer_norm', 'bias'],
-                  }
-              },
-              'learning_rate': {
-                  'type': 'polynomial',
-                  'polynomial': {
-                      'initial_learning_rate': 3e-5,
-                      'end_learning_rate': 0.0,
-                  }
-              },
-              'warmup': {
-                  'type': 'polynomial'
-              }
-          })))
+      trainer=_TRAINER)
   return config
 
 
@@ -135,28 +96,7 @@ def transformer_cifar() -> cfg.ExperimentConfig:
           validation_data=sentence_prediction_dataloader.
           SentencePredictionDataConfig(is_training=False,
                                        drop_remainder=False)),
-      trainer=cfg.TrainerConfig(
-          optimizer_config=optimization.OptimizationConfig({
-              'optimizer': {
-                  'type': 'adamw',
-                  'adamw': {
-                      'weight_decay_rate':
-                          0.0,
-                      'exclude_from_weight_decay':
-                          ['LayerNorm', 'layer_norm', 'bias'],
-                  }
-              },
-              'learning_rate': {
-                  'type': 'polynomial',
-                  'polynomial': {
-                      'initial_learning_rate': 3e-5,
-                      'end_learning_rate': 0.0,
-                  }
-              },
-              'warmup': {
-                  'type': 'polynomial'
-              }
-          })))
+      trainer=_TRAINER)
   return config
 
 
@@ -172,28 +112,7 @@ def transformer_pathfinder() -> cfg.ExperimentConfig:
           validation_data=sentence_prediction_dataloader.
           SentencePredictionDataConfig(is_training=False,
                                        drop_remainder=False)),
-      trainer=cfg.TrainerConfig(
-          optimizer_config=optimization.OptimizationConfig({
-              'optimizer': {
-                  'type': 'adamw',
-                  'adamw': {
-                      'weight_decay_rate':
-                          0.0,
-                      'exclude_from_weight_decay':
-                          ['LayerNorm', 'layer_norm', 'bias'],
-                  }
-              },
-              'learning_rate': {
-                  'type': 'polynomial',
-                  'polynomial': {
-                      'initial_learning_rate': 3e-5,
-                      'end_learning_rate': 0.0,
-                  }
-              },
-              'warmup': {
-                  'type': 'polynomial'
-              }
-          })))
+      trainer=_TRAINER)
   return config
 
 
@@ -208,26 +127,5 @@ def transformer_aan() -> cfg.ExperimentConfig:
           train_data=lra_dual_encoder_dataloader.DualEncoderDataConfig(),
           validation_data=lra_dual_encoder_dataloader.DualEncoderDataConfig(
               is_training=False, drop_remainder=False)),
-      trainer=cfg.TrainerConfig(
-          optimizer_config=optimization.OptimizationConfig({
-              'optimizer': {
-                  'type': 'adamw',
-                  'adamw': {
-                      'weight_decay_rate':
-                          0.1,
-                      'exclude_from_weight_decay':
-                          ['LayerNorm', 'layer_norm', 'bias'],
-                  }
-              },
-              'learning_rate': {
-                  'type': 'polynomial',
-                  'polynomial': {
-                      'initial_learning_rate': 3e-5,
-                      'end_learning_rate': 0.0,
-                  }
-              },
-              'warmup': {
-                  'type': 'polynomial'
-              }
-          })))
+      trainer=_TRAINER)
   return config

@@ -98,13 +98,6 @@ class LRADualEncoder(tf.keras.Model):
         name=head_name)
     predictions = classifier(cls_inputs)
 
-    # b/164516224
-    # Once we've created the network using the Functional API, we call
-    # super().__init__ as though we were invoking the Functional API Model
-    # constructor, resulting in this object having all the properties of a model
-    # created using the Functional API. Once super().__init__ is called, we
-    # can assign attributes to `self` - note that all `self` assignments are
-    # below this line.
     super(LRADualEncoder, self).__init__(inputs=inputs,
                                          outputs=predictions,
                                          **kwargs)
