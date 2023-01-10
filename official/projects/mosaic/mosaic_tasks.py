@@ -62,7 +62,13 @@ class MosaicSemanticSegmentationTask(seg_tasks.SemanticSegmentationTask):
         input_size = crop_size
     else:
       input_size = self.task_config.validation_data.output_size
-    dummy_input = tf.ones(shape=[1] + input_size + [3])
+
+    if len(self.task_config.model.input_size) == 3:
+      input_channel = self.task_config.model.input_size[-1]
+    else:
+      input_channel = 3
+
+    dummy_input = tf.ones(shape=[1] + input_size + [input_channel])
     model(dummy_input)
 
     return model
