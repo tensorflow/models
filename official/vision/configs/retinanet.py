@@ -137,6 +137,8 @@ class DetectionGenerator(hyperparams.Config):
   # custom NMS op and override above parameters.
   tflite_post_processing: common.TFLitePostProcessingConfig = common.TFLitePostProcessingConfig(
   )
+  # Return decoded boxes/scores even if apply_nms is set `True`.
+  return_decoded: Optional[bool] = None
 
 
 @dataclasses.dataclass

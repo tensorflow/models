@@ -322,7 +322,9 @@ def build_retinanet(
       nms_version=generator_config.nms_version,
       use_cpu_nms=generator_config.use_cpu_nms,
       soft_nms_sigma=generator_config.soft_nms_sigma,
-      tflite_post_processing_config=tflite_post_processing_config)
+      tflite_post_processing_config=tflite_post_processing_config,
+      return_decoded=generator_config.return_decoded,
+  )
 
   model = retinanet_model.RetinaNetModel(
       backbone,
