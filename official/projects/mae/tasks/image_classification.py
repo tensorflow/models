@@ -14,20 +14,34 @@
 
 """Image classification task with ViT."""
 
-from typing import Optional
+import dataclasses
+from typing import Optional, Tuple
 import tensorflow as tf
 
 from official.core import base_task
+from official.core import config_definitions as cfg
 from official.core import input_reader
 from official.core import task_factory
-from official.projects.mae.configs import vit as vit_cfg
 from official.projects.mae.modeling import vit
 from official.vision.dataloaders import classification_input
 from official.vision.dataloaders import tfds_factory
 from official.vision.ops import augment
 
 
-@task_factory.register_task_cls(vit_cfg.ViTConfig)
+@dataclasses.dataclass
+class ViTConfig(cfg.TaskConfig):
+  """The translation task config."""
+
+  train_data: cfg.DataConfig = cfg.DataConfig()
+  validation_data: cfg.DataConfig = cfg.DataConfig()
+  patch_h: int = 14
+  patch_w: int = 14
+  num_classes: int = 1000
+  input_size: Tuple[int, int] = (224, 224)
+  init_stochastic_depth_rate: float = 0.2
+
+
+@task_factory.register_task_cls(ViTConfig)
 class ViTClassificationTask(base_task.Task):
   """Image classificaiton with ViT and load checkpoint if exists."""
 
