@@ -12,21 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Image classification task with ViT."""
-
+"""Image classification task with ViT and linear probe."""
+import dataclasses
 from typing import Optional
 import tensorflow as tf
 
 from official.core import base_task
 from official.core import input_reader
 from official.core import task_factory
-from official.projects.mae.configs import linear_probe
 from official.projects.mae.modeling import vit
+from official.projects.mae.tasks import image_classification
 from official.vision.dataloaders import classification_input
 from official.vision.dataloaders import tfds_factory
 
 
-@task_factory.register_task_cls(linear_probe.ViTLinearProbeConfig)
+@dataclasses.dataclass
+class ViTLinearProbeConfig(image_classification.ViTConfig):
+  """The LinearProbe task config."""
+
+
+@task_factory.register_task_cls(ViTLinearProbeConfig)
 class ViTLinearProbeTask(base_task.Task):
   """Image classificaiton with ViT and load checkpoint if exists."""
 
@@ -34,16 +39,17 @@ class ViTLinearProbeTask(base_task.Task):
     encoder = vit.VisionTransformer(
         self.task_config.patch_h,
         self.task_config.patch_w,
-        self.task_config.init_stochastic_depth_rate)
+        self.task_config.init_stochastic_depth_rate,
+    )
     # Freeze backbone.
     encoder.trainable = False
     model = vit.ViTLinearClassifier(encoder, self.task_config.num_classes)
     model(tf.ones((1, 224, 224, 3)))
     return model
 
-  def build_inputs(self,
-                   params,
-                   input_context: Optional[tf.distribute.InputContext] = None):
+  def build_inputs(
+      self, params, input_context: Optional[tf.distribute.InputContext] = None
+  ):
     num_classes = self.task_config.num_classes
     input_size = self.task_config.input_size
     image_field_key = self.task_config.train_data.image_field_key
@@ -60,16 +66,20 @@ class ViTLinearProbeTask(base_task.Task):
         aug_type=params.aug_type,
         color_jitter=params.color_jitter,
         random_erasing=params.random_erasing,
-        dtype=params.dtype)
+        dtype=params.dtype,
+    )
 
     postprocess_fn = lambda images, labels: (  # pylint:disable=g-long-lambda
-        images, tf.one_hot(labels, num_classes))
+        images,
+        tf.one_hot(labels, num_classes),
+    )
 
     reader = input_reader.InputReader(
         params=params,
         decoder_fn=decoder.decode,
         parser_fn=parser.parse_fn(params.is_training),
-        postprocess_fn=postprocess_fn)
+        postprocess_fn=postprocess_fn,
+    )
 
     dataset = reader.read(input_context=input_context)
     return dataset
@@ -100,6 +110,5 @@ class ViTLinearProbeTask(base_task.Task):
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     return tf.keras.losses.categorical_crossentropy(
-        labels,
-        model_outputs,
-        from_logits=True)
+        labels, model_outputs, from_logits=True
+    )

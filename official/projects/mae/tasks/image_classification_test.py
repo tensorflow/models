@@ -19,7 +19,6 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from official.modeling import optimization
-from official.projects.mae.configs import vit as vit_cfg
 from official.projects.mae.tasks import image_classification as vit_cls
 from official.vision.configs import image_classification
 
@@ -50,14 +49,15 @@ def _as_dataset(self, *args, **kwargs):
 class ImageClassificationTest(tf.test.TestCase):
 
   def test_train_step(self):
-    config = vit_cfg.ViTConfig(
+    config = vit_cls.ViTConfig(
         num_classes=1000,
         train_data=image_classification.DataConfig(
             tfds_name='imagenet2012',
             tfds_split='validation',
             is_training=True,
             global_batch_size=2,
-        ))
+        ),
+    )
     with tfds.testing.mock_data(as_dataset_fn=_as_dataset):
       task = vit_cls.ViTClassificationTask(config)
       model = task.build_model()

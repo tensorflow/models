@@ -19,7 +19,6 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from official.modeling import optimization
-from official.projects.mae.configs import linear_probe as linear_probe_cfg
 from official.projects.mae.tasks import linear_probe
 from official.vision.configs import image_classification
 
@@ -50,7 +49,7 @@ def _as_dataset(self, *args, **kwargs):
 class ImageClassificationTest(tf.test.TestCase):
 
   def test_train_step(self):
-    config = linear_probe_cfg.ViTLinearProbeConfig(
+    config = linear_probe.ViTLinearProbeConfig(
         num_classes=1000,
         train_data=image_classification.DataConfig(
             tfds_name='imagenet2012',
