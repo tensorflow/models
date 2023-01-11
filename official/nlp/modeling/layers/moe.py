@@ -268,25 +268,18 @@ class ExpertsChooseMaskedRouter(MaskedRouter):
     # Top expert_capacity router probability and corresponding token indices for
     # each expert.
     # Shapes [num_groups, num_experts, expert_capacity]
-    expert_gate, expert_index = tf.math.top_k(
+    _, expert_index = tf.math.top_k(
         router_probs_t, k=expert_capacity, sorted=False)
 
     # Convert to one-hot mask of expert indices for each token in each group.
-    # Shape: [num_groups, num_experts, expert_capacity, tokens_per_group].
+    # Shape: [num_groups, tokens_per_group, num_experts, expert_capacity].
     dispatch_mask = tf.one_hot(
-        expert_index, tokens_per_group, dtype=router_probs.dtype)
-
-    # Move axes to conform with shape expected by MoeLayer API.
-    # Shape: [num_groups, tokens_per_group, num_experts, expert_capacity]
-    dispatch_mask = tf.transpose(dispatch_mask, perm=[0, 3, 1, 2])
+        expert_index, tokens_per_group, axis=1, dtype=router_probs.dtype)
 
     # The combine array will be used for combining expert outputs, scaled by the
     # router probabilities.
     # Shape: [num_groups, num_experts, tokens_per_group, expert_capacity]
-    combine_array = tf.einsum(
-        "...ec,...tec->...tec",
-        expert_gate,
-        dispatch_mask)
+    combine_array = tf.expand_dims(router_probs, axis=3) * dispatch_mask
 
     # Add load balancing loss.
     # Each expert is choosing tokens until it reaches full capacity, so we don't
@@ -644,17 +637,17 @@ class MoeLayer(tf.keras.layers.Layer):
 
     # Shape [num_groups, num_experts, expert_capacity, hidden_dim]
     expert_inputs = tf.einsum(
-        "gth,gtec->gech",
-        inputs,
-        router_mask.dispatch_mask)
+        "gtec,gth->gech",
+        router_mask.dispatch_mask,
+        inputs)
 
     expert_outputs = self._experts(expert_inputs, training=training)
 
     # Shape [num_groups, tokens_per_group, hidden_dim]
     combined_outputs = tf.einsum(
-        "gech,gtec->gth",
-        expert_outputs,
-        router_mask.combine_array)
+        "gtec,gech->gth",
+        router_mask.combine_array,
+        expert_outputs)
 
     return combined_outputs
 
