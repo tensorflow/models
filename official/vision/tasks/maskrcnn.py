@@ -199,7 +199,8 @@ class MaskRCNNTask(base_task.Task):
 
     frcnn_cls_loss_fn = maskrcnn_losses.FastrcnnClassLoss(
         use_binary_cross_entropy=self.task_config.losses
-        .frcnn_class_use_binary_cross_entropy)
+        .frcnn_class_use_binary_cross_entropy,
+        top_k_percent=self.task_config.losses.frcnn_class_loss_top_k_percent)
     frcnn_box_loss_fn = maskrcnn_losses.FastrcnnBoxLoss(
         self.task_config.losses.frcnn_huber_loss_delta,
         self.task_config.model.detection_head.class_agnostic_bbox_pred)
