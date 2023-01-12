@@ -144,14 +144,20 @@ class RpnBoxLoss(object):
 class FastrcnnClassLoss(object):
   """Fast R-CNN classification loss function."""
 
-  def __init__(self, use_binary_cross_entropy=False):
+  def __init__(self,
+               use_binary_cross_entropy: bool = False,
+               top_k_percent: float = 1.0):
     """Initializes loss computation.
 
     Args:
       use_binary_cross_entropy: If true, uses binary cross entropy loss,
         otherwise uses categorical cross entropy loss.
+      top_k_percent: a float, the value lies in [0.0, 1.0]. When its value < 1.,
+        only aggregate the top k percent of losses. This is useful for hard
+        example mining.
     """
     self._use_binary_cross_entropy = use_binary_cross_entropy
+    self._top_k_percent = top_k_percent
 
   def __call__(self, class_outputs, class_targets):
     """Computes the class loss (Fast-RCNN branch) of Mask-RCNN.
@@ -174,15 +180,43 @@ class FastrcnnClassLoss(object):
     with tf.name_scope('fast_rcnn_loss'):
       num_classes = class_outputs.get_shape().as_list()[-1]
       class_targets_one_hot = tf.one_hot(
-          tf.cast(class_targets, dtype=tf.int32), num_classes)
+          tf.cast(class_targets, dtype=tf.int32),
+          num_classes,
+          dtype=class_outputs.dtype)
       if self._use_binary_cross_entropy:
+        # (batch_size, num_boxes, num_classes)
         cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(
-            class_targets_one_hot, class_outputs)
-        return tf.reduce_mean(tf.reduce_sum(cross_entropy_loss, axis=-1))
+            labels=class_targets_one_hot, logits=class_outputs)
       else:
-        return tf.reduce_mean(
-            tf.nn.softmax_cross_entropy_with_logits(class_targets_one_hot,
-                                                    class_outputs))
+        # (batch_size, num_boxes)
+        cross_entropy_loss = tf.nn.softmax_cross_entropy_with_logits(
+            labels=class_targets_one_hot, logits=class_outputs)
+
+      if self._top_k_percent < 1.0:
+        return self.aggregate_loss_top_k(cross_entropy_loss)
+      else:
+        return tf.reduce_mean(cross_entropy_loss)
+
+  def aggregate_loss_top_k(self, loss, num_valid_values=None):
+    """Aggregate the top-k greatest loss values.
+
+    Args:
+      loss: a float tensor in shape (batch_size, num_boxes) or (batch_size,
+        num_boxes, num_classes) which stores the loss values.
+      num_valid_values: the number of loss values which are not ignored. The
+        default value is None, which means all the loss values are valid.
+
+    Returns:
+      A 0-D float which stores the overall loss of the batch.
+    """
+    loss = tf.reshape(loss, shape=[-1])
+    top_k_num = tf.cast(
+        self._top_k_percent * tf.size(loss, out_type=tf.float32), tf.int32)
+    top_k_losses, _ = tf.math.top_k(loss, k=top_k_num)
+    normalizer = tf.cast(top_k_num, loss.dtype)
+    if num_valid_values is not None:
+      normalizer = tf.minimum(normalizer, tf.cast(num_valid_values, loss.dtype))
+    return tf.reduce_sum(top_k_losses) / (normalizer + 1e-5)
 
 
 class FastrcnnBoxLoss(object):

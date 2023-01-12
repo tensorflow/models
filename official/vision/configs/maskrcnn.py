@@ -193,6 +193,7 @@ class Losses(hyperparams.Config):
   rpn_huber_loss_delta: float = 1. / 9.
   frcnn_huber_loss_delta: float = 1.
   frcnn_class_use_binary_cross_entropy: bool = False
+  frcnn_class_loss_top_k_percent: float = 1.
   l2_weight_decay: float = 0.0
   rpn_score_weight: float = 1.0
   rpn_box_weight: float = 1.0
