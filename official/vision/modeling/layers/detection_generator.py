@@ -13,9 +13,8 @@
 # limitations under the License.
 
 """Contains definitions of generators to generate the final detections."""
-from collections.abc import Mapping, Sequence
 import contextlib
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Mapping, Sequence, Tuple
 
 # Import libraries
 
