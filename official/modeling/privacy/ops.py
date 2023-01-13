@@ -15,12 +15,24 @@
 """Ops for differential privacy (gradient) transforms."""
 
 from typing import List, Tuple
+import warnings
+
 import tensorflow as tf
 
 
 def clip_l2_norm(grads_vars: List[Tuple[tf.Tensor, tf.Tensor]],
                  l2_norm_clip: float) -> List[Tuple[tf.Tensor, tf.Tensor]]:
-  """Clip gradients by global norm."""
+  """DEPRECATED Clip gradients by global norm.
+
+  Args:
+    grads_vars: List of tuple of gradient and its corresponding variables
+    l2_norm_clip: Float for differential privacy norm
+
+  Returns:
+    List of clipped gradients and its corresponding variables
+  """
+  warnings.warn("`clip_l2_norm` deprecated.",
+                DeprecationWarning)
 
   gradients = []
   variables = []
@@ -33,10 +45,19 @@ def clip_l2_norm(grads_vars: List[Tuple[tf.Tensor, tf.Tensor]],
 
 def add_noise(grads_vars: List[Tuple[tf.Tensor, tf.Tensor]],
               noise_stddev: float) -> List[Tuple[tf.Tensor, tf.Tensor]]:
-  """Add noise to gradients."""
+  """DEPRECATED Add noise to gradients.
+
+  Args:
+    grads_vars: List of tuple of gradient and its corresponding variables
+    noise_stddev: Noise multiplier
+
+  Returns:
+    List of noised gradients and its corresponding variables
+  """
+  warnings.warn("`add_noise` deprecated.", DeprecationWarning)
+
   ret = []
   for (g, v) in grads_vars:
     noise = tf.random.normal(tf.shape(g), stddev=noise_stddev)
     ret.append((g + noise, v))
   return ret
-
