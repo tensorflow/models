@@ -49,7 +49,7 @@ class SparseMixer(tf.keras.layers.Layer):
   Notes:
   - The underlying MoeLayer uses the Keras add_loss() and add_metric() APIs to
     propagate auxiliary MoE losses and metrics. Any model using this network,
-    should collect these losses/metrics.
+    should collect these losses and, if desired, metrics.
   - The input length is fixed to 'max_sequence_length' to accomodate the mixing
     mechanisms.
 
@@ -111,6 +111,7 @@ class SparseMixer(tf.keras.layers.Layer):
       layers. If set False, output of attention and intermediate dense layers is
       normalized.
     with_dense_inputs: Whether to accept dense embeddings as the input.
+    export_metrics: Whether to export metrics using Keras add_metric API.
   """
 
   def __init__(
@@ -140,6 +141,7 @@ class SparseMixer(tf.keras.layers.Layer):
       embedding_layer: Optional[tf.keras.layers.Layer] = None,
       norm_first: bool = False,
       with_dense_inputs: bool = False,
+      export_metrics: bool = True,
       **kwargs):
     super().__init__(**kwargs)
 
@@ -174,6 +176,7 @@ class SparseMixer(tf.keras.layers.Layer):
         'embedding_layer': embedding_layer,
         'norm_first': norm_first,
         'with_dense_inputs': with_dense_inputs,
+        'export_metrics': export_metrics,
     }
 
     if embedding_layer is None:
@@ -240,6 +243,7 @@ class SparseMixer(tf.keras.layers.Layer):
             router=layers.ExpertsChooseMaskedRouter(
                 num_experts=num_experts,
                 kernel_initializer=tf_utils.clone_initializer(initializer),
+                export_metrics=export_metrics,
                 name='router'),
             train_capacity_factor=train_capacity_factor,
             eval_capacity_factor=eval_capacity_factor,
