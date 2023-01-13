@@ -114,6 +114,7 @@ class MaskScoringHead(hyperparams.Config):
   fc_input_size: List[int] = dataclasses.field(default_factory=list)
   num_fcs: int = 2
   fc_dims: int = 1024
+  use_depthwise_convolution: bool = False
 
 
 @dataclasses.dataclass
