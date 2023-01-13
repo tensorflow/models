@@ -15,7 +15,7 @@
 """Mixture of Experts layers and their routing mechanisms."""
 
 import dataclasses
-from typing import Any, Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import tensorflow as tf
 
@@ -101,8 +101,8 @@ class Router(tf.keras.layers.Layer):
       kernel_initializer: _InitializerType = _DEFAULT_KERNEL_INITIALIZER,
       bias_initializer: _InitializerType = _DEFAULT_BIAS_INITIALIZER,
       router_z_loss_weight: float = 0.0,
+      export_metrics: bool = True,
       name: str = "router",
-      dtype: Any = tf.float32,
       **kwargs):
     """Init.
 
@@ -115,24 +115,25 @@ class Router(tf.keras.layers.Layer):
       bias_initializer: Bias initializer for router weights.
       router_z_loss_weight: Weight for router_z_loss. Use non-zero values if
         running into training instability (esp. with dtype 'bfloat16' or lower).
+      export_metrics: Whether to export metrics using Keras add_metric API.
       name: Layer name.
-      dtype: The dtype of the layer's computations and weights. tf.float32 is
-        recommended for stability.
       **kwargs: Forwarded to super.
     """
-    super().__init__(name=name, dtype=dtype, **kwargs)
+    super().__init__(name=name, **kwargs)
 
     self.num_experts = num_experts  # Used to check consistency with
                                     # FeedForwardExperts.
     self.jitter_noise = jitter_noise
     self.router_z_loss_weight = router_z_loss_weight
+    self._export_metrics = export_metrics
+
     self.router_weights = tf.keras.layers.Dense(
         num_experts,
         use_bias=use_bias,
         kernel_initializer=tf_utils.clone_initializer(kernel_initializer),
         bias_initializer=tf_utils.clone_initializer(bias_initializer),
         name="router_weights",
-        dtype=dtype)
+        dtype=tf.float32)
 
   def call(self,
            inputs: tf.Tensor,
@@ -162,8 +163,9 @@ class Router(tf.keras.layers.Layer):
     unscaled_router_z_loss = _router_z_loss(router_logits)
     router_z_loss = self.router_z_loss_weight * unscaled_router_z_loss
     self.add_loss(router_z_loss)
-    self.add_metric(unscaled_router_z_loss, name="unscaled_router_z_loss")
-    self.add_metric(router_z_loss, name="router_z_loss")
+    if self._export_metrics:
+      self.add_metric(unscaled_router_z_loss, name="unscaled_router_z_loss")
+      self.add_metric(router_z_loss, name="router_z_loss")
 
     routing_instructions = self._compute_routing_instructions(
         router_probs, expert_capacity)
@@ -264,7 +266,6 @@ class ExpertsChooseMaskedRouter(MaskedRouter):
 
     router_probs_t = tf.transpose(router_probs, perm=[0, 2, 1])
     # router_probs_t: <float32>[num_groups, num_experts, tokens_per_group]
-
     # Top expert_capacity router probability and corresponding token indices for
     # each expert.
     # Shapes [num_groups, num_experts, expert_capacity]
@@ -284,35 +285,35 @@ class ExpertsChooseMaskedRouter(MaskedRouter):
     # Add load balancing loss.
     # Each expert is choosing tokens until it reaches full capacity, so we don't
     # need an auxiliary loading balancing loss for expert choice routing.
-    self.add_metric(0.0, name="load_balancing_loss")
+    if self._export_metrics:
+      self.add_metric(0.0, name="load_balancing_loss")
 
-    # Gather expert metrics.
-    # Number of tokens that were dispatched to at least one expert.
-    num_tokens = num_groups * tokens_per_group
-    num_tokens_dispatched_somewhere = tf.math.reduce_sum(tf.math.reduce_max(
-        dispatch_mask, axis=(-1, -2)))
-    fraction_tokens_left_behind = 1.0 - tf.cast(
-        num_tokens_dispatched_somewhere, tf.float32) / tf.cast(
-            num_tokens, tf.float32)
+      # Gather expert metrics.
+      # Number of tokens that were dispatched to at least one expert.
+      num_tokens = num_groups * tokens_per_group
+      num_tokens_dispatched_somewhere = tf.math.reduce_sum(tf.math.reduce_max(
+          dispatch_mask, axis=(-1, -2)))
+      fraction_tokens_left_behind = 1.0 - tf.cast(
+          num_tokens_dispatched_somewhere, tf.float32) / tf.cast(
+              num_tokens, tf.float32)
 
-    # Total number of tokens that were dispatched (one token could be
-    # dispatched to multiple experts).
-    num_tokens_dispatched = tf.math.reduce_sum(dispatch_mask)
-    # Of the tokens dispatched, how confident was the router in its routing?
-    router_confidence = tf.math.reduce_sum(
-        combine_array) / num_tokens_dispatched
+      # Total number of tokens that were dispatched (one token could be
+      # dispatched to multiple experts).
+      num_tokens_dispatched = tf.math.reduce_sum(dispatch_mask)
+      # Of the tokens dispatched, how confident was the router in its routing?
+      router_confidence = tf.math.reduce_sum(
+          combine_array) / num_tokens_dispatched
 
-    expert_usage = 1.0  # Experts fully utilized when "expert choose tokens"
+      expert_usage = 1.0  # Experts fully utilized when "expert choose tokens"
 
-    self.add_metric(fraction_tokens_left_behind,
-                    name="fraction_tokens_left_behind")
-    self.add_metric(router_confidence, name="router_confidence")
-    self.add_metric(expert_usage, name="expert_usage")
+      self.add_metric(fraction_tokens_left_behind,
+                      name="fraction_tokens_left_behind")
+      self.add_metric(router_confidence, name="router_confidence")
+      self.add_metric(expert_usage, name="expert_usage")
 
     # Return to default dtype now that router computation is complete.
-    dtype = tf.keras.mixed_precision.global_policy().compute_dtype
-    dispatch_mask = tf.cast(dispatch_mask, dtype)
-    combine_array = tf.cast(combine_array, dtype)
+    dispatch_mask = tf.cast(dispatch_mask, self.compute_dtype)
+    combine_array = tf.cast(combine_array, self.compute_dtype)
     output = RouterMask(dispatch_mask, combine_array)
     return output
 

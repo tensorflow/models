@@ -41,15 +41,14 @@ def small_config():
 def make_input_ones(batch_size: int = 4,
                     seq_length: int = 10,
                     hidden_dim: int = 7) -> tf.Tensor:
-  return tf.ones((batch_size, seq_length, hidden_dim), dtype=tf.float32)
+  return tf.ones((batch_size, seq_length, hidden_dim))
 
 
 def make_experts_input_ones(num_groups: int = 1,
                             num_experts: int = 2,
                             expert_capacity: int = 5,
                             hidden_dim: int = 7) -> tf.Tensor:
-  return tf.ones((num_groups, num_experts, expert_capacity, hidden_dim),
-                 dtype=tf.float32)
+  return tf.ones((num_groups, num_experts, expert_capacity, hidden_dim))
 
 
 class MoeTest(tf.test.TestCase):
