@@ -13,9 +13,8 @@
 # limitations under the License.
 
 """Configuration definitions for multi-task training."""
-from typing import Optional, Tuple
-
 import dataclasses
+from typing import Optional, Tuple
 
 from official.core import config_definitions as cfg
 from official.modeling import hyperparams
@@ -36,6 +35,10 @@ class MultiTaskConfig(hyperparams.Config):
   init_checkpoint: str = ""
   model: hyperparams.Config = None
   task_routines: Tuple[TaskRoutine, ...] = ()
+  # Configs for differential privacy
+  # These configs are only effective if you use create_optimizer in
+  # tensorflow_models/official/core/base_task.py
+  # DEPRECATED b/264611883
   differential_privacy_config: Optional[
       dp_configs.DifferentialPrivacyConfig] = None
 
