@@ -37,6 +37,7 @@ class MaskScoring(tf.keras.Model):
       fc_input_size: List[int],
       num_convs: int = 3,
       num_filters: int = 256,
+      use_depthwise_convolution: bool = False,
       fc_dims: int = 1024,
       num_fcs: int = 2,
       activation: str = 'relu',
@@ -55,6 +56,7 @@ class MaskScoring(tf.keras.Model):
         fully connected layers.
       num_convs: An`int` for number of conv layers.
       num_filters: An `int` for the number of filters for conv layers.
+      use_depthwise_convolution: A `bool`, whether or not using depthwise convs.
       fc_dims: An `int` number of filters for each fully connected layers.
       num_fcs: An `int` for number of fully connected layers.
       activation: A `str` name of the activation function.
@@ -77,6 +79,7 @@ class MaskScoring(tf.keras.Model):
         'fc_dims': fc_dims,
         'num_fcs': num_fcs,
         'use_sync_bn': use_sync_bn,
+        'use_depthwise_convolution': use_depthwise_convolution,
         'norm_momentum': norm_momentum,
         'norm_epsilon': norm_epsilon,
         'activation': activation,
@@ -117,18 +120,33 @@ class MaskScoring(tf.keras.Model):
     self._convs = []
     self._conv_norms = []
     for i in range(self._config_dict['num_convs']):
-      conv_name = 'mask-scoring_{}'.format(i)
+      if self._config_dict['use_depthwise_convolution']:
+        self._convs.append(
+            tf.keras.layers.DepthwiseConv2D(
+                name='mask-scoring-depthwise-conv-{}'.format(i),
+                kernel_size=3,
+                padding='same',
+                use_bias=False,
+                depthwise_initializer=tf.keras.initializers.RandomNormal(
+                    stddev=0.01),
+                depthwise_regularizer=self._config_dict['kernel_regularizer'],
+                depth_multiplier=1))
+        norm_name = 'mask-scoring-depthwise-bn-{}'.format(i)
+        self._conv_norms.append(bn_op(name=norm_name, **bn_kwargs))
+      conv_name = 'mask-scoring-conv-{}'.format(i)
       if 'kernel_initializer' in conv_kwargs:
         conv_kwargs['kernel_initializer'] = tf_utils.clone_initializer(
             conv_kwargs['kernel_initializer'])
+      if self._config_dict['use_depthwise_convolution']:
+        conv_kwargs['kernel_size'] = 1
       self._convs.append(conv_op(name=conv_name, **conv_kwargs))
-      bn_name = 'mask-scoring-bn_{}'.format(i)
+      bn_name = 'mask-scoring-bn-{}'.format(i)
       self._conv_norms.append(bn_op(name=bn_name, **bn_kwargs))
 
     self._fcs = []
     self._fc_norms = []
     for i in range(self._config_dict['num_fcs']):
-      fc_name = 'mask-scoring-fc_{}'.format(i)
+      fc_name = 'mask-scoring-fc-{}'.format(i)
       self._fcs.append(
           tf.keras.layers.Dense(
               units=self._config_dict['fc_dims'],
@@ -137,7 +155,7 @@ class MaskScoring(tf.keras.Model):
               kernel_regularizer=self._config_dict['kernel_regularizer'],
               bias_regularizer=self._config_dict['bias_regularizer'],
               name=fc_name))
-      bn_name = 'mask-scoring-fc-bn_{}'.format(i)
+      bn_name = 'mask-scoring-fc-bn-{}'.format(i)
       self._fc_norms.append(bn_op(name=bn_name, **bn_kwargs))
 
     self._classifier = tf.keras.layers.Dense(
