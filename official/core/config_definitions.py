@@ -282,6 +282,7 @@ class TaskConfig(base_config.Config):
   # Configs for differential privacy
   # These configs are only effective if you use create_optimizer in
   # tensorflow_models/official/core/base_task.py
+  # DEPRECATED b/264611883
   differential_privacy_config: Optional[
       dp_configs.DifferentialPrivacyConfig] = None
 
