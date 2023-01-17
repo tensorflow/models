@@ -90,11 +90,14 @@ class SemanticSegmentationTaskTest(tf.test.TestCase, parameterized.TestCase):
 
 class AutosegEdgeTPUTaskTest(tf.test.TestCase, parameterized.TestCase):
 
-  @parameterized.parameters(('autoseg_edgetpu_xs',))
+  @parameterized.parameters(
+      ('autoseg_edgetpu_xs',), ('autoseg_edgetpu_s',), ('autoseg_edgetpu_m',)
+  )
   def test_task(self, config_name):
     config_to_backbone_mapping = {
         'autoseg_edgetpu_xs': 'autoseg_edgetpu_backbone_xs',
-        'autoseg_edgetpu_s': 'autoseg_edgetpu_backone_s'
+        'autoseg_edgetpu_s': 'autoseg_edgetpu_backbone_s',
+        'autoseg_edgetpu_m': 'autoseg_edgetpu_backbone_m',
     }
     config = autoseg_cfg.autoseg_edgetpu_experiment_config(
         config_to_backbone_mapping[config_name], init_backbone=False)
