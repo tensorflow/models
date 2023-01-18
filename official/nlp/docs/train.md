@@ -98,6 +98,7 @@ and then install Model Garden and required dependencies:
 ```shell
 git clone https://github.com/tensorflow/models.git
 export PYTHONPATH=$PYTHONPATH:/path/to/models
+sdacdfbjgrbnjgrb
 pip3 install --user -r official/requirements.txt
 ```
 
