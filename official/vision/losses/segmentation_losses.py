@@ -73,6 +73,7 @@ class SegmentationLoss:
        A 0-D float which stores the overall loss of the batch.
     """
     _, height, width, num_classes = logits.get_shape().as_list()
+    output_dtype = logits.dtype
     num_layers = labels.get_shape().as_list()[-1]
     if not self._use_binary_cross_entropy:
       if num_layers > 1:
@@ -94,8 +95,10 @@ class SegmentationLoss:
     if num_classes != len(class_weights):
       raise ValueError(
           'Length of class_weights should be {}'.format(num_classes))
-    class_weights = tf.constant(class_weights, tf.float32)
+    class_weights = tf.constant(class_weights, dtype=output_dtype)
 
+    if not self._gt_is_matting_map:
+      labels = tf.cast(labels, tf.int32)
     if self._use_groundtruth_dimension:
       # TODO(arashwan): Test using align corners to match deeplab alignment.
       logits = tf.image.resize(
@@ -106,21 +109,27 @@ class SegmentationLoss:
           method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
     if not self._gt_is_matting_map:
-      labels = tf.cast(labels, tf.int32)
-
-    valid_mask = tf.not_equal(tf.cast(labels, tf.int32), self._ignore_label)
+      valid_mask = tf.not_equal(labels, self._ignore_label)
+    else:
+      valid_mask = tf.ones_like(labels, dtype=tf.bool)
 
     # (batch_size, height, width, num_classes)
     labels_with_prob = self.get_labels_with_prob(logits, labels, valid_mask,
                                                  **kwargs)
 
+    # (batch_size, height, width)
+    valid_mask = tf.cast(tf.reduce_any(valid_mask, axis=-1), dtype=output_dtype)
+
     if self._use_binary_cross_entropy:
       # (batch_size, height, width, num_classes)
       cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(
           labels=labels_with_prob, logits=logits)
-      # (batch_size, height, width)
-      cross_entropy_loss = tf.reduce_sum(
-          cross_entropy_loss * class_weights, axis=-1)
+      # (batch_size, height, width, num_classes)
+      cross_entropy_loss *= class_weights
+      num_valid_values = tf.reduce_sum(valid_mask) * tf.cast(
+          num_classes, output_dtype)
+      # (batch_size, height, width, num_classes)
+      cross_entropy_loss *= valid_mask[..., tf.newaxis]
     else:
       # (batch_size, height, width)
       cross_entropy_loss = tf.nn.softmax_cross_entropy_with_logits(
@@ -137,18 +146,15 @@ class SegmentationLoss:
           tf.one_hot(
               tf.cast(tf.squeeze(labels, axis=-1), tf.int32),
               depth=num_classes,
-              dtype=tf.float32), class_weights)
+              dtype=output_dtype), class_weights)
       cross_entropy_loss *= weight_mask
+      num_valid_values = tf.reduce_sum(valid_mask)
+      cross_entropy_loss *= valid_mask
 
-    # The pixel is valid if any layer of the masks is valid at that pixel.
-    # (batch_size, height, width)
-    valid_mask = tf.cast(tf.reduce_any(valid_mask, axis=-1), tf.float32)
-    cross_entropy_loss *= valid_mask
     if self._top_k_percent_pixels < 1.0:
-      return self.aggregate_loss_top_k(cross_entropy_loss)
+      return self.aggregate_loss_top_k(cross_entropy_loss, num_valid_values)
     else:
-      normalizer = tf.reduce_sum(valid_mask) + EPSILON
-      return tf.reduce_sum(cross_entropy_loss) / normalizer
+      return tf.reduce_sum(cross_entropy_loss) / (num_valid_values + EPSILON)
 
   def get_labels_with_prob(self, logits, labels, valid_mask, **unused_kwargs):
     """Get a tensor representing the probability of each class for each pixel.
@@ -177,34 +183,41 @@ class SegmentationLoss:
       labels = tf.cast(labels, tf.int32)
       # Assign pixel with ignore label to class -1, which will be ignored by
       # tf.one_hot operation.
-      # (batch_size, height, width, num_layers)
+      # (batch_size, height, width, num_masks)
       labels = tf.where(valid_mask, labels, -tf.ones_like(labels))
 
       if self._use_binary_cross_entropy:
-        # (batch_size, height, width, num_layers, num_classes)
-        one_hot_labels_per_layer = tf.one_hot(
-            labels, depth=num_classes, dtype=tf.float32)
-
+        # (batch_size, height, width, num_masks, num_classes)
+        one_hot_labels_per_mask = tf.one_hot(
+            labels,
+            depth=num_classes,
+            on_value=True,
+            off_value=False,
+            dtype=tf.bool,
+            axis=-1)
         # Aggregate all one-hot labels to get a binary mask in shape
         # (batch_size, height, width, num_classes), which represents all the
         # classes that a pixel is labeled as.
         # For example, if a pixel is labeled as "window" (id=1) and also being a
         # part of the "building" (id=3), then its train_labels are [0,1,0,1].
-        train_labels = tf.reduce_max(one_hot_labels_per_layer, axis=-2)
+        train_labels = tf.cast(
+            tf.reduce_any(one_hot_labels_per_mask, axis=-2), dtype=logits.dtype)
       else:
         # (batch_size, height, width, num_classes)
         train_labels = tf.one_hot(
-            tf.squeeze(labels, axis=-1), depth=num_classes, dtype=tf.float32)
+            tf.squeeze(labels, axis=-1), depth=num_classes, dtype=logits.dtype)
 
     return train_labels * (
         1 - self._label_smoothing) + self._label_smoothing / num_classes
 
-  def aggregate_loss_top_k(self, pixelwise_loss):
+  def aggregate_loss_top_k(self, pixelwise_loss, num_valid_pixels=None):
     """Aggregate the top-k greatest pixelwise loss.
 
     Args:
-      pixelwise_loss: A float tensor in shape (batch_size, height, width) which
+      pixelwise_loss: a float tensor in shape (batch_size, height, width) which
         stores the loss of each pixel.
+      num_valid_pixels: the number of pixels which are not ignored. If None, all
+        the pixels are valid.
 
     Returns:
        A 0-D float which stores the overall loss of the batch.
@@ -212,11 +225,13 @@ class SegmentationLoss:
     pixelwise_loss = tf.reshape(pixelwise_loss, shape=[-1])
     top_k_pixels = tf.cast(
         self._top_k_percent_pixels *
-        tf.cast(tf.size(pixelwise_loss), tf.float32), tf.int32)
-    top_k_losses, _ = tf.math.top_k(pixelwise_loss, k=top_k_pixels, sorted=True)
-    normalizer = tf.reduce_sum(
-        tf.cast(tf.not_equal(top_k_losses, 0.0), tf.float32)) + EPSILON
-    return tf.reduce_sum(top_k_losses) / normalizer
+        tf.size(pixelwise_loss, out_type=tf.float32), tf.int32)
+    top_k_losses, _ = tf.math.top_k(pixelwise_loss, k=top_k_pixels)
+    normalizer = tf.cast(top_k_pixels, top_k_losses.dtype)
+    if num_valid_pixels is not None:
+      normalizer = tf.minimum(normalizer,
+                              tf.cast(num_valid_pixels, top_k_losses.dtype))
+    return tf.reduce_sum(top_k_losses) / (normalizer + EPSILON)
 
 
 def get_actual_mask_scores(logits, labels, ignore_label):

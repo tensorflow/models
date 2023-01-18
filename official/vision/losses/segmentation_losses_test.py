@@ -45,6 +45,30 @@ class SegmentationLossTest(parameterized.TestCase, tf.test.TestCase):
         top_k_percent_pixels=top_k_percent_pixels)(logits, labels)
     self.assertEqual(tf.rank(loss), 0)
 
+  def testSegmentationLossTopK(self):
+    labels = tf.constant([[[[0], [0]], [[0], [2]]]])
+    logits = tf.constant([[[[100., 0., 0.], [100., 0, 0.]],
+                           [[100., 0., 0.], [0., 1., 0.]]]])
+    loss = segmentation_losses.SegmentationLoss(
+        label_smoothing=0.,
+        class_weights=[],
+        ignore_label=255,
+        use_groundtruth_dimension=True,
+        top_k_percent_pixels=0.5)(logits, labels)
+    self.assertAllClose(loss, 0.775718, atol=1e-4)
+
+  def testSegmentationLossTopKWithIgnoreLabel(self):
+    labels = tf.constant([[[[0], [0]], [[0], [2]]]])
+    logits = tf.constant([[[[100., 0., 0.], [100., 0, 0.]],
+                           [[100., 0., 0.], [0., 1., 0.]]]])
+    loss = segmentation_losses.SegmentationLoss(
+        label_smoothing=0.,
+        class_weights=[],
+        ignore_label=0,
+        use_groundtruth_dimension=True,
+        top_k_percent_pixels=0.5)(logits, labels)
+    self.assertAllClose(loss, 1.551429, atol=1e-4)
+
   def testSegmentationLossGroundTruthIsMattingMap(self):
     # [batch, height, width, num_layers]: [2, 3, 4, 1]
     labels = tf.random.uniform([2, 3, 4, 1],
