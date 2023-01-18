@@ -807,6 +807,39 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     test_controller.train(steps=10)
     self.assertEqual(test_runner.global_step, 10)
 
+  def test_final_evaluation_is_done_even_no_training_needed(self):
+    test_runner = TestRunner()
+    checkpoint = tf.train.Checkpoint(
+        model=test_runner.model, optimizer=test_runner.optimizer
+    )
+    checkpoint_manager = tf.train.CheckpointManager(
+        checkpoint,
+        self.model_dir,
+        max_to_keep=None,
+        step_counter=test_runner.global_step,
+        checkpoint_interval=10,
+    )
+    summary_dir = os.path.join(self.model_dir, "summaries")
+    summary_manager = orbit.utils.SummaryManager(
+        summary_dir, tf.summary.scalar, global_step=test_runner.global_step
+    )
+
+    test_controller = controller.Controller(
+        trainer=test_runner,
+        evaluator=test_runner,
+        global_step=test_runner.global_step,
+        steps_per_loop=2,
+        checkpoint_manager=checkpoint_manager,
+        summary_manager=summary_manager,
+    )
+
+    test_controller.train_and_evaluate(
+        train_steps=0, eval_interval=2
+    )
+    self.assertNotEmpty(tf.io.gfile.listdir(summary_dir))
+    self.assertNotEmpty(
+        summaries_with_matching_keyword("eval_loss", summary_dir)
+    )
 
 if __name__ == "__main__":
   tf.test.main()
