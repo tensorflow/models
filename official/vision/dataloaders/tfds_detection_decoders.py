@@ -25,7 +25,7 @@ class MSCOCODecoder(decoder.Decoder):
     """Decode the serialized example.
 
     Args:
-      serialized_example: a dictonary example produced by tfds.
+      serialized_example: a dictionary example produced by tfds.
 
     Returns:
       decoded_tensors: a dictionary of tensors with the following fields:
