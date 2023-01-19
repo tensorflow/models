@@ -76,13 +76,13 @@ class Parser(parser.Parser):
         specified a training crop of size crop_size is returned. This is useful
         for cropping original images during training while evaluating on
         original image sizes.
-      resize_eval_groundtruth: `bool`, if True, eval groundtruth masks are
+      resize_eval_groundtruth: `bool`, if True, eval ground-truth masks are
         resized to output_size.
       gt_is_matting_map: `bool`, if True, the expected mask is in the range
         between 0 and 255. The parser will normalize the value of the mask into
         the range between 0 and 1.
       groundtruth_padded_size: `Tensor` or `list` for [height, width]. When
-        resize_eval_groundtruth is set to False, the groundtruth masks are
+        resize_eval_groundtruth is set to False, the ground-truth masks are
         padded to this size.
       ignore_label: `int` the pixel with ignore label will not used for training
         and evaluation.
@@ -174,8 +174,8 @@ class Parser(parser.Parser):
     """Parses data for training and evaluation."""
     image, label = self._prepare_image_and_label(data)
 
-    # Normalize the label into the range of 0 and 1 for matting groundtruth.
-    # Note that the input groundtruth labels must be 0 to 255, and do not
+    # Normalize the label into the range of 0 and 1 for matting ground-truth.
+    # Note that the input ground-truth labels must be 0 to 255, and do not
     # contain ignore_label. For gt_is_matting_map case, ignore_label is only
     # used for padding the labels.
     if self._gt_is_matting_map:
@@ -244,7 +244,7 @@ class Parser(parser.Parser):
     """Parses data for training and evaluation."""
     image, label = self._prepare_image_and_label(data)
 
-    # Binarize mask if groundtruth is a matting map
+    # Binarize mask if ground-truth is a matting map
     if self._gt_is_matting_map:
       label = tf.divide(tf.cast(label, dtype=tf.float32), 255.0)
       label = utils.binarize_matting_map(label)
