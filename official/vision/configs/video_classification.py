@@ -67,7 +67,7 @@ class DataConfig(cfg.DataConfig):
 
 
 def kinetics400(is_training):
-  """Generated Kinectics 400 dataset configs."""
+  """Generated Kinetics 400 dataset configs."""
   return DataConfig(
       name='kinetics400',
       num_classes=400,
@@ -79,7 +79,7 @@ def kinetics400(is_training):
 
 
 def kinetics600(is_training):
-  """Generated Kinectics 600 dataset configs."""
+  """Generated Kinetics 600 dataset configs."""
   return DataConfig(
       name='kinetics600',
       num_classes=600,
@@ -91,7 +91,7 @@ def kinetics600(is_training):
 
 
 def kinetics700(is_training):
-  """Generated Kinectics 600 dataset configs."""
+  """Generated Kinetics 600 dataset configs."""
   return DataConfig(
       name='kinetics700',
       num_classes=700,
@@ -103,7 +103,7 @@ def kinetics700(is_training):
 
 
 def kinetics700_2020(is_training):
-  """Generated Kinectics 600 dataset configs."""
+  """Generated Kinetics 600 dataset configs."""
   return DataConfig(
       name='kinetics700',
       num_classes=700,
@@ -273,7 +273,7 @@ def video_classification_ucf101() -> cfg.ExperimentConfig:
 
 @exp_factory.register_config_factory('video_classification_kinetics400')
 def video_classification_kinetics400() -> cfg.ExperimentConfig:
-  """Video classification on Kinectics 400 with resnet."""
+  """Video classification on Kinetics 400 with resnet."""
   train_dataset = kinetics400(is_training=True)
   validation_dataset = kinetics400(is_training=False)
   task = VideoClassificationTask(
@@ -299,7 +299,7 @@ def video_classification_kinetics400() -> cfg.ExperimentConfig:
 
 @exp_factory.register_config_factory('video_classification_kinetics600')
 def video_classification_kinetics600() -> cfg.ExperimentConfig:
-  """Video classification on Kinectics 600 with resnet."""
+  """Video classification on Kinetics 600 with resnet."""
   train_dataset = kinetics600(is_training=True)
   validation_dataset = kinetics600(is_training=False)
   task = VideoClassificationTask(
@@ -325,7 +325,7 @@ def video_classification_kinetics600() -> cfg.ExperimentConfig:
 
 @exp_factory.register_config_factory('video_classification_kinetics700')
 def video_classification_kinetics700() -> cfg.ExperimentConfig:
-  """Video classification on Kinectics 700 with resnet."""
+  """Video classification on Kinetics 700 with resnet."""
   train_dataset = kinetics700(is_training=True)
   validation_dataset = kinetics700(is_training=False)
   task = VideoClassificationTask(
@@ -351,7 +351,7 @@ def video_classification_kinetics700() -> cfg.ExperimentConfig:
 
 @exp_factory.register_config_factory('video_classification_kinetics700_2020')
 def video_classification_kinetics700_2020() -> cfg.ExperimentConfig:
-  """Video classification on Kinectics 700 2020 with resnet."""
+  """Video classification on Kinetics 700 2020 with resnet."""
   train_dataset = kinetics700_2020(is_training=True)
   validation_dataset = kinetics700_2020(is_training=False)
   task = VideoClassificationTask(
