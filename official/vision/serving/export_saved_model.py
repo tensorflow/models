@@ -90,11 +90,23 @@ def main(_):
 
   params = exp_factory.get_exp_config(_EXPERIMENT.value)
   for config_file in _CONFIG_FILE.value or []:
-    params = hyperparams.override_params_dict(
-        params, config_file, is_strict=True)
+    try:
+      params = hyperparams.override_params_dict(
+          params, config_file, is_strict=True
+      )
+    except ValueError:
+      params = hyperparams.override_params_dict(
+          params, config_file, is_strict=False
+      )
   if _PARAMS_OVERRIDE.value:
-    params = hyperparams.override_params_dict(
-        params, _PARAMS_OVERRIDE.value, is_strict=True)
+    try:
+      params = hyperparams.override_params_dict(
+          params, _PARAMS_OVERRIDE.value, is_strict=True
+      )
+    except ValueError:
+      params = hyperparams.override_params_dict(
+          params, _PARAMS_OVERRIDE.value, is_strict=False
+      )
 
   params.validate()
   params.lock()
