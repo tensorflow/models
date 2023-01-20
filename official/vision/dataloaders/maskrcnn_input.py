@@ -62,7 +62,7 @@ class Parser(parser.Parser):
       num_scales: `int` number representing intermediate scales added
         on each level. For instances, num_scales=2 adds one additional
         intermediate anchor scales [2^0, 2^0.5] on each level.
-      aspect_ratios: `list` of float numbers representing the aspect raito
+      aspect_ratios: `list` of float numbers representing the aspect ratio
         anchors added on each level. The number indicates the ratio of width to
         height. For instances, aspect_ratios=[1.0, 2.0, 0.5] adds three anchors
         on each scale level.
@@ -84,11 +84,11 @@ class Parser(parser.Parser):
       skip_crowd_during_training: `bool`, if True, skip annotations labeled with
         `is_crowd` equals to 1.
       max_num_instances: `int` number of maximum number of instances in an
-        image. The groundtruth data will be padded to `max_num_instances`.
-      include_mask: a bool to indicate whether parse mask groundtruth.
+        image. The ground-truth data will be padded to `max_num_instances`.
+      include_mask: a bool to indicate whether parse mask ground-truth.
       outer_boxes_scale: a float to scale up the bounding boxes to generate
         more inclusive masks. The scale is expected to be >=1.0.
-      mask_crop_size: the size which groundtruth mask is cropped to.
+      mask_crop_size: the size which ground-truth mask is cropped to.
       dtype: `str`, data type. One of {`bfloat16`, `float32`, `float16`}.
     """
 
@@ -168,11 +168,11 @@ class Parser(parser.Parser):
           shape [height_l, width_l, anchors_per_location * 4]. The height_l and
           width_l represent the dimension of bounding box regression output at
           l-th level.
-        gt_boxes: Groundtruth bounding box annotations. The box is represented
+        gt_boxes: Ground-truth bounding box annotations. The box is represented
            in [y1, x1, y2, x2] format. The coordinates are w.r.t the scaled
            image that is fed to the network. The tennsor is padded with -1 to
            the fixed dimension [self._max_num_instances, 4].
-        gt_classes: Groundtruth classes annotations. The tennsor is padded
+        gt_classes: Ground-truth classes annotations. The tennsor is padded
           with -1 to the fixed dimension [self._max_num_instances].
         gt_masks: groundtrugh masks cropped by the bounding box and
           resized to a fixed size determined by mask_crop_size.
@@ -236,7 +236,7 @@ class Parser(parser.Parser):
     boxes = preprocess_ops.resize_and_crop_boxes(
         boxes, image_scale, image_info[1, :], offset)
 
-    # Filters out ground truth boxes that are all zeros.
+    # Filters out ground-truth boxes that are all zeros.
     indices = box_ops.get_non_empty_box_indices(boxes)
     boxes = tf.gather(boxes, indices)
     classes = tf.gather(classes, indices)
@@ -318,7 +318,7 @@ class Parser(parser.Parser):
         labels: a dictionary of tensors used for training. The following
           describes {key: value} pairs in the dictionary.
           source_ids: Source image id. Default value -1 if the source id is
-            empty in the groundtruth annotation.
+            empty in the ground-truth annotation.
           image_info: a 2D `Tensor` that encodes the information of the image
             and the applied preprocessing. It is in the format of
             [[original_height, original_width], [scaled_height, scaled_width],
