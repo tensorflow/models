@@ -224,8 +224,10 @@ class SegmentationLoss:
     """
     pixelwise_loss = tf.reshape(pixelwise_loss, shape=[-1])
     top_k_pixels = tf.cast(
-        self._top_k_percent_pixels *
-        tf.size(pixelwise_loss, out_type=tf.float32), tf.int32)
+        self._top_k_percent_pixels
+        * tf.cast(tf.size(pixelwise_loss), tf.float32),
+        tf.int32,
+    )
     top_k_losses, _ = tf.math.top_k(pixelwise_loss, k=top_k_pixels)
     normalizer = tf.cast(top_k_pixels, top_k_losses.dtype)
     if num_valid_pixels is not None:
