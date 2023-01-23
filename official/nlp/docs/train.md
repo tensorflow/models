@@ -223,5 +223,3 @@ python3 train.py \
 
 You can monitor the training progress in the console and find the output
 models in `$OUTPUT_DIR`.
-
-
