@@ -49,11 +49,11 @@ def process_image(image: tf.Tensor,
   """Processes a serialized image tensor.
 
   Args:
-    image: Input Tensor of shape [timesteps] and type tf.string of serialized
+    image: Input Tensor of shape [time-steps] and type tf.string of serialized
       frames.
     is_training: Whether or not in training mode. If True, random sample, crop
       and left right flip is used.
-    num_frames: Number of frames per subclip.
+    num_frames: Number of frames per sub clip.
     stride: Temporal stride to sample frames.
     random_stride_range: An int indicating the min and max bounds to uniformly
       sample different strides from the video. E.g., a value of 1 with stride=2
@@ -63,7 +63,7 @@ def process_image(image: tf.Tensor,
     num_test_clips: Number of test clips (1 by default). If more than 1, this
       will sample multiple linearly spaced clips within each video at test time.
       If 1, then a single clip in the middle of the video is sampled. The clips
-      are aggreagated in the batch dimension.
+      are aggregated in the batch dimension.
     min_resize: Frames are resized so that min(height, width) is min_resize.
     crop_size: Final size of the frame after cropping the resized frames.
       Optionally, specify a tuple of (crop_height, crop_width) if
@@ -153,17 +153,17 @@ def postprocess_image(image: tf.Tensor,
   The same parameters used in process should be used here.
 
   Args:
-    image: Input Tensor of shape [batch, timesteps, height, width, 3].
+    image: Input Tensor of shape [batch, time-steps, height, width, 3].
     is_training: Whether or not in training mode. If True, random sample, crop
       and left right flip is used.
-    num_frames: Number of frames per subclip.
+    num_frames: Number of frames per sub clip.
     num_test_clips: Number of test clips (1 by default). If more than 1, this
       will sample multiple linearly spaced clips within each video at test time.
       If 1, then a single clip in the middle of the video is sampled. The clips
-      are aggreagated in the batch dimension.
+      are aggregated in the batch dimension.
     num_test_crops: Number of test crops (1 by default). If more than 1, there
       are multiple crops for each clip at test time. If 1, there is a single
-      central crop. The crops are aggreagated in the batch dimension.
+      central crop. The crops are aggregated in the batch dimension.
 
   Returns:
     Processed frames. Tensor of shape
@@ -171,7 +171,7 @@ def postprocess_image(image: tf.Tensor,
   """
   num_views = num_test_clips * num_test_crops
   if num_views > 1 and not is_training:
-    # In this case, multiple views are merged together in batch dimenstion which
+    # In this case, multiple views are merged together in batch dimension which
     # will be batch * num_views.
     image = tf.reshape(image, [-1, num_frames] + image.shape[2:].as_list())
 
