@@ -38,7 +38,7 @@ def realdiv_maybe_zero(x, y):
 
 
 def _ids_to_counts(id_array):
-  """Given a numpy array, a mapping from each unique entry to it's count."""
+  """Given a numpy array, a mapping from each unique entry to its count."""
   ids, counts = np.unique(id_array, return_counts=True)
   return dict(zip(ids, counts))
 
@@ -56,7 +56,7 @@ class PanopticQuality:
     """Initialization for PanopticQualityMetric.
 
     Args:
-      num_categories: The number of segmentation categories (or "Classes" in the
+      num_categories: The number of segmentation categories (or "classes" in the
         dataset).
       ignored_label: A category id that is ignored in evaluation, e.g. the void
         label as defined in COCO panoptic segmentation dataset.
@@ -78,7 +78,7 @@ class PanopticQuality:
             instance_mask.astype(np.uint32))
 
   def compare_and_accumulate(self, groundtruths, predictions):
-    """Compares predicted segmentation with ground-truth, accumulates it's metric.
+    """Compares predicted segmentation with ground-truth, accumulates its metric.
 
     It is not assumed that instance ids are unique across different categories.
     See for example combine_semantic_and_instance_predictions.py in official
