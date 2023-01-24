@@ -159,7 +159,7 @@ python3 train.py \
 
 ### Fine-tuning Sentence Classification with BERT from TF-Hub
 
-<details>
+
 
 This example fine-tunes BERT-base from TF-Hub on the Multi-Genre Natural
 Language Inference (MultiNLI) corpus using TPUs.
@@ -223,5 +223,3 @@ python3 train.py \
 
 You can monitor the training progress in the console and find the output
 models in `$OUTPUT_DIR`.
-
-</details>
