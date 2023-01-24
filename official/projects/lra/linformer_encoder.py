@@ -183,14 +183,12 @@ class LinformerEncoder(tf.keras.layers.Layer):
                                                      dtype=tf.int32))
 
   def call(self, inputs):
-    word_embeddings = None
-
     if isinstance(inputs, dict):
+      word_embeddings = inputs.get('input_word_embeddings', None)
+      type_ids = inputs.get('input_type_ids', None)
       if 'input_word_ids' in inputs.keys():
         word_ids = inputs.get('input_word_ids')
         mask = inputs.get('input_mask')
-        type_ids = inputs.get('input_type_ids', None)
-        word_embeddings = inputs.get('input_word_embeddings', None)
       elif 'left_word_ids' in inputs.keys():
         word_ids = inputs.get('left_word_ids')
         mask = inputs.get('left_mask')
@@ -203,6 +201,7 @@ class LinformerEncoder(tf.keras.layers.Layer):
     elif isinstance(inputs, list):
       ## Dual Encoder Tasks
       word_ids, mask = inputs
+      word_embeddings = None
       type_ids = None
       dense_inputs, dense_mask, dense_type_ids = None, None, None
     else:
@@ -251,16 +250,6 @@ class LinformerEncoder(tf.keras.layers.Layer):
 
   def get_config(self):
     return dict(self._config)
-
-  @property
-  def transformer_layers(self):
-    """List of Transformer layers in the encoder."""
-    return self._transformer_layers
-
-  @property
-  def pooler_layer(self):
-    """The pooler dense layer after the transformer layers."""
-    return self._pooler_layer
 
   @classmethod
   def from_config(cls, config, custom_objects=None):
