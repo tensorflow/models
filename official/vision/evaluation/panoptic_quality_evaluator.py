@@ -59,7 +59,7 @@ class PanopticQualityEvaluator:
     The class provides the interface to Panoptic Quality metrics_fn.
 
     Args:
-      num_categories: The number of segmentation categories (or "Classes" in the
+      num_categories: The number of segmentation categories (or "classes" in the
         dataset).
       ignored_label: A category id that is ignored in evaluation, e.g. the void
         label as defined in COCO panoptic segmentation dataset.
