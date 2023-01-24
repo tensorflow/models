@@ -38,7 +38,7 @@ def realdiv_maybe_zero(x, y):
 
 
 def _ids_to_counts(id_array):
-  """Given a numpy array, a mapping from each unique entry to its count."""
+  """Given a numpy array, a mapping from each unique entry to it's count."""
   ids, counts = np.unique(id_array, return_counts=True)
   return dict(zip(ids, counts))
 
@@ -56,15 +56,15 @@ class PanopticQuality:
     """Initialization for PanopticQualityMetric.
 
     Args:
-      num_categories: The number of segmentation categories (or "classes" in the
-        dataset.
+      num_categories: The number of segmentation categories (or "Classes" in the
+        dataset).
       ignored_label: A category id that is ignored in evaluation, e.g. the void
         label as defined in COCO panoptic segmentation dataset.
       max_instances_per_category: The maximum number of instances for each
         category. Used in ensuring unique instance labels.
       offset: The maximum number of unique labels. This is used, by multiplying
         the ground-truth labels, to generate unique ids for individual regions
-        of overlap between groundtruth and predicted segments.
+        of overlap between ground-truth and predicted segments.
     """
     self.num_categories = num_categories
     self.ignored_label = ignored_label
@@ -78,7 +78,7 @@ class PanopticQuality:
             instance_mask.astype(np.uint32))
 
   def compare_and_accumulate(self, groundtruths, predictions):
-    """Compares predicted segmentation with groundtruth, accumulates its metric.
+    """Compares predicted segmentation with ground-truth, accumulates it's metric.
 
     It is not assumed that instance ids are unique across different categories.
     See for example combine_semantic_and_instance_predictions.py in official
@@ -89,11 +89,11 @@ class PanopticQuality:
     and remaining ones are crowd instances.
 
     Args:
-      groundtruths: A dictionary contains groundtruth labels. It should contain
+      groundtruths: A dictionary contains ground-truth labels. It should contain
         the following fields.
-        - category_mask: A 2D numpy uint16 array of groundtruth per-pixel
+        - category_mask: A 2D numpy uint16 array of ground-truth per-pixel
           category labels.
-        - instance_mask: A 2D numpy uint16 array of groundtruth instance labels.
+        - instance_mask: A 2D numpy uint16 array of ground-truth instance labels.
       predictions: A dictionary contains the model outputs. It should contain
         the following fields.
         - category_array: A 2D numpy uint16 array of predicted per-pixel
@@ -112,14 +112,14 @@ class PanopticQuality:
     gt_segment_id = self._naively_combine_labels(groundtruth_category_mask,
                                                  groundtruth_instance_mask)
 
-    # Pre-calculate areas for all groundtruth and predicted segments.
+    # Pre-calculate areas for all ground-truth and predicted segments.
     gt_segment_areas = _ids_to_counts(gt_segment_id)
     pred_segment_areas = _ids_to_counts(pred_segment_id)
 
     # We assume there is only one void segment and it has instance id = 0.
     void_segment_id = self.ignored_label * self.max_instances_per_category
 
-    # There may be other ignored groundtruth segments with instance id > 0, find
+    # There may be other ignored ground-truth segments with instance id > 0, find
     # those ids using the unique segment ids extracted with the area computation
     # above.
     ignored_segment_ids = {
@@ -128,16 +128,16 @@ class PanopticQuality:
             self.max_instances_per_category) == self.ignored_label
     }
 
-    # Next, combine the groundtruth and predicted labels. Dividing up the pixels
-    # based on which groundtruth segment and which predicted segment they belong
+    # Next, combine the ground-truth and predicted labels. Dividing up the pixels
+    # based on which ground-truth segment and which predicted segment they belong
     # to, this will assign a different 32-bit integer label to each choice
-    # of (groundtruth segment, predicted segment), encoded as
+    # of (ground-truth segment, predicted segment), encoded as
     #   gt_segment_id * offset + pred_segment_id.
     intersection_id_array = (
         gt_segment_id.astype(np.uint64) * self.offset +
         pred_segment_id.astype(np.uint64))
 
-    # For every combination of (groundtruth segment, predicted segment) with a
+    # For every combination of (ground-truth segment, predicted segment) with a
     # non-empty intersection, this counts the number of pixels in that
     # intersection.
     intersection_areas = _ids_to_counts(intersection_id_array)
@@ -156,8 +156,8 @@ class PanopticQuality:
         total_ignored_overlap += intersection_areas.get(intersection_id, 0)
       return total_ignored_overlap
 
-    # Sets that are populated with which segments groundtruth/predicted segments
-    # have been matched with overlapping predicted/groundtruth segments
+    # Sets that are populated with which segments ground-truth/predicted segments
+    # have been matched with overlapping predicted/ground-truth segments
     # respectively.
     gt_matched = set()
     pred_matched = set()
@@ -172,9 +172,9 @@ class PanopticQuality:
       if gt_category != pred_category:
         continue
 
-      # Union between the groundtruth and predicted segments being compared does
+      # Union between the ground-truth and predicted segments being compared does
       # not include the portion of the predicted segment that consists of
-      # groundtruth "void" pixels.
+      # ground-truth "void" pixels.
       union = (
           gt_segment_areas[gt_segment_id] +
           pred_segment_areas[pred_segment_id] - intersection_area -
@@ -201,7 +201,7 @@ class PanopticQuality:
       if pred_segment_id in pred_matched:
         continue
       # A false positive is not penalized if is mostly ignored in the
-      # groundtruth.
+      # ground-truth.
       if (prediction_ignored_overlap(pred_segment_id) /
           pred_segment_areas[pred_segment_id]) > 0.5:
         continue

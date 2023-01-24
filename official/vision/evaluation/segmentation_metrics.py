@@ -27,8 +27,8 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
   """Mean IoU metric for semantic segmentation.
 
   This class utilizes tf.keras.metrics.MeanIoU to perform batched mean iou when
-  both input images and groundtruth masks are resized to the same size
-  (rescale_predictions=False). It also computes mean iou on groundtruth original
+  both input images and ground-truth masks are resized to the same size
+  (rescale_predictions=False). It also computes mean iou on ground-truth original
   sizes, in which case, each prediction is rescaled back to the original image
   size.
   """
@@ -56,7 +56,7 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
 
     Args:
       y_true: `dict`, dictionary with the following name, and key values.
-        - masks: [batch, height, width, 1], groundtruth masks.
+        - masks: [batch, height, width, 1], ground-truth masks.
         - valid_masks: [batch, height, width, 1], valid elements in the mask.
         - image_info: [batch, 4, 2], a tensor that holds information about
           original and preprocessed images. Each entry is in the format of
@@ -141,7 +141,7 @@ class PerClassIoUV2(iou.PerClassIoUV2):
 
     Args:
       y_true: `dict`, dictionary with the following name, and key values.
-        - masks: [batch, height, width, num_layers], groundtruth masks. The
+        - masks: [batch, height, width, num_layers], ground-truth masks. The
           num_layers is 1 by default, while all the operations in this function
           support num_layers > 1.
         - valid_masks: [batch, height, width, num_layers], valid elements in the
@@ -211,11 +211,11 @@ class MeanIoUV2(PerClassIoUV2):
 def preprocess_inputs(
     y_true: tf.Tensor, y_pred: tf.Tensor,
     rescale_predictions: bool) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-  """Pre-processes the inputs (predictions and ground truth) of the metrics.
+  """Pre-processes the inputs (predictions and ground-truth) of the metrics.
 
   Args:
     y_true: `dict`, dictionary with the following name, and key values.
-      - masks: [batch, height, width, num_layers], groundtruth masks. The
+      - masks: [batch, height, width, num_layers], ground-truth masks. The
         num_layers is 1 by default, while all the operations in this function
         support num_layers > 1.
       - valid_masks: [batch, height, width, num_layers], valid elements in the
@@ -235,7 +235,7 @@ def preprocess_inputs(
     logits: a float tensor in shape [batch, height, width, num_classes], which
       stores the raw output of the model.
     gt_masks: an int tensor in shape [batch, height, width, 1], which stores the
-      groundtruth masks.
+      ground-truth masks.
     valid_masks: a bool tensor in shape [batch, height, width, 1], which
       indicates the valid elements of the masks.
   """
