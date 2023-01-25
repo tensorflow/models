@@ -1527,12 +1527,10 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
   def __init__(self,
                *args,
                stochastic_depth_drop_rate=0.0,
-               return_attention=False,
                **kwargs):
     """Initializes TransformerEncoderBlock."""
     super().__init__(*args, **kwargs)
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
-    self._return_attention = return_attention
 
   def build(self, input_shape):
     if self._stochastic_depth_drop_rate:
@@ -1606,7 +1604,7 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
     layer_output = self._output_dropout(layer_output)
 
     if self._norm_first:
-      if self._return_attention:
+      if self._return_attention_scores:
         return source_attention_output + self._stochastic_depth(
             layer_output, training=training), attention_scores
       else:
@@ -1616,7 +1614,7 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
     # During mixed precision training, layer norm output is always fp32 for now.
     # Casts fp32 for the subsequent add.
     layer_output = tf.cast(layer_output, tf.float32)
-    if self._return_attention:
+    if self._return_attention_scores:
       return self._output_layer_norm(layer_output + self._stochastic_depth(
           attention_output, training=training)), attention_scores
     else:
