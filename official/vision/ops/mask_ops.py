@@ -15,9 +15,14 @@
 """Utility functions for segmentations."""
 
 import math
+from typing import List
+
 # Import libraries
+
 import cv2
 import numpy as np
+import tensorflow as tf
+from official.vision.ops import spatial_transform_ops
 
 
 def paste_instance_masks(masks: np.ndarray, detected_boxes: np.ndarray,
@@ -183,3 +188,79 @@ def paste_instance_masks_v2(masks: np.ndarray, detected_boxes: np.ndarray,
 
   segms = np.array(segms)
   return segms
+
+
+def instance_masks_overlap(
+    boxes: tf.Tensor,
+    masks: tf.Tensor,
+    gt_boxes: tf.Tensor,
+    gt_masks: tf.Tensor,
+    output_size: List[int],
+    mask_binarize_threshold: float = 0.5,
+):
+  """Calculates the IoUs between the detection masks and the ground truth masks.
+
+  Args:
+    boxes: a tensor with a shape of [batch_size, N, 4]. The last dimension is
+      the pixel coordinates in [ymin, xmin, ymax, xmax] form.
+    masks: a float tensor with a shape of [batch_size, N, mask_height,
+      mask_width] representing the instance masks w.r.t. the `boxes`.
+    gt_boxes: a tensor with a shape of [batch_size, M, 4]. The last dimension is
+      the pixel coordinates in [ymin, xmin, ymax, xmax] form.
+    gt_masks: a float tensor with a shape of [batch_size, M, gt_mask_height,
+      gt_mask_width] representing the instance masks w.r.t. the `gt_boxes`.
+    output_size: two integers that represent the height and width of the output
+      masks.
+    mask_binarize_threshold: a float representing the threshold for binarizing
+      mask values. Default value is 0.5.
+
+  Returns:
+    iou: a tensor with as a shape of [batch_size, N, M].
+  """
+  _, num_detections, mask_height, mask_width = masks.get_shape().as_list()
+  _, num_gts, gt_mask_height, gt_mask_width = gt_masks.get_shape().as_list()
+  output_height, output_width = output_size
+
+  masks = tf.where(masks < 0, tf.zeros_like(masks), masks)
+  gt_masks = tf.where(gt_masks < 0, tf.zeros_like(gt_masks), gt_masks)
+
+  pasted_masks = tf.reshape(
+      spatial_transform_ops.bilinear_resize_to_bbox(
+          tf.reshape(masks, [-1, mask_height, mask_width]),
+          tf.reshape(boxes, [-1, 4]),
+          output_size,
+      ),
+      shape=[-1, num_detections, output_height, output_width],
+  )
+  pasted_gt_masks = tf.reshape(
+      spatial_transform_ops.bilinear_resize_to_bbox(
+          tf.reshape(gt_masks, [-1, gt_mask_height, gt_mask_width]),
+          tf.reshape(gt_boxes, [-1, 4]),
+          output_size,
+      ),
+      shape=[-1, num_gts, output_height, output_width],
+  )
+  # (batch_size, num_detections, output_height * output_width)
+  flattened_binary_masks = tf.reshape(
+      pasted_masks > mask_binarize_threshold,
+      [-1, num_detections, output_height * output_width],
+  )
+  # (batch_size, num_gts, output_height * output_width)
+  flattened_gt_binary_masks = tf.reshape(
+      pasted_gt_masks > mask_binarize_threshold,
+      [-1, num_gts, output_height * output_width],
+  )
+  # (batch_size, output_height * output_width, num_gts)
+  flattened_gt_binary_masks = tf.transpose(flattened_gt_binary_masks, [0, 2, 1])
+
+  flattened_binary_masks = tf.cast(flattened_binary_masks, tf.float32)
+  flattened_gt_binary_masks = tf.cast(flattened_gt_binary_masks, tf.float32)
+
+  # (batch_size, num_detections, num_gts)
+  intersection = tf.matmul(flattened_binary_masks, flattened_gt_binary_masks)
+  union = (
+      tf.reduce_sum(flattened_binary_masks, axis=-1, keepdims=True)
+      + tf.reduce_sum(flattened_gt_binary_masks, axis=-2, keepdims=True)
+      - intersection
+  )
+  return tf.math.divide_no_nan(intersection, union)
