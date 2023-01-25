@@ -26,6 +26,7 @@ from official.projects.mosaic.modeling import mosaic_model
 from official.projects.mosaic.qat.modeling import factory as qat_factory
 from official.projects.qat.vision.configs import common
 from official.vision.modeling import backbones
+from official.vision.modeling.heads import segmentation_heads
 
 
 class SegmentationModelBuilderTest(parameterized.TestCase, tf.test.TestCase):
@@ -61,9 +62,21 @@ class SegmentationModelBuilderTest(parameterized.TestCase, tf.test.TestCase):
         decoder_stage_merge_styles=decoder_stage_merge_styles,
         decoder_filters=[64, 64],
         decoder_projected_filters=[32, 32])
+    mask_scoring_head = segmentation_heads.MaskScoring(
+        num_classes=num_classes,
+        num_convs=1,
+        num_filters=32,
+        fc_dims=128,
+        num_fcs=2,
+        fc_input_size=[8, 8],
+    )
 
     model = mosaic_model.MosaicSegmentationModel(
-        backbone=backbone, head=head, neck=neck)
+        backbone=backbone,
+        head=head,
+        neck=neck,
+        mask_scoring_head=mask_scoring_head,
+    )
 
     inputs = np.random.rand(2, input_size, input_size, 3)
     input_specs = tf.keras.layers.InputSpec(shape=inputs.shape)
@@ -82,3 +95,4 @@ class SegmentationModelBuilderTest(parameterized.TestCase, tf.test.TestCase):
 
 if __name__ == '__main__':
   tf.test.main()
+
