@@ -52,6 +52,9 @@ class SemanticSegmentationTask(base_task.Task):
         input_specs=input_specs,
         model_config=self.task_config.model,
         l2_regularizer=l2_regularizer)
+    # Builds the model
+    dummy_inputs = tf.keras.Input(self.task_config.model.input_size)
+    _ = model(dummy_inputs, training=False)
     return model
 
   def initialize(self, model: tf.keras.Model):
