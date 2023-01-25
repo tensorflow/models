@@ -24,6 +24,7 @@ from official.projects.mosaic.modeling import mosaic_model
 from official.projects.mosaic.qat.modeling.heads import mosaic_head as qat_mosaic_head
 from official.projects.mosaic.qat.modeling.layers import nn_blocks as qat_nn_blocks
 from official.projects.qat.vision.configs import common
+from official.projects.qat.vision.modeling.layers import nn_layers as qat_nn_layers
 from official.projects.qat.vision.quantization import helper
 from official.projects.qat.vision.quantization import schemes
 
@@ -71,14 +72,27 @@ def build_qat_mosaic_model(
     neck = qat_nn_blocks.MosaicEncoderBlockQuantized.from_config(
         model.neck.get_config())
 
+    mask_scoring_head = None
+    if model.mask_scoring_head is not None:
+      mask_scoring_head = qat_nn_layers.MaskScoringQuantized.from_config(
+          model.mask_scoring_head.get_config()
+      )
+
   optimized_model = mosaic_model.MosaicSegmentationModel(
       backbone=optimized_backbone,
       head=head,
-      neck=neck)
+      neck=neck,
+      mask_scoring_head=mask_scoring_head,
+  )
 
   dummpy_input = tf.zeros([1] + list(input_specs.shape[1:]))
   optimized_model(dummpy_input, training=True)
   helper.copy_original_weights(model.head, optimized_model.head)
   helper.copy_original_weights(model.neck, optimized_model.neck)
+
+  if model.mask_scoring_head is not None:
+    helper.copy_original_weights(
+        model.mask_scoring_head, optimized_model.mask_scoring_head
+    )
 
   return optimized_model

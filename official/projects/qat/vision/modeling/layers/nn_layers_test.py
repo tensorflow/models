@@ -102,6 +102,32 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
     output = layer(inputs)
     self.assertAllEqual([None, 64, 64, 128], output.shape)
 
+  @parameterized.parameters(
+      (1, 1, 64, [4, 4]),
+      (2, 1, 64, [4, 4]),
+      (3, 1, 64, [4, 4]),
+      (1, 2, 32, [8, 8]),
+      (2, 2, 32, [8, 8]),
+      (3, 2, 32, [8, 8]),
+  )
+  def test_mask_scoring_creation(
+      self, num_convs, num_fcs, num_filters, fc_input_size
+  ):
+    inputs = tf.keras.Input(shape=(64, 64, 16), dtype=tf.float32)
+
+    head = nn_layers.MaskScoringQuantized(
+        num_classes=2,
+        num_convs=num_convs,
+        num_filters=num_filters,
+        fc_dims=128,
+        num_fcs=num_fcs,
+        fc_input_size=fc_input_size,
+        use_depthwise_convolution=True,
+    )
+
+    scores = head(inputs)
+    self.assertAllEqual(scores.shape.as_list(), [None, 2])
+
 
 if __name__ == '__main__':
   tf.test.main()

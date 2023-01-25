@@ -18,4 +18,5 @@ from official.vision.modeling.heads.dense_prediction_heads import RetinaNetHead
 from official.vision.modeling.heads.dense_prediction_heads import RPNHead
 from official.vision.modeling.heads.instance_heads import DetectionHead
 from official.vision.modeling.heads.instance_heads import MaskHead
+from official.vision.modeling.heads.segmentation_heads import MaskScoring
 from official.vision.modeling.heads.segmentation_heads import SegmentationHead
