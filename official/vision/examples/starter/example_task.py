@@ -205,5 +205,5 @@ class ExampleTask(base_task.Task):
     return logs
 
   def inference_step(self, inputs: tf.Tensor, model: tf.keras.Model) -> Any:
-    """Performs the forward step. It is used in validation step."""
+    """Performs the forward step. It is used in 'validation_step'."""
     return model(inputs, training=False)
