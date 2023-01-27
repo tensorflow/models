@@ -378,5 +378,19 @@ class Parser(parser.Parser):
         groundtruths['source_id'])
     groundtruths = utils.pad_groundtruths_to_fixed_size(
         groundtruths, self._max_num_instances)
+    if self._include_mask:
+      masks = data['groundtruth_instance_masks']
+      masks = tf.image.crop_and_resize(
+          tf.expand_dims(masks, axis=-1),
+          boxes=data['groundtruth_boxes'],
+          box_indices=tf.range(tf.shape(masks)[0], dtype=tf.int32),
+          crop_size=[self._mask_crop_size, self._mask_crop_size],
+          method='bilinear',
+      )
+      masks = tf.squeeze(masks, axis=-1)
+      groundtruths['masks'] = preprocess_ops.clip_or_pad_to_fixed_size(
+          masks, self._max_num_instances, -1
+      )
+
     labels['groundtruths'] = groundtruths
     return image, labels
