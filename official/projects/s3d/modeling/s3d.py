@@ -176,6 +176,7 @@ class S3D(tf.keras.Model):
           kernel_initializer=self._kernel_initializer,
           temporal_conv_initializer=self._temporal_conv_initializer,
           kernel_regularizer=self._kernel_regularizer,
+          parameterized_conv_layer=self._get_parameterized_conv_layer_impl(),
           name=self._get_layer_naming_fn()(end_point))(
               net)
     else:
