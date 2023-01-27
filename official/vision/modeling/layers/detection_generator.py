@@ -328,7 +328,122 @@ def _select_top_k_scores(scores_in: tf.Tensor, pre_nms_num_detections: int):
   )
 
 
-def _generate_detections_v2(
+def _generate_detections_v2_class_agnostic(
+    boxes: tf.Tensor,
+    scores: tf.Tensor,
+    pre_nms_top_k: int = 5000,
+    pre_nms_score_threshold: float = 0.05,
+    nms_iou_threshold: float = 0.5,
+    max_num_detections: int = 100
+):
+  """Generates the final detections by applying class-agnostic NMS.
+
+  Args:
+    boxes: A `tf.Tensor` with shape `[batch_size, N, num_classes, 4]` or
+      `[batch_size, N, 1, 4]`, which box predictions on all feature levels. The
+      N is the number of total anchors on all levels.
+    scores: A `tf.Tensor` with shape `[batch_size, N, num_classes]`, which
+      stacks class probability on all feature levels. The N is the number of
+      total anchors on all levels. The num_classes is the number of classes
+      predicted by the model. Note that the class_outputs here is the raw score.
+    pre_nms_top_k: An `int` number of top candidate detections per class before
+      NMS.
+    pre_nms_score_threshold: A `float` representing the threshold for deciding
+      when to remove boxes based on score.
+    nms_iou_threshold: A `float` representing the threshold for deciding whether
+      boxes overlap too much with respect to IOU.
+    max_num_detections: A `scalar` representing maximum number of boxes retained
+      over all classes.
+
+  Returns:
+    nms_boxes: A `float` tf.Tensor of shape [batch_size, max_num_detections, 4]
+      representing top detected boxes in [y1, x1, y2, x2].
+    nms_scores: A `float` tf.Tensor of shape [batch_size, max_num_detections]
+      representing sorted confidence scores for detected boxes. The values are
+      between [0, 1].
+    nms_classes: An `int` tf.Tensor of shape [batch_size, max_num_detections]
+      representing classes for detected boxes.
+    valid_detections: An `int` tf.Tensor of shape [batch_size] only the top
+      `valid_detections` boxes are valid detections.
+  """
+  with tf.name_scope('generate_detections_class_agnostic'):
+    nmsed_boxes = []
+    nmsed_classes = []
+    nmsed_scores = []
+    valid_detections = []
+    batch_size, _, num_classes_for_box, _ = boxes.get_shape().as_list()
+    if batch_size is None:
+      batch_size = tf.shape(boxes)[0]
+    _, total_anchors, _ = scores.get_shape().as_list()
+
+    # Keeps only the class with highest score for each predicted box.
+    scores_condensed, classes_ids = tf.nn.top_k(
+        scores, k=1, sorted=True
+    )
+    scores_condensed = tf.squeeze(scores_condensed, axis=[2])
+    if num_classes_for_box > 1:
+      boxes = tf.gather(boxes, classes_ids, axis=2, batch_dims=2)
+    boxes_condensed = tf.squeeze(boxes, axis=[2])
+    classes_condensed = tf.squeeze(classes_ids, axis=[2])
+
+    # Selects top pre_nms_num scores and indices before NMS.
+    num_anchors_filtered = min(total_anchors, pre_nms_top_k)
+    scores_filtered, indices_filtered = tf.nn.top_k(
+        scores_condensed, k=num_anchors_filtered, sorted=True
+    )
+    classes_filtered = tf.gather(
+        classes_condensed, indices_filtered, axis=1, batch_dims=1
+    )
+    boxes_filtered = tf.gather(
+        boxes_condensed, indices_filtered, axis=1, batch_dims=1
+    )
+
+    tf.ensure_shape(boxes_filtered, [None, num_anchors_filtered, 4])
+    tf.ensure_shape(classes_filtered, [None, num_anchors_filtered])
+    tf.ensure_shape(scores_filtered, [None, num_anchors_filtered])
+    boxes_filtered = tf.cast(
+        boxes_filtered, tf.float32
+    )
+    scores_filtered = tf.cast(
+        scores_filtered, tf.float32
+    )
+    # Apply class-agnostic NMS on boxes.
+    (nmsed_indices_padded, valid_detections) = (
+        tf.image.non_max_suppression_padded(
+            boxes=boxes_filtered,
+            scores=scores_filtered,
+            max_output_size=max_num_detections,
+            iou_threshold=nms_iou_threshold,
+            pad_to_max_output_size=True,
+            score_threshold=pre_nms_score_threshold,
+            sorted_input=True,
+            name='nms_detections'
+        )
+    )
+    nmsed_boxes = tf.gather(
+        boxes_filtered, nmsed_indices_padded, batch_dims=1, axis=1
+    )
+    nmsed_scores = tf.gather(
+        scores_filtered, nmsed_indices_padded, batch_dims=1, axis=1
+    )
+    nmsed_classes = tf.gather(
+        classes_filtered, nmsed_indices_padded, batch_dims=1, axis=1
+    )
+
+    # Sets the padded boxes, scores, and classes to 0.
+    padding_mask = tf.reshape(
+        tf.range(max_num_detections), [1, -1]
+    ) < tf.reshape(valid_detections, [-1, 1])
+    nmsed_boxes = nmsed_boxes * tf.cast(
+        tf.expand_dims(padding_mask, axis=2), nmsed_boxes.dtype
+    )
+    nmsed_scores = nmsed_scores * tf.cast(padding_mask, nmsed_scores.dtype)
+    nmsed_classes = nmsed_classes * tf.cast(padding_mask, nmsed_classes.dtype)
+
+  return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
+
+
+def _generate_detections_v2_class_aware(
     boxes: tf.Tensor,
     scores: tf.Tensor,
     pre_nms_top_k: int = 5000,
@@ -336,12 +451,7 @@ def _generate_detections_v2(
     nms_iou_threshold: float = 0.5,
     max_num_detections: int = 100,
 ):
-  """Generates the final detections given the model outputs.
-
-  This implementation unrolls classes dimension while using the tf.while_loop
-  to implement the batched NMS, so that it can be parallelized at the batch
-  dimension. It should give better performance comparing to v1 implementation.
-  It is TPU compatible.
+  """Generates the final detections by using class-aware NMS.
 
   Args:
     boxes: A `tf.Tensor` with shape `[batch_size, N, num_classes, 4]` or
@@ -417,6 +527,72 @@ def _generate_detections_v2(
       input_tensor=tf.cast(tf.greater(nmsed_scores, 0.0), tf.int32), axis=1
   )
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
+
+
+def _generate_detections_v2(
+    boxes: tf.Tensor,
+    scores: tf.Tensor,
+    pre_nms_top_k: int = 5000,
+    pre_nms_score_threshold: float = 0.05,
+    nms_iou_threshold: float = 0.5,
+    max_num_detections: int = 100,
+    use_class_agnostic_nms: Optional[bool] = None,
+):
+  """Generates the final detections given the model outputs.
+
+  This implementation unrolls classes dimension while using the tf.while_loop
+  to implement the batched NMS, so that it can be parallelized at the batch
+  dimension. It should give better performance comparing to v1 implementation.
+  It is TPU compatible.
+
+  Args:
+    boxes: A `tf.Tensor` with shape `[batch_size, N, num_classes, 4]` or
+      `[batch_size, N, 1, 4]`, which box predictions on all feature levels. The
+      N is the number of total anchors on all levels.
+    scores: A `tf.Tensor` with shape `[batch_size, N, num_classes]`, which
+      stacks class probability on all feature levels. The N is the number of
+      total anchors on all levels. The num_classes is the number of classes
+      predicted by the model. Note that the class_outputs here is the raw score.
+    pre_nms_top_k: An `int` number of top candidate detections per class before
+      NMS.
+    pre_nms_score_threshold: A `float` representing the threshold for deciding
+      when to remove boxes based on score.
+    nms_iou_threshold: A `float` representing the threshold for deciding whether
+      boxes overlap too much with respect to IOU.
+    max_num_detections: A `scalar` representing maximum number of boxes retained
+      over all classes.
+    use_class_agnostic_nms: A `bool` of whether non max suppression is operated
+      on all the boxes using max scores across all classes.
+
+  Returns:
+    nms_boxes: A `float` tf.Tensor of shape [batch_size, max_num_detections, 4]
+      representing top detected boxes in [y1, x1, y2, x2].
+    nms_scores: A `float` tf.Tensor of shape [batch_size, max_num_detections]
+      representing sorted confidence scores for detected boxes. The values are
+      between [0, 1].
+    nms_classes: An `int` tf.Tensor of shape [batch_size, max_num_detections]
+      representing classes for detected boxes.
+    valid_detections: An `int` tf.Tensor of shape [batch_size] only the top
+      `valid_detections` boxes are valid detections.
+  """
+  if use_class_agnostic_nms:
+    return _generate_detections_v2_class_agnostic(
+        boxes=boxes,
+        scores=scores,
+        pre_nms_top_k=pre_nms_top_k,
+        pre_nms_score_threshold=pre_nms_score_threshold,
+        nms_iou_threshold=nms_iou_threshold,
+        max_num_detections=max_num_detections,
+    )
+
+  return _generate_detections_v2_class_aware(
+      boxes=boxes,
+      scores=scores,
+      pre_nms_top_k=pre_nms_top_k,
+      pre_nms_score_threshold=pre_nms_score_threshold,
+      nms_iou_threshold=nms_iou_threshold,
+      max_num_detections=max_num_detections,
+  )
 
 
 def _generate_detections_v3(
@@ -948,6 +1124,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
       pre_nms_top_k_sharding_block: Optional[int] = None,
       nms_v3_refinements: Optional[int] = None,
       return_decoded: Optional[bool] = None,
+      use_class_agnostic_nms: Optional[bool] = None,
       **kwargs,
   ):
     """Initializes a multi-level detection generator.
@@ -980,8 +1157,21 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         if == 2, AP is reduced <0.1%, AR is reduced <1% on COCO
       return_decoded: A `bool` of whether to return decoded boxes before NMS
         regardless of whether `apply_nms` is True or not.
+      use_class_agnostic_nms: A `bool` of whether non max suppression is
+        operated on all the boxes using max scores across all classes.
       **kwargs: Additional keyword arguments passed to Layer.
+
+    Raises:
+      ValueError: If `use_class_agnostic_nms` is required by `nms_version` is
+      not specified as `v2`.
     """
+    if use_class_agnostic_nms and nms_version != 'v2':
+      raise ValueError(
+          'If not using TFLite custom NMS, `use_class_agnostic_nms` can only be'
+          ' enabled for NMS v2 for now, but NMS {} is used! If you are using'
+          ' TFLite NMS, please configure TFLite custom NMS for class-agnostic'
+          ' NMS.'.format(nms_version)
+      )
     self._config_dict = {
         'apply_nms': apply_nms,
         'pre_nms_top_k': pre_nms_top_k,
@@ -992,6 +1182,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         'use_cpu_nms': use_cpu_nms,
         'soft_nms_sigma': soft_nms_sigma,
         'return_decoded': return_decoded,
+        'use_class_agnostic_nms': use_class_agnostic_nms,
     }
     # Don't store if were not defined
     if pre_nms_top_k_sharding_block is not None:
@@ -1331,6 +1522,9 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
                 ],
                 nms_iou_threshold=self._config_dict['nms_iou_threshold'],
                 max_num_detections=self._config_dict['max_num_detections'],
+                use_class_agnostic_nms=self._config_dict[
+                    'use_class_agnostic_nms'
+                ],
             )
         )
         # Set `nmsed_attributes` to None for v2.

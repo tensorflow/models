@@ -124,20 +124,28 @@ class MultilevelDetectionGeneratorTest(
     parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      ('batched', False, True, None, None),
-      ('batched', False, False, None, None),
-      ('v3', False, True, None, None),
-      ('v3', False, False, None, None),
-      ('v2', False, True, None, None),
-      ('v2', False, False, None, None),
-      ('v1', True, True, 0.0, None),
-      ('v1', True, False, 0.1, None),
-      ('v1', True, False, None, None),
-      ('tflite', False, False, None, True),
-      ('tflite', False, False, None, False),
+      ('batched', False, True, None, None, None),
+      ('batched', False, False, None, None, None),
+      ('v3', False, True, None, None, None),
+      ('v3', False, False, None, None, None),
+      ('v2', False, True, None, None, None),
+      ('v2', False, False, None, None, None),
+      ('v2', False, False, None, None, True),
+      ('v1', True, True, 0.0, None, None),
+      ('v1', True, False, 0.1, None, None),
+      ('v1', True, False, None, None, None),
+      ('tflite', False, False, None, True, None),
+      ('tflite', False, False, None, False, None),
   )
-  def testDetectionsOutputShape(self, nms_version, has_att_heads, use_cpu_nms,
-                                soft_nms_sigma, use_regular_nms):
+  def testDetectionsOutputShape(
+      self,
+      nms_version,
+      has_att_heads,
+      use_cpu_nms,
+      soft_nms_sigma,
+      use_regular_nms,
+      use_class_agnostic_nms,
+  ):
     min_level = 4
     max_level = 6
     num_scales = 2
@@ -166,7 +174,8 @@ class MultilevelDetectionGeneratorTest(
         'nms_version': nms_version,
         'use_cpu_nms': use_cpu_nms,
         'soft_nms_sigma': soft_nms_sigma,
-        'tflite_post_processing_config': tflite_post_processing_config
+        'tflite_post_processing_config': tflite_post_processing_config,
+        'use_class_agnostic_nms': use_class_agnostic_nms,
     }
 
     input_anchor = anchor.build_anchor_generator(min_level, max_level,
@@ -337,6 +346,7 @@ class MultilevelDetectionGeneratorTest(
         'soft_nms_sigma': None,
         'tflite_post_processing_config': tflite_post_processing_config,
         'return_decoded': False,
+        'use_class_agnostic_nms': False,
     }
     generator = detection_generator.MultilevelDetectionGenerator(**kwargs)
 
