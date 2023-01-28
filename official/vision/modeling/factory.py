@@ -324,6 +324,7 @@ def build_retinanet(
       soft_nms_sigma=generator_config.soft_nms_sigma,
       tflite_post_processing_config=tflite_post_processing_config,
       return_decoded=generator_config.return_decoded,
+      use_class_agnostic_nms=generator_config.use_class_agnostic_nms,
   )
 
   model = retinanet_model.RetinaNetModel(
