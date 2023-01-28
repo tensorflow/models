@@ -139,6 +139,8 @@ class DetectionGenerator(hyperparams.Config):
   )
   # Return decoded boxes/scores even if apply_nms is set `True`.
   return_decoded: Optional[bool] = None
+  # Only works when nms_version='v2'.
+  use_class_agnostic_nms: Optional[bool] = False
 
 
 @dataclasses.dataclass
