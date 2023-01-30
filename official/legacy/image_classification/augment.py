@@ -186,7 +186,7 @@ def translate(image: tf.Tensor, translations) -> tf.Tensor:
     The translated version of the image.
 
   """
-  transforms = _convert_translation_to_transform(translations)
+  transforms = _convert_translation_to_transform(translations)  # pytype: disable=wrong-arg-types  # always-use-return-annotations
   return transform(image, transforms=transforms)
 
 
