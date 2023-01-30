@@ -271,13 +271,12 @@ class FastrcnnBoxLoss(object):
 
   def _assign_class_targets(self, box_outputs, class_targets):
     """Selects the box from `box_outputs` based on `class_targets`, with which the box has the maximum overlap."""
-    (batch_size, num_rois,
-     num_class_specific_boxes) = box_outputs.get_shape().as_list()
+    _, num_rois, num_class_specific_boxes = box_outputs.get_shape().as_list()
     num_classes = num_class_specific_boxes // 4
-    box_outputs = tf.reshape(box_outputs,
-                             [batch_size, num_rois, num_classes, 4])
+    box_outputs = tf.reshape(box_outputs, [-1, num_rois, num_classes, 4])
     class_targets_ont_hot = tf.one_hot(
-        class_targets, num_classes, dtype=box_outputs.dtype)
+        class_targets, num_classes, dtype=box_outputs.dtype
+    )
     return tf.einsum('bnij,bni->bnj', box_outputs, class_targets_ont_hot)
 
   def _fast_rcnn_box_loss(self, box_outputs, box_targets, class_targets,
@@ -330,13 +329,12 @@ class MaskrcnnLoss(object):
       mask_loss: a float tensor representing total mask loss.
     """
     with tf.name_scope('mask_rcnn_loss'):
-      (batch_size, num_masks, mask_height,
-       mask_width) = mask_outputs.get_shape().as_list()
+      _, _, mask_height, mask_width = mask_outputs.get_shape().as_list()
 
       weights = tf.tile(
-          tf.reshape(tf.greater(select_class_targets, 0),
-                     [batch_size, num_masks, 1, 1]),
-          [1, 1, mask_height, mask_width])
+          tf.greater(select_class_targets, 0)[:, :, tf.newaxis, tf.newaxis],
+          [1, 1, mask_height, mask_width],
+      )
       weights = tf.cast(weights, dtype=mask_outputs.dtype)
 
       mask_targets = tf.expand_dims(mask_targets, axis=-1)
