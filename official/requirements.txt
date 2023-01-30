@@ -11,7 +11,6 @@ tensorflow-hub>=0.6.0
 tensorflow-model-optimization>=0.4.1
 tensorflow-datasets
 tensorflow-addons
-tensorflow-text
 gin-config
 tf_slim>=1.1.0
 Cython
