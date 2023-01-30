@@ -1,6 +1,6 @@
 # BERT (Bidirectional Encoder Representations from Transformers)
 
-**WARNING**: We are on the way to deprecate most of the code in this directory.
+**WARNING**: We are on the way to deprecating most of the code in this directory.
 Please see
 [this link](../g3doc/tutorials/bert_new.md)
 for the new tutorial and use the new code in `nlp/modeling`. This README is
@@ -55,7 +55,7 @@ The new checkpoints are:**
 *   **[`BERT-Base, Multilingual Cased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/keras_bert/multi_cased_L-12_H-768_A-12.tar.gz)**:
     104 languages, 12-layer, 768-hidden, 12-heads, 110M parameters
 
-We recommend to host checkpoints on Google Cloud storage buckets when you use
+We recommend to host checkpoints on Google Cloud Storage buckets when you use
 Cloud GPU/TPU.
 
 ### Restoring from Checkpoints
@@ -127,7 +127,7 @@ pip install tf-nightly
 
 There is no change to generate pre-training data. Please use the script
 [`../data/create_pretraining_data.py`](../data/create_pretraining_data.py)
-which is essentially branched from [BERT research repo](https://github.com/google-research/bert)
+which is essentially branched from the [BERT research repo](https://github.com/google-research/bert)
 to get processed pre-training data and it adapts to TF2 symbols and python3
 compatibility.
 
@@ -155,7 +155,7 @@ To prepare the fine-tuning data for final model training, use the
 [`../data/create_finetuning_data.py`](../data/create_finetuning_data.py) script.
 Resulting datasets in `tf_record` format and training meta data should be later
 passed to training or evaluation scripts. The task-specific arguments are
-described in following sections:
+described in the following sections:
 
 * GLUE
 
@@ -163,7 +163,7 @@ Users can download the
 [GLUE data](https://gluebenchmark.com/tasks) by running
 [this script](https://gist.github.com/W4ngatang/60c2bdb54d156a41194446737ce03e2e)
 and unpack it to some directory `$GLUE_DIR`.
-Also, users can download [Pretrained Checkpoint](#access-to-pretrained-checkpoints) and locate on some directory `$BERT_DIR` instead of using checkpoints on Google Cloud Storage.
+Also, users can download [Pretrained Checkpoint](#access-to-pretrained-checkpoints) and locate it on some directory `$BERT_DIR` instead of using checkpoints on Google Cloud Storage.
 
 ```shell
 export GLUE_DIR=~/glue
@@ -271,12 +271,12 @@ python run_classifier.py \
 ```
 
 Alternatively, instead of specifying `init_checkpoint`, you can specify
-`hub_module_url` to employ a pretraind BERT hub module, e.g.,
+`hub_module_url` to employ a pre-trained BERT hub module, e.g.,
 ` --hub_module_url=https://tfhub.dev/tensorflow/bert_en_uncased_L-24_H-1024_A-16/1`.
 
 After training a model, to get predictions from the classifier, you can set the
 `--mode=predict` and offer the test set tfrecords to `--eval_data_path`.
-Output will be created in file called test_results.tsv in the output folder.
+The output will be created in file called test_results.tsv in the output folder.
 Each line will contain output for each sample, columns are the class
 probabilities.
 
@@ -291,7 +291,7 @@ python run_classifier.py \
   --distribution_strategy=mirrored
 ```
 
-To use TPU, you only need to switch distribution strategy type to `tpu` with TPU
+To use TPU, you only need to switch the distribution strategy type to `tpu` with TPU
 information and use remote storage for model checkpoints.
 
 ```shell
@@ -325,7 +325,7 @@ and callbacks will not be called inside the loop.
 ### SQuAD 1.1
 
 The Stanford Question Answering Dataset (SQuAD) is a popular question answering
-benchmark dataset. See more in [SQuAD website](https://rajpurkar.github.io/SQuAD-explorer/).
+benchmark dataset. See more on [SQuAD website](https://rajpurkar.github.io/SQuAD-explorer/).
 
 We use the `BERT-Large` (uncased_L-24_H-1024_A-16) as an example throughout the
 workflow.
@@ -353,14 +353,14 @@ python run_squad.py \
   --distribution_strategy=mirrored
 ```
 
-Similarily, you can replace `init_checkpoint` FLAG with `hub_module_url` to
+Similarly, you can replace `init_checkpoint` FLAG with `hub_module_url` to
 specify a hub module path.
 
 `run_squad.py` writes the prediction for `--predict_file` by default. If you set
 the `--model=predict` and offer the SQuAD test data, the scripts will generate
 the prediction json file.
 
-To use TPU, you need switch distribution strategy type to `tpu` with TPU
+To use TPU, you need to switch the distribution strategy type to `tpu` with TPU
 information.
 
 ```shell
