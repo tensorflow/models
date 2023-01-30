@@ -347,10 +347,8 @@ class Controller:
       interval = min(train_steps - current_step, eval_interval)
       num_steps = current_step + interval
       self.train(steps=num_steps, checkpoint_at_completion=False)
+      self.evaluate(steps=eval_steps)
       current_step = self.global_step.numpy()
-      if current_step < train_steps:
-        self.evaluate(steps=eval_steps)
-    self.evaluate(steps=eval_steps)
     self._maybe_save_checkpoint(check_interval=False)
 
   def evaluate_continuously(self,
