@@ -15,7 +15,7 @@
 """A sample model implementation.
 
 This is only a dummy example to showcase how a model is composed. It is usually
-not needed to implement a modedl from scratch. Most SoTA models can be found and
+not needed to implement a model from scratch. Most SoTA models can be found and
 directly used from `official/vision/modeling` directory.
 """
 
@@ -81,7 +81,7 @@ def build_example_model(input_specs: tf.keras.layers.InputSpec,
                         **kwargs) -> tf.keras.Model:
   """Builds and returns the example model.
 
-  This function is the main entry point to build a model. Commonly, it build a
+  This function is the main entry point to build a model. Commonly, it builds a
   model by building a backbone, decoder and head. An example of building a
   classification model is at
   third_party/tensorflow_models/official/vision/modeling/backbones/resnet.py.

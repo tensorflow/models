@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Losses for maskrcn model."""
+"""Losses for maskrcnn model."""
 
 # Import libraries
 import tensorflow as tf
@@ -35,7 +35,7 @@ class RpnScoreLoss(object):
       score_outputs: an OrderDict with keys representing levels and values
         representing scores in [batch_size, height, width, num_anchors].
       labels: the dictionary that returned from dataloader that includes
-        groundtruth targets.
+        ground-truth targets.
 
     Returns:
       rpn_score_loss: a scalar tensor representing total score loss.
@@ -99,7 +99,7 @@ class RpnBoxLoss(object):
         representing box regression targets in [batch_size, height, width,
         num_anchors * 4].
       labels: the dictionary that returned from dataloader that includes
-        groundtruth targets.
+        ground-truth targets.
 
     Returns:
       rpn_box_loss: a scalar tensor representing total box regression loss.
@@ -198,7 +198,7 @@ class FastrcnnClassLoss(object):
         return tf.reduce_mean(cross_entropy_loss)
 
   def aggregate_loss_top_k(self, loss, num_valid_values=None):
-    """Aggregate the top-k greatest loss values.
+    """Aggregate the top-k the greatest loss values.
 
     Args:
       loss: a float tensor in shape (batch_size, num_boxes) or (batch_size,
@@ -229,7 +229,7 @@ class FastrcnnBoxLoss(object):
 
     Args:
       huber_loss_delta: the delta is typically around the mean value of
-        regression target. for instances, the regression targets of 512x512
+        regression target. For instances, the regression targets of 512x512
         input with 6 anchors on P2-P6 pyramid is about [0.1, 0.1, 0.2, 0.2].
       class_agnostic_bbox_pred: if True, class agnostic bounding box prediction
         is performed.
@@ -291,7 +291,7 @@ class FastrcnnBoxLoss(object):
       box_outputs = tf.expand_dims(box_outputs, axis=-1)
       box_loss = self._huber_loss(box_targets, box_outputs, sample_weight=mask)
       # The loss is normalized by the number of ones in mask,
-      # additianal normalizer provided by the user and using 0.01 here to avoid
+      # additional normalizer provided by the user and using 0.01 here to avoid
       # division by 0.
       box_loss /= normalizer * (tf.reduce_sum(mask) + 0.01)
       return box_loss
