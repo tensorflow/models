@@ -136,10 +136,10 @@ We will go through each important components in the task in the following.
     within the model are properly initialized.
 
 -   `build_inputs`: here you can instantiate a Decoder object and a Parser
-    object. They are used to create an `InputReader` that will generate a
+    object. They are used to creating an `InputReader` that will generate a
     `tf.data.Dataset` object.
 
--   `build_losses`: it takes groundtruth labels and model outputs as input, and
+-   `build_losses`: it takes ground-truth labels and model outputs as input, and
     computes the loss. It will be called in `train_step` and `validation_step`.
     You can also define different losses for training and validation, for
     example, `build_train_losses` and `build_validation_losses`. Just make sure
