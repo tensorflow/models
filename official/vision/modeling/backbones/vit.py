@@ -36,7 +36,7 @@ class AddPositionEmbs(tf.keras.layers.Layer):
                posemb_origin_shape: Optional[Tuple[int, int]] = None,
                posemb_target_shape: Optional[Tuple[int, int]] = None,
                **kwargs):
-    """Constructs Postional Embedding module.
+    """Constructs positional Embedding module.
 
     The logic of this module is: the learnable positional embeddings length will
     be determined by the inputs_shape or posemb_origin_shape (if provided)
@@ -68,7 +68,7 @@ class AddPositionEmbs(tf.keras.layers.Layer):
   def _interpolate(self, pos_embedding: tf.Tensor, from_shape: Tuple[int, int],
                    to_shape: Tuple[int, int]) -> tf.Tensor:
     """Interpolates the positional embeddings."""
-    logging.info('Interpolating postional embedding from length: %s to %s',
+    logging.info('Interpolating positional embedding from length: %s to %s',
                  from_shape, to_shape)
     grid_emb = tf.reshape(pos_embedding, [1] + list(from_shape) + [-1])
     # NOTE: Using BILINEAR interpolation by default.

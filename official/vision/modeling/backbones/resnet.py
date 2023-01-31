@@ -141,7 +141,7 @@ class ResNet(tf.keras.Model):
     Args:
       model_id: An `int` of the depth of ResNet backbone model.
       input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
-      depth_multiplier: A `float` of the depth multiplier to uniformaly scale up
+      depth_multiplier: A `float` of the depth multiplier to uniformly scale up
         all layers in channel size. This argument is also referred to as
         `width_multiplier` in (https://arxiv.org/abs/2103.07579).
       stem_type: A `str` of stem type of ResNet. Default to `v0`. If set to

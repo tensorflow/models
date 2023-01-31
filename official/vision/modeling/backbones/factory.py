@@ -14,7 +14,7 @@
 
 """Backbone registers and factory method.
 
-One can regitered a new backbone model by the following two steps:
+One can registered a new backbone model by the following two steps:
 
 1 Import the factory and register the build in the backbone file.
 2 Import the backbone class and add a build in __init__.py.
@@ -35,7 +35,7 @@ def build_my_backbone():
 from modeling.backbones.my_backbone import MyBackbone
 ```
 
-If one wants the MyBackbone class to be used only by those binary
+If one wants the 'MyBackbone' class to be used only by those binary
 then don't imported the backbone module in backbones/__init__.py, but import it
 in place that uses it.
 
