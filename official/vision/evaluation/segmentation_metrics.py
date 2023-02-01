@@ -157,20 +157,27 @@ class PerClassIoUV2(iou.PerClassIoUV2):
     """
     logits, gt_masks, valid_masks = preprocess_inputs(y_true, y_pred,
                                                       self._rescale_predictions)
-    valid_masks = tf.cast(valid_masks, tf.int32)
+    valid_masks = tf.cast(valid_masks, tf.bool)
 
     gt_binary_masks = tf.one_hot(
         tf.cast(gt_masks[..., 0], dtype=tf.int32),
-        self.num_classes,
-        dtype=tf.int32)
+        depth=self.num_classes,
+        on_value=True,
+        off_value=False,
+    )
     gt_binary_masks &= valid_masks
 
     predictions_binary_masks = tf.one_hot(
-        tf.argmax(logits, axis=-1), self.num_classes, dtype=tf.int32)
+        tf.argmax(logits, axis=-1, output_type=tf.int32),
+        depth=self.num_classes,
+        on_value=True,
+        off_value=False,
+    )
     predictions_binary_masks &= valid_masks
 
     super().update_state(
-        y_true=gt_binary_masks, y_pred=predictions_binary_masks)
+        y_true=gt_binary_masks, y_pred=predictions_binary_masks
+    )
 
 
 class MeanIoUV2(PerClassIoUV2):

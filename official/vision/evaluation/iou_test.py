@@ -113,20 +113,26 @@ class IoUTest(tf.test.TestCase):
 
   def test_per_class_iou_v2(self):
     metrics = iou.PerClassIoUV2(num_classes=3)
-    y_true = [[[
-        [0, 0, 1],
-        [0, 1, 1],
-    ], [
-        [0, 1, 0],
-        [0, 0, 1],
-    ]]]
-    y_pred = [[[
-        [1, 0, 0],
-        [1, 1, 1],
-    ], [
-        [1, 1, 1],
-        [1, 0, 1],
-    ]]]
+    y_true = tf.constant([[
+        [
+            [0, 0, 1],
+            [0, 1, 1],
+        ],
+        [
+            [0, 1, 0],
+            [0, 0, 1],
+        ],
+    ]])
+    y_pred = tf.constant([[
+        [
+            [1, 0, 0],
+            [1, 1, 1],
+        ],
+        [
+            [1, 1, 1],
+            [1, 0, 1],
+        ],
+    ]])
     metrics.update_state(y_true, y_pred)
     self.assertAllClose([0.0, 1.0, 0.5], metrics.result(), atol=1e-3)
 
