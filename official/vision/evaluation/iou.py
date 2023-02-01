@@ -120,26 +120,37 @@ class PerClassIoUV2(tf.keras.metrics.Metric):
       y_true: The ground truth values.
       y_pred: The predicted values.
     """
-    y_true = tf.cast(y_true, dtype=tf.int32)
-    y_pred = tf.cast(y_pred, dtype=tf.int32)
 
     if self.sparse_y_true:
       # Shape: (..., num_classes, ...)
       y_true = tf.one_hot(
-          y_true, self.num_classes, axis=self.axis, dtype=tf.int32)
+          tf.cast(y_true, dtype=tf.int32),
+          self.num_classes,
+          axis=self.axis,
+          on_value=True,
+          off_value=False,
+      )
     if self.sparse_y_pred:
       # Shape: (..., num_classes, ...)
       y_pred = tf.one_hot(
-          y_pred, self.num_classes, axis=self.axis, dtype=tf.int32)
+          tf.cast(y_pred, dtype=tf.int32),
+          self.num_classes,
+          axis=self.axis,
+          on_value=True,
+          off_value=False,
+      )
 
     one_hot_axis = self.axis if self.axis >= 0 else (
         len(y_true.get_shape().as_list()) + self.axis)
     # Reduce sum the leading dimensions.
     # Shape: (num_classes, ...)
-    current_intersection = tf.reduce_sum(
-        y_pred & y_true, axis=np.arange(one_hot_axis))
+    current_intersection = tf.math.count_nonzero(
+        y_pred & y_true, axis=np.arange(one_hot_axis), dtype=tf.float32
+    )
     # Shape: (num_classes, ...)
-    current_union = tf.reduce_sum(y_pred | y_true, axis=np.arange(one_hot_axis))
+    current_union = tf.math.count_nonzero(
+        y_pred | y_true, axis=np.arange(one_hot_axis), dtype=tf.float32
+    )
 
     self.intersection_per_class.assign_add(
         tf.cast(current_intersection, self.intersection_per_class.dtype))
