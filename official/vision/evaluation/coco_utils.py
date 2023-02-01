@@ -252,7 +252,7 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
           else:
             mask = Image.open(
                 six.BytesIO(groundtruths['masks'][i][j, k]))
-          np_mask = np.array(mask).astype(np.uint8)
+          np_mask = np.array(mask, dtype=np.uint8)
           np_mask[np_mask > 0] = 255
           encoded_mask = mask_api.encode(np.asfortranarray(np_mask))
           ann['segmentation'] = encoded_mask
