@@ -75,7 +75,7 @@ def main(_):
       params = hyperparams.override_params_dict(
           params, config_file, is_strict=True
       )
-    except ValueError:
+    except KeyError:
       params = hyperparams.override_params_dict(
           params, config_file, is_strict=False
       )
@@ -84,7 +84,7 @@ def main(_):
       params = hyperparams.override_params_dict(
           params, _PARAMS_OVERRIDE.value, is_strict=True
       )
-    except ValueError:
+    except KeyError:
       params = hyperparams.override_params_dict(
           params, _PARAMS_OVERRIDE.value, is_strict=False
       )
