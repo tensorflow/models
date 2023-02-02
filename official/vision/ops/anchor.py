@@ -40,7 +40,7 @@ class Anchor(object):
                aspect_ratios,
                anchor_size,
                image_size):
-    """Constructs multiscale anchors.
+    """Constructs multi-scale anchors.
 
     Args:
       min_level: integer number of minimum level of the output feature pyramid.
@@ -48,7 +48,7 @@ class Anchor(object):
       num_scales: integer number representing intermediate scales added
         on each level. For instances, num_scales=2 adds one additional
         intermediate anchor scales [2^0, 2^0.5] on each level.
-      aspect_ratios: list of float numbers representing the aspect raito anchors
+      aspect_ratios: list of float numbers representing the aspect ratio anchors
         added on each level. The number indicates the ratio of width to height.
         For instances, aspect_ratios=[1.0, 2.0, 0.5] adds three anchors on each
         scale level.
@@ -67,7 +67,7 @@ class Anchor(object):
     self.boxes = self._generate_boxes()
 
   def _generate_boxes(self) -> tf.Tensor:
-    """Generates multiscale anchor boxes.
+    """Generates multi-scale anchor boxes.
 
     Returns:
       a Tensor of shape [N, 4], representing anchor boxes of all levels
@@ -102,7 +102,7 @@ class Anchor(object):
     return tf.concat(boxes_all, axis=0)
 
   def unpack_labels(self, labels: tf.Tensor) -> Dict[str, tf.Tensor]:
-    """Unpacks an array of labels into multiscales labels."""
+    """Unpacks an array of labels into multi-scales labels."""
     unpacked_labels = collections.OrderedDict()
     count = 0
     for level in range(self.min_level, self.max_level + 1):
@@ -165,15 +165,15 @@ class AnchorLabeler(object):
         and width_l represent the dimension of the feature pyramid at l-th
         level. For each anchor box, the tensor stores [y0, x0, y1, x1] for the
         four corners.
-      gt_boxes: A float tensor with shape [N, 4] representing groundtruth boxes.
+      gt_boxes: A float tensor with shape [N, 4] representing ground-truth boxes.
         For each row, it stores [y0, x0, y1, x1] for four corners of a box.
-      gt_labels: A integer tensor with shape [N, 1] representing groundtruth
+      gt_labels: A integer tensor with shape [N, 1] representing ground-truth
         classes.
       gt_attributes: If not None, a dict of (name, gt_attribute) pairs.
         `gt_attribute` is a float tensor with shape [N, attribute_size]
-        representing groundtruth attributes.
+        representing ground-truth attributes.
       gt_weights: If not None, a float tensor with shape [N] representing
-        groundtruth weights.
+        ground-truth weights.
 
     Returns:
       cls_targets_dict: An ordered dictionary with keys
@@ -306,9 +306,9 @@ class RpnAnchorLabeler(AnchorLabeler):
         and width_l represent the dimension of the feature pyramid at l-th
         level. For each anchor box, the tensor stores [y0, x0, y1, x1] for the
         four corners.
-      gt_boxes: A float tensor with shape [N, 4] representing groundtruth boxes.
+      gt_boxes: A float tensor with shape [N, 4] representing ground-truth boxes.
         For each row, it stores [y0, x0, y1, x1] for four corners of a box.
-      gt_labels: A integer tensor with shape [N, 1] representing groundtruth
+      gt_labels: A integer tensor with shape [N, 1] representing ground-truth
         classes.
 
     Returns:
@@ -380,7 +380,7 @@ def build_anchor_generator(min_level, max_level, num_scales, aspect_ratios,
 def unpack_targets(
     targets: tf.Tensor,
     anchor_boxes_dict: Dict[str, tf.Tensor]) -> Dict[str, tf.Tensor]:
-  """Unpacks an array of labels into multiscales labels.
+  """Unpacks an array of labels into multi-scales labels.
 
   Args:
     targets: A tensor with shape [num_anchors, M] representing the packed
