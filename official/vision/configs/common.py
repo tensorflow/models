@@ -145,3 +145,6 @@ class TFLitePostProcessingConfig(hyperparams.Config):
   use_regular_nms: bool = False
   nms_score_threshold: float = 0.1
   nms_iou_threshold: float = 0.5
+  # Whether to normalize coordinates of anchors to [0, 1]. If setting to True,
+  # coordinates of output boxes is also normalized but latency increases.
+  normalize_anchor_coordinates: Optional[bool] = False
