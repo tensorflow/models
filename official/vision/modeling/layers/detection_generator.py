@@ -1020,18 +1020,11 @@ class DetectionGenerator(tf.keras.layers.Layer):
         raw_boxes, anchor_boxes, weights=regression_weights
     )
 
-<<<<<<< HEAD
     # Box clipping.
     if image_shape is not None:
       decoded_boxes = box_ops.clip_boxes(
           decoded_boxes, tf.expand_dims(image_shape, axis=1)
       )
-=======
-    # Box clipping
-    decoded_boxes = box_ops.clip_boxes(
-        decoded_boxes, tf.expand_dims(image_shape, axis=1)
-    )
->>>>>>> 8e179c593 (Support output decoded boxes (before NMS) even when NMS is applied.)
 
     if bbox_per_class:
       decoded_boxes = tf.reshape(
@@ -1266,14 +1259,10 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
       boxes_i = box_ops.decode_boxes(raw_boxes_i, anchor_boxes_i)
 
       # Box clipping.
-<<<<<<< HEAD
       if image_shape is not None:
         boxes_i = box_ops.clip_boxes(
             boxes_i, tf.expand_dims(image_shape, axis=1)
         )
-=======
-      boxes_i = box_ops.clip_boxes(boxes_i, tf.expand_dims(image_shape, axis=1))
->>>>>>> 8e179c593 (Support output decoded boxes (before NMS) even when NMS is applied.)
 
       boxes.append(boxes_i)
       scores.append(scores_i)
