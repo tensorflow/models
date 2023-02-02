@@ -1546,7 +1546,7 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def call(self, inputs, training=None):
+  def call(self, inputs, output_range=None, training=None):
     """Transformer self-attention encoder block call."""
     if isinstance(inputs, (list, tuple)):
       if len(inputs) == 2:
@@ -1560,15 +1560,17 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
     else:
       input_tensor, key_value, attention_mask = (inputs, None, None)
 
-    if self._output_range:
+    if output_range is None:
+      output_range = self._output_range
+    if output_range:
       if self._norm_first:
-        source_tensor = input_tensor[:, 0:self._output_range, :]
+        source_tensor = input_tensor[:, 0:output_range, :]
         input_tensor = self._attention_layer_norm(input_tensor)
         if key_value is not None:
           key_value = self._attention_layer_norm(key_value)
-      target_tensor = input_tensor[:, 0:self._output_range, :]
+      target_tensor = input_tensor[:, 0:output_range, :]
       if attention_mask is not None:
-        attention_mask = attention_mask[:, 0:self._output_range, :]
+        attention_mask = attention_mask[:, 0:output_range, :]
     else:
       if self._norm_first:
         source_tensor = input_tensor
@@ -1579,6 +1581,7 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
 
     if key_value is None:
       key_value = input_tensor
+
     attention_output, attention_scores = self._attention_layer(
         query=target_tensor,
         value=key_value,
@@ -1587,16 +1590,20 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
     attention_output = self._attention_dropout(attention_output)
 
     if self._norm_first:
-      attention_output = source_tensor + self._stochastic_depth(
-          attention_output, training=training)
-    else:
-      attention_output = self._attention_layer_norm(
-          target_tensor +
-          self._stochastic_depth(attention_output, training=training))
-
-    if self._norm_first:
+      # Important to not combine `self._norm_first` and
+      # `self._use_query_residual` into one if clause because else is only for
+      # `_norm_first == False`.
+      if self._use_query_residual:
+        attention_output = source_tensor + self._stochastic_depth(
+            attention_output, training=training)
       source_attention_output = attention_output
       attention_output = self._output_layer_norm(attention_output)
+    else:
+      if self._use_query_residual:
+        attention_output = target_tensor + self._stochastic_depth(
+            attention_output, training=training)
+      attention_output = self._attention_layer_norm(attention_output)
+
     inner_output = self._intermediate_dense(attention_output)
     inner_output = self._intermediate_activation_layer(inner_output)
     inner_output = self._inner_dropout_layer(inner_output)
@@ -1604,23 +1611,20 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
     layer_output = self._output_dropout(layer_output)
 
     if self._norm_first:
-      if self._return_attention_scores:
-        return source_attention_output + self._stochastic_depth(
-            layer_output, training=training), attention_scores
-      else:
-        return source_attention_output + self._stochastic_depth(
-            layer_output, training=training)
-
-    # During mixed precision training, layer norm output is always fp32 for now.
-    # Casts fp32 for the subsequent add.
-    layer_output = tf.cast(layer_output, tf.float32)
-    if self._return_attention_scores:
-      return self._output_layer_norm(layer_output + self._stochastic_depth(
-          attention_output, training=training)), attention_scores
+      layer_output = source_attention_output + self._stochastic_depth(
+          layer_output, training=training)
     else:
-      return self._output_layer_norm(
-          layer_output +
-          self._stochastic_depth(attention_output, training=training))
+      # During mixed precision training, layer norm output is always fp32 for
+      # now. Casts fp32 for the subsequent add.
+      layer_output = tf.cast(layer_output, tf.float32)
+      layer_output = self._output_layer_norm(
+          layer_output
+          + self._stochastic_depth(attention_output, training=training))
+
+    if self._return_attention_scores:
+      return layer_output, attention_scores
+    else:
+      return layer_output
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -1686,25 +1690,19 @@ class TransformerScaffold(nlp_modeling.layers.TransformerScaffold):
     else:
       input_tensor, key_value, attention_mask = (inputs, None, None)
 
+    if self._norm_first:
+      source_tensor = input_tensor
+      input_tensor = self._attention_layer_norm(input_tensor)
+
     if key_value is None:
       key_value = input_tensor
 
-    if self._norm_first:
-      source_tensor = input_tensor
-      input_tensor = self._attention_layer_norm(input_tensor, training=training)
-
-    attention_layer_output = self._attention_layer(
+    attention_output, attention_scores = self._attention_layer(
         query=input_tensor,
         value=key_value,
         attention_mask=attention_mask,
         training=training,
-        return_attention_scores=self._return_attention_scores)
-    if isinstance(attention_layer_output, tuple):
-      # `attention_layer_output` contains two tensors when
-      # `return_attention_scores` is True.
-      attention_output, attention_scores = attention_layer_output
-    else:
-      attention_output = attention_layer_output
+        return_attention_scores=True)
     attention_output = self._attention_dropout(
         attention_output, training=training)
 
@@ -1712,26 +1710,21 @@ class TransformerScaffold(nlp_modeling.layers.TransformerScaffold):
       source_attention_output = source_tensor + self._stochastic_depth(
           attention_output, training=training)
       attention_output = self._output_layer_norm(
-          source_attention_output, training=training)
+          source_attention_output)
     else:
       attention_output = self._attention_layer_norm(
           input_tensor +
-          self._stochastic_depth(attention_output, training=training),
-          training=training)
+          self._stochastic_depth(attention_output, training=training))
 
     if self._feedforward_block is None:
       intermediate_output = self._intermediate_dense(attention_output)
       intermediate_output = self._intermediate_activation_layer(
           intermediate_output)
-      layer_output = self._output_dense(intermediate_output, training=training)
+      layer_output = self._output_dense(intermediate_output)
       layer_output = self._output_dropout(layer_output, training=training)
     else:
       layer_output = self._feedforward_block(
           attention_output, training=training)
-
-    # During mixed precision training, layer norm output is always fp32 for now.
-    # Casts fp32 for the subsequent add.
-    layer_output = tf.cast(layer_output, tf.float32)
 
     if self._norm_first:
       if self._ffn_has_residual_connection:
@@ -1742,6 +1735,9 @@ class TransformerScaffold(nlp_modeling.layers.TransformerScaffold):
       output = source_attention_output + self._stochastic_depth(
           layer_output, training=training)
     else:
+      # During mixed precision training, layer norm output is always fp32 for
+      # now. Casts fp32 for the subsequent add.
+      layer_output = tf.cast(layer_output, tf.float32)
       if self._ffn_has_residual_connection:
         output = self._stochastic_depth(layer_output, training=training)
       else:
