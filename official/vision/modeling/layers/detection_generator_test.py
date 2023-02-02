@@ -164,6 +164,7 @@ class MultilevelDetectionGeneratorTest(
         'nms_score_threshold': 0.01,
         'nms_iou_threshold': 0.5,
         'input_image_size': [224, 224],
+        'normalize_anchor_coordinates': True,
     }
     kwargs = {
         'apply_nms': True,
