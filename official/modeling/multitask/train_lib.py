@@ -200,7 +200,20 @@ def run_experiment_with_multitask_eval(
           evaluate=False)
     else:
       trainer = None
-    model = trainer.model if trainer else train_task.build_model()
+
+    # Build the model or fetch the pre-cached one (which could be either
+    # multi-task model or single task model).
+    model = None
+    if trainer is None:
+      if isinstance(train_task, multitask.MultiTask):
+        model = train_task.build_multitask_model()
+      else:
+        model = train_task.build_model()
+    else:
+      if isinstance(trainer, base_trainer.MultiTaskBaseTrainer):
+        model = trainer.multi_task_model
+      else:
+        model = trainer.model
 
     if is_eval:
       eval_steps = dict([(task_routine.task_config.name,
