@@ -153,11 +153,11 @@ includes:
 * COCO pre-trained weights for all of the models provided as TF2 style
   object-based checkpoints.
 * Access to [Distribution Strategies](https://www.tensorflow.org/guide/distributed_training)
-  for distributed training --- our model are designed to be trainable using sync
+  for distributed training --- our models are designed to be trainable using sync
   multi-GPU and TPU platforms.
 * Colabs demo’ing eager mode training and inference.
 
-See our release blogpost [here](https://blog.tensorflow.org/2020/07/tensorflow-2-meets-object-detection-api.html).
+See our release blog post [here](https://blog.tensorflow.org/2020/07/tensorflow-2-meets-object-detection-api.html).
 If you are an existing user of the TF OD API using TF 1.x, don’t worry, we’ve
 got you covered.
 
