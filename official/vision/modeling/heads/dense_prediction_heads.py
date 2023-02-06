@@ -108,12 +108,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
       self._bn_axis = 1
     self._activation = tf_utils.get_activation(activation)
 
-  def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
-    """Creates the variables of the head."""
-    conv_op = (tf.keras.layers.SeparableConv2D
-               if self._config_dict['use_separable_conv']
-               else tf.keras.layers.Conv2D)
-    conv_kwargs = {
+    self._conv_kwargs = {
         'filters': self._config_dict['num_filters'],
         'kernel_size': 3,
         'padding': 'same',
@@ -121,19 +116,119 @@ class RetinaNetHead(tf.keras.layers.Layer):
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
     if not self._config_dict['use_separable_conv']:
-      conv_kwargs.update({
-          'kernel_initializer': tf.keras.initializers.RandomNormal(
-              stddev=0.01),
+      self._conv_kwargs.update({
+          'kernel_initializer': tf.keras.initializers.RandomNormal(stddev=0.01),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })
-    bn_op = (tf.keras.layers.experimental.SyncBatchNormalization
-             if self._config_dict['use_sync_bn']
-             else tf.keras.layers.BatchNormalization)
-    bn_kwargs = {
+
+    self._bn_kwargs = {
         'axis': self._bn_axis,
         'momentum': self._config_dict['norm_momentum'],
         'epsilon': self._config_dict['norm_epsilon'],
     }
+
+    self._classifier_kwargs = {
+        'filters': (
+            self._config_dict['num_classes']
+            * self._config_dict['num_anchors_per_location']
+        ),
+        'kernel_size': 3,
+        'padding': 'same',
+        'bias_initializer': tf.constant_initializer(-np.log((1 - 0.01) / 0.01)),
+        'bias_regularizer': self._config_dict['bias_regularizer'],
+    }
+    if not self._config_dict['use_separable_conv']:
+      self._classifier_kwargs.update({
+          'kernel_initializer': tf.keras.initializers.RandomNormal(stddev=1e-5),
+          'kernel_regularizer': self._config_dict['kernel_regularizer'],
+      })
+
+    self._box_regressor_kwargs = {
+        'filters': (
+            self._config_dict['num_params_per_anchor']
+            * self._config_dict['num_anchors_per_location']
+        ),
+        'kernel_size': 3,
+        'padding': 'same',
+        'bias_initializer': tf.zeros_initializer(),
+        'bias_regularizer': self._config_dict['bias_regularizer'],
+    }
+    if not self._config_dict['use_separable_conv']:
+      self._box_regressor_kwargs.update({
+          'kernel_initializer': tf.keras.initializers.RandomNormal(stddev=1e-5),
+          'kernel_regularizer': self._config_dict['kernel_regularizer'],
+      })
+
+    if not self._config_dict['attribute_heads']:
+      return
+
+    self._attribute_kwargs = []
+    for att_config in self._config_dict['attribute_heads']:
+      att_type = att_config['type']
+      att_size = att_config['size']
+      att_prediction_tower_name = att_config['prediction_tower_name']
+
+      att_predictor_kwargs = {
+          'filters': att_size * self._config_dict['num_anchors_per_location'],
+          'kernel_size': 3,
+          'padding': 'same',
+          'bias_initializer': tf.zeros_initializer(),
+          'bias_regularizer': self._config_dict['bias_regularizer'],
+      }
+      if att_type == 'regression':
+        att_predictor_kwargs.update(
+            {'bias_initializer': tf.zeros_initializer()}
+        )
+      elif att_type == 'classification':
+        att_predictor_kwargs.update(
+            {
+                'bias_initializer': tf.constant_initializer(
+                    -np.log((1 - 0.01) / 0.01)
+                )
+            }
+        )
+      else:
+        raise ValueError(
+            'Attribute head type {} not supported.'.format(att_type)
+        )
+
+      if (
+          att_prediction_tower_name
+          and self._config_dict['share_classification_heads']
+      ):
+        raise ValueError(
+            'share_classification_heads cannot be set as True when'
+            ' att_prediction_tower_name is specified.'
+        )
+
+      if not self._config_dict['use_separable_conv']:
+        att_predictor_kwargs.update({
+            'kernel_initializer': tf.keras.initializers.RandomNormal(
+                stddev=1e-5
+            ),
+            'kernel_regularizer': self._config_dict['kernel_regularizer'],
+        })
+      self._attribute_kwargs.append(att_predictor_kwargs)
+
+  def _conv_kwargs_new_kernel_init(self, conv_kwargs):
+    if 'kernel_initializer' in conv_kwargs:
+      conv_kwargs['kernel_initializer'] = tf_utils.clone_initializer(
+          conv_kwargs['kernel_initializer']
+      )
+    return conv_kwargs
+
+  def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
+    """Creates the variables of the head."""
+    conv_op = (
+        tf.keras.layers.SeparableConv2D
+        if self._config_dict['use_separable_conv']
+        else tf.keras.layers.Conv2D
+    )
+    bn_op = (
+        tf.keras.layers.experimental.SyncBatchNormalization
+        if self._config_dict['use_sync_bn']
+        else tf.keras.layers.BatchNormalization
+    )
 
     # Class net.
     self._cls_convs = []
@@ -144,29 +239,15 @@ class RetinaNetHead(tf.keras.layers.Layer):
       for i in range(self._config_dict['num_convs']):
         if level == self._config_dict['min_level']:
           cls_conv_name = 'classnet-conv_{}'.format(i)
-          if 'kernel_initializer' in conv_kwargs:
-            conv_kwargs['kernel_initializer'] = tf_utils.clone_initializer(
-                conv_kwargs['kernel_initializer'])
+          conv_kwargs = self._conv_kwargs_new_kernel_init(self._conv_kwargs)
           self._cls_convs.append(conv_op(name=cls_conv_name, **conv_kwargs))
         cls_norm_name = 'classnet-conv-norm_{}_{}'.format(level, i)
-        this_level_cls_norms.append(bn_op(name=cls_norm_name, **bn_kwargs))
+        this_level_cls_norms.append(
+            bn_op(name=cls_norm_name, **self._bn_kwargs)
+        )
       self._cls_norms.append(this_level_cls_norms)
 
-    classifier_kwargs = {
-        'filters': (
-            self._config_dict['num_classes'] *
-            self._config_dict['num_anchors_per_location']),
-        'kernel_size': 3,
-        'padding': 'same',
-        'bias_initializer': tf.constant_initializer(-np.log((1 - 0.01) / 0.01)),
-        'bias_regularizer': self._config_dict['bias_regularizer'],
-    }
-    if not self._config_dict['use_separable_conv']:
-      classifier_kwargs.update({
-          'kernel_initializer': tf.keras.initializers.RandomNormal(stddev=1e-5),
-          'kernel_regularizer': self._config_dict['kernel_regularizer'],
-      })
-    self._classifier = conv_op(name='scores', **classifier_kwargs)
+    self._classifier = conv_op(name='scores', **self._classifier_kwargs)
 
     # Box net.
     self._box_convs = []
@@ -177,29 +258,15 @@ class RetinaNetHead(tf.keras.layers.Layer):
       for i in range(self._config_dict['num_convs']):
         if level == self._config_dict['min_level']:
           box_conv_name = 'boxnet-conv_{}'.format(i)
-          if 'kernel_initializer' in conv_kwargs:
-            conv_kwargs['kernel_initializer'] = tf_utils.clone_initializer(
-                conv_kwargs['kernel_initializer'])
+          conv_kwargs = self._conv_kwargs_new_kernel_init(self._conv_kwargs)
           self._box_convs.append(conv_op(name=box_conv_name, **conv_kwargs))
         box_norm_name = 'boxnet-conv-norm_{}_{}'.format(level, i)
-        this_level_box_norms.append(bn_op(name=box_norm_name, **bn_kwargs))
+        this_level_box_norms.append(
+            bn_op(name=box_norm_name, **self._bn_kwargs)
+        )
       self._box_norms.append(this_level_box_norms)
 
-    box_regressor_kwargs = {
-        'filters': (self._config_dict['num_params_per_anchor'] *
-                    self._config_dict['num_anchors_per_location']),
-        'kernel_size': 3,
-        'padding': 'same',
-        'bias_initializer': tf.zeros_initializer(),
-        'bias_regularizer': self._config_dict['bias_regularizer'],
-    }
-    if not self._config_dict['use_separable_conv']:
-      box_regressor_kwargs.update({
-          'kernel_initializer': tf.keras.initializers.RandomNormal(
-              stddev=1e-5),
-          'kernel_regularizer': self._config_dict['kernel_regularizer'],
-      })
-    self._box_regressor = conv_op(name='boxes', **box_regressor_kwargs)
+    self._box_regressor = conv_op(name='boxes', **self._box_regressor_kwargs)
 
     # Attribute learning nets.
     if self._config_dict['attribute_heads']:
@@ -207,11 +274,10 @@ class RetinaNetHead(tf.keras.layers.Layer):
       self._att_convs = {}
       self._att_norms = {}
 
-      for att_config in self._config_dict['attribute_heads']:
+      for att_config, att_predictor_kwargs in zip(
+          self._config_dict['attribute_heads'], self._attribute_kwargs
+      ):
         att_name = att_config['name']
-        att_type = att_config['type']
-        att_size = att_config['size']
-        att_prediction_tower_name = att_config['prediction_tower_name']
         att_convs_i = []
         att_norms_i = []
 
@@ -222,51 +288,17 @@ class RetinaNetHead(tf.keras.layers.Layer):
           for i in range(self._config_dict['num_convs']):
             if level == self._config_dict['min_level']:
               att_conv_name = '{}-conv_{}'.format(att_name, i)
-              if 'kernel_initializer' in conv_kwargs:
-                conv_kwargs['kernel_initializer'] = tf_utils.clone_initializer(
-                    conv_kwargs['kernel_initializer'])
+              conv_kwargs = self._conv_kwargs_new_kernel_init(self._conv_kwargs)
               att_convs_i.append(conv_op(name=att_conv_name, **conv_kwargs))
             att_norm_name = '{}-conv-norm_{}_{}'.format(att_name, level, i)
-            this_level_att_norms.append(bn_op(name=att_norm_name, **bn_kwargs))
+            this_level_att_norms.append(
+                bn_op(name=att_norm_name, **self._bn_kwargs)
+            )
           att_norms_i.append(this_level_att_norms)
         self._att_convs[att_name] = att_convs_i
         self._att_norms[att_name] = att_norms_i
 
         # Build the final prediction layer.
-        att_predictor_kwargs = {
-            'filters':
-                (att_size * self._config_dict['num_anchors_per_location']),
-            'kernel_size': 3,
-            'padding': 'same',
-            'bias_initializer': tf.zeros_initializer(),
-            'bias_regularizer': self._config_dict['bias_regularizer'],
-        }
-        if att_type == 'regression':
-          att_predictor_kwargs.update(
-              {'bias_initializer': tf.zeros_initializer()})
-        elif att_type == 'classification':
-          att_predictor_kwargs.update({
-              'bias_initializer':
-                  tf.constant_initializer(-np.log((1 - 0.01) / 0.01))
-          })
-        else:
-          raise ValueError(
-              'Attribute head type {} not supported.'.format(att_type))
-
-        if att_prediction_tower_name and self._config_dict[
-            'share_classification_heads']:
-          raise ValueError(
-              'share_classification_heads cannot be set as True when att_prediction_tower_name is specified.'
-          )
-
-        if not self._config_dict['use_separable_conv']:
-          att_predictor_kwargs.update({
-              'kernel_initializer':
-                  tf.keras.initializers.RandomNormal(stddev=1e-5),
-              'kernel_regularizer':
-                  self._config_dict['kernel_regularizer'],
-          })
-
         self._att_predictors[att_name] = conv_op(
             name='{}_attributes'.format(att_name), **att_predictor_kwargs)
 
