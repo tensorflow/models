@@ -572,7 +572,7 @@ class PanopticSegmentationGeneratorV2(tf.keras.layers.Layer):
 
     # (batch_size, output_height, output_width)
     _, instance_mask, category_mask = tf.while_loop(
-        cond=lambda i, *_: i < num_rois - 1,
+        cond=lambda i, *_: i < num_rois,
         body=_copy_instances_loop_body,
         loop_vars=init_loop_vars,
         parallel_iterations=32,
