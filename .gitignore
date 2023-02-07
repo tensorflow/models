@@ -100,3 +100,5 @@ ENV/
 .hooks/
 pylint.sh
 pylintrc
+/.vs/tf-models/v16
+/.vs

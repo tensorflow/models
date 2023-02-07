@@ -24,6 +24,7 @@ Note: The following are used as shorthands for dimensions:
 from typing import List, Tuple
 
 import tensorflow as tf
+import tensorflow_graphics as tfg
 
 
 # Number of dimensions in coordinate system used.
@@ -549,3 +550,32 @@ def convert_obj_to_mesh(obj_filename: str,
   }
 
   return mesh
+
+
+def metric_evaluation(
+      self,
+      pred_verts: tf.Tensor,
+      pred_verts_mask: tf.Tensor,
+      pred_faces: tf.Tensor,
+      pred_faces_mask: tf.Tensor,
+      gt_verts: tf.Tensor,
+      gt_verts_mask: tf.Tensor,
+      gt_faces: tf.Tensor,
+      gt_faces_mask: tf.Tensor,
+  )-> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+    pred_samples, pred_normals, pred_sampled_verts_ind = self.sample_meshes(pred_verts, pred_verts_mask, pred_faces, pred_faces_mask)
+    gt_samples, gt_normals, gt_sampled_verts_ind = self.sample_meshes(gt_verts, gt_verts_mask, gt_faces, gt_faces_mask)
+
+    chamfer_loss = tfg.nn.loss.chamfer_distance.evaluate(pred_samples, gt_samples)
+
+    precision = tfg.nn.metric.precision.evaluate(gt_verts, pred_verts)
+
+    recall = tfg.nn.metric.recall.evaluate(gt_verts, pred_verts)
+
+    f_score = tfg.nn.metric.fscore.evaluate(gt_verts, pred_verts)
+
+    cos = tf.keras.losses.cosine_similarity(gt_normals, pred_normals)
+    cos_sim = cos.mean(dim =1)
+    normal_consistency = 0.5 * (cos_sim)
+
+    return chamfer_loss, precision, recall, f_score, normal_consistency
