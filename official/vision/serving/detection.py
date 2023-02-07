@@ -32,7 +32,7 @@ class DetectionModule(export_base.ExportModule):
 
   def _build_model(self):
 
-    nms_versions_supporting_dynamic_batch_size = {'batched', 'v3'}
+    nms_versions_supporting_dynamic_batch_size = {'batched', 'v2', 'v3'}
     nms_version = self.params.task.model.detection_generator.nms_version
     if (self._batch_size is None and
         nms_version not in nms_versions_supporting_dynamic_batch_size):

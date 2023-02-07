@@ -30,11 +30,16 @@ from official.vision.serving import detection
 class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
 
   def _get_detection_module(
-      self, experiment_name, input_type, outer_boxes_scale=1.0):
+      self,
+      experiment_name,
+      input_type,
+      outer_boxes_scale=1.0,
+      nms_version='batched',
+  ):
     params = exp_factory.get_exp_config(experiment_name)
     params.task.model.outer_boxes_scale = outer_boxes_scale
     params.task.model.backbone.resnet.model_id = 18
-    params.task.model.detection_generator.nms_version = 'batched'
+    params.task.model.detection_generator.nms_version = nms_version
     detection_module = detection.DetectionModule(
         params,
         batch_size=1,
@@ -91,12 +96,19 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
       ('tflite', 'retinanet_spinenet_coco', [640, 640]),
       ('image_tensor', 'fasterrcnn_resnetfpn_coco', [384, 384], 1.1),
       ('tf_example', 'maskrcnn_resnetfpn_coco', [640, 640], 1.1),
+      ('image_tensor', 'fasterrcnn_resnetfpn_coco', [384, 384], 1.1, 'v2'),
   )
   def test_export(
-      self, input_type, experiment_name, image_size, outer_boxes_scale=1.0):
+      self,
+      input_type,
+      experiment_name,
+      image_size,
+      outer_boxes_scale=1.0,
+      nms_version='batched',
+  ):
     tmp_dir = self.get_temp_dir()
     module = self._get_detection_module(
-        experiment_name, input_type, outer_boxes_scale)
+        experiment_name, input_type, outer_boxes_scale, nms_version)
 
     self._export_from_module(module, input_type, tmp_dir)
 
