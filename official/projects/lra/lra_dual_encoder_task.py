@@ -93,7 +93,8 @@ class DualEncoderTask(base_task.Task):
         num_classes=self.task_config.model.num_classes,
         initializer=tf.keras.initializers.TruncatedNormal(
             stddev=encoder_cfg.initializer_range),
-        use_encoder_pooler=self.task_config.model.use_encoder_pooler)
+        use_encoder_pooler=self.task_config.model.use_encoder_pooler,
+        inner_dim=encoder_cfg.hidden_size*2)
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     label_ids = labels[self.label_field]

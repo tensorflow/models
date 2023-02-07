@@ -48,31 +48,56 @@ class LRADualEncoder(tf.keras.Model):
                dropout_rate=0.1,
                initializer='glorot_uniform',
                use_encoder_pooler=True,
+               inner_dim=None,
                head_name='dual_encode',
-               **kwargs) -> None:
+               **kwargs):
+    super().__init__(**kwargs)
 
-    left_word_ids = tf.keras.layers.Input(shape=(max_seq_length,),
-                                          dtype=tf.int32,
-                                          name='left_word_ids')
-    left_mask = tf.keras.layers.Input(shape=(max_seq_length,),
-                                      dtype=tf.int32,
-                                      name='left_mask')
+    config_dict = {
+        'network': network,
+        'num_classes': num_classes,
+        'head_name': head_name,
+        'max_seq_length': max_seq_length,
+        'initializer': initializer,
+        'use_encoder_pooler': use_encoder_pooler,
+        'inner_dim': inner_dim
+    }
+    # We are storing the config dict as a namedtuple here to ensure checkpoint
+    # compatibility with an earlier version of this model which did not track
+    # the config dict attribute. TF does not track immutable attrs which
+    # do not contain Trackables, so by creating a config namedtuple instead of
+    # a dict we avoid tracking it.
+    config_cls = collections.namedtuple('Config', config_dict.keys())
+    self._config = config_cls(**config_dict)
+    self._use_encoder_pooler = use_encoder_pooler
 
-    right_word_ids = tf.keras.layers.Input(shape=(max_seq_length,),
-                                           dtype=tf.int32,
-                                           name='right_word_ids')
-    right_mask = tf.keras.layers.Input(shape=(max_seq_length,),
-                                       dtype=tf.int32,
-                                       name='right_mask')
+    self.network = network
+    self.classifier = layers.ClassificationHead(
+        inner_dim=0 if use_encoder_pooler else inner_dim,
+        num_classes=num_classes,
+        initializer=initializer,
+        dropout_rate=dropout_rate,
+        name=head_name)
+    return
+
+  def call(self, inputs):
+    if isinstance(inputs, dict):
+      left_word_ids = inputs.get('left_word_ids')
+      left_mask = inputs.get('left_mask')
+
+      right_word_ids = inputs.get('right_word_ids')
+      right_mask = inputs.get('right_mask')
+    else:
+      raise ValueError('Unexpected inputs type to %s.' % self.__class__)
 
     inputs = [left_word_ids, left_mask, right_word_ids, right_mask]
 
     left_inputs = [left_word_ids, left_mask]
-    left_outputs = network(left_inputs)
+    left_outputs = self.network(left_inputs)
     right_inputs = [right_word_ids, right_mask]
-    right_outputs = network(right_inputs)
+    right_outputs = self.network(right_inputs)
 
-    if use_encoder_pooler:
+    if self._use_encoder_pooler:
       # Because we have a copy of inputs to create this Model object, we can
       # invoke the Network object with its own input tensors to start the Model.
       if isinstance(left_outputs, list):
@@ -90,35 +115,8 @@ class LRADualEncoder(tf.keras.Model):
         right_cls_inputs = right_outputs['sequence_output']
 
     cls_inputs = tf.concat([left_cls_inputs, right_cls_inputs], -1)
-    classifier = layers.ClassificationHead(
-        inner_dim=0 if use_encoder_pooler else cls_inputs.shape[-1],
-        num_classes=num_classes,
-        initializer=initializer,
-        dropout_rate=dropout_rate,
-        name=head_name)
-    predictions = classifier(cls_inputs)
-
-    super(LRADualEncoder, self).__init__(inputs=inputs,
-                                         outputs=predictions,
-                                         **kwargs)
-
-    config_dict = {
-        'network': network,
-        'num_classes': num_classes,
-        'head_name': head_name,
-        'max_seq_length': max_seq_length,
-        'initializer': initializer,
-        'use_encoder_pooler': use_encoder_pooler
-    }
-    # We are storing the config dict as a namedtuple here to ensure checkpoint
-    # compatibility with an earlier version of this model which did not track
-    # the config dict attribute. TF does not track immutable attrs which
-    # do not contain Trackables, so by creating a config namedtuple instead of
-    # a dict we avoid tracking it.
-    config_cls = collections.namedtuple('Config', config_dict.keys())
-    self._config = config_cls(**config_dict)
-
-    self.network = network
+    predictions = self.classifier(cls_inputs)
+    return predictions
 
   def get_config(self):
     return dict(self._config._asdict())
