@@ -72,10 +72,10 @@ encoder_inputs = dict(
 )
 encoder_outputs = encoder(encoder_inputs)
 assert encoder_outputs.keys() == {
-  "pooled_output",    # Shape [batch_size, width], dtype=float32
-  "default",          # Alias for "pooled_output" (aligns with other models)
-  "sequence_output",  # Shape [batch_size, seq_length, width], dtype=float32
-  "encoder_outputs",  # List of Tensors with outputs of all transformer layers
+    "pooled_output",  # Shape [batch_size, width], dtype=float32
+    "default",  # Alias for "pooled_output" (aligns with other models)
+    "sequence_output",  # Shape [batch_size, seq_length, width], dtype=float32
+    "encoder_outputs",  # List of Tensors with outputs of all transformer layers
 }
 ```
 
@@ -170,10 +170,10 @@ mlm_inputs = dict(
 )
 mlm_outputs = encoder.mlm(mlm_inputs)
 assert mlm_outputs.keys() == {
-  "pooled_output",   # Shape [batch, width], dtype=float32
-  "sequence_output", # Shape [batch, seq_length, width], dtype=float32
-  "encoder_outputs", # List of Tensors with outputs of all transformer layers
-  "mlm_logits"       # Shape [batch, num_predictions, vocab_size], dtype=float32
+    "pooled_output",  # Shape [batch, width], dtype=float32
+    "sequence_output",  # Shape [batch, seq_length, width], dtype=float32
+    "encoder_outputs",  # List of Tensors with outputs of all transformer layers
+    "mlm_logits"  # Shape [batch, num_predictions, vocab_size], dtype=float32
 }
 ```
 
@@ -246,9 +246,9 @@ preprocessor = hub.load(...)
 text_input = ... # Shape [batch_size], dtype=tf.string
 encoder_inputs = preprocessor(text_input, seq_length=seq_length)
 assert encoder_inputs.keys() == {
-  "input_word_ids", # Shape [batch_size, seq_length], dtype=int32
-  "input_mask",     # Shape [batch_size, seq_length], dtype=int32
-  "input_type_ids"  # Shape [batch_size, seq_length], dtype=int32
+    "input_word_ids",  # Shape [batch_size, seq_length], dtype=int32
+    "input_mask",  # Shape [batch_size, seq_length], dtype=int32
+    "input_type_ids"  # Shape [batch_size, seq_length], dtype=int32
 }
 ```
 
