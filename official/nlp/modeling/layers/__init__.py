@@ -17,6 +17,8 @@
 They can be used to assemble new `tf.keras` layers or models.
 """
 # pylint: disable=wildcard-import
+
+from official.nlp.modeling.layers import util
 from official.nlp.modeling.layers.attention import *
 from official.nlp.modeling.layers.bigbird_attention import BigBirdAttention
 from official.nlp.modeling.layers.bigbird_attention import BigBirdMasks
