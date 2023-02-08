@@ -5,3 +5,5 @@ toc:
   path: /tfmodels/vision/object_detection
 - title: "Example: Segmentation"
   path: /tfmodels/vision/semantic_segmentation
+- title: "Example: Instance Segmentation"
+  path: /tfmodels/vision/instance_segmentation
