@@ -2,7 +2,7 @@
 
 ## Natural Language Processing
 
-*   [bert](nlp/bert): A powerful pre-trained language representation model:
+*   [bert](https://arxiv.org/abs/1810.04805): A powerful pre-trained language representation model:
     BERT, which stands for Bidirectional Encoder Representations from
     Transformers.
     [BERT FineTuning with Cloud TPU](https://cloud.google.com/tpu/docs/tutorials/bert-2.x) provides step by step instructions on Cloud TPU training. You can look [Bert MNLI Tensorboard.dev metrics](https://tensorboard.dev/experiment/LijZ1IrERxKALQfr76gndA) for MNLI fine tuning task.
@@ -12,11 +12,11 @@
 
 ## Computer Vision
 
-*   [efficientnet](vision/image_classification): A family of convolutional
+*   [efficientnet](https://www.tensorflow.org/api_docs/python/tf/keras/applications/efficientnet): A family of convolutional
     neural networks that scale by balancing network depth, width, and
     resolution and can be used to classify ImageNet's dataset of 1000 classes.
     See [Tensorboard.dev training metrics](https://tensorboard.dev/experiment/KnaWjrq5TXGfv0NW5m7rpg/#scalars).
-*   [mnist](vision/image_classification): A basic model to classify digits
+*   [mnist](https://www.tensorflow.org/datasets/catalog/mnist): A basic model to classify digits
     from the MNIST dataset. See [Running MNIST on Cloud TPU](https://cloud.google.com/tpu/docs/tutorials/mnist-2.x) tutorial and [Tensorboard.dev metrics](https://tensorboard.dev/experiment/mIah5lppTASvrHqWrdr6NA).
 *   [mask-rcnn](vision/detection): An object detection and instance segmentation model. See [Tensorboard.dev training metrics](https://tensorboard.dev/experiment/LH7k0fMsRwqUAcE09o9kPA).
 *   [resnet](vision/image_classification): A deep residual network that can
