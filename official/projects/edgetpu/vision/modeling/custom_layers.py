@@ -105,9 +105,9 @@ class GroupConv2D(tf.keras.layers.Conv2D):
       ValueError: if `batch_norm_layer` is not a callable when provided.
       ValueError: when both `strides` > 1 and `dilation_rate` > 1.
     """
-    if groups <= 1 or groups >= filters:
-      raise ValueError('Number of groups should be greater than 1 and less '
-                       'than the output filters.')
+    if groups <= 1 or groups > filters:
+      raise ValueError(f'Number of groups {groups} should be greater than 1 and'
+                       f' less or equal than the output filters {filters}.')
     self._groups = groups
     if data_format != 'channels_last':
       raise ValueError(
