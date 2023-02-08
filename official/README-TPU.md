@@ -5,10 +5,10 @@
 *   [bert](https://arxiv.org/abs/1810.04805): A powerful pre-trained language representation model:
     BERT, which stands for Bidirectional Encoder Representations from
     Transformers.
-    [BERT FineTuning with Cloud TPU](https://cloud.google.com/tpu/docs/tutorials/bert-2.x) provides step by step instructions on Cloud TPU training. You can look [Bert MNLI Tensorboard.dev metrics](https://tensorboard.dev/experiment/LijZ1IrERxKALQfr76gndA) for MNLI fine tuning task.
+    [BERT FineTuning with Cloud TPU](https://cloud.google.com/tpu/docs/tutorials/bert-2.x) provides step-by-step instructions on Cloud TPU training. You can look [Bert MNLI Tensorboard.dev metrics](https://tensorboard.dev/experiment/LijZ1IrERxKALQfr76gndA) for MNLI fine tuning task.
 *   [transformer](nlp/transformer): A transformer model to translate the WMT
     English to German dataset.
-        [Training transformer on Cloud TPU](https://cloud.google.com/tpu/docs/tutorials/transformer-2.x) for step by step instructions on Cloud TPU training.
+        [Training transformer on Cloud TPU](https://cloud.google.com/tpu/docs/tutorials/transformer-2.x) for step-by-step instructions on Cloud TPU training.
 
 ## Computer Vision
 
