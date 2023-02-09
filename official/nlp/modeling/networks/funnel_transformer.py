@@ -15,7 +15,9 @@
 """Funnel Transformer network."""
 # pylint: disable=g-classes-have-attributes
 
-from typing import Any, Callable, Optional, Union, Sequence
+import math
+from typing import Any, Callable, Optional, Sequence, Union
+
 from absl import logging
 import numpy as np
 import tensorflow as tf
@@ -91,8 +93,39 @@ def _pool_and_concat(mask, unpool_length: int, strides: Union[Sequence[int],
   return mask
 
 
-def _create_truncated_avg_transforms(seq_length: int,
-                                     pool_strides: Sequence[int]):
+def _create_fractional_pool_transform(sl: int, pool_factor: float):
+  """Create pooling transform for fractional pooling factor."""
+
+  assert pool_factor > 1.0, '`pool_factor` should be > 1.0.'
+
+  psl = int(sl / pool_factor)
+  gcd_ = math.gcd(sl, psl)
+  # It is expected chunk_sl and chunk_psl are small integers.
+  # The transform is built by tiling a [chunk_sl, chunk_psl] submatrix
+  # gcd_ times. The submatrix sums to chunk_psl.
+  chunk_sl = sl // gcd_
+  chunk_psl = psl // gcd_
+  num_one_entries = chunk_psl - 1
+  num_frac_entries = chunk_sl - (chunk_psl - 1)
+
+  # The transform is of shape [sl, psl].
+  transform = np.zeros((sl, psl))
+  for i in range(sl // chunk_sl):
+    row_start = chunk_sl * i
+    col_start = chunk_psl * i
+    for idx in range(num_one_entries):
+      transform[row_start + idx][col_start + idx] = 1.0
+    for idx in range(num_frac_entries):
+      transform[row_start + num_one_entries + idx][
+          col_start + num_one_entries
+      ] = (1.0 / num_frac_entries)
+
+  return tf.constant(transform, dtype=_get_policy_dtype())
+
+
+def _create_truncated_avg_transforms(
+    seq_length: int, pool_strides: Sequence[int]
+):
   """Computes pooling transforms.
 
   The pooling_transform is of shape [seq_length,
@@ -122,15 +155,20 @@ def _create_truncated_avg_transforms(seq_length: int,
     if pool_stride == 1:
       pooling_transforms.append(None)
     else:
-      pooled_seq_length = seq_length // pool_stride
+      pooled_seq_length = int(seq_length / pool_stride)
+      if (1.0 * pool_stride).is_integer():
+        pfac, sl, psl = pool_stride, seq_length, pooled_seq_length
 
-      pfac, sl, psl = pool_stride, seq_length, pooled_seq_length
-      transform = [[1.0 if (i // pfac) == j else 0.0
-                    for j in range(psl)]
-                   for i in range(sl)]
-      transform = tf.constant(transform, dtype=_get_policy_dtype())
-
-      pooling_transforms.append(transform / pool_stride)
+        transform = [
+            [1.0 if (i // pfac) == j else 0.0 for j in range(psl)]
+            for i in range(sl)
+        ]
+        transform = (
+            tf.constant(transform, dtype=_get_policy_dtype()) / pool_stride
+        )
+      else:
+        transform = _create_fractional_pool_transform(seq_length, pool_stride)
+      pooling_transforms.append(transform)
       seq_length = pooled_seq_length
 
   return pooling_transforms
@@ -164,12 +202,16 @@ def _create_truncated_avg_masks(input_mask: tf.Tensor,
     if pool_stride == 1:
       attention_masks.append(create_2d_mask(seq_length, layer_mask))
     else:
-      pooled_seq_length = seq_length // pool_stride
+      pooled_seq_length = tf.cast(
+          tf.cast(seq_length, tf.float32) / tf.cast(pool_stride, tf.float32),
+          tf.int32,
+      )
       attention_masks.append(create_2d_mask(pooled_seq_length, layer_mask))
 
       layer_mask = tf.cast(
           tf.einsum('BF,FT->BT', layer_mask, transform) > 0.0,
-          dtype=layer_mask.dtype)
+          dtype=layer_mask.dtype,
+      )
       seq_length = pooled_seq_length
   del seq_length
 
@@ -243,18 +285,21 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       output_dropout: float = 0.1,
       attention_dropout: float = 0.1,
       pool_type: str = _MAX,
-      pool_stride: int = 2,
+      pool_stride: Union[int, Sequence[Union[int, float]]] = 2,
       unpool_length: int = 0,
       initializer: _Initializer = tf.keras.initializers.TruncatedNormal(
-          stddev=0.02),
+          stddev=0.02
+      ),
       output_range: Optional[int] = None,
       embedding_width: Optional[int] = None,
       embedding_layer: Optional[tf.keras.layers.Layer] = None,
       norm_first: bool = False,
       transformer_cls: Union[
-          str, tf.keras.layers.Layer] = layers.TransformerEncoderBlock,
+          str, tf.keras.layers.Layer
+      ] = layers.TransformerEncoderBlock,
       share_rezero: bool = False,
-      **kwargs):
+      **kwargs
+  ):
     super().__init__(**kwargs)
 
     if output_range is not None:
@@ -339,6 +384,16 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       if len(pool_stride) != num_layers:
         raise ValueError('Lengths of pool_stride and num_layers are not equal.')
       pool_strides = pool_stride
+
+    is_fractional_pooling = False in [
+        (1.0 * pool_stride).is_integer() for pool_stride in pool_strides
+    ]
+    if is_fractional_pooling and pool_type in [_MAX, _AVG]:
+      raise ValueError(
+          'Fractional pooling is only supported for'
+          ' `pool_type`=`truncated_average`'
+      )
+
     # TODO(crickwu): explore tf.keras.layers.serialize method.
     if pool_type == _MAX:
       pool_cls = tf.keras.layers.MaxPooling1D
@@ -367,44 +422,27 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
     self._pool_type = pool_type
 
     self._config = {
-        'vocab_size':
-            vocab_size,
-        'hidden_size':
-            hidden_size,
-        'num_layers':
-            num_layers,
-        'num_attention_heads':
-            num_attention_heads,
-        'max_sequence_length':
-            max_sequence_length,
-        'type_vocab_size':
-            type_vocab_size,
-        'inner_dim':
-            inner_dim,
-        'inner_activation':
-            tf.keras.activations.serialize(activation),
-        'output_dropout':
-            output_dropout,
-        'attention_dropout':
-            attention_dropout,
-        'initializer':
-            tf.keras.initializers.serialize(initializer),
-        'output_range':
-            output_range,
-        'embedding_width':
-            embedding_width,
-        'embedding_layer':
-            embedding_layer,
-        'norm_first':
-            norm_first,
-        'pool_type':
-            pool_type,
-        'pool_stride':
-            pool_stride,
-        'unpool_length':
-            unpool_length,
-        'transformer_cls':
-            _transformer_cls2str.get(transformer_cls, str(transformer_cls))
+        'vocab_size': vocab_size,
+        'hidden_size': hidden_size,
+        'num_layers': num_layers,
+        'num_attention_heads': num_attention_heads,
+        'max_sequence_length': max_sequence_length,
+        'type_vocab_size': type_vocab_size,
+        'inner_dim': inner_dim,
+        'inner_activation': tf.keras.activations.serialize(activation),
+        'output_dropout': output_dropout,
+        'attention_dropout': attention_dropout,
+        'initializer': tf.keras.initializers.serialize(initializer),
+        'output_range': output_range,
+        'embedding_width': embedding_width,
+        'embedding_layer': embedding_layer,
+        'norm_first': norm_first,
+        'pool_type': pool_type,
+        'pool_stride': pool_stride,
+        'unpool_length': unpool_length,
+        'transformer_cls': _transformer_cls2str.get(
+            transformer_cls, str(transformer_cls)
+        ),
     }
 
     self.inputs = dict(
@@ -422,10 +460,14 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
         dense_mask = None
         dense_type_ids = None
       elif len(inputs) == 6:
-        word_ids, mask, type_ids, dense_inputs, dense_mask, dense_type_ids = inputs
+        word_ids, mask, type_ids, dense_inputs, dense_mask, dense_type_ids = (
+            inputs
+        )
       else:
-        raise ValueError('Unexpected inputs to %s with length at %d.' %
-                         (self.__class__, len(inputs)))
+        raise ValueError(
+            'Unexpected inputs to %s with length at %d.'
+            % (self.__class__, len(inputs))
+        )
     elif isinstance(inputs, dict):
       word_ids = inputs.get('input_word_ids')
       mask = inputs.get('input_mask')
