@@ -150,6 +150,36 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(expected_data_shape, data.shape.as_list())
     self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
 
+  @parameterized.named_parameters(
+      ("frac_pool_rezero", "ReZeroTransformer"),
+      ("frac_pool_vanilla", "TransformerEncoderBlock"),
+      )
+  def test_fractional_pooling(self, transformer_cls):
+    hidden_size = 16
+    sequence_length = 32
+    pool_strides = [1.33333, 3, 2, 1]
+    num_layers = 4
+    pool_type = "truncated_avg"
+    test_network = funnel_transformer.FunnelTransformerEncoder(
+        vocab_size=100,
+        hidden_size=hidden_size,
+        num_attention_heads=2,
+        num_layers=num_layers,
+        pool_stride=pool_strides,
+        pool_type=pool_type,
+        max_sequence_length=sequence_length,
+        unpool_length=0,
+        transformer_cls=transformer_cls)
+    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    dict_outputs = test_network([word_ids, mask, type_ids])
+    data = dict_outputs["sequence_output"]
+
+    expected_data_shape = [None, 4, hidden_size]
+
+    self.assertAllEqual(expected_data_shape, data.shape.as_list())
+
   def test_invalid_stride_and_num_layers(self):
     hidden_size = 32
     num_layers = 3
@@ -212,7 +242,7 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.named_parameters(
       ("all_sequence", None, 3, 0),
       ("output_range", 1, 1, 0),
-      ("all_sequence_wit_unpool", None, 4, 1),
+      ("all_sequence_with_unpool", None, 4, 1),
       ("output_range_with_unpool", 1, 1, 1),
       ("output_range_with_large_unpool", 1, 1, 2),
   )
