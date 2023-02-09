@@ -713,6 +713,61 @@ def bbox_generalized_overlap(boxes, gt_boxes):
     return giou
 
 
+def bbox_intersection_over_area(boxes, gt_boxes):
+  """Calculates IoAs (intersection over area) between proposal and ground truth boxes.
+
+  Some `boxes` or `gt_boxes` may have been padded.  The returned `iou` tensor
+  for these boxes will be -1.
+
+  Args:
+    boxes: a tensor with a shape of [batch_size, N, 4]. N is the number of
+      proposals before groundtruth assignment (e.g., rpn_post_nms_topn). The
+      last dimension is the pixel coordinates in [ymin, xmin, ymax, xmax] form.
+    gt_boxes: a tensor with a shape of [batch_size, M, 4]. This tensor might
+      have paddings with a negative value.
+
+  Returns:
+    ioa: a tensor with as a shape of [batch_size, N, M].
+  """
+  with tf.name_scope('bbox_overlap'):
+    bb_y_min, bb_x_min, bb_y_max, bb_x_max = tf.split(
+        value=boxes, num_or_size_splits=4, axis=2
+    )
+    gt_y_min, gt_x_min, gt_y_max, gt_x_max = tf.split(
+        value=gt_boxes, num_or_size_splits=4, axis=2
+    )
+
+    # Calculates the intersection area.
+    i_xmin = tf.math.maximum(bb_x_min, tf.transpose(gt_x_min, [0, 2, 1]))
+    i_xmax = tf.math.minimum(bb_x_max, tf.transpose(gt_x_max, [0, 2, 1]))
+    i_ymin = tf.math.maximum(bb_y_min, tf.transpose(gt_y_min, [0, 2, 1]))
+    i_ymax = tf.math.minimum(bb_y_max, tf.transpose(gt_y_max, [0, 2, 1]))
+    i_area = tf.math.maximum((i_xmax - i_xmin), 0) * tf.math.maximum(
+        (i_ymax - i_ymin), 0
+    )
+
+    bb_area = (bb_y_max - bb_y_min) * (bb_x_max - bb_x_min)
+    ioa = tf.math.divide_no_nan(i_area, bb_area)
+
+    # Fills -1 for IoA entries between the padded ground truth boxes.
+    gt_invalid_mask = tf.less(
+        tf.reduce_max(gt_boxes, axis=-1, keepdims=True), 0.0
+    )
+    padding_mask = tf.logical_or(
+        tf.zeros_like(bb_x_min, dtype=tf.bool),
+        tf.transpose(gt_invalid_mask, [0, 2, 1]),
+    )
+    ioa = tf.where(padding_mask, -1., ioa)
+
+    # Fills -1 for invalid (-1) boxes.
+    boxes_invalid_mask = tf.less(
+        tf.reduce_max(boxes, axis=-1, keepdims=True), 0.0
+    )
+    ioa = tf.where(boxes_invalid_mask, -1., ioa)
+
+    return ioa
+
+
 def box_matching(boxes, gt_boxes, gt_classes):
   """Matches boxes to groundtruth boxes.
 
