@@ -80,14 +80,15 @@ class MaskUtilsTest(tf.test.TestCase):
             [1.0, 1.0, 1.0, 1.0],
         ],
     ]])
-    result = mask_ops.instance_masks_overlap(
+    iou, ioa = mask_ops.instance_masks_overlap(
         boxes,
         masks,
         gt_boxes,
         gt_masks,
         output_size=[10, 10],
     )
-    self.assertAllClose(result, [[[1 / 3, 0], [1 / 5, 1 / 7]]], atol=1e-4)
+    self.assertAllClose(iou, [[[1 / 3, 0], [1 / 5, 1 / 7]]], atol=1e-4)
+    self.assertAllClose(ioa, [[[3 / 8, 0], [1 / 4, 3 / 8]]], atol=1e-4)
 
 
 if __name__ == '__main__':

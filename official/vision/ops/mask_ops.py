@@ -15,7 +15,7 @@
 """Utility functions for segmentations."""
 
 import math
-from typing import List
+from typing import List, Tuple
 
 # Import libraries
 
@@ -197,8 +197,11 @@ def instance_masks_overlap(
     gt_masks: tf.Tensor,
     output_size: List[int],
     mask_binarize_threshold: float = 0.5,
-):
-  """Calculates the IoUs between the detection masks and the ground truth masks.
+) -> Tuple[tf.Tensor, tf.Tensor]:
+  """Calculates the IoUs and IoAs between the detection masks and the ground truth masks.
+
+  IoU: intersection over union.
+  IoA: intersection over the area of the detection masks.
 
   Args:
     boxes: a tensor with a shape of [batch_size, N, 4]. The last dimension is
@@ -258,9 +261,9 @@ def instance_masks_overlap(
 
   # (batch_size, num_detections, num_gts)
   intersection = tf.matmul(flattened_binary_masks, flattened_gt_binary_masks)
-  union = (
-      tf.reduce_sum(flattened_binary_masks, axis=-1, keepdims=True)
-      + tf.reduce_sum(flattened_gt_binary_masks, axis=-2, keepdims=True)
-      - intersection
+  detection_area = tf.reduce_sum(flattened_binary_masks, axis=-1, keepdims=True)
+  gt_area = tf.reduce_sum(flattened_gt_binary_masks, axis=-2, keepdims=True)
+  union = detection_area + gt_area - intersection
+  return tf.math.divide_no_nan(intersection, union), tf.math.divide_no_nan(
+      intersection, detection_area
   )
-  return tf.math.divide_no_nan(intersection, union)
