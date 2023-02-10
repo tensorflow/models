@@ -50,7 +50,6 @@ output.
 * Akhil Chinnakotla ([@GitHub The-Indian-Chinna](https://github.com/The-Indian-Chinna))
 * Tristan Yan ([@GitHub Tyan3001](https://github.com/Tyan3001))
 * Naveen Vivek ([@GitHub naveen-vivek](https://github.com/naveen-vivek))
-* Jacob Zietek ([@GitHub jacob-zietek](https://github.com/jacob-zietek))
 
 ## Table of Contents
 
@@ -67,20 +66,16 @@ connected to a new, more powerful backbone if a person chose to.
 
 ## Models in the library
 
-| Object Detectors | AP               | AP50             | Checkpoint Path  |
-| :--------------: | :--------------: | :--------------: | :--------------: |
-| Yolo-v3          |                  |
-| Yolo-v3 tiny     |                  |
-| Yolo-v3 spp      |                  |
-| Yolo-v4          |                  |
-| Yolo-v4 tiny     | 21.21            | 41.69            |
-| Yolo-v4 csp      |                  |
-| Yolo-v4 large    |                  |
+| Object Detectors | Classifiers      |
+| :--------------: | :--------------: |
+| Yolo-v3          | Darknet53        |
+| Yolo-v3 tiny     | CSPDarknet53     |
+| Yolo-v3 spp      |
+| Yolo-v4          |
+| Yolo-v4 tiny     |
+| Yolo-v4 csp      |
+| Yolo-v4 large    |
 
-| Classifiers      |
-| :--------------: |
-| Darknet53        |
-| CSPDarknet53     |
 ## Models Zoo
 
 
