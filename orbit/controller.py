@@ -316,10 +316,12 @@ class Controller:
 
     return eval_output
 
-  def train_and_evaluate(self,
-                         train_steps: int,
-                         eval_steps: int = -1,
-                         eval_interval: Optional[int] = None) -> None:
+  def train_and_evaluate(
+      self,
+      train_steps: int,
+      eval_steps: int = -1,
+      eval_interval: Optional[int] = None,
+  ) -> Optional[runner.Output]:
     """Runs interleaved training and evaluation.
 
     This method interleaves calls to `self.train()` and `self.evaluate()`,
@@ -337,24 +339,31 @@ class Controller:
         results in a shorter inner loop than specified by `steps_per_loop`
         setting. If None, evaluation will only be performed after training is
         complete.
+
+    Returns:
+      The evaluation results as a dictionary mapping names to NumPy values.
     """
     self._require("trainer", for_method="train_and_evaluate")
     self._require("evaluator", for_method="train_and_evaluate")
 
+    output = None
     current_step = self.global_step.numpy()  # Cache, since this is expensive.
     eval_interval = eval_interval or (train_steps - current_step)
     while current_step < train_steps:
       interval = min(train_steps - current_step, eval_interval)
       num_steps = current_step + interval
       self.train(steps=num_steps, checkpoint_at_completion=False)
-      self.evaluate(steps=eval_steps)
+      output = self.evaluate(steps=eval_steps)
       current_step = self.global_step.numpy()
     self._maybe_save_checkpoint(check_interval=False)
+    return output
 
-  def evaluate_continuously(self,
-                            steps: int = -1,
-                            timeout: Optional[Union[int, float]] = None,
-                            timeout_fn: Optional[Callable[[], bool]] = None):
+  def evaluate_continuously(
+      self,
+      steps: int = -1,
+      timeout: Optional[Union[int, float]] = None,
+      timeout_fn: Optional[Callable[[], bool]] = None,
+  ) -> Optional[runner.Output]:
     """Continuously monitors a directory and evaluates new checkpoints in it.
 
     This method continuously monitors a directory as specified by this
@@ -370,6 +379,9 @@ class Controller:
         returns True, then it means that no new checkpoints will be generated
         and the iterator will exit.
 
+    Returns:
+      The evaluation results as a dictionary mapping names to NumPy values.
+
     Raises:
       ValueError: If no checkpoint found in `self.checkpoint_manager.directory`.
       ValueError: If `evaluator` was not provided as a controller init arg.
@@ -377,12 +389,14 @@ class Controller:
     self._require("evaluator", for_method="evaluate_continuously")
     self._require("checkpoint_manager", for_method="evaluate_continuously")
 
+    output = None
     for checkpoint_path in tf.train.checkpoints_iterator(
         self.checkpoint_manager.directory,
         timeout=timeout,
         timeout_fn=timeout_fn):
       self.restore_checkpoint(checkpoint_path)
-      self.evaluate(steps)
+      output = self.evaluate(steps)
+    return output
 
   def restore_checkpoint(self, checkpoint_path: Optional[str] = None):
     """Restores the model from a checkpoint.
