@@ -56,6 +56,7 @@ class MoeModel():
                    use_output_context_gate: bool = False,
                    normalizer_fn=None,
                    normalizer_params: Optional[Dict[str, Any]] = None,
+                   vocab_as_last_dim: bool = False,
                    l2_penalty: float = 1e-5):
     """Creates a Mixture of (Logistic) Experts model.
 
@@ -71,6 +72,10 @@ class MoeModel():
       use_output_context_gate: if True apply context gate layer to the output.
       normalizer_fn: normalization op constructor (e.g. batch norm).
       normalizer_params: parameters to the `normalizer_fn`.
+      vocab_as_last_dim: if True reshape `activations` and make `vocab_size` as
+        the last dimension to avoid small `num_mixtures` as the last dimension.
+        XLA pads up the dimensions of tensors: typically the last dimension will
+        be padded to 128, and the second to last will be padded to 8.
       l2_penalty: How much to penalize the squared magnitudes of parameter
         values.
 
@@ -98,18 +103,27 @@ class MoeModel():
         kernel_regularizer=tf.keras.regularizers.l2(l2_penalty))(
             model_input)
 
-    gating_distribution = tf.nn.softmax(
-        tf.reshape(
-            gate_activations,
-            [-1, num_mixtures + 1]))  # (Batch * #Labels) x (num_mixtures + 1)
-    expert_distribution = tf.nn.sigmoid(
-        tf.reshape(expert_activations,
-                   [-1, num_mixtures]))  # (Batch * #Labels) x num_mixtures
+    if vocab_as_last_dim:
+      # Batch x (num_mixtures + 1) x #Labels
+      gate_activations = tf.reshape(
+          gate_activations, [-1, num_mixtures + 1, vocab_size])
+      # Batch x num_mixtures x #Labels
+      expert_activations = tf.reshape(
+          expert_activations, [-1, num_mixtures, vocab_size])
+    else:
+      # (Batch * #Labels) x (num_mixtures + 1)
+      gate_activations = tf.reshape(gate_activations, [-1, num_mixtures + 1])
+      # (Batch * #Labels) x num_mixtures
+      expert_activations = tf.reshape(expert_activations, [-1, num_mixtures])
 
-    final_probabilities_by_class_and_batch = tf.reduce_sum(
-        gating_distribution[:, :num_mixtures] * expert_distribution, 1)
-    final_probabilities = tf.reshape(final_probabilities_by_class_and_batch,
-                                     [-1, vocab_size])
+    gating_distribution = tf.nn.softmax(gate_activations, axis=1)
+    expert_distribution = tf.nn.sigmoid(expert_activations)
+    final_probabilities = tf.reduce_sum(
+        gating_distribution[:, :num_mixtures] * expert_distribution, axis=1)
+
+    if not vocab_as_last_dim:
+      final_probabilities = tf.reshape(final_probabilities, [-1, vocab_size])
+
     if use_output_context_gate:
       final_probabilities = utils.context_gate(
           final_probabilities,
