@@ -178,6 +178,7 @@ class DbofModel(tf.keras.Model):
         num_mixtures=params.agg_model.num_mixtures,
         normalizer_fn=self._norm,
         normalizer_params=norm_args,
+        vocab_as_last_dim=params.agg_model.vocab_as_last_dim,
         l2_penalty=params.agg_model.l2_penalty)
 
     super().__init__(

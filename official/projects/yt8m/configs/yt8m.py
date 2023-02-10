@@ -109,6 +109,7 @@ class MoeModel(hyperparams.Config):
   l2_penalty: float = 1e-5
   use_input_context_gate: bool = False
   use_output_context_gate: bool = False
+  vocab_as_last_dim: bool = False
 
 
 @dataclasses.dataclass
@@ -156,7 +157,6 @@ class YT8MTask(cfg.TaskConfig):
   evaluation: Evaluation = Evaluation(
       average_precision=AveragePrecisionConfig())
   gradient_clip_norm: float = 1.0
-  num_readers: int = 8
 
 
 def add_trainer(
