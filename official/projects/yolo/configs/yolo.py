@@ -83,6 +83,7 @@ class DataDecoder(hyperparams.OneOfConfig):
 @dataclasses.dataclass
 class Mosaic(hyperparams.Config):
   mosaic_frequency: float = 0.0
+  mosaic9_frequency: float = 0.0
   mixup_frequency: float = 0.0
   mosaic_center: float = 0.2
   mosaic_crop_mode: Optional[str] = None
