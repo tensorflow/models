@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for auto augment."""
+"""Tests for autoaugment."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -297,7 +297,7 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
     return policy
 
   def test_custom_policy(self):
-    """Test auto augment with a custom policy."""
+    """Test autoaugment with a custom policy."""
     image = tf.zeros((224, 224, 3), dtype=tf.uint8)
     augmenter = augment.AutoAugment(policies=self._generate_test_policy())
     aug_image = augmenter.distort(image)
@@ -311,7 +311,7 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
        'sub_policy': ('Equalize', 0.9, 11), 'value': '11'},
   )
   def test_invalid_custom_sub_policy(self, sub_policy, value):
-    """Test auto augment with out-of-range values in the custom policy."""
+    """Test autoaugment with out-of-range values in the custom policy."""
     image = tf.zeros((224, 224, 3), dtype=tf.uint8)
     policy = self._generate_test_policy()
     policy[0][0] = sub_policy
@@ -324,7 +324,7 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
       augmenter.distort(image)
 
   def test_invalid_custom_policy_ndim(self):
-    """Test auto augment with wrong dimension in the custom policy."""
+    """Test autoaugment with wrong dimension in the custom policy."""
     policy = [[('Equalize', 0.8, 1), ('Shear', 0.8, 4)],
               [('TranslateY', 0.6, 3), ('Rotate', 0.9, 3)]]
     policy = [[policy]]
@@ -335,7 +335,7 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
       augment.AutoAugment(policies=policy)
 
   def test_invalid_custom_policy_shape(self):
-    """Test auto augment with wrong shape in the custom policy."""
+    """Test autoaugment with wrong shape in the custom policy."""
     policy = [[('Equalize', 0.8, 1, 1), ('Shear', 0.8, 4, 1)],
               [('TranslateY', 0.6, 3, 1), ('Rotate', 0.9, 3, 1)]]
 
@@ -345,7 +345,7 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
       augment.AutoAugment(policies=policy)
 
   def test_invalid_custom_policy_key(self):
-    """Test auto augment with invalid key in the custom policy."""
+    """Test autoaugment with invalid key in the custom policy."""
     image = tf.zeros((224, 224, 3), dtype=tf.uint8)
     policy = [[('AAAAA', 0.8, 1), ('Shear', 0.8, 4)],
               [('TranslateY', 0.6, 3), ('Rotate', 0.9, 3)]]
