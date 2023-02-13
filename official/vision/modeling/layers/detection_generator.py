@@ -851,14 +851,10 @@ def _generate_detections_tflite(
   config.update({'num_classes': num_classes})
 
   for i in range(min_level, max_level + 1):
-    scores.append(
-        tf.sigmoid(
-            tf.reshape(raw_scores[str(i)], [batch_size, -1, num_classes])
-        )
-    )
+    scores.append(tf.reshape(raw_scores[str(i)], [batch_size, -1, num_classes]))
     boxes.append(tf.reshape(raw_boxes[str(i)], [batch_size, -1, 4]))
     anchors.append(tf.reshape(anchor_boxes[str(i)], [-1, 4]))
-  scores = tf.concat(scores, 1)
+  scores = tf.sigmoid(tf.concat(scores, 1))
   boxes = tf.concat(boxes, 1)
   anchors = tf.concat(anchors, 0)
 
