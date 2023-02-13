@@ -22,6 +22,8 @@ from official.projects.panoptic.configs import panoptic_deeplab
 from official.projects.panoptic.configs import panoptic_maskrcnn
 from official.projects.panoptic.tasks import panoptic_deeplab as panoptic_deeplab_task
 from official.projects.panoptic.tasks import panoptic_maskrcnn as panoptic_maskrcnn_task
+from official.projects.uvit import configs
+from official.projects.uvit import tasks
 from official.vision import train
 # pylint: enable=unused-import
 

@@ -23,9 +23,11 @@ from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
 from official.projects.deepmac_maskrcnn.configs import deep_mask_head_rcnn as deepmac_maskrcnn
+from official.projects.uvit.configs import backbones as uvit_backbones
 from official.vision.configs import common
 from official.vision.configs import maskrcnn
 from official.vision.configs import semantic_segmentation
+from official.vision.configs.google import backbones
 
 
 SEGMENTATION_MODEL = semantic_segmentation.SemanticSegmentationModel
@@ -92,8 +94,21 @@ class PanopticSegmentationGenerator(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class Backbone(backbones.Backbone):
+  """Configuration for backbones.
+
+  Attributes:
+    type: "str", type of backbone be used, one the of fields below.
+    uvit: uvit backbone config.
+  """
+  type: Optional[str] = None
+  uvit: uvit_backbones.VisionTransformer = uvit_backbones.VisionTransformer()
+
+
+@dataclasses.dataclass
 class PanopticMaskRCNN(deepmac_maskrcnn.DeepMaskHeadRCNN):
   """Panoptic Mask R-CNN model config."""
+  backbone: Backbone = Backbone()
   segmentation_model: semantic_segmentation.SemanticSegmentationModel = (
       SEGMENTATION_MODEL(num_classes=2))
   include_mask = True
