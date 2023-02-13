@@ -563,6 +563,7 @@ def metric_evaluation(
       gt_faces: tf.Tensor,
       gt_faces_mask: tf.Tensor,
   )-> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+
     pred_samples, pred_normals, pred_sampled_verts_ind = self.sample_meshes(pred_verts, pred_verts_mask, pred_faces, pred_faces_mask)
     gt_samples, gt_normals, gt_sampled_verts_ind = self.sample_meshes(gt_verts, gt_verts_mask, gt_faces, gt_faces_mask)
 
@@ -574,8 +575,173 @@ def metric_evaluation(
 
     f_score = tfg.nn.metric.fscore.evaluate(gt_verts, pred_verts)
 
-    cos = tf.keras.losses.cosine_similarity(gt_normals, pred_normals)
-    cos_sim = cos.mean(dim =1)
-    normal_consistency = 0.5 * (cos_sim)
+    normals_a_nearest_to_b, normals_b_nearest_to_a = _get_features_nearest_neighbors(pointcloud_a, pointcloud_b, normals_a, normals_b)
+ 
+    abs_normal_dist_a = 1 - tf.math.abs(
+      _cosine_similarity(normals_b_nearest_to_a, normals_a)
+    )
+    abs_normal_dist_b = 1 - tf.math.abs(
+      _cosine_similarity(normals_a_nearest_to_b, normals_b)
+    )
+
+    normal_consistency = _add_pointcloud_distances(
+      abs_normal_dist_a, abs_normal_dist_b)
+    ##cos = tf.keras.losses.cosine_similarity(gt_normals, pred_normals)
+    ##cos_sim = cos.mean(dim =1)
+    ##normal_consistency = 0.5 * (cos_sim)
 
     return chamfer_loss, precision, recall, f_score, normal_consistency
+
+def _cosine_similarity(a: tf.Tensor, b: tf.Tensor) -> tf.Tensor:
+  """Computes the cosine similarity between `Tensor`s `a` and `b` along axis=-1.
+  Args:
+    a: A float `Tensor` with at least 2 dimensions with shape [B, ..., D].
+       where D is the dimensionality of the points.
+    b: A float `Tensor` with at least 2 dimensions and the same shape as `a`.
+  Returns:
+    cosine_similarity: A float `Tensor` with shape [B, ...] where the new
+      innermost dim is the cosine similarity between of the points (innermost
+      dim) in `a` and `b`.
+  """
+  a_norm = tf.linalg.l2_normalize(a, axis=-1)
+  b_norm = tf.linalg.l2_normalize(b, axis=-1)
+  return tf.reduce_sum(a_norm * b_norm, axis=-1)
+
+def _add_pointcloud_distances(dist_a: tf.Tensor,
+                              dist_b: tf.Tensor) -> tf.Tensor:
+  """Compute a symmetric pointcloud distance from two asymmetric distances.
+  Args:
+    dist_a: A float `Tensor` with shape [B, num_points_a] representing an
+      (asymmetric) distance metric with respect to pointcloud a.
+    dist_b: A float `Tensor` with shape [B, num_points_b] representing an
+      (asymmetric) distance metric with respect to pointcloud b.
+    weights: An optional float `Tensor` with shape [B,] giving weights for
+      batch elements for reduction operation.
+    point_reduction: Reduction operation to apply for the loss across the
+      points, can be one of ["mean", "sum"].
+    batch_reduction: Reduction operation to apply for the loss across the
+      batch, can be one of ["mean", "sum"] or None.
+  Returns:
+    distance: A float `Tensor` of shape [B,] if `batch_reduction` is None
+      or [] (i.e. scalar) otherwise, representing a reduced (and potentially
+      weighted) symmetric pointcloud distance metric.
+  """
+  batch_size = tf.cast(tf.shape(dist_a)[0], tf.float32)
+  num_points_a = tf.cast(tf.shape(dist_a)[1], tf.float32)
+  num_points_b = tf.cast(tf.shape(dist_b)[1], tf.float32)
+
+
+  # Point reduction: sum all dists into one element per batch.
+  dist_a = tf.reduce_sum(dist_a, axis=-1)
+  dist_b = tf.reduce_sum(dist_b, axis=-1)
+
+  dist_a /= num_points_a
+  dist_b /= num_points_b
+
+
+  return dist_a + dist_b
+
+def _compute_square_distances(
+    pointcloud_a: tf.Tensor,
+    pointcloud_b: tf.Tensor,
+) -> tf.Tensor:
+  """Compute the squared distance between each point in the input pointclouds.
+  Args:
+    pointcloud_a: A float `Tensor` of shape [B, num_points_a, 3] holding the
+      coordinates of samples points from a batch of meshes. The pointcloud
+      for a mesh will be 0 (i.e. pointcloud_a[i, :, :] = 0) if the mesh is
+      empty (i.e. verts_mask[i,:] = 0).
+    pointcloud_b: A float `Tensor` of shape [B, num_points_b, 3] holding the
+      coordinates of samples points from a batch of meshes.
+  Returns:
+    square_distances: A float `Tensor` of shape [B, num_points_a, num_points_b]
+      where the value given by entry [b, i, j] is the squared l2 norm of the
+      difference between the vectors `pointcloud_a[b, i, :]` and
+      `pointcloud_b[b, j, :]`.
+  """
+  # FloatTensor[B, num_points_a, num_points_b, 3] where the vector given by
+  # entry [b, i, j, :] is the vector
+  # `(pointcloud_a[b, i, :] - pointcloud_b[b, j, :])`.
+  difference = (tf.expand_dims(pointcloud_a, axis=-2) -
+                tf.expand_dims(pointcloud_b, axis=-3))
+
+  return tf.norm(difference, ord=2, axis=-1) ** 2
+
+def _get_features_nearest_neighbors(
+    pointcloud_a: tf.Tensor,
+    pointcloud_b: tf.Tensor,
+    feats_a: tf.Tensor,
+    feats_b: tf.Tensor,
+) -> Tuple[tf.Tensor, tf.Tensor]:
+  """Get two feature `Tensor`s of the nearest neighbors between each pointcloud.
+  `feats_a` and `feats_b` can be various features of the points in the
+  pointclouds 'a' and 'b'. Here are two example use cases for this function:
+  1. If the Tensor passed in for `pointcloud_x` is also the Tensor passed in
+  for `feats_x` (x signifying this is done for both pointclouds a and b), then
+  the Tensors returned will be the points in `a` nearest to those in `b` and
+  the points in `b` nearest to those in `a`. Put simply, this returns the
+  nearest neightbors of each pointcloud to the points in the other pointcloud.
+  2. If the Tensors passed in for `feats_x` are the normal vectors of the
+  corresponding points in `pointcloud_x`, then the Tensors returned will
+  be the normals corresponding to the re-ordered points from `normals_a` that
+  are the closest to the points in `normals_b` and vice versa.
+  Args:
+    pointcloud_a: A float `Tensor` of shape [B, num_points_a, 3] holding the
+      coordinates of samples points from a batch of meshes. The pointcloud
+      for a mesh will be 0 (i.e. pointcloud_a[i, :, :] = 0) if the mesh is
+      empty (i.e. verts_mask[i,:] = 0).
+    pointcloud_b: A float `Tensor` of shape [B, num_points_b, 3] holding the
+      coordinates of samples points from a batch of meshes.
+    feats_a: A float `Tensor` of shape [B, num_points_a, 3] holding a
+      feature vector corresponding to each sampled point in the pointcloud.
+    feats_b: A float `Tensor` of shape [B, num_points_b, 3] holding the
+      feature vector corresponding to each sampled point in the pointcloud.
+  Returns:
+    feats_a_nearest_to_b: A float `Tensor` of shape [B, num_points_b, 3]
+      representing the features corresponding to the re-ordered points from
+      `feats_a` that are the closest to the points in `feats_b`.
+    feats_b_nearest_to_a: A float `Tensor` of shape [B, num_points_a, 3]
+      representing the features corresponding to the re-ordered points from
+      `feats_b` that are the closest to the points in `feats_a`.
+  """
+  batch_size = tf.shape(pointcloud_a)[0]
+  num_points_a = tf.shape(pointcloud_a)[1]
+  num_points_b = tf.shape(pointcloud_b)[1]
+
+  square_distances = _compute_square_distances(pointcloud_a, pointcloud_b)
+
+  # IntTensor[B, num_points_a] where the element i of the vector holds the value j
+  # such that point `pointcloud_a[b, i, :]`"s nearest neightbor is
+  # `pointcloud_b[b, j, :]`.
+  a_nearest_neighbors_in_b = tf.argmin(
+      square_distances, axis=-1, output_type=tf.int32
+  )
+  # IntTensor[B, num_points_b] where the element i of the vector holds the value j
+  # such that point `pointcloud_b[b, i, :]`"s nearest neightbor is
+  # `pointcloud_a[b, j, :]`.
+  b_nearest_neighbors_in_a = tf.argmin(
+      square_distances, axis=-2, output_type=tf.int32
+  )
+
+  # IntTensor[B, 1, 1] where the element in each batch is the batch index.
+  batch_ind = tf.expand_dims(
+      tf.expand_dims(tf.range(batch_size), axis=-1), axis=-1
+  )
+  # IntTensor[B, num_points_a, 1] where the single element in the rows for
+  # each batch is the batch idx.
+  batch_ind_a = tf.repeat(batch_ind, num_points_a, axis=1)
+  # IntTensor[B, num_points_b, 1]
+  batch_ind_b = tf.repeat(batch_ind, num_points_b, axis=1)
+
+  a_nearest_neighbors_in_b_ind = tf.concat(
+      [batch_ind_a, tf.expand_dims(a_nearest_neighbors_in_b, axis=-1)], axis=-1
+  )
+  b_nearest_neighbors_in_a_ind = tf.concat(
+      [batch_ind_b, tf.expand_dims(b_nearest_neighbors_in_a, axis=-1)], axis=-1
+  )
+
+  feats_a_nearest_to_b = tf.gather_nd(feats_a, b_nearest_neighbors_in_a_ind)
+  feats_b_nearest_to_a = tf.gather_nd(feats_b, a_nearest_neighbors_in_b_ind)
+
+  return feats_a_nearest_to_b, feats_b_nearest_to_a
+
