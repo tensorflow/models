@@ -1,0 +1,74 @@
+# --experiment_type=retinanet_mobile_coco_qat
+# --topology=4x4
+# --tpu_platform=df
+# COCO mAP: 24.43 from QAT training and 23.1 from the TFLite after conversion.
+# QAT only supports float32 tpu due to fake-quant op.
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'float32'
+task:
+  losses:
+    l2_weight_decay: 0.0
+  model:
+    anchor:
+      anchor_size: 3
+      aspect_ratios: [0.5, 1.0, 2.0]
+      num_scales: 3
+    backbone:
+      mobilenet:
+        model_id: 'MobileNetMultiAVG'
+        filter_size_scale: 1.0
+      type: 'mobilenet'
+    decoder:
+      type: 'fpn'
+      fpn:
+        num_filters: 128
+        use_separable_conv: true
+        use_keras_layer: true
+    head:
+      num_convs: 4
+      num_filters: 128
+      use_separable_conv: true
+    input_size: [256, 256, 3]
+    max_level: 7
+    min_level: 3
+    norm_activation:
+      activation: 'relu6'
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+  train_data:
+    dtype: 'float32'
+    global_batch_size: 256
+    is_training: true
+    parser:
+      aug_rand_hflip: true
+      aug_scale_max: 2.0
+      aug_scale_min: 0.5
+  validation_data:
+    dtype: 'float32'
+    global_batch_size: 256
+    is_training: false
+    drop_remainder: false
+  quantization:
+    pretrained_original_checkpoint: 'gs://**/coco_mobilenetv3.5_avg_mobile_tpu/ckpt-277200'
+    quantize_detection_decoder: true
+    quantize_detection_head: true
+trainer:
+  best_checkpoint_eval_metric: AP
+  best_checkpoint_export_subdir: best_ckpt
+  best_checkpoint_metric_comp: higher
+  optimizer_config:
+    learning_rate:
+      type: 'exponential'
+      exponential:
+        decay_rate: 0.96
+        decay_steps: 231
+        initial_learning_rate: 0.5
+        name: 'ExponentialDecay'
+        offset: 0
+        staircase: true
+  steps_per_loop: 462
+  train_steps: 46200
+  validation_interval: 462
+  validation_steps: 20
