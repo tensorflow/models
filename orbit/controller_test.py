@@ -647,8 +647,7 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
         evaluator=TestEvaluatorNoOutput(),
         global_step=tf.Variable(0, dtype=tf.int64),
         eval_summary_dir=os.path.join(self.model_dir, "summaries/eval"))
-    self.assertSameElements(["steps_per_second"],
-                            test_controller.evaluate(steps=5).keys())
+    self.assertEqual(test_controller.evaluate(steps=5), {})
 
   def test_train_and_evaluate_reset_datasets(self):
     test_runner = TestRunner()
