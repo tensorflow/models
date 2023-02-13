@@ -88,9 +88,13 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
       elif init_module == 'backbone':
         checkpoint_path = _get_checkpoint_path(
             self.task_config.init_checkpoint)
-        ckpt = tf.train.Checkpoint(backbone=model.backbone)
-        status = ckpt.read(checkpoint_path)
-        status.expect_partial().assert_existing_objects_matched()
+
+        if self.task_config.model.backbone.type == 'uvit':
+          model.backbone.load_checkpoint(ckpt_filepath=checkpoint_path)
+        else:
+          ckpt = tf.train.Checkpoint(backbone=model.backbone)
+          status = ckpt.read(checkpoint_path)
+          status.expect_partial().assert_existing_objects_matched()
 
       elif init_module == 'decoder':
         checkpoint_path = _get_checkpoint_path(
