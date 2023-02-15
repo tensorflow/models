@@ -15,6 +15,7 @@
 """Common TF utilities."""
 
 import functools
+import inspect
 import six
 import tensorflow as tf
 
@@ -291,3 +292,81 @@ def clone_initializer(initializer):
   # create a new keras Initializer instance based on that, and we don't need to
   # do anything
   return initializer
+
+
+def serialize_keras_object(obj):
+  if hasattr(tf.keras.utils, "legacy"):
+    return tf.keras.utils.legacy.serialize_keras_object(obj)
+  else:
+    return tf.keras.utils.serialize_keras_object(obj)
+
+
+def deserialize_keras_object(
+    config, module_objects=None, custom_objects=None, printable_module_name=None
+):
+  if hasattr(tf.keras.utils, "legacy"):
+    return tf.keras.utils.legacy.deserialize_keras_object(
+        config, custom_objects, module_objects, printable_module_name
+    )
+  else:
+    return tf.keras.utils.deserialize_keras_object(
+        config, custom_objects, module_objects, printable_module_name
+    )
+
+
+def serialize_layer(layer, use_legacy_format=False):
+  if (
+      "use_legacy_format"
+      in inspect.getfullargspec(tf.keras.layers.serialize).args
+  ):
+    return tf.keras.layers.serialize(layer, use_legacy_format=use_legacy_format)
+  else:
+    return tf.keras.layers.serialize(layer)
+
+
+def serialize_initializer(initializer, use_legacy_format=False):
+  if (
+      "use_legacy_format"
+      in inspect.getfullargspec(tf.keras.initializers.serialize).args
+  ):
+    return tf.keras.initializers.serialize(
+        initializer, use_legacy_format=use_legacy_format
+    )
+  else:
+    return tf.keras.initializers.serialize(initializer)
+
+
+def serialize_regularizer(regularizer, use_legacy_format=False):
+  if (
+      "use_legacy_format"
+      in inspect.getfullargspec(tf.keras.regularizers.serialize).args
+  ):
+    return tf.keras.regularizers.serialize(
+        regularizer, use_legacy_format=use_legacy_format
+    )
+  else:
+    return tf.keras.regularizers.serialize(regularizer)
+
+
+def serialize_constraint(constraint, use_legacy_format=False):
+  if (
+      "use_legacy_format"
+      in inspect.getfullargspec(tf.keras.constraints.serialize).args
+  ):
+    return tf.keras.constraints.serialize(
+        constraint, use_legacy_format=use_legacy_format
+    )
+  else:
+    return tf.keras.constraints.serialize(constraint)
+
+
+def serialize_activation(activation, use_legacy_format=False):
+  if (
+      "use_legacy_format"
+      in inspect.getfullargspec(tf.keras.activations.serialize).args
+  ):
+    return tf.keras.activations.serialize(
+        activation, use_legacy_format=use_legacy_format
+    )
+  else:
+    return tf.keras.activations.serialize(activation)
