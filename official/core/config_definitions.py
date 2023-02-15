@@ -237,6 +237,8 @@ class TrainerConfig(base_config.Config):
       trainer should compare the evaluation metrics. This can be either `higher`
       (higher the better) or `lower` (lower the better).
     validation_summary_subdir: A 'str', sub directory for saving eval summary.
+    preemption_on_demand_checkpoint: whether or not to save on-demand
+      checkpoints after a preemption.
   """
   optimizer_config: OptimizationConfig = OptimizationConfig()
   # Orbit settings.
@@ -269,6 +271,8 @@ class TrainerConfig(base_config.Config):
   # we will retore the model states.
   recovery_max_trials: int = 0
   validation_summary_subdir: str = "validation"
+  # Preemption on-demand checkpoint.
+  preemption_on_demand_checkpoint: bool = True
 
 
 @dataclasses.dataclass
