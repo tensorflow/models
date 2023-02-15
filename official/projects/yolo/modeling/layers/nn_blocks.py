@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Contains common building blocks for yolo neural networks."""
+import functools
 from typing import Callable, List, Tuple
 
 import tensorflow as tf
@@ -1716,3 +1717,234 @@ class Reorg(tf.keras.layers.Layer):
         x[..., 1::2, 1::2, :]
     ],
                      axis=-1)
+
+
+class SPPCSPC(tf.keras.layers.Layer):
+  """Cross-stage partial network with spatial pyramid pooling.
+
+  This module is used in YOLOv7 to process backbone feature at the highest
+  level. SPPCSPC uses fusion-first CSP block and it uses SPP within
+  the dense block.
+  """
+
+  def __init__(
+      self,
+      filters,
+      pool_sizes=(5, 9, 13),
+      scale=0.5,
+      kernel_initializer='VarianceScaling',
+      bias_initializer='zeros',
+      kernel_regularizer=None,
+      bias_regularizer=None,
+      use_separable_conv=False,
+      use_bn=True,
+      use_sync_bn=False,
+      norm_momentum=0.99,
+      norm_epsilon=0.001,
+      activation='swish',
+      **kwargs):
+    """Initializes SPPCSPC block.
+
+    Args:
+      filters: an `int` for filters used in Conv2D.
+      pool_sizes: a tuple of `int` for maxpool layer used in the dense block.
+      scale: a `float` scale that applies on the filters to determine the
+        internal Conv2D filters within CSP block.
+      kernel_initializer: string to indicate which function to use to initialize
+        weights in Conv2D.
+      bias_initializer: string to indicate which function to use to initialize
+        bias.
+      kernel_regularizer: string to indicate which function to use to
+        regularizer weights in Conv2D.
+      bias_regularizer: string to indicate which function to use to regularizer
+        bias.
+      use_separable_conv: `bool` wether to use separable convs.
+      use_bn: boolean for whether to use batch normalization.
+      use_sync_bn: boolean for whether sync batch normalization statistics
+        of all batch norm layers to the models global statistics
+        (across all input batches).
+      norm_momentum: float for moment to use for batch normalization.
+      norm_epsilon: float for batch normalization epsilon.
+      activation: string to indicate the activation function used after each
+        Conv2D.
+      **kwargs: other keyword arguments.
+    """
+    super().__init__(**kwargs)
+    self._filters = filters
+    self._pool_sizes = pool_sizes
+    self._scale = scale
+    self._kernel_initializer = kernel_initializer
+    self._bias_initializer = bias_initializer
+    self._kernel_regularizer = kernel_regularizer
+    self._bias_regularizer = bias_regularizer
+    self._use_separable_conv = use_separable_conv
+    self._use_bn = use_bn
+    self._use_sync_bn = use_sync_bn
+    self._norm_momentum = norm_momentum
+    self._norm_epsilon = norm_epsilon
+    self._activation = activation
+
+  def build(self, input_shape):
+    filters = self._filters * 2 * self._scale
+    conv_op = functools.partial(
+        ConvBN,
+        activation=self._activation,
+        kernel_initializer=self._kernel_initializer,
+        kernel_regularizer=self._kernel_regularizer,
+    )
+    self._conv1_1 = conv_op(filters, kernel_size=1, strides=1)
+    self._conv1_2 = conv_op(filters, kernel_size=3, strides=1)
+    self._conv1_3 = conv_op(filters, kernel_size=1, strides=1)
+    self._poolings = [
+        tf.keras.layers.MaxPooling2D(pool_size, strides=1, padding='same')
+        for pool_size in self._pool_sizes
+    ]
+    self._conv1_4 = conv_op(filters, kernel_size=1, strides=1)
+    self._conv1_5 = conv_op(filters, kernel_size=3, strides=1)
+
+    self._conv2_1 = conv_op(filters, kernel_size=1, strides=1)
+
+    self._merge_conv = conv_op(self._filters, kernel_size=1, strides=1)
+    super().build(input_shape)
+
+  def call(self, inputs, training=None):
+    x = self._conv1_3(self._conv1_2(self._conv1_1(inputs)))
+    x = self._conv1_5(
+        self._conv1_4(
+            tf.concat([x] + [pooling(x) for pooling in self._poolings], -1)
+        )
+    )
+    y = self._conv2_1(inputs)
+    return self._merge_conv(tf.concat([x, y], axis=-1))
+
+  def get_config(self):
+    # used to store/share parameters to reconstruct the model
+    layer_config = {
+        'filters': self._filters,
+        'pool_sizes': self._pool_sizes,
+        'scale': self._scale,
+        'kernel_initializer': self._kernel_initializer,
+        'bias_initializer': self._bias_initializer,
+        'kernel_regularizer': self._kernel_regularizer,
+        'bias_regularizer': self._bias_regularizer,
+        'use_bn': self._use_bn,
+        'use_sync_bn': self._use_sync_bn,
+        'use_separable_conv': self._use_separable_conv,
+        'norm_momentum': self._norm_momentum,
+        'norm_epsilon': self._norm_epsilon,
+        'activation': self._activation,
+    }
+    layer_config.update(super().get_config())
+    return layer_config
+
+
+class RepConv(tf.keras.layers.Layer):
+  """Represented convolution.
+
+  https://arxiv.org/abs/2101.03697
+  """
+
+  def __init__(
+      self,
+      filters,
+      kernel_size=3,
+      strides=1,
+      padding='same',
+      activation='swish',
+      use_sync_bn=False,
+      norm_momentum=0.99,
+      norm_epsilon=0.001,
+      kernel_initializer='VarianceScaling',
+      kernel_regularizer=None,
+      bias_initializer='zeros',
+      bias_regularizer=None,
+      **kwargs
+  ):
+    """Initializes RepConv layer.
+
+    Args:
+      filters: integer for output depth, or the number of features to learn.
+      kernel_size: integer or tuple for the shape of the weight matrix or kernel
+        to learn.
+      strides: integer of tuple how much to move the kernel after each kernel
+        use.
+      padding: string 'valid' or 'same', if same, then pad the image, else do
+        not.
+      activation: string or None for activation function to use in layer,
+        if None activation is replaced by linear.
+      use_sync_bn: boolean for whether sync batch normalization statistics
+        of all batch norm layers to the models global statistics
+        (across all input batches).
+      norm_momentum: float for moment to use for batch normalization.
+      norm_epsilon: float for batch normalization epsilon.
+      kernel_initializer: string to indicate which function to use to initialize
+        weights.
+      kernel_regularizer: string to indicate which function to use to
+        regularizer weights.
+      bias_initializer: string to indicate which function to use to initialize
+        bias.
+      bias_regularizer: string to indicate which function to use to regularizer
+        bias.
+      **kwargs: other keyword arguments.
+    """
+    super().__init__(**kwargs)
+    self._filters = filters
+    self._kernel_size = kernel_size
+    self._strides = strides
+    self._padding = padding
+    self._activation = activation
+    self._use_sync_bn = use_sync_bn
+    self._norm_momentum = norm_momentum
+    self._norm_epsilon = norm_epsilon
+    self._kernel_initializer = kernel_initializer
+    self._kernel_regularizer = kernel_regularizer
+    self._bias_initializer = bias_initializer
+    self._bias_regularizer = bias_regularizer
+    # For deploy.
+    self._fuse = False
+
+  def build(self, input_shape):
+    conv_op = functools.partial(
+        tf.keras.layers.Conv2D,
+        filters=self._filters,
+        strides=self._strides,
+        padding=self._padding,
+        activation=self._activation,
+        kernel_initializer=self._kernel_initializer,
+        kernel_regularizer=self._kernel_regularizer,
+        bias_initializer=self._bias_initializer,
+        bias_regularizer=self._bias_regularizer,
+    )
+    bn_op = functools.partial(
+        tf.keras.layers.BatchNormalization,
+        synchronized=self._use_sync_bn,
+        momentum=self._norm_momentum,
+        epsilon=self._norm_epsilon,
+    )
+
+    self._activation_fn = tf_utils.get_activation(self._activation)
+    self._rbr_reparam = conv_op(kernel_size=self._kernel_size, use_bias=True)
+    if input_shape[-1] == self._filters and self._strides == 1:
+      self._rbr_identity = bn_op()
+    self._rbr_dense = conv_op(kernel_size=self._kernel_size, use_bias=False)
+    self._rbr_dense_bn = bn_op()
+    self._rbr_1x1 = conv_op(kernel_size=1, use_bias=False)
+    self._rbr_1x1_bn = bn_op()
+
+  def call(self, inputs, training=None):
+    if self._fuse:
+      return self._activation_fn(self._rbr_reparam(inputs))
+
+    id_out = 0
+    if hasattr(self, '_rbr_identity'):
+      id_out = self._rbr_identity(inputs)
+
+    x = self._rbr_dense_bn(self._rbr_dense(inputs))
+    y = self._rbr_1x1_bn(self._rbr_1x1(inputs))
+    return self._activation_fn(x + y + id_out)
+
+  def fuse(self):
+    if self._fuse:
+      return
+    # TODO(b/264495198): Implement fuse for RepConv.
+    raise NotImplementedError()
