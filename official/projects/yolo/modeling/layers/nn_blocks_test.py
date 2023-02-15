@@ -301,5 +301,80 @@ class DarkRouteProcessTest(tf.test.TestCase, parameterized.TestCase):
     return
 
 
+class SPPCSPCTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(('SPPCSPC', 224, 224, 8, [5, 9, 13], 0.5),
+                                  ('test1', 300, 300, 32, [2, 3, 4, 5], 1.0),
+                                  ('test2', 256, 256, 16, [10], 2.0))
+  def test_pass_through(self, width, height, filters, pool_sizes, scale):
+    x = tf.keras.Input(shape=(width, height, filters))
+    test_layer = nn_blocks.SPPCSPC(filters, pool_sizes, scale)
+    out = test_layer(x)
+    self.assertAllEqual(out.shape.as_list(), [None, width, height, filters])
+
+  @parameterized.named_parameters(('SPPCSPC', 224, 224, 8, [5, 9, 13], 0.5),
+                                  ('test1', 300, 300, 32, [2, 3, 4, 5], 1.0),
+                                  ('test2', 256, 256, 16, [10], 2.0))
+  def test_gradient_pass_though(
+      self, width, height, filters, pool_sizes, scale):
+    loss = tf.keras.losses.MeanSquaredError()
+    optimizer = tf.keras.optimizers.SGD()
+    test_layer = nn_blocks.SPPCSPC(filters, pool_sizes, scale)
+
+    init = tf.random_normal_initializer()
+    x = tf.Variable(
+        initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
+    y = tf.Variable(
+        initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
+
+    with tf.GradientTape() as tape:
+      x_hat = test_layer(x)
+      grad_loss = loss(x_hat, y)
+    grad = tape.gradient(grad_loss, test_layer.trainable_variables)
+    optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
+
+    self.assertNotIn(None, grad)
+    return
+
+
+class RepConvTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(('RepConv', 224, 224, 8, 1),
+                                  ('test1', 300, 300, 32, 2),
+                                  ('test2', 256, 256, 16, 4))
+  def test_pass_through(self, width, height, filters, strides):
+    x = tf.keras.Input(shape=(width, height, filters))
+    test_layer = nn_blocks.RepConv(filters, strides=strides)
+    out = test_layer(x)
+    self.assertAllEqual(out.shape.as_list(),
+                        [None, width // strides, height // strides, filters])
+
+  @parameterized.named_parameters(('RepConv', 224, 224, 8, 1),
+                                  ('test1', 300, 300, 32, 2),
+                                  ('test2', 256, 256, 16, 4))
+  def test_gradient_pass_though(self, width, height, filters, strides):
+    loss = tf.keras.losses.MeanSquaredError()
+    optimizer = tf.keras.optimizers.SGD()
+    test_layer = nn_blocks.RepConv(filters, strides=strides)
+
+    init = tf.random_normal_initializer()
+    x = tf.Variable(
+        initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
+    y = tf.Variable(
+        initial_value=init(
+            shape=(1, width // strides, height // strides, filters),
+            dtype=tf.float32,
+        )
+    )
+
+    with tf.GradientTape() as tape:
+      x_hat = test_layer(x)
+      grad_loss = loss(x_hat, y)
+    grad = tape.gradient(grad_loss, test_layer.trainable_variables)
+    optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
+
+    self.assertNotIn(None, grad)
+    return
+
 if __name__ == '__main__':
   tf.test.main()
