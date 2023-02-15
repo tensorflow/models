@@ -193,10 +193,14 @@ class BertEncoderV2(tf.keras.layers.Layer):
         'max_sequence_length': max_sequence_length,
         'type_vocab_size': type_vocab_size,
         'inner_dim': inner_dim,
-        'inner_activation': tf.keras.activations.serialize(activation),
+        'inner_activation': tf_utils.serialize_activation(
+            activation, use_legacy_format=True
+        ),
         'output_dropout': output_dropout,
         'attention_dropout': attention_dropout,
-        'initializer': tf.keras.initializers.serialize(initializer),
+        'initializer': tf_utils.serialize_initializer(
+            initializer, use_legacy_format=True
+        ),
         'output_range': output_range,
         'embedding_width': embedding_width,
         'embedding_layer': embedding_layer,
@@ -568,10 +572,14 @@ class BertEncoder(tf.keras.Model):
         'max_sequence_length': max_sequence_length,
         'type_vocab_size': type_vocab_size,
         'inner_dim': inner_dim,
-        'inner_activation': tf.keras.activations.serialize(activation),
+        'inner_activation': tf_utils.serialize_activation(
+            activation, use_legacy_format=True
+        ),
         'output_dropout': output_dropout,
         'attention_dropout': attention_dropout,
-        'initializer': tf.keras.initializers.serialize(initializer),
+        'initializer': tf_utils.serialize_initializer(
+            initializer, use_legacy_format=True
+        ),
         'output_range': output_range,
         'embedding_width': embedding_width,
         'embedding_layer': embedding_layer,
@@ -616,4 +624,3 @@ class BertEncoder(tf.keras.Model):
       logging.warn(warn_string)
 
     return cls(**config)
-

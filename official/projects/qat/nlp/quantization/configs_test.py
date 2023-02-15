@@ -22,6 +22,7 @@ import tensorflow as tf
 
 import tensorflow_model_optimization as tfmot
 
+from official.modeling import tf_utils
 from official.projects.qat.nlp.quantization import configs
 
 
@@ -186,15 +187,19 @@ class Default8BitQuantizeConfigTest(tf.test.TestCase, _TestHelper):
             'quantize_output': False
         }
     }
-    serialized_quantize_config = tf.keras.utils.serialize_keras_object(
-        quantize_config)
+    serialized_quantize_config = tf_utils.serialize_keras_object(
+        quantize_config
+    )
 
     self.assertEqual(expected_config, serialized_quantize_config)
 
-    quantize_config_from_config = tf.keras.utils.deserialize_keras_object(
-        serialized_quantize_config,
-        module_objects=globals(),
-        custom_objects=configs._types_dict())
+    quantize_config_from_config = (
+        tf_utils.deserialize_keras_object(
+            serialized_quantize_config,
+            module_objects=globals(),
+            custom_objects=configs._types_dict(),
+        )
+    )
 
     self.assertEqual(quantize_config, quantize_config_from_config)
 
@@ -264,14 +269,17 @@ class QuantizersTest(tf.test.TestCase, parameterized.TestCase):
         'class_name': quantizer_type.__name__,
         'config': self._get_quant_params(quantizer_type),
     }
-    serialized_quantizer = tf.keras.utils.serialize_keras_object(quantizer)
+    serialized_quantizer = tf_utils.serialize_keras_object(
+        quantizer
+    )
 
     self.assertEqual(expected_config, serialized_quantizer)
 
-    quantizer_from_config = tf.keras.utils.deserialize_keras_object(
+    quantizer_from_config = tf_utils.deserialize_keras_object(
         serialized_quantizer,
         module_objects=globals(),
-        custom_objects=configs._types_dict())
+        custom_objects=configs._types_dict(),
+    )
 
     self.assertEqual(quantizer, quantizer_from_config)
 

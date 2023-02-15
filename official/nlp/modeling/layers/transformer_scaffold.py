@@ -155,6 +155,12 @@ class TransformerScaffold(tf.keras.layers.Layer):
     def get_layer_instance(instance_or_cls, config, default_config):
       if isinstance(instance_or_cls, tf.keras.layers.Layer):
         return instance_or_cls
+      elif isinstance(instance_or_cls, dict):
+        return get_layer_instance(
+            tf.keras.utils.deserialize_keras_object(instance_or_cls),
+            config,
+            default_config,
+        )
       else:
         if config is None:
           return instance_or_cls(**default_config)
@@ -251,38 +257,36 @@ class TransformerScaffold(tf.keras.layers.Layer):
 
   def get_config(self):
     config = {
-        "attention_cls":
-            self._attention_layer,
-        "feedforward_cls":
-            self._feedforward_block,
-        "num_attention_heads":
-            self._num_heads,
-        "inner_dim":
-            self._inner_dim,
-        "inner_activation":
-            self._inner_activation,
-        "dropout_rate":
-            self._dropout_rate,
-        "attention_dropout_rate":
-            self._attention_dropout_rate,
-        "norm_first":
-            self._norm_first,
-        "norm_epsilon":
-            self._norm_epsilon,
-        "kernel_initializer":
-            tf.keras.initializers.serialize(self._kernel_initializer),
-        "bias_initializer":
-            tf.keras.initializers.serialize(self._bias_initializer),
-        "kernel_regularizer":
-            tf.keras.regularizers.serialize(self._kernel_regularizer),
-        "bias_regularizer":
-            tf.keras.regularizers.serialize(self._bias_regularizer),
-        "activity_regularizer":
-            tf.keras.regularizers.serialize(self._activity_regularizer),
-        "kernel_constraint":
-            tf.keras.constraints.serialize(self._kernel_constraint),
-        "bias_constraint":
-            tf.keras.constraints.serialize(self._bias_constraint)
+        "attention_cls": self._attention_layer,
+        "feedforward_cls": self._feedforward_block,
+        "num_attention_heads": self._num_heads,
+        "inner_dim": self._inner_dim,
+        "inner_activation": self._inner_activation,
+        "dropout_rate": self._dropout_rate,
+        "attention_dropout_rate": self._attention_dropout_rate,
+        "norm_first": self._norm_first,
+        "norm_epsilon": self._norm_epsilon,
+        "kernel_initializer": tf_utils.serialize_initializer(
+            self._kernel_initializer, use_legacy_format=True
+        ),
+        "bias_initializer": tf_utils.serialize_initializer(
+            self._bias_initializer, use_legacy_format=True
+        ),
+        "kernel_regularizer": tf_utils.serialize_regularizer(
+            self._kernel_regularizer, use_legacy_format=True
+        ),
+        "bias_regularizer": tf_utils.serialize_regularizer(
+            self._bias_regularizer, use_legacy_format=True
+        ),
+        "activity_regularizer": tf_utils.serialize_regularizer(
+            self._activity_regularizer, use_legacy_format=True
+        ),
+        "kernel_constraint": tf_utils.serialize_constraint(
+            self._kernel_constraint, use_legacy_format=True
+        ),
+        "bias_constraint": tf_utils.serialize_constraint(
+            self._bias_constraint, use_legacy_format=True
+        ),
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
