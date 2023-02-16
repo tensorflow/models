@@ -208,7 +208,13 @@ class DeepMaskHead(tf.keras.layers.Layer):
          roi_width * upsample_factor], representing the mask predictions.
     """
     roi_features, roi_classes = inputs
-    _, num_rois, height, width, filters = roi_features.get_shape().as_list()
+    features_shape = tf.shape(roi_features)
+    num_rois, height, width, filters = (
+        features_shape[1],
+        features_shape[2],
+        features_shape[3],
+        features_shape[4],
+    )
 
     x = tf.reshape(roi_features, [-1, height, width, filters])
 
