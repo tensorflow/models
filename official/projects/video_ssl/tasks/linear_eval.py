@@ -66,5 +66,4 @@ class VideoSSLEvalTask(video_classification.VideoClassificationTask):
     model.backbone.trainable = False
     logging.info('Setting the backbone to non-trainable.')
 
-    return super(video_classification.VideoClassificationTask,
-                 self).train_step(inputs, model, optimizer, metrics)
+    return super().train_step(inputs, model, optimizer, metrics)
