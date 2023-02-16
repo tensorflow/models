@@ -673,18 +673,12 @@ class MaskrcnnHead(tf.keras.layers.Layer):
       ])
 
       with tf.name_scope('masks_post_processing'):
-        # TODO(pengchong): Figure out the way not to use the static inferred
-        # batch size.
-        batch_size, num_masks = class_indices.get_shape().as_list()
-        mask_outputs = tf.transpose(a=mask_outputs, perm=[0, 1, 4, 2, 3])
-        # Constructs indices for gather.
-        batch_indices = tf.tile(
-            tf.expand_dims(tf.range(batch_size), axis=1), [1, num_masks])
-        mask_indices = tf.tile(
-            tf.expand_dims(tf.range(num_masks), axis=0), [batch_size, 1])
-        gather_indices = tf.stack(
-            [batch_indices, mask_indices, class_indices], axis=2)
-        mask_outputs = tf.gather_nd(mask_outputs, gather_indices)
+        mask_outputs = tf.gather(
+            mask_outputs,
+            tf.cast(class_indices, tf.int32),
+            axis=-1,
+            batch_dims=2,
+        )
       return mask_outputs
 
 
