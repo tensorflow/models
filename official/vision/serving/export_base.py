@@ -96,6 +96,9 @@ class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):
     parsed_tensors = tf.io.parse_single_example(
         serialized=tf_example_string_tensor, features=keys_to_features)
     image_tensor = self._decode_image(parsed_tensors['image/encoded'])
+    image_tensor.set_shape(
+        [None] * len(self._input_image_size) + [self._num_channels]
+    )
     return image_tensor
 
   def _build_model(self, **kwargs):
