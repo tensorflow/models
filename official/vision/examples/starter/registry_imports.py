@@ -14,7 +14,7 @@
 
 """All necessary imports for registration.
 
-Custom models, task, configs, etc need to be imported to registry so they can be
+Custom models, task, configs, etc need to be imported to registry,so they can be
 picked up by the trainer. They can be included in this file so you do not need
 to handle each file separately.
 """
