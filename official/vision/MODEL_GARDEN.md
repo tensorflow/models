@@ -36,9 +36,9 @@ classification models with features:
 
 * ResNet-RS architectural changes and Swish activation. (Note that ResNet-RS
   adopts ReLU activation in the paper.)
-* Regularization methods including Random Augment, 4e-5 weight decay, stochastic
-depth, label smoothing and dropout.
-* New training methods including a 350-epoch schedule, cosine learning rate and
+* Regularization methods include Random Augment, 4e-5 weight decay, stochastic
+depth, label smoothing , and dropout.
+* New training methods including a 350-epoch schedule, cosine learning rate , and
   EMA.
 * Configs are in this [directory](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification).
 
@@ -81,17 +81,17 @@ ViT-l16  | 224x224    | 82.2  | 95.8  | [ckpt](https://storage.googleapis.com/tf
 * Models are all trained on [COCO](https://cocodataset.org/) train2017 and
 evaluated on [COCO](https://cocodataset.org/) val2017.
 * Training details:
-  * Models finetuned from [ImageNet](https://www.image-net.org/) pretrained
+  * Models finetuned from [ImageNet](https://www.image-net.org/) pre-trained
     checkpoints adopt the 12 or 36 epochs schedule. Models trained from scratch
     adopt the 350 epochs schedule.
   * The default training data augmentation implements horizontal flipping and
     scale jittering with a random scale between [0.5, 2.0].
   * Unless noted, all models are trained with l2 weight regularization and ReLU
     activation.
-  * We use batch size 256 and stepwise learning rate that decays at the last 30
-    and 10 epoch.
-  * We use square image as input by resizing the long side of an image to the
-    target size then padding the short side with zeros.
+  * We use batch size 256 and a stepwise learning rate that decays at the last 30
+    and 10 epochs.
+  * We use a square image as input by resizing the long side of an image to the
+    target size and then padding the short side with zeros.
 
 ### COCO Object Detection Baselines
 
@@ -177,9 +177,9 @@ evaluated on [COCO](https://cocodataset.org/) val2017.
 * Training and evaluation details (SlowFast and ResNet):
   * All models are trained from scratch with vision modality (RGB) for 200
     epochs.
-  * We use batch size of 1024 and cosine learning rate decay with linear warmup
-    in first 5 epochs.
-  * We follow [SlowFast](https://arxiv.org/abs/1812.03982) to perform 30-view
+  * We use a batch size of 1024 and cosine learning rate decay with a linear warmup
+    in the first 5 epochs.
+  * We follow [SlowFast](https://arxiv.org/abs/1812.03982) to perform a 30-view
     evaluation.
 
 ### Kinetics-400 Action Recognition Baselines
