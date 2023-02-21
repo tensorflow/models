@@ -15,7 +15,7 @@
 """TensorFlow Model Garden Vision trainer.
 
 All custom registry are imported from registry_imports. Here we use default
-trainer so we directly call train.main. If you need to customize the trainer,
+trainer,so we directly call train.main. If you need to customize the trainer,
 branch from `official/vision/beta/train.py` and make changes.
 """
 from absl import app

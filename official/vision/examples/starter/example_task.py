@@ -86,7 +86,7 @@ class ExampleTask(base_task.Task):
     """Builds losses for training and validation.
 
     Args:
-      labels: Input groundtruth labels.
+      labels: Input groundt-ruth labels.
       model_outputs: Output of the model.
       aux_losses: The auxiliarly loss tensors, i.e. `losses` in tf.keras.Model.
 
@@ -183,7 +183,7 @@ class ExampleTask(base_task.Task):
                       inputs: Tuple[Any, Any],
                       model: tf.keras.Model,
                       metrics: Optional[List[Any]] = None) -> Mapping[str, Any]:
-    """Runs validatation step.
+    """Runs validation step.
 
     Args:
       inputs: A tuple of input tensors of (features, labels).
