@@ -31,10 +31,13 @@ def _generate_source_id(image_bytes):
 class TfExampleDecoder(decoder.Decoder):
   """Tensorflow Example proto decoder."""
 
-  def __init__(self,
-               include_mask=False,
-               regenerate_source_id=False,
-               mask_binarize_threshold=None):
+  def __init__(
+      self,
+      include_mask=False,
+      regenerate_source_id=False,
+      mask_binarize_threshold=None,
+      attribute_names=None,
+  ):
     self._include_mask = include_mask
     self._regenerate_source_id = regenerate_source_id
     self._keys_to_features = {
@@ -49,6 +52,13 @@ class TfExampleDecoder(decoder.Decoder):
         'image/object/area': tf.io.VarLenFeature(tf.float32),
         'image/object/is_crowd': tf.io.VarLenFeature(tf.int64),
     }
+    attribute_names = attribute_names or []
+    for attr_name in attribute_names:
+      self._keys_to_features[f'image/object/attribute/{attr_name}'] = (
+          tf.io.VarLenFeature(tf.int64)
+      )
+    self._attribute_names = attribute_names
+
     self._mask_binarize_threshold = mask_binarize_threshold
     if include_mask:
       self._keys_to_features.update({
@@ -75,6 +85,14 @@ class TfExampleDecoder(decoder.Decoder):
 
   def _decode_classes(self, parsed_tensors):
     return parsed_tensors['image/object/class/label']
+
+  def _decode_attributes(self, parsed_tensors):
+    attribute_dict = dict()
+    for attr_name in self._attribute_names:
+      attr_array = parsed_tensors[f'image/object/attribute/{attr_name}']
+      # TODO(b/269654135): Support decoding of fully 2D attributes.
+      attribute_dict[attr_name] = tf.expand_dims(attr_array, -1)
+    return attribute_dict
 
   def _decode_areas(self, parsed_tensors):
     xmin = parsed_tensors['image/object/bbox/xmin']
@@ -149,6 +167,8 @@ class TfExampleDecoder(decoder.Decoder):
     classes = self._decode_classes(parsed_tensors)
     areas = self._decode_areas(parsed_tensors)
 
+    attributes = self._decode_attributes(parsed_tensors)
+
     decode_image_shape = tf.logical_or(
         tf.equal(parsed_tensors['image/height'], -1),
         tf.equal(parsed_tensors['image/width'], -1))
@@ -180,6 +200,8 @@ class TfExampleDecoder(decoder.Decoder):
         'groundtruth_area': areas,
         'groundtruth_boxes': boxes,
     }
+    if self._attribute_names:
+      decoded_tensors.update({'groundtruth_attributes': attributes})
     if self._include_mask:
       decoded_tensors.update({
           'groundtruth_instance_masks': masks,
