@@ -307,7 +307,16 @@ class Controller:
       action(eval_output)
     eval_output = tf.nest.map_structure(utils.get_value, eval_output)
 
+    if steps > 0:
+      # Only log if steps has been specified.
+      steps_per_second = steps / elapsed
+      eval_output["steps_per_second"] = steps_per_second
+      steps_per_second_log = f"steps/sec: {steps_per_second: 6.1f} | "
+    else:
+      steps_per_second_log = ""
+
     _log(f" eval | step: {current_step: 6d} | "
+         f"{steps_per_second_log}"
          f"eval time: {elapsed: 6.1f} sec | "
          f"output: {_format_output(eval_output)}")
 
