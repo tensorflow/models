@@ -71,7 +71,7 @@ class WOD2dDetectionEvaluator(wod_detection_evaluator.WODDetectionEvaluator):
     return result_tensor_dict
 
   def update_state(self, groundtruths, predictions):
-    """Update the metrics state with prediction and groundtruth data.
+    """Update the metrics state with prediction and ground-truth data.
 
     Args:
       groundtruths: a dictionary of Tensors including the fields below.

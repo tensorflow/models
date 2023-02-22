@@ -52,11 +52,11 @@ class COCOEvaluator(object):
     The class provides the interface to COCO metrics_fn. The
     _update_op() takes detections from each image and push them to
     self.detections. The _evaluate() loads a JSON file in COCO annotation format
-    as the groundtruths and runs COCO evaluation.
+    as the ground-truths and runs COCO evaluation.
 
     Args:
       annotation_file: a JSON file that stores annotations of the eval dataset.
-        If `annotation_file` is None, groundtruth annotations will be loaded
+        If `annotation_file` is None, ground-truth annotations will be loaded
         from the dataloader.
       include_mask: a boolean to indicate whether or not to include the mask
         eval.
@@ -281,7 +281,7 @@ class COCOEvaluator(object):
     return numpy_groundtruths, numpy_predictions
 
   def update_state(self, groundtruths, predictions):
-    """Update and aggregate detection results and groundtruth data.
+    """Update and aggregate detection results and ground-truth data.
 
     Args:
       groundtruths: a dictionary of Tensors including the fields below.
@@ -316,7 +316,7 @@ class COCOEvaluator(object):
           - detection_masks: a numpy array of float of shape
               [batch_size, K, mask_height, mask_width].
     Raises:
-      ValueError: if the required prediction or groundtruth fields are not
+      ValueError: if the required prediction or ground-truth fields are not
         present in the incoming `predictions` or `groundtruths`.
     """
     groundtruths, predictions = self._convert_to_numpy(groundtruths,

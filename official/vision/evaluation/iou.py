@@ -64,7 +64,7 @@ class PerClassIoU(tf.keras.metrics.MeanIoU):
 class PerClassIoUV2(tf.keras.metrics.Metric):
   """Computes the per-class Intersection-Over-Union metric.
 
-  This implementation converts predictions and ground truth to binary masks,
+  This implementation converts predictions and ground-truth to binary masks,
   and uses logical AND and OR to compute intersection and union, which is much
   faster than the PerClassIoU (using confusion matrix) above on TPU, but slower
   on CPU and GPU.

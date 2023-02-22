@@ -60,14 +60,14 @@ class PanopticQualityEvaluator:
 
     Args:
       num_categories: The number of segmentation categories (or "classes" in the
-        dataset.
+        dataset).
       ignored_label: A category id that is ignored in evaluation, e.g. the void
         label as defined in COCO panoptic segmentation dataset.
       max_instances_per_category: The maximum number of instances for each
         category. Used in ensuring unique instance labels.
       offset: The maximum number of unique labels. This is used, by multiplying
         the ground-truth labels, to generate unique ids for individual regions
-        of overlap between groundtruth and predicted segments.
+        of overlap between ground-truth and predicted segments.
       is_thing: A boolean array of length `num_categories`. The entry
         `is_thing[category_id]` is True iff that category is a "thing" category
         instead of "stuff." Default to `None`, and it means categories are not
@@ -123,7 +123,7 @@ class PanopticQualityEvaluator:
     return numpy_groundtruths, numpy_predictions
 
   def update_state(self, groundtruths, predictions):
-    """Update and aggregate detection results and groundtruth data.
+    """Update and aggregate detection results and ground-truth data.
 
     Args:
       groundtruths: a dictionary of Tensors including the fields below. See also
@@ -145,7 +145,7 @@ class PanopticQualityEvaluator:
           - instance_mask: a numpy array of uint16 of shape [batch_size, H, W].
 
     Raises:
-      ValueError: if the required prediction or groundtruth fields are not
+      ValueError: if the required prediction or ground-truth fields are not
         present in the incoming `predictions` or `groundtruths`.
     """
     groundtruths, predictions = self._convert_to_numpy(groundtruths,
