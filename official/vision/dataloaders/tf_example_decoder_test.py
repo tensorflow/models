@@ -77,7 +77,9 @@ class TfExampleDecoderTest(tf.test.TestCase, parameterized.TestCase):
         (num_instances,), results['groundtruth_instance_masks_png'].shape)
 
   def test_result_content(self):
-    decoder = tf_example_decoder.TfExampleDecoder(include_mask=True)
+    decoder = tf_example_decoder.TfExampleDecoder(
+        include_mask=True, attribute_names=['attr1', 'attr2']
+    )
 
     image_content = [[[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
                      [[0, 0, 0], [255, 255, 255], [255, 255, 255], [0, 0, 0]],
@@ -92,6 +94,8 @@ class TfExampleDecoderTest(tf.test.TestCase, parameterized.TestCase):
     ymins = [0, 0]
     ymaxs = [0.5, 1.0]
     labels = [3, 1]
+    attr1 = np.array([[0], [2]])
+    attr2 = np.array([[1], [3]])
     areas = [
         0.25 * image_height * image_width, 0.75 * image_height * image_width
     ]
@@ -111,32 +115,53 @@ class TfExampleDecoderTest(tf.test.TestCase, parameterized.TestCase):
     serialized_example = tf.train.Example(
         features=tf.train.Features(
             feature={
-                'image/encoded': (tf.train.Feature(
-                    bytes_list=tf.train.BytesList(value=[image]))),
-                'image/source_id': (tf.train.Feature(
+                'image/encoded': tf.train.Feature(
+                    bytes_list=tf.train.BytesList(value=[image])
+                ),
+                'image/source_id': tf.train.Feature(
                     bytes_list=tf.train.BytesList(
-                        value=[tfexample_utils.DUMP_SOURCE_ID]))),
-                'image/height': (tf.train.Feature(
-                    int64_list=tf.train.Int64List(value=[image_height]))),
-                'image/width': (tf.train.Feature(
-                    int64_list=tf.train.Int64List(value=[image_width]))),
-                'image/object/bbox/xmin': (tf.train.Feature(
-                    float_list=tf.train.FloatList(value=xmins))),
-                'image/object/bbox/xmax': (tf.train.Feature(
-                    float_list=tf.train.FloatList(value=xmaxs))),
-                'image/object/bbox/ymin': (tf.train.Feature(
-                    float_list=tf.train.FloatList(value=ymins))),
-                'image/object/bbox/ymax': (tf.train.Feature(
-                    float_list=tf.train.FloatList(value=ymaxs))),
-                'image/object/class/label': (tf.train.Feature(
-                    int64_list=tf.train.Int64List(value=labels))),
-                'image/object/is_crowd': (tf.train.Feature(
-                    int64_list=tf.train.Int64List(value=is_crowds))),
-                'image/object/area': (tf.train.Feature(
-                    float_list=tf.train.FloatList(value=areas))),
-                'image/object/mask': (tf.train.Feature(
-                    bytes_list=tf.train.BytesList(value=masks))),
-            })).SerializeToString()
+                        value=[tfexample_utils.DUMP_SOURCE_ID]
+                    )
+                ),
+                'image/height': tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=[image_height])
+                ),
+                'image/width': tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=[image_width])
+                ),
+                'image/object/bbox/xmin': tf.train.Feature(
+                    float_list=tf.train.FloatList(value=xmins)
+                ),
+                'image/object/bbox/xmax': tf.train.Feature(
+                    float_list=tf.train.FloatList(value=xmaxs)
+                ),
+                'image/object/bbox/ymin': tf.train.Feature(
+                    float_list=tf.train.FloatList(value=ymins)
+                ),
+                'image/object/bbox/ymax': tf.train.Feature(
+                    float_list=tf.train.FloatList(value=ymaxs)
+                ),
+                'image/object/class/label': tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=labels)
+                ),
+                'image/object/is_crowd': tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=is_crowds)
+                ),
+                'image/object/area': tf.train.Feature(
+                    float_list=tf.train.FloatList(value=areas)
+                ),
+                'image/object/mask': tf.train.Feature(
+                    bytes_list=tf.train.BytesList(value=masks)
+                ),
+                'image/object/attribute/attr1': tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=attr1.flatten())
+                ),
+                'image/object/attribute/attr2': tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=attr2.flatten())
+                ),
+            }
+        )
+    ).SerializeToString()
     decoded_tensors = decoder.decode(
         tf.convert_to_tensor(value=serialized_example))
 
@@ -163,8 +188,13 @@ class TfExampleDecoderTest(tf.test.TestCase, parameterized.TestCase):
         (num_instances,), results['groundtruth_instance_masks_png'].shape)
     self.assertAllEqual(
         [3, 1], results['groundtruth_classes'])
-    self.assertAllEqual(
-        [True, False], results['groundtruth_is_crowd'])
+    np.testing.assert_array_equal(
+        attr1, results['groundtruth_attributes']['attr1']
+    )
+    np.testing.assert_array_equal(
+        attr2, results['groundtruth_attributes']['attr2']
+    )
+    self.assertAllEqual([True, False], results['groundtruth_is_crowd'])
     self.assertNDArrayNear(
         [0.25 * image_height * image_width, 0.75 * image_height * image_width],
         results['groundtruth_area'], 1e-4)

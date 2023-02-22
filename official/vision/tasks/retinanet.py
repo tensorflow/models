@@ -105,7 +105,9 @@ class RetinaNetTask(base_task.Task):
       decoder_cfg = params.decoder.get()
       if params.decoder.type == 'simple_decoder':
         decoder = tf_example_decoder.TfExampleDecoder(
-            regenerate_source_id=decoder_cfg.regenerate_source_id)
+            regenerate_source_id=decoder_cfg.regenerate_source_id,
+            attribute_names=decoder_cfg.attribute_names,
+        )
       elif params.decoder.type == 'label_map_decoder':
         decoder = tf_example_label_map_decoder.TfExampleDecoderLabelMap(
             label_map=decoder_cfg.label_map,
@@ -157,6 +159,7 @@ class RetinaNetTask(base_task.Task):
     Returns:
       Attribute loss of all attribute heads.
     """
+    params = self.task_config
     attribute_loss = 0.0
     for head in attribute_heads:
       if head.name not in labels['attribute_targets']:
@@ -164,17 +167,37 @@ class RetinaNetTask(base_task.Task):
       if head.name not in outputs['attribute_outputs']:
         raise ValueError(f'Attribute {head.name} not found in model outputs.')
 
-      y_true_att = loss_utils.multi_level_flatten(
-          labels['attribute_targets'][head.name], last_dim=head.size)
-      y_pred_att = loss_utils.multi_level_flatten(
-          outputs['attribute_outputs'][head.name], last_dim=head.size)
       if head.type == 'regression':
+        y_true_att = loss_utils.multi_level_flatten(
+            labels['attribute_targets'][head.name], last_dim=head.size
+        )
+        y_pred_att = loss_utils.multi_level_flatten(
+            outputs['attribute_outputs'][head.name], last_dim=head.size
+        )
         att_loss_fn = tf.keras.losses.Huber(
             1.0, reduction=tf.keras.losses.Reduction.SUM)
         att_loss = att_loss_fn(
             y_true=y_true_att,
             y_pred=y_pred_att,
             sample_weight=box_sample_weight)
+      elif head.type == 'classification':
+        y_true_att = loss_utils.multi_level_flatten(
+            labels['attribute_targets'][head.name], last_dim=None
+        )
+        y_true_att = tf.one_hot(y_true_att, head.size)
+        y_pred_att = loss_utils.multi_level_flatten(
+            outputs['attribute_outputs'][head.name], last_dim=head.size
+        )
+        cls_loss_fn = focal_loss.FocalLoss(
+            alpha=params.losses.focal_loss_alpha,
+            gamma=params.losses.focal_loss_gamma,
+            reduction=tf.keras.losses.Reduction.SUM,
+        )
+        att_loss = cls_loss_fn(
+            y_true=y_true_att,
+            y_pred=y_pred_att,
+            sample_weight=box_sample_weight,
+        )
       else:
         raise ValueError(f'Attribute type {head.type} not supported.')
       attribute_loss += att_loss
