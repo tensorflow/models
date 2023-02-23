@@ -41,7 +41,6 @@ to try QAT.
 - Jaehong Kim ([Xhark](https://github.com/Xhark))
 * Fang Yang ([fyangf](https://github.com/fyangf))
 * Shixin Luo ([luotigerlsx](https://github.com/luotigerlsx))
-- Rino Lee ([rino20](https://github.com/rino20))
 
 ## Requirements
 
