@@ -99,23 +99,15 @@ class WOD2dDetectionEvaluator(wod_detection_evaluator.WODDetectionEvaluator):
       if isinstance(v, tuple):
         predictions[k] = tf.concat(v, axis=0)
 
-    # Change cyclists' type id from 2 to 4, where 3 is reserved for sign.
+    # Change cyclists' type id from 3 to 4, where 3 is reserved for sign.
     groundtruth_type = tf.cast(groundtruths['classes'], tf.uint8)
     groundtruth_type = tf.where(
-        tf.equal(groundtruth_type, 2),
+        tf.equal(groundtruth_type, 3),
         tf.ones_like(groundtruth_type) * 4, groundtruth_type)
     prediction_type = tf.cast(predictions['detection_classes'], tf.uint8)
     prediction_type = tf.where(
-        tf.equal(prediction_type, 2),
+        tf.equal(prediction_type, 3),
         tf.ones_like(prediction_type) * 4, prediction_type)
-
-    # Change pedestrian' type id from 1 to 2.
-    groundtruth_type = tf.where(
-        tf.equal(groundtruth_type, 1),
-        tf.ones_like(groundtruth_type) * 2, groundtruth_type)
-    prediction_type = tf.where(
-        tf.equal(prediction_type, 1),
-        tf.ones_like(prediction_type) * 2, prediction_type)
 
     # Rescale the detection boxes back to original scale.
     image_scale = tf.tile(predictions['image_info'][:, 2:3, :], (1, 1, 2))
