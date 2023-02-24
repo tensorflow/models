@@ -272,5 +272,13 @@ class MetricsExportTest(tf.test.TestCase):
               **_get_config_kwarg_overrides())
 
 
+def setUpModule():
+  # Setup virtual CPUs.
+  cpus = tf.config.list_physical_devices('CPU')
+  tf.config.set_logical_device_configuration(
+      cpus[-1], [tf.config.LogicalDeviceConfiguration()] * 2
+  )
+
+
 if __name__ == '__main__':
   tf.test.main()
