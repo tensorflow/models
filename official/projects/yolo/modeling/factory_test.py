@@ -20,17 +20,21 @@ import tensorflow as tf
 # pylint: disable=unused-import
 from official.projects.yolo.configs import backbones
 from official.projects.yolo.configs import yolo
+from official.projects.yolo.configs import yolov7
 from official.projects.yolo.modeling import factory
 from official.projects.yolo.modeling.backbones import darknet
+from official.projects.yolo.modeling.backbones import yolov7 as _
 from official.projects.yolo.modeling.decoders import yolo_decoder
+from official.projects.yolo.modeling.decoders import yolov7 as _
 from official.projects.yolo.modeling.heads import yolo_head as heads
+from official.projects.yolo.modeling.heads import yolov7_head
 from official.projects.yolo.modeling.layers import detection_generator
 # pylint: enable=unused-import
 
 
 class FactoryTest(tf.test.TestCase):
 
-  def test_builder(self):
+  def test_yolo_builder(self):
     num_classes = 3
     input_size = 640
     input_specs = tf.keras.layers.InputSpec(
@@ -57,6 +61,42 @@ class FactoryTest(tf.test.TestCase):
         input_specs=input_specs,
         model_config=model_config,
         l2_regularization=l2_regularizer)
+
+    # Do forward pass.
+    inputs = np.random.rand(2, input_size, input_size, 3)
+    _ = yolo_model(inputs)
+
+  def test_yolov7_builder(self):
+    num_classes = 3
+    input_size = 640
+    input_specs = tf.keras.layers.InputSpec(
+        shape=[None, input_size, input_size, 3]
+    )
+    model_config = yolov7.YOLOV7(
+        num_classes=num_classes,
+        head=yolov7.YOLOV7Head(),
+        anchor_boxes=yolo.AnchorBoxes(
+            anchors_per_scale=3,
+            boxes=[
+                yolo.Box(box=[12, 16]),
+                yolo.Box(box=[19, 36]),
+                yolo.Box(box=[40, 28]),
+                yolo.Box(box=[36, 75]),
+                yolo.Box(box=[76, 55]),
+                yolo.Box(box=[72, 146]),
+                yolo.Box(box=[142, 110]),
+                yolo.Box(box=[192, 243]),
+                yolo.Box(box=[459, 401]),
+            ],
+        ),
+    )
+    l2_regularizer = tf.keras.regularizers.l2(5e-5)
+
+    yolo_model = factory.build_yolov7(
+        input_specs=input_specs,
+        model_config=model_config,
+        l2_regularization=l2_regularizer,
+    )
 
     # Do forward pass.
     inputs = np.random.rand(2, input_size, input_size, 3)

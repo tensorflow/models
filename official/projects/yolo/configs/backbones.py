@@ -32,5 +32,11 @@ class Darknet(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class YOLOV7(hyperparams.Config):
+  model_id: str = 'yolov7'
+
+
+@dataclasses.dataclass
 class Backbone(backbones.Backbone):
   darknet: Darknet = Darknet()
+  yolov7: YOLOV7 = YOLOV7()
