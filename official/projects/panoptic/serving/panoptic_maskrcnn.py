@@ -133,7 +133,10 @@ class PanopticSegmentationModule(detection.DetectionModule):
     masks = detections['segmentation_outputs']
     masks = tf.image.resize(masks, self._input_image_size, method='bilinear')
     classes = tf.math.argmax(masks, axis=-1)
-    scores = tf.nn.softmax(masks, axis=-1)
+    if self.params.task.losses.semantic_segmentation_use_binary_cross_entropy:
+      scores = tf.nn.sigmoid(masks)
+    else:
+      scores = tf.nn.softmax(masks, axis=-1)
     final_outputs.update({
         'detection_masks': detections['detection_masks'],
         'semantic_logits': masks,
