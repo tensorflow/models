@@ -40,6 +40,15 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   the loss, post-processing, and customized metrics with reduction.
   """
 
+  def __init__(self,
+               params,
+               logging_dir: Optional[str] = None,
+               name: Optional[str] = None):
+    super().__init__(params, logging_dir=logging_dir, name=name)
+    self.segmentation_train_mean_iou = None
+    self.segmentation_perclass_iou_metric = None
+    self.panoptic_quality_metric = None
+
   def build_model(self) -> tf.keras.Model:
     """Builds Panoptic Mask R-CNN model."""
 
@@ -234,10 +243,6 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   ) -> List[tf.keras.metrics.Metric]:
     """Builds detection metrics."""
     metrics = super().build_metrics(training)
-
-    self.segmentation_train_mean_iou = None
-    self.segmentation_perclass_iou_metric = None
-    self.panoptic_quality_metric = None
 
     if training:
       metric_names = ['maskrcnn_loss', 'segmentation_loss']
