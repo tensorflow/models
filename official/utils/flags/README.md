@@ -1,13 +1,13 @@
 # Adding Abseil (absl) flags quickstart
 
-**WARNING** This module is deprecated. We no long use it in new models and
+**WARNING** This module is deprecated. We no longer use it in new models and
 your projects should not depend on it. We will remove this module when
 all models using it are deprecated which may take time.
 
 ## Defining a flag
 absl flag definitions are similar to argparse, although they are defined on a global namespace.
 
-For instance defining a string flag looks like:
+For instance, defining a string flag looks like this:
 ```$xslt
 from absl import flags
 flags.DEFINE_string(
@@ -17,13 +17,13 @@ flags.DEFINE_string(
 )
 ```
 
-All three arguments are required, but default may be `None`. A common optional argument is
-short_name for defining abreviations. Certain `DEFINE_*` methods will have other required arguments.
-For instance `DEFINE_enum` requires the `enum_values` argument to be specified.
+All three arguments are required, but the default may be `None`. A common optional argument is
+short_name for defining abbreviations. Certain `DEFINE_*` methods will have other required arguments.
+For instance, `DEFINE_enum` requires the `enum_values` argument to be specified.
 
 ## Key Flags
 absl has the concept of a key flag. Any flag defined in `__main__` is considered a key flag by
-default. Key flags are displayed in `--help`, others only appear in `--helpfull`. In order to
+default. Key flags are displayed in `--help`, others only appear in `--helpful`. To
 handle key flags that are defined outside the module in question, absl provides the
 `flags.adopt_module_key_flags()` method. This adds the key flags of a different module to one's own
 key flags. For example:
@@ -54,14 +54,14 @@ absl_app.run(main, [__file__, "-h"]
 
 when `my_module.py` is run it will show the help text for `my_flag`. Because not all flags defined
 in a file are equally important, `official/utils/flags/core.py` (generally imported as flags_core)
-provides an abstraction for handling key flag declaration in an easy way through the
+provides an abstraction for easily handling key flag declaration through the
 `register_key_flags_in_core()` function, which allows a module to make a single
 `adopt_key_flags(flags_core)` call when using the util flag declaration functions.
 
 ## Validators
 Often the constraints on a flag are complicated. absl provides the validator decorator to allow
 one to mark a function as a flag validation function. Suppose we want users to provide a flag
-which is a palindrome.
+that is a palindrome.
 
 ```$xslt
 from absl import flags
