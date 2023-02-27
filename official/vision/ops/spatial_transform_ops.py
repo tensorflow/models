@@ -592,8 +592,9 @@ def _gather_rows_from_matrix(input_matrix: tf.Tensor,
   return tf.linalg.matmul(indices_one_hot, input_matrix, a_is_sparse=True)
 
 
-def bilinear_resize_to_bbox(images: tf.Tensor, bbox: tf.Tensor,
-                            output_size: tf.Tensor) -> tf.Tensor:
+def bilinear_resize_to_bbox(
+    images: tf.Tensor, bbox: tf.Tensor, output_size: tf.Tensor
+) -> tf.Tensor:
   """Bilinear resizes the images to fit into the bounding boxes in the output.
 
   Args:
@@ -604,7 +605,9 @@ def bilinear_resize_to_bbox(images: tf.Tensor, bbox: tf.Tensor,
     output_size: The size of the output images in (output_h, output_w).
 
   Returns:
-    A tensor in shape (batch_size, output_h, output_w, ...).
+    A tensor in shape (batch_size, output_h, output_w, ...). The result has the
+    same dtype as the input if it's float32, float16, bfloat16, otherwise the
+    result is float32.
   """
   images_shape = images.get_shape().as_list()
   images_rank = len(images_shape)
@@ -692,7 +695,8 @@ def bilinear_resize_to_bbox(images: tf.Tensor, bbox: tf.Tensor,
 
   input_h = tf.cast(input_h, tf.int32)
   input_w = tf.cast(input_w, tf.int32)
-  images = tf.cast(images, tf.float32)
+  if images.dtype not in {tf.float32, tf.bfloat16, tf.float16}:
+    images = tf.cast(images, tf.float32)
   if images_rank > 3:
     # Reshapes the images since _gather_rows_from_matrix only takes 2-D tensor.
     # (batch_size, input_h, input_w * extra_dims_product)
@@ -703,13 +707,15 @@ def bilinear_resize_to_bbox(images: tf.Tensor, bbox: tf.Tensor,
   val_y0 = tf.map_fn(
       lambda x: _gather_rows_from_matrix(x[0], x[1]),
       elems=(images, input_y0),
-      fn_output_signature=tf.float32,
-      parallel_iterations=32)
+      fn_output_signature=images.dtype,
+      parallel_iterations=32,
+  )
   val_y1 = tf.map_fn(
       lambda x: _gather_rows_from_matrix(x[0], x[1]),
       elems=(images, input_y1),
-      fn_output_signature=tf.float32,
-      parallel_iterations=32)
+      fn_output_signature=images.dtype,
+      parallel_iterations=32,
+  )
 
   if images_rank > 3:
     new_shape = [-1, output_h, input_w] + extra_dims
@@ -736,23 +742,27 @@ def bilinear_resize_to_bbox(images: tf.Tensor, bbox: tf.Tensor,
   val_00 = tf.map_fn(
       lambda x: _gather_rows_from_matrix(x[0], x[1]),
       elems=(val_y0, input_x0),
-      fn_output_signature=tf.float32,
-      parallel_iterations=32)
+      fn_output_signature=images.dtype,
+      parallel_iterations=32,
+  )
   val_01 = tf.map_fn(
       lambda x: _gather_rows_from_matrix(x[0], x[1]),
       elems=(val_y0, input_x1),
-      fn_output_signature=tf.float32,
-      parallel_iterations=32)
+      fn_output_signature=images.dtype,
+      parallel_iterations=32,
+  )
   val_10 = tf.map_fn(
       lambda x: _gather_rows_from_matrix(x[0], x[1]),
       elems=(val_y1, input_x0),
-      fn_output_signature=tf.float32,
-      parallel_iterations=32)
+      fn_output_signature=images.dtype,
+      parallel_iterations=32,
+  )
   val_11 = tf.map_fn(
       lambda x: _gather_rows_from_matrix(x[0], x[1]),
       elems=(val_y1, input_x1),
-      fn_output_signature=tf.float32,
-      parallel_iterations=32)
+      fn_output_signature=images.dtype,
+      parallel_iterations=32,
+  )
 
   if images_rank > 3:
     new_shape = [-1, output_w, output_h] + extra_dims
@@ -814,7 +824,9 @@ def bilinear_resize_with_crop_and_pad(images: tf.Tensor,
     output_size: The size of the output image in (output_h, output_w).
 
   Returns:
-    A tensor in shape (batch_size, output_h, output_w, ...).
+    A tensor in shape (batch_size, output_h, output_w, ...). The result has the
+    same dtype as the input if it's float32, float16, bfloat16, otherwise the
+    result is float32.
   """
   images_shape = images.get_shape().as_list()
   images_rank = len(images_shape)
@@ -850,3 +862,62 @@ def bilinear_resize_with_crop_and_pad(images: tf.Tensor,
       dtype=rescaled_padded_images.dtype)[[...] + [tf.newaxis] * num_extra_dims]
   # (batch_size, output_height, output_width, ...)
   return rescaled_padded_images * crop_bbox_mask
+
+
+def bilinear_resize_with_pad(
+    images: tf.Tensor, rescale_size: tf.Tensor, output_size: tf.Tensor
+) -> tf.Tensor:
+  """Bilinear resizes the images, then pads to output size.
+
+  Args:
+    images: A tensor in shape (batch_size, input_h, input_w, ...) with arbitrary
+      numbers of channel dimensions.
+    rescale_size: An int tensor in shape (2,) or (batch_size, 2), representing
+      the sizes of the rescaled images.
+    output_size: The size of the output image in (output_h, output_w).
+
+  Returns:
+    A tensor in shape (batch_size, output_h, output_w, ...). The result has the
+    same dtype as the input if it's float32, float16, bfloat16, otherwise the
+    result is float32.
+  """
+  images_shape = images.get_shape().as_list()
+  images_rank = len(images_shape)
+  if images_rank < 3:
+    raise ValueError(
+        'Expected the input images (batch_size, height, width, ...) '
+        'has rank >= 3, was: %s' % images_shape
+    )
+  batch_size = tf.shape(images)[0]
+  rescale_size = tf.convert_to_tensor(rescale_size)
+  if len(rescale_size.get_shape().as_list()) == 1:
+    rescale_size = tf.broadcast_to(rescale_size, [batch_size, 2])
+
+  # Rescales the images, applies the offset and pastes to the output canvas.
+
+  # (batch_size, 2)
+  ymin_xmin = tf.broadcast_to([0, 0], [batch_size, 2])
+  # (batch_size, 2)
+  ymax_xmax = tf.cast(ymin_xmin, rescale_size.dtype) + rescale_size
+  # (batch_size, 4)
+  rescale_bbox = tf.concat([ymin_xmin, ymax_xmax], axis=1)
+  # (batch_size, output_height, output_width, ...)
+  return bilinear_resize_to_bbox(images, rescale_bbox, output_size)
+
+
+def bilinear_resize(images: tf.Tensor, output_size: tf.Tensor) -> tf.Tensor:
+  """Bilinear resizes the images.
+
+  Args:
+    images: A tensor in shape (batch_size, input_h, input_w, ...) with arbitrary
+      numbers of channel dimensions.
+    output_size: The size of the output image in (output_h, output_w).
+
+  Returns:
+    A tensor in shape (batch_size, output_h, output_w, ...). The result has the
+    same dtype as the input if it's float32, float16, bfloat16, otherwise the
+    result is float32.
+  """
+  return bilinear_resize_with_pad(
+      images, rescale_size=output_size, output_size=output_size
+  )

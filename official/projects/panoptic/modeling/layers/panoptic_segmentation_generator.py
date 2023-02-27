@@ -426,11 +426,11 @@ class PanopticSegmentationGeneratorV2(tf.keras.layers.Layer):
     # (batch_size, num_rois)
     detection_classes = tf.cast(inputs['detection_classes'], tf.int32)
     # (batch_size, num_rois)
-    detection_scores = tf.cast(inputs['detection_scores'], tf.float32)
+    detection_scores = inputs['detection_scores']
     # (batch_size, num_rois, mask_height, mask_width)
-    detections_masks = tf.cast(inputs['detection_masks'], tf.float32)
+    detections_masks = inputs['detection_masks']
     # (batch_size, height, width, num_semantic_classes)
-    segmentation_outputs = tf.cast(inputs['segmentation_outputs'], tf.float32)
+    segmentation_outputs = inputs['segmentation_outputs']
 
     if self._rescale_predictions:
       # (batch_size, 2)
