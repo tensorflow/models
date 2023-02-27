@@ -32,6 +32,7 @@ STDDEV_RGB = tuple(255 * i for i in STDDEV_NORM)
 
 # Alias for convenience. PLEASE use `box_ops.horizontal_flip_boxes` directly.
 horizontal_flip_boxes = box_ops.horizontal_flip_boxes
+vertical_flip_boxes = box_ops.vertical_flip_boxes
 
 
 def clip_or_pad_to_fixed_size(input_tensor, size, constant_values=0):
@@ -633,7 +634,7 @@ def horizontal_flip_masks(masks):
 
 
 def random_horizontal_flip(image, normalized_boxes=None, masks=None, seed=1):
-  """Randomly flips input image and bounding boxes."""
+  """Randomly flips input image and bounding boxes horizontally."""
   with tf.name_scope('random_horizontal_flip'):
     do_flip = tf.greater(tf.random.uniform([], seed=seed), 0.5)
 
@@ -665,7 +666,7 @@ def random_horizontal_flip_with_roi(
     seed: int = 1
 ) -> Tuple[tf.Tensor, Optional[tf.Tensor], Optional[tf.Tensor],
            Optional[tf.Tensor]]:
-  """Randomly flips input image and bounding boxes.
+  """Randomly flips input image and bounding boxes horizontally.
 
   Extends preprocess_ops.random_horizontal_flip to also flip roi_boxes used
   by ViLD.
@@ -702,6 +703,31 @@ def random_horizontal_flip_with_roi(
                           lambda: roi_boxes)
 
     return image, boxes, masks, roi_boxes
+
+
+def random_vertical_flip(image, normalized_boxes=None, masks=None, seed=1):
+  """Randomly flips input image and bounding boxes vertically."""
+  with tf.name_scope('random_vertical_flip'):
+    do_flip = tf.greater(tf.random.uniform([], seed=seed), 0.5)
+
+    image = tf.cond(
+        do_flip,
+        lambda: tf.image.flip_up_down(image),
+        lambda: image)
+
+    if normalized_boxes is not None:
+      normalized_boxes = tf.cond(
+          do_flip,
+          lambda: vertical_flip_boxes(normalized_boxes),
+          lambda: normalized_boxes)
+
+    if masks is not None:
+      masks = tf.cond(
+          do_flip,
+          lambda: tf.image.flip_up_down(masks[..., None])[..., 0],
+          lambda: masks)
+
+    return image, normalized_boxes, masks
 
 
 def color_jitter(image: tf.Tensor,

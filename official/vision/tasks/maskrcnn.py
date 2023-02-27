@@ -157,6 +157,7 @@ class MaskRCNNTask(base_task.Task):
         rpn_batch_size_per_im=params.parser.rpn_batch_size_per_im,
         rpn_fg_fraction=params.parser.rpn_fg_fraction,
         aug_rand_hflip=params.parser.aug_rand_hflip,
+        aug_rand_vflip=params.parser.aug_rand_vflip,
         aug_scale_min=params.parser.aug_scale_min,
         aug_scale_max=params.parser.aug_scale_max,
         aug_type=params.parser.aug_type,

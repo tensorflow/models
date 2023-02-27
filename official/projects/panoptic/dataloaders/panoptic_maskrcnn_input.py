@@ -100,6 +100,7 @@ class Parser(maskrcnn_input.Parser):
                rpn_batch_size_per_im=256,
                rpn_fg_fraction=0.5,
                aug_rand_hflip=False,
+               aug_rand_vflip=False,
                aug_scale_min=1.0,
                aug_scale_max=1.0,
                skip_crowd_during_training=True,
@@ -132,8 +133,10 @@ class Parser(maskrcnn_input.Parser):
       rpn_unmatched_threshold: `float`, unmatched threshold for anchors in RPN.
       rpn_batch_size_per_im: `int` for batch size per image in RPN.
       rpn_fg_fraction: `float` for forground fraction per batch in RPN.
-      aug_rand_hflip: `bool`, if True, augment training with random
-        horizontal flip.
+      aug_rand_hflip: `bool`, if True, augment training with random horizontal
+        flip.
+      aug_rand_vflip: `bool`, if True, augment training with random vertical
+        flip.
       aug_scale_min: `float`, the minimum scale applied to `output_size` for
         data augmentation during training.
       aug_scale_max: `float`, the maximum scale applied to `output_size` for
@@ -170,6 +173,7 @@ class Parser(maskrcnn_input.Parser):
         rpn_batch_size_per_im=rpn_batch_size_per_im,
         rpn_fg_fraction=rpn_fg_fraction,
         aug_rand_hflip=False,
+        aug_rand_vflip=False,
         aug_scale_min=aug_scale_min,
         aug_scale_max=aug_scale_max,
         skip_crowd_during_training=skip_crowd_during_training,
@@ -177,16 +181,24 @@ class Parser(maskrcnn_input.Parser):
         include_mask=True,
         outer_boxes_scale=outer_boxes_scale,
         mask_crop_size=mask_crop_size,
-        dtype=dtype)
+        dtype=dtype,
+    )
 
     self.aug_rand_hflip = aug_rand_hflip
-    self._segmentation_resize_eval_groundtruth = segmentation_resize_eval_groundtruth
+    self.aug_rand_vflip = aug_rand_vflip
+    self._segmentation_resize_eval_groundtruth = (
+        segmentation_resize_eval_groundtruth
+    )
     if (not segmentation_resize_eval_groundtruth) and (
-        segmentation_groundtruth_padded_size is None):
+        segmentation_groundtruth_padded_size is None
+    ):
       raise ValueError(
           'segmentation_groundtruth_padded_size ([height, width]) needs to be'
-          'specified when segmentation_resize_eval_groundtruth is False.')
-    self._segmentation_groundtruth_padded_size = segmentation_groundtruth_padded_size
+          'specified when segmentation_resize_eval_groundtruth is False.'
+      )
+    self._segmentation_groundtruth_padded_size = (
+        segmentation_groundtruth_padded_size
+    )
     self._segmentation_ignore_label = segmentation_ignore_label
     self._panoptic_ignore_label = panoptic_ignore_label
     self._include_panoptic_masks = include_panoptic_masks
@@ -236,13 +248,18 @@ class Parser(maskrcnn_input.Parser):
     segmentation_mask = data['groundtruth_segmentation_mask']
 
     # Flips image randomly during training.
-    if self.aug_rand_hflip:
+    if self.aug_rand_hflip or self.aug_rand_vflip:
       masks = data['groundtruth_instance_masks']
       num_image_channels = data['image'].shape.as_list()[-1]
       image_mask = tf.concat([data['image'], segmentation_mask], axis=2)
 
-      image_mask, boxes, masks = preprocess_ops.random_horizontal_flip(
-          image_mask, data['groundtruth_boxes'], masks)
+      boxes = data['groundtruth_boxes']
+      if self.aug_rand_hflip:
+        image_mask, boxes, masks = preprocess_ops.random_horizontal_flip(
+            image_mask, boxes, masks)
+      if self.aug_rand_vflip:
+        image_mask, boxes, masks = preprocess_ops.random_vertical_flip(
+            image_mask, boxes, masks)
 
       image = image_mask[:, :, :num_image_channels]
       segmentation_mask = image_mask[:, :, num_image_channels:]

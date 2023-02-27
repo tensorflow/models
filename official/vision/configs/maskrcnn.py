@@ -34,6 +34,7 @@ class Parser(hyperparams.Config):
   match_threshold: float = 0.5
   unmatched_threshold: float = 0.5
   aug_rand_hflip: bool = False
+  aug_rand_vflip: bool = False
   aug_scale_min: float = 1.0
   aug_scale_max: float = 1.0
   aug_type: Optional[
