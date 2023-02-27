@@ -142,9 +142,19 @@ def build_yolov7(input_specs, model_config, l2_regularization):
       num_anchors,
       kernel_regularizer=l2_regularization,
   )
+  # YOLOv7 can reuse the detection generator.
+  detection_generator_obj = build_yolo_detection_generator(
+      model_config, anchor_dict
+  )
   # TODO(b/268286230): Add detection generator for eval and inference modes.
-  model = yolov7_model.YOLOV7(backbone, decoder, head, detection_generator=None)
+  model = yolov7_model.YOLOV7(
+      backbone=backbone,
+      decoder=decoder,
+      head=head,
+      detection_generator=detection_generator_obj,
+  )
   model.build(input_specs.shape)
 
   model.summary(print_fn=logging.info)
+
   return model
