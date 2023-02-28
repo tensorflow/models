@@ -191,7 +191,7 @@ def define_ncf_flags():
       default=None,
       help=flags_core.help_wrap(
           "The batch size used for evaluation. This should generally be larger"
-          "than the training batch size as the lack of back propagation during"
+          "than the training batch size, as the lack of back propagation during"
           "evaluation can allow for larger batch sizes to fit in memory. If not"
           "specified, the training batch size (--batch_size) will be used."))
 
@@ -257,7 +257,7 @@ def define_ncf_flags():
           "If passed, training will stop when the evaluation metric HR is "
           "greater than or equal to hr_threshold. For dataset ml-1m, the "
           "desired hr_threshold is 0.68 which is the result from the paper; "
-          "For dataset ml-20m, the threshold can be set as 0.95 which is "
+          "For the dataset ml-20m, the threshold can be set as 0.95 which is "
           "achieved by MLPerf implementation."))
 
   flags.DEFINE_enum(
@@ -308,7 +308,7 @@ def define_ncf_flags():
           "If set, output the MLPerf compliance logging. This is only useful "
           "if one is running the model for MLPerf. See "
           "https://github.com/mlperf/policies/blob/master/training_rules.adoc"
-          "#submission-compliance-logs for details. This uses sudo and so may "
+          "#submission-compliance-logs for details. This uses sudo, and so it may "
           "ask for your password, as root access is needed to clear the system "
           "caches, which is required for MLPerf compliance."))
 

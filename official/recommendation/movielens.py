@@ -89,7 +89,7 @@ DATASET_TO_NUM_USERS_AND_ITEMS = {ML_1M: (6040, 3706), ML_20M: (138493, 26744)}
 
 
 def _download_and_clean(dataset, data_dir):
-  """Download MovieLens dataset in a standard format.
+  """Download the MovieLens dataset in a standard format.
 
   This function downloads the specified MovieLens format and coerces it into a
   standard format. The only difference between the ml-1m and ml-20m datasets
@@ -148,10 +148,10 @@ def _transform_csv(input_path, output_path, names, skip_first, separator=","):
 
   Args:
     input_path: The path of the raw csv.
-    output_path: The path of the cleaned csv.
-    names: The csv column names.
-    skip_first: Boolean of whether to skip the first line of the raw csv.
-    separator: Character used to separate fields in the raw csv.
+    output_path: The location of the cleaned csv file.
+    names: The names of the csv columns.
+    skip_first: Boolean indicating whether the first line of the raw csv should be skipped.
+    separator: A character used in raw csv to separate fields.
   """
   if six.PY2:
     names = [six.ensure_text(n, "utf-8") for n in names]
@@ -179,17 +179,17 @@ def _regularize_1m_dataset(temp_dir):
   ratings.dat
     The file has no header row, and each line is in the following format:
     UserID::MovieID::Rating::Timestamp
-      - UserIDs range from 1 and 6040
-      - MovieIDs range from 1 and 3952
+      - UserIDs range between 1 and 6040
+      - MovieIDs can range between 1 and 3952
       - Ratings are made on a 5-star scale (whole-star ratings only)
-      - Timestamp is represented in seconds since midnight Coordinated Universal
+      - Timestamp is represented in seconds since midnight. Coordinated Universal
         Time (UTC) of January 1, 1970.
       - Each user has at least 20 ratings
 
   movies.dat
     Each line has the following format:
     MovieID::Title::Genres
-      - MovieIDs range from 1 and 3952
+      - MovieIDs can range between 1 and 3952
   """
   working_dir = os.path.join(temp_dir, ML_1M)
 
@@ -223,7 +223,7 @@ def _regularize_20m_dataset(temp_dir):
   movies.csv
     Each line has the following format:
     MovieID,Title,Genres
-      - MovieIDs range from 1 and 3952
+      - MovieIDs can range between 1 and 3952
   """
   working_dir = os.path.join(temp_dir, ML_20M)
 
@@ -265,7 +265,7 @@ def csv_to_joint_dataframe(data_dir, dataset):
 
 
 def integerize_genres(dataframe):
-  """Replace genre string with a binary vector.
+  """Replace the genre string with a binary vector.
 
   Args:
     dataframe: a pandas dataframe of movie data.
@@ -308,7 +308,7 @@ def define_data_download_flags():
 
 
 def main(_):
-  """Download and extract the data from GroupLens website."""
+  """Download and extract the data from the GroupLens website."""
   download(flags.FLAGS.dataset, flags.FLAGS.data_dir)
 
 
