@@ -16,10 +16,10 @@
 
 These functions often receive an image, perform some visualization on the image.
 The functions do not return a value, instead they modify the image itself.
-
 """
 import collections
 import functools
+from typing import Any, Dict
 
 from absl import logging
 # Set headless-friendly backend.
@@ -27,14 +27,15 @@ import matplotlib
 matplotlib.use('Agg')  # pylint: disable=multiple-statements
 import matplotlib.pyplot as plt  # pylint: disable=g-import-not-at-top
 import numpy as np
-import PIL.Image as Image
-import PIL.ImageColor as ImageColor
-import PIL.ImageDraw as ImageDraw
-import PIL.ImageFont as ImageFont
+from PIL import Image
+from PIL import ImageColor
+from PIL import ImageDraw
+from PIL import ImageFont
 import six
 import tensorflow as tf
 
 from official.vision.ops import box_ops
+from official.vision.ops import preprocess_ops
 from official.vision.utils.object_detection import shape_utils
 
 _TITLE_LEFT_MARGIN = 10
@@ -215,15 +216,24 @@ def draw_bounding_box_on_image(image,
     text_bottom = bottom + total_display_str_height
   # Reverse list and print from bottom to top.
   for display_str in display_str_list[::-1]:
-    text_width, text_height = font.getsize(display_str)
-    margin = np.ceil(0.05 * text_height)
-    draw.rectangle([(left, text_bottom - text_height - 2 * margin),
-                    (left + text_width, text_bottom)],
-                   fill=color)
-    draw.text((left + margin, text_bottom - text_height - margin),
-              display_str,
-              fill='black',
-              font=font)
+    try:
+      text_width, text_height = font.getsize(display_str)
+      margin = np.ceil(0.05 * text_height)
+      draw.rectangle(
+          [
+              (left, text_bottom - text_height - 2 * margin),
+              (left + text_width, text_bottom),
+          ],
+          fill=color,
+      )
+      draw.text(
+          (left + margin, text_bottom - text_height - margin),
+          display_str,
+          fill='black',
+          font=font,
+      )
+    except ValueError:
+      pass
     text_bottom -= text_height - 2 * margin
 
 
@@ -334,6 +344,95 @@ def _resize_original_image(image, image_shape):
   image = tf.image.resize(
       image, image_shape, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
   return tf.cast(tf.squeeze(image, 0), tf.uint8)
+
+
+def visualize_outputs(
+    logs,
+    task_config,
+    original_image_spatial_shape=None,
+    true_image_shape=None,
+    max_boxes_to_draw=20,
+    min_score_thresh=0.2,
+    use_normalized_coordinates=False,
+):
+  """Visualizes the detection outputs.
+
+  It extracts images and predictions from logs and draws visualization on input
+  images. By default, it requires `detection_boxes`, `detection_classes` and
+  `detection_scores` in the prediction, and optionally accepts
+  `detection_keypoints` and `detection_masks`.
+
+  Args:
+    logs: A dictionaty of log that contains images and predictions.
+    task_config: A task config.
+    original_image_spatial_shape: A [N, 2] tensor containing the spatial size of
+      the original image.
+    true_image_shape: A [N, 3] tensor containing the spatial size of unpadded
+      original_image.
+    max_boxes_to_draw: The maximum number of boxes to draw on an image. Default
+      20.
+    min_score_thresh: The minimum score threshold for visualization. Default
+      0.2.
+    use_normalized_coordinates: Whether to assume boxes and kepoints are in
+      normalized coordinates (as opposed to absolute coordiantes). Default is
+      True.
+
+  Returns:
+    A 4D tensor with predictions (boxes, segments and/or keypoints) drawn on
+      each image.
+  """
+  images = logs['image']
+  boxes = logs['detection_boxes']
+  classes = tf.cast(logs['detection_classes'], dtype=tf.int32)
+  scores = logs['detection_scores']
+  num_classes = task_config.model.num_classes
+
+  keypoints = (
+      logs['detection_keypoints'] if 'detection_keypoints' in logs else None
+  )
+  instance_masks = (
+      logs['detection_masks'] if 'detection_masks' in logs else None
+  )
+
+  category_index = {}
+  for i in range(1, num_classes + 1):
+    category_index[i] = {'id': i, 'name': str(i)}
+
+  def _denormalize_images(images: tf.Tensor) -> tf.Tensor:
+    images *= tf.constant(
+        preprocess_ops.STDDEV_RGB, shape=[1, 1, 3], dtype=images.dtype
+    )
+    images += tf.constant(
+        preprocess_ops.MEAN_RGB, shape=[1, 1, 3], dtype=images.dtype
+    )
+    return tf.cast(images, dtype=tf.uint8)
+
+  images = tf.nest.map_structure(
+      tf.identity,
+      tf.map_fn(
+          _denormalize_images,
+          elems=images,
+          fn_output_signature=tf.TensorSpec(
+              shape=images.shape.as_list()[1:], dtype=tf.uint8
+          ),
+          parallel_iterations=32,
+      ),
+  )
+
+  return draw_bounding_boxes_on_image_tensors(
+      images,
+      boxes,
+      classes,
+      scores,
+      category_index,
+      original_image_spatial_shape,
+      true_image_shape,
+      instance_masks,
+      keypoints,
+      max_boxes_to_draw,
+      min_score_thresh,
+      use_normalized_coordinates,
+  )
 
 
 def draw_bounding_boxes_on_image_tensors(images,
@@ -722,3 +821,39 @@ def add_hist_image_summary(values, bins, name):
 
   hist_plot = tf.compat.v1.py_func(hist_plot, [values, bins], tf.uint8)
   tf.compat.v1.summary.image(name, hist_plot)
+
+
+def update_detection_state(step_outputs=None) -> Dict[str, Any]:
+  """Updates detection state to optionally add input image and predictions."""
+  state = {}
+  if step_outputs:
+    state['image'] = tf.concat(step_outputs['visualization'][0], axis=0)
+    state['detection_boxes'] = tf.concat(
+        step_outputs['visualization'][1]['detection_boxes'], axis=0
+    )
+    state['detection_classes'] = tf.concat(
+        step_outputs['visualization'][1]['detection_classes'], axis=0
+    )
+    state['detection_scores'] = tf.concat(
+        step_outputs['visualization'][1]['detection_scores'], axis=0
+    )
+
+    if 'detection_kpts' in step_outputs['visualization'][1]:
+      detection_keypoints = step_outputs['visualization'][1]['detection_kpts']
+    elif 'detection_keypoints' in step_outputs['visualization'][1]:
+      detection_keypoints = step_outputs['visualization'][1][
+          'detection_keypoints'
+      ]
+    else:
+      detection_keypoints = None
+
+    if detection_keypoints:
+      state['detection_keypoints'] = tf.concat(detection_keypoints, axis=0)
+
+    detection_masks = step_outputs['visualization'][1].get(
+        'detection_masks', None
+    )
+    if detection_masks:
+      state['detection_masks'] = tf.concat(detection_masks, axis=0)
+
+  return state

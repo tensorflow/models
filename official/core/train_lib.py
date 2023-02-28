@@ -68,7 +68,9 @@ class OrbitExperimentRunner:
       train_actions: Optional[List[orbit.Action]] = None,
       eval_actions: Optional[List[orbit.Action]] = None,
       trainer: Optional[base_trainer.Trainer] = None,
-      controller_cls=orbit.Controller
+      controller_cls=orbit.Controller,
+      summary_manager: Optional[orbit.utils.SummaryManager] = None,
+      eval_summary_manager: Optional[orbit.utils.SummaryManager] = None,
   ):
     """Constructor.
 
@@ -88,6 +90,10 @@ class OrbitExperimentRunner:
         the strategy.scope().
       controller_cls: The controller class to manage the train and eval process.
         Must be a orbit.Controller subclass.
+      summary_manager: Instance of the summary manager to override default
+        summary manager.
+      eval_summary_manager: Instance of the eval summary manager to override
+        default eval summary manager.
     """
     self.strategy = distribution_strategy or tf.distribute.get_strategy()
     self._params = params
@@ -101,6 +107,8 @@ class OrbitExperimentRunner:
         evaluate=('eval' in mode) or run_post_eval)
     assert self.trainer is not None
     self._checkpoint_manager = self._maybe_build_checkpoint_manager()
+    self._summary_manager = summary_manager
+    self._eval_summary_manager = eval_summary_manager
     self._controller = self._build_controller(
         trainer=self.trainer if 'train' in mode else None,
         evaluator=self.trainer,
@@ -201,6 +209,13 @@ class OrbitExperimentRunner:
       eval_actions += actions.get_eval_actions(self.params, evaluator,
                                                self.model_dir)
 
+    if save_summary:
+      eval_summary_dir = os.path.join(
+          self.model_dir, self.params.trainer.validation_summary_subdir
+      )
+    else:
+      eval_summary_dir = None
+
     controller = controller_cls(
         strategy=self.strategy,
         trainer=trainer,
@@ -208,15 +223,18 @@ class OrbitExperimentRunner:
         global_step=self.trainer.global_step,
         steps_per_loop=self.params.trainer.steps_per_loop,
         checkpoint_manager=self.checkpoint_manager,
-        summary_dir=os.path.join(self.model_dir, 'train') if
-        (save_summary) else None,
-        eval_summary_dir=os.path.join(
-            self.model_dir, self.params.trainer.validation_summary_subdir) if
-        (save_summary) else None,
-        summary_interval=self.params.trainer.summary_interval if
-        (save_summary) else None,
+        summary_dir=os.path.join(self.model_dir, 'train')
+        if (save_summary)
+        else None,
+        eval_summary_dir=eval_summary_dir,
+        summary_interval=self.params.trainer.summary_interval
+        if (save_summary)
+        else None,
         train_actions=train_actions,
-        eval_actions=eval_actions)
+        eval_actions=eval_actions,
+        summary_manager=self._summary_manager,
+        eval_summary_manager=self._eval_summary_manager,
+    )
     return controller
 
   def run(self) -> Tuple[tf.keras.Model, Mapping[str, Any]]:
@@ -284,7 +302,9 @@ def run_experiment(
     train_actions: Optional[List[orbit.Action]] = None,
     eval_actions: Optional[List[orbit.Action]] = None,
     trainer: Optional[base_trainer.Trainer] = None,
-    controller_cls=orbit.Controller
+    controller_cls=orbit.Controller,
+    summary_manager: Optional[orbit.utils.SummaryManager] = None,
+    eval_summary_manager: Optional[orbit.utils.SummaryManager] = None,
 ) -> Tuple[tf.keras.Model, Mapping[str, Any]]:
   """Runs train/eval configured by the experiment params.
 
@@ -304,6 +324,10 @@ def run_experiment(
       strategy.scope().
     controller_cls: The controller class to manage the train and eval process.
       Must be a orbit.Controller subclass.
+    summary_manager: Instance of the summary manager to override default summary
+      manager.
+    eval_summary_manager: Instance of the eval summary manager to override
+      default eval summary manager.
 
   Returns:
     A 2-tuple of (model, eval_logs).
@@ -323,5 +347,7 @@ def run_experiment(
       eval_actions=eval_actions,
       trainer=trainer,
       controller_cls=controller_cls,
+      summary_manager=summary_manager,
+      eval_summary_manager=eval_summary_manager,
   )
   return runner.run()

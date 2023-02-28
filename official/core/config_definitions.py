@@ -289,6 +289,9 @@ class TaskConfig(base_config.Config):
   # DEPRECATED b/264611883
   differential_privacy_config: Optional[
       dp_configs.DifferentialPrivacyConfig] = None
+  # Whether to show image summary. Useful to visualize model predictions. Only
+  # work for vision tasks.
+  allow_image_summary: bool = False
 
 
 @dataclasses.dataclass
