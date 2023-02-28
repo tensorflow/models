@@ -160,7 +160,6 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         num_scales=self.task_config.model.anchor.num_scales,
         aspect_ratios=self.task_config.model.anchor.aspect_ratios,
         anchor_size=self.task_config.model.anchor.anchor_size,
-        dtype=params.dtype,
         rpn_match_threshold=params.parser.rpn_match_threshold,
         rpn_unmatched_threshold=params.parser.rpn_unmatched_threshold,
         rpn_batch_size_per_im=params.parser.rpn_batch_size_per_im,
@@ -169,6 +168,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         aug_rand_vflip=params.parser.aug_rand_vflip,
         aug_scale_min=params.parser.aug_scale_min,
         aug_scale_max=params.parser.aug_scale_max,
+        aug_type=params.parser.aug_type,
         skip_crowd_during_training=params.parser.skip_crowd_during_training,
         max_num_instances=params.parser.max_num_instances,
         outer_boxes_scale=self.task_config.model.outer_boxes_scale,
@@ -179,7 +179,9 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         .segmentation_groundtruth_padded_size,
         segmentation_ignore_label=params.parser.segmentation_ignore_label,
         panoptic_ignore_label=params.parser.panoptic_ignore_label,
-        include_panoptic_masks=params.parser.include_panoptic_masks)
+        include_panoptic_masks=params.parser.include_panoptic_masks,
+        dtype=params.dtype,
+    )
 
     reader = input_reader_factory.input_reader_generator(
         params,
