@@ -32,6 +32,7 @@ from official.vision.evaluation import coco_evaluator
 from official.vision.losses import focal_loss
 from official.vision.losses import loss_utils
 from official.vision.modeling import factory
+from official.vision.utils.object_detection import visualization_utils
 
 
 @task_factory.register_task_cls(exp_cfg.RetinaNetTask)
@@ -264,15 +265,20 @@ class RetinaNetTask(base_task.Task):
       metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
 
     if not training:
-      if self.task_config.validation_data.tfds_name and self.task_config.annotation_file:
+      if (
+          self.task_config.validation_data.tfds_name
+          and self.task_config.annotation_file
+      ):
         raise ValueError(
-            "Can't evaluate using annotation file when TFDS is used.")
+            "Can't evaluate using annotation file when TFDS is used."
+        )
       if self._task_config.use_coco_metrics:
         self.coco_metric = coco_evaluator.COCOEvaluator(
             annotation_file=self.task_config.annotation_file,
             include_mask=False,
             per_category_metrics=self.task_config.per_category_metrics,
-            max_num_eval_detections=self.task_config.max_num_eval_detections)
+            max_num_eval_detections=self.task_config.max_num_eval_detections,
+        )
       if self._task_config.use_wod_metrics:
         # To use Waymo open dataset metrics, please install one of the pip
         # package `waymo-open-dataset-tf-*` from
@@ -402,6 +408,14 @@ class RetinaNetTask(base_task.Task):
       for m in metrics:
         m.update_state(all_losses[m.name])
         logs.update({m.name: m.result()})
+
+    if (
+        hasattr(self.task_config, 'allow_image_summary')
+        and self.task_config.allow_image_summary
+    ):
+      logs.update(
+          {'visualization': (tf.cast(features, dtype=tf.float32), outputs)}
+      )
     return logs
 
   def aggregate_logs(self, state=None, step_outputs=None):
@@ -418,7 +432,12 @@ class RetinaNetTask(base_task.Task):
     if state is None:
       # Create an arbitrary state to indicate it's not the first step in the
       # following calls to this function.
-      state = True
+      state = {}
+
+    # Update detection state for writing summary if there are artifacts for
+    # visualization.
+    if 'visualization' in step_outputs:
+      state.update(visualization_utils.update_detection_state(step_outputs))
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
@@ -427,4 +446,12 @@ class RetinaNetTask(base_task.Task):
       logs.update(self.coco_metric.result())
     if self._task_config.use_wod_metrics:
       logs.update(self.wod_metric.result())
+
+    # Add visualization for summary.
+    if 'image' in aggregated_logs:
+      validation_outputs = visualization_utils.visualize_outputs(
+          logs=aggregated_logs, task_config=self.task_config
+      )
+      logs.update({'image/validation_outputs': validation_outputs})
+
     return logs
