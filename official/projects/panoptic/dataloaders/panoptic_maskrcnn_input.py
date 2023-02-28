@@ -103,6 +103,7 @@ class Parser(maskrcnn_input.Parser):
                aug_rand_vflip=False,
                aug_scale_min=1.0,
                aug_scale_max=1.0,
+               aug_type=None,
                skip_crowd_during_training=True,
                max_num_instances=100,
                outer_boxes_scale=1.0,
@@ -141,6 +142,7 @@ class Parser(maskrcnn_input.Parser):
         data augmentation during training.
       aug_scale_max: `float`, the maximum scale applied to `output_size` for
         data augmentation during training.
+      aug_type: An optional Augmentation object with params for AutoAugment.
       skip_crowd_during_training: `bool`, if True, skip annotations labeled with
         `is_crowd` equals to 1.
       max_num_instances: `int` number of maximum number of instances in an
@@ -176,6 +178,7 @@ class Parser(maskrcnn_input.Parser):
         aug_rand_vflip=False,
         aug_scale_min=aug_scale_min,
         aug_scale_max=aug_scale_max,
+        aug_type=aug_type,
         skip_crowd_during_training=skip_crowd_during_training,
         max_num_instances=max_num_instances,
         include_mask=True,
