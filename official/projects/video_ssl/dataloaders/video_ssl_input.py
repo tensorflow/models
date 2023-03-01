@@ -221,7 +221,7 @@ class Parser(video_input.Parser):
                input_params: exp_cfg.DataConfig,
                image_key: str = IMAGE_KEY,
                label_key: str = LABEL_KEY):
-    super(Parser, self).__init__(input_params, image_key, label_key)
+    super().__init__(input_params, image_key, label_key)
     self._is_ssl = input_params.is_ssl
 
   def _parse_train_data(
