@@ -164,6 +164,7 @@ class ExportConfig(hyperparams.Config):
   output_normalized_coordinates: bool = False
   cast_num_detections_to_float: bool = False
   cast_detection_classes_to_float: bool = False
+  output_intermediate_features: bool = False
 
 
 @dataclasses.dataclass

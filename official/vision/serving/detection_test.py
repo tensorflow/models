@@ -35,11 +35,14 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
       input_type,
       outer_boxes_scale=1.0,
       nms_version='batched',
+      output_intermediate_features=False,
   ):
     params = exp_factory.get_exp_config(experiment_name)
     params.task.model.outer_boxes_scale = outer_boxes_scale
     params.task.model.backbone.resnet.model_id = 18
     params.task.model.detection_generator.nms_version = nms_version
+    if output_intermediate_features:
+      params.task.export_config.output_intermediate_features = True
     detection_module = detection.DetectionModule(
         params,
         batch_size=1,
@@ -151,6 +154,35 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
     params = exp_factory.get_exp_config(experiment_type)
     detection.DetectionModule(
         params, batch_size=None, input_image_size=[640, 640])
+
+  def test_export_retinanet_with_intermediate_features(self):
+    tmp_dir = self.get_temp_dir()
+    input_type = 'image_tensor'
+    module = self._get_detection_module(
+        'retinanet_resnetfpn_coco',
+        input_type,
+        output_intermediate_features=True,
+    )
+    self._export_from_module(module, input_type, tmp_dir)
+    imported = tf.saved_model.load(tmp_dir)
+    detection_fn = imported.signatures['serving_default']
+    images = self._get_dummy_input(
+        input_type, batch_size=1, image_size=[384, 384]
+    )
+    outputs = detection_fn(tf.constant(images))
+    self.assertContainsSubset(
+        {
+            'backbone_3',
+            'backbone_4',
+            'backbone_5',
+            'decoder_3',
+            'decoder_4',
+            'decoder_5',
+            'decoder_6',
+            'decoder_7',
+        },
+        outputs.keys(),
+    )
 
 
 if __name__ == '__main__':
