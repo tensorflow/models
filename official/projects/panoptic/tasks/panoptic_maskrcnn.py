@@ -23,6 +23,7 @@ from official.core import task_factory
 from official.projects.panoptic.configs import panoptic_maskrcnn as exp_cfg
 from official.projects.panoptic.dataloaders import panoptic_maskrcnn_input
 from official.projects.panoptic.modeling import factory
+from official.vision.dataloaders import input_reader
 from official.vision.dataloaders import input_reader_factory
 from official.vision.evaluation import panoptic_quality
 from official.vision.evaluation import segmentation_metrics
@@ -187,7 +188,9 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         params,
         dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
-        parser_fn=parser.parse_fn(params.is_training))
+        combine_fn=input_reader.create_combine_fn(params),
+        parser_fn=parser.parse_fn(params.is_training),
+    )
     dataset = reader.read(input_context=input_context)
 
     return dataset
