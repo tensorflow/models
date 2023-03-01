@@ -232,8 +232,12 @@ class OrbitExperimentRunner:
         else None,
         train_actions=train_actions,
         eval_actions=eval_actions,
-        summary_manager=self._summary_manager,
-        eval_summary_manager=self._eval_summary_manager,
+        summary_manager=self._summary_manager
+        if hasattr(self, '_summary_manager')
+        else None,
+        eval_summary_manager=self._eval_summary_manager
+        if hasattr(self, '_eval_summary_manager')
+        else None,
     )
     return controller
 
