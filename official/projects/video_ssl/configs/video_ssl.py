@@ -29,19 +29,11 @@ VideoClassificationTask = video_classification.VideoClassificationTask
 
 
 @dataclasses.dataclass
-class VideoSSLPretrainTask(VideoClassificationTask):
-  pass
-
-
-@dataclasses.dataclass
-class VideoSSLEvalTask(VideoClassificationTask):
-  pass
-
-
-@dataclasses.dataclass
 class DataConfig(video_classification.DataConfig):
   """The base configuration for building datasets."""
   is_ssl: bool = False
+  is_training: bool = True
+  drop_remainder: bool = True
 
 
 @dataclasses.dataclass
@@ -61,17 +53,36 @@ class SSLLosses(Losses):
   temperature: float = 0.1
 
 
+@dataclasses.dataclass
+class VideoSSLPretrainTask(VideoClassificationTask):
+  model: VideoSSLModel = VideoSSLModel()
+  losses: SSLLosses = SSLLosses()
+  train_data: DataConfig = DataConfig(is_training=True, drop_remainder=True)
+  validation_data: DataConfig = DataConfig(
+      is_training=False, drop_remainder=False)
+  losses: SSLLosses = SSLLosses()
+
+
+@dataclasses.dataclass
+class VideoSSLEvalTask(VideoClassificationTask):
+  model: VideoSSLModel = VideoSSLModel()
+  train_data: DataConfig = DataConfig(is_training=True, drop_remainder=True)
+  validation_data: DataConfig = DataConfig(
+      is_training=False, drop_remainder=False)
+  losses: SSLLosses = SSLLosses()
+
+
 @exp_factory.register_config_factory('video_ssl_pretrain_kinetics400')
 def video_ssl_pretrain_kinetics400() -> cfg.ExperimentConfig:
   """Pretrain SSL Video classification on Kinectics 400 with resnet."""
   exp = video_classification.video_classification_kinetics400()
-  exp.task = VideoSSLPretrainTask(**exp.task.as_dict())
-  exp.task.train_data = DataConfig(is_ssl=True, **exp.task.train_data.as_dict())
-  exp.task.train_data.feature_shape = (16, 224, 224, 3)
-  exp.task.train_data.temporal_stride = 2
-  exp.task.model = VideoSSLModel(exp.task.model)
-  exp.task.model.model_type = 'video_ssl_model'
-  exp.task.losses = SSLLosses(exp.task.losses)
+  task = VideoSSLPretrainTask()
+  task.override(exp.task)
+  task.train_data.is_ssl = True
+  task.train_data.feature_shape = (16, 224, 224, 3)
+  task.train_data.temporal_stride = 2
+  task.model.model_type = 'video_ssl_model'
+  exp.task = task
   return exp
 
 
@@ -79,23 +90,22 @@ def video_ssl_pretrain_kinetics400() -> cfg.ExperimentConfig:
 def video_ssl_linear_eval_kinetics400() -> cfg.ExperimentConfig:
   """Pretrain SSL Video classification on Kinectics 400 with resnet."""
   exp = video_classification.video_classification_kinetics400()
-  exp.task = VideoSSLEvalTask(**exp.task.as_dict())
-  exp.task.train_data = DataConfig(is_ssl=False,
-                                   **exp.task.train_data.as_dict())
-  exp.task.train_data.feature_shape = (32, 224, 224, 3)
-  exp.task.train_data.temporal_stride = 2
-  exp.task.validation_data.feature_shape = (32, 256, 256, 3)
-  exp.task.validation_data.temporal_stride = 2
-  exp.task.validation_data = DataConfig(is_ssl=False,
-                                        **exp.task.validation_data.as_dict())
-  exp.task.validation_data.min_image_size = 256
-  exp.task.validation_data.num_test_clips = 10
-  exp.task.validation_data.num_test_crops = 3
-  exp.task.model = VideoSSLModel(exp.task.model)
-  exp.task.model.model_type = 'video_ssl_model'
-  exp.task.model.normalize_feature = True
-  exp.task.model.hidden_layer_num = 0
-  exp.task.model.projection_dim = 400
+  task = VideoSSLEvalTask()  # Replaces the task type.
+  task.override(exp.task)
+  task.train_data.is_ssl = False
+  task.train_data.feature_shape = (32, 224, 224, 3)
+  task.train_data.temporal_stride = 2
+  task.validation_data.is_ssl = False
+  task.validation_data.feature_shape = (32, 256, 256, 3)
+  task.validation_data.temporal_stride = 2
+  task.validation_data.min_image_size = 256
+  task.validation_data.num_test_clips = 10
+  task.validation_data.num_test_crops = 3
+  task.model.model_type = 'video_ssl_model'
+  task.model.normalize_feature = True
+  task.model.hidden_layer_num = 0
+  task.model.projection_dim = 600
+  exp.task = task
   return exp
 
 
@@ -103,13 +113,13 @@ def video_ssl_linear_eval_kinetics400() -> cfg.ExperimentConfig:
 def video_ssl_pretrain_kinetics600() -> cfg.ExperimentConfig:
   """Pretrain SSL Video classification on Kinectics 400 with resnet."""
   exp = video_classification.video_classification_kinetics600()
-  exp.task = VideoSSLPretrainTask(**exp.task.as_dict())
-  exp.task.train_data = DataConfig(is_ssl=True, **exp.task.train_data.as_dict())
-  exp.task.train_data.feature_shape = (16, 224, 224, 3)
-  exp.task.train_data.temporal_stride = 2
-  exp.task.model = VideoSSLModel(exp.task.model)
-  exp.task.model.model_type = 'video_ssl_model'
-  exp.task.losses = SSLLosses(exp.task.losses)
+  task = VideoSSLPretrainTask()
+  task.override(exp.task)
+  task.train_data.is_ssl = True
+  task.train_data.feature_shape = (16, 224, 224, 3)
+  task.train_data.temporal_stride = 2
+  task.model.model_type = 'video_ssl_model'
+  exp.task = task
   return exp
 
 
@@ -117,21 +127,20 @@ def video_ssl_pretrain_kinetics600() -> cfg.ExperimentConfig:
 def video_ssl_linear_eval_kinetics600() -> cfg.ExperimentConfig:
   """Pretrain SSL Video classification on Kinectics 400 with resnet."""
   exp = video_classification.video_classification_kinetics600()
-  exp.task = VideoSSLEvalTask(**exp.task.as_dict())
-  exp.task.train_data = DataConfig(is_ssl=False,
-                                   **exp.task.train_data.as_dict())
-  exp.task.train_data.feature_shape = (32, 224, 224, 3)
-  exp.task.train_data.temporal_stride = 2
-  exp.task.validation_data = DataConfig(is_ssl=False,
-                                        **exp.task.validation_data.as_dict())
-  exp.task.validation_data.feature_shape = (32, 256, 256, 3)
-  exp.task.validation_data.temporal_stride = 2
-  exp.task.validation_data.min_image_size = 256
-  exp.task.validation_data.num_test_clips = 10
-  exp.task.validation_data.num_test_crops = 3
-  exp.task.model = VideoSSLModel(exp.task.model)
-  exp.task.model.model_type = 'video_ssl_model'
-  exp.task.model.normalize_feature = True
-  exp.task.model.hidden_layer_num = 0
-  exp.task.model.projection_dim = 600
+  task = VideoSSLEvalTask()  # Replaces the task type.
+  task.override(exp.task)
+  task.train_data.is_ssl = False
+  task.train_data.feature_shape = (32, 224, 224, 3)
+  task.train_data.temporal_stride = 2
+  task.validation_data.is_ssl = False
+  task.validation_data.feature_shape = (32, 256, 256, 3)
+  task.validation_data.temporal_stride = 2
+  task.validation_data.min_image_size = 256
+  task.validation_data.num_test_clips = 10
+  task.validation_data.num_test_crops = 3
+  task.model.model_type = 'video_ssl_model'
+  task.model.normalize_feature = True
+  task.model.hidden_layer_num = 0
+  task.model.projection_dim = 600
+  exp.task = task
   return exp
