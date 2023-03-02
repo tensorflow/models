@@ -43,6 +43,10 @@ class VisionTransformer(hyperparams.Config):
   init_stochastic_depth_rate: float = 0.0
   original_init: bool = True
   pos_embed_shape: Optional[Tuple[int, int]] = None
+  # If output encoded tokens sequence when pooler is `none`.
+  output_encoded_tokens: bool = True
+  # If output encoded tokens 2D feature map.
+  output_2d_feature_maps: bool = False
 
 
 @dataclasses.dataclass
