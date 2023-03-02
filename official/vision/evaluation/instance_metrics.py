@@ -598,6 +598,10 @@ class InstanceMetrics(tf.keras.metrics.Metric):
           detection_boxes, gt_boxes
       )
     else:
+      # Use outer boxes to generate the masks if available.
+      if 'detection_outer_boxes' in y_pred:
+        detection_boxes = y_pred['detection_outer_boxes']
+
       # (batch_size, num_detections, mask_height, mask_width)
       detection_masks = tf.cast(y_pred['detection_masks'], tf.float32)
       # (batch_size, num_gts, gt_mask_height, gt_mask_width)

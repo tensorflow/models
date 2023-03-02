@@ -151,7 +151,6 @@ class MaskRCNNTask(base_task.Task):
         num_scales=self.task_config.model.anchor.num_scales,
         aspect_ratios=self.task_config.model.anchor.aspect_ratios,
         anchor_size=self.task_config.model.anchor.anchor_size,
-        dtype=params.dtype,
         rpn_match_threshold=params.parser.rpn_match_threshold,
         rpn_unmatched_threshold=params.parser.rpn_unmatched_threshold,
         rpn_batch_size_per_im=params.parser.rpn_batch_size_per_im,
@@ -165,7 +164,9 @@ class MaskRCNNTask(base_task.Task):
         max_num_instances=params.parser.max_num_instances,
         include_mask=self.task_config.model.include_mask,
         outer_boxes_scale=self.task_config.model.outer_boxes_scale,
-        mask_crop_size=params.parser.mask_crop_size)
+        mask_crop_size=params.parser.mask_crop_size,
+        dtype=params.dtype,
+    )
 
     if not dataset_fn:
       dataset_fn = dataset_fn_lib.pick_dataset_fn(params.file_type)
@@ -437,15 +438,13 @@ class MaskRCNNTask(base_task.Task):
         'source_id': labels['groundtruths']['source_id'],
         'image_info': labels['image_info'],
     }
-    if self.task_config.model.include_mask:
+    if 'detection_outer_boxes' in outputs:
+      instance_predictions['detection_outer_boxes'] = outputs[
+          'detection_outer_boxes'
+      ]
+    if 'detection_masks' in outputs:
       instance_predictions['detection_masks'] = outputs['detection_masks']
-      if 'detection_outer_boxes' in outputs:
-        instance_predictions['detection_boxes'] = outputs[
-            'detection_outer_boxes'
-        ]
-        instance_predictions['detection_outer_boxes'] = outputs[
-            'detection_outer_boxes'
-        ]
+
     if self._task_config.use_coco_metrics:
       logs[self.coco_metric.name] = (
           labels['groundtruths'],
