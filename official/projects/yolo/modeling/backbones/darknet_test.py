@@ -81,7 +81,9 @@ class DarknetTest(parameterized.TestCase, tf.test.TestCase):
     tf.keras.backend.set_image_data_format('channels_last')
 
     with strategy.scope():
-      network = darknet.Darknet(model_id='darknet53', min_size=3, max_size=5)
+      network = darknet.Darknet(
+          model_id='darknet53', min_size=3, max_size=5, use_sync_bn=use_sync_bn
+      )
       _ = network(inputs)
 
   @parameterized.parameters(1, 3, 4)
