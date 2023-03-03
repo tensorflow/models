@@ -63,6 +63,7 @@ def _run_experiment_with_preemption_recovery(params, model_dir):
       keep_training = False
     except tf.errors.OpError as e:
       if preemption_watcher and preemption_watcher.preemption_message:
+        preemption_watcher.block_until_worker_exit()
         logging.info(
             'Some TPU workers had been preempted (message: %s), '
             'retarting training from the last checkpoint...',
