@@ -26,7 +26,7 @@ from absl import logging
 import tensorflow as tf
 # pylint: disable=g-direct-tensorflow-import  TODO(b/175369555): Remove these.
 from tensorflow.core.protobuf import saved_model_pb2
-from tensorflow.python.ops import control_flow_ops
+from tensorflow.python.ops import control_flow_assert
 # pylint: enable=g-direct-tensorflow-import
 from official.legacy.bert import configs
 from official.modeling import tf_utils
@@ -456,15 +456,15 @@ def _dont_assert(condition, data, summarize=None, name="Assert"):
 
 @contextlib.contextmanager
 def _maybe_disable_assert(disable_assert):
-  """Scoped monkey patch of control_flow_ops.Assert to a no-op."""
+  """Scoped monkey patch of control_flow_assert.Assert to a no-op."""
   if not disable_assert:
     yield
     return
 
-  original_assert = control_flow_ops.Assert
-  control_flow_ops.Assert = _dont_assert
+  original_assert = control_flow_assert.Assert
+  control_flow_assert.Assert = _dont_assert
   yield
-  control_flow_ops.Assert = original_assert
+  control_flow_assert.Assert = original_assert
 
 
 def _check_no_assert(saved_model_path):
