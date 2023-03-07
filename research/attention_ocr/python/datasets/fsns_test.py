@@ -17,8 +17,8 @@
 
 import collections
 import os
-import tensorflow as tf
-from tensorflow.contrib import slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from datasets import fsns
 from datasets import unittest_utils
@@ -97,8 +97,9 @@ class FsnsTest(tf.test.TestCase):
         image_np, label_np = sess.run([image_tf, label_tf])
 
     self.assertEqual((150, 600, 3), image_np.shape)
-    self.assertEqual((37, ), label_np.shape)
+    self.assertEqual((37,), label_np.shape)
 
 
 if __name__ == '__main__':
+  tf.disable_eager_execution()
   tf.test.main()

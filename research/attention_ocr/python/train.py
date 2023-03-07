@@ -20,11 +20,9 @@ python train.py
 """
 import collections
 import logging
-import tensorflow as tf
-from tensorflow.contrib import slim
-from tensorflow import app
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 from tensorflow.compat.v1 import flags
-from tensorflow.contrib.tfprof import model_analyzer
 
 import data_provider
 import common_flags
@@ -168,9 +166,9 @@ def prepare_training_dir():
 
 
 def calculate_graph_metrics():
-  param_stats = model_analyzer.print_model_analysis(
+  param_stats = tf.profiler.profile(
       tf.compat.v1.get_default_graph(),
-      tfprof_options=model_analyzer.TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
+      options=tf.profiler.ProfileOptionBuilder.trainable_variables_parameter())
   return param_stats.total_parameters
 
 
@@ -206,4 +204,5 @@ def main(_):
 
 
 if __name__ == '__main__':
-  app.run()
+  tf.disable_eager_execution()
+  tf.app.run()

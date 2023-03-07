@@ -15,7 +15,7 @@
 # ==============================================================================
 """Utility functions for exporting Attention OCR model."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 # Function borrowed from research/object_detection/core/preprocessor.py

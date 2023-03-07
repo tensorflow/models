@@ -15,7 +15,7 @@
 
 """Quality metrics for the model."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 def char_accuracy(predictions, targets, rej_char, streaming=False):
@@ -76,7 +76,8 @@ def sequence_accuracy(predictions, targets, rej_char, streaming=False):
     include_mask = tf.not_equal(targets, const_rej_char)
     include_predictions = tf.cast(
         tf.compat.v1.where(include_mask, predictions,
-                           tf.zeros_like(predictions) + rej_char), dtype=tf.int32)
+                           tf.zeros_like(predictions) + rej_char),
+        dtype=tf.int32)
     correct_chars = tf.cast(
         tf.equal(include_predictions, targets), dtype=tf.float32)
     correct_chars_counts = tf.cast(

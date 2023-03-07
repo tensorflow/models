@@ -18,7 +18,7 @@
 import numpy as np
 import io
 from PIL import Image as PILImage
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from datasets import unittest_utils
 

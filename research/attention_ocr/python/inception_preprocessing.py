@@ -21,7 +21,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tensorflow.python.ops import control_flow_ops
 
@@ -131,7 +131,8 @@ def distorted_bounding_box_crop(image,
   Returns:
     A tuple, a 3-D Tensor cropped_image and the distorted bbox
   """
-  with tf.compat.v1.name_scope(scope, 'distorted_bounding_box_crop', [image, bbox]):
+  with tf.compat.v1.name_scope(scope, 'distorted_bounding_box_crop',
+                               [image, bbox]):
     # Each bounding box has shape [1, num_boxes, box coords] and
     # the coordinates are ordered [ymin, xmin, ymax, xmax].
 
@@ -188,7 +189,8 @@ def preprocess_for_train(image,
   Returns:
     3-D float Tensor of distorted image used for training with range [-1, 1].
   """
-  with tf.compat.v1.name_scope(scope, 'distort_image', [image, height, width, bbox]):
+  with tf.compat.v1.name_scope(scope, 'distort_image',
+                               [image, height, width, bbox]):
     if bbox is None:
       bbox = tf.constant(
           [0.0, 0.0, 1.0, 1.0], dtype=tf.float32, shape=[1, 1, 4])

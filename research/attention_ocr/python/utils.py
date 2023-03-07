@@ -15,8 +15,8 @@
 
 """Functions to support building models for StreetView text transcription."""
 
-import tensorflow as tf
-from tensorflow.contrib import slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 
 def logits_to_log_prob(logits):

@@ -18,9 +18,8 @@
 A simple usage example:
 python eval.py
 """
-import tensorflow as tf
-from tensorflow.contrib import slim
-from tensorflow import app
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 from tensorflow.compat.v1 import flags
 
 import data_provider
@@ -75,4 +74,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  app.run()
+  tf.config.set_visible_devices([], 'GPU')
+  tf.disable_eager_execution()
+  tf.app.run()
