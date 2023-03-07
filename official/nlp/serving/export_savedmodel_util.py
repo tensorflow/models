@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Common library to export a SavedModel from the export module."""
-from typing import Dict, List, Optional, Text, Union
+from typing import Dict, List, Optional, Union, Any
 
 import tensorflow as tf
 
@@ -23,11 +23,12 @@ get_timestamped_export_dir = export_base.get_timestamped_export_dir
 
 
 def export(export_module: export_base.ExportModule,
-           function_keys: Union[List[Text], Dict[Text, Text]],
-           export_savedmodel_dir: Text,
-           checkpoint_path: Optional[Text] = None,
+           function_keys: Union[List[str], Dict[str, str]],
+           export_savedmodel_dir: str,
+           checkpoint_path: Optional[str] = None,
            timestamped: bool = True,
-           module_key: Optional[Text] = None) -> Text:
+           module_key: Optional[str] = None,
+           checkpoint_kwargs: Optional[Dict[str, Any]] = None) -> str:
   """Exports to SavedModel format.
 
   Args:
@@ -40,6 +41,8 @@ def export(export_module: export_base.ExportModule,
     timestamped: Whether to export the savedmodel to a timestamped directory.
     module_key: Optional string to identify a checkpoint object to load for the
       model in the export module.
+    checkpoint_kwargs: Optional dict used as keyword args to create the
+      checkpoint object. Not used if module_key is present.
 
   Returns:
     The savedmodel directory path.
@@ -50,6 +53,8 @@ def export(export_module: export_base.ExportModule,
   if module_key:
     kwargs = {module_key: export_module.model}
     checkpoint = tf.train.Checkpoint(**kwargs)
+  elif checkpoint_kwargs:
+    checkpoint = tf.train.Checkpoint(**checkpoint_kwargs)
   else:
     checkpoint = None
   return export_base.export(
