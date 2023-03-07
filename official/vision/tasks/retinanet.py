@@ -429,15 +429,19 @@ class RetinaNetTask(base_task.Task):
         self.wod_metric.reset_states()
       self.wod_metric.update_state(step_outputs[self.wod_metric.name][0],
                                    step_outputs[self.wod_metric.name][1])
+
+    if 'visualization' in step_outputs:
+      # Update detection state for writing summary if there are artifacts for
+      # visualization.
+      if state is None:
+        state = {}
+      state.update(visualization_utils.update_detection_state(step_outputs))
+
     if state is None:
       # Create an arbitrary state to indicate it's not the first step in the
       # following calls to this function.
-      state = {}
+      state = True
 
-    # Update detection state for writing summary if there are artifacts for
-    # visualization.
-    if 'visualization' in step_outputs:
-      state.update(visualization_utils.update_detection_state(step_outputs))
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
@@ -448,7 +452,7 @@ class RetinaNetTask(base_task.Task):
       logs.update(self.wod_metric.result())
 
     # Add visualization for summary.
-    if 'image' in aggregated_logs:
+    if isinstance(aggregated_logs, dict) and 'image' in aggregated_logs:
       validation_outputs = visualization_utils.visualize_outputs(
           logs=aggregated_logs, task_config=self.task_config
       )
