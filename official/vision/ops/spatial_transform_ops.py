@@ -780,13 +780,13 @@ def bilinear_resize_to_bbox(
   val_11 = tf.transpose(val_11, new_perm)
 
   # (batch_size, output_height, 1)
-  input_y_pos = input_y_pos[:, :, tf.newaxis]
-  input_y0 = tf.cast(input_y0[:, :, tf.newaxis], input_y_pos.dtype)
-  input_y1 = tf.cast(input_y1[:, :, tf.newaxis], input_y_pos.dtype)
+  input_y_pos = tf.cast(input_y_pos[:, :, tf.newaxis], images.dtype)
+  input_y0 = tf.cast(input_y0[:, :, tf.newaxis], images.dtype)
+  input_y1 = tf.cast(input_y1[:, :, tf.newaxis], images.dtype)
   # (batch_size, 1, output_width)
-  input_x_pos = input_x_pos[:, tf.newaxis, :]
-  input_x0 = tf.cast(input_x0[:, tf.newaxis, :], input_x_pos.dtype)
-  input_x1 = tf.cast(input_x1[:, tf.newaxis, :], input_x_pos.dtype)
+  input_x_pos = tf.cast(input_x_pos[:, tf.newaxis, :], images.dtype)
+  input_x0 = tf.cast(input_x0[:, tf.newaxis, :], images.dtype)
+  input_x1 = tf.cast(input_x1[:, tf.newaxis, :], images.dtype)
 
   # Compute the weights of the four nearest neighbors for interpolation.
   # (batch_size, output_height, output_width)
