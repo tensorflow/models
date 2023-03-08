@@ -37,7 +37,7 @@ jobs:
         stale-issue-message: 'This issue has been marked stale because it has no recent activity since 7 days. It will be closed if no further activity occurs. Thank you.'
         # comment on PR if not active for more then 14 days.
         stale-pr-message: 'This PR has been marked stale because it has no recent activity since 14 days. It will be closed if no further activity occurs. Thank you.'
-        # comment on issue if stale for more then 14 days.
+        # comment on issue if stale for more then 7 days.
         close-issue-message: This issue was closed due to lack of activity after being marked stale for past 7 days.
         # comment on PR if stale for more then 14 days.
         close-pr-message: This PR was closed due to lack of activity after being marked stale for past 14 days.
