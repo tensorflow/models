@@ -48,7 +48,8 @@ class COCOEvaluator(object):
                need_rescale_bboxes=True,
                need_rescale_keypoints=False,
                per_category_metrics=False,
-               max_num_eval_detections=100):
+               max_num_eval_detections=100,
+               kpt_oks_sigmas=None):
     """Constructs COCO evaluation class.
 
     The class provides the interface to COCO metrics_fn. The
@@ -71,6 +72,9 @@ class COCOEvaluator(object):
       per_category_metrics: Whether to return per category metrics.
       max_num_eval_detections: Maximum number of detections to evaluate in coco
         eval api. Default at 100.
+      kpt_oks_sigmas: The sigmas used to calculate keypoint OKS. See
+        http://cocodataset.org/#keypoints-eval. When None, it will use the
+        defaults in COCO.
     Raises:
       ValueError: if max_num_eval_detections is not an integer.
     """
@@ -123,6 +127,7 @@ class COCOEvaluator(object):
       self._metric_names.extend(keypoint_metric_names)
       self._required_prediction_fields.extend(['detection_keypoints'])
       self._required_groundtruth_fields.extend(['keypoints'])
+      self._kpt_oks_sigmas = kpt_oks_sigmas
 
     self.reset_states()
 
@@ -184,7 +189,8 @@ class COCOEvaluator(object):
       metrics = np.hstack((metrics, mask_coco_metrics))
 
     if self._include_keypoint:
-      kcoco_eval = cocoeval.COCOeval(coco_gt, coco_dt, iouType='keypoints')
+      kcoco_eval = cocoeval.COCOeval(coco_gt, coco_dt, iouType='keypoints',
+                                     kpt_oks_sigmas=self._kpt_oks_sigmas)
       kcoco_eval.params.imgIds = image_ids
       kcoco_eval.evaluate()
       kcoco_eval.accumulate()
