@@ -163,6 +163,22 @@ def convert_predictions_to_coco_annotations(predictions):
         ann['score'] = predictions['detection_scores'][i][j, k]
         if 'detection_masks' in predictions:
           ann['segmentation'] = encoded_masks[k]
+        if 'detection_keypoints' in predictions:
+          # Adds extra ones to indicate the visibility for each keypoint as is
+          # recommended by MSCOCO. Also, convert keypoint from [y, x] to [x, y]
+          # as mandated by COCO.
+          instance_keypoints = predictions['detection_keypoints'][i][j, k]
+          num_keypoints = len(instance_keypoints)
+          instance_keypoints = np.concatenate(
+              [
+                  np.expand_dims(instance_keypoints[:, 1], axis=-1),
+                  np.expand_dims(instance_keypoints[:, 0], axis=-1),
+                  np.expand_dims(np.ones(num_keypoints), axis=1),
+              ],
+              axis=1,
+          ).astype(int)
+          instance_keypoints = instance_keypoints.flatten().tolist()
+          ann['keypoints'] = instance_keypoints
         coco_predictions.append(ann)
 
   for i, ann in enumerate(coco_predictions):
@@ -262,6 +278,25 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
                 ann['segmentation']['counts'])
           if 'areas' not in groundtruths:
             ann['area'] = mask_api.area(encoded_mask)
+        if 'keypoints' in groundtruths:
+          keypoints = groundtruths['keypoints'][i]
+          coco_keypoints = []
+          num_valid_keypoints = 0
+          for z in range(len(keypoints[j, k, :, 1])):
+            # Convert from [y, x] to [x, y] as mandated by COCO.
+            x = float(keypoints[j, k, z, 1])
+            y = float(keypoints[j, k, z, 0])
+            coco_keypoints.append(x)
+            coco_keypoints.append(y)
+            if tf.math.is_nan(x) or tf.math.is_nan(y) or (
+                x == 0 and y == 0):
+              visibility = 0
+            else:
+              visibility = 2
+              num_valid_keypoints = num_valid_keypoints + 1
+            coco_keypoints.append(visibility)
+          ann['keypoints'] = coco_keypoints
+          ann['num_keypoints'] = num_valid_keypoints
         gt_annotations.append(ann)
 
   for i, ann in enumerate(gt_annotations):

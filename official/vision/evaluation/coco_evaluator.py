@@ -44,7 +44,9 @@ class COCOEvaluator(object):
   def __init__(self,
                annotation_file,
                include_mask,
+               include_keypoint=False,
                need_rescale_bboxes=True,
+               need_rescale_keypoints=False,
                per_category_metrics=False,
                max_num_eval_detections=100):
     """Constructs COCO evaluation class.
@@ -60,8 +62,12 @@ class COCOEvaluator(object):
         from the dataloader.
       include_mask: a boolean to indicate whether or not to include the mask
         eval.
+      include_keypoint: a boolean to indicate whether or not to include the
+        keypoint eval.
       need_rescale_bboxes: If true bboxes in `predictions` will be rescaled back
         to absolute values (`image_info` is needed in this case).
+      need_rescale_keypoints: If true keypoints in `predictions` will be
+        rescaled back to absolute values (`image_info` is needed in this case).
       per_category_metrics: Whether to return per category metrics.
       max_num_eval_detections: Maximum number of detections to evaluate in coco
         eval api. Default at 100.
@@ -82,6 +88,7 @@ class COCOEvaluator(object):
           annotation_file=local_val_json)
     self._annotation_file = annotation_file
     self._include_mask = include_mask
+    self._include_keypoint = include_keypoint
     self._per_category_metrics = per_category_metrics
     if max_num_eval_detections is None or not isinstance(
         max_num_eval_detections, int):
@@ -96,7 +103,8 @@ class COCOEvaluator(object):
         'detection_boxes'
     ]
     self._need_rescale_bboxes = need_rescale_bboxes
-    if self._need_rescale_bboxes:
+    self._need_rescale_keypoints = need_rescale_keypoints
+    if self._need_rescale_bboxes or self._need_rescale_keypoints:
       self._required_prediction_fields.append('image_info')
     self._required_groundtruth_fields = [
         'source_id', 'height', 'width', 'classes', 'boxes'
@@ -106,6 +114,15 @@ class COCOEvaluator(object):
       self._metric_names.extend(mask_metric_names)
       self._required_prediction_fields.extend(['detection_masks'])
       self._required_groundtruth_fields.extend(['masks'])
+    if self._include_keypoint:
+      keypoint_metric_names = [
+          'AP', 'AP50', 'AP75', 'APm', 'APl', 'ARmax1', 'ARmax10',
+          f'ARmax{max_num_eval_detections}', 'ARm', 'ARl'
+      ]
+      keypoint_metric_names = ['keypoint_' + x for x in keypoint_metric_names]
+      self._metric_names.extend(keypoint_metric_names)
+      self._required_prediction_fields.extend(['detection_keypoints'])
+      self._required_groundtruth_fields.extend(['keypoints'])
 
     self.reset_states()
 
@@ -155,6 +172,7 @@ class COCOEvaluator(object):
     coco_eval.accumulate()
     coco_eval.summarize()
     coco_metrics = coco_eval.stats
+    metrics = coco_metrics
 
     if self._include_mask:
       mcoco_eval = cocoeval.COCOeval(coco_gt, coco_dt, iouType='segm')
@@ -163,11 +181,16 @@ class COCOEvaluator(object):
       mcoco_eval.accumulate()
       mcoco_eval.summarize()
       mask_coco_metrics = mcoco_eval.stats
+      metrics = np.hstack((metrics, mask_coco_metrics))
 
-    if self._include_mask:
-      metrics = np.hstack((coco_metrics, mask_coco_metrics))
-    else:
-      metrics = coco_metrics
+    if self._include_keypoint:
+      kcoco_eval = cocoeval.COCOeval(coco_gt, coco_dt, iouType='keypoints')
+      kcoco_eval.params.imgIds = image_ids
+      kcoco_eval.evaluate()
+      kcoco_eval.accumulate()
+      kcoco_eval.summarize()
+      keypoint_coco_metrics = kcoco_eval.stats
+      metrics = np.hstack((metrics, keypoint_coco_metrics))
 
     metrics_dict = {}
     for i, name in enumerate(self._metric_names):
@@ -180,6 +203,10 @@ class COCOEvaluator(object):
       if self._include_mask:
         metrics_dict.update(self._retrieve_per_category_metrics(
             mcoco_eval, prefix='mask'))
+
+      if self._include_keypoint:
+        metrics_dict.update(self._retrieve_per_category_metrics(
+            mcoco_eval, prefix='keypoints'))
 
     return metrics_dict
 
@@ -207,46 +234,43 @@ class COCOEvaluator(object):
         else:
           category_display_name = category_id
 
-        metrics_dict[prefix + 'Precision mAP ByCategory/{}'.format(
-            category_display_name
-        )] = coco_eval.category_stats[0][category_index].astype(np.float32)
-        metrics_dict[prefix + 'Precision mAP ByCategory@50IoU/{}'.format(
-            category_display_name
-        )] = coco_eval.category_stats[1][category_index].astype(np.float32)
-        metrics_dict[prefix + 'Precision mAP ByCategory@75IoU/{}'.format(
-            category_display_name
-        )] = coco_eval.category_stats[2][category_index].astype(np.float32)
-        metrics_dict[prefix + 'Precision mAP ByCategory (small) /{}'.format(
-            category_display_name
-        )] = coco_eval.category_stats[3][category_index].astype(np.float32)
-        metrics_dict[prefix + 'Precision mAP ByCategory (medium) /{}'.format(
-            category_display_name
-        )] = coco_eval.category_stats[4][category_index].astype(np.float32)
-        metrics_dict[prefix + 'Precision mAP ByCategory (large) /{}'.format(
-            category_display_name
-        )] = coco_eval.category_stats[5][category_index].astype(np.float32)
-        metrics_dict[prefix + 'Recall AR@1 ByCategory/{}'.format(
-            category_display_name
-        )] = coco_eval.category_stats[6][category_index].astype(np.float32)
-        metrics_dict[prefix + 'Recall AR@10 ByCategory/{}'.format(
-            category_display_name
-        )] = coco_eval.category_stats[7][category_index].astype(np.float32)
-        metrics_dict[prefix + 'Recall AR@100 ByCategory/{}'.format(
-            category_display_name
-        )] = coco_eval.category_stats[8][category_index].astype(np.float32)
-        metrics_dict[prefix + 'Recall AR (small) ByCategory/{}'.format(
-            category_display_name
-        )] = coco_eval.category_stats[9][category_index].astype(np.float32)
-        metrics_dict[prefix + 'Recall AR (medium) ByCategory/{}'.format(
-            category_display_name
-        )] = coco_eval.category_stats[10][category_index].astype(np.float32)
-        metrics_dict[prefix + 'Recall AR (large) ByCategory/{}'.format(
-            category_display_name
-        )] = coco_eval.category_stats[11][category_index].astype(np.float32)
+        if 'keypoints' in prefix:
+          metrics_dict_keys = [
+              'Precision mAP ByCategory',
+              'Precision mAP ByCategory@50IoU',
+              'Precision mAP ByCategory@75IoU',
+              'Precision mAP ByCategory (medium)',
+              'Precision mAP ByCategory (large)',
+              'Recall AR@1 ByCategory',
+              'Recall AR@10 ByCategory',
+              'Recall AR@100 ByCategory',
+              'Recall AR (medium) ByCategory',
+              'Recall AR (large) ByCategory',
+          ]
+        else:
+          metrics_dict_keys = [
+              'Precision mAP ByCategory',
+              'Precision mAP ByCategory@50IoU',
+              'Precision mAP ByCategory@75IoU',
+              'Precision mAP ByCategory (small)',
+              'Precision mAP ByCategory (medium)',
+              'Precision mAP ByCategory (large)',
+              'Recall AR@1 ByCategory',
+              'Recall AR@10 ByCategory',
+              'Recall AR@100 ByCategory',
+              'Recall AR (small) ByCategory',
+              'Recall AR (medium) ByCategory',
+              'Recall AR (large) ByCategory',
+          ]
+
+        for idx, key in enumerate(metrics_dict_keys):
+          metrics_dict[prefix + key + '/{}'.format(
+              category_display_name)] = coco_eval.category_stats[idx][
+                  category_index].astype(np.float32)
 
     return metrics_dict
 
-  def _process_predictions(self, predictions):
+  def _process_bbox_predictions(self, predictions):
     image_scale = np.tile(predictions['image_info'][:, 2:3, :], (1, 1, 2))
     predictions['detection_boxes'] = (
         predictions['detection_boxes'].astype(np.float32))
@@ -255,6 +279,12 @@ class COCOEvaluator(object):
       predictions['detection_outer_boxes'] = (
           predictions['detection_outer_boxes'].astype(np.float32))
       predictions['detection_outer_boxes'] /= image_scale
+
+  def _process_keypoints_predictions(self, predictions):
+    image_scale = np.tile(predictions['image_info'][:, 2:3, :], (1, 1, 2))
+    predictions['detection_keypoints'] = (
+        predictions['detection_keypoints'].astype(np.float32))
+    predictions['detection_keypoints'] /= image_scale
 
   def _convert_to_numpy(self, groundtruths, predictions):
     """Converts tesnors to numpy arrays."""
@@ -326,7 +356,9 @@ class COCOEvaluator(object):
         raise ValueError(
             'Missing the required key `{}` in predictions!'.format(k))
     if self._need_rescale_bboxes:
-      self._process_predictions(predictions)
+      self._process_bbox_predictions(predictions)
+    if self._need_rescale_keypoints:
+      self._process_keypoints_predictions(predictions)
     for k, v in six.iteritems(predictions):
       if k not in self._predictions:
         self._predictions[k] = [v]
