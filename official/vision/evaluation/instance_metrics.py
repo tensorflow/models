@@ -297,7 +297,8 @@ class COCOMatchingAlgorithm(MatchingAlgorithm):
       # in this step. It's fine because it will be masked out in the next step.
       # (batch_size, num_iou_thresholds)
       matched_gt_with_max_iou = tf.argmax(
-          tf.cast(gt_matches_detection, tf.float32) * gt_ious[:, :, tf.newaxis],
+          tf.cast(gt_matches_detection, gt_ious.dtype)
+          * gt_ious[:, :, tf.newaxis],
           axis=1,
           output_type=tf.int32,
       )
