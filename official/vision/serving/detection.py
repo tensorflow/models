@@ -227,5 +227,6 @@ class DetectionModule(export_base.ExportModule):
           }
       )
 
-    final_outputs.update({'image_info': image_info})
+    if self.params.task.model.detection_generator.nms_version != 'tflite':
+      final_outputs.update({'image_info': image_info})
     return final_outputs
