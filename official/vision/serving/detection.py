@@ -203,5 +203,6 @@ class DetectionModule(export_base.ExportModule):
     if 'detection_masks' in detections.keys():
       final_outputs['detection_masks'] = detections['detection_masks']
 
-    final_outputs.update({'image_info': image_info})
+    if self.params.task.model.detection_generator.nms_version != 'tflite':
+      final_outputs.update({'image_info': image_info})
     return final_outputs
