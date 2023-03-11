@@ -229,6 +229,7 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
       low_level_num_filters: int = 48,
       num_decoder_filters: int = 256,
       activation: str = 'relu',
+      logit_activation: Optional[str] = None,
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
@@ -271,6 +272,7 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
         It is only used when feature_fusion is set to `panoptic_fpn_fusion`.
       activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
+      logit_activation: Unused.
       use_sync_bn: A `bool` that indicates whether to use synchronized batch
         normalization across different replicas.
       norm_momentum: A `float` of normalization momentum for the moving average.
@@ -310,6 +312,9 @@ class SegmentationHeadQuantized(tf.keras.layers.Layer):
     self._activation_layer = tfmot.quantization.keras.QuantizeWrapperV2(
         tf_utils.get_activation(activation, use_keras_layer=True),
         configs.Default8BitActivationQuantizeConfig())
+    if logit_activation:
+      raise ValueError('Unused logit_activation option inherited from '
+                       'vision SegmentationHead modeling config.')
 
   def build(self, input_shape: Sequence[tf.TensorShape]):
     """Creates the variables of the segmentation head."""
