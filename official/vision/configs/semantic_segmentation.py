@@ -18,6 +18,7 @@ import os
 from typing import List, Optional, Sequence, Union
 
 import numpy as np
+
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
@@ -96,6 +97,7 @@ class SegmentationHead(hyperparams.Config):
   use_depthwise_convolution: bool = False
   prediction_kernel_size: int = 1
   upsample_factor: int = 1
+  logit_activation: Optional[str] = None  # None, 'sigmoid', or 'softmax'.
   feature_fusion: Optional[
       str] = None  # None, deeplabv3plus, panoptic_fpn_fusion or pyramid_fusion
   # deeplabv3plus feature fusion params

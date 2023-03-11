@@ -376,6 +376,7 @@ def build_segmentation_model(
       low_level=head_config.low_level,
       low_level_num_filters=head_config.low_level_num_filters,
       activation=norm_activation_config.activation,
+      logit_activation=head_config.logit_activation,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,

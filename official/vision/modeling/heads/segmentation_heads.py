@@ -232,6 +232,7 @@ class SegmentationHead(tf.keras.layers.Layer):
       low_level_num_filters: int = 48,
       num_decoder_filters: int = 256,
       activation: str = 'relu',
+      logit_activation: Optional[str] = None,
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
@@ -277,6 +278,9 @@ class SegmentationHead(tf.keras.layers.Layer):
         It is only used when feature_fusion is set to `panoptic_fpn_fusion`.
       activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
+      logit_activation: Activation applied to the final classifier layer logits,
+        e.g. 'sigmoid', 'softmax'. Can be useful in cases when the task does not
+        use only cross entropy loss.
       use_sync_bn: A `bool` that indicates whether to use synchronized batch
         normalization across different replicas.
       norm_momentum: A `float` of normalization momentum for the moving average.
@@ -303,6 +307,7 @@ class SegmentationHead(tf.keras.layers.Layer):
         'low_level_num_filters': low_level_num_filters,
         'num_decoder_filters': num_decoder_filters,
         'activation': activation,
+        'logit_activation': logit_activation,
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
         'norm_epsilon': norm_epsilon,
@@ -390,6 +395,7 @@ class SegmentationHead(tf.keras.layers.Layer):
         filters=self._config_dict['num_classes'],
         kernel_size=self._config_dict['prediction_kernel_size'],
         padding='same',
+        activation=self._config_dict['logit_activation'],
         bias_initializer=tf.zeros_initializer(),
         kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
         kernel_regularizer=self._config_dict['kernel_regularizer'],
