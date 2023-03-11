@@ -5,3 +5,5 @@ toc:
   path: /tfmodels/nlp
 - title: "Customize a transformer encoder"
   path: /tfmodels/nlp/customize_encoder
+- title: "Load LM checkpoints"
+  path: /tfmodels/nlp/load_lm_ckpts
