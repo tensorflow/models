@@ -53,18 +53,18 @@ class RetinaNetHead(tf.keras.layers.Layer):
       min_level: An `int` number of minimum feature level.
       max_level: An `int` number of maximum feature level.
       num_classes: An `int` number of classes to predict.
-      num_anchors_per_location: An `int` number of anchors per pixel
-        location.
+      num_anchors_per_location: An `int` number of anchors per pixel location.
       num_convs: An `int` number that represents the number of the intermediate
         conv layers before the prediction.
       num_filters: An `int` number that represents the number of filters of the
         intermediate conv layers.
       attribute_heads: If not None, a list that contains a dict for each
-        additional attribute head. Each dict consists of 3 key-value pairs:
-        `name`, `type` ('regression' or 'classification'), and `size` (number
-        of predicted values for each instance).
-      share_classification_heads: A `bool` that indicates whether
-        sharing weights among the main and attribute classification heads.
+        additional attribute head. Each dict consists of 4 key-value pairs:
+        `name`, `type` ('regression' or 'classification'), `size` (number of
+        predicted values for each instance), and `prediction_tower_name`
+        (optional, specifies shared prediction towers.)
+      share_classification_heads: A `bool` that indicates whether sharing
+        weights among the main and attribute classification heads.
       use_separable_conv: A `bool` that indicates whether the separable
         convolution layers is used.
       activation: A `str` that indicates which activation is used, e.g. 'relu',
