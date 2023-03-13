@@ -171,9 +171,12 @@ class ImageClassificationTask(base_task.Task):
         total_loss = tf.keras.losses.sparse_categorical_crossentropy(
             labels, model_outputs, from_logits=True)
     else:
-      # Multi-label weighted binary cross entropy loss.
-      total_loss = tf.nn.sigmoid_cross_entropy_with_logits(
-          labels=labels, logits=model_outputs)
+      # Multi-label binary cross entropy loss.
+      total_loss = tf.keras.losses.binary_crossentropy(
+          labels,
+          model_outputs,
+          from_logits=True,
+          label_smoothing=losses_config.label_smoothing)
       total_loss = tf.reduce_sum(total_loss, axis=-1)
 
     total_loss = tf_utils.safe_mean(total_loss)
