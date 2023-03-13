@@ -156,11 +156,15 @@ class Config(params_dict.ParamsDict):
       raise TypeError('Unknown type: {!r}'.format(type(v)))
 
   @classmethod
-  def _get_subconfig_type(cls, k) -> Type[params_dict.ParamsDict]:
+  def _get_subconfig_type(
+      cls, k, subconfig_type=None
+  ) -> Type[params_dict.ParamsDict]:
     """Get element type by the field name.
 
     Args:
       k: the key/name of the field.
+      subconfig_type: default subconfig_type. If None, it is set to
+        Config.
 
     Returns:
       Config as default. If a type annotation is found for `k`,
@@ -168,7 +172,9 @@ class Config(params_dict.ParamsDict):
       2) returns the element type if the annotation of `k` is List[SubType]
          or Tuple[SubType].
     """
-    subconfig_type = Config
+    if not subconfig_type:
+      subconfig_type = Config
+
     if k in cls.__annotations__:
       # Directly Config subtype.
       type_annotation = cls.__annotations__[k]  # pytype: disable=invalid-annotation
