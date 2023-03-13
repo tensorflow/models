@@ -139,9 +139,10 @@ class RetinaNetHeadQuantized(tf.keras.layers.Layer):
       num_filters: An `int` number that represents the number of filters of the
         intermediate conv layers.
       attribute_heads: If not None, a list that contains a dict for each
-        additional attribute head. Each dict consists of 3 key-value pairs:
-        `name`, `type` ('regression' or 'classification'), and `size` (number
-        of predicted values for each instance).
+        additional attribute head. Each dict consists of 4 key-value pairs:
+        `name`, `type` ('regression' or 'classification'), `size` (number of
+        predicted values for each instance), and `prediction_tower_name`
+        (optional, specifies shared prediction towers.)
       use_separable_conv: A `bool` that indicates whether the separable
         convolution layers is used.
       activation: A `str` that indicates which activation is used, e.g. 'relu',
@@ -157,9 +158,9 @@ class RetinaNetHeadQuantized(tf.keras.layers.Layer):
         box. For example, `num_params_per_anchor` would be 4 for axis-aligned
         anchor boxes specified by their y-centers, x-centers, heights, and
         widths.
-      share_classification_heads: A `bool` that indicates whethere
-        sharing weights among the main and attribute classification heads. Not
-        used in the QAT model.
+      share_classification_heads: A `bool` that indicates whethere sharing
+        weights among the main and attribute classification heads. Not used in
+        the QAT model.
       **kwargs: Additional keyword arguments to be passed.
     """
     del share_classification_heads
