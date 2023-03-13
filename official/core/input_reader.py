@@ -147,7 +147,8 @@ def _shard_files_then_read(matched_files: List[str],
   return dataset
 
 
-def _read_tfds(tfds_builder: tfds.core.DatasetBuilder,
+def _read_tfds(tfds_name: Text,
+               tfds_data_dir: Text,
                tfds_split: Text,
                tfds_skip_decoding_feature: Text,
                tfds_as_supervised: bool,
@@ -158,46 +159,57 @@ def _read_tfds(tfds_builder: tfds.core.DatasetBuilder,
                cycle_length: Optional[int] = None,
                block_length: Optional[int] = None) -> tf.data.Dataset:
   """Reads a dataset from tfds."""
-  # No op if exist.
-  tfds_builder.download_and_prepare()
   decoders = {}
   if tfds_skip_decoding_feature:
     for skip_feature in tfds_skip_decoding_feature.split(','):
       decoders[skip_feature.strip()] = tfds.decode.SkipDecoding()
-  if tfds_builder.info.splits:
-    num_shards = len(tfds_builder.info.splits[tfds_split].file_instructions)
-  else:
-    # The tfds mock path often does not provide splits.
-    num_shards = 1
-  if input_context and num_shards < input_context.num_input_pipelines:
-    # The number of files in the dataset split is smaller than the number of
-    # input pipelines. We read the entire dataset first and then shard in the
-    # host memory.
-    read_config = tfds.ReadConfig(
-        interleave_cycle_length=cycle_length,
-        interleave_block_length=block_length,
-        input_context=None,
-        shuffle_seed=seed)
-    dataset = tfds_builder.as_dataset(
-        split=tfds_split,
-        shuffle_files=is_training,
-        as_supervised=tfds_as_supervised,
-        decoders=decoders,
-        read_config=read_config)
-    dataset = dataset.shard(input_context.num_input_pipelines,
-                            input_context.input_pipeline_id)
-  else:
+
+  if tfds_name.startswith('mldataset.'):
     read_config = tfds.ReadConfig(
         interleave_cycle_length=cycle_length,
         interleave_block_length=block_length,
         input_context=input_context,
         shuffle_seed=seed)
-    dataset = tfds_builder.as_dataset(
-        split=tfds_split,
-        shuffle_files=is_training,
-        as_supervised=tfds_as_supervised,
-        decoders=decoders,
-        read_config=read_config)
+    dataset = tfds.load(name=tfds_name,
+                        split=tfds_split,
+                        as_supervised=tfds_as_supervised,
+                        decoders=decoders if decoders else None,
+                        read_config=read_config)
+  else:
+    builder = tfds.builder(tfds_name, data_dir=tfds_data_dir)
+    if builder.info.splits:
+      num_shards = len(builder.info.splits[tfds_split].file_instructions)
+    else:
+      # The tfds mock path often does not provide splits.
+      num_shards = 1
+    load_kwargs = dict(
+        name=tfds_name, download=True, split=tfds_split,
+        shuffle_files=is_training, as_supervised=tfds_as_supervised,
+        decoders=decoders if decoders else None)
+    if tfds_data_dir:
+      load_kwargs.update({'data_dir': tfds_data_dir})
+
+    if input_context and num_shards < input_context.num_input_pipelines:
+      # The number of files in the dataset split is smaller than the number of
+      # input pipelines. We read the entire dataset first and then shard in the
+      # host memory.
+      read_config = tfds.ReadConfig(
+          interleave_cycle_length=cycle_length,
+          interleave_block_length=block_length,
+          input_context=None,
+          shuffle_seed=seed)
+      load_kwargs.update({'read_config': read_config})
+      dataset = tfds.load(**load_kwargs)
+      dataset = dataset.shard(input_context.num_input_pipelines,
+                              input_context.input_pipeline_id)
+    else:
+      read_config = tfds.ReadConfig(
+          interleave_cycle_length=cycle_length,
+          interleave_block_length=block_length,
+          input_context=input_context,
+          shuffle_seed=seed)
+      load_kwargs.update({'read_config': read_config})
+      dataset = tfds.load(**load_kwargs)
 
   if is_training and not cache:
     dataset = dataset.repeat()
@@ -259,7 +271,8 @@ class InputReader:
       raise ValueError(
           'A combine_fn is required if `input_path` or `tfds_name` is a dict.')
 
-    self._tfds_builder = None
+    self._tfds_name = params.tfds_name
+    self._tfds_data_dir = params.tfds_data_dir
     self._matched_files = None
     if not params.input_path:
       # Read dataset from TFDS.
@@ -267,14 +280,6 @@ class InputReader:
         raise ValueError(
             '`tfds_name` is %s, but `tfds_split` is not specified.' %
             params.tfds_name)
-      if isinstance(params.tfds_name, cfg.base_config.Config):
-        self._tfds_builder = {}
-        for k, tfds_name in params.tfds_name.as_dict().items():
-          self._tfds_builder[k] = tfds.builder(
-              tfds_name, data_dir=params.tfds_data_dir)
-      else:
-        self._tfds_builder = tfds.builder(
-            params.tfds_name, data_dir=params.tfds_data_dir)
     else:
       self._matched_files = self.get_files(params.input_path)
 
@@ -344,23 +349,6 @@ class InputReader:
         self._tf_data_service_job_name = (
             f'{params.tf_data_service_job_name}_{self.static_randnum}')
 
-  @property
-  def tfds_info(
-      self,
-  ) -> Union[tfds.core.DatasetInfo, Dict[str, tfds.core.DatasetInfo]]:
-    """Returns TFDS dataset info, if available."""
-    if self._tfds_builder:
-      if isinstance(self._tfds_builder, dict):
-        info = {}
-        for k, builder in self._tfds_builder.items():
-          info[k] = builder.info
-        return info
-      else:
-        return self._tfds_builder.info
-    else:
-      raise ValueError('tfds_info is not available, because the dataset '
-                       'is not loaded from tfds.')
-
   def get_files(self, input_path):
     """Gets matched files. Can be overridden by subclasses."""
     if not input_path:
@@ -380,9 +368,6 @@ class InputReader:
       matched_files: Union[Dict[str, List[str]], List[str]],
       dataset_fn,
       input_context: Optional[tf.distribute.InputContext] = None,
-      tfds_builder: Optional[
-          Union[tfds.core.DatasetBuilder, Dict[str, tfds.core.DatasetBuilder]]
-      ] = None,
   ):
     """Reads the data source (files/tfds) to a dataset."""
 
@@ -423,12 +408,13 @@ class InputReader:
         raise ValueError('It is unexpected that `tfds_builder` is None and '
                          'there is also no `files`.')
 
-    if tfds_builder:
-      if isinstance(tfds_builder, dict):
+    if self._tfds_name:
+      if isinstance(self._tfds_name, cfg.base_config.Config):
         dataset = {}
-        for k, builder in tfds_builder.items():
+        for k, tfds_name in self._tfds_name.as_dict().items():
           dataset[k] = _read_tfds(
-              tfds_builder=builder,
+              tfds_name=tfds_name,
+              tfds_data_dir=self._tfds_data_dir,
               tfds_split=self._tfds_split,
               tfds_skip_decoding_feature=self._tfds_skip_decoding_feature,
               tfds_as_supervised=self._tfds_as_supervised,
@@ -440,7 +426,8 @@ class InputReader:
               block_length=self._block_length)
       else:
         dataset = _read_tfds(
-            tfds_builder=self._tfds_builder,
+            tfds_name=self._tfds_name,
+            tfds_data_dir=self._tfds_data_dir,
             tfds_split=self._tfds_split,
             tfds_skip_decoding_feature=self._tfds_skip_decoding_feature,
             tfds_as_supervised=self._tfds_as_supervised,
@@ -572,7 +559,7 @@ class InputReader:
     """Generates a tf.data.Dataset object."""
     if dataset is None:
       dataset = self._read_data_source(self._matched_files, self._dataset_fn,
-                                       input_context, self._tfds_builder)
+                                       input_context)
     dataset = self._decode_and_parse_dataset(dataset, self._global_batch_size,
                                              input_context)
     dataset = _maybe_map_fn(dataset, self._postprocess_fn)
