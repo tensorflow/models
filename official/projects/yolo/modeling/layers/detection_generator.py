@@ -153,25 +153,25 @@ class YoloLayer(tf.keras.Model):
     len_mask = self._len_mask[key]
     scale_xy = self._scale_xy[key]
 
-    # reshape the yolo output to (batchsize,
+    # Reshape the yolo output to (batchsize,
     #                             width,
     #                             height,
     #                             number_anchors,
     #                             remaining_points)
     data = tf.reshape(inputs, [-1, height, width, len_mask, self._classes + 5])
 
-    # use the grid generator to get the formatted anchor boxes and grid points
-    # in shape [1, height, width, 2]
+    # Use the grid generator to get the formatted anchor boxes and grid points
+    # in shape [1, height, width, 2].
     centers, anchors = generator(height, width, batchsize, dtype=data.dtype)
 
-    # split the yolo detections into boxes, object score map, classes
+    # Split the yolo detections into boxes, object score map, classes.
     boxes, obns_scores, class_scores = tf.split(
         data, [4, 1, self._classes], axis=-1)
 
-    # determine the number of classes
+    # Determine the number of classes.
     classes = class_scores.get_shape().as_list()[-1]
 
-    # configurable to use the new coordinates in scaled Yolo v4 or not
+    # Configurable to use the new coordinates in scaled Yolo v4 or not.
     _, _, boxes = loss_utils.get_predicted_box(
         tf.cast(height, data.dtype),
         tf.cast(width, data.dtype),
@@ -183,16 +183,16 @@ class YoloLayer(tf.keras.Model):
         darknet=False,
         box_type=self._box_type[key])
 
-    # convert boxes from yolo(x, y, w. h) to tensorflow(ymin, xmin, ymax, xmax)
+    # Convert boxes from yolo(x, y, w. h) to tensorflow(ymin, xmin, ymax, xmax).
     boxes = box_ops.xcycwh_to_yxyx(boxes)
 
-    # activate and detection map
+    # Activate and detection map
     obns_scores = tf.math.sigmoid(obns_scores)
 
-    # convert detection map to class detection probabailities
+    # Convert detection map to class detection probabilities.
     class_scores = tf.math.sigmoid(class_scores) * obns_scores
 
-    # platten predictions to [batchsize, N, -1] for non max supression
+    # Flatten predictions to [batchsize, N, -1] for non max supression.
     fill = height * width * len_mask
     boxes = tf.reshape(boxes, [-1, fill, 4])
     class_scores = tf.reshape(class_scores, [-1, fill, classes])
@@ -207,7 +207,7 @@ class YoloLayer(tf.keras.Model):
     min_level = int(min(levels))
     max_level = int(max(levels))
 
-    # aggregare boxes over each scale
+    # Aggregate boxes over each scale.
     for i in range(min_level, max_level + 1):
       key = str(i)
       object_scores_, boxes_, class_scores_ = self.parse_prediction_path(
@@ -216,22 +216,22 @@ class YoloLayer(tf.keras.Model):
       class_scores.append(class_scores_)
       object_scores.append(object_scores_)
 
-    # colate all predicitons
+    # Collate all predicitons.
     boxes = tf.concat(boxes, axis=1)
     object_scores = tf.concat(object_scores, axis=1)
     class_scores = tf.concat(class_scores, axis=1)
 
-    # get masks to threshold all the predicitons
+    # Get masks to threshold all the predicitons.
     object_mask = tf.cast(object_scores > self._thresh, object_scores.dtype)
     class_mask = tf.cast(class_scores > self._thresh, class_scores.dtype)
 
-    # apply thresholds mask to all the predicitons
+    # Apply thresholds mask to all the predictions.
     object_scores *= object_mask
     class_scores *= (tf.expand_dims(object_mask, axis=-1) * class_mask)
 
-    # apply nms
+    # Apply nms.
     if self._nms_type == 'greedy':
-      # greedy NMS
+      # Greedy NMS.
       boxes = tf.cast(boxes, dtype=tf.float32)
       class_scores = tf.cast(class_scores, dtype=tf.float32)
       boxes, object_scores_, class_scores, num_detections = (
@@ -242,7 +242,7 @@ class YoloLayer(tf.keras.Model):
               self._max_boxes,
               iou_threshold=self._nms_thresh,
               score_threshold=self._thresh))
-      # cast the boxes and predicitons abck to original datatype
+      # Cast the boxes and predicitons abck to original datatype.
       boxes = tf.cast(boxes, object_scores.dtype)
       class_scores = tf.cast(class_scores, object_scores.dtype)
       object_scores = tf.cast(object_scores_, object_scores.dtype)
@@ -262,7 +262,7 @@ class YoloLayer(tf.keras.Model):
       class_scores = tf.cast(classes, object_scores.dtype)
       object_scores = tf.cast(confidence, object_scores.dtype)
 
-    # format and return
+    # Format and return
     return {
         'bbox': boxes,
         'classes': class_scores,
