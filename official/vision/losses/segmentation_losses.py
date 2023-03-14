@@ -108,10 +108,7 @@ class SegmentationLoss:
           labels, (height, width),
           method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
-    if not self._gt_is_matting_map:
-      valid_mask = tf.not_equal(labels, self._ignore_label)
-    else:
-      valid_mask = tf.ones_like(labels, dtype=tf.bool)
+    valid_mask = tf.not_equal(tf.cast(labels, tf.int32), self._ignore_label)
 
     # (batch_size, height, width, num_classes)
     labels_with_prob = self.get_labels_with_prob(logits, labels, valid_mask,
