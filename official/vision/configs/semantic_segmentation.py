@@ -26,10 +26,7 @@ from official.modeling import optimization
 from official.vision.configs import common
 from official.vision.configs import decoders
 from official.vision.configs import backbones
-
-# These values are from ImageNet dataset.
-_RGB_MEAN = [123.675, 116.28, 103.53]
-_RGB_STDDEV = [58.395, 57.12, 57.375]
+from official.vision.ops import preprocess_ops
 
 
 @dataclasses.dataclass
@@ -52,8 +49,12 @@ class DenseFeatureConfig(hyperparams.Config):
   """
   feature_name: str = 'image/encoded'
   num_channels: int = 3
-  mean: List[float] = dataclasses.field(default_factory=lambda: _RGB_MEAN)
-  stddev: List[float] = dataclasses.field(default_factory=lambda: _RGB_STDDEV)
+  mean: List[float] = dataclasses.field(
+      default_factory=lambda: preprocess_ops.MEAN_RGB
+  )
+  stddev: List[float] = dataclasses.field(
+      default_factory=lambda: preprocess_ops.STDDEV_RGB
+  )
 
 
 @dataclasses.dataclass
