@@ -454,7 +454,8 @@ class Mosaic:
 
   def _add_param(self, sample):
     """Add parameters to handle skipped images."""
-    sample['is_mosaic'] = tf.cast(0.0, tf.bool)
+    if 'is_mosaic' not in sample:
+      sample['is_mosaic'] = tf.cast(0.0, tf.bool)
     sample['num_detections'] = tf.shape(sample['groundtruth_boxes'])[0]
     return sample
 
@@ -478,9 +479,13 @@ class Mosaic:
 
     if self._mixup_frequency > 0:
       one = dataset.shuffle(
-          100, seed=self._seed + 4, reshuffle_each_iteration=True)
+          100, seed=self._seed + num_patches, reshuffle_each_iteration=True
+      )
       two = dataset.shuffle(
-          100, seed=self._seed + 5, reshuffle_each_iteration=True)
+          100,
+          seed=self._seed + num_patches + 1,
+          reshuffle_each_iteration=True,
+      )
       dataset = tf.data.Dataset.zip((one, two))
       dataset = dataset.map(
           self._mixup,
