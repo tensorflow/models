@@ -78,7 +78,7 @@ class RoformerAttentionTest(tf.test.TestCase, parameterized.TestCase):
     for m in range(0, length):
       half_d = key_dim // 2
       std_emb = tf.range(half_d, dtype=tf.float32)
-      std_emb = tf.pow(10000.0, -2 * std_emb / float(half_d))
+      std_emb = tf.pow(10000.0, -std_emb / float(half_d))
       std_emb = m * std_emb
       std_sin_emb = tf.sin(std_emb)
       std_cos_emb = tf.cos(std_emb)

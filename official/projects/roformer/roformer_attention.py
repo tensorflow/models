@@ -26,9 +26,12 @@ def _build_trig_vector(length, key_dim):
   position_ids = tf.cast(tf.range(length), dtype=tf_dtype)
   position_ids = tf.expand_dims(position_ids, axis=0)
   steps = key_dim // 2
-  indices = tf.cast(tf.range(steps), dtype=tf_dtype)
-  indices = tf.pow(tf.constant(10000.0, dtype=tf_dtype), -2 * indices / steps)
-  vec = tf.einsum('bl,d->bld', position_ids, indices)
+  # 2 (i - 1) / key_dim = (i - 1) / steps: (-1 achieved with zero-indexing)
+  wavenumber_exponent = -tf.cast(tf.range(steps), dtype=tf_dtype) / steps
+  wavenumbers = tf.pow(
+      tf.constant(10000.0, dtype=tf_dtype), wavenumber_exponent
+  )
+  vec = tf.einsum('bl,d->bld', position_ids, wavenumbers)
   sin_vec = tf.repeat(tf.sin(vec), repeats=2, axis=-1)
   cos_vec = tf.repeat(tf.cos(vec), repeats=2, axis=-1)
   sin_vec, cos_vec = tf.expand_dims(sin_vec, 2), tf.expand_dims(cos_vec, 2)
