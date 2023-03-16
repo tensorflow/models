@@ -416,8 +416,7 @@ def scaled_yolo() -> cfg.ExperimentConfig:
           smart_bias_lr=0.1,
           init_checkpoint_modules='',
           weight_decay=0.0,
-          annotation_file=os.path.join(COCO_INPUT_PATH_BASE,
-                                       'instances_val2017.json'),
+          annotation_file=None,
           model=Yolo(
               darknet_based_model=False,
               norm_activation=common.NormActivation(
