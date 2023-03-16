@@ -127,10 +127,7 @@ class ConvBN(tf.keras.layers.Layer):
     else:
       self._conv_base = tf.keras.layers.Conv2D
 
-    if use_sync_bn:
-      self._bn_base = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._bn_base = tf.keras.layers.BatchNormalization
+    self._bn_base = tf.keras.layers.BatchNormalization
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       # format: (batch_size, height, width, channels)
@@ -165,7 +162,8 @@ class ConvBN(tf.keras.layers.Layer):
       self.bn = self._bn_base(
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon,
-          axis=self._bn_axis)
+          axis=self._bn_axis,
+          synchronized=self._use_sync_bn)
     else:
       self.bn = None
 
@@ -1271,16 +1269,12 @@ class CAM(tf.keras.layers.Layer):
 
     self._reduction_ratio = reduction_ratio
 
-    # use_pooling
-    if use_sync_bn:
-      self._bn = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._bn = tf.keras.layers.BatchNormalization
-
     if not use_bn:
       self._bn = Identity
       self._bn_args = {}
     else:
+      self._bn = functools.partial(
+          tf.keras.layers.BatchNormalization, synchronized=use_sync_bn)
       self._bn_args = {
           'momentum': norm_momentum,
           'epsilon': norm_epsilon,
