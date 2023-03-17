@@ -273,7 +273,10 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
           dtype=tf.float32,
       )
 
-      if self.task_config.model.generate_panoptic_masks:
+      if (
+          self.task_config.model.generate_panoptic_masks
+          and self.task_config.panoptic_quality_evaluator is not None
+      ):
         if not self.task_config.validation_data.parser.include_panoptic_masks:
           raise ValueError(
               '`include_panoptic_masks` should be set to True when'
