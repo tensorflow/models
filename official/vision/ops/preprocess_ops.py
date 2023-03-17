@@ -15,7 +15,7 @@
 """Preprocessing ops."""
 
 import math
-from typing import Optional, Tuple, Sequence, Union
+from typing import Optional, Sequence, Tuple, Union
 from six.moves import range
 import tensorflow as tf
 
@@ -412,7 +412,8 @@ def resize_image(
   return rescaled_image, image_info
 
 
-def center_crop_image(image):
+def center_crop_image(
+    image, center_crop_fraction: float = CENTER_CROP_FRACTION):
   """Center crop a square shape slice from the input image.
 
   It crops a square shape slice from the image. The side of the actual crop
@@ -424,6 +425,8 @@ def center_crop_image(image):
 
   Args:
     image: a Tensor of shape [height, width, 3] representing the input image.
+    center_crop_fraction: a float of ratio between the side of the cropped image
+      and the short side of the original image
 
   Returns:
     cropped_image: a Tensor representing the center cropped image.
@@ -431,7 +434,7 @@ def center_crop_image(image):
   with tf.name_scope('center_crop_image'):
     image_size = tf.cast(tf.shape(image)[:2], dtype=tf.float32)
     crop_size = (
-        CENTER_CROP_FRACTION * tf.math.minimum(image_size[0], image_size[1]))
+        center_crop_fraction * tf.math.minimum(image_size[0], image_size[1]))
     crop_offset = tf.cast((image_size - crop_size) / 2.0, dtype=tf.int32)
     crop_size = tf.cast(crop_size, dtype=tf.int32)
     cropped_image = image[
@@ -440,7 +443,9 @@ def center_crop_image(image):
     return cropped_image
 
 
-def center_crop_image_v2(image_bytes, image_shape):
+def center_crop_image_v2(
+    image_bytes, image_shape, center_crop_fraction: float = CENTER_CROP_FRACTION
+):
   """Center crop a square shape slice from the input image.
 
   It crops a square shape slice from the image. The side of the actual crop
@@ -457,14 +462,17 @@ def center_crop_image_v2(image_bytes, image_shape):
   Args:
     image_bytes: a Tensor of type string representing the raw image bytes.
     image_shape: a Tensor specifying the shape of the raw image.
+    center_crop_fraction: a float of ratio between the side of the cropped image
+      and the short side of the original image
 
   Returns:
     cropped_image: a Tensor representing the center cropped image.
   """
   with tf.name_scope('center_image_crop_v2'):
     image_shape = tf.cast(image_shape, tf.float32)
-    crop_size = (
-        CENTER_CROP_FRACTION * tf.math.minimum(image_shape[0], image_shape[1]))
+    crop_size = center_crop_fraction * tf.math.minimum(
+        image_shape[0], image_shape[1]
+    )
     crop_offset = tf.cast((image_shape - crop_size) / 2.0, dtype=tf.int32)
     crop_size = tf.cast(crop_size, dtype=tf.int32)
     crop_window = tf.stack(

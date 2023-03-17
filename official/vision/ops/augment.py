@@ -34,6 +34,7 @@ from typing import Any, List, Iterable, Optional, Text, Tuple
 from keras.layers.preprocessing import image_preprocessing as image_ops
 import numpy as np
 import tensorflow as tf
+from tensorflow_addons import image as tfa_image
 
 
 # This signifies the max integer that the controller RNN could predict for the
@@ -466,6 +467,15 @@ def cutout_video(image: tf.Tensor, replace: int = 0) -> tf.Tensor:
   return image
 
 
+def gaussian_noise(
+    image: tf.Tensor, low: float = 0.1, high: float = 2.0) -> tf.Tensor:
+  """Add Gaussian noise to image(s)."""
+  augmented_image = tfa_image.gaussian_filter2d(  # pylint: disable=g-long-lambda
+      image, sigma=np.random.uniform(low=low, high=high)
+  )
+  return augmented_image
+
+
 def solarize(image: tf.Tensor, threshold: int = 128) -> tf.Tensor:
   """Solarize the input image(s)."""
   # For each pixel in the image, select the pixel
@@ -487,9 +497,14 @@ def solarize_add(image: tf.Tensor,
   return tf.where(image < threshold, added_image, image)
 
 
+def grayscale(image: tf.Tensor) -> tf.Tensor:
+  """Convert image to grayscale."""
+  return tf.image.grayscale_to_rgb(tf.image.rgb_to_grayscale(image))
+
+
 def color(image: tf.Tensor, factor: float) -> tf.Tensor:
   """Equivalent of PIL Color."""
-  degenerate = tf.image.grayscale_to_rgb(tf.image.rgb_to_grayscale(image))
+  degenerate = grayscale(image)
   return blend(degenerate, image, factor)
 
 
@@ -1350,6 +1365,12 @@ def _translate_level_to_arg(level: float, translate_const: float):
   return (level,)
 
 
+def _gaussian_noise_level_to_arg(level: float, translate_const: float):
+  low_std = (level / _MAX_LEVEL)
+  high_std = translate_const * low_std
+  return low_std, high_std
+
+
 def _mult_to_arg(level: float, multiplier: float = 1.):
   return (int((level / _MAX_LEVEL) * multiplier),)
 
@@ -1403,6 +1424,8 @@ NAME_TO_FUNC = {
     'TranslateY': translate_y,
     'Cutout': cutout,
     'Rotate_BBox': rotate_with_bboxes,
+    'Grayscale': grayscale,
+    'Gaussian_Noise': gaussian_noise,
     # pylint:disable=g-long-lambda
     'ShearX_BBox': lambda image, bboxes, level, replace: shear_with_bboxes(
         image, bboxes, level, replace, shear_horizontal=True),
@@ -1479,6 +1502,10 @@ def level_to_arg(cutout_const: float, translate_const: float):
       'Rotate_BBox': _rotate_level_to_arg,
       'ShearX_BBox': _shear_level_to_arg,
       'ShearY_BBox': _shear_level_to_arg,
+      'Grayscale': no_arg,
+      # pylint:disable=g-long-lambda
+      'Gaussian_Noise': lambda level: _gaussian_noise_level_to_arg(
+          level, translate_const),
       # pylint:disable=g-long-lambda
       'TranslateX_BBox': lambda level: _translate_level_to_arg(
           level, translate_const),
@@ -1624,6 +1651,7 @@ class AutoAugment(ImageAugment):
         'reduced_imagenet': self.policy_reduced_imagenet(),
         'panoptic_deeplab_policy': self.panoptic_deeplab_policy(),
         'vit': self.vit(),
+        'deit3_three_augment': self.deit3_three_augment(),
     }
 
     if not policies:
@@ -1952,6 +1980,27 @@ class AutoAugment(ImageAugment):
         [('Invert', 0.6, 4), ('Equalize', 1.0, 8), ('Cutout', 0.8, 8)],
         [('Posterize', 0.6, 7), ('Posterize', 0.6, 6), ('Cutout', 0.8, 8)],
         [('Solarize', 0.6, 5), ('AutoContrast', 0.6, 5), ('Cutout', 0.8, 8)],
+        ]
+    return policy
+
+  @staticmethod
+  def deit3_three_augment():
+    """Autoaugment policy for three augmentations.
+
+    Proposed in paper: https://arxiv.org/abs/2204.07118.
+
+    Each tuple is an augmentation operation of the form
+    (operation, probability, magnitude). Each element in policy is a
+    sub-policy that will be applied on the image. Randomly chooses one of the
+    three augmentation to apply on image.
+
+    Returns:
+      the policy.
+    """
+    policy = [
+        [('Grayscale', 1.0, 0)],
+        [('Solarize', 1.0, 5)],  # to have threshold as 128
+        [('Gaussian_Noise', 1.0, 1)],  # to have low_std as 0.1
         ]
     return policy
 

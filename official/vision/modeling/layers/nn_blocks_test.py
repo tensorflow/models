@@ -64,6 +64,54 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
         [1, input_size // strides, input_size // strides, filter_size],
         features.shape.as_list())
 
+  def test_layerscale_call(self):
+    # Set up test inputs
+    input_shape = (2, 3, 4)
+    init_values = 1e-4
+    inputs = tf.ones(input_shape, dtype=tf.float32)
+
+    # Instantiate LayerScale object
+    layer_scale = nn_blocks.LayerScale(init_values)
+
+    # Call LayerScale object on test inputs
+    output = layer_scale(inputs)
+
+    # Check output shape
+    expected_output_shape = input_shape
+    self.assertAllEqual(output.shape, expected_output_shape)
+
+    # Check that output values are correct
+    expected_output_values = init_values * np.ones(input_shape)
+    self.assertAllClose(
+        output.numpy(), expected_output_values, rtol=1e-5, atol=1e-5)
+
+  def test_layerscale_training(self):
+    # Verify that gamma values have changed from their initial values in one
+    # step forward pass.
+    # Set up test inputs
+    input_shape = (1, 3, 4)
+    init_values = 1e-4
+    inputs = tf.ones(input_shape, dtype=tf.float32)
+    targets = tf.ones(input_shape, dtype=tf.float32)
+
+    # Instantiate LayerScale object
+    layer_scale = nn_blocks.LayerScale(init_values)
+
+    # Define optimizer and loss function
+    optimizer = tf.keras.optimizers.Adam()
+    loss_fn = tf.keras.losses.MeanSquaredError()
+
+    # Train the model for one step
+    with tf.GradientTape() as tape:
+      predictions = layer_scale(inputs)
+      loss = loss_fn(targets, predictions)
+    grads = tape.gradient(loss, layer_scale.trainable_variables)
+    optimizer.apply_gradients(zip(grads, layer_scale.trainable_variables))
+
+    # Check that gamma values have changed
+    updated_gamma = layer_scale.gamma.numpy()[0, 0, 0]
+    self.assertNotEqual(updated_gamma, init_values)
+
   @parameterized.parameters(
       (nn_blocks.BottleneckBlock, 1, False, 0.0, None),
       (nn_blocks.BottleneckBlock, 2, True, 0.2, 0.25),

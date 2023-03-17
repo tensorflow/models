@@ -285,6 +285,30 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
     ])
     self.assertAllEqual(expected_output, output)
 
+  @parameterized.parameters(
+      (100, 200, 1.0, 224, 224, 224, 224),
+      (512, 512, 1.0, 1024, 1024, 1024, 1024),
+  )
+  def test_deit3_resize_center_crop(
+      self, input_height, input_width, center_crop_fraction,
+      desired_height, desired_width,
+      output_height, output_width):
+    # Make sure that with center_crop_ratio = 1; result has desired resolution.
+    image = tf.convert_to_tensor(
+        np.random.rand(input_height, input_width, 3))
+
+    desired_size = (desired_height, desired_width)
+    center_cropped = preprocess_ops.center_crop_image(
+        image,
+        center_crop_fraction=center_crop_fraction)
+    resized_image = tf.image.resize(
+        center_cropped, desired_size, method=tf.image.ResizeMethod.BICUBIC)
+    resized_image_shape = tf.shape(resized_image)
+
+    self.assertAllEqual(
+        [output_height, output_width, 3],
+        resized_image_shape.numpy())
+
 
 if __name__ == '__main__':
   tf.test.main()

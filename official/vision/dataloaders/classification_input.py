@@ -71,7 +71,11 @@ class Parser(parser.Parser):
                random_erasing: Optional[common.RandomErasing] = None,
                is_multilabel: bool = False,
                dtype: str = 'float32',
-               crop_area_range: Optional[Tuple[float, float]] = (0.08, 1.0)):
+               crop_area_range: Optional[Tuple[float, float]] = (0.08, 1.0),
+               center_crop_fraction: Optional[
+                   float] = preprocess_ops.CENTER_CROP_FRACTION,
+               tf_resize_method: str = 'bilinear',
+               three_augment: bool = False):
     """Initializes parameters for parsing annotations in the dataset.
 
     Args:
@@ -100,6 +104,10 @@ class Parser(parser.Parser):
         random crop function to constraint crop operation. The cropped areas
         of the image must contain a fraction of the input image within this
         range. The default area range is (0.08, 1.0).
+      https://arxiv.org/abs/2204.07118.
+      center_crop_fraction: center_crop_fraction.
+      tf_resize_method: A `str`, interpolation method for resizing image.
+      three_augment: A bool, whether to apply three augmentations.
     """
     self._output_size = output_size
     self._aug_rand_hflip = aug_rand_hflip
@@ -150,6 +158,9 @@ class Parser(parser.Parser):
     self._is_multilabel = is_multilabel
     self._decode_jpeg_only = decode_jpeg_only
     self._crop_area_range = crop_area_range
+    self._center_crop_fraction = center_crop_fraction
+    self._tf_resize_method = tf_resize_method
+    self._three_augment = three_augment
 
   def _parse_train_data(self, decoded_tensors):
     """Parses data for training."""
@@ -211,12 +222,19 @@ class Parser(parser.Parser):
 
     # Resizes image.
     image = tf.image.resize(
-        image, self._output_size, method=tf.image.ResizeMethod.BILINEAR)
+        image, self._output_size, method=self._tf_resize_method)
     image.set_shape([self._output_size[0], self._output_size[1], 3])
 
     # Apply autoaug or randaug.
     if self._augmenter is not None:
       image = self._augmenter.distort(image)
+
+    # Three augmentation
+    if self._three_augment:
+      image = augment.AutoAugment(
+          augmentation_name='deit3_three_augment',
+          translate_const=20,
+      ).distort(image)
 
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(
@@ -239,7 +257,8 @@ class Parser(parser.Parser):
       image_shape = tf.image.extract_jpeg_shape(image_bytes)
 
       # Center crops.
-      image = preprocess_ops.center_crop_image_v2(image_bytes, image_shape)
+      image = preprocess_ops.center_crop_image_v2(
+          image_bytes, image_shape, self._center_crop_fraction)
     else:
       # Decodes image.
       image = tf.io.decode_image(image_bytes, channels=3)
@@ -247,10 +266,11 @@ class Parser(parser.Parser):
 
       # Center crops.
       if self._aug_crop:
-        image = preprocess_ops.center_crop_image(image)
+        image = preprocess_ops.center_crop_image(
+            image, self._center_crop_fraction)
 
     image = tf.image.resize(
-        image, self._output_size, method=tf.image.ResizeMethod.BILINEAR)
+        image, self._output_size, method=self._tf_resize_method)
     image.set_shape([self._output_size[0], self._output_size[1], 3])
 
     # Normalizes image with mean and std pixel values.

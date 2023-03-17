@@ -1521,16 +1521,49 @@ class TuckerConvBlock(tf.keras.layers.Layer):
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
+class LayerScale(tf.keras.layers.Layer):
+  """LayerScale as introduced in CaiT: https://arxiv.org/abs/2103.17239.
+
+  Attributes:
+      init_values (float): value to initialize the diagonal matrix of
+        LayerScale.
+  """
+
+  def __init__(self, init_values: float, **kwargs):
+    """Initializes LayerScale."""
+    super().__init__(**kwargs)
+    self.gamma_init_value = init_values
+
+  def build(self, inputs_shape):
+    gamma_shape = (1, 1, inputs_shape[2])
+    self.gamma = self.add_weight(
+        name='layerscale_gamma',
+        shape=gamma_shape,
+        initializer=tf.keras.initializers.Constant(self.gamma_init_value),
+        trainable=True,
+        dtype=tf.float32,
+    )
+
+  def call(self, inputs, inputs_positions=None):
+    del inputs_positions
+    input_dtype = inputs.dtype
+    gamma = self.gamma
+    return tf.cast(tf.cast(inputs, tf.float32) * gamma, input_dtype)
+
+
+@tf.keras.utils.register_keras_serializable(package='Vision')
 class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
-  """TransformerEncoderBlock layer with stochastic depth."""
+  """TransformerEncoderBlock layer with stochastic depth and layerscale."""
 
   def __init__(self,
                *args,
                stochastic_depth_drop_rate=0.0,
+               layer_scale_init_value=0.0,
                **kwargs):
     """Initializes TransformerEncoderBlock."""
     super().__init__(*args, **kwargs)
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
+    self._layer_scale_init_value = layer_scale_init_value
 
   def build(self, input_shape):
     if self._stochastic_depth_drop_rate:
@@ -1539,6 +1572,14 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
     else:
       self._stochastic_depth = lambda x, *args, **kwargs: tf.identity(x)
 
+    if self._layer_scale_init_value:
+      self._layer_scale_attn = LayerScale(
+          init_values=self._layer_scale_init_value, name='layer_scale_attn')
+      self._layer_scale_mlp = LayerScale(
+          init_values=self._layer_scale_init_value, name='layer_scale_mlp')
+    else:
+      self._layer_scale_attn = lambda x, *args, **kwargs: tf.identity(x)
+      self._layer_scale_mlp = lambda x, *args, **kwargs: tf.identity(x)
     super().build(input_shape)
 
   def get_config(self):
@@ -1589,6 +1630,8 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
         return_attention_scores=True)
     attention_output = self._attention_dropout(attention_output)
 
+    attention_output = self._layer_scale_attn(attention_output)
+
     if self._norm_first:
       # Important to not combine `self._norm_first` and
       # `self._use_query_residual` into one if clause because else is only for
@@ -1609,6 +1652,9 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
     inner_output = self._inner_dropout_layer(inner_output)
     layer_output = self._output_dense(inner_output)
     layer_output = self._output_dropout(layer_output)
+
+    # Layerscale after MLP.
+    layer_output = self._layer_scale_mlp(layer_output)
 
     if self._norm_first:
       layer_output = source_attention_output + self._stochastic_depth(

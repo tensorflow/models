@@ -41,6 +41,7 @@ class DataConfig(cfg.DataConfig):
   crop_area_range: Optional[Tuple[float, float]] = (0.08, 1.0)
   aug_type: Optional[
       common.Augmentation] = None  # Choose from AutoAugment and RandAugment.
+  three_augment: bool = False
   color_jitter: float = 0.
   random_erasing: Optional[common.RandomErasing] = None
   file_type: str = 'tfrecord'
@@ -53,6 +54,11 @@ class DataConfig(cfg.DataConfig):
   # Keep for backward compatibility.
   aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'.
   randaug_magnitude: Optional[int] = 10
+  # Determines ratio between the side of the cropped image and the short side of
+  # the original image.
+  center_crop_fraction: Optional[float] = 0.875
+  # Interpolation method for resizing image in Parser for both training and eval
+  tf_resize_method: str = 'bilinear'
 
 
 @dataclasses.dataclass
@@ -79,6 +85,9 @@ class Losses(hyperparams.Config):
   label_smoothing: float = 0.0
   l2_weight_decay: float = 0.0
   soft_labels: bool = False
+  # Converts multi-class classification to multi-label classification. Weights
+  # each object class equally in the loss function, ignoring their size.
+  use_binary_cross_entropy: bool = False
 
 
 @dataclasses.dataclass
