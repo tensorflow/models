@@ -48,6 +48,9 @@ class VisionTransformer(hyperparams.Config):
   # If output encoded tokens 2D feature map.
   output_2d_feature_maps: bool = False
 
+  # Adding Layerscale to each Encoder block https://arxiv.org/abs/2204.07118
+  layer_scale_init_value: float = 0.0
+
 
 @dataclasses.dataclass
 class ResNet(hyperparams.Config):

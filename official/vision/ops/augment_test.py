@@ -304,6 +304,15 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertEqual((224, 224, 3), aug_image.shape)
 
+  def test_autoaugment_three_augment(self):
+    """Test three augmentation."""
+    image = tf.random.normal(shape=(224, 224, 3), dtype=tf.float32)
+    augmenter = augment.AutoAugment(augmentation_name='deit3_three_augment')
+    aug_image = augmenter.distort(image)
+
+    self.assertEqual((224, 224, 3), aug_image.shape)
+    self.assertFalse(tf.math.reduce_all(image == aug_image))
+
   @parameterized.named_parameters(
       {'testcase_name': '_OutOfRangeProb',
        'sub_policy': ('Equalize', 1.1, 3), 'value': '1.1'},
