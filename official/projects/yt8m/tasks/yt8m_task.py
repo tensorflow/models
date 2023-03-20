@@ -43,25 +43,18 @@ class YT8MTask(base_task.Task):
     logging.info('Build model input %r', common_input_shape)
 
     l2_weight_decay = self.task_config.losses.l2_weight_decay
-    # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
-    # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
-    # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
-    l2_regularizer = (
-        tf.keras.regularizers.l2(l2_weight_decay /
-                                 2.0) if l2_weight_decay else None)
     # Model configuration.
     model_config = self.task_config.model
     norm_activation_config = model_config.norm_activation
     model = DbofModel(
         params=model_config,
         input_specs=input_specs,
-        num_frames=train_cfg.num_frames,
         num_classes=train_cfg.num_classes,
         activation=norm_activation_config.activation,
         use_sync_bn=norm_activation_config.use_sync_bn,
         norm_momentum=norm_activation_config.norm_momentum,
         norm_epsilon=norm_activation_config.norm_epsilon,
-        kernel_regularizer=l2_regularizer)
+        l2_weight_decay=l2_weight_decay)
 
     non_trainable_batch_norm_variables = []
     non_trainable_extra_variables = []
@@ -240,12 +233,13 @@ class YT8MTask(base_task.Task):
 
     # sample random frames / random sequence.
     num_frames = tf.cast(num_frames, tf.float32)
-    sample_frames = data_config.num_frames
+    num_sample_frames = data_config.num_sample_frames
     if self.task_config.model.sample_random_frames:
-      features = utils.sample_random_frames(features, num_frames, sample_frames)
+      features = utils.sample_random_frames(
+          features, num_frames, num_sample_frames)
     else:
-      features = utils.sample_random_sequence(features, num_frames,
-                                              sample_frames)
+      features = utils.sample_random_sequence(
+          features, num_frames, num_sample_frames)
     return features
 
   def _preprocess_labels(self,
