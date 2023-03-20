@@ -53,7 +53,7 @@ class DataConfig(cfg.DataConfig):
     temporal_stride: Not used. Need to deprecated.
     max_frames: Maxim Number of frames in a input example. It is used to crop
       the input in the temporal dimension.
-    num_frames: Number of frames in a single input example.
+    num_sample_frames: Number of frames to sample for each input example.
     num_classes: Number of classes to classify. Assuming it is a classification
       task.
     num_devices: Not used. To be deprecated.
@@ -77,7 +77,7 @@ class DataConfig(cfg.DataConfig):
   include_video_id: bool = False
   temporal_stride: int = 1
   max_frames: int = 300
-  num_frames: int = 300  # set smaller to allow random sample (Parser)
+  num_sample_frames: int = 300  # set smaller to allow random sample (Parser)
   num_classes: int = 3862
   num_devices: int = 1
   input_path: str = ''
@@ -90,7 +90,6 @@ def yt8m(is_training):
   """YT8M dataset configs."""
   # pylint: disable=unexpected-keyword-arg
   return DataConfig(
-      num_frames=30,
       temporal_stride=1,
       segment_labels=False,
       segment_size=5,

@@ -26,7 +26,7 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
   """Class for testing yt8m network."""
 
   # test_yt8m_network_creation arbitrary params
-  @parameterized.parameters((32, 1152))  # 1152 = 1024 + 128
+  @parameterized.parameters((32, 1152), (24, 1152))  # 1152 = 1024 + 128
   def test_yt8m_network_creation(self, num_frames, feature_dims):
     """Test for creation of a YT8M Model.
 
@@ -39,11 +39,10 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
     num_classes = 3862
     model = yt8m_model.DbofModel(
         params=yt8m_cfg.YT8MTask.model,
-        num_frames=num_frames,
         num_classes=num_classes,
         input_specs=input_specs)
 
-    # batch = 2 -> arbitrary value for test
+    # batch = 2 -> arbitrary value for test.
     inputs = np.random.rand(2, num_frames, feature_dims)
     logits = model(inputs)
     self.assertAllEqual([2, num_classes], logits.numpy().shape)

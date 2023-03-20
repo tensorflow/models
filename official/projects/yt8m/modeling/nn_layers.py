@@ -24,19 +24,21 @@ layers = tf.keras.layers
 class LogisticModel():
   """Logistic model with L2 regularization."""
 
-  def create_model(self, model_input, vocab_size, l2_penalty=1e-8):
+  def create_model(self, model_input, vocab_size, l2_penalty=1e-8, **kwargs):
     """Creates a logistic model.
 
     Args:
       model_input: 'batch' x 'num_features' matrix of input features.
       vocab_size: The number of classes in the dataset.
       l2_penalty: L2 weight regularization ratio.
+      **kwargs: extra key word args.
 
     Returns:
       A dictionary with a tensor containing the probability predictions of the
       model in the 'predictions' key. The dimensions of the tensor are
       batch_size x num_classes.
     """
+    del kwargs  # Unused.
     output = layers.Dense(
         vocab_size,
         activation=tf.nn.sigmoid,
@@ -57,7 +59,8 @@ class MoeModel():
                    normalizer_fn=None,
                    normalizer_params: Optional[Dict[str, Any]] = None,
                    vocab_as_last_dim: bool = False,
-                   l2_penalty: float = 1e-5):
+                   l2_penalty: float = 1e-5,
+                   **kwargs):
     """Creates a Mixture of (Logistic) Experts model.
 
      The model consists of a per-class softmax distribution over a
@@ -78,12 +81,14 @@ class MoeModel():
         be padded to 128, and the second to last will be padded to 8.
       l2_penalty: How much to penalize the squared magnitudes of parameter
         values.
+      **kwargs: extra key word args.
 
     Returns:
       A dictionary with a tensor containing the probability predictions
       of the model in the 'predictions' key. The dimensions of the tensor
       are batch_size x num_classes.
     """
+    del kwargs  # Unused.
     if use_input_context_gate:
       model_input = utils.context_gate(
           model_input,

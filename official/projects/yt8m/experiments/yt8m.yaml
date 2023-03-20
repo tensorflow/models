@@ -22,7 +22,7 @@ task:
     segment_labels: false
     temporal_stride: 1
     max_frames: 300
-    num_frames: 300
+    num_sample_frames: 300
     num_classes: 3862
     num_devices: 1
     input_path: 'gs://youtube8m-ml/2/frame/train/train*.tfrecord'
@@ -40,7 +40,7 @@ task:
     segment_labels: true
     temporal_stride: 1
     max_frames: 300
-    num_frames: 300
+    num_sample_frames: 300
     num_classes: 3862
     num_devices: 1
     input_path: 'gs://youtube8m-ml/3/frame/validate/validate*.tfrecord'
