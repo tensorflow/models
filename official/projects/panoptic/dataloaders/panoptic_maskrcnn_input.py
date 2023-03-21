@@ -251,25 +251,29 @@ class Parser(maskrcnn_input.Parser):
     segmentation_mask = data['groundtruth_segmentation_mask']
 
     # Flips image randomly during training.
-    if self.aug_rand_hflip or self.aug_rand_vflip:
-      masks = data['groundtruth_instance_masks']
-      num_image_channels = data['image'].shape.as_list()[-1]
-      image_mask = tf.concat([data['image'], segmentation_mask], axis=2)
+    image_mask = tf.concat([data['image'], segmentation_mask], axis=2)
+    boxes = data['groundtruth_boxes']
+    masks = data['groundtruth_instance_masks']
+    image_mask, boxes, masks = preprocess_ops.random_horizontal_flip(
+        image_mask,
+        boxes,
+        masks,
+        prob=tf.where(self.aug_rand_hflip, 0.5, 0.0),
+    )
+    image_mask, boxes, masks = preprocess_ops.random_vertical_flip(
+        image_mask,
+        boxes,
+        masks,
+        prob=tf.where(self.aug_rand_vflip, 0.5, 0.0),
+    )
 
-      boxes = data['groundtruth_boxes']
-      if self.aug_rand_hflip:
-        image_mask, boxes, masks = preprocess_ops.random_horizontal_flip(
-            image_mask, boxes, masks)
-      if self.aug_rand_vflip:
-        image_mask, boxes, masks = preprocess_ops.random_vertical_flip(
-            image_mask, boxes, masks)
+    num_image_channels = data['image'].shape.as_list()[-1]
+    image = image_mask[:, :, :num_image_channels]
+    segmentation_mask = image_mask[:, :, num_image_channels:]
 
-      image = image_mask[:, :, :num_image_channels]
-      segmentation_mask = image_mask[:, :, num_image_channels:]
-
-      data['image'] = image
-      data['groundtruth_boxes'] = boxes
-      data['groundtruth_instance_masks'] = masks
+    data['image'] = image
+    data['groundtruth_boxes'] = boxes
+    data['groundtruth_instance_masks'] = masks
 
     image, labels = super()._parse_train_data(data)
 

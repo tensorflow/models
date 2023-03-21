@@ -211,19 +211,18 @@ class Parser(parser.Parser):
     image = preprocess_ops.normalize_image(image)
 
     # Flips image randomly during training.
-    if self._aug_rand_hflip:
-      if self._include_mask:
-        image, boxes, masks = preprocess_ops.random_horizontal_flip(
-            image, boxes, masks)
-      else:
-        image, boxes, _ = preprocess_ops.random_horizontal_flip(
-            image, boxes)
-    if self._aug_rand_vflip:
-      if self._include_mask:
-        image, boxes, masks = preprocess_ops.random_vertical_flip(
-            image, boxes, masks)
-      else:
-        image, boxes, _ = preprocess_ops.random_vertical_flip(image, boxes)
+    image, boxes, masks = preprocess_ops.random_horizontal_flip(
+        image,
+        boxes,
+        masks=None if not self._include_mask else masks,
+        prob=tf.where(self._aug_rand_hflip, 0.5, 0.0),
+    )
+    image, boxes, masks = preprocess_ops.random_vertical_flip(
+        image,
+        boxes,
+        masks=None if not self._include_mask else masks,
+        prob=tf.where(self._aug_rand_vflip, 0.5, 0.0),
+    )
 
     # Converts boxes from normalized coordinates to pixel coordinates.
     # Now the coordinates of boxes are w.r.t. the original image.
