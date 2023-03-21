@@ -182,7 +182,12 @@ def resize_and_crop_image(image,
   with tf.name_scope('resize_and_crop_image'):
     image_size = tf.cast(tf.shape(image)[0:2], tf.float32)
 
-    random_jittering = (aug_scale_min != 1.0 or aug_scale_max != 1.0)
+    random_jittering = (
+        isinstance(aug_scale_min, tf.Tensor)
+        or isinstance(aug_scale_max, tf.Tensor)
+        or not math.isclose(aug_scale_min, 1.0)
+        or not math.isclose(aug_scale_max, 1.0)
+    )
 
     if random_jittering:
       random_scale = tf.random.uniform(
@@ -292,7 +297,12 @@ def resize_and_crop_image_v2(image,
         scaled_size)
     desired_size = scaled_size
 
-    random_jittering = (aug_scale_min != 1.0 or aug_scale_max != 1.0)
+    random_jittering = (
+        isinstance(aug_scale_min, tf.Tensor)
+        or isinstance(aug_scale_max, tf.Tensor)
+        or not math.isclose(aug_scale_min, 1.0)
+        or not math.isclose(aug_scale_max, 1.0)
+    )
 
     if random_jittering:
       random_scale = tf.random.uniform(
@@ -641,10 +651,12 @@ def horizontal_flip_masks(masks):
   return masks[:, :, ::-1]
 
 
-def random_horizontal_flip(image, normalized_boxes=None, masks=None, seed=1):
+def random_horizontal_flip(
+    image, normalized_boxes=None, masks=None, seed=1, prob=0.5
+):
   """Randomly flips input image and bounding boxes horizontally."""
   with tf.name_scope('random_horizontal_flip'):
-    do_flip = tf.greater(tf.random.uniform([], seed=seed), 0.5)
+    do_flip = tf.less(tf.random.uniform([], seed=seed), prob)
 
     image = tf.cond(
         do_flip,
@@ -713,10 +725,12 @@ def random_horizontal_flip_with_roi(
     return image, boxes, masks, roi_boxes
 
 
-def random_vertical_flip(image, normalized_boxes=None, masks=None, seed=1):
+def random_vertical_flip(
+    image, normalized_boxes=None, masks=None, seed=1, prob=0.5
+):
   """Randomly flips input image and bounding boxes vertically."""
   with tf.name_scope('random_vertical_flip'):
-    do_flip = tf.greater(tf.random.uniform([], seed=seed), 0.5)
+    do_flip = tf.less(tf.random.uniform([], seed=seed), prob)
 
     image = tf.cond(
         do_flip,
