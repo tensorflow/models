@@ -45,15 +45,10 @@ class YT8MTask(base_task.Task):
     l2_weight_decay = self.task_config.losses.l2_weight_decay
     # Model configuration.
     model_config = self.task_config.model
-    norm_activation_config = model_config.norm_activation
     model = DbofModel(
         params=model_config,
         input_specs=input_specs,
         num_classes=train_cfg.num_classes,
-        activation=norm_activation_config.activation,
-        use_sync_bn=norm_activation_config.use_sync_bn,
-        norm_momentum=norm_activation_config.norm_momentum,
-        norm_epsilon=norm_activation_config.norm_epsilon,
         l2_weight_decay=l2_weight_decay)
 
     non_trainable_batch_norm_variables = []
@@ -66,18 +61,32 @@ class YT8MTask(base_task.Task):
           non_trainable_extra_variables.append(var)
 
     logging.info(
-        'Trainable model variables:\n%s', '\n'.join(
-            [f'{var.name}\t{var.shape}' for var in model.trainable_variables]))
+        'Trainable model variables:\n%s',
+        '\n'.join(
+            [f'{var.name}\t{var.shape}' for var in model.trainable_variables]
+        ),
+    )
     logging.info(
-        'Non-trainable batch norm variables (get updated in training mode):\n%s',
-        '\n'.join([
-            f'{var.name}\t{var.shape}'
-            for var in non_trainable_batch_norm_variables
-        ]))
+        (
+            'Non-trainable batch norm variables (get updated in training'
+            ' mode):\n%s'
+        ),
+        '\n'.join(
+            [
+                f'{var.name}\t{var.shape}'
+                for var in non_trainable_batch_norm_variables
+            ]
+        ),
+    )
     logging.info(
-        'Non-trainable frozen model variables:\n%s', '\n'.join([
-            f'{var.name}\t{var.shape}' for var in non_trainable_extra_variables
-        ]))
+        'Non-trainable frozen model variables:\n%s',
+        '\n'.join(
+            [
+                f'{var.name}\t{var.shape}'
+                for var in non_trainable_extra_variables
+            ]
+        ),
+    )
     return model
 
   def build_inputs(self, params: yt8m_cfg.DataConfig, input_context=None):
@@ -173,7 +182,10 @@ class YT8MTask(base_task.Task):
     for name in metric_names:
       metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
 
-    if self.task_config.evaluation.average_precision is not None and not training:
+    if (
+        self.task_config.evaluation.average_precision is not None
+        and not training
+    ):
       # Cannot run in train step.
       num_classes = self.task_config.validation_data.num_classes
       top_k = self.task_config.evaluation.average_precision.top_k
@@ -183,14 +195,16 @@ class YT8MTask(base_task.Task):
 
     return metrics
 
-  def process_metrics(self,
-                      metrics: List[tf.keras.metrics.Metric],
-                      labels: tf.Tensor,
-                      outputs: tf.Tensor,
-                      model_losses: Optional[Dict[str, tf.Tensor]] = None,
-                      label_weights: Optional[tf.Tensor] = None,
-                      training: bool = True,
-                      **kwargs) -> Dict[str, Tuple[tf.Tensor, ...]]:
+  def process_metrics(
+      self,
+      metrics: List[tf.keras.metrics.Metric],
+      labels: tf.Tensor,
+      outputs: tf.Tensor,
+      model_losses: Optional[Dict[str, tf.Tensor]] = None,
+      label_weights: Optional[tf.Tensor] = None,
+      training: bool = True,
+      **kwargs,
+  ) -> Dict[str, Tuple[tf.Tensor, ...]]:
     """Updates metrics.
 
     Args:
@@ -210,7 +224,10 @@ class YT8MTask(base_task.Task):
       model_losses = {}
 
     logs = {}
-    if self.task_config.evaluation.average_precision is not None and not training:
+    if (
+        self.task_config.evaluation.average_precision is not None
+        and not training
+    ):
       logs.update({self.avg_prec_metric.name: (labels, outputs)})
 
     for m in metrics:
