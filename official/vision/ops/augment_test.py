@@ -21,6 +21,7 @@ from __future__ import print_function
 import random
 from absl.testing import parameterized
 
+import numpy as np
 import tensorflow as tf
 
 from official.vision.ops import augment
@@ -84,6 +85,14 @@ class TransformsTest(parameterized.TestCase, tf.test.TestCase):
     for shape in [(3, 3), (5, 5), (224, 224, 3)]:
       image = tf.zeros(shape, dtype=dtype)
       self.assertAllEqual(image, augment.rotate(image, degrees))
+
+  def test_cutout_video(self, dtype):
+    for num_channels in (1, 2, 3):
+      video = tf.ones((2, 2, 2, num_channels), dtype=dtype)
+      video = augment.cutout_video(video)
+
+      num_zeros = np.sum(video == 0)
+      self.assertGreater(num_zeros, 0)
 
 
 class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
