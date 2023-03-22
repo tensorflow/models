@@ -465,213 +465,6 @@ def _count_detection_type(
   return count
 
 
-def _compute_fp_tp_gt_count(
-    y_true: Dict[str, tf.Tensor],
-    y_pred: Dict[str, tf.Tensor],
-    num_classes: int,
-    mask_output_boundary: Tuple[int, int] = (640, 640),
-    iou_thresholds: Tuple[float, ...] = (0.5,),
-    matching_algorithm: Optional[MatchingAlgorithm] = None,
-    num_confidence_bins: int = 1000,
-    use_masks: bool = False,
-) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-  """Computes the true and false positives."""
-
-  if matching_algorithm is None:
-    matching_algorithm = COCOMatchingAlgorithm(iou_thresholds)
-
-  # (batch_size, num_detections, 4) in absolute coordinates.
-  detection_boxes = tf.cast(y_pred['detection_boxes'], tf.float32)
-  # (batch_size, num_detections)
-  detection_classes = tf.cast(y_pred['detection_classes'], tf.int32)
-  # (batch_size, num_detections)
-  detection_scores = tf.cast(y_pred['detection_scores'], tf.float32)
-  # (batch_size, num_gts, 4) in absolute coordinates.
-  gt_boxes = tf.cast(y_true['boxes'], tf.float32)
-  # (batch_size, num_gts)
-  gt_classes = tf.cast(y_true['classes'], tf.int32)
-  # (batch_size, num_gts)
-  if 'is_crowds' in y_true:
-    gt_is_crowd = tf.cast(y_true['is_crowds'], tf.bool)
-  else:
-    gt_is_crowd = tf.zeros_like(gt_classes, dtype=tf.bool)
-
-  image_scale = tf.tile(y_true['image_info'][:, 2:3, :], multiples=[1, 1, 2])
-  detection_boxes = detection_boxes / tf.cast(
-      image_scale, dtype=detection_boxes.dtype
-  )
-
-  # Step 1: Computes IoUs between the detections and the non-crowd ground
-  # truths and IoAs between the detections and the crowd ground truths.
-  if not use_masks:
-    # (batch_size, num_detections, num_gts)
-    detection_to_gt_ious = box_ops.bbox_overlap(detection_boxes, gt_boxes)
-    detection_to_gt_ioas = box_ops.bbox_intersection_over_area(
-        detection_boxes, gt_boxes
-    )
-  else:
-    # (batch_size, num_detections, mask_height, mask_width)
-    detection_masks = tf.cast(y_pred['detection_masks'], tf.float32)
-    # (batch_size, num_gts, gt_mask_height, gt_mask_width)
-    gt_masks = tf.cast(y_true['masks'], tf.float32)
-
-    num_detections = detection_boxes.get_shape()[1]
-    # (batch_size, num_detections + num_gts, 4)
-    all_boxes = _shift_and_rescale_boxes(
-        tf.concat([detection_boxes, gt_boxes], axis=1),
-        mask_output_boundary,
-    )
-    detection_boxes = all_boxes[:, :num_detections, :]
-    gt_boxes = all_boxes[:, num_detections:, :]
-    # (batch_size, num_detections, num_gts)
-    detection_to_gt_ious, detection_to_gt_ioas = (
-        mask_ops.instance_masks_overlap(
-            detection_boxes,
-            detection_masks,
-            gt_boxes,
-            gt_masks,
-            output_size=mask_output_boundary,
-        )
-    )
-
-  # (batch_size, num_detections, num_gts)
-  detection_to_gt_ious = tf.where(
-      gt_is_crowd[:, tf.newaxis, :], 0.0, detection_to_gt_ious
-  )
-  detection_to_crowd_ioas = tf.where(
-      gt_is_crowd[:, tf.newaxis, :], detection_to_gt_ioas, 0.0
-  )
-
-  # Step 2: counts true positives grouped by IoU thresholds, classes and
-  # confidence bins.
-
-  # (batch_size, num_detections, num_iou_thresholds)
-  detection_is_tp, _ = matching_algorithm(
-      detection_to_gt_ious, detection_classes, detection_scores, gt_classes
-  )
-  # (batch_size * num_detections,)
-  flattened_binned_confidence = tf.reshape(
-      tf.cast(detection_scores * num_confidence_bins, tf.int32), [-1]
-  )
-  # (batch_size * num_detections, num_confidence_bins + 1)
-  flattened_binned_confidence_one_hot = tf.one_hot(
-      flattened_binned_confidence, num_confidence_bins + 1, axis=1
-  )
-  # (num_iou_thresholds, num_classes, num_confidence_bins + 1)
-  tp_count = _count_detection_type(
-      detection_is_tp,
-      detection_classes,
-      flattened_binned_confidence_one_hot,
-      num_classes,
-  )
-
-  # Step 3: Counts false positives grouped by IoU thresholds, classes and
-  # confidence bins.
-  # False positive: detection is not true positive (see above) and not part of
-  # the crowd ground truth with the same class.
-
-  # (batch_size, num_detections, num_gts, num_iou_thresholds)
-  detection_matches_crowd = (
-      (detection_to_crowd_ioas[..., tf.newaxis] > iou_thresholds)
-      & (
-          detection_classes[:, :, tf.newaxis, tf.newaxis]
-          == gt_classes[:, tf.newaxis, :, tf.newaxis]
-      )
-      & (detection_classes[:, :, tf.newaxis, tf.newaxis] > 0)
-  )
-  # (batch_size, num_detections, num_iou_thresholds)
-  detection_matches_any_crowd = tf.reduce_any(
-      detection_matches_crowd & ~detection_is_tp[:, :, tf.newaxis, :], axis=2
-  )
-  detection_is_fp = ~detection_is_tp & ~detection_matches_any_crowd
-  # (num_iou_thresholds, num_classes, num_confidence_bins + 1)
-  fp_count = _count_detection_type(
-      detection_is_fp,
-      detection_classes,
-      flattened_binned_confidence_one_hot,
-      num_classes,
-  )
-
-  # Step 4: Counts non-crowd groundtruths grouped by classes.
-  # (num_classes, )
-  gt_count = tf.reduce_sum(
-      tf.one_hot(
-          tf.where(gt_is_crowd, -1, gt_classes), num_classes, axis=-1
-      ),
-      axis=[0, 1],
-  )
-  # Clears the count of class 0 (background).
-  gt_count *= 1.0 - tf.eye(1, num_classes, dtype=gt_count.dtype)[0]
-
-  return tp_count, fp_count, gt_count
-
-
-def _compute_metrics(
-    tp_count: tf.Tensor,
-    fp_count: tf.Tensor,
-    gt_count: tf.Tensor,
-    confidence_thresholds: Tuple[float, ...] = (),
-    num_confidence_bins: int = 1000,
-    average_precision_algorithms: Optional[
-        Dict[str, AveragePrecision]] = None,
-) -> Dict[str, tf.Tensor]:
-  """Returns the metrics values as a dict."""
-
-  if average_precision_algorithms is None:
-    average_precision_algorithms = {'ap': COCOAveragePrecision()}
-
-  result = {
-      # (num_classes,)
-      'valid_classes': gt_count != 0,
-  }
-
-  # (num_iou_thresholds, num_classes, num_confidence_bins + 1)
-  tp_count_cum_by_confidence = tf.math.cumsum(
-      tp_count, axis=-1, reverse=True
-  )
-  # (num_iou_thresholds, num_classes, num_confidence_bins + 1)
-  fp_count_cum_by_confidence = tf.math.cumsum(
-      fp_count, axis=-1, reverse=True
-  )
-
-  # (num_iou_thresholds, num_classes, num_confidence_bins + 1)
-  precisions = tf.math.divide_no_nan(
-      tp_count_cum_by_confidence,
-      tp_count_cum_by_confidence + fp_count_cum_by_confidence,
-  )
-  # (num_iou_thresholds, num_classes, num_confidence_bins + 1)
-  recalls = tf.math.divide_no_nan(
-      tp_count_cum_by_confidence, gt_count[..., tf.newaxis]
-  )
-
-  if confidence_thresholds:
-    # If confidence_thresholds is set, reports precision and recall at each
-    # confidence threshold.
-    confidence_thresholds = tf.cast(
-        tf.constant(confidence_thresholds, dtype=tf.float32)
-        * num_confidence_bins,
-        dtype=tf.int32,
-    )
-    # (num_confidence_thresholds, num_iou_thresholds, num_classes)
-    result['precisions'] = tf.gather(
-        tf.transpose(precisions, [2, 0, 1]), confidence_thresholds
-    )
-    result['recalls'] = tf.gather(
-        tf.transpose(recalls, [2, 0, 1]), confidence_thresholds
-    )
-
-  precisions = tf.reverse(precisions, axis=[-1])
-  recalls = tf.reverse(recalls, axis=[-1])
-  result.update(
-      {
-          # (num_iou_thresholds, num_classes)
-          key: ap_algorithm(precisions, recalls)
-          for key, ap_algorithm in average_precision_algorithms.items()
-      }
-  )
-  return result
-
-
 class InstanceMetrics(tf.keras.metrics.Metric):
   """Reports the metrics of instance detection & segmentation."""
 
@@ -780,22 +573,138 @@ class InstanceMetrics(tf.keras.metrics.Metric):
 
   def reset_state(self):
     """Resets all of the metric state variables."""
-    for v in self.variables:
-      tf.keras.backend.set_value(v, np.zeros(v.shape))
+    self.tp_count.assign(tf.zeros_like(self.tp_count))
+    self.fp_count.assign(tf.zeros_like(self.fp_count))
+    self.gt_count.assign(tf.zeros_like(self.gt_count))
 
   def update_state(
       self, y_true: Dict[str, tf.Tensor], y_pred: Dict[str, tf.Tensor]
   ):
+    # (batch_size, num_detections, 4) in absolute coordinates.
+    detection_boxes = tf.cast(y_pred['detection_boxes'], tf.float32)
+    # (batch_size, num_detections)
+    detection_classes = tf.cast(y_pred['detection_classes'], tf.int32)
+    # (batch_size, num_detections)
+    detection_scores = tf.cast(y_pred['detection_scores'], tf.float32)
+    # (batch_size, num_gts, 4) in absolute coordinates.
+    gt_boxes = tf.cast(y_true['boxes'], tf.float32)
+    # (batch_size, num_gts)
+    gt_classes = tf.cast(y_true['classes'], tf.int32)
+    # (batch_size, num_gts)
+    if 'is_crowds' in y_true:
+      gt_is_crowd = tf.cast(y_true['is_crowds'], tf.bool)
+    else:
+      gt_is_crowd = tf.zeros_like(gt_classes, dtype=tf.bool)
 
-    tp_count, fp_count, gt_count = _compute_fp_tp_gt_count(
-        y_true=y_true,
-        y_pred=y_pred,
-        num_classes=self._num_classes,
-        mask_output_boundary=self._mask_output_boundary,
-        iou_thresholds=self._iou_thresholds,
-        matching_algorithm=self._matching_algorithm,
-        num_confidence_bins=self._num_confidence_bins,
-        use_masks=self._use_masks)
+    image_scale = tf.tile(y_true['image_info'][:, 2:3, :], multiples=[1, 1, 2])
+    detection_boxes = detection_boxes / tf.cast(
+        image_scale, dtype=detection_boxes.dtype
+    )
+
+    # Step 1: Computes IoUs between the detections and the non-crowd ground
+    # truths and IoAs between the detections and the crowd ground truths.
+    if not self._use_masks:
+      # (batch_size, num_detections, num_gts)
+      detection_to_gt_ious = box_ops.bbox_overlap(detection_boxes, gt_boxes)
+      detection_to_gt_ioas = box_ops.bbox_intersection_over_area(
+          detection_boxes, gt_boxes
+      )
+    else:
+      # Use outer boxes to generate the masks if available.
+      if 'detection_outer_boxes' in y_pred:
+        detection_boxes = tf.cast(y_pred['detection_outer_boxes'], tf.float32)
+
+      # (batch_size, num_detections, mask_height, mask_width)
+      detection_masks = tf.cast(y_pred['detection_masks'], tf.float32)
+      # (batch_size, num_gts, gt_mask_height, gt_mask_width)
+      gt_masks = tf.cast(y_true['masks'], tf.float32)
+
+      num_detections = detection_boxes.get_shape()[1]
+      # (batch_size, num_detections + num_gts, 4)
+      all_boxes = _shift_and_rescale_boxes(
+          tf.concat([detection_boxes, gt_boxes], axis=1),
+          self._mask_output_boundary,
+      )
+      detection_boxes = all_boxes[:, :num_detections, :]
+      gt_boxes = all_boxes[:, num_detections:, :]
+      # (batch_size, num_detections, num_gts)
+      detection_to_gt_ious, detection_to_gt_ioas = (
+          mask_ops.instance_masks_overlap(
+              detection_boxes,
+              detection_masks,
+              gt_boxes,
+              gt_masks,
+              output_size=self._mask_output_boundary,
+          )
+      )
+    # (batch_size, num_detections, num_gts)
+    detection_to_gt_ious = tf.where(
+        gt_is_crowd[:, tf.newaxis, :], 0.0, detection_to_gt_ious
+    )
+    detection_to_crowd_ioas = tf.where(
+        gt_is_crowd[:, tf.newaxis, :], detection_to_gt_ioas, 0.0
+    )
+
+    # Step 2: counts true positives grouped by IoU thresholds, classes and
+    # confidence bins.
+
+    # (batch_size, num_detections, num_iou_thresholds)
+    detection_is_tp, _ = self._matching_algorithm(
+        detection_to_gt_ious, detection_classes, detection_scores, gt_classes
+    )
+    # (batch_size * num_detections,)
+    flattened_binned_confidence = tf.reshape(
+        tf.cast(detection_scores * self._num_confidence_bins, tf.int32), [-1]
+    )
+    # (batch_size * num_detections, num_confidence_bins + 1)
+    flattened_binned_confidence_one_hot = tf.one_hot(
+        flattened_binned_confidence, self._num_confidence_bins + 1, axis=1
+    )
+    # (num_iou_thresholds, num_classes, num_confidence_bins + 1)
+    tp_count = _count_detection_type(
+        detection_is_tp,
+        detection_classes,
+        flattened_binned_confidence_one_hot,
+        self._num_classes,
+    )
+
+    # Step 3: Counts false positives grouped by IoU thresholds, classes and
+    # confidence bins.
+    # False positive: detection is not true positive (see above) and not part of
+    # the crowd ground truth with the same class.
+
+    # (batch_size, num_detections, num_gts, num_iou_thresholds)
+    detection_matches_crowd = (
+        (detection_to_crowd_ioas[..., tf.newaxis] > self._iou_thresholds)
+        & (
+            detection_classes[:, :, tf.newaxis, tf.newaxis]
+            == gt_classes[:, tf.newaxis, :, tf.newaxis]
+        )
+        & (detection_classes[:, :, tf.newaxis, tf.newaxis] > 0)
+    )
+    # (batch_size, num_detections, num_iou_thresholds)
+    detection_matches_any_crowd = tf.reduce_any(
+        detection_matches_crowd & ~detection_is_tp[:, :, tf.newaxis, :], axis=2
+    )
+    detection_is_fp = ~detection_is_tp & ~detection_matches_any_crowd
+    # (num_iou_thresholds, num_classes, num_confidence_bins + 1)
+    fp_count = _count_detection_type(
+        detection_is_fp,
+        detection_classes,
+        flattened_binned_confidence_one_hot,
+        self._num_classes,
+    )
+
+    # Step 4: Counts non-crowd groundtruths grouped by classes.
+    # (num_classes, )
+    gt_count = tf.reduce_sum(
+        tf.one_hot(
+            tf.where(gt_is_crowd, -1, gt_classes), self._num_classes, axis=-1
+        ),
+        axis=[0, 1],
+    )
+    # Clears the count of class 0 (background).
+    gt_count *= 1.0 - tf.eye(1, self._num_classes, dtype=gt_count.dtype)[0]
 
     # Accumulates the variables.
     self.fp_count.assign_add(tf.cast(fp_count, self.fp_count.dtype))
@@ -818,13 +727,55 @@ class InstanceMetrics(tf.keras.metrics.Metric):
         'valid_classes': a bool tensor in shape (num_classes,). If False, there
         is no instance of the class in the ground truth.
     """
-    result = _compute_metrics(
-        fp_count=self.fp_count,
-        tp_count=self.tp_count,
-        gt_count=self.gt_count,
-        confidence_thresholds=self._confidence_thresholds,
-        num_confidence_bins=self._num_confidence_bins,
-        average_precision_algorithms=self._average_precision_algorithms)
+    result = {
+        # (num_classes,)
+        'valid_classes': self.gt_count != 0,
+    }
+
+    # (num_iou_thresholds, num_classes, num_confidence_bins + 1)
+    tp_count_cum_by_confidence = tf.math.cumsum(
+        self.tp_count, axis=-1, reverse=True
+    )
+    # (num_iou_thresholds, num_classes, num_confidence_bins + 1)
+    fp_count_cum_by_confidence = tf.math.cumsum(
+        self.fp_count, axis=-1, reverse=True
+    )
+
+    # (num_iou_thresholds, num_classes, num_confidence_bins + 1)
+    precisions = tf.math.divide_no_nan(
+        tp_count_cum_by_confidence,
+        tp_count_cum_by_confidence + fp_count_cum_by_confidence,
+    )
+    # (num_iou_thresholds, num_classes, num_confidence_bins + 1)
+    recalls = tf.math.divide_no_nan(
+        tp_count_cum_by_confidence, self.gt_count[..., tf.newaxis]
+    )
+
+    if self._confidence_thresholds:
+      # If confidence_thresholds is set, reports precision and recall at each
+      # confidence threshold.
+      confidence_thresholds = tf.cast(
+          tf.constant(self._confidence_thresholds, dtype=tf.float32)
+          * self._num_confidence_bins,
+          dtype=tf.int32,
+      )
+      # (num_confidence_thresholds, num_iou_thresholds, num_classes)
+      result['precisions'] = tf.gather(
+          tf.transpose(precisions, [2, 0, 1]), confidence_thresholds
+      )
+      result['recalls'] = tf.gather(
+          tf.transpose(recalls, [2, 0, 1]), confidence_thresholds
+      )
+
+    precisions = tf.reverse(precisions, axis=[-1])
+    recalls = tf.reverse(recalls, axis=[-1])
+    result.update(
+        {
+            # (num_iou_thresholds, num_classes)
+            key: ap_algorithm(precisions, recalls)
+            for key, ap_algorithm in self._average_precision_algorithms.items()
+        }
+    )
     return result
 
   def get_average_precision_metrics_keys(self):
