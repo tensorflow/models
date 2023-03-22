@@ -389,82 +389,94 @@ def _fill_rectangle_video(image,
   return image
 
 
-def cutout_video(image: tf.Tensor, replace: int = 0) -> tf.Tensor:
+def cutout_video(video: tf.Tensor, replace: int = 0) -> tf.Tensor:
   """Apply cutout (https://arxiv.org/abs/1708.04552) to a video.
 
   This operation applies a random size 3D mask of zeros to a random location
-  within `image`. The mask is padded The pixel values filled in will be of the
+  within `video`. The mask is padded The pixel values filled in will be of the
   value `replace`. The location where the mask will be applied is randomly
-  chosen uniformly over the whole image. The size of the mask is randomly
+  chosen uniformly over the whole video. The size of the mask is randomly
   sampled uniformly from [0.25*height, 0.5*height], [0.25*width, 0.5*width],
   and [1, 0.25*depth], which represent the height, width, and number of frames
   of the input video tensor respectively.
 
   Args:
-    image: A video Tensor of type uint8.
+    video: A video Tensor of shape [T, H, W, C].
     replace: What pixel value to fill in the image in the area that has the
       cutout mask applied to it.
 
   Returns:
-    An video Tensor that is of type uint8.
+    A video Tensor with cutout applied.
   """
-  image_depth = tf.shape(image)[0]
-  image_height = tf.shape(image)[1]
-  image_width = tf.shape(image)[2]
+  tf.debugging.assert_shapes([
+      (video, ('T', 'H', 'W', 'C')),
+  ])
+
+  video_depth = tf.shape(video)[0]
+  video_height = tf.shape(video)[1]
+  video_width = tf.shape(video)[2]
 
   # Sample the center location in the image where the zero mask will be applied.
   cutout_center_height = tf.random.uniform(
-      shape=[], minval=0, maxval=image_height, dtype=tf.int32)
+      shape=[], minval=0, maxval=video_height, dtype=tf.int32
+  )
 
   cutout_center_width = tf.random.uniform(
-      shape=[], minval=0, maxval=image_width, dtype=tf.int32)
+      shape=[], minval=0, maxval=video_width, dtype=tf.int32
+  )
 
   cutout_center_depth = tf.random.uniform(
-      shape=[], minval=0, maxval=image_depth, dtype=tf.int32)
+      shape=[], minval=0, maxval=video_depth, dtype=tf.int32
+  )
 
   pad_size_height = tf.random.uniform(
       shape=[],
-      minval=tf.maximum(1, tf.cast(image_height / 4, tf.int32)),
-      maxval=tf.maximum(2, tf.cast(image_height / 2, tf.int32)),
-      dtype=tf.int32)
+      minval=tf.maximum(1, tf.cast(video_height / 4, tf.int32)),
+      maxval=tf.maximum(2, tf.cast(video_height / 2, tf.int32)),
+      dtype=tf.int32,
+  )
   pad_size_width = tf.random.uniform(
       shape=[],
-      minval=tf.maximum(1, tf.cast(image_width / 4, tf.int32)),
-      maxval=tf.maximum(2, tf.cast(image_width / 2, tf.int32)),
-      dtype=tf.int32)
+      minval=tf.maximum(1, tf.cast(video_width / 4, tf.int32)),
+      maxval=tf.maximum(2, tf.cast(video_width / 2, tf.int32)),
+      dtype=tf.int32,
+  )
   pad_size_depth = tf.random.uniform(
       shape=[],
       minval=1,
-      maxval=tf.maximum(2, tf.cast(image_depth / 4, tf.int32)),
-      dtype=tf.int32)
+      maxval=tf.maximum(2, tf.cast(video_depth / 4, tf.int32)),
+      dtype=tf.int32,
+  )
 
   lower_pad = tf.maximum(0, cutout_center_height - pad_size_height)
   upper_pad = tf.maximum(
-      0, image_height - cutout_center_height - pad_size_height)
+      0, video_height - cutout_center_height - pad_size_height
+  )
   left_pad = tf.maximum(0, cutout_center_width - pad_size_width)
-  right_pad = tf.maximum(0, image_width - cutout_center_width - pad_size_width)
+  right_pad = tf.maximum(0, video_width - cutout_center_width - pad_size_width)
   back_pad = tf.maximum(0, cutout_center_depth - pad_size_depth)
   forward_pad = tf.maximum(
-      0, image_depth - cutout_center_depth - pad_size_depth)
+      0, video_depth - cutout_center_depth - pad_size_depth
+  )
 
   cutout_shape = [
-      image_depth - (back_pad + forward_pad),
-      image_height - (lower_pad + upper_pad),
-      image_width - (left_pad + right_pad),
+      video_depth - (back_pad + forward_pad),
+      video_height - (lower_pad + upper_pad),
+      video_width - (left_pad + right_pad),
   ]
   padding_dims = [[back_pad, forward_pad],
                   [lower_pad, upper_pad],
                   [left_pad, right_pad]]
   mask = tf.pad(
-      tf.zeros(cutout_shape, dtype=image.dtype),
-      padding_dims,
-      constant_values=1)
+      tf.zeros(cutout_shape, dtype=video.dtype), padding_dims, constant_values=1
+  )
   mask = tf.expand_dims(mask, -1)
-  mask = tf.tile(mask, [1, 1, 1, 3])
-  image = tf.where(
-      tf.equal(mask, 0),
-      tf.ones_like(image, dtype=image.dtype) * replace, image)
-  return image
+  num_channels = tf.shape(video)[-1]
+  mask = tf.tile(mask, [1, 1, 1, num_channels])
+  video = tf.where(
+      tf.equal(mask, 0), tf.ones_like(video, dtype=video.dtype) * replace, video
+  )
+  return video
 
 
 def gaussian_noise(
