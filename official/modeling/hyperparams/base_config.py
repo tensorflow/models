@@ -96,6 +96,20 @@ class Config(params_dict.ParamsDict):
     return self._BUILDER
 
   @classmethod
+  def _get_annotations(cls):
+    """Returns valid annotations.
+
+    Note: this is similar to dataclasses.__annotations__ except it also includes
+      annotations from its parent classes.
+    """
+    all_annotations = typing.get_type_hints(cls)
+    # Removes Config class annotation from the value, e.g., default_params,
+    # restrictions, etc.
+    for k in Config.__annotations__:
+      del all_annotations[k]
+    return all_annotations
+
+  @classmethod
   def _isvalidsequence(cls, v):
     """Check if the input values are valid sequences.
 
@@ -175,9 +189,10 @@ class Config(params_dict.ParamsDict):
     if not subconfig_type:
       subconfig_type = Config
 
-    if k in cls.__annotations__:
+    annotations = cls._get_annotations()
+    if k in annotations:
       # Directly Config subtype.
-      type_annotation = cls.__annotations__[k]  # pytype: disable=invalid-annotation
+      type_annotation = annotations[k]
       i = 0
       # Loop for striping the Optional annotation.
       traverse_in = True
@@ -326,6 +341,9 @@ class Config(params_dict.ParamsDict):
   @classmethod
   def from_args(cls, *args, **kwargs):
     """Builds a config from the given list of arguments."""
+    # Note we intend to keep `__annotations__` instead of `_get_annotations`.
+    # Assuming a parent class of (a, b) with the sub-class of (c, d), the
+    # sub-class will take (c, d) for args, rather than starting from (a, b).
     attributes = list(cls.__annotations__.keys())
     default_params = {a: p for a, p in zip(attributes, args)}
     default_params.update(kwargs)
