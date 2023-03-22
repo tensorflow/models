@@ -15,7 +15,6 @@
 """Video classification configuration definition."""
 import dataclasses
 from typing import Optional, Tuple
-from absl import flags
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -23,7 +22,6 @@ from official.modeling import hyperparams
 from official.modeling import optimization
 from official.vision.configs import common
 
-FLAGS = flags.FLAGS
 
 YT8M_TRAIN_EXAMPLES = 3888919
 YT8M_VAL_EXAMPLES = 1112356
@@ -105,7 +103,6 @@ def yt8m(is_training):
 class MoeModel(hyperparams.Config):
   """The model config."""
   num_mixtures: int = 5
-  l2_penalty: float = 1e-5
   use_input_context_gate: bool = False
   use_output_context_gate: bool = False
   vocab_as_last_dim: bool = False
@@ -121,7 +118,7 @@ class DbofModel(hyperparams.Config):
   use_context_gate_cluster_layer: bool = False
   context_gate_cluster_bottleneck_size: int = 0
   pooling_method: str = 'average'
-  yt8m_agg_classifier_model: str = 'MoeModel'
+  agg_classifier_model: str = 'MoeModel'
   agg_model: hyperparams.Config = MoeModel()
   norm_activation: common.NormActivation = common.NormActivation(
       activation='relu', use_sync_bn=False)

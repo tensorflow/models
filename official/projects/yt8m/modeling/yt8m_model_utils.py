@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Contains a collection of util functions for model construction."""
+
 from typing import Any, Dict, Optional, Union
 
 import tensorflow as tf
@@ -177,8 +178,7 @@ def context_gate(
           kernel_initializer=kernel_initializer,
           bias_initializer=bias_initializer,
           kernel_regularizer=kernel_regularizer,
-      )(
-          context_features)
+      )(context_features)
       if normalizer_fn:
         gates_bottleneck = normalizer_fn(**normalizer_params)(gates_bottleneck)
     else:
@@ -191,14 +191,13 @@ def context_gate(
         kernel_initializer=kernel_initializer,
         bias_initializer=bias_initializer,
         kernel_regularizer=kernel_regularizer,
-    )(
-        gates_bottleneck)
+    )(gates_bottleneck)
     if normalizer_fn:
       gates = normalizer_fn(**normalizer_params)(gates)
 
     if additive_residual:
-      input_features += gates
+      input_features += tf.cast(gates, input_features.dtype)
     else:
-      input_features *= gates
+      input_features *= tf.cast(gates, input_features.dtype)
 
     return input_features
