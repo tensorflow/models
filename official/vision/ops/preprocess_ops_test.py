@@ -117,6 +117,27 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
         image_info.numpy(),
         1e-5)
 
+  @parameterized.parameters((1,), (2,))
+  def test_resize_and_crop_image_tensor_desired_size(self, aug_scale_max):
+    image = tf.convert_to_tensor(np.random.rand(100, 200, 3))
+
+    desired_size = tf.convert_to_tensor((220, 220), dtype=tf.int32)
+    resized_image, image_info = preprocess_ops.resize_and_crop_image(
+        image,
+        desired_size=desired_size,
+        padded_size=preprocess_ops.compute_padded_size(desired_size, 32),
+        aug_scale_max=aug_scale_max)
+    resized_image_shape = tf.shape(resized_image)
+
+    self.assertAllEqual([224, 224, 3], resized_image_shape.numpy())
+    self.assertAllEqual([[100, 200], [220, 220]], image_info[:2].numpy())
+    if aug_scale_max == 1:  # No random jittering.
+      self.assertNDArrayNear(
+          [[1.1, 1.1], [0.0, 0.0]],
+          image_info[2:].numpy(),
+          1e-5,
+      )
+
   @parameterized.parameters(
       (100, 200, 100, 300, 32, 1.0, 1.0, 100, 200, 128, 320),
       (200, 100, 100, 300, 32, 1.0, 1.0, 200, 100, 320, 128),
