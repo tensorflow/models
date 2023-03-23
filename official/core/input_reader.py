@@ -169,7 +169,8 @@ def _read_tfds(tfds_name: Text,
         interleave_cycle_length=cycle_length,
         interleave_block_length=block_length,
         input_context=input_context,
-        shuffle_seed=seed)
+        shuffle_seed=seed,
+        skip_prefetch=True)
     dataset = tfds.load(name=tfds_name,
                         split=tfds_split,
                         as_supervised=tfds_as_supervised,
@@ -197,7 +198,8 @@ def _read_tfds(tfds_name: Text,
           interleave_cycle_length=cycle_length,
           interleave_block_length=block_length,
           input_context=None,
-          shuffle_seed=seed)
+          shuffle_seed=seed,
+          skip_prefetch=True)
       load_kwargs.update({'read_config': read_config})
       dataset = tfds.load(**load_kwargs)
       dataset = dataset.shard(input_context.num_input_pipelines,
@@ -207,7 +209,8 @@ def _read_tfds(tfds_name: Text,
           interleave_cycle_length=cycle_length,
           interleave_block_length=block_length,
           input_context=input_context,
-          shuffle_seed=seed)
+          shuffle_seed=seed,
+          skip_prefetch=True)
       load_kwargs.update({'read_config': read_config})
       dataset = tfds.load(**load_kwargs)
 
