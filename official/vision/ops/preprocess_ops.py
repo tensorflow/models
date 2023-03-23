@@ -192,9 +192,9 @@ def resize_and_crop_image(image,
     if random_jittering:
       random_scale = tf.random.uniform(
           [], aug_scale_min, aug_scale_max, seed=seed)
-      scaled_size = tf.round(random_scale * desired_size)
+      scaled_size = tf.round(random_scale * tf.cast(desired_size, tf.float32))
     else:
-      scaled_size = desired_size
+      scaled_size = tf.cast(desired_size, tf.float32)
 
     scale = tf.minimum(
         scaled_size[0] / image_size[0], scaled_size[1] / image_size[1])
@@ -206,7 +206,7 @@ def resize_and_crop_image(image,
     # Selects non-zero random offset (x, y) if scaled image is larger than
     # desired_size.
     if random_jittering:
-      max_offset = scaled_size - desired_size
+      max_offset = scaled_size - tf.cast(desired_size, tf.float32)
       max_offset = tf.where(
           tf.less(max_offset, 0), tf.zeros_like(max_offset), max_offset)
       offset = max_offset * tf.random.uniform([2,], 0, 1, seed=seed)
@@ -227,7 +227,7 @@ def resize_and_crop_image(image,
 
     image_info = tf.stack([
         image_size,
-        tf.constant(desired_size, dtype=tf.float32),
+        tf.cast(desired_size, dtype=tf.float32),
         image_scale,
         tf.cast(offset, tf.float32)])
     return output_image, image_info
