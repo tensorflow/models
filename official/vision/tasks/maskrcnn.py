@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple
 from absl import logging
 import numpy as np
 import tensorflow as tf
+import common
 
 from official.common import dataset_fn as dataset_fn_lib
 from official.core import base_task
@@ -601,4 +602,5 @@ class MaskRCNNTask(base_task.Task):
       logs.update(self.coco_metric.result())
     if self.task_config.use_wod_metrics:
       logs.update(self.wod_metric.result())
+    logs.update(common.validation_metric(logs))
     return logs

@@ -41,6 +41,7 @@ class TfExampleDecoder(decoder.Decoder):
     self._include_mask = include_mask
     self._regenerate_source_id = regenerate_source_id
     self._keys_to_features = {
+        'image/format': tf.io.FixedLenFeature((), tf.string),
         'image/encoded': tf.io.FixedLenFeature((), tf.string),
         'image/height': tf.io.FixedLenFeature((), tf.int64, -1),
         'image/width': tf.io.FixedLenFeature((), tf.int64, -1),
@@ -71,7 +72,11 @@ class TfExampleDecoder(decoder.Decoder):
 
   def _decode_image(self, parsed_tensors):
     """Decodes the image and set its static shape."""
-    image = tf.io.decode_image(parsed_tensors['image/encoded'], channels=3)
+    if parsed_tensors['image/format'] == 'RAW':
+        image = tf.io.parse_tensor(parsed_tensors['image/encoded'], out_type=tf.float32)
+    else:
+        image = tf.io.decode_image(parsed_tensors['image/encoded'], channels=3)
+        image = tf.cast(image, dtype=tf.float32) / 255.0
     image.set_shape([None, None, 3])
     return image
 
