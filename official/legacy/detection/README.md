@@ -43,7 +43,7 @@ The pre-trained ResNet-50 checkpoint can be downloaded [here](https://storage.cl
 Note: The ResNet implementation under
 [detection/](https://github.com/tensorflow/models/tree/master/official/legacy/detection)
 is currently different from the one under
-[classification/](https://github.com/tensorflow/models/tree/master/official/vision/image_classification),
+[classification/](https://github.com/tensorflow/models/blob/master/docs/vision/image_classification.ipynb),
 so the checkpoints are not compatible.
 We will unify the implementation soon.
 
