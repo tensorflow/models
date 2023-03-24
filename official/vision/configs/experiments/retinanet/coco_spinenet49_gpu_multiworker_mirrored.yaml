@@ -6,6 +6,7 @@ runtime:
   distribution_strategy: multi_worker_mirrored
   mixed_precision_dtype: float16
 task:
+  annotation_file: null
   losses:
     l2_weight_decay: 4.0e-05
   model:
