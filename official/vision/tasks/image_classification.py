@@ -183,13 +183,15 @@ class ImageClassificationTask(base_task.Task):
         total_loss = tf.keras.losses.sparse_categorical_crossentropy(
             labels, model_outputs, from_logits=True)
     else:
-      # Multi-label binary cross entropy loss.
+      # Multi-label binary cross entropy loss. This will apply `reduce_mean`.
       total_loss = tf.keras.losses.binary_crossentropy(
           labels,
           model_outputs,
           from_logits=True,
-          label_smoothing=losses_config.label_smoothing)
-      total_loss = tf.reduce_sum(total_loss, axis=-1)
+          label_smoothing=losses_config.label_smoothing,
+          axis=-1)
+      # Multiple num_classes to behave like `reduce_sum`.
+      total_loss = total_loss * self.task_config.model.num_classes
 
     total_loss = tf_utils.safe_mean(total_loss)
     if aux_losses:
