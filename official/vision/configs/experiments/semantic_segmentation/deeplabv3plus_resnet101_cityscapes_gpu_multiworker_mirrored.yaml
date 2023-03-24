@@ -5,6 +5,7 @@ runtime:
   distribution_strategy: multi_worker_mirrored
   mixed_precision_dtype: float16
 task:
+  init_checkpoint: null
   model:
     num_classes: 19
     input_size: [null, null, 3]
