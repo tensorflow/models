@@ -287,7 +287,8 @@ class COCOEvaluator(object):
       predictions['detection_outer_boxes'] /= image_scale
 
   def _process_keypoints_predictions(self, predictions):
-    image_scale = predictions['image_info'][:, 2:3, :]
+    image_scale = tf.reshape(predictions['image_info'][:, 2:3, :],
+                             [-1, 1, 1, 2])
     predictions['detection_keypoints'] = (
         predictions['detection_keypoints'].astype(np.float32))
     predictions['detection_keypoints'] /= image_scale
