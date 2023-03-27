@@ -19,7 +19,7 @@ The functions do not return a value, instead they modify the image itself.
 """
 import collections
 import functools
-from typing import Any, Dict
+from typing import Any, Dict, Optional, List, Union
 
 from absl import logging
 # Set headless-friendly backend.
@@ -354,7 +354,10 @@ def visualize_outputs(
     max_boxes_to_draw=20,
     min_score_thresh=0.2,
     use_normalized_coordinates=False,
-):
+    image_mean: Optional[Union[float, List[float]]] = None,
+    image_std: Optional[Union[float, List[float]]] = None,
+    key: str = 'image/validation_outputs',
+) -> Dict[str, Any]:
   """Visualizes the detection outputs.
 
   It extracts images and predictions from logs and draws visualization on input
@@ -375,11 +378,17 @@ def visualize_outputs(
       0.2.
     use_normalized_coordinates: Whether to assume boxes and kepoints are in
       normalized coordinates (as opposed to absolute coordiantes). Default is
-      True.
+      False.
+    image_mean: An optional float or list of floats used as the mean pixel value
+      to normalize images.
+    image_std: An optional float or list of floats used as the std to normalize
+      images.
+    key: A string specifying the key of the returned dictionary.
 
   Returns:
-    A 4D tensor with predictions (boxes, segments and/or keypoints) drawn on
-      each image.
+    A dictionary of images with visualization drawn on it. Each key corresponds
+      to a 4D tensor with predictions (boxes, segments and/or keypoints) drawn
+      on each image.
   """
   images = logs['image']
   boxes = logs['detection_boxes']
@@ -399,12 +408,28 @@ def visualize_outputs(
     category_index[i] = {'id': i, 'name': str(i)}
 
   def _denormalize_images(images: tf.Tensor) -> tf.Tensor:
-    images *= tf.constant(
-        preprocess_ops.STDDEV_RGB, shape=[1, 1, 3], dtype=images.dtype
-    )
-    images += tf.constant(
-        preprocess_ops.MEAN_RGB, shape=[1, 1, 3], dtype=images.dtype
-    )
+    if image_mean is None and image_std is None:
+      images *= tf.constant(
+          preprocess_ops.STDDEV_RGB, shape=[1, 1, 3], dtype=images.dtype
+      )
+      images += tf.constant(
+          preprocess_ops.MEAN_RGB, shape=[1, 1, 3], dtype=images.dtype
+      )
+    elif image_mean is not None and image_std is not None:
+      if isinstance(image_mean, float) and isinstance(image_std, float):
+        images = images * image_std + image_mean
+      elif isinstance(image_mean, list) and isinstance(image_std, list):
+        images *= tf.constant(image_std, shape=[1, 1, 3], dtype=images.dtype)
+        images += tf.constant(image_mean, shape=[1, 1, 3], dtype=images.dtype)
+      else:
+        raise ValueError(
+            '`image_mean` and `image_std` should be the same type.'
+        )
+    else:
+      raise ValueError(
+          'Both `image_mean` and `image_std` should be set or None at the same '
+          'time.'
+      )
     return tf.cast(images, dtype=tf.uint8)
 
   images = tf.nest.map_structure(
@@ -419,7 +444,7 @@ def visualize_outputs(
       ),
   )
 
-  return draw_bounding_boxes_on_image_tensors(
+  images_with_boxes = draw_bounding_boxes_on_image_tensors(
       images,
       boxes,
       classes,
@@ -433,6 +458,12 @@ def visualize_outputs(
       min_score_thresh,
       use_normalized_coordinates,
   )
+
+  outputs = {}
+  for i, image in enumerate(images_with_boxes):
+    outputs[key + f'/{i}'] = image[None, ...]
+
+  return outputs
 
 
 def draw_bounding_boxes_on_image_tensors(images,
