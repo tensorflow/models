@@ -24,8 +24,8 @@ import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
-from official.nlp import modeling as nlp_modeling
 from official.vision.modeling.layers import nn_blocks
+from official.vision.modeling.layers import nn_layers
 
 
 def distribution_strategy_combinations() -> Iterable[Tuple[Any, ...]]:
@@ -392,7 +392,7 @@ class ReversibleLayerTest(parameterized.TestCase, tf.test.TestCase):
 # boolean 'True'. We register this class as a Keras serializable so we can
 # test serialization below.
 @tf.keras.utils.register_keras_serializable(package='TestOnlyAttention')
-class ValidatedAttentionLayer(nlp_modeling.layers.attention.MultiHeadAttention):
+class ValidatedAttentionLayer(nn_layers.MultiHeadAttention):
 
   def __init__(self, call_list, **kwargs):
     super(ValidatedAttentionLayer, self).__init__(**kwargs)
@@ -414,7 +414,7 @@ class ValidatedAttentionLayer(nlp_modeling.layers.attention.MultiHeadAttention):
 
   def get_config(self):
     config = super(ValidatedAttentionLayer, self).get_config()
-    config['call_list'] = []
+    config['call_list'] = self.list
     return config
 
 
@@ -456,22 +456,24 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     super(TransformerLayerTest, self).tearDown()
     tf.keras.mixed_precision.set_global_policy('float32')
 
-  def test_layer_creation(self):
+  @parameterized.parameters(None, 2)
+  def test_layer_creation(self, max_attention_inference_parallelism):
     sequence_length = 21
     width = 80
 
-    call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
         'key_dim': 8,
-        'call_list': call_list,
+        'call_list': []
     }
     test_layer = nn_blocks.TransformerScaffold(
         attention_cls=ValidatedAttentionLayer,
         attention_cfg=attention_layer_cfg,
         num_attention_heads=10,
         inner_dim=2048,
-        inner_activation='relu')
+        inner_activation='relu',
+        max_attention_inference_parallelism=max_attention_inference_parallelism,
+    )
 
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf.keras.Input(shape=(sequence_length, width))
@@ -479,6 +481,7 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
 
+    call_list = test_layer._attention_layer.get_config()['call_list']
     # If call_list[0] exists and is True, the passed layer class was
     # instantiated from the given config properly.
     self.assertNotEmpty(call_list)
@@ -551,22 +554,23 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotEmpty(call_list)
     self.assertTrue(call_list[0], "The passed layer class wasn't instantiated.")
 
-  def test_layer_invocation(self):
+  @parameterized.parameters(None, 2)
+  def test_layer_invocation(self, max_attention_inference_parallelism):
     sequence_length = 21
     width = 80
 
-    call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
         'key_dim': 8,
-        'call_list': call_list,
+        'call_list': [],
     }
     test_layer = nn_blocks.TransformerScaffold(
         attention_cls=ValidatedAttentionLayer,
         attention_cfg=attention_layer_cfg,
         num_attention_heads=10,
         inner_dim=2048,
-        inner_activation='relu')
+        inner_activation='relu',
+        max_attention_inference_parallelism=max_attention_inference_parallelism)
 
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf.keras.Input(shape=(sequence_length, width))
@@ -581,6 +585,8 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     input_data = 10 * np.random.random_sample(
         (batch_size, sequence_length, width))
     _ = model.predict(input_data)
+
+    call_list = test_layer._attention_layer.get_config()['call_list']
     # If call_list[0] exists and is True, the passed layer class was
     # instantiated from the given config properly.
     self.assertNotEmpty(call_list)
