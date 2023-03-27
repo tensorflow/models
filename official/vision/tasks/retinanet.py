@@ -456,6 +456,6 @@ class RetinaNetTask(base_task.Task):
       validation_outputs = visualization_utils.visualize_outputs(
           logs=aggregated_logs, task_config=self.task_config
       )
-      logs.update({'image/validation_outputs': validation_outputs})
+      logs.update(validation_outputs)
 
     return logs
