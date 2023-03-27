@@ -201,7 +201,9 @@ def build_qat_retinanet(
   if quantization.quantize_detection_head:
     # Call the model with dummy input to build the head part.
     dummpy_input = tf.zeros([1] + model_config.input_size)
-    optimized_model(dummpy_input, training=True)
+    height, width, _ = model_config.input_size
+    image_shape = [[height, width]]
+    optimized_model.call(dummpy_input, image_shape=image_shape, training=False)
     helper.copy_original_weights(model.head, optimized_model.head)
   return optimized_model
 
