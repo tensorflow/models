@@ -1310,7 +1310,10 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
     levels = list(raw_boxes.keys())
     min_level = int(min(levels))
     max_level = int(max(levels))
-    clip_shape = tf.expand_dims(tf.expand_dims(image_shape, axis=1), axis=1)
+    if image_shape is not None:
+      clip_shape = tf.expand_dims(tf.expand_dims(image_shape, axis=1), axis=1)
+    else:
+      clip_shape = None
     for i in range(max_level, min_level - 1, -1):
       (
           batch_size,
@@ -1330,13 +1333,15 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
           unsharded_w * num_anchors_per_locations,
           4,
       ]
-      decoded_boxes = box_ops.clip_boxes(
-          box_ops.decode_boxes(
-              tf.reshape(raw_boxes[str(i)], boxes_shape),
-              tf.reshape(anchor_boxes[str(i)], boxes_shape),
-          ),
-          clip_shape,
+      decoded_boxes = box_ops.decode_boxes(
+          tf.reshape(raw_boxes[str(i)], boxes_shape),
+          tf.reshape(anchor_boxes[str(i)], boxes_shape),
       )
+      if clip_shape is not None:
+        decoded_boxes = box_ops.clip_boxes(
+            decoded_boxes,
+            clip_shape,
+        )
       for raw_scores_i, decoded_boxes_i in edgetpu.shard_tensors(
           1, block, (raw_scores[str(i)], decoded_boxes)
       ):
