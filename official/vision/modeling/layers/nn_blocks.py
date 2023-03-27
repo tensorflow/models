@@ -1555,15 +1555,32 @@ class LayerScale(tf.keras.layers.Layer):
 class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
   """TransformerEncoderBlock layer with stochastic depth and layerscale."""
 
-  def __init__(self,
-               *args,
-               stochastic_depth_drop_rate=0.0,
-               layer_scale_init_value=0.0,
-               **kwargs):
-    """Initializes TransformerEncoderBlock."""
+  def __init__(
+      self,
+      *args,
+      stochastic_depth_drop_rate=0.0,
+      layer_scale_init_value=0.0,
+      max_attention_inference_parallelism=None,
+      **kwargs
+  ):
+    """Initializes TransformerEncoderBlock.
+
+    Args:
+      *args: positional arguments passed to super().__init__.
+      stochastic_depth_drop_rate: the drop rate for the stochastic depth layer.
+      layer_scale_init_value:
+      max_attention_inference_parallelism: the number of examples to run in
+        parallel in the attention blocks during inference. Set this limit to
+        reduce the peak memory usage. If None, use vectorized operations to run
+        the whole batch in parallel.
+      **kwargs: keyword arguments passed to super().__init__.
+    """
     super().__init__(*args, **kwargs)
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
     self._layer_scale_init_value = layer_scale_init_value
+    self._max_attention_inference_parallelism = (
+        max_attention_inference_parallelism
+    )
 
   def build(self, input_shape):
     if self._stochastic_depth_drop_rate:
@@ -1582,10 +1599,25 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
       self._layer_scale_mlp = lambda x, *args, **kwargs: tf.identity(x)
     super().build(input_shape)
 
+    if self._max_attention_inference_parallelism is not None:
+      attention_layer_config = self._attention_layer.get_config()
+      self._attention_layer = nn_layers.MultiHeadAttention.from_config({
+          **attention_layer_config,
+          'max_inference_parallelism': (
+              self._max_attention_inference_parallelism
+          ),
+      })
+
   def get_config(self):
-    config = {'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate}
-    base_config = super().get_config()
-    return dict(list(base_config.items()) + list(config.items()))
+    config = super().get_config()
+    config.update({
+        'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
+        'layer_scale_init_value': self._layer_scale_init_value,
+        'max_attention_inference_parallelism': (
+            self._max_attention_inference_parallelism
+        ),
+    })
+    return config
 
   def call(self, inputs, output_range=None, training=None):
     """Transformer self-attention encoder block call."""
@@ -1675,29 +1707,39 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class TransformerScaffold(nlp_modeling.layers.TransformerScaffold):
-  """TransformerScaffold layer for vision applications.
+  """TransformerScaffold layer for vision applications."""
 
-  This layer is a subclass of NLP TransformerScaffold:
+  def __init__(
+      self,
+      *args,
+      stochastic_depth_drop_rate: float = 0.0,
+      return_attention_scores: bool = False,
+      ffn_has_residual_connection: bool = False,
+      max_attention_inference_parallelism: Optional[int] = None,
+      **kwargs
+  ):
+    """Initializes TransformerEncoderBlock.
 
-  Attributes:
-    stochastic_depth_drop_rate: Drop rate for the residual connections.
-    return_attention_scores: Optionally return the attention output.
-    ffn_has_residual_connection: Whether the feedforward network has internal
-      residual connection and layer norm. If False, the residual connection and
-      the layer norm op are called inside TransformerScaffold.
-  """
-
-  def __init__(self,
-               *args,
-               stochastic_depth_drop_rate: float = 0.0,
-               return_attention_scores: bool = False,
-               ffn_has_residual_connection: bool = False,
-               **kwargs):
-    """Initializes TransformerEncoderBlock."""
+    Args:
+      *args: positional arguments passed to super().__init__.
+      stochastic_depth_drop_rate: the drop rate for the stochastic depth layer.
+      return_attention_scores: whether to return the attention output.
+      ffn_has_residual_connection: whether the feedforward network has internal
+        residual connection and layer norm. If False, the residual connection
+        and the layer norm op are called inside TransformerScaffold.
+      max_attention_inference_parallelism: the number of examples to run in
+        parallel in the attention blocks during inference. Set this limit to
+        reduce the peak memory usage. If None, use vectorized operations to run
+        the whole batch in parallel.
+      **kwargs: keyword arguments passed to super().__init__.
+    """
     super().__init__(*args, **kwargs)
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
     self._return_attention_scores = return_attention_scores
     self._ffn_has_residual_connection = ffn_has_residual_connection
+    self._max_attention_inference_parallelism = (
+        max_attention_inference_parallelism
+    )
 
   def build(self, input_shape: Union[tf.TensorShape, List[int]]):
     if self._stochastic_depth_drop_rate:
@@ -1708,15 +1750,26 @@ class TransformerScaffold(nlp_modeling.layers.TransformerScaffold):
 
     super().build(input_shape)
 
+    if self._max_attention_inference_parallelism is not None:
+      attention_layer_config = self._attention_layer.get_config()
+      self._attention_layer = self._attention_cls.from_config({
+          **attention_layer_config,
+          'max_inference_parallelism': (
+              self._max_attention_inference_parallelism
+          ),
+      })
+
   def get_config(self):
-    config = {
+    config = super().get_config()
+    config.update({
         'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
         'return_attention_scores': self._return_attention_scores,
-        'ffn_has_residual_connection': self._ffn_has_residual_connection
-    }
-    base_config = super().get_config()
-    base_config.update(config)
-    return base_config
+        'ffn_has_residual_connection': self._ffn_has_residual_connection,
+        'max_attention_inference_parallelism': (
+            self._max_attention_inference_parallelism
+        ),
+    })
+    return config
 
   def call(
       self,
