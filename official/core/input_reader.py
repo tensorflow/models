@@ -160,12 +160,15 @@ def _read_tfds(tfds_name: Text,
                cycle_length: Optional[int] = None,
                block_length: Optional[int] = None) -> tf.data.Dataset:
   """Reads a dataset from tfds."""
+  repeat_filenames = is_training and not cache
   read_config = tfds.ReadConfig(
       interleave_cycle_length=cycle_length,
       interleave_block_length=block_length,
       input_context=input_context,
       shuffle_seed=seed,
-      repeat_filenames=is_training and not cache,
+      repeat_filenames=repeat_filenames,
+      # Only assert cardinality when we have a finite dataset.
+      assert_cardinality=not repeat_filenames,
       skip_prefetch=True)
 
   decoders = {}
