@@ -38,7 +38,7 @@ class AddPositionEmbs(layers.Layer):
                posemb_origin_shape: Optional[Tuple[int, int]] = None,
                posemb_target_shape: Optional[Tuple[int, int]] = None,
                **kwargs):
-    """Constructs Postional Embedding module.
+    """Constructs Positional Embedding module.
 
     The logic of this module is: the learnable positional embeddings length will
     be determined by the inputs_shape or posemb_origin_shape (if provided)
