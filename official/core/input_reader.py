@@ -159,6 +159,7 @@ def _read_tfds(tfds_name: Text,
                cycle_length: Optional[int] = None,
                block_length: Optional[int] = None) -> tf.data.Dataset:
   """Reads a dataset from tfds."""
+  repeat_filenames = is_training and not cache
   decoders = {}
   if tfds_skip_decoding_feature:
     for skip_feature in tfds_skip_decoding_feature.split(','):
@@ -170,6 +171,7 @@ def _read_tfds(tfds_name: Text,
         interleave_block_length=block_length,
         input_context=input_context,
         shuffle_seed=seed,
+        repeat_filenames=repeat_filenames,
         skip_prefetch=True)
     dataset = tfds.load(name=tfds_name,
                         split=tfds_split,
@@ -199,6 +201,7 @@ def _read_tfds(tfds_name: Text,
           interleave_block_length=block_length,
           input_context=None,
           shuffle_seed=seed,
+          repeat_filenames=repeat_filenames,
           skip_prefetch=True)
       load_kwargs.update({'read_config': read_config})
       dataset = tfds.load(**load_kwargs)
@@ -210,12 +213,10 @@ def _read_tfds(tfds_name: Text,
           interleave_block_length=block_length,
           input_context=input_context,
           shuffle_seed=seed,
+          repeat_filenames=repeat_filenames,
           skip_prefetch=True)
       load_kwargs.update({'read_config': read_config})
       dataset = tfds.load(**load_kwargs)
-
-  if is_training and not cache:
-    dataset = dataset.repeat()
   return dataset
 
 
