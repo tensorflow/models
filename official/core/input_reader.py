@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """A common dataset reader."""
+import dataclasses
 import random
 from typing import Any, Callable, Dict, List, Optional, Sequence, Text, Union
 
@@ -159,20 +160,20 @@ def _read_tfds(tfds_name: Text,
                cycle_length: Optional[int] = None,
                block_length: Optional[int] = None) -> tf.data.Dataset:
   """Reads a dataset from tfds."""
-  repeat_filenames = is_training and not cache
+  read_config = tfds.ReadConfig(
+      interleave_cycle_length=cycle_length,
+      interleave_block_length=block_length,
+      input_context=input_context,
+      shuffle_seed=seed,
+      repeat_filenames=is_training and not cache,
+      skip_prefetch=True)
+
   decoders = {}
   if tfds_skip_decoding_feature:
     for skip_feature in tfds_skip_decoding_feature.split(','):
       decoders[skip_feature.strip()] = tfds.decode.SkipDecoding()
 
   if tfds_name.startswith('mldataset.'):
-    read_config = tfds.ReadConfig(
-        interleave_cycle_length=cycle_length,
-        interleave_block_length=block_length,
-        input_context=input_context,
-        shuffle_seed=seed,
-        repeat_filenames=repeat_filenames,
-        skip_prefetch=True)
     dataset = tfds.load(name=tfds_name,
                         split=tfds_split,
                         as_supervised=tfds_as_supervised,
@@ -196,25 +197,12 @@ def _read_tfds(tfds_name: Text,
       # The number of files in the dataset split is smaller than the number of
       # input pipelines. We read the entire dataset first and then shard in the
       # host memory.
-      read_config = tfds.ReadConfig(
-          interleave_cycle_length=cycle_length,
-          interleave_block_length=block_length,
-          input_context=None,
-          shuffle_seed=seed,
-          repeat_filenames=repeat_filenames,
-          skip_prefetch=True)
+      read_config = dataclasses.replace(read_config, input_context=None)
       load_kwargs.update({'read_config': read_config})
       dataset = tfds.load(**load_kwargs)
       dataset = dataset.shard(input_context.num_input_pipelines,
                               input_context.input_pipeline_id)
     else:
-      read_config = tfds.ReadConfig(
-          interleave_cycle_length=cycle_length,
-          interleave_block_length=block_length,
-          input_context=input_context,
-          shuffle_seed=seed,
-          repeat_filenames=repeat_filenames,
-          skip_prefetch=True)
       load_kwargs.update({'read_config': read_config})
       dataset = tfds.load(**load_kwargs)
   return dataset
