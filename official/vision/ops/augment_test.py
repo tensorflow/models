@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -86,13 +86,21 @@ class TransformsTest(parameterized.TestCase, tf.test.TestCase):
       image = tf.zeros(shape, dtype=dtype)
       self.assertAllEqual(image, augment.rotate(image, degrees))
 
-  def test_cutout_video(self, dtype):
+  def test_random_cutout_video(self, dtype):
     for num_channels in (1, 2, 3):
       video = tf.ones((2, 2, 2, num_channels), dtype=dtype)
       video = augment.cutout_video(video)
 
       num_zeros = np.sum(video == 0)
       self.assertGreater(num_zeros, 0)
+
+  def test_cutout_video_with_fixed_shape(self, dtype):
+    tf.random.set_seed(0)
+    video = tf.ones((10, 10, 10, 1), dtype=dtype)
+    video = augment.cutout_video(video, mask_shape=tf.constant([2, 2, 2]))
+
+    num_zeros = np.sum(video == 0)
+    self.assertEqual(num_zeros, 8)
 
 
 class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):

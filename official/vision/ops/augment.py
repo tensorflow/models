@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -389,19 +389,27 @@ def _fill_rectangle_video(image,
   return image
 
 
-def cutout_video(video: tf.Tensor, replace: int = 0) -> tf.Tensor:
+def cutout_video(
+    video: tf.Tensor,
+    mask_shape: Optional[tf.Tensor] = None,
+    replace: int = 0,
+) -> tf.Tensor:
   """Apply cutout (https://arxiv.org/abs/1708.04552) to a video.
 
   This operation applies a random size 3D mask of zeros to a random location
   within `video`. The mask is padded The pixel values filled in will be of the
   value `replace`. The location where the mask will be applied is randomly
-  chosen uniformly over the whole video. The size of the mask is randomly
-  sampled uniformly from [0.25*height, 0.5*height], [0.25*width, 0.5*width],
-  and [1, 0.25*depth], which represent the height, width, and number of frames
-  of the input video tensor respectively.
+  chosen uniformly over the whole video. If the size of the mask is not set,
+  then, it is randomly sampled uniformly from [0.25*height, 0.5*height],
+  [0.25*width, 0.5*width], and [1, 0.25*depth], which represent the height,
+  width, and number of frames of the input video tensor respectively.
 
   Args:
     video: A video Tensor of shape [T, H, W, C].
+    mask_shape: An optional integer tensor that specifies the depth, height and
+      width of the mask to cut. If it is not set, the shape is randomly sampled
+      as described above. The shape dimensions should be divisible by 2
+      otherwise they will rounded down.
     replace: What pixel value to fill in the image in the area that has the
       cutout mask applied to it.
 
@@ -429,24 +437,32 @@ def cutout_video(video: tf.Tensor, replace: int = 0) -> tf.Tensor:
       shape=[], minval=0, maxval=video_depth, dtype=tf.int32
   )
 
-  pad_size_height = tf.random.uniform(
-      shape=[],
-      minval=tf.maximum(1, tf.cast(video_height / 4, tf.int32)),
-      maxval=tf.maximum(2, tf.cast(video_height / 2, tf.int32)),
-      dtype=tf.int32,
-  )
-  pad_size_width = tf.random.uniform(
-      shape=[],
-      minval=tf.maximum(1, tf.cast(video_width / 4, tf.int32)),
-      maxval=tf.maximum(2, tf.cast(video_width / 2, tf.int32)),
-      dtype=tf.int32,
-  )
-  pad_size_depth = tf.random.uniform(
-      shape=[],
-      minval=1,
-      maxval=tf.maximum(2, tf.cast(video_depth / 4, tf.int32)),
-      dtype=tf.int32,
-  )
+  if mask_shape is not None:
+    pad_shape = tf.maximum(1, mask_shape // 2)
+    pad_size_depth, pad_size_height, pad_size_width = (
+        pad_shape[0],
+        pad_shape[1],
+        pad_shape[2],
+    )
+  else:
+    pad_size_height = tf.random.uniform(
+        shape=[],
+        minval=tf.maximum(1, tf.cast(video_height / 4, tf.int32)),
+        maxval=tf.maximum(2, tf.cast(video_height / 2, tf.int32)),
+        dtype=tf.int32,
+    )
+    pad_size_width = tf.random.uniform(
+        shape=[],
+        minval=tf.maximum(1, tf.cast(video_width / 4, tf.int32)),
+        maxval=tf.maximum(2, tf.cast(video_width / 2, tf.int32)),
+        dtype=tf.int32,
+    )
+    pad_size_depth = tf.random.uniform(
+        shape=[],
+        minval=1,
+        maxval=tf.maximum(2, tf.cast(video_depth / 4, tf.int32)),
+        dtype=tf.int32,
+    )
 
   lower_pad = tf.maximum(0, cutout_center_height - pad_size_height)
   upper_pad = tf.maximum(
