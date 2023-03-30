@@ -50,6 +50,12 @@ class PanopticDeeplabTask(base_task.Task):
         input_specs=input_specs,
         model_config=self.task_config.model,
         l2_regularizer=l2_regularizer)
+
+    # Builds the model through warm-up call.
+    dummy_images = tf.keras.Input(self.task_config.model.input_size)
+    # Note that image_info is always in the shape of [4, 2].
+    dummy_image_info = tf.keras.layers.Input([4, 2])
+    _ = model(dummy_images, dummy_image_info, training=False)
     return model
 
   def initialize(self, model: tf.keras.Model):

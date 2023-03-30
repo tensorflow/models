@@ -71,6 +71,12 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
     if self.task_config.freeze_backbone:
       model.backbone.trainable = False
 
+    # Builds the model through warm-up call.
+    dummy_images = tf.keras.Input(self.task_config.model.input_size)
+    # Note that image_info is always in the shape of [4, 2].
+    dummy_image_info = tf.keras.layers.Input([4, 2])
+    _ = model(dummy_images, image_info=dummy_image_info, training=False)
+
     return model
 
   def initialize(self, model: tf.keras.Model) -> None:
