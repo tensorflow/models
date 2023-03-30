@@ -2,8 +2,9 @@
 
 [![Pix2Seq](https://img.shields.io/badge/Pix2Seq-arXiv.2109.10852-B3181B?)](https://arxiv.org/abs/2109.10852).
 
-TensorFlow 2 implementation of A Language Modeling Framework for Object Detection
-[Here](https://github.com/google-research/pix2seq) is the official implementation of Pix2Seq in Tensorflow 2.
+TensorFlow 2 implementation of A Language Modeling Framework for Object Detection.
+
+The official implementation of Pix2Seq in Tensorflow 2 is [Here](https://github.com/google-research/pix2seq).
 
 ⚠️ Disclaimer: All datasets hyperlinked from this page are not owned or
 distributed by Google. The dataset is made available by third parties.
