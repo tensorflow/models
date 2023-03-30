@@ -1,0 +1,12 @@
+# COCO AP 40.01% for float16 precision is achieved with the configuration below.
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'float32'
+task:
+  coord_vocab_shift: 1000
+  quantization_bins: 1000
+  model:
+    attention_dropout_rate: 0.0
+    dropout_rate: 0.1
+    hidden_size: 256
+    vocab_size: 3000
