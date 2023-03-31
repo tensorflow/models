@@ -130,7 +130,7 @@ class SparseMixer(tf.keras.layers.Layer):
       num_attention_heads: int = 8,
       max_sequence_length: int = 512,
       type_vocab_size: int = 16,
-      inner_dim: int = 2056,
+      inner_dim: int = 2048,
       inner_activation: _Activation = _approx_gelu,
       output_dropout: float = 0.1,
       attention_dropout: float = 0.1,
