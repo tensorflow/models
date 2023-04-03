@@ -57,6 +57,6 @@ class SaveCheckpointIfPreempted:
     )
 
   def __call__(self, _) -> None:
-    self._preemption_handler._save_checkpoint_if_preempted(
+    self._preemption_handler.save_checkpoint_if_preempted(
         checkpoint_number=self._checkpoint_number, check_interval=False
     )
