@@ -412,8 +412,10 @@ class PanopticQualityV2(tf.keras.metrics.Metric):
 
   def reset_state(self):
     """Resets all of the metric state variables."""
-    for v in self.variables:
-      tf.keras.backend.set_value(v, np.zeros(v.shape))
+    self.tp_count.assign(tf.zeros_like(self.tp_count))
+    self.fp_count.assign(tf.zeros_like(self.fp_count))
+    self.fn_count.assign(tf.zeros_like(self.fn_count))
+    self.tp_iou_sum.assign(tf.zeros_like(self.tp_iou_sum))
 
   def update_state(
       self, y_true: Dict[str, tf.Tensor], y_pred: Dict[str, tf.Tensor]
