@@ -50,8 +50,7 @@ trainer:
   summary_interval: 312
   checkpoint_interval: 312
   optimizer_config:
-    ema:
-      average_decay: 0.9999
+    ema: null
     optimizer:
       type: 'sgd'
       sgd:
