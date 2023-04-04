@@ -110,8 +110,10 @@ class PerClassIoUV2(tf.keras.metrics.Metric):
 
   def reset_state(self):
     """Resets all of the metric state variables."""
-    for v in self.variables:
-      tf.keras.backend.set_value(v, np.zeros(v.shape))
+    self.intersection_per_class.assign(
+        tf.zeros_like(self.intersection_per_class)
+    )
+    self.union_per_class.assign(tf.zeros_like(self.union_per_class))
 
   def update_state(self, y_true: tf.Tensor, y_pred: tf.Tensor):
     """Updates metric state by accumulating the variables.
