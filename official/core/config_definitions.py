@@ -104,6 +104,8 @@ class DataConfig(base_config.Config):
       datasets. If None, the buffer size is autotuned. Specifying this is useful
       in case autotuning uses up too much memory by making the buffer size too
       high.
+    autotune_algorithm: If specified, use this algorithm for AUTOTUNE. See:
+      https://www.tensorflow.org/api_docs/python/tf/data/experimental/AutotuneAlgorithm
   """
   input_path: Union[Sequence[str], str, base_config.Config] = ""
   tfds_name: Union[str, base_config.Config] = ""
@@ -128,6 +130,7 @@ class DataConfig(base_config.Config):
   trainer_id: Optional[str] = None
   seed: Optional[int] = None
   prefetch_buffer_size: Optional[int] = None
+  autotune_algorithm: Optional[str] = None
 
 
 @dataclasses.dataclass
