@@ -301,6 +301,7 @@ class InputReader:
     self._seed = params.seed
     self._prefetch_buffer_size = (
         params.prefetch_buffer_size or tf.data.experimental.AUTOTUNE)
+    self._autotune_algorithm = params.autotune_algorithm
 
     # When tf.data service is enabled, each data service worker should get
     # different random seeds. Thus, we set `seed` to None.
@@ -565,5 +566,10 @@ class InputReader:
     if self._deterministic is not None:
       options = tf.data.Options()
       options.deterministic = self._deterministic
+      dataset = dataset.with_options(options)
+    if self._autotune_algorithm:
+      options = tf.data.Options()
+      options.autotune.autotune_algorithm = (
+          tf.data.experimental.AutotuneAlgorithm[self._autotune_algorithm])
       dataset = dataset.with_options(options)
     return dataset.prefetch(self._prefetch_buffer_size)
