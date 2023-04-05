@@ -146,7 +146,7 @@ class YoloDetectionGenerator(hyperparams.Config):
       default_factory=_build_dict(MIN_LEVEL, MAX_LEVEL, 1.0))
   path_scales: FPNConfig = dataclasses.field(
       default_factory=_build_path_scales(MIN_LEVEL, MAX_LEVEL))
-  nms_type: str = 'greedy'
+  nms_version: str = 'greedy'
   iou_thresh: float = 0.001
   nms_thresh: float = 0.6
   max_boxes: int = 200

@@ -1,10 +1,11 @@
+# This config is for demonstration purpose only. Parameters such as batch_size, train_steps should be overridden when used.
 # --experiment_type=scaled_yolo
-# mAP 54%
 runtime:
-  distribution_strategy: 'tpu'
-  mixed_precision_dtype: 'float32'
-  tpu_enable_xla_dynamic_padder: false
+  all_reduce_alg: nccl
+  distribution_strategy: multi_worker_mirrored
+  mixed_precision_dtype: float16
 task:
+  max_num_eval_detections: 300
   model:
     input_size: [1280, 1280, 3]
     backbone:
@@ -51,7 +52,7 @@ task:
         'all': 1.0
     norm_activation:
       use_sync_bn: true
-    num_classes: 80
+    num_classes: 2  # BG + product
     anchor_boxes:
       anchors_per_scale: 4
       boxes:  [box: [13, 17], box: [31, 25], box: [24, 51], box: [61, 45],
@@ -59,8 +60,13 @@ task:
                box: [97, 189], box: [217, 184], box: [171, 384], box: [324, 451],
                box: [324, 451], box: [545, 357], box: [616, 618], box: [1024, 1024]]
   train_data:
-    input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/train*'
-    shuffle_buffer_size: 10000
+    file_type: tfrecord
+    global_batch_size: 2
+    decoder:
+      type: simple_decoder
+      simple_decoder:
+        regenerate_source_id: true
+        coco91_to_80: false
     parser:
       mosaic:
         mosaic_frequency: 1.0
@@ -75,13 +81,35 @@ task:
       aug_rand_translate: 0.1
       area_thresh: 0.1
   validation_data:
-    input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/val*'
+    file_type: tfrecord
+    global_batch_size: 2
+    decoder:
+      type: simple_decoder
+      simple_decoder:
+        regenerate_source_id: true
+        coco91_to_80: false
+    parser:
+      max_num_instances: 300
+  annotation_file: null
 trainer:
-  best_checkpoint_eval_metric: 'AP'
+  best_checkpoint_eval_metric: 'AP50'
   best_checkpoint_export_subdir: 'best_ckpt'
   best_checkpoint_metric_comp: 'higher'
-  train_steps: 231000  # 500 epochs
+  train_steps: 500
+  validation_steps: -1
+  validation_interval: 50
+  steps_per_loop: 50
+  summary_interval: 50
+  checkpoint_interval: 50
   optimizer_config:
+    ema: null
     learning_rate:
       cosine:
-        decay_steps: 231000  # 500 epochs
+        decay_steps: 50
+        initial_learning_rate: 0.001
+    warmup:
+      linear:
+        name: linear
+        warmup_learning_rate: 0.00067
+        warmup_steps: 20
+      type: linear

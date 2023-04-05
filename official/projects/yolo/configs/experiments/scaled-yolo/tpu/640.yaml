@@ -26,7 +26,7 @@ task:
       scale_xy:
         'all': 2.0
       max_boxes: 300
-      nms_type: iou
+      nms_version: iou
       iou_thresh: 0.001
       nms_thresh: 0.60
     loss:

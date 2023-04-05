@@ -33,7 +33,7 @@ def build_yolo_detection_generator(model_config: yolo.Yolo, anchor_boxes):
       nms_thresh=model_config.detection_generator.nms_thresh,
       max_boxes=model_config.detection_generator.max_boxes,
       pre_nms_points=model_config.detection_generator.pre_nms_points,
-      nms_type=model_config.detection_generator.nms_type,
+      nms_version=model_config.detection_generator.nms_version,
       box_type=model_config.detection_generator.box_type.get(),
       path_scale=model_config.detection_generator.path_scales.get(),
       scale_xy=model_config.detection_generator.scale_xy.get(),
@@ -47,7 +47,8 @@ def build_yolo_detection_generator(model_config: yolo.Yolo, anchor_boxes):
       cls_normalizer=model_config.loss.cls_normalizer.get(),
       object_normalizer=model_config.loss.object_normalizer.get(),
       ignore_thresh=model_config.loss.ignore_thresh.get(),
-      objectness_smooth=model_config.loss.objectness_smooth.get())
+      objectness_smooth=model_config.loss.objectness_smooth.get(),
+  )
   return model
 
 
