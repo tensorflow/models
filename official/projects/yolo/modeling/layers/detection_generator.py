@@ -24,29 +24,31 @@ from official.vision.modeling.layers import detection_generator
 class YoloLayer(tf.keras.Model):
   """Yolo layer (detection generator)."""
 
-  def __init__(self,
-               anchors,
-               classes,
-               iou_thresh=0.0,
-               ignore_thresh=0.7,
-               truth_thresh=1.0,
-               nms_thresh=0.6,
-               max_delta=10.0,
-               loss_type='ciou',
-               iou_normalizer=1.0,
-               cls_normalizer=1.0,
-               object_normalizer=1.0,
-               use_scaled_loss=False,
-               update_on_repeat=False,
-               pre_nms_points=5000,
-               label_smoothing=0.0,
-               max_boxes=200,
-               box_type='original',
-               path_scale=None,
-               scale_xy=None,
-               nms_type='greedy',
-               objectness_smooth=False,
-               **kwargs):
+  def __init__(
+      self,
+      anchors,
+      classes,
+      iou_thresh=0.0,
+      ignore_thresh=0.7,
+      truth_thresh=1.0,
+      nms_thresh=0.6,
+      max_delta=10.0,
+      loss_type='ciou',
+      iou_normalizer=1.0,
+      cls_normalizer=1.0,
+      object_normalizer=1.0,
+      use_scaled_loss=False,
+      update_on_repeat=False,
+      pre_nms_points=5000,
+      label_smoothing=0.0,
+      max_boxes=200,
+      box_type='original',
+      path_scale=None,
+      scale_xy=None,
+      nms_version='greedy',
+      objectness_smooth=False,
+      **kwargs
+  ):
     """Parameters for the loss functions used at each detection head output.
 
     Args:
@@ -61,15 +63,15 @@ class YoloLayer(tf.keras.Model):
         despite a detection being made'.
       nms_thresh: `float` for the minimum IOU value for an overlap.
       max_delta: gradient clipping to apply to the box loss.
-      loss_type: `str` for the typeof iou loss to use with in {ciou, diou,
-        giou, iou}.
+      loss_type: `str` for the typeof iou loss to use with in {ciou, diou, giou,
+        iou}.
       iou_normalizer: `float` for how much to scale the loss on the IOU or the
         boxes.
       cls_normalizer: `float` for how much to scale the loss on the classes.
       object_normalizer: `float` for how much to scale loss on the detection
         map.
-      use_scaled_loss: `bool` for whether to use the scaled loss
-        or the traditional loss.
+      use_scaled_loss: `bool` for whether to use the scaled loss or the
+        traditional loss.
       update_on_repeat: `bool` indicating how you would like to handle repeated
         indexes in a given [j, i] index. Setting this to True will give more
         consistent MAP, setting it to falls will improve recall by 1-2% but will
@@ -94,11 +96,11 @@ class YoloLayer(tf.keras.Model):
       scale_xy: dictionary `float` values inidcating how far each pixel can see
         outside of its containment of 1.0. a value of 1.2 indicates there is a
         20% extended radius around each pixel that this specific pixel can
-        predict values for a center at. the center can range from 0 - value/2
-        to 1 + value/2, this value is set in the yolo filter, and resused here.
+        predict values for a center at. the center can range from 0 - value/2 to
+        1 + value/2, this value is set in the yolo filter, and resused here.
         there should be one value for scale_xy for each level from min_level to
         max_level.
-      nms_type: `str` for which non max suppression to use.
+      nms_version: `str` for which non max suppression to use.
       objectness_smooth: `float` for how much to smooth the loss on the
         detection map.
       **kwargs: Addtional keyword arguments.
@@ -129,7 +131,7 @@ class YoloLayer(tf.keras.Model):
     self._box_type = box_type
     self._path_scale = path_scale or {key: 2**int(key) for key in self._keys}
 
-    self._nms_type = nms_type
+    self._nms_version = nms_version
     self._scale_xy = scale_xy or {key: 1.0 for key, _ in anchors.items()}
 
     self._generator = {}
@@ -230,7 +232,7 @@ class YoloLayer(tf.keras.Model):
     class_scores *= (tf.expand_dims(object_mask, axis=-1) * class_mask)
 
     # Apply nms.
-    if self._nms_type == 'greedy':
+    if self._nms_version == 'greedy':
       # Greedy NMS.
       boxes = tf.cast(boxes, dtype=tf.float32)
       class_scores = tf.cast(class_scores, dtype=tf.float32)
