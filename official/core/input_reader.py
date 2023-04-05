@@ -218,17 +218,23 @@ class InputReader:
   # instances.
   static_randnum = _get_random_integer()
 
-  def __init__(self,
-               params: cfg.DataConfig,
-               dataset_fn=tf.data.TFRecordDataset,
-               decoder_fn: Optional[Callable[..., Any]] = None,
-               combine_fn: Optional[Callable[..., Any]] = None,
-               sample_fn: Optional[Callable[..., Any]] = None,
-               parser_fn: Optional[Callable[..., Any]] = None,
-               transform_and_batch_fn: Optional[Callable[
-                   [tf.data.Dataset, Optional[tf.distribute.InputContext]],
-                   tf.data.Dataset]] = None,
-               postprocess_fn: Optional[Callable[..., Any]] = None):
+  def __init__(
+      self,
+      params: cfg.DataConfig,
+      dataset_fn=tf.data.TFRecordDataset,
+      decoder_fn: Optional[Callable[..., Any]] = None,
+      combine_fn: Optional[Callable[..., Any]] = None,
+      sample_fn: Optional[Callable[..., Any]] = None,
+      parser_fn: Optional[Callable[..., Any]] = None,
+      filter_fn: Optional[Callable[..., tf.Tensor]] = None,
+      transform_and_batch_fn: Optional[
+          Callable[
+              [tf.data.Dataset, Optional[tf.distribute.InputContext]],
+              tf.data.Dataset,
+          ]
+      ] = None,
+      postprocess_fn: Optional[Callable[..., Any]] = None,
+  ):
     """Initializes an InputReader instance.
 
     Args:
@@ -246,6 +252,8 @@ class InputReader:
       parser_fn: An optional `callable` that takes the decoded raw tensors dict
         and parse them into a dictionary of tensors that can be consumed by the
         model. It will be executed after decoder_fn.
+      filter_fn: An optional `callable` mapping a dataset element to a boolean.
+        It will be executed after parser_fn.
       transform_and_batch_fn: An optional `callable` that takes a
         `tf.data.Dataset` object and an optional `tf.distribute.InputContext` as
         input, and returns a `tf.data.Dataset` object. It will be executed after
@@ -298,6 +306,7 @@ class InputReader:
     self._parser_fn = parser_fn
     self._transform_and_batch_fn = transform_and_batch_fn
     self._postprocess_fn = postprocess_fn
+    self._filter_fn = filter_fn
     self._seed = params.seed
     self._prefetch_buffer_size = (
         params.prefetch_buffer_size or tf.data.experimental.AUTOTUNE)
@@ -371,10 +380,14 @@ class InputReader:
       if len(files) > 1:
         if input_context and (len(files) < input_context.num_input_pipelines):
           logging.warn(
-              'The number of files %d is less than the number of input pipelines '
-              '%d. We will send all input files to every worker. '
-              'Please consider sharding your data into more files.', len(files),
-              input_context.num_input_pipelines)
+              (
+                  'The number of files %d is less than the number of input '
+                  'pipelines %d. We will send all input files to every worker. '
+                  'Please consider sharding your data into more files.'
+              ),
+              len(files),
+              input_context.num_input_pipelines,
+          )
           return _read_files_then_shard(
               files,
               dataset_fn,
@@ -467,6 +480,9 @@ class InputReader:
     if self._sample_fn is not None:
       dataset = dataset.apply(self._sample_fn)
     dataset = _maybe_map_fn(dataset, self._parser_fn)
+
+    if self._filter_fn is not None:
+      dataset = dataset.filter(self._filter_fn)
 
     if self._cache:
       dataset = dataset.cache()
