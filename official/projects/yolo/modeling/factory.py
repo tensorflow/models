@@ -14,8 +14,6 @@
 
 """Contains common factory functions yolo neural networks."""
 
-from absl import logging
-
 from official.projects.yolo.configs import yolo
 from official.projects.yolo.modeling import yolo_model
 from official.projects.yolo.modeling.heads import yolo_head
@@ -48,6 +46,7 @@ def build_yolo_detection_generator(model_config: yolo.Yolo, anchor_boxes):
       object_normalizer=model_config.loss.object_normalizer.get(),
       ignore_thresh=model_config.loss.ignore_thresh.get(),
       objectness_smooth=model_config.loss.objectness_smooth.get(),
+      use_class_agnostic_nms=model_config.detection_generator.use_class_agnostic_nms,
   )
   return model
 
@@ -88,9 +87,6 @@ def build_yolo(input_specs, model_config, l2_regularization):
       decoder=decoder,
       head=head,
       detection_generator=detection_generator_obj)
-  model.build(input_specs.shape)
-
-  model.summary(print_fn=logging.info)
 
   losses = detection_generator_obj.get_losses()
   return model, losses

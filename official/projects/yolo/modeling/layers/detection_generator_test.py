@@ -16,16 +16,18 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from official.projects.yolo.modeling.layers import detection_generator as dg
+from official.projects.yolo.modeling.layers import detection_generator
 
 
 class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (True),
-      (False),
+      ('v1', None),
+      ('v2', False),
+      ('v2', True),
+      ('greedy', None),
   )
-  def test_network_creation(self, nms):
+  def test_network_creation(self, nms_version, use_class_agnostic_nms):
     """Test creation of ResNet family models."""
     tf.keras.backend.set_image_data_format('channels_last')
     input_shape = {
@@ -42,7 +44,14 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
 
     box_type = {key: 'scaled' for key in anchors.keys()}
 
-    layer = dg.YoloLayer(anchors, classes, box_type=box_type, max_boxes=10)
+    layer = detection_generator.YoloLayer(
+        anchors,
+        classes,
+        box_type=box_type,
+        max_boxes=10,
+        use_class_agnostic_nms=use_class_agnostic_nms,
+        nms_version=nms_version,
+    )
 
     inputs = {}
     for key in input_shape:

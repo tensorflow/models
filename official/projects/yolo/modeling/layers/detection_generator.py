@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Contains common building blocks for yolo layer (detection layer)."""
+from typing import Optional
 import tensorflow as tf
 
 from official.projects.yolo.losses import yolo_loss
@@ -21,7 +22,7 @@ from official.projects.yolo.ops import loss_utils
 from official.vision.modeling.layers import detection_generator
 
 
-class YoloLayer(tf.keras.Model):
+class YoloLayer(tf.keras.layers.Layer):
   """Yolo layer (detection generator)."""
 
   def __init__(
@@ -47,6 +48,7 @@ class YoloLayer(tf.keras.Model):
       scale_xy=None,
       nms_version='greedy',
       objectness_smooth=False,
+      use_class_agnostic_nms: Optional[bool] = False,
       **kwargs
   ):
     """Parameters for the loss functions used at each detection head output.
@@ -103,6 +105,9 @@ class YoloLayer(tf.keras.Model):
       nms_version: `str` for which non max suppression to use.
       objectness_smooth: `float` for how much to smooth the loss on the
         detection map.
+      use_class_agnostic_nms: A `bool` of whether non max suppression is
+        operated on all the boxes using max scores across all classes. Only
+        valid when nms_version is v2.
       **kwargs: Addtional keyword arguments.
     """
     super().__init__(**kwargs)
@@ -119,6 +124,7 @@ class YoloLayer(tf.keras.Model):
     self._max_delta = max_delta
     self._classes = classes
     self._loss_type = loss_type
+    self._use_class_agnostic_nms = use_class_agnostic_nms
 
     self._use_scaled_loss = use_scaled_loss
     self._update_on_repeat = update_on_repeat
@@ -201,7 +207,7 @@ class YoloLayer(tf.keras.Model):
     obns_scores = tf.reshape(obns_scores, [-1, fill])
     return obns_scores, boxes, class_scores
 
-  def call(self, inputs):
+  def __call__(self, inputs):
     boxes = []
     class_scores = []
     object_scores = []
@@ -231,38 +237,51 @@ class YoloLayer(tf.keras.Model):
     object_scores *= object_mask
     class_scores *= (tf.expand_dims(object_mask, axis=-1) * class_mask)
 
+    # Make a copy of the original dtype.
+    dtype = object_scores.dtype
+
     # Apply nms.
     if self._nms_version == 'greedy':
       # Greedy NMS.
-      boxes = tf.cast(boxes, dtype=tf.float32)
-      class_scores = tf.cast(class_scores, dtype=tf.float32)
-      boxes, object_scores_, class_scores, num_detections = (
+      boxes, object_scores, class_scores, num_detections = (
           tf.image.combined_non_max_suppression(
-              tf.expand_dims(boxes, axis=-2),
-              class_scores,
+              tf.expand_dims(tf.cast(boxes, dtype=tf.float32), axis=-2),
+              tf.cast(class_scores, dtype=tf.float32),
               self._pre_nms_points,
               self._max_boxes,
               iou_threshold=self._nms_thresh,
-              score_threshold=self._thresh))
-      # Cast the boxes and predicitons abck to original datatype.
-      boxes = tf.cast(boxes, object_scores.dtype)
-      class_scores = tf.cast(class_scores, object_scores.dtype)
-      object_scores = tf.cast(object_scores_, object_scores.dtype)
-    else:
-      # TPU NMS
-      boxes = tf.cast(boxes, dtype=tf.float32)
-      class_scores = tf.cast(class_scores, dtype=tf.float32)
-      (boxes, confidence, classes,
-       num_detections) = detection_generator._generate_detections_v2(  # pylint:disable=protected-access
-           tf.expand_dims(boxes, axis=-2),
-           class_scores,
-           pre_nms_top_k=self._pre_nms_points,
-           max_num_detections=self._max_boxes,
-           nms_iou_threshold=self._nms_thresh,
-           pre_nms_score_threshold=self._thresh)
-      boxes = tf.cast(boxes, object_scores.dtype)
-      class_scores = tf.cast(classes, object_scores.dtype)
-      object_scores = tf.cast(confidence, object_scores.dtype)
+              score_threshold=self._thresh,
+          )
+      )
+    elif self._nms_version == 'v1':
+      (boxes, object_scores, class_scores, num_detections, _) = (
+          detection_generator._generate_detections_v1(  # pylint:disable=protected-access
+              tf.expand_dims(tf.cast(boxes, dtype=tf.float32), axis=-2),
+              tf.cast(class_scores, dtype=tf.float32),
+              pre_nms_top_k=self._pre_nms_points,
+              max_num_detections=self._max_boxes,
+              nms_iou_threshold=self._nms_thresh,
+              pre_nms_score_threshold=self._thresh,
+          )
+      )
+
+    elif self._nms_version == 'v2' or self._nms_version == 'iou':
+      (boxes, object_scores, class_scores, num_detections) = (
+          detection_generator._generate_detections_v2(  # pylint:disable=protected-access
+              tf.expand_dims(tf.cast(boxes, dtype=tf.float32), axis=-2),
+              tf.cast(class_scores, dtype=tf.float32),
+              pre_nms_top_k=self._pre_nms_points,
+              max_num_detections=self._max_boxes,
+              nms_iou_threshold=self._nms_thresh,
+              pre_nms_score_threshold=self._thresh,
+              use_class_agnostic_nms=self._use_class_agnostic_nms,
+          )
+      )
+
+    # Cast the boxes and predicitons back to original datatype.
+    boxes = tf.cast(boxes, dtype)
+    class_scores = tf.cast(class_scores, dtype)
+    object_scores = tf.cast(object_scores, dtype)
 
     # Format and return
     return {
