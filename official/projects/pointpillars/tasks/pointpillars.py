@@ -382,6 +382,6 @@ class PointPillarsTask(base_task.Task):
     """Called after eval_end to calculate metrics."""
     logging.info('Reducing aggregated metrics after one evaluation cycle.')
     logs = {}
-    if self._task_config.use_wod_metrics:
+    if self.task_config.use_wod_metrics:
       logs.update(self._wod_metric.result())
     return logs
