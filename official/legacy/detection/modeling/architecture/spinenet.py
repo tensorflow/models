@@ -134,7 +134,9 @@ class SpineNet(tf.keras.Model):
     """SpineNet model."""
     self._min_level = min_level
     self._max_level = max_level
-    self._block_specs = build_block_specs() if block_specs is None else block_specs
+    self._block_specs = (
+        build_block_specs() if block_specs is None else block_specs
+    )
     self._endpoints_num_filters = endpoints_num_filters
     self._resample_alpha = resample_alpha
     self._block_repeats = block_repeats
