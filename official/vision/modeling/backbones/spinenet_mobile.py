@@ -187,7 +187,9 @@ class SpineNetMobile(tf.keras.Model):
     self._input_specs = input_specs
     self._min_level = min_level
     self._max_level = max_level
-    self._block_specs = build_block_specs() if block_specs is None else block_specs
+    self._block_specs = (
+        build_block_specs() if block_specs is None else block_specs
+    )
     self._endpoints_num_filters = endpoints_num_filters
     self._se_ratio = se_ratio
     self._block_repeats = block_repeats
