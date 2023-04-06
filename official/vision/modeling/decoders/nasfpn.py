@@ -76,7 +76,7 @@ class NASFPN(tf.keras.Model):
       input_specs: Mapping[str, tf.TensorShape],
       min_level: int = 3,
       max_level: int = 7,
-      block_specs: List[BlockSpec] = build_block_specs(),
+      block_specs: Optional[List[BlockSpec]] = None,
       num_filters: int = 256,
       num_repeats: int = 5,
       use_separable_conv: bool = False,
@@ -130,7 +130,9 @@ class NASFPN(tf.keras.Model):
     }
     self._min_level = min_level
     self._max_level = max_level
-    self._block_specs = block_specs
+    self._block_specs = (
+        build_block_specs() if block_specs is None else block_specs
+    )
     self._num_repeats = num_repeats
     self._conv_op = (tf.keras.layers.SeparableConv2D
                      if self._config_dict['use_separable_conv']
