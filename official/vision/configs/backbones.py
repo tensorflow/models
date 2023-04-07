@@ -26,7 +26,7 @@ class Transformer(hyperparams.Config):
   num_heads: int = 1
   num_layers: int = 1
   attention_dropout_rate: float = 0.0
-  dropout_rate: float = 0.1
+  dropout_rate: float = 0.0
 
 
 @dataclasses.dataclass

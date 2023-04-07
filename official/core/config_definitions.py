@@ -196,6 +196,7 @@ class RuntimeConfig(base_config.Config):
   # Global model parallelism configurations.
   num_cores_per_replica: int = 1
   default_shard_dim: int = -1
+  use_tpu_mp_strategy: bool = False
 
   def model_parallelism(self):
     return dict(
