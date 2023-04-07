@@ -74,10 +74,11 @@ class SavedModelCheckpointManager(tf.train.CheckpointManager):
     saved_modules_directory = make_saved_modules_directory_name(checkpoint_path)
     for model_name, model in self._modules_to_export.items():
       signatures = getattr(model, 'saved_model_signatures', None)
-      tf.saved_model.save(
-          obj=model,
-          export_dir=os.path.join(saved_modules_directory, model_name),
-          signatures=signatures)
+      if signatures is not None:
+        tf.saved_model.save(
+            obj=model,
+            export_dir=os.path.join(saved_modules_directory, model_name),
+            signatures=signatures)
 
     saved_modules_directories_to_keep = [
         make_saved_modules_directory_name(ckpt) for ckpt in self.checkpoints
