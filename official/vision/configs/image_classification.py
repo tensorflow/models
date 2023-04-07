@@ -105,6 +105,10 @@ class ImageClassificationTask(cfg.TaskConfig):
   validation_data: DataConfig = DataConfig(is_training=False)
   losses: Losses = Losses()
   evaluation: Evaluation = Evaluation()
+  train_input_partition_dims: Optional[List[int]] = dataclasses.field(
+      default_factory=list)
+  eval_input_partition_dims: Optional[List[int]] = dataclasses.field(
+      default_factory=list)
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: str = 'all'  # all or backbone
   model_output_keys: Optional[List[int]] = dataclasses.field(
