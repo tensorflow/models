@@ -5,6 +5,11 @@ distributed by Google. The dataset is made available by third parties.
 Please review the terms and conditions made available by the third parties
 before using the data.
 
+⚠️ Disclaimer: Checkpoints are based on training with publicly available
+datasets. Some datasets contain limitations, including non-commercial use
+limitations. Please review terms and conditions made available by third parties
+before using models and datasets provided.
+
 ## Introduction
 
 TF-Vision modeling library for computer vision provides a collection of
