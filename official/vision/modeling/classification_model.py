@@ -71,10 +71,10 @@ class ClassificationModel(tf.keras.Model):
 
     if add_head_batch_norm:
       x = norm(
-        axis=axis,
-        momentum=norm_momentum,
-        epsilon=norm_epsilon,
-        synchronized=use_sync_bn)(x)
+          axis=axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          synchronized=use_sync_bn)(x)
 
     # Depending on the backbone type, backbone's output can be
     # [batch_size, height, weight, channel_size] or
