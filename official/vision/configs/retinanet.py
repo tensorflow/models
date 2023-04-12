@@ -135,7 +135,8 @@ class DetectionGenerator(hyperparams.Config):
   # When nms_version = `tflite`, values from tflite_post_processing need to be
   # specified. They are compatible with the input arguments used by TFLite
   # custom NMS op and override above parameters.
-  tflite_post_processing: common.TFLitePostProcessingConfig = common.TFLitePostProcessingConfig(
+  tflite_post_processing: common.TFLitePostProcessingConfig = (
+      common.TFLitePostProcessingConfig()
   )
   # Return decoded boxes/scores even if apply_nms is set `True`.
   return_decoded: Optional[bool] = None
