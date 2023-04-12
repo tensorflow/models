@@ -123,11 +123,8 @@ class ResidualBlock(tf.keras.layers.Layer):
     self._norm_epsilon = norm_epsilon
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
-
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
+    self._norm = tf.keras.layers.BatchNormalization
+    
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -150,7 +147,8 @@ class ResidualBlock(tf.keras.layers.Layer):
           axis=self._bn_axis,
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon,
-          trainable=self._bn_trainable)
+          trainable=self._bn_trainable,
+          synchronized=self._use_sync_bn)
 
     conv1_padding = 'same'
     # explicit padding here is added for centernet
@@ -171,7 +169,8 @@ class ResidualBlock(tf.keras.layers.Layer):
         axis=self._bn_axis,
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon,
-        trainable=self._bn_trainable)
+        trainable=self._bn_trainable,
+        synchronized=self._use_sync_bn)
 
     self._conv2 = tf.keras.layers.Conv2D(
         filters=self._filters,
@@ -186,7 +185,8 @@ class ResidualBlock(tf.keras.layers.Layer):
         axis=self._bn_axis,
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon,
-        trainable=self._bn_trainable)
+        trainable=self._bn_trainable,
+        synchronized=self._use_sync_bn)
 
     if self._se_ratio and self._se_ratio > 0 and self._se_ratio <= 1:
       self._squeeze_excitation = nn_layers.SqueezeExcitation(
@@ -321,10 +321,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
     self._norm_epsilon = norm_epsilon
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
+    self._norm = tf.keras.layers.BatchNormalization
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -360,7 +357,8 @@ class BottleneckBlock(tf.keras.layers.Layer):
           axis=self._bn_axis,
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon,
-          trainable=self._bn_trainable)
+          trainable=self._bn_trainable,
+          synchronized=self._use_sync_bn)
 
     self._conv1 = tf.keras.layers.Conv2D(
         filters=self._filters,
@@ -374,7 +372,8 @@ class BottleneckBlock(tf.keras.layers.Layer):
         axis=self._bn_axis,
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon,
-        trainable=self._bn_trainable)
+        trainable=self._bn_trainable,
+        synchronized=self._use_sync_bn)
     self._activation1 = tf_utils.get_activation(
         self._activation, use_keras_layer=True)
 
@@ -392,7 +391,8 @@ class BottleneckBlock(tf.keras.layers.Layer):
         axis=self._bn_axis,
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon,
-        trainable=self._bn_trainable)
+        trainable=self._bn_trainable,
+        synchronized=self._use_sync_bn)
     self._activation2 = tf_utils.get_activation(
         self._activation, use_keras_layer=True)
 
@@ -408,7 +408,8 @@ class BottleneckBlock(tf.keras.layers.Layer):
         axis=self._bn_axis,
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon,
-        trainable=self._bn_trainable)
+        trainable=self._bn_trainable,
+        synchronized=self._use_sync_bn)
     self._activation3 = tf_utils.get_activation(
         self._activation, use_keras_layer=True)
 
@@ -589,11 +590,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     self._bias_regularizer = bias_regularizer
     self._expand_se_in_filters = expand_se_in_filters
     self._output_intermediate_endpoints = output_intermediate_endpoints
+    self._norm = tf.keras.layers.BatchNormalization
 
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -628,7 +626,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
       self._norm0 = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)
+          epsilon=self._norm_epsilon,
+          synchronized=self._use_sync_bn)
       self._activation_layer = tf_utils.get_activation(
           self._activation, use_keras_layer=True)
 
@@ -648,7 +647,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
       self._norm1 = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)
+          epsilon=self._norm_epsilon,
+          synchronized=self._use_sync_bn)
       self._depthwise_activation_layer = tf_utils.get_activation(
           self._depthwise_activation, use_keras_layer=True)
 
@@ -686,7 +686,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     self._norm2 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)
 
     if self._stochastic_depth_drop_rate:
       self._stochastic_depth = nn_layers.StochasticDepth(
@@ -812,11 +813,7 @@ class ResidualInner(tf.keras.layers.Layer):
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     self._batch_norm_first = batch_norm_first
-
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
+    self._norm = tf.keras.layers.BatchNormalization
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
@@ -829,7 +826,8 @@ class ResidualInner(tf.keras.layers.Layer):
       self._batch_norm_0 = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)
+          epsilon=self._norm_epsilon,
+          synchronized=self._use_sync_bn)
 
     self._conv2d_1 = tf.keras.layers.Conv2D(
         filters=self.filters,
@@ -843,7 +841,8 @@ class ResidualInner(tf.keras.layers.Layer):
     self._batch_norm_1 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)
 
     self._conv2d_2 = tf.keras.layers.Conv2D(
         filters=self.filters,
@@ -938,11 +937,7 @@ class BottleneckResidualInner(tf.keras.layers.Layer):
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     self._batch_norm_first = batch_norm_first
-
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
+    self._norm = tf.keras.layers.BatchNormalization
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
@@ -955,7 +950,8 @@ class BottleneckResidualInner(tf.keras.layers.Layer):
       self._batch_norm_0 = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)
+          epsilon=self._norm_epsilon,
+          synchronized=self._use_sync_bn)
     self._conv2d_1 = tf.keras.layers.Conv2D(
         filters=self.filters,
         kernel_size=1,
@@ -967,7 +963,8 @@ class BottleneckResidualInner(tf.keras.layers.Layer):
     self._batch_norm_1 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)
     self._conv2d_2 = tf.keras.layers.Conv2D(
         filters=self.filters,
         kernel_size=3,
@@ -979,7 +976,8 @@ class BottleneckResidualInner(tf.keras.layers.Layer):
     self._batch_norm_2 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)
     self._conv2d_3 = tf.keras.layers.Conv2D(
         filters=self.filters * 4,
         kernel_size=1,
@@ -1257,11 +1255,8 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
     self._use_sync_bn = use_sync_bn
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
+    self._norm = tf.keras.layers.BatchNormalization
 
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -1301,7 +1296,8 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
     self._norm0 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)
 
     self._conv1 = tf.keras.layers.Conv2D(
         filters=self._filters,
@@ -1314,7 +1310,8 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
     self._norm1 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)
 
     super(DepthwiseSeparableConvBlock, self).build(input_shape)
 
@@ -1398,11 +1395,8 @@ class TuckerConvBlock(tf.keras.layers.Layer):
     self._norm_epsilon = norm_epsilon
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
+    self._norm = tf.keras.layers.BatchNormalization
 
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -1426,7 +1420,8 @@ class TuckerConvBlock(tf.keras.layers.Layer):
     self._norm0 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)
     self._activation_layer0 = tf_utils.get_activation(
         self._activation, use_keras_layer=True)
 
@@ -1447,7 +1442,8 @@ class TuckerConvBlock(tf.keras.layers.Layer):
     self._norm1 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)
     self._activation_layer1 = tf_utils.get_activation(
         self._activation, use_keras_layer=True)
 
@@ -1464,7 +1460,8 @@ class TuckerConvBlock(tf.keras.layers.Layer):
     self._norm2 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)
 
     if self._stochastic_depth_drop_rate:
       self._stochastic_depth = nn_layers.StochasticDepth(

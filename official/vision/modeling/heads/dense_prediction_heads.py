@@ -125,6 +125,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
         'axis': self._bn_axis,
         'momentum': self._config_dict['norm_momentum'],
         'epsilon': self._config_dict['norm_epsilon'],
+        'synchronized': self._config_dict['use_sync_bn'],
     }
 
     self._classifier_kwargs = {
@@ -224,11 +225,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
         if self._config_dict['use_separable_conv']
         else tf.keras.layers.Conv2D
     )
-    bn_op = (
-        tf.keras.layers.experimental.SyncBatchNormalization
-        if self._config_dict['use_sync_bn']
-        else tf.keras.layers.BatchNormalization
-    )
+    bn_op = tf.keras.layers.BatchNormalization
 
     # Class net.
     self._cls_convs = []
@@ -495,13 +492,12 @@ class RPNHead(tf.keras.layers.Layer):
               stddev=0.01),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })
-    bn_op = (tf.keras.layers.experimental.SyncBatchNormalization
-             if self._config_dict['use_sync_bn']
-             else tf.keras.layers.BatchNormalization)
+    bn_op = tf.keras.layers.BatchNormalization
     bn_kwargs = {
         'axis': self._bn_axis,
         'momentum': self._config_dict['norm_momentum'],
         'epsilon': self._config_dict['norm_epsilon'],
+        'synchronized': self._config_dict['use_sync_bn'],
     }
 
     self._convs = []

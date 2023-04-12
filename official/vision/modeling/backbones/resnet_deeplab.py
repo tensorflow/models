@@ -126,10 +126,7 @@ class DilatedResNet(tf.keras.Model):
     self._activation = activation
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
-    if use_sync_bn:
-      self._norm = layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = layers.BatchNormalization
+    self._norm = layers.BatchNormalization
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
@@ -159,8 +156,10 @@ class DilatedResNet(tf.keras.Model):
           bias_regularizer=self._bias_regularizer)(
               inputs)
       x = self._norm(
-          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
-              x)
+          axis=bn_axis, 
+          momentum=norm_momentum, 
+          epsilon=norm_epsilon,
+          synchronized=use_sync_bn)(x)
       x = tf_utils.get_activation(activation)(x)
     elif stem_type == 'v1':
       x = layers.Conv2D(
@@ -174,8 +173,10 @@ class DilatedResNet(tf.keras.Model):
           bias_regularizer=self._bias_regularizer)(
               inputs)
       x = self._norm(
-          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
-              x)
+          axis=bn_axis, 
+          momentum=norm_momentum, 
+          epsilon=norm_epsilon,
+          synchronized=use_sync_bn)(x)
       x = tf_utils.get_activation(activation)(x)
       x = layers.Conv2D(
           filters=64,
@@ -188,8 +189,10 @@ class DilatedResNet(tf.keras.Model):
           bias_regularizer=self._bias_regularizer)(
               x)
       x = self._norm(
-          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
-              x)
+          axis=bn_axis, 
+          momentum=norm_momentum, 
+          epsilon=norm_epsilon,
+          synchronized=use_sync_bn)(x)
       x = tf_utils.get_activation(activation)(x)
       x = layers.Conv2D(
           filters=128,
@@ -202,8 +205,10 @@ class DilatedResNet(tf.keras.Model):
           bias_regularizer=self._bias_regularizer)(
               x)
       x = self._norm(
-          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
-              x)
+          axis=bn_axis, 
+          momentum=norm_momentum, 
+          epsilon=norm_epsilon,
+          synchronized=use_sync_bn)(x)
       x = tf_utils.get_activation(activation)(x)
     else:
       raise ValueError('Stem type {} not supported.'.format(stem_type))
@@ -220,8 +225,10 @@ class DilatedResNet(tf.keras.Model):
           bias_regularizer=self._bias_regularizer)(
               x)
       x = self._norm(
-          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
-              x)
+          axis=bn_axis, 
+          momentum=norm_momentum, 
+          epsilon=norm_epsilon,
+          synchronized=use_sync_bn)(x)
       x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
     else:
       x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)

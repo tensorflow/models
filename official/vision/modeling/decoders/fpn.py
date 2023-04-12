@@ -97,10 +97,8 @@ class FPN(tf.keras.Model):
       conv2d = tf.keras.layers.SeparableConv2D
     else:
       conv2d = tf.keras.layers.Conv2D
-    if use_sync_bn:
-      norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      norm = tf.keras.layers.BatchNormalization
+    
+    norm = tf.keras.layers.BatchNormalization
     activation_fn = tf_utils.get_activation(activation, use_keras_layer=True)
 
     # Build input feature pyramid.
@@ -185,7 +183,8 @@ class FPN(tf.keras.Model):
           axis=bn_axis,
           momentum=norm_momentum,
           epsilon=norm_epsilon,
-          name=f'norm_{level}')(
+          name=f'norm_{level}',
+          synchronized=use_sync_bn)(
               feats[str(level)])
 
     self._output_specs = {

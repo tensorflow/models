@@ -91,10 +91,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
 
     self.aspp_layers = []
 
-    if self.use_sync_bn:
-      bn_op = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      bn_op = tf.keras.layers.BatchNormalization
+    bn_op = tf.keras.layers.BatchNormalization
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       bn_axis = -1
@@ -112,7 +109,8 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
         bn_op(
             axis=bn_axis,
             momentum=self.batchnorm_momentum,
-            epsilon=self.batchnorm_epsilon),
+            epsilon=self.batchnorm_epsilon,
+            synchronized=self.use_sync_bn),
         tf.keras.layers.Activation(self.activation)
     ])
     self.aspp_layers.append(conv_sequential)
@@ -143,7 +141,8 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
           bn_op(
               axis=bn_axis,
               momentum=self.batchnorm_momentum,
-              epsilon=self.batchnorm_epsilon),
+              epsilon=self.batchnorm_epsilon,
+              synchronized=self.use_sync_bn),
           tf.keras.layers.Activation(self.activation)
       ])
       self.aspp_layers.append(conv_sequential)
@@ -168,7 +167,8 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
             bn_op(
                 axis=bn_axis,
                 momentum=self.batchnorm_momentum,
-                epsilon=self.batchnorm_epsilon),
+                epsilon=self.batchnorm_epsilon,
+                synchronized=self.use_sync_bn),
             tf.keras.layers.Activation(self.activation)
         ]))
 
@@ -185,7 +185,8 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
         bn_op(
             axis=bn_axis,
             momentum=self.batchnorm_momentum,
-            epsilon=self.batchnorm_epsilon),
+            epsilon=self.batchnorm_epsilon,
+            synchronized=self.use_sync_bn),
         tf.keras.layers.Activation(self.activation),
         tf.keras.layers.Dropout(rate=self.dropout)
     ])

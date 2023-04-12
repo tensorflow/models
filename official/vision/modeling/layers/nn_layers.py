@@ -1136,10 +1136,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
     self._pool_kernel_size = pool_kernel_size
     self._use_depthwise_convolution = use_depthwise_convolution
     self._activation_fn = tf_utils.get_activation(activation)
-    if self._use_sync_bn:
-      self._bn_op = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._bn_op = tf.keras.layers.BatchNormalization
+    self._bn_op = tf.keras.layers.BatchNormalization
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
@@ -1162,7 +1159,8 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
     norm1 = self._bn_op(
         axis=self._bn_axis,
         momentum=self._batchnorm_momentum,
-        epsilon=self._batchnorm_epsilon)
+        epsilon=self._batchnorm_epsilon,
+        synchronized=self._use_sync_bn)
 
     self.aspp_layers.append([conv1, norm1])
 
@@ -1196,7 +1194,8 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
       norm_dilation = self._bn_op(
           axis=self._bn_axis,
           momentum=self._batchnorm_momentum,
-          epsilon=self._batchnorm_epsilon)
+          epsilon=self._batchnorm_epsilon,
+          synchronized=self._use_sync_bn)
 
       self.aspp_layers.append(conv_dilation + [norm_dilation])
 
@@ -1217,7 +1216,8 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
     norm2 = self._bn_op(
         axis=self._bn_axis,
         momentum=self._batchnorm_momentum,
-        epsilon=self._batchnorm_epsilon)
+        epsilon=self._batchnorm_epsilon,
+        synchronized=self._use_sync_bn)
 
     self.aspp_layers.append(pooling + [conv2, norm2])
 
@@ -1235,7 +1235,8 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
         self._bn_op(
             axis=self._bn_axis,
             momentum=self._batchnorm_momentum,
-            epsilon=self._batchnorm_epsilon)
+            epsilon=self._batchnorm_epsilon,
+            synchronized=self._use_sync_bn)
     ]
     self._dropout_layer = tf.keras.layers.Dropout(rate=self._dropout)
     self._concat_layer = tf.keras.layers.Concatenate(axis=-1)
