@@ -60,12 +60,13 @@ class BeamSearchTests(tf.test.TestCase, parameterized.TestCase):
         y)
 
   @parameterized.named_parameters([
-      ('padded_decode_true_with_name', True, 'decoding'),
-      ('padded_decode_false_with_name', False, 'decoding'),
-      ('padded_decode_true_without_name', True, None),
-      ('padded_decode_false_without_name', False, None),
+      ('padded_decode_true_with_name', True, 0.0, 'decoding'),
+      ('padded_decode_false_with_name', False, 0.0, 'decoding'),
+      ('padded_decode_true_without_name', True, 0.0, None),
+      ('padded_decode_false_without_name', False, 0.0, None),
+      ('padded_decode_false_with_noise', False, 0.5, 'decoding'),
   ])
-  def test_sequence_beam_search(self, padded_decode, name):
+  def test_sequence_beam_search(self, padded_decode, noise_multiplier, name):
     # batch_size*beam_size, max_decode_length, vocab_size
     probabilities = tf.constant([[[0.2, 0.7, 0.1], [0.5, 0.3, 0.2],
                                   [0.1, 0.8, 0.1]],
@@ -94,8 +95,13 @@ class BeamSearchTests(tf.test.TestCase, parameterized.TestCase):
         eos_id=9,
         padded_decode=padded_decode,
         dtype=tf.float32,
-        decoding_name=name)
-    self.assertAllEqual([[[0, 1, 0, 1], [0, 1, 1, 2]]], predictions)
+        noise_multiplier=noise_multiplier,
+        decoding_name=name,
+    )
+    if noise_multiplier > 0:
+      self.assertAllEqual([[[0, 1, 0, 1], [0, 0, 2, 2]]], predictions)
+    else:
+      self.assertAllEqual([[[0, 1, 0, 1], [0, 1, 1, 2]]], predictions)
 
 
 if __name__ == '__main__':
