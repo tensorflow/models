@@ -71,8 +71,8 @@ class ClassificationModel(tf.keras.Model):
 
     if add_head_batch_norm:
       x = norm(
-        axis=axis, 
-        momentum=norm_momentum, 
+        axis=axis,
+        momentum=norm_momentum,
         epsilon=norm_epsilon,
         synchronized=use_sync_bn)(x)
 
