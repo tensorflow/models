@@ -13,16 +13,16 @@
 # limitations under the License.
 
 """Optimizer factory class."""
-from typing import Callable, Optional, Union, List, Tuple
+from typing import Callable, List, Optional, Tuple, Union
 
 import gin
 import tensorflow as tf
-import tensorflow_addons.optimizers as tfa_optimizers
 
 from official.modeling.optimization import slide_optimizer
 from official.modeling.optimization import adafactor_optimizer
 from official.modeling.optimization import ema_optimizer
-from official.modeling.optimization import lars_optimizer
+from official.modeling.optimization import lamb
+from official.modeling.optimization import lars
 from official.modeling.optimization import legacy_adamw
 from official.modeling.optimization import lr_schedule
 from official.modeling.optimization.configs import optimization_config as opt_cfg
@@ -33,8 +33,8 @@ SHARED_OPTIMIZERS = {
     'adam_experimental': tf.keras.optimizers.experimental.Adam,
     'adamw': legacy_adamw.AdamWeightDecay,
     'adamw_experimental': tf.keras.optimizers.experimental.AdamW,
-    'lamb': tfa_optimizers.LAMB,
-    'lars': lars_optimizer.LARS,
+    'lamb': lamb.LAMB,
+    'lars': lars.LARS,
     'slide': slide_optimizer.SLIDE,
     'adafactor': adafactor_optimizer.Adafactor,
 }
