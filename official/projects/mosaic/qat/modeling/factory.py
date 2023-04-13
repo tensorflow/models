@@ -54,6 +54,7 @@ def build_qat_mosaic_model(
       'L2': tf.keras.regularizers.l2,
   }
 
+  model.use_legacy_config = True  # Ensures old Keras serialization format
   # Apply QAT to backbone (a tf.keras.Model) first, and then neck and head.
   with tfmot.quantization.keras.quantize_scope(scope_dict):
     annotated_backbone = tfmot.quantization.keras.quantize_annotate_model(
