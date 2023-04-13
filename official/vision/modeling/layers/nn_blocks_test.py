@@ -431,7 +431,7 @@ class ValidatedFeedforwardLayer(tf.keras.layers.Layer):
     self.activation = activation
 
   def build(self, input_shape):
-    hidden_size = input_shape.as_list()[-1]
+    hidden_size = input_shape[-1]
     self._feedforward_dense = tf.keras.layers.EinsumDense(
         '...x,xy->...y',
         output_shape=hidden_size,
