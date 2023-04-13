@@ -18,7 +18,6 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
 
 from absl import logging
 import tensorflow as tf
-import tensorflow_addons as tfa
 
 from official.modeling import tf_utils
 from official.vision.ops import spatial_transform_ops
@@ -351,7 +350,7 @@ class PanopticFPNFusion(tf.keras.Model):
         'kernel_regularizer': kernel_regularizer,
         'bias_regularizer': bias_regularizer,
     }
-    norm = tfa.layers.GroupNormalization
+    norm = tf.keras.layers.GroupNormalization
     conv2d = tf.keras.layers.Conv2D
     activation_fn = tf_utils.get_activation(activation)
     if tf.keras.backend.image_data_format() == 'channels_last':

@@ -16,11 +16,9 @@
 
 import tensorflow as tf
 
-from tensorflow_addons.utils import types
-
 
 @tf.keras.utils.register_keras_serializable(package='Text')
-def mish(x: types.TensorLike) -> tf.Tensor:
+def mish(x) -> tf.Tensor:
   """Mish activation function.
 
      Mish: A Self Regularized Non-Monotonic Activation Function
