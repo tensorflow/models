@@ -103,14 +103,25 @@ class RetinaNetBuilderTest(parameterized.TestCase, tf.test.TestCase):
       self.assertEqual(
           model_config.head.attribute_heads[0].as_dict(),
           dict(
-              name='att1', type='regression', size=1, prediction_tower_name=''))
+              name='att1',
+              type='regression',
+              size=1,
+              prediction_tower_name='',
+              num_convs=None,
+              num_filters=None,
+          ),
+      )
       self.assertEqual(
           model_config.head.attribute_heads[1].as_dict(),
           dict(
               name='att2',
               type='classification',
               size=2,
-              prediction_tower_name=''))
+              prediction_tower_name='',
+              num_convs=None,
+              num_filters=None,
+          ),
+      )
 
 
 class VideoClassificationModelBuilderTest(parameterized.TestCase,
