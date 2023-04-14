@@ -28,7 +28,14 @@ from official.vision.modeling.heads import dense_prediction_heads
 def get_attribute_heads(att_head_type):
   if att_head_type == 'regression_head':
     return [
-        dict(name='depth', type='regression', size=1, prediction_tower_name='')
+        dict(
+            name='depth',
+            type='regression',
+            size=1,
+            prediction_tower_name='',
+            num_convs=1,
+            num_filters=128,
+        )
     ]
   elif att_head_type == 'classification_head':
     return [
@@ -41,17 +48,20 @@ def get_attribute_heads(att_head_type):
   elif att_head_type == 'shared_prediction_tower_attribute_heads':
     return [
         dict(
-            name='attr_1', type='regression', size=1, prediction_tower_name=''),
+            name='attr_1', type='regression', size=1, prediction_tower_name=''
+        ),
         dict(
             name='attr_2',
             type='classification',
             size=1,
-            prediction_tower_name='tower_1'),
+            prediction_tower_name='tower_1',
+        ),
         dict(
             name='attr_3',
             type='regression',
             size=1,
-            prediction_tower_name='tower_1')
+            prediction_tower_name='tower_1',
+        ),
     ]
   else:
     raise ValueError('Undefined attribute type.')
@@ -103,6 +113,9 @@ class RetinaNetHeadTest(parameterized.TestCase, tf.test.TestCase):
       for att in attributes.values():
         self.assertAllEqual(att['3'].numpy().shape, [2, 128, 128, 3])
         self.assertAllEqual(att['4'].numpy().shape, [2, 64, 64, 3])
+      if att_head_type == 'regression_head':
+        self.assertLen(retinanet_head._att_convs['depth'], 1)
+        self.assertEqual(retinanet_head._att_convs['depth'][0].filters, 128)
 
   @unittest.expectedFailure
   def test_forward_shared_prediction_tower_with_share_classification_heads(

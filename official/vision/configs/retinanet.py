@@ -110,6 +110,13 @@ class AttributeHead(hyperparams.Config):
   # prediction tower. If unspecified, they will use their individual prediction
   # tower.
   prediction_tower_name: str = ''
+  # If `num_convs` or `num_filters` are not provided, it will use the parameters
+  # from RetinaNetHead. When several attributes share the head through setting
+  # the same `prediction_tower_name`, we only respect `num_convs` and
+  # `num_filters` from the first attribute that use the shared prediction tower
+  # name.
+  num_convs: Optional[int] = None
+  num_filters: Optional[int] = None
 
 
 @dataclasses.dataclass
