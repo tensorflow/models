@@ -85,6 +85,31 @@ class DetectionModule(export_base.ExportModule):
 
     return image, anchor_boxes, image_info
 
+  def _normalize_coordinates(self, detections_dict, dict_keys, image_info):
+    """Normalizes detection coordinates between 0 and 1.
+
+    Args:
+      detections_dict: Dictionary containing the output of the model prediction.
+      dict_keys: Key names corresponding to the tensors of the output dictionary
+        that we want to update.
+      image_info: Tensor containing the details of the image resizing.
+
+    Returns:
+      detections_dict: Updated detection dictionary.
+    """
+    for key in dict_keys:
+      if key not in detections_dict:
+        continue
+      detection_boxes = detections_dict[key] / tf.tile(
+          image_info[:, 2:3, :], [1, 1, 2]
+      )
+      detections_dict[key] = box_ops.normalize_boxes(
+          detection_boxes, image_info[:, 0:1, :]
+      )
+      detections_dict[key] = tf.clip_by_value(detections_dict[key], 0.0, 1.0)
+
+    return detections_dict
+
   def preprocess(
       self, images: tf.Tensor
   ) -> Tuple[tf.Tensor, Mapping[str, tf.Tensor], tf.Tensor]:
@@ -180,13 +205,8 @@ class DetectionModule(export_base.ExportModule):
         export_config = self.params.task.export_config
         # Normalize detection box coordinates to [0, 1].
         if export_config.output_normalized_coordinates:
-          for key in ['detection_boxes', 'detection_outer_boxes']:
-            if key not in detections:
-              continue
-            detection_boxes = (
-                detections[key] / tf.tile(image_info[:, 2:3, :], [1, 1, 2]))
-            detections[key] = box_ops.normalize_boxes(
-                detection_boxes, image_info[:, 0:1, :])
+          keys = ['detection_boxes', 'detection_outer_boxes']
+          detections = self._normalize_coordinates(detections, keys, image_info)
 
         # Cast num_detections and detection_classes to float. This allows the
         # model inference to work on chain (go/chain) as chain requires floating
@@ -208,6 +228,13 @@ class DetectionModule(export_base.ExportModule):
         final_outputs['detection_outer_boxes'] = (
             detections['detection_outer_boxes'])
     else:
+      # For RetinaNet model, apply export_config.
+      if isinstance(self.params.task.model, configs.retinanet.RetinaNet):
+        export_config = self.params.task.export_config
+        # Normalize detection box coordinates to [0, 1].
+        if export_config.output_normalized_coordinates:
+          keys = ['decoded_boxes']
+          detections = self._normalize_coordinates(detections, keys, image_info)
       final_outputs = {
           'decoded_boxes': detections['decoded_boxes'],
           'decoded_box_scores': detections['decoded_box_scores']
