@@ -34,12 +34,17 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
       experiment_name,
       input_type,
       outer_boxes_scale=1.0,
+      apply_nms=True,
+      normalized_coordinates=False,
       nms_version='batched',
       output_intermediate_features=False,
   ):
     params = exp_factory.get_exp_config(experiment_name)
     params.task.model.outer_boxes_scale = outer_boxes_scale
     params.task.model.backbone.resnet.model_id = 18
+    params.task.model.detection_generator.apply_nms = apply_nms
+    if normalized_coordinates:
+      params.task.export_config.output_normalized_coordinates = True
     params.task.model.detection_generator.nms_version = nms_version
     if output_intermediate_features:
       params.task.export_config.output_intermediate_features = True
@@ -182,6 +187,49 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
             'decoder_7',
         },
         outputs.keys(),
+    )
+
+  @parameterized.parameters(
+      ('image_tensor', 'retinanet_resnetfpn_coco', [640, 640]),
+      ('image_bytes', 'retinanet_resnetfpn_coco', [640, 640]),
+      ('tf_example', 'retinanet_resnetfpn_coco', [384, 640]),
+      ('tflite', 'retinanet_resnetfpn_coco', [640, 640]),
+      ('image_tensor', 'retinanet_resnetfpn_coco', [384, 384]),
+      ('image_bytes', 'retinanet_spinenet_coco', [640, 640]),
+      ('tf_example', 'retinanet_spinenet_coco', [640, 384]),
+      ('tflite', 'retinanet_spinenet_coco', [640, 640]),
+  )
+  def test_export_normalized_coordinates_no_nms(
+      self,
+      input_type,
+      experiment_name,
+      image_size,
+  ):
+    tmp_dir = self.get_temp_dir()
+    module = self._get_detection_module(
+        experiment_name,
+        input_type,
+        apply_nms=False,
+        normalized_coordinates=True,
+    )
+
+    self._export_from_module(module, input_type, tmp_dir)
+
+    imported = tf.saved_model.load(tmp_dir)
+    detection_fn = imported.signatures['serving_default']
+
+    images = self._get_dummy_input(
+        input_type, batch_size=1, image_size=image_size
+    )
+    outputs = detection_fn(tf.constant(images))
+
+    min_values = tf.math.reduce_min(outputs['decoded_boxes'])
+    max_values = tf.math.reduce_max(outputs['decoded_boxes'])
+    self.assertAllGreaterEqual(
+        min_values.numpy(), tf.zeros_like(min_values).numpy()
+    )
+    self.assertAllLessEqual(
+        max_values.numpy(), tf.ones_like(max_values).numpy()
     )
 
 
