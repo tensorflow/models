@@ -220,8 +220,7 @@ class AdamWeightDecayExperimentalConfig(BaseOptimizerConfig):
 class LAMBConfig(BaseOptimizerConfig):
   """Configuration for LAMB optimizer.
 
-  The attributes for this class matches the arguments of
-  tensorflow_addons.optimizers.LAMB.
+  The attributes for this class matches the arguments of LAMB optimizer.
 
   Attributes:
     name: name of the optimizer.

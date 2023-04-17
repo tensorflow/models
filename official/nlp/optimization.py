@@ -17,10 +17,12 @@
 from absl import logging
 import gin
 import tensorflow as tf
-import tensorflow_addons.optimizers as tfa_optimizers
+
+from official.modeling.optimization import lamb
 from official.modeling.optimization import legacy_adamw
 
 AdamWeightDecay = legacy_adamw.AdamWeightDecay
+LAMB = lamb.LAMB
 
 
 class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
@@ -97,13 +99,14 @@ def create_optimizer(init_lr,
         exclude_from_weight_decay=['LayerNorm', 'layer_norm', 'bias'])
   elif optimizer_type == 'lamb':
     logging.info('using Lamb optimizer')
-    optimizer = tfa_optimizers.LAMB(
+    optimizer = LAMB(
         learning_rate=lr_schedule,
         weight_decay_rate=0.01,
         beta_1=beta_1,
         beta_2=0.999,
         epsilon=1e-6,
-        exclude_from_weight_decay=['LayerNorm', 'layer_norm', 'bias'])
+        exclude_from_weight_decay=['LayerNorm', 'layer_norm', 'bias'],
+    )
   else:
     raise ValueError('Unsupported optimizer type: ', optimizer_type)
 
