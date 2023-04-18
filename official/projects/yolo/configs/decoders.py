@@ -43,7 +43,7 @@ class YoloDecoder(hyperparams.Config):
 
 
 @dataclasses.dataclass
-class YOLOV7(hyperparams.Config):
+class YoloV7(hyperparams.Config):
   model_id: str = 'yolov7'
 
 
@@ -51,4 +51,4 @@ class YOLOV7(hyperparams.Config):
 class Decoder(decoders.Decoder):
   type: Optional[str] = 'yolo_decoder'
   yolo_decoder: YoloDecoder = YoloDecoder()
-  yolov7: YOLOV7 = YOLOV7()
+  yolov7: YoloV7 = YoloV7()
