@@ -1,9 +1,9 @@
-# ViT-B16 ImageNet classification using 384x384 input.
-# Use 8 V100 GPU for training and validation.
+# ViT-H14 ImageNet classification using 384x384 input.
+# Use 8x16 DF TPU for training and validation.
 # --experiment_type=vit_imagenet_finetune
 runtime:
-  distribution_strategy: mirrored
-  mixed_precision_dtype: float16
+  distribution_strategy: tpu
+  mixed_precision_dtype: bfloat16
 task:
   losses:
     l2_weight_decay: 0.0
@@ -15,7 +15,7 @@ task:
       type: vit
       vit:
         init_stochastic_depth_rate: 0.1
-        model_name: vit-b16
+        model_name: vit-h14
         original_init: false
         patch_size: 16
         representation_size: 0
@@ -40,8 +40,8 @@ task:
         num_layers: 2
         translate_const: 10
       type: randaug
-    dtype: float16
-    global_batch_size: 128
+    dtype: bfloat16
+    global_batch_size: 1024
     input_path: gs://mlcompass-data/imagenet/imagenet-2012-tfrecord/train*
     is_training: true
     mixup_and_cutmix:
@@ -53,19 +53,19 @@ task:
     randaug_magnitude: 10
   validation_data:
     is_multilabel: false
-    dtype: float16
+    dtype: bfloat16
     global_batch_size: 1024
     input_path: gs://mlcompass-data/imagenet/imagenet-2012-tfrecord/valid*
     is_training: false
     drop_remainder: false
 trainer:
-  checkpoint_interval: 4992
+  checkpoint_interval: 1248
   optimizer_config:
     learning_rate:
       cosine:
         alpha: 0.0
-        decay_steps: 1497600
-        initial_learning_rate: 0.000175
+        decay_steps: 187200
+        initial_learning_rate: 0.001
       type: cosine
     optimizer:
       adamw:
@@ -75,10 +75,10 @@ trainer:
     warmup:
       linear:
         warmup_learning_rate: 0
-        warmup_steps: 49800
+        warmup_steps: 6240
       type: linear
-  steps_per_loop: 4992
-  summary_interval: 4992
-  train_steps: 1497600  # 300 epochs
-  validation_interval: 4992
+  steps_per_loop: 1248
+  summary_interval: 1248
+  train_steps: 187200
+  validation_interval: 1248
   validation_steps: 49
