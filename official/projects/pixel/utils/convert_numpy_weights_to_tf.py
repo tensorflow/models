@@ -7,8 +7,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from official.modeling import optimization
-from official.projects.pixel.tasks import image_classification as vit_cls
-from official.vision.configs import image_classification
+from official.projects.pixel.tasks import classification
     
 def convert(vit_encoder, hf_model_param_dict):
   """Convert pixel model from huggingface to official.projects.pixel."""
@@ -80,8 +79,8 @@ if __name__ == "__main__":
   model_name = json.load(open(f"{data_path}/model_name.json"))
   model_params = np.load(open(f"{data_path}/model_param.npy", "rb"), allow_pickle=True)
 
-  config = vit_cls.ViTConfig()
-  task = vit_cls.ViTClassificationTask(config)
+  config = classificaiton.PixelConfig()
+  task = classificaiton.PixelClassificationTask(config)
   model = task.build_model()
 
   convert(model, {k: v for k, v in zip(model_name, model_params)})
