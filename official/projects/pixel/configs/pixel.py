@@ -35,7 +35,7 @@ def pixel_sst2_finetune() -> cfg.ExperimentConfig:
   config = cfg.ExperimentConfig(
       task=PixelConfig(
           train_data=PixelDataConfig(
-              input_path=None, #f'{data_path}/train.tf_record-*-of-20',
+              input_path=None,
               is_training=True,
               global_batch_size=train_batch_size,
               shuffle_buffer_size=10000,
@@ -46,7 +46,7 @@ def pixel_sst2_finetune() -> cfg.ExperimentConfig:
               num_channels=num_channels,
           ),
           validation_data=PixelDataConfig(
-              input_path=None, #f'{data_path}/eval.tf_record',
+              input_path=None,
               is_training=False,
               global_batch_size=eval_batch_size,
               shuffle_buffer_size=10000,
@@ -65,7 +65,7 @@ def pixel_sst2_finetune() -> cfg.ExperimentConfig:
               attention_dropout_rate=0.1,
               init_stochastic_depth_rate=0.0,
           ),
-          init_checkpoint=None, #'vit_encoder.ckpt',
+          init_checkpoint=None,
           input_size=input_size,
           patch_h=patch_h,
           patch_w=patch_w,

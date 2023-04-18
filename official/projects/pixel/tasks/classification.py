@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Image classification task with ViT."""
+"""Text classification task with ViT."""
 
 import dataclasses
 from typing import Optional, Tuple

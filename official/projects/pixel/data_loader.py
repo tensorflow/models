@@ -28,7 +28,7 @@ LABEL_TYPES_MAP = {'int': tf.int64, 'float': tf.float32}
 
 @dataclasses.dataclass
 class PixelDataConfig(cfg.DataConfig):
-  """Data config for sentence prediction task (tasks/sentence_prediction)."""
+  """Data config for text classification task."""
   input_path: str = ''
   global_batch_size: int = 32
   is_training: bool = True
@@ -46,7 +46,7 @@ class PixelDataConfig(cfg.DataConfig):
 
 @data_loader_factory.register_data_loader_cls(PixelDataConfig)
 class PixelDataLoader(data_loader.DataLoader):
-  """A class to load dataset for sentence prediction (classification) task."""
+  """A class to load dataset for text classification task."""
 
   def __init__(self, params):
     self._params = params
