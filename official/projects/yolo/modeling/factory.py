@@ -14,9 +14,13 @@
 
 """Contains common factory functions yolo neural networks."""
 
+from absl import logging
+
 from official.projects.yolo.configs import yolo
 from official.projects.yolo.modeling import yolo_model
+from official.projects.yolo.modeling import yolov7_model
 from official.projects.yolo.modeling.heads import yolo_head
+from official.projects.yolo.modeling.heads import yolov7_head
 from official.projects.yolo.modeling.layers import detection_generator
 from official.vision.modeling.backbones import factory as backbone_factory
 from official.vision.modeling.decoders import factory as decoder_factory
@@ -90,3 +94,77 @@ def build_yolo(input_specs, model_config, l2_regularization):
 
   losses = detection_generator_obj.get_losses()
   return model, losses
+
+
+def build_yolov7_detection_generator(model_config: yolo.Yolo, anchor_boxes):
+  """Builds yolo detection generator."""
+  model = detection_generator.YoloLayer(
+      classes=model_config.num_classes,
+      anchors=anchor_boxes,
+      iou_thresh=model_config.detection_generator.iou_thresh,
+      nms_thresh=model_config.detection_generator.nms_thresh,
+      max_boxes=model_config.detection_generator.max_boxes,
+      pre_nms_points=model_config.detection_generator.pre_nms_points,
+      nms_version=model_config.detection_generator.nms_version,
+      box_type=model_config.detection_generator.box_type.get(),
+      path_scale=model_config.detection_generator.path_scales.get(),
+      scale_xy=model_config.detection_generator.scale_xy.get(),
+      use_class_agnostic_nms=model_config.detection_generator.use_class_agnostic_nms,
+  )
+  return model
+
+
+def build_yolov7(input_specs, model_config, l2_regularization):
+  """Builds yolov7 model."""
+  norm_activation_config = model_config.norm_activation
+  backbone = backbone_factory.build_backbone(
+      input_specs,
+      model_config.backbone,
+      norm_activation_config,
+      l2_regularization,
+  )
+  decoder = decoder_factory.build_decoder(
+      backbone.output_specs,
+      model_config,
+      l2_regularization,
+  )
+
+  decoder_output_specs = decoder.output_specs
+  min_level = min(map(int, decoder_output_specs.keys()))
+  max_level = max(map(int, decoder_output_specs.keys()))
+  if min_level != model_config.min_level:
+    logging.warning(
+        (
+            'The `min_level` does not match! Expects min_level=%d but got '
+            'min_level=%d. Expected value will be used.'
+        ),
+        min_level,
+        model_config.min_level,
+    )
+  if max_level != model_config.max_level:
+    logging.warning(
+        (
+            'The `max_level` does not match! Expects max_level=%d but got'
+            'max_level=%d. Expected value will be used.'
+        ),
+        max_level,
+        model_config.max_level,
+    )
+  anchor_dict, _ = model_config.anchor_boxes.get(min_level, max_level)
+  num_anchors = len(anchor_dict[str(min_level)])
+  head = yolov7_head.YoloV7DetectionHead(
+      model_config.num_classes,
+      min_level,
+      max_level,
+      num_anchors,
+      kernel_regularizer=l2_regularization,
+  )
+  # YOLOv7 and YOLOv4 share the same detection generator.
+  detection_generator_obj = build_yolov7_detection_generator(
+      model_config, anchor_dict
+  )
+  model = yolov7_model.YoloV7(
+      backbone, decoder, head, detection_generator=detection_generator_obj
+  )
+
+  return model

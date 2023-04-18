@@ -21,14 +21,18 @@ from official.vision import registry_imports
 # import configs
 from official.projects.yolo.configs import darknet_classification
 from official.projects.yolo.configs import yolo as yolo_config
+from official.projects.yolo.configs import yolov7 as yolov7_config
 
 # import modeling components
 from official.projects.yolo.modeling.backbones import darknet
 from official.projects.yolo.modeling.decoders import yolo_decoder
+from official.projects.yolo.modeling.backbones import yolov7 as yolov7_backbone
+from official.projects.yolo.modeling.decoders import yolov7 as yolov7_decoder
 
 # import tasks
 from official.projects.yolo.tasks import image_classification
 from official.projects.yolo.tasks import yolo as yolo_task
+from official.projects.yolo.tasks import yolov7 as yolov7_task
 
 # import optimization packages
 from official.projects.yolo.optimization import optimizer_factory
