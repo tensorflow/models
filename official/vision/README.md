@@ -56,7 +56,7 @@ segmentation.
 | ResNet-50    | 224x224       |    90    | 76.1 | 92.9 | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnet50_tpu.yaml) |
 | ResNet-50    | 224x224       |    200   | 77.1 | 93.5 | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnet50_tpu.yaml) \| [ckpt](https://storage.googleapis.com/tf_model_garden/vision/resnet/resnet-50-i224.tar.gz) |
 | ResNet-101   | 224x224       |    200   | 78.3 | 94.2 | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnet101_tpu.yaml) \| [ckpt](https://storage.googleapis.com/tf_model_garden/vision/resnet/resnet-101-i224.tar.gz) |
-| ResNet-152   | 224x224       |    200   | 78.7 | 94.3 | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnet152_tpu.yaml) [ckpt](https://storage.googleapis.com/tf_model_garden/vision/resnet/resnet-152-i224.tar.gz) |
+| ResNet-152   | 224x224       |    200   | 78.7 | 94.3 | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/image_classification/imagenet_resnet152_tpu.yaml) \| [ckpt](https://storage.googleapis.com/tf_model_garden/vision/resnet/resnet-152-i224.tar.gz) |
 
 </details>
 
