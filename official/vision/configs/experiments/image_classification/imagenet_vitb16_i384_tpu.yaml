@@ -1,6 +1,6 @@
-# ViT-B16 ImageNet classification using 384x384 input. Top-1 accuracy 82.5.
+# ViT-B16 ImageNet classification using 384x384 input.
 # Use 4x4 DF TPU for training and validation.
-# --experiment_type=deit_imagenet_pretrain
+# --experiment_type=vit_imagenet_finetune
 runtime:
   distribution_strategy: tpu
   mixed_precision_dtype: bfloat16
@@ -29,6 +29,7 @@ task:
       use_sync_bn: false
     num_classes: 1001
   train_data:
+    is_multilabel: false
     aug_rand_hflip: true
     aug_type:
       randaug:
@@ -51,6 +52,7 @@ task:
       switch_prob: 0.5
     randaug_magnitude: 10
   validation_data:
+    is_multilabel: false
     dtype: bfloat16
     global_batch_size: 4096
     input_path: gs://mlcompass-data/imagenet/imagenet-2012-tfrecord/valid*

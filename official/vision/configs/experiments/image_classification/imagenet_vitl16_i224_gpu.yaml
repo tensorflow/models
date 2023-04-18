@@ -1,6 +1,6 @@
-# ViT-B16 ImageNet classification using 384x384 input.
+# ViT-L16 ImageNet classification using 224x224 input.
 # Use 8 V100 GPU for training and validation.
-# --experiment_type=vit_imagenet_finetune
+# --experiment_type=deit_imagenet_pretrain
 runtime:
   distribution_strategy: mirrored
   mixed_precision_dtype: float16
@@ -15,12 +15,11 @@ task:
       type: vit
       vit:
         init_stochastic_depth_rate: 0.1
-        model_name: vit-b16
+        model_name: vit-l16
         original_init: false
         patch_size: 16
-        representation_size: 0
     dropout_rate: 0.0
-    input_size: [384, 384, 3]
+    input_size: [224, 224, 3]
     kernel_initializer: zeros
     norm_activation:
       activation: relu
@@ -29,7 +28,6 @@ task:
       use_sync_bn: false
     num_classes: 1001
   train_data:
-    is_multilabel: false
     aug_rand_hflip: true
     aug_type:
       randaug:
@@ -52,12 +50,10 @@ task:
       switch_prob: 0.5
     randaug_magnitude: 10
   validation_data:
-    is_multilabel: false
     dtype: float16
     global_batch_size: 1024
     input_path: gs://mlcompass-data/imagenet/imagenet-2012-tfrecord/valid*
     is_training: false
-    drop_remainder: false
 trainer:
   checkpoint_interval: 4992
   optimizer_config:
