@@ -90,6 +90,7 @@ connected to a new, more powerful backbone if a person chose to.
 | Yolo-v4 csp      |
 | Yolo-v4 large    |
 | Yolo-v7          |
+| Yolo-v7-tiny     |
 
 ## Requirements
 [![TensorFlow 2.11](https://img.shields.io/badge/TensorFlow-2.11-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.11.0)

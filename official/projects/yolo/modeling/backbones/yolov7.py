@@ -68,6 +68,44 @@ _BLOCK_SPEC_SCHEMAS = {
     ]
 }
 
+# Define YOLOv7-tiny variant.
+_YoloV7Tiny = [
+    ['convbn', -1, 3, 2, 32, False],  # 0-P1/2
+
+    ['convbn', -1, 3, 2, 64, False],  # 1-P2/4
+
+    ['convbn', -1, 1, 1, 32, False],
+    ['convbn', -2, 1, 1, 32, False],
+    ['convbn', -1, 3, 1, 32, False],
+    ['convbn', -1, 3, 1, 32, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 64, False],  # 7
+
+    ['maxpool2d', -1, 2, 2, 'same', False],  # 8-P3/8
+    ['convbn', -1, 1, 1, 64, False],
+    ['convbn', -2, 1, 1, 64, False],
+    ['convbn', -1, 3, 1, 64, False],
+    ['convbn', -1, 3, 1, 64, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 128, True],  # 14
+
+    ['maxpool2d', -1, 2, 2, 'same', False],  # 15-P4/16
+    ['convbn', -1, 1, 1, 128, False],
+    ['convbn', -2, 1, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 256, True],  # 21
+
+    ['maxpool2d', -1, 2, 2, 'same', False],  # 22-P5/32
+    ['convbn', -1, 1, 1, 256, False],
+    ['convbn', -2, 1, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 512, True],  # 28
+]
+
 # Define YOLOv7 variant.
 _YoloV7 = [
     ['convbn', -1, 3, 1, 32, False],  # 0
@@ -133,6 +171,7 @@ _YoloV7 = [
 
 # Aggregates all variants for YOLOv7 backbones.
 BACKBONES = {
+    'yolov7-tiny': _YoloV7Tiny,
     'yolov7': _YoloV7,
 }
 

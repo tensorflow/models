@@ -309,3 +309,33 @@ def coco_yolov7() -> cfg.ExperimentConfig:
   )
 
   return config
+
+
+@exp_factory.register_config_factory('coco_yolov7tiny')
+def coco_yolov7_tiny() -> cfg.ExperimentConfig:
+  """COCO object detection with YOLOv7-tiny."""
+  config = coco_yolov7()
+  config.task.model.input_size = [416, 416, 3]
+  config.task.model.backbone.yolov7.model_id = 'yolov7-tiny'
+  config.task.model.decoder.yolov7.model_id = 'yolov7-tiny'
+  config.task.model.norm_activation.activation = 'leaky'
+  config.task.model.anchor_boxes.boxes = [
+      Box(box=[10, 13]),
+      Box(box=[16, 30]),
+      Box(box=[33, 23]),
+      Box(box=[30, 61]),
+      Box(box=[62, 45]),
+      Box(box=[59, 119]),
+      Box(box=[116, 90]),
+      Box(box=[156, 198]),
+      Box(box=[373, 326]),
+  ]
+
+  config.task.model.loss.cls_weight = 0.5
+  config.task.model.loss.obj_weight = 1.0
+  config.task.train_data.parser.aug_rand_translate = 0.1
+  config.task.train_data.parser.mosaic.mixup_frequency = 0.05
+  config.task.train_data.parser.mosaic.aug_scale_min = 0.5
+  config.task.train_data.parser.mosaic.aug_scale_max = 1.5
+  config.trainer.optimizer_config.learning_rate.cosine.alpha = 0.01
+  return config
