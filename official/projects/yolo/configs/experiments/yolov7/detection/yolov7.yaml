@@ -114,7 +114,7 @@ trainer:
   best_checkpoint_eval_metric: AP
   best_checkpoint_metric_comp: higher
   train_steps: 138600
-  validation_steps: 19
+  validation_steps: 312
   validation_interval: 2310
   steps_per_loop: 462
   summary_interval: 462
