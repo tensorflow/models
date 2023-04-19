@@ -1,8 +1,10 @@
+# This config is for demonstration purpose only. Parameters such as batch_size, train_steps should
+# be overridden when used.
 # YOLOv7-P5
-# --experiment_type=coco_yolov7
-# mAP: 50.4
+# --experiment_type=yolov7_coco
 runtime:
-  distribution_strategy: tpu
+  all_reduce_alg: nccl
+  distribution_strategy: multi_worker_mirrored
   mixed_precision_dtype: float32
 task:
   smart_bias_lr: 0.1
@@ -68,7 +70,7 @@ task:
   train_data:
     input_path: /readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/train*
     is_training: true
-    global_batch_size: 256
+    global_batch_size: 64
     dtype: float32
     parser:
       max_num_instances: 300
@@ -113,12 +115,12 @@ trainer:
   best_checkpoint_export_subdir: best_ckpt
   best_checkpoint_eval_metric: AP
   best_checkpoint_metric_comp: higher
-  train_steps: 138600
+  train_steps: 554400
   validation_steps: 19
-  validation_interval: 2310
-  steps_per_loop: 462
-  summary_interval: 462
-  checkpoint_interval: 462
+  validation_interval: 9240
+  steps_per_loop: 1848
+  summary_interval: 1848
+  checkpoint_interval: 1848
   optimizer_config:
     ema:
       average_decay: 0.9999
@@ -128,7 +130,7 @@ trainer:
       cosine:
         initial_learning_rate: 0.01
         alpha: 0.1
-        decay_steps: 138600
+        decay_steps: 554400
       type: cosine
     optimizer:
       sgd_torch:
@@ -137,11 +139,11 @@ trainer:
         momentum: 0.937
         momentum_start: 0.8
         nesterov: true
-        warmup_steps: 1386
-        weight_decay: 0.002
+        warmup_steps: 5544
+        weight_decay: 0.0005
       type: sgd_torch
     warmup:
       linear:
         warmup_learning_rate: 0.0
-        warmup_steps: 1386
+        warmup_steps: 5544
       type: linear
