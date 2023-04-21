@@ -919,10 +919,6 @@ class AutoAugment(ImageAugment):
       the policy.
     """
 
-    # TODO(dankondratyuk): tensorflow_addons defines custom ops, which
-    # for some reason are not included when building/linking
-    # This results in the error, "Op type not registered
-    # 'Addons>ImageProjectiveTransformV2' in binary" when running on borg TPUs
     policy = [
         [('Equalize', 0.8, 1), ('ShearY', 0.8, 4)],
         [('Color', 0.4, 9), ('Equalize', 0.6, 3)],
