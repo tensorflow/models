@@ -205,11 +205,7 @@ class SpineNetMobile(tf.keras.Model):
     self._norm_epsilon = norm_epsilon
     self._use_keras_upsampling_2d = use_keras_upsampling_2d
     self._num_init_blocks = 2
-
-    if use_sync_bn:
-      self._norm = layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = layers.BatchNormalization
+    self._norm = layers.BatchNormalization
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
@@ -290,7 +286,8 @@ class SpineNetMobile(tf.keras.Model):
     x = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)(
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)(
             x)
     x = tf_utils.get_activation(self._activation, use_keras_layer=True)(x)
 
@@ -428,7 +425,8 @@ class SpineNetMobile(tf.keras.Model):
       x = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)(
+          epsilon=self._norm_epsilon,
+          synchronized=self._use_sync_bn)(
               x)
       x = tf_utils.get_activation(self._activation, use_keras_layer=True)(x)
       endpoints[str(level)] = x
@@ -453,7 +451,8 @@ class SpineNetMobile(tf.keras.Model):
         x = self._norm(
             axis=self._bn_axis,
             momentum=self._norm_momentum,
-            epsilon=self._norm_epsilon)(
+            epsilon=self._norm_epsilon,
+            synchronized=self._use_sync_bn)(
                 x)
         x = tf_utils.get_activation(
             self._activation, use_keras_layer=True)(x)
@@ -476,7 +475,8 @@ class SpineNetMobile(tf.keras.Model):
     x = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)(
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)(
             x)
     return x
 
