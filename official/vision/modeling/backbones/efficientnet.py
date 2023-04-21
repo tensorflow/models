@@ -151,10 +151,7 @@ class EfficientNet(tf.keras.Model):
     self._norm_epsilon = norm_epsilon
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
-    if use_sync_bn:
-      self._norm = layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = layers.BatchNormalization
+    self._norm = layers.BatchNormalization
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       bn_axis = -1
@@ -178,7 +175,10 @@ class EfficientNet(tf.keras.Model):
         bias_regularizer=self._bias_regularizer)(
             inputs)
     x = self._norm(
-        axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+        axis=bn_axis,
+        momentum=norm_momentum,
+        epsilon=norm_epsilon,
+        synchronized=use_sync_bn)(
             x)
     x = tf_utils.get_activation(activation)(x)
 
@@ -210,7 +210,10 @@ class EfficientNet(tf.keras.Model):
         bias_regularizer=self._bias_regularizer)(
             x)
     x = self._norm(
-        axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+        axis=bn_axis,
+        momentum=norm_momentum,
+        epsilon=norm_epsilon,
+        synchronized=use_sync_bn)(
             x)
     endpoints[str(endpoint_level)] = tf_utils.get_activation(activation)(x)
 

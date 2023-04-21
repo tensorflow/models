@@ -137,9 +137,7 @@ class NASFPN(tf.keras.Model):
     self._conv_op = (tf.keras.layers.SeparableConv2D
                      if self._config_dict['use_separable_conv']
                      else tf.keras.layers.Conv2D)
-    self._norm_op = (tf.keras.layers.experimental.SyncBatchNormalization
-                     if self._config_dict['use_sync_bn']
-                     else tf.keras.layers.BatchNormalization)
+    self._norm_op = tf.keras.layers.BatchNormalization
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -148,6 +146,7 @@ class NASFPN(tf.keras.Model):
         'axis': self._bn_axis,
         'momentum': self._config_dict['norm_momentum'],
         'epsilon': self._config_dict['norm_epsilon'],
+        'synchronized': self._config_dict['use_sync_bn'],
     }
     self._activation = tf_utils.get_activation(activation)
 

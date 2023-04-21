@@ -130,11 +130,8 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
     self._norm_epsilon = norm_epsilon
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
+    self._norm = tf.keras.layers.BatchNormalization
 
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -161,7 +158,8 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
     self._norm0 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)
 
     self._temporal_conv = tf.keras.layers.Conv3D(
         filters=self._filters,
@@ -175,7 +173,8 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
     self._norm1 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)
 
     self._spatial_conv = tf.keras.layers.Conv3D(
         filters=self._filters,
@@ -189,7 +188,8 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
     self._norm2 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)
 
     self._expand_conv = tf.keras.layers.Conv3D(
         filters=4 * self._filters,
@@ -203,7 +203,8 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
     self._norm3 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)
 
     if self._se_ratio and self._se_ratio > 0 and self._se_ratio <= 1:
       self._squeeze_excitation = nn_layers.SqueezeExcitation(
