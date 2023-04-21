@@ -339,3 +339,11 @@ def coco_yolov7_tiny() -> cfg.ExperimentConfig:
   config.task.train_data.parser.mosaic.aug_scale_max = 1.5
   config.trainer.optimizer_config.learning_rate.cosine.alpha = 0.01
   return config
+
+
+@exp_factory.register_config_factory('coco_yolov7x')
+def coco_yolov7x() -> cfg.ExperimentConfig:
+  config = coco_yolov7()
+  config.task.model.backbone.yolov7.model_id = 'yolov7x'
+  config.task.model.decoder.yolov7.model_id = 'yolov7x'
+  return config

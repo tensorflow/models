@@ -222,10 +222,85 @@ _YoloV7 = [
     ['repconv', 50, 3, 1, 1024, True],
 ]
 
+_YoloV7X = [
+    ['sppcspc', -1, 640, False],  # 0
+
+    ['convbn', -1, 1, 1, 320, False],
+    ['upsample2d', -1, 2, 'nearest', False],
+    ['convbn', '4', 1, 1, 320, False],  # route from backbone P4
+    ['concat', [-1, -2], -1, False],
+
+    ['convbn', -1, 1, 1, 256, False],
+    ['convbn', -2, 1, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['concat', [-1, -3, -5, -7, -8], -1, False],
+    ['convbn', -1, 1, 1, 320, False],  # 14
+
+    ['convbn', -1, 1, 1, 160, False],
+    ['upsample2d', -1, 2, 'nearest', False],
+    ['convbn', '3', 1, 1, 160, False],  # route from backbone P3
+    ['concat', [-1, -2], -1, False],
+
+    ['convbn', -1, 1, 1, 128, False],
+    ['convbn', -2, 1, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['concat', [-1, -3, -5, -7, -8], -1, False],
+    ['convbn', -1, 1, 1, 160, False],  # 28
+
+    ['maxpool2d', -1, 2, 2, 'same', False],
+    ['convbn', -1, 1, 1, 160, False],
+    ['convbn', -3, 1, 1, 160, False],
+    ['convbn', -1, 3, 2, 160, False],
+    ['concat', [-1, -3, 14], -1, False],
+
+    ['convbn', -1, 1, 1, 256, False],
+    ['convbn', -2, 1, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['concat', [-1, -3, -5, -7, -8], -1, False],
+    ['convbn', -1, 1, 1, 320, False],  # 43
+
+    ['maxpool2d', -1, 2, 2, 'same', False],
+    ['convbn', -1, 1, 1, 320, False],
+    ['convbn', -3, 1, 1, 320, False],
+    ['convbn', -1, 3, 2, 320, False],
+    ['concat', [-1, -3, 0], -1, False],
+
+    ['convbn', -1, 1, 1, 512, False],
+    ['convbn', -2, 1, 1, 512, False],
+    ['convbn', -1, 3, 1, 512, False],
+    ['convbn', -1, 3, 1, 512, False],
+    ['convbn', -1, 3, 1, 512, False],
+    ['convbn', -1, 3, 1, 512, False],
+    ['convbn', -1, 3, 1, 512, False],
+    ['convbn', -1, 3, 1, 512, False],
+    ['concat', [-1, -3, -5, -7, -8], -1, False],
+    ['convbn', -1, 1, 1, 640, False],  # 58
+
+    ['repconv', 28, 3, 1, 320, True],
+    ['repconv', 43, 3, 1, 640, True],
+    ['repconv', 58, 3, 1, 1280, True],
+]
+
 # Aggregates all variants for YOLOv7 decoders.
 DECODERS = {
     'yolov7-tiny': _YoloV7Tiny,
     'yolov7': _YoloV7,
+    'yolov7x': _YoloV7X,
 }
 
 
