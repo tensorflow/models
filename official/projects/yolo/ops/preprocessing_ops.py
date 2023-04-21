@@ -17,8 +17,8 @@ import random
 
 import numpy as np
 import tensorflow as tf
-import tensorflow_addons as tfa
 
+from official.vision.ops import augment
 from official.vision.ops import box_ops as bbox_ops
 
 PAD_VALUE = 114
@@ -669,12 +669,14 @@ def affine_warp_image(image,
   affine = tf.cast(affine[:-1], tf.float32)
 
   # Apply the transformation to image.
-  image = tfa.image.transform(
+  image = augment.transform(
       image,
       affine,
       fill_value=PAD_VALUE,
       output_shape=desired_size,
-      interpolation='bilinear')
+      interpolation='bilinear',
+      fill_mode='constant',
+  )
 
   desired_size = tf.cast(desired_size, tf.float32)
   affine_info = [image_size, desired_size, affine_boxes]
