@@ -438,7 +438,14 @@ def _apply_transform_to_images(
     )
 
 
-def transform(image: tf.Tensor, transforms) -> tf.Tensor:
+def transform(
+    image: tf.Tensor,
+    transforms: Any,
+    interpolation: str = 'nearest',
+    output_shape=None,
+    fill_mode: str = 'reflect',
+    fill_value: float = 0.0,
+) -> tf.Tensor:
   """Transforms an image."""
   original_ndims = tf.rank(image)
   transforms = tf.convert_to_tensor(transforms, dtype=tf.float32)
@@ -446,24 +453,46 @@ def transform(image: tf.Tensor, transforms) -> tf.Tensor:
     transforms = transforms[None]
   image = to_4d(image)
   image = _apply_transform_to_images(
-      images=image, transforms=transforms, interpolation='nearest'
+      images=image,
+      transforms=transforms,
+      interpolation=interpolation,
+      fill_mode=fill_mode,
+      fill_value=fill_value,
+      output_shape=output_shape,
   )
   return from_4d(image, original_ndims)
 
 
-def translate(image: tf.Tensor, translations) -> tf.Tensor:
+def translate(
+    image: tf.Tensor,
+    translations,
+    fill_value: float = 0.0,
+    fill_mode: str = 'reflect',
+    interpolation: str = 'nearest',
+) -> tf.Tensor:
   """Translates image(s) by provided vectors.
 
   Args:
     image: An image Tensor of type uint8.
     translations: A vector or matrix representing [dx dy].
+    fill_value: a float represents the value to be filled outside the boundaries
+      when `fill_mode="constant"`.
+    fill_mode: Points outside the boundaries of the input are filled according
+      to the given mode (one of `{"constant", "reflect", "wrap", "nearest"}`).
+    interpolation: Interpolation mode. Supported values: `"nearest"`,
+      `"bilinear"`.
 
   Returns:
     The translated version of the image.
-
   """
   transforms = _convert_translation_to_transform(translations)  # pytype: disable=wrong-arg-types  # always-use-return-annotations
-  return transform(image, transforms=transforms)
+  return transform(
+      image,
+      transforms=transforms,
+      interpolation=interpolation,
+      fill_value=fill_value,
+      fill_mode=fill_mode,
+  )
 
 
 def rotate(image: tf.Tensor, degrees: float) -> tf.Tensor:
