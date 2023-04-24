@@ -59,6 +59,9 @@ class DataConfig(cfg.DataConfig):
   center_crop_fraction: Optional[float] = 0.875
   # Interpolation method for resizing image in Parser for both training and eval
   tf_resize_method: str = 'bilinear'
+  # Repeat augmentation puts multiple augmentations of the same image in a batch
+  # https://arxiv.org/abs/1902.05509
+  repeated_augment: Optional[int] = None
 
 
 @dataclasses.dataclass
