@@ -141,7 +141,7 @@ class MaskRCNNModel(tf.keras.Model):
         [30.0, 30.0, 15.0, 15.0],
     ]
 
-  def call(
+  def call(  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
       self,
       images: tf.Tensor,
       image_shape: tf.Tensor,
