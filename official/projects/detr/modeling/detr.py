@@ -222,7 +222,7 @@ class DETR(tf.keras.Model):
         mask, target_shape, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
     return mask
 
-  def call(self, inputs: tf.Tensor, training: bool = None) -> List[Any]:
+  def call(self, inputs: tf.Tensor, training: bool = None) -> List[Any]:  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     batch_size = tf.shape(inputs)[0]
     features = self._backbone(inputs)[self._backbone_endpoint_name]
     shape = tf.shape(features)
