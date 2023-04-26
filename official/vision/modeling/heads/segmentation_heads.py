@@ -167,7 +167,7 @@ class MaskScoring(tf.keras.Model):
 
     super(MaskScoring, self).build(input_shape)
 
-  def call(self, inputs: tf.Tensor, training: bool = None):
+  def call(self, inputs: tf.Tensor, training: bool = None):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     """Forward pass mask scoring head.
 
     Args:

@@ -304,7 +304,7 @@ class RpnAnchorLabeler(AnchorLabeler):
     return (ignore_labels + positive_labels + negative_labels,
             positive_labels, negative_labels)
 
-  def label_anchors(
+  def label_anchors(  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
       self, anchor_boxes: Dict[str, tf.Tensor], gt_boxes: tf.Tensor,
       gt_labels: tf.Tensor
   ) -> Tuple[Dict[str, tf.Tensor], Dict[str, tf.Tensor]]:
