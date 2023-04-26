@@ -24,17 +24,7 @@ from absl import logging
 from absl.testing import flagsaver
 import tensorflow as tf
 
-from tensorflow.python import pywrap_tfe_monitoring_reader as monitoring
-
 FLAGS = flags.FLAGS
-
-# Environment variable that defines extra metrics to include based on streamz.
-# Is a comma separated list of streamz metrics which will result in metrics
-# added to the report where the name of the metric is the basename of the
-# streamz.
-# For example: "/tensorflow/core/tf_function/graph_building_time_usecs"
-# would add one new metric named "graph_building_time_usecs"
-TEST_BENCHMARK_STREAMZ_EXTRA_METRICS = 'BENCHMARK_STREAMZ_EXTRA_METRICS'
 
 
 class PerfZeroBenchmark(tf.test.Benchmark):
@@ -85,14 +75,6 @@ class PerfZeroBenchmark(tf.test.Benchmark):
 
     logging.info('root_data_dir: %s', root_data_dir)
 
-    self.extra_metrics = self._get_extra_metrics_readers()
-    logging.info('including extra streamz metrics: %s', self.extra_metrics)
-
-  def report_benchmark(self, metrics=None, **kwargs):
-    """Report a benchmark."""
-    metrics = self._read_extra_metrics() + (metrics or [])
-    super().report_benchmark(metrics=metrics, **kwargs)
-
   @property
   def tpu(self):
     return self.default_flags.get('tpu', None)
@@ -100,27 +82,6 @@ class PerfZeroBenchmark(tf.test.Benchmark):
   def _get_model_dir(self, folder_name):
     """Returns directory to store info, e.g. saved model and event log."""
     return os.path.join(self.output_dir, folder_name)
-
-  def _get_extra_metrics_readers(self):
-    streamz = os.environ.get(TEST_BENCHMARK_STREAMZ_EXTRA_METRICS, None)
-    if streamz:
-      return [self._get_metric_reader(x) for x in streamz.split(',')]
-    return []
-
-  def _get_metric_reader(self, streamz):
-    return {
-        'name': os.path.basename(streamz),
-        'reader': monitoring.TFE_MonitoringNewCounterReader(streamz),
-    }
-
-  def _read_extra_metrics(self):
-    return [self._read_extra_metric(metric) for metric in self.extra_metrics]
-
-  def _read_extra_metric(self, metric):
-    return {
-        'name': metric['name'],
-        'value': monitoring.TFE_MonitoringReadCounter0(metric['reader']),
-    }
 
   def _setup(self):
     """Sets up and resets flags before each test."""
