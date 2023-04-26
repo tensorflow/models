@@ -60,7 +60,7 @@ class PanopticDeeplabModel(tf.keras.Model):
     self.instance_head = instance_head
     self.post_processor = post_processor
 
-  def call(
+  def call(  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
       self, inputs: tf.Tensor,
       image_info: tf.Tensor,
       training: bool = None):

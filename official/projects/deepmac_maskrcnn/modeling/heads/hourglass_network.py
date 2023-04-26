@@ -439,7 +439,7 @@ class HourglassNetwork(tf.keras.Model):
 
     self.intermediate_relu = tf.keras.layers.ReLU()
 
-  def call(self, inputs):
+  def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
 
     if self.initial_downsample:
       inputs = self.downsample_input(inputs)

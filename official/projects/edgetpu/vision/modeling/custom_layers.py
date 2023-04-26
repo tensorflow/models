@@ -346,7 +346,7 @@ class GroupConv2DKerasModel(tf.keras.Model):
             self.batch_norm_layer(
                 axis=-1, momentum=bn_momentum, epsilon=bn_epsilon))  # pytype: disable=bad-return-type  # typed-keras
 
-  def call(self, inputs: Any) -> Any:
+  def call(self, inputs: Any) -> Any:  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     """Applies 2d group convolution on the inputs."""
     input_shape = inputs.get_shape().as_list()
     if input_shape[-1] % self._groups != 0:

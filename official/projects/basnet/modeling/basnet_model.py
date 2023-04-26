@@ -88,7 +88,7 @@ class BASNetModel(tf.keras.Model):
     self.decoder = decoder
     self.refinement = refinement
 
-  def call(self, inputs, training=None):
+  def call(self, inputs, training=None):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     features = self.backbone(inputs)
 
     if self.decoder:
