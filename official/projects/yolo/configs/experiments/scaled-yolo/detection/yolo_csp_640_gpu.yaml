@@ -1,11 +1,11 @@
 # --experiment_type=scaled_yolo
-# Use 4x4 DF for training
-# mAP 47.6
+# Use 8 V100 GPU for training and validation.
 runtime:
-  distribution_strategy: 'tpu'
-  mixed_precision_dtype: 'float32'
-  tpu_enable_xla_dynamic_padder: false
+  all_reduce_alg: nccl
+  distribution_strategy: 'mirrored'
+  mixed_precision_dtype: 'float16'
 task:
+  gradient_clip_norm: 10
   model:
     input_size: [640, 640, 3]
     backbone:
@@ -57,6 +57,8 @@ task:
               box: [142, 110], box: [192, 243], box: [459, 401]]
   train_data:
     input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/train*'
+    global_batch_size: 64
+    dtype: float16
     shuffle_buffer_size: 10000
     parser:
       mosaic:
@@ -73,7 +75,28 @@ task:
       area_thresh: 0.1
   validation_data:
     input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/val*'
+    global_batch_size: 64
+    dtype: float16
 trainer:
   best_checkpoint_eval_metric: 'AP'
   best_checkpoint_export_subdir: 'best_ckpt'
   best_checkpoint_metric_comp: 'higher'
+  checkpoint_interval: 3696
+  optimizer_config:
+    learning_rate:
+      cosine:
+        alpha: 0.2
+        decay_steps: 554400
+        initial_learning_rate: 0.04
+    optimizer:
+      sgd_torch:
+        warmup_steps: 5544
+        global_clipnorm: 10
+    warmup:
+      linear:
+        warmup_steps: 5544
+  steps_per_loop: 1848
+  summary_interval: 1848
+  train_steps: 554400
+  validation_interval: 3696
+  validation_steps: 79
