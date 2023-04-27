@@ -1578,6 +1578,7 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
       *args,
       stochastic_depth_drop_rate=0.0,
       layer_scale_init_value=0.0,
+      transformer_partition_dims=None,
       max_attention_inference_parallelism=None,
       **kwargs
   ):
@@ -1587,6 +1588,7 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
       *args: positional arguments passed to super().__init__.
       stochastic_depth_drop_rate: the drop rate for the stochastic depth layer.
       layer_scale_init_value:
+      transformer_partition_dims: transformer spatial partition dimenstions.
       max_attention_inference_parallelism: the number of examples to run in
         parallel in the attention blocks during inference. Set this limit to
         reduce the peak memory usage. If None, use vectorized operations to run
@@ -1596,11 +1598,14 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
     super().__init__(*args, **kwargs)
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
     self._layer_scale_init_value = layer_scale_init_value
+    self._transformer_partition_dims = transformer_partition_dims
     self._max_attention_inference_parallelism = (
         max_attention_inference_parallelism
     )
 
   def build(self, input_shape):
+    super().build(input_shape)
+
     if self._stochastic_depth_drop_rate:
       self._stochastic_depth = nn_layers.StochasticDepth(
           self._stochastic_depth_drop_rate)
@@ -1615,22 +1620,32 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
     else:
       self._layer_scale_attn = lambda x, *args, **kwargs: tf.identity(x)
       self._layer_scale_mlp = lambda x, *args, **kwargs: tf.identity(x)
-    super().build(input_shape)
 
-    if self._max_attention_inference_parallelism is not None:
-      attention_layer_config = self._attention_layer.get_config()
-      self._attention_layer = nn_layers.MultiHeadAttention.from_config({
-          **attention_layer_config,
-          'max_inference_parallelism': (
-              self._max_attention_inference_parallelism
-          ),
-      })
+    self._attention_layer = nn_layers.MultiHeadAttention(
+        num_heads=self._num_heads,
+        key_dim=self._key_dim,
+        value_dim=self._value_dim,
+        dropout=self._attention_dropout_rate,
+        use_bias=self._use_bias,
+        kernel_initializer=self._attention_initializer,
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
+        attention_axes=self._attention_axes,
+        output_shape=self._output_last_dim,
+        bias_regularizer=self._bias_regularizer,
+        activity_regularizer=self._activity_regularizer,
+        kernel_constraint=self._kernel_constraint,
+        bias_constraint=self._bias_constraint,
+        max_inference_parallelism=self._max_attention_inference_parallelism,
+        partition_dims=self._transformer_partition_dims,
+        name='self_attention',
+    )
 
   def get_config(self):
     config = super().get_config()
     config.update({
         'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
         'layer_scale_init_value': self._layer_scale_init_value,
+        'transformer_partition_dims': self._transformer_partition_dims,
         'max_attention_inference_parallelism': (
             self._max_attention_inference_parallelism
         ),

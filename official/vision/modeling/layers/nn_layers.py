@@ -1291,23 +1291,30 @@ class MultiHeadAttention(tf.keras.layers.MultiHeadAttention):
   """
 
   def __init__(
-      self, *args, max_inference_parallelism: Optional[int] = None, **kwargs
+      self,
+      *args,
+      partition_dims: Optional[Tuple[int, int, int, int]] = None,
+      max_inference_parallelism: Optional[int] = None,
+      **kwargs,
   ):
     """Initializes MultiHeadAttention.
 
     Args:
       *args: Positional arguments passed to super().__init__.
+      partition_dims: Spatial partition dimensions.
       max_inference_parallelism: The number of examples to run in parallel
         during inference. Set this limit to reduce the peak memory usage. If
         None, use vectorized operations to run the whole batch in parallel.
       **kwargs: Keyword arguments passed to super().__init__.
     """
     super().__init__(*args, **kwargs)
+    self._partition_dims = partition_dims
     self._max_inference_parallelism = max_inference_parallelism
 
   def get_config(self):
     config = super().get_config()
     config.update({
+        'partition_dims': self._partition_dims,
         'max_inference_parallelism': self._max_inference_parallelism,
     })
     return config
@@ -1336,6 +1343,16 @@ class MultiHeadAttention(tf.keras.layers.MultiHeadAttention):
       attention_output: Multi-headed outputs of attention computation.
       attention_scores: Multi-headed attention weights.
     """
+    if self._partition_dims is not None:
+      strategy = tf.distribute.get_strategy()
+      # `query` = [B, T, N ,H]
+      query = strategy.experimental_split_to_logical_devices(
+          query, self._partition_dims)
+      key = strategy.experimental_split_to_logical_devices(
+          key, self._partition_dims)
+      value = strategy.experimental_split_to_logical_devices(
+          value, self._partition_dims)
+
     batch_size = query.get_shape().as_list()[0]  # None if dynamic.
 
     if (
