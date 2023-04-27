@@ -122,6 +122,7 @@ class Encoder(layers.Layer):
                pos_embed_origin_shape=None,
                pos_embed_target_shape=None,
                layer_scale_init_value=0.0,
+               transformer_partition_dims=None,
                **kwargs):
     super().__init__(**kwargs)
     self._num_layers = num_layers
@@ -137,6 +138,7 @@ class Encoder(layers.Layer):
     self._pos_embed_origin_shape = pos_embed_origin_shape
     self._pos_embed_target_shape = pos_embed_target_shape
     self._layer_scale_init_value = layer_scale_init_value
+    self._transformer_partition_dims = transformer_partition_dims
 
   def build(self, input_shape):
     if self._add_pos_embed:
@@ -163,7 +165,8 @@ class Encoder(layers.Layer):
           stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
               self._init_stochastic_depth_rate, i + 1, self._num_layers),
           norm_epsilon=1e-6,
-          layer_scale_init_value=self._layer_scale_init_value,)
+          layer_scale_init_value=self._layer_scale_init_value,
+          transformer_partition_dims=self._transformer_partition_dims)
       self._encoder_layers.append(encoder_layer)
     self._norm = layers.LayerNormalization(epsilon=1e-6)
     super().build(input_shape)
@@ -195,6 +198,7 @@ class Encoder(layers.Layer):
         'pos_embed_origin_shape': self._pos_embed_origin_shape,
         'pos_embed_target_shape': self._pos_embed_target_shape,
         'layer_scale_init_value': self._layer_scale_init_value,
+        'transformer_partition_dims': self._transformer_partition_dims,
     }
     config.update(updates)
     return config
@@ -203,24 +207,27 @@ class Encoder(layers.Layer):
 class VisionTransformer(tf.keras.Model):
   """Class to build VisionTransformer family model."""
 
-  def __init__(self,
-               mlp_dim=3072,
-               num_heads=12,
-               num_layers=12,
-               attention_dropout_rate=0.0,
-               dropout_rate=0.1,
-               init_stochastic_depth_rate=0.0,
-               input_specs=layers.InputSpec(shape=[None, None, None, 3]),
-               patch_size=16,
-               hidden_size=768,
-               representation_size=0,
-               pooler='token',
-               kernel_regularizer=None,
-               original_init: bool = True,
-               output_encoded_tokens: bool = True,
-               output_2d_feature_maps: bool = False,
-               pos_embed_shape: Optional[Tuple[int, int]] = None,
-               layer_scale_init_value: float = 0.0):
+  def __init__(
+      self,
+      mlp_dim=3072,
+      num_heads=12,
+      num_layers=12,
+      attention_dropout_rate=0.0,
+      dropout_rate=0.1,
+      init_stochastic_depth_rate=0.0,
+      input_specs=layers.InputSpec(shape=[None, None, None, 3]),
+      patch_size=16,
+      hidden_size=768,
+      representation_size=0,
+      pooler='token',
+      kernel_regularizer=None,
+      original_init: bool = True,
+      output_encoded_tokens: bool = True,
+      output_2d_feature_maps: bool = False,
+      pos_embed_shape: Optional[Tuple[int, int]] = None,
+      layer_scale_init_value: float = 0.0,
+      transformer_partition_dims: Optional[Tuple[int, int, int, int]] = None,
+  ):
     """VisionTransformer initialization function."""
     self._mlp_dim = mlp_dim
     self._num_heads = num_heads
@@ -368,4 +375,5 @@ def build_vit(input_specs,
       output_encoded_tokens=backbone_cfg.output_encoded_tokens,
       output_2d_feature_maps=backbone_cfg.output_2d_feature_maps,
       layer_scale_init_value=backbone_cfg.layer_scale_init_value,
-      pos_embed_shape=backbone_cfg.pos_embed_shape)
+      pos_embed_shape=backbone_cfg.pos_embed_shape,
+      transformer_partition_dims=backbone_cfg.transformer_partition_dims)
