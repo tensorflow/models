@@ -1,5 +1,6 @@
 # --experiment_type=scaled_yolo
-# mAP 51.1%
+# Use 4x4 DF for training
+# mAP 51.1
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'float32'

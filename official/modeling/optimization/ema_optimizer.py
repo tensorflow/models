@@ -14,7 +14,7 @@
 
 """Exponential moving average optimizer."""
 
-from typing import List, Optional, Text
+from typing import List, Optional
 
 import tensorflow as tf
 
@@ -79,7 +79,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.legacy.Optimizer):
                average_decay: float = 0.99,
                start_step: int = 0,
                dynamic_decay: bool = True,
-               name: Text = 'ExponentialMovingAverage',
+               name: str = 'ExponentialMovingAverage',
                **kwargs):
     """Construct a new ExponentialMovingAverage optimizer.
 
@@ -107,7 +107,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.legacy.Optimizer):
     self._start_step = tf.constant(start_step, tf.float32)
     self._dynamic_decay = dynamic_decay
     self._optimizer = optimizer
-    self._track_trackable(self._optimizer, 'base_optimizer')
+    self._track_trackable(self._optimizer, 'ema_base_optimizer')
     self._average_weights = None
     self._model_weights = None
 
