@@ -121,7 +121,7 @@ COCO_VAL_EXAMPLES = 5000
 @exp_factory.register_config_factory('pix2seq_r50_coco')
 def detr_coco_tfrecord() -> cfg.ExperimentConfig:
   """Config to get results that matches the paper."""
-  train_batch_size = 64
+  train_batch_size = 128
   eval_batch_size = 256
   steps_per_epoch = COCO_TRAIN_EXAMPLES // train_batch_size
   train_steps = 300 * steps_per_epoch
@@ -145,7 +145,7 @@ def detr_coco_tfrecord() -> cfg.ExperimentConfig:
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'validation*'),
               is_training=False,
               global_batch_size=eval_batch_size,
-              drop_remainder=False,
+              drop_remainder=True,
           )),
       trainer=cfg.TrainerConfig(
           train_steps=train_steps,

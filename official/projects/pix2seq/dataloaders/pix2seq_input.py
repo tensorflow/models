@@ -90,7 +90,6 @@ class Parser(parser.Parser):
       index = tf.random.categorical(tf.zeros([1, 3]), 1)[0]
       scales = tf.gather([400.0, 500.0, 600.0], index, axis=0)
       short_side = scales[0]
-      # short_side : If scalar, we keep the same aspect ratio and resize the short side to the value.
       image, image_info = preprocess_ops.resize_image(image, short_side)
       boxes = preprocess_ops.resize_and_crop_boxes(boxes, image_info[2, :],
                                                    image_info[1, :],
@@ -110,12 +109,13 @@ class Parser(parser.Parser):
       i = tf.random.uniform([], 0, shape[0] - h + 1, dtype=tf.int32)
       j = tf.random.uniform([], 0, shape[1] - w + 1, dtype=tf.int32)
       image = tf.image.crop_to_bounding_box(image, i, j, h, w)
+      boxes = boxes[..., :] * tf.cast(
+          tf.stack([shape[0], shape[1], shape[0], shape[1]]),
+          dtype=tf.float32) 
       boxes = tf.clip_by_value(
-          (boxes[..., :] * tf.cast(
-              tf.stack([shape[0], shape[1], shape[0], shape[1]]),
-              dtype=tf.float32) -
-           tf.cast(tf.stack([i, j, i, j]), dtype=tf.float32)) /
+          (boxes - tf.cast(tf.stack([i, j, i, j]), dtype=tf.float32)) /
           tf.cast(tf.stack([h, w, h, w]), dtype=tf.float32), 0.0, 1.0)
+      
     scales = tf.constant(self._resize_scales, dtype=tf.float32)
     index = tf.random.categorical(tf.zeros([1, 6]), 1)[0]
     scales = tf.gather(scales, index, axis=0)
@@ -269,7 +269,7 @@ class Parser(parser.Parser):
     classes = tf.gather(classes, indices)
     is_crowd = tf.gather(is_crowd, indices)
     
-    prompt_seq = tf.Variable([pix2seq_cfg.OD_ID], shape=[None], dtype=tf.int64)
+    prompt_seq = tf.constant([pix2seq_cfg.OD_ID], dtype=tf.int64)
     backgrnd_val = 0.3
     image = backgrnd_val + tf.image.pad_to_bounding_box(
       image - backgrnd_val, 0, 0, self._output_size[0], self._output_size[1])

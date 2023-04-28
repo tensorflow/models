@@ -106,439 +106,226 @@ class TransformerEncoder(tf.keras.layers.Layer):
     config.update(updates)
     return config
 
+def suffix_id(i):
+  """Return suffix id for layer/variable name."""
+  return '' if i == 0 else '_%d' % i
 
-class TransformerDecoder(tf.keras.layers.Layer):
-  """Transformer decoder.
+class DropPath(tf.keras.layers.Layer):
+  """For stochastic depth."""
 
-  Like the encoder, the decoder is made up of N identical layers.
-  Each layer is composed of the sublayers:
-    1. Self-attention layer
-    2. Multi-headed attention layer combining encoder outputs with results from
-       the previous self-attention layer.
-    3. Feedforward network (2 fully-connected layers)
-  """
+  def __init__(self, drop_rate=0., **kwargs):
+    """Initializes a drop path layer."""
+    super(DropPath, self).__init__(**kwargs)
+    self._drop_rate = drop_rate
+    if self._drop_rate < 0 or self._drop_rate >= 1.0:
+      raise ValueError('drop_rate {} is outside [0, 1)'.format(self._drop_rate))
 
-  def __init__(self,
-               num_layers=6,
-               num_attention_heads=8,
-               intermediate_size=2048,
-               activation="relu",
-               dropout_rate=0.0,
-               attention_dropout_rate=0.0,
-               use_bias=False,
-               norm_first=True,
-               norm_epsilon=1e-6,
-               intermediate_dropout=0.0,
-               **kwargs):
-    """Initialize a Transformer decoder.
+  def call(self, x, training=False):
+    """Performs a forward pass.
 
     Args:
-      num_layers: Number of layers.
-      num_attention_heads: Number of attention heads.
-      intermediate_size: Size of the intermediate (Feedforward) layer.
-      activation: Activation for the intermediate layer.
-      dropout_rate: Dropout probability.
-      attention_dropout_rate: Dropout probability for attention layers.
-      use_bias: Whether to enable use_bias in attention layer. If set `False`,
-        use_bias in attention layer is disabled.
-      norm_first: Whether to normalize inputs to attention and intermediate
-        dense layers. If set `False`, output of attention and intermediate dense
-        layers is normalized.
-      norm_epsilon: Epsilon value to initialize normalization layers.
-      intermediate_dropout: Dropout probability for intermediate_dropout_layer.
-      **kwargs: key word arguemnts passed to tf.keras.layers.Layer.
-    """
-    super(TransformerDecoder, self).__init__(**kwargs)
-    self.num_layers = num_layers
-    self.num_attention_heads = num_attention_heads
-    self._intermediate_size = intermediate_size
-    self._activation = activation
-    self._dropout_rate = dropout_rate
-    self._attention_dropout_rate = attention_dropout_rate
-    self._use_bias = use_bias
-    self._norm_first = norm_first
-    self._norm_epsilon = norm_epsilon
-    self._intermediate_dropout = intermediate_dropout
-
-  def build(self, input_shape):
-    """Implements build() for the layer."""
-    self.decoder_layers = []
-    for i in range(self.num_layers):
-      self.decoder_layers.append(
-          TransformerDecoderBlock(
-              num_attention_heads=self.num_attention_heads,
-              intermediate_size=self._intermediate_size,
-              intermediate_activation=self._activation,
-              dropout_rate=self._dropout_rate,
-              attention_dropout_rate=self._attention_dropout_rate,
-              use_bias=self._use_bias,
-              norm_first=self._norm_first,
-              norm_epsilon=self._norm_epsilon,
-              intermediate_dropout=self._intermediate_dropout,
-              attention_initializer=tf_utils.clone_initializer(
-                  models.seq2seq_transformer.attention_initializer(
-                      input_shape[2])),
-              name=("layer_%d" % i)))
-    self.output_normalization = tf.keras.layers.LayerNormalization(
-        epsilon=self._norm_epsilon, dtype="float32")
-    super(TransformerDecoder, self).build(input_shape)
-
-  def get_config(self):
-    config = {
-        "num_layers": self.num_layers,
-        "num_attention_heads": self.num_attention_heads,
-        "intermediate_size": self._intermediate_size,
-        "activation": self._activation,
-        "dropout_rate": self._dropout_rate,
-        "attention_dropout_rate": self._attention_dropout_rate,
-        "use_bias": self._use_bias,
-        "norm_first": self._norm_first,
-        "norm_epsilon": self._norm_epsilon,
-        "intermediate_dropout": self._intermediate_dropout
-    }
-    base_config = super(TransformerDecoder, self).get_config()
-    return dict(list(base_config.items()) + list(config.items()))
-
-  def call(self,
-           target,
-           memory,
-           self_attention_mask=None,
-           cross_attention_mask=None,
-           cache=None,
-           decode_loop_step=None,
-           return_all_decoder_outputs=False,
-           input_pos_embed=None,
-           memory_pos_embed=None):
-    """Return the output of the decoder layer stacks.
-
-    Args:
-      target: A tensor with shape `(batch_size, target_length, hidden_size)`.
-      memory: A tensor with shape `(batch_size, input_length, hidden_size)`.
-      self_attention_mask: A tensor with shape `(batch_size, target_len,
-        target_length)`, the mask for decoder self-attention layer.
-      cross_attention_mask: A tensor with shape `(batch_size, target_length,
-        input_length)` which is the mask for encoder-decoder attention layer.
-      cache: (Used for fast decoding) A nested dictionary storing previous
-        decoder self-attention values. The items are:
-        {layer_n: {"k": A tensor with shape `(batch_size, i, key_channels)`,
-                   "v": A tensor with shape `(batch_size, i, value_channels)`},
-                     ...}
-      decode_loop_step: An integer, the step number of the decoding loop. Used
-        only for autoregressive inference on TPU.
-      return_all_decoder_outputs: Return all decoder layer outputs. Note that
-        the outputs are layer normed. This is useful when introducing per layer
-        auxiliary loss.
-      input_pos_embed: A tensor that is added to the query and key of the
-        self-attention layer.
-      memory_pos_embed: A tensor that is added to the query and key of the
-        cross-attention layer.
+      x: An input tensor of type tf.Tensor with shape [batch, height,
+        width, channels].
+      training: A boolean flag indicating whether training behavior should be
+        used (default: False).
 
     Returns:
-      Output of decoder.
-      float32 tensor with shape `(batch_size, target_length, hidden_size`).
+      The output tensor.
     """
+    if self._drop_rate == 0. or not training:
+      return x
 
-    output_tensor = target
-    decoder_outputs = []
-    for layer_idx in range(self.num_layers):
-      transformer_inputs = [
-          output_tensor, memory, cross_attention_mask, self_attention_mask,
-          input_pos_embed, memory_pos_embed
-      ]
-      # Gets the cache for decoding.
-      if cache is None:
-        output_tensor, _ = self.decoder_layers[layer_idx](transformer_inputs)
-      else:
-        cache_layer_idx = str(layer_idx)
-        output_tensor, cache[cache_layer_idx] = self.decoder_layers[layer_idx](
-            transformer_inputs,
-            cache=cache[cache_layer_idx],
-            decode_loop_step=decode_loop_step)
-      if return_all_decoder_outputs:
-        decoder_outputs.append(self.output_normalization(output_tensor))
+    keep_rate = 1. - self._drop_rate
+    xshape = tf.shape(x)
+    drop_mask_shape = [xshape[0]] + [1] * (len(xshape) - 1)
+    drop_mask = keep_rate + tf.random.uniform(drop_mask_shape, dtype=x.dtype)
+    drop_mask = tf.math.divide(tf.floor(drop_mask), keep_rate)
 
-    if return_all_decoder_outputs:
-      return decoder_outputs
-    else:
-      return self.output_normalization(output_tensor), cache
+    return x * drop_mask
 
 
-class TransformerDecoderBlock(tf.keras.layers.Layer):
-  """Single transformer layer for decoder.
-
-  It has three sub-layers:
-  (1) a multi-head self-attention mechanism.
-  (2) a encoder-decoder attention.
-  (3) a positionwise fully connected feed-forward network.
-  """
+class FeedForwardLayer(tf.keras.layers.Layer):  # pylint: disable=missing-docstring
 
   def __init__(self,
-               num_attention_heads,
-               intermediate_size,
-               intermediate_activation,
-               dropout_rate=0.0,
-               attention_dropout_rate=0.0,
-               kernel_initializer="glorot_uniform",
-               bias_initializer="zeros",
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               activity_regularizer=None,
-               kernel_constraint=None,
-               bias_constraint=None,
-               use_bias=True,
-               norm_first=False,
-               norm_epsilon=1e-12,
-               intermediate_dropout=0.0,
-               attention_initializer=None,
+               dim_att=256,
+               dim_mlp=1024,
+               drop_units=0.1,
+               use_ln=False,
+               ln_scale_shift=False,
                **kwargs):
-    """Initialize a Transformer decoder block.
-
-    Args:
-      num_attention_heads: Number of attention heads.
-      intermediate_size: Size of the intermediate layer.
-      intermediate_activation: Activation for the intermediate layer.
-      dropout_rate: Dropout probability for the post-attention and output
-        dropout.
-      attention_dropout_rate: Dropout probability for within the attention
-        layer.
-      kernel_initializer: Initializer for dense layer kernels.
-      bias_initializer: Initializer for dense layer biases.
-      kernel_regularizer: Regularizer for dense layer kernels.
-      bias_regularizer: Regularizer for dense layer biases.
-      activity_regularizer: Regularizer for dense layer activity.
-      kernel_constraint: Constraint for dense layer kernels.
-      bias_constraint: Constraint for dense layer kernels.
-      use_bias: Whether to enable use_bias in attention layer. If set False,
-        use_bias in attention layer is disabled.
-      norm_first: Whether to normalize inputs to attention and intermediate
-        dense layers. If set False, output of attention and intermediate dense
-        layers is normalized.
-      norm_epsilon: Epsilon value to initialize normalization layers.
-      intermediate_dropout: Dropout probability for intermediate_dropout_layer.
-      attention_initializer: Initializer for kernels of attention layers. If set
-        `None`, attention layers use kernel_initializer as initializer for
-        kernel.
-      **kwargs: key word arguemnts passed to tf.keras.layers.Layer.
-    """
-    super().__init__(**kwargs)
-    self.num_attention_heads = num_attention_heads
-    self.intermediate_size = intermediate_size
-    self.intermediate_activation = tf.keras.activations.get(
-        intermediate_activation)
-    self.dropout_rate = dropout_rate
-    self.attention_dropout_rate = attention_dropout_rate
-    self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
-    self._bias_initializer = tf.keras.initializers.get(bias_initializer)
-    self._kernel_regularizer = tf.keras.regularizers.get(kernel_regularizer)
-    self._bias_regularizer = tf.keras.regularizers.get(bias_regularizer)
-    self._activity_regularizer = tf.keras.regularizers.get(activity_regularizer)
-    self._kernel_constraint = tf.keras.constraints.get(kernel_constraint)
-    self._bias_constraint = tf.keras.constraints.get(bias_constraint)
-    self._use_bias = use_bias
-    self._norm_first = norm_first
-    self._norm_epsilon = norm_epsilon
-    self._intermediate_dropout = intermediate_dropout
-    if attention_initializer:
-      self._attention_initializer = tf.keras.initializers.get(
-          attention_initializer)
+    super(FeedForwardLayer, self).__init__(**kwargs)
+    self.dense1 = tf.keras.layers.Dense(
+        dim_mlp, activation=tf.nn.gelu, name='dense1')
+    self.dropout = tf.keras.layers.Dropout(drop_units)
+    self.dense2 = tf.keras.layers.Dense(dim_att, name='dense2')
+    if use_ln:
+      self.ln = tf.keras.layers.LayerNormalization(
+          epsilon=1e-6,
+          center=ln_scale_shift,
+          scale=ln_scale_shift,
+          name='mlp_ln')
     else:
-      self._attention_initializer = tf_utils.clone_initializer(
-          self._kernel_initializer)
-    self._cross_attention_cls = layers.attention.MultiHeadAttention
+      self.ln = lambda x: x
 
-  def build(self, input_shape):
-    target_tensor_shape = tf.TensorShape(input_shape[0])
-    if len(target_tensor_shape.as_list()) != 3:
-      raise ValueError("TransformerLayer expects a three-dimensional input of "
-                       "shape [batch, sequence, width].")
-    hidden_size = target_tensor_shape[2]
-    if hidden_size % self.num_attention_heads != 0:
-      raise ValueError(
-          "The hidden size (%d) is not a multiple of the number of attention "
-          "heads (%d)" % (hidden_size, self.num_attention_heads))
-    self.attention_head_size = int(hidden_size) // self.num_attention_heads
-    common_kwargs = dict(
-        bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer,
-        activity_regularizer=self._activity_regularizer,
-        kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint)
-    # Self attention.
-    self.self_attention = layers.attention.CachedAttention(
-        num_heads=self.num_attention_heads,
-        key_dim=self.attention_head_size,
-        dropout=self.attention_dropout_rate,
-        use_bias=self._use_bias,
-        kernel_initializer=self._attention_initializer,
-        name="self_attention",
-        **common_kwargs)
-    self.self_attention_output_dense = tf.keras.layers.EinsumDense(
-        "abc,cd->abd",
-        output_shape=(None, hidden_size),
-        bias_axes="d",
-        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
-        name="output",
-        **common_kwargs)
-    self.self_attention_dropout = tf.keras.layers.Dropout(
-        rate=self.dropout_rate)
-    self.self_attention_layer_norm = (
+  def call(self, x, training):
+    return self.dense2(self.dropout(self.ln(self.dense1(x)), training=training))
+
+class MLP(tf.keras.layers.Layer):  # pylint: disable=missing-docstring
+
+  def __init__(self,
+               num_layers,
+               dim,
+               mlp_ratio,
+               drop_path=0.1,
+               drop_units=0.,
+               use_ffn_ln=False,
+               ln_scale_shift=True,
+               **kwargs):
+    super(MLP, self).__init__(**kwargs)
+    self.num_layers = num_layers
+    self.mlp_layers = [
+        FeedForwardLayer(dim, dim * mlp_ratio, drop_units,
+                         use_ln=use_ffn_ln, ln_scale_shift=ln_scale_shift,
+                         name='ffn' + suffix_id(i))
+        for i in range(num_layers)
+    ]
+    self.layernorms = [
         tf.keras.layers.LayerNormalization(
-            name="self_attention_layer_norm",
-            axis=-1,
-            epsilon=self._norm_epsilon,
-            dtype="float32"))
-    # Encoder-decoder attention.
-    self.encdec_attention = self._cross_attention_cls(
-        num_heads=self.num_attention_heads,
-        key_dim=self.attention_head_size,
-        dropout=self.attention_dropout_rate,
-        output_shape=hidden_size,
-        use_bias=self._use_bias,
-        kernel_initializer=self._attention_initializer,
-        name="attention/encdec",
-        **common_kwargs)
+            epsilon=1e-6,
+            center=ln_scale_shift,
+            scale=ln_scale_shift,
+            name='ffn/ln' + suffix_id(i))
+        for i in range(num_layers)
+    ]
+    self.dropp = DropPath(drop_path)
 
-    self.encdec_attention_dropout = tf.keras.layers.Dropout(
-        rate=self.dropout_rate)
-    self.encdec_attention_layer_norm = (
-        tf.keras.layers.LayerNormalization(
-            name="attention/encdec_output_layer_norm",
-            axis=-1,
-            epsilon=self._norm_epsilon,
-            dtype="float32"))
+  def call(self, x, training, ret_list=False):
+    x_list = [x]
+    for i in range(self.num_layers):
+      x_residual = self.mlp_layers[i](self.layernorms[i](x), training)
+      x = x + self.dropp(x_residual, training)
+      x_list.append(x)
+    return (x, x_list) if ret_list else x
 
-    # Feed-forward projection.
-    self.intermediate_dense = tf.keras.layers.EinsumDense(
-        "abc,cd->abd",
-        output_shape=(None, self.intermediate_size),
-        bias_axes="d",
-        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
-        name="intermediate",
-        **common_kwargs)
-    self.intermediate_activation_layer = tf.keras.layers.Activation(
-        self.intermediate_activation)
-    self._intermediate_dropout_layer = tf.keras.layers.Dropout(
-        rate=self._intermediate_dropout)
-    self.output_dense = tf.keras.layers.EinsumDense(
-        "abc,cd->abd",
-        output_shape=(None, hidden_size),
-        bias_axes="d",
-        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
-        name="output",
-        **common_kwargs)
-    self.output_dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
-    self.output_layer_norm = tf.keras.layers.LayerNormalization(
-        name="output_layer_norm",
-        axis=-1,
-        epsilon=self._norm_epsilon,
-        dtype="float32")
-    super().build(input_shape)
+class TransformerDecoderLayer(tf.keras.layers.Layer):  # pylint: disable=missing-docstring
 
-  def get_config(self):
-    config = {
-        "num_attention_heads":
-            self.num_attention_heads,
-        "intermediate_size":
-            self.intermediate_size,
-        "intermediate_activation":
-            tf.keras.activations.serialize(self.intermediate_activation),
-        "dropout_rate":
-            self.dropout_rate,
-        "attention_dropout_rate":
-            self.attention_dropout_rate,
-        "kernel_initializer":
-            tf.keras.initializers.serialize(self._kernel_initializer),
-        "bias_initializer":
-            tf.keras.initializers.serialize(self._bias_initializer),
-        "kernel_regularizer":
-            tf.keras.regularizers.serialize(self._kernel_regularizer),
-        "bias_regularizer":
-            tf.keras.regularizers.serialize(self._bias_regularizer),
-        "activity_regularizer":
-            tf.keras.regularizers.serialize(self._activity_regularizer),
-        "kernel_constraint":
-            tf.keras.constraints.serialize(self._kernel_constraint),
-        "bias_constraint":
-            tf.keras.constraints.serialize(self._bias_constraint),
-        "use_bias":
-            self._use_bias,
-        "norm_first":
-            self._norm_first,
-        "norm_epsilon":
-            self._norm_epsilon,
-        "intermediate_dropout":
-            self._intermediate_dropout,
-        "attention_initializer":
-            tf.keras.initializers.serialize(self._attention_initializer)
-    }
-    base_config = super().get_config()
-    return dict(list(base_config.items()) + list(config.items()))
+  def __init__(self,
+               dim,
+               mlp_ratio,
+               num_heads,
+               drop_path=0.1,
+               drop_units=0.1,
+               drop_att=0.,
+               dim_x_att=None,
+               self_attention=True,
+               cross_attention=True,
+               use_mlp=True,
+               use_enc_ln=False,
+               use_ffn_ln=False,
+               ln_scale_shift=True,
+               **kwargs):
+    super(TransformerDecoderLayer, self).__init__(**kwargs)
+    self.self_attention = self_attention
+    self.cross_attention = cross_attention
+    self.use_mlp = use_mlp
+    if self_attention:
+      self.self_ln = tf.keras.layers.LayerNormalization(
+          epsilon=1e-6,
+          center=ln_scale_shift,
+          scale=ln_scale_shift,
+          name='self_mha/ln')
+      self.self_mha = tf.keras.layers.MultiHeadAttention(
+          num_heads, dim // num_heads, dropout=drop_att, name='self_mha')
+    if cross_attention:
+      self.cross_ln = tf.keras.layers.LayerNormalization(
+          epsilon=1e-6,
+          center=ln_scale_shift,
+          scale=ln_scale_shift,
+          name='cross_mha/ln')
+      if use_enc_ln:
+        self.enc_ln = tf.keras.layers.LayerNormalization(
+            epsilon=1e-6,
+            center=ln_scale_shift,
+            scale=ln_scale_shift,
+            name='cross_mha/enc_ln')
+      else:
+        self.enc_ln = lambda x: x
+      dim_x_att = dim if dim_x_att is None else dim_x_att
+      self.cross_mha = tf.keras.layers.MultiHeadAttention(
+          num_heads, dim_x_att // num_heads, dropout=drop_att, name='cross_mha')
+    if use_mlp:
+      self.mlp = MLP(1, dim, mlp_ratio, drop_path, drop_units,
+                     use_ffn_ln=use_ffn_ln, ln_scale_shift=ln_scale_shift,
+                     name='mlp')
+    self.dropp = DropPath(drop_path)
 
-  def common_layers_with_encoder(self):
-    """Gets layer objects that can make a Transformer encoder block."""
-    return [
-        self.self_attention, self.self_attention_layer_norm,
-        self.intermediate_dense, self.output_dense, self.output_layer_norm
+  def call(self, x, enc, cache, mask_self, mask_cross, training):
+    """x in (bsz, seq, d), enc in (bsz, seq', d)."""
+    x_for_cache = []
+    if self.self_attention:
+      x_for_cache = x_ln = kv_ln = self.self_ln(x)
+      if cache is not None:  # Augment kv_ln with cache in (bsz, c_size, d).
+        q_size, k_size = tf.shape(x)[1], tf.shape(cache)[1]
+        mask_self = tf.concat([tf.ones([1, 1, q_size, k_size]), mask_self], -1)
+        kv_ln = tf.concat([cache, x_ln], axis=1)
+      x_res = self.self_mha(x_ln, kv_ln, kv_ln, mask_self, training=training)
+      x = x + self.dropp(x_res, training)
+    if self.cross_attention:
+      x_ln = self.cross_ln(x)
+      enc = self.enc_ln(enc)
+      x_res = self.cross_mha(x_ln, enc, enc, mask_cross, training=training)
+      x = x + self.dropp(x_res, training)
+    if self.use_mlp:
+      x = self.mlp(x, training)
+    return x, x_for_cache
+
+
+class TransformerDecoder(tf.keras.layers.Layer):  # pylint: disable=missing-docstring
+
+  def __init__(self,
+               num_layers,
+               dim,
+               mlp_ratio,
+               num_heads,
+               drop_path=0.1,
+               drop_units=0.1,
+               drop_att=0.,
+               dim_x_att=None,
+               self_attention=True,
+               cross_attention=True,
+               use_mlp=True,
+               use_enc_ln=False,
+               use_ffn_ln=False,
+               ln_scale_shift=True,
+               **kwargs):
+    super(TransformerDecoder, self).__init__(**kwargs)
+    self.num_layers = num_layers
+    self.dec_layers = [
+        TransformerDecoderLayer(  # pylint: disable=g-complex-comprehension
+            dim,
+            mlp_ratio,
+            num_heads,
+            drop_path,
+            drop_units,
+            drop_att,
+            dim_x_att=dim_x_att,
+            self_attention=self_attention,
+            cross_attention=cross_attention,
+            use_mlp=use_mlp,
+            use_enc_ln=use_enc_ln,
+            use_ffn_ln=use_ffn_ln,
+            ln_scale_shift=ln_scale_shift,
+            name='transformer_decoder_layer' + suffix_id(i))
+        for i in range(num_layers)
     ]
 
-  def call(self, inputs, cache=None, decode_loop_step=None):
-    input_tensor, memory, attention_mask, self_attention_mask, input_pos_embed, memory_pos_embed = inputs
-    source_tensor = input_tensor
-    if self._norm_first:
-      input_tensor = self.self_attention_layer_norm(input_tensor)
-    self_attention_output, cache = self.self_attention(
-        query=input_tensor,
-        key=input_tensor,
-        value=input_tensor,
-        attention_mask=self_attention_mask,
-        cache=cache,
-        decode_loop_step=decode_loop_step)
-    self_attention_output = self.self_attention_dropout(self_attention_output)
-    if self._norm_first:
-      self_attention_output = source_tensor + self_attention_output
-    else:
-      self_attention_output = self.self_attention_layer_norm(
-          input_tensor + self_attention_output)
-    if self._norm_first:
-      source_self_attention_output = self_attention_output
-      self_attention_output = self.encdec_attention_layer_norm(
-          self_attention_output)
-    
-    # (gunho) transformer.py uses tf.float32 for numeric stability.
-    
-    cross_attn_inputs = dict(
-        query=self_attention_output,
-        key=memory,
-        value=memory,
-        attention_mask=attention_mask)
-    attention_output = self.encdec_attention(**cross_attn_inputs)
-    attention_output = self.encdec_attention_dropout(attention_output)
-    
-    # (gunho) transformer.py uses tf.float32 for numeric stability.
-    attention_output = tf.cast(attention_output, tf.float32)
+  def call(self, x, enc, caches, mask_self, mask_cross, training):
+    """x in (bsz, seq, d), enc in (bsz, seq', d)."""
+    presents = []
+    for i in range(self.num_layers):
+      cache = None if caches is None else caches[i]
+      x, x_for_cache = self.dec_layers[i](
+          x, enc, cache, mask_self, mask_cross, training)
+      presents.append(x_for_cache)
 
-    if self._norm_first:
-      attention_output = source_self_attention_output + attention_output
-    else:
-      attention_output = self.encdec_attention_layer_norm(
-          self_attention_output + attention_output)
-    if self._norm_first:
-      source_attention_output = attention_output
-      attention_output = self.output_layer_norm(attention_output)
-
-    intermediate_output = self.intermediate_dense(attention_output)
-    intermediate_output = self.intermediate_activation_layer(
-        intermediate_output)
-    intermediate_output = self._intermediate_dropout_layer(intermediate_output)
-    layer_output = self.output_dense(intermediate_output)
-    layer_output = self.output_dropout(layer_output)
-    
-    # (gunho) transformer.py uses tf.float32 for numeric stability.
-    layer_output = tf.cast(layer_output, tf.float32)
-
-    if self._norm_first:
-      layer_output = source_attention_output + layer_output
-    else:
-      layer_output = self.output_layer_norm(layer_output + attention_output)
-    return layer_output, cache
+    return x, tf.stack(presents)

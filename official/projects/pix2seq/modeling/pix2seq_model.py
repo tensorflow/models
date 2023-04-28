@@ -185,32 +185,6 @@ def top_logits(logits: tf.Tensor,
     logits = tf.where(logits < min_logits, mask, logits)
   return logits
 
-class FeedForwardLayer(tf.keras.layers.Layer):  # pylint: disable=missing-docstring
-
-  def __init__(self,
-               dim_att=256,
-               dim_mlp=1024,
-               drop_units=0.1,
-               use_ln=False,
-               ln_scale_shift=False,
-               **kwargs):
-    super(FeedForwardLayer, self).__init__(**kwargs)
-    self.dense1 = tf.keras.layers.Dense(
-        dim_mlp, activation=tf.nn.gelu, name='dense1')
-    self.dropout = tf.keras.layers.Dropout(drop_units)
-    self.dense2 = tf.keras.layers.Dense(dim_att, name='dense2')
-    if use_ln:
-      self.ln = tf.keras.layers.LayerNormalization(
-          epsilon=1e-6,
-          center=ln_scale_shift,
-          scale=ln_scale_shift,
-          name='mlp_ln')
-    else:
-      self.ln = lambda x: x
-
-  def call(self, x, training):
-    return self.dense2(self.dropout(self.ln(self.dense1(x)), training=training))
-
 class Pix2Seq(tf.keras.Model):
   """Pix2Seq model with Keras.
 
@@ -363,15 +337,15 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
       self._encoder = None
 
     self._decoder = transformer.TransformerDecoder(
-        activation='gelu',
-        use_bias=True,
-        attention_dropout_rate=self._attention_dropout_rate,
-        dropout_rate=self._dropout_rate,
-        intermediate_dropout=self._dropout_rate,
-        norm_first=self._norm_first,
-        num_layers=self._num_decoder_layers)
+        num_layers=self._num_decoder_layers,
+        dim=self._hidden_size,
+        mlp_ratio=4,
+        num_heads=self._num_heads)
+    
+    self.dec_ln = tf.keras.layers.LayerNormalization(
+        epsilon=1e-6, name='ouput_ln')
 
-    self._proj = FeedForwardLayer()
+    self._proj = transformer.FeedForwardLayer()
     self._proj_ln = tf.keras.layers.LayerNormalization(
             epsilon=1e-6,
             center=True,
@@ -406,20 +380,13 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
     seq_len = tf.shape(targets)[1]
     seq_pos_emb = tf.expand_dims(self.seq_pos_emb[:seq_len], 0)
     inp_embedding = outp_embedding = self.token_embedding
-    # (gunho) seq_pos_emb is added at self._decoder
     target_emb = tf.gather(inp_embedding, targets) + seq_pos_emb
-    #target_emb = tf.gather(inp_embedding, targets)
 
     self_attention_mask = 1. - get_ar_mask(seq_len, target_emb.dtype)
     
     decoded, _ = self._decoder(
-        target_emb,
-        encoded,
-        self_attention_mask=self_attention_mask,
-        cross_attention_mask=None,
-        return_all_decoder_outputs=False,
-        input_pos_embed=None,
-        memory_pos_embed=None)
+        target_emb, encoded, None, self_attention_mask, None, training)
+    decoded = self.dec_ln(decoded)
     
     decoded = tf.cast(decoded, seq_pos_emb.dtype)
     outp_embedding = tf.cast(outp_embedding, seq_pos_emb.dtype)
@@ -494,22 +461,18 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
         input_pos_embed = seq_pos_emb[:, :prompt_len]
         x += input_pos_embed
         self_attention_mask = 1. - get_ar_mask(prompt_len, x.dtype)
+        caches_in = None
       else:
         x = tf.gather(inp_embedding, tf.transpose(tokens[step]))
         input_pos_embed = seq_pos_emb[:, step]
         x += input_pos_embed
         x = tf.expand_dims(x, 1)  # (bsz, 1, d)
         self_attention_mask = tf.ones([1, 1, 1, 1])
-      decoded, caches = self._decoder(
-          target=x,
-          memory=encoded,
-          self_attention_mask=self_attention_mask,
-          cross_attention_mask=None,
-          cache=caches,
-          return_all_decoder_outputs=False,
-          input_pos_embed=None,
-          memory_pos_embed=None)
-      
+        caches_in = tf.transpose(caches[:step], [1, 2, 0, 3])
+      decoded, caches_out = self._decoder(
+          x, encoded, caches_in, self_attention_mask, None, training=False)
+      decoded = self.dec_ln(decoded)
+
       # (gunho) transformer.py uses tf.float32 for numeric stability. 
       decoded = tf.cast(decoded, seq_pos_emb.dtype)
       
@@ -530,7 +493,9 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
 
       # Update internal states.
       next_step = step + (prompt_len if is_prompt else 1)
+      caches_out = tf.transpose(caches_out, [2, 0, 1, 3])
       
+      caches = tf.tensor_scatter_nd_update(caches, [[step]], caches_out)
       tokens = tf.tensor_scatter_nd_update(tokens, [[next_step]], [next_token])
       logits = tf.tensor_scatter_nd_update(logits, [[next_step]], [next_logits])
       return (next_step, caches, tokens, logits)
@@ -541,37 +506,22 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
       del logits
       return tf.less(step, seq_len-1)
     
+    caches_var = tf.zeros(
+        [seq_len-1, self._num_decoder_layers, bsz, self._hidden_size])
     tokens_var = tf.zeros([seq_len, bsz], dtype=tf.int64)
     logits_var = tf.zeros([seq_len, bsz, self._vocab_size], dtype=tf.float32)
     indices = tf.expand_dims(tf.range(prompt_len), -1)
     tokens_var = tf.tensor_scatter_nd_update(
         tokens_var, indices, tf.transpose(prompt, [1, 0]))
     
-    init_decode_length = 0
-    kv_shape = [bsz, init_decode_length, self._num_heads, self._hidden_per_head]
-    caches_var = {
-          str(layer): {
-              "key":
-                  tf.zeros(
-                      kv_shape,
-                      dtype=self.compute_dtype),
-              "value":
-                  tf.zeros(
-                      kv_shape,
-                      dtype=self.compute_dtype)
-          } for layer in range(self._num_decoder_layers)
-      }
-    
     step = 0
     step, caches_var, tokens_var, logits_var = loop_body(
         step, caches_var, tokens_var, logits_var, is_prompt=True)
-
     if seq_len > prompt_len:
       step, caches_var, tokens_var, logits_var = tf.while_loop(
           cond=cond, body=loop_body,
           loop_vars=[step, caches_var, tokens_var, logits_var])
-    
-    
+
     sampled_tokens  = tf.transpose(tokens_var[prompt_len:], [1, 0])
     sampled_tokens_logits = tf.transpose(logits_var[prompt_len:], [1, 0, 2])
     sampled_tokens_logits = tf.reshape(sampled_tokens_logits, [bsz, self._max_seq_len, self._vocab_size])
