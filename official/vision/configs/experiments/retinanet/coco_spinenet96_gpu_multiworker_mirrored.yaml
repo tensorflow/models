@@ -34,6 +34,10 @@ task:
       use_sync_bn: true
   train_data:
     dtype: 'float16'
+    decoder:
+      simple_decoder:
+        regenerate_source_id: true
+      type: simple_decoder
     global_batch_size: 16
     is_training: true
     parser:
@@ -42,6 +46,11 @@ task:
       aug_scale_min: 0.1
   validation_data:
     dtype: 'float16'
+    decoder:
+      simple_decoder:
+        regenerate_source_id: true
+      type: simple_decoder
+    drop_remainder: false
     global_batch_size: 8
     is_training: false
 trainer:
@@ -49,6 +58,10 @@ trainer:
   best_checkpoint_eval_metric: "AP50"
   checkpoint_interval: 462
   optimizer_config:
+    optimizer:
+      sgd:
+        global_clipnorm: 10.0
+        momentum: 0.9
     learning_rate:
       cosine:
         decay_steps: 23100

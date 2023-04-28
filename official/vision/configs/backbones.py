@@ -26,7 +26,7 @@ class Transformer(hyperparams.Config):
   num_heads: int = 1
   num_layers: int = 1
   attention_dropout_rate: float = 0.0
-  dropout_rate: float = 0.1
+  dropout_rate: float = 0.0
 
 
 @dataclasses.dataclass
@@ -50,6 +50,8 @@ class VisionTransformer(hyperparams.Config):
 
   # Adding Layerscale to each Encoder block https://arxiv.org/abs/2204.07118
   layer_scale_init_value: float = 0.0
+  # Transformer encoder spatial partition dimensions.
+  transformer_partition_dims: Optional[Tuple[int, int, int, int]] = None
 
 
 @dataclasses.dataclass

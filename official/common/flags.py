@@ -109,3 +109,6 @@ def define_flags():
 
   flags.DEFINE_string(
       'tf_data_service', default=None, help='The tf.data service address')
+
+  flags.DEFINE_string(
+      'tpu_platform', default=None, help='TPU platform type.')

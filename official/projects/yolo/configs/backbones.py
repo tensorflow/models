@@ -32,7 +32,7 @@ class Darknet(hyperparams.Config):
 
 
 @dataclasses.dataclass
-class YOLOV7(hyperparams.Config):
+class YoloV7(hyperparams.Config):
   model_id: str = 'yolov7'
   min_level: int = 3
   max_level: int = 5
@@ -41,4 +41,4 @@ class YOLOV7(hyperparams.Config):
 @dataclasses.dataclass
 class Backbone(backbones.Backbone):
   darknet: Darknet = Darknet()
-  yolov7: YOLOV7 = YOLOV7()
+  yolov7: YoloV7 = YoloV7()

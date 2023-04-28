@@ -104,11 +104,13 @@ def build_qat_classification_model(
         return tfmot.quantization.keras.quantize_annotate_layer(layer)
       return layer
 
+    backbone_optimized_model.use_legacy_config = True
     annotated_model = tf.keras.models.clone_model(
         backbone_optimized_model,
         clone_function=apply_quantization_to_dense,
     )
 
+    annotated_model.use_legacy_config = True
     if quantization.change_num_bits:
       optimized_model = tfmot.quantization.keras.quantize_apply(
           annotated_model,
@@ -236,6 +238,7 @@ def build_qat_segmentation_model(
       'L2': tf.keras.regularizers.l2,
   }
 
+  model.use_legacy_config = True  # Ensures old Keras serialization format
   # Apply QAT to backbone (a tf.keras.Model) first.
   with tfmot.quantization.keras.quantize_scope(scope_dict):
     annotated_backbone = tfmot.quantization.keras.quantize_annotate_model(
@@ -259,10 +262,12 @@ def build_qat_segmentation_model(
         return tfmot.quantization.keras.quantize_annotate_layer(layer)
       return layer
 
+    backbone_optimized_model.use_legacy_config = True
     annotated_model = tf.keras.models.clone_model(
         backbone_optimized_model,
         clone_function=apply_quantization_to_layers,
     )
+    annotated_model.use_legacy_config = True
     optimized_model = tfmot.quantization.keras.quantize_apply(
         annotated_model, scheme=schemes.Default8BitQuantizeScheme())
 

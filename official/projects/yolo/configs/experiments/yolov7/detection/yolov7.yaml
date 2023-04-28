@@ -1,0 +1,147 @@
+# YOLOv7-P5
+# --experiment_type=coco_yolov7
+# mAP: 50.4
+runtime:
+  distribution_strategy: tpu
+  mixed_precision_dtype: float32
+task:
+  smart_bias_lr: 0.1
+  weight_decay: 0.0
+  model:
+    input_size: [640, 640, 3]
+    min_level: 3
+    max_level: 5
+    num_classes: 80
+    anchor_boxes:
+      anchors_per_scale: 3
+      boxes: [box: [12, 16], box: [19, 36], box: [40, 28],
+              box: [36, 75], box: [76, 55], box: [72, 146],
+              box: [142, 110], box: [192, 243], box: [459, 401]]
+    backbone:
+      type: yolov7
+      yolov7:
+        max_level: 5
+        min_level: 3
+        model_id: yolov7
+    decoder:
+      type: yolov7
+      yolov7:
+        model_id: yolov7
+    head:
+      num_anchors: 3
+    detection_generator:
+      box_type:
+        '3': scaled
+        '4': scaled
+        '5': scaled
+        all: null
+      scale_xy:
+        '3': 2.0
+        '4': 2.0
+        '5': 2.0
+        all: null
+      path_scales:
+        '3': 8
+        '4': 16
+        '5': 32
+        all: null
+      nms_version: iou
+      iou_thresh: 0.001
+      nms_thresh: 0.7
+      max_boxes: 300
+      pre_nms_points: 5000
+    loss:
+      gamma: 0.0
+      box_weight: 0.05
+      obj_weight: 0.7
+      cls_weight: 0.3
+      label_smoothing: 0.0
+      anchor_threshold: 4.0
+      iou_mix_ratio: 1.0
+      auto_balance: false
+      use_ota: true
+    norm_activation:
+      activation: swish
+      norm_momentum: 0.03
+      norm_epsilon: 0.001
+      use_sync_bn: true
+  train_data:
+    input_path: /readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/train*
+    is_training: true
+    global_batch_size: 256
+    dtype: float32
+    parser:
+      max_num_instances: 300
+      letter_box: true
+      random_flip: true
+      random_pad: false
+      jitter: 0.0
+      aug_scale_min: 1.0
+      aug_scale_max: 1.0
+      aug_rand_translate: 0.2
+      aug_rand_saturation: 0.7
+      aug_rand_brightness: 0.4
+      aug_rand_hue: 0.015
+      aug_rand_angle: 0.0
+      aug_rand_perspective: 0.0
+      use_tie_breaker: true
+      best_match_only: true
+      anchor_thresh: 4.0
+      area_thresh: 0.0
+      mosaic:
+        mosaic_frequency: 1.0
+        mosaic9_frequency: 0.2
+        mixup_frequency: 0.15
+        mosaic_crop_mode: scale
+        mosaic_center: 0.25
+        aug_scale_min: 0.1
+        aug_scale_max: 1.9
+  validation_data:
+    input_path: /readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/val*
+    is_training: false
+    global_batch_size: 16
+    dtype: float32
+    drop_remainder: true
+    parser:
+      max_num_instances: 300
+      letter_box: true
+      use_tie_breaker: true
+      best_match_only: true
+      anchor_thresh: 4.0
+      area_thresh: 0.0
+trainer:
+  best_checkpoint_export_subdir: best_ckpt
+  best_checkpoint_eval_metric: AP
+  best_checkpoint_metric_comp: higher
+  train_steps: 138600
+  validation_steps: 312
+  validation_interval: 2310
+  steps_per_loop: 462
+  summary_interval: 462
+  checkpoint_interval: 462
+  optimizer_config:
+    ema:
+      average_decay: 0.9999
+      trainable_weights_only: false
+      dynamic_decay: true
+    learning_rate:
+      cosine:
+        initial_learning_rate: 0.01
+        alpha: 0.1
+        decay_steps: 138600
+      type: cosine
+    optimizer:
+      sgd_torch:
+        bias_keys: [bias, beta]
+        weight_keys: [kernel, weight]
+        momentum: 0.937
+        momentum_start: 0.8
+        nesterov: true
+        warmup_steps: 1386
+        weight_decay: 0.002
+      type: sgd_torch
+    warmup:
+      linear:
+        warmup_learning_rate: 0.0
+        warmup_steps: 1386
+      type: linear

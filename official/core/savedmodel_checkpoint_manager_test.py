@@ -31,6 +31,21 @@ def _models_exist(checkpoint_path: str, models: Iterable[str]) -> bool:
   return True
 
 
+class _ModelForTest(tf.keras.Model):
+  def __init__(self, hidden_size: int = 8):
+    super().__init__()
+    self.dense = tf.keras.layers.Dense(hidden_size)
+
+  @tf.function(input_signature=[tf.TensorSpec([None, 16])])
+  def call(self, inputs):
+    return self.dense(inputs)
+
+  @property
+  def saved_model_signatures(self):
+    # Build SavedModel signatures.
+    return dict(serving_default=self.call)
+
+
 class CheckpointManagerTest(tf.test.TestCase):
 
   def _create_manager(self, max_to_keep: int = 1) -> tf.train.CheckpointManager:
@@ -43,12 +58,8 @@ class CheckpointManagerTest(tf.test.TestCase):
       created savedmodel manager.
     """
     models = {
-        'model_1':
-            tf.keras.Sequential(
-                layers=[tf.keras.layers.Dense(8, input_shape=(16,))]),
-        'model_2':
-            tf.keras.Sequential(
-                layers=[tf.keras.layers.Dense(16, input_shape=(32,))]),
+        'model_1': _ModelForTest(12),
+        'model_2': _ModelForTest(14),
     }
     checkpoint = tf.train.Checkpoint()
     manager = savedmodel_checkpoint_manager.SavedModelCheckpointManager(

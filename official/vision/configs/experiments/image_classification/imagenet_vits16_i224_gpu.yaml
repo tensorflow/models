@@ -1,0 +1,81 @@
+# ViT-S16 ImageNet classification using 224x224 input.
+# Use 8 V100 GPU for training and validation.
+# --experiment_type=deit_imagenet_pretrain
+runtime:
+  distribution_strategy: mirrored
+  mixed_precision_dtype: float16
+task:
+  losses:
+    l2_weight_decay: 0.0
+    label_smoothing: 0.1
+    one_hot: false
+    soft_labels: true
+  model:
+    backbone:
+      type: vit
+      vit:
+        init_stochastic_depth_rate: 0.1
+        model_name: vit-s16
+        original_init: false
+        patch_size: 16
+    dropout_rate: 0.0
+    input_size: [224, 224, 3]
+    kernel_initializer: zeros
+    norm_activation:
+      activation: relu
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: false
+    num_classes: 1001
+  train_data:
+    aug_rand_hflip: true
+    aug_type:
+      randaug:
+        cutout_const: 40
+        exclude_ops: [Cutout]
+        magnitude: 9
+        magnitude_std: 0.0
+        num_layers: 2
+        translate_const: 10
+      type: randaug
+    dtype: float16
+    global_batch_size: 1024
+    input_path: gs://mlcompass-data/imagenet/imagenet-2012-tfrecord/train*
+    is_training: true
+    mixup_and_cutmix:
+      cutmix_alpha: 1.0
+      label_smoothing: 0.1
+      mixup_alpha: 0.8
+      prob: 1.0
+      switch_prob: 0.5
+    randaug_magnitude: 10
+  validation_data:
+    dtype: float16
+    global_batch_size: 2048
+    input_path: gs://mlcompass-data/imagenet/imagenet-2012-tfrecord/valid*
+    is_training: false
+    drop_remainder: false
+trainer:
+  checkpoint_interval: 624
+  optimizer_config:
+    learning_rate:
+      cosine:
+        alpha: 0.0
+        decay_steps: 187200
+        initial_learning_rate: 0.002
+      type: cosine
+    optimizer:
+      adamw:
+        include_in_weight_decay: .*(kernel|weight):0$
+        weight_decay_rate: 0.05
+      type: adamw
+    warmup:
+      linear:
+        warmup_learning_rate: 0
+        warmup_steps: 3120
+      type: linear
+  steps_per_loop: 624
+  summary_interval: 624
+  train_steps: 187200
+  validation_interval: 624
+  validation_steps: 25

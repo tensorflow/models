@@ -193,6 +193,23 @@ class BestCheckpointExporterTest(tf.test.TestCase):
           metric,
           {'test_metric': {'metric_1': 5.0}, 'best_ckpt_global_step': 100.0})
 
+  def test_export_best_eval_metric_skips_non_scalar_values(self):
+    model_dir = self.create_tempdir().full_path
+    metric_name = 'test_metric|metric_1'
+    exporter = train_utils.BestCheckpointExporter(model_dir, metric_name,
+                                                  'higher')
+    image = tf.zeros(shape=[16, 8, 1])
+    eval_logs = {'test_metric': {'metric_1': 5.0, 'image': image}}
+
+    exporter.export_best_eval_metric(eval_logs, 100)
+
+    with tf.io.gfile.GFile(os.path.join(model_dir, 'info.json'),
+                           'rb') as reader:
+      metric = json.loads(reader.read())
+      self.assertAllEqual(
+          metric,
+          {'test_metric': {'metric_1': 5.0}, 'best_ckpt_global_step': 100.0})
+
 
 if __name__ == '__main__':
   tf.test.main()

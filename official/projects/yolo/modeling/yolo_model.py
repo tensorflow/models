@@ -52,7 +52,6 @@ class Yolo(tf.keras.Model):
     self._head = head
     self._detection_generator = detection_generator
     self._fused = False
-    return
 
   def call(self,
            inputs: tf.Tensor,

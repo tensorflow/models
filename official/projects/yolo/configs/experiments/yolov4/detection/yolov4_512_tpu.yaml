@@ -30,7 +30,7 @@ task:
         '4': 1.1
         '3': 1.2
       max_boxes: 200
-      nms_type: iou
+      nms_version: iou
       iou_thresh: 0.001
       nms_thresh: 0.60
     loss:

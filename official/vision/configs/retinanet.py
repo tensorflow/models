@@ -110,6 +110,13 @@ class AttributeHead(hyperparams.Config):
   # prediction tower. If unspecified, they will use their individual prediction
   # tower.
   prediction_tower_name: str = ''
+  # If `num_convs` or `num_filters` are not provided, it will use the parameters
+  # from RetinaNetHead. When several attributes share the head through setting
+  # the same `prediction_tower_name`, we only respect `num_convs` and
+  # `num_filters` from the first attribute that use the shared prediction tower
+  # name.
+  num_convs: Optional[int] = None
+  num_filters: Optional[int] = None
 
 
 @dataclasses.dataclass
@@ -135,7 +142,8 @@ class DetectionGenerator(hyperparams.Config):
   # When nms_version = `tflite`, values from tflite_post_processing need to be
   # specified. They are compatible with the input arguments used by TFLite
   # custom NMS op and override above parameters.
-  tflite_post_processing: common.TFLitePostProcessingConfig = common.TFLitePostProcessingConfig(
+  tflite_post_processing: common.TFLitePostProcessingConfig = (
+      common.TFLitePostProcessingConfig()
   )
   # Return decoded boxes/scores even if apply_nms is set `True`.
   return_decoded: Optional[bool] = None

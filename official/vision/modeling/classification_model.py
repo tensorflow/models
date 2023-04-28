@@ -62,10 +62,7 @@ class ClassificationModel(tf.keras.Model):
       skip_logits_layer: `bool`, whether to skip the prediction layer.
       **kwargs: keyword arguments to be passed.
     """
-    if use_sync_bn:
-      norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      norm = tf.keras.layers.BatchNormalization
+    norm = tf.keras.layers.BatchNormalization
     axis = -1 if tf.keras.backend.image_data_format() == 'channels_last' else 1
 
     inputs = tf.keras.Input(shape=input_specs.shape[1:], name=input_specs.name)
@@ -73,7 +70,12 @@ class ClassificationModel(tf.keras.Model):
     x = endpoints[max(endpoints.keys())]
 
     if add_head_batch_norm:
-      x = norm(axis=axis, momentum=norm_momentum, epsilon=norm_epsilon)(x)
+      x = norm(
+          axis=axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          synchronized=use_sync_bn,
+      )(x)
 
     # Depending on the backbone type, backbone's output can be
     # [batch_size, height, weight, channel_size] or

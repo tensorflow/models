@@ -400,7 +400,7 @@ class Darknet(tf.keras.Model):
 
     self._model_name = model_id
     self._splits = splits
-    self._input_shape = input_specs
+    self._input_specs = input_specs
     self._registry = LayerBuilder()
 
     # default layer look up
@@ -435,13 +435,11 @@ class Darknet(tf.keras.Model):
         'name': None
     }
 
-    inputs = tf.keras.layers.Input(shape=self._input_shape.shape[1:])
+    inputs = tf.keras.Input(shape=input_specs.shape[1:])
     output = self._build_struct(layer_specs, inputs)
-    super().__init__(inputs=inputs, outputs=output, name=self._model_name)
-
-  @property
-  def input_specs(self):
-    return self._input_shape
+    super().__init__(
+        inputs=inputs, outputs=output, name=self._model_name, **kwargs
+    )
 
   @property
   def output_specs(self):
@@ -536,25 +534,28 @@ class Darknet(tf.keras.Model):
       x = nn_blocks.DarkResidual(
           filters=config.filters // scale_filters,
           filter_scale=residual_filter_scale,
-          **self._default_dict)(
-              x)
+          **self._default_dict,
+      )(x)
 
     for i in range(dilated_reps, config.repetitions):
       self._default_dict['dilation_rate'] = max(
-          1, self._default_dict['dilation_rate'] // 2)
-      self._default_dict[
-          'name'] = f"{name}_{i}_degridded_{self._default_dict['dilation_rate']}"
+          1, self._default_dict['dilation_rate'] // 2
+      )
+      self._default_dict['name'] = (
+          f"{name}_{i}_degridded_{self._default_dict['dilation_rate']}"
+      )
       x = nn_blocks.DarkResidual(
           filters=config.filters // scale_filters,
           filter_scale=residual_filter_scale,
-          **self._default_dict)(
-              x)
+          **self._default_dict,
+      )(x)
 
     self._default_dict['name'] = f'{name}_csp_connect'
     output = nn_blocks.CSPConnect(
         filters=config.filters,
         filter_scale=csp_filter_scale,
-        **self._default_dict)([x, x_route])
+        **self._default_dict,
+    )([x, x_route])
     self._default_dict['activation'] = self._activation
     self._default_dict['name'] = None
     return output
@@ -601,25 +602,28 @@ class Darknet(tf.keras.Model):
       self._default_dict['dilation_rate'] = 1
 
     x = nn_blocks.DarkResidual(
-        filters=config.filters, downsample=True, **self._default_dict)(
-            inputs)
+        filters=config.filters, downsample=True, **self._default_dict
+    )(inputs)
 
-    dilated_reps = config.repetitions - self._default_dict[
-        'dilation_rate'] // 2 - 1
+    dilated_reps = (
+        config.repetitions - self._default_dict['dilation_rate'] // 2 - 1
+    )
     for i in range(dilated_reps):
       self._default_dict['name'] = f'{name}_{i}'
-      x = nn_blocks.DarkResidual(
-          filters=config.filters, **self._default_dict)(
-              x)
+      x = nn_blocks.DarkResidual(filters=config.filters, **self._default_dict)(
+          x
+      )
 
     for i in range(dilated_reps, config.repetitions - 1):
-      self._default_dict[
-          'dilation_rate'] = self._default_dict['dilation_rate'] // 2
-      self._default_dict[
-          'name'] = f"{name}_{i}_degridded_{self._default_dict['dilation_rate']}"
-      x = nn_blocks.DarkResidual(
-          filters=config.filters, **self._default_dict)(
-              x)
+      self._default_dict['dilation_rate'] = (
+          self._default_dict['dilation_rate'] // 2
+      )
+      self._default_dict['name'] = (
+          f"{name}_{i}_degridded_{self._default_dict['dilation_rate']}"
+      )
+      x = nn_blocks.DarkResidual(filters=config.filters, **self._default_dict)(
+          x
+      )
 
     self._default_dict['activation'] = self._activation
     self._default_dict['name'] = None

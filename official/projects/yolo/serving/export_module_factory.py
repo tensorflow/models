@@ -47,13 +47,13 @@ class ExportModule(export_base.ExportModule):
     Args:
       params: A dataclass for parameters to the module.
       model: A tf.keras.Model instance to be exported.
-      input_signature: tf.TensorSpec, e.g.
-        tf.TensorSpec(shape=[None, 224, 224, 3], dtype=tf.uint8)
+      input_signature: tf.TensorSpec, e.g. tf.TensorSpec(shape=[None, 224, 224,
+        3], dtype=tf.uint8)
       preprocessor: An optional callable to preprocess the inputs.
       inference_step: An optional callable to forward-pass the model.
       postprocessor: An optional callable to postprocess the model outputs.
-      eval_postprocessor: An optional callable to postprocess model outputs
-      used for model evaluation.
+      eval_postprocessor: An optional callable to postprocess model outputs used
+        for model evaluation.
     """
     super().__init__(
         params,
@@ -171,13 +171,18 @@ def create_yolo_export_module(
   def preprocess_fn(inputs):
     image_tensor = export_utils.parse_image(inputs, input_type,
                                             input_image_size, num_channels)
-    # If input_type is `tflite`, do not apply image preprocessing.
+
+    def normalize_image_fn(inputs):
+      image = tf.cast(inputs, dtype=tf.float32)
+      return image / 255.0
+
+    # If input_type is `tflite`, do not apply image preprocessing. Only apply
+    # normalization.
     if input_type == 'tflite':
-      return image_tensor
+      return normalize_image_fn(image_tensor), None
 
     def preprocess_image_fn(inputs):
-      image = tf.cast(inputs, dtype=tf.float32)
-      image = image / 255.
+      image = normalize_image_fn(inputs)
       (image, image_info) = yolo_model_fn.letterbox(
           image,
           input_image_size,
@@ -200,12 +205,14 @@ def create_yolo_export_module(
 
   def inference_steps(inputs, model):
     images, image_info = inputs
-    detection = model(images, training=False)
-    detection['bbox'] = yolo_model_fn.undo_info(
-        detection['bbox'],
-        detection['num_detections'],
-        image_info,
-        expand=False)
+    detection = model.call(images, training=False)
+    if input_type != 'tflite':
+      detection['bbox'] = yolo_model_fn.undo_info(
+          detection['bbox'],
+          detection['num_detections'],
+          image_info,
+          expand=False,
+      )
 
     final_outputs = {
         'detection_boxes': detection['bbox'],

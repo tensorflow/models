@@ -129,7 +129,8 @@ class PanopticDeeplab(hyperparams.Config):
   norm_activation: common.NormActivation = common.NormActivation()
   backbone: backbones.Backbone = backbones.Backbone(
       type='resnet', resnet=backbones.ResNet())
-  decoder: decoders.Decoder = decoders.Decoder(type='aspp')
+  decoder: decoders.Decoder = decoders.Decoder(
+      type='aspp', aspp=decoders.ASPP(level=3))
   semantic_head: SemanticHead = SemanticHead()
   instance_head: InstanceHead = InstanceHead()
   shared_decoder: bool = False

@@ -108,13 +108,12 @@ class MaskScoring(tf.keras.Model):
         'kernel_regularizer': self._config_dict['kernel_regularizer'],
         'bias_regularizer': self._config_dict['bias_regularizer'],
     })
-    bn_op = (tf.keras.layers.experimental.SyncBatchNormalization
-             if self._config_dict['use_sync_bn']
-             else tf.keras.layers.BatchNormalization)
+    bn_op = tf.keras.layers.BatchNormalization
     bn_kwargs = {
         'axis': self._bn_axis,
         'momentum': self._config_dict['norm_momentum'],
         'epsilon': self._config_dict['norm_epsilon'],
+        'synchronized': self._config_dict['use_sync_bn'],
     }
 
     self._convs = []
@@ -168,7 +167,7 @@ class MaskScoring(tf.keras.Model):
 
     super(MaskScoring, self).build(input_shape)
 
-  def call(self, inputs: tf.Tensor, training: bool = None):
+  def call(self, inputs: tf.Tensor, training: bool = None):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     """Forward pass mask scoring head.
 
     Args:
@@ -324,13 +323,12 @@ class SegmentationHead(tf.keras.layers.Layer):
     """Creates the variables of the segmentation head."""
     use_depthwise_convolution = self._config_dict['use_depthwise_convolution']
     conv_op = tf.keras.layers.Conv2D
-    bn_op = (tf.keras.layers.experimental.SyncBatchNormalization
-             if self._config_dict['use_sync_bn']
-             else tf.keras.layers.BatchNormalization)
+    bn_op = tf.keras.layers.BatchNormalization
     bn_kwargs = {
         'axis': self._bn_axis,
         'momentum': self._config_dict['norm_momentum'],
         'epsilon': self._config_dict['norm_epsilon'],
+        'synchronized': self._config_dict['use_sync_bn'],
     }
 
     if self._config_dict['feature_fusion'] in {'deeplabv3plus',

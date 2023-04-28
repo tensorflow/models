@@ -16,9 +16,9 @@
 import random
 
 import tensorflow as tf
-import tensorflow_addons as tfa
 
 from official.projects.yolo.ops import preprocessing_ops
+from official.vision.ops import augment
 from official.vision.ops import box_ops
 from official.vision.ops import preprocess_ops
 
@@ -215,7 +215,9 @@ class Mosaic:
               -center[1], center[1], seed=self._seed))
 
       # clip the boxes to fit within the image
-      image = tfa.image.translate(image, [cw, ch], fill_value=self._pad_value)
+      image = augment.translate(
+          image, [cw, ch], fill_value=self._pad_value, fill_mode='constant'
+      )
       boxes = box_ops.denormalize_boxes(boxes, shape[:2])
       boxes = boxes + tf.cast([ch, cw, ch, cw], boxes.dtype)
       boxes = box_ops.clip_boxes(boxes, shape[:2])

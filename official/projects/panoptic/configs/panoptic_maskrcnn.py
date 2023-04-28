@@ -38,6 +38,7 @@ _COCO_TRAIN_EXAMPLES = 118287
 _COCO_VAL_EXAMPLES = 5000
 
 # pytype: disable=wrong-keyword-args
+# pylint: disable=unexpected-keyword-arg
 
 
 @dataclasses.dataclass
@@ -108,10 +109,9 @@ class Backbone(backbones.Backbone):
 @dataclasses.dataclass
 class PanopticMaskRCNN(deepmac_maskrcnn.DeepMaskHeadRCNN):
   """Panoptic Mask R-CNN model config."""
-  backbone: Backbone = Backbone()
-  segmentation_model: semantic_segmentation.SemanticSegmentationModel = (
-      SEGMENTATION_MODEL(num_classes=2))
-  include_mask = True
+  backbone: Backbone = Backbone(type='resnet', resnet=backbones.ResNet())
+  segmentation_model: SEGMENTATION_MODEL = SEGMENTATION_MODEL(num_classes=2)
+  include_mask: bool = True
   shared_backbone: bool = True
   shared_decoder: bool = True
   stuff_classes_offset: int = 0
