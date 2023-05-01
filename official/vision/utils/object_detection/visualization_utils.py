@@ -878,7 +878,7 @@ def update_detection_state(step_outputs=None) -> Dict[str, Any]:
     else:
       detection_keypoints = None
 
-    if detection_keypoints:
+    if detection_keypoints is not None:
       state['detection_keypoints'] = tf.concat(detection_keypoints, axis=0)
 
     detection_masks = step_outputs['visualization'][1].get(
