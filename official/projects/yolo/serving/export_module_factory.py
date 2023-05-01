@@ -21,6 +21,7 @@ import tensorflow as tf
 from official.core import config_definitions as cfg
 from official.core import export_base
 from official.projects.yolo.configs.yolo import YoloTask
+from official.projects.yolo.configs.yolov7 import YoloV7Task
 from official.projects.yolo.modeling import factory as yolo_factory
 from official.projects.yolo.modeling.backbones import darknet  # pylint: disable=unused-import
 from official.projects.yolo.modeling.decoders import yolo_decoder  # pylint: disable=unused-import
@@ -163,10 +164,16 @@ def create_yolo_export_module(
       input_type, batch_size, input_image_size, num_channels, input_name)
   input_specs = tf.keras.layers.InputSpec(shape=[batch_size] +
                                           input_image_size + [num_channels])
-  model, _ = yolo_factory.build_yolo(
-      input_specs=input_specs,
-      model_config=params.task.model,
-      l2_regularization=None)
+  if isinstance(params.task, YoloTask):
+    model, _ = yolo_factory.build_yolo(
+        input_specs=input_specs,
+        model_config=params.task.model,
+        l2_regularization=None)
+  elif isinstance(params.task, YoloV7Task):
+    model = yolo_factory.build_yolov7(
+        input_specs=input_specs,
+        model_config=params.task.model,
+        l2_regularization=None)
 
   def preprocess_fn(inputs):
     image_tensor = export_utils.parse_image(inputs, input_type,
@@ -247,7 +254,7 @@ def get_export_module(params: cfg.ExperimentConfig,
                                                         input_image_size,
                                                         num_channels,
                                                         input_name)
-  elif isinstance(params.task, YoloTask):
+  elif isinstance(params.task, (YoloTask, YoloV7Task)):
     export_module = create_yolo_export_module(params, input_type, batch_size,
                                               input_image_size, num_channels,
                                               input_name)
