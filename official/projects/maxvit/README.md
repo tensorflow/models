@@ -9,7 +9,8 @@
 [MaxViT](https://arxiv.org/abs/2204.01697) is a family of hybrid (CNN + ViT)
 vision backbone models, that achieves better performances across the board
 for both parameter and FLOPs efficiency than both state-of-the-art ConvNets and
-Transformers. They can also scale well on large dataset sizes like ImageNet-21K.
+Transformers ([Blog](https://ai.googleblog.com/2022/09/a-multi-axis-approach-for-vision.html)).
+They can also scale well on large dataset sizes like ImageNet-21K.
 Notably, due to the linear-complexity of the grid attention used, MaxViT scales
 well on tasks requiring large image sizes, such as object detection and
 segmentation.
@@ -99,3 +100,16 @@ MaxViT-Base  | 896x896    | 28x28       | 200    | 54.31 (+0.91) | 53.4         
 MaxViT-Large | 896x896    | 28x28       | 200    | 54.69         | -               | 46.59   | [config](configs/experiments/coco_maxvitl_i896_crcnn.yaml)
 
 </section>
+
+### Citation
+
+Should you find this repository useful, please consider citing:
+
+```
+@article{tu2022maxvit,
+  title={MaxViT: Multi-Axis Vision Transformer},
+  author={Tu, Zhengzhong and Talebi, Hossein and Zhang, Han and Yang, Feng and Milanfar, Peyman and Bovik, Alan and Li, Yinxiao},
+  journal={ECCV},
+  year={2022},
+}
+```
