@@ -1,0 +1,40 @@
+task:
+  hub_module_url: ''
+  model:
+    num_classes: 3
+  metric_type: 'accuracy'
+  train_data:
+    drop_remainder: true
+    global_batch_size: 32
+    input_path: ''
+    is_training: true
+    seq_length: 128
+    label_type: 'int'
+  validation_data:
+    drop_remainder: false
+    global_batch_size: 32
+    input_path: ''
+    is_training: false
+    seq_length: 128
+    label_type: 'int'
+trainer:
+  checkpoint_interval: 3000
+  optimizer_config:
+    learning_rate:
+      polynomial:
+        # 100% of train_steps.
+        decay_steps: 122710
+        end_learning_rate: 0.0
+        initial_learning_rate: 3.0e-05
+        power: 1.0
+      type: polynomial
+  steps_per_loop: 1000
+  summary_interval: 1000
+  # Training data size 392,702 examples, 10 epochs.
+  train_steps: 122710
+  validation_interval: 6135
+  # Eval data size = 9832 examples.
+  validation_steps: 308
+  best_checkpoint_export_subdir: 'best_ckpt'
+  best_checkpoint_eval_metric: 'cls_accuracy'
+  best_checkpoint_metric_comp: 'higher'
