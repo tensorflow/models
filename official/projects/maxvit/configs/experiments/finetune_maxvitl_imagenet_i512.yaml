@@ -1,0 +1,56 @@
+runtime:
+  mixed_precision_dtype: 'bfloat16'
+task:
+  init_checkpoint: 'Please provide'
+  init_checkpoint_modules: 'backbone'
+  model:
+    backbone:
+      maxvit:
+        model_name: 'maxvit-large'
+        representation_size: 1024
+        survival_prob: 0.8
+        window_size: 16
+        grid_size: 16
+        scale_ratio: '16/7'
+    input_size: [512, 512, 3]
+  train_data:
+    global_batch_size: 512
+    dtype: 'bfloat16'
+    aug_crop: false
+    mixup_and_cutmix:
+      cutmix_alpha: 0.1
+      label_smoothing: 0.1
+      mixup_alpha: 0.1
+      prob: 0.1
+    aug_type:
+      type: 'randaug'
+      randaug:
+        magnitude: 15
+  validation_data:
+    dtype: 'bfloat16'
+    aug_crop: false
+  losses:
+    one_hot: false
+    soft_labels: true
+    use_binary_cross_entropy: false
+trainer:
+  train_steps: 100080
+  steps_per_loop: 2000
+  summary_interval: 2000
+  validation_interval: 2000
+  checkpoint_interval: 2000
+  optimizer_config:
+    optimizer:
+      type: 'adamw'
+      adamw:
+        weight_decay_rate: 1.0e-4
+        gradient_clip_norm: 1.0
+    ema:
+      average_decay: 0.9999
+      trainable_weights_only: false
+    learning_rate:
+      type: constant
+      constant:
+        learning_rate: 5.0e-5
+    warmup:
+      type: null

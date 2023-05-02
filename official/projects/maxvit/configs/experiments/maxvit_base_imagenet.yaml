@@ -1,0 +1,25 @@
+task:
+  init_checkpoint: ''
+  model:
+    backbone:
+      maxvit:
+        model_name: 'maxvit-base'
+        representation_size: 768
+    input_size: [224, 224, 3]
+trainer:
+  optimizer_config:
+    optimizer:
+      type: 'adamw'
+      adamw:
+        weight_decay_rate: 0.05
+    ema:
+      average_decay: 0.9999
+      trainable_weights_only: false
+    learning_rate:
+      cosine:
+        initial_learning_rate: 0.003
+        alpha: 0.01
+    warmup:
+      linear:
+        warmup_learning_rate: 0.0
+        warmup_steps: 10000
