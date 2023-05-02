@@ -1,0 +1,40 @@
+task:
+  init_checkpoint: 'Please provide'
+  init_checkpoint_modules: ['backbone']
+  losses:
+    l2_weight_decay: 1.0e-07
+  model:
+    anchor:
+      anchor_size: 3.0
+    backbone:
+      maxvit:
+        model_name: 'maxvit-base'
+        window_size: 20
+        grid_size: 20
+        scale_ratio: '20/7'
+        survival_prob: 0.7
+    input_size: [640, 640, 3]
+    max_level: 7
+    min_level: 3
+    rpn_head:
+      num_convs: 2
+  train_data:
+    global_batch_size: 256
+  validation_data:
+    global_batch_size: 64
+trainer:
+  optimizer_config:
+    ema:
+      average_decay: 0.9998
+      trainable_weights_only: false
+    learning_rate:
+      cosine:
+        decay_steps: 115750
+        initial_learning_rate: 0.002
+    optimizer:
+      adamw:
+        weight_decay_rate: 0.0001
+    warmup:
+      linear:
+        warmup_learning_rate: 0.0
+        warmup_steps: 6000
