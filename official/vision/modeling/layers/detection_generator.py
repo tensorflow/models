@@ -889,6 +889,11 @@ def _generate_detections_tflite(
     num_detections = tf.constant(0.0, dtype=tf.float32, name='num_detections')
     return boxes, classes, scores, num_detections
 
+  if config.get('omit_nms', False):
+    dummy_classes = tf.constant(0.0, dtype=tf.float32, name='classes')
+    dummy_num_detections = tf.constant(
+        0.0, dtype=tf.float32, name='num_detections')
+    return boxes, dummy_classes, scores, dummy_num_detections
   return dummy_post_processing(boxes, scores, anchors)[::-1]
 
 
