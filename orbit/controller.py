@@ -96,6 +96,7 @@ class Controller:
       # Train related
       steps_per_loop: Optional[Union[int, Callable[[int], int]]] = None,
       checkpoint_manager: Optional[tf.train.CheckpointManager] = None,
+      enable_async_checkpointing: bool = False,
       # Summary related
       summary_interval: Optional[int] = None,
       summary_dir: Optional[str] = None,
@@ -141,6 +142,8 @@ class Controller:
         the model will be restored from the most recent checkpoint inside this
         `__init__` method. If not provided, the `Controller` will not
         automatically save to or restore from checkpoints.
+      enable_async_checkpointing: Optional bool indicating whether to enable
+        async checkpoint saving.
       summary_interval: Step interval for training summaries. Note that this
         argument only applies to `tf.summary` calls inside the `trainer.train`
         function. Summaries written by the `Controller` (specifically
@@ -204,6 +207,10 @@ class Controller:
 
     self.global_step = global_step
     self.checkpoint_manager = checkpoint_manager
+    self._enable_async_checkpoint_saving = enable_async_checkpointing
+    self._checkpoint_options = tf.train.CheckpointOptions(
+        enable_async=enable_async_checkpointing
+    )
 
     if self.trainer is not None:
       self.step_timer = None
@@ -244,6 +251,10 @@ class Controller:
     `CheckpointManager` was passed to `Controller.__init__`) and summarize
     training output (if `summary_dir` is set).
 
+    When async checkpointing is enabled, a sync is triggered at the end of this
+    method to make sure any ongoing async checkpoint saving is finished before
+    returning.
+
     Args:
       steps: The global step count to train up to.
       checkpoint_at_completion: Whether to save a checkpoint when this method
@@ -263,6 +274,8 @@ class Controller:
 
     if checkpoint_at_completion:
       self._maybe_save_checkpoint(check_interval=False)
+
+    self._sync_on_async_checkpointing()
 
   def evaluate(self, steps: int = -1) -> Optional[runner.Output]:
     """Runs evaluation for the given number of steps.
@@ -339,6 +352,10 @@ class Controller:
     In addition, this method will run a final evaluation at the end of the
     training sequence.
 
+    When async checkpointing is enabled, a sync is triggered at the end of this
+    method to make sure any ongoing async checkpoint saving is finished before
+    returning.
+
     Args:
       train_steps: The global step count to train up to.
       eval_steps: The number of steps to run during an evaluation. If -1, this
@@ -365,6 +382,7 @@ class Controller:
       output = self.evaluate(steps=eval_steps)
       current_step = self.global_step.numpy()
     self._maybe_save_checkpoint(check_interval=False)
+    self._sync_on_async_checkpointing()
     return output
 
   def evaluate_continuously(
@@ -538,6 +556,13 @@ class Controller:
       raise ValueError(
           f"`{attribute}` is not set. Pass `{attribute}` to "
           f"`Controller.__init__` before calling `{for_method}()`.")
+
+  def _sync_on_async_checkpointing(self):
+    """Force to wait for the async checkpoint saving (if any) to finish."""
+    # pylint: disable=protected-access
+    if self.checkpoint_manager:
+      logging.info("Sync on async checkpoint saving.")
+      self.checkpoint_manager.sync()
 
 
 class StepTimer:
