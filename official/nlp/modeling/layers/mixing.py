@@ -281,5 +281,5 @@ def _pick_fourier_transform(
 
     return functools.partial(
         two_dim_matmul,
-        matrix_dim_one=tf.convert_to_tensor(dft_mat_seq),
-        matrix_dim_two=tf.convert_to_tensor(dft_mat_hidden))
+        matrix_dim_one=dft_mat_seq,
+        matrix_dim_two=dft_mat_hidden)
