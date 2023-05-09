@@ -160,7 +160,8 @@ def resize_and_crop_image(image,
       [height, width] of the desired actual output image size.
     padded_size: a `Tensor` or `int` list/tuple of two elements representing
       [height, width] of the padded output image size. Padding will be applied
-      after scaling the image to the desired_size.
+      after scaling the image to the desired_size. Can be None to disable
+      padding.
     aug_scale_min: a `float` with range between [0, 1.0] representing minimum
       random scale applied to desired_size for training scale jittering.
     aug_scale_max: a `float` with range between [1.0, inf] representing maximum
@@ -222,8 +223,10 @@ def resize_and_crop_image(image,
           offset[0]:offset[0] + desired_size[0],
           offset[1]:offset[1] + desired_size[1], :]
 
-    output_image = tf.image.pad_to_bounding_box(
-        scaled_image, 0, 0, padded_size[0], padded_size[1])
+    output_image = scaled_image
+    if padded_size is not None:
+      output_image = tf.image.pad_to_bounding_box(
+          scaled_image, 0, 0, padded_size[0], padded_size[1])
 
     image_info = tf.stack([
         image_size,
