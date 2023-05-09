@@ -141,7 +141,7 @@ class Parser(parser.Parser):
     # Data type.
     self._dtype = dtype
 
-  def _parse_train_data(self, data):
+  def _parse_train_data(self, data, anchor_labeler=None):
     """Parses data for training and evaluation."""
     classes = data['groundtruth_classes']
     boxes = data['groundtruth_boxes']
@@ -211,8 +211,10 @@ class Parser(parser.Parser):
         aspect_ratios=self._aspect_ratios,
         anchor_size=self._anchor_size)
     anchor_boxes = input_anchor(image_size=(image_height, image_width))
-    anchor_labeler = anchor.AnchorLabeler(self._match_threshold,
-                                          self._unmatched_threshold)
+    if anchor_labeler is None:
+      anchor_labeler = anchor.AnchorLabeler(
+          self._match_threshold, self._unmatched_threshold
+      )
     (cls_targets, box_targets, att_targets, cls_weights,
      box_weights) = anchor_labeler.label_anchors(
          anchor_boxes, boxes, tf.expand_dims(classes, axis=1), attributes)
@@ -233,7 +235,7 @@ class Parser(parser.Parser):
       labels['attribute_targets'] = att_targets
     return image, labels
 
-  def _parse_eval_data(self, data):
+  def _parse_eval_data(self, data, anchor_labeler=None):
     """Parses data for training and evaluation."""
     groundtruths = {}
     classes = data['groundtruth_classes']
@@ -282,8 +284,10 @@ class Parser(parser.Parser):
         aspect_ratios=self._aspect_ratios,
         anchor_size=self._anchor_size)
     anchor_boxes = input_anchor(image_size=(image_height, image_width))
-    anchor_labeler = anchor.AnchorLabeler(self._match_threshold,
-                                          self._unmatched_threshold)
+    if anchor_labeler is None:
+      anchor_labeler = anchor.AnchorLabeler(
+          self._match_threshold, self._unmatched_threshold
+      )
     (cls_targets, box_targets, att_targets, cls_weights,
      box_weights) = anchor_labeler.label_anchors(
          anchor_boxes, boxes, tf.expand_dims(classes, axis=1), attributes)
