@@ -452,6 +452,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
 
   def call(self, inputs, output_range: Optional[tf.Tensor] = None):
     # inputs are [word_ids, mask, type_ids]
+    word_embeddings = None
     if isinstance(inputs, (list, tuple)):
       logging.warning('List inputs to  %s are discouraged.', self.__class__)
       if len(inputs) == 3:
@@ -472,6 +473,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       word_ids = inputs.get('input_word_ids')
       mask = inputs.get('input_mask')
       type_ids = inputs.get('input_type_ids')
+      word_embeddings = inputs.get('input_word_embeddings', None)
 
       dense_inputs = inputs.get('dense_inputs', None)
       dense_mask = inputs.get('dense_mask', None)
@@ -479,7 +481,8 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
     else:
       raise ValueError('Unexpected inputs type to %s.' % self.__class__)
 
-    word_embeddings = self._embedding_layer(word_ids)
+    if word_embeddings is None:
+      word_embeddings = self._embedding_layer(word_ids)
 
     if dense_inputs is not None:
       # Concat the dense embeddings at sequence begin so unpool_len can control
