@@ -1,4 +1,7 @@
-# DeepLab: Deep Labelling for Semantic Image Segmentation
+# Welcome to my fork of official DeepLab repository
+I uploaded my new files and changes of official DeepLab files here. For official DeepLab README please see README_original.md <br />
+
+This repository contains my bachelor thesis work. The aim of the thesis was to make a semantic segmentation model which could recognize various types of surfaces. The robots of BUT researchers maybe will use my trained model to identify if it can get through some type of terrain.
 
 **To new and existing DeepLab users**: We have released a unified codebase for
 dense pixel labeling tasks in TensorFlow2 at https://github.com/google-research/deeplab2.
