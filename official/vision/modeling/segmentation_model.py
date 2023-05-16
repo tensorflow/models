@@ -59,7 +59,7 @@ class SegmentationModel(tf.keras.Model):
     self.head = head
     self.mask_scoring_head = mask_scoring_head
 
-  def call(self, inputs: tf.Tensor, training: bool = None
+  def call(self, inputs: tf.Tensor, training: bool = None  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
            ) -> Dict[str, tf.Tensor]:
     backbone_features = self.backbone(inputs)
 

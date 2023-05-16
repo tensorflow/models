@@ -5,13 +5,13 @@ runtime:
   distribution_strategy: tpu
   mixed_precision_dtype: float32
 task:
+  smart_bias_lr: 0.1
+  weight_decay: 0.0
   model:
     input_size: [640, 640, 3]
     min_level: 3
     max_level: 5
     num_classes: 80
-    weight_decay: 0.0
-    smart_bias_lr: 0.1
     anchor_boxes:
       anchors_per_scale: 3
       boxes: [box: [12, 16], box: [19, 36], box: [40, 28],
@@ -114,7 +114,7 @@ trainer:
   best_checkpoint_eval_metric: AP
   best_checkpoint_metric_comp: higher
   train_steps: 138600
-  validation_steps: 19
+  validation_steps: 312
   validation_interval: 2310
   steps_per_loop: 462
   summary_interval: 462

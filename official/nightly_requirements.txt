@@ -10,7 +10,6 @@ scipy>=0.19.1
 tensorflow-hub>=0.6.0
 tensorflow-model-optimization>=0.4.1
 tensorflow-datasets
-tfa-nightly
 gin-config
 tf_slim>=1.1.0
 Cython

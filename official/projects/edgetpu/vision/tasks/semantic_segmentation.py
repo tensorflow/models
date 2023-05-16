@@ -208,7 +208,7 @@ class AutosegEdgeTPU(tf.keras.Model):
         fullres_output=fullres_output,
         num_classes=num_classes)
 
-  def call(self, inputs, training):
+  def call(self, inputs, training):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     # call backbone network.
     all_feats = self.backbone(inputs, training=training)
     if self.use_original_backbone_features:

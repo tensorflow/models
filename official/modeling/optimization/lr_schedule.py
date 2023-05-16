@@ -460,10 +460,6 @@ class StepCosineDecayWithOffset(
           tf.constant(math.pi) * (global_step) /
           (init_total_steps)) + 1.0) / 2.0 + next_init_lr)
       learning_rate = cosine_learning_rate
-      tf.compat.v1.logging.info("DEBUG lr %r next lr %r", learning_rate,
-                                cosine_learning_rate)
-      tf.compat.v1.logging.info("DEBUG lr %r next lr %r inittotalstep %r",
-                                init_lr, next_init_lr, init_total_steps)
 
       for i in range(1, num_levels):
         next_init_lr = lr_levels[i]
@@ -471,9 +467,6 @@ class StepCosineDecayWithOffset(
         next_total_steps = level_total_steps[i]
         next_next_init_lr = lr_levels[i + 1] if num_levels > i + 1 else 0.
 
-        tf.compat.v1.logging.info(
-            "DEBUG step %r nilr %r nss %r nts %r nnilr %r", global_step,
-            next_init_lr, next_start_step, next_total_steps, next_next_init_lr)
         next_cosine_learning_rate = ((next_init_lr - next_next_init_lr) *
                                      (tf.cos(
                                          tf.constant(math.pi) *
@@ -482,8 +475,6 @@ class StepCosineDecayWithOffset(
                                      next_next_init_lr)
         learning_rate = tf.where(global_step >= next_start_step,
                                  next_cosine_learning_rate, learning_rate)
-        tf.compat.v1.logging.info("DEBUG lr %r next lr %r", learning_rate,
-                                  next_cosine_learning_rate)
 
     return learning_rate
 

@@ -299,7 +299,7 @@ class TeamsPretrainer(tf.keras.Model):
         output=output_type,
         name='discriminator_mws')
 
-  def call(self, inputs):
+  def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     """TEAMS forward pass.
 
     Args:

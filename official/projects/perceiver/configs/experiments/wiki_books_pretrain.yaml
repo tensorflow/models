@@ -1,0 +1,31 @@
+task:
+  init_checkpoint: ''
+  train_data:
+    drop_remainder: true
+    global_batch_size: 512
+    # Use glob pattern to match all shards except 00141-of-00500-eval which is reserved for eval.
+    input_path: ''
+    is_training: true
+    max_predictions_per_seq: 76
+    seq_length: 512
+    use_next_sentence_label: false
+    use_position_id: false
+    use_v2_feature_names: true
+  validation_data:
+    drop_remainder: false
+    global_batch_size: 512
+    input_path: ''
+    is_training: false
+    max_predictions_per_seq: 76
+    seq_length: 512
+    use_next_sentence_label: false
+    use_position_id: false
+    use_v2_feature_names: true
+trainer:
+  checkpoint_interval: 20000
+  max_to_keep: 5
+  steps_per_loop: 1000
+  summary_interval: 1000
+  train_steps: 500000
+  validation_interval: 1000
+  validation_steps: 64

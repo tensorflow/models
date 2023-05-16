@@ -67,7 +67,7 @@ class PerDimScaleAttention(tf.keras.layers.MultiHeadAttention):
                                  attention_scores_dropout, value)
     return attention_output, attention_scores
 
-  def call(
+  def call(  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
       self,
       query,
       value,

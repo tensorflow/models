@@ -62,6 +62,7 @@ task:
   train_data:
     file_type: tfrecord
     global_batch_size: 2
+    shuffle_buffer_size: 5000
     decoder:
       type: simple_decoder
       simple_decoder:

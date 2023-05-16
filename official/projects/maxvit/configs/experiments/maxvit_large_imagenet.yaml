@@ -1,0 +1,29 @@
+task:
+  init_checkpoint: ''
+  losses:
+    l2_weight_decay: 1.0e-07
+  model:
+    backbone:
+      maxvit:
+        model_name: 'maxvit-large'
+        representation_size: 1024
+    input_size: [224, 224, 3]
+trainer:
+  max_to_keep: 5
+  optimizer_config:
+    optimizer:
+      type: 'adamw'
+      adamw:
+        weight_decay_rate: 0.05
+        gradient_clip_norm: 0.0
+    ema:
+      average_decay: 0.9999
+      trainable_weights_only: false
+    learning_rate:
+      cosine:
+        initial_learning_rate: 0.001
+        alpha: 0.00
+    warmup:
+      linear:
+        warmup_learning_rate: 0.0
+        warmup_steps: 10000

@@ -1,0 +1,27 @@
+# proto-file: learning/vizier/service/vizier.proto
+# proto-message: StudyConfig
+name: "vizier_perceiver"
+description: "Perceiver wordpiece glue finetune"
+parameter_configs {
+  name: "config.task.train_data.global_batch_size"
+  type: DISCRETE
+  feasible_points: 16
+  feasible_points: 32
+  feasible_points: 64
+  external_type: AS_INTEGER
+}
+parameter_configs {
+  name: "config.trainer.optimizer_config.learning_rate.polynomial.initial_learning_rate"
+  type: DISCRETE
+  feasible_points: 1e-5
+  feasible_points: 2e-5
+  feasible_points: 5e-5
+  feasible_points: 1e-4
+  scale_type: UNIT_LINEAR_SCALE
+  external_type: AS_FLOAT
+}
+goal: MAXIMIZE
+max_num_trials: 1000
+write_user: "tensorflow-tpus"
+read_user: "all"
+observation_noise: AUTOMATIC

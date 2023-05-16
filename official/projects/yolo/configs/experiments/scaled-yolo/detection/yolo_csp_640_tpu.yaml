@@ -1,4 +1,5 @@
 # --experiment_type=scaled_yolo
+# Use 4x4 DF for training
 # mAP 47.6
 runtime:
   distribution_strategy: 'tpu'
@@ -72,3 +73,7 @@ task:
       area_thresh: 0.1
   validation_data:
     input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/val*'
+trainer:
+  best_checkpoint_eval_metric: 'AP'
+  best_checkpoint_export_subdir: 'best_ckpt'
+  best_checkpoint_metric_comp: 'higher'

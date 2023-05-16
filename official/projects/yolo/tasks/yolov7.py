@@ -84,9 +84,7 @@ class YoloV7Task(base_task.Task):
         num_classes=self.task_config.model.num_classes,
         auto_balance=loss_config.auto_balance,
     )
-    self._model = None
     self._coco_91_to_80 = False
-    self.coco_metric = None
     self._metrics = []
 
     # globally set the random seed

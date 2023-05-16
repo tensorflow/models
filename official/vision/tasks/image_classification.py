@@ -134,16 +134,33 @@ class ImageClassificationTask(base_task.Task):
           label_smoothing=params.mixup_and_cutmix.label_smoothing,
           num_classes=num_classes)
 
+    def sample_fn(repeated_augment, dataset):
+      weights = [1 / repeated_augment] * repeated_augment
+      dataset = tf.data.Dataset.sample_from_datasets(
+          datasets=[dataset] * repeated_augment,
+          weights=weights,
+          seed=None,
+          stop_on_empty_dataset=True,
+      )
+      return dataset
+
+    is_repeated_augment = (
+        params.is_training
+        and params.repeated_augment is not None
+    )
     reader = input_reader_factory.input_reader_generator(
         params,
         dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
         combine_fn=input_reader.create_combine_fn(params),
         parser_fn=parser.parse_fn(params.is_training),
-        postprocess_fn=postprocess_fn)
+        postprocess_fn=postprocess_fn,
+        sample_fn=(lambda ds: sample_fn(params.repeated_augment, ds))
+        if is_repeated_augment
+        else None,
+    )
 
     dataset = reader.read(input_context=input_context)
-
     return dataset
 
   def build_losses(self,

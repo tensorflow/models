@@ -31,7 +31,7 @@ class MockModel(tf.keras.Model):
     super().__init__()
     self.network = network
 
-  def call(self, inputs):
+  def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     outputs = self.network(inputs)
     self.add_loss(tf.reduce_mean(outputs))
     return outputs

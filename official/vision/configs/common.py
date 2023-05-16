@@ -139,6 +139,7 @@ class PseudoLabelDataConfig(cfg.DataConfig):
 
 @dataclasses.dataclass
 class TFLitePostProcessingConfig(hyperparams.Config):
+  """TFLite Post Processing config for inference."""
   max_detections: int = 200
   max_classes_per_detection: int = 5
   # Regular NMS run in a multi-class fashion and is slow. Setting it to False
@@ -149,3 +150,6 @@ class TFLitePostProcessingConfig(hyperparams.Config):
   # Whether to normalize coordinates of anchors to [0, 1]. If setting to True,
   # coordinates of output boxes is also normalized but latency increases.
   normalize_anchor_coordinates: Optional[bool] = False
+  # Whether to omit the final nms placeholder op. If set to True, the output
+  # will be a tuple of boxes, scores result right before the NMS operation.
+  omit_nms: Optional[bool] = False

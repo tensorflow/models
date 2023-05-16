@@ -90,7 +90,7 @@ class RoformerAttention(tf.keras.layers.MultiHeadAttention):
                                ...] + k2 * self.k_sin_vec[:, 0:k_len, ...]
     return ret_q, ret_w, v
 
-  def call(self,
+  def call(self,  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
            query,
            value,
            key=None,

@@ -25,7 +25,7 @@ class FakeKerasModel(tf.keras.Model):
     self.dense = tf.keras.layers.Dense(4, activation=tf.nn.relu)
     self.dense2 = tf.keras.layers.Dense(4, activation=tf.nn.relu)
 
-  def call(self, inputs):
+  def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     return self.dense2(self.dense(inputs))
 
 

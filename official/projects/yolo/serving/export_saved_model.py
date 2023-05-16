@@ -38,9 +38,8 @@ from absl import flags
 
 from official.core import exp_factory
 from official.modeling import hyperparams
-from official.projects.yolo.configs import yolo as cfg  # pylint: disable=unused-import
+from official.projects.yolo.common import registry_imports  # pylint: disable=unused-import
 from official.projects.yolo.serving import export_module_factory
-from official.projects.yolo.tasks import yolo as task  # pylint: disable=unused-import
 from official.vision.serving import export_saved_model_lib
 
 FLAGS = flags.FLAGS

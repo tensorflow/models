@@ -205,11 +205,7 @@ class SpineNet(tf.keras.Model):
     self._num_init_blocks = 2
 
     self._set_activation_fn(activation)
-
-    if use_sync_bn:
-      self._norm = layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = layers.BatchNormalization
+    self._norm = layers.BatchNormalization
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
@@ -303,7 +299,8 @@ class SpineNet(tf.keras.Model):
     x = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)(
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)(
             x)
     x = tf_utils.get_activation(self._activation_fn)(x)
     x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
@@ -434,7 +431,8 @@ class SpineNet(tf.keras.Model):
       x = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)(
+          epsilon=self._norm_epsilon,
+          synchronized=self._use_sync_bn)(
               x)
       x = tf_utils.get_activation(self._activation_fn)(x)
       endpoints[str(level)] = x
@@ -466,7 +464,8 @@ class SpineNet(tf.keras.Model):
     x = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)(
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)(
             x)
     x = tf_utils.get_activation(self._activation_fn)(x)
 
@@ -485,7 +484,8 @@ class SpineNet(tf.keras.Model):
       x = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)(
+          epsilon=self._norm_epsilon,
+          synchronized=self._use_sync_bn)(
               x)
       x = tf_utils.get_activation(self._activation_fn)(x)
       input_width /= 2
@@ -511,7 +511,8 @@ class SpineNet(tf.keras.Model):
     x = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)(
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)(
             x)
     return x
 

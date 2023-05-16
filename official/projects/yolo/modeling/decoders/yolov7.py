@@ -91,6 +91,69 @@ _BLOCK_SPEC_SCHEMAS = {
     ],
 }
 
+# Define specs for YOLOv7-tiny variant. It is recommended to use together with
+# YOLOv7-tiny backbone.
+_YoloV7Tiny = [
+    ['convbn', -1, 1, 1, 256, False],
+    ['convbn', -2, 1, 1, 256, False],
+    ['maxpool2d', -1, 5, 1, 'same', False],
+    ['maxpool2d', -2, 9, 1, 'same', False],
+    ['maxpool2d', -3, 13, 1, 'same', False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 256, False],
+    ['concat', [-1, -7], -1, False],
+    ['convbn', -1, 1, 1, 256, False],  # 8
+
+    ['convbn', -1, 1, 1, 128, False],
+    ['upsample2d', -1, 2, 'nearest', False],
+    ['convbn', '4', 1, 1, 128, False],  # route from backbone P4
+    ['concat', [-1, -2], -1, False],
+
+    ['convbn', -1, 1, 1, 64, False],
+    ['convbn', -2, 1, 1, 64, False],
+    ['convbn', -1, 3, 1, 64, False],
+    ['convbn', -1, 3, 1, 64, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 128, False],  # 18
+
+    ['convbn', -1, 1, 1, 64, False],
+    ['upsample2d', -1, 2, 'nearest', False],
+    ['convbn', '3', 1, 1, 64, False],  # route from backbone P3
+    ['concat', [-1, -2], -1, False],
+
+    ['convbn', -1, 1, 1, 32, False],
+    ['convbn', -2, 1, 1, 32, False],
+    ['convbn', -1, 3, 1, 32, False],
+    ['convbn', -1, 3, 1, 32, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 64, False],  # 28
+
+    ['convbn', -1, 3, 2, 128, False],
+    ['concat', [-1, 18], -1, False],
+
+    ['convbn', -1, 1, 1, 64, False],
+    ['convbn', -2, 1, 1, 64, False],
+    ['convbn', -1, 3, 1, 64, False],
+    ['convbn', -1, 3, 1, 64, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 128, False],  # 36
+
+    ['convbn', -1, 3, 2, 256, False],
+    ['concat', [-1, 8], -1, False],
+
+    ['convbn', -1, 1, 1, 128, False],
+    ['convbn', -2, 1, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 256, False],  # 44
+
+    ['convbn', 28, 1, 1, 128, True],
+    ['convbn', 36, 1, 1, 256, True],
+    ['convbn', 44, 1, 1, 512, True],
+]
+
+
 # Define specs YOLOv7 variant. The spec schema is defined above.
 # It is recommended to use together with YOLOv7 backbone.
 _YoloV7 = [
@@ -159,9 +222,85 @@ _YoloV7 = [
     ['repconv', 50, 3, 1, 1024, True],
 ]
 
+_YoloV7X = [
+    ['sppcspc', -1, 640, False],  # 0
+
+    ['convbn', -1, 1, 1, 320, False],
+    ['upsample2d', -1, 2, 'nearest', False],
+    ['convbn', '4', 1, 1, 320, False],  # route from backbone P4
+    ['concat', [-1, -2], -1, False],
+
+    ['convbn', -1, 1, 1, 256, False],
+    ['convbn', -2, 1, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['concat', [-1, -3, -5, -7, -8], -1, False],
+    ['convbn', -1, 1, 1, 320, False],  # 14
+
+    ['convbn', -1, 1, 1, 160, False],
+    ['upsample2d', -1, 2, 'nearest', False],
+    ['convbn', '3', 1, 1, 160, False],  # route from backbone P3
+    ['concat', [-1, -2], -1, False],
+
+    ['convbn', -1, 1, 1, 128, False],
+    ['convbn', -2, 1, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['concat', [-1, -3, -5, -7, -8], -1, False],
+    ['convbn', -1, 1, 1, 160, False],  # 28
+
+    ['maxpool2d', -1, 2, 2, 'same', False],
+    ['convbn', -1, 1, 1, 160, False],
+    ['convbn', -3, 1, 1, 160, False],
+    ['convbn', -1, 3, 2, 160, False],
+    ['concat', [-1, -3, 14], -1, False],
+
+    ['convbn', -1, 1, 1, 256, False],
+    ['convbn', -2, 1, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['concat', [-1, -3, -5, -7, -8], -1, False],
+    ['convbn', -1, 1, 1, 320, False],  # 43
+
+    ['maxpool2d', -1, 2, 2, 'same', False],
+    ['convbn', -1, 1, 1, 320, False],
+    ['convbn', -3, 1, 1, 320, False],
+    ['convbn', -1, 3, 2, 320, False],
+    ['concat', [-1, -3, 0], -1, False],
+
+    ['convbn', -1, 1, 1, 512, False],
+    ['convbn', -2, 1, 1, 512, False],
+    ['convbn', -1, 3, 1, 512, False],
+    ['convbn', -1, 3, 1, 512, False],
+    ['convbn', -1, 3, 1, 512, False],
+    ['convbn', -1, 3, 1, 512, False],
+    ['convbn', -1, 3, 1, 512, False],
+    ['convbn', -1, 3, 1, 512, False],
+    ['concat', [-1, -3, -5, -7, -8], -1, False],
+    ['convbn', -1, 1, 1, 640, False],  # 58
+
+    ['repconv', 28, 3, 1, 320, True],
+    ['repconv', 43, 3, 1, 640, True],
+    ['repconv', 58, 3, 1, 1280, True],
+]
+
 # Aggregates all variants for YOLOv7 decoders.
 DECODERS = {
+    'yolov7-tiny': _YoloV7Tiny,
     'yolov7': _YoloV7,
+    'yolov7x': _YoloV7X,
 }
 
 
@@ -257,13 +396,13 @@ class YoloV7(tf.keras.Model):
     return inputs
 
   def _group_layer_inputs(self, from_index, inputs, outputs):
-    if not outputs:
-      return inputs[max(inputs.keys())]
-
     if isinstance(from_index, list):
       return [self._group_layer_inputs(i, inputs, outputs) for i in from_index]
 
     if isinstance(from_index, int):
+      # Need last layer output from backbone.
+      if len(outputs) + from_index == -1:
+        return inputs[max(inputs.keys())]
       return outputs[from_index]
     return inputs[from_index]  # from_index is a string.
 

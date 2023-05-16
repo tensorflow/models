@@ -68,6 +68,44 @@ _BLOCK_SPEC_SCHEMAS = {
     ]
 }
 
+# Define YOLOv7-tiny variant.
+_YoloV7Tiny = [
+    ['convbn', -1, 3, 2, 32, False],  # 0-P1/2
+
+    ['convbn', -1, 3, 2, 64, False],  # 1-P2/4
+
+    ['convbn', -1, 1, 1, 32, False],
+    ['convbn', -2, 1, 1, 32, False],
+    ['convbn', -1, 3, 1, 32, False],
+    ['convbn', -1, 3, 1, 32, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 64, False],  # 7
+
+    ['maxpool2d', -1, 2, 2, 'same', False],  # 8-P3/8
+    ['convbn', -1, 1, 1, 64, False],
+    ['convbn', -2, 1, 1, 64, False],
+    ['convbn', -1, 3, 1, 64, False],
+    ['convbn', -1, 3, 1, 64, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 128, True],  # 14
+
+    ['maxpool2d', -1, 2, 2, 'same', False],  # 15-P4/16
+    ['convbn', -1, 1, 1, 128, False],
+    ['convbn', -2, 1, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 256, True],  # 21
+
+    ['maxpool2d', -1, 2, 2, 'same', False],  # 22-P5/32
+    ['convbn', -1, 1, 1, 256, False],
+    ['convbn', -2, 1, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 512, True],  # 28
+]
+
 # Define YOLOv7 variant.
 _YoloV7 = [
     ['convbn', -1, 3, 1, 32, False],  # 0
@@ -131,9 +169,81 @@ _YoloV7 = [
     ['convbn', -1, 1, 1, 1024, True],  # 50
 ]
 
+_YoloV7X = [
+    ['convbn', -1, 3, 1, 40, False],  # 0
+
+    ['convbn', -1, 3, 2, 80, False],  # 1-P1/2
+    ['convbn', -1, 3, 1, 80, False],
+
+    ['convbn', -1, 3, 2, 160, False],  # 3-P2/4
+    ['convbn', -1, 1, 1, 64, False],
+    ['convbn', -2, 1, 1, 64, False],
+    ['convbn', -1, 3, 1, 64, False],
+    ['convbn', -1, 3, 1, 64, False],
+    ['convbn', -1, 3, 1, 64, False],
+    ['convbn', -1, 3, 1, 64, False],
+    ['convbn', -1, 3, 1, 64, False],
+    ['convbn', -1, 3, 1, 64, False],
+    ['concat', [-1, -3, -5, -7, -8], -1, False],
+    ['convbn', -1, 1, 1, 320, False],  # 13
+
+    ['maxpool2d', -1, 2, 2, 'same', False],
+    ['convbn', -1, 1, 1, 160, False],
+    ['convbn', -3, 1, 1, 160, False],
+    ['convbn', -1, 3, 2, 160, False],
+    ['concat', [-1, -3], -1, False],  # 18-P3/8
+
+    ['convbn', -1, 1, 1, 128, False],
+    ['convbn', -2, 1, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['convbn', -1, 3, 1, 128, False],
+    ['concat', [-1, -3, -5, -7, -8], -1, False],
+    ['convbn', -1, 1, 1, 640, True],  # 28
+
+    ['maxpool2d', -1, 2, 2, 'same', False],
+    ['convbn', -1, 1, 1, 320, False],
+    ['convbn', -3, 1, 1, 320, False],
+    ['convbn', -1, 3, 2, 320, False],
+    ['concat', [-1, -3], -1, False],  # 33-P4/16
+
+    ['convbn', -1, 1, 1, 256, False],
+    ['convbn', -2, 1, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['concat', [-1, -3, -5, -7, -8], -1, False],
+    ['convbn', -1, 1, 1, 1280, True],  # 43
+
+    ['maxpool2d', -1, 2, 2, 'same', False],
+    ['convbn', -1, 1, 1, 640, False],
+    ['convbn', -3, 1, 1, 640, False],
+    ['convbn', -1, 3, 2, 640, False],
+    ['concat', [-1, -3], -1, False],  # 48-P5/32
+
+    ['convbn', -1, 1, 1, 256, False],
+    ['convbn', -2, 1, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['convbn', -1, 3, 1, 256, False],
+    ['concat', [-1, -3, -5, -7, -8], -1, False],
+    ['convbn', -1, 1, 1, 1280, True],  # 58
+]
+
 # Aggregates all variants for YOLOv7 backbones.
 BACKBONES = {
+    'yolov7-tiny': _YoloV7Tiny,
     'yolov7': _YoloV7,
+    'yolov7x': _YoloV7X,
 }
 
 

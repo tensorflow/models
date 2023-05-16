@@ -50,6 +50,8 @@ class VisionTransformer(hyperparams.Config):
 
   # Adding Layerscale to each Encoder block https://arxiv.org/abs/2204.07118
   layer_scale_init_value: float = 0.0
+  # Transformer encoder spatial partition dimensions.
+  transformer_partition_dims: Optional[Tuple[int, int, int, int]] = None
 
 
 @dataclasses.dataclass

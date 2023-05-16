@@ -69,7 +69,7 @@ class SimCLRModel(tf.keras.Model):
     # Set whether the backbone is trainable
     self._backbone.trainable = backbone_trainable
 
-  def call(self, inputs, training=None, **kwargs):
+  def call(self, inputs, training=None, **kwargs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     model_outputs = {}
 
     if training and self._mode == PRETRAIN:
