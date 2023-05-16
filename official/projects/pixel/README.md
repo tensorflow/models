@@ -4,14 +4,14 @@ TF2 implementation of [PIXEL](https://arxiv.org/abs/2207.06991).
 
 ### Setup
 The current setup requires a numpyfied pytorch pixel model and preprocessed data.
-We have converted such a pre-trained model (along with sst2 data) and uploaded it to
-`gs://model-garden-ucsd-zihan/pixel/pixel_data`
-Suppose this is stored in the directory `PATH_TO_PIXEL_DATA_DIR`, then
+For the pixel model, we directly convert its state_dict and saved as numpy.
+For the preprocessed data, we run their pytorch implementation and save the pixel transformed data.
+Let's put these data in the directory `PATH_TO_PIXEL_DATA_DIR`, then
 , to convert the numpyfied model to a tensorflow checkpoint, run
 ```shell
-python3 utils/convert_numpy_weights_to_tf.py PATH_TO_PIXEL_DATA_DIR
+python3 utils/convert_numpy_weights_to_tf.py $PATH_TO_PIXEL_DATA_DIR
 ```
-will create a `pixel_encoder.ckpt`. Denote the path to this checkpoint as
+This will create a `pixel_encoder.ckpt`. Denote the path to this checkpoint as
 `PATH_TO_PIXEL_ENCODER_CKPT`.
 
 ### Training

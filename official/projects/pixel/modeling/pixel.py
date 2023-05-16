@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,68 +23,14 @@ from official.vision.modeling.layers import nn_blocks
 from official.vision.modeling.layers import nn_layers
 layers = tf.keras.layers
 
-class ViTEncoder(tf.keras.layers.Layer):
+class ViTEncoder(vit.ViTEncoder):
   """
-  ViT Encoder, copied from official/vision/modeling/backbones/vit.Encoder.
-  Changed the inputs to accomodate masks.
+  ViT Encoder.
+  The original vit implementation in official/vision/modeling/backbones/vit.py
+  does not support attention masks.
+  This version allows passing the attention mask in call along with inputs
+  as a (bs, seqlen) tensor.
   """
-
-  def __init__(self,
-               num_layers,
-               mlp_dim,
-               num_heads,
-               dropout_rate=0.1,
-               attention_dropout_rate=0.1,
-               kernel_regularizer=None,
-               inputs_positions=None,
-               init_stochastic_depth_rate=0.0,
-               kernel_initializer='glorot_uniform',
-               add_pos_embed=True,
-               pos_embed_origin_shape=None,
-               pos_embed_target_shape=None,
-               **kwargs):
-    super().__init__(**kwargs)
-    self._num_layers = num_layers
-    self._mlp_dim = mlp_dim
-    self._num_heads = num_heads
-    self._dropout_rate = dropout_rate
-    self._attention_dropout_rate = attention_dropout_rate
-    self._kernel_regularizer = kernel_regularizer
-    self._inputs_positions = inputs_positions
-    self._init_stochastic_depth_rate = init_stochastic_depth_rate
-    self._kernel_initializer = kernel_initializer
-    self._add_pos_embed = add_pos_embed
-    self._pos_embed_origin_shape = pos_embed_origin_shape
-    self._pos_embed_target_shape = pos_embed_target_shape
-
-  def build(self, input_shape):
-    if self._add_pos_embed:
-      self._pos_embed = vit.AddPositionEmbs(
-          posemb_init=tf.keras.initializers.RandomNormal(stddev=0.02),
-          posemb_origin_shape=self._pos_embed_origin_shape,
-          posemb_target_shape=self._pos_embed_target_shape,
-          name='posembed_input')
-    self._dropout = layers.Dropout(rate=self._dropout_rate)
-
-    self._encoder_layers = []
-    # Set layer norm epsilons to 1e-6 to be consistent with JAX implementation.
-    # https://flax.readthedocs.io/en/latest/_autosummary/flax.deprecated.nn.LayerNorm.html
-    for i in range(self._num_layers):
-      encoder_layer = nn_blocks.TransformerEncoderBlock(
-          inner_activation=activations.gelu,
-          num_attention_heads=self._num_heads,
-          inner_dim=self._mlp_dim,
-          output_dropout=self._dropout_rate,
-          attention_dropout=self._attention_dropout_rate,
-          kernel_regularizer=self._kernel_regularizer,
-          kernel_initializer=self._kernel_initializer,
-          norm_first=True,
-          stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
-              self._init_stochastic_depth_rate, i + 1, self._num_layers),
-          norm_epsilon=1e-6)
-      self._encoder_layers.append(encoder_layer)
-    self._norm = layers.LayerNormalization(epsilon=1e-6)
-    super().build(input_shape)
 
   def call(self, inputs, training=None):
     x, mask = inputs
@@ -96,25 +42,6 @@ class ViTEncoder(tf.keras.layers.Layer):
       x = encoder_layer((x, mask), training=training)
     x = self._norm(x)
     return x
-
-  def get_config(self):
-    config = super().get_config()
-    updates = {
-        'num_layers': self._num_layers,
-        'mlp_dim': self._mlp_dim,
-        'num_heads': self._num_heads,
-        'dropout_rate': self._dropout_rate,
-        'attention_dropout_rate': self._attention_dropout_rate,
-        'kernel_regularizer': self._kernel_regularizer,
-        'inputs_positions': self._inputs_positions,
-        'init_stochastic_depth_rate': self._init_stochastic_depth_rate,
-        'kernel_initializer': self._kernel_initializer,
-        'add_pos_embed': self._add_pos_embed,
-        'pos_embed_origin_shape': self._pos_embed_origin_shape,
-        'pos_embed_target_shape': self._pos_embed_target_shape,
-    }
-    config.update(updates)
-    return config
 
 class VisionTransformer(tf.keras.Model):
   """ViT backbone."""
