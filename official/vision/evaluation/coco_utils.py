@@ -114,7 +114,6 @@ def convert_predictions_to_coco_annotations(predictions):
       Required fields:
         - source_id: a list of numpy arrays of int or string of shape
             [batch_size].
-        - num_detections: a list of numpy arrays of int of shape [batch_size].
         - detection_boxes: a list of numpy arrays of float of shape
             [batch_size, K, 4], where coordinates are in the original image
             space (not the scaled image space).
@@ -125,6 +124,8 @@ def convert_predictions_to_coco_annotations(predictions):
       Optional fields:
         - detection_masks: a list of numpy arrays of float of shape
             [batch_size, K, mask_height, mask_width].
+        - detection_keypoints: a list of numpy arrays of float of shape
+            [batch_size, K, num_keypoints, 2]
 
   Returns:
     coco_predictions: prediction in COCO annotation format.
@@ -144,17 +145,32 @@ def convert_predictions_to_coco_annotations(predictions):
       mask_boxes = predictions['detection_boxes']
 
     batch_size = predictions['source_id'][i].shape[0]
+    if 'detection_keypoints' in predictions:
+      # Adds extra ones to indicate the visibility for each keypoint as is
+      # recommended by MSCOCO. Also, convert keypoint from [y, x] to [x, y]
+      # as mandated by COCO.
+      num_keypoints = predictions['detection_keypoints'][i].shape[2]
+      coco_keypoints = np.concatenate(
+          [
+              predictions['detection_keypoints'][i][..., 1:],
+              predictions['detection_keypoints'][i][..., :1],
+              np.ones([batch_size, max_num_detections, num_keypoints, 1]),
+          ],
+          axis=-1,
+      ).astype(int)
     for j in range(batch_size):
       if 'detection_masks' in predictions:
         image_masks = mask_ops.paste_instance_masks(
             predictions['detection_masks'][i][j],
             mask_boxes[i][j],
             int(predictions['image_info'][i][j, 0, 0]),
-            int(predictions['image_info'][i][j, 0, 1]))
+            int(predictions['image_info'][i][j, 0, 1]),
+        )
         binary_masks = (image_masks > 0.0).astype(np.uint8)
         encoded_masks = [
             mask_api.encode(np.asfortranarray(binary_mask))
-            for binary_mask in list(binary_masks)]
+            for binary_mask in list(binary_masks)
+        ]
       for k in range(max_num_detections):
         ann = {}
         ann['image_id'] = predictions['source_id'][i][j]
@@ -164,21 +180,7 @@ def convert_predictions_to_coco_annotations(predictions):
         if 'detection_masks' in predictions:
           ann['segmentation'] = encoded_masks[k]
         if 'detection_keypoints' in predictions:
-          # Adds extra ones to indicate the visibility for each keypoint as is
-          # recommended by MSCOCO. Also, convert keypoint from [y, x] to [x, y]
-          # as mandated by COCO.
-          instance_keypoints = predictions['detection_keypoints'][i][j, k]
-          num_keypoints = len(instance_keypoints)
-          instance_keypoints = np.concatenate(
-              [
-                  np.expand_dims(instance_keypoints[:, 1], axis=-1),
-                  np.expand_dims(instance_keypoints[:, 0], axis=-1),
-                  np.expand_dims(np.ones(num_keypoints), axis=1),
-              ],
-              axis=1,
-          ).astype(int)
-          instance_keypoints = instance_keypoints.flatten().tolist()
-          ann['keypoints'] = instance_keypoints
+          ann['keypoints'] = coco_keypoints[j, k].flatten().tolist()
         coco_predictions.append(ann)
 
   for i, ann in enumerate(coco_predictions):
