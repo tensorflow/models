@@ -53,7 +53,9 @@ def _run_experiment_with_preemption_recovery(params, model_dir):
           **params.runtime.model_parallelism())
       with distribution_strategy.scope():
         task = task_factory.get_task(params.task, logging_dir=model_dir)
-      preemption_watcher = tf.distribute.experimental.PreemptionWatcher()
+      # pylint: disable=line-too-long
+      preemption_watcher = None  # copybara-replace
+      # pylint: enable=line-too-long
 
       train_lib.run_experiment(
           distribution_strategy=distribution_strategy,
