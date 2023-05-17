@@ -32,6 +32,11 @@ from official.vision.utils import summary_manager
 
 FLAGS = flags.FLAGS
 
+flags.DEFINE_bool(
+    'enable_async_checkpointing',
+    default=True,
+    help='A boolean indicating whether to enable async checkpoint saving')
+
 
 def _run_experiment_with_preemption_recovery(params, model_dir):
   """Runs experiment and tries to reconnect when encounting a preemption."""
@@ -60,6 +65,7 @@ def _run_experiment_with_preemption_recovery(params, model_dir):
           eval_summary_manager=summary_manager.maybe_build_eval_summary_manager(
               params=params, model_dir=model_dir
           ),
+          enable_async_checkpointing=FLAGS.enable_async_checkpointing,
       )
 
       keep_training = False
