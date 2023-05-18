@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""TensorFlow Model Garden Vision training driver, including ViT configs.."""
+"""TensorFlow Model Garden Vision training driver, including MaxViT configs.."""
 from absl import app
 
 from official.common import flags as tfm_flags
-from official.projects.maxvit import configs  # pylint: disable=unused-import
-from official.projects.maxvit.modeling import maxvit  # pylint: disable=unused-import
+from official.projects.maxvit import registry_imports  # pylint: disable=unused-import
 from official.vision import train
 
 
