@@ -276,7 +276,7 @@ class TrainerConfig(base_config.Config):
   recovery_max_trials: int = 0
   validation_summary_subdir: str = "validation"
   # Preemption on-demand checkpoint.
-  preemption_on_demand_checkpoint: bool = True
+  preemption_on_demand_checkpoint: bool = True  # copybara-replace
 
 
 @dataclasses.dataclass
