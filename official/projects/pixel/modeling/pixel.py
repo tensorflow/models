@@ -23,7 +23,7 @@ from official.vision.modeling.layers import nn_blocks
 from official.vision.modeling.layers import nn_layers
 layers = tf.keras.layers
 
-class ViTEncoder(vit.ViTEncoder):
+class ViTEncoder(vit.Encoder):
   """
   ViT Encoder.
   The original vit implementation in official/vision/modeling/backbones/vit.py
