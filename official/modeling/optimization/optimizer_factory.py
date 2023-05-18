@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,33 +13,47 @@
 # limitations under the License.
 
 """Optimizer factory class."""
-from typing import Callable, Optional, Union, List, Tuple
+from typing import Callable, List, Optional, Tuple, Union
 
 import gin
 import tensorflow as tf
-import tensorflow_addons.optimizers as tfa_optimizers
 
 from official.modeling.optimization import slide_optimizer
 from official.modeling.optimization import adafactor_optimizer
 from official.modeling.optimization import ema_optimizer
-from official.modeling.optimization import lars_optimizer
+from official.modeling.optimization import lamb
+from official.modeling.optimization import lars
 from official.modeling.optimization import legacy_adamw
 from official.modeling.optimization import lr_schedule
 from official.modeling.optimization.configs import optimization_config as opt_cfg
 
-OPTIMIZERS_CLS = {
-    'sgd': tf.keras.optimizers.SGD,
-    # TODO(chenmoneygithub): experimental.SGD
-    'adam': tf.keras.optimizers.Adam,
-    # TODO(chenmoneygithub): experimental.Adam
+# Optimizer CLS to be used in both legacy and new path.
+SHARED_OPTIMIZERS = {
+    'sgd_experimental': tf.keras.optimizers.experimental.SGD,
+    'adam_experimental': tf.keras.optimizers.experimental.Adam,
     'adamw': legacy_adamw.AdamWeightDecay,
-    'lamb': tfa_optimizers.LAMB,
-    'rmsprop': tf.keras.optimizers.RMSprop,
-    'lars': lars_optimizer.LARS,
-    'adagrad': tf.keras.optimizers.Adagrad,
+    'adamw_experimental': tf.keras.optimizers.experimental.AdamW,
+    'lamb': lamb.LAMB,
+    'lars': lars.LARS,
     'slide': slide_optimizer.SLIDE,
     'adafactor': adafactor_optimizer.Adafactor,
 }
+
+LEGACY_OPTIMIZERS_CLS = {
+    'sgd': tf.keras.optimizers.legacy.SGD,
+    'adam': tf.keras.optimizers.legacy.Adam,
+    'rmsprop': tf.keras.optimizers.legacy.RMSprop,
+    'adagrad': tf.keras.optimizers.legacy.Adagrad,
+}
+LEGACY_OPTIMIZERS_CLS.update(SHARED_OPTIMIZERS)
+
+NEW_OPTIMIZERS_CLS = {
+    'sgd': tf.keras.optimizers.experimental.SGD,
+    'adam': tf.keras.optimizers.experimental.Adam,
+    'rmsprop': tf.keras.optimizers.experimental.RMSprop,
+    'adagrad': tf.keras.optimizers.experimental.Adagrad,
+}
+NEW_OPTIMIZERS_CLS.update(SHARED_OPTIMIZERS)
 
 LR_CLS = {
     'stepwise': lr_schedule.PiecewiseConstantDecayWithOffset,
@@ -59,7 +73,12 @@ WARMUP_CLS = {
 
 
 def register_optimizer_cls(key: str,
-                           optimizer_config_cls: tf.keras.optimizers.Optimizer):
+                           optimizer_config_cls: Union[
+                               tf.keras.optimizers.Optimizer,
+                               tf.keras.optimizers.legacy.Optimizer,
+                               tf.keras.optimizers.experimental.Optimizer
+                           ],
+                           use_legacy_optimizer: bool = True):
   """Register customize optimizer cls.
 
   The user will still need to subclass data classes in
@@ -68,10 +87,16 @@ def register_optimizer_cls(key: str,
   Args:
     key: A string to that the optimizer_config_cls is registered with.
     optimizer_config_cls: A class which inherits tf.keras.optimizers.Optimizer.
+    use_legacy_optimizer: A boolean that indicates if using legacy optimizers.
   """
-  if key in OPTIMIZERS_CLS:
-    raise ValueError('%s already registered in OPTIMIZER_CLS.' % key)
-  OPTIMIZERS_CLS[key] = optimizer_config_cls
+  if use_legacy_optimizer:
+    if key in LEGACY_OPTIMIZERS_CLS:
+      raise ValueError('%s already registered in LEGACY_OPTIMIZERS_CLS.' % key)
+    LEGACY_OPTIMIZERS_CLS[key] = optimizer_config_cls
+  else:
+    if key in NEW_OPTIMIZERS_CLS:
+      raise ValueError('%s already registered in NEW_OPTIMIZERS_CLS.' % key)
+    NEW_OPTIMIZERS_CLS[key] = optimizer_config_cls
 
 
 class OptimizerFactory:
@@ -167,7 +192,8 @@ class OptimizerFactory:
           [List[Tuple[tf.Tensor, tf.Tensor]]], List[Tuple[tf.Tensor,
                                                           tf.Tensor]]]]] = None,
       postprocessor: Optional[Callable[[tf.keras.optimizers.Optimizer],
-                                       tf.keras.optimizers.Optimizer]] = None):
+                                       tf.keras.optimizers.Optimizer]] = None,
+      use_legacy_optimizer: bool = True):
     """Build optimizer.
 
     Builds optimizer from config. It takes learning rate as input, and builds
@@ -185,9 +211,10 @@ class OptimizerFactory:
         global_clipnorm should not be set when gradient_transformers is passed.
       postprocessor: An optional function for postprocessing the optimizer. It
         takes an optimizer and returns an optimizer.
+      use_legacy_optimizer: A boolean that indicates if using legacy optimizers.
 
     Returns:
-      `tf.keras.optimizers.Optimizer` or
+      `tf.keras.optimizers.legacy.Optimizer` or
       `tf.keras.optimizers.experimental.Optimizer` instance.
     """
 
@@ -206,17 +233,34 @@ class OptimizerFactory:
     if gradient_transformers is not None:
       optimizer_dict['gradient_transformers'] = gradient_transformers
 
-    optimizer = OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
+    if use_legacy_optimizer:
+      optimizer = LEGACY_OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
+    else:
+      if 'decay' in optimizer_dict:
+        raise ValueError(
+            '`decay` is deprecated in new Keras optimizer, please reflect the '
+            'decay logic in `lr` or set `use_legacy_optimizer=True` to use the '
+            'legacy optimizer.')
+      optimizer = NEW_OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
 
     if self._use_ema:
+      if not use_legacy_optimizer:
+        raise ValueError(
+            'EMA can only work with the legacy optimizer, please set '
+            '`use_legacy_optimizer=True`.')
       optimizer = ema_optimizer.ExponentialMovingAverage(
           optimizer, **self._ema_config.as_dict())
     if postprocessor:
       optimizer = postprocessor(optimizer)
-    assert isinstance(
-        optimizer, (tf.keras.optimizers.Optimizer,
-                    tf.keras.optimizers.experimental.Optimizer)
-    ), ('OptimizerFactory.build_optimizer returning a non-optimizer object: '
-        '{}'.format(optimizer))
-
-    return optimizer
+    if isinstance(optimizer, tf.keras.optimizers.Optimizer):
+      return optimizer
+    # The following check makes sure the function won't break in older TF
+    # version because of missing the experimental/legacy package.
+    if hasattr(tf.keras.optimizers, 'experimental'):
+      if isinstance(optimizer, tf.keras.optimizers.experimental.Optimizer):
+        return optimizer
+    if hasattr(tf.keras.optimizers, 'legacy'):
+      if isinstance(optimizer, tf.keras.optimizers.legacy.Optimizer):
+        return optimizer
+    raise TypeError('OptimizerFactory.build_optimizer returning a '
+                    'non-optimizer object: {}'.format(optimizer))

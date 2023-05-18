@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import pprint
-from typing import List, Tuple
+import dataclasses
+from typing import List, Optional, Tuple
 
 from absl.testing import parameterized
-import dataclasses
 import tensorflow as tf
+
 from official.modeling.hyperparams import base_config
 
 
@@ -32,6 +33,7 @@ class DumpConfig2(base_config.Config):
   c: int = 2
   d: str = 'text'
   e: DumpConfig1 = DumpConfig1()
+  optional_e: Optional[DumpConfig1] = None
 
 
 @dataclasses.dataclass
@@ -52,6 +54,11 @@ class DumpConfig4(DumpConfig2):
 class DummyConfig5(base_config.Config):
   y: Tuple[DumpConfig2, ...] = (DumpConfig2(), DumpConfig4())
   z: Tuple[str] = ('a',)
+
+
+@dataclasses.dataclass
+class DumpConfig6(base_config.Config):
+  test_config1: Optional[DumpConfig1] = None
 
 
 class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
@@ -342,6 +349,34 @@ class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
         ]),
         "['s', 1, 1.0, True, None, {}, [], (), {8: 9, (2,): (3, [4], {6: 7})}]")
 
+  def test_with_superclass_override(self):
+    config = DumpConfig2()
+    config.override({'optional_e': {'a': 2}})
+    self.assertEqual(
+        config.optional_e.as_dict(),
+        {
+            'a': 2,
+            'b': 'text',
+        },
+    )
+
+    # Previously, the following will fail. See b/274696969 for context.
+    config = DumpConfig3()
+    config.override({'optional_e': {'a': 2}})
+    self.assertEqual(
+        config.optional_e.as_dict(),
+        {
+            'a': 2,
+            'b': 'text',
+        },
+    )
+
+  def test_get_annotations_without_base_config_leak(self):
+    with self.assertRaisesRegex(
+        KeyError, "The key 'restrictions' does not exist"
+    ):
+      DumpConfig3().override({'restrictions': None})
+
   def test_with_restrictions(self):
     restrictions = ['e.a<c']
     config = DumpConfig2(restrictions=restrictions)
@@ -379,6 +414,13 @@ class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
     }, is_strict=True)
     self.assertEmpty(config.y)
     self.assertEmpty(config.z)
+
+  def test_correctly_display_optional_field(self):
+    c = DumpConfig6()
+    c.override({'test_config1': {'b': 'abc'}})
+    self.assertEqual(f'{c}',
+                     "DumpConfig6(test_config1=DumpConfig1(a=1, b='abc'))")
+    self.assertIsInstance(c.test_config1, DumpConfig1)
 
 
 if __name__ == '__main__':

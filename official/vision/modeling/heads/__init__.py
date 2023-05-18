@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,4 +18,5 @@ from official.vision.modeling.heads.dense_prediction_heads import RetinaNetHead
 from official.vision.modeling.heads.dense_prediction_heads import RPNHead
 from official.vision.modeling.heads.instance_heads import DetectionHead
 from official.vision.modeling.heads.instance_heads import MaskHead
+from official.vision.modeling.heads.segmentation_heads import MaskScoring
 from official.vision.modeling.heads.segmentation_heads import SegmentationHead

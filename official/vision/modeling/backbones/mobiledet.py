@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ layers = tf.keras.layers
 #  pylint: disable=pointless-string-statement
 
 """
-Architecture: https://arxiv.org/abs/1704.04861.
+Architecture: https://arxiv.org/abs/2004.14525.
 
 "MobileDets: Searching for Object Detection Architectures for
 Mobile Accelerators" Yunyang Xiong, Hanxiao Liu, Suyog Gupta, Berkin Akin,

@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ class WOD2dDetectionEvaluator(wod_detection_evaluator.WODDetectionEvaluator):
     return result_tensor_dict
 
   def update_state(self, groundtruths, predictions):
-    """Update the metrics state with prediction and groundtruth data.
+    """Update the metrics state with prediction and ground-truth data.
 
     Args:
       groundtruths: a dictionary of Tensors including the fields below.
@@ -148,7 +148,7 @@ class WOD2dDetectionEvaluator(wod_detection_evaluator.WODDetectionEvaluator):
 
   def evaluate(self):
     """Compute the final metrics."""
-    ap, _, _, _, _ = super().evaluate()
+    ap, _, _, _, _, _, _ = super().evaluate()
     metric_dict = {}
     for i, name in enumerate(self._breakdown_names):
       # Skip sign metrics in 2d detection task.

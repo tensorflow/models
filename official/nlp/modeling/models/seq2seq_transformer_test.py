@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -91,7 +91,7 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
             embedded_inputs=np.zeros(
                 (batch_size, decode_max_length, embedding_width),
                 dtype=np.float32),
-            input_masks=np.ones((batch_size, decode_max_length), dtype=np.bool))
+            input_masks=np.ones((batch_size, decode_max_length), dtype=bool))
       else:
         fake_inputs = dict(
             inputs=np.zeros((batch_size, decode_max_length), dtype=np.int32))

@@ -210,7 +210,7 @@ REGISTER_OP("SequenceStringProjectionV2")
       TF_RETURN_IF_ERROR(c->Concatenate(
           c->input(0), c->MakeShape({feature_size}), &output_shape));
       c->set_output(0, output_shape);
-      return tensorflow::Status::OK();
+      return tensorflow::OkStatus();
     })
     .Doc(R"doc(
 This op referred to as Ternary Sequence String Projection Op V2 (TSPV2),

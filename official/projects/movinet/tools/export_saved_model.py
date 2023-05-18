@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -110,6 +110,11 @@ flags.DEFINE_bool(
 flags.DEFINE_string(
     'checkpoint_path', '',
     'Checkpoint path to load. Leave blank for default initialization.')
+flags.DEFINE_bool(
+    'assert_checkpoint_objects_matched',
+    True,
+    'Whether to check the checkpoint objects exactly match those of the model.',
+)
 
 FLAGS = flags.FLAGS
 
@@ -120,21 +125,25 @@ def export_saved_model(
     export_path: str = '/tmp/movinet/',
     causal: bool = False,
     bundle_input_init_states_fn: bool = True,
-    checkpoint_path: Optional[str] = None) -> None:
+    checkpoint_path: Optional[str] = None,
+    assert_checkpoint_objects_matched: bool = True,
+) -> None:
   """Exports a MoViNet model to a saved model.
 
   Args:
     model: the tf.keras.Model to export.
-    input_shape: The 5D spatiotemporal input shape of size
-      [batch_size, num_frames, image_height, image_width, num_channels].
-      Set the field or a shape position in the field to None for dynamic input.
+    input_shape: The 5D spatiotemporal input shape of size [batch_size,
+      num_frames, image_height, image_width, num_channels]. Set the field or a
+      shape position in the field to None for dynamic input.
     export_path: Export path to save the saved_model file.
     causal: Run the model in causal mode.
     bundle_input_init_states_fn: Add init_states as a function signature to the
-      saved model. This is not necessary if the input shape is static (e.g.,
-      for TF Lite).
+      saved model. This is not necessary if the input shape is static (e.g., for
+      TF Lite).
     checkpoint_path: Checkpoint path to load. Leave blank to keep the model's
       initialization.
+    assert_checkpoint_objects_matched: Whether to check the checkpoint objects
+      exactly match those of the model.
   """
 
   # Use dimensions of 1 except the channels to export faster,
@@ -149,7 +158,8 @@ def export_saved_model(
   if checkpoint_path:
     checkpoint = tf.train.Checkpoint(model=model)
     status = checkpoint.restore(checkpoint_path)
-    status.assert_existing_objects_matched()
+    if assert_checkpoint_objects_matched:
+      status.assert_existing_objects_matched()
 
   if causal:
     # Call the model once to get the output states. Call again with `states`
@@ -205,23 +215,23 @@ def build_and_export_saved_model(
     num_classes: int = 600,
     input_shape: Optional[Tuple[int, int, int, int, int]] = None,
     bundle_input_init_states_fn: bool = True,
-    checkpoint_path: Optional[str] = None) -> None:
+    checkpoint_path: Optional[str] = None,
+    assert_checkpoint_objects_matched: bool = True,
+) -> None:
   """Builds and exports a MoViNet model to a saved model.
 
   Args:
     export_path: Export path to save the saved_model file.
     model_id: MoViNet model name.
     causal: Run the model in causal mode.
-    conv_type: 3d, 2plus1d, or 3d_2plus1d. 3d configures the network
-      to use the default 3D convolution. 2plus1d uses (2+1)D convolution
-      with Conv2D operations and 2D reshaping (e.g., a 5x3x3 kernel becomes
-      3x3 followed by 5x1 conv). 3d_2plus1d uses (2+1)D convolution with
-      Conv3D and no 2D reshaping (e.g., a 5x3x3 kernel becomes 1x3x3
-      followed by 5x1x1 conv).
-    se_type:
-      3d, 2d, or 2plus3d. 3d uses the default 3D spatiotemporal global average
-      pooling for squeeze excitation. 2d uses 2D spatial global average pooling
-      on each frame. 2plus3d concatenates both 3D and 2D global average
+    conv_type: 3d, 2plus1d, or 3d_2plus1d. 3d configures the network to use the
+      default 3D convolution. 2plus1d uses (2+1)D convolution with Conv2D
+      operations and 2D reshaping (e.g., a 5x3x3 kernel becomes 3x3 followed by
+      5x1 conv). 3d_2plus1d uses (2+1)D convolution with Conv3D and no 2D
+      reshaping (e.g., a 5x3x3 kernel becomes 1x3x3 followed by 5x1x1 conv).
+    se_type: 3d, 2d, or 2plus3d. 3d uses the default 3D spatiotemporal global
+      average pooling for squeeze excitation. 2d uses 2D spatial global average
+      pooling on each frame. 2plus3d concatenates both 3D and 2D global average
       pooling.
     activation: The main activation to use across layers.
     classifier_activation: The classifier activation to use.
@@ -230,14 +240,16 @@ def build_and_export_saved_model(
     use_positional_encoding: Whether to use positional encoding (only applied
       when causal=True).
     num_classes: The number of classes for prediction.
-    input_shape: The 5D spatiotemporal input shape of size
-      [batch_size, num_frames, image_height, image_width, num_channels].
-      Set the field or a shape position in the field to None for dynamic input.
+    input_shape: The 5D spatiotemporal input shape of size [batch_size,
+      num_frames, image_height, image_width, num_channels]. Set the field or a
+      shape position in the field to None for dynamic input.
     bundle_input_init_states_fn: Add init_states as a function signature to the
-      saved model. This is not necessary if the input shape is static (e.g.,
-      for TF Lite).
+      saved model. This is not necessary if the input shape is static (e.g., for
+      TF Lite).
     checkpoint_path: Checkpoint path to load. Leave blank for default
       initialization.
+    assert_checkpoint_objects_matched: Whether to check the checkpoint objects
+      exactly match those of the model.
   """
 
   input_specs = tf.keras.layers.InputSpec(shape=input_shape)
@@ -272,7 +284,9 @@ def build_and_export_saved_model(
       export_path=export_path,
       causal=causal,
       bundle_input_init_states_fn=bundle_input_init_states_fn,
-      checkpoint_path=checkpoint_path)
+      checkpoint_path=checkpoint_path,
+      assert_checkpoint_objects_matched=assert_checkpoint_objects_matched,
+  )
 
 
 def main(_) -> None:
@@ -291,7 +305,9 @@ def main(_) -> None:
       num_classes=FLAGS.num_classes,
       input_shape=input_shape,
       bundle_input_init_states_fn=FLAGS.bundle_input_init_states_fn,
-      checkpoint_path=FLAGS.checkpoint_path)
+      checkpoint_path=FLAGS.checkpoint_path,
+      assert_checkpoint_objects_matched=FLAGS.assert_checkpoint_objects_matched,
+  )
   print(' ----- Done. Saved Model is saved at {}'.format(FLAGS.export_path))
 
 

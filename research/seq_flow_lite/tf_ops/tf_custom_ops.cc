@@ -39,7 +39,7 @@ REGISTER_OP("ExpectedValueOp")
       auto batch_size = c->Dim(c->input(0), 0);
       auto feature_size = c->Dim(c->input(0), 2);
       c->set_output(0, c->MakeShape({batch_size, feature_size}));
-      return tensorflow::Status::OK();
+      return tensorflow::OkStatus();
     })
     .Doc(R"doc(
 Dummy pooling op.
@@ -64,7 +64,7 @@ REGISTER_OP("LayerNorm")
     .Output("result: float32")
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
       c->set_output(0, c->input(0));
-      return tensorflow::Status::OK();
+      return tensorflow::OkStatus();
     })
     .Doc(R"doc(
 Dummy layer norm op.
@@ -88,8 +88,38 @@ REGISTER_OP("PoolingOp")
     .Output("state: float32")
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
       c->set_output(0, c->input(0));
-      return tensorflow::Status::OK();
+      return tensorflow::OkStatus();
     })
     .Doc(R"doc(
 Dummy pooling op.
+)doc");
+
+class UniformCausalAttnOp : public tensorflow::OpKernel {
+ public:
+  explicit UniformCausalAttnOp(tensorflow::OpKernelConstruction* context)
+      : tensorflow::OpKernel(context) {}
+
+  void Compute(tensorflow::OpKernelContext* ctx) override {}
+};
+
+REGISTER_KERNEL_BUILDER(
+    Name("UniformCausalAttn").Device(::tensorflow::DEVICE_CPU),
+    UniformCausalAttnOp);
+
+REGISTER_OP("UniformCausalAttn")
+    .Input("input: float32")
+    .Input("time_step: int32")
+    .Input("selected_beams: int32")
+    .Attr("feature_size: int")
+    .Attr("beam_size: int")
+    .Output("output: float32")
+    .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
+      auto batch_size = c->Dim(c->input(0), 0);
+      int32 feature_size;
+      TF_RETURN_IF_ERROR(c->GetAttr("feature_size", &feature_size));
+      c->set_output(0, c->MakeShape({batch_size, 1, feature_size}));
+      return tensorflow::OkStatus();
+    })
+    .Doc(R"doc(
+Dummy uniform causal attn op.
 )doc");

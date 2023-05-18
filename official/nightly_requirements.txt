@@ -1,0 +1,28 @@
+six
+google-api-python-client>=1.6.7
+kaggle>=1.3.9
+numpy>=1.20
+oauth2client
+pandas>=0.22.0
+psutil>=5.4.3
+py-cpuinfo>=3.3.0
+scipy>=0.19.1
+tensorflow-hub>=0.6.0
+tensorflow-model-optimization>=0.4.1
+tensorflow-datasets
+gin-config
+tf_slim>=1.1.0
+Cython
+matplotlib
+# Loader becomes a required positional argument in 6.0 in yaml.load
+pyyaml>=5.1,<6.0
+# CV related dependencies
+opencv-python-headless==4.5.2.52
+Pillow
+pycocotools
+# NLP related dependencies
+seqeval
+sentencepiece
+sacrebleu
+# Projects/vit dependencies
+immutabledict

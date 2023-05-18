@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -209,11 +209,12 @@ class DeepMaskHead(tf.keras.layers.Layer):
     """
     roi_features, roi_classes = inputs
     features_shape = tf.shape(roi_features)
-    batch_size, num_rois, height, width, filters = (
-        features_shape[0], features_shape[1], features_shape[2],
-        features_shape[3], features_shape[4])
-    if batch_size is None:
-      batch_size = tf.shape(roi_features)[0]
+    num_rois, height, width, filters = (
+        features_shape[1],
+        features_shape[2],
+        features_shape[3],
+        features_shape[4],
+    )
 
     x = tf.reshape(roi_features, [-1, height, width, filters])
 
@@ -229,40 +230,26 @@ class DeepMaskHead(tf.keras.layers.Layer):
     mask_width = width * self._config_dict['upsample_factor']
 
     if self._config_dict['class_agnostic']:
-      logits = tf.reshape(logits, [-1, num_rois, mask_height, mask_width, 1])
+      return tf.reshape(logits, [-1, num_rois, mask_height, mask_width])
     else:
       logits = tf.reshape(
           logits,
           [-1, num_rois, mask_height, mask_width,
            self._config_dict['num_classes']])
-
-    batch_indices = tf.tile(
-        tf.expand_dims(tf.range(batch_size), axis=1), [1, num_rois])
-    mask_indices = tf.tile(
-        tf.expand_dims(tf.range(num_rois), axis=0), [batch_size, 1])
-
-    if self._config_dict['class_agnostic']:
-      class_gather_indices = tf.zeros_like(roi_classes, dtype=tf.int32)
-    else:
-      class_gather_indices = tf.cast(roi_classes, dtype=tf.int32)
-
-    gather_indices = tf.stack(
-        [batch_indices, mask_indices, class_gather_indices],
-        axis=2)
-    mask_outputs = tf.gather_nd(
-        tf.transpose(logits, [0, 1, 4, 2, 3]), gather_indices)
-    return mask_outputs
+      return tf.gather(
+          logits, tf.cast(roi_classes, dtype=tf.int32), axis=-1, batch_dims=2
+      )
 
   def _build_convnet_variant(self):
 
     variant = self._config_dict['convnet_variant']
     if variant == 'default':
-      conv_op, conv_kwargs = self._get_conv_op_and_kwargs()
       bn_op, bn_kwargs = self._get_bn_op_and_kwargs()
       self._convs = []
       self._conv_norms = []
       for i in range(self._config_dict['num_convs']):
         conv_name = 'mask-conv_{}'.format(i)
+        conv_op, conv_kwargs = self._get_conv_op_and_kwargs()
         self._convs.append(conv_op(name=conv_name, **conv_kwargs))
         bn_name = 'mask-conv-bn_{}'.format(i)
         self._conv_norms.append(bn_op(name=bn_name, **bn_kwargs))

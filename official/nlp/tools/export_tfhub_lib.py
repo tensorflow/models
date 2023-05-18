@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ from absl import logging
 import tensorflow as tf
 # pylint: disable=g-direct-tensorflow-import  TODO(b/175369555): Remove these.
 from tensorflow.core.protobuf import saved_model_pb2
-from tensorflow.python.ops import control_flow_ops
+from tensorflow.python.ops import control_flow_assert
 # pylint: enable=g-direct-tensorflow-import
 from official.legacy.bert import configs
 from official.modeling import tf_utils
@@ -133,7 +133,10 @@ def _create_model(
         encoder_network=encoder,
         mlm_activation=tf_utils.get_activation(hidden_act))
 
-    pretrainer_inputs_dict = {x.name: x for x in pretrainer.inputs}
+    if isinstance(pretrainer.inputs, dict):
+      pretrainer_inputs_dict = pretrainer.inputs
+    else:
+      pretrainer_inputs_dict = {x.name: x for x in pretrainer.inputs}
     pretrainer_output_dict = pretrainer(pretrainer_inputs_dict)
     mlm_model = tf.keras.Model(
         inputs=pretrainer_inputs_dict, outputs=pretrainer_output_dict)
@@ -453,15 +456,15 @@ def _dont_assert(condition, data, summarize=None, name="Assert"):
 
 @contextlib.contextmanager
 def _maybe_disable_assert(disable_assert):
-  """Scoped monkey patch of control_flow_ops.Assert to a no-op."""
+  """Scoped monkey patch of control_flow_assert.Assert to a no-op."""
   if not disable_assert:
     yield
     return
 
-  original_assert = control_flow_ops.Assert
-  control_flow_ops.Assert = _dont_assert
+  original_assert = control_flow_assert.Assert
+  control_flow_assert.Assert = _dont_assert
   yield
-  control_flow_ops.Assert = original_assert
+  control_flow_assert.Assert = original_assert
 
 
 def _check_no_assert(saved_model_path):

@@ -18,6 +18,7 @@ General tensorflow implementation of convolutional Multibox/SSD detection
 models.
 """
 import abc
+from absl import logging
 import tensorflow.compat.v1 as tf
 from tensorflow.python.util.deprecation import deprecated_args
 from object_detection.core import box_list
@@ -580,6 +581,7 @@ class SSDMetaArch(model.DetectionModel):
 
     feature_map_spatial_dims = self._get_feature_map_spatial_dims(
         feature_maps)
+    logging.info('feature_map_spatial_dims: %s', feature_map_spatial_dims)
     image_shape = shape_utils.combined_static_and_dynamic_shape(
         preprocessed_inputs)
     boxlist_list = self._anchor_generator.generate(

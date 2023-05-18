@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ _PARAMS_OVERRIDE = flags.DEFINE_string(
     'params_override', '',
     'The JSON/YAML file or string which specifies the parameter to be overriden'
     ' on top of `config_file` template.')
-_BATCH_SIZSE = flags.DEFINE_integer('batch_size', None, 'The batch size.')
+_BATCH_SIZE = flags.DEFINE_integer('batch_size', None, 'The batch size.')
 _IMAGE_TYPE = flags.DEFINE_string(
     'input_type', 'image_tensor',
     'One of `image_tensor`, `image_bytes`, `tf_example` and `tflite`.')
@@ -84,32 +84,74 @@ _INPUT_NAME = flags.DEFINE_string(
     'input_name', None,
     'Input tensor name in signature def. Default at None which'
     'produces input tensor name `inputs`.')
+_FUNCTION_KEYS = flags.DEFINE_string(
+    'function_keys',
+    '',
+    (
+        'An optional comma-separated string of one or more key:value pair'
+        ' indicating the serving function key and corresponding signature_def'
+        ' name. For example,'
+        ' `tf_example:serving_default,image_tensor:serving_image_tensor` means'
+        ' two serving functions are defined for `tf_example` and `image_tensor`'
+        ' input types.'
+    ),
+)
+_ADD_TPU_FUNCTION_ALIAS = flags.DEFINE_bool(
+    'add_tpu_function_alias',
+    False,
+    (
+        'Whether to add TPU function alias so later it can be converted to a'
+        ' TPU SavedModel for inference.'
+    ),
+)
 
 
 def main(_):
 
   params = exp_factory.get_exp_config(_EXPERIMENT.value)
   for config_file in _CONFIG_FILE.value or []:
-    params = hyperparams.override_params_dict(
-        params, config_file, is_strict=True)
+    try:
+      params = hyperparams.override_params_dict(
+          params, config_file, is_strict=True
+      )
+    except KeyError:
+      params = hyperparams.override_params_dict(
+          params, config_file, is_strict=False
+      )
   if _PARAMS_OVERRIDE.value:
-    params = hyperparams.override_params_dict(
-        params, _PARAMS_OVERRIDE.value, is_strict=True)
+    try:
+      params = hyperparams.override_params_dict(
+          params, _PARAMS_OVERRIDE.value, is_strict=True
+      )
+    except KeyError:
+      params = hyperparams.override_params_dict(
+          params, _PARAMS_OVERRIDE.value, is_strict=False
+      )
 
   params.validate()
   params.lock()
 
+  function_keys = None
+  if _FUNCTION_KEYS.value:
+    function_keys = {}
+    for key_val in _FUNCTION_KEYS.value.split(','):
+      key_val_split = key_val.split(':')
+      function_keys[key_val_split[0]] = key_val_split[1]
+
   export_saved_model_lib.export_inference_graph(
       input_type=_IMAGE_TYPE.value,
-      batch_size=_BATCH_SIZSE.value,
+      batch_size=_BATCH_SIZE.value,
       input_image_size=[int(x) for x in _INPUT_IMAGE_SIZE.value.split(',')],
       params=params,
       checkpoint_path=_CHECKPOINT_PATH.value,
       export_dir=_EXPORT_DIR.value,
+      function_keys=function_keys,
       export_checkpoint_subdir=_EXPORT_CHECKPOINT_SUBDIR.value,
       export_saved_model_subdir=_EXPORT_SAVED_MODEL_SUBDIR.value,
       log_model_flops_and_params=_LOG_MODEL_FLOPS_AND_PARAMS.value,
-      input_name=_INPUT_NAME.value)
+      input_name=_INPUT_NAME.value,
+      add_tpu_function_alias=_ADD_TPU_FUNCTION_ALIAS.value,
+  )
 
 
 if __name__ == '__main__':

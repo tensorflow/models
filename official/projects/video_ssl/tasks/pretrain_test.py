@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ from official.vision.dataloaders import tfexample_utils
 class VideoClassificationTaskTest(tf.test.TestCase):
 
   def setUp(self):
-    super(VideoClassificationTaskTest, self).setUp()
+    super().setUp()
     data_dir = os.path.join(self.get_temp_dir(), 'data')
     tf.io.gfile.makedirs(data_dir)
     self._data_path = os.path.join(data_dir, 'data.tfrecord')

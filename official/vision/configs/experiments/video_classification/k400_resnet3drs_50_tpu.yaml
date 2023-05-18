@@ -42,7 +42,6 @@ task:
     is_training: true
     min_image_size: 256
     name: kinetics400
-    num_channels: 3
     num_classes: 400
     num_examples: 215570
     num_test_clips: 1
@@ -67,7 +66,6 @@ task:
     is_training: false
     min_image_size: 256
     name: kinetics400
-    num_channels: 3
     num_classes: 400
     num_examples: 17706
     num_test_clips: 10

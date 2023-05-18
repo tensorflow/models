@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +23,8 @@ import tensorflow as tf
 def get_image_input_signatures(input_type: str,
                                batch_size: Optional[int],
                                input_image_size: List[int],
-                               num_channels: int = 3):
+                               num_channels: int = 3,
+                               input_name: Optional[str] = None):
   """Gets input signatures for an image.
 
   Args:
@@ -31,18 +32,23 @@ def get_image_input_signatures(input_type: str,
     batch_size: `int` for batch size or None.
     input_image_size: List[int] for the height and width of the input image.
     num_channels: `int` for number of channels in the input image.
+    input_name: A `str` to set the input image name in the signature, if None,
+      a default name `inputs` will be used.
   Returns:
     tf.TensorSpec of the input tensor.
   """
   if input_type == 'image_tensor':
     input_signature = tf.TensorSpec(
         shape=[batch_size] + [None] * len(input_image_size) + [num_channels],
-        dtype=tf.uint8)
+        dtype=tf.uint8, name=input_name)
   elif input_type in ['image_bytes', 'serve_examples', 'tf_example']:
-    input_signature = tf.TensorSpec(shape=[batch_size], dtype=tf.string)
+    input_signature = tf.TensorSpec(
+        shape=[batch_size], dtype=tf.string, name=input_name)
   elif input_type == 'tflite':
     input_signature = tf.TensorSpec(
-        shape=[1] + input_image_size + [num_channels], dtype=tf.float32)
+        shape=[1] + input_image_size + [num_channels],
+        dtype=tf.float32,
+        name=input_name)
   else:
     raise ValueError('Unrecognized `input_type`')
   return input_signature

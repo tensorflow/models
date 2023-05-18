@@ -403,7 +403,7 @@ message CenterNet {
 
 
   // Mask prediction support using DeepMAC. See https://arxiv.org/abs/2104.00613
-  // Next ID 33
+  // Next ID 37
   message DeepMACMaskEstimation {
     // The loss used for penalizing mask predictions.
     optional ClassificationLoss classification_loss = 1;
@@ -466,11 +466,11 @@ message CenterNet {
     // https://arxiv.org/abs/2012.02310
     optional float box_consistency_loss_weight = 16 [default = 0.0];
 
-    optional float color_consistency_threshold = 17 [default = 0.4];
+    optional float feature_consistency_threshold = 17 [default = 0.4];
 
-    optional int32 color_consistency_dilation = 18 [default = 2];
+    optional int32 feature_consistency_dilation = 18 [default = 2];
 
-    optional float color_consistency_loss_weight = 19 [default = 0.0];
+    optional float feature_consistency_loss_weight = 19 [default = 0.0];
 
     optional LossNormalize box_consistency_loss_normalize = 20
         [default = NORMALIZE_AUTO];
@@ -481,9 +481,16 @@ message CenterNet {
     // https://papers.nips.cc/paper/2019/hash/e6e713296627dff6475085cc6a224464-Abstract.html
     optional bool box_consistency_tightness = 21 [default = false];
 
-    optional int32 color_consistency_warmup_steps = 22 [default = 0];
+    optional int32 feature_consistency_warmup_steps = 22 [default = 0];
 
-    optional int32 color_consistency_warmup_start = 23 [default = 0];
+    optional int32 feature_consistency_warmup_start = 23 [default = 0];
+
+    // TODO(vighneshb)
+    optional FeatureConsistencyType feature_consistency_type = 35
+        [default = CONSISTENCY_DEFAULT_LAB];
+
+    optional FeatureConsistencyComparison feature_consistency_comparison = 36
+        [default = COMPARISON_DEFAULT_GAUSSIAN];
 
     // This flag controls whether or not we use the outputs from only the
     // last stage of the hourglass for training the mask-heads.
@@ -505,21 +512,38 @@ message CenterNet {
 
     optional bool use_only_last_stage = 24 [default = false];
 
-    optional float augmented_self_supervision_max_translation = 25 [default=0.0];
+    optional float augmented_self_supervision_max_translation = 25
+        [default = 0.0];
 
-    optional float augmented_self_supervision_flip_probability = 26 [default=0.0];
+    optional float augmented_self_supervision_flip_probability = 26
+        [default = 0.0];
 
-    optional float augmented_self_supervision_loss_weight = 27 [default=0.0];
+    optional float augmented_self_supervision_loss_weight = 27 [default = 0.0];
 
-    optional int32 augmented_self_supervision_warmup_start = 28 [default=0];
+    optional int32 augmented_self_supervision_warmup_start = 28 [default = 0];
 
-    optional int32 augmented_self_supervision_warmup_steps = 29 [default=0];
+    optional int32 augmented_self_supervision_warmup_steps = 29 [default = 0];
 
-    optional  AugmentedSelfSupervisionLoss augmented_self_supervision_loss = 30 [default=LOSS_DICE];
+    optional AugmentedSelfSupervisionLoss augmented_self_supervision_loss = 30
+        [default = LOSS_DICE];
 
-    optional float augmented_self_supervision_scale_min = 31 [default=1.0];
+    optional float augmented_self_supervision_scale_min = 31 [default = 1.0];
 
-    optional float augmented_self_supervision_scale_max = 32 [default=1.0];
+    optional float augmented_self_supervision_scale_max = 32 [default = 1.0];
+
+    // The loss weight for the pointly supervised loss as defined in the paper
+    // https://arxiv.org/abs/2104.06404
+
+    // We assume that point supervision is given through a keypoint dataset,
+    // where each keypoint represents a sampled point, and its depth indicates
+    // whether it is a foreground or background point.
+    // Depth = +1 is assumed to be foreground and
+    // Depth = -1 is assumed to be background.
+    optional float pointly_supervised_keypoint_loss_weight = 33 [default = 0.0];
+
+    // When set, loss computation is ignored at pixels that fall within
+    // 2 boxes of the same class.
+    optional bool ignore_per_class_box_overlap = 34 [default = false];
   }
 
   optional DeepMACMaskEstimation deepmac_mask_estimation = 14;
@@ -547,6 +571,16 @@ enum AugmentedSelfSupervisionLoss {
   LOSS_DICE = 1;
   LOSS_MSE = 2;
   LOSS_KL_DIV = 3;
+}
+
+enum FeatureConsistencyType {
+  CONSISTENCY_DEFAULT_LAB = 0;
+  CONSISTENCY_FEATURE_MAP = 1;
+}
+
+enum FeatureConsistencyComparison {
+  COMPARISON_DEFAULT_GAUSSIAN = 0;
+  COMPARISON_NORMALIZED_DOTPROD = 1;
 }
 
 message CenterNetFeatureExtractor {

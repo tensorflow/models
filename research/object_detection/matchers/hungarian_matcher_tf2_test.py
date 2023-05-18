@@ -31,7 +31,7 @@ class HungarianBipartiteMatcherTest(test_case.TestCase):
   def test_get_expected_matches_when_all_rows_are_valid(self):
     similarity_matrix = np.array([[0.50, 0.1, 0.8], [0.15, 0.2, 0.3]],
                                  dtype=np.float32)
-    valid_rows = np.ones([2], dtype=np.bool)
+    valid_rows = np.ones([2], dtype=bool)
     expected_match_results = [-1, 1, 0]
 
     matcher = hungarian_matcher.HungarianBipartiteMatcher()
@@ -54,7 +54,7 @@ class HungarianBipartiteMatcherTest(test_case.TestCase):
   def test_get_no_matches_with_zero_valid_rows(self):
     similarity_matrix = np.array([[0.50, 0.1, 0.8], [0.15, 0.2, 0.3]],
                                  dtype=np.float32)
-    valid_rows = np.zeros([2], dtype=np.bool)
+    valid_rows = np.zeros([2], dtype=bool)
     expected_match_results = [-1, -1, -1]
 
     matcher = hungarian_matcher.HungarianBipartiteMatcher()
@@ -66,7 +66,7 @@ class HungarianBipartiteMatcherTest(test_case.TestCase):
   def test_get_expected_matches_with_only_one_valid_row(self):
     similarity_matrix = np.array([[0.50, 0.1, 0.8], [0.15, 0.2, 0.3]],
                                  dtype=np.float32)
-    valid_rows = np.array([True, False], dtype=np.bool)
+    valid_rows = np.array([True, False], dtype=bool)
     expected_match_results = [-1, -1, 0]
 
     matcher = hungarian_matcher.HungarianBipartiteMatcher()
@@ -78,7 +78,7 @@ class HungarianBipartiteMatcherTest(test_case.TestCase):
   def test_get_expected_matches_with_only_one_valid_row_at_bottom(self):
     similarity_matrix = np.array([[0.15, 0.2, 0.3], [0.50, 0.1, 0.8]],
                                  dtype=np.float32)
-    valid_rows = np.array([False, True], dtype=np.bool)
+    valid_rows = np.array([False, True], dtype=bool)
     expected_match_results = [-1, -1, 0]
 
     matcher = hungarian_matcher.HungarianBipartiteMatcher()
@@ -91,7 +91,7 @@ class HungarianBipartiteMatcherTest(test_case.TestCase):
     similarity_matrix = np.array([[0.15, 0.2, 0.3], [0.50, 0.1, 0.8],
                                   [0.84, 0.32, 0.2]],
                                  dtype=np.float32)
-    valid_rows = np.array([True, False, True], dtype=np.bool)
+    valid_rows = np.array([True, False, True], dtype=bool)
     expected_match_results = [1, -1, 0]
 
     matcher = hungarian_matcher.HungarianBipartiteMatcher()

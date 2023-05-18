@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -153,7 +153,7 @@ class DistillationTest(tf.test.TestCase, parameterized.TestCase):
 
     eval_dataset = bert_distillation_task.get_eval_dataset(stage_id=0)
     eval_iterator = iter(eval_dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    optimizer = tf.keras.optimizers.legacy.SGD(learning_rate=0.1)
 
     # test train/val step for all stages, including the last pretraining stage
     for stage in range(student_block_num + 1):

@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """Image classification task definition."""
-from typing import Any, Optional, List, Tuple
+from typing import Any, List, Optional, Tuple
+
 from absl import logging
 import tensorflow as tf
 
@@ -23,10 +24,14 @@ from official.core import task_factory
 from official.modeling import tf_utils
 from official.vision.configs import image_classification as exp_cfg
 from official.vision.dataloaders import classification_input
+from official.vision.dataloaders import input_reader
 from official.vision.dataloaders import input_reader_factory
 from official.vision.dataloaders import tfds_factory
 from official.vision.modeling import factory
 from official.vision.ops import augment
+
+
+_EPSILON = 1e-6
 
 
 @task_factory.register_task_cls(exp_cfg.ImageClassificationTask)
@@ -49,6 +54,13 @@ class ImageClassificationTask(base_task.Task):
         input_specs=input_specs,
         model_config=self.task_config.model,
         l2_regularizer=l2_regularizer)
+
+    if self.task_config.freeze_backbone:
+      model.backbone.trainable = False
+
+    # Builds the model
+    dummy_inputs = tf.keras.Input(self.task_config.model.input_size)
+    _ = model(dummy_inputs, training=False)
     return model
 
   def initialize(self, model: tf.keras.Model):
@@ -103,11 +115,15 @@ class ImageClassificationTask(base_task.Task):
         label_field_key=label_field_key,
         decode_jpeg_only=params.decode_jpeg_only,
         aug_rand_hflip=params.aug_rand_hflip,
+        aug_crop=params.aug_crop,
         aug_type=params.aug_type,
         color_jitter=params.color_jitter,
         random_erasing=params.random_erasing,
         is_multilabel=is_multilabel,
-        dtype=params.dtype)
+        dtype=params.dtype,
+        center_crop_fraction=params.center_crop_fraction,
+        tf_resize_method=params.tf_resize_method,
+        three_augment=params.three_augment)
 
     postprocess_fn = None
     if params.mixup_and_cutmix:
@@ -118,15 +134,33 @@ class ImageClassificationTask(base_task.Task):
           label_smoothing=params.mixup_and_cutmix.label_smoothing,
           num_classes=num_classes)
 
+    def sample_fn(repeated_augment, dataset):
+      weights = [1 / repeated_augment] * repeated_augment
+      dataset = tf.data.Dataset.sample_from_datasets(
+          datasets=[dataset] * repeated_augment,
+          weights=weights,
+          seed=None,
+          stop_on_empty_dataset=True,
+      )
+      return dataset
+
+    is_repeated_augment = (
+        params.is_training
+        and params.repeated_augment is not None
+    )
     reader = input_reader_factory.input_reader_generator(
         params,
         dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
+        combine_fn=input_reader.create_combine_fn(params),
         parser_fn=parser.parse_fn(params.is_training),
-        postprocess_fn=postprocess_fn)
+        postprocess_fn=postprocess_fn,
+        sample_fn=(lambda ds: sample_fn(params.repeated_augment, ds))
+        if is_repeated_augment
+        else None,
+    )
 
     dataset = reader.read(input_context=input_context)
-
     return dataset
 
   def build_losses(self,
@@ -147,7 +181,13 @@ class ImageClassificationTask(base_task.Task):
     is_multilabel = self.task_config.train_data.is_multilabel
 
     if not is_multilabel:
-      if losses_config.one_hot:
+      if losses_config.use_binary_cross_entropy:
+        total_loss = tf.nn.sigmoid_cross_entropy_with_logits(
+            labels=labels, logits=model_outputs
+        )
+        # Average over all object classes inside an image.
+        total_loss = tf.reduce_mean(total_loss, axis=-1)
+      elif losses_config.one_hot:
         total_loss = tf.keras.losses.categorical_crossentropy(
             labels,
             model_outputs,
@@ -160,10 +200,15 @@ class ImageClassificationTask(base_task.Task):
         total_loss = tf.keras.losses.sparse_categorical_crossentropy(
             labels, model_outputs, from_logits=True)
     else:
-      # Multi-label weighted binary cross entropy loss.
-      total_loss = tf.nn.sigmoid_cross_entropy_with_logits(
-          labels=labels, logits=model_outputs)
-      total_loss = tf.reduce_sum(total_loss, axis=-1)
+      # Multi-label binary cross entropy loss. This will apply `reduce_mean`.
+      total_loss = tf.keras.losses.binary_crossentropy(
+          labels,
+          model_outputs,
+          from_logits=True,
+          label_smoothing=losses_config.label_smoothing,
+          axis=-1)
+      # Multiple num_classes to behave like `reduce_sum`.
+      total_loss = total_loss * self.task_config.model.num_classes
 
     total_loss = tf_utils.safe_mean(total_loss)
     if aux_losses:
@@ -184,6 +229,45 @@ class ImageClassificationTask(base_task.Task):
             tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
             tf.keras.metrics.TopKCategoricalAccuracy(
                 k=k, name='top_{}_accuracy'.format(k))]
+        if hasattr(
+            self.task_config.evaluation, 'precision_and_recall_thresholds'
+        ) and self.task_config.evaluation.precision_and_recall_thresholds:
+          thresholds = self.task_config.evaluation.precision_and_recall_thresholds  # pylint: disable=line-too-long
+          # pylint:disable=g-complex-comprehension
+          metrics += [
+              tf.keras.metrics.Precision(
+                  thresholds=th,
+                  name='precision_at_threshold_{}'.format(th),
+                  top_k=1) for th in thresholds
+          ]
+          metrics += [
+              tf.keras.metrics.Recall(
+                  thresholds=th,
+                  name='recall_at_threshold_{}'.format(th),
+                  top_k=1) for th in thresholds
+          ]
+
+          # Add per-class precision and recall.
+          if hasattr(
+              self.task_config.evaluation,
+              'report_per_class_precision_and_recall'
+          ) and self.task_config.evaluation.report_per_class_precision_and_recall:
+            for class_id in range(self.task_config.model.num_classes):
+              metrics += [
+                  tf.keras.metrics.Precision(
+                      thresholds=th,
+                      class_id=class_id,
+                      name=f'precision_at_threshold_{th}/{class_id}',
+                      top_k=1) for th in thresholds
+              ]
+              metrics += [
+                  tf.keras.metrics.Recall(
+                      thresholds=th,
+                      class_id=class_id,
+                      name=f'recall_at_threshold_{th}/{class_id}',
+                      top_k=1) for th in thresholds
+              ]
+              # pylint:enable=g-complex-comprehension
       else:
         metrics = [
             tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
@@ -218,7 +302,7 @@ class ImageClassificationTask(base_task.Task):
     """Does forward and backward.
 
     Args:
-      inputs: A tuple of of input tensors of (features, labels).
+      inputs: A tuple of input tensors of (features, labels).
       model: A tf.keras.Model instance.
       optimizer: The optimizer for this training step.
       metrics: A nested structure of metrics objects.
@@ -227,13 +311,31 @@ class ImageClassificationTask(base_task.Task):
       A dictionary of logs.
     """
     features, labels = inputs
+
     is_multilabel = self.task_config.train_data.is_multilabel
     if self.task_config.losses.one_hot and not is_multilabel:
       labels = tf.one_hot(labels, self.task_config.model.num_classes)
 
+    if self.task_config.losses.use_binary_cross_entropy:
+      # BCE loss converts the multiclass classification to multilabel. The
+      # corresponding label value of objects present in the image would be one.
+      if self.task_config.train_data.mixup_and_cutmix is not None:
+        # label values below off_value_threshold would be mapped to zero and
+        # above that would be mapped to one. Negative labels are guaranteed to
+        # have value less than or equal value of the off_value from mixup.
+        off_value_threshold = (
+            self.task_config.train_data.mixup_and_cutmix.label_smoothing
+            / self.task_config.model.num_classes
+        )
+        labels = tf.where(
+            tf.less(labels, off_value_threshold + _EPSILON), 0.0, 1.0)
+      elif tf.rank(labels) == 1:
+        labels = tf.one_hot(labels, self.task_config.model.num_classes)
+
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
       outputs = model(features, training=True)
+
       # Casting output layer as float32 is necessary when mixed_precision is
       # mixed_float16 or mixed_bfloat16 to ensure output is casted as float32.
       outputs = tf.nest.map_structure(
@@ -264,6 +366,11 @@ class ImageClassificationTask(base_task.Task):
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
     logs = {self.loss: loss}
+
+    # Convert logits to softmax for metric computation if needed.
+    if hasattr(self.task_config.model,
+               'output_softmax') and self.task_config.model.output_softmax:
+      outputs = tf.nn.softmax(outputs, axis=-1)
     if metrics:
       self.process_metrics(metrics, labels, outputs)
     elif model.compiled_metrics:
@@ -278,7 +385,7 @@ class ImageClassificationTask(base_task.Task):
     """Runs validatation step.
 
     Args:
-      inputs: A tuple of of input tensors of (features, labels).
+      inputs: A tuple of input tensors of (features, labels).
       model: A tf.keras.Model instance.
       metrics: A nested structure of metrics objects.
 
@@ -289,6 +396,9 @@ class ImageClassificationTask(base_task.Task):
     one_hot = self.task_config.losses.one_hot
     soft_labels = self.task_config.losses.soft_labels
     is_multilabel = self.task_config.train_data.is_multilabel
+    # Note: `soft_labels`` only apply to the training phrase. In the validation
+    # phrase, labels should still be integer ids and need to be converted to
+    # one hot format.
     if (one_hot or soft_labels) and not is_multilabel:
       labels = tf.one_hot(labels, self.task_config.model.num_classes)
 
@@ -300,6 +410,10 @@ class ImageClassificationTask(base_task.Task):
         aux_losses=model.losses)
 
     logs = {self.loss: loss}
+    # Convert logits to softmax for metric computation if needed.
+    if hasattr(self.task_config.model,
+               'output_softmax') and self.task_config.model.output_softmax:
+      outputs = tf.nn.softmax(outputs, axis=-1)
     if metrics:
       self.process_metrics(metrics, labels, outputs)
     elif model.compiled_metrics:

@@ -13,22 +13,22 @@ task:
         stochastic_depth_drop_rate: 0.0
       type: mobilenet
     dropout_rate: 0.2
-  losses:
-    l2_weight_decay: 0.00001
-    one_hot: true
-    label_smoothing: 0.1
     norm_activation:
       activation: relu
       norm_epsilon: 0.001
       norm_momentum: 0.997
       use_sync_bn: false
+  losses:
+    l2_weight_decay: 0.00001
+    one_hot: true
+    label_smoothing: 0.1
   train_data:
-    input_path: 'imagenet-2012-tfrecord/train*'
+    input_path: 'gs://mlcompass-data/imagenet/imagenet-2012-tfrecord/train*'
     is_training: true
     global_batch_size: 4096
     dtype: 'bfloat16'
   validation_data:
-    input_path: 'imagenet-2012-tfrecord/valid*'
+    input_path: 'gs://mlcompass-data/imagenet/imagenet-2012-tfrecord/valid*'
     is_training: false
     global_batch_size: 4096
     dtype: 'bfloat16'

@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ from official.vision.ops import spatial_transform_ops
 class FPN(tf.keras.Model):
   """Creates a Feature Pyramid Network (FPN).
 
-  This implemets the paper:
+  This implements the paper:
   Tsung-Yi Lin, Piotr Dollar, Ross Girshick, Kaiming He, Bharath Hariharan, and
   Serge Belongie.
   Feature Pyramid Networks for Object Detection.
@@ -44,6 +44,7 @@ class FPN(tf.keras.Model):
       num_filters: int = 256,
       fusion_type: str = 'sum',
       use_separable_conv: bool = False,
+      use_keras_layer: bool = False,
       activation: str = 'relu',
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
@@ -64,6 +65,7 @@ class FPN(tf.keras.Model):
         concat for feature fusion.
       use_separable_conv: A `bool`.  If True use separable convolution for
         convolution in FPN layers.
+      use_keras_layer: A `bool`. If Ture use keras layers as many as possible.
       activation: A `str` name of the activation function.
       use_sync_bn: A `bool`. If True, use synchronized batch normalization.
       norm_momentum: A `float` of normalization momentum for the moving average.
@@ -82,6 +84,7 @@ class FPN(tf.keras.Model):
         'num_filters': num_filters,
         'fusion_type': fusion_type,
         'use_separable_conv': use_separable_conv,
+        'use_keras_layer': use_keras_layer,
         'activation': activation,
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
@@ -94,12 +97,8 @@ class FPN(tf.keras.Model):
       conv2d = tf.keras.layers.SeparableConv2D
     else:
       conv2d = tf.keras.layers.Conv2D
-    if use_sync_bn:
-      norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      norm = tf.keras.layers.BatchNormalization
-    activation_fn = tf.keras.layers.Activation(
-        tf_utils.get_activation(activation))
+    norm = tf.keras.layers.BatchNormalization
+    activation_fn = tf_utils.get_activation(activation, use_keras_layer=True)
 
     # Build input feature pyramid.
     if tf.keras.backend.image_data_format() == 'channels_last':
@@ -121,24 +120,32 @@ class FPN(tf.keras.Model):
           padding='same',
           kernel_initializer=kernel_initializer,
           kernel_regularizer=kernel_regularizer,
-          bias_regularizer=bias_regularizer)(
+          bias_regularizer=bias_regularizer,
+          name=f'lateral_{level}')(
               inputs[str(level)])
 
     # Build top-down path.
     feats = {str(backbone_max_level): feats_lateral[str(backbone_max_level)]}
     for level in range(backbone_max_level - 1, min_level - 1, -1):
       feat_a = spatial_transform_ops.nearest_upsampling(
-          feats[str(level + 1)], 2)
+          feats[str(level + 1)], 2, use_keras_layer=use_keras_layer)
       feat_b = feats_lateral[str(level)]
 
       if fusion_type == 'sum':
-        feats[str(level)] = feat_a + feat_b
+        if use_keras_layer:
+          feats[str(level)] = tf.keras.layers.Add()([feat_a, feat_b])
+        else:
+          feats[str(level)] = feat_a + feat_b
       elif fusion_type == 'concat':
-        feats[str(level)] = tf.concat([feat_a, feat_b], axis=-1)
+        if use_keras_layer:
+          feats[str(level)] = tf.keras.layers.Concatenate(axis=-1)(
+              [feat_a, feat_b])
+        else:
+          feats[str(level)] = tf.concat([feat_a, feat_b], axis=-1)
       else:
         raise ValueError('Fusion type {} not supported.'.format(fusion_type))
 
-    # TODO(xianzhi): consider to remove bias in conv2d.
+    # TODO(fyangf): experiment with removing bias in conv2d.
     # Build post-hoc 3x3 convolution kernel.
     for level in range(min_level, backbone_max_level + 1):
       feats[str(level)] = conv2d(
@@ -148,10 +155,11 @@ class FPN(tf.keras.Model):
           padding='same',
           kernel_initializer=kernel_initializer,
           kernel_regularizer=kernel_regularizer,
-          bias_regularizer=bias_regularizer)(
+          bias_regularizer=bias_regularizer,
+          name=f'post_hoc_{level}')(
               feats[str(level)])
 
-    # TODO(xianzhi): consider to remove bias in conv2d.
+    # TODO(fyangf): experiment with removing bias in conv2d.
     # Build coarser FPN levels introduced for RetinaNet.
     for level in range(backbone_max_level + 1, max_level + 1):
       feats_in = feats[str(level - 1)]
@@ -164,13 +172,18 @@ class FPN(tf.keras.Model):
           padding='same',
           kernel_initializer=kernel_initializer,
           kernel_regularizer=kernel_regularizer,
-          bias_regularizer=bias_regularizer)(
+          bias_regularizer=bias_regularizer,
+          name=f'coarser_{level}')(
               feats_in)
 
     # Apply batch norm layers.
     for level in range(min_level, max_level + 1):
       feats[str(level)] = norm(
-          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+          axis=bn_axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          synchronized=use_sync_bn,
+          name=f'norm_{level}')(
               feats[str(level)])
 
     self._output_specs = {
@@ -239,6 +252,7 @@ def build_fpn_decoder(
       num_filters=decoder_cfg.num_filters,
       fusion_type=decoder_cfg.fusion_type,
       use_separable_conv=decoder_cfg.use_separable_conv,
+      use_keras_layer=decoder_cfg.use_keras_layer,
       activation=norm_activation_config.activation,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,

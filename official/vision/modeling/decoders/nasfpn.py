@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -76,7 +76,7 @@ class NASFPN(tf.keras.Model):
       input_specs: Mapping[str, tf.TensorShape],
       min_level: int = 3,
       max_level: int = 7,
-      block_specs: List[BlockSpec] = build_block_specs(),
+      block_specs: Optional[List[BlockSpec]] = None,
       num_filters: int = 256,
       num_repeats: int = 5,
       use_separable_conv: bool = False,
@@ -130,33 +130,14 @@ class NASFPN(tf.keras.Model):
     }
     self._min_level = min_level
     self._max_level = max_level
-    self._block_specs = block_specs
+    self._block_specs = (
+        build_block_specs() if block_specs is None else block_specs
+    )
     self._num_repeats = num_repeats
     self._conv_op = (tf.keras.layers.SeparableConv2D
                      if self._config_dict['use_separable_conv']
                      else tf.keras.layers.Conv2D)
-    if self._config_dict['use_separable_conv']:
-      self._conv_kwargs = {
-          'depthwise_initializer': tf.keras.initializers.VarianceScaling(
-              scale=2, mode='fan_out', distribution='untruncated_normal'),
-          'pointwise_initializer': tf.keras.initializers.VarianceScaling(
-              scale=2, mode='fan_out', distribution='untruncated_normal'),
-          'bias_initializer': tf.zeros_initializer(),
-          'depthwise_regularizer': self._config_dict['kernel_regularizer'],
-          'pointwise_regularizer': self._config_dict['kernel_regularizer'],
-          'bias_regularizer': self._config_dict['bias_regularizer'],
-      }
-    else:
-      self._conv_kwargs = {
-          'kernel_initializer': tf.keras.initializers.VarianceScaling(
-              scale=2, mode='fan_out', distribution='untruncated_normal'),
-          'bias_initializer': tf.zeros_initializer(),
-          'kernel_regularizer': self._config_dict['kernel_regularizer'],
-          'bias_regularizer': self._config_dict['bias_regularizer'],
-      }
-    self._norm_op = (tf.keras.layers.experimental.SyncBatchNormalization
-                     if self._config_dict['use_sync_bn']
-                     else tf.keras.layers.BatchNormalization)
+    self._norm_op = tf.keras.layers.BatchNormalization
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -165,6 +146,7 @@ class NASFPN(tf.keras.Model):
         'axis': self._bn_axis,
         'momentum': self._config_dict['norm_momentum'],
         'epsilon': self._config_dict['norm_epsilon'],
+        'synchronized': self._config_dict['use_sync_bn'],
     }
     self._activation = tf_utils.get_activation(activation)
 
@@ -239,6 +221,28 @@ class NASFPN(tf.keras.Model):
       return tf.cast(x, dtype=compute_dtype)
     else:
       return x
+
+  @property
+  def _conv_kwargs(self):
+    if self._config_dict['use_separable_conv']:
+      return {
+          'depthwise_initializer': tf.keras.initializers.VarianceScaling(
+              scale=2, mode='fan_out', distribution='untruncated_normal'),
+          'pointwise_initializer': tf.keras.initializers.VarianceScaling(
+              scale=2, mode='fan_out', distribution='untruncated_normal'),
+          'bias_initializer': tf.zeros_initializer(),
+          'depthwise_regularizer': self._config_dict['kernel_regularizer'],
+          'pointwise_regularizer': self._config_dict['kernel_regularizer'],
+          'bias_regularizer': self._config_dict['bias_regularizer'],
+      }
+    else:
+      return {
+          'kernel_initializer': tf.keras.initializers.VarianceScaling(
+              scale=2, mode='fan_out', distribution='untruncated_normal'),
+          'bias_initializer': tf.zeros_initializer(),
+          'kernel_regularizer': self._config_dict['kernel_regularizer'],
+          'bias_regularizer': self._config_dict['bias_regularizer'],
+      }
 
   def _global_attention(self, feat0, feat1):
     m = tf.math.reduce_max(feat0, axis=[1, 2], keepdims=True)

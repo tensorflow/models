@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
             }
         }
     }
-    optimizer_cls = optimizer_factory.OPTIMIZERS_CLS[optimizer_type]
+    optimizer_cls = optimizer_factory.LEGACY_OPTIMIZERS_CLS[optimizer_type]
     expected_optimizer_config = optimizer_cls().get_config()
     expected_optimizer_config['learning_rate'] = 0.1
 
@@ -45,6 +45,36 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     opt_factory = optimizer_factory.OptimizerFactory(opt_config)
     lr = opt_factory.build_learning_rate()
     optimizer = opt_factory.build_optimizer(lr, postprocessor=lambda x: x)
+
+    self.assertIsInstance(optimizer, optimizer_cls)
+    self.assertEqual(expected_optimizer_config, optimizer.get_config())
+
+  @parameterized.parameters(('sgd'), ('rmsprop'), ('adam'), ('adamw'), ('lamb'),
+                            ('lars'), ('adagrad'))
+  def test_new_optimizers(self, optimizer_type):
+    params = {
+        'optimizer': {
+            'type': optimizer_type
+        },
+        'learning_rate': {
+            'type': 'constant',
+            'constant': {
+                'learning_rate': 0.1
+            }
+        }
+    }
+    optimizer_cls = optimizer_factory.NEW_OPTIMIZERS_CLS[optimizer_type]
+    expected_optimizer_config = optimizer_cls().get_config()
+    expected_optimizer_config['learning_rate'] = 0.1
+
+    opt_config = optimization_config.OptimizationConfig(params)
+    if optimizer_type == 'sgd':
+      # Delete unsupported arg `decay` from SGDConfig.
+      delattr(opt_config.optimizer.sgd, 'decay')
+    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
+    lr = opt_factory.build_learning_rate()
+    optimizer = opt_factory.build_optimizer(
+        lr, postprocessor=lambda x: x, use_legacy_optimizer=False)
 
     self.assertIsInstance(optimizer, optimizer_cls)
     self.assertEqual(expected_optimizer_config, optimizer.get_config())
@@ -69,6 +99,9 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     zero_grads = lambda gv: [(tf.zeros_like(g), v) for g, v in gv]
 
     optimizer = opt_factory.build_optimizer(lr, gradient_aggregator=zero_grads)
+    if isinstance(optimizer, tf.keras.optimizers.experimental.Optimizer):
+      self.skipTest('New Keras optimizer does not support '
+                    '`gradient_aggregator` arg.')
 
     var0 = tf.Variable([1.0, 2.0])
     var1 = tf.Variable([3.0, 4.0])
@@ -139,6 +172,25 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(ValueError):
       optimizer_factory.OptimizerFactory(
           optimization_config.OptimizationConfig(params))
+
+  def test_wrong_return_type(self):
+    optimizer_type = 'sgd'
+    params = {
+        'optimizer': {
+            'type': optimizer_type
+        },
+        'learning_rate': {
+            'type': 'constant',
+            'constant': {
+                'learning_rate': 0.1
+            }
+        }
+    }
+
+    opt_config = optimization_config.OptimizationConfig(params)
+    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
+    with self.assertRaises(TypeError):
+      _ = opt_factory.build_optimizer(0.1, postprocessor=lambda x: None)
 
 
 # TODO(b/187559334) refactor lr_schedule tests into `lr_schedule_test.py`.
@@ -469,7 +521,7 @@ class OptimizerFactoryRegistryTest(tf.test.TestCase):
       pass
 
     optimizer_factory.register_optimizer_cls('test', MyClass)
-    self.assertIn('test', optimizer_factory.OPTIMIZERS_CLS)
+    self.assertIn('test', optimizer_factory.LEGACY_OPTIMIZERS_CLS)
     with self.assertRaisesRegex(ValueError, 'test already registered.*'):
       optimizer_factory.register_optimizer_cls('test', MyClass)
 

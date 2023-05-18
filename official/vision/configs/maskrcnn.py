@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 import dataclasses
 import os
-from typing import List, Optional, Union
+from typing import List, Optional, Sequence, Union
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -34,8 +34,11 @@ class Parser(hyperparams.Config):
   match_threshold: float = 0.5
   unmatched_threshold: float = 0.5
   aug_rand_hflip: bool = False
+  aug_rand_vflip: bool = False
   aug_scale_min: float = 1.0
   aug_scale_max: float = 1.0
+  aug_type: Optional[
+      common.Augmentation] = None  # Choose from AutoAugment and RandAugment.
   skip_crowd_during_training: bool = True
   max_num_instances: int = 100
   rpn_match_threshold: float = 0.7
@@ -48,7 +51,8 @@ class Parser(hyperparams.Config):
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
   """Input config for training."""
-  input_path: str = ''
+  input_path: Union[Sequence[str], str, hyperparams.Config] = ''
+  weights: Optional[hyperparams.Config] = None
   global_batch_size: int = 0
   is_training: bool = False
   dtype: str = 'bfloat16'
@@ -133,6 +137,7 @@ class DetectionGenerator(hyperparams.Config):
   nms_version: str = 'v2'  # `v2`, `v1`, `batched`
   use_cpu_nms: bool = False
   soft_nms_sigma: Optional[float] = None  # Only works when nms_version='v1'.
+  use_sigmoid_probability: bool = False
 
 
 @dataclasses.dataclass
@@ -163,6 +168,7 @@ class MaskRCNN(hyperparams.Config):
   max_level: int = 6
   anchor: Anchor = Anchor()
   include_mask: bool = True
+  outer_boxes_scale: float = 1.0
   backbone: backbones.Backbone = backbones.Backbone(
       type='resnet', resnet=backbones.ResNet())
   decoder: decoders.Decoder = decoders.Decoder(
@@ -187,6 +193,8 @@ class Losses(hyperparams.Config):
   loss_weight: float = 1.0
   rpn_huber_loss_delta: float = 1. / 9.
   frcnn_huber_loss_delta: float = 1.
+  frcnn_class_use_binary_cross_entropy: bool = False
+  frcnn_class_loss_top_k_percent: float = 1.
   l2_weight_decay: float = 0.0
   rpn_score_weight: float = 1.0
   rpn_box_weight: float = 1.0
@@ -213,6 +221,9 @@ class MaskRCNNTask(cfg.TaskConfig):
   use_coco_metrics: bool = True
   # If set, the Waymo Open Dataset evaluator would be used.
   use_wod_metrics: bool = False
+  # If set, use instance metrics (AP, mask AP, etc.) computed by an efficient
+  # approximation algorithm with TPU compatible operations.
+  use_approx_instance_metrics: bool = False
 
   # If set, freezes the backbone during training.
   # TODO(crisnv) Add paper link when available.
@@ -522,5 +533,93 @@ def cascadercnn_spinenet_coco() -> cfg.ExperimentConfig:
           'task.validation_data.is_training != None',
           'task.model.min_level == task.model.backbone.spinenet.min_level',
           'task.model.max_level == task.model.backbone.spinenet.max_level',
+      ])
+  return config
+
+
+@exp_factory.register_config_factory('maskrcnn_mobilenet_coco')
+def maskrcnn_mobilenet_coco() -> cfg.ExperimentConfig:
+  """COCO object detection with Mask R-CNN with MobileNet backbone."""
+  steps_per_epoch = 232
+  coco_val_samples = 5000
+  train_batch_size = 512
+  eval_batch_size = 512
+
+  config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
+      task=MaskRCNNTask(
+          annotation_file=os.path.join(COCO_INPUT_PATH_BASE,
+                                       'instances_val2017.json'),
+          model=MaskRCNN(
+              backbone=backbones.Backbone(
+                  type='mobilenet',
+                  mobilenet=backbones.MobileNet(model_id='MobileNetV2')),
+              decoder=decoders.Decoder(
+                  type='fpn',
+                  fpn=decoders.FPN(num_filters=128, use_separable_conv=True)),
+              rpn_head=RPNHead(use_separable_conv=True,
+                               num_filters=128),  # 1/2 of original channels.
+              detection_head=DetectionHead(
+                  use_separable_conv=True, num_filters=128,
+                  fc_dims=512),  # 1/2 of original channels.
+              mask_head=MaskHead(use_separable_conv=True,
+                                 num_filters=128),  # 1/2 of original channels.
+              anchor=Anchor(anchor_size=3),
+              norm_activation=common.NormActivation(
+                  activation='relu6',
+                  norm_momentum=0.99,
+                  norm_epsilon=0.001,
+                  use_sync_bn=True),
+              num_classes=91,
+              input_size=[512, 512, 3],
+              min_level=3,
+              max_level=6,
+              include_mask=True),
+          losses=Losses(l2_weight_decay=0.00004),
+          train_data=DataConfig(
+              input_path=os.path.join(COCO_INPUT_PATH_BASE, 'train*'),
+              is_training=True,
+              global_batch_size=train_batch_size,
+              parser=Parser(
+                  aug_rand_hflip=True, aug_scale_min=0.5, aug_scale_max=2.0)),
+          validation_data=DataConfig(
+              input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
+              is_training=False,
+              global_batch_size=eval_batch_size,
+              drop_remainder=False)),
+      trainer=cfg.TrainerConfig(
+          train_steps=steps_per_epoch * 350,
+          validation_steps=coco_val_samples // eval_batch_size,
+          validation_interval=steps_per_epoch,
+          steps_per_loop=steps_per_epoch,
+          summary_interval=steps_per_epoch,
+          checkpoint_interval=steps_per_epoch,
+          optimizer_config=optimization.OptimizationConfig({
+              'optimizer': {
+                  'type': 'sgd',
+                  'sgd': {
+                      'momentum': 0.9
+                  }
+              },
+              'learning_rate': {
+                  'type': 'stepwise',
+                  'stepwise': {
+                      'boundaries': [
+                          steps_per_epoch * 320, steps_per_epoch * 340
+                      ],
+                      'values': [0.32, 0.032, 0.0032],
+                  }
+              },
+              'warmup': {
+                  'type': 'linear',
+                  'linear': {
+                      'warmup_steps': 2000,
+                      'warmup_learning_rate': 0.0067
+                  }
+              }
+          })),
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None',
       ])
   return config

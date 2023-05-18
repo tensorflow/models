@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,8 +29,12 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(
       (128, 50, 4, 8),
       (128, 101, 4, 8),
+      (128, 152, 4, 8),
+      (128, 200, 4, 8),
       (128, 50, 4, 16),
       (128, 101, 4, 16),
+      (128, 152, 4, 16),
+      (128, 200, 4, 16),
   )
   def test_network_creation(self, input_size, model_id,
                             endpoint_filter_scale, output_stride):
@@ -48,13 +52,17 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
     ], endpoints[str(int(np.math.log2(output_stride)))].shape.as_list())
 
   @parameterized.parameters(
-      ('v0', None, 0.0),
-      ('v1', None, 0.0),
-      ('v1', 0.25, 0.0),
-      ('v1', 0.25, 0.2),
+      ('v0', None, 0.0, False, False),
+      ('v1', None, 0.0, False, False),
+      ('v1', 0.25, 0.0, False, False),
+      ('v1', 0.25, 0.2, False, False),
+      ('v1', 0.25, 0.0, True, False),
+      ('v1', 0.25, 0.2, False, True),
+      ('v1', None, 0.2, True, True),
   )
   def test_network_features(self, stem_type, se_ratio,
-                            init_stochastic_depth_rate):
+                            init_stochastic_depth_rate, resnetd_shortcut,
+                            replace_stem_max_pool):
     """Test additional features of ResNet models."""
     input_size = 128
     model_id = 50
@@ -67,6 +75,8 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
         model_id=model_id,
         output_stride=output_stride,
         stem_type=stem_type,
+        resnetd_shortcut=resnetd_shortcut,
+        replace_stem_max_pool=replace_stem_max_pool,
         se_ratio=se_ratio,
         init_stochastic_depth_rate=init_stochastic_depth_rate)
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
@@ -116,6 +126,8 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
         stem_type='v0',
         se_ratio=0.25,
         init_stochastic_depth_rate=0.2,
+        resnetd_shortcut=False,
+        replace_stem_max_pool=False,
         use_sync_bn=False,
         activation='relu',
         norm_momentum=0.99,

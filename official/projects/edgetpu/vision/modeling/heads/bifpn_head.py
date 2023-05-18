@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -670,7 +670,7 @@ class SegClassNet(tf.keras.layers.Layer):
     self.min_level = min_level
     self.max_level = max_level
     self.fullres_output = fullres_output
-    self.fullres_conv_transpose = fullres_skip_connections
+    self.fullres_skip_connections = fullres_skip_connections
 
     self.fnode = FNode(
         0,  # Always use the first level with highest resolution.
@@ -726,7 +726,7 @@ class SegClassNet(tf.keras.layers.Layer):
 
     if self.fullres_output:
       for i in reversed(range(self.min_level)):
-        if self.config.fullres_skip_connections:
+        if self.fullres_skip_connections:
           net = tf.keras.layers.Concatenate()([net, backbone_feats[i + 1]])
         net = self.fullres_conv[str(i)](net)
         net = self.fullres_conv_transpose[str(i)](net)

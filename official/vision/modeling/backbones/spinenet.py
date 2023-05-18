@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -141,7 +141,7 @@ class SpineNet(tf.keras.Model):
           shape=[None, None, None, 3]),
       min_level: int = 3,
       max_level: int = 7,
-      block_specs: List[BlockSpec] = build_block_specs(),
+      block_specs: Optional[List[BlockSpec]] = None,
       endpoints_num_filters: int = 256,
       resample_alpha: float = 0.5,
       block_repeats: int = 1,
@@ -186,7 +186,9 @@ class SpineNet(tf.keras.Model):
     self._input_specs = input_specs
     self._min_level = min_level
     self._max_level = max_level
-    self._block_specs = block_specs
+    self._block_specs = (
+        build_block_specs() if block_specs is None else block_specs
+    )
     self._endpoints_num_filters = endpoints_num_filters
     self._resample_alpha = resample_alpha
     self._block_repeats = block_repeats
@@ -199,19 +201,11 @@ class SpineNet(tf.keras.Model):
     self._use_sync_bn = use_sync_bn
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
-    if activation == 'relu':
-      self._activation_fn = tf.nn.relu
-    elif activation == 'swish':
-      self._activation_fn = tf.nn.swish
-    else:
-      raise ValueError('Activation {} not implemented.'.format(activation))
     self._init_block_fn = 'bottleneck'
     self._num_init_blocks = 2
 
-    if use_sync_bn:
-      self._norm = layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = layers.BatchNormalization
+    self._set_activation_fn(activation)
+    self._norm = layers.BatchNormalization
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
@@ -224,13 +218,21 @@ class SpineNet(tf.keras.Model):
     net = self._build_stem(inputs=inputs)
     input_width = input_specs.shape[2]
     if input_width is None:
-      max_stride = max(map(lambda b: b.level, block_specs))
+      max_stride = max(map(lambda b: b.level, self._block_specs))
       input_width = 2 ** max_stride
     net = self._build_scale_permuted_network(net=net, input_width=input_width)
     endpoints = self._build_endpoints(net=net)
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
     super(SpineNet, self).__init__(inputs=inputs, outputs=endpoints)
+
+  def _set_activation_fn(self, activation):
+    if activation == 'relu':
+      self._activation_fn = tf.nn.relu
+    elif activation == 'swish':
+      self._activation_fn = tf.nn.swish
+    else:
+      raise ValueError('Activation {} not implemented.'.format(activation))
 
   def _block_group(self,
                    inputs: tf.Tensor,
@@ -297,7 +299,8 @@ class SpineNet(tf.keras.Model):
     x = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)(
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)(
             x)
     x = tf_utils.get_activation(self._activation_fn)(x)
     x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
@@ -405,9 +408,9 @@ class SpineNet(tf.keras.Model):
         if (block_spec.level < self._min_level or
             block_spec.level > self._max_level):
           logging.warning(
-              'SpineNet output level out of range [min_level, max_level] = '
+              'SpineNet output level %s out of range [min_level, max_level] = '
               '[%s, %s] will not be used for further processing.',
-              self._min_level, self._max_level)
+              block_spec.level, self._min_level, self._max_level)
         endpoints[str(block_spec.level)] = x
 
     return endpoints
@@ -428,7 +431,8 @@ class SpineNet(tf.keras.Model):
       x = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)(
+          epsilon=self._norm_epsilon,
+          synchronized=self._use_sync_bn)(
               x)
       x = tf_utils.get_activation(self._activation_fn)(x)
       endpoints[str(level)] = x
@@ -460,7 +464,8 @@ class SpineNet(tf.keras.Model):
     x = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)(
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)(
             x)
     x = tf_utils.get_activation(self._activation_fn)(x)
 
@@ -479,7 +484,8 @@ class SpineNet(tf.keras.Model):
       x = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)(
+          epsilon=self._norm_epsilon,
+          synchronized=self._use_sync_bn)(
               x)
       x = tf_utils.get_activation(self._activation_fn)(x)
       input_width /= 2
@@ -505,7 +511,8 @@ class SpineNet(tf.keras.Model):
     x = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)(
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn)(
             x)
     return x
 
@@ -550,7 +557,7 @@ def build_spinenet(
   assert backbone_type == 'spinenet', (f'Inconsistent backbone type '
                                        f'{backbone_type}')
 
-  model_id = backbone_cfg.model_id
+  model_id = str(backbone_cfg.model_id)
   if model_id not in SCALING_MAP:
     raise ValueError(
         'SpineNet-{} is not a valid architecture.'.format(model_id))

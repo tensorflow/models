@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -317,14 +317,14 @@ class DatasetManager(object):
       }
 
       if self._is_training:
-        types[rconst.VALID_POINT_MASK] = np.bool
+        types[rconst.VALID_POINT_MASK] = bool
         shapes[rconst.VALID_POINT_MASK] = tf.TensorShape([batch_size, 1])
 
-        types = (types, np.bool)
+        types = (types, bool)
         shapes = (shapes, tf.TensorShape([batch_size, 1]))
 
       else:
-        types[rconst.DUPLICATE_MASK] = np.bool
+        types[rconst.DUPLICATE_MASK] = bool
         shapes[rconst.DUPLICATE_MASK] = tf.TensorShape([batch_size, 1])
 
       data_generator = functools.partial(
@@ -637,7 +637,7 @@ class BaseDataConstructor(threading.Thread):
       users = np.concatenate([users, padding.astype(users.dtype)], axis=0)
       items = np.concatenate([items, padding.astype(items.dtype)], axis=0)
 
-    duplicate_mask = stat_utils.mask_duplicates(items, axis=1).astype(np.bool)
+    duplicate_mask = stat_utils.mask_duplicates(items, axis=1).astype(bool)
 
     items[:, (0, -1)] = items[:, (-1, 0)]
     duplicate_mask[:, (0, -1)] = duplicate_mask[:, (-1, 0)]

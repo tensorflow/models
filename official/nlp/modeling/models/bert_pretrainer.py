@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ from absl import logging
 import gin
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling import layers
 from official.nlp.modeling import networks
 
@@ -102,7 +103,7 @@ class BertPretrainer(tf.keras.Model):
     masked_lm = layers.MaskedLM(
         embedding_table=embedding_table,
         activation=activation,
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(initializer),
         output=output,
         name='cls/predictions')
     lm_outputs = masked_lm(
@@ -111,7 +112,7 @@ class BertPretrainer(tf.keras.Model):
     classification = networks.Classification(
         input_width=cls_output.shape[-1],
         num_classes=num_classes,
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(initializer),
         output=output,
         name='classification')
     sentence_outputs = classification(cls_output)
@@ -225,7 +226,7 @@ class BertPretrainerV2(tf.keras.Model):
       inputs.append(masked_lm_positions)
     self.inputs = inputs
 
-  def call(self, inputs):
+  def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     if isinstance(inputs, list):
       logging.warning('List inputs to BertPretrainer are discouraged.')
       inputs = dict([

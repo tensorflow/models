@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -226,9 +226,13 @@ class TrainerWithMaskedLMTaskTest(tf.test.TestCase, parameterized.TestCase):
     task = TestPolicy(None, config.task)
     trainer = trainer_lib.ProgressiveTrainer(config, task, self.get_temp_dir())
     if mixed_precision_dtype != 'float16':
-      self.assertIsInstance(trainer.optimizer, tf.keras.optimizers.SGD)
+      self.assertIsInstance(
+          trainer.optimizer,
+          (tf.keras.optimizers.SGD, tf.keras.optimizers.legacy.SGD))
     elif mixed_precision_dtype == 'float16' and loss_scale is None:
-      self.assertIsInstance(trainer.optimizer, tf.keras.optimizers.SGD)
+      self.assertIsInstance(
+          trainer.optimizer,
+          (tf.keras.optimizers.SGD, tf.keras.optimizers.legacy.SGD))
 
     metrics = trainer.train(tf.convert_to_tensor(5, dtype=tf.int32))
     self.assertIn('training_loss', metrics)

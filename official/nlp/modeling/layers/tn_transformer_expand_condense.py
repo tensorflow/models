@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 import gin
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling.layers.tn_expand_condense import TNExpandCondense
 
 
@@ -77,7 +78,7 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
                intermediate_dropout=0.0,
                attention_initializer=None,
                **kwargs):
-    super(TNTransformerExpandCondense, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
     self._num_heads = num_attention_heads
     self._intermediate_size = intermediate_size
@@ -100,7 +101,8 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
       self._attention_initializer = tf.keras.initializers.get(
           attention_initializer)
     else:
-      self._attention_initializer = self._kernel_initializer
+      self._attention_initializer = tf_utils.clone_initializer(
+          self._kernel_initializer)
 
   def build(self, input_shape):
     input_tensor = input_shape[0] if len(input_shape) == 2 else input_shape
@@ -128,7 +130,6 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
           "heads (%d)" % (hidden_size, self._num_heads))
     self._attention_head_size = int(hidden_size // self._num_heads)
     common_kwargs = dict(
-        bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
@@ -140,6 +141,7 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
         dropout=self._attention_dropout_rate,
         use_bias=self._use_bias,
         kernel_initializer=self._attention_initializer,
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         name="self_attention",
         **common_kwargs)
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
@@ -168,7 +170,7 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
         epsilon=self._norm_epsilon,
         dtype=tf.float32)
 
-    super(TNTransformerExpandCondense, self).build(input_shape)
+    super().build(input_shape)
 
   def get_config(self):
     config = {
@@ -209,7 +211,7 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
         "attention_initializer":
             tf.keras.initializers.serialize(self._attention_initializer)
     }
-    base_config = super(TNTransformerExpandCondense, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs):

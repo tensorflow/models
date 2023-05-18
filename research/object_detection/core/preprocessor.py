@@ -1032,6 +1032,9 @@ def random_image_scale(image,
 
 def _augment_only_rgb_channels(image, augment_function):
   """Augments only the RGB slice of an image with additional channels."""
+  # Skipping the concat if possible reduces latency.
+  if image.shape[2] == 3:
+    return augment_function(image)
   rgb_slice = image[:, :, :3]
   augmented_rgb_slice = augment_function(rgb_slice)
   image = tf.concat([augmented_rgb_slice, image[:, :, 3:]], -1)

@@ -80,8 +80,8 @@ class CocoToolsTest(tf.test.TestCase):
 
   def testExportGroundtruthToCOCO(self):
     image_ids = ['first', 'second']
-    groundtruth_boxes = [np.array([[100, 100, 200, 200]], np.float),
-                         np.array([[50, 50, 100, 100]], np.float)]
+    groundtruth_boxes = [np.array([[100, 100, 200, 200]], float),
+                         np.array([[50, 50, 100, 100]], float)]
     groundtruth_classes = [np.array([1], np.int32), np.array([1], np.int32)]
     categories = [{'id': 0, 'name': 'person'},
                   {'id': 1, 'name': 'cat'},
@@ -104,9 +104,9 @@ class CocoToolsTest(tf.test.TestCase):
 
   def testExportDetectionsToCOCO(self):
     image_ids = ['first', 'second']
-    detections_boxes = [np.array([[100, 100, 200, 200]], np.float),
-                        np.array([[50, 50, 100, 100]], np.float)]
-    detections_scores = [np.array([.8], np.float), np.array([.7], np.float)]
+    detections_boxes = [np.array([[100, 100, 200, 200]], float),
+                        np.array([[50, 50, 100, 100]], float)]
+    detections_scores = [np.array([.8], float), np.array([.7], float)]
     detections_classes = [np.array([1], np.int32), np.array([1], np.int32)]
     categories = [{'id': 0, 'name': 'person'},
                   {'id': 1, 'name': 'cat'},
@@ -139,7 +139,7 @@ class CocoToolsTest(tf.test.TestCase):
     for i, detection_mask in enumerate(detection_masks):
       detection_masks[i] = detection_mask[:, :, :, None]
 
-    detection_scores = [np.array([.8], np.float), np.array([.7], np.float)]
+    detection_scores = [np.array([.8], float), np.array([.7], float)]
     detection_classes = [np.array([1], np.int32), np.array([1], np.int32)]
 
     categories = [{'id': 0, 'name': 'person'},
@@ -170,8 +170,8 @@ class CocoToolsTest(tf.test.TestCase):
             [[[110, 210], [310, 410], [510, 610]],
              [[60, 160], [260, 360], [460, 560]]], dtype=np.int32)]
 
-    detection_scores = [np.array([.8, 0.2], np.float),
-                        np.array([.7, 0.3], np.float)]
+    detection_scores = [np.array([.8, 0.2], float),
+                        np.array([.7, 0.3], float)]
     detection_classes = [np.array([1, 1], np.int32), np.array([1, 1], np.int32)]
 
     categories = [{'id': 1, 'name': 'person', 'num_keypoints': 3},

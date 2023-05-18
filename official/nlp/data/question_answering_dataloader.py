@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,11 @@
 # limitations under the License.
 
 """Loads dataset for the question answering (e.g, SQuAD) task."""
+import dataclasses
 from typing import Mapping, Optional
 
-import dataclasses
 import tensorflow as tf
+from official.common import dataset_fn
 from official.core import config_definitions as cfg
 from official.core import input_reader
 from official.nlp.data import data_loader
@@ -44,6 +45,7 @@ class QADataConfig(cfg.DataConfig):
   tokenization: str = 'WordPiece'  # WordPiece or SentencePiece
   do_lower_case: bool = True
   xlnet_format: bool = False
+  file_type: str = 'tfrecord'
 
 
 @data_loader_factory.register_data_loader_cls(QADataConfig)
@@ -106,5 +108,8 @@ class QuestionAnsweringDataLoader(data_loader.DataLoader):
   def load(self, input_context: Optional[tf.distribute.InputContext] = None):
     """Returns a tf.dataset.Dataset."""
     reader = input_reader.InputReader(
-        params=self._params, decoder_fn=self._decode, parser_fn=self._parse)
+        params=self._params,
+        dataset_fn=dataset_fn.pick_dataset_fn(self._params.file_type),
+        decoder_fn=self._decode,
+        parser_fn=self._parse)
     return reader.read(input_context)

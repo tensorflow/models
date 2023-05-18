@@ -1,0 +1,46 @@
+task:
+  init_checkpoint: 'tf-bert-uncased'
+  model:
+    num_classes_is_entity: 2
+    num_classes_entity_type: 8
+    encoder:
+      type: any
+  metric_type: 'accuracy'
+  train_data:
+    drop_remainder: true
+    global_batch_size: 32
+    input_path: TODO
+    is_training: true
+    seq_length: 128
+  validation_data:
+    drop_remainder: true
+    global_batch_size: 1024
+    input_path: TODO
+    is_training: false
+    seq_length: 128
+trainer:
+  checkpoint_interval: 1000
+  continuous_eval_timeout: 7200
+  optimizer_config:
+    learning_rate:
+      polynomial:
+        decay_steps: 2518
+        end_learning_rate: 0.0
+        initial_learning_rate: 2.0e-05
+        power: 1.0
+      type: polynomial
+    optimizer:
+      type: adamw
+    warmup:
+      polynomial:
+        power: 1
+        warmup_steps: 0
+      type: polynomial
+  steps_per_loop: 100
+  summary_interval: 100
+  # 2686 * 30 / 32
+  train_steps: 2518
+  validation_interval: 500
+  best_checkpoint_export_subdir: "best_ckpts"
+  best_checkpoint_eval_metric: "overall_f1"
+  best_checkpoint_metric_comp: "higher"

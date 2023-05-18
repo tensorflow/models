@@ -1,4 +1,4 @@
-# Copyright 2022 The Orbit Authors. All Rights Reserved.
+# Copyright 2023 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 
 """Provides the `ExportSavedModel` action and associated helper classes."""
 
+import os
 import re
 
 from typing import Callable, Optional
@@ -58,10 +59,13 @@ class ExportFileManager:
   customized naming and cleanup strategies.
   """
 
-  def __init__(self,
-               base_name: str,
-               max_to_keep: int = 5,
-               next_id_fn: Optional[Callable[[], int]] = None):
+  def __init__(
+      self,
+      base_name: str,
+      max_to_keep: int = 5,
+      next_id_fn: Optional[Callable[[], int]] = None,
+      subdirectory: Optional[str] = None,
+  ):
     """Initializes the instance.
 
     Args:
@@ -76,10 +80,14 @@ class ExportFileManager:
         If not supplied, a default ID based on an incrementing counter is used.
         One common alternative maybe be to use the current global step count,
         for instance passing `next_id_fn=global_step.numpy`.
+      subdirectory: An optional subdirectory to concat after the
+        {base_name}-{id}. Then the file manager will manage
+        {base_name}-{id}/{subdirectory} files.
     """
-    self._base_name = base_name
+    self._base_name = os.path.normpath(base_name)
     self._max_to_keep = max_to_keep
-    self._next_id_fn = next_id_fn or _CounterIdFn(base_name)
+    self._next_id_fn = next_id_fn or _CounterIdFn(self._base_name)
+    self._subdirectory = subdirectory or ''
 
   @property
   def managed_files(self):
@@ -90,7 +98,10 @@ class ExportFileManager:
       `ExportFileManager` instance, sorted in increasing integer order of the
       IDs returned by `next_id_fn`.
     """
-    return _find_managed_files(self._base_name)
+    files = _find_managed_files(self._base_name)
+    return [
+        os.path.normpath(os.path.join(f, self._subdirectory)) for f in files
+    ]
 
   def clean_up(self):
     """Cleans up old files matching `{base_name}-*`.
@@ -100,12 +111,15 @@ class ExportFileManager:
     if self._max_to_keep < 0:
       return
 
-    for filename in self.managed_files[:-self._max_to_keep]:
+    # Note that the base folder will remain intact, only the folder with suffix
+    # is deleted.
+    for filename in self.managed_files[: -self._max_to_keep]:
       tf.io.gfile.rmtree(filename)
 
   def next_name(self) -> str:
     """Returns a new file name based on `base_name` and `next_id_fn()`."""
-    return f'{self._base_name}-{self._next_id_fn()}'
+    base_path = f'{self._base_name}-{self._next_id_fn()}'
+    return os.path.normpath(os.path.join(base_path, self._subdirectory))
 
 
 class ExportSavedModel:

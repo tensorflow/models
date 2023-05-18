@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import tensorflow as tf
 from official.vision.evaluation import iou
 
 
-class MeanIoUTest(tf.test.TestCase):
+class IoUTest(tf.test.TestCase):
 
   def test_config(self):
     m_obj = iou.PerClassIoU(num_classes=2, name='per_class_iou')
@@ -95,7 +95,7 @@ class MeanIoUTest(tf.test.TestCase):
     expected_result = [0, 1 / (1 + 1 - 1)]
     self.assertAllClose(expected_result, result, atol=1e-3)
 
-  def test_update_state_annd_result(self):
+  def test_update_state_and_result(self):
     y_pred = [0, 1, 0, 1]
     y_true = [0, 0, 1, 1]
 
@@ -110,6 +110,62 @@ class MeanIoUTest(tf.test.TestCase):
     # iou = true_positives / (sum_row + sum_col - true_positives))
     expected_result = [1 / (2 + 2 - 1), 1 / (2 + 2 - 1)]
     self.assertAllClose(expected_result, result, atol=1e-3)
+
+  def test_per_class_iou_v2(self):
+    metrics = iou.PerClassIoUV2(num_classes=3)
+    y_true = tf.constant([[
+        [
+            [0, 0, 1],
+            [0, 1, 1],
+        ],
+        [
+            [0, 1, 0],
+            [0, 0, 1],
+        ],
+    ]])
+    y_pred = tf.constant([[
+        [
+            [1, 0, 0],
+            [1, 1, 1],
+        ],
+        [
+            [1, 1, 1],
+            [1, 0, 1],
+        ],
+    ]])
+    metrics.update_state(y_true, y_pred)
+    self.assertAllClose([0.0, 1.0, 0.5], metrics.result(), atol=1e-3)
+
+  def test_per_class_iou_v2_sparse_input(self):
+    metrics = iou.PerClassIoUV2(
+        num_classes=3, sparse_y_true=True, sparse_y_pred=True)
+    y_true = [[
+        [1, 2, 1],
+        [2, 2, 1],
+    ]]
+    y_pred = [[
+        [2, 0, 1],
+        [2, 0, 1],
+    ]]
+    metrics.update_state(y_true, y_pred)
+    self.assertAllClose([0., 2. / 3., 1. / 4.], metrics.result(), atol=1e-3)
+
+  def test_per_class_iou_v2_keep_tailing_dims(self):
+    num_classes = 3
+    num_channels = 2
+    metrics = iou.PerClassIoUV2(
+        num_classes=num_classes,
+        shape=(num_classes, num_channels),
+        sparse_y_true=True,
+        sparse_y_pred=True,
+        axis=0)
+    y_pred = tf.constant([2, 1])
+    y_true = tf.constant([2, 0])
+    metrics.update_state(y_true, y_pred)
+    self.assertAllClose([[0., 0.], [0., 0.], [1., 0.]],
+                        metrics.result(),
+                        atol=1e-3)
+
 
 if __name__ == '__main__':
   tf.test.main()

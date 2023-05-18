@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ from official.vision.configs import video_classification as exp_cfg
 from official.vision.dataloaders import input_reader_factory
 from official.vision.dataloaders import video_input
 from official.vision.modeling import factory_3d
+from official.vision.ops import augment
 
 
 @task_factory.register_task_cls(exp_cfg.VideoClassificationTask)
@@ -59,7 +60,7 @@ class VideoClassificationTask(base_task.Task):
     input_specs = tf.keras.layers.InputSpec(shape=[None] + common_input_shape)
     logging.info('Build model input %r', common_input_shape)
 
-    l2_weight_decay = self.task_config.losses.l2_weight_decay
+    l2_weight_decay = float(self.task_config.losses.l2_weight_decay)
     # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
@@ -72,6 +73,10 @@ class VideoClassificationTask(base_task.Task):
         model_config=self.task_config.model,
         num_classes=self._get_num_classes(),
         l2_regularizer=l2_regularizer)
+
+    if self.task_config.freeze_backbone:
+      logging.info('Freezing model backbone.')
+      model.backbone.trainable = False
     return model
 
   def initialize(self, model: tf.keras.Model):
@@ -85,7 +90,7 @@ class VideoClassificationTask(base_task.Task):
 
     # Restoring checkpoint.
     if self.task_config.init_checkpoint_modules == 'all':
-      ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+      ckpt = tf.train.Checkpoint(model=model)
       status = ckpt.read(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     elif self.task_config.init_checkpoint_modules == 'backbone':
@@ -128,6 +133,17 @@ class VideoClassificationTask(base_task.Task):
         image_key=params.image_field_key,
         label_key=params.label_field_key)
     postprocess_fn = video_input.PostBatchProcessor(params)
+    if params.mixup_and_cutmix is not None:
+      def mixup_and_cutmix(features, labels):
+        augmenter = augment.MixupAndCutmix(
+            mixup_alpha=params.mixup_and_cutmix.mixup_alpha,
+            cutmix_alpha=params.mixup_and_cutmix.cutmix_alpha,
+            prob=params.mixup_and_cutmix.prob,
+            label_smoothing=params.mixup_and_cutmix.label_smoothing,
+            num_classes=self._get_num_classes())
+        features['image'], labels = augmenter(features['image'], labels)
+        return features, labels
+      postprocess_fn = mixup_and_cutmix
 
     reader = input_reader_factory.input_reader_generator(
         params,
@@ -271,9 +287,9 @@ class VideoClassificationTask(base_task.Task):
 
       # Computes per-replica loss.
       if self._is_multilabel():
-        outputs = tf.math.sigmoid(outputs)
+        outputs = tf.nest.map_structure(tf.math.sigmoid, outputs)
       else:
-        outputs = tf.math.softmax(outputs)
+        outputs = tf.nest.map_structure(tf.math.softmax, outputs)
       all_losses = self.build_losses(
           model_outputs=outputs, labels=labels, aux_losses=model.losses)
       loss = all_losses[self.loss]
@@ -342,9 +358,9 @@ class VideoClassificationTask(base_task.Task):
     """Performs the forward step."""
     outputs = model(features, training=False)
     if self._is_multilabel():
-      outputs = tf.math.sigmoid(outputs)
+      outputs = tf.nest.map_structure(tf.math.sigmoid, outputs)
     else:
-      outputs = tf.math.softmax(outputs)
+      outputs = tf.nest.map_structure(tf.math.softmax, outputs)
     num_test_views = self._get_num_test_views()
     if num_test_views > 1:
       # Averaging output probabilities across multiples views.

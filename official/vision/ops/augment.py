@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,9 +29,8 @@ https://github.com/rwightman/pytorch-image-models
 """
 import inspect
 import math
-from typing import Any, List, Iterable, Optional, Text, Tuple
+from typing import Any, List, Iterable, Optional, Tuple, Union
 
-from keras.layers.preprocessing import image_preprocessing as image_ops
 import numpy as np
 import tensorflow as tf
 
@@ -80,6 +79,195 @@ def from_4d(image: tf.Tensor, ndims: tf.Tensor) -> tf.Tensor:
   end = 4 - tf.cast(tf.equal(ndims, 2), dtype=tf.int32)
   new_shape = shape[begin:end]
   return tf.reshape(image, new_shape)
+
+
+def _pad(
+    image: tf.Tensor,
+    filter_shape: Union[List[int], Tuple[int, ...]],
+    mode: str = 'CONSTANT',
+    constant_values: Union[int, tf.Tensor] = 0,
+) -> tf.Tensor:
+  """Explicitly pads a 4-D image.
+
+  Equivalent to the implicit padding method offered in `tf.nn.conv2d` and
+  `tf.nn.depthwise_conv2d`, but supports non-zero, reflect and symmetric
+  padding mode. For the even-sized filter, it pads one more value to the
+  right or the bottom side.
+
+  Args:
+    image: A 4-D `Tensor` of shape `[batch_size, height, width, channels]`.
+    filter_shape: A `tuple`/`list` of 2 integers, specifying the height and
+      width of the 2-D filter.
+    mode: A `string`, one of "REFLECT", "CONSTANT", or "SYMMETRIC". The type of
+      padding algorithm to use, which is compatible with `mode` argument in
+      `tf.pad`. For more details, please refer to
+      https://www.tensorflow.org/api_docs/python/tf/pad.
+    constant_values: A `scalar`, the pad value to use in "CONSTANT" padding
+      mode.
+
+  Returns:
+    A padded image.
+  """
+  if mode.upper() not in {'REFLECT', 'CONSTANT', 'SYMMETRIC'}:
+    raise ValueError(
+        'padding should be one of "REFLECT", "CONSTANT", or "SYMMETRIC".'
+    )
+  constant_values = tf.convert_to_tensor(constant_values, image.dtype)
+  filter_height, filter_width = filter_shape
+  pad_top = (filter_height - 1) // 2
+  pad_bottom = filter_height - 1 - pad_top
+  pad_left = (filter_width - 1) // 2
+  pad_right = filter_width - 1 - pad_left
+  paddings = [[0, 0], [pad_top, pad_bottom], [pad_left, pad_right], [0, 0]]
+  return tf.pad(image, paddings, mode=mode, constant_values=constant_values)
+
+
+def _get_gaussian_kernel(sigma, filter_shape):
+  """Computes 1D Gaussian kernel."""
+  sigma = tf.convert_to_tensor(sigma)
+  x = tf.range(-filter_shape // 2 + 1, filter_shape // 2 + 1)
+  x = tf.cast(x**2, sigma.dtype)
+  x = tf.nn.softmax(-x / (2.0 * (sigma**2)))
+  return x
+
+
+def _get_gaussian_kernel_2d(gaussian_filter_x, gaussian_filter_y):
+  """Computes 2D Gaussian kernel given 1D kernels."""
+  gaussian_kernel = tf.matmul(gaussian_filter_x, gaussian_filter_y)
+  return gaussian_kernel
+
+
+def _normalize_tuple(value, n, name):
+  """Transforms an integer or iterable of integers into an integer tuple.
+
+  Args:
+    value: The value to validate and convert. Could an int, or any iterable of
+      ints.
+    n: The size of the tuple to be returned.
+    name: The name of the argument being validated, e.g. "strides" or
+      "kernel_size". This is only used to format error messages.
+
+  Returns:
+    A tuple of n integers.
+
+  Raises:
+    ValueError: If something else than an int/long or iterable thereof was
+      passed.
+  """
+  if isinstance(value, int):
+    return (value,) * n
+  else:
+    try:
+      value_tuple = tuple(value)
+    except TypeError as exc:
+      raise TypeError(
+          f'The {name} argument must be a tuple of {n} integers. '
+          f'Received: {value}'
+      ) from exc
+    if len(value_tuple) != n:
+      raise ValueError(
+          f'The {name} argument must be a tuple of {n} integers. '
+          f'Received: {value}'
+      )
+    for single_value in value_tuple:
+      try:
+        int(single_value)
+      except (ValueError, TypeError) as exc:
+        raise ValueError(
+            f'The {name} argument must be a tuple of {n} integers. Received:'
+            f' {value} including element {single_value} of type'
+            f' {type(single_value)}.'
+        ) from exc
+    return value_tuple
+
+
+def gaussian_filter2d(
+    image: tf.Tensor,
+    filter_shape: Union[List[int], Tuple[int, ...], int],
+    sigma: Union[List[float], Tuple[float], float] = 1.0,
+    padding: str = 'REFLECT',
+    constant_values: Union[int, tf.Tensor] = 0,
+    name: Optional[str] = None,
+) -> tf.Tensor:
+  """Performs Gaussian blur on image(s).
+
+  Args:
+    image: Either a 2-D `Tensor` of shape `[height, width]`, a 3-D `Tensor` of
+      shape `[height, width, channels]`, or a 4-D `Tensor` of shape
+      `[batch_size, height, width, channels]`.
+    filter_shape: An `integer` or `tuple`/`list` of 2 integers, specifying the
+      height and width of the 2-D gaussian filter. Can be a single integer to
+      specify the same value for all spatial dimensions.
+    sigma: A `float` or `tuple`/`list` of 2 floats, specifying the standard
+      deviation in x and y direction the 2-D gaussian filter. Can be a single
+      float to specify the same value for all spatial dimensions.
+    padding: A `string`, one of "REFLECT", "CONSTANT", or "SYMMETRIC". The type
+      of padding algorithm to use, which is compatible with `mode` argument in
+      `tf.pad`. For more details, please refer to
+      https://www.tensorflow.org/api_docs/python/tf/pad.
+    constant_values: A `scalar`, the pad value to use in "CONSTANT" padding
+      mode.
+    name: A name for this operation (optional).
+
+  Returns:
+    2-D, 3-D or 4-D `Tensor` of the same dtype as input.
+
+  Raises:
+    ValueError: If `image` is not 2, 3 or 4-dimensional,
+      if `padding` is other than "REFLECT", "CONSTANT" or "SYMMETRIC",
+      if `filter_shape` is invalid,
+      or if `sigma` is invalid.
+  """
+  with tf.name_scope(name or 'gaussian_filter2d'):
+    if isinstance(sigma, (list, tuple)):
+      if len(sigma) != 2:
+        raise ValueError('sigma should be a float or a tuple/list of 2 floats')
+    else:
+      sigma = (sigma,) * 2
+
+    if any(s < 0 for s in sigma):
+      raise ValueError('sigma should be greater than or equal to 0.')
+
+    image = tf.convert_to_tensor(image, name='image')
+    sigma = tf.convert_to_tensor(sigma, name='sigma')
+
+    original_ndims = tf.rank(image)
+    image = to_4d(image)
+
+    # Keep the precision if it's float;
+    # otherwise, convert to float32 for computing.
+    orig_dtype = image.dtype
+    if not image.dtype.is_floating:
+      image = tf.cast(image, tf.float32)
+
+    channels = tf.shape(image)[3]
+    filter_shape = _normalize_tuple(filter_shape, 2, 'filter_shape')
+
+    sigma = tf.cast(sigma, image.dtype)
+    gaussian_kernel_x = _get_gaussian_kernel(sigma[1], filter_shape[1])
+    gaussian_kernel_x = gaussian_kernel_x[tf.newaxis, :]
+
+    gaussian_kernel_y = _get_gaussian_kernel(sigma[0], filter_shape[0])
+    gaussian_kernel_y = gaussian_kernel_y[:, tf.newaxis]
+
+    gaussian_kernel_2d = _get_gaussian_kernel_2d(
+        gaussian_kernel_y, gaussian_kernel_x
+    )
+    gaussian_kernel_2d = gaussian_kernel_2d[:, :, tf.newaxis, tf.newaxis]
+    gaussian_kernel_2d = tf.tile(gaussian_kernel_2d, [1, 1, channels, 1])
+
+    image = _pad(
+        image, filter_shape, mode=padding, constant_values=constant_values
+    )
+
+    output = tf.nn.depthwise_conv2d(
+        input=image,
+        filter=gaussian_kernel_2d,
+        strides=(1, 1, 1, 1),
+        padding='VALID',
+    )
+    output = from_4d(output, original_ndims)
+    return tf.cast(output, orig_dtype)
 
 
 def _convert_translation_to_transform(translations: tf.Tensor) -> tf.Tensor:
@@ -170,31 +358,141 @@ def _convert_angles_to_transform(angles: tf.Tensor, image_width: tf.Tensor,
   )
 
 
-def transform(image: tf.Tensor, transforms) -> tf.Tensor:
-  """Prepares input data for `image_ops.transform`."""
+def _apply_transform_to_images(
+    images,
+    transforms,
+    fill_mode='reflect',
+    fill_value=0.0,
+    interpolation='bilinear',
+    output_shape=None,
+    name=None,
+):
+  """Applies the given transform(s) to the image(s).
+
+  Args:
+    images: A tensor of shape `(num_images, num_rows, num_columns,
+      num_channels)` (NHWC). The rank must be statically known (the shape is
+      not `TensorShape(None)`).
+    transforms: Projective transform matrix/matrices. A vector of length 8 or
+      tensor of size N x 8. If one row of transforms is [a0, a1, a2, b0, b1,
+      b2, c0, c1], then it maps the *output* point `(x, y)` to a transformed
+      *input* point `(x', y') = ((a0 x + a1 y + a2) / k, (b0 x + b1 y + b2) /
+      k)`, where `k = c0 x + c1 y + 1`. The transforms are *inverted* compared
+      to the transform mapping input points to output points. Note that
+      gradients are not backpropagated into transformation parameters.
+    fill_mode: Points outside the boundaries of the input are filled according
+      to the given mode (one of `{"constant", "reflect", "wrap", "nearest"}`).
+    fill_value: a float represents the value to be filled outside the
+      boundaries when `fill_mode="constant"`.
+    interpolation: Interpolation mode. Supported values: `"nearest"`,
+      `"bilinear"`.
+    output_shape: Output dimension after the transform, `[height, width]`. If
+      `None`, output is the same size as input image.
+    name: The name of the op.  Fill mode behavior for each valid value is as
+      follows
+      - `"reflect"`: `(d c b a | a b c d | d c b a)` The input is extended by
+      reflecting about the edge of the last pixel.
+      - `"constant"`: `(k k k k | a b c d | k k k k)` The input is extended by
+      filling all values beyond the edge with the same constant value k = 0.
+      - `"wrap"`: `(a b c d | a b c d | a b c d)` The input is extended by
+      wrapping around to the opposite edge.
+      - `"nearest"`: `(a a a a | a b c d | d d d d)` The input is extended by
+      the nearest pixel.  Input shape: 4D tensor with shape:
+      `(samples, height, width, channels)`, in `"channels_last"` format.
+      Output shape: 4D tensor with shape: `(samples, height, width, channels)`,
+      in `"channels_last"` format.
+
+  Returns:
+    Image(s) with the same type and shape as `images`, with the given
+    transform(s) applied. Transformed coordinates outside of the input image
+    will be filled with zeros.
+  """
+  with tf.name_scope(name or 'transform'):
+    if output_shape is None:
+      output_shape = tf.shape(images)[1:3]
+      if not tf.executing_eagerly():
+        output_shape_value = tf.get_static_value(output_shape)
+        if output_shape_value is not None:
+          output_shape = output_shape_value
+
+    output_shape = tf.convert_to_tensor(
+        output_shape, tf.int32, name='output_shape'
+    )
+
+    if not output_shape.get_shape().is_compatible_with([2]):
+      raise ValueError(
+          'output_shape must be a 1-D Tensor of 2 elements: '
+          'new_height, new_width, instead got '
+          f'output_shape={output_shape}'
+      )
+
+    fill_value = tf.convert_to_tensor(fill_value, tf.float32, name='fill_value')
+
+    return tf.raw_ops.ImageProjectiveTransformV3(
+        images=images,
+        output_shape=output_shape,
+        fill_value=fill_value,
+        transforms=transforms,
+        fill_mode=fill_mode.upper(),
+        interpolation=interpolation.upper(),
+    )
+
+
+def transform(
+    image: tf.Tensor,
+    transforms: Any,
+    interpolation: str = 'nearest',
+    output_shape=None,
+    fill_mode: str = 'reflect',
+    fill_value: float = 0.0,
+) -> tf.Tensor:
+  """Transforms an image."""
   original_ndims = tf.rank(image)
   transforms = tf.convert_to_tensor(transforms, dtype=tf.float32)
   if transforms.shape.rank == 1:
     transforms = transforms[None]
   image = to_4d(image)
-  image = image_ops.transform(
-      images=image, transforms=transforms, interpolation='nearest')
+  image = _apply_transform_to_images(
+      images=image,
+      transforms=transforms,
+      interpolation=interpolation,
+      fill_mode=fill_mode,
+      fill_value=fill_value,
+      output_shape=output_shape,
+  )
   return from_4d(image, original_ndims)
 
 
-def translate(image: tf.Tensor, translations) -> tf.Tensor:
+def translate(
+    image: tf.Tensor,
+    translations,
+    fill_value: float = 0.0,
+    fill_mode: str = 'reflect',
+    interpolation: str = 'nearest',
+) -> tf.Tensor:
   """Translates image(s) by provided vectors.
 
   Args:
     image: An image Tensor of type uint8.
     translations: A vector or matrix representing [dx dy].
+    fill_value: a float represents the value to be filled outside the boundaries
+      when `fill_mode="constant"`.
+    fill_mode: Points outside the boundaries of the input are filled according
+      to the given mode (one of `{"constant", "reflect", "wrap", "nearest"}`).
+    interpolation: Interpolation mode. Supported values: `"nearest"`,
+      `"bilinear"`.
 
   Returns:
     The translated version of the image.
-
   """
-  transforms = _convert_translation_to_transform(translations)
-  return transform(image, transforms=transforms)
+  transforms = _convert_translation_to_transform(translations)  # pytype: disable=wrong-arg-types  # always-use-return-annotations
+  return transform(
+      image,
+      transforms=transforms,
+      interpolation=interpolation,
+      fill_value=fill_value,
+      fill_mode=fill_mode,
+  )
 
 
 def rotate(image: tf.Tensor, degrees: float) -> tf.Tensor:
@@ -317,7 +615,7 @@ def _fill_rectangle(image,
                     half_width,
                     half_height,
                     replace=None):
-  """Fill blank area."""
+  """Fills blank area."""
   image_height = tf.shape(image)[0]
   image_width = tf.shape(image)[1]
 
@@ -349,82 +647,158 @@ def _fill_rectangle(image,
   return image
 
 
-def cutout_video(image: tf.Tensor, replace: int = 0) -> tf.Tensor:
-  """Apply cutout (https://arxiv.org/abs/1708.04552) to a video.
-
-  This operation applies a random size 3D mask of zeros to a random location
-  within `image`. The mask is padded The pixel values filled in will be of the
-  value `replace`. The location where the mask will be applied is randomly
-  chosen uniformly over the whole image. The size of the mask is randomly
-  sampled uniformly from [0.25*height, 0.5*height], [0.25*width, 0.5*width],
-  and [1, 0.25*depth], which represent the height, width, and number of frames
-  of the input video tensor respectively.
-
-  Args:
-    image: A video Tensor of type uint8.
-    replace: What pixel value to fill in the image in the area that has the
-      cutout mask applied to it.
-
-  Returns:
-    An video Tensor that is of type uint8.
-  """
-  image_depth = tf.shape(image)[0]
+def _fill_rectangle_video(image,
+                          center_width,
+                          center_height,
+                          half_width,
+                          half_height,
+                          replace=None):
+  """Fills blank area for video."""
+  image_time = tf.shape(image)[0]
   image_height = tf.shape(image)[1]
   image_width = tf.shape(image)[2]
 
-  # Sample the center location in the image where the zero mask will be applied.
-  cutout_center_height = tf.random.uniform(
-      shape=[], minval=0, maxval=image_height, dtype=tf.int32)
-
-  cutout_center_width = tf.random.uniform(
-      shape=[], minval=0, maxval=image_width, dtype=tf.int32)
-
-  cutout_center_depth = tf.random.uniform(
-      shape=[], minval=0, maxval=image_depth, dtype=tf.int32)
-
-  pad_size_height = tf.random.uniform(
-      shape=[],
-      minval=tf.maximum(1, tf.cast(image_height / 4, tf.int32)),
-      maxval=tf.maximum(2, tf.cast(image_height / 2, tf.int32)),
-      dtype=tf.int32)
-  pad_size_width = tf.random.uniform(
-      shape=[],
-      minval=tf.maximum(1, tf.cast(image_width / 4, tf.int32)),
-      maxval=tf.maximum(2, tf.cast(image_width / 2, tf.int32)),
-      dtype=tf.int32)
-  pad_size_depth = tf.random.uniform(
-      shape=[],
-      minval=1,
-      maxval=tf.maximum(2, tf.cast(image_depth / 4, tf.int32)),
-      dtype=tf.int32)
-
-  lower_pad = tf.maximum(0, cutout_center_height - pad_size_height)
-  upper_pad = tf.maximum(
-      0, image_height - cutout_center_height - pad_size_height)
-  left_pad = tf.maximum(0, cutout_center_width - pad_size_width)
-  right_pad = tf.maximum(0, image_width - cutout_center_width - pad_size_width)
-  back_pad = tf.maximum(0, cutout_center_depth - pad_size_depth)
-  forward_pad = tf.maximum(
-      0, image_depth - cutout_center_depth - pad_size_depth)
+  lower_pad = tf.maximum(0, center_height - half_height)
+  upper_pad = tf.maximum(0, image_height - center_height - half_height)
+  left_pad = tf.maximum(0, center_width - half_width)
+  right_pad = tf.maximum(0, image_width - center_width - half_width)
 
   cutout_shape = [
-      image_depth - (back_pad + forward_pad),
-      image_height - (lower_pad + upper_pad),
-      image_width - (left_pad + right_pad),
+      image_time, image_height - (lower_pad + upper_pad),
+      image_width - (left_pad + right_pad)
   ]
-  padding_dims = [[back_pad, forward_pad],
-                  [lower_pad, upper_pad],
-                  [left_pad, right_pad]]
+  padding_dims = [[0, 0], [lower_pad, upper_pad], [left_pad, right_pad]]
   mask = tf.pad(
       tf.zeros(cutout_shape, dtype=image.dtype),
       padding_dims,
       constant_values=1)
   mask = tf.expand_dims(mask, -1)
   mask = tf.tile(mask, [1, 1, 1, 3])
-  image = tf.where(
-      tf.equal(mask, 0),
-      tf.ones_like(image, dtype=image.dtype) * replace, image)
+
+  if replace is None:
+    fill = tf.random.normal(tf.shape(image), dtype=image.dtype)
+  elif isinstance(replace, tf.Tensor):
+    fill = replace
+  else:
+    fill = tf.ones_like(image, dtype=image.dtype) * replace
+  image = tf.where(tf.equal(mask, 0), fill, image)
+
   return image
+
+
+def cutout_video(
+    video: tf.Tensor,
+    mask_shape: Optional[tf.Tensor] = None,
+    replace: int = 0,
+) -> tf.Tensor:
+  """Apply cutout (https://arxiv.org/abs/1708.04552) to a video.
+
+  This operation applies a random size 3D mask of zeros to a random location
+  within `video`. The mask is padded The pixel values filled in will be of the
+  value `replace`. The location where the mask will be applied is randomly
+  chosen uniformly over the whole video. If the size of the mask is not set,
+  then, it is randomly sampled uniformly from [0.25*height, 0.5*height],
+  [0.25*width, 0.5*width], and [1, 0.25*depth], which represent the height,
+  width, and number of frames of the input video tensor respectively.
+
+  Args:
+    video: A video Tensor of shape [T, H, W, C].
+    mask_shape: An optional integer tensor that specifies the depth, height and
+      width of the mask to cut. If it is not set, the shape is randomly sampled
+      as described above. The shape dimensions should be divisible by 2
+      otherwise they will rounded down.
+    replace: What pixel value to fill in the image in the area that has the
+      cutout mask applied to it.
+
+  Returns:
+    A video Tensor with cutout applied.
+  """
+  tf.debugging.assert_shapes([
+      (video, ('T', 'H', 'W', 'C')),
+  ])
+
+  video_depth = tf.shape(video)[0]
+  video_height = tf.shape(video)[1]
+  video_width = tf.shape(video)[2]
+
+  # Sample the center location in the image where the zero mask will be applied.
+  cutout_center_height = tf.random.uniform(
+      shape=[], minval=0, maxval=video_height, dtype=tf.int32
+  )
+
+  cutout_center_width = tf.random.uniform(
+      shape=[], minval=0, maxval=video_width, dtype=tf.int32
+  )
+
+  cutout_center_depth = tf.random.uniform(
+      shape=[], minval=0, maxval=video_depth, dtype=tf.int32
+  )
+
+  if mask_shape is not None:
+    pad_shape = tf.maximum(1, mask_shape // 2)
+    pad_size_depth, pad_size_height, pad_size_width = (
+        pad_shape[0],
+        pad_shape[1],
+        pad_shape[2],
+    )
+  else:
+    pad_size_height = tf.random.uniform(
+        shape=[],
+        minval=tf.maximum(1, tf.cast(video_height / 4, tf.int32)),
+        maxval=tf.maximum(2, tf.cast(video_height / 2, tf.int32)),
+        dtype=tf.int32,
+    )
+    pad_size_width = tf.random.uniform(
+        shape=[],
+        minval=tf.maximum(1, tf.cast(video_width / 4, tf.int32)),
+        maxval=tf.maximum(2, tf.cast(video_width / 2, tf.int32)),
+        dtype=tf.int32,
+    )
+    pad_size_depth = tf.random.uniform(
+        shape=[],
+        minval=1,
+        maxval=tf.maximum(2, tf.cast(video_depth / 4, tf.int32)),
+        dtype=tf.int32,
+    )
+
+  lower_pad = tf.maximum(0, cutout_center_height - pad_size_height)
+  upper_pad = tf.maximum(
+      0, video_height - cutout_center_height - pad_size_height
+  )
+  left_pad = tf.maximum(0, cutout_center_width - pad_size_width)
+  right_pad = tf.maximum(0, video_width - cutout_center_width - pad_size_width)
+  back_pad = tf.maximum(0, cutout_center_depth - pad_size_depth)
+  forward_pad = tf.maximum(
+      0, video_depth - cutout_center_depth - pad_size_depth
+  )
+
+  cutout_shape = [
+      video_depth - (back_pad + forward_pad),
+      video_height - (lower_pad + upper_pad),
+      video_width - (left_pad + right_pad),
+  ]
+  padding_dims = [[back_pad, forward_pad],
+                  [lower_pad, upper_pad],
+                  [left_pad, right_pad]]
+  mask = tf.pad(
+      tf.zeros(cutout_shape, dtype=video.dtype), padding_dims, constant_values=1
+  )
+  mask = tf.expand_dims(mask, -1)
+  num_channels = tf.shape(video)[-1]
+  mask = tf.tile(mask, [1, 1, 1, num_channels])
+  video = tf.where(
+      tf.equal(mask, 0), tf.ones_like(video, dtype=video.dtype) * replace, video
+  )
+  return video
+
+
+def gaussian_noise(
+    image: tf.Tensor, low: float = 0.1, high: float = 2.0) -> tf.Tensor:
+  """Add Gaussian noise to image(s)."""
+  augmented_image = gaussian_filter2d(  # pylint: disable=g-long-lambda
+      image, filter_shape=[3, 3], sigma=np.random.uniform(low=low, high=high)
+  )
+  return augmented_image
 
 
 def solarize(image: tf.Tensor, threshold: int = 128) -> tf.Tensor:
@@ -448,9 +822,14 @@ def solarize_add(image: tf.Tensor,
   return tf.where(image < threshold, added_image, image)
 
 
+def grayscale(image: tf.Tensor) -> tf.Tensor:
+  """Convert image to grayscale."""
+  return tf.image.grayscale_to_rgb(tf.image.rgb_to_grayscale(image))
+
+
 def color(image: tf.Tensor, factor: float) -> tf.Tensor:
   """Equivalent of PIL Color."""
-  degenerate = tf.image.grayscale_to_rgb(tf.image.rgb_to_grayscale(image))
+  degenerate = grayscale(image)
   return blend(degenerate, image, factor)
 
 
@@ -1311,6 +1690,12 @@ def _translate_level_to_arg(level: float, translate_const: float):
   return (level,)
 
 
+def _gaussian_noise_level_to_arg(level: float, translate_const: float):
+  low_std = (level / _MAX_LEVEL)
+  high_std = translate_const * low_std
+  return low_std, high_std
+
+
 def _mult_to_arg(level: float, multiplier: float = 1.):
   return (int((level / _MAX_LEVEL) * multiplier),)
 
@@ -1364,6 +1749,8 @@ NAME_TO_FUNC = {
     'TranslateY': translate_y,
     'Cutout': cutout,
     'Rotate_BBox': rotate_with_bboxes,
+    'Grayscale': grayscale,
+    'Gaussian_Noise': gaussian_noise,
     # pylint:disable=g-long-lambda
     'ShearX_BBox': lambda image, bboxes, level, replace: shear_with_bboxes(
         image, bboxes, level, replace, shear_horizontal=True),
@@ -1440,6 +1827,10 @@ def level_to_arg(cutout_const: float, translate_const: float):
       'Rotate_BBox': _rotate_level_to_arg,
       'ShearX_BBox': _shear_level_to_arg,
       'ShearY_BBox': _shear_level_to_arg,
+      'Grayscale': no_arg,
+      # pylint:disable=g-long-lambda
+      'Gaussian_Noise': lambda level: _gaussian_noise_level_to_arg(
+          level, translate_const),
       # pylint:disable=g-long-lambda
       'TranslateX_BBox': lambda level: _translate_level_to_arg(
           level, translate_const),
@@ -1458,7 +1849,7 @@ def bbox_wrapper(func):
   return wrapper
 
 
-def _parse_policy_info(name: Text,
+def _parse_policy_info(name: str,
                        prob: float,
                        level: float,
                        replace_value: List[int],
@@ -1534,8 +1925,8 @@ class AutoAugment(ImageAugment):
   """
 
   def __init__(self,
-               augmentation_name: Text = 'v0',
-               policies: Optional[Iterable[Iterable[Tuple[Text, float,
+               augmentation_name: str = 'v0',
+               policies: Optional[Iterable[Iterable[Tuple[str, float,
                                                           float]]]] = None,
                cutout_const: float = 100,
                translate_const: float = 250):
@@ -1583,6 +1974,9 @@ class AutoAugment(ImageAugment):
         'reduced_cifar10': self.policy_reduced_cifar10(),
         'svhn': self.policy_svhn(),
         'reduced_imagenet': self.policy_reduced_imagenet(),
+        'panoptic_deeplab_policy': self.panoptic_deeplab_policy(),
+        'vit': self.vit(),
+        'deit3_three_augment': self.deit3_three_augment(),
     }
 
     if not policies:
@@ -1889,6 +2283,53 @@ class AutoAugment(ImageAugment):
     return policy
 
   @staticmethod
+  def panoptic_deeplab_policy():
+    policy = [
+        [('Sharpness', 0.4, 1.4), ('Brightness', 0.2, 2.0)],
+        [('Equalize', 0.0, 1.8), ('Contrast', 0.2, 2.0)],
+        [('Sharpness', 0.2, 1.8), ('Color', 0.2, 1.8)],
+        [('Solarize', 0.2, 1.4), ('Equalize', 0.6, 1.8)],
+        [('Sharpness', 0.2, 0.2), ('Equalize', 0.2, 1.4)]]
+    return policy
+
+  @staticmethod
+  def vit():
+    """Autoaugment policy for a generic ViT."""
+    policy = [
+        [('Sharpness', 0.4, 1.4), ('Brightness', 0.2, 2.0), ('Cutout', 0.8, 8)],
+        [('Equalize', 0.0, 1.8), ('Contrast', 0.2, 2.0), ('Cutout', 0.8, 8)],
+        [('Sharpness', 0.2, 1.8), ('Color', 0.2, 1.8), ('Cutout', 0.8, 8)],
+        [('Solarize', 0.2, 1.4), ('Equalize', 0.6, 1.8), ('Cutout', 0.8, 8)],
+        [('Sharpness', 0.2, 0.2), ('Equalize', 0.2, 1.4), ('Cutout', 0.8, 8)],
+        [('Sharpness', 0.4, 7), ('Invert', 0.6, 8), ('Cutout', 0.8, 8)],
+        [('Invert', 0.6, 4), ('Equalize', 1.0, 8), ('Cutout', 0.8, 8)],
+        [('Posterize', 0.6, 7), ('Posterize', 0.6, 6), ('Cutout', 0.8, 8)],
+        [('Solarize', 0.6, 5), ('AutoContrast', 0.6, 5), ('Cutout', 0.8, 8)],
+        ]
+    return policy
+
+  @staticmethod
+  def deit3_three_augment():
+    """Autoaugment policy for three augmentations.
+
+    Proposed in paper: https://arxiv.org/abs/2204.07118.
+
+    Each tuple is an augmentation operation of the form
+    (operation, probability, magnitude). Each element in policy is a
+    sub-policy that will be applied on the image. Randomly chooses one of the
+    three augmentation to apply on image.
+
+    Returns:
+      the policy.
+    """
+    policy = [
+        [('Grayscale', 1.0, 0)],
+        [('Solarize', 1.0, 5)],  # to have threshold as 128
+        [('Gaussian_Noise', 1.0, 1)],  # to have low_std as 0.1
+        ]
+    return policy
+
+  @staticmethod
   def policy_test():
     """Autoaugment test policy for debugging."""
     policy = [
@@ -1904,7 +2345,7 @@ def _maybe_identity(x: Optional[tf.Tensor]) -> Optional[tf.Tensor]:
 class RandAugment(ImageAugment):
   """Applies the RandAugment policy to images.
 
-  RandAugment is from the paper https://arxiv.org/abs/1909.13719,
+  RandAugment is from the paper https://arxiv.org/abs/1909.13719.
   """
 
   def __init__(self,
@@ -2025,7 +2466,7 @@ class RandAugment(ImageAugment):
       aug_image, aug_bboxes = tf.switch_case(
           branch_index=op_to_select,
           branch_fns=branch_fns,
-          default=lambda: (tf.identity(image), _maybe_identity(bboxes)))
+          default=lambda: (tf.identity(image), _maybe_identity(bboxes)))  # pylint: disable=cell-var-from-loop
 
       if self.prob_to_apply is not None:
         aug_image, aug_bboxes = tf.cond(
@@ -2055,7 +2496,8 @@ class RandomErasing(ImageAugment):
 
   Reference: https://arxiv.org/abs/1708.04896
 
-  Implementaion is inspired by https://github.com/rwightman/pytorch-image-models
+  Implementation is inspired by
+  https://github.com/rwightman/pytorch-image-models.
   """
 
   def __init__(self,
@@ -2063,29 +2505,25 @@ class RandomErasing(ImageAugment):
                min_area: float = 0.02,
                max_area: float = 1 / 3,
                min_aspect: float = 0.3,
-               max_aspect=None,
+               max_aspect: Optional[float] = None,
                min_count=1,
                max_count=1,
                trials=10):
     """Applies RandomErasing to a single image.
 
     Args:
-      probability (float, optional): Probability of augmenting the image.
-        Defaults to 0.25.
-      min_area (float, optional): Minimum area of the random erasing rectangle.
-        Defaults to 0.02.
-      max_area (float, optional): Maximum area of the random erasing rectangle.
-        Defaults to 1/3.
-      min_aspect (float, optional): Minimum aspect rate of the random erasing
-        rectangle. Defaults to 0.3.
-      max_aspect ([type], optional): Maximum aspect rate of the random erasing
-        rectangle. Defaults to None.
-      min_count (int, optional): Minimum number of erased rectangles. Defaults
-        to 1.
-      max_count (int, optional):  Maximum number of erased rectangles. Defaults
-        to 1.
-      trials (int, optional): Maximum number of trials to randomly sample a
-        rectangle that fulfills constraint. Defaults to 10.
+      probability: Probability of augmenting the image. Defaults to `0.25`.
+      min_area: Minimum area of the random erasing rectangle. Defaults to
+        `0.02`.
+      max_area: Maximum area of the random erasing rectangle. Defaults to `1/3`.
+      min_aspect: Minimum aspect rate of the random erasing rectangle. Defaults
+        to `0.3`.
+      max_aspect: Maximum aspect rate of the random erasing rectangle. Defaults
+        to `None`.
+      min_count: Minimum number of erased rectangles. Defaults to `1`.
+      max_count: Maximum number of erased rectangles. Defaults to `1`.
+      trials: Maximum number of trials to randomly sample a rectangle that
+        fulfills constraint. Defaults to `10`.
     """
     self._probability = probability
     self._min_area = float(min_area)
@@ -2228,8 +2666,9 @@ class MixupAndCutmix:
     """Applies Mixup and/or Cutmix to batch of images and transforms labels.
 
     Args:
-      images (tf.Tensor): Of shape [batch_size,height, width, 3] representing a
-        batch of image.
+      images (tf.Tensor): Of shape [batch_size, height, width, 3] representing a
+        batch of image, or [batch_size, time, height, width, 3] representing a
+        batch of video.
       labels (tf.Tensor): Of shape [batch_size, ] representing the class id for
         each image of the batch.
 
@@ -2237,6 +2676,7 @@ class MixupAndCutmix:
       Tuple[tf.Tensor, tf.Tensor]: The augmented version of `image` and
         `labels`.
     """
+    labels = tf.reshape(labels, [-1])
     augment_cond = tf.less(
         tf.random.uniform(shape=[], minval=0., maxval=1.0), self.mix_prob)
     # pylint: disable=g-long-lambda
@@ -2258,14 +2698,22 @@ class MixupAndCutmix:
 
   def _cutmix(self, images: tf.Tensor,
               labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-    """Apply cutmix."""
+    """Applies cutmix."""
     lam = MixupAndCutmix._sample_from_beta(self.cutmix_alpha, self.cutmix_alpha,
                                            tf.shape(labels))
 
     ratio = tf.math.sqrt(1 - lam)
 
     batch_size = tf.shape(images)[0]
-    image_height, image_width = tf.shape(images)[1], tf.shape(images)[2]
+
+    if images.shape.rank == 4:
+      image_height, image_width = tf.shape(images)[1], tf.shape(images)[2]
+      fill_fn = _fill_rectangle
+    elif images.shape.rank == 5:
+      image_height, image_width = tf.shape(images)[2], tf.shape(images)[3]
+      fill_fn = _fill_rectangle_video
+    else:
+      raise ValueError('Bad image rank: {}'.format(images.shape.rank))
 
     cut_height = tf.cast(
         ratio * tf.cast(image_height, dtype=tf.float32), dtype=tf.int32)
@@ -2282,7 +2730,7 @@ class MixupAndCutmix:
     lam = tf.cast(lam, dtype=tf.float32)
 
     images = tf.map_fn(
-        lambda x: _fill_rectangle(*x),
+        lambda x: fill_fn(*x),
         (images, random_center_width, random_center_height, cut_width // 2,
          cut_height // 2, tf.reverse(images, [0])),
         dtype=(
@@ -2293,9 +2741,16 @@ class MixupAndCutmix:
 
   def _mixup(self, images: tf.Tensor,
              labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+    """Applies mixup."""
     lam = MixupAndCutmix._sample_from_beta(self.mixup_alpha, self.mixup_alpha,
                                            tf.shape(labels))
-    lam = tf.reshape(lam, [-1, 1, 1, 1])
+    if images.shape.rank == 4:
+      lam = tf.reshape(lam, [-1, 1, 1, 1])
+    elif images.shape.rank == 5:
+      lam = tf.reshape(lam, [-1, 1, 1, 1, 1])
+    else:
+      raise ValueError('Bad image rank: {}'.format(images.shape.rank))
+
     lam_cast = tf.cast(lam, dtype=images.dtype)
     images = lam_cast * images + (1. - lam_cast) * tf.reverse(images, [0])
 

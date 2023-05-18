@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,9 @@
 
 """Detection input and model functions for serving/inference."""
 
-from typing import Mapping, Text
+from typing import Mapping, Tuple
+
+from absl import logging
 import tensorflow as tf
 
 from official.vision import configs
@@ -25,17 +27,19 @@ from official.vision.ops import preprocess_ops
 from official.vision.serving import export_base
 
 
-MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
-STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
-
-
 class DetectionModule(export_base.ExportModule):
   """Detection Module."""
 
   def _build_model(self):
 
-    if self._batch_size is None:
-      raise ValueError('batch_size cannot be None for detection models.')
+    nms_versions_supporting_dynamic_batch_size = {'batched', 'v2', 'v3'}
+    nms_version = self.params.task.model.detection_generator.nms_version
+    if (self._batch_size is None and
+        nms_version not in nms_versions_supporting_dynamic_batch_size):
+      logging.info('nms_version is set to `batched` because `%s` '
+                   'does not support with dynamic batch size.', nms_version)
+      self.params.task.model.detection_generator.nms_version = 'batched'
+
     input_specs = tf.keras.layers.InputSpec(shape=[self._batch_size] +
                                             self._input_image_size + [3])
 
@@ -67,9 +71,8 @@ class DetectionModule(export_base.ExportModule):
     """Builds detection model inputs for serving."""
     model_params = self.params.task.model
     # Normalizes image with mean and std pixel values.
-    image = preprocess_ops.normalize_image(image,
-                                           offset=MEAN_RGB,
-                                           scale=STDDEV_RGB)
+    image = preprocess_ops.normalize_image(
+        image, offset=preprocess_ops.MEAN_RGB, scale=preprocess_ops.STDDEV_RGB)
 
     image, image_info = preprocess_ops.resize_and_crop_image(
         image,
@@ -82,9 +85,35 @@ class DetectionModule(export_base.ExportModule):
 
     return image, anchor_boxes, image_info
 
-  def preprocess(self, images: tf.Tensor) -> (
-      tf.Tensor, Mapping[Text, tf.Tensor], tf.Tensor):
-    """Preprocess inputs to be suitable for the model.
+  def _normalize_coordinates(self, detections_dict, dict_keys, image_info):
+    """Normalizes detection coordinates between 0 and 1.
+
+    Args:
+      detections_dict: Dictionary containing the output of the model prediction.
+      dict_keys: Key names corresponding to the tensors of the output dictionary
+        that we want to update.
+      image_info: Tensor containing the details of the image resizing.
+
+    Returns:
+      detections_dict: Updated detection dictionary.
+    """
+    for key in dict_keys:
+      if key not in detections_dict:
+        continue
+      detection_boxes = detections_dict[key] / tf.tile(
+          image_info[:, 2:3, :], [1, 1, 2]
+      )
+      detections_dict[key] = box_ops.normalize_boxes(
+          detection_boxes, image_info[:, 0:1, :]
+      )
+      detections_dict[key] = tf.clip_by_value(detections_dict[key], 0.0, 1.0)
+
+    return detections_dict
+
+  def preprocess(
+      self, images: tf.Tensor
+  ) -> Tuple[tf.Tensor, Mapping[str, tf.Tensor], tf.Tensor]:
+    """Preprocesses inputs to be suitable for the model.
 
     Args:
       images: The images tensor.
@@ -128,7 +157,7 @@ class DetectionModule(export_base.ExportModule):
       return images, anchor_boxes, image_info
 
   def serve(self, images: tf.Tensor):
-    """Cast image to float and run inference.
+    """Casts image to float and runs inference.
 
     Args:
       images: uint8 Tensor of shape [batch_size, None, None, 3]
@@ -157,11 +186,17 @@ class DetectionModule(export_base.ExportModule):
     # To overcome keras.Model extra limitation to save a model with layers that
     # have multiple inputs, we use `model.call` here to trigger the forward
     # path. Note that, this disables some keras magics happens in `__call__`.
-    detections = self.model.call(
-        images=images,
-        image_shape=input_image_shape,
-        anchor_boxes=anchor_boxes,
-        training=False)
+    model_call_kwargs = {
+        'images': images,
+        'image_shape': input_image_shape,
+        'anchor_boxes': anchor_boxes,
+        'training': False,
+    }
+    if isinstance(self.params.task.model, configs.retinanet.RetinaNet):
+      model_call_kwargs['output_intermediate_features'] = (
+          self.params.task.export_config.output_intermediate_features
+      )
+    detections = self.model.call(**model_call_kwargs)
 
     if self.params.task.model.detection_generator.apply_nms:
       # For RetinaNet model, apply export_config.
@@ -170,11 +205,8 @@ class DetectionModule(export_base.ExportModule):
         export_config = self.params.task.export_config
         # Normalize detection box coordinates to [0, 1].
         if export_config.output_normalized_coordinates:
-          detection_boxes = (
-              detections['detection_boxes'] /
-              tf.tile(image_info[:, 2:3, :], [1, 1, 2]))
-          detections['detection_boxes'] = box_ops.normalize_boxes(
-              detection_boxes, image_info[:, 0:1, :])
+          keys = ['detection_boxes', 'detection_outer_boxes']
+          detections = self._normalize_coordinates(detections, keys, image_info)
 
         # Cast num_detections and detection_classes to float. This allows the
         # model inference to work on chain (go/chain) as chain requires floating
@@ -192,7 +224,17 @@ class DetectionModule(export_base.ExportModule):
           'detection_classes': detections['detection_classes'],
           'num_detections': detections['num_detections']
       }
+      if 'detection_outer_boxes' in detections:
+        final_outputs['detection_outer_boxes'] = (
+            detections['detection_outer_boxes'])
     else:
+      # For RetinaNet model, apply export_config.
+      if isinstance(self.params.task.model, configs.retinanet.RetinaNet):
+        export_config = self.params.task.export_config
+        # Normalize detection box coordinates to [0, 1].
+        if export_config.output_normalized_coordinates:
+          keys = ['decoded_boxes']
+          detections = self._normalize_coordinates(detections, keys, image_info)
       final_outputs = {
           'decoded_boxes': detections['decoded_boxes'],
           'decoded_box_scores': detections['decoded_box_scores']
@@ -200,6 +242,18 @@ class DetectionModule(export_base.ExportModule):
 
     if 'detection_masks' in detections.keys():
       final_outputs['detection_masks'] = detections['detection_masks']
+    if (
+        isinstance(self.params.task.model, configs.retinanet.RetinaNet)
+        and self.params.task.export_config.output_intermediate_features
+    ):
+      final_outputs.update(
+          {
+              k: v
+              for k, v in detections.items()
+              if k.startswith('backbone_') or k.startswith('decoder_')
+          }
+      )
 
-    final_outputs.update({'image_info': image_info})
+    if self.params.task.model.detection_generator.nms_version != 'tflite':
+      final_outputs.update({'image_info': image_info})
     return final_outputs

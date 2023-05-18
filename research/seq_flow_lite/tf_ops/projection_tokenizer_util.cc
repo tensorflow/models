@@ -22,13 +22,14 @@ limitations under the License.
 
 #include "tf_ops/projection_util.h"  // seq_flow_lite
 
-
 namespace {
+
 constexpr char kApostrophe = '\'';
 constexpr char kSpace = ' ';
 constexpr char kComma = ',';
 constexpr char kDot = '.';
 constexpr size_t kInvalid = -1;
+
 }  // namespace
 
 // Returns true if the input |c| is ascii number.

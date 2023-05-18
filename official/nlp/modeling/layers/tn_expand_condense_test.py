@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@ import os
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
-# pylint: disable=g-direct-tensorflow-import
-from tensorflow.python.keras.testing_utils import layer_test
 from official.nlp.modeling.layers.tn_expand_condense import TNExpandCondense
 
 
@@ -29,7 +27,7 @@ class TNLayerTest(tf.test.TestCase, parameterized.TestCase):
   """
 
   def setUp(self):
-    super(TNLayerTest, self).setUp()
+    super().setUp()
     self.labels = np.concatenate((np.ones((50, 1)), np.zeros((50, 1))), axis=0)
 
   def _build_model(self, data, proj_multiple=2):
@@ -44,29 +42,10 @@ class TNLayerTest(tf.test.TestCase, parameterized.TestCase):
     return model
 
   @parameterized.parameters((768, 6), (1024, 2))
-  def test_keras_layer(self, input_dim, proj_multiple):
-    self.skipTest('Disable the test for now since it imports '
-                  'keras.testing_utils, will reenable this test after we '
-                  'fix the b/184578869')
-    # TODO(scottzhu): Reenable after fix b/184578869
-    data = np.random.normal(size=(100, input_dim))
-    data = data.astype(np.float32)
-    layer_test(
-        TNExpandCondense,
-        kwargs={
-            'proj_multiplier': proj_multiple,
-            'input_shape': data.shape
-        },
-        input_shape=data.shape,
-        input_data=data,
-        expected_output_shape=(None, data.shape[-1]),
-        expected_output_dtype=data.dtype)
-
-  @parameterized.parameters((768, 6), (1024, 2))
   def test_train(self, input_dim, proj_multiple):
+    tf.keras.utils.set_random_seed(0)
     data = np.random.randint(10, size=(100, input_dim))
     model = self._build_model(data, proj_multiple)
-    tf.random.set_seed(0)
 
     model.compile(
         optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
@@ -81,7 +60,7 @@ class TNLayerTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters((768, 6), (1024, 2))
   def test_weights_change(self, input_dim, proj_multiple):
-    tf.random.set_seed(0)
+    tf.keras.utils.set_random_seed(0)
     data = np.random.randint(10, size=(100, input_dim))
     model = self._build_model(data, proj_multiple)
     model.compile(

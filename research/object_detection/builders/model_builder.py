@@ -89,6 +89,7 @@ if tf_version.is_tf1():
   from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
   from object_detection.models.ssd_mobilenet_v3_feature_extractor import SSDMobileNetV3LargeFeatureExtractor
   from object_detection.models.ssd_mobilenet_v3_feature_extractor import SSDMobileNetV3SmallFeatureExtractor
+  from object_detection.models.ssd_mobilenet_v3_feature_extractor import SSDMobileNetV3SmallPrunedFeatureExtractor
   from object_detection.models.ssd_mobiledet_feature_extractor import SSDMobileDetCPUFeatureExtractor
   from object_detection.models.ssd_mobiledet_feature_extractor import SSDMobileDetDSPFeatureExtractor
   from object_detection.models.ssd_mobiledet_feature_extractor import SSDMobileDetEdgeTPUFeatureExtractor
@@ -204,6 +205,8 @@ if tf_version.is_tf1():
           SSDMobileNetV3LargeFeatureExtractor,
       'ssd_mobilenet_v3_small':
           SSDMobileNetV3SmallFeatureExtractor,
+      'ssd_mobilenet_v3_small_pruned':
+          SSDMobileNetV3SmallPrunedFeatureExtractor,
       'ssd_mobilenet_edgetpu':
           SSDMobileNetEdgeTPUFeatureExtractor,
       'ssd_resnet50_v1_fpn':
@@ -373,11 +376,18 @@ def _build_ssd_feature_extractor(feature_extractor_config,
 
   if feature_extractor_config.HasField('bifpn'):
     kwargs.update({
-        'bifpn_min_level': feature_extractor_config.bifpn.min_level,
-        'bifpn_max_level': feature_extractor_config.bifpn.max_level,
-        'bifpn_num_iterations': feature_extractor_config.bifpn.num_iterations,
-        'bifpn_num_filters': feature_extractor_config.bifpn.num_filters,
-        'bifpn_combine_method': feature_extractor_config.bifpn.combine_method,
+        'bifpn_min_level':
+            feature_extractor_config.bifpn.min_level,
+        'bifpn_max_level':
+            feature_extractor_config.bifpn.max_level,
+        'bifpn_num_iterations':
+            feature_extractor_config.bifpn.num_iterations,
+        'bifpn_num_filters':
+            feature_extractor_config.bifpn.num_filters,
+        'bifpn_combine_method':
+            feature_extractor_config.bifpn.combine_method,
+        'use_native_resize_op':
+            feature_extractor_config.bifpn.use_native_resize_op,
     })
 
   return feature_extractor_class(**kwargs)

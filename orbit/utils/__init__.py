@@ -1,4 +1,4 @@
-# Copyright 2022 The Orbit Authors. All Rights Reserved.
+# Copyright 2023 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,5 +25,6 @@ from orbit.utils.loop_fns import create_tf_while_loop_fn
 from orbit.utils.loop_fns import LoopFnWithSummaries
 
 from orbit.utils.summary_manager import SummaryManager
+from orbit.utils.summary_manager_interface import SummaryManagerInterface
 
 from orbit.utils.tpu_summaries import OptionalSummariesFunction

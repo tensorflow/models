@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -66,5 +66,4 @@ class VideoSSLEvalTask(video_classification.VideoClassificationTask):
     model.backbone.trainable = False
     logging.info('Setting the backbone to non-trainable.')
 
-    return super(video_classification.VideoClassificationTask,
-                 self).train_step(inputs, model, optimizer, metrics)
+    return super().train_step(inputs, model, optimizer, metrics)

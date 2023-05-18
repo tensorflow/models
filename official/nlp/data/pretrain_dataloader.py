@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,13 +13,14 @@
 # limitations under the License.
 
 """Loads dataset for the BERT pretraining task."""
+import dataclasses
 from typing import Mapping, Optional
 
 from absl import logging
 
-import dataclasses
 import numpy as np
 import tensorflow as tf
+from official.common import dataset_fn
 from official.core import config_definitions as cfg
 from official.core import input_reader
 from official.nlp.data import data_loader
@@ -42,6 +43,7 @@ class BertPretrainDataConfig(cfg.DataConfig):
   # v2_feature_names is True, the data loader assumes the tf.Examples use
   # `input_word_ids` and `input_type_ids` as keys.
   use_v2_feature_names: bool = False
+  file_type: str = 'tfrecord'
 
 
 @data_loader_factory.register_data_loader_cls(BertPretrainDataConfig)
@@ -128,7 +130,10 @@ class BertPretrainDataLoader(data_loader.DataLoader):
   def load(self, input_context: Optional[tf.distribute.InputContext] = None):
     """Returns a tf.dataset.Dataset."""
     reader = input_reader.InputReader(
-        params=self._params, decoder_fn=self._decode, parser_fn=self._parse)
+        params=self._params,
+        dataset_fn=dataset_fn.pick_dataset_fn(self._params.file_type),
+        decoder_fn=self._decode,
+        parser_fn=self._parse)
     return reader.read(input_context)
 
 
@@ -146,23 +151,20 @@ class XLNetPretrainDataConfig(cfg.DataConfig):
       should be the same value used during pretrain data creation.
     sample_strategy: The strategy used to sample factorization permutations.
       Possible values: 'single_token', 'whole_word', 'token_span', 'word_span'.
-    min_num_tokens: The minimum number of tokens to sample in a span.
-      This is used when `sample_strategy` is 'token_span'.
-    max_num_tokens: The maximum number of tokens to sample in a span.
-      This is used when `sample_strategy` is 'token_span'.
-    min_num_words: The minimum number of words to sample in a span.
-      This is used when `sample_strategy` is 'word_span'.
-    max_num_words: The maximum number of words to sample in a span.
-      This is used when `sample_strategy` is 'word_span'.
-    permutation_size: The length of the longest permutation. This can be set
-      to `reuse_length`. This should NOT be greater than `reuse_length`,
-      otherwise this may introduce data leaks.
+    min_num_tokens: The minimum number of tokens to sample in a span. This is
+      used when `sample_strategy` is 'token_span'.
+    max_num_tokens: The maximum number of tokens to sample in a span. This is
+      used when `sample_strategy` is 'token_span'.
+    min_num_words: The minimum number of words to sample in a span. This is used
+      when `sample_strategy` is 'word_span'.
+    max_num_words: The maximum number of words to sample in a span. This is used
+      when `sample_strategy` is 'word_span'.
+    permutation_size: The length of the longest permutation. This can be set to
+      `reuse_length`. This should NOT be greater than `reuse_length`, otherwise
+      this may introduce data leaks.
     leak_ratio: The percentage of masked tokens that are leaked.
-    segment_sep_id: The ID of the SEP token used when preprocessing
-      the dataset.
-    segment_cls_id: The ID of the CLS token used when preprocessing
-      the dataset.
-
+    segment_sep_id: The ID of the SEP token used when preprocessing the dataset.
+    segment_cls_id: The ID of the CLS token used when preprocessing the dataset.
   """
   input_path: str = ''
   global_batch_size: int = 512
@@ -205,12 +207,9 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
   def _decode(self, record: tf.Tensor):
     """Decodes a serialized tf.Example."""
     name_to_features = {
-        'input_word_ids':
-            tf.io.FixedLenFeature([self._seq_length], tf.int64),
-        'input_type_ids':
-            tf.io.FixedLenFeature([self._seq_length], tf.int64),
-        'boundary_indices':
-            tf.io.VarLenFeature(tf.int64),
+        'input_word_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
+        'input_type_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
+        'boundary_indices': tf.io.VarLenFeature(tf.int64),
     }
     example = tf.io.parse_single_example(record, name_to_features)
 
@@ -242,14 +241,14 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
       if self._permutation_size > self._reuse_length:
         logging.warning(
             '`permutation_size` is greater than `reuse_length` (%d > %d).'
-            'This may introduce data leakage.',
-            self._permutation_size, self._reuse_length)
+            'This may introduce data leakage.', self._permutation_size,
+            self._reuse_length)
 
       # Enable the memory mechanism.
       # Permute the reuse and non-reuse segments separately.
       non_reuse_len = self._seq_length - self._reuse_length
-      if not (self._reuse_length % self._permutation_size == 0
-              and non_reuse_len % self._permutation_size == 0):
+      if not (self._reuse_length % self._permutation_size == 0 and
+              non_reuse_len % self._permutation_size == 0):
         raise ValueError('`reuse_length` and `seq_length` should both be '
                          'a multiple of `permutation_size`.')
 
@@ -264,13 +263,16 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
       perm_mask_1, target_mask_1, tokens_1, masked_1 = self._get_factorization(
           inputs[self._reuse_length:], input_mask[self._reuse_length:])
 
-      perm_mask_0 = tf.concat(
-          [perm_mask_0,
-           tf.zeros([self._reuse_length, non_reuse_len], dtype=tf.int32)],
-          axis=1)
-      perm_mask_1 = tf.concat(
-          [tf.ones([non_reuse_len, self._reuse_length], dtype=tf.int32),
-           perm_mask_1], axis=1)
+      perm_mask_0 = tf.concat([
+          perm_mask_0,
+          tf.zeros([self._reuse_length, non_reuse_len], dtype=tf.int32)
+      ],
+                              axis=1)
+      perm_mask_1 = tf.concat([
+          tf.ones([non_reuse_len, self._reuse_length], dtype=tf.int32),
+          perm_mask_1
+      ],
+                              axis=1)
       perm_mask = tf.concat([perm_mask_0, perm_mask_1], axis=0)
       target_mask = tf.concat([target_mask_0, target_mask_1], axis=0)
       tokens = tf.concat([tokens_0, tokens_1], axis=0)
@@ -283,8 +285,8 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
       # Permute the entire sequence together
       perm_mask, target_mask, tokens, masked_tokens = self._get_factorization(
           inputs=inputs, input_mask=input_mask)
-    x['permutation_mask'] = tf.reshape(
-        perm_mask, [self._seq_length, self._seq_length])
+    x['permutation_mask'] = tf.reshape(perm_mask,
+                                       [self._seq_length, self._seq_length])
     x['input_word_ids'] = tokens
     x['masked_tokens'] = masked_tokens
 
@@ -313,7 +315,8 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
       target_mask = tf.concat([
           tf.ones([actual_num_predict], dtype=tf.int32),
           tf.zeros([pad_len], dtype=tf.int32)
-      ], axis=0)
+      ],
+                              axis=0)
       x['target_mask'] = tf.reshape(target_mask,
                                     [self._max_predictions_per_seq])
     else:
@@ -321,16 +324,14 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
       x['target_mask'] = tf.reshape(target_mask, [self._seq_length])
     return x
 
-  def _index_pair_to_mask(self,
-                          begin_indices: tf.Tensor,
+  def _index_pair_to_mask(self, begin_indices: tf.Tensor,
                           end_indices: tf.Tensor,
                           inputs: tf.Tensor) -> tf.Tensor:
     """Converts beginning and end indices into an actual mask."""
     non_func_mask = tf.logical_and(
         tf.not_equal(inputs, self._sep_id), tf.not_equal(inputs, self._cls_id))
     all_indices = tf.where(
-        non_func_mask,
-        tf.range(self._seq_length, dtype=tf.int32),
+        non_func_mask, tf.range(self._seq_length, dtype=tf.int32),
         tf.constant(-1, shape=[self._seq_length], dtype=tf.int32))
     candidate_matrix = tf.cast(
         tf.logical_and(all_indices[None, :] >= begin_indices[:, None],
@@ -352,8 +353,7 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
     masked_pos = tf.random.shuffle(non_func_indices)
     masked_pos = tf.sort(masked_pos[:self._max_predictions_per_seq])
 
-    sparse_indices = tf.stack(
-        [tf.zeros_like(masked_pos), masked_pos], axis=-1)
+    sparse_indices = tf.stack([tf.zeros_like(masked_pos), masked_pos], axis=-1)
     sparse_indices = tf.cast(sparse_indices, tf.int64)
 
     sparse_indices = tf.sparse.SparseTensor(
@@ -361,14 +361,11 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
         values=tf.ones_like(masked_pos),
         dense_shape=(1, self._seq_length))
 
-    target_mask = tf.sparse.to_dense(
-        sp_input=sparse_indices,
-        default_value=0)
+    target_mask = tf.sparse.to_dense(sp_input=sparse_indices, default_value=0)
 
     return tf.squeeze(tf.cast(target_mask, tf.bool))
 
-  def _whole_word_mask(self,
-                       inputs: tf.Tensor,
+  def _whole_word_mask(self, inputs: tf.Tensor,
                        boundary: tf.Tensor) -> tf.Tensor:
     """Samples whole words as prediction targets."""
     pair_indices = tf.concat([boundary[:-1, None], boundary[1:, None]], axis=1)
@@ -378,9 +375,7 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
     end_indices = cand_pair_indices[:, 1]
 
     return self._index_pair_to_mask(
-        begin_indices=begin_indices,
-        end_indices=end_indices,
-        inputs=inputs)
+        begin_indices=begin_indices, end_indices=end_indices, inputs=inputs)
 
   def _token_span_mask(self, inputs: tf.Tensor) -> tf.Tensor:
     """Samples token spans as prediction targets."""
@@ -429,13 +424,9 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
     end_indices = tf.gather(end_indices, order)
 
     return self._index_pair_to_mask(
-        begin_indices=begin_indices,
-        end_indices=end_indices,
-        inputs=inputs)
+        begin_indices=begin_indices, end_indices=end_indices, inputs=inputs)
 
-  def _word_span_mask(self,
-                      inputs: tf.Tensor,
-                      boundary: tf.Tensor):
+  def _word_span_mask(self, inputs: tf.Tensor, boundary: tf.Tensor):
     """Sample whole word spans as prediction targets."""
     min_num_words = self._params.min_num_words
     max_num_words = self._params.max_num_words
@@ -486,12 +477,9 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
     end_indices = tf.gather(end_indices, order)
 
     return self._index_pair_to_mask(
-        begin_indices=begin_indices,
-        end_indices=end_indices,
-        inputs=inputs)
+        begin_indices=begin_indices, end_indices=end_indices, inputs=inputs)
 
-  def _online_sample_mask(self,
-                          inputs: tf.Tensor,
+  def _online_sample_mask(self, inputs: tf.Tensor,
                           boundary: tf.Tensor) -> tf.Tensor:
     """Samples target positions for predictions.
 
@@ -531,15 +519,13 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
     else:
       raise NotImplementedError('Invalid sample strategy.')
 
-  def _get_factorization(self,
-                         inputs: tf.Tensor,
-                         input_mask: tf.Tensor):
+  def _get_factorization(self, inputs: tf.Tensor, input_mask: tf.Tensor):
     """Samples a permutation of the factorization order.
 
     Args:
       inputs: the input tokens.
-      input_mask: the `bool` Tensor of the same shape as `inputs`.
-        If `True`, then this means select for partial prediction.
+      input_mask: the `bool` Tensor of the same shape as `inputs`. If `True`,
+        then this means select for partial prediction.
 
     Returns:
       perm_mask: An `int32` Tensor of shape [seq_length, seq_length] consisting
@@ -552,7 +538,6 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
         input. This token will not be included in the loss.
       tokens: int32 Tensor of shape [seq_length].
       masked_tokens: int32 Tensor of shape [seq_length].
-
     """
     factorization_length = tf.shape(inputs)[0]
     # Generate permutation indices
@@ -576,8 +561,8 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
     if self._leak_ratio > 0:
       leak_tokens = tf.logical_and(
           masked_tokens,
-          tf.random.uniform([factorization_length],
-                            maxval=1.0) < self._leak_ratio)
+          tf.random.uniform([factorization_length], maxval=1.0) <
+          self._leak_ratio)
       can_attend_self = tf.logical_or(non_masked_or_func_tokens, leak_tokens)
     else:
       can_attend_self = non_masked_or_func_tokens

@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,6 +43,18 @@ RESNET_SPECS = {
         ('bottleneck', 256, 23),
         ('bottleneck', 512, 3),
     ],
+    152: [
+        ('bottleneck', 64, 3),
+        ('bottleneck', 128, 8),
+        ('bottleneck', 256, 36),
+        ('bottleneck', 512, 3),
+    ],
+    200: [
+        ('bottleneck', 64, 3),
+        ('bottleneck', 128, 24),
+        ('bottleneck', 256, 36),
+        ('bottleneck', 512, 3),
+    ],
 }
 
 
@@ -63,6 +75,8 @@ class DilatedResNet(tf.keras.Model):
       input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
           shape=[None, None, None, 3]),
       stem_type: str = 'v0',
+      resnetd_shortcut: bool = False,
+      replace_stem_max_pool: bool = False,
       se_ratio: Optional[float] = None,
       init_stochastic_depth_rate: float = 0.0,
       multigrid: Optional[Tuple[int]] = None,
@@ -84,6 +98,10 @@ class DilatedResNet(tf.keras.Model):
       input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
       stem_type: A `str` of stem type. Can be `v0` or `v1`. `v1` replaces 7x7
         conv by 3 3x3 convs.
+      resnetd_shortcut: A `bool` of whether to use ResNet-D shortcut in
+        downsampling blocks.
+      replace_stem_max_pool: A `bool` of whether to replace the max pool in stem
+        with a stride-2 conv,
       se_ratio: A `float` or None. Ratio of the Squeeze-and-Excitation layer.
       init_stochastic_depth_rate: A `float` of initial stochastic depth rate.
       multigrid: A tuple of the same length as the number of blocks in the last
@@ -108,14 +126,13 @@ class DilatedResNet(tf.keras.Model):
     self._activation = activation
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
-    if use_sync_bn:
-      self._norm = layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = layers.BatchNormalization
+    self._norm = layers.BatchNormalization
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
     self._stem_type = stem_type
+    self._resnetd_shortcut = resnetd_shortcut
+    self._replace_stem_max_pool = replace_stem_max_pool
     self._se_ratio = se_ratio
     self._init_stochastic_depth_rate = init_stochastic_depth_rate
 
@@ -139,7 +156,10 @@ class DilatedResNet(tf.keras.Model):
           bias_regularizer=self._bias_regularizer)(
               inputs)
       x = self._norm(
-          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+          axis=bn_axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          synchronized=use_sync_bn)(
               x)
       x = tf_utils.get_activation(activation)(x)
     elif stem_type == 'v1':
@@ -154,7 +174,10 @@ class DilatedResNet(tf.keras.Model):
           bias_regularizer=self._bias_regularizer)(
               inputs)
       x = self._norm(
-          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+          axis=bn_axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          synchronized=use_sync_bn)(
               x)
       x = tf_utils.get_activation(activation)(x)
       x = layers.Conv2D(
@@ -168,7 +191,10 @@ class DilatedResNet(tf.keras.Model):
           bias_regularizer=self._bias_regularizer)(
               x)
       x = self._norm(
-          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+          axis=bn_axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          synchronized=use_sync_bn)(
               x)
       x = tf_utils.get_activation(activation)(x)
       x = layers.Conv2D(
@@ -182,13 +208,35 @@ class DilatedResNet(tf.keras.Model):
           bias_regularizer=self._bias_regularizer)(
               x)
       x = self._norm(
-          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+          axis=bn_axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          synchronized=use_sync_bn)(
               x)
       x = tf_utils.get_activation(activation)(x)
     else:
       raise ValueError('Stem type {} not supported.'.format(stem_type))
 
-    x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
+    if replace_stem_max_pool:
+      x = layers.Conv2D(
+          filters=64,
+          kernel_size=3,
+          strides=2,
+          use_bias=False,
+          padding='same',
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer)(
+              x)
+      x = self._norm(
+          axis=bn_axis,
+          momentum=norm_momentum,
+          epsilon=norm_epsilon,
+          synchronized=use_sync_bn)(
+              x)
+      x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
+    else:
+      x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
 
     normal_resnet_stage = int(np.math.log2(self._output_stride)) - 2
 
@@ -284,6 +332,7 @@ class DilatedResNet(tf.keras.Model):
         use_projection=True,
         stochastic_depth_drop_rate=stochastic_depth_drop_rate,
         se_ratio=self._se_ratio,
+        resnetd_shortcut=self._resnetd_shortcut,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
@@ -299,6 +348,7 @@ class DilatedResNet(tf.keras.Model):
           dilation_rate=dilation_rate * multigrid[i],
           use_projection=False,
           stochastic_depth_drop_rate=stochastic_depth_drop_rate,
+          resnetd_shortcut=self._resnetd_shortcut,
           se_ratio=self._se_ratio,
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
@@ -316,6 +366,8 @@ class DilatedResNet(tf.keras.Model):
         'model_id': self._model_id,
         'output_stride': self._output_stride,
         'stem_type': self._stem_type,
+        'resnetd_shortcut': self._resnetd_shortcut,
+        'replace_stem_max_pool': self._replace_stem_max_pool,
         'se_ratio': self._se_ratio,
         'init_stochastic_depth_rate': self._init_stochastic_depth_rate,
         'activation': self._activation,
@@ -355,6 +407,8 @@ def build_dilated_resnet(
       output_stride=backbone_cfg.output_stride,
       input_specs=input_specs,
       stem_type=backbone_cfg.stem_type,
+      resnetd_shortcut=backbone_cfg.resnetd_shortcut,
+      replace_stem_max_pool=backbone_cfg.replace_stem_max_pool,
       se_ratio=backbone_cfg.se_ratio,
       init_stochastic_depth_rate=backbone_cfg.stochastic_depth_drop_rate,
       multigrid=backbone_cfg.multigrid,

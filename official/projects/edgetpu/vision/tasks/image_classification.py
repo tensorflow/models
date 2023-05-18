@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -265,7 +265,7 @@ class EdgeTPUTask(base_task.Task):
     """Does forward and backward.
 
     Args:
-      inputs: A tuple of of input tensors of (features, labels).
+      inputs: A tuple of input tensors of (features, labels).
       model: A tf.keras.Model instance.
       optimizer: The optimizer for this training step.
       metrics: A nested structure of metrics objects.
@@ -319,7 +319,7 @@ class EdgeTPUTask(base_task.Task):
     """Runs validatation step.
 
     Args:
-      inputs: A tuple of of input tensors of (features, labels).
+      inputs: A tuple of input tensors of (features, labels).
       model: A tf.keras.Model instance.
       metrics: A nested structure of metrics objects.
 

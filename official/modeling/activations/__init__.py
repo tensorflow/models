@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 
 """Activations package definition."""
 from official.modeling.activations.gelu import gelu
+from official.modeling.activations.mish import mish
 from official.modeling.activations.relu import relu6
 from official.modeling.activations.sigmoid import hard_sigmoid
 from official.modeling.activations.swish import hard_swish

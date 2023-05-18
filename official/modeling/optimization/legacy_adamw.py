@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ from absl import logging
 import tensorflow as tf
 
 
-class AdamWeightDecay(tf.keras.optimizers.Adam):
+class AdamWeightDecay(tf.keras.optimizers.legacy.Adam):
   """Adam enables L2 weight decay and clip_by_global_norm on gradients.
 
   [Warning!]: Keras optimizer supports gradient clipping and has an AdamW

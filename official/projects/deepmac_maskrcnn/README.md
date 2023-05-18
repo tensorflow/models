@@ -19,14 +19,14 @@ for more details.
     agnostic mode and `task.allowed_mask_class_ids` controls which classes are
     allowed to have masks during training.
 *   Majority of experiments and ablations from the paper are perfomed with the
-    [DeepMAC model](../../../../../research/object_detection/g3doc/deepmac.md)
+    [DeepMAC model](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/deepmac.md)
     in the Object Detection API code base.
 
 ## Prerequisites
 
 ### Prepare dataset
 
-Use [create_coco_tf_record.py](../../data/create_coco_tf_record.py) to create
+Use [create_coco_tf_record.py](https://github.com/tensorflow/models/blob/master/official/vision/data/create_coco_tf_record.py) to create
 the COCO dataset. The data needs to be store in a
 [Google cloud storage bucket](https://cloud.google.com/storage/docs/creating-buckets)
 so that it can be accessed by the TPU.
@@ -103,11 +103,17 @@ ResNet-50    | Hourglass-52 | `deep_mask_head_rcnn_voc_r50_hg52.yaml`         | 
 ResNet-101   | Hourglass-52 | `deep_mask_head_rcnn_voc_r101_hg52.yaml`        | 34.4
 SpienNet-143 | Hourglass-52 | `deep_mask_head_rcnn_voc_spinenet143_hg52.yaml` | 38.7
 
+## Checkpoints
+This model takes Image + boxes as input and produces per-box instance
+masks as output.
+
+*   [Mask-RCNN SpineNet backbone](https://storage.googleapis.com/tf_model_garden/vision/deepmac_maskrcnn/deepmarc_spinenet.zip)
+
 ## See also
 
 *   [DeepMAC model](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/deepmac.md)
     in the Object Detection API code base.
-*   Project website - [git.io/deepmac](https://git.io/deepmac)
+*   Project website - [git.io/deepmac](https://google.github.io/deepmac/)
 
 ## Citation
 

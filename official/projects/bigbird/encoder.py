@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 import tensorflow as tf
 
 from official.modeling import activations
+from official.modeling import tf_utils
 from official.nlp import modeling
 from official.nlp.modeling import layers
 from official.projects.bigbird import recompute_grad
@@ -124,10 +125,14 @@ class BigBirdEncoder(tf.keras.Model):
         'intermediate_size': intermediate_size,
         'block_size': block_size,
         'num_rand_blocks': num_rand_blocks,
-        'activation': tf.keras.activations.serialize(activation),
+        'activation': tf_utils.serialize_activation(
+            activation, use_legacy_format=True
+        ),
         'dropout_rate': dropout_rate,
         'attention_dropout_rate': attention_dropout_rate,
-        'initializer': tf.keras.initializers.serialize(initializer),
+        'initializer': tf_utils.serialize_initializer(
+            initializer, use_legacy_format=True
+        ),
         'embedding_width': embedding_width,
     }
 
@@ -173,7 +178,7 @@ class BigBirdEncoder(tf.keras.Model):
     # We project the 'embedding' output to 'hidden_size' if it is not already
     # 'hidden_size'.
     if embedding_width != hidden_size:
-      self._embedding_projection = tf.keras.layers.experimental.EinsumDense(
+      self._embedding_projection = tf.keras.layers.EinsumDense(
           '...x,xy->...y',
           output_shape=hidden_size,
           bias_axes='y',

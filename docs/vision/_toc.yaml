@@ -1,0 +1,9 @@
+toc:
+- title: "Example: Image classification"
+  path: /tfmodels/vision/image_classification
+- title: "Example: Object Detection"
+  path: /tfmodels/vision/object_detection
+- title: "Example: Semantic Segmentation"
+  path: /tfmodels/vision/semantic_segmentation
+- title: "Example: Instance Segmentation"
+  path: /tfmodels/vision/instance_segmentation

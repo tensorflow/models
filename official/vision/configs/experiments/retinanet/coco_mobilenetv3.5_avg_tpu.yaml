@@ -1,0 +1,65 @@
+# --experiment_type=retinanet_mobile_coco
+# COCO AP 24.92%
+# Use 4x4 DF for training.
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  losses:
+    l2_weight_decay: 3.0e-05
+  model:
+    anchor:
+      anchor_size: 3
+      aspect_ratios: [0.5, 1.0, 2.0]
+      num_scales: 3
+    backbone:
+      mobilenet:
+        model_id: 'MobileNetMultiAVG'
+        filter_size_scale: 1.0
+      type: 'mobilenet'
+    decoder:
+      type: 'fpn'
+      fpn:
+        num_filters: 128
+        use_separable_conv: true
+        use_keras_layer: true
+    head:
+      num_convs: 4
+      num_filters: 128
+      use_separable_conv: true
+    input_size: [256, 256, 3]
+    max_level: 7
+    min_level: 3
+    norm_activation:
+      activation: 'relu6'
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+  train_data:
+    dtype: 'bfloat16'
+    global_batch_size: 256
+    is_training: true
+    parser:
+      aug_rand_hflip: true
+      aug_scale_max: 2.0
+      aug_scale_min: 0.5
+  validation_data:
+    dtype: 'bfloat16'
+    global_batch_size: 256
+    is_training: false
+    drop_remainder: false
+trainer:
+  optimizer_config:
+    learning_rate:
+      stepwise:
+        boundaries: [263340, 272580]
+        values: [0.32, 0.032, 0.0032]
+      type: 'stepwise'
+    warmup:
+      linear:
+        warmup_learning_rate: 0.0067
+        warmup_steps: 2000
+  steps_per_loop: 462
+  train_steps: 277200
+  validation_interval: 462
+  validation_steps: 20

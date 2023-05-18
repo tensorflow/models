@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,8 +26,14 @@ from official.vision.configs import video_classification as exp_cfg
 
 class VideoClassificationConfigTest(tf.test.TestCase, parameterized.TestCase):
 
-  @parameterized.parameters(('video_classification',),
-                            ('video_classification_kinetics600',))
+  @parameterized.parameters(
+      ('video_classification',),
+      ('video_classification_ucf101',),
+      ('video_classification_kinetics400',),
+      ('video_classification_kinetics600',),
+      ('video_classification_kinetics700',),
+      ('video_classification_kinetics700_2020',),
+  )
   def test_video_classification_configs(self, config_name):
     config = exp_factory.get_exp_config(config_name)
     self.assertIsInstance(config, cfg.ExperimentConfig)

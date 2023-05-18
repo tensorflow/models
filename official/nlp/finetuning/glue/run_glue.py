@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,6 +46,16 @@ flags.DEFINE_string(
     'used when creating the Cloud TPU, or a grpc://ip.address.of.tpu:8470 url.')
 flags.DEFINE_integer('num_gpus', 1, 'The number of GPUs to use at each worker.')
 
+_MODE = flags.DEFINE_enum(
+    'mode', 'train_eval_and_predict',
+    ['train_eval_and_predict', 'train_eval', 'predict'],
+    'The mode to run the binary. If `train_eval_and_predict` '
+    'it will (1) train on the training data and (2) evaluate on '
+    'the validation data and (3) finally generate predictions '
+    'on the prediction data; if `train_eval`, it will only '
+    'run training and evaluation; if `predict`, it will only '
+    'run prediction using the model in `model_dir`.')
+
 FLAGS = flags.FLAGS
 
 EXPERIMENT_TYPE = 'bert/sentence_prediction'
@@ -55,9 +65,9 @@ EVAL_METRIC_MAP = {
     'AX': 'matthews_corrcoef',
     'COLA': 'matthews_corrcoef',
     'MNLI': 'cls_accuracy',
-    'MRPC': 'cls_accuracy',
+    'MRPC': 'f1',
     'QNLI': 'cls_accuracy',
-    'QQP': 'cls_accuracy',
+    'QQP': 'f1',
     'RTE': 'cls_accuracy',
     'SST-2': 'cls_accuracy',
     'STS-B': 'pearson_spearman_corr',
@@ -93,10 +103,15 @@ def _override_exp_config_by_flags(exp_config, input_meta_data):
         binary_helper.override_sentence_prediction_task_config,
         num_classes=input_meta_data['num_labels'],
         metric_type='matthews_corrcoef')
-  elif FLAGS.task_name in ('MNLI', 'MRPC', 'QNLI', 'QQP', 'RTE', 'SST-2',
+  elif FLAGS.task_name in ('MNLI', 'QNLI', 'RTE', 'SST-2',
                            'WNLI'):
     override_task_cfg_fn = functools.partial(
         binary_helper.override_sentence_prediction_task_config,
+        num_classes=input_meta_data['num_labels'])
+  elif FLAGS.task_name in ('QQP', 'MRPC'):
+    override_task_cfg_fn = functools.partial(
+        binary_helper.override_sentence_prediction_task_config,
+        metric_type='f1',
         num_classes=input_meta_data['num_labels'])
   elif FLAGS.task_name in ('STS-B',):
     override_task_cfg_fn = functools.partial(
@@ -229,7 +244,7 @@ def main(argv):
 
   with distribution_strategy.scope():
     task = None
-    if 'train_eval' in FLAGS.mode:
+    if 'train_eval' in _MODE.value:
       logging.info('Starting training and eval...')
       logging.info('Model dir: %s', FLAGS.model_dir)
 
@@ -245,7 +260,7 @@ def main(argv):
           params=exp_config,
           model_dir=FLAGS.model_dir)
 
-    if 'predict' in FLAGS.mode:
+    if 'predict' in _MODE.value:
       logging.info('Starting predict...')
       # When mode is `predict`, `task` will be None.
       if task is None:

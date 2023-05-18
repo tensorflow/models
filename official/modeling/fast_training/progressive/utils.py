@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@ from absl import logging
 import tensorflow as tf
 
 # pylint: disable=g-direct-tensorflow-import
-from tensorflow.python.training.tracking import tracking
+from tensorflow.python.trackable import autotrackable
 
 
-class VolatileTrackable(tracking.AutoTrackable):
+class VolatileTrackable(autotrackable.AutoTrackable):
   """A util class to keep Trackables that might change instances."""
 
   def __init__(self, **kwargs):

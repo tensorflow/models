@@ -14,6 +14,8 @@ limitations under the License.
 ==============================================================================*/
 #include "tflite_ops/layer_norm.h"  // seq_flow_lite
 
+#include <cstdint>
+#include <limits>
 #include <unordered_set>
 #include <vector>
 
@@ -40,20 +42,24 @@ TfLiteStatus Resize(TfLiteContext* context, TfLiteNode* node) {
   TfLiteTensor* input = &context->tensors[node->inputs->data[kInputIndex]];
   TfLiteTensor* scale = &context->tensors[node->inputs->data[kScaleIndex]];
   TfLiteTensor* offset = &context->tensors[node->inputs->data[kOffsetIndex]];
-  TF_LITE_ENSURE_EQ(context, input->type, kTfLiteUInt8);
+  TF_LITE_ENSURE(context,
+                 input->type == kTfLiteUInt8 || input->type == kTfLiteInt8);
   TF_LITE_ENSURE_EQ(context, offset->dims->data[0], 1);
   TF_LITE_ENSURE_EQ(context, offset->dims->size, 1);
-  TF_LITE_ENSURE_EQ(context, offset->type, kTfLiteUInt8);
+  TF_LITE_ENSURE(context,
+                 offset->type == kTfLiteUInt8 || offset->type == kTfLiteInt8);
   TF_LITE_ENSURE_EQ(context, scale->dims->data[0], 1);
   TF_LITE_ENSURE_EQ(context, scale->dims->size, 1);
-  TF_LITE_ENSURE_EQ(context, scale->type, kTfLiteUInt8);
+  TF_LITE_ENSURE(context,
+                 scale->type == kTfLiteUInt8 || scale->type == kTfLiteInt8);
   if (node->inputs->size == 4) {
     TfLiteTensor* axis = &context->tensors[node->inputs->data[kAxisIndex]];
     TF_LITE_ENSURE_EQ(context, axis->type, kTfLiteInt32);
   }
 
   TfLiteTensor* output = &context->tensors[node->outputs->data[kOutputIndex]];
-  TF_LITE_ENSURE_EQ(context, output->type, kTfLiteUInt8);
+  TF_LITE_ENSURE(context,
+                 output->type == kTfLiteUInt8 || output->type == kTfLiteInt8);
   return context->ResizeTensor(context, output,
                                TfLiteIntArrayCopy(input->dims));
 }
@@ -149,6 +155,7 @@ int GetOffset(const int* input_dims, const int input_dims_size,
 
 // TODO(b/132896827): Current implementation needs further evaluation to reduce
 // space time complexities.
+template <typename T>
 TfLiteStatus FlexibleLayerNorm(const TfLiteTensor* input, const float scale,
                                const float offset, const int* axis,
                                const int num_axis, TfLiteTensor* output) {
@@ -169,7 +176,7 @@ TfLiteStatus FlexibleLayerNorm(const TfLiteTensor* input, const float scale,
     // offset after reduction.
     int stats_offset = GetOffset(input->dims->data, input->dims->size,
                                  &index_iter[0], &axis[0], num_axis);
-    float input_val = PodDequantize(*input, input_offset);
+    float input_val = PodDequantize<T>(*input, input_offset);
     sum_x[stats_offset] += input_val;
     sum_xx[stats_offset] += input_val * input_val;
   } while (ValidIndex(input->dims->data, input->dims->size, &index_iter[0]));
@@ -189,7 +196,7 @@ TfLiteStatus FlexibleLayerNorm(const TfLiteTensor* input, const float scale,
 
   const float out_inverse_scale = 1.0f / output->params.scale;
   const int32_t out_zero_point = output->params.zero_point;
-  uint8_t* out_ptr = output->data.uint8;
+  T* out_ptr = tflite::GetTensorData<T>(output);
   std::fill(index_iter.begin(), index_iter.end(), 0);
 
   // Using the stats to fill the output pointer.
@@ -202,12 +209,12 @@ TfLiteStatus FlexibleLayerNorm(const TfLiteTensor* input, const float scale,
     // offset after reduction.
     int stats_offset = GetOffset(input->dims->data, input->dims->size,
                                  &index_iter[0], &axis[0], num_axis);
-    float input_val = PodDequantize(*input, input_offset);
+    float input_val = PodDequantize<T>(*input, input_offset);
 
     const float value =
         input_val * multiplier[stats_offset] + bias[stats_offset];
     out_ptr[input_offset] =
-        PodQuantize(value, out_zero_point, out_inverse_scale);
+        PodQuantize<T>(value, out_zero_point, out_inverse_scale);
   } while (ValidIndex(input->dims->data, input->dims->size, &index_iter[0]));
 
   return kTfLiteOk;
@@ -266,6 +273,7 @@ TfLiteStatus FlexibleLayerNorm(const TfLiteTensor* input, const float scale,
  * then compute mean_q, var_q and then dynamic_scale/dynamic_bias. This
  * allows one to compute oqi quickly in a tight loop.
  * */
+template <typename T>
 TfLiteStatus IntegerLayerNorm(const TfLiteTensor* input, const float scale,
                               const float offset, TfLiteTensor* output) {
   const int input_rank = input->dims->size;
@@ -278,8 +286,8 @@ TfLiteStatus IntegerLayerNorm(const TfLiteTensor* input, const float scale,
   const float static_bias = static_cast<float>(output->params.zero_point) +
                             offset * out_inverse_scale;
   const float inverse_num_features = 1.0f / num_features;
-  const uint8_t* const in_ptr = input->data.uint8;
-  uint8_t* out_ptr = output->data.uint8;
+  const T* const in_ptr = tflite::GetTensorData<T>(input);
+  T* out_ptr = tflite::GetTensorData<T>(output);
   for (int i = 0; i < time_steps; ++i) {
     int32_t i32_sum_q = 0;
     int32_t i32_sum_qq = 0;
@@ -303,7 +311,10 @@ TfLiteStatus IntegerLayerNorm(const TfLiteTensor* input, const float scale,
       const int32_t i32value =
           static_cast<int32_t>(value + ((value >= 0.0) ? 0.5f : -0.5f));
       // Clamp the result.
-      out_ptr[j] = static_cast<uint8_t>(std::max(std::min(255, i32value), 0));
+      out_ptr[j] = static_cast<T>(
+          std::max(std::min(static_cast<int32_t>(std::numeric_limits<T>::max()),
+                            i32value),
+                   static_cast<int32_t>(std::numeric_limits<T>::min())));
     }
   }
   return kTfLiteOk;
@@ -337,39 +348,6 @@ TfLiteStatus DefaultLayerNormFloat(const TfLiteTensor* input, const float scale,
   return kTfLiteOk;
 }
 
-TfLiteStatus DefaultLayerNorm(const TfLiteTensor* input, const float scale,
-                              const float offset, TfLiteTensor* output) {
-  const int input_rank = input->dims->size;
-  const int num_features = input->dims->data[input_rank - 1];
-  const int time_steps =
-      static_cast<int>(GetNumberOfSteps(input) / num_features);
-
-  std::vector<float> temp_buffer(num_features, 0.0f);
-  const float out_inverse_scale = 1.0f / output->params.scale;
-  const int32_t out_zero_point = output->params.zero_point;
-  uint8_t* out_ptr = output->data.uint8;
-  for (int i = 0; i < time_steps; ++i) {
-    float sum_x = 0;
-    float sum_xx = 0;
-    for (int j = 0, index = i * num_features; j < num_features; ++j, ++index) {
-      temp_buffer[j] = PodDequantize(*input, index);
-      sum_x += temp_buffer[j];
-      sum_xx += temp_buffer[j] * temp_buffer[j];
-    }
-    const float exp_xx = sum_xx / num_features;
-    const float exp_x = sum_x / num_features;
-    const float variance = exp_xx - exp_x * exp_x;
-    const float inverse_stddev = 1 / sqrt(variance + 1e-6);
-    const float multiplier = inverse_stddev * scale;
-    const float bias = offset - exp_x * inverse_stddev * scale;
-    for (int j = 0, index = i * num_features; j < num_features; ++j, ++index) {
-      const float value = temp_buffer[j] * multiplier + bias;
-      out_ptr[index] = PodQuantize(value, out_zero_point, out_inverse_scale);
-    }
-  }
-  return kTfLiteOk;
-}
-
 TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
   const TfLiteTensor* input =
       &context->tensors[node->inputs->data[kInputIndex]];
@@ -380,8 +358,11 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
   float scale = 1.0;
   float offset = 0.0;
   if (input->type == kTfLiteUInt8) {
-    scale = PodDequantize(scale_tensor, 0);
-    offset = PodDequantize(offset_tensor, 0);
+    scale = PodDequantize<uint8_t>(scale_tensor, 0);
+    offset = PodDequantize<uint8_t>(offset_tensor, 0);
+  } else if (input->type == kTfLiteInt8) {
+    scale = PodDequantize<int8_t>(scale_tensor, 0);
+    offset = PodDequantize<int8_t>(offset_tensor, 0);
   } else {
     scale = scale_tensor.data.f[0];
     offset = offset_tensor.data.f[0];
@@ -394,12 +375,14 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
   if (num_axis == 1 && (axis->data.i32[0] == -1 ||
                         axis->data.i32[0] == (input->dims->size - 1))) {
     if (input->type == kTfLiteUInt8) {
-      return IntegerLayerNorm(input, scale, offset, output);
+      return IntegerLayerNorm<uint8_t>(input, scale, offset, output);
+    } else if (input->type == kTfLiteInt8) {
+      return IntegerLayerNorm<int8_t>(input, scale, offset, output);
     } else if (input->type == kTfLiteFloat32) {
       return DefaultLayerNormFloat(input, scale, offset, output);
     } else {
       TF_LITE_ENSURE_MSG(context, false,
-                         "Input should be eith Uint8 or Float32.");
+                         "Input should be either Uint8, Int8 or Float32.");
     }
   }
 
@@ -411,8 +394,12 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
     return kTfLiteError;
   }
 
-  return FlexibleLayerNorm(input, scale, offset, &resolved_axis[0],
-                           num_resolved_axis, output);
+  if (input->type == kTfLiteInt8) {
+    return FlexibleLayerNorm<int8_t>(input, scale, offset, &resolved_axis[0],
+                                     num_resolved_axis, output);
+  }
+  return FlexibleLayerNorm<uint8_t>(input, scale, offset, &resolved_axis[0],
+                                    num_resolved_axis, output);
 }
 
 }  // namespace

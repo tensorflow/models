@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Configs package definition."""
-
+from official.projects.qat.vision.configs import common
 from official.projects.qat.vision.configs import image_classification
+from official.projects.qat.vision.configs import retinanet
 from official.projects.qat.vision.configs import semantic_segmentation

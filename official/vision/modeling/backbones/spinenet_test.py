@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -121,6 +121,18 @@ class SpineNetTest(parameterized.TestCase, tf.test.TestCase):
 
     # If the serialization was successful, the new config should match the old.
     self.assertAllEqual(network.get_config(), new_network.get_config())
+
+  @parameterized.parameters(
+      ('relu', tf.nn.relu),
+      ('swish', tf.nn.swish)
+  )
+  def test_activation(self, activation, activation_fn):
+    model = spinenet.SpineNet(activation=activation)
+    self.assertEqual(model._activation_fn, activation_fn)
+
+  def test_invalid_activation_raises_valurerror(self):
+    with self.assertRaises(ValueError):
+      spinenet.SpineNet(activation='invalid_activation_name')
 
 
 if __name__ == '__main__':

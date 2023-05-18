@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-# Lint as: python3
 """Implementation of pQRNN model."""
 
 from absl import logging
@@ -43,11 +42,12 @@ class Encoder(tf.keras.layers.Layer):
     _get_params("qrnn_kernel_width", 3)
     _get_params("qrnn_zoneout_probability")
     _get_params("number_qrnn_layers")
-    _get_params("labels")
+    _get_params("labels", [])
+    _get_params("num_labels", None)
     _get_params("regularizer_scale")
     _get_params("quantize")
 
-    self.num_classes = len(self.labels)
+    self.num_classes = self.num_labels or len(self.labels)
     self.parameters = base_layers.Parameters(
         mode, quantize=self.quantize, regularizer_scale=self.regularizer_scale)
 
@@ -66,11 +66,12 @@ class Encoder(tf.keras.layers.Layer):
     self.attention_pool = misc_layers.AttentionPooling(
         parameters=self.parameters)
 
-    self.final_fc = dense_layers.BaseQDense(
-        units=self.num_classes,
-        rank=2,
-        parameters=self.parameters,
-        activation=None)
+    if self.num_classes:
+      self.final_fc = dense_layers.BaseQDense(
+          units=self.num_classes,
+          rank=2,
+          parameters=self.parameters,
+          activation=None)
 
   def call(self, projection, seq_length):
     mask = tf.sequence_mask(
@@ -82,7 +83,11 @@ class Encoder(tf.keras.layers.Layer):
     bottleneck = self.bottleneck_layer(projection, maskr3, inverse_normalizer)
     outputs = self.qrnn_stack(bottleneck, maskr3, inverse_normalizer)
     pre_logits = self.attention_pool(outputs, maskr3, inverse_normalizer)
-    return self.final_fc(pre_logits)
+    if self.num_classes:
+      return self.final_fc(pre_logits)
+    else:
+      return pre_logits
+
 
 class Model(Encoder):
 

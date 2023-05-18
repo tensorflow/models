@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ class MaskedSoftmax(tf.keras.layers.Layer):
       self._normalization_axes = (-1,)
     else:
       self._normalization_axes = normalization_axes
-    super(MaskedSoftmax, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
   def call(self, scores, mask=None):
 
@@ -81,5 +81,5 @@ class MaskedSoftmax(tf.keras.layers.Layer):
         'mask_expansion_axes': self._mask_expansion_axes,
         'normalization_axes': self._normalization_axes
     }
-    base_config = super(MaskedSoftmax, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))

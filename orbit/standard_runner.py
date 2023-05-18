@@ -1,4 +1,4 @@
-# Copyright 2022 The Orbit Authors. All Rights Reserved.
+# Copyright 2023 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -360,7 +360,7 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
     Note that this method is called before dataset iterator creation.
 
     Returns:
-      An value to pass as the `state` argument to `eval_reduce`.
+      A value to pass as the `state` argument to `eval_reduce`.
     """
     pass
 
@@ -421,7 +421,7 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
     evaluation for subsequent processing in `eval_end()`.
 
     Args:
-      state: A state being mainted throughout the evaluation.
+      state: A state being maintained throughout the evaluation.
       step_outputs: Outputs from the current evaluation step.
 
     Returns:

@@ -1,4 +1,4 @@
-# Copyright 2022 The Orbit Authors. All Rights Reserved.
+# Copyright 2023 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ class ExportSavedModelTest(tf.test.TestCase):
     directory = self.create_tempdir()
     base_name = os.path.join(directory.full_path, 'basename')
     manager = actions.ExportFileManager(base_name, max_to_keep=3)
-    self.assertLen(tf.io.gfile.listdir(directory.full_path), 0)
+    self.assertEmpty(tf.io.gfile.listdir(directory.full_path))
     directory.create_file(manager.next_name())
     manager.clean_up()  # Shouldn't do anything...
     self.assertLen(tf.io.gfile.listdir(directory.full_path), 1)
@@ -79,7 +79,7 @@ class ExportSavedModelTest(tf.test.TestCase):
 
     manager = actions.ExportFileManager(
         base_name, max_to_keep=2, next_id_fn=next_id)
-    self.assertLen(tf.io.gfile.listdir(directory.full_path), 0)
+    self.assertEmpty(tf.io.gfile.listdir(directory.full_path))
     id_num = 30
     directory.create_file(manager.next_name())
     self.assertLen(tf.io.gfile.listdir(directory.full_path), 1)
@@ -105,6 +105,54 @@ class ExportSavedModelTest(tf.test.TestCase):
         _id_sorted_file_base_names(directory.full_path),
         ['basename-200', 'basename-1000'])
 
+  def test_export_file_manager_with_suffix(self):
+    directory = self.create_tempdir()
+    base_name = os.path.join(directory.full_path, 'basename')
+
+    id_num = 0
+
+    def next_id():
+      return id_num
+
+    subdirectory = 'sub'
+
+    manager = actions.ExportFileManager(
+        base_name, max_to_keep=2, next_id_fn=next_id, subdirectory=subdirectory
+    )
+    self.assertEmpty(tf.io.gfile.listdir(directory.full_path))
+    id_num = 30
+    directory.create_file(manager.next_name())
+    self.assertLen(tf.io.gfile.listdir(directory.full_path), 1)
+    manager.clean_up()  # Shouldn't do anything...
+    self.assertEqual(
+        _id_sorted_file_base_names(directory.full_path), ['basename-30']
+    )
+    id_num = 200
+    directory.create_file(manager.next_name())
+    self.assertLen(tf.io.gfile.listdir(directory.full_path), 2)
+    manager.clean_up()  # Shouldn't do anything...
+    self.assertEqual(
+        _id_sorted_file_base_names(directory.full_path),
+        ['basename-30', 'basename-200'],
+    )
+    id_num = 1000
+    directory.create_file(manager.next_name())
+    self.assertLen(tf.io.gfile.listdir(directory.full_path), 3)
+    self.assertEqual(
+        _id_sorted_file_base_names(directory.full_path),
+        ['basename-30', 'basename-200', 'basename-1000'],
+    )
+    manager.clean_up()  # Should delete file with lowest ID.
+    self.assertLen(tf.io.gfile.listdir(directory.full_path), 3)
+    # Note that the base folder is intact, only the suffix folder is deleted.
+    self.assertEqual(
+        _id_sorted_file_base_names(directory.full_path),
+        ['basename-30', 'basename-200', 'basename-1000'],
+    )
+
+    step_folder = os.path.join(directory.full_path, 'basename-1000')
+    self.assertIn(subdirectory, tf.io.gfile.listdir(step_folder))
+
   def test_export_file_manager_managed_files(self):
     directory = self.create_tempdir()
     directory.create_file('basename-5')
@@ -121,6 +169,26 @@ class ExportSavedModelTest(tf.test.TestCase):
     self.assertEqual(
         manager.managed_files,
         [f'{base_name}-10', f'{base_name}-50', f'{base_name}-1000'])
+
+  def test_export_file_manager_managed_files_double_slash(self):
+    directory = self.create_tempdir('foo//bar')
+    directory.create_file('basename-5')
+    directory.create_file('basename-10')
+    directory.create_file('basename-50')
+    directory.create_file('basename-1000')
+    directory.create_file('basename-9')
+    directory.create_file('basename-10-suffix')
+    base_name = os.path.join(directory.full_path, 'basename')
+    expected_base_name = os.path.normpath(base_name)
+    self.assertNotEqual(base_name, expected_base_name)
+    manager = actions.ExportFileManager(base_name, max_to_keep=3)
+    self.assertLen(manager.managed_files, 5)
+    self.assertEqual(manager.next_name(), f'{expected_base_name}-1001')
+    manager.clean_up()
+    self.assertEqual(manager.managed_files, [
+        f'{expected_base_name}-10', f'{expected_base_name}-50',
+        f'{expected_base_name}-1000'
+    ])
 
   def test_export_saved_model(self):
     directory = self.create_tempdir()

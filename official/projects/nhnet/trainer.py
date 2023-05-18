@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -120,9 +120,13 @@ class Trainer(tf.keras.Model):
     tvars = self.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     self.optimizer.apply_gradients(list(zip(grads, tvars)))
+    if isinstance(self.optimizer, tf.keras.optimizers.experimental.Optimizer):
+      learning_rate = self.optimizer.learning_rate
+    else:
+      learning_rate = self.optimizer._decayed_lr(var_dtype=tf.float32)
     return {
         "training_loss": loss,
-        "learning_rate": self.optimizer._decayed_lr(var_dtype=tf.float32)
+        "learning_rate": learning_rate,
     }
 
 

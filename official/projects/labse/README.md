@@ -71,7 +71,7 @@ pretraining:
 TPU=local
 VOCAB=???
 INIT_CHECKPOINT=???
-PARAMS="task.train_data.input_data=/path/to/train/data"
+PARAMS="task.train_data.input_path=/path/to/train/data"
 PARAMS="${PARAMS},task.train_data.vocab_file=${VOCAB}"
 PARAMS="${PARAMS},task.validation_data.input_path=/path/to/validation/data"
 PARAMS="${PARAMS},task.validation_data.vocab_file=${VOCAB}"

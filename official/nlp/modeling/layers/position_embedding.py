@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ class PositionEmbedding(tf.keras.layers.Layer):
                seq_axis=1,
                **kwargs):
 
-    super(PositionEmbedding, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     if max_length is None:
       raise ValueError(
           "`max_length` must be an Integer, not `None`."
@@ -72,7 +72,7 @@ class PositionEmbedding(tf.keras.layers.Layer):
     return dict(list(base_config.items()) + list(config.items()))
 
   def build(self, input_shape):
-    dimension_list = input_shape.as_list()
+    dimension_list = input_shape
     width = dimension_list[-1]
     weight_sequence_length = self._max_length
 
@@ -81,7 +81,7 @@ class PositionEmbedding(tf.keras.layers.Layer):
         shape=[weight_sequence_length, width],
         initializer=self._initializer)
 
-    super(PositionEmbedding, self).build(input_shape)
+    super().build(input_shape)
 
   def call(self, inputs):
     input_shape = tf.shape(inputs)

@@ -1,0 +1,67 @@
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
+# This workflow alerts and then closes the stale issues/PRs after specific time
+# You can adjust the behavior by modifying this file.
+# For more information, see:
+# https://github.com/actions/stale
+
+name: 'Close stale issues and PRs'
+"on":
+  schedule:
+  - cron: "30 1 * * *"
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: 'actions/stale@v7'
+      with:
+        #Comma separated list of labels that can be assigned to issues to exclude them from being marked as stale 
+        exempt-issue-labels: 'override-stale' 
+        #Comma separated list of labels that can be assigned to PRs to exclude them from being marked as stale 
+        exempt-pr-labels: "override-stale" 
+        #Limit the No. of API calls in one run default value is 30. 
+        operations-per-run: 1000 
+        #Prevent to remove stale label when PRs or issues are updated. 
+        remove-stale-when-updated: false
+        # comment on issue if not active for more then 7 days.
+        stale-issue-message: 'This issue has been marked stale because it has no recent activity since 7 days. It will be closed if no further activity occurs. Thank you.'
+        # comment on PR if not active for more then 14 days.
+        stale-pr-message: 'This PR has been marked stale because it has no recent activity since 14 days. It will be closed if no further activity occurs. Thank you.'
+        # comment on issue if stale for more then 7 days.
+        close-issue-message: This issue was closed due to lack of activity after being marked stale for past 7 days.
+        # comment on PR if stale for more then 14 days.
+        close-pr-message: This PR was closed due to lack of activity after being marked stale for past 14 days.
+        # Number of days of inactivity before an Issue Request becomes stale
+        days-before-issue-stale: 7
+        # Number of days of inactivity before a stale Issue is closed
+        days-before-issue-close: 7
+        # reason for closed the issue default value is not_planned
+        close-issue-reason: completed
+        # Number of days of inactivity before a stale PR is closed
+        days-before-pr-close: 14
+        # Number of days of inactivity before an PR Request becomes stale
+        days-before-pr-stale: 14
+        # Check for label to stale or close the issue/PR
+        any-of-labels: 'stat:awaiting response'
+        # override stale to stalled for PR
+        stale-pr-label: 'stale'
+        # override stale to stalled for Issue
+        stale-issue-label: "stale"

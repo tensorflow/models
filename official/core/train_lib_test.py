@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -124,6 +124,61 @@ class TrainTest(tf.test.TestCase, parameterized.TestCase):
               strategy_combinations.cloud_tpu_strategy,
               strategy_combinations.one_device_strategy_gpu,
           ],
+          flag_mode=['train', 'eval', 'train_and_eval'],
+          run_post_eval=[True, False]))
+  def test_end_to_end_class(self, distribution_strategy, flag_mode,
+                            run_post_eval):
+    model_dir = self.get_temp_dir()
+    flags_dict = dict(
+        experiment='mock',
+        mode=flag_mode,
+        model_dir=model_dir,
+        params_override=json.dumps(self._test_config))
+    with flagsaver.flagsaver(**flags_dict):
+      params = train_utils.parse_configuration(flags.FLAGS)
+      train_utils.serialize_config(params, model_dir)
+      with distribution_strategy.scope():
+        task = task_factory.get_task(params.task, logging_dir=model_dir)
+
+      _, logs = train_lib.OrbitExperimentRunner(
+          distribution_strategy=distribution_strategy,
+          task=task,
+          mode=flag_mode,
+          params=params,
+          model_dir=model_dir,
+          run_post_eval=run_post_eval).run()
+
+    if 'eval' in flag_mode:
+      self.assertTrue(
+          tf.io.gfile.exists(
+              os.path.join(model_dir,
+                           params.trainer.validation_summary_subdir)))
+    if run_post_eval:
+      self.assertNotEmpty(logs)
+    else:
+      self.assertEmpty(logs)
+    self.assertNotEmpty(
+        tf.io.gfile.glob(os.path.join(model_dir, 'params.yaml')))
+    if flag_mode == 'eval':
+      return
+    self.assertNotEmpty(
+        tf.io.gfile.glob(os.path.join(model_dir, 'checkpoint')))
+    # Tests continuous evaluation.
+    _, logs = train_lib.OrbitExperimentRunner(
+        distribution_strategy=distribution_strategy,
+        task=task,
+        mode='continuous_eval',
+        params=params,
+        model_dir=model_dir,
+        run_post_eval=run_post_eval).run()
+
+  @combinations.generate(
+      combinations.combine(
+          distribution_strategy=[
+              strategy_combinations.default_strategy,
+              strategy_combinations.cloud_tpu_strategy,
+              strategy_combinations.one_device_strategy_gpu,
+          ],
           flag_mode=['train', 'train_and_eval'],
       ))
   def test_recovery_nan_error(self, distribution_strategy, flag_mode):
@@ -148,12 +203,12 @@ class TrainTest(tf.test.TestCase, parameterized.TestCase):
         task.build_losses = build_losses
 
       with self.assertRaises(RuntimeError):
-        train_lib.run_experiment(
+        train_lib.OrbitExperimentRunner(
             distribution_strategy=distribution_strategy,
             task=task,
             mode=flag_mode,
             params=params,
-            model_dir=model_dir)
+            model_dir=model_dir).run()
 
   @combinations.generate(
       combinations.combine(
@@ -194,12 +249,12 @@ class TrainTest(tf.test.TestCase, parameterized.TestCase):
 
       task.build_losses = build_losses
 
-      model, _ = train_lib.run_experiment(
+      model, _ = train_lib.OrbitExperimentRunner(
           distribution_strategy=distribution_strategy,
           task=task,
           mode=flag_mode,
           params=params,
-          model_dir=model_dir)
+          model_dir=model_dir).run()
       after_weights = model.get_weights()
       for left, right in zip(before_weights, after_weights):
         self.assertAllEqual(left, right)

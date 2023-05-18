@@ -423,9 +423,9 @@ class VisualizationUtilsTest(test_case.TestCase):
     test_image = np.asarray([[[0, 0, 0], [0, 0, 0]],
                              [[0, 0, 0], [0, 0, 0]]], dtype=np.uint8)
     heatmap1 = np.asarray([[1, 0],
-                           [0, 1]], dtype=np.float)
+                           [0, 1]], dtype=float)
     heatmap2 = np.asarray([[0, 1],
-                           [1, 0]], dtype=np.float)
+                           [1, 0]], dtype=float)
     heatmaps = np.stack([heatmap1, heatmap2], axis=0)
     output_image = visualization_utils.draw_heatmaps_on_image_array(
         test_image, heatmaps)
@@ -441,9 +441,9 @@ class VisualizationUtilsTest(test_case.TestCase):
                              [[0, 0, 0], [0, 0, 0]]], dtype=np.uint8)
 
     heatmap1 = np.asarray([[1, 0],
-                           [0, 1]], dtype=np.float)
+                           [0, 1]], dtype=float)
     heatmap2 = np.asarray([[0, 1],
-                           [1, 0]], dtype=np.float)
+                           [1, 0]], dtype=float)
     heatmaps = np.stack([heatmap1, heatmap2], axis=0)
     def graph_fn():
       image_tensor = tf.constant(test_image, dtype=tf.uint8)

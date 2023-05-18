@@ -1,0 +1,51 @@
+# Mapping of plastic type label ids to string name and human readable string
+# label.
+# Sources: U.S. Environmental Protection Agency (http://shortn/_VnW1VzdoKm) and
+# CirclarNet partners.
+item {
+id: 1
+name: "hdpe"
+display_name: "High-density polyethylene"
+}
+item {
+id: 2
+name: "pet"
+display_name: "Polyethylene terephthalate"
+}
+item {
+id: 3
+name: "ldpe"
+display_name: "Low-density polyethylene"
+}
+item {
+id: 4
+name: "ps"
+display_name: "Polystyrene"
+}
+item {
+id: 5
+name: "pp"
+display_name: "Polypropylene"
+}
+item {
+id: 6
+name: "pvc"
+display_name: "Polyvinyl chloride"
+}
+item {
+id: 7
+name: "Others-MLP"
+display_name: "Multi-Layer Plastic"
+}
+item {
+id: 8
+name: "Others-Tetrapak"
+display_name:
+  "A food-grade, aseptic carton made of layers of polyethylene, aluminum and "
+  "paperboard"
+}
+item {
+id: 9
+name: "Others-HIPC"
+display_name: "High Impact Polymer Composite"
+}

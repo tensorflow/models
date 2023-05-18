@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ from absl import logging
 import tensorflow as tf
 
 from official.modeling import tf_utils
+from official.nlp import modeling as nlp_modeling
 from official.vision.modeling.layers import nn_layers
 
 
@@ -122,11 +123,8 @@ class ResidualBlock(tf.keras.layers.Layer):
     self._norm_epsilon = norm_epsilon
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
+    self._norm = tf.keras.layers.BatchNormalization
 
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -141,14 +139,17 @@ class ResidualBlock(tf.keras.layers.Layer):
           kernel_size=1,
           strides=self._strides,
           use_bias=False,
-          kernel_initializer=self._kernel_initializer,
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer)
       self._norm0 = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon,
-          trainable=self._bn_trainable)
+          trainable=self._bn_trainable,
+          synchronized=self._use_sync_bn,
+      )
 
     conv1_padding = 'same'
     # explicit padding here is added for centernet
@@ -162,14 +163,16 @@ class ResidualBlock(tf.keras.layers.Layer):
         strides=self._strides,
         padding=conv1_padding,
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm1 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon,
-        trainable=self._bn_trainable)
+        trainable=self._bn_trainable,
+        synchronized=self._use_sync_bn,
+    )
 
     self._conv2 = tf.keras.layers.Conv2D(
         filters=self._filters,
@@ -177,21 +180,24 @@ class ResidualBlock(tf.keras.layers.Layer):
         strides=1,
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm2 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon,
-        trainable=self._bn_trainable)
+        trainable=self._bn_trainable,
+        synchronized=self._use_sync_bn,
+    )
 
     if self._se_ratio and self._se_ratio > 0 and self._se_ratio <= 1:
       self._squeeze_excitation = nn_layers.SqueezeExcitation(
           in_filters=self._filters,
           out_filters=self._filters,
           se_ratio=self._se_ratio,
-          kernel_initializer=self._kernel_initializer,
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer)
     else:
@@ -318,10 +324,8 @@ class BottleneckBlock(tf.keras.layers.Layer):
     self._norm_epsilon = norm_epsilon
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
+    self._norm = tf.keras.layers.BatchNormalization
+
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -338,7 +342,8 @@ class BottleneckBlock(tf.keras.layers.Layer):
             kernel_size=1,
             strides=1,
             use_bias=False,
-            kernel_initializer=self._kernel_initializer,
+            kernel_initializer=tf_utils.clone_initializer(
+                self._kernel_initializer),
             kernel_regularizer=self._kernel_regularizer,
             bias_regularizer=self._bias_regularizer)
       else:
@@ -347,7 +352,8 @@ class BottleneckBlock(tf.keras.layers.Layer):
             kernel_size=1,
             strides=self._strides,
             use_bias=False,
-            kernel_initializer=self._kernel_initializer,
+            kernel_initializer=tf_utils.clone_initializer(
+                self._kernel_initializer),
             kernel_regularizer=self._kernel_regularizer,
             bias_regularizer=self._bias_regularizer)
 
@@ -355,21 +361,25 @@ class BottleneckBlock(tf.keras.layers.Layer):
           axis=self._bn_axis,
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon,
-          trainable=self._bn_trainable)
+          trainable=self._bn_trainable,
+          synchronized=self._use_sync_bn,
+      )
 
     self._conv1 = tf.keras.layers.Conv2D(
         filters=self._filters,
         kernel_size=1,
         strides=1,
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm1 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon,
-        trainable=self._bn_trainable)
+        trainable=self._bn_trainable,
+        synchronized=self._use_sync_bn,
+    )
     self._activation1 = tf_utils.get_activation(
         self._activation, use_keras_layer=True)
 
@@ -380,14 +390,16 @@ class BottleneckBlock(tf.keras.layers.Layer):
         dilation_rate=self._dilation_rate,
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm2 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon,
-        trainable=self._bn_trainable)
+        trainable=self._bn_trainable,
+        synchronized=self._use_sync_bn,
+    )
     self._activation2 = tf_utils.get_activation(
         self._activation, use_keras_layer=True)
 
@@ -396,14 +408,16 @@ class BottleneckBlock(tf.keras.layers.Layer):
         kernel_size=1,
         strides=1,
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm3 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon,
-        trainable=self._bn_trainable)
+        trainable=self._bn_trainable,
+        synchronized=self._use_sync_bn,
+    )
     self._activation3 = tf_utils.get_activation(
         self._activation, use_keras_layer=True)
 
@@ -412,7 +426,8 @@ class BottleneckBlock(tf.keras.layers.Layer):
           in_filters=self._filters * 4,
           out_filters=self._filters * 4,
           se_ratio=self._se_ratio,
-          kernel_initializer=self._kernel_initializer,
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer)
     else:
@@ -533,8 +548,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
       se_inner_activation: A `str` name of squeeze-excitation inner activation.
       se_gating_activation: A `str` name of squeeze-excitation gating
         activation.
-      se_round_down_protect: A `bool` of whether round down more than 10%
-        will be allowed in SE layer.
+      se_round_down_protect: A `bool` of whether round down more than 10% will
+        be allowed in SE layer.
       expand_se_in_filters: A `bool` of whether or not to expand in_filter in
         squeeze and excitation layer.
       depthwise_activation: A `str` name of the activation function for
@@ -542,9 +557,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
       use_sync_bn: A `bool`. If True, use synchronized batch normalization.
       dilation_rate: An `int` that specifies the dilation rate to use for.
       divisible_by: An `int` that ensures all inner dimensions are divisible by
-        this number.
-      dilated convolution: An `int` to specify the same value for all spatial
-        dimensions.
+        this number. dilated convolution: An `int` to specify the same value for
+        all spatial dimensions.
       regularize_depthwise: A `bool` of whether or not apply regularization on
         depthwise.
       use_depthwise: A `bool` of whether to uses fused convolutions instead of
@@ -584,11 +598,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     self._bias_regularizer = bias_regularizer
     self._expand_se_in_filters = expand_se_in_filters
     self._output_intermediate_endpoints = output_intermediate_endpoints
+    self._norm = tf.keras.layers.BatchNormalization
 
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -616,13 +627,16 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
           strides=expand_stride,
           padding='same',
           use_bias=False,
-          kernel_initializer=self._kernel_initializer,
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer)
       self._norm0 = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)
+          epsilon=self._norm_epsilon,
+          synchronized=self._use_sync_bn,
+      )
       self._activation_layer = tf_utils.get_activation(
           self._activation, use_keras_layer=True)
 
@@ -635,13 +649,16 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
           depth_multiplier=1,
           dilation_rate=self._dilation_rate,
           use_bias=False,
-          depthwise_initializer=self._kernel_initializer,
+          depthwise_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
           depthwise_regularizer=self._depthsize_regularizer,
           bias_regularizer=self._bias_regularizer)
       self._norm1 = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)
+          epsilon=self._norm_epsilon,
+          synchronized=self._use_sync_bn,
+      )
       self._depthwise_activation_layer = tf_utils.get_activation(
           self._depthwise_activation, use_keras_layer=True)
 
@@ -657,7 +674,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
           se_ratio=self._se_ratio,
           divisible_by=self._divisible_by,
           round_down_protect=self._se_round_down_protect,
-          kernel_initializer=self._kernel_initializer,
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer,
           activation=self._se_inner_activation,
@@ -672,13 +690,15 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
         strides=1,
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm2 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn,
+    )
 
     if self._stochastic_depth_drop_rate:
       self._stochastic_depth = nn_layers.StochasticDepth(
@@ -804,11 +824,7 @@ class ResidualInner(tf.keras.layers.Layer):
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     self._batch_norm_first = batch_norm_first
-
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
+    self._norm = tf.keras.layers.BatchNormalization
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
@@ -821,7 +837,9 @@ class ResidualInner(tf.keras.layers.Layer):
       self._batch_norm_0 = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)
+          epsilon=self._norm_epsilon,
+          synchronized=self._use_sync_bn,
+      )
 
     self._conv2d_1 = tf.keras.layers.Conv2D(
         filters=self.filters,
@@ -829,13 +847,15 @@ class ResidualInner(tf.keras.layers.Layer):
         strides=self.strides,
         use_bias=False,
         padding='same',
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer)
 
     self._batch_norm_1 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn,
+    )
 
     self._conv2d_2 = tf.keras.layers.Conv2D(
         filters=self.filters,
@@ -843,7 +863,7 @@ class ResidualInner(tf.keras.layers.Layer):
         strides=1,
         use_bias=False,
         padding='same',
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer)
 
     super(ResidualInner, self).build(input_shape)
@@ -930,11 +950,7 @@ class BottleneckResidualInner(tf.keras.layers.Layer):
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     self._batch_norm_first = batch_norm_first
-
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
+    self._norm = tf.keras.layers.BatchNormalization
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
@@ -947,38 +963,44 @@ class BottleneckResidualInner(tf.keras.layers.Layer):
       self._batch_norm_0 = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)
+          epsilon=self._norm_epsilon,
+          synchronized=self._use_sync_bn,
+      )
     self._conv2d_1 = tf.keras.layers.Conv2D(
         filters=self.filters,
         kernel_size=1,
         strides=self.strides,
         use_bias=False,
         padding='same',
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer)
     self._batch_norm_1 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn,
+    )
     self._conv2d_2 = tf.keras.layers.Conv2D(
         filters=self.filters,
         kernel_size=3,
         strides=1,
         use_bias=False,
         padding='same',
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer)
     self._batch_norm_2 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn,
+    )
     self._conv2d_3 = tf.keras.layers.Conv2D(
         filters=self.filters * 4,
         kernel_size=1,
         strides=1,
         use_bias=False,
         padding='same',
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer)
 
     super(BottleneckResidualInner, self).build(input_shape)
@@ -1040,7 +1062,7 @@ class ReversibleLayer(tf.keras.layers.Layer):
         (bottleneck) residual functions. Where the input to the reversible layer
         is x, the input gets partitioned in the channel dimension and the
         forward pass follows (eq8): x = [x1; x2], z1 = x1 + f(x2), y2 = x2 +
-          g(z1), y1 = stop_gradient(z1).
+        g(z1), y1 = stop_gradient(z1).
       g: A `tf.keras.layers.Layer` instance of `g` inner block referred to in
         paper. Detailed explanation same as above as `f` arg.
       manual_grads: A `bool` [Testing Only] of whether to manually take
@@ -1196,7 +1218,8 @@ class ReversibleLayer(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
-  """Creates an depthwise separable convolution block with batch normalization."""
+  """Creates a depthwise separable convolution block with batch normalization.
+  """
 
   def __init__(
       self,
@@ -1248,11 +1271,8 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
     self._use_sync_bn = use_sync_bn
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
+    self._norm = tf.keras.layers.BatchNormalization
 
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -1286,13 +1306,15 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
         padding='same',
         depth_multiplier=1,
         dilation_rate=self._dilation_rate,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._depthsize_regularizer,
         use_bias=False)
     self._norm0 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn,
+    )
 
     self._conv1 = tf.keras.layers.Conv2D(
         filters=self._filters,
@@ -1300,12 +1322,14 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
         strides=1,
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer)
     self._norm1 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn,
+    )
 
     super(DepthwiseSeparableConvBlock, self).build(input_shape)
 
@@ -1346,10 +1370,10 @@ class TuckerConvBlock(tf.keras.layers.Layer):
     Args:
       in_filters: An `int` number of filters of the input tensor.
       out_filters: An `int` number of filters of the output tensor.
-      input_compression_ratio: An `float` of compression ratio for
-        input filters.
-      output_compression_ratio: An `float` of compression ratio for
-        output filters.
+      input_compression_ratio: An `float` of compression ratio for input
+        filters.
+      output_compression_ratio: An `float` of compression ratio for output
+        filters.
       strides: An `int` block stride. If greater than 1, this block will
         ultimately downsample the input.
       kernel_size: An `int` kernel_size of the depthwise conv layer.
@@ -1389,11 +1413,8 @@ class TuckerConvBlock(tf.keras.layers.Layer):
     self._norm_epsilon = norm_epsilon
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
+    self._norm = tf.keras.layers.BatchNormalization
 
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
     if tf.keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
@@ -1411,13 +1432,15 @@ class TuckerConvBlock(tf.keras.layers.Layer):
         strides=1,
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm0 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn,
+    )
     self._activation_layer0 = tf_utils.get_activation(
         self._activation, use_keras_layer=True)
 
@@ -1432,13 +1455,15 @@ class TuckerConvBlock(tf.keras.layers.Layer):
         strides=self._strides,
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm1 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn,
+    )
     self._activation_layer1 = tf_utils.get_activation(
         self._activation, use_keras_layer=True)
 
@@ -1449,13 +1474,15 @@ class TuckerConvBlock(tf.keras.layers.Layer):
         strides=1,
         padding='same',
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
     self._norm2 = self._norm(
         axis=self._bn_axis,
         momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn,
+    )
 
     if self._stochastic_depth_drop_rate:
       self._stochastic_depth = nn_layers.StochasticDepth(
@@ -1502,11 +1529,353 @@ class TuckerConvBlock(tf.keras.layers.Layer):
     x = self._conv2(x)
     x = self._norm2(x)
 
-    if (self._use_residual and
-        self._in_filters == self._out_filters and
+    if (self._use_residual and self._in_filters == self._out_filters and
         self._strides == 1):
       if self._stochastic_depth:
         x = self._stochastic_depth(x, training=training)
       x = self._add([x, shortcut])
 
     return x
+
+
+@tf.keras.utils.register_keras_serializable(package='Vision')
+class LayerScale(tf.keras.layers.Layer):
+  """LayerScale as introduced in CaiT: https://arxiv.org/abs/2103.17239.
+
+  Attributes:
+      init_values (float): value to initialize the diagonal matrix of
+        LayerScale.
+  """
+
+  def __init__(self, init_values: float, **kwargs):
+    """Initializes LayerScale."""
+    super().__init__(**kwargs)
+    self.gamma_init_value = init_values
+
+  def build(self, inputs_shape):
+    gamma_shape = (1, 1, inputs_shape[2])
+    self.gamma = self.add_weight(
+        name='layerscale_gamma',
+        shape=gamma_shape,
+        initializer=tf.keras.initializers.Constant(self.gamma_init_value),
+        trainable=True,
+        dtype=tf.float32,
+    )
+
+  def call(self, inputs, inputs_positions=None):
+    del inputs_positions
+    return tf.cast(self.gamma, inputs.dtype) * inputs
+
+
+@tf.keras.utils.register_keras_serializable(package='Vision')
+class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
+  """TransformerEncoderBlock layer with stochastic depth and layerscale."""
+
+  def __init__(
+      self,
+      *args,
+      stochastic_depth_drop_rate=0.0,
+      layer_scale_init_value=0.0,
+      transformer_partition_dims=None,
+      max_attention_inference_parallelism=None,
+      **kwargs
+  ):
+    """Initializes TransformerEncoderBlock.
+
+    Args:
+      *args: positional arguments passed to super().__init__.
+      stochastic_depth_drop_rate: the drop rate for the stochastic depth layer.
+      layer_scale_init_value:
+      transformer_partition_dims: transformer spatial partition dimenstions.
+      max_attention_inference_parallelism: the number of examples to run in
+        parallel in the attention blocks during inference. Set this limit to
+        reduce the peak memory usage. If None, use vectorized operations to run
+        the whole batch in parallel.
+      **kwargs: keyword arguments passed to super().__init__.
+    """
+    super().__init__(*args, **kwargs)
+    self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
+    self._layer_scale_init_value = layer_scale_init_value
+    self._transformer_partition_dims = transformer_partition_dims
+    self._max_attention_inference_parallelism = (
+        max_attention_inference_parallelism
+    )
+
+  def build(self, input_shape):
+    super().build(input_shape)
+
+    if self._stochastic_depth_drop_rate:
+      self._stochastic_depth = nn_layers.StochasticDepth(
+          self._stochastic_depth_drop_rate)
+    else:
+      self._stochastic_depth = lambda x, *args, **kwargs: tf.identity(x)
+
+    if self._layer_scale_init_value:
+      self._layer_scale_attn = LayerScale(
+          init_values=self._layer_scale_init_value, name='layer_scale_attn')
+      self._layer_scale_mlp = LayerScale(
+          init_values=self._layer_scale_init_value, name='layer_scale_mlp')
+    else:
+      self._layer_scale_attn = lambda x, *args, **kwargs: tf.identity(x)
+      self._layer_scale_mlp = lambda x, *args, **kwargs: tf.identity(x)
+
+    self._attention_layer = nn_layers.MultiHeadAttention(
+        num_heads=self._num_heads,
+        key_dim=self._key_dim,
+        value_dim=self._value_dim,
+        dropout=self._attention_dropout_rate,
+        use_bias=self._use_bias,
+        kernel_initializer=self._attention_initializer,
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
+        attention_axes=self._attention_axes,
+        output_shape=self._output_last_dim,
+        bias_regularizer=self._bias_regularizer,
+        activity_regularizer=self._activity_regularizer,
+        kernel_constraint=self._kernel_constraint,
+        bias_constraint=self._bias_constraint,
+        max_inference_parallelism=self._max_attention_inference_parallelism,
+        partition_dims=self._transformer_partition_dims,
+        name='self_attention',
+    )
+
+  def get_config(self):
+    config = super().get_config()
+    config.update({
+        'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
+        'layer_scale_init_value': self._layer_scale_init_value,
+        'transformer_partition_dims': self._transformer_partition_dims,
+        'max_attention_inference_parallelism': (
+            self._max_attention_inference_parallelism
+        ),
+    })
+    return config
+
+  def call(self, inputs, output_range=None, training=None):
+    """Transformer self-attention encoder block call."""
+    if isinstance(inputs, (list, tuple)):
+      if len(inputs) == 2:
+        input_tensor, attention_mask = inputs
+        key_value = None
+      elif len(inputs) == 3:
+        input_tensor, key_value, attention_mask = inputs
+      else:
+        raise ValueError('Unexpected inputs to %s with length at %d' %
+                         (self.__class__, len(inputs)))
+    else:
+      input_tensor, key_value, attention_mask = (inputs, None, None)
+
+    if output_range is None:
+      output_range = self._output_range
+    if output_range:
+      if self._norm_first:
+        source_tensor = input_tensor[:, 0:output_range, :]
+        input_tensor = self._attention_layer_norm(input_tensor)
+        if key_value is not None:
+          key_value = self._attention_layer_norm(key_value)
+      target_tensor = input_tensor[:, 0:output_range, :]
+      if attention_mask is not None:
+        attention_mask = attention_mask[:, 0:output_range, :]
+    else:
+      if self._norm_first:
+        source_tensor = input_tensor
+        input_tensor = self._attention_layer_norm(input_tensor)
+        if key_value is not None:
+          key_value = self._attention_layer_norm(key_value)
+      target_tensor = input_tensor
+
+    if key_value is None:
+      key_value = input_tensor
+
+    attention_output, attention_scores = self._attention_layer(
+        query=target_tensor,
+        value=key_value,
+        attention_mask=attention_mask,
+        return_attention_scores=True)
+    attention_output = self._attention_dropout(attention_output)
+
+    attention_output = self._layer_scale_attn(attention_output)
+
+    if self._norm_first:
+      # Important to not combine `self._norm_first` and
+      # `self._use_query_residual` into one if clause because else is only for
+      # `_norm_first == False`.
+      if self._use_query_residual:
+        attention_output = source_tensor + self._stochastic_depth(
+            attention_output, training=training)
+      source_attention_output = attention_output
+      attention_output = self._output_layer_norm(attention_output)
+    else:
+      if self._use_query_residual:
+        attention_output = target_tensor + self._stochastic_depth(
+            attention_output, training=training)
+      attention_output = self._attention_layer_norm(attention_output)
+
+    inner_output = self._intermediate_dense(attention_output)
+    inner_output = self._intermediate_activation_layer(inner_output)
+    inner_output = self._inner_dropout_layer(inner_output)
+    layer_output = self._output_dense(inner_output)
+    layer_output = self._output_dropout(layer_output)
+
+    # Layerscale after MLP.
+    layer_output = self._layer_scale_mlp(layer_output)
+
+    if self._norm_first:
+      layer_output = source_attention_output + self._stochastic_depth(
+          layer_output, training=training)
+    else:
+      # During mixed precision training, layer norm output is always fp32 for
+      # now. Casts fp32 for the subsequent add.
+      layer_output = tf.cast(layer_output, tf.float32)
+      layer_output = self._output_layer_norm(
+          layer_output
+          + self._stochastic_depth(attention_output, training=training))
+
+    if self._return_attention_scores:
+      return layer_output, attention_scores
+    else:
+      return layer_output
+
+
+@tf.keras.utils.register_keras_serializable(package='Vision')
+class TransformerScaffold(nlp_modeling.layers.TransformerScaffold):
+  """TransformerScaffold layer for vision applications."""
+
+  def __init__(
+      self,
+      *args,
+      stochastic_depth_drop_rate: float = 0.0,
+      return_attention_scores: bool = False,
+      ffn_has_residual_connection: bool = False,
+      max_attention_inference_parallelism: Optional[int] = None,
+      **kwargs
+  ):
+    """Initializes TransformerEncoderBlock.
+
+    Args:
+      *args: positional arguments passed to super().__init__.
+      stochastic_depth_drop_rate: the drop rate for the stochastic depth layer.
+      return_attention_scores: whether to return the attention output.
+      ffn_has_residual_connection: whether the feedforward network has internal
+        residual connection and layer norm. If False, the residual connection
+        and the layer norm op are called inside TransformerScaffold.
+      max_attention_inference_parallelism: the number of examples to run in
+        parallel in the attention blocks during inference. Set this limit to
+        reduce the peak memory usage. If None, use vectorized operations to run
+        the whole batch in parallel.
+      **kwargs: keyword arguments passed to super().__init__.
+    """
+    super().__init__(*args, **kwargs)
+    self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
+    self._return_attention_scores = return_attention_scores
+    self._ffn_has_residual_connection = ffn_has_residual_connection
+    self._max_attention_inference_parallelism = (
+        max_attention_inference_parallelism
+    )
+
+  def build(self, input_shape: Union[tf.TensorShape, List[int]]):
+    if self._stochastic_depth_drop_rate:
+      self._stochastic_depth = nn_layers.StochasticDepth(
+          self._stochastic_depth_drop_rate)
+    else:
+      self._stochastic_depth = lambda x, *args, **kwargs: tf.identity(x)
+
+    super().build(input_shape)
+
+    if self._max_attention_inference_parallelism is not None:
+      attention_layer_config = self._attention_layer.get_config()
+      self._attention_layer = self._attention_cls.from_config({
+          **attention_layer_config,
+          'max_inference_parallelism': (
+              self._max_attention_inference_parallelism
+          ),
+      })
+
+  def get_config(self):
+    config = super().get_config()
+    config.update({
+        'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
+        'return_attention_scores': self._return_attention_scores,
+        'ffn_has_residual_connection': self._ffn_has_residual_connection,
+        'max_attention_inference_parallelism': (
+            self._max_attention_inference_parallelism
+        ),
+    })
+    return config
+
+  def call(
+      self,
+      inputs: tf.Tensor,
+      training: Optional[bool] = None
+  ) -> Union[tf.Tensor, Tuple[tf.Tensor, tf.Tensor]]:
+    """Transformer self-attention encoder block call."""
+    if isinstance(inputs, (list, tuple)):
+      if len(inputs) == 2:
+        input_tensor, attention_mask = inputs
+        key_value = None
+      elif len(inputs) == 3:
+        input_tensor, key_value, attention_mask = inputs
+      else:
+        raise ValueError('Unexpected inputs to %s with length at %d' %
+                         (self.__class__, len(inputs)))
+    else:
+      input_tensor, key_value, attention_mask = (inputs, None, None)
+
+    if self._norm_first:
+      source_tensor = input_tensor
+      input_tensor = self._attention_layer_norm(input_tensor)
+
+    if key_value is None:
+      key_value = input_tensor
+
+    attention_output, attention_scores = self._attention_layer(
+        query=input_tensor,
+        value=key_value,
+        attention_mask=attention_mask,
+        training=training,
+        return_attention_scores=True)
+    attention_output = self._attention_dropout(
+        attention_output, training=training)
+
+    if self._norm_first:
+      source_attention_output = source_tensor + self._stochastic_depth(
+          attention_output, training=training)
+      attention_output = self._output_layer_norm(
+          source_attention_output)
+    else:
+      attention_output = self._attention_layer_norm(
+          input_tensor +
+          self._stochastic_depth(attention_output, training=training))
+
+    if self._feedforward_block is None:
+      intermediate_output = self._intermediate_dense(attention_output)
+      intermediate_output = self._intermediate_activation_layer(
+          intermediate_output)
+      layer_output = self._output_dense(intermediate_output)
+      layer_output = self._output_dropout(layer_output, training=training)
+    else:
+      layer_output = self._feedforward_block(
+          attention_output, training=training)
+
+    if self._norm_first:
+      if self._ffn_has_residual_connection:
+        raise ValueError(
+            'In the case of `norm_first`, the residual connection should be'
+            "done in the TransformerScaffold call function, not FFN's"
+            'call function.')
+      output = source_attention_output + self._stochastic_depth(
+          layer_output, training=training)
+    else:
+      # During mixed precision training, layer norm output is always fp32 for
+      # now. Casts fp32 for the subsequent add.
+      layer_output = tf.cast(layer_output, tf.float32)
+      if self._ffn_has_residual_connection:
+        output = self._stochastic_depth(layer_output, training=training)
+      else:
+        output = self._output_layer_norm(
+            attention_output +
+            self._stochastic_depth(layer_output, training=training))
+
+    if self._return_attention_scores:
+      return output, attention_scores
+    else:
+      return output

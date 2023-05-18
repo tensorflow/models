@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(
       (128, 10, 1),
       (128, 18, 1),
+      (128, 26, 1),
       (128, 34, 1),
       (128, 50, 4),
       (128, 101, 4),
@@ -40,6 +41,7 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
     resnet_params = {
         10: 4915904,
         18: 11190464,
+        26: 17465024,
         34: 21306048,
         50: 23561152,
         101: 42605504,

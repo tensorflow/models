@@ -87,7 +87,8 @@ def _create_bifpn_node_config(bifpn_num_iterations,
                               fpn_max_level,
                               input_max_level,
                               bifpn_node_params=None,
-                              level_scales=None):
+                              level_scales=None,
+                              use_native_resize_op=False):
   """Creates a config specifying a bidirectional feature pyramid network.
 
   Args:
@@ -107,6 +108,8 @@ def _create_bifpn_node_config(bifpn_num_iterations,
     level_scales: a list of pyramid level scale factors. If 'None', each level's
       scale is set to 2^level by default, which corresponds to each successive
       feature map scaling by a factor of 2.
+    use_native_resize_op: If true, will use
+      tf.compat.v1.image.resize_nearest_neighbor for unsampling.
 
   Returns:
     A list of dictionaries used to define nodes in the BiFPN computation graph,
@@ -145,7 +148,9 @@ def _create_bifpn_node_config(bifpn_num_iterations,
           'fast_attention',
       'input_op':
           functools.partial(
-              _create_bifpn_resample_block, downsample_method='max_pooling'),
+              _create_bifpn_resample_block,
+              downsample_method='max_pooling',
+              use_native_resize_op=use_native_resize_op),
       'post_combine_op':
           functools.partial(
               bifpn_utils.create_conv_block,
@@ -355,6 +360,7 @@ class KerasBiFpnFeatureMaps(tf.keras.Model):
                conv_hyperparams,
                freeze_batchnorm,
                bifpn_node_params=None,
+               use_native_resize_op=False,
                name=None):
     """Constructor.
 
@@ -382,15 +388,23 @@ class KerasBiFpnFeatureMaps(tf.keras.Model):
         bifpn_node_config. For example, if '{ combine_method: 'sum' }', then all
         BiFPN nodes will combine input feature maps by summation, rather than
         by the default fast attention method.
+      use_native_resize_op: If True, will use
+        tf.compat.v1.image.resize_nearest_neighbor for unsampling.
       name: A string name scope to assign to the model. If 'None', Keras
         will auto-generate one from the class name.
     """
     super(KerasBiFpnFeatureMaps, self).__init__(name=name)
     bifpn_node_config = _create_bifpn_node_config(
-        bifpn_num_iterations, bifpn_num_filters, fpn_min_level, fpn_max_level,
-        input_max_level, bifpn_node_params)
-    bifpn_input_config = _create_bifpn_input_config(
-        fpn_min_level, fpn_max_level, input_max_level)
+        bifpn_num_iterations,
+        bifpn_num_filters,
+        fpn_min_level,
+        fpn_max_level,
+        input_max_level,
+        bifpn_node_params,
+        use_native_resize_op=use_native_resize_op)
+    bifpn_input_config = _create_bifpn_input_config(fpn_min_level,
+                                                    fpn_max_level,
+                                                    input_max_level)
     bifpn_output_node_names = _get_bifpn_output_node_names(
         fpn_min_level, fpn_max_level, bifpn_node_config)
 

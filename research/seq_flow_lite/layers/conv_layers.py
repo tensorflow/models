@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-# Lint as: python3
 """Base layer for convolution."""
+import copy
 import tensorflow as tf
 
 from layers import base_layers # import seq_flow_lite module
@@ -33,6 +33,7 @@ class EncoderQConvolution(base_layers.BaseLayer):
                activation=tf.keras.layers.ReLU(),
                bias=True,
                rank=4,
+               normalization_fn=None,
                **kwargs):
     self.out_filters = filters
     assert rank >= 3 and rank <= 4
@@ -44,7 +45,7 @@ class EncoderQConvolution(base_layers.BaseLayer):
     self.bias = bias
     self.padding = padding
     self.qoutput = quantization_layers.ActivationQuantization(**kwargs)
-    self._create_normalizer(**kwargs)
+    self._create_normalizer(normalization_fn=normalization_fn, **kwargs)
     super(EncoderQConvolution, self).__init__(**kwargs)
 
   def _unpack(self, value):
@@ -64,8 +65,11 @@ class EncoderQConvolution(base_layers.BaseLayer):
     if self.bias:
       self.b = self.add_bias(shape=[self.out_filters])
 
-  def _create_normalizer(self, **kwargs):
-    self.normalization = normalization_layers.BatchNormalization(**kwargs)
+  def _create_normalizer(self, normalization_fn, **kwargs):
+    if normalization_fn is None:
+      self.normalization = normalization_layers.BatchNormalization(**kwargs)
+    else:
+      self.normalization = copy.deepcopy(normalization_fn)
 
   def _conv_r4(self, inputs, normalize_method):
     outputs = tf.nn.conv2d(
@@ -106,9 +110,12 @@ class EncoderQConvolution(base_layers.BaseLayer):
 class EncoderQConvolutionVarLen(EncoderQConvolution):
   """Convolution on variable length sequence."""
 
-  def _create_normalizer(self, **kwargs):
-    self.normalization = normalization_layers.VarLenBatchNormalization(
-        rank=4, **kwargs)
+  def _create_normalizer(self, normalization_fn, **kwargs):
+    if normalization_fn is None:
+      self.normalization = normalization_layers.VarLenBatchNormalization(
+          rank=4, **kwargs)
+    else:
+      self.normalization = copy.deepcopy(normalization_fn)
 
   def call(self, inputs, mask, inverse_normalizer):
 

@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,11 +14,44 @@
 
 """Backbones configurations."""
 import dataclasses
-from typing import Optional, List
-
-# Import libraries
+from typing import List, Optional, Tuple
 
 from official.modeling import hyperparams
+
+
+@dataclasses.dataclass
+class Transformer(hyperparams.Config):
+  """Transformer config."""
+  mlp_dim: int = 1
+  num_heads: int = 1
+  num_layers: int = 1
+  attention_dropout_rate: float = 0.0
+  dropout_rate: float = 0.0
+
+
+@dataclasses.dataclass
+class VisionTransformer(hyperparams.Config):
+  """VisionTransformer config."""
+  model_name: str = 'vit-b16'
+  # pylint: disable=line-too-long
+  pooler: str = 'token'  # 'token', 'gap' or 'none'. If set to 'token', an extra classification token is added to sequence.
+  # pylint: enable=line-too-long
+  representation_size: int = 0
+  hidden_size: int = 1
+  patch_size: int = 16
+  transformer: Transformer = Transformer()
+  init_stochastic_depth_rate: float = 0.0
+  original_init: bool = True
+  pos_embed_shape: Optional[Tuple[int, int]] = None
+  # If output encoded tokens sequence when pooler is `none`.
+  output_encoded_tokens: bool = True
+  # If output encoded tokens 2D feature map.
+  output_2d_feature_maps: bool = False
+
+  # Adding Layerscale to each Encoder block https://arxiv.org/abs/2204.07118
+  layer_scale_init_value: float = 0.0
+  # Transformer encoder spatial partition dimensions.
+  transformer_partition_dims: Optional[Tuple[int, int, int, int]] = None
 
 
 @dataclasses.dataclass
@@ -45,6 +78,8 @@ class DilatedResNet(hyperparams.Config):
   last_stage_repeats: int = 1
   se_ratio: float = 0.0
   stochastic_depth_drop_rate: float = 0.0
+  resnetd_shortcut: bool = False
+  replace_stem_max_pool: bool = False
 
 
 @dataclasses.dataclass
@@ -118,6 +153,7 @@ class Backbone(hyperparams.OneOfConfig):
     spinenet_mobile: mobile spinenet backbone config.
     mobilenet: mobilenet backbone config.
     mobiledet: mobiledet backbone config.
+    vit: vision transformer backbone config.
   """
   type: Optional[str] = None
   resnet: ResNet = ResNet()
@@ -128,4 +164,4 @@ class Backbone(hyperparams.OneOfConfig):
   spinenet_mobile: SpineNetMobile = SpineNetMobile()
   mobilenet: MobileNet = MobileNet()
   mobiledet: MobileDet = MobileDet()
-
+  vit: VisionTransformer = VisionTransformer()

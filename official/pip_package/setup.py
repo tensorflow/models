@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import sys
 from setuptools import find_packages
 from setuptools import setup
 
-version = '2.8.0'
-tf_version = '2.8.0'  # Major version.
+version = '2.12.0'
+tf_version = '2.12.0'  # Major version.
 
 project_name = 'tf-models-official'
 

@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -150,6 +150,36 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(expected_data_shape, data.shape.as_list())
     self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
 
+  @parameterized.named_parameters(
+      ("frac_pool_rezero", "ReZeroTransformer"),
+      ("frac_pool_vanilla", "TransformerEncoderBlock"),
+      )
+  def test_fractional_pooling(self, transformer_cls):
+    hidden_size = 16
+    sequence_length = 32
+    pool_strides = [1.33333, 3, 2, 1]
+    num_layers = 4
+    pool_type = "truncated_avg"
+    test_network = funnel_transformer.FunnelTransformerEncoder(
+        vocab_size=100,
+        hidden_size=hidden_size,
+        num_attention_heads=2,
+        num_layers=num_layers,
+        pool_stride=pool_strides,
+        pool_type=pool_type,
+        max_sequence_length=sequence_length,
+        unpool_length=0,
+        transformer_cls=transformer_cls)
+    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    dict_outputs = test_network([word_ids, mask, type_ids])
+    data = dict_outputs["sequence_output"]
+
+    expected_data_shape = [None, 4, hidden_size]
+
+    self.assertAllEqual(expected_data_shape, data.shape.as_list())
+
   def test_invalid_stride_and_num_layers(self):
     hidden_size = 32
     num_layers = 3
@@ -212,7 +242,7 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.named_parameters(
       ("all_sequence", None, 3, 0),
       ("output_range", 1, 1, 0),
-      ("all_sequence_wit_unpool", None, 4, 1),
+      ("all_sequence_with_unpool", None, 4, 1),
       ("output_range_with_unpool", 1, 1, 1),
       ("output_range_with_large_unpool", 1, 1, 2),
   )
@@ -229,14 +259,14 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
         num_attention_heads=2,
         num_layers=3,
         type_vocab_size=num_types,
-        output_range=output_range,
         pool_stride=pool_stride,
         unpool_length=unpool_length)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    dict_outputs = test_network([word_ids, mask, type_ids])
+    dict_outputs = test_network([word_ids, mask, type_ids],
+                                output_range=output_range)
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
 
@@ -289,6 +319,43 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
     outputs = model.predict([word_id_data, mask_data, type_id_data])
     self.assertEqual(outputs[0].shape[-1], hidden_size)
     self.assertTrue(hasattr(test_network, "_embedding_projection"))
+
+  def test_embeddings_as_inputs(self):
+    hidden_size = 32
+    sequence_length = 21
+    # Create a small BertEncoder for testing.
+    test_network = funnel_transformer.FunnelTransformerEncoder(
+        vocab_size=100,
+        hidden_size=hidden_size,
+        num_attention_heads=2,
+        num_layers=3,
+        pool_stride=2,
+    )
+    # Create the inputs (note that the first dimension is implicit).
+    word_ids = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
+    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    test_network.build(
+        dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids)
+    )
+    embeddings = test_network.get_embedding_layer()(word_ids)
+    # Calls with the embeddings.
+    dict_outputs = test_network(
+        dict(
+            input_word_embeddings=embeddings,
+            input_mask=mask,
+            input_type_ids=type_ids,
+        )
+    )
+    all_encoder_outputs = dict_outputs["encoder_outputs"]
+    pooled = dict_outputs["pooled_output"]
+
+    expected_pooled_shape = [None, hidden_size]
+    self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
+
+    # The default output dtype is float32.
+    self.assertAllEqual(tf.float32, all_encoder_outputs[-1].dtype)
+    self.assertAllEqual(tf.float32, pooled.dtype)
 
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.

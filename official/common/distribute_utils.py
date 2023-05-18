@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -96,7 +96,7 @@ def get_distribution_strategy(distribution_strategy="mirrored",
                               num_packs=1,
                               tpu_address=None,
                               **kwargs):
-  """Return a DistributionStrategy for running the model.
+  """Return a Strategy for running the model.
 
   Args:
     distribution_strategy: a string specifying which distribution strategy to
@@ -119,7 +119,7 @@ def get_distribution_strategy(distribution_strategy="mirrored",
     **kwargs: Additional kwargs for internal usages.
 
   Returns:
-    tf.distribute.DistibutionStrategy object.
+    tf.distribute.Strategy object.
   Raises:
     ValueError: if `distribution_strategy` is "off" or "one_device" and
       `num_gpus` is larger than 1; or `num_gpus` is negative or if

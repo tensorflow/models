@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,14 +18,12 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.projects.roformer import roformer_encoder_block
 
 
-@keras_parameterized.run_all_keras_modes
 @parameterized.named_parameters(
     ('base', roformer_encoder_block.RoformerEncoderBlock))
-class RoformerEncoderBlockTest(keras_parameterized.TestCase):
+class RoformerEncoderBlockTest(tf.test.TestCase, parameterized.TestCase):
 
   def tearDown(self):
     super(RoformerEncoderBlockTest, self).tearDown()
@@ -238,8 +236,7 @@ class RoformerEncoderBlockTest(keras_parameterized.TestCase):
     self.assertEqual(output.shape, q_tensor.shape)
 
 
-@keras_parameterized.run_all_keras_modes
-class RoformerArgumentTest(keras_parameterized.TestCase):
+class RoformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_raises(self):
     num_attention_heads = 2

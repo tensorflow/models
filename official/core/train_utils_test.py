@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -186,6 +186,23 @@ class BestCheckpointExporterTest(tf.test.TestCase):
     exporter = train_utils.BestCheckpointExporter(model_dir, metric_name,
                                                   'higher')
     exporter.export_best_eval_metric({'test_metric': {'metric_1': 5.0}}, 100)
+    with tf.io.gfile.GFile(os.path.join(model_dir, 'info.json'),
+                           'rb') as reader:
+      metric = json.loads(reader.read())
+      self.assertAllEqual(
+          metric,
+          {'test_metric': {'metric_1': 5.0}, 'best_ckpt_global_step': 100.0})
+
+  def test_export_best_eval_metric_skips_non_scalar_values(self):
+    model_dir = self.create_tempdir().full_path
+    metric_name = 'test_metric|metric_1'
+    exporter = train_utils.BestCheckpointExporter(model_dir, metric_name,
+                                                  'higher')
+    image = tf.zeros(shape=[16, 8, 1])
+    eval_logs = {'test_metric': {'metric_1': 5.0, 'image': image}}
+
+    exporter.export_best_eval_metric(eval_logs, 100)
+
     with tf.io.gfile.GFile(os.path.join(model_dir, 'info.json'),
                            'rb') as reader:
       metric = json.loads(reader.read())

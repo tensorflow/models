@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 r"""Vision models export utility function for serving/inference."""
 
 import os
-from typing import Optional, List
+from typing import Optional, List, Union, Text, Dict
 
 from absl import logging
 import tensorflow as tf
@@ -44,7 +44,10 @@ def export_inference_graph(
     save_options: Optional[tf.saved_model.SaveOptions] = None,
     log_model_flops_and_params: bool = False,
     checkpoint: Optional[tf.train.Checkpoint] = None,
-    input_name: Optional[str] = None):
+    input_name: Optional[str] = None,
+    function_keys: Optional[Union[List[Text], Dict[Text, Text]]] = None,
+    add_tpu_function_alias: Optional[bool] = False,
+):
   """Exports inference graph for the model specified in the exp config.
 
   Saved model is stored at export_dir/saved_model, checkpoint is saved
@@ -58,13 +61,12 @@ def export_inference_graph(
     checkpoint_path: Trained checkpoint path or directory.
     export_dir: Export directory path.
     num_channels: The number of input image channels.
-    export_module: Optional export module to be used instead of using params
-      to create one. If None, the params will be used to create an export
-      module.
-    export_checkpoint_subdir: Optional subdirectory under export_dir
-      to store checkpoint.
-    export_saved_model_subdir: Optional subdirectory under export_dir
-      to store saved model.
+    export_module: Optional export module to be used instead of using params to
+      create one. If None, the params will be used to create an export module.
+    export_checkpoint_subdir: Optional subdirectory under export_dir to store
+      checkpoint.
+    export_saved_model_subdir: Optional subdirectory under export_dir to store
+      saved model.
     save_options: `SaveOptions` for `tf.saved_model.save`.
     log_model_flops_and_params: If True, writes model FLOPs to model_flops.txt
       and model parameters to model_params.txt.
@@ -72,6 +74,11 @@ def export_inference_graph(
       will use it to read the weights.
     input_name: The input tensor name, default at `None` which produces input
       tensor name `inputs`.
+    function_keys: a list of string keys to retrieve pre-defined serving
+      signatures. The signaute keys will be set with defaults. If a dictionary
+      is provided, the values will be used as signature keys.
+    add_tpu_function_alias: Whether to add TPU function alias so that it can be
+      converted to a TPU compatible saved model later. Default is False.
   """
 
   if export_checkpoint_subdir:
@@ -128,9 +135,16 @@ def export_inference_graph(
       raise ValueError('Export module not implemented for {} task.'.format(
           type(params.task)))
 
+  if add_tpu_function_alias:
+    save_options = tf.saved_model.SaveOptions(
+        function_aliases={
+            'tpu_candidate': export_module.inference_from_image_tensors,
+        }
+    )
+
   export_base.export(
       export_module,
-      function_keys=[input_type],
+      function_keys=function_keys if function_keys else [input_type],
       export_savedmodel_dir=output_saved_model_directory,
       checkpoint=checkpoint,
       checkpoint_path=checkpoint_path,

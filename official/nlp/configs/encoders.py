@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 Includes configurations and factory methods.
 """
 import dataclasses
-from typing import Optional
+from typing import Optional, Sequence
 
 import gin
 import tensorflow as tf
@@ -46,6 +46,7 @@ class BertEncoderConfig(hyperparams.Config):
   embedding_size: Optional[int] = None
   output_range: Optional[int] = None
   return_all_encoder_outputs: bool = False
+  return_attention_scores: bool = False
   # Pre/Post-LN Transformer
   norm_first: bool = False
 
@@ -222,6 +223,75 @@ class XLNetEncoderConfig(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class QueryBertConfig(hyperparams.Config):
+  """Query BERT encoder configuration."""
+  vocab_size: int = 30522
+  hidden_size: int = 768
+  num_layers: int = 12
+  num_attention_heads: int = 12
+  hidden_activation: str = "gelu"
+  intermediate_size: int = 3072
+  dropout_rate: float = 0.1
+  attention_dropout_rate: float = 0.1
+  max_position_embeddings: int = 512
+  type_vocab_size: int = 2
+  initializer_range: float = 0.02
+  embedding_size: Optional[int] = None
+  output_range: Optional[int] = None
+  return_all_encoder_outputs: bool = False
+  return_attention_scores: bool = False
+  # Pre/Post-LN Transformer
+  norm_first: bool = False
+
+
+@dataclasses.dataclass
+class FNetEncoderConfig(hyperparams.Config):
+  """FNet encoder configuration."""
+  vocab_size: int = 30522
+  hidden_size: int = 768
+  num_layers: int = 12
+  num_attention_heads: int = 12
+  inner_activation: str = "gelu"
+  inner_dim: int = 3072
+  output_dropout: float = 0.1
+  attention_dropout: float = 0.1
+  max_sequence_length: int = 512
+  type_vocab_size: int = 2
+  initializer_range: float = 0.02
+  embedding_width: Optional[int] = None
+  output_range: Optional[int] = None
+  norm_first: bool = False
+  use_fft: bool = False
+  attention_layers: Sequence[int] = ()
+
+
+@dataclasses.dataclass
+class SparseMixerEncoderConfig(hyperparams.Config):
+  """SparseMixer encoder configuration."""
+  vocab_size: int = 30522
+  hidden_size: int = 768
+  num_layers: int = 14
+  moe_layers: Sequence[int] = (5, 6, 7, 8)
+  attention_layers: Sequence[int] = (10, 11, 12, 13)
+  num_experts: int = 16
+  train_capacity_factor: float = 1.
+  eval_capacity_factor: float = 1.
+  examples_per_group: float = 1.
+  use_fft: bool = False
+  num_attention_heads: int = 8
+  max_sequence_length: int = 512
+  type_vocab_size: int = 2
+  inner_dim: int = 3072
+  inner_activation: str = "gelu"
+  output_dropout: float = 0.1
+  attention_dropout: float = 0.1
+  initializer_range: float = 0.02
+  output_range: Optional[int] = None
+  embedding_width: Optional[int] = None
+  norm_first: bool = False
+
+
+@dataclasses.dataclass
 class EncoderConfig(hyperparams.OneOfConfig):
   """Encoder configuration."""
   type: Optional[str] = "bert"
@@ -233,6 +303,9 @@ class EncoderConfig(hyperparams.OneOfConfig):
   mobilebert: MobileBertEncoderConfig = MobileBertEncoderConfig()
   reuse: ReuseEncoderConfig = ReuseEncoderConfig()
   xlnet: XLNetEncoderConfig = XLNetEncoderConfig()
+  query_bert: QueryBertConfig = QueryBertConfig()
+  fnet: FNetEncoderConfig = FNetEncoderConfig()
+  sparse_mixer: SparseMixerEncoderConfig = SparseMixerEncoderConfig()
   # If `any` is used, the encoder building relies on any.BUILDER.
   any: hyperparams.Config = hyperparams.Config()
 
@@ -513,6 +586,81 @@ def build_encoder(config: EncoderConfig,
         recursive=True)
     return networks.EncoderScaffold(**kwargs)
 
+  if encoder_type == "query_bert":
+    embedding_layer = layers.FactorizedEmbedding(
+        vocab_size=encoder_cfg.vocab_size,
+        embedding_width=encoder_cfg.embedding_size,
+        output_dim=encoder_cfg.hidden_size,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        name="word_embeddings")
+    return networks.BertEncoderV2(
+        vocab_size=encoder_cfg.vocab_size,
+        hidden_size=encoder_cfg.hidden_size,
+        num_layers=encoder_cfg.num_layers,
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        intermediate_size=encoder_cfg.intermediate_size,
+        activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
+        dropout_rate=encoder_cfg.dropout_rate,
+        attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+        max_sequence_length=encoder_cfg.max_position_embeddings,
+        type_vocab_size=encoder_cfg.type_vocab_size,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        output_range=encoder_cfg.output_range,
+        embedding_layer=embedding_layer,
+        return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs,
+        return_attention_scores=encoder_cfg.return_attention_scores,
+        dict_outputs=True,
+        norm_first=encoder_cfg.norm_first)
+
+  if encoder_type == "fnet":
+    return networks.FNet(
+        vocab_size=encoder_cfg.vocab_size,
+        hidden_size=encoder_cfg.hidden_size,
+        num_layers=encoder_cfg.num_layers,
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        inner_dim=encoder_cfg.inner_dim,
+        inner_activation=tf_utils.get_activation(encoder_cfg.inner_activation),
+        output_dropout=encoder_cfg.output_dropout,
+        attention_dropout=encoder_cfg.attention_dropout,
+        max_sequence_length=encoder_cfg.max_sequence_length,
+        type_vocab_size=encoder_cfg.type_vocab_size,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        output_range=encoder_cfg.output_range,
+        embedding_width=encoder_cfg.embedding_width,
+        embedding_layer=embedding_layer,
+        norm_first=encoder_cfg.norm_first,
+        use_fft=encoder_cfg.use_fft,
+        attention_layers=encoder_cfg.attention_layers)
+
+  if encoder_type == "sparse_mixer":
+    return networks.SparseMixer(
+        vocab_size=encoder_cfg.vocab_size,
+        hidden_size=encoder_cfg.hidden_size,
+        num_layers=encoder_cfg.num_layers,
+        moe_layers=encoder_cfg.moe_layers,
+        attention_layers=encoder_cfg.attention_layers,
+        num_experts=encoder_cfg.num_experts,
+        train_capacity_factor=encoder_cfg.train_capacity_factor,
+        eval_capacity_factor=encoder_cfg.eval_capacity_factor,
+        examples_per_group=encoder_cfg.examples_per_group,
+        use_fft=encoder_cfg.use_fft,
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        max_sequence_length=encoder_cfg.max_sequence_length,
+        type_vocab_size=encoder_cfg.type_vocab_size,
+        inner_dim=encoder_cfg.inner_dim,
+        inner_activation=tf_utils.get_activation(encoder_cfg.inner_activation),
+        output_dropout=encoder_cfg.output_dropout,
+        attention_dropout=encoder_cfg.attention_dropout,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        output_range=encoder_cfg.output_range,
+        embedding_width=encoder_cfg.embedding_width,
+        norm_first=encoder_cfg.norm_first,
+        embedding_layer=embedding_layer)
+
   bert_encoder_cls = networks.BertEncoder
   if encoder_type == "bert_v2":
     bert_encoder_cls = networks.BertEncoderV2
@@ -536,5 +684,6 @@ def build_encoder(config: EncoderConfig,
       embedding_width=encoder_cfg.embedding_size,
       embedding_layer=embedding_layer,
       return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs,
+      return_attention_scores=encoder_cfg.return_attention_scores,
       dict_outputs=True,
       norm_first=encoder_cfg.norm_first)

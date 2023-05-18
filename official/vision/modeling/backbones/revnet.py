@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -93,10 +93,7 @@ class RevNet(tf.keras.Model):
     self._norm_epsilon = norm_epsilon
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
+    self._norm = tf.keras.layers.BatchNormalization
 
     axis = -1 if tf.keras.backend.image_data_format() == 'channels_last' else 1
 
@@ -109,7 +106,10 @@ class RevNet(tf.keras.Model):
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer)(inputs)
     x = self._norm(
-        axis=axis, momentum=norm_momentum, epsilon=norm_epsilon)(x)
+        axis=axis,
+        momentum=norm_momentum,
+        epsilon=norm_epsilon,
+        synchronized=use_sync_bn)(x)
     x = tf_utils.get_activation(activation)(x)
     x = tf.keras.layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
 

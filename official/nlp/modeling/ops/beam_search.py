@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -99,26 +99,29 @@ def _expand_to_same_rank(tensor, target):
 class SequenceBeamSearch(tf.Module):
   """Implementation of beam search loop."""
 
-  def __init__(self,
-               symbols_to_logits_fn,
-               vocab_size,
-               beam_size,
-               alpha,
-               max_decode_length,
-               eos_id,
-               padded_decode,
-               dtype=tf.float32):
+  def __init__(
+      self,
+      symbols_to_logits_fn,
+      vocab_size,
+      beam_size,
+      alpha,
+      max_decode_length,
+      eos_id,
+      padded_decode,
+      dtype=tf.float32,
+      noise_multiplier: float = 0.0,
+      decoding_name=None,
+  ):
     """Initialize sequence beam search.
 
     Args:
-      symbols_to_logits_fn: A function to provide logits, which is the
-        interface to the Transformer model. The passed in arguments are: ids ->
-          A tensor with shape [batch_size * beam_size, index]. index -> A
-          scalar. cache -> A nested dictionary of tensors [batch_size *
-          beam_size, ...].
-        The function must return a tuple of logits and the updated cache: logits
-          -> A tensor with shape [batch * beam_size, vocab_size]. updated cache
-          -> A nested dictionary with the same structure as the input cache.
+      symbols_to_logits_fn: A function to provide logits, which is the interface
+        to the Transformer model. The passed in arguments are: ids -> A tensor
+        with shape [batch_size * beam_size, index]. index -> A scalar. cache ->
+        A nested dictionary of tensors [batch_size * beam_size, ...]. The
+        function must return a tuple of logits and the updated cache: logits ->
+        A tensor with shape [batch * beam_size, vocab_size]. updated cache -> A
+        nested dictionary with the same structure as the input cache.
       vocab_size: An integer, the size of the vocabulary, used for topk
         computation.
       beam_size: An integer, number of beams for beam search.
@@ -130,6 +133,8 @@ class SequenceBeamSearch(tf.Module):
         for beam search.
       dtype: A tensorflow data type used for score computation. The default is
         tf.float32.
+      noise_multiplier: The amount of noise.
+      decoding_name: an optional name for the decoding loop tensors.
     """
     self.symbols_to_logits_fn = symbols_to_logits_fn
     self.vocab_size = vocab_size
@@ -139,6 +144,8 @@ class SequenceBeamSearch(tf.Module):
     self.eos_id = eos_id
     self.padded_decode = padded_decode
     self.dtype = tf.as_dtype(dtype)
+    self.decoding_name = decoding_name
+    self.noise_multiplier = noise_multiplier
 
   def search(self, initial_ids, initial_cache):
     """Beam search for sequences with highest scores.
@@ -194,6 +201,13 @@ class SequenceBeamSearch(tf.Module):
       flat_logits, flat_cache = self.symbols_to_logits_fn(
           flat_ids, i, flat_cache)
 
+      if self.noise_multiplier > 0:
+        noise = tf.random.uniform(flat_logits.shape, dtype=flat_logits.dtype)
+        # Generates standard Gumbel(0, 1) noise, GSE Tensors
+        noise = -tf.math.log(-tf.math.log(noise))
+        # NOMUTANTS -- may not impact final result.
+        flat_logits = flat_logits + noise * self.noise_multiplier
+
       # Unflatten logits to shape [batch_size, beam_size, vocab_size]
       logits = _unflatten_beam_dim(flat_logits, batch_size, self.beam_size)
       new_cache = tf.nest.map_structure(
@@ -204,7 +218,7 @@ class SequenceBeamSearch(tf.Module):
       candidate_log_probs = _log_prob_from_logits(logits)
 
       # Calculate new log probabilities if each of the alive sequences were
-      # extended # by the the candidate IDs.
+      # extended # by the candidate IDs.
       # Shape [batch_size, beam_size, vocab_size]
       log_probs = candidate_log_probs + tf.expand_dims(alive_log_probs, axis=2)
 
@@ -370,7 +384,8 @@ class SequenceBeamSearch(tf.Module):
             _search_step,
             loop_vars=[state],
             shape_invariants=[state_shapes],
-            parallel_iterations=1))
+            parallel_iterations=1,
+            name=self.decoding_name))
     finished_state = finished_state[0]
     return self._process_finished_state(finished_state)
 
@@ -578,26 +593,30 @@ class SequenceBeamSearch(tf.Module):
                                  nested)
 
 
-def sequence_beam_search(symbols_to_logits_fn,
-                         initial_ids,
-                         initial_cache,
-                         vocab_size,
-                         beam_size,
-                         alpha,
-                         max_decode_length,
-                         eos_id,
-                         padded_decode=False,
-                         dtype="float32"):
+def sequence_beam_search(
+    symbols_to_logits_fn,
+    initial_ids,
+    initial_cache,
+    vocab_size,
+    beam_size,
+    alpha,
+    max_decode_length,
+    eos_id,
+    padded_decode=False,
+    dtype="float32",
+    noise_multiplier: float = 0.0,
+    decoding_name=None,
+):
   """Search for sequence of subtoken ids with the largest probability.
 
   Args:
     symbols_to_logits_fn: A function that takes in ids, index, and cache as
       arguments. The passed in arguments will have shape: ids -> A tensor with
-        shape [batch_size * beam_size, index]. index -> A scalar. cache -> A
-        nested dictionary of tensors [batch_size * beam_size, ...].
-      The function must return a tuple of logits and new cache: logits -> A
-        tensor with shape [batch * beam_size, vocab_size]. new cache -> A nested
-        dictionary with the same shape/structure as the inputted cache.
+      shape [batch_size * beam_size, index]. index -> A scalar. cache -> A
+      nested dictionary of tensors [batch_size * beam_size, ...]. The function
+      must return a tuple of logits and new cache: logits -> A tensor with shape
+      [batch * beam_size, vocab_size]. new cache -> A nested dictionary with the
+      same shape/structure as the inputted cache.
     initial_ids: An int32 tensor with shape [batch_size]. Starting ids for each
       batch item.
     initial_cache: A dictionary, containing starting decoder variables
@@ -612,13 +631,25 @@ def sequence_beam_search(symbols_to_logits_fn,
       beam search.
     dtype: A tensorflow data type used for score computation. The default is
       tf.float32.
+    noise_multiplier: The amount of noise.
+    decoding_name: an optional name for the decoding loop tensors.
 
   Returns:
     Top decoded sequences [batch_size, beam_size, max_decode_length]
     sequence scores [batch_size, beam_size]
   """
-  sbs = SequenceBeamSearch(symbols_to_logits_fn, vocab_size, beam_size, alpha,
-                           max_decode_length, eos_id, padded_decode, dtype)
+  sbs = SequenceBeamSearch(
+      symbols_to_logits_fn,
+      vocab_size,
+      beam_size,
+      alpha,
+      max_decode_length,
+      eos_id,
+      padded_decode,
+      dtype,
+      noise_multiplier,
+      decoding_name,
+  )
   return sbs.search(initial_ids, initial_cache)
 
 

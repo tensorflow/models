@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ class TokenImportanceWithMovingAvg(tf.keras.layers.Layer):
     self._vocab_size = vocab_size
     self._init_importance = init_importance
     self._moving_average_beta = moving_average_beta
-    super(TokenImportanceWithMovingAvg, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
   def build(self, input_shape):
     self._importance_embedding = self.add_weight(
@@ -51,7 +51,7 @@ class TokenImportanceWithMovingAvg(tf.keras.layers.Layer):
         "moving_average_beta":
             self._moving_average_beta,
     }
-    base_config = super(TokenImportanceWithMovingAvg, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def update_token_importance(self, token_ids, importance):
@@ -80,7 +80,7 @@ class SelectTopK(tf.keras.layers.Layer):
                **kwargs):
     self._top_k = top_k
     self._random_k = random_k
-    super(SelectTopK, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
   def get_config(self):
     config = {
@@ -89,7 +89,7 @@ class SelectTopK(tf.keras.layers.Layer):
         "random_k":
             self._random_k,
     }
-    base_config = super(SelectTopK, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs):

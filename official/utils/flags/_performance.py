@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -198,7 +198,7 @@ def define_performance(num_parallel_calls=False,
       flags.DEFINE_enum(
           name="fp16_implementation",
           default="keras",
-          enum_values=("keras', 'graph_rewrite"),
+          enum_values=("keras", "graph_rewrite"),
           help=help_wrap(
               "When --dtype=fp16, how fp16 should be implemented. This has no "
               "impact on correctness. 'keras' uses the "

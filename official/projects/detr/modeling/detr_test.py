@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 """Tests for tensorflow_models.official.projects.detr.detr."""
 import tensorflow as tf
 from official.projects.detr.modeling import detr
+from official.vision.modeling.backbones import resnet
 
 
 class DetrTest(tf.test.TestCase):
@@ -25,7 +26,10 @@ class DetrTest(tf.test.TestCase):
     num_classes = 10
     image_size = 640
     batch_size = 2
-    model = detr.DETR(num_queries, hidden_size, num_classes)
+    backbone = resnet.ResNet(50, bn_trainable=False)
+    backbone_endpoint_name = '5'
+    model = detr.DETR(backbone, backbone_endpoint_name, num_queries,
+                      hidden_size, num_classes)
     outs = model(tf.ones((batch_size, image_size, image_size, 3)))
     self.assertLen(outs, 6)  # intermediate decoded outputs.
     for out in outs:
@@ -47,6 +51,8 @@ class DetrTest(tf.test.TestCase):
 
   def test_get_from_config_detr(self):
     config = {
+        'backbone': resnet.ResNet(50, bn_trainable=False),
+        'backbone_endpoint_name': '5',
         'num_queries': 2,
         'hidden_size': 4,
         'num_classes': 10,

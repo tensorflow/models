@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -97,13 +97,13 @@ class PackedSequenceEmbedding(tf.keras.Model):
     embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=vocab_size,
         embedding_width=embedding_width,
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(initializer),
         name='word_embeddings')
     word_embeddings = embedding_layer(word_ids)
 
     # Always uses dynamic slicing for simplicity.
     position_embedding_layer = PositionEmbeddingWithSubSeqMask(
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(initializer),
         use_dynamic_slicing=True,
         max_sequence_length=max_seq_length,
         name='position_embedding')
@@ -114,7 +114,7 @@ class PackedSequenceEmbedding(tf.keras.Model):
         layers.OnDeviceEmbedding(
             vocab_size=type_vocab_size,
             embedding_width=embedding_width,
-            initializer=initializer,
+            initializer=tf_utils.clone_initializer(initializer),
             use_one_hot=True,
             name='type_embeddings')(type_ids))
 
@@ -128,11 +128,11 @@ class PackedSequenceEmbedding(tf.keras.Model):
             embeddings)
 
     if embedding_width != hidden_size:
-      embeddings = tf.keras.layers.experimental.EinsumDense(
+      embeddings = tf.keras.layers.EinsumDense(
           '...x,xy->...y',
           output_shape=hidden_size,
           bias_axes=None,
-          kernel_initializer=initializer,
+          kernel_initializer=tf_utils.clone_initializer(initializer),
           name='embedding_projection')(
               embeddings)
 
@@ -143,7 +143,7 @@ class PackedSequenceEmbedding(tf.keras.Model):
               [attention_mask, sub_seq_mask])
 
     outputs = [embeddings, attention_mask]
-    super(PackedSequenceEmbedding, self).__init__(
+    super().__init__(
         inputs=inputs, outputs=outputs, **kwargs)
     # TF does not track immutable attrs which do not contain Trackables,
     # so by creating a config namedtuple instead of a dict we avoid tracking it.
@@ -221,7 +221,7 @@ class PositionEmbeddingWithSubSeqMask(tf.keras.layers.Layer):
     if 'dtype' not in kwargs:
       kwargs['dtype'] = 'float32'
 
-    super(PositionEmbeddingWithSubSeqMask, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     if use_dynamic_slicing and max_sequence_length is None:
       raise ValueError(
           'If `use_dynamic_slicing` is True, `max_sequence_length` must be set.'
@@ -236,7 +236,7 @@ class PositionEmbeddingWithSubSeqMask(tf.keras.layers.Layer):
         'initializer': tf.keras.initializers.serialize(self._initializer),
         'use_dynamic_slicing': self._use_dynamic_slicing,
     }
-    base_config = super(PositionEmbeddingWithSubSeqMask, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def build(self, input_shape):
@@ -273,7 +273,7 @@ class PositionEmbeddingWithSubSeqMask(tf.keras.layers.Layer):
         shape=[weight_sequence_length, width],
         initializer=self._initializer)
 
-    super(PositionEmbeddingWithSubSeqMask, self).build(input_shape)
+    super().build(input_shape)
 
   def call(self, inputs, position_ids=None, sub_sequence_mask=None):
     """Implements call() for the layer.

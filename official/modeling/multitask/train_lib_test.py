@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -58,8 +58,9 @@ class TrainLibTest(tf.test.TestCase, parameterized.TestCase):
               strategy_combinations.one_device_strategy_gpu,
           ],
           mode='eager',
+          optimizer=['sgd_experimental', 'sgd'],
           flag_mode=['train', 'eval', 'train_and_eval']))
-  def test_end_to_end(self, distribution_strategy, flag_mode):
+  def test_end_to_end(self, distribution_strategy, optimizer, flag_mode):
     model_dir = self.get_temp_dir()
     experiment_config = configs.MultiTaskExperimentConfig(
         task=configs.MultiTaskConfig(
@@ -70,6 +71,7 @@ class TrainLibTest(tf.test.TestCase, parameterized.TestCase):
                     task_name='bar', task_config=test_utils.BarConfig()))))
     experiment_config = params_dict.override_params_dict(
         experiment_config, self._test_config, is_strict=False)
+    experiment_config.trainer.optimizer_config.optimizer.type = optimizer
     with distribution_strategy.scope():
       test_multitask = multitask.MultiTask.from_config(experiment_config.task)
       model = test_utils.MockMultiTaskModel()

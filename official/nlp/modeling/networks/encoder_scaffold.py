@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ from absl import logging
 import gin
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling import layers
 
 
@@ -153,14 +154,14 @@ class EncoderScaffold(tf.keras.Model):
       embedding_layer = layers.OnDeviceEmbedding(
           vocab_size=embedding_cfg['vocab_size'],
           embedding_width=embedding_cfg['hidden_size'],
-          initializer=embedding_cfg['initializer'],
+          initializer=tf_utils.clone_initializer(embedding_cfg['initializer']),
           name='word_embeddings')
 
       word_embeddings = embedding_layer(word_ids)
 
       # Always uses dynamic slicing for simplicity.
       position_embedding_layer = layers.PositionEmbedding(
-          initializer=embedding_cfg['initializer'],
+          initializer=tf_utils.clone_initializer(embedding_cfg['initializer']),
           max_length=embedding_cfg['max_seq_length'],
           name='position_embedding')
       position_embeddings = position_embedding_layer(word_embeddings)
@@ -168,7 +169,7 @@ class EncoderScaffold(tf.keras.Model):
       type_embedding_layer = layers.OnDeviceEmbedding(
           vocab_size=embedding_cfg['type_vocab_size'],
           embedding_width=embedding_cfg['hidden_size'],
-          initializer=embedding_cfg['initializer'],
+          initializer=tf_utils.clone_initializer(embedding_cfg['initializer']),
           use_one_hot=True,
           name='type_embeddings')
       type_embeddings = type_embedding_layer(type_ids)
@@ -243,6 +244,8 @@ class EncoderScaffold(tf.keras.Model):
     # like this will create a SliceOpLambda layer. This is better than a Lambda
     # layer with Python code, because that is fundamentally less portable.
     first_token_tensor = last_layer_output[:, 0, :]
+    pooler_layer_initializer = tf.keras.initializers.get(
+        pooler_layer_initializer)
     pooler_layer = tf.keras.layers.Dense(
         units=pooled_output_dim,
         activation='tanh',
@@ -268,7 +271,7 @@ class EncoderScaffold(tf.keras.Model):
     # created using the Functional API. Once super().__init__ is called, we
     # can assign attributes to `self` - note that all `self` assignments are
     # below this line.
-    super(EncoderScaffold, self).__init__(
+    super().__init__(
         inputs=inputs, outputs=outputs, **kwargs)
 
     self._hidden_cls = hidden_cls
@@ -303,7 +306,8 @@ class EncoderScaffold(tf.keras.Model):
     config_dict = {
         'num_hidden_instances': self._num_hidden_instances,
         'pooled_output_dim': self._pooled_output_dim,
-        'pooler_layer_initializer': self._pooler_layer_initializer,
+        'pooler_layer_initializer': tf.keras.initializers.serialize(
+            self._pooler_layer_initializer),
         'embedding_cls': self._embedding_network,
         'embedding_cfg': self._embedding_cfg,
         'layer_norm_before_pooling': self._layer_norm_before_pooling,

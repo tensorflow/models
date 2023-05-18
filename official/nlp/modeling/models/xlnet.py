@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -117,7 +117,7 @@ class XLNetPretrainer(tf.keras.Model):
         hidden_size=self._hidden_size,
         initializer=self._initializer)
 
-  def call(self, inputs: Mapping[str, Any]):
+  def call(self, inputs: Mapping[str, Any]):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     input_word_ids = inputs['input_word_ids']
     input_type_ids = inputs['input_type_ids']
     masked_tokens = inputs['masked_tokens']
@@ -212,7 +212,7 @@ class XLNetClassifier(tf.keras.Model):
         cls_token_idx=cls_token_idx,
         name=head_name)
 
-  def call(self, inputs: Mapping[str, Any]):
+  def call(self, inputs: Mapping[str, Any]):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     input_ids = inputs['input_word_ids']
     segment_ids = inputs['input_type_ids']
     input_mask = tf.cast(inputs['input_mask'], tf.float32)
@@ -305,7 +305,7 @@ class XLNetSpanLabeler(tf.keras.Model):
         dropout_rate=self._dropout_rate,
         initializer=self._initializer)
 
-  def call(self, inputs: Mapping[str, Any]):
+  def call(self, inputs: Mapping[str, Any]):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     input_word_ids = inputs['input_word_ids']
     input_type_ids = inputs['input_type_ids']
     input_mask = inputs['input_mask']

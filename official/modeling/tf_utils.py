@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
 
 """Common TF utilities."""
 
+import functools
+import inspect
 import six
 import tensorflow as tf
 
@@ -82,19 +84,22 @@ def is_special_none_tensor(tensor):
   return tensor.shape.ndims == 0 and tensor.dtype == tf.int32
 
 
-def get_activation(identifier, use_keras_layer=False):
-  """Maps a identifier to a Python function, e.g., "relu" => `tf.nn.relu`.
+def get_activation(identifier, use_keras_layer=False, **kwargs):
+  """Maps an identifier to a Python function, e.g., "relu" => `tf.nn.relu`.
 
   It checks string first and if it is one of customized activation not in TF,
   the corresponding activation will be returned. For non-customized activation
   names and callable identifiers, always fallback to tf.keras.activations.get.
 
   Prefers using keras layers when use_keras_layer=True. Now it only supports
-  'relu', 'linear', 'identity', 'swish'.
+  'relu', 'linear', 'identity', 'swish', 'mish', 'leaky_relu', and 'gelu'.
 
   Args:
     identifier: String name of the activation function or callable.
     use_keras_layer: If True, use keras layer if identifier is allow-listed.
+    **kwargs: Keyword arguments to use to instantiate an activation function.
+      Available only for 'leaky_relu' and 'gelu' when using keras layers.
+      For example: get_activation('leaky_relu', use_keras_layer=True, alpha=0.1)
 
   Returns:
     A Python function corresponding to the activation function or a keras
@@ -110,8 +115,11 @@ def get_activation(identifier, use_keras_layer=False):
           "swish": "swish",
           "sigmoid": "sigmoid",
           "relu6": tf.nn.relu6,
+          "leaky_relu": functools.partial(tf.nn.leaky_relu, **kwargs),
           "hard_swish": activations.hard_swish,
           "hard_sigmoid": activations.hard_sigmoid,
+          "mish": activations.mish,
+          "gelu": functools.partial(tf.nn.gelu, **kwargs),
       }
       if identifier in keras_layer_allowlist:
         return tf.keras.layers.Activation(keras_layer_allowlist[identifier])
@@ -122,6 +130,7 @@ def get_activation(identifier, use_keras_layer=False):
         "relu6": activations.relu6,
         "hard_sigmoid": activations.hard_sigmoid,
         "identity": activations.identity,
+        "mish": activations.mish,
     }
     if identifier in name_to_fn:
       return tf.keras.activations.get(name_to_fn[identifier])
@@ -272,3 +281,92 @@ def cross_replica_concat(value, axis, name="cross_replica_concat"):
     if value.shape.as_list()[0] is None:
       raise RuntimeError(f"{value} has unknown batch.")
     return context.all_gather(value, axis=axis)
+
+
+def clone_initializer(initializer):
+  # Keras initializer is going to be stateless, which mean reusing the same
+  # initializer will produce same init value when the shapes are the same.
+  if isinstance(initializer, tf.keras.initializers.Initializer):
+    return initializer.__class__.from_config(initializer.get_config())
+  # When the input is string/dict or other serialized configs, caller will
+  # create a new keras Initializer instance based on that, and we don't need to
+  # do anything
+  return initializer
+
+
+def serialize_keras_object(obj):
+  if hasattr(tf.keras.utils, "legacy"):
+    return tf.keras.utils.legacy.serialize_keras_object(obj)
+  else:
+    return tf.keras.utils.serialize_keras_object(obj)
+
+
+def deserialize_keras_object(
+    config, module_objects=None, custom_objects=None, printable_module_name=None
+):
+  if hasattr(tf.keras.utils, "legacy"):
+    return tf.keras.utils.legacy.deserialize_keras_object(
+        config, custom_objects, module_objects, printable_module_name
+    )
+  else:
+    return tf.keras.utils.deserialize_keras_object(
+        config, custom_objects, module_objects, printable_module_name
+    )
+
+
+def serialize_layer(layer, use_legacy_format=False):
+  if (
+      "use_legacy_format"
+      in inspect.getfullargspec(tf.keras.layers.serialize).args
+  ):
+    return tf.keras.layers.serialize(layer, use_legacy_format=use_legacy_format)
+  else:
+    return tf.keras.layers.serialize(layer)
+
+
+def serialize_initializer(initializer, use_legacy_format=False):
+  if (
+      "use_legacy_format"
+      in inspect.getfullargspec(tf.keras.initializers.serialize).args
+  ):
+    return tf.keras.initializers.serialize(
+        initializer, use_legacy_format=use_legacy_format
+    )
+  else:
+    return tf.keras.initializers.serialize(initializer)
+
+
+def serialize_regularizer(regularizer, use_legacy_format=False):
+  if (
+      "use_legacy_format"
+      in inspect.getfullargspec(tf.keras.regularizers.serialize).args
+  ):
+    return tf.keras.regularizers.serialize(
+        regularizer, use_legacy_format=use_legacy_format
+    )
+  else:
+    return tf.keras.regularizers.serialize(regularizer)
+
+
+def serialize_constraint(constraint, use_legacy_format=False):
+  if (
+      "use_legacy_format"
+      in inspect.getfullargspec(tf.keras.constraints.serialize).args
+  ):
+    return tf.keras.constraints.serialize(
+        constraint, use_legacy_format=use_legacy_format
+    )
+  else:
+    return tf.keras.constraints.serialize(constraint)
+
+
+def serialize_activation(activation, use_legacy_format=False):
+  if (
+      "use_legacy_format"
+      in inspect.getfullargspec(tf.keras.activations.serialize).args
+  ):
+    return tf.keras.activations.serialize(
+        activation, use_legacy_format=use_legacy_format
+    )
+  else:
+    return tf.keras.activations.serialize(activation)

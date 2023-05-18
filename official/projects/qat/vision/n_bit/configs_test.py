@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import tensorflow as tf
 
 import tensorflow_model_optimization as tfmot
 
+from official.modeling import tf_utils
 from official.projects.qat.vision.n_bit import configs
 
 
@@ -207,15 +208,19 @@ class DefaultNBitQuantizeConfigTest(tf.test.TestCase, _TestHelper):
             'num_bits_activation': 4
         }
     }
-    serialized_quantize_config = tf.keras.utils.serialize_keras_object(
-        quantize_config)
+    serialized_quantize_config = tf_utils.serialize_keras_object(
+        quantize_config
+    )
 
     self.assertEqual(expected_config, serialized_quantize_config)
 
-    quantize_config_from_config = tf.keras.utils.deserialize_keras_object(
-        serialized_quantize_config,
-        module_objects=globals(),
-        custom_objects=configs._types_dict())
+    quantize_config_from_config = (
+        tf_utils.deserialize_keras_object(
+            serialized_quantize_config,
+            module_objects=globals(),
+            custom_objects=configs._types_dict(),
+        )
+    )
 
     self.assertEqual(quantize_config, quantize_config_from_config)
 

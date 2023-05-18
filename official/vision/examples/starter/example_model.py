@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 """A sample model implementation.
 
 This is only a dummy example to showcase how a model is composed. It is usually
-not needed to implement a modedl from scratch. Most SoTA models can be found and
-directly used from `official/vision/beta/modeling` directory.
+not needed to implement a model from scratch. Most SoTA models can be found and
+directly used from `official/vision/modeling` directory.
 """
 
 from typing import Any, Mapping
@@ -81,10 +81,10 @@ def build_example_model(input_specs: tf.keras.layers.InputSpec,
                         **kwargs) -> tf.keras.Model:
   """Builds and returns the example model.
 
-  This function is the main entry point to build a model. Commonly, it build a
+  This function is the main entry point to build a model. Commonly, it builds a
   model by building a backbone, decoder and head. An example of building a
   classification model is at
-  third_party/tensorflow_models/official/vision/beta/modeling/backbones/resnet.py.
+  third_party/tensorflow_models/official/vision/modeling/backbones/resnet.py.
   However, it is not mandatory for all models to have these three pieces
   exactly. Depending on the task, model can be as simple as the example model
   here or more complex, such as multi-head architecture.

@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ class TestSubclass(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
 
   def __init__(self,
                length_normalization_fn=length_normalization,
+               extra_cache_output=True,
                dtype=tf.float32):
     super(TestSubclass, self).__init__(
         length_normalization_fn=length_normalization, dtype=dtype)

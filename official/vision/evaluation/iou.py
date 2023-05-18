@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,15 +14,16 @@
 
 """IOU Metrics used for semantic segmentation models."""
 
+from typing import Any, Dict, Optional, Sequence, Union
+
 import numpy as np
 import tensorflow as tf
 
 
-class PerClassIoU(tf.keras.metrics.Metric):
+class PerClassIoU(tf.keras.metrics.MeanIoU):
   """Computes the per-class Intersection-Over-Union metric.
 
-  Mean Intersection-Over-Union is a common evaluation metric for semantic image
-  segmentation, which first computes the IOU for each semantic class.
+  This metric computes the IOU for each semantic class.
   IOU is defined as follows:
     IOU = true_positive / (true_positive + false_positive + false_negative).
   The predictions are accumulated in a confusion matrix, weighted by
@@ -42,70 +43,10 @@ class PerClassIoU(tf.keras.metrics.Metric):
   >>> m.update_state([0, 0, 1, 1], [0, 1, 0, 1])
   >>> m.result().numpy()
   [0.33333334, 0.33333334]
-
   """
 
-  def __init__(self, num_classes, name=None, dtype=None):
-    """Initializes `PerClassIoU`.
-
-    Args:
-      num_classes: The possible number of labels the prediction task can have.
-        This value must be provided, since a confusion matrix of dimension =
-        [num_classes, num_classes] will be allocated.
-      name: (Optional) string name of the metric instance.
-      dtype: (Optional) data type of the metric result.
-
-    """
-
-    super(PerClassIoU, self).__init__(name=name, dtype=dtype)
-    self.num_classes = num_classes
-
-    # Variable to accumulate the predictions in the confusion matrix.
-    self.total_cm = self.add_weight(
-        'total_confusion_matrix',
-        shape=(num_classes, num_classes),
-        initializer=tf.compat.v1.zeros_initializer)
-
-  def update_state(self, y_true, y_pred, sample_weight=None):
-    """Accumulates the confusion matrix statistics.
-
-    Args:
-      y_true: The ground truth values.
-      y_pred: The predicted values.
-      sample_weight: Optional weighting of each example. Defaults to 1. Can be a
-        `Tensor` whose rank is either 0, or the same rank as `y_true`, and must
-        be broadcastable to `y_true`.
-
-    Returns:
-      IOU per class.
-    """
-
-    y_true = tf.cast(y_true, self._dtype)
-    y_pred = tf.cast(y_pred, self._dtype)
-
-    # Flatten the input if its rank > 1.
-    if y_pred.shape.ndims > 1:
-      y_pred = tf.reshape(y_pred, [-1])
-
-    if y_true.shape.ndims > 1:
-      y_true = tf.reshape(y_true, [-1])
-
-    if sample_weight is not None:
-      sample_weight = tf.cast(sample_weight, self._dtype)
-      if sample_weight.shape.ndims > 1:
-        sample_weight = tf.reshape(sample_weight, [-1])
-
-    # Accumulate the prediction to current confusion matrix.
-    current_cm = tf.math.confusion_matrix(
-        y_true,
-        y_pred,
-        self.num_classes,
-        weights=sample_weight,
-        dtype=self._dtype)
-    return self.total_cm.assign_add(current_cm)
-
   def result(self):
-    """Compute the mean intersection-over-union via the confusion matrix."""
+    """Compute IoU for each class via the confusion matrix."""
     sum_over_row = tf.cast(
         tf.reduce_sum(self.total_cm, axis=0), dtype=self._dtype)
     sum_over_col = tf.cast(
@@ -119,11 +60,118 @@ class PerClassIoU(tf.keras.metrics.Metric):
 
     return tf.math.divide_no_nan(true_positives, denominator)
 
-  def reset_states(self):
-    tf.keras.backend.set_value(
-        self.total_cm, np.zeros((self.num_classes, self.num_classes)))
 
-  def get_config(self):
-    config = {'num_classes': self.num_classes}
-    base_config = super(PerClassIoU, self).get_config()
-    return dict(list(base_config.items()) + list(config.items()))
+class PerClassIoUV2(tf.keras.metrics.Metric):
+  """Computes the per-class Intersection-Over-Union metric.
+
+  This implementation converts predictions and ground-truth to binary masks,
+  and uses logical AND and OR to compute intersection and union, which is much
+  faster than the PerClassIoU (using confusion matrix) above on TPU, but slower
+  on CPU and GPU.
+  """
+
+  def __init__(self,
+               num_classes: int,
+               name: Optional[str] = None,
+               dtype: Optional[Union[str, tf.dtypes.DType]] = tf.float32,
+               shape: Optional[Sequence[int]] = None,
+               sparse_y_true: bool = False,
+               sparse_y_pred: bool = False,
+               axis: int = -1):
+    """Initialization for PerClassIoU.
+
+    Args:
+      num_classes: `int`, number of classes.
+      name: `str`, name of the metric instance.
+      dtype: data type of the metric result.
+      shape: shape of the metrics result.
+      sparse_y_true: whether ground truth labels are encoded using integers or
+        dense one-hot vectors.
+      sparse_y_pred: whether predictions are encoded using integers or dense
+        one-hot vectors.
+      axis: (Optional) Defaults to -1. The dimension containing the one-hot
+        values.
+    """
+    super().__init__(name=name, dtype=dtype)
+    self.num_classes = num_classes
+    self.sparse_y_true = sparse_y_true
+    self.sparse_y_pred = sparse_y_pred
+    self.axis = axis
+
+    # Variable to accumulate the intersection & union.
+    # intersection = true_positives
+    if not shape:
+      shape = [num_classes]
+    self.intersection_per_class = self.add_weight(
+        'intersection_per_class', shape, initializer='zeros', dtype=tf.float32)
+    # union = true_positives + false_positive + false_negative
+    self.union_per_class = self.add_weight(
+        'union_per_class', shape, initializer='zeros', dtype=tf.float32)
+
+  def reset_state(self):
+    """Resets all of the metric state variables."""
+    self.intersection_per_class.assign(
+        tf.zeros_like(self.intersection_per_class)
+    )
+    self.union_per_class.assign(tf.zeros_like(self.union_per_class))
+
+  def update_state(self, y_true: tf.Tensor, y_pred: tf.Tensor):
+    """Updates metric state by accumulating the variables.
+
+    Args:
+      y_true: The ground truth values.
+      y_pred: The predicted values.
+    """
+
+    if self.sparse_y_true:
+      # Shape: (..., num_classes, ...)
+      y_true = tf.one_hot(
+          tf.cast(y_true, dtype=tf.int32),
+          self.num_classes,
+          axis=self.axis,
+          on_value=True,
+          off_value=False,
+      )
+    if self.sparse_y_pred:
+      # Shape: (..., num_classes, ...)
+      y_pred = tf.one_hot(
+          tf.cast(y_pred, dtype=tf.int32),
+          self.num_classes,
+          axis=self.axis,
+          on_value=True,
+          off_value=False,
+      )
+
+    one_hot_axis = self.axis if self.axis >= 0 else (
+        len(y_true.get_shape().as_list()) + self.axis)
+    # Reduce sum the leading dimensions.
+    # Shape: (num_classes, ...)
+    current_intersection = tf.math.count_nonzero(
+        y_pred & y_true, axis=np.arange(one_hot_axis), dtype=tf.float32
+    )
+    # Shape: (num_classes, ...)
+    current_union = tf.math.count_nonzero(
+        y_pred | y_true, axis=np.arange(one_hot_axis), dtype=tf.float32
+    )
+
+    self.intersection_per_class.assign_add(
+        tf.cast(current_intersection, self.intersection_per_class.dtype))
+    self.union_per_class.assign_add(
+        tf.cast(current_union, self.union_per_class.dtype))
+
+  def result(self) -> tf.Tensor:
+    """Computes IoU for each class."""
+    return tf.cast(
+        tf.math.divide_no_nan(self.intersection_per_class,
+                              self.union_per_class), self.dtype)
+
+  def get_config(self) -> Dict[str, Any]:
+    """Returns the serializable config of the metric."""
+    return {
+        'num_classes': self.num_classes,
+        'name': self.name,
+        'dtype': self.dtype,
+        'sparse_y_true': self.sparse_y_true,
+        'sparse_y_pred': self.sparse_y_pred,
+        'axis': self.axis,
+    }

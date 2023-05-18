@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,10 @@ class ImageClassificationConfigTest(tf.test.TestCase, parameterized.TestCase):
       ('resnet_imagenet',),
       ('resnet_rs_imagenet',),
       ('revnet_imagenet',),
-      ('mobilenet_imagenet'),
+      ('mobilenet_imagenet',),
+      ('deit_imagenet_pretrain',),
+      ('vit_imagenet_pretrain',),
+      ('vit_imagenet_finetune',),
   )
   def test_image_classification_configs(self, config_name):
     config = exp_factory.get_exp_config(config_name)

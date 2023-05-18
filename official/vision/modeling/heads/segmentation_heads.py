@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ class MaskScoring(tf.keras.Model):
       fc_input_size: List[int],
       num_convs: int = 3,
       num_filters: int = 256,
+      use_depthwise_convolution: bool = False,
       fc_dims: int = 1024,
       num_fcs: int = 2,
       activation: str = 'relu',
@@ -55,6 +56,7 @@ class MaskScoring(tf.keras.Model):
         fully connected layers.
       num_convs: An`int` for number of conv layers.
       num_filters: An `int` for the number of filters for conv layers.
+      use_depthwise_convolution: A `bool`, whether or not using depthwise convs.
       fc_dims: An `int` number of filters for each fully connected layers.
       num_fcs: An `int` for number of fully connected layers.
       activation: A `str` name of the activation function.
@@ -77,6 +79,7 @@ class MaskScoring(tf.keras.Model):
         'fc_dims': fc_dims,
         'num_fcs': num_fcs,
         'use_sync_bn': use_sync_bn,
+        'use_depthwise_convolution': use_depthwise_convolution,
         'norm_momentum': norm_momentum,
         'norm_epsilon': norm_epsilon,
         'activation': activation,
@@ -105,27 +108,44 @@ class MaskScoring(tf.keras.Model):
         'kernel_regularizer': self._config_dict['kernel_regularizer'],
         'bias_regularizer': self._config_dict['bias_regularizer'],
     })
-    bn_op = (tf.keras.layers.experimental.SyncBatchNormalization
-             if self._config_dict['use_sync_bn']
-             else tf.keras.layers.BatchNormalization)
+    bn_op = tf.keras.layers.BatchNormalization
     bn_kwargs = {
         'axis': self._bn_axis,
         'momentum': self._config_dict['norm_momentum'],
         'epsilon': self._config_dict['norm_epsilon'],
+        'synchronized': self._config_dict['use_sync_bn'],
     }
 
     self._convs = []
     self._conv_norms = []
     for i in range(self._config_dict['num_convs']):
-      conv_name = 'mask-scoring_{}'.format(i)
+      if self._config_dict['use_depthwise_convolution']:
+        self._convs.append(
+            tf.keras.layers.DepthwiseConv2D(
+                name='mask-scoring-depthwise-conv-{}'.format(i),
+                kernel_size=3,
+                padding='same',
+                use_bias=False,
+                depthwise_initializer=tf.keras.initializers.RandomNormal(
+                    stddev=0.01),
+                depthwise_regularizer=self._config_dict['kernel_regularizer'],
+                depth_multiplier=1))
+        norm_name = 'mask-scoring-depthwise-bn-{}'.format(i)
+        self._conv_norms.append(bn_op(name=norm_name, **bn_kwargs))
+      conv_name = 'mask-scoring-conv-{}'.format(i)
+      if 'kernel_initializer' in conv_kwargs:
+        conv_kwargs['kernel_initializer'] = tf_utils.clone_initializer(
+            conv_kwargs['kernel_initializer'])
+      if self._config_dict['use_depthwise_convolution']:
+        conv_kwargs['kernel_size'] = 1
       self._convs.append(conv_op(name=conv_name, **conv_kwargs))
-      bn_name = 'mask-scoring-bn_{}'.format(i)
+      bn_name = 'mask-scoring-bn-{}'.format(i)
       self._conv_norms.append(bn_op(name=bn_name, **bn_kwargs))
 
     self._fcs = []
     self._fc_norms = []
     for i in range(self._config_dict['num_fcs']):
-      fc_name = 'mask-scoring-fc_{}'.format(i)
+      fc_name = 'mask-scoring-fc-{}'.format(i)
       self._fcs.append(
           tf.keras.layers.Dense(
               units=self._config_dict['fc_dims'],
@@ -134,7 +154,7 @@ class MaskScoring(tf.keras.Model):
               kernel_regularizer=self._config_dict['kernel_regularizer'],
               bias_regularizer=self._config_dict['bias_regularizer'],
               name=fc_name))
-      bn_name = 'mask-scoring-fc-bn_{}'.format(i)
+      bn_name = 'mask-scoring-fc-bn-{}'.format(i)
       self._fc_norms.append(bn_op(name=bn_name, **bn_kwargs))
 
     self._classifier = tf.keras.layers.Dense(
@@ -147,7 +167,7 @@ class MaskScoring(tf.keras.Model):
 
     super(MaskScoring, self).build(input_shape)
 
-  def call(self, inputs: tf.Tensor, training: bool = None):
+  def call(self, inputs: tf.Tensor, training: bool = None):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     """Forward pass mask scoring head.
 
     Args:
@@ -211,6 +231,7 @@ class SegmentationHead(tf.keras.layers.Layer):
       low_level_num_filters: int = 48,
       num_decoder_filters: int = 256,
       activation: str = 'relu',
+      logit_activation: Optional[str] = None,
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
@@ -256,6 +277,9 @@ class SegmentationHead(tf.keras.layers.Layer):
         It is only used when feature_fusion is set to `panoptic_fpn_fusion`.
       activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
+      logit_activation: Activation applied to the final classifier layer logits,
+        e.g. 'sigmoid', 'softmax'. Can be useful in cases when the task does not
+        use only cross entropy loss.
       use_sync_bn: A `bool` that indicates whether to use synchronized batch
         normalization across different replicas.
       norm_momentum: A `float` of normalization momentum for the moving average.
@@ -282,6 +306,7 @@ class SegmentationHead(tf.keras.layers.Layer):
         'low_level_num_filters': low_level_num_filters,
         'num_decoder_filters': num_decoder_filters,
         'activation': activation,
+        'logit_activation': logit_activation,
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
         'norm_epsilon': norm_epsilon,
@@ -297,22 +322,13 @@ class SegmentationHead(tf.keras.layers.Layer):
   def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the segmentation head."""
     use_depthwise_convolution = self._config_dict['use_depthwise_convolution']
-    random_initializer = tf.keras.initializers.RandomNormal(stddev=0.01)
     conv_op = tf.keras.layers.Conv2D
-    conv_kwargs = {
-        'kernel_size': 3 if not use_depthwise_convolution else 1,
-        'padding': 'same',
-        'use_bias': False,
-        'kernel_initializer': random_initializer,
-        'kernel_regularizer': self._config_dict['kernel_regularizer'],
-    }
-    bn_op = (tf.keras.layers.experimental.SyncBatchNormalization
-             if self._config_dict['use_sync_bn']
-             else tf.keras.layers.BatchNormalization)
+    bn_op = tf.keras.layers.BatchNormalization
     bn_kwargs = {
         'axis': self._bn_axis,
         'momentum': self._config_dict['norm_momentum'],
         'epsilon': self._config_dict['norm_epsilon'],
+        'synchronized': self._config_dict['use_sync_bn'],
     }
 
     if self._config_dict['feature_fusion'] in {'deeplabv3plus',
@@ -352,7 +368,8 @@ class SegmentationHead(tf.keras.layers.Layer):
                 kernel_size=3,
                 padding='same',
                 use_bias=False,
-                depthwise_initializer=random_initializer,
+                depthwise_initializer=tf.keras.initializers.RandomNormal(
+                    stddev=0.01),
                 depthwise_regularizer=self._config_dict['kernel_regularizer'],
                 depth_multiplier=1))
         norm_name = 'segmentation_head_depthwise_norm_{}'.format(i)
@@ -362,7 +379,12 @@ class SegmentationHead(tf.keras.layers.Layer):
           conv_op(
               name=conv_name,
               filters=self._config_dict['num_filters'],
-              **conv_kwargs))
+              kernel_size=3 if not use_depthwise_convolution else 1,
+              padding='same',
+              use_bias=False,
+              kernel_initializer=tf.keras.initializers.RandomNormal(
+                  stddev=0.01),
+              kernel_regularizer=self._config_dict['kernel_regularizer']))
       norm_name = 'segmentation_head_norm_{}'.format(i)
       self._norms.append(bn_op(name=norm_name, **bn_kwargs))
 
@@ -371,6 +393,7 @@ class SegmentationHead(tf.keras.layers.Layer):
         filters=self._config_dict['num_classes'],
         kernel_size=self._config_dict['prediction_kernel_size'],
         padding='same',
+        activation=self._config_dict['logit_activation'],
         bias_initializer=tf.zeros_initializer(),
         kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
         kernel_regularizer=self._config_dict['kernel_regularizer'],

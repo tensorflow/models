@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,10 +21,6 @@ from official.vision.ops import preprocess_ops
 from official.vision.serving import export_base
 
 
-MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
-STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
-
-
 class ClassificationModule(export_base.ExportModule):
   """classification Module."""
 
@@ -40,7 +36,8 @@ class ClassificationModule(export_base.ExportModule):
   def _build_inputs(self, image):
     """Builds classification model inputs for serving."""
     # Center crops and resizes image.
-    image = preprocess_ops.center_crop_image(image)
+    if self.params.task.train_data.aug_crop:
+      image = preprocess_ops.center_crop_image(image)
 
     image = tf.image.resize(
         image, self._input_image_size, method=tf.image.ResizeMethod.BILINEAR)
@@ -49,9 +46,8 @@ class ClassificationModule(export_base.ExportModule):
         image, [self._input_image_size[0], self._input_image_size[1], 3])
 
     # Normalizes image with mean and std pixel values.
-    image = preprocess_ops.normalize_image(image,
-                                           offset=MEAN_RGB,
-                                           scale=STDDEV_RGB)
+    image = preprocess_ops.normalize_image(
+        image, offset=preprocess_ops.MEAN_RGB, scale=preprocess_ops.STDDEV_RGB)
     return image
 
   def serve(self, images):
@@ -78,6 +74,9 @@ class ClassificationModule(export_base.ExportModule):
                 parallel_iterations=32))
 
     logits = self.inference_step(images)
-    probs = tf.nn.softmax(logits)
+    if self.params.task.train_data.is_multilabel:
+      probs = tf.math.sigmoid(logits)
+    else:
+      probs = tf.nn.softmax(logits)
 
     return {'logits': logits, 'probs': probs}

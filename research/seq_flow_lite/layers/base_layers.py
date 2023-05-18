@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-# Lint as: python3
 """Base layer for building models trained with quantization."""
 
 import tensorflow as tf
@@ -57,7 +56,7 @@ class BaseLayer(tf.keras.layers.Layer):
   def add_weight_wrapper(self, shape):
     """Return a weight variable for the given shape."""
     if self.parameters.initializer is not None:
-      initializer = self.parameters.initializer
+      initializer = clone_initializer(self.parameters.initializer)
     else:
       initializer = tf.keras.initializers.GlorotUniform()
     weight = self.add_weight(
@@ -136,3 +135,9 @@ class BaseLayer(tf.keras.layers.Layer):
         maxval=(1.0 - zero_probability),
         dtype=tensor.dtype)
     return tf.math.ceil(rnd)
+
+
+def clone_initializer(initializer):
+  if isinstance(initializer, tf.keras.initializers.Initializer):
+    return initializer.__class__.from_config(initializer.get_config())
+  return initializer

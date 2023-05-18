@@ -1,0 +1,77 @@
+# Example of SpineNet-49 COCO detection with protocol C config. Expect best AP50 at 38.06%.
+# This is a demostration only, not a full training to reproduce numbers reported in the paper.
+# --experiment_type=retinanet_spinenet_coco
+runtime:
+  all_reduce_alg: nccl
+  distribution_strategy: multi_worker_mirrored
+  mixed_precision_dtype: float16
+task:
+  annotation_file: null
+  losses:
+    l2_weight_decay: 4.0e-05
+  model:
+    anchor:
+      anchor_size: 3
+      aspect_ratios: [0.5, 1.0, 2.0]
+      num_scales: 3
+    backbone:
+      spinenet:
+        stochastic_depth_drop_rate: 0.2
+        model_id: '49'
+      type: 'spinenet'
+    decoder:
+      type: 'identity'
+    head:
+      num_convs: 4
+      num_filters: 256
+    input_size: [640, 640, 3]
+    max_level: 7
+    min_level: 3
+    norm_activation:
+      activation: 'swish'
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+  train_data:
+    dtype: 'float16'
+    decoder:
+      simple_decoder:
+        regenerate_source_id: true
+      type: simple_decoder
+    global_batch_size: 32
+    is_training: true
+    parser:
+      aug_rand_hflip: true
+      aug_scale_max: 2.0
+      aug_scale_min: 0.1
+  validation_data:
+    dtype: 'float16'
+    decoder:
+      simple_decoder:
+        regenerate_source_id: true
+      type: simple_decoder
+    drop_remainder: false
+    global_batch_size: 8
+    is_training: false
+trainer:
+  best_checkpoint_export_subdir: "best_ckpt"
+  best_checkpoint_eval_metric: "AP50"
+  checkpoint_interval: 462
+  optimizer_config:
+    optimizer:
+      sgd:
+        global_clipnorm: 10.0
+        momentum: 0.9
+    learning_rate:
+      cosine:
+        decay_steps: 23100
+        initial_learning_rate: 0.32
+      type: 'cosine'
+    warmup:
+      linear:
+        warmup_learning_rate: 0.0067
+        warmup_steps: 2000
+  steps_per_loop: 462
+  train_steps: 23100
+  validation_interval: 462
+  validation_steps: 625

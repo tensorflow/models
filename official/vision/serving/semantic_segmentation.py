@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,10 +21,6 @@ from official.vision.ops import preprocess_ops
 from official.vision.serving import export_base
 
 
-MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
-STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
-
-
 class SegmentationModule(export_base.ExportModule):
   """Segmentation Module."""
 
@@ -41,16 +37,19 @@ class SegmentationModule(export_base.ExportModule):
     """Builds classification model inputs for serving."""
 
     # Normalizes image with mean and std pixel values.
-    image = preprocess_ops.normalize_image(image,
-                                           offset=MEAN_RGB,
-                                           scale=STDDEV_RGB)
+    image = preprocess_ops.normalize_image(
+        image, offset=preprocess_ops.MEAN_RGB, scale=preprocess_ops.STDDEV_RGB)
 
-    image, image_info = preprocess_ops.resize_and_crop_image(
-        image,
-        self._input_image_size,
-        padded_size=self._input_image_size,
-        aug_scale_min=1.0,
-        aug_scale_max=1.0)
+    if self.params.task.train_data.preserve_aspect_ratio:
+      image, image_info = preprocess_ops.resize_and_crop_image(
+          image,
+          self._input_image_size,
+          padded_size=self._input_image_size,
+          aug_scale_min=1.0,
+          aug_scale_max=1.0)
+    else:
+      image, image_info = preprocess_ops.resize_image(image,
+                                                      self._input_image_size)
     return image, image_info
 
   def serve(self, images):
@@ -80,8 +79,27 @@ class SegmentationModule(export_base.ExportModule):
                 parallel_iterations=32))
 
     outputs = self.inference_step(images)
-    outputs['logits'] = tf.image.resize(
-        outputs['logits'], self._input_image_size, method='bilinear')
+
+    # Optionally resize prediction to the input image size.
+    if self.params.task.export_config.rescale_output:
+      logits = outputs['logits']
+      if logits.shape[0] != 1:
+        raise ValueError('Batch size cannot be more than 1.')
+
+      image_shape = tf.cast(image_info[0, 0, :], tf.int32)
+      if self.params.task.train_data.preserve_aspect_ratio:
+        rescale_size = tf.cast(
+            tf.math.ceil(image_info[0, 1, :] / image_info[0, 2, :]), tf.int32)
+        offsets = tf.cast(image_info[0, 3, :], tf.int32)
+        logits = tf.image.resize(logits, rescale_size, method='bilinear')
+        outputs['logits'] = tf.image.crop_to_bounding_box(
+            logits, offsets[0], offsets[1], image_shape[0], image_shape[1])
+      else:
+        outputs['logits'] = tf.image.resize(
+            logits, [image_shape[0], image_shape[1]], method='bilinear')
+    else:
+      outputs['logits'] = tf.image.resize(
+          outputs['logits'], self._input_image_size, method='bilinear')
 
     if image_info is not None:
       outputs.update({'image_info': image_info})

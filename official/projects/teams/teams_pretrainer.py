@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -58,15 +58,16 @@ class ReplacedTokenDetectionHead(tf.keras.layers.Layer):
               intermediate_activation=self.activation,
               dropout_rate=self.hidden_cfg['dropout_rate'],
               attention_dropout_rate=self.hidden_cfg['attention_dropout_rate'],
-              kernel_initializer=self.initializer,
+              kernel_initializer=tf_utils.clone_initializer(self.initializer),
               name='transformer/layer_%d_rtd' % i))
     self.dense = tf.keras.layers.Dense(
         self.hidden_size,
         activation=self.activation,
-        kernel_initializer=self.initializer,
+        kernel_initializer=tf_utils.clone_initializer(self.initializer),
         name='transform/rtd_dense')
     self.rtd_head = tf.keras.layers.Dense(
-        units=1, kernel_initializer=self.initializer,
+        units=1,
+        kernel_initializer=tf_utils.clone_initializer(self.initializer),
         name='transform/rtd_head')
 
     if output not in ('predictions', 'logits'):
@@ -298,7 +299,7 @@ class TeamsPretrainer(tf.keras.Model):
         output=output_type,
         name='discriminator_mws')
 
-  def call(self, inputs):
+  def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     """TEAMS forward pass.
 
     Args:

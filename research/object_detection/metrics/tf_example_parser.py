@@ -33,7 +33,7 @@ class FloatParser(data_parser.DataToNumpyParser):
   def parse(self, tf_example):
     return np.array(
         tf_example.features.feature[self.field_name].float_list.value,
-        dtype=np.float).transpose() if tf_example.features.feature[
+        dtype=float).transpose() if tf_example.features.feature[
             self.field_name].HasField("float_list") else None
 
 

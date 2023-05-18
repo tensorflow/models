@@ -1,0 +1,77 @@
+# Use your own cityscapes preprocessed dataset. 79% meanIoU.
+# --experiment_type=seg_deeplabv3plus_cityscapes
+runtime:
+  all_reduce_alg: nccl
+  distribution_strategy: multi_worker_mirrored
+  mixed_precision_dtype: float16
+task:
+  init_checkpoint: null
+  model:
+    num_classes: 19
+    input_size: [null, null, 3]
+    backbone:
+      type: 'dilated_resnet'
+      dilated_resnet:
+        model_id: 101
+        output_stride: 16
+        stem_type: 'v1'
+        se_ratio: 0.25
+        stochastic_depth_drop_rate: 0.2
+        multigrid: [1, 2, 4]
+        last_stage_repeats: 1
+    decoder:
+      aspp:
+        pool_kernel_size: [512, 1024]
+    head:
+      feature_fusion: 'deeplabv3plus'
+      low_level: 2
+      low_level_num_filters: 48
+    norm_activation:
+      activation: 'swish'
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+  losses:
+    top_k_percent_pixels: 1.0  # only backpropagate loss for the topk 100% pixels.
+  train_data:
+    output_size: [1024, 2048]
+    is_training: true
+    global_batch_size: 16
+    dtype: 'float32'
+    aug_rand_hflip: true
+    aug_scale_max: 2.0
+    aug_scale_min: 0.5
+  validation_data:
+    output_size: [1024, 2048]
+    is_training: false
+    global_batch_size: 16
+    dtype: 'float32'
+    drop_remainder: false
+    resize_eval_groundtruth: true
+trainer:
+  best_checkpoint_eval_metric: 'mean_iou'
+  best_checkpoint_export_subdir: 'best_ckpt'
+  best_checkpoint_metric_comp: 'higher'
+  optimizer_config:
+    learning_rate:
+      polynomial:
+        decay_steps: 90000
+        initial_learning_rate: 0.01
+        power: 0.9
+      type: polynomial
+    optimizer:
+      sgd:
+        momentum: 0.9
+      type: sgd
+    warmup:
+      linear:
+        name: linear
+        warmup_learning_rate: 0
+        warmup_steps: 925
+      type: linear
+  steps_per_loop: 185
+  summary_interval: 185
+  train_steps: 90000
+  validation_interval: 185
+  validation_steps: 31
+  checkpoint_interval: 185

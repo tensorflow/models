@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-# Lint as: python3
 """Methods related to input datasets and readers."""
 
 import functools
@@ -21,7 +20,9 @@ import sys
 from absl import logging
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 import tensorflow_datasets as tfds
+import tensorflow_text as tftext
 
 from layers import projection_layers # import seq_flow_lite module
 from utils import misc_utils # import seq_flow_lite module
@@ -61,17 +62,34 @@ def create_input_fn(runner_config, mode, drop_remainder):
     label = tf.reshape(label, [batch_size, num_classes])
     prxlayer = projection_layers.ProjectionLayer(model_config, mode)
     projection, seq_length = prxlayer(text)
-    return {"projection": projection, "seq_length": seq_length, "label": label}
+    gbst_max_token_len = max_seq_len
+    if "gbst_max_token_len" in model_config:
+      gbst_max_token_len = model_config["gbst_max_token_len"]
+    byte_int = tftext.ByteSplitter().split(text).to_tensor(
+        default_value=0, shape=[batch_size, gbst_max_token_len])
+    token_ids = tf.cast(byte_int, tf.int32)
+    token_len = tf.strings.length(text)
+    mask = tf.cast(
+        tf.sequence_mask(token_len, maxlen=gbst_max_token_len), tf.int32)
+    mask *= 3
+    token_ids += mask
+    return {
+        "projection": projection,
+        "seq_length": seq_length,
+        "token_ids": token_ids,
+        "token_len": token_len,
+        "label": label
+    }
 
   def _input_fn(params):
     """Method to be used for reading the data."""
-    assert mode != tf.estimator.ModeKeys.PREDICT
-    split = "train" if mode == tf.estimator.ModeKeys.TRAIN else "test"
+    assert mode != tf_estimator.ModeKeys.PREDICT
+    split = "train" if mode == tf_estimator.ModeKeys.TRAIN else "test"
     ds = tfds.load(runner_config["dataset"], split=split)
     ds = ds.batch(params["batch_size"], drop_remainder=drop_remainder)
     ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     ds = ds.shuffle(buffer_size=100)
-    ds = ds.repeat(count=1 if mode == tf.estimator.ModeKeys.EVAL else None)
+    ds = ds.repeat(count=1 if mode == tf_estimator.ModeKeys.EVAL else None)
     ds = ds.map(
         functools.partial(_post_processor, batch_size=params["batch_size"]),
         num_parallel_calls=tf.data.experimental.AUTOTUNE,

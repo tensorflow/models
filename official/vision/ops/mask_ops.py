@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,15 +15,18 @@
 """Utility functions for segmentations."""
 
 import math
+from typing import List, Tuple
+
 # Import libraries
+
 import cv2
 import numpy as np
+import tensorflow as tf
+from official.vision.ops import spatial_transform_ops
 
 
-def paste_instance_masks(masks,
-                         detected_boxes,
-                         image_height,
-                         image_width):
+def paste_instance_masks(masks: np.ndarray, detected_boxes: np.ndarray,
+                         image_height: int, image_width: int) -> np.ndarray:
   """Paste instance masks to generate the image segmentation results.
 
   Args:
@@ -39,13 +42,13 @@ def paste_instance_masks(masks,
       the instance masks *pasted* on the image canvas.
   """
 
-  def expand_boxes(boxes, scale):
+  def expand_boxes(boxes: np.ndarray, scale: float) -> np.ndarray:
     """Expands an array of boxes by a given scale."""
     # Reference: https://github.com/facebookresearch/Detectron/blob/master/detectron/utils/boxes.py#L227  # pylint: disable=line-too-long
     # The `boxes` in the reference implementation is in [x1, y1, x2, y2] form,
     # whereas `boxes` here is in [x1, y1, w, h] form
-    w_half = boxes[:, 2] * .5
-    h_half = boxes[:, 3] * .5
+    w_half = boxes[:, 2] * 0.5
+    h_half = boxes[:, 3] * 0.5
     x_c = boxes[:, 0] + w_half
     y_c = boxes[:, 1] + h_half
 
@@ -104,10 +107,8 @@ def paste_instance_masks(masks,
   return segms
 
 
-def paste_instance_masks_v2(masks,
-                            detected_boxes,
-                            image_height,
-                            image_width):
+def paste_instance_masks_v2(masks: np.ndarray, detected_boxes: np.ndarray,
+                            image_height: int, image_width: int) -> np.ndarray:
   """Paste instance masks to generate the image segmentation (v2).
 
   Args:
@@ -188,3 +189,81 @@ def paste_instance_masks_v2(masks,
   segms = np.array(segms)
   return segms
 
+
+def instance_masks_overlap(
+    boxes: tf.Tensor,
+    masks: tf.Tensor,
+    gt_boxes: tf.Tensor,
+    gt_masks: tf.Tensor,
+    output_size: List[int],
+    mask_binarize_threshold: float = 0.5,
+) -> Tuple[tf.Tensor, tf.Tensor]:
+  """Calculates the IoUs and IoAs between the detection masks and the ground truth masks.
+
+  IoU: intersection over union.
+  IoA: intersection over the area of the detection masks.
+
+  Args:
+    boxes: a tensor with a shape of [batch_size, N, 4]. The last dimension is
+      the pixel coordinates in [ymin, xmin, ymax, xmax] form.
+    masks: a float tensor with a shape of [batch_size, N, mask_height,
+      mask_width] representing the instance masks w.r.t. the `boxes`.
+    gt_boxes: a tensor with a shape of [batch_size, M, 4]. The last dimension is
+      the pixel coordinates in [ymin, xmin, ymax, xmax] form.
+    gt_masks: a float tensor with a shape of [batch_size, M, gt_mask_height,
+      gt_mask_width] representing the instance masks w.r.t. the `gt_boxes`.
+    output_size: two integers that represent the height and width of the output
+      masks.
+    mask_binarize_threshold: a float representing the threshold for binarizing
+      mask values. Default value is 0.5.
+
+  Returns:
+    iou: a tensor with as a shape of [batch_size, N, M].
+  """
+  _, num_detections, mask_height, mask_width = masks.get_shape().as_list()
+  _, num_gts, gt_mask_height, gt_mask_width = gt_masks.get_shape().as_list()
+  output_height, output_width = output_size
+
+  masks = tf.where(masks < 0, tf.zeros_like(masks), masks)
+  gt_masks = tf.where(gt_masks < 0, tf.zeros_like(gt_masks), gt_masks)
+
+  pasted_masks = tf.reshape(
+      spatial_transform_ops.bilinear_resize_to_bbox(
+          tf.reshape(masks, [-1, mask_height, mask_width]),
+          tf.reshape(boxes, [-1, 4]),
+          output_size,
+      ),
+      shape=[-1, num_detections, output_height, output_width],
+  )
+  pasted_gt_masks = tf.reshape(
+      spatial_transform_ops.bilinear_resize_to_bbox(
+          tf.reshape(gt_masks, [-1, gt_mask_height, gt_mask_width]),
+          tf.reshape(gt_boxes, [-1, 4]),
+          output_size,
+      ),
+      shape=[-1, num_gts, output_height, output_width],
+  )
+  # (batch_size, num_detections, output_height * output_width)
+  flattened_binary_masks = tf.reshape(
+      pasted_masks > mask_binarize_threshold,
+      [-1, num_detections, output_height * output_width],
+  )
+  # (batch_size, num_gts, output_height * output_width)
+  flattened_gt_binary_masks = tf.reshape(
+      pasted_gt_masks > mask_binarize_threshold,
+      [-1, num_gts, output_height * output_width],
+  )
+  # (batch_size, output_height * output_width, num_gts)
+  flattened_gt_binary_masks = tf.transpose(flattened_gt_binary_masks, [0, 2, 1])
+
+  flattened_binary_masks = tf.cast(flattened_binary_masks, tf.float32)
+  flattened_gt_binary_masks = tf.cast(flattened_gt_binary_masks, tf.float32)
+
+  # (batch_size, num_detections, num_gts)
+  intersection = tf.matmul(flattened_binary_masks, flattened_gt_binary_masks)
+  detection_area = tf.reduce_sum(flattened_binary_masks, axis=-1, keepdims=True)
+  gt_area = tf.reduce_sum(flattened_gt_binary_masks, axis=-2, keepdims=True)
+  union = detection_area + gt_area - intersection
+  return tf.math.divide_no_nan(intersection, union), tf.math.divide_no_nan(
+      intersection, detection_area
+  )

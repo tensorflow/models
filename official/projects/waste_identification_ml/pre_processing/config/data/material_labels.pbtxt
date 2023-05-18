@@ -1,0 +1,70 @@
+# Mapping of material label ids to string name and human readable string label.
+# Source: U.S. Environmental Protection Agency (http://shortn/_ktDlFMfXm3)
+item {
+id: 1
+name: "inorganic_waste"
+display_name: "Soil, bits of concrete and stones"
+}
+item {
+id: 2
+name: "textiles"
+display_name: "Discarded clothing, carpet, sheets and towels"
+}
+item {
+id: 3
+name: "rubber_and_leather"
+display_name:
+  "Rubber and leather products such as clothing footwear, tires, gaskets and "
+  "furniture"
+}
+item {
+id: 4
+name: "wood"
+display_name:
+  "Wood products such as cabinets, furniture, and packaging like crates and "
+  "pallets"
+}
+item {
+id: 5
+name: "food"
+display_name:
+  "Residential, commercial (supermarkets, food whoesale, restaurants, hotels, "
+  "sports venues) and insitutional (hospitals, offices, universities, schools, "
+  "food banks) food waste"
+}
+item {
+id: 6
+name: "plastics"
+display_name:
+  "Plastic products such as bags, sacks, wraps, cups, bottles, jugs, "
+  "containers, lids, utensils, medical devices and household items"
+}
+item {
+id: 7
+name: "yard_trimmings"
+display_name:
+  "Grass, leaves and tree and brush trimmings from residential, institutional "
+  "and commercial sources"
+}
+item {
+id: 8
+name: "fiber"
+display_name:
+  "Cardboard products such as office papers, newspapers, tissue paper, paper "
+  "plates, cups, corrugated boxes, milk cartons, and bags and sacks"
+}
+item {
+id: 9
+name: "glass"
+display_name:
+  "Glass products such as beer and soft drink bottles, wine and liquor "
+  "bottles, and bottles or jars for food, cosmetics and other products"
+}
+item {
+id: 10
+name: "metals"
+display_name:
+  "Ferrous (iron and steel), non-ferrous (lead, copper and zinc) and aluminum "
+  "products such as containers, packaging, appliances, batteries, electronics "
+  "and furniture"
+}

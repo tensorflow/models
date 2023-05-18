@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,16 +14,62 @@
 
 """Dataset reader for vision model garden."""
 
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Mapping, Optional, Tuple, Union
 
+from absl import logging
 import tensorflow as tf
 
 from official.core import config_definitions as cfg
 from official.core import input_reader
 
 
+def build_weighted_sampling_combine_fn(
+    weights: Mapping[Any, Any]) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
+  """Builds a combine_fn using weighted sampling."""
+
+  def combine_fn(datasets: Mapping[Any, tf.data.Dataset]) -> tf.data.Dataset:
+    """Combines multiple datasets using weighted sampling."""
+    ds = []
+    ws = []
+    for k, dataset in datasets.items():
+      ds.append(dataset)
+      ws.append(weights[k])
+    return tf.data.Dataset.sample_from_datasets(
+        ds, ws, stop_on_empty_dataset=True)
+
+  return combine_fn
+
+
+def create_combine_fn(
+    params: cfg.DataConfig
+) -> Union[None, Callable[[tf.data.Dataset], tf.data.Dataset]]:
+  """Creates and returns a combine_fn for dataset mixing."""
+  if params.is_training and params.weights:
+    # Combine multiple datasets using weighted sampling.
+    if (not isinstance(params.input_path, cfg.base_config.Config) or
+        not isinstance(params.weights, cfg.base_config.Config)):
+      raise ValueError(
+          'input_path and weights must both be a Config to use weighted '
+          'sampling.')
+    input_paths = params.input_path.as_dict()
+    weights = params.weights.as_dict()
+    if len(input_paths) != len(weights):
+      raise ValueError(
+          'The number of input_path and weights must be the same, but got %d '
+          'input_paths and %d weights.' % (len(input_paths), len(weights)))
+
+    for k in input_paths.keys():
+      if k not in weights:
+        raise ValueError(
+            'input_path key \'%s\' does not have a corresponding weight.' % k)
+
+    return build_weighted_sampling_combine_fn(weights)
+  return None
+
+
 def calculate_batch_sizes(total_batch_size: int,
-                          pseudo_label_ratio: float) -> Tuple[int, int]:
+                          pseudo_label_ratio: float,
+                          pseudo_label_batch_size: int = 0) -> Tuple[int, int]:
   """Calculates labeled and pseudo-labeled dataset batch sizes.
 
   Returns (labeled_batch_size, pseudo_labeled_batch_size) given a
@@ -31,26 +77,36 @@ def calculate_batch_sizes(total_batch_size: int,
 
   Args:
    total_batch_size: The total batch size for all data.
-   pseudo_label_ratio: A non-negative float ratio of pseudo-labeled
-     to labeled data in a batch.
+   pseudo_label_ratio: A float ratio of pseudo-labeled to labeled data in a
+     batch. If it is negative, use `pseudo_label_batch_size` instead.
+   pseudo_label_batch_size: The batch size of pseudo-labeled data. It is ignored
+     if `pseudo_label_ratio` is valid. If not, it will be used and it cannot be
+     larger than total global batch size or less than 0 if pseudo_label_ratio is
+     also less than 0.
 
   Returns:
     (labeled_batch_size, pseudo_labeled_batch_size) as ints.
 
   Raises:
-    ValueError: If total_batch_size is negative.
-    ValueError: If pseudo_label_ratio is negative.
+    ValueError: If total_batch_size is negative, or both If pseudo_label_ratio
+      is negative and pseudo-label global_batch_size is negative or larger than
+      total batch size.
   """
   if total_batch_size < 0:
     raise ValueError('Invalid total_batch_size: {}'.format(total_batch_size))
-  if pseudo_label_ratio < 0.0:
-    raise ValueError(
-        'Invalid pseudo_label_ratio: {}'.format(pseudo_label_ratio))
-
-  ratio_factor = pseudo_label_ratio / (1.0 + pseudo_label_ratio)
-  pseudo_labeled_batch_size = int(round(total_batch_size * ratio_factor))
-  labeled_batch_size = total_batch_size - pseudo_labeled_batch_size
-  return labeled_batch_size, pseudo_labeled_batch_size
+  if pseudo_label_ratio >= 0.0:
+    ratio_factor = pseudo_label_ratio / (1.0 + pseudo_label_ratio)
+    pseudo_label_batch_size = int(total_batch_size * ratio_factor)
+    label_batch_size = total_batch_size - pseudo_label_batch_size
+  else:
+    if pseudo_label_batch_size > total_batch_size or pseudo_label_batch_size < 0:
+      raise ValueError(
+          'The batch size of pseudo-label dataset should not be larger than '
+          'total global batch size.')
+    logging.info('data_ratio for pseudo-label dataset is less than 0. '
+                 'Use global_batch_size from pseudo_label data config instead.')
+    label_batch_size = total_batch_size - pseudo_label_batch_size
+  return label_batch_size, pseudo_label_batch_size
 
 
 class CombinationDatasetInputReader(input_reader.InputReader):
@@ -61,6 +117,7 @@ class CombinationDatasetInputReader(input_reader.InputReader):
                dataset_fn=tf.data.TFRecordDataset,
                pseudo_label_dataset_fn=tf.data.TFRecordDataset,
                decoder_fn: Optional[Callable[..., Any]] = None,
+               combine_fn: Optional[Callable[..., Any]] = None,
                sample_fn: Optional[Callable[..., Any]] = None,
                parser_fn: Optional[Callable[..., Any]] = None,
                transform_and_batch_fn: Optional[Callable[
@@ -83,6 +140,9 @@ class CombinationDatasetInputReader(input_reader.InputReader):
         files. For example, it can be `tf.data.TFRecordDataset`.
       decoder_fn: An optional `callable` that takes the serialized data string
         and decodes them into the raw tensor dictionary.
+      combine_fn: An optional `callable` that takes a dictionarty of
+        `tf.data.Dataset` objects as input and outputs a combined dataset. It
+        will be executed after the decoder_fn and before the sample_fn.
       sample_fn: An optional `callable` that takes a `tf.data.Dataset` object as
         input and outputs the transformed dataset. It performs sampling on the
         decoded raw tensors dict before the parser_fn.
@@ -101,17 +161,20 @@ class CombinationDatasetInputReader(input_reader.InputReader):
     Raises:
       ValueError: If drop_remainder is False.
     """
-    super().__init__(params=params,
-                     dataset_fn=dataset_fn,
-                     decoder_fn=decoder_fn,
-                     sample_fn=sample_fn,
-                     parser_fn=parser_fn,
-                     transform_and_batch_fn=transform_and_batch_fn,
-                     postprocess_fn=postprocess_fn)
+    super().__init__(
+        params=params,
+        dataset_fn=dataset_fn,
+        decoder_fn=decoder_fn,
+        combine_fn=combine_fn,
+        sample_fn=sample_fn,
+        parser_fn=parser_fn,
+        transform_and_batch_fn=transform_and_batch_fn,
+        postprocess_fn=postprocess_fn)
 
     self._pseudo_label_file_pattern = params.pseudo_label_data.input_path
     self._pseudo_label_dataset_fn = pseudo_label_dataset_fn
     self._pseudo_label_data_ratio = params.pseudo_label_data.data_ratio
+    self._pseudo_label_batch_size = params.pseudo_label_data.global_batch_size
     self._pseudo_label_matched_files = input_reader.match_files(
         self._pseudo_label_file_pattern)
     if not self._drop_remainder:
@@ -125,7 +188,8 @@ class CombinationDatasetInputReader(input_reader.InputReader):
     """Generates a tf.data.Dataset object."""
 
     labeled_batch_size, pl_batch_size = calculate_batch_sizes(
-        self._global_batch_size, self._pseudo_label_data_ratio)
+        self._global_batch_size, self._pseudo_label_data_ratio,
+        self._pseudo_label_batch_size)
 
     if not labeled_batch_size and pl_batch_size:
       raise ValueError(
@@ -134,24 +198,21 @@ class CombinationDatasetInputReader(input_reader.InputReader):
               self._global_batch_size, self._pseudo_label_data_ratio))
 
     def _read_decode_and_parse_dataset(matched_files, dataset_fn, batch_size,
-                                       input_context, tfds_builder):
-      dataset = self._read_data_source(matched_files, dataset_fn, input_context,
-                                       tfds_builder)
+                                       input_context):
+      dataset = self._read_data_source(matched_files, dataset_fn, input_context)
       return self._decode_and_parse_dataset(dataset, batch_size, input_context)
 
     labeled_dataset = _read_decode_and_parse_dataset(
         matched_files=self._matched_files,
         dataset_fn=self._dataset_fn,
         batch_size=labeled_batch_size,
-        input_context=input_context,
-        tfds_builder=self._tfds_builder)
+        input_context=input_context)
 
     pseudo_labeled_dataset = _read_decode_and_parse_dataset(
         matched_files=self._pseudo_label_matched_files,
         dataset_fn=self._pseudo_label_dataset_fn,
         batch_size=pl_batch_size,
-        input_context=input_context,
-        tfds_builder=False)
+        input_context=input_context)
 
     def concat_fn(d1, d2):
       return tf.nest.map_structure(

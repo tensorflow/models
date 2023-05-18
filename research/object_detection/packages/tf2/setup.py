@@ -20,7 +20,9 @@ REQUIRED_PACKAGES = [
     'pandas',
     'tf-models-official>=2.5.1',
     'tensorflow_io',
-    'keras'
+    'keras',
+    'pyparsing==2.4.7',  # TODO(b/204103388)
+    'sacrebleu<=2.2.0'  # https://github.com/mjpost/sacrebleu/issues/209
 ]
 
 setup(

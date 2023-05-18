@@ -49,7 +49,7 @@ install_tensorflow() {
 install_tf_slim() {
   # Install TF-Slim from source.
   echo "Installing TF-Slim from source: ${git_repo}"
-  git clone ${tf_slim_git_repo}
+  git clone -b v1.1.0 ${tf_slim_git_repo}
   local exit_code=$?
   handle_exit_code ${exit_code} "Unable to clone TF-Slim repository ${tf_slim_git_repo}."
   pushd . > /dev/null

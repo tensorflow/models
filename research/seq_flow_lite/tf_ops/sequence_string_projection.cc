@@ -109,11 +109,14 @@ class SequenceStringProjectionOp : public OpKernel {
     bool normalize_repetition;
     OP_REQUIRES_OK(context, context->GetAttr("normalize_repetition",
                                              &normalize_repetition));
+    bool normalize_spaces;
+    OP_REQUIRES_OK(context,
+                   context->GetAttr("normalize_spaces", &normalize_spaces));
     std::string separators;
     OP_REQUIRES_OK(context, context->GetAttr("token_separators", &separators));
-    if (!separators.empty() || normalize_repetition) {
+    if (!separators.empty() || normalize_repetition || normalize_spaces) {
       projection_normalizer_ = absl::make_unique<ProjectionNormalizer>(
-          separators, normalize_repetition);
+          separators, normalize_repetition, normalize_spaces);
     }
 
     OP_REQUIRES_OK(context, context->GetAttr("add_first_cap_feature",
@@ -326,6 +329,7 @@ REGISTER_OP("SequenceStringProjection")
     .Attr("split_on_space: bool = True")
     .Attr("token_separators: string = ''")
     .Attr("normalize_repetition: bool = false")
+    .Attr("normalize_spaces: bool = false")
     .SetShapeFn([](InferenceContext* c) {
       DimensionHandle size;
 
@@ -339,7 +343,7 @@ REGISTER_OP("SequenceStringProjection")
                                      feature_size}));
       c->set_output(1, c->MakeShape({1}));
       c->set_output(2, c->MakeShape({batch_size}));
-      return tensorflow::Status::OK();
+      return tensorflow::OkStatus();
     })
     .Doc(R"doc(
 This op referred to as Ternary Sequence String Projection op (TSP), tokenizes
@@ -384,6 +388,10 @@ Attribute(s):
 - add_all_caps_feature: Specifies the probability with which a feature to the
     resulting projection tensor that helps discriminate if the input token is
     ALLCAPS will be added.
+- normalize_repetition: When true normalizes repetition in text tokens before
+    fingerprinting.
+- normalize_spaces: When true strips leading and trailing spaces and removes
+    repeated spaces.
 
 Output(s):
 - projection: Floating point tensor with ternary values of shape

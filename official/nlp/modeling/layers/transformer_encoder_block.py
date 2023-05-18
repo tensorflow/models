@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,11 @@
 # limitations under the License.
 
 """Keras-based TransformerEncoder block layer."""
-
+from typing import Any, Optional
 from absl import logging
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling.layers import util
 
 
@@ -60,6 +61,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
                value_dim=None,
                output_last_dim=None,
                diff_q_kv_att_layer_norm=False,
+               return_attention_scores=False,
                **kwargs):
     """Initializes `TransformerEncoderBlock`.
 
@@ -74,7 +76,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     E.g. let's say input dims are `[batch_size, seq_dim, input_last_dim]`.
     Scenario 1: If `output_last_dim` is not `None`, then the output dims of this
     module would be `[batch_size, seq_dim, output_last_dim]`. Note `key_dim` is
-    is overriden by `output_last_dim`.
+    overriden by `output_last_dim`.
     Scenario 2: If `output_last_dim` is `None` and `key_dim` is not `None`, then
     the output dims of this module would be `[batch_size, seq_dim, key_dim]`.
     Scenario 3: If the `output_last_dim` and `key_dim` are both `None`, the
@@ -116,24 +118,30 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         `None`, we use the first `input_shape`'s last dim.
       value_dim: `value_dim` for the `tf.keras.layers.MultiHeadAttention`.
       output_last_dim: Final dimension of the output of this module. This also
-        dictates the value for the final dimension of the
-        multi-head-attention. When it's `None`, we use, in order of decreasing
-        precedence, `key_dim` * `num_heads` or the first `input_shape`'s last
-        dim as the output's last dim.
+        dictates the value for the final dimension of the multi-head-attention.
+        When it's `None`, we use, in order of decreasing precedence, `key_dim` *
+        `num_heads` or the first `input_shape`'s last dim as the output's last
+        dim.
       diff_q_kv_att_layer_norm: If `True`, create a separate attention layer
-        norm layer for query and key-value if `norm_first` is `True`. Invalid
-        to set to `True` if `norm_first` is `False`.
+        norm layer for query and key-value if `norm_first` is `True`. Invalid to
+        set to `True` if `norm_first` is `False`.
+      return_attention_scores: If `True`, the output of this layer will be a
+        tuple and additionally contain the attention scores in the shape of
+        `[batch_size, num_attention_heads, seq_dim, seq_dim]`.
       **kwargs: keyword arguments.
     """
     util.filter_kwargs(kwargs)
     super().__init__(**kwargs)
 
+    # Deprecation warning.
+    if output_range is not None:
+      logging.warning("`output_range` is available as an argument for `call()`."
+                      "The `output_range` as __init__ argument is deprecated.")
+
     self._num_heads = num_attention_heads
     self._inner_dim = inner_dim
     self._inner_activation = inner_activation
-    self._attention_dropout = attention_dropout
     self._attention_dropout_rate = attention_dropout
-    self._output_dropout = output_dropout
     self._output_dropout_rate = output_dropout
     self._output_range = output_range
     self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
@@ -152,11 +160,13 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     self._value_dim = value_dim
     self._output_last_dim = output_last_dim
     self._diff_q_kv_att_layer_norm = diff_q_kv_att_layer_norm
+    self._return_attention_scores = return_attention_scores
     if attention_initializer:
       self._attention_initializer = tf.keras.initializers.get(
           attention_initializer)
     else:
-      self._attention_initializer = self._kernel_initializer
+      self._attention_initializer = tf_utils.clone_initializer(
+          self._kernel_initializer)
     self._attention_axes = attention_axes
 
     if self._diff_q_kv_att_layer_norm and not self._norm_first:
@@ -188,8 +198,6 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
       last_output_shape = self._output_last_dim
 
     common_kwargs = dict(
-        bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
@@ -198,14 +206,16 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         num_heads=self._num_heads,
         key_dim=self._key_dim,
         value_dim=self._value_dim,
-        dropout=self._attention_dropout,
+        dropout=self._attention_dropout_rate,
         use_bias=self._use_bias,
         kernel_initializer=self._attention_initializer,
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         attention_axes=self._attention_axes,
         output_shape=self._output_last_dim,
         name="self_attention",
         **common_kwargs)
-    self._attention_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
+    self._attention_dropout = tf.keras.layers.Dropout(
+        rate=self._attention_dropout_rate)
     # Use float32 in layernorm for numeric stability.
     # It is probably safe in mixed_float16, but we haven't validated this yet.
     self._attention_layer_norm = (
@@ -223,11 +233,12 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
               epsilon=self._norm_epsilon,
               dtype=tf.float32))
 
-    self._intermediate_dense = tf.keras.layers.experimental.EinsumDense(
+    self._intermediate_dense = tf.keras.layers.EinsumDense(
         einsum_equation,
         output_shape=(None, self._inner_dim),
         bias_axes="d",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         name="intermediate",
         **common_kwargs)
     policy = tf.keras.mixed_precision.global_policy()
@@ -240,14 +251,16 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         self._inner_activation, dtype=policy)
     self._inner_dropout_layer = tf.keras.layers.Dropout(
         rate=self._inner_dropout)
-    self._output_dense = tf.keras.layers.experimental.EinsumDense(
+    self._output_dense = tf.keras.layers.EinsumDense(
         einsum_equation,
         output_shape=(None, last_output_shape),
         bias_axes="d",
         name="output",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
-    self._output_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
+    self._output_dropout = tf.keras.layers.Dropout(
+        rate=self._output_dropout_rate)
     # Use float32 in layernorm for numeric stability.
     self._output_layer_norm = tf.keras.layers.LayerNormalization(
         name="output_layer_norm",
@@ -255,72 +268,67 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         epsilon=self._norm_epsilon,
         dtype=tf.float32)
 
-    super(TransformerEncoderBlock, self).build(input_shape)
+    super().build(input_shape)
 
   def get_config(self):
     config = {
-        "num_attention_heads":
-            self._num_heads,
-        "inner_dim":
-            self._inner_dim,
-        "inner_activation":
-            self._inner_activation,
-        "output_dropout":
-            self._output_dropout_rate,
-        "attention_dropout":
-            self._attention_dropout_rate,
-        "output_range":
-            self._output_range,
-        "kernel_initializer":
-            tf.keras.initializers.serialize(self._kernel_initializer),
-        "bias_initializer":
-            tf.keras.initializers.serialize(self._bias_initializer),
-        "kernel_regularizer":
-            tf.keras.regularizers.serialize(self._kernel_regularizer),
-        "bias_regularizer":
-            tf.keras.regularizers.serialize(self._bias_regularizer),
-        "activity_regularizer":
-            tf.keras.regularizers.serialize(self._activity_regularizer),
-        "kernel_constraint":
-            tf.keras.constraints.serialize(self._kernel_constraint),
-        "bias_constraint":
-            tf.keras.constraints.serialize(self._bias_constraint),
-        "use_bias":
-            self._use_bias,
-        "norm_first":
-            self._norm_first,
-        "norm_epsilon":
-            self._norm_epsilon,
-        "inner_dropout":
-            self._inner_dropout,
-        "attention_initializer":
-            tf.keras.initializers.serialize(self._attention_initializer),
+        "num_attention_heads": self._num_heads,
+        "inner_dim": self._inner_dim,
+        "inner_activation": self._inner_activation,
+        "output_dropout": self._output_dropout_rate,
+        "attention_dropout": self._attention_dropout_rate,
+        "output_range": self._output_range,
+        "kernel_initializer": tf_utils.serialize_initializer(
+            self._kernel_initializer, use_legacy_format=True
+        ),
+        "bias_initializer": tf_utils.serialize_initializer(
+            self._bias_initializer, use_legacy_format=True
+        ),
+        "kernel_regularizer": tf_utils.serialize_regularizer(
+            self._kernel_regularizer, use_legacy_format=True
+        ),
+        "bias_regularizer": tf_utils.serialize_regularizer(
+            self._bias_regularizer, use_legacy_format=True
+        ),
+        "activity_regularizer": tf_utils.serialize_regularizer(
+            self._activity_regularizer, use_legacy_format=True
+        ),
+        "kernel_constraint": tf_utils.serialize_constraint(
+            self._kernel_constraint, use_legacy_format=True
+        ),
+        "bias_constraint": tf_utils.serialize_constraint(
+            self._bias_constraint, use_legacy_format=True
+        ),
+        "use_bias": self._use_bias,
+        "norm_first": self._norm_first,
+        "norm_epsilon": self._norm_epsilon,
+        "inner_dropout": self._inner_dropout,
+        "attention_initializer": tf_utils.serialize_initializer(
+            self._attention_initializer, use_legacy_format=True
+        ),
         "attention_axes": self._attention_axes,
-        "use_query_residual":
-            self._use_query_residual,
-        "key_dim":
-            self._key_dim,
-        "value_dim":
-            self._value_dim,
-        "output_last_dim":
-            self._output_last_dim,
-        "diff_q_kv_att_layer_norm":
-            self._diff_q_kv_att_layer_norm,
+        "use_query_residual": self._use_query_residual,
+        "key_dim": self._key_dim,
+        "value_dim": self._value_dim,
+        "output_last_dim": self._output_last_dim,
+        "diff_q_kv_att_layer_norm": self._diff_q_kv_att_layer_norm,
     }
-    base_config = super(TransformerEncoderBlock, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def call(self, inputs):
+  def call(self, inputs: Any, output_range: Optional[tf.Tensor] = None) -> Any:
     """Transformer self-attention encoder block call.
 
     Args:
-      inputs: a single tensor or a list of tensors.
-        `input tensor` as the single sequence of embeddings.
-        [`input tensor`, `attention mask`] to have the additional attention
-          mask.
-        [`query tensor`, `key value tensor`, `attention mask`] to have separate
-          input streams for the query, and key/value to the multi-head
-          attention.
+      inputs: a single tensor or a list of tensors. `input tensor` as the single
+        sequence of embeddings. [`input tensor`, `attention mask`] to have the
+        additional attention mask. [`query tensor`, `key value tensor`,
+        `attention mask`] to have separate input streams for the query, and
+        key/value to the multi-head attention.
+      output_range: the sequence output range, [0, output_range) for slicing the
+        target sequence. `None` means the target sequence is not sliced. If you
+        would like to have no change to the model training, it is better to only
+        set the `output_range` for serving.
 
     Returns:
       An output tensor with the same dimensions as input/query tensor.
@@ -337,15 +345,17 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     else:
       input_tensor, key_value, attention_mask = (inputs, None, None)
 
-    if self._output_range:
+    if output_range is None:
+      output_range = self._output_range
+    if output_range:
       if self._norm_first:
-        source_tensor = input_tensor[:, 0:self._output_range, :]
+        source_tensor = input_tensor[:, 0:output_range, :]
         input_tensor = self._attention_layer_norm(input_tensor)
         if key_value is not None:
           key_value = self._attention_layer_norm_kv(key_value)
-      target_tensor = input_tensor[:, 0:self._output_range, :]
+      target_tensor = input_tensor[:, 0:output_range, :]
       if attention_mask is not None:
-        attention_mask = attention_mask[:, 0:self._output_range, :]
+        attention_mask = attention_mask[:, 0:output_range, :]
     else:
       if self._norm_first:
         source_tensor = input_tensor
@@ -356,8 +366,16 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
 
     if key_value is None:
       key_value = input_tensor
-    attention_output = self._attention_layer(
-        query=target_tensor, value=key_value, attention_mask=attention_mask)
+
+    if self._return_attention_scores:
+      attention_output, attention_scores = self._attention_layer(
+          query=target_tensor,
+          value=key_value,
+          attention_mask=attention_mask,
+          return_attention_scores=True)
+    else:
+      attention_output = self._attention_layer(
+          query=target_tensor, value=key_value, attention_mask=attention_mask)
     attention_output = self._attention_dropout(attention_output)
 
     if self._norm_first:
@@ -381,9 +399,14 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     layer_output = self._output_dropout(layer_output)
 
     if self._norm_first:
-      return source_attention_output + layer_output
+      layer_output = source_attention_output + layer_output
+    else:
+      # During mixed precision training, layer norm output is always fp32 for
+      # now. Casts fp32 for the subsequent add.
+      layer_output = tf.cast(layer_output, tf.float32)
+      layer_output = self._output_layer_norm(layer_output + attention_output)
 
-    # During mixed precision training, layer norm output is always fp32 for now.
-    # Casts fp32 for the subsequent add.
-    layer_output = tf.cast(layer_output, tf.float32)
-    return self._output_layer_norm(layer_output + attention_output)
+    if self._return_attention_scores:
+      return layer_output, attention_scores
+    else:
+      return layer_output

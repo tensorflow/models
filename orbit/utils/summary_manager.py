@@ -1,4 +1,4 @@
-# Copyright 2022 The Orbit Authors. All Rights Reserved.
+# Copyright 2023 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,10 +16,12 @@
 
 import os
 
+from orbit.utils.summary_manager_interface import SummaryManagerInterface
+
 import tensorflow as tf
 
 
-class SummaryManager:
+class SummaryManager(SummaryManagerInterface):
   """A utility class for managing summary writing."""
 
   def __init__(self, summary_dir, summary_fn, global_step=None):

@@ -1,6 +1,3 @@
-# gRPC using libcares in opensource has some issues.
-build --define=grpc_no_ares=true
-
 # Suppress all warning messages.
 build:short_logs --output_filter=DONT_MATCH_ANYTHING
 
@@ -9,26 +6,10 @@ build --action_env=PYTHON_BIN_PATH=/usr/bin/python3
 build --repo_env=PYTHON_BIN_PATH=/usr/bin/python3
 build --python_path=/usr/bin/python3
 
-# Enable using platform specific build settings
-build --enable_platform_specific_config
-
-# Flag to enable remote config. Required starting from TF 2.2.
-common --experimental_repo_remote_exec
-
-build:manylinux2010 --crosstool_top=//third_party/toolchains/preconfig/ubuntu16.04/gcc7_manylinux2010:toolchain
-
-build -c opt
-build --cxxopt="-std=c++14"
-build --host_cxxopt="-std=c++14"
-build --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0"
-build --auto_output_filter=subpackages
-build --copt="-Wall" --copt="-Wno-sign-compare"
-build --linkopt="-lrt -lm"
-
-# TF isn't built in dbg mode, so our dbg builds will segfault due to inconsistency
-# of defines when using tf's headers.  In particular in refcount.h.
-build --cxxopt="-DNDEBUG"
-
+# For projects which use TensorFlow as part of a Bazel build process, putting
+# nothing in a bazelrc will default to a monolithic build. The following line
+# opts in to modular op registration support by default.
+build --define framework_shared_object=true
 
 build --define=use_fast_cpp_protos=true
 build --define=allow_oversize_protos=true
@@ -36,15 +17,9 @@ build --define=allow_oversize_protos=true
 build --spawn_strategy=standalone
 build -c opt
 
-# Adding "--cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0" creates parity with TF
-# compilation options. It also addresses memory use due to
-# copy-on-write semantics of std::strings of the older ABI.
-build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0
-
 # Make Bazel print out all options from rc files.
 build --announce_rc
 
-# Other build flags.
 build --define=grpc_no_ares=true
 
 # See https://github.com/bazelbuild/bazel/issues/7362 for information on what
@@ -61,15 +36,38 @@ build --define=grpc_no_ares=true
 # archives in -whole_archive -no_whole_archive.
 build --noincompatible_remove_legacy_whole_archive
 
-# Build TF with C++ 17 features.
-build:c++17 --cxxopt=-std=c++1z
-build:c++17 --cxxopt=-stdlib=libc++
-build:c++1z --config=c++17
-
-# Enable using platform specific build settings, except when cross-compiling for
-# mobile platforms.
+# Enable using platform specific build settings
 build --enable_platform_specific_config
 
+# Enable XLA support by default.
+build --define=with_xla_support=true
+
+# Disable AWS/HDFS support by default
+build --define=no_aws_support=true
+build --define=no_hdfs_support=true
+
+# TF now has `cc_shared_library` targets, so it needs the experimental flag
+build --experimental_cc_shared_library
+
+# cc_shared_library ensures no library is linked statically more than once.
+build --experimental_link_static_libraries_once=false
+
+# By default, build TF in C++ 17 mode.
+build --cxxopt=-std=c++17
+build --host_cxxopt=-std=c++17
+
+# Flag to enable remote config. Required starting from TF 2.2.
+common --experimental_repo_remote_exec
+
+build:manylinux2010 --crosstool_top=//third_party/toolchains/preconfig/ubuntu16.04/gcc7_manylinux2010:toolchain
+
+build --auto_output_filter=subpackages
+build --copt="-Wall" --copt="-Wno-sign-compare"
+build --linkopt="-lrt -lm"
+
+# TF isn't built in dbg mode, so our dbg builds will segfault due to
+# inconsistency of defines when using tf's headers.  In particular in refcount.h
+build --cxxopt="-DNDEBUG"
 
 # Options from ./configure
 try-import %workspace%/.tf_configure.bazelrc

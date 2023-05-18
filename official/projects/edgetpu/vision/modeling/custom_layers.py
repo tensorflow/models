@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +14,12 @@
 
 """Customized keras layers used in the EdgeTPU models."""
 
+from collections.abc import MutableMapping
 import inspect
-from typing import Any, MutableMapping, Optional, Union, Tuple
+from typing import Any, Optional, Union
 import tensorflow as tf
+
+from official.modeling import tf_utils
 
 
 class GroupConv2D(tf.keras.layers.Conv2D):
@@ -24,12 +27,12 @@ class GroupConv2D(tf.keras.layers.Conv2D):
 
   def __init__(self,
                filters: int,
-               kernel_size: Union[int, Tuple[int, int]],
+               kernel_size: Union[int, tuple[int, int]],
                groups: int,
-               strides: Tuple[int, int] = (1, 1),
+               strides: tuple[int, int] = (1, 1),
                padding: str = 'valid',
                data_format: str = 'channels_last',
-               dilation_rate: Tuple[int, int] = (1, 1),
+               dilation_rate: tuple[int, int] = (1, 1),
                activation: Any = None,
                use_bias: bool = True,
                kernel_initializer: Any = 'glorot_uniform',
@@ -102,9 +105,9 @@ class GroupConv2D(tf.keras.layers.Conv2D):
       ValueError: if `batch_norm_layer` is not a callable when provided.
       ValueError: when both `strides` > 1 and `dilation_rate` > 1.
     """
-    if groups <= 1 or groups >= filters:
-      raise ValueError('Number of groups should be greater than 1 and less '
-                       'than the output filters.')
+    if groups <= 1 or groups > filters:
+      raise ValueError(f'Number of groups {groups} should be greater than 1 and'
+                       f' less or equal than the output filters {filters}.')
     self._groups = groups
     if data_format != 'channels_last':
       raise ValueError(
@@ -147,7 +150,7 @@ class GroupConv2D(tf.keras.layers.Conv2D):
         groups=1,
         **kwargs)  # pytype: disable=bad-return-type  # typed-keras
 
-  def build(self, input_shape: Tuple[int, ...]) -> None:
+  def build(self, input_shape: tuple[int, ...]) -> None:
     """Builds GroupConv2D layer as a collection of smaller Conv2D layers."""
     input_shape = tf.TensorShape(input_shape)
     input_channel = self._get_input_channel(input_shape)
@@ -168,7 +171,7 @@ class GroupConv2D(tf.keras.layers.Conv2D):
           self.add_weight(
               name='kernel_{}'.format(g),
               shape=self.group_kernel_shape,
-              initializer=self.kernel_initializer,
+              initializer=tf_utils.clone_initializer(self.kernel_initializer),
               regularizer=self.kernel_regularizer,
               constraint=self.kernel_constraint,
               trainable=True,
@@ -178,7 +181,7 @@ class GroupConv2D(tf.keras.layers.Conv2D):
             self.add_weight(
                 name='bias_{}'.format(g),
                 shape=(self.group_output_channel,),
-                initializer=self.bias_initializer,
+                initializer=tf_utils.clone_initializer(self.bias_initializer),
                 regularizer=self.bias_regularizer,
                 constraint=self.bias_constraint,
                 trainable=True,
@@ -269,7 +272,7 @@ class GroupConv2DKerasModel(tf.keras.Model):
 
   def __init__(self,
                filters: int,
-               kernel_size: Tuple[int, int],
+               kernel_size: tuple[int, int],
                groups: int,
                batch_norm_layer: Optional[tf.keras.layers.Layer] = None,
                bn_epsilon: float = 1e-3,
@@ -314,7 +317,7 @@ class GroupConv2DKerasModel(tf.keras.Model):
     self.batch_norm_layer = batch_norm_layer
     self.use_batch_norm = False
     if self.batch_norm_layer is not None:
-      if not inspect.isclass(self.batch_norm_layer):
+      if not inspect.isclass(self.batch_norm_layer):  # pytype: disable=not-supported-yet
         raise ValueError('batch_norm_layer is not a class.')
       self.use_batch_norm = True
 
@@ -343,7 +346,7 @@ class GroupConv2DKerasModel(tf.keras.Model):
             self.batch_norm_layer(
                 axis=-1, momentum=bn_momentum, epsilon=bn_epsilon))  # pytype: disable=bad-return-type  # typed-keras
 
-  def call(self, inputs: Any) -> Any:
+  def call(self, inputs: Any) -> Any:  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     """Applies 2d group convolution on the inputs."""
     input_shape = inputs.get_shape().as_list()
     if input_shape[-1] % self._groups != 0:

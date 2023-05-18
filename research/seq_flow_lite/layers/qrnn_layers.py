@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-# Lint as: python3
 """Layers for QRNN."""
 import tensorflow as tf
 
@@ -226,6 +225,7 @@ class QRNNUnidirectional(base_layers.BaseLayer):
                forward=True,
                pooling=QUASI_RNN_POOLING_FO,
                output_quantized=True,
+               normalization_fn=None,
                **kwargs):
     self.forward = forward
     self.kwidth = kwidth
@@ -242,6 +242,7 @@ class QRNNUnidirectional(base_layers.BaseLayer):
               rank=3,
               padding="VALID",
               activation=None,
+              normalization_fn=normalization_fn,
               **kwargs))
     padding = [kwidth - 1, 0] if forward else [0, kwidth - 1]
     self.zero_pad = tf.keras.layers.ZeroPadding1D(padding=padding)
@@ -305,6 +306,7 @@ class QRNNUnidirectionalWithBottleneck(base_layers.BaseLayer):
               ksize=kwidth,
               rank=3,
               padding="SAME",
+              normalization_fn=None,
               **kwargs))
       self.post_conv_layers.append(
           dense_layers.BaseQDense(
@@ -333,6 +335,7 @@ class QRNNBidirectional(base_layers.BaseLayer):
                zoneout_probability=0.0,
                pooling=QUASI_RNN_POOLING_FO,
                bottleneck_size=None,
+               normalization_fn=None,
                **kwargs):
     self.pooling = pooling
     if bottleneck_size is None:
@@ -343,6 +346,7 @@ class QRNNBidirectional(base_layers.BaseLayer):
           output_quantized=False,
           zoneout_probability=zoneout_probability,
           pooling=pooling,
+          normalization_fn=normalization_fn,
           **kwargs)
       self.backward = QRNNUnidirectional(
           kwidth=kwidth,
@@ -351,8 +355,11 @@ class QRNNBidirectional(base_layers.BaseLayer):
           output_quantized=False,
           zoneout_probability=zoneout_probability,
           pooling=pooling,
+          normalization_fn=normalization_fn,
           **kwargs)
     else:
+      assert normalization_fn is None, (
+          "normalization_fn will not take an effect")
       self.forward = QRNNUnidirectionalWithBottleneck(
           kwidth=kwidth,
           state_size=state_size,
@@ -401,6 +408,7 @@ class QRNNBidirectionalStack(base_layers.BaseLayer):
                layerwise_decaying_zoneout=True,
                pooling=QUASI_RNN_POOLING_FO,
                bottleneck_size=None,
+               normalization_fn=None,
                **kwargs):
     self.layers = []
     zp = zoneout_probability
@@ -414,6 +422,7 @@ class QRNNBidirectionalStack(base_layers.BaseLayer):
               zoneout_probability=zp,
               pooling=pooling,
               bottleneck_size=bottleneck_size,
+              normalization_fn=normalization_fn,
               **kwargs))
     super(QRNNBidirectionalStack, self).__init__(**kwargs)
 

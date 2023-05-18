@@ -1,0 +1,144 @@
+# Mapping of material form label ids to string name and human readable string
+# label.
+# Source: CircularNet partners
+item {
+id: 1
+name: "flexible"
+}
+item {
+id: 2
+name: "bottle"
+}
+item {
+id: 3
+name: "jar"
+}
+item {
+id: 4
+name: "carton"
+}
+item {
+id: 5
+name: "sachet_and_pouch"
+}
+item {
+id: 6
+name: "blister_pack"
+}
+item {
+id: 7
+name: "tray"
+}
+item {
+id: 8
+name: "tube"
+}
+item {
+id: 9
+name: "can"
+}
+item {
+id: 10
+name: "tub"
+}
+item {
+id: 11
+name: "cosmetic_container"
+}
+item {
+id: 12
+name: "box"
+}
+item {
+id: 13
+name: "clothing"
+}
+item {
+id: 14
+name: "bulb"
+}
+item {
+id: 15
+name: "cup_and_glass"
+}
+item {
+id: 16
+name: "book_and_magazine"
+}
+item {
+id: 17
+name: "bag"
+}
+item {
+id: 18
+name: "lid"
+}
+item {
+id: 19
+name: "clamshell"
+}
+item {
+id: 20
+name: "mirror"
+}
+item {
+id: 21
+name: "tangler"
+display_name: "Wire or cable"
+}
+item {
+id: 22
+name: "cutlery"
+}
+item {
+id: 23
+name: "cassette_and_tape"
+}
+item {
+id: 24
+name: "electronic_device"
+}
+item {
+id: 25
+name: "battery"
+}
+item {
+id: 26
+name: "pen_and_pencil"
+}
+item {
+id: 27
+name: "paper_product"
+}
+item {
+id: 28
+name: "footwear"
+}
+item {
+id: 29
+name: "scissor"
+}
+item {
+id: 30
+name: "toy"
+}
+item {
+id: 31
+name: "brush"
+}
+item {
+id: 32
+name: "pipe"
+}
+item {
+id: 33
+name: "foil"
+}
+item {
+id: 34
+name: "hanger"
+}
+item {
+id: 35
+name: "container"
+}

@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 """Video classification configuration definition."""
 import dataclasses
 from typing import Optional, Tuple
-from absl import flags
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -23,7 +22,6 @@ from official.modeling import hyperparams
 from official.modeling import optimization
 from official.vision.configs import common
 
-FLAGS = flags.FLAGS
 
 YT8M_TRAIN_EXAMPLES = 3888919
 YT8M_VAL_EXAMPLES = 1112356
@@ -35,44 +33,79 @@ YT8M_VAL_PATH = 'gs://youtube8m-ml/3/frame/validate/validate*.tfrecord'
 
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
-  """The base configuration for building datasets."""
+  """The base configuration for building datasets.
+
+  Attributes:
+    name: Dataset name.
+    split: dataset split, 'train' or 'valid'.
+    feature_sizes: shape(length) of each feature specified in the feature_names.
+    feature_names: names of the features in the tf.SequenceExample.
+    feature_sources: if the feature from 'context' or 'features'.
+    feature_dtypes: dtype of decoded feature.
+    feature_from_bytes: decode feature from bytes or as dtype list.
+    label_fields: name of field to read from tf.SequenceExample.
+    segment_size: Number of frames in each segment.
+    segment_labels: Use segment level label. Default: False, video level label.
+    include_video_id: `True` means include video id (string) in the input to the
+      model.
+    temporal_stride: Not used. Need to deprecated.
+    max_frames: Maxim Number of frames in a input example. It is used to crop
+      the input in the temporal dimension.
+    num_sample_frames: Number of frames to sample for each input example.
+    num_classes: Number of classes to classify. Assuming it is a classification
+      task.
+    num_devices: Not used. To be deprecated.
+    input_path: The path to the input.
+    is_training: Whether this data is used for training or not.
+    num_examples: Number of examples in the dataset. It is used to compute the
+      steps for train or eval. set the value to `-1` to make the experiment run
+      until the end of dataset.
+    file_type: type of input files.
+  """
   name: Optional[str] = 'yt8m'
   split: Optional[str] = None
   feature_sizes: Tuple[int, ...] = (1024, 128)
   feature_names: Tuple[str, ...] = ('rgb', 'audio')
+  feature_sources: Tuple[str, ...] = ('feature', 'feature')
+  feature_dtypes: Tuple[str, ...] = ('uint8', 'uint8')
+  feature_from_bytes: Tuple[bool, ...] = (True, True)
+  label_field: str = 'labels'
   segment_size: int = 1
   segment_labels: bool = False
+  include_video_id: bool = False
   temporal_stride: int = 1
   max_frames: int = 300
-  num_frames: int = 300  # set smaller to allow random sample (Parser)
+  num_sample_frames: int = 300  # set smaller to allow random sample (Parser)
   num_classes: int = 3862
   num_devices: int = 1
   input_path: str = ''
   is_training: bool = True
-  random_seed: int = 123
   num_examples: int = -1
+  file_type: str = 'tfrecord'
 
 
 def yt8m(is_training):
   """YT8M dataset configs."""
+  # pylint: disable=unexpected-keyword-arg
   return DataConfig(
-      num_frames=30,
       temporal_stride=1,
       segment_labels=False,
       segment_size=5,
       is_training=is_training,
       split='train' if is_training else 'valid',
+      drop_remainder=is_training,  # pytype: disable=wrong-keyword-args
       num_examples=YT8M_TRAIN_EXAMPLES if is_training else YT8M_VAL_EXAMPLES,
       input_path=YT8M_TRAIN_PATH if is_training else YT8M_VAL_PATH)
+  # pylint: enable=unexpected-keyword-arg
 
 
 @dataclasses.dataclass
 class MoeModel(hyperparams.Config):
   """The model config."""
   num_mixtures: int = 5
-  l2_penalty: float = 1e-5
   use_input_context_gate: bool = False
   use_output_context_gate: bool = False
+  vocab_as_last_dim: bool = False
 
 
 @dataclasses.dataclass
@@ -85,7 +118,7 @@ class DbofModel(hyperparams.Config):
   use_context_gate_cluster_layer: bool = False
   context_gate_cluster_bottleneck_size: int = 0
   pooling_method: str = 'average'
-  yt8m_agg_classifier_model: str = 'MoeModel'
+  agg_classifier_model: str = 'MoeModel'
   agg_model: hyperparams.Config = MoeModel()
   norm_activation: common.NormActivation = common.NormActivation(
       activation='relu', use_sync_bn=False)
@@ -100,16 +133,26 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class AveragePrecisionConfig(hyperparams.Config):
+  top_k: int = 20
+  top_n: Optional[int] = None
+
+
+@dataclasses.dataclass
+class Evaluation(hyperparams.Config):
+  average_precision: Optional[AveragePrecisionConfig] = None
+
+
+@dataclasses.dataclass
 class YT8MTask(cfg.TaskConfig):
   """The task config."""
   model: DbofModel = DbofModel()
   train_data: DataConfig = yt8m(is_training=True)
   validation_data: DataConfig = yt8m(is_training=False)
   losses: Losses = Losses()
+  evaluation: Evaluation = Evaluation(
+      average_precision=AveragePrecisionConfig())
   gradient_clip_norm: float = 1.0
-  num_readers: int = 8
-  top_k: int = 20
-  top_n: Optional[int] = None
 
 
 def add_trainer(
@@ -118,24 +161,26 @@ def add_trainer(
     eval_batch_size: int,
     learning_rate: float = 0.0001,
     train_epochs: int = 50,
-):
-  """Add and config a trainer to the experiment config."""
-  if YT8M_TRAIN_EXAMPLES <= 0:
+    num_train_examples: int = YT8M_TRAIN_EXAMPLES,
+    num_val_examples: int = YT8M_VAL_EXAMPLES,
+) -> cfg.ExperimentConfig:
+  """Adds and config a trainer to the experiment config."""
+  if num_train_examples <= 0:
     raise ValueError('Wrong train dataset size {!r}'.format(
         experiment.task.train_data))
-  if YT8M_VAL_EXAMPLES <= 0:
+  if num_val_examples <= 0:
     raise ValueError('Wrong validation dataset size {!r}'.format(
         experiment.task.validation_data))
   experiment.task.train_data.global_batch_size = train_batch_size
   experiment.task.validation_data.global_batch_size = eval_batch_size
-  steps_per_epoch = YT8M_TRAIN_EXAMPLES // train_batch_size
-  steps_per_loop = 30
+  steps_per_epoch = num_train_examples // train_batch_size
+  steps_per_loop = 500
   experiment.trainer = cfg.TrainerConfig(
       steps_per_loop=steps_per_loop,
       summary_interval=steps_per_loop,
       checkpoint_interval=steps_per_loop,
       train_steps=train_epochs * steps_per_epoch,
-      validation_steps=YT8M_VAL_EXAMPLES // eval_batch_size,
+      validation_steps=num_val_examples // eval_batch_size,
       validation_interval=steps_per_loop,
       optimizer_config=optimization.OptimizationConfig({
           'optimizer': {
@@ -176,14 +221,16 @@ def yt8m_experiment() -> cfg.ExperimentConfig:
           'task.train_data.num_classes == task.validation_data.num_classes',
           'task.train_data.feature_sizes != None',
           'task.train_data.feature_names != None',
+          'task.train_data.feature_sources != None',
+          'task.train_data.feature_dtypes != None',
       ])
 
   # Per TPUv3 Core batch size 16GB HBM. `factor` in range(1, 26)
   factor = 1
-  num_cores = 32  # for TPU 4x4
+  num_cores = 32  # for TPUv3 4x4
   train_per_core_bs = 32 * factor
   train_bs = train_per_core_bs * num_cores
-  eval_per_core_bs = 32 * 50  # multiplier<=100
+  eval_per_core_bs = 4 * 50  # multiplier<=100
   eval_bs = eval_per_core_bs * num_cores
   # based lr=0.0001 for bs=512
   return add_trainer(

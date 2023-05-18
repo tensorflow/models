@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ def flat_lists_to_blocks(model_structures, model_edge_weights):
     if node[0] < 0:
       block = BlockSpec(level=node[0], temporal_dilation=node[1])
     else:
-      block = BlockSpec(
+      block = BlockSpec(  # pytype: disable=wrong-arg-types
           level=node[0],
           input_blocks=node[1],
           num_filters=node[2],

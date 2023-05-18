@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,8 +43,8 @@ def export_tfhub(model_path, hub_destination, model_name):
   image_input = tf.keras.layers.Input(
       shape=(None, None, 3), name="image_input", dtype=tf.float32)
   x = image_input * 255.0
-  ouputs = efficientnet_model.efficientnet(x, config)
-  hub_model = tf.keras.Model(image_input, ouputs)
+  outputs = efficientnet_model.efficientnet(x, config)
+  hub_model = tf.keras.Model(image_input, outputs)
   ckpt = tf.train.Checkpoint(model=hub_model)
   ckpt.restore(model_path).assert_existing_objects_matched()
   hub_model.save(

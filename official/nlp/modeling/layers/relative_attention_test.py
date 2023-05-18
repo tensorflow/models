@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
 
 """Tests for the attention layer."""
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.modeling.layers import relative_attention
 
 
@@ -111,8 +111,7 @@ def _create_mock_attention_data(
   return data
 
 
-@keras_parameterized.run_all_keras_modes
-class MultiHeadRelativeAttentionTest(keras_parameterized.TestCase):
+class MultiHeadRelativeAttentionTest(tf.test.TestCase, parameterized.TestCase):
 
   @combinations.generate(combinations.combine(
       value_dim=[32, 64],
@@ -147,8 +146,7 @@ class MultiHeadRelativeAttentionTest(keras_parameterized.TestCase):
     self.assertEqual(output.shape, [batch_size, seq_length, key_dim])
 
 
-@keras_parameterized.run_all_keras_modes
-class TwoStreamRelativeAttentionTest(keras_parameterized.TestCase):
+class TwoStreamRelativeAttentionTest(tf.test.TestCase, parameterized.TestCase):
 
   @combinations.generate(combinations.combine(
       num_predictions=[2, 10],

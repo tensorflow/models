@@ -14,8 +14,8 @@ limitations under the License.
 ==============================================================================*/
 // Tests equivalence between TF and TFLite versions of an op.
 
-#ifndef TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TFLITE_OPS_TF_TFLITE_DIFF_TEST_UTIL_H_
-#define TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TFLITE_OPS_TF_TFLITE_DIFF_TEST_UTIL_H_
+#ifndef TENSORFLOW_MODELS_SEQ_FLOW_LITE_TFLITE_OPS_TF_TFLITE_DIFF_TEST_UTIL_H_
+#define TENSORFLOW_MODELS_SEQ_FLOW_LITE_TFLITE_OPS_TF_TFLITE_DIFF_TEST_UTIL_H_
 
 #include <string>
 #include <vector>
@@ -39,6 +39,8 @@ template <typename T>
                                      const std::vector<bool>& values);
 ::tensorflow::TensorProto IntTensor(const std::vector<int>& shape,
                                     const std::vector<int>& values);
+::tensorflow::TensorProto Int64Tensor(const std::vector<int>& shape,
+                                      const std::vector<int64_t>& values);
 ::tensorflow::TensorProto FloatTensor(const std::vector<int>& shape,
                                       const std::vector<float>& values);
 ::tensorflow::TensorProto StringTensor(const std::vector<int>& shape,
@@ -146,4 +148,4 @@ class TensorflowTfLiteOpTest
 }  // namespace testing
 }  // namespace seq_flow_lite
 
-#endif  // TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TFLITE_OPS_TF_TFLITE_DIFF_TEST_UTIL_H_
+#endif  // TENSORFLOW_MODELS_SEQ_FLOW_LITE_TFLITE_OPS_TF_TFLITE_DIFF_TEST_UTIL_H_

@@ -47,4 +47,8 @@ message BidirectionalFeaturePyramidNetworks {
 
   // Method used to combine inputs to BiFPN nodes.
   optional string combine_method = 5 [default = 'fast_attention'];
+
+  // If true, will use tf.compat.v1.image.resize_nearest_neighbor for
+  // upsampling
+  optional bool use_native_resize_op = 6;
 }

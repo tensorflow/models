@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,17 +16,13 @@
 
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.modeling import activations
 from official.nlp.modeling.networks import encoder_scaffold
 from official.nlp.modeling.networks import packed_sequence_embedding
 from official.projects.teams import teams_pretrainer
 
 
-# This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
-# guarantees forward compatibility of this code for the V2 switchover.
-@keras_parameterized.run_all_keras_modes
-class TeamsPretrainerTest(keras_parameterized.TestCase):
+class TeamsPretrainerTest(tf.test.TestCase):
 
   # Build a transformer network to use within the TEAMS trainer.
   def _get_network(self, vocab_size):

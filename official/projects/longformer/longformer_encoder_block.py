@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -166,7 +166,7 @@ class LongformerEncoderBlock(tf.keras.layers.Layer):
             dtype=tf.float32))
     # TFLongformerIntermediate
     # TFLongformerIntermediate.dense
-    self._intermediate_dense = tf.keras.layers.experimental.EinsumDense(
+    self._intermediate_dense = tf.keras.layers.EinsumDense(
         einsum_equation,
         output_shape=(None, self._inner_dim),
         bias_axes="d",
@@ -186,7 +186,7 @@ class LongformerEncoderBlock(tf.keras.layers.Layer):
         rate=self._inner_dropout)
     # TFLongformerOutput
     # TFLongformerOutput.dense
-    self._output_dense = tf.keras.layers.experimental.EinsumDense(
+    self._output_dense = tf.keras.layers.EinsumDense(
         einsum_equation,
         output_shape=(None, hidden_size),
         bias_axes="d",

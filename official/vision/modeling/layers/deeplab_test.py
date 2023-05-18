@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,20 +14,20 @@
 
 """Tests for ASPP."""
 
+from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized
 from official.vision.modeling.layers import deeplab
 
 
-@keras_parameterized.run_all_keras_modes
-class DeeplabTest(keras_parameterized.TestCase):
+class DeeplabTest(tf.test.TestCase, parameterized.TestCase):
 
-  @keras_parameterized.parameterized.parameters(
+  @parameterized.parameters(
       (None,),
       ([32, 32],),
       )
   def test_aspp(self, pool_kernel_size):
+    del pool_kernel_size
     inputs = tf.keras.Input(shape=(64, 64, 128), dtype=tf.float32)
     layer = deeplab.SpatialPyramidPooling(output_channels=256,
                                           dilation_rates=[6, 12, 18],

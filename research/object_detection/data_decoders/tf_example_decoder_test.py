@@ -618,7 +618,7 @@ class TfExampleDecoderTest(test_case.TestCase):
     self.assertAllEqual(expected_visibility, output[gt_kpts_vis_fld][:, 0:3])
     # The additional keypoints should all have False visibility.
     self.assertAllEqual(
-        np.zeros([2, 2], dtype=np.bool), output[gt_kpts_vis_fld][:, 3:])
+        np.zeros([2, 2], dtype=bool), output[gt_kpts_vis_fld][:, 3:])
 
   def testDecodeKeypointWithKptsLabelsNotInText(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)

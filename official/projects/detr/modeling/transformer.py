@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ cross-attention layer.
 
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling import layers
 from official.nlp.modeling import models
 
@@ -91,8 +92,9 @@ class TransformerEncoder(tf.keras.layers.Layer):
               norm_first=self._norm_first,
               norm_epsilon=self._norm_epsilon,
               inner_dropout=self._intermediate_dropout,
-              attention_initializer=models.seq2seq_transformer
-              .attention_initializer(input_shape[2]),
+              attention_initializer=tf_utils.clone_initializer(
+                  models.seq2seq_transformer.attention_initializer(
+                      input_shape[2])),
               name=("layer_%d" % i)))
     self.output_normalization = tf.keras.layers.LayerNormalization(
         epsilon=self._norm_epsilon, dtype="float32")
@@ -234,7 +236,8 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
       self._attention_initializer = tf.keras.initializers.get(
           attention_initializer)
     else:
-      self._attention_initializer = self._kernel_initializer
+      self._attention_initializer = tf_utils.clone_initializer(
+          self._kernel_initializer)
     self._attention_axes = attention_axes
 
   def build(self, input_shape):
@@ -280,11 +283,11 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
             axis=-1,
             epsilon=self._norm_epsilon,
             dtype=tf.float32))
-    self._intermediate_dense = tf.keras.layers.experimental.EinsumDense(
+    self._intermediate_dense = tf.keras.layers.EinsumDense(
         einsum_equation,
         output_shape=(None, self._inner_dim),
         bias_axes="d",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         name="intermediate",
         **common_kwargs)
     policy = tf.keras.mixed_precision.global_policy()
@@ -297,12 +300,12 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         self._inner_activation, dtype=policy)
     self._inner_dropout_layer = tf.keras.layers.Dropout(
         rate=self._inner_dropout)
-    self._output_dense = tf.keras.layers.experimental.EinsumDense(
+    self._output_dense = tf.keras.layers.EinsumDense(
         einsum_equation,
         output_shape=(None, hidden_size),
         bias_axes="d",
         name="output",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         **common_kwargs)
     self._output_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
     # Use float32 in layernorm for numeric stability.
@@ -316,44 +319,41 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
 
   def get_config(self):
     config = {
-        "num_attention_heads":
-            self._num_heads,
-        "inner_dim":
-            self._inner_dim,
-        "inner_activation":
-            self._inner_activation,
-        "output_dropout":
-            self._output_dropout_rate,
-        "attention_dropout":
-            self._attention_dropout_rate,
-        "output_range":
-            self._output_range,
-        "kernel_initializer":
-            tf.keras.initializers.serialize(self._kernel_initializer),
-        "bias_initializer":
-            tf.keras.initializers.serialize(self._bias_initializer),
-        "kernel_regularizer":
-            tf.keras.regularizers.serialize(self._kernel_regularizer),
-        "bias_regularizer":
-            tf.keras.regularizers.serialize(self._bias_regularizer),
-        "activity_regularizer":
-            tf.keras.regularizers.serialize(self._activity_regularizer),
-        "kernel_constraint":
-            tf.keras.constraints.serialize(self._kernel_constraint),
-        "bias_constraint":
-            tf.keras.constraints.serialize(self._bias_constraint),
-        "use_bias":
-            self._use_bias,
-        "norm_first":
-            self._norm_first,
-        "norm_epsilon":
-            self._norm_epsilon,
-        "inner_dropout":
-            self._inner_dropout,
-        "attention_initializer":
-            tf.keras.initializers.serialize(self._attention_initializer),
-        "attention_axes":
-            self._attention_axes,
+        "num_attention_heads": self._num_heads,
+        "inner_dim": self._inner_dim,
+        "inner_activation": self._inner_activation,
+        "output_dropout": self._output_dropout_rate,
+        "attention_dropout": self._attention_dropout_rate,
+        "output_range": self._output_range,
+        "kernel_initializer": tf_utils.serialize_initializer(
+            self._kernel_initializer, use_legacy_format=True
+        ),
+        "bias_initializer": tf_utils.serialize_initializer(
+            self._bias_initializer, use_legacy_format=True
+        ),
+        "kernel_regularizer": tf_utils.serialize_regularizer(
+            self._kernel_regularizer, use_legacy_format=True
+        ),
+        "bias_regularizer": tf_utils.serialize_regularizer(
+            self._bias_regularizer, use_legacy_format=True
+        ),
+        "activity_regularizer": tf_utils.serialize_regularizer(
+            self._activity_regularizer, use_legacy_format=True
+        ),
+        "kernel_constraint": tf_utils.serialize_constraint(
+            self._kernel_constraint, use_legacy_format=True
+        ),
+        "bias_constraint": tf_utils.serialize_constraint(
+            self._bias_constraint, use_legacy_format=True
+        ),
+        "use_bias": self._use_bias,
+        "norm_first": self._norm_first,
+        "norm_epsilon": self._norm_epsilon,
+        "inner_dropout": self._inner_dropout,
+        "attention_initializer": tf_utils.serialize_initializer(
+            self._attention_initializer, use_legacy_format=True
+        ),
+        "attention_axes": self._attention_axes,
     }
     base_config = super(TransformerEncoderBlock, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -490,8 +490,9 @@ class TransformerDecoder(tf.keras.layers.Layer):
               norm_first=self._norm_first,
               norm_epsilon=self._norm_epsilon,
               intermediate_dropout=self._intermediate_dropout,
-              attention_initializer=models.seq2seq_transformer
-              .attention_initializer(input_shape[2]),
+              attention_initializer=tf_utils.clone_initializer(
+                  models.seq2seq_transformer.attention_initializer(
+                      input_shape[2])),
               name=("layer_%d" % i)))
     self.output_normalization = tf.keras.layers.LayerNormalization(
         epsilon=self._norm_epsilon, dtype="float32")
@@ -656,7 +657,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
       self._attention_initializer = tf.keras.initializers.get(
           attention_initializer)
     else:
-      self._attention_initializer = self._kernel_initializer
+      self._attention_initializer = tf_utils.clone_initializer(
+          self._kernel_initializer)
     self._cross_attention_cls = layers.attention.MultiHeadAttention
 
   def build(self, input_shape):
@@ -686,11 +688,11 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         kernel_initializer=self._attention_initializer,
         name="self_attention",
         **common_kwargs)
-    self.self_attention_output_dense = tf.keras.layers.experimental.EinsumDense(
+    self.self_attention_output_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
         bias_axes="d",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         name="output",
         **common_kwargs)
     self.self_attention_dropout = tf.keras.layers.Dropout(
@@ -722,22 +724,22 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
             dtype="float32"))
 
     # Feed-forward projection.
-    self.intermediate_dense = tf.keras.layers.experimental.EinsumDense(
+    self.intermediate_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, self.intermediate_size),
         bias_axes="d",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         name="intermediate",
         **common_kwargs)
     self.intermediate_activation_layer = tf.keras.layers.Activation(
         self.intermediate_activation)
     self._intermediate_dropout_layer = tf.keras.layers.Dropout(
         rate=self._intermediate_dropout)
-    self.output_dense = tf.keras.layers.experimental.EinsumDense(
+    self.output_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
         bias_axes="d",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         name="output",
         **common_kwargs)
     self.output_dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
@@ -750,40 +752,41 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
 
   def get_config(self):
     config = {
-        "num_attention_heads":
-            self.num_attention_heads,
-        "intermediate_size":
-            self.intermediate_size,
-        "intermediate_activation":
-            tf.keras.activations.serialize(self.intermediate_activation),
-        "dropout_rate":
-            self.dropout_rate,
-        "attention_dropout_rate":
-            self.attention_dropout_rate,
-        "kernel_initializer":
-            tf.keras.initializers.serialize(self._kernel_initializer),
-        "bias_initializer":
-            tf.keras.initializers.serialize(self._bias_initializer),
-        "kernel_regularizer":
-            tf.keras.regularizers.serialize(self._kernel_regularizer),
-        "bias_regularizer":
-            tf.keras.regularizers.serialize(self._bias_regularizer),
-        "activity_regularizer":
-            tf.keras.regularizers.serialize(self._activity_regularizer),
-        "kernel_constraint":
-            tf.keras.constraints.serialize(self._kernel_constraint),
-        "bias_constraint":
-            tf.keras.constraints.serialize(self._bias_constraint),
-        "use_bias":
-            self._use_bias,
-        "norm_first":
-            self._norm_first,
-        "norm_epsilon":
-            self._norm_epsilon,
-        "intermediate_dropout":
-            self._intermediate_dropout,
-        "attention_initializer":
-            tf.keras.initializers.serialize(self._attention_initializer)
+        "num_attention_heads": self.num_attention_heads,
+        "intermediate_size": self.intermediate_size,
+        "intermediate_activation": tf_utils.serialize_activation(
+            self.intermediate_activation, use_legacy_format=True
+        ),
+        "dropout_rate": self.dropout_rate,
+        "attention_dropout_rate": self.attention_dropout_rate,
+        "kernel_initializer": tf_utils.serialize_initializer(
+            self._kernel_initializer, use_legacy_format=True
+        ),
+        "bias_initializer": tf_utils.serialize_initializer(
+            self._bias_initializer, use_legacy_format=True
+        ),
+        "kernel_regularizer": tf_utils.serialize_regularizer(
+            self._kernel_regularizer, use_legacy_format=True
+        ),
+        "bias_regularizer": tf_utils.serialize_regularizer(
+            self._bias_regularizer, use_legacy_format=True
+        ),
+        "activity_regularizer": tf_utils.serialize_regularizer(
+            self._activity_regularizer, use_legacy_format=True
+        ),
+        "kernel_constraint": tf_utils.serialize_constraint(
+            self._kernel_constraint, use_legacy_format=True
+        ),
+        "bias_constraint": tf_utils.serialize_constraint(
+            self._bias_constraint, use_legacy_format=True
+        ),
+        "use_bias": self._use_bias,
+        "norm_first": self._norm_first,
+        "norm_epsilon": self._norm_epsilon,
+        "intermediate_dropout": self._intermediate_dropout,
+        "attention_initializer": tf_utils.serialize_initializer(
+            self._attention_initializer, use_legacy_format=True
+        ),
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))

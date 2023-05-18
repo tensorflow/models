@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import dataclasses
 import math
 from typing import Dict, Mapping, Optional, Sequence, Tuple, Union
 
+from absl import logging
 import tensorflow as tf
 
 from official.modeling import hyperparams
@@ -49,7 +50,6 @@ TensorMap = Mapping[str, tf.Tensor]
 @dataclasses.dataclass
 class BlockSpec:
   """Configuration of a block."""
-  pass
 
 
 @dataclasses.dataclass
@@ -322,6 +322,7 @@ class Movinet(tf.keras.Model):
                stochastic_depth_drop_rate: float = 0.,
                use_external_states: bool = False,
                output_states: bool = True,
+               average_pooling_type: str = '3d',
                **kwargs):
     """MoViNet initialization function.
 
@@ -360,6 +361,8 @@ class Movinet(tf.keras.Model):
           the model in streaming mode. Inputting the output states of the
           previous input clip with the current input clip will utilize a stream
           buffer for streaming video.
+      average_pooling_type: The average pooling type. Currently supporting
+        ['3d', '2d', 'none'].
       **kwargs: keyword arguments to be passed.
     """
     block_specs = BLOCK_SPECS[model_id]
@@ -393,6 +396,7 @@ class Movinet(tf.keras.Model):
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
     self._use_external_states = use_external_states
     self._output_states = output_states
+    self._average_pooling_type = average_pooling_type
 
     if self._use_external_states and not self._causal:
       raise ValueError('External states should be used with causal mode.')
@@ -520,6 +524,7 @@ class Movinet(tf.keras.Model):
             batch_norm_layer=self._norm,
             batch_norm_momentum=self._norm_momentum,
             batch_norm_epsilon=self._norm_epsilon,
+            average_pooling_type=self._average_pooling_type,
             state_prefix='state_head',
             name='head')
         x, states = layer_obj(x, states=states)
@@ -712,9 +717,9 @@ def build_movinet(
   if backbone_type != 'movinet':
     raise ValueError(f'Inconsistent backbone type {backbone_type}')
   if norm_activation_config.activation is not None:
-    raise ValueError(
-        'norm_activation is not used in MoViNets, but specified: %s' %
-        norm_activation_config.activation)
+    logging.warn('norm_activation is not used in MoViNets, but specified: '
+                 '%s', norm_activation_config.activation)
+    logging.warn('norm_activation is ignored.')
 
   return Movinet(
       model_id=backbone_cfg.model_id,
@@ -725,9 +730,11 @@ def build_movinet(
       input_specs=input_specs,
       activation=backbone_cfg.activation,
       gating_activation=backbone_cfg.gating_activation,
+      output_states=backbone_cfg.output_states,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
       kernel_regularizer=l2_regularizer,
       stochastic_depth_drop_rate=backbone_cfg.stochastic_depth_drop_rate,
-      use_external_states=backbone_cfg.use_external_states)
+      use_external_states=backbone_cfg.use_external_states,
+      average_pooling_type=backbone_cfg.average_pooling_type)

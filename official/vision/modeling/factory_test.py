@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -100,10 +100,28 @@ class RetinaNetBuilderTest(parameterized.TestCase, tf.test.TestCase):
         model_config=model_config,
         l2_regularizer=l2_regularizer)
     if has_att_heads:
-      self.assertEqual(model_config.head.attribute_heads[0].as_dict(),
-                       dict(name='att1', type='regression', size=1))
-      self.assertEqual(model_config.head.attribute_heads[1].as_dict(),
-                       dict(name='att2', type='classification', size=2))
+      self.assertEqual(
+          model_config.head.attribute_heads[0].as_dict(),
+          dict(
+              name='att1',
+              type='regression',
+              size=1,
+              prediction_tower_name='',
+              num_convs=None,
+              num_filters=None,
+          ),
+      )
+      self.assertEqual(
+          model_config.head.attribute_heads[1].as_dict(),
+          dict(
+              name='att2',
+              type='classification',
+              size=2,
+              prediction_tower_name='',
+              num_convs=None,
+              num_filters=None,
+          ),
+      )
 
 
 class VideoClassificationModelBuilderTest(parameterized.TestCase,

@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,9 @@ from absl import logging
 import gin
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling.layers import attention
+from official.nlp.modeling.layers import util
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
@@ -37,8 +39,10 @@ class TransformerScaffold(tf.keras.layers.Layer):
 
   Args:
     num_attention_heads: Number of attention heads.
-    intermediate_size: Size of the intermediate layer.
-    intermediate_activation: Activation for the intermediate layer.
+    inner_dim: The output dimension of the first Dense layer in a two-layer
+      feedforward network.
+    inner_activation: The activation for the first Dense layer in a two-layer
+      feedforward network.
     attention_cls: A class to instantiate attention layer, or a layer instance.
     attention_cfg: The config with which to instantiate `attention_cls`. Ignored
       if attention_cls is a layer instance or None. If `attention_cls` is a
@@ -58,12 +62,16 @@ class TransformerScaffold(tf.keras.layers.Layer):
       Ignored if feedforward_cls is a layer instance or is None. If
       `feedforward_cls` is a class, but `feedforward_cfg` is None, following
       kwargs will be used to instantiate the feedforward instance: {
-        "intermediate_size": intermediate_size,
-        "intermediate_activation": intermediate_activation,
+        "inner_dim": inner_dim,
+        "inner_activation": inner_activation,
         "dropout": dropout_rate,
         "name": "feedforward" }.
     dropout_rate: Dropout probability for the post-attention and output dropout.
     attention_dropout_rate: Dropout probability for within the attention layer.
+    norm_first: Whether to normalize inputs to attention and intermediate
+        dense layers. If set False, output of attention and intermediate dense
+        layers is normalized.
+    norm_epsilon: Epsilon value to initialize normalization layers.
     kernel_initializer: Initializer for dense layer kernels.
     bias_initializer: Initializer for dense layer biases.
     kernel_regularizer: Regularizer for dense layer kernels.
@@ -75,8 +83,8 @@ class TransformerScaffold(tf.keras.layers.Layer):
 
   def __init__(self,
                num_attention_heads,
-               intermediate_size,
-               intermediate_activation,
+               inner_dim=768,
+               inner_activation=tf_utils.get_activation("gelu"),
                attention_cls=attention.MultiHeadAttention,
                attention_cfg=None,
                feedforward_cls=None,
@@ -84,6 +92,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
                dropout_rate=0.0,
                attention_dropout_rate=0.0,
                norm_first=False,
+               norm_epsilon=1e-12,
                kernel_initializer="glorot_uniform",
                bias_initializer="zeros",
                kernel_regularizer=None,
@@ -92,16 +101,20 @@ class TransformerScaffold(tf.keras.layers.Layer):
                kernel_constraint=None,
                bias_constraint=None,
                **kwargs):
-    super(TransformerScaffold, self).__init__(**kwargs)
+    inner_dim = kwargs.pop("intermediate_size", inner_dim)
+    inner_activation = kwargs.pop("inner_activation", inner_activation)
+    util.filter_kwargs(kwargs)
+    super().__init__(**kwargs)
 
     self._attention_cfg = attention_cfg
     self._attention_cls = attention_cls
     self._feedforward_cls = feedforward_cls
     self._feedforward_cfg = feedforward_cfg
     self._norm_first = norm_first
+    self._norm_epsilon = norm_epsilon
     self._num_heads = num_attention_heads
-    self._intermediate_size = intermediate_size
-    self._intermediate_activation = intermediate_activation
+    self._inner_dim = inner_dim
+    self._inner_activation = inner_activation
     self._attention_dropout_rate = attention_dropout_rate
     self._dropout_rate = dropout_rate
     self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
@@ -112,9 +125,15 @@ class TransformerScaffold(tf.keras.layers.Layer):
     self._bias_constraint = tf.keras.constraints.get(bias_constraint)
 
   def build(self, input_shape):
-    input_tensor_shape = input_shape[0] if (
-        len(input_shape) == 2) else input_shape
-    input_tensor_shape = tf.TensorShape(input_tensor_shape)
+    if isinstance(input_shape, tf.TensorShape):
+      input_tensor_shape = input_shape
+    elif isinstance(input_shape, (list, tuple)):
+      input_tensor_shape = tf.TensorShape(input_shape[0])
+    else:
+      raise ValueError(
+          "The type of input shape argument is not supported, got: %s" %
+          type(input_shape))
+
     if len(input_tensor_shape.as_list()) != 3:
       raise ValueError(
           "TransformerScaffold expects a three-dimensional input of "
@@ -127,8 +146,6 @@ class TransformerScaffold(tf.keras.layers.Layer):
     self._attention_head_size = int(hidden_size // self._num_heads)
 
     common_kwargs = dict(
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
@@ -138,6 +155,12 @@ class TransformerScaffold(tf.keras.layers.Layer):
     def get_layer_instance(instance_or_cls, config, default_config):
       if isinstance(instance_or_cls, tf.keras.layers.Layer):
         return instance_or_cls
+      elif isinstance(instance_or_cls, dict):
+        return get_layer_instance(
+            tf.keras.utils.deserialize_keras_object(instance_or_cls),
+            config,
+            default_config,
+        )
       else:
         if config is None:
           return instance_or_cls(**default_config)
@@ -145,6 +168,9 @@ class TransformerScaffold(tf.keras.layers.Layer):
           return instance_or_cls(**config)
 
     default_attention_cfg = {
+        "kernel_initializer": tf_utils.clone_initializer(
+            self._kernel_initializer),
+        "bias_initializer": tf_utils.clone_initializer(self._bias_initializer),
         "num_heads": self._num_heads,
         "key_dim": self._attention_head_size,
         "dropout": self._attention_dropout_rate,
@@ -158,8 +184,15 @@ class TransformerScaffold(tf.keras.layers.Layer):
 
     if self._feedforward_cls is not None:
       default_feedforward_cfg = {
-          "intermediate_size": self._intermediate_size,
-          "intermediate_activation": self._intermediate_activation,
+          "kernel_initializer": tf_utils.clone_initializer(
+              self._kernel_initializer),
+          "bias_initializer": tf_utils.clone_initializer(
+              self._bias_initializer),
+          "inner_dim": self._inner_dim,
+          "inner_activation": self._inner_activation,
+          # TODO(hongkuny): try to update all ffn block args.
+          "intermediate_size": self._inner_dim,
+          "intermediate_activation": self._inner_activation,
           "dropout": self._dropout_rate,
           "name": "feedforward",
       }
@@ -180,15 +213,18 @@ class TransformerScaffold(tf.keras.layers.Layer):
         tf.keras.layers.LayerNormalization(
             name="self_attention_layer_norm",
             axis=-1,
-            epsilon=1e-12,
+            epsilon=self._norm_epsilon,
             dtype=tf.float32))
 
     if self._feedforward_block is None:
-      self._intermediate_dense = tf.keras.layers.experimental.EinsumDense(
+      self._intermediate_dense = tf.keras.layers.EinsumDense(
           "abc,cd->abd",
-          output_shape=(None, self._intermediate_size),
+          output_shape=(None, self._inner_dim),
           bias_axes="d",
           name="intermediate",
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
+          bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
           **common_kwargs)
       policy = tf.keras.mixed_precision.global_policy()
       if policy.name == "mixed_bfloat16":
@@ -197,70 +233,86 @@ class TransformerScaffold(tf.keras.layers.Layer):
         # TODO(b/154538392): Investigate this.
         policy = tf.float32
       self._intermediate_activation_layer = tf.keras.layers.Activation(
-          self._intermediate_activation, dtype=policy)
-      self._output_dense = tf.keras.layers.experimental.EinsumDense(
+          self._inner_activation, dtype=policy)
+      self._output_dense = tf.keras.layers.EinsumDense(
           "abc,cd->abd",
           output_shape=(None, hidden_size),
           bias_axes="d",
           name="output",
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer),
+          bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
           **common_kwargs)
 
     self._output_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     # Use float32 in layernorm for numeric stability.
     self._output_layer_norm = tf.keras.layers.LayerNormalization(
-        name="output_layer_norm", axis=-1, epsilon=1e-12, dtype=tf.float32)
+        name="output_layer_norm",
+        axis=-1,
+        epsilon=self._norm_epsilon,
+        dtype=tf.float32)
 
-    super(TransformerScaffold, self).build(input_shape)
+    super().build(input_shape)
     logging.info("%s configs: %s", self.__class__.__name__, self.get_config())
 
   def get_config(self):
     config = {
-        "attention_cls":
-            self._attention_layer,
-        "feedforward_cls":
-            self._feedforward_block,
-        "num_attention_heads":
-            self._num_heads,
-        "intermediate_size":
-            self._intermediate_size,
-        "intermediate_activation":
-            self._intermediate_activation,
-        "dropout_rate":
-            self._dropout_rate,
-        "attention_dropout_rate":
-            self._attention_dropout_rate,
-        "norm_first":
-            self._norm_first,
-        "kernel_initializer":
-            tf.keras.initializers.serialize(self._kernel_initializer),
-        "bias_initializer":
-            tf.keras.initializers.serialize(self._bias_initializer),
-        "kernel_regularizer":
-            tf.keras.regularizers.serialize(self._kernel_regularizer),
-        "bias_regularizer":
-            tf.keras.regularizers.serialize(self._bias_regularizer),
-        "activity_regularizer":
-            tf.keras.regularizers.serialize(self._activity_regularizer),
-        "kernel_constraint":
-            tf.keras.constraints.serialize(self._kernel_constraint),
-        "bias_constraint":
-            tf.keras.constraints.serialize(self._bias_constraint)
+        "attention_cls": self._attention_layer,
+        "feedforward_cls": self._feedforward_block,
+        "num_attention_heads": self._num_heads,
+        "inner_dim": self._inner_dim,
+        "inner_activation": self._inner_activation,
+        "dropout_rate": self._dropout_rate,
+        "attention_dropout_rate": self._attention_dropout_rate,
+        "norm_first": self._norm_first,
+        "norm_epsilon": self._norm_epsilon,
+        "kernel_initializer": tf_utils.serialize_initializer(
+            self._kernel_initializer, use_legacy_format=True
+        ),
+        "bias_initializer": tf_utils.serialize_initializer(
+            self._bias_initializer, use_legacy_format=True
+        ),
+        "kernel_regularizer": tf_utils.serialize_regularizer(
+            self._kernel_regularizer, use_legacy_format=True
+        ),
+        "bias_regularizer": tf_utils.serialize_regularizer(
+            self._bias_regularizer, use_legacy_format=True
+        ),
+        "activity_regularizer": tf_utils.serialize_regularizer(
+            self._activity_regularizer, use_legacy_format=True
+        ),
+        "kernel_constraint": tf_utils.serialize_constraint(
+            self._kernel_constraint, use_legacy_format=True
+        ),
+        "bias_constraint": tf_utils.serialize_constraint(
+            self._bias_constraint, use_legacy_format=True
+        ),
     }
-    base_config = super(TransformerScaffold, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs, training=None):
-    if isinstance(inputs, (list, tuple)) and len(inputs) == 2:
-      input_tensor, attention_mask = inputs
+    if isinstance(inputs, (list, tuple)):
+      if len(inputs) == 2:
+        input_tensor, attention_mask = inputs
+        key_value = None
+      elif len(inputs) == 3:
+        input_tensor, key_value, attention_mask = inputs
+      else:
+        raise ValueError("Unexpected inputs to %s with length at %d" %
+                         (self.__class__, len(inputs)))
     else:
-      input_tensor, attention_mask = (inputs, None)
+      input_tensor, key_value, attention_mask = (inputs, None, None)
+
+    if key_value is None:
+      key_value = input_tensor
 
     if self._norm_first:
       source_tensor = input_tensor
       input_tensor = self._attention_layer_norm(input_tensor, training=training)
 
     attention_output = self._attention_layer(
-        query=input_tensor, value=input_tensor, attention_mask=attention_mask,
+        query=input_tensor, value=key_value, attention_mask=attention_mask,
         training=training)
     attention_output = self._attention_dropout(attention_output,
                                                training=training)
@@ -298,7 +350,9 @@ class TransformerScaffold(tf.keras.layers.Layer):
                                                training=training)
         layer_output += source_attention_output
       else:
-        # if not norm_first, assume that the feedforwad does apply layer norm
+        # Attention: if not norm_first, assume that the feedforwad does apply
+        # layer norm. The feedford also apply residual connection. Please
+        # read  the `GatedFeedforward` as a concrete example.
         layer_output = self._feedforward_block(attention_output,
                                                training=training)
 

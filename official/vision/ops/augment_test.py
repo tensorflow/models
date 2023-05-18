@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ from __future__ import print_function
 import random
 from absl.testing import parameterized
 
+import numpy as np
 import tensorflow as tf
 
 from official.vision.ops import augment
@@ -85,6 +86,22 @@ class TransformsTest(parameterized.TestCase, tf.test.TestCase):
       image = tf.zeros(shape, dtype=dtype)
       self.assertAllEqual(image, augment.rotate(image, degrees))
 
+  def test_random_cutout_video(self, dtype):
+    for num_channels in (1, 2, 3):
+      video = tf.ones((2, 2, 2, num_channels), dtype=dtype)
+      video = augment.cutout_video(video)
+
+      num_zeros = np.sum(video == 0)
+      self.assertGreater(num_zeros, 0)
+
+  def test_cutout_video_with_fixed_shape(self, dtype):
+    tf.random.set_seed(0)
+    video = tf.ones((10, 10, 10, 1), dtype=dtype)
+    video = augment.cutout_video(video, mask_shape=tf.constant([2, 2, 2]))
+
+    num_zeros = np.sum(video == 0)
+    self.assertEqual(num_zeros, 8)
+
 
 class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
 
@@ -96,6 +113,7 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
       'svhn',
       'reduced_imagenet',
       'detection_v0',
+      'vit',
   ]
 
   def test_autoaugment(self):
@@ -303,6 +321,15 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertEqual((224, 224, 3), aug_image.shape)
 
+  def test_autoaugment_three_augment(self):
+    """Test three augmentation."""
+    image = tf.random.normal(shape=(224, 224, 3), dtype=tf.float32)
+    augmenter = augment.AutoAugment(augmentation_name='deit3_three_augment')
+    aug_image = augmenter.distort(image)
+
+    self.assertEqual((224, 224, 3), aug_image.shape)
+    self.assertFalse(tf.math.reduce_all(image == aug_image))
+
   @parameterized.named_parameters(
       {'testcase_name': '_OutOfRangeProb',
        'sub_policy': ('Equalize', 1.1, 3), 'value': '1.1'},
@@ -415,6 +442,68 @@ class MixupAndCutmixTest(tf.test.TestCase, parameterized.TestCase):
     label_smoothing = 0.1
 
     images = tf.random.normal((batch_size, 224, 224, 3), dtype=tf.float32)
+    labels = tf.range(batch_size)
+    augmenter = augment.MixupAndCutmix(
+        mixup_alpha=0., cutmix_alpha=1., num_classes=num_classes)
+
+    aug_images, aug_labels = augmenter.distort(images, labels)
+
+    self.assertEqual(images.shape, aug_images.shape)
+    self.assertEqual(images.dtype, aug_images.dtype)
+    self.assertEqual([batch_size, num_classes], aug_labels.shape)
+    self.assertAllLessEqual(aug_labels, 1. - label_smoothing +
+                            2. / num_classes)  # With tolerance
+    self.assertAllGreaterEqual(aug_labels, label_smoothing / num_classes -
+                               1e4)  # With tolerance
+    self.assertFalse(tf.math.reduce_all(images == aug_images))
+
+  def test_mixup_and_cutmix_smoothes_labels_with_videos(self):
+    batch_size = 12
+    num_classes = 1000
+    label_smoothing = 0.1
+
+    images = tf.random.normal((batch_size, 8, 224, 224, 3), dtype=tf.float32)
+    labels = tf.range(batch_size)
+    augmenter = augment.MixupAndCutmix(
+        num_classes=num_classes, label_smoothing=label_smoothing)
+
+    aug_images, aug_labels = augmenter.distort(images, labels)
+
+    self.assertEqual(images.shape, aug_images.shape)
+    self.assertEqual(images.dtype, aug_images.dtype)
+    self.assertEqual([batch_size, num_classes], aug_labels.shape)
+    self.assertAllLessEqual(aug_labels, 1. - label_smoothing +
+                            2. / num_classes)  # With tolerance
+    self.assertAllGreaterEqual(aug_labels, label_smoothing / num_classes -
+                               1e4)  # With tolerance
+
+  def test_mixup_changes_video(self):
+    batch_size = 12
+    num_classes = 1000
+    label_smoothing = 0.1
+
+    images = tf.random.normal((batch_size, 8, 224, 224, 3), dtype=tf.float32)
+    labels = tf.range(batch_size)
+    augmenter = augment.MixupAndCutmix(
+        mixup_alpha=1., cutmix_alpha=0., num_classes=num_classes)
+
+    aug_images, aug_labels = augmenter.distort(images, labels)
+
+    self.assertEqual(images.shape, aug_images.shape)
+    self.assertEqual(images.dtype, aug_images.dtype)
+    self.assertEqual([batch_size, num_classes], aug_labels.shape)
+    self.assertAllLessEqual(aug_labels, 1. - label_smoothing +
+                            2. / num_classes)  # With tolerance
+    self.assertAllGreaterEqual(aug_labels, label_smoothing / num_classes -
+                               1e4)  # With tolerance
+    self.assertFalse(tf.math.reduce_all(images == aug_images))
+
+  def test_cutmix_changes_video(self):
+    batch_size = 12
+    num_classes = 1000
+    label_smoothing = 0.1
+
+    images = tf.random.normal((batch_size, 8, 224, 224, 3), dtype=tf.float32)
     labels = tf.range(batch_size)
     augmenter = augment.MixupAndCutmix(
         mixup_alpha=0., cutmix_alpha=1., num_classes=num_classes)

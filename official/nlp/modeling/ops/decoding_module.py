@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,14 +15,14 @@
 """Base class for Decoding Strategies (beam_search, top_k, top_p and greedy)."""
 
 import abc
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import tensorflow as tf
 
 from tensorflow.python.framework import dtypes
 from official.modeling import tf_utils
 
-Output = Tuple[tf.Tensor, tf.Tensor]
+Output = Tuple[tf.Tensor, tf.Tensor, Optional[tf.Tensor]]
 InternalState = Tuple[tf.Tensor, tf.Tensor, tf.Tensor, Dict]
 InitialState = Tuple[Dict[str, Any], Dict[str, Any]]
 
@@ -45,6 +45,10 @@ class StateKeys:
   # the encoder output, attention bias, and the decoder attention output from
   # the previous iteration.
   ALIVE_CACHE = "ALIVE_CACHE"
+
+  # The initial model state/cache after model processing the initial token.
+  # The cache will be filled if extra_cache_output is true.
+  INITIAL_OUTPUT_CACHE = "INITIAL_OUTPUT_CACHE"
 
   # Top finished sequences for each batch item.
   # Has shape [batch_size, beam_size, CUR_INDEX + 1]. Sequences that are
@@ -108,7 +112,9 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
 
   def __init__(self,
                length_normalization_fn: Callable[[int, tf.DType], float],
-               dtype: tf.DType = tf.float32):
+               dtype: tf.DType = tf.float32,
+               decoding_name: Optional[str] = None,
+               extra_cache_output: bool = False):
     """Initialize the Decoding Module.
 
     Args:
@@ -116,31 +122,39 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
       parameter. Function accepts input as length, dtype and returns float.
       dtype: A tensorflow data type used for score computation. The default is
         tf.float32.
+      decoding_name: an optional name for the decoding loop tensors.
+      extra_cache_output: If true, the first cache will be in the states.
     """
     self.length_normalization_fn = length_normalization_fn
     self.dtype = tf.as_dtype(dtype)
+    self.decoding_name = decoding_name
 
   def generate(self,
                initial_ids: tf.Tensor,
-               initial_cache: Dict[str, tf.Tensor]) -> Output:
+               initial_cache: Dict[str, tf.Tensor],
+               initial_log_probs: Optional[tf.Tensor] = None) -> Output:
     """Implements the decoding strategy (beam_search or sampling).
 
     Args:
-      initial_ids: initial ids to pass into the symbols_to_logits_fn.
-                   int tensor with shape [batch_size, 1]
+      initial_ids: initial ids to pass into the symbols_to_logits_fn. int tensor
+        with shape [batch_size, 1]
       initial_cache: dictionary for caching model outputs from previous step.
+      initial_log_probs: Optionally initial log probs if there is a prefix
+        sequence we want to start to decode from.
+
     Returns:
       Tuple of tensors representing
         finished_sequence: shape [batch, max_seq_length]
         finished_scores: [batch]
+        first_cache: The cache after init token
     """
     batch_size = (
         initial_ids.shape.as_list()[0]
         if self.padded_decode else tf.shape(initial_ids)[0])
 
-    state, state_shapes = self._create_initial_state(initial_ids,
-                                                     initial_cache,
-                                                     batch_size)
+    state, state_shapes = self._create_initial_state(initial_ids, initial_cache,
+                                                     batch_size,
+                                                     initial_log_probs)
 
     def _generate_step(state):
       topk_seq, topk_log_probs, topk_ids, new_cache = self._grow_alive_seq(
@@ -160,6 +174,17 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
       }
       new_state.update(alive_state)
       new_state.update(finished_state)
+      if self.extra_cache_output:
+        i = state[StateKeys.CUR_INDEX]
+        old_cache = state[StateKeys.INITIAL_OUTPUT_CACHE]
+
+        def update_with_cache(new_state, cache):
+          """Updates new_state with cache."""
+          new_state.update({StateKeys.INITIAL_OUTPUT_CACHE: cache})
+
+        tf.cond(
+            tf.equal(i, 0), lambda: update_with_cache(new_state, new_cache),
+            lambda: update_with_cache(new_state, old_cache))
       return [new_state]
 
     finished_state = tf.nest.map_structure(
@@ -169,15 +194,18 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
             _generate_step,
             loop_vars=[state],
             shape_invariants=[state_shapes],
-            parallel_iterations=1))
+            parallel_iterations=1,
+            name=self.decoding_name))
     final_state = self._process_finished_state(finished_state[0])
     return final_state
 
   @abc.abstractmethod
-  def _create_initial_state(self,
-                            initial_ids: tf.Tensor,
-                            initial_cache: Dict[str, tf.Tensor],
-                            batch_size: int) -> InitialState:
+  def _create_initial_state(
+      self,
+      initial_ids: tf.Tensor,
+      initial_cache: Dict[str, tf.Tensor],
+      batch_size: int,
+      initial_log_probs: Optional[tf.Tensor] = None) -> InitialState:
     """Return initial state dictionary and its shape invariants."""
     pass
 
@@ -277,6 +305,3 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
       return dtypes.float16.max
     else:
       raise AssertionError("Invalid dtype: %s" % self.dtype)
-
-
-

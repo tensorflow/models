@@ -13,7 +13,7 @@ assemble new `tf.keras` layers or models.
     ["Big Bird: Transformers for Longer Sequences"](https://arxiv.org/abs/2007.14062).
 
 *   [CachedAttention](attention.py) implements an attention layer with cache
-    used for auto-agressive decoding.
+    used for auto-aggressive decoding.
 
 *   [KernelAttention](kernel_attention.py) implements a group of attention
     mechansim that express the self-attention as a linear dot-product of

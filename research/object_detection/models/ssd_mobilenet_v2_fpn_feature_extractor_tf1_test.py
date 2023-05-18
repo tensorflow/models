@@ -135,6 +135,40 @@ class SsdMobilenetV2FpnFeatureExtractorTest(
         use_keras=use_keras,
         use_depthwise=use_depthwise)
 
+  def test_extract_features_returns_correct_shapes_4_channels(self,
+                                                              use_depthwise):
+    use_keras = False
+    image_height = 320
+    image_width = 320
+    num_channels = 4
+    depth_multiplier = 1.0
+    pad_to_multiple = 1
+    expected_feature_map_shape = [(2, 40, 40, 256), (2, 20, 20, 256),
+                                  (2, 10, 10, 256), (2, 5, 5, 256),
+                                  (2, 3, 3, 256)]
+    self.check_extract_features_returns_correct_shape(
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=False,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise,
+        num_channels=num_channels)
+    self.check_extract_features_returns_correct_shape(
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=True,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise,
+        num_channels=num_channels)
+
   def test_extract_features_with_dynamic_image_shape(self,
                                                      use_depthwise):
     use_keras = False

@@ -2,9 +2,7 @@
 
 licenses(["notice"])
 
-package(
-    default_visibility = ["//:friends"],  # sequence projection
-)
+package(default_visibility = ["//:friends"])  # sequence projection
 
 cc_binary(
     name = "prado_tflite_example",

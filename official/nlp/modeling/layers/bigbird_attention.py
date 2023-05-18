@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -458,7 +458,7 @@ class BigBirdAttention(tf.keras.layers.MultiHeadAttention):
         to_block_size=self._to_block_size,
         rand_attn=rand_attn)
 
-  def call(self, query, value, key=None, attention_mask=None, **kwargs):
+  def call(self, query, value, key=None, attention_mask=None, **kwargs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     if not self._built_from_signature:
       self._build_from_signature(query=query, value=value, key=key)
     if key is None:

@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,6 +43,12 @@ RESNET_SPECS = {
         ('residual', 128, 2),
         ('residual', 256, 2),
         ('residual', 512, 2),
+    ],
+    26: [
+        ('residual', 64, 3),
+        ('residual', 128, 3),
+        ('residual', 256, 3),
+        ('residual', 512, 3),
     ],
     34: [
         ('residual', 64, 3),
@@ -173,117 +179,20 @@ class ResNet(tf.keras.Model):
     self._activation = activation
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
-    if use_sync_bn:
-      self._norm = layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = layers.BatchNormalization
+    self._norm = layers.BatchNormalization
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
     self._bn_trainable = bn_trainable
 
     if tf.keras.backend.image_data_format() == 'channels_last':
-      bn_axis = -1
+      self._bn_axis = -1
     else:
-      bn_axis = 1
+      self._bn_axis = 1
 
     # Build ResNet.
     inputs = tf.keras.Input(shape=input_specs.shape[1:])
-
-    stem_depth_multiplier = self._depth_multiplier if scale_stem else 1.0
-    if stem_type == 'v0':
-      x = layers.Conv2D(
-          filters=int(64 * stem_depth_multiplier),
-          kernel_size=7,
-          strides=2,
-          use_bias=False,
-          padding='same',
-          kernel_initializer=self._kernel_initializer,
-          kernel_regularizer=self._kernel_regularizer,
-          bias_regularizer=self._bias_regularizer)(
-              inputs)
-      x = self._norm(
-          axis=bn_axis,
-          momentum=norm_momentum,
-          epsilon=norm_epsilon,
-          trainable=bn_trainable)(
-              x)
-      x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
-    elif stem_type == 'v1':
-      x = layers.Conv2D(
-          filters=int(32 * stem_depth_multiplier),
-          kernel_size=3,
-          strides=2,
-          use_bias=False,
-          padding='same',
-          kernel_initializer=self._kernel_initializer,
-          kernel_regularizer=self._kernel_regularizer,
-          bias_regularizer=self._bias_regularizer)(
-              inputs)
-      x = self._norm(
-          axis=bn_axis,
-          momentum=norm_momentum,
-          epsilon=norm_epsilon,
-          trainable=bn_trainable)(
-              x)
-      x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
-      x = layers.Conv2D(
-          filters=int(32 * stem_depth_multiplier),
-          kernel_size=3,
-          strides=1,
-          use_bias=False,
-          padding='same',
-          kernel_initializer=self._kernel_initializer,
-          kernel_regularizer=self._kernel_regularizer,
-          bias_regularizer=self._bias_regularizer)(
-              x)
-      x = self._norm(
-          axis=bn_axis,
-          momentum=norm_momentum,
-          epsilon=norm_epsilon,
-          trainable=bn_trainable)(
-              x)
-      x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
-      x = layers.Conv2D(
-          filters=int(64 * stem_depth_multiplier),
-          kernel_size=3,
-          strides=1,
-          use_bias=False,
-          padding='same',
-          kernel_initializer=self._kernel_initializer,
-          kernel_regularizer=self._kernel_regularizer,
-          bias_regularizer=self._bias_regularizer)(
-              x)
-      x = self._norm(
-          axis=bn_axis,
-          momentum=norm_momentum,
-          epsilon=norm_epsilon,
-          trainable=bn_trainable)(
-              x)
-      x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
-    else:
-      raise ValueError('Stem type {} not supported.'.format(stem_type))
-
-    if replace_stem_max_pool:
-      x = layers.Conv2D(
-          filters=int(64 * self._depth_multiplier),
-          kernel_size=3,
-          strides=2,
-          use_bias=False,
-          padding='same',
-          kernel_initializer=self._kernel_initializer,
-          kernel_regularizer=self._kernel_regularizer,
-          bias_regularizer=self._bias_regularizer)(
-              x)
-      x = self._norm(
-          axis=bn_axis,
-          momentum=norm_momentum,
-          epsilon=norm_epsilon,
-          trainable=bn_trainable)(
-              x)
-      x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
-    else:
-      x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
+    x = self._stem(inputs)
 
     endpoints = {}
     for i, spec in enumerate(RESNET_SPECS[model_id]):
@@ -307,6 +216,109 @@ class ResNet(tf.keras.Model):
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
 
     super(ResNet, self).__init__(inputs=inputs, outputs=endpoints, **kwargs)
+
+  def _stem(self, inputs):
+    stem_depth_multiplier = self._depth_multiplier if self._scale_stem else 1.0
+    if self._stem_type == 'v0':
+      x = layers.Conv2D(
+          filters=int(64 * stem_depth_multiplier),
+          kernel_size=7,
+          strides=2,
+          use_bias=False,
+          padding='same',
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer,
+      )(inputs)
+      x = self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon,
+          trainable=self._bn_trainable,
+          synchronized=self._use_sync_bn,
+      )(x)
+      x = tf_utils.get_activation(self._activation, use_keras_layer=True)(x)
+    elif self._stem_type == 'v1':
+      x = layers.Conv2D(
+          filters=int(32 * stem_depth_multiplier),
+          kernel_size=3,
+          strides=2,
+          use_bias=False,
+          padding='same',
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer,
+      )(inputs)
+      x = self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon,
+          trainable=self._bn_trainable,
+          synchronized=self._use_sync_bn,
+      )(x)
+      x = tf_utils.get_activation(self._activation, use_keras_layer=True)(x)
+      x = layers.Conv2D(
+          filters=int(32 * stem_depth_multiplier),
+          kernel_size=3,
+          strides=1,
+          use_bias=False,
+          padding='same',
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer,
+      )(x)
+      x = self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon,
+          trainable=self._bn_trainable,
+          synchronized=self._use_sync_bn,
+      )(x)
+      x = tf_utils.get_activation(self._activation, use_keras_layer=True)(x)
+      x = layers.Conv2D(
+          filters=int(64 * stem_depth_multiplier),
+          kernel_size=3,
+          strides=1,
+          use_bias=False,
+          padding='same',
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer,
+      )(x)
+      x = self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon,
+          trainable=self._bn_trainable,
+          synchronized=self._use_sync_bn,
+      )(x)
+      x = tf_utils.get_activation(self._activation, use_keras_layer=True)(x)
+    else:
+      raise ValueError('Stem type {} not supported.'.format(self._stem_type))
+
+    if self._replace_stem_max_pool:
+      x = layers.Conv2D(
+          filters=int(64 * self._depth_multiplier),
+          kernel_size=3,
+          strides=2,
+          use_bias=False,
+          padding='same',
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer,
+      )(x)
+      x = self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon,
+          trainable=self._bn_trainable,
+          synchronized=self._use_sync_bn,
+      )(x)
+      x = tf_utils.get_activation(self._activation, use_keras_layer=True)(x)
+    else:
+      x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
+
+    return x
 
   def _block_group(self,
                    inputs: tf.Tensor,

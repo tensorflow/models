@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -65,8 +65,9 @@ def _suppression_loop_body(boxes, iou_threshold, output_size, idx):
     output_size: the updated output_size.
     idx: the updated induction variable.
   """
-  num_tiles = tf.shape(boxes)[1] // NMS_TILE_SIZE
-  batch_size = tf.shape(boxes)[0]
+  boxes_shape = tf.shape(boxes)
+  num_tiles = boxes_shape[1] // NMS_TILE_SIZE
+  batch_size = boxes_shape[0]
 
   # Iterates over tiles that can possibly suppress the current tile.
   box_slice = tf.slice(boxes, [0, idx * NMS_TILE_SIZE, 0],
@@ -95,7 +96,7 @@ def _suppression_loop_body(boxes, iou_threshold, output_size, idx):
   boxes = tf.tile(tf.expand_dims(
       box_slice, [1]), [1, num_tiles, 1, 1]) * mask + tf.reshape(
           boxes, [batch_size, num_tiles, NMS_TILE_SIZE, 4]) * (1 - mask)
-  boxes = tf.reshape(boxes, [batch_size, -1, 4])
+  boxes = tf.reshape(boxes, boxes_shape)
 
   # Updates output_size.
   output_size += tf.reduce_sum(

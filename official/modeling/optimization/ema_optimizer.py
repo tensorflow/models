@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,14 +14,41 @@
 
 """Exponential moving average optimizer."""
 
-from typing import List, Optional, Text
+from typing import List, Optional
 
 import tensorflow as tf
 
 # pylint: disable=protected-access
 
 
-class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
+def maybe_merge_call(fn, strategy, *args, **kwargs):
+  """Maybe invoke `fn` via `merge_call` which may or may not be fulfilled.
+
+  The caller of this utility function requests to invoke `fn` via `merge_call`
+  at `tf.distribute.Strategy`'s best efforts. It is `tf.distribute`'s internal
+  whether the request is honored, depending on the `Strategy`. See
+  `tf.distribute.ReplicaContext.merge_call()` for more information.
+
+  This is adapted from tensorflow/python/distribute/merge_call_interim.py.
+
+  Args:
+    fn: the function to be invoked.
+    strategy: the `tf.distribute.Strategy` to call `fn` with.
+    *args: the positional arguments to be passed in to `fn`.
+    **kwargs: the keyword arguments to be passed in to `fn`.
+
+  Returns:
+    The return value of the `fn` call.
+  """
+  if strategy.extended._use_merge_call():
+    return tf.distribute.get_replica_context().merge_call(
+        fn, args=args, kwargs=kwargs
+    )
+  else:
+    return fn(strategy, *args, **kwargs)
+
+
+class ExponentialMovingAverage(tf.keras.optimizers.legacy.Optimizer):
   """Optimizer that computes an exponential moving average of the variables.
 
   Empirically it has been found that using the moving average of the trained
@@ -52,7 +79,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
                average_decay: float = 0.99,
                start_step: int = 0,
                dynamic_decay: bool = True,
-               name: Text = 'ExponentialMovingAverage',
+               name: str = 'ExponentialMovingAverage',
                **kwargs):
     """Construct a new ExponentialMovingAverage optimizer.
 
@@ -80,7 +107,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
     self._start_step = tf.constant(start_step, tf.float32)
     self._dynamic_decay = dynamic_decay
     self._optimizer = optimizer
-    self._track_trackable(self._optimizer, 'base_optimizer')
+    self._track_trackable(self._optimizer, 'ema_base_optimizer')
     self._average_weights = None
     self._model_weights = None
 
@@ -106,14 +133,15 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
   def _create_slots(self, var_list):
     self._optimizer._create_slots(var_list=var_list)  # pylint: disable=protected-access
 
-  def apply_gradients(self, grads_and_vars, name: Optional[Text] = None):
+  def apply_gradients(self, grads_and_vars, name: Optional[str] = None):
     result = self._optimizer.apply_gradients(grads_and_vars, name)
-    self.update_average(self.iterations)
+    maybe_merge_call(self.update_average, tf.distribute.get_strategy())
     return result
 
   @tf.function
-  def update_average(self, step: tf.Tensor):
-    step = tf.cast(step, tf.float32)
+  def update_average(self, strategy):
+    # Compute current decay value.
+    step = tf.cast(self.iterations, tf.float32)
     if step < self._start_step:
       decay = tf.constant(0., tf.float32)
     elif self._dynamic_decay:
@@ -122,18 +150,16 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
     else:
       decay = self._average_decay
 
-    def _apply_moving(v_moving, v_normal):
-      diff = v_moving - v_normal
-      v_moving.assign_sub(tf.cast(1. - decay, v_moving.dtype) * diff)
-      return v_moving
+    def _apply_moving(average, normal):
+      diff = average - normal
+      average.assign_sub(tf.cast(1.0 - decay, average.dtype) * diff)
+      return average
 
-    def _update(strategy, v_moving_and_v_normal):
-      for v_moving, v_normal in v_moving_and_v_normal:
-        strategy.extended.update(v_moving, _apply_moving, args=(v_normal,))
-
-    ctx = tf.distribute.get_replica_context()
-    return ctx.merge_call(_update, args=(zip(self._average_weights,
-                                             self._model_weights),))
+    # Update moving average with the latest value.
+    for average, normal in zip(self._average_weights, self._model_weights):
+      strategy.extended.update(
+          average, _apply_moving, args=(normal,), group=False
+      )
 
   def swap_weights(self):
     """Swap the average and moving weights.
@@ -147,8 +173,9 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
       strategy = tf.distribute.get_strategy()
       strategy.run(self._swap_weights, args=())
     else:
-      raise ValueError('Swapping weights must occur under a '
-                       'tf.distribute.Strategy')
+      raise ValueError(
+          'Swapping weights must occur under a tf.distribute.Strategy.'
+      )
 
   @tf.function
   def _swap_weights(self):
@@ -162,16 +189,30 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
       a.assign_sub(b)
       return a
 
-    def swap(strategy, a_and_b):
+    def _swap(strategy, a_and_b):
       """Swap `a` and `b` and mirror to all devices."""
       for a, b in a_and_b:
         strategy.extended.update(a, fn_0, args=(b,))  # a = a + b
         strategy.extended.update(b, fn_1, args=(a,))  # b = a - b
         strategy.extended.update(a, fn_2, args=(b,))  # a = a - b
 
-    ctx = tf.distribute.get_replica_context()
-    return ctx.merge_call(
-        swap, args=(zip(self._average_weights, self._model_weights),))
+    # Use merge_call if requested by strategy and always for TPUStrategy as
+    # the use of merge_call is not recommended and deprecated for other
+    # strategies such as mirrored strategy (MS) and multi-worker mirrored
+    # strategy (MWMS) if nccl/collective_ops are used, which can operate in
+    # pure replica context.
+    strategy = tf.distribute.get_strategy()
+    if isinstance(strategy, tf.distribute.TPUStrategy):
+      maybe_merge_call(
+          _swap,
+          strategy,
+          zip(self._average_weights, self._model_weights),
+      )
+    else:
+      _swap(
+          strategy,
+          zip(self._average_weights, self._model_weights),
+      )
 
   def assign_average_vars(self, var_list: List[tf.Variable]):
     """Assign variables in var_list with their respective averages.

@@ -163,7 +163,7 @@ datasets.
 ### GLDv2 baseline
 
 Please follow
-[these instructions](delf/python/google_landmarks_dataset/README.md). At the
+[these instructions](delf/python/datasets/google_landmarks_dataset/README.md). At the
 end, you should obtain image retrieval results on the Revisited Oxford/Paris
 datasets.
 

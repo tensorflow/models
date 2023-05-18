@@ -1,13 +1,13 @@
 * @tensorflow/tf-model-garden-team
-/official/ @rachellj218 @saberkun @jaeyounkim
-/official/nlp/ @saberkun @lehougoogle @rachellj218 @jaeyounkim
+/official/ @rachellj218 @saberkun
+/official/nlp/ @saberkun @lehougoogle @rachellj218
 /official/recommendation/ranking/ @gagika
-/official/vision/ @xianzhidu @yeqingli @arashwan @saberkun @rachellj218 @jaeyounkim
-/official/vision/beta/projects/assemblenet/ @mryoo @yeqingli
-/official/vision/beta/projects/deepmac_maskrcnn/ @vighneshbirodkar
-/official/vision/beta/projects/movinet/ @hyperparticle @yuanliangzhe @yeqingli
-/official/vision/beta/projects/simclr/ @luotigerlsx @chentingpc @saxenasaurabh
-/official/vision/beta/projects/video_ssl/ @richardaecn @yeqingli
+/official/vision/ @yeqingli @arashwan @saberkun @rachellj218
+/official/vision/projects/assemblenet/ @mryoo @yeqingli
+/official/vision/projects/deepmac_maskrcnn/ @vighneshbirodkar
+/official/vision/projects/movinet/ @hyperparticle @yuanliangzhe @yeqingli
+/official/vision/projects/simclr/ @luotigerlsx @chentingpc @saxenasaurabh
+/official/vision/projects/video_ssl/ @richardaecn @yeqingli
 /research/adversarial_text/ @rsepassi @a-dai
 /research/attention_ocr/ @xavigibert
 /research/audioset/ @plakal @dpwe
@@ -24,6 +24,6 @@
 /research/object_detection/ @jch1 @tombstone @pkulzc
 /research/pcl_rl/ @ofirnachum
 /research/rebar/ @gjtucker
-/research/seq_flow_lite/ @thunderfyc
+/research/seq_flow_lite/ @thunderfyc @karunreddy30
 /research/slim/ @sguada @marksandler2
 /research/vid2depth/ @rezama

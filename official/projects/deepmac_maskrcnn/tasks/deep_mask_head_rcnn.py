@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -120,7 +120,8 @@ def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
       pre_nms_score_threshold=generator_config.pre_nms_score_threshold,
       nms_iou_threshold=generator_config.nms_iou_threshold,
       max_num_detections=generator_config.max_num_detections,
-      nms_version=generator_config.nms_version)
+      nms_version=generator_config.nms_version,
+      use_sigmoid_probability=generator_config.use_sigmoid_probability)
 
   if model_config.include_mask:
     mask_head = deep_instance_heads.DeepMaskHead(
@@ -162,6 +163,14 @@ def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
       mask_head=mask_head,
       mask_sampler=mask_sampler_obj,
       mask_roi_aligner=mask_roi_aligner_obj,
+      class_agnostic_bbox_pred=detection_head_config.class_agnostic_bbox_pred,
+      cascade_class_ensemble=detection_head_config.cascade_class_ensemble,
+      min_level=model_config.min_level,
+      max_level=model_config.max_level,
+      num_scales=model_config.anchor.num_scales,
+      aspect_ratios=model_config.anchor.aspect_ratios,
+      anchor_size=model_config.anchor.anchor_size,
+      outer_boxes_scale=model_config.outer_boxes_scale,
       use_gt_boxes_for_masks=model_config.use_gt_boxes_for_masks)
   return model
 
@@ -171,7 +180,7 @@ class DeepMaskHeadRCNNTask(maskrcnn.MaskRCNNTask):
   """Mask R-CNN with support for deep mask heads."""
 
   def build_model(self):
-    """Build Mask R-CNN model."""
+    """Builds Mask R-CNN model."""
 
     input_specs = tf.keras.layers.InputSpec(
         shape=[None] + self.task_config.model.input_size)
@@ -187,4 +196,13 @@ class DeepMaskHeadRCNNTask(maskrcnn.MaskRCNNTask):
         input_specs=input_specs,
         model_config=self.task_config.model,
         l2_regularizer=l2_regularizer)
+
+    if self.task_config.freeze_backbone:
+      model.backbone.trainable = False
+
+    # Builds the model through warm-up call.
+    dummy_images = tf.keras.Input(self.task_config.model.input_size)
+    dummy_image_shape = tf.keras.layers.Input([2])
+    _ = model(dummy_images, image_shape=dummy_image_shape, training=False)
+
     return model

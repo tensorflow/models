@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ class ArgMaxMatcher(matcher.Matcher):
   to a single row.
 
   To support object detection target assignment this class enables setting both
-  matched_threshold (upper threshold) and unmatched_threshold (lower thresholds)
+  matched_threshold (upper threshold) and unmatched_threshold (lower threshold)
   defining three categories of similarity which define whether examples are
   positive, negative, or ignored:
   (1) similarity >= matched_threshold: Highest similarity. Matched/Positive!
@@ -47,7 +47,7 @@ class ArgMaxMatcher(matcher.Matcher):
           Depending on negatives_lower_than_unmatched, this is either
           Unmatched/Negative OR Ignore.
   (3) unmatched_threshold > similarity: Lowest similarity. Depending on flag
-          negatives_lower_than_unmatched, either Unmatched/Negative OR Ignore.
+          negatives_lower_than_unmatched, either Unmatched/Negative or Ignore.
   For ignored matches this class sets the values in the Match object to -2.
   """
 
@@ -67,7 +67,7 @@ class ArgMaxMatcher(matcher.Matcher):
         when set to None.
       negatives_lower_than_unmatched: Boolean which defaults to True. If True
         then negative matches are the ones below the unmatched_threshold,
-        whereas ignored matches are in between the matched and umatched
+        whereas ignored matches are in between the matched and unmatched
         threshold. If False, then negative matches are in between the matched
         and unmatched threshold, and everything lower than unmatched is ignored.
       force_match_for_each_row: If True, ensures that each row is matched to
@@ -124,15 +124,15 @@ class ArgMaxMatcher(matcher.Matcher):
       return -1 * tf.ones([similarity_matrix_shape[1]], dtype=tf.int32)
 
     def _match_when_rows_are_non_empty():
-      """Performs matching when the rows of similarity matrix are non empty.
+      """Performs matching when the rows of similarity matrix are non-empty.
 
       Returns:
         matches:  int32 tensor indicating the row each column matches to.
       """
-      # Matches for each column
+      # Matches for each column.
       matches = tf.argmax(input=similarity_matrix, axis=0, output_type=tf.int32)
 
-      # Deal with matched and unmatched threshold
+      # Deal with matched and unmatched threshold.
       if self._matched_threshold is not None:
         # Get logical indices of ignored and unmatched columns as tf.int64
         matched_vals = tf.reduce_max(input_tensor=similarity_matrix, axis=0)

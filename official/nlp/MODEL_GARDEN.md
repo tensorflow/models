@@ -7,6 +7,11 @@ evaluating transformer-based models, on various tasks such as sentence
 classification, question answering, and translation. Additionally, we provide
 checkpoints of pretrained models which can be finetuned on downstream tasks.
 
+⚠️ Disclaimer: Checkpoints are based on training with publicly available
+datasets. Some datasets contain limitations, including non-commercial use
+limitations. Please review terms and conditions made available by third parties
+before using models and datasets provided.
+
 ### How to Train Models
 
 Model Garden can be easily installed with

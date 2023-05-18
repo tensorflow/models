@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -238,9 +238,7 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
               (boxes[j, k, 2] - boxes[j, k, 0]))
         if 'masks' in groundtruths:
           mask = Image.open(six.BytesIO(groundtruths['masks'][i][j, k]))
-          width, height = mask.size
-          np_mask = (
-              np.array(mask.getdata()).reshape(height, width).astype(np.uint8))
+          np_mask = np.array(mask, dtype=np.uint8)
           np_mask[np_mask > 0] = 255
           encoded_mask = mask_api.encode(np.asfortranarray(np_mask))
           ann['segmentation'] = encoded_mask

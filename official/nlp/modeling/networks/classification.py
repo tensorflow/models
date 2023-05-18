@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -74,7 +74,7 @@ class Classification(tf.keras.Model):
           ('Unknown `output` value "%s". `output` can be either "logits" or '
            '"predictions"') % output)
 
-    super(Classification, self).__init__(
+    super().__init__(
         inputs=[cls_output], outputs=output_tensors, **kwargs)
 
     # b/164516224

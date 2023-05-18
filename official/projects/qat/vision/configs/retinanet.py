@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,8 +28,8 @@ class RetinaNetTask(retinanet.RetinaNetTask):
   quantization: Optional[common.Quantization] = None
 
 
-@exp_factory.register_config_factory('retinanet_spinenet_mobile_coco_qat')
-def retinanet_spinenet_mobile_coco() -> cfg.ExperimentConfig:
+@exp_factory.register_config_factory('retinanet_mobile_coco_qat')
+def retinanet_mobile_coco() -> cfg.ExperimentConfig:
   """Generates a config for COCO OD RetinaNet for mobile with QAT."""
   config = retinanet.retinanet_spinenet_mobile_coco()
   task = RetinaNetTask.from_args(

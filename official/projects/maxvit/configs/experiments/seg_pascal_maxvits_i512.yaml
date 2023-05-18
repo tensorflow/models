@@ -1,0 +1,68 @@
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  init_checkpoint: 'Please provide'
+  init_checkpoint_modules: ['backbone']
+  model:
+    num_classes: 21
+    input_size: [512, 512, 3]
+    backbone:
+      type: 'maxvit'
+      maxvit:
+        model_name: 'maxvit-small'
+        window_size: 16
+        grid_size: 16
+        scale_ratio: '16/7'
+        survival_prob: 0.7
+    decoder:
+      fpn:
+        fusion_type: 'sum'
+      type: 'fpn'
+    head:
+      level: 3
+  losses:
+    l2_weight_decay: 0
+    top_k_percent_pixels: 1.0
+  train_data:
+    output_size: [512, 512]
+    global_batch_size: 32
+    dtype: 'bfloat16'
+    aug_rand_hflip: true
+    aug_scale_max: 2.0
+    aug_scale_min: 0.5
+  validation_data:
+    output_size: [512, 512]
+    global_batch_size: 32
+    dtype: 'bfloat16'
+    groundtruth_padded_size: [512, 512]
+trainer:
+  optimizer_config:
+    learning_rate:
+      cosine:
+        initial_learning_rate: 0.00001
+        alpha: 0.01
+    optimizer:
+      adamw:
+        beta_1: 0.9
+        beta_2: 0.999
+        weight_decay_rate: 0.0001
+      type: adamw
+    warmup:
+      linear:
+        name: linear
+        warmup_learning_rate: 0
+        warmup_steps: 500
+      type: linear
+    ema:
+      average_decay: 0.9998
+      trainable_weights_only: false
+  best_checkpoint_eval_metric: 'mean_iou'
+  best_checkpoint_export_subdir: 'best_ckpt'
+  best_checkpoint_metric_comp: 'higher'
+  steps_per_loop: 330
+  summary_interval: 330
+  train_steps: 20000
+  validation_interval: 330
+  checkpoint_interval: 330
+  validation_steps: 45

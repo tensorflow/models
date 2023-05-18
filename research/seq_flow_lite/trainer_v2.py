@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-# Lint as: python3
 """Binary to train PRADO model with TF 2.0."""
 
 import importlib
@@ -23,6 +22,7 @@ from absl import flags
 from absl import logging
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 
 import input_fn_reader # import root module
 
@@ -48,7 +48,7 @@ def load_runner_config():
 
 def compute_loss(logits, labels, model_config, mode):
   """Creates a sequence labeling model."""
-  if mode != tf.estimator.ModeKeys.PREDICT:
+  if mode != tf_estimator.ModeKeys.PREDICT:
     if not model_config["multilabel"]:
       loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
           labels=labels, logits=logits)
@@ -77,11 +77,11 @@ def main(_):
   if FLAGS.output_dir:
     tf.io.gfile.makedirs(FLAGS.output_dir)
 
-  train_model = model_fn_builder(runner_config, tf.estimator.ModeKeys.TRAIN)
+  train_model = model_fn_builder(runner_config, tf_estimator.ModeKeys.TRAIN)
   optimizer = tf.keras.optimizers.Adam()
   train_input_fn = input_fn_reader.create_input_fn(
       runner_config=runner_config,
-      mode=tf.estimator.ModeKeys.TRAIN,
+      mode=tf_estimator.ModeKeys.TRAIN,
       drop_remainder=True)
   params = {"batch_size": runner_config["batch_size"]}
   train_ds = train_input_fn(params)
@@ -93,7 +93,7 @@ def main(_):
       logits = train_model(features["projection"], features["seq_length"])
       loss = compute_loss(logits, features["label"],
                           runner_config["model_config"],
-                          tf.estimator.ModeKeys.TRAIN)
+                          tf_estimator.ModeKeys.TRAIN)
     gradients = tape.gradient(loss, train_model.trainable_variables)
     optimizer.apply_gradients(zip(gradients, train_model.trainable_variables))
     train_loss(loss)

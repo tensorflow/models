@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
 
 """Tests for the attention layer."""
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.projects.roformer import roformer_attention
 
 
@@ -62,8 +62,7 @@ def _create_mock_attention_data(num_heads,
   return data
 
 
-@keras_parameterized.run_all_keras_modes
-class RoformerAttentionTest(keras_parameterized.TestCase):
+class RoformerAttentionTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super(RoformerAttentionTest, self).setUp()
@@ -79,7 +78,7 @@ class RoformerAttentionTest(keras_parameterized.TestCase):
     for m in range(0, length):
       half_d = key_dim // 2
       std_emb = tf.range(half_d, dtype=tf.float32)
-      std_emb = tf.pow(10000.0, -2 * std_emb / float(half_d))
+      std_emb = tf.pow(10000.0, -std_emb / float(half_d))
       std_emb = m * std_emb
       std_sin_emb = tf.sin(std_emb)
       std_cos_emb = tf.cos(std_emb)

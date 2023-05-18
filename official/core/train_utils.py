@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Training utils."""
-import copy
 import dataclasses
 import inspect
 import json
@@ -34,6 +33,9 @@ from official.core import base_trainer
 from official.core import config_definitions
 from official.core import exp_factory
 from official.modeling import hyperparams
+
+
+BEST_CHECKPOINT_NAME = 'best_ckpt'
 
 
 def get_leaf_nested_dict(d: Dict[str, Any], keys: List[str]) -> Dict[str, Any]:
@@ -80,6 +82,29 @@ def cast_leaf_nested_dict(d: Dict[str, Any],
     else:
       d[key] = cast_fn(value)
   return d
+
+
+def _filter_leaf_nested_dict(
+    d: Dict[str, Any], predicate: Callable[[Any], bool]
+) -> Dict[str, Any]:
+  """Filters the leaves of a dictionary with arbitrary depth in place.
+
+  Args:
+    d: The dictionary to extract value from.
+    predicate: A function that will be called on every leave item. When the
+      function returns True the leave will be kept. Otherwise the leave will be
+      dropped.
+
+  Returns:
+    A new dictionray with filtered result.
+  """
+  result = {}
+  for key, value in d.items():
+    if isinstance(value, dict):
+      result[key] = _filter_leaf_nested_dict(value, predicate)
+    elif predicate(value):
+      result[key] = value
+  return result
 
 
 def maybe_create_best_ckpt_exporter(params: config_definitions.ExperimentConfig,
@@ -138,7 +163,7 @@ class BestCheckpointExporter:
           checkpoint,
           directory=self._export_dir,
           max_to_keep=1,
-          checkpoint_name='best_ckpt')
+          checkpoint_name=BEST_CHECKPOINT_NAME)
 
     return self._checkpoint_manager
 
@@ -187,7 +212,11 @@ class BestCheckpointExporter:
 
   def export_best_eval_metric(self, eval_logs, global_step):
     """Export evaluation results of the best checkpoint into a json file."""
-    eval_logs_ext = copy.copy(eval_logs)
+    # eval_log_ext may contains non-scalar tensors, such as image data when
+    # `allow_image_summary` is True. Here we only keep scalar tensors.
+    eval_logs_ext = _filter_leaf_nested_dict(
+        eval_logs, lambda x: tf.rank(x) <= 1
+    )
     eval_logs_ext['best_ckpt_global_step'] = global_step
     eval_logs_ext = cast_leaf_nested_dict(
         eval_logs_ext, lambda x: float(orbit.utils.get_value(x)))

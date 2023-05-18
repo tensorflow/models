@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ from absl import logging
 
 import tensorflow as tf
 
+from official.modeling import tf_utils
 from official.nlp.modeling.layers import relative_attention
 
 
@@ -102,7 +103,7 @@ class TransformerXLBlock(tf.keras.layers.Layer):
                **kwargs):
     """Initializes TransformerXLBlock layer."""
 
-    super(TransformerXLBlock, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self._vocab_size = vocab_size
     self._num_heads = num_attention_heads
     self._head_size = head_size
@@ -148,7 +149,7 @@ class TransformerXLBlock(tf.keras.layers.Layer):
         value_dim=self._head_size,
         dropout=self._attention_dropout_rate,
         use_bias=False,
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         name="rel_attn")
     self._attention_dropout = tf.keras.layers.Dropout(
         rate=self._attention_dropout_rate)
@@ -157,30 +158,30 @@ class TransformerXLBlock(tf.keras.layers.Layer):
         axis=-1,
         epsilon=self._norm_epsilon,
         dtype=tf.float32)
-    self._inner_dense = tf.keras.layers.experimental.EinsumDense(
+    self._inner_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, self._inner_size),
         bias_axes="d",
-        kernel_initializer=self._kernel_initializer,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         name="inner")
 
     self._inner_activation_layer = tf.keras.layers.Activation(
         self._inner_activation)
     self._inner_dropout_layer = tf.keras.layers.Dropout(
         rate=self._inner_dropout)
-    self._output_dense = tf.keras.layers.experimental.EinsumDense(
+    self._output_dense = tf.keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
         bias_axes="d",
         name="output",
-        kernel_initializer=self._kernel_initializer)
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer))
     self._output_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     self._output_layer_norm = tf.keras.layers.LayerNormalization(
         name="output_layer_norm",
         axis=-1,
         epsilon=self._norm_epsilon)
 
-    super(TransformerXLBlock, self).build(input_shape)
+    super().build(input_shape)
 
   def get_config(self):
     config = {
@@ -209,7 +210,7 @@ class TransformerXLBlock(tf.keras.layers.Layer):
         "inner_dropout":
             self._inner_dropout,
     }
-    base_config = super(TransformerXLBlock, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self,
@@ -370,7 +371,7 @@ class TransformerXL(tf.keras.layers.Layer):
                inner_activation="relu",
                **kwargs):
     """Initializes TransformerXL."""
-    super(TransformerXL, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
     self._vocab_size = vocab_size
     self._initializer = initializer
@@ -398,17 +399,17 @@ class TransformerXL(tf.keras.layers.Layer):
         "content_attention_bias",
         shape=attention_bias_shape,
         dtype=tf.float32,
-        initializer=self._initializer)
+        initializer=tf_utils.clone_initializer(self._initializer))
     self.positional_attention_bias = self.add_weight(
         "positional_attention_bias",
         shape=attention_bias_shape,
         dtype=tf.float32,
-        initializer=self._initializer)
+        initializer=tf_utils.clone_initializer(self._initializer))
     self.segment_attention_bias = self.add_weight(
         "segment_attention_bias",
         shape=attention_bias_shape,
         dtype=tf.float32,
-        initializer=self._initializer)
+        initializer=tf_utils.clone_initializer(self._initializer))
 
     self.transformer_xl_layers = []
     for i in range(self._num_layers):
@@ -460,7 +461,7 @@ class TransformerXL(tf.keras.layers.Layer):
         "inner_activation":
             self._inner_activation,
     }
-    base_config = super(TransformerXL, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self,

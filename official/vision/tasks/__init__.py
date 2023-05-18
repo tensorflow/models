@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@
 
 """Tasks package definition."""
 
-from official.vision.tasks import image_classification
-from official.vision.tasks import maskrcnn
-from official.vision.tasks import retinanet
-from official.vision.tasks import semantic_segmentation
-from official.vision.tasks import video_classification
+from official.vision.tasks.image_classification import ImageClassificationTask
+from official.vision.tasks.maskrcnn import MaskRCNNTask
+from official.vision.tasks.retinanet import RetinaNetTask
+from official.vision.tasks.semantic_segmentation import SemanticSegmentationTask
+from official.vision.tasks.video_classification import VideoClassificationTask

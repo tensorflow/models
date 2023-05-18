@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -83,6 +83,24 @@ class TFUtilsTest(tf.test.TestCase, parameterized.TestCase):
     per_replica_gradients = strategy.run(function)
     for gradient in per_replica_gradients.values:
       self.assertAllClose(gradient, num_cores * tf.ones(shape))
+
+  @parameterized.parameters(('relu', True), ('relu', False),
+                            ('leaky_relu', False), ('leaky_relu', True),
+                            ('mish', True), ('mish', False), ('gelu', True))
+  def test_get_activations(self, name, use_keras_layer):
+    fn = tf_utils.get_activation(name, use_keras_layer)
+    self.assertIsNotNone(fn)
+
+  @combinations.generate(all_strategy_combinations())
+  def test_get_leaky_relu_layer(self, strategy):
+    @tf.function
+    def forward(x):
+      fn = tf_utils.get_activation(
+          'leaky_relu', use_keras_layer=True, alpha=0.1)
+      return strategy.run(fn, args=(x,)).values[0]
+
+    got = forward(tf.constant([-1]))
+    self.assertAllClose(got, tf.constant([-0.1]))
 
 
 if __name__ == '__main__':

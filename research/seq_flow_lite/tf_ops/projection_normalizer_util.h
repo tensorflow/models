@@ -12,26 +12,27 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#ifndef TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TF_OPS_PROJECTION_NORMALIZER_UTIL_H_
-#define TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TF_OPS_PROJECTION_NORMALIZER_UTIL_H_
+#ifndef TENSORFLOW_MODELS_SEQ_FLOW_LITE_TF_OPS_PROJECTION_NORMALIZER_UTIL_H_
+#define TENSORFLOW_MODELS_SEQ_FLOW_LITE_TF_OPS_PROJECTION_NORMALIZER_UTIL_H_
 
 #include <string>
 #include <unordered_set>
 #include <vector>
 
-#include "libutf/utf.h"
-
 // Normalizes the input with the given |separators| by adding a space before and
 // after each separator. When |normalize_repetition| is true, it removes the
 // repeated characters (except numbers) which consecutively appeared more than
-// twice in a word.
+// twice in a word. When |normalize_spaces| is true, it removes spaces from
+// the beginning and ending of the input, as well as repeated spaces.
 // Examples: arwwwww -> arww, good!!!!! -> good!!, hahaha => haha.
 class ProjectionNormalizer {
  public:
   explicit ProjectionNormalizer(const std::string& separators,
-                                bool normalize_repetition = false) {
+                                bool normalize_repetition = false,
+                                bool normalize_spaces = false)
+      : normalize_repetition_(normalize_repetition),
+        normalize_spaces_(normalize_spaces) {
     InitializeSeparators(separators);
-    normalize_repetition_ = normalize_repetition;
   }
 
   // Normalizes the repeated characters (except numbers) which consecutively
@@ -49,6 +50,7 @@ class ProjectionNormalizer {
 
   std::unordered_set<char> separators_;
   bool normalize_repetition_;
+  bool normalize_spaces_;
 };
 
-#endif  // TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TF_OPS_PROJECTION_NORMALIZER_UTIL_H_
+#endif  // TENSORFLOW_MODELS_SEQ_FLOW_LITE_TF_OPS_PROJECTION_NORMALIZER_UTIL_H_

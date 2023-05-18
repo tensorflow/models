@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,13 +14,16 @@
 
 """Data parser and processing for Mask R-CNN."""
 
-# Import libraries
+from typing import Optional
 
+# Import libraries
 import tensorflow as tf
 
+from official.vision.configs import common
 from official.vision.dataloaders import parser
 from official.vision.dataloaders import utils
 from official.vision.ops import anchor
+from official.vision.ops import augment
 from official.vision.ops import box_ops
 from official.vision.ops import preprocess_ops
 
@@ -40,11 +43,14 @@ class Parser(parser.Parser):
                rpn_batch_size_per_im=256,
                rpn_fg_fraction=0.5,
                aug_rand_hflip=False,
+               aug_rand_vflip=False,
                aug_scale_min=1.0,
                aug_scale_max=1.0,
+               aug_type: Optional[common.Augmentation] = None,
                skip_crowd_during_training=True,
                max_num_instances=100,
                include_mask=False,
+               outer_boxes_scale=1.0,
                mask_crop_size=112,
                dtype='float32'):
     """Initializes parameters for parsing annotations in the dataset.
@@ -57,7 +63,7 @@ class Parser(parser.Parser):
       num_scales: `int` number representing intermediate scales added
         on each level. For instances, num_scales=2 adds one additional
         intermediate anchor scales [2^0, 2^0.5] on each level.
-      aspect_ratios: `list` of float numbers representing the aspect raito
+      aspect_ratios: `list` of float numbers representing the aspect ratio
         anchors added on each level. The number indicates the ratio of width to
         height. For instances, aspect_ratios=[1.0, 2.0, 0.5] adds three anchors
         on each scale level.
@@ -67,18 +73,25 @@ class Parser(parser.Parser):
       rpn_unmatched_threshold:
       rpn_batch_size_per_im:
       rpn_fg_fraction:
-      aug_rand_hflip: `bool`, if True, augment training with random
-        horizontal flip.
+      aug_rand_hflip: `bool`, if True, augment training with random horizontal
+        flip.
+      aug_rand_vflip: `bool`, if True, augment training with random vertical
+        flip.
       aug_scale_min: `float`, the minimum scale applied to `output_size` for
         data augmentation during training.
       aug_scale_max: `float`, the maximum scale applied to `output_size` for
         data augmentation during training.
+      aug_type: An optional Augmentation object with params for AutoAugment.
+        The AutoAug policy should not use rotation/translation/shear.
+        Only in-place augmentations can be used.
       skip_crowd_during_training: `bool`, if True, skip annotations labeled with
         `is_crowd` equals to 1.
       max_num_instances: `int` number of maximum number of instances in an
-        image. The groundtruth data will be padded to `max_num_instances`.
-      include_mask: a bool to indicate whether parse mask groundtruth.
-      mask_crop_size: the size which groundtruth mask is cropped to.
+        image. The ground-truth data will be padded to `max_num_instances`.
+      include_mask: a bool to indicate whether parse mask ground-truth.
+      outer_boxes_scale: a float to scale up the bounding boxes to generate
+        more inclusive masks. The scale is expected to be >=1.0.
+      mask_crop_size: the size which ground-truth mask is cropped to.
       dtype: `str`, data type. One of {`bfloat16`, `float32`, `float16`}.
     """
 
@@ -101,11 +114,33 @@ class Parser(parser.Parser):
 
     # Data augmentation.
     self._aug_rand_hflip = aug_rand_hflip
+    self._aug_rand_vflip = aug_rand_vflip
     self._aug_scale_min = aug_scale_min
     self._aug_scale_max = aug_scale_max
 
+    if aug_type and aug_type.type:
+      if aug_type.type == 'autoaug':
+        self._augmenter = augment.AutoAugment(
+            augmentation_name=aug_type.autoaug.augmentation_name,
+            cutout_const=aug_type.autoaug.cutout_const,
+            translate_const=aug_type.autoaug.translate_const)
+      elif aug_type.type == 'randaug':
+        self._augmenter = augment.RandAugment(
+            num_layers=aug_type.randaug.num_layers,
+            magnitude=aug_type.randaug.magnitude,
+            cutout_const=aug_type.randaug.cutout_const,
+            translate_const=aug_type.randaug.translate_const,
+            prob_to_apply=aug_type.randaug.prob_to_apply,
+            exclude_ops=aug_type.randaug.exclude_ops)
+      else:
+        raise ValueError('Augmentation policy {} not supported.'.format(
+            aug_type.type))
+    else:
+      self._augmenter = None
+
     # Mask.
     self._include_mask = include_mask
+    self._outer_boxes_scale = outer_boxes_scale
     self._mask_crop_size = mask_crop_size
 
     # Image output dtype.
@@ -137,11 +172,11 @@ class Parser(parser.Parser):
           shape [height_l, width_l, anchors_per_location * 4]. The height_l and
           width_l represent the dimension of bounding box regression output at
           l-th level.
-        gt_boxes: Groundtruth bounding box annotations. The box is represented
+        gt_boxes: Ground-truth bounding box annotations. The box is represented
            in [y1, x1, y2, x2] format. The coordinates are w.r.t the scaled
            image that is fed to the network. The tennsor is padded with -1 to
            the fixed dimension [self._max_num_instances, 4].
-        gt_classes: Groundtruth classes annotations. The tennsor is padded
+        gt_classes: Ground-truth classes annotations. The tennsor is padded
           with -1 to the fixed dimension [self._max_num_instances].
         gt_masks: groundtrugh masks cropped by the bounding box and
           resized to a fixed size determined by mask_crop_size.
@@ -167,19 +202,27 @@ class Parser(parser.Parser):
 
     # Gets original image and its size.
     image = data['image']
+    if self._augmenter is not None:
+      image = self._augmenter.distort(image)
+
     image_shape = tf.shape(image)[0:2]
 
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(image)
 
     # Flips image randomly during training.
-    if self._aug_rand_hflip:
-      if self._include_mask:
-        image, boxes, masks = preprocess_ops.random_horizontal_flip(
-            image, boxes, masks)
-      else:
-        image, boxes, _ = preprocess_ops.random_horizontal_flip(
-            image, boxes)
+    image, boxes, masks = preprocess_ops.random_horizontal_flip(
+        image,
+        boxes,
+        masks=None if not self._include_mask else masks,
+        prob=tf.where(self._aug_rand_hflip, 0.5, 0.0),
+    )
+    image, boxes, masks = preprocess_ops.random_vertical_flip(
+        image,
+        boxes,
+        masks=None if not self._include_mask else masks,
+        prob=tf.where(self._aug_rand_vflip, 0.5, 0.0),
+    )
 
     # Converts boxes from normalized coordinates to pixel coordinates.
     # Now the coordinates of boxes are w.r.t. the original image.
@@ -202,14 +245,17 @@ class Parser(parser.Parser):
     boxes = preprocess_ops.resize_and_crop_boxes(
         boxes, image_scale, image_info[1, :], offset)
 
-    # Filters out ground truth boxes that are all zeros.
+    # Filters out ground-truth boxes that are all zeros.
     indices = box_ops.get_non_empty_box_indices(boxes)
     boxes = tf.gather(boxes, indices)
     classes = tf.gather(classes, indices)
     if self._include_mask:
+      outer_boxes = box_ops.compute_outer_boxes(boxes, image_info[1, :],
+                                                self._outer_boxes_scale)
       masks = tf.gather(masks, indices)
       # Transfer boxes to the original image space and do normalization.
-      cropped_boxes = boxes + tf.tile(tf.expand_dims(offset, axis=0), [1, 2])
+      cropped_boxes = outer_boxes + tf.tile(
+          tf.expand_dims(offset, axis=0), [1, 2])
       cropped_boxes /= tf.tile(tf.expand_dims(image_scale, axis=0), [1, 2])
       cropped_boxes = box_ops.normalize_boxes(cropped_boxes, image_shape)
       num_masks = tf.shape(masks)[0]
@@ -242,29 +288,29 @@ class Parser(parser.Parser):
 
     # Casts input image to self._dtype
     image = tf.cast(image, dtype=self._dtype)
+    boxes = preprocess_ops.clip_or_pad_to_fixed_size(
+        boxes, self._max_num_instances, -1)
+    classes = preprocess_ops.clip_or_pad_to_fixed_size(
+        classes, self._max_num_instances, -1)
 
     # Packs labels for model_fn outputs.
     labels = {
-        'anchor_boxes':
-            anchor_boxes,
-        'image_info':
-            image_info,
-        'rpn_score_targets':
-            rpn_score_targets,
-        'rpn_box_targets':
-            rpn_box_targets,
-        'gt_boxes':
-            preprocess_ops.clip_or_pad_to_fixed_size(boxes,
-                                                     self._max_num_instances,
-                                                     -1),
-        'gt_classes':
-            preprocess_ops.clip_or_pad_to_fixed_size(classes,
-                                                     self._max_num_instances,
-                                                     -1),
+        'anchor_boxes': anchor_boxes,
+        'image_info': image_info,
+        'rpn_score_targets': rpn_score_targets,
+        'rpn_box_targets': rpn_box_targets,
+        'gt_boxes': boxes,
+        'gt_classes': classes,
     }
     if self._include_mask:
-      labels['gt_masks'] = preprocess_ops.clip_or_pad_to_fixed_size(
+      outer_boxes = preprocess_ops.clip_or_pad_to_fixed_size(
+          outer_boxes, self._max_num_instances, -1)
+      masks = preprocess_ops.clip_or_pad_to_fixed_size(
           masks, self._max_num_instances, -1)
+      labels.update({
+          'gt_outer_boxes': outer_boxes,
+          'gt_masks': masks,
+      })
 
     return image, labels
 
@@ -281,7 +327,7 @@ class Parser(parser.Parser):
         labels: a dictionary of tensors used for training. The following
           describes {key: value} pairs in the dictionary.
           source_ids: Source image id. Default value -1 if the source id is
-            empty in the groundtruth annotation.
+            empty in the ground-truth annotation.
           image_info: a 2D `Tensor` that encodes the information of the image
             and the applied preprocessing. It is in the format of
             [[original_height, original_width], [scaled_height, scaled_width],
@@ -341,5 +387,19 @@ class Parser(parser.Parser):
         groundtruths['source_id'])
     groundtruths = utils.pad_groundtruths_to_fixed_size(
         groundtruths, self._max_num_instances)
+    if self._include_mask:
+      masks = data['groundtruth_instance_masks']
+      masks = tf.image.crop_and_resize(
+          tf.expand_dims(masks, axis=-1),
+          boxes=data['groundtruth_boxes'],
+          box_indices=tf.range(tf.shape(masks)[0], dtype=tf.int32),
+          crop_size=[self._mask_crop_size, self._mask_crop_size],
+          method='bilinear',
+      )
+      masks = tf.squeeze(masks, axis=-1)
+      groundtruths['masks'] = preprocess_ops.clip_or_pad_to_fixed_size(
+          masks, self._max_num_instances, -1
+      )
+
     labels['groundtruths'] = groundtruths
     return image, labels

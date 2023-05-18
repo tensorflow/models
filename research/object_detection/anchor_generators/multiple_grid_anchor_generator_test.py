@@ -151,7 +151,7 @@ class MultipleGridAnchorGeneratorTest(test_case.TestCase):
                             [.125-.5*h, .125-.5*w, .125+.5*h, .125+.5*w],]
 
     anchor_corners_out = np.concatenate(self.execute(graph_fn, []), axis=0)
-    self.assertEquals(anchor_corners_out.shape, (56, 4))
+    self.assertEqual(anchor_corners_out.shape, (56, 4))
     big_grid_corners = anchor_corners_out[0:3, :]
     small_grid_corners = anchor_corners_out[48:, :]
     self.assertAllClose(small_grid_corners, exp_small_grid_corners)
@@ -268,7 +268,7 @@ class CreateSSDAnchorsTest(test_case.TestCase):
           feature_map_shape_list=feature_map_shape_list)
       return [anchors.get() for anchors in anchors_list]
     anchor_corners_out = np.concatenate(self.execute(graph_fn1, []), axis=0)
-    self.assertEquals(anchor_corners_out.shape, (7308, 4))
+    self.assertEqual(anchor_corners_out.shape, (7308, 4))
 
     def graph_fn2():
       anchor_generator = ag.create_ssd_anchors(
@@ -282,7 +282,7 @@ class CreateSSDAnchorsTest(test_case.TestCase):
           feature_map_shape_list=feature_map_shape_list)
       return [anchors.get() for anchors in anchors_list]
     anchor_corners_out = np.concatenate(self.execute(graph_fn2, []), axis=0)
-    self.assertEquals(anchor_corners_out.shape, (11640, 4))
+    self.assertEqual(anchor_corners_out.shape, (11640, 4))
 
 
 if __name__ == '__main__':

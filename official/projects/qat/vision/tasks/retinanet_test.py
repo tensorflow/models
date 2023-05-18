@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,8 +36,8 @@ class RetinaNetTaskTest(parameterized.TestCase, tf.test.TestCase):
         record_file=tfrecord_file, tf_examples=examples)
 
   @parameterized.parameters(
-      ('retinanet_spinenet_mobile_coco_qat', True),
-      ('retinanet_spinenet_mobile_coco_qat', False),
+      ('retinanet_mobile_coco_qat', True),
+      ('retinanet_mobile_coco_qat', False),
   )
   def test_retinanet_task(self, test_config, is_training):
     """RetinaNet task test for training and val using toy configs."""
@@ -65,6 +65,7 @@ class RetinaNetTaskTest(parameterized.TestCase, tf.test.TestCase):
 
     task = retinanet.RetinaNetTask(config.task)
     model = task.build_model()
+    self.assertLen(model.weights, 2393)
     metrics = task.build_metrics(training=is_training)
 
     strategy = tf.distribute.get_strategy()

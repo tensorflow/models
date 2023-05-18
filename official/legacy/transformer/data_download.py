@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -188,7 +188,7 @@ def download_and_extract(path, url, input_filename, target_filename):
     Full paths to extracted input and target files.
 
   Raises:
-    OSError: if the the download/extraction fails.
+    OSError: if the download/extraction fails.
   """
   # Check if extracted files already exist in path
   input_file = find_file(path, input_filename)

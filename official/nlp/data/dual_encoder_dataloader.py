@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,14 +13,15 @@
 # limitations under the License.
 
 """Loads dataset for the dual encoder (retrieval) task."""
+import dataclasses
 import functools
 import itertools
 from typing import Iterable, Mapping, Optional, Tuple
 
-import dataclasses
 import tensorflow as tf
 import tensorflow_hub as hub
 
+from official.common import dataset_fn
 from official.core import config_definitions as cfg
 from official.core import input_reader
 from official.nlp.data import data_loader
@@ -47,6 +48,7 @@ class DualEncoderDataConfig(cfg.DataConfig):
   right_text_fields: Tuple[str] = ('right_input',)
   is_training: bool = True
   seq_length: int = 128
+  file_type: str = 'tfrecord'
 
 
 @data_loader_factory.register_data_loader_cls(DualEncoderDataConfig)
@@ -140,6 +142,6 @@ class DualEncoderDataLoader(data_loader.DataLoader):
         params=self._params,
         # Skip `decoder_fn` for tfds input.
         decoder_fn=self._decode if self._params.input_path else None,
-        dataset_fn=tf.data.TFRecordDataset,
+        dataset_fn=dataset_fn.pick_dataset_fn(self._params.file_type),
         postprocess_fn=self._bert_preprocess)
     return reader.read(input_context)

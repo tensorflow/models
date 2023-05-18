@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 # pylint: disable=g-classes-have-attributes
 import tensorflow as tf
 
-EinsumDense = tf.keras.layers.experimental.EinsumDense
+EinsumDense = tf.keras.layers.EinsumDense
 MultiHeadAttention = tf.keras.layers.MultiHeadAttention
 
 
@@ -26,9 +26,12 @@ def _build_trig_vector(length, key_dim):
   position_ids = tf.cast(tf.range(length), dtype=tf_dtype)
   position_ids = tf.expand_dims(position_ids, axis=0)
   steps = key_dim // 2
-  indices = tf.cast(tf.range(steps), dtype=tf_dtype)
-  indices = tf.pow(tf.constant(10000.0, dtype=tf_dtype), -2 * indices / steps)
-  vec = tf.einsum('bl,d->bld', position_ids, indices)
+  # 2 (i - 1) / key_dim = (i - 1) / steps: (-1 achieved with zero-indexing)
+  wavenumber_exponent = -tf.cast(tf.range(steps), dtype=tf_dtype) / steps
+  wavenumbers = tf.pow(
+      tf.constant(10000.0, dtype=tf_dtype), wavenumber_exponent
+  )
+  vec = tf.einsum('bl,d->bld', position_ids, wavenumbers)
   sin_vec = tf.repeat(tf.sin(vec), repeats=2, axis=-1)
   cos_vec = tf.repeat(tf.cos(vec), repeats=2, axis=-1)
   sin_vec, cos_vec = tf.expand_dims(sin_vec, 2), tf.expand_dims(cos_vec, 2)
@@ -87,7 +90,7 @@ class RoformerAttention(tf.keras.layers.MultiHeadAttention):
                                ...] + k2 * self.k_sin_vec[:, 0:k_len, ...]
     return ret_q, ret_w, v
 
-  def call(self,
+  def call(self,  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
            query,
            value,
            key=None,

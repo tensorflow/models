@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -95,7 +95,7 @@ class UNet3DDecoder(tf.keras.Model):
       channel_dim = 1
 
     # Build 3D UNet.
-    inputs = self._build_input_pyramid(input_specs, model_id)
+    inputs = self._build_input_pyramid(input_specs, model_id)  # pytype: disable=wrong-arg-types  # dynamic-method-lookup
 
     # Add levels with up-convolution or up-sampling.
     x = inputs[str(model_id)]

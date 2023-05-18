@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,15 +17,11 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.modeling import networks
 from official.nlp.modeling.models import bert_token_classifier
 
 
-# This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
-# guarantees forward compatibility of this code for the V2 switchover.
-@keras_parameterized.run_all_keras_modes
-class BertTokenClassifierTest(keras_parameterized.TestCase):
+class BertTokenClassifierTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters((True, True), (False, False))
   def test_bert_trainer(self, dict_outputs, output_encoder_outputs):

@@ -131,7 +131,8 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
                                                    use_explicit_padding=False,
                                                    num_layers=6,
                                                    use_keras=False,
-                                                   use_depthwise=False):
+                                                   use_depthwise=False,
+                                                   num_channels=3):
     with test_utils.GraphContextOrNone() as g:
       feature_extractor = self._create_features(
           depth_multiplier,
@@ -148,7 +149,7 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
           use_keras=use_keras)
 
     image_tensor = np.random.rand(batch_size, image_height, image_width,
-                                  3).astype(np.float32)
+                                  num_channels).astype(np.float32)
     feature_maps = self.execute(graph_fn, [image_tensor], graph=g)
     for feature_map, expected_shape in zip(
         feature_maps, expected_feature_map_shapes):

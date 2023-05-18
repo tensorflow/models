@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 """Layers for DeepLabV3."""
 
 import tensorflow as tf
+
+from official.modeling import tf_utils
 
 
 class SpatialPyramidPooling(tf.keras.layers.Layer):
@@ -85,16 +87,10 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
     self.use_depthwise_convolution = use_depthwise_convolution
 
   def build(self, input_shape):
-    height = input_shape[1]
-    width = input_shape[2]
     channels = input_shape[3]
 
     self.aspp_layers = []
-
-    if self.use_sync_bn:
-      bn_op = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      bn_op = tf.keras.layers.BatchNormalization
+    bn_op = tf.keras.layers.BatchNormalization
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       bn_axis = -1
@@ -103,14 +99,17 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
 
     conv_sequential = tf.keras.Sequential([
         tf.keras.layers.Conv2D(
-            filters=self.output_channels, kernel_size=(1, 1),
-            kernel_initializer=self.kernel_initializer,
+            filters=self.output_channels,
+            kernel_size=(1, 1),
+            kernel_initializer=tf_utils.clone_initializer(
+                self.kernel_initializer),
             kernel_regularizer=self.kernel_regularizer,
             use_bias=False),
         bn_op(
             axis=bn_axis,
             momentum=self.batchnorm_momentum,
-            epsilon=self.batchnorm_epsilon),
+            epsilon=self.batchnorm_epsilon,
+            synchronized=self.use_sync_bn),
         tf.keras.layers.Activation(self.activation)
     ])
     self.aspp_layers.append(conv_sequential)
@@ -121,21 +120,30 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
       if self.use_depthwise_convolution:
         leading_layers += [
             tf.keras.layers.DepthwiseConv2D(
-                depth_multiplier=1, kernel_size=kernel_size,
-                padding='same', depthwise_regularizer=self.kernel_regularizer,
-                depthwise_initializer=self.kernel_initializer,
-                dilation_rate=dilation_rate, use_bias=False)
+                depth_multiplier=1,
+                kernel_size=kernel_size,
+                padding='same',
+                dilation_rate=dilation_rate,
+                use_bias=False)
         ]
         kernel_size = (1, 1)
       conv_sequential = tf.keras.Sequential(leading_layers + [
           tf.keras.layers.Conv2D(
-              filters=self.output_channels, kernel_size=kernel_size,
-              padding='same', kernel_regularizer=self.kernel_regularizer,
-              kernel_initializer=self.kernel_initializer,
-              dilation_rate=dilation_rate, use_bias=False),
-          bn_op(axis=bn_axis, momentum=self.batchnorm_momentum,
-                epsilon=self.batchnorm_epsilon),
-          tf.keras.layers.Activation(self.activation)])
+              filters=self.output_channels,
+              kernel_size=kernel_size,
+              padding='same',
+              kernel_regularizer=self.kernel_regularizer,
+              kernel_initializer=tf_utils.clone_initializer(
+                  self.kernel_initializer),
+              dilation_rate=dilation_rate,
+              use_bias=False),
+          bn_op(
+              axis=bn_axis,
+              momentum=self.batchnorm_momentum,
+              epsilon=self.batchnorm_epsilon,
+              synchronized=self.use_sync_bn),
+          tf.keras.layers.Activation(self.activation)
+      ])
       self.aspp_layers.append(conv_sequential)
 
     if self.pool_kernel_size is None:
@@ -151,42 +159,47 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
             tf.keras.layers.Conv2D(
                 filters=self.output_channels,
                 kernel_size=(1, 1),
-                kernel_initializer=self.kernel_initializer,
+                kernel_initializer=tf_utils.clone_initializer(
+                    self.kernel_initializer),
                 kernel_regularizer=self.kernel_regularizer,
                 use_bias=False),
             bn_op(
                 axis=bn_axis,
                 momentum=self.batchnorm_momentum,
-                epsilon=self.batchnorm_epsilon),
-            tf.keras.layers.Activation(self.activation),
-            tf.keras.layers.experimental.preprocessing.Resizing(
-                height,
-                width,
-                interpolation=self.interpolation,
-                dtype=tf.float32)
+                epsilon=self.batchnorm_epsilon,
+                synchronized=self.use_sync_bn),
+            tf.keras.layers.Activation(self.activation)
         ]))
 
     self.aspp_layers.append(pool_sequential)
 
     self.projection = tf.keras.Sequential([
         tf.keras.layers.Conv2D(
-            filters=self.output_channels, kernel_size=(1, 1),
-            kernel_initializer=self.kernel_initializer,
+            filters=self.output_channels,
+            kernel_size=(1, 1),
+            kernel_initializer=tf_utils.clone_initializer(
+                self.kernel_initializer),
             kernel_regularizer=self.kernel_regularizer,
             use_bias=False),
         bn_op(
             axis=bn_axis,
             momentum=self.batchnorm_momentum,
-            epsilon=self.batchnorm_epsilon),
+            epsilon=self.batchnorm_epsilon,
+            synchronized=self.use_sync_bn),
         tf.keras.layers.Activation(self.activation),
-        tf.keras.layers.Dropout(rate=self.dropout)])
+        tf.keras.layers.Dropout(rate=self.dropout)
+    ])
 
   def call(self, inputs, training=None):
     if training is None:
       training = tf.keras.backend.learning_phase()
     result = []
-    for layer in self.aspp_layers:
-      result.append(tf.cast(layer(inputs, training=training), inputs.dtype))
+    for i, layer in enumerate(self.aspp_layers):
+      x = layer(inputs, training=training)
+      # Apply resize layer to the end of the last set of layers.
+      if i == len(self.aspp_layers) - 1:
+        x = tf.image.resize(tf.cast(x, tf.float32), tf.shape(inputs)[1:3])
+      result.append(tf.cast(x, inputs.dtype))
     result = tf.concat(result, axis=-1)
     result = self.projection(result, training=training)
     return result

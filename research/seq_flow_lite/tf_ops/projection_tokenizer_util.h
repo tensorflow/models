@@ -12,14 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#ifndef TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TF_OPS_PROJECTION_TOKENIZER_UTIL_H_
-#define TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TF_OPS_PROJECTION_TOKENIZER_UTIL_H_
+#ifndef TENSORFLOW_MODELS_SEQ_FLOW_LITE_TF_OPS_PROJECTION_TOKENIZER_UTIL_H_
+#define TENSORFLOW_MODELS_SEQ_FLOW_LITE_TF_OPS_PROJECTION_TOKENIZER_UTIL_H_
 
 #include <string>
 #include <unordered_set>
 #include <vector>
-
-#include "libutf/utf.h"
 
 // Tokenizes the input with the given separators. To properly tokenize a text
 // containing contractions in English (e.g. I'm), it combines the apostrophe
@@ -55,4 +53,4 @@ class ProjectionTokenizer {
   std::unordered_set<char> separators_;
 };
 
-#endif  // TENSORFLOW_MODELS_SEQUENCE_PROJECTION_TF_OPS_PROJECTION_TOKENIZER_UTIL_H_
+#endif  // TENSORFLOW_MODELS_SEQ_FLOW_LITE_TF_OPS_PROJECTION_TOKENIZER_UTIL_H_

@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """All necessary imports for registration.
 
-Custom models, task, configs, etc need to be imported to registry so they can be
+Custom models, task, configs, etc need to be imported to registry,so they can be
 picked up by the trainer. They can be included in this file so you do not need
 to handle each file separately.
 """

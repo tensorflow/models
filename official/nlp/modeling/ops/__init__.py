@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,5 +14,7 @@
 
 """Ops package definition."""
 from official.nlp.modeling.ops.beam_search import sequence_beam_search
+from official.nlp.modeling.ops.beam_search import SequenceBeamSearch
+from official.nlp.modeling.ops.sampling_module import SamplingModule
 from official.nlp.modeling.ops.segment_extractor import get_next_sentence_labels
 from official.nlp.modeling.ops.segment_extractor import get_sentence_order_labels

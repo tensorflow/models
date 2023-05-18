@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ class SegmentationHeadTest(parameterized.TestCase, tf.test.TestCase):
 
     logits = head((backbone_features, decoder_features))
 
-    if level in decoder_features:
+    if str(level) in decoder_features:
       self.assertAllEqual(logits.numpy().shape, [
           2, decoder_features[str(level)].shape[1],
           decoder_features[str(level)].shape[2], 10
@@ -94,6 +94,7 @@ class MaskScoringHeadTest(parameterized.TestCase, tf.test.TestCase):
         num_convs=num_convs,
         num_filters=num_filters,
         fc_dims=128,
+        num_fcs=num_fcs,
         fc_input_size=fc_input_size)
 
     scores = head(features)

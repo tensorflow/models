@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -343,6 +343,25 @@ class Trainer(_AsyncTrainer):
       logs["learning_rate"] = self.optimizer.learning_rate
     return logs
 
+  def next_train_inputs(self, iterator):
+    """Fetches the next inputs for the model during train.
+
+    This method consumes the input iterator and returns the next inputs for the
+    model.
+
+    This method provides a way to control how to fetch the next model input, and
+    what data to send to the model.
+
+    This function runs in eager mode.
+
+    Args:
+      iterator: Dataset iterator to generate the next inputs from.
+
+    Returns:
+      The inputs to the model.
+    """
+    return next(iterator)
+
   def train_step(self, iterator):
     """See base class."""
 
@@ -359,8 +378,8 @@ class Trainer(_AsyncTrainer):
       self._train_loss.update_state(logs[self.task.loss])
       self.global_step.assign_add(1)
 
-    self.strategy.run(
-        step_fn, args=(next(iterator),), options=self._runtime_options)
+    inputs = self.next_train_inputs(iterator)
+    self.strategy.run(step_fn, args=(inputs,), options=self._runtime_options)
 
   def eval_begin(self):
     """Sets up metrics."""
@@ -370,6 +389,28 @@ class Trainer(_AsyncTrainer):
     if self.optimizer and isinstance(self.optimizer,
                                      optimization.ExponentialMovingAverage):
       self.optimizer.swap_weights()
+
+  def next_eval_inputs(self, iterator):
+    """Fetches the next inputs for the model during eval.
+
+    This method consumes the input iterator and returns the next inputs for the
+    model and an additional logs dict. The output dict remains in the host (not
+    sent to GPUs/TPUs) and is merged with the model outputs which will be
+    processed later in `aggregate_logs`. This is useful for sending extra logs
+    downstream that are not compatible with the accelerators.
+
+    This function runs in eager mode.
+
+    Args:
+      iterator: Dataset iterator to generate the next inputs from.
+
+    Returns:
+      The inputs to the model, and an additional logs dictionnary. The logs
+      are not passed to the model, instead they are merged with model output
+      logs.
+    """
+    passthrough_logs = dict()
+    return next(iterator), passthrough_logs
 
   def eval_step(self, iterator):
     """See base class."""
@@ -381,9 +422,24 @@ class Trainer(_AsyncTrainer):
         self._validation_loss.update_state(logs[self.task.loss])
       return logs
 
-    distributed_outputs = self.strategy.run(step_fn, args=(next(iterator),))
-    return tf.nest.map_structure(self.strategy.experimental_local_results,
-                                 distributed_outputs)
+    inputs, passthrough_logs = self.next_eval_inputs(iterator)
+    distributed_outputs = self.strategy.run(step_fn, args=(inputs,))
+    logs = tf.nest.map_structure(
+        self.strategy.experimental_local_results, distributed_outputs
+    )
+
+    if set(logs.keys()) & set(passthrough_logs.keys()):
+      logging.warning(
+          (
+              "Conflict between the pasthrough log keys and the returned model"
+              " log keys. Found %r keys in the passthrough logs and %r keys in"
+              " the model logs. Model log keys takes precedence."
+          ),
+          logs.keys(),
+          passthrough_logs.keys(),
+      )
+
+    return passthrough_logs | logs
 
   def eval_end(self, aggregated_logs=None):
     """Processes evaluation results."""

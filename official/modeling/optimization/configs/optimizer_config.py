@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -191,11 +191,36 @@ class AdamWeightDecayConfig(BaseOptimizerConfig):
 
 
 @dataclasses.dataclass
+class AdamWeightDecayExperimentalConfig(BaseOptimizerConfig):
+  """Configuration for Adam optimizer with weight decay.
+
+  Attributes:
+    name: name of the optimizer.
+    beta_1: decay rate for 1st order moments.
+    beta_2: decay rate for 2st order moments.
+    epsilon: epsilon value used for numerical stability in the optimizer.
+    amsgrad: boolean. Whether to apply AMSGrad variant of this algorithm from
+      the paper "On the Convergence of Adam and beyond".
+    weight_decay: float. Weight decay rate. Default to 0.
+    global_clipnorm: A positive float. Clips the gradients to this maximum
+      L2-norm. Default to 1.0.
+    jit_compile: if True, jit compile will be used.
+  """
+  name: str = "AdamWeightDecayExperimental"
+  beta_1: float = 0.9
+  beta_2: float = 0.999
+  epsilon: float = 1e-07
+  amsgrad: bool = False
+  weight_decay: float = 0.0
+  global_clipnorm: float = 1.0
+  jit_compile: bool = False
+
+
+@dataclasses.dataclass
 class LAMBConfig(BaseOptimizerConfig):
   """Configuration for LAMB optimizer.
 
-  The attributes for this class matches the arguments of
-  tensorflow_addons.optimizers.LAMB.
+  The attributes for this class matches the arguments of LAMB optimizer.
 
   Attributes:
     name: name of the optimizer.
@@ -311,3 +336,5 @@ class AdafactorConfig(BaseOptimizerConfig):
   min_dim_size_to_factor: int = 128
   epsilon1: float = 1e-30
   epsilon2: float = 1e-3
+  weight_decay: Optional[float] = None
+  include_in_weight_decay: Optional[str] = None

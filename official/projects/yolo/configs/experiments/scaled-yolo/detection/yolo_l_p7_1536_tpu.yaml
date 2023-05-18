@@ -1,0 +1,92 @@
+# --experiment_type=scaled_yolo
+# Use 8x16 DF for training
+# mAP 54.8
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'float32'
+  tpu_enable_xla_dynamic_padder: false
+task:
+  model:
+    input_size: [1536, 1536, 3]
+    backbone:
+      type: 'darknet'
+      darknet:
+        model_id: 'csp-large'
+        max_level: 7
+        min_level: 3
+        width_scale: 1.25
+        depth_scale: 1.00
+    decoder:
+      type: yolo_decoder
+      yolo_decoder:
+        version: v4
+        type: csp_large
+    head:
+      smart_bias: true
+    detection_generator:
+      box_type:
+        'all': scaled
+      scale_xy:
+        'all': 2.0
+      max_boxes: 300
+      nms_version: iou
+      iou_thresh: 0.001
+      nms_thresh: 0.65
+    loss:
+      use_scaled_loss: true
+      update_on_repeat: true
+      box_loss_type:
+        'all': ciou
+      ignore_thresh:
+        'all': 0.0
+      iou_normalizer:
+        'all': 0.05
+      cls_normalizer:
+        'all': 0.5
+      object_normalizer:
+        '7': 0.07
+        '6': 0.22
+        '5': 0.35
+        '4': 0.7
+        '3': 2.8
+      objectness_smooth:
+        'all': 1.0
+    norm_activation:
+      use_sync_bn: true
+    num_classes: 80
+    anchor_boxes:
+      anchors_per_scale: 4
+      boxes:  [box: [13, 17], box: [22, 25], box: [55, 41], box: [27, 66],
+               box: [57, 88], box: [112, 69], box: [69, 177], box: [136, 138],
+               box: [136, 138], box: [287, 114], box: [134, 275], box: [268, 248],
+               box: [268, 248], box: [232, 504], box: [445, 416], box: [640, 640],
+               box: [812, 393], box: [477, 808], box: [1070, 908], box: [1408, 1408]]
+  train_data:
+    input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/train*'
+    dtype: float32
+    shuffle_buffer_size: 10000
+    parser:
+      mosaic:
+        mosaic_frequency: 1.0
+        mixup_frequency: 0.2
+        mosaic_crop_mode: 'scale'
+        mosaic_center: 0.25
+        aug_scale_min: 0.1
+        aug_scale_max: 1.9
+      max_num_instances: 300
+      letter_box: true
+      random_flip: true
+      aug_rand_translate: 0.1
+      area_thresh: 0.1
+  validation_data:
+    input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/val*'
+    dtype: float32
+trainer:
+  best_checkpoint_eval_metric: 'AP'
+  best_checkpoint_export_subdir: 'best_ckpt'
+  best_checkpoint_metric_comp: 'higher'
+  train_steps: 231000  # 500 epochs
+  optimizer_config:
+    learning_rate:
+      cosine:
+        decay_steps: 231000  # 500 epochs

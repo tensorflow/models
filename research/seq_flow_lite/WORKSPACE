@@ -5,6 +5,15 @@ load("@//third_party/py:python_configure.bzl", "python_configure")
 
 
 http_archive(
+    name = "com_github_google_glog",
+    sha256 = "8476f6b3be29b3ebecc7de058183d510acec6e6dcef35d416cc3ac407a3a5645",
+    strip_prefix = "glog-a79416bab739907a31a1e139540921ff0492f010",
+    urls = [
+        "https://github.com/google/glog/archive/a79416bab739907a31a1e139540921ff0492f010.zip",
+    ],
+)
+
+http_archive(
     name = "io_bazel_rules_closure",
     sha256 = "5b00383d08dd71f28503736db0500b6fb4dda47489ff5fc6bed42557c07c6ba9",
     strip_prefix = "rules_closure-308b05b2419edb5c8ee0471b67a40403df940149",
@@ -16,13 +25,10 @@ http_archive(
 
 http_archive(
     name = "org_tensorflow",
-    sha256 = "40d3203ab5f246d83bae328288a24209a2b85794f1b3e2cd0329458d8e7c1985",
-    strip_prefix = "tensorflow-2.6.0",
-    urls = [
-        "https://github.com/tensorflow/tensorflow/archive/v2.6.0.zip",
-    ],
+    strip_prefix = "tensorflow-2.11.0",
+    sha256 = "e52cda3bae45f0ae0fccd4055e9fa29892b414f70e2df94df9a3a10319c75fff",
+    urls = ["https://github.com/tensorflow/tensorflow/archive/v2.11.0.zip"],
 )
-
 
 http_archive(
     name = "org_tflite_support",
@@ -55,16 +61,6 @@ http_archive(
     sha256 = "f28359aeba12f30d73d9e4711ef356dc842886968112162bc73002645139c39c",
     strip_prefix = "glog-0.4.0",
     urls = ["https://github.com/google/glog/archive/v0.4.0.tar.gz"],
-)
-
-http_archive(
-    name = "utf_archive",
-    build_file = "@//third_party:utf.BUILD",
-    sha256 = "262a902f622dcd28e05b8a4be10da0aa3899050d0be8f4a71780eed6b2ea65ca",
-    urls = [
-        "https://mirror.bazel.build/9fans.github.io/plan9port/unix/libutf.tgz",
-        "https://9fans.github.io/plan9port/unix/libutf.tgz",
-    ],
 )
 
 

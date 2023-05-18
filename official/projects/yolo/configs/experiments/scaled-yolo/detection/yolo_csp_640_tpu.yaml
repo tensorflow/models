@@ -1,0 +1,79 @@
+# --experiment_type=scaled_yolo
+# Use 4x4 DF for training
+# mAP 47.6
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'float32'
+  tpu_enable_xla_dynamic_padder: false
+task:
+  model:
+    input_size: [640, 640, 3]
+    backbone:
+      type: 'darknet'
+      darknet:
+        model_id: 'altered_cspdarknet53'
+        max_level: 5
+        min_level: 3
+    decoder:
+      type: yolo_decoder
+      yolo_decoder:
+        version: v4
+        type: csp
+    head:
+      smart_bias: true
+    detection_generator:
+      box_type:
+        'all': scaled
+      scale_xy:
+        'all': 2.0
+      max_boxes: 300
+      nms_version: iou
+      iou_thresh: 0.001
+      nms_thresh: 0.65
+    loss:
+      use_scaled_loss: true
+      update_on_repeat: true
+      box_loss_type:
+        'all': ciou
+      ignore_thresh:
+        'all': 0.0
+      iou_normalizer:
+        'all': 0.05
+      cls_normalizer:
+        'all': 0.3
+      object_normalizer:
+        '5': 0.28
+        '4': 0.70
+        '3': 2.80
+      objectness_smooth:
+        'all': 1.0
+    norm_activation:
+      use_sync_bn: true
+    num_classes: 80
+    anchor_boxes:
+      anchors_per_scale: 3
+      boxes: [box: [12, 16], box: [19, 36], box: [40, 28],
+              box: [36, 75], box: [76, 55], box: [72, 146],
+              box: [142, 110], box: [192, 243], box: [459, 401]]
+  train_data:
+    input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/train*'
+    shuffle_buffer_size: 10000
+    parser:
+      mosaic:
+        mosaic_frequency: 1.0
+        mixup_frequency: 0.0
+        mosaic_crop_mode: 'scale'
+        mosaic_center: 0.25
+        aug_scale_min: 0.1
+        aug_scale_max: 1.9
+      max_num_instances: 300
+      letter_box: true
+      random_flip: true
+      aug_rand_translate: 0.1
+      area_thresh: 0.1
+  validation_data:
+    input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/val*'
+trainer:
+  best_checkpoint_eval_metric: 'AP'
+  best_checkpoint_export_subdir: 'best_ckpt'
+  best_checkpoint_metric_comp: 'higher'

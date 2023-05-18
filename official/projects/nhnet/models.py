@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -311,7 +311,7 @@ class NHNet(Bert2Bert):
 
     return _symbols_to_logits_fn
 
-  def call(self, inputs, mode="training"):
+  def call(self, inputs, mode="training"):  # pytype: disable=signature-mismatch  # overriding-default-value-checks
     input_shape = tf_utils.get_shape_list(inputs["input_ids"], expected_rank=3)
     batch_size, num_docs, len_passage = (input_shape[0], input_shape[1],
                                          input_shape[2])

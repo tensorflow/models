@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ from official.nlp.modeling import models
 from official.nlp.tasks import utils
 
 METRIC_TYPES = frozenset(
-    ['accuracy', 'matthews_corrcoef', 'pearson_spearman_corr'])
+    ['accuracy', 'f1', 'matthews_corrcoef', 'pearson_spearman_corr'])
 
 
 @dataclasses.dataclass
@@ -165,14 +165,17 @@ class SentencePredictionTask(base_task.Task):
     compiled_metrics.update_state(labels[self.label_field], model_outputs)
 
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
-    if self.metric_type == 'accuracy':
-      return super(SentencePredictionTask,
-                   self).validation_step(inputs, model, metrics)
     features, labels = inputs, inputs
     outputs = self.inference_step(features, model)
     loss = self.build_losses(
         labels=labels, model_outputs=outputs, aux_losses=model.losses)
     logs = {self.loss: loss}
+    if metrics:
+      self.process_metrics(metrics, labels, outputs)
+    if model.compiled_metrics:
+      self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
+      logs.update({m.name: m.result() for m in metrics or []})
+      logs.update({m.name: m.result() for m in model.metrics})
     if self.metric_type == 'matthews_corrcoef':
       logs.update({
           'sentence_prediction':  # Ensure one prediction along batch dimension.
@@ -180,7 +183,7 @@ class SentencePredictionTask(base_task.Task):
           'labels':
               labels[self.label_field],
       })
-    if self.metric_type == 'pearson_spearman_corr':
+    else:
       logs.update({
           'sentence_prediction': outputs,
           'labels': labels[self.label_field],
@@ -202,18 +205,20 @@ class SentencePredictionTask(base_task.Task):
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     if self.metric_type == 'accuracy':
       return None
+
+    preds = np.concatenate(aggregated_logs['sentence_prediction'], axis=0)
+    labels = np.concatenate(aggregated_logs['labels'], axis=0)
+    if self.metric_type == 'f1':
+      preds = np.argmax(preds, axis=1)
+      return {self.metric_type: sklearn_metrics.f1_score(labels, preds)}
     elif self.metric_type == 'matthews_corrcoef':
-      preds = np.concatenate(aggregated_logs['sentence_prediction'], axis=0)
       preds = np.reshape(preds, -1)
-      labels = np.concatenate(aggregated_logs['labels'], axis=0)
       labels = np.reshape(labels, -1)
       return {
           self.metric_type: sklearn_metrics.matthews_corrcoef(preds, labels)
       }
     elif self.metric_type == 'pearson_spearman_corr':
-      preds = np.concatenate(aggregated_logs['sentence_prediction'], axis=0)
       preds = np.reshape(preds, -1)
-      labels = np.concatenate(aggregated_logs['labels'], axis=0)
       labels = np.reshape(labels, -1)
       pearson_corr = stats.pearsonr(preds, labels)[0]
       spearman_corr = stats.spearmanr(preds, labels)[0]

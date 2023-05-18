@@ -1,0 +1,20 @@
+# RetinaNet with MaxViT backbone COCO detection.
+# Required flags:
+#   --experiment_type=retinanet_maxvit_coco
+#
+# Expected AP on DF TPU 4x4: 46.63%.
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  init_checkpoint: 'Please provide'
+  init_checkpoint_modules: ['backbone']
+  model:
+    backbone:
+      type: 'maxvit'
+      maxvit:
+        model_name: 'maxvit-base'
+        window_size: 20
+        grid_size: 20
+        scale_ratio: '20/7'
+        survival_prob: 0.3

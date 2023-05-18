@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -221,4 +221,16 @@ def get_train_actions(
         action=RecoveryAction(checkpoint_manager),
     )
     train_actions.append(recover_action)
+
+  if (
+      params.trainer.preemption_on_demand_checkpoint
+      and trainer.strategy.cluster_resolver
+  ):
+    on_demand_checkpoint_action = orbit.actions.SaveCheckpointIfPreempted(
+        trainer.strategy.cluster_resolver,
+        checkpoint_manager,
+        trainer.global_step,
+        keep_running_after_save=True,
+    )
+    train_actions.append(on_demand_checkpoint_action)
   return train_actions

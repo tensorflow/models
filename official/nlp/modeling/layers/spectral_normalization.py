@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -74,21 +74,20 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
     if not isinstance(layer, tf.keras.layers.Layer):
       raise ValueError('`layer` must be a `tf.keras.layer.Layer`. '
                        'Observed `{}`'.format(layer))
-    super(SpectralNormalization, self).__init__(
+    super().__init__(
         layer, name=wrapper_name, **kwargs)
 
-  def build(self, input_shape):
-    super(SpectralNormalization, self).build(input_shape)
+  def build(self, input_shape):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+    super().build(input_shape)
     self.layer.kernel._aggregation = self.aggregation  # pylint: disable=protected-access
     self._dtype = self.layer.kernel.dtype
 
     self.w = self.layer.kernel
     self.w_shape = self.w.shape.as_list()
-    self.uv_initializer = tf.initializers.random_normal()
 
     self.v = self.add_weight(
         shape=(1, np.prod(self.w_shape[:-1])),
-        initializer=self.uv_initializer,
+        initializer=tf.initializers.random_normal(),
         trainable=False,
         name='v',
         dtype=self.dtype,
@@ -96,7 +95,7 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
 
     self.u = self.add_weight(
         shape=(1, self.w_shape[-1]),
-        initializer=self.uv_initializer,
+        initializer=tf.initializers.random_normal(),
         trainable=False,
         name='u',
         dtype=self.dtype,
@@ -194,10 +193,11 @@ class SpectralNormalizationConv2D(tf.keras.layers.Wrapper):
       raise ValueError(
           'layer must be a `tf.keras.layer.Conv2D` instance. You passed: {input}'
           .format(input=layer))
-    super(SpectralNormalizationConv2D, self).__init__(layer, **kwargs)
+    super().__init__(layer, **kwargs)
 
-  def build(self, input_shape):
-    self.layer.build(input_shape)
+  def build(self, input_shape):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+    if not self.layer.built:
+      self.layer.build(input_shape)
     self.layer.kernel._aggregation = self.aggregation  # pylint: disable=protected-access
     self._dtype = self.layer.kernel.dtype
 
@@ -221,11 +221,10 @@ class SpectralNormalizationConv2D(tf.keras.layers.Wrapper):
 
     self.in_shape = (uv_dim, in_height, in_width, in_channel)
     self.out_shape = (uv_dim, out_height, out_width, out_channel)
-    self.uv_initializer = tf.initializers.random_normal()
 
     self.v = self.add_weight(
         shape=self.in_shape,
-        initializer=self.uv_initializer,
+        initializer=tf.initializers.random_normal(),
         trainable=False,
         name='v',
         dtype=self.dtype,
@@ -233,13 +232,13 @@ class SpectralNormalizationConv2D(tf.keras.layers.Wrapper):
 
     self.u = self.add_weight(
         shape=self.out_shape,
-        initializer=self.uv_initializer,
+        initializer=tf.initializers.random_normal(),
         trainable=False,
         name='u',
         dtype=self.dtype,
         aggregation=self.aggregation)
 
-    super(SpectralNormalizationConv2D, self).build()
+    super().build()
 
   def call(self, inputs):
     u_update_op, v_update_op, w_update_op = self.update_weights()

@@ -1,4 +1,4 @@
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 """MobileBERT embedding and transformer layers."""
 import tensorflow as tf
 
+from official.modeling import tf_utils
+
 from official.nlp.modeling.layers import on_device_embedding
 from official.nlp.modeling.layers import position_embedding
 
@@ -24,7 +26,7 @@ class NoNorm(tf.keras.layers.Layer):
   """Apply element-wise linear transformation to the last dimension."""
 
   def __init__(self, name=None):
-    super(NoNorm, self).__init__(name=name)
+    super().__init__(name=name)
 
   def build(self, shape):
     kernal_size = shape[-1]
@@ -96,7 +98,7 @@ class MobileBertEmbedding(tf.keras.layers.Layer):
       dropout_rate: Dropout rate.
       **kwargs: keyword arguments.
     """
-    super(MobileBertEmbedding, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self.word_vocab_size = word_vocab_size
     self.word_embed_size = word_embed_size
     self.type_vocab_size = type_vocab_size
@@ -109,21 +111,21 @@ class MobileBertEmbedding(tf.keras.layers.Layer):
     self.word_embedding = on_device_embedding.OnDeviceEmbedding(
         self.word_vocab_size,
         self.word_embed_size,
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(self.initializer),
         name='word_embedding')
     self.type_embedding = on_device_embedding.OnDeviceEmbedding(
         self.type_vocab_size,
         self.output_embed_size,
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(self.initializer),
         name='type_embedding')
     self.pos_embedding = position_embedding.PositionEmbedding(
         max_length=max_sequence_length,
-        initializer=initializer,
+        initializer=tf_utils.clone_initializer(self.initializer),
         name='position_embedding')
-    self.word_embedding_proj = tf.keras.layers.experimental.EinsumDense(
+    self.word_embedding_proj = tf.keras.layers.EinsumDense(
         'abc,cd->abd',
         output_shape=[None, self.output_embed_size],
-        kernel_initializer=initializer,
+        kernel_initializer=tf_utils.clone_initializer(self.initializer),
         bias_axes='d',
         name='embedding_projection')
     self.layer_norm = _get_norm_layer(normalization_type, 'embedding_norm')
@@ -220,7 +222,7 @@ class MobileBertTransformer(tf.keras.layers.Layer):
     Raises:
       ValueError: A Tensor shape or parameter is invalid.
     """
-    super(MobileBertTransformer, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self.hidden_size = hidden_size
     self.num_attention_heads = num_attention_heads
     self.intermediate_size = intermediate_size
@@ -242,11 +244,11 @@ class MobileBertTransformer(tf.keras.layers.Layer):
 
     self.block_layers = {}
     # add input bottleneck
-    dense_layer_2d = tf.keras.layers.experimental.EinsumDense(
+    dense_layer_2d = tf.keras.layers.EinsumDense(
         'abc,cd->abd',
         output_shape=[None, self.intra_bottleneck_size],
         bias_axes='d',
-        kernel_initializer=initializer,
+        kernel_initializer=tf_utils.clone_initializer(self.initializer),
         name='bottleneck_input/dense')
     layer_norm = _get_norm_layer(self.normalization_type,
                                  name='bottleneck_input/norm')
@@ -254,11 +256,11 @@ class MobileBertTransformer(tf.keras.layers.Layer):
                                              layer_norm]
 
     if self.key_query_shared_bottleneck:
-      dense_layer_2d = tf.keras.layers.experimental.EinsumDense(
+      dense_layer_2d = tf.keras.layers.EinsumDense(
           'abc,cd->abd',
           output_shape=[None, self.intra_bottleneck_size],
           bias_axes='d',
-          kernel_initializer=initializer,
+          kernel_initializer=tf_utils.clone_initializer(self.initializer),
           name='kq_shared_bottleneck/dense')
       layer_norm = _get_norm_layer(self.normalization_type,
                                    name='kq_shared_bottleneck/norm')
@@ -272,7 +274,7 @@ class MobileBertTransformer(tf.keras.layers.Layer):
         value_dim=attention_head_size,
         dropout=self.attention_probs_dropout_prob,
         output_shape=self.intra_bottleneck_size,
-        kernel_initializer=initializer,
+        kernel_initializer=tf_utils.clone_initializer(self.initializer),
         name='attention')
     layer_norm = _get_norm_layer(self.normalization_type,
                                  name='attention/norm')
@@ -284,19 +286,19 @@ class MobileBertTransformer(tf.keras.layers.Layer):
     for ffn_layer_idx in range(self.num_feedforward_networks):
       layer_prefix = f'ffn_layer_{ffn_layer_idx}'
       layer_name = layer_prefix + '/intermediate_dense'
-      intermediate_layer = tf.keras.layers.experimental.EinsumDense(
+      intermediate_layer = tf.keras.layers.EinsumDense(
           'abc,cd->abd',
           activation=self.intermediate_act_fn,
           output_shape=[None, self.intermediate_size],
           bias_axes='d',
-          kernel_initializer=initializer,
+          kernel_initializer=tf_utils.clone_initializer(self.initializer),
           name=layer_name)
       layer_name = layer_prefix + '/output_dense'
-      output_layer = tf.keras.layers.experimental.EinsumDense(
+      output_layer = tf.keras.layers.EinsumDense(
           'abc,cd->abd',
           output_shape=[None, self.intra_bottleneck_size],
           bias_axes='d',
-          kernel_initializer=initializer,
+          kernel_initializer=tf_utils.clone_initializer(self.initializer),
           name=layer_name)
       layer_name = layer_prefix + '/norm'
       layer_norm = _get_norm_layer(self.normalization_type,
@@ -306,12 +308,12 @@ class MobileBertTransformer(tf.keras.layers.Layer):
                                        layer_norm])
 
     # add output bottleneck
-    bottleneck = tf.keras.layers.experimental.EinsumDense(
+    bottleneck = tf.keras.layers.EinsumDense(
         'abc,cd->abd',
         output_shape=[None, self.hidden_size],
         activation=None,
         bias_axes='d',
-        kernel_initializer=initializer,
+        kernel_initializer=tf_utils.clone_initializer(self.initializer),
         name='bottleneck_output/dense')
     dropout_layer = tf.keras.layers.Dropout(
         self.hidden_dropout_prob,
@@ -445,6 +447,7 @@ class MobileBertMaskedLM(tf.keras.layers.Layer):
                activation=None,
                initializer='glorot_uniform',
                output='logits',
+               output_weights_use_proj=False,
                **kwargs):
     """Class initialization.
 
@@ -455,9 +458,12 @@ class MobileBertMaskedLM(tf.keras.layers.Layer):
         uniform initializer.
       output: The output style for this layer. Can be either `logits` or
         `predictions`.
+      output_weights_use_proj: Use projection instead of concating extra output
+        weights, this may reduce the MLM task accuracy but will reduce the model
+        params as well.
       **kwargs: keyword arguments.
     """
-    super(MobileBertMaskedLM, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self.embedding_table = embedding_table
     self.activation = activation
     self.initializer = tf.keras.initializers.get(initializer)
@@ -467,6 +473,7 @@ class MobileBertMaskedLM(tf.keras.layers.Layer):
           ('Unknown `output` value "%s". `output` can be either "logits" or '
            '"predictions"') % output)
     self._output_type = output
+    self._output_weights_use_proj = output_weights_use_proj
 
   def build(self, input_shape):
     self._vocab_size, embedding_width = self.embedding_table.shape
@@ -474,15 +481,22 @@ class MobileBertMaskedLM(tf.keras.layers.Layer):
     self.dense = tf.keras.layers.Dense(
         hidden_size,
         activation=self.activation,
-        kernel_initializer=self.initializer,
+        kernel_initializer=tf_utils.clone_initializer(self.initializer),
         name='transform/dense')
 
     if hidden_size > embedding_width:
-      self.extra_output_weights = self.add_weight(
-          'extra_output_weights',
-          shape=(self._vocab_size, hidden_size - embedding_width),
-          initializer=self.initializer,
-          trainable=True)
+      if self._output_weights_use_proj:
+        self.extra_output_weights = self.add_weight(
+            'output_weights_proj',
+            shape=(embedding_width, hidden_size),
+            initializer=tf_utils.clone_initializer(self.initializer),
+            trainable=True)
+      else:
+        self.extra_output_weights = self.add_weight(
+            'extra_output_weights',
+            shape=(self._vocab_size, hidden_size - embedding_width),
+            initializer=tf_utils.clone_initializer(self.initializer),
+            trainable=True)
     elif hidden_size == embedding_width:
       self.extra_output_weights = None
     else:
@@ -507,10 +521,16 @@ class MobileBertMaskedLM(tf.keras.layers.Layer):
     if self.extra_output_weights is None:
       lm_data = tf.matmul(lm_data, self.embedding_table, transpose_b=True)
     else:
-      lm_data = tf.matmul(
-          lm_data,
-          tf.concat([self.embedding_table, self.extra_output_weights], axis=1),
-          transpose_b=True)
+      if self._output_weights_use_proj:
+        lm_data = tf.matmul(
+            lm_data, self.extra_output_weights, transpose_b=True)
+        lm_data = tf.matmul(lm_data, self.embedding_table, transpose_b=True)
+      else:
+        lm_data = tf.matmul(
+            lm_data,
+            tf.concat([self.embedding_table, self.extra_output_weights],
+                      axis=1),
+            transpose_b=True)
 
     logits = tf.nn.bias_add(lm_data, self.bias)
     masked_positions_length = masked_positions.shape.as_list()[1] or tf.shape(
