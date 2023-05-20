@@ -125,6 +125,7 @@ class RetinaNetHeadQuantized(tf.keras.layers.Layer):
       bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       num_params_per_anchor: int = 4,
       share_classification_heads: bool = False,
+      share_level_convs: bool = True,
       **kwargs):
     """Initializes a RetinaNet quantized head.
 
@@ -161,9 +162,14 @@ class RetinaNetHeadQuantized(tf.keras.layers.Layer):
       share_classification_heads: A `bool` that indicates whethere sharing
         weights among the main and attribute classification heads. Not used in
         the QAT model.
+      share_level_convs: An optional bool to enable sharing convs
+        across levels for classnet, boxnet, classifier and box regressor.
+        If True, convs will be shared across all levels. Not used in the QAT
+        model.
       **kwargs: Additional keyword arguments to be passed.
     """
     del share_classification_heads
+    del share_level_convs
 
     super().__init__(**kwargs)
     self._config_dict = {
