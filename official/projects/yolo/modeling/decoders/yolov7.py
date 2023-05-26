@@ -315,6 +315,7 @@ class YoloV7(tf.keras.Model):
       norm_momentum=0.99,
       norm_epsilon=0.001,
       activation='swish',
+      use_separable_conv=False,
       kernel_initializer='VarianceScaling',
       kernel_regularizer=None,
       bias_initializer='zeros',
@@ -330,6 +331,7 @@ class YoloV7(tf.keras.Model):
       norm_momentum: a `float` of normalization momentum for the moving average.
       norm_epsilon: a small `float` added to variance to avoid dividing by zero.
       activation: a `str` name of the activation function.
+      use_separable_conv: `bool` wether to use separable convs.
       kernel_initializer: a `str` for kernel initializer of convolutional
         layers.
       kernel_regularizer: a `tf.keras.regularizers.Regularizer` object for
@@ -346,6 +348,7 @@ class YoloV7(tf.keras.Model):
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     self._activation = activation
+    self._use_separable_conv = use_separable_conv
 
     self._kernel_initializer = initializer_ops.pytorch_kernel_initializer(
         kernel_initializer
@@ -374,6 +377,7 @@ class YoloV7(tf.keras.Model):
             'norm_momentum': self._norm_momentum,
             'norm_epsilon': self._norm_epsilon,
             'activation': self._activation,
+            'use_separable_conv': self._use_separable_conv,
             'kernel_initializer': self._kernel_initializer,
             'kernel_regularizer': self._kernel_regularizer,
             'bias_initializer': self._bias_initializer,
@@ -455,5 +459,6 @@ def build_yolov7(
       norm_epsilon=norm_activation_config.norm_epsilon,
       activation=norm_activation_config.activation,
       kernel_regularizer=l2_regularizer,
+      use_separable_conv=decoder_config.use_separable_conv,
   )
   return model
