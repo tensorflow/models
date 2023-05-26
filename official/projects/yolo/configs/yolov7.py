@@ -72,6 +72,7 @@ class DataDecoder(hyperparams.OneOfConfig):
 class YoloV7Head(hyperparams.Config):
   """Parameterization for the YOLO Head."""
   num_anchors: int = 3
+  use_separable_conv: bool = False
 
 
 @dataclasses.dataclass
@@ -338,6 +339,18 @@ def coco_yolov7_tiny() -> cfg.ExperimentConfig:
   config.task.train_data.parser.mosaic.aug_scale_min = 0.5
   config.task.train_data.parser.mosaic.aug_scale_max = 1.5
   config.trainer.optimizer_config.learning_rate.cosine.alpha = 0.01
+  return config
+
+
+@exp_factory.register_config_factory('coco91_yolov7tiny')
+def coco91_yolov7_tiny() -> cfg.ExperimentConfig:
+  """COCO object detection with YOLOv7-tiny using 91 classes."""
+  config = coco_yolov7_tiny()
+  config.task.model.num_classes = 91
+  config.task.model.decoder.yolov7.use_separable_conv = True
+  config.task.model.head.use_separable_conv = True
+  config.task.train_data.coco91_to_80 = False
+  config.task.validation_data.coco91_to_80 = False
   return config
 
 

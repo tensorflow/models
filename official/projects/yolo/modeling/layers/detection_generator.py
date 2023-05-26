@@ -29,6 +29,7 @@ class YoloLayer(tf.keras.layers.Layer):
       self,
       anchors,
       classes,
+      apply_nms=True,
       iou_thresh=0.0,
       ignore_thresh=0.7,
       truth_thresh=1.0,
@@ -57,6 +58,7 @@ class YoloLayer(tf.keras.layers.Layer):
       anchors: `List[List[int]]` for the anchor boxes that are used in the
         model.
       classes: `int` for the number of classes.
+      apply_nms: A boolean indicating whether to apply NMS.
       iou_thresh: `float` to use many anchors per object if IoU(Obj, Anchor) >
         iou_thresh.
       ignore_thresh: `float` for the IOU value over which the loss is not
@@ -112,6 +114,7 @@ class YoloLayer(tf.keras.layers.Layer):
     """
     super().__init__(**kwargs)
     self._anchors = anchors
+    self._apply_nms = apply_nms
     self._thresh = iou_thresh
     self._ignore_thresh = ignore_thresh
     self._truth_thresh = truth_thresh
@@ -239,6 +242,14 @@ class YoloLayer(tf.keras.layers.Layer):
 
     # Make a copy of the original dtype.
     dtype = object_scores.dtype
+
+    if not self._apply_nms:
+      return {
+          'bbox': tf.expand_dims(tf.cast(boxes, dtype=tf.float32), axis=-2),
+          'classes': tf.cast(class_scores, dtype=tf.float32),
+          'confidence': object_scores,
+          'num_detections': self._max_boxes,
+      }
 
     # Apply nms.
     if self._nms_version == 'greedy':

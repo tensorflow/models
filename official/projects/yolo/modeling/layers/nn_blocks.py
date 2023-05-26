@@ -1133,7 +1133,7 @@ class SPP(tf.keras.layers.Layer):
   def __init__(self, sizes, **kwargs):
     self._sizes = list(reversed(sizes))
     if not sizes:
-      raise ValueError('More than one maxpool should be specified in SSP block')
+      raise ValueError('More than one maxpool should be specified in SPP block')
     super().__init__(**kwargs)
 
   def build(self, input_shape):
@@ -1783,6 +1783,7 @@ class SPPCSPC(tf.keras.layers.Layer):
     conv_op = functools.partial(
         ConvBN,
         activation=self._activation,
+        use_separable_conv=self._use_separable_conv,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_initializer=self._bias_initializer,
@@ -1851,6 +1852,7 @@ class RepConv(tf.keras.layers.Layer):
       strides=1,
       padding='same',
       activation='swish',
+      use_separable_conv=False,
       use_sync_bn=False,
       norm_momentum=0.99,
       norm_epsilon=0.001,
@@ -1870,11 +1872,12 @@ class RepConv(tf.keras.layers.Layer):
         use.
       padding: string 'valid' or 'same', if same, then pad the image, else do
         not.
-      activation: string or None for activation function to use in layer,
-        if None activation is replaced by linear.
-      use_sync_bn: boolean for whether sync batch normalization statistics
-        of all batch norm layers to the models global statistics
-        (across all input batches).
+      activation: string or None for activation function to use in layer, if
+        None activation is replaced by linear.
+      use_separable_conv: `bool` wether to use separable convs.
+      use_sync_bn: boolean for whether sync batch normalization statistics of
+        all batch norm layers to the models global statistics (across all input
+        batches).
       norm_momentum: float for moment to use for batch normalization.
       norm_epsilon: float for batch normalization epsilon.
       kernel_initializer: string to indicate which function to use to initialize
@@ -1893,6 +1896,7 @@ class RepConv(tf.keras.layers.Layer):
     self._strides = strides
     self._padding = padding
     self._activation = activation
+    self._use_separable_conv = use_separable_conv
     self._use_sync_bn = use_sync_bn
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
@@ -1905,7 +1909,9 @@ class RepConv(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     conv_op = functools.partial(
-        tf.keras.layers.Conv2D,
+        tf.keras.layers.SeparableConv2D
+        if self._use_separable_conv
+        else tf.keras.layers.Conv2D,
         filters=self._filters,
         strides=self._strides,
         padding=self._padding,
