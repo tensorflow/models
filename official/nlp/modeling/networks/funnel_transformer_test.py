@@ -101,7 +101,11 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(tf.float32, data.dtype)
     self.assertAllEqual(pooled_dtype, pooled.dtype)
 
-  def test_network_creation_dense(self):
+  @parameterized.named_parameters(
+      ("append_dense_inputs", True),
+      ("dense_inputs_at_sequence_begin", False),
+  )
+  def test_network_creation_dense(self, append_dense_inputs):
     tf.keras.mixed_precision.set_global_policy("mixed_float16")
     pool_type = "avg"
 
@@ -120,7 +124,8 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
         pool_type=pool_type,
         max_sequence_length=sequence_length + dense_sequence_length,
         unpool_length=0,
-        transformer_cls="TransformerEncoderBlock")
+        transformer_cls="TransformerEncoderBlock",
+        append_dense_inputs=append_dense_inputs)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
