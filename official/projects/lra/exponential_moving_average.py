@@ -15,12 +15,8 @@
 # limitations under the License.
 """Keras-based MegaEncoder block layer."""
 
-from typing import Any, Optional
-from absl import logging
+from typing import Optional
 import tensorflow as tf
-
-from official.modeling import tf_utils
-from official.nlp.modeling.layers import util
 
 
 class MultiHeadEMA(tf.keras.layers.Layer):

@@ -15,12 +15,10 @@
 # limitations under the License.
 """Keras-based MegaEncoder block layer."""
 
-from typing import Any, Optional
-from absl import logging
+from typing import Any
 import tensorflow as tf
 
 from official.modeling import tf_utils
-from official.nlp.modeling.layers import util
 from official.projects.lra.exponential_moving_average import MultiHeadEMA
 
 
@@ -30,7 +28,8 @@ def get_activation_fn(activation):
     return tf.nn.silu
   elif activation == "softmax":
     return tf.nn.softmax
-  raise NotImplementedError
+  else:
+    raise NotImplementedError
   return
 
 
@@ -47,7 +46,8 @@ class RelativePositionBias(tf.keras.layers.Layer):
                                     trainable=True)
 
   def call(self, seq_len):
-    seq_len = self.max_positions
+    if seq_len is None:
+      seq_len = self.max_positions
     # seq_len * 2 -1
     b = self.rel_pos_bias[(self.max_positions - seq_len):(self.max_positions +
                                                           seq_len - 1)]
@@ -81,11 +81,10 @@ class MovingAverageGatedAttention(tf.keras.layers.Layer):
       ndim,
       intermediate_size,
       inner_activation=None,
-      hidden_size=None,
       dropout=0.0,
       attention_dropout=0.0,
       hidden_dropout=0.0,
-      activation='silu',
+      activation="silu",
       bidirectional=False,
       truncation=None,
       prenorm=True,
@@ -153,11 +152,6 @@ class MovingAverageGatedAttention(tf.keras.layers.Layer):
   def build(self, input_shape):
     gauss_init = tf.keras.initializers.RandomNormal(mean=0., stddev=0.02)
     zero_init = tf.keras.initializers.Zeros()
-
-    common_kwargs = dict(bias_regularizer=self._bias_regularizer,
-                         activity_regularizer=self._activity_regularizer,
-                         kernel_constraint=self._kernel_constraint,
-                         bias_constraint=self._bias_constraint)
 
     self.v_proj = tf.keras.layers.Dense(
         self.hdim,
@@ -252,8 +246,9 @@ class MovingAverageGatedAttention(tf.keras.layers.Layer):
     """MEGA encoder block call.
 
         Args:
-          inputs: a single tensor or a list of tensors. `input tensor` as the single
-            sequence of embeddings. [`input tensor`, `attention mask`] to have the
+          inputs: a single tensor or a list of tensors. `input tensor`
+            as the single sequence of embeddings. [`input tensor`,
+            `attention mask`] to have the
             additional attention mask. [`query tensor`, `key value tensor`,
             `attention mask`] to have separate input streams for the query, and
             key/value to the multi-head attention.
@@ -268,13 +263,12 @@ class MovingAverageGatedAttention(tf.keras.layers.Layer):
       elif len(inputs) == 3:
         (input_tensor, key_value, attention_mask) = inputs
       else:
-        raise ValueError('Unexpected inputs to %s with length at %d' %
+        raise ValueError("Unexpected inputs to %s with length at %d" %
                          (self.__class__, len(inputs)))
     else:
       (input_tensor, key_value, attention_mask) = (inputs, None, None)
 
     if self.prenorm:
-      source_tensor = input_tensor
       input_tensor = self.norm(input_tensor)
       if key_value is not None:
         key_value = self.norm(key_value)
@@ -312,8 +306,6 @@ class MovingAverageGatedAttention(tf.keras.layers.Layer):
     k = tf.transpose(k, perm=(1, 0, 2))
     # L x B x E -> B x L x E
     v = tf.transpose(v, perm=(1, 0, 2))
-
-    ctx_len = k.shape[1]
 
     attn_weights = self.softmax_attention(q, k)
     v = self.hidden_dropout(v)

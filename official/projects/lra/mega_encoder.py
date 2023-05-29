@@ -15,7 +15,7 @@
 
 # pylint: disable=g-classes-have-attributes
 
-from typing import Any, Callable, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 from absl import logging
 import tensorflow as tf
@@ -33,33 +33,31 @@ class MegaEncoder(tf.keras.layers.Layer):
 
   Args:
     vocab_size: The size of the token vocabulary.
-    hidden_size: The size of the transformer hidden layers.
+    embedding_width: The number of embedding dimensions.
+    intermediate_size: The number of dimension for MLP layers.
     num_layers: The number of transformer layers.
-    num_attention_heads: The number of attention heads for each transformer. The
-      hidden size must be divisible by the number of attention heads.
-    low_rank_features: The number of dimensions for low rank projection.
     max_sequence_length: The maximum sequence length that this encoder can
       consume. If None, max_sequence_length uses the value from sequence length.
       This determines the variable shape for positional embeddings.
     type_vocab_size: The number of types that the 'type_ids' input can take.
-    inner_dim: The output dimension of the first Dense layer in a two-layer
+    zdim: hidden dimension for gates used in MEGA Layer.
+    hdim: hidden dimension used in MEGA Layer.
+    ndim: number of EMA used in MEGA layer.
+    activation: The activation for the first Dense layer in a two-layer
       feedforward network for each transformer.
-    inner_activation: The activation for the first Dense layer in a two-layer
-      feedforward network for each transformer.
-    output_dropout: Dropout probability for the post-attention and output
+    bidirectional: Whether to use bidirectional EMA.
+    dropout: Dropout probability for the post-attention and output
       dropout.
     attention_dropout: The dropout rate to use for the attention layers within
       the transformer layers.
+    hidden_dropout: The dropout rate to use for hidden states in MEGA.
+    inner_activation: The activation for the first Dense layer in a two-layer
+      feedforward network for each transformer.
     initializer: The initialzer to use for all weights in this encoder.
     output_range: The sequence output range, [0, output_range), by slicing the
       target sequence of the last transformer layer. `None` means the entire
       target sequence will attend to the source sequence, which yields the full
       output.
-    embedding_width: The width of the word embeddings. If the embedding width is
-      not equal to hidden size, embedding parameters will be factorized into two
-      matrices in the shape of ['vocab_size', 'embedding_width'] and
-      ['embedding_width', 'hidden_size'] ('embedding_width' is usually much
-      smaller than 'hidden_size').
     embedding_layer: An optional Layer instance which will be called to generate
       embeddings for the input word IDs.
     norm_first: Whether to normalize inputs to attention and intermediate dense
@@ -86,10 +84,10 @@ class MegaEncoder(tf.keras.layers.Layer):
       inner_activation: Callable[..., Any] = _approx_gelu,
       initializer: _Initializer = tf.keras.initializers.TruncatedNormal(
           stddev=0.02),
-      hidden_size: Optional[int] = None,
       output_range: Optional[int] = None,
       embedding_layer: Optional[tf.keras.layers.Layer] = None,
       norm_first: bool = False,
+      hidden_size: Optional[int] = None,
       **kwargs):
     super().__init__(**kwargs)
     # Mega args
@@ -123,10 +121,6 @@ class MegaEncoder(tf.keras.layers.Layer):
 
     self._embedding_dropout = tf.keras.layers.Dropout(rate=dropout,
                                                       name='embedding_dropout')
-
-    # We project the 'embedding' output to 'hidden_size' if it is not already
-    # 'hidden_size'.
-    self._embedding_projection = None
 
     self._transformer_layers = []
     self._attention_mask_layer = layers.SelfAttentionMask(
@@ -216,17 +210,8 @@ class MegaEncoder(tf.keras.layers.Layer):
     if dense_inputs is not None:
       mask = tf.concat([mask, dense_mask], axis=1)
 
-    ### WARNING! REMOVING POSITION EMBEDDING
-
-    #embeddings = self._get_embeddings(word_ids, type_ids, word_embeddings,
-    #                                  dense_inputs, dense_type_ids)
     embeddings = self._embedding_norm_layer(word_embeddings)
     embeddings = self._embedding_dropout(embeddings)
-
-    if self._embedding_projection is not None:
-      embeddings = self._embedding_projection(embeddings)
-
-    attention_mask = self._attention_mask_layer(embeddings, mask)
 
     encoder_outputs = []
     x = embeddings
