@@ -37,7 +37,7 @@ import tensorflow_models as tfm
 
 from official.modeling import tf_utils
 
-layers = tfm.nlp.modeling.layers
+layers = tfm.nlp.layers
 
 _Initializer = Union[str, tf.keras.initializers.Initializer]
 _approx_gelu = lambda x: tf.keras.activations.gelu(x, approximate=True)

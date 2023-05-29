@@ -38,8 +38,9 @@ from official.core import train_lib
 from official.core import train_utils
 from official.modeling import performance
 
-from official.projects.lra import linformer_experiments  # pylint: disable=unused-import
-from official.projects.lra import transformer_experiments  # pylint: disable=unused-import
+from official.projects.lra import linformer_experiments
+from official.projects.lra import transformer_experiments
+from official.projects.lra import mega_experiments
 
 
 FLAGS = flags.FLAGS
