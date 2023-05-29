@@ -48,6 +48,9 @@ class RelativePositionBias(tf.keras.layers.Layer):
   def call(self, seq_len):
     if seq_len is None:
       seq_len = self.max_positions
+    #import pdb
+    #pdb.set_trace()
+    seq_len = tf.get_static_value(seq_len)
     # seq_len * 2 -1
     b = self.rel_pos_bias[(self.max_positions - seq_len):(self.max_positions +
                                                           seq_len - 1)]

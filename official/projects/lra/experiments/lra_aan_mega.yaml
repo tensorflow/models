@@ -17,7 +17,7 @@ task:
         num_attention_heads: 1
         num_layers: 6
         type_vocab_size: 2
-        vocab_size: 100
+        vocab_size: 258
         zdim: 64
         hdim: 256
         ndim: 16
