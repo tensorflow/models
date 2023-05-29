@@ -126,6 +126,7 @@ class RetinaNetHead(hyperparams.Config):
   use_separable_conv: bool = False
   attribute_heads: List[AttributeHead] = dataclasses.field(default_factory=list)
   share_classification_heads: bool = False
+  share_level_convs: Optional[bool] = True
 
 
 @dataclasses.dataclass

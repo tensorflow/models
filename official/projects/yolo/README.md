@@ -94,5 +94,5 @@ connected to a new, more powerful backbone if a person chose to.
 | Yolo-v7X         |
 
 ## Requirements
-[![TensorFlow 2.11](https://img.shields.io/badge/TensorFlow-2.11-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.11.0)
-[![Python 3.8](https://img.shields.io/badge/Python-3.8-3776AB)](https://www.python.org/downloads/release/python-380/)
+[![TensorFlow 2.12](https://img.shields.io/badge/TensorFlow-2.12-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.11.0)
+[![Python 3.9](https://img.shields.io/badge/Python-3.9-3776AB)](https://www.python.org/downloads/release/python-380/)

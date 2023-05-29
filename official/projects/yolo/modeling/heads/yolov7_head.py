@@ -31,7 +31,8 @@ class YoloV7DetectionHead(tf.keras.layers.Layer):
       kernel_regularizer=None,
       bias_initializer='zeros',
       bias_regularizer=None,
-      **kwargs
+      use_separable_conv=False,
+      **kwargs,
   ):
     """Initializes YOLOv7 head.
 
@@ -44,6 +45,7 @@ class YoloV7DetectionHead(tf.keras.layers.Layer):
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       bias_initializer: bias initializer for convolutional layers.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      use_separable_conv: `bool` wether to use separable convs.
       **kwargs: other keyword arguments.
     """
     super().__init__(**kwargs)
@@ -58,6 +60,7 @@ class YoloV7DetectionHead(tf.keras.layers.Layer):
     self._kernel_regularizer = kernel_regularizer
     self._bias_initializer = bias_initializer
     self._bias_regularizer = bias_regularizer
+    self._use_separable_conv = use_separable_conv
 
   def _bias_init(self, scale, in_channels, isize=640, no_per_conf=8):
 
@@ -80,6 +83,11 @@ class YoloV7DetectionHead(tf.keras.layers.Layer):
     self._convs = []
     self._implicit_adds = []
     self._implicit_muls = []
+    conv_op = (
+        tf.keras.layers.SeparableConv2D
+        if self._use_separable_conv
+        else tf.keras.layers.Conv2D
+    )
     for level in range(self._min_level, self._max_level + 1):
       # Note that we assume height == width.
       h = input_shape[str(level)][2]
@@ -87,7 +95,7 @@ class YoloV7DetectionHead(tf.keras.layers.Layer):
       in_channels = input_shape[str(level)][-1]
       # Outputs are num_classes + 5 (box coordinates + objectness score)
       self._convs.append(
-          tf.keras.layers.Conv2D(
+          conv_op(
               (self._num_classes + 5) * self._num_anchors,
               kernel_size=1,
               padding='same',
@@ -139,7 +147,9 @@ class YoloV7DetectionHead(tf.keras.layers.Layer):
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_initializer=self._bias_initializer,
-        bias_regularizer=self._bias_regularizer)
+        bias_regularizer=self._bias_regularizer,
+        use_separable_conv=self._use_separable_conv,
+    )
     return config
 
   @classmethod

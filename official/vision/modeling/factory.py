@@ -301,7 +301,9 @@ def build_retinanet(
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
-      kernel_regularizer=l2_regularizer)
+      kernel_regularizer=l2_regularizer,
+      share_level_convs=head_config.share_level_convs,
+  )
 
   # Builds decoder and head so that their trainable weights are initialized
   if decoder:

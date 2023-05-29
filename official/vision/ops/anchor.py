@@ -234,18 +234,24 @@ class AnchorLabeler(object):
     box_weights = self.target_gather(weights, match_indices, mask)
     ignore_mask = tf.equal(match_indicators, -2)
     cls_weights = self.target_gather(weights, match_indices, ignore_mask)
-    box_targets_list = box_list.BoxList(box_targets)
-    anchor_box_list = box_list.BoxList(flattened_anchor_boxes)
-    box_targets = self.box_coder.encode(box_targets_list, anchor_box_list)
+    box_targets = box_list.BoxList(box_targets)
+    anchor_box = box_list.BoxList(flattened_anchor_boxes)
+    box_targets = self.box_coder.encode(box_targets, anchor_box)
 
     # Unpacks labels into multi-level representations.
-    cls_targets_dict = unpack_targets(cls_targets, anchor_boxes)
-    box_targets_dict = unpack_targets(box_targets, anchor_boxes)
-    attribute_targets_dict = {}
-    for k, v in att_targets.items():
-      attribute_targets_dict[k] = unpack_targets(v, anchor_boxes)
+    cls_targets = unpack_targets(cls_targets, anchor_boxes)
+    box_targets = unpack_targets(box_targets, anchor_boxes)
+    attribute_targets = {
+        k: unpack_targets(v, anchor_boxes) for k, v in att_targets.items()
+    }
 
-    return cls_targets_dict, box_targets_dict, attribute_targets_dict, cls_weights, box_weights
+    return (
+        cls_targets,
+        box_targets,
+        attribute_targets,
+        cls_weights,
+        box_weights,
+    )
 
 
 class RpnAnchorLabeler(AnchorLabeler):

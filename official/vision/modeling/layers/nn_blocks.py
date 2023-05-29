@@ -1564,9 +1564,7 @@ class LayerScale(tf.keras.layers.Layer):
 
   def call(self, inputs, inputs_positions=None):
     del inputs_positions
-    input_dtype = inputs.dtype
-    gamma = self.gamma
-    return tf.cast(tf.cast(inputs, tf.float32) * gamma, input_dtype)
+    return tf.cast(self.gamma, inputs.dtype) * inputs
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')

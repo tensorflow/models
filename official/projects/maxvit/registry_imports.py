@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
-"""Configs package definition."""
+"""All necessary imports for registration."""
 
-from official.projects.maxvit.configs import backbones  # pylint:disable=unused-import
-from official.projects.maxvit.configs import rcnn  # pylint:disable=unused-import
-from official.projects.maxvit.configs import retinanet  # pylint:disable=unused-import
-from official.projects.maxvit.configs import semantic_segmentation  # pylint:disable=unused-import
-from official.projects.maxvit.configs import image_classification  # pylint:disable=unused-import
+# pylint: disable=unused-import
+# pylint: disable=g-bad-import-order
+from official.vision import registry_imports
+from official.projects.maxvit import configs  # pylint: disable=unused-import
+from official.projects.maxvit.modeling import maxvit  # pylint: disable=unused-import

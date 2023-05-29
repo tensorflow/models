@@ -45,6 +45,7 @@ class YoloDecoder(hyperparams.Config):
 @dataclasses.dataclass
 class YoloV7(hyperparams.Config):
   model_id: str = 'yolov7'
+  use_separable_conv: bool = False
 
 
 @dataclasses.dataclass

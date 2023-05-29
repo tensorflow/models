@@ -140,6 +140,7 @@ class YoloHead(hyperparams.Config):
 
 @dataclasses.dataclass
 class YoloDetectionGenerator(hyperparams.Config):
+  apply_nms: bool = True
   box_type: FPNConfig = dataclasses.field(
       default_factory=_build_dict(MIN_LEVEL, MAX_LEVEL, 'original'))
   scale_xy: FPNConfig = dataclasses.field(

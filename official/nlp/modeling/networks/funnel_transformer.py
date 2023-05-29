@@ -298,6 +298,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
           str, tf.keras.layers.Layer
       ] = layers.TransformerEncoderBlock,
       share_rezero: bool = False,
+      append_dense_inputs: bool = False,
       **kwargs
   ):
     super().__init__(**kwargs)
@@ -420,6 +421,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
     self._pool_strides = pool_strides  # This is a list here.
     self._unpool_length = unpool_length
     self._pool_type = pool_type
+    self._append_dense_inputs = append_dense_inputs
 
     self._config = {
         'vocab_size': vocab_size,
@@ -452,6 +454,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
 
   def call(self, inputs, output_range: Optional[tf.Tensor] = None):
     # inputs are [word_ids, mask, type_ids]
+    word_embeddings = None
     if isinstance(inputs, (list, tuple)):
       logging.warning('List inputs to  %s are discouraged.', self.__class__)
       if len(inputs) == 3:
@@ -472,6 +475,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       word_ids = inputs.get('input_word_ids')
       mask = inputs.get('input_mask')
       type_ids = inputs.get('input_type_ids')
+      word_embeddings = inputs.get('input_word_embeddings', None)
 
       dense_inputs = inputs.get('dense_inputs', None)
       dense_mask = inputs.get('dense_mask', None)
@@ -479,14 +483,26 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
     else:
       raise ValueError('Unexpected inputs type to %s.' % self.__class__)
 
-    word_embeddings = self._embedding_layer(word_ids)
+    if word_embeddings is None:
+      word_embeddings = self._embedding_layer(word_ids)
 
     if dense_inputs is not None:
-      # Concat the dense embeddings at sequence begin so unpool_len can control
-      # embedding not being pooled.
-      word_embeddings = tf.concat([dense_inputs, word_embeddings], axis=1)
-      type_ids = tf.concat([dense_type_ids, type_ids], axis=1)
-      mask = tf.concat([dense_mask, mask], axis=1)
+      # Allow concatenation of the dense embeddings at sequence end if requested
+      # and `unpool_length`` is set as zero
+      if self._append_dense_inputs:
+        if self._unpool_length != 0:
+          raise ValueError(
+              'unpool_length is not supported by append_dense_inputs now.'
+          )
+        word_embeddings = tf.concat([word_embeddings, dense_inputs], axis=1)
+        type_ids = tf.concat([type_ids, dense_type_ids], axis=1)
+        mask = tf.concat([mask, dense_mask], axis=1)
+      else:
+        # Concat the dense embeddings at sequence begin so unpool_len can
+        # control embedding not being pooled.
+        word_embeddings = tf.concat([dense_inputs, word_embeddings], axis=1)
+        type_ids = tf.concat([dense_type_ids, type_ids], axis=1)
+        mask = tf.concat([dense_mask, mask], axis=1)
     # absolute position embeddings
     position_embeddings = self._position_embedding_layer(word_embeddings)
     type_embeddings = self._type_embedding_layer(type_ids)
