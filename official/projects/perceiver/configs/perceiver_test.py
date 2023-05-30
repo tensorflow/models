@@ -56,5 +56,22 @@ class PerceiverWordPieceSentencePredictionConfigTest(tf.test.TestCase):
     self.assertIsNotNone(experiment_cfg.trainer.optimizer_config.learning_rate)
 
 
+class PerceiverWordPieceRawSentencePredictionConfigTest(tf.test.TestCase):
+
+  def test_word_piece_raw_sentence_fine_tune_config(self):
+    config = perceiver.SentencePredictionConfig(
+        train_data=sentence_prediction_dataloader
+        .SentencePredictionTextDataConfig(),
+        validation_data=sentence_prediction_dataloader
+        .SentencePredictionTextDataConfig())
+    self.assertIsNotNone(config)
+    self.assertIsNotNone(config.model)
+    self.assertFalse(config.init_cls_pooler)
+
+  def test_perceiver_raw_sentence_prediction_returns_valid_learning_rate(self):
+    experiment_cfg = perceiver.perceiver_word_piece_raw_sentence_prediction()
+    self.assertIsNotNone(experiment_cfg.trainer.optimizer_config.learning_rate)
+
+
 if __name__ == "__main__":
   tf.test.main()

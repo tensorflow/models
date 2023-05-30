@@ -223,6 +223,33 @@ def perceiver_word_piece_sentence_prediction() -> cfg.ExperimentConfig:
   return config
 
 
+@exp_factory.register_config_factory(
+    'perceiver/word_piece_raw_sentence_prediction'
+)
+def perceiver_word_piece_raw_sentence_prediction() -> cfg.ExperimentConfig:
+  """Config for perceiver sentence prediction.
+
+  Returns:
+    cfg.ExperimentConfig
+  References:
+    Perceiver IO (https://arxiv.org/abs/2107.14795).
+  """
+
+  config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(enable_xla=True),
+      task=SentencePredictionConfig(
+          train_data=sentence_prediction_dataloader.SentencePredictionTextDataConfig(),
+          validation_data=sentence_prediction_dataloader.SentencePredictionTextDataConfig(),
+      ),
+      trainer=_SENTENCE_PREDICTION_TRAINER,
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None',
+      ],
+  )
+  return config
+
+
 @exp_factory.register_config_factory('perceiver/wordpiece_pretrain')
 def perceiver_wordpiece_pretrain() -> cfg.ExperimentConfig:
   """Config for perceiver wordpiece pretrain.
