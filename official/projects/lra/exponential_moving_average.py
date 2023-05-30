@@ -31,8 +31,9 @@ class MultiHeadEMA(tf.keras.layers.Layer):
       ndim=2,
       bidirectional=False,
       truncation=None,
+      **kwargs
   ):
-    super().__init__()
+    super().__init__(**kwargs)
 
     self.embed_dim = embed_dim
     self.ndim = ndim

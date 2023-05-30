@@ -48,8 +48,6 @@ class RelativePositionBias(tf.keras.layers.Layer):
   def call(self, seq_len):
     if seq_len is None:
       seq_len = self.max_positions
-    #import pdb
-    #pdb.set_trace()
     seq_len = tf.get_static_value(seq_len)
     # seq_len * 2 -1
     b = self.rel_pos_bias[(self.max_positions - seq_len):(self.max_positions +
@@ -199,7 +197,8 @@ class MovingAverageGatedAttention(tf.keras.layers.Layer):
     super().build(input_shape)
 
   def get_config(self):
-    config = {
+    base_config = super().get_config()
+    base_config.update({
         "embed_dim":
             self.embed_dim,
         "zdim":
@@ -226,11 +225,10 @@ class MovingAverageGatedAttention(tf.keras.layers.Layer):
             self._attention_axes,
         "return_attention_scores":
             self.return_attention_scores
-    }
-    base_config = super().get_config()
-    return dict(list(base_config.items()) + list(config.items()))
+    })
+    return base_config
 
-  def softmax_attention(self, q, k):
+  def _softmax_attention(self, q, k):
     slen = k.shape[1]
     # C x C
     if slen is None:
@@ -246,19 +244,17 @@ class MovingAverageGatedAttention(tf.keras.layers.Layer):
     return attn_weights
 
   def call(self, inputs: Any) -> Any:
-    """MEGA encoder block call.
-
-        Args:
-          inputs: a single tensor or a list of tensors. `input tensor`
+    """
+    MEGA encoder block call.
+      Args: inputs: a single tensor or a list of tensors. `input tensor`
             as the single sequence of embeddings. [`input tensor`,
             `attention mask`] to have the
             additional attention mask. [`query tensor`, `key value tensor`,
             `attention mask`] to have separate input streams for the query, and
             key/value to the multi-head attention.
-
         Returns:
-          An output tensor with the same dimensions as input/query tensor.
-        """
+      An output tensor with the same dimensions as input/query tensor.
+    """
     if isinstance(inputs, (list, tuple)):
       if len(inputs) == 2:
         (input_tensor, attention_mask) = inputs
@@ -310,7 +306,7 @@ class MovingAverageGatedAttention(tf.keras.layers.Layer):
     # L x B x E -> B x L x E
     v = tf.transpose(v, perm=(1, 0, 2))
 
-    attn_weights = self.softmax_attention(q, k)
+    attn_weights = self._softmax_attention(q, k)
     v = self.hidden_dropout(v)
     kernel = tf.squeeze(self.attention_dropout(attn_weights))
     # B x K x C x E -> B x L x E -> L x B x E
