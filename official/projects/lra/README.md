@@ -35,7 +35,7 @@ PYTHONPATH=[/PATH/TO/MODEL_GARDEN] \
     --mode=train_and_eval
 ```
 
-To train MEGA on Text task:
+To train MEGA on Text task (Reproduced Acc = 87.55):
 
 ```bash
 TRAIN_DATA=task.train_data.input_path=gs://model-garden-ucsd-zihan/lra_imdb_4096_train.tf_record,task.validation_data.input_path=gs://model-garden-ucsd-zihan/lra_imdb_4096_eval.tf_record
