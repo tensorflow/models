@@ -26,7 +26,8 @@ def all_strategy_combinations():
   return combinations.combine(
       strategy=[
           strategy_combinations.cloud_tpu_strategy,
-          strategy_combinations.mirrored_strategy_with_two_gpus,
+          # TODO(b/285797201):disable multi-gpu tests due to hanging.
+          # strategy_combinations.mirrored_strategy_with_two_gpus,
       ],
       mode='eager',
   )
