@@ -17,11 +17,7 @@ task:
     global_batch_size: 512
     dtype: 'bfloat16'
     aug_crop: false
-    mixup_and_cutmix:
-      cutmix_alpha: 0.1
-      label_smoothing: 0.1
-      mixup_alpha: 0.1
-      prob: 0.1
+    mixup_and_cutmix: null
     aug_type:
       type: 'randaug'
       randaug:
@@ -30,9 +26,9 @@ task:
     dtype: 'bfloat16'
     aug_crop: false
   losses:
-    one_hot: false
-    soft_labels: true
+    label_smoothing: 0.1
     use_binary_cross_entropy: false
+    one_hot: true
 trainer:
   train_steps: 100080
   steps_per_loop: 2000
