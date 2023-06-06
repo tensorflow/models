@@ -44,21 +44,27 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
       dict(
           testcase_name='segment_with_avg_precison',
           use_segment_level_labels=True,
-          use_average_precision_metric=True),
+          use_average_precision_metric=True,
+      ),
       dict(
           testcase_name='video_with_avg_precison',
           use_segment_level_labels=False,
-          use_average_precision_metric=True),
+          use_average_precision_metric=True,
+      ),
       dict(
           testcase_name='segment',
           use_segment_level_labels=True,
-          use_average_precision_metric=False),
+          use_average_precision_metric=False,
+      ),
       dict(
           testcase_name='video',
           use_segment_level_labels=False,
-          use_average_precision_metric=False))
-  def test_train_and_eval(self, use_segment_level_labels,
-                          use_average_precision_metric):
+          use_average_precision_metric=False,
+      ),
+  )
+  def test_train_and_eval(
+      self, use_segment_level_labels, use_average_precision_metric
+  ):
     saved_flag_values = flagsaver.save_flag_values()
     train_lib.tfm_flags.define_flags()
     FLAGS.mode = 'train'
@@ -73,17 +79,25 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
             'mixed_precision_dtype': 'float32',
         },
         'trainer': {
-            'train_steps': 1,
-            'validation_steps': 1,
+            'train_steps': 2,
+            'validation_steps': 2,
         },
         'task': {
             'model': {
-                'cluster_size': 16,
-                'hidden_size': 16,
-                'use_context_gate_cluster_layer': True,
-                'agg_model': {
-                    'use_input_context_gate': True,
-                    'use_output_context_gate': True,
+                'backbone': {
+                    'type': 'dbof',
+                    'dbof': {
+                        'cluster_size': 16,
+                        'hidden_size': 16,
+                        'use_context_gate_cluster_layer': True,
+                    },
+                },
+                'head': {
+                    'type': 'moe',
+                    'moe': {
+                        'use_input_context_gate': True,
+                        'use_output_context_gate': True,
+                    },
                 },
             },
             'train_data': {
@@ -98,7 +112,7 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
             'evaluation': {
                 'average_precision': average_precision,
             },
-        }
+        },
     })
     FLAGS.params_override = params_override
 
@@ -106,7 +120,6 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
       train_lib.train.main('unused_args')
 
     FLAGS.mode = 'eval'
-
     with train_lib.train.gin.unlock_config():
       train_lib.train.main('unused_args')
 
