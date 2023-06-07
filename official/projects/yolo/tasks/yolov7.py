@@ -73,6 +73,7 @@ class YoloV7Task(base_task.Task):
     self._loss_fn = loss_fn(
         anchors=anchors,
         strides=strides,
+        input_size=self.task_config.model.input_size[:2],
         alpha=loss_config.alpha,
         gamma=loss_config.gamma,
         box_weight=loss_config.box_weight,

@@ -333,7 +333,7 @@ def coco_yolov7_tiny() -> cfg.ExperimentConfig:
   ]
 
   config.task.model.loss.cls_weight = 0.5
-  config.task.model.loss.obj_weight = (416 / 640) ** 2
+  config.task.model.loss.obj_weight = 1.0
   config.task.train_data.parser.aug_rand_translate = 0.1
   config.task.train_data.parser.mosaic.mixup_frequency = 0.05
   config.task.train_data.parser.mosaic.aug_scale_min = 0.5
