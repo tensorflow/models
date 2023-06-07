@@ -256,6 +256,19 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.single_l2_loss_op = True
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_eager_tf_function(self):
+    """Test Keras model with 1 GPU in pure eager mode with tf function enabled."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_eager_tf_function')
+    FLAGS.batch_size = 120
+    FLAGS.use_tf_function = True
+    FLAGS.use_tf_while_loop = True
+    FLAGS.single_l2_loss_op = True
+    self._run_and_report_benchmark()
+
   def benchmark_1_gpu_fp16_eager(self):
     """Test Keras model with 1 GPU with fp16 and pure eager mode."""
     self._setup()
