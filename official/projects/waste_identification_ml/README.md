@@ -33,3 +33,6 @@ and modeling solutions for TensorFlow users.
 | Material Model | Resnet | saved model & TFLite | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/material_model.zip) |
 | Material Form model | Resnet | saved model & TFLite | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/material_form_model.zip) |
 |Plastic model | Resnet| saved model & TFLite | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/plastic_types_model.zip) |
+
+## Authors and Maintainers
+- Umair Sabir
