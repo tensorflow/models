@@ -15,6 +15,7 @@
 """Dbof model definitions."""
 
 import functools
+from typing import Optional
 
 import tensorflow as tf
 
@@ -47,7 +48,7 @@ class Dbof(tf.keras.Model):
       ),
       params: yt8m_cfg.DbofModel = yt8m_cfg.DbofModel(),
       norm_activation: common.NormActivation = common.NormActivation(),
-      l2_regularizer: tf.keras.regularizers.Regularizer | None = None,
+      l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       **kwargs,
   ):
     """YT8M initialization function.
@@ -152,7 +153,7 @@ def build_dbof(
     input_specs: tf.keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer | None = None,
+    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
     **kwargs,
 ) -> tf.keras.Model:
   """Builds a dbof backbone from a config."""

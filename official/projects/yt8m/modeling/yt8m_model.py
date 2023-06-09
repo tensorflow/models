@@ -15,7 +15,7 @@
 """YT8M prediction model definition."""
 
 import functools
-from typing import Any
+from typing import Any, Optional
 
 from absl import logging
 import tensorflow as tf
@@ -43,12 +43,12 @@ class VideoClassificationModel(tf.keras.Model):
   def __init__(
       self,
       params: yt8m_cfg.VideoClassificationModel,
-      backbone: tf.keras.Model | None = None,
+      backbone: Optional[tf.keras.Model] = None,
       num_classes: int = 3862,
       input_specs: layers.InputSpec = layers.InputSpec(
           shape=[None, None, 1152]
       ),
-      l2_weight_decay: float | None = None,
+      l2_weight_decay: Optional[float] = None,
       **kwargs,
   ):
     """YT8M video classification model initialization function.
