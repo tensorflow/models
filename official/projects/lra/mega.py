@@ -69,5 +69,6 @@ def get_encoder(encoder_cfg: MegaEncoderConfig):
           stddev=encoder_cfg.initializer_range),
       output_range=encoder_cfg.output_range,
       embedding_width=encoder_cfg.embedding_size,
-      norm_first=encoder_cfg.norm_first)
+      norm_first=encoder_cfg.norm_first,
+  )
   return encoder

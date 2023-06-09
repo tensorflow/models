@@ -26,17 +26,21 @@ class MegaEncoderTest(tf.test.TestCase):
     sequence_length = 1024
     batch_size = 2
     vocab_size = 1024
-    network = mega_encoder.MegaEncoder(
-        num_layers=1, vocab_size=1024, max_sequence_length=4096)
+    network = mega_encoder.MegaEncoder(num_layers=1, 
+                                       vocab_size=1024, 
+                                       max_sequence_length=4096,
+                                      )
     word_id_data = np.random.randint(
         vocab_size, size=(batch_size, sequence_length))
     mask_data = np.random.randint(2, size=(batch_size, sequence_length))
     type_id_data = np.random.randint(2, size=(batch_size, sequence_length))
     outputs = network({"input_word_ids": word_id_data,
                        "input_mask": mask_data,
-                       "input_type_ids": type_id_data})
+                       "input_type_ids": type_id_data}
+                     )
     self.assertEqual(outputs["sequence_output"].shape,
-                     (batch_size, sequence_length, 128))
+                     (batch_size, sequence_length, 128),
+                    )
 
 
 if __name__ == "__main__":
