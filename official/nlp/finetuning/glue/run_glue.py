@@ -56,6 +56,12 @@ _MODE = flags.DEFINE_enum(
     'run training and evaluation; if `predict`, it will only '
     'run prediction using the model in `model_dir`.')
 
+# TODO(kitsing) The `params_override` flag is currently not being used.
+# Only declared to make xm_job_3p.XMTPUJob happy.
+_PARAMS_OVERRIDE = flags.DEFINE_string(
+    'params_override', '', 'Overridden parameters.'
+)
+
 FLAGS = flags.FLAGS
 
 EXPERIMENT_TYPE = 'bert/sentence_prediction'
