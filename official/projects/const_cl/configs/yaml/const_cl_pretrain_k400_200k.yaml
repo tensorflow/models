@@ -1,0 +1,77 @@
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  model:
+    dropout_rate: 1.0
+    norm_activation:
+      use_sync_bn: true
+    global_head:
+      normalize_inputs: false
+      use_sync_bn: true
+    backbone:
+      type: 'resnet_3dy'
+      resnet_3dy:
+        block_specs: !!python/tuple
+        - temporal_kernel_sizes: !!python/tuple
+          - 1
+          - 1
+          - 1
+          temporal_strides: 1
+          use_self_gating: false
+        - temporal_kernel_sizes: !!python/tuple
+          - 1
+          - 1
+          - 1
+          - 1
+          temporal_strides: 1
+          use_self_gating: false
+        - temporal_kernel_sizes: !!python/tuple
+          - 3
+          - 3
+          - 3
+          - 3
+          - 3
+          - 3
+          temporal_strides: 1
+          use_self_gating: false
+        - temporal_kernel_sizes: !!python/tuple
+          - 3
+          - 3
+          - 3
+          temporal_strides: 1
+          use_self_gating: false
+        model_id: 50
+        stem_conv_temporal_kernel_size: 5
+        stem_conv_temporal_stride: 2
+        stem_pool_temporal_stride: 1
+  train_data:
+    name: kinetics400
+    num_examples: 235693
+    feature_shape: !!python/tuple
+    - 16
+    - 224
+    - 224
+    - 3
+    temporal_stride: 2
+    global_batch_size: 1024
+    dtype: 'bfloat16'
+    shuffle_buffer_size: 1024
+    prefetch_buffer_size: 1024
+  losses:
+    l2_weight_decay: 0.000001
+trainer:
+  optimizer_config:
+    learning_rate:
+      cosine:
+        initial_learning_rate: 40.96
+        decay_steps: 200000
+    optimizer:
+      sgd:
+        nesterov: false
+    warmup:
+      linear:
+        warmup_steps: 2500
+  train_steps: 200000
+  steps_per_loop: 100
+  summary_interval: 100
