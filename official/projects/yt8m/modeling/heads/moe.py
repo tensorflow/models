@@ -15,7 +15,7 @@
 """MoE model definitions."""
 
 
-from typing import Any
+from typing import Any, Optional
 
 import tensorflow as tf
 
@@ -35,9 +35,9 @@ class MoeModel(tf.keras.Model):
       num_mixtures: int = 2,
       use_input_context_gate: bool = False,
       use_output_context_gate: bool = False,
-      normalizer_params: dict[str, Any] | None = None,
+      normalizer_params: Optional[dict[str, Any]] = None,
       vocab_as_last_dim: bool = False,
-      l2_regularizer: tf.keras.regularizers.Regularizer | None = None,
+      l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       **kwargs,
   ):
     """Creates a Mixture of (Logistic) Experts model.

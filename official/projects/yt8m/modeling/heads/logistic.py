@@ -14,6 +14,8 @@
 
 """Logistic model definitions."""
 
+from typing import Optional
+
 import tensorflow as tf
 
 
@@ -28,7 +30,7 @@ class LogisticModel(tf.keras.Model):
       input_specs: layers.InputSpec = layers.InputSpec(shape=[None, 128]),
       vocab_size: int = 3862,
       return_logits: bool = False,
-      l2_regularizer: tf.keras.regularizers.Regularizer | None = None,
+      l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       **kwargs,
   ):
     """Creates a logistic model.
