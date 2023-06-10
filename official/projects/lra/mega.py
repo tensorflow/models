@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Linformer model configurations and instantiation methods."""
+"""Mega model configurations and instantiation methods."""
 import dataclasses
 
 import tensorflow as tf
@@ -20,41 +20,49 @@ import tensorflow as tf
 from official.modeling import tf_utils
 from official.modeling.hyperparams import base_config
 from official.nlp.configs import encoders
-from official.projects.lra.linformer_encoder import LinformerEncoder
+from official.projects.lra.mega_encoder import MegaEncoder
 
 
 @dataclasses.dataclass
-class LinformerEncoderConfig(encoders.BertEncoderConfig):
-  """Extra paramerters for Linformer configs.
+class MegaEncoderConfig(encoders.BertEncoderConfig):
+  """Extra paramerters for Mega configs.
 
   Attributes:
     pad_token_id: the token id for the pad token
     low_rank_features: number of dimensions for low-rank projection
   """
 
-  pad_token_id: int = 0
-  low_rank_features: int = 256
+  zdim: int = 64
+  hdim: int = 256
+  ndim: int = 16
+  activation: str = 'silu'
+  bidirectional: bool = False
+  dropout: float = 0.0
+  hidden_dropout: float = 0.0
 
 
-@base_config.bind(LinformerEncoderConfig)
-def get_encoder(encoder_cfg: LinformerEncoderConfig):
-  """Gets a 'LinformerEncoder' object.
+@base_config.bind(MegaEncoderConfig)
+def get_encoder(encoder_cfg: MegaEncoderConfig):
+  """Gets a 'MegaEncoder' object.
 
   Args:
-    encoder_cfg: A 'LinformerEncoderConfig'.
+    encoder_cfg: A 'MegaEncoderConfig'.
 
   Returns:
     A encoder object.
   """
-  encoder = LinformerEncoder(
+  encoder = MegaEncoder(
       vocab_size=encoder_cfg.vocab_size,
       hidden_size=encoder_cfg.hidden_size,
       num_layers=encoder_cfg.num_layers,
-      num_attention_heads=encoder_cfg.num_attention_heads,
-      low_rank_features=encoder_cfg.low_rank_features,
-      inner_dim=encoder_cfg.intermediate_size,
+      zdim=encoder_cfg.zdim,
+      hdim=encoder_cfg.hdim,
+      ndim=encoder_cfg.ndim,
+      activation=encoder_cfg.activation,
+      bidirectional=encoder_cfg.bidirectional,
+      dropout=encoder_cfg.dropout,
+      hidden_dropout=encoder_cfg.hidden_dropout,
       inner_activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
-      output_dropout=encoder_cfg.dropout_rate,
       attention_dropout=encoder_cfg.attention_dropout_rate,
       max_sequence_length=encoder_cfg.max_position_embeddings,
       type_vocab_size=encoder_cfg.type_vocab_size,

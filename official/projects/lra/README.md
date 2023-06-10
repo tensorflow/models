@@ -1,8 +1,8 @@
 # Long Range Arena
 
 This repository contains TensorFlow 2.x implementation for Long Range Arena
-Tasks, including baseline for Transformer and Linformer. The codebase is adapted
-from (https://github.com/google-research/long-range-arena).
+Tasks, including baseline for MEGA, Transformer, and Linformer. The codebase is
+adapted from (https://github.com/google-research/long-range-arena).
 
 ## Training on LRA Tasks
 Example job script to train Transformer on ListOPs task:
@@ -35,6 +35,21 @@ PYTHONPATH=[/PATH/TO/MODEL_GARDEN] \
     --mode=train_and_eval
 ```
 
+To train MEGA on Text task (Reproduced Acc = 87.55):
+
+```bash
+TRAIN_DATA=task.train_data.input_path=gs://model-garden-ucsd-zihan/lra_imdb_4096_train.tf_record,task.validation_data.input_path=gs://model-garden-ucsd-zihan/lra_imdb_4096_eval.tf_record
+
+PYTHONPATH=[/PATH/TO/MODEL_GARDEN] \
+    python3 train.py \
+    --experiment=mega/lra_imdb \
+    --config_file=../experiments/lra_imdb_mega.yaml \
+    --params_override="${TRAIN_DATA},runtime.distribution_strategy=tpu" \
+    --tpu=local \
+    --model_dir=[OUTPUT_DIR] \
+    --mode=train_and_eval
+```
+
 ## Data Paths and Experiment Configs
 Dataset Paths are listed below:
 
@@ -42,6 +57,7 @@ Dataset Paths are listed below:
 |------------|-------------------------------------------------------------------------|
 | ListOps    | gs://model-garden-ucsd-zihan/lra_listops_[train/eval/test].tf_record    |
 | IMDB       | gs://model-garden-ucsd-zihan/lra_imdb_[train/eval/test].tf_record       |
+| IMDB-4096  | gs://model-garden-ucsd-zihan/lra_imdb_4096_[train/eval/test].tf_record       |
 | AAN        | gs://model-garden-ucsd-zihan/lra_aan_[train/eval/test].tf_record        |
 | CIFAR10    | gs://model-garden-ucsd-zihan/lra_cifar_[train/eval/test].tf_record      |
 | Pathfinder | gs://model-garden-ucsd-zihan/lra_pathfinder_[train/eval/test].tf_record |
