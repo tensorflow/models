@@ -1,130 +1,131 @@
-<div align="center">
-  <img src="https://storage.googleapis.com/tf_model_garden/tf_model_garden_logo.png">
-</div>
-
-[![Python](https://img.shields.io/pypi/pyversions/tensorflow.svg?style=plastic)](https://badge.fury.io/py/tensorflow)
-[![tf-models-official PyPI](https://badge.fury.io/py/tf-models-official.svg)](https://badge.fury.io/py/tf-models-official)
 
 
-# Welcome to the Model Garden for TensorFlow
 
-The TensorFlow Model Garden is a repository with a number of different
-implementations of state-of-the-art (SOTA) models and modeling solutions for
-TensorFlow users. We aim to demonstrate the best practices for modeling so that
-TensorFlow users can take full advantage of TensorFlow for their research and
-product development.
 
-To improve the transparency and reproducibility of our models, training logs on
-[TensorBoard.dev](https://tensorboard.dev) are also provided for models to the
-extent possible though not all models are suitable.
+# Build docker container
 
-| Directory | Description |
-|-----------|-------------|
-| [official](official) | • A collection of example implementations for SOTA models using the latest TensorFlow 2's high-level APIs<br />• Officially maintained, supported, and kept up to date with the latest TensorFlow 2 APIs by TensorFlow<br />• Reasonably optimized for fast performance while still being easy to read<br /> For more details on the capabilities, check the guide on the [Model-garden](https://www.tensorflow.org/tfmodels)|
-| [research](research) | • A collection of research model implementations in TensorFlow 1 or 2 by researchers<br />• Maintained and supported by researchers |
-| [community](community) | • A curated list of the GitHub repositories with machine learning models and implementations powered by TensorFlow 2 |
-| [orbit](orbit) | • A flexible and lightweight library that users can easily use or fork when writing customized training loop code in TensorFlow 2.x. It seamlessly integrates with `tf.distribute` and supports running on different device types (CPU, GPU, and TPU). |
-
-## Installation
-
-To install the current release of tensorflow-models, please follow any one of the methods described below.
-
-#### Method 1: Install the TensorFlow Model Garden pip package
-
-<details>
-
-**tf-models-official** is the stable Model Garden package. Please check out the [releases](https://github.com/tensorflow/models/releases) to see what are available modules.
-
-pip3 will install all models and dependencies automatically.
-
-```shell
-pip3 install tf-models-official
+```bash
+bash build_docker.sh
 ```
 
-Please check out our examples:
-  - [basic library import](https://github.com/tensorflow/models/blob/master/tensorflow_models/tensorflow_models_pypi.ipynb)
-  - [nlp model building](https://github.com/tensorflow/models/blob/master/docs/nlp/index.ipynb)
-to learn how to use a PIP package.
+* This docker file clone Imagr Models repo, if you previously cache the docker container and update the repo later, want to build another docker container with the updated repo use 
 
-Note that **tf-models-official** may not include the latest changes in the master branch of this
-github repo. To include latest changes, you may install **tf-models-nightly**,
-which is the nightly Model Garden package created daily automatically.
-
-```shell
-pip3 install tf-models-nightly
+```bash 
+docker build --no-cache -f research/object_detection/dockerfiles/tf1/Dockerfile -t od_tf1 .
 ```
 
-</details>
 
 
-#### Method 2: Clone the source
+# Prepare tfrecord 
 
-<details>
+on nas path 
 
-1. Clone the GitHub repository:
+`/home/walter/nas_cv/walter_stuff/object_detection/data/3_locn_3_prods`
 
-```shell
-git clone https://github.com/tensorflow/models.git
+# Prepare Pipeline config 
+
+* Create a dir to save all the training output, checkpoint, export model, etc. 
+  * eg. my models  path: `/home/walter/nas_cv/walter_stuff/object_detection/models`
+  * create  dir `det_320_320_rgb` and put the config file in here
+
+![image-20230608105604070](./README.assets/image-20230608105604070.png)
+
+* update the config file if needed 
+
+# Run docker container 
+
+in the `run_docker.sh`
+
+Copy the tfrecord path to DATA 
+
+Copy the model dir path to TRAINED_MODEL
+
+```bash
+export DATA="/home/walter/nas_cv/walter_stuff/object_detection/data/3_locn_3_prods"
+export TRAINED_MODEL="/home/walter/nas_cv/walter_stuff/object_detection/models"
+sudo docker run -it --gpus device=0 \
+-v $DATA:/models/data/tfrecord \
+-v $TRAINED_MODEL:/models/trained_models \
+od_tf1 /bin/bash
 ```
 
-2. Add the top-level ***/models*** folder to the Python path.
+mount the tfrecord to the `/models/data/tfrecord`
 
-```shell
-export PYTHONPATH=$PYTHONPATH:/path/to/models
+mount the model dir `~/git/mobileDet/saved_models/det_320_320_rgb`  to `/models/trained_models`
+
+**Run docker container **
+
+```bash 
+bash run_docker.sh
 ```
 
-If you are using in a Windows environment, you may need to use the following command with PowerShell:
-```shell
-$env:PYTHONPATH += ":\path\to\models"
+
+
+# Start training 
+
+after runing the docker 
+
+vim the train_and_export.sh
+
+![image-20230608110059740](./README.assets/image-20230608110059740.png)
+
+Change the MODEL_DIR
+
+and start training 
+
+
+
+# tflite_convert 
+
+After the trainning is done you should be able to get 
+
+* tflite_graph.pb
+* tflite_graph.pbtxt
+
+![image-20230608112031373](./README.assets/image-20230608112031373.png)
+
+create a venv 
+
+```bash 
+virtualenv venv
+source venv/bin/activate 
 ```
 
-If you are using a Colab notebook, please set the Python path with os.environ.
+Install tf2, edgetpu compiler and edgetpu runtime 
 
-```python
-import os
-os.environ['PYTHONPATH'] += ":/path/to/models"
+``` bash
+pip install tensorflow==2.12.0
+
+# edgetpu runtime 
+echo "deb https://packages.cloud.google.com/apt coral-edgetpu-stable main" | sudo tee /etc/apt/sources.list.d/coral-edgetpu.list
+curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+sudo apt-get update
+sudo apt-get install libedgetpu1-std
+sudo apt-get install libedgetpu1-max
+sudo apt-get install python3-pycoral
+
+# edgetpu compiler 
+curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+echo "deb https://packages.cloud.google.com/apt coral-edgetpu-stable main" | sudo tee /etc/apt/sources.list.d/coral-edgetpu.list
+sudo apt-get update
+sudo apt-get install edgetpu-compiler
 ```
 
-3. Install other dependencies
 
-```shell
-pip3 install --user -r models/official/requirements.txt
+
+change the ModelDir int the `tflite_convert.sh`
+
+`/home/walter/nas_cv/walter_stuff/object_detection/models/det_320_320_rgb`
+
+![image-20230608115321942](./README.assets/image-20230608115321942.png)
+
+run the script 
+
+```bash
+bash tflite_convert.sh
 ```
 
-Finally, if you are using nlp packages, please also install
-**tensorflow-text-nightly**:
+then you will get a 
 
-```shell
-pip3 install tensorflow-text-nightly
-```
+`model_edgetpu.tflite` that can run on the micro controller 
 
-</details>
-
-
-## Announcements
-
-Please check [this page](https://github.com/tensorflow/models/wiki/Announcements) for recent announcements.
-
-## Contributions
-
-[![help wanted:paper implementation](https://img.shields.io/github/issues/tensorflow/models/help%20wanted%3Apaper%20implementation)](https://github.com/tensorflow/models/labels/help%20wanted%3Apaper%20implementation)
-
-If you want to contribute, please review the [contribution guidelines](https://github.com/tensorflow/models/wiki/How-to-contribute).
-
-## License
-
-[Apache License 2.0](LICENSE)
-
-## Citing TensorFlow Model Garden
-
-If you use TensorFlow Model Garden in your research, please cite this repository.
-
-```
-@misc{tensorflowmodelgarden2020,
-  author = {Hongkun Yu, Chen Chen, Xianzhi Du, Yeqing Li, Abdullah Rashwan, Le Hou, Pengchong Jin, Fan Yang,
-            Frederick Liu, Jaeyoun Kim, and Jing Li},
-  title = {{TensorFlow Model Garden}},
-  howpublished = {\url{https://github.com/tensorflow/models}},
-  year = {2020}
-}
-```
