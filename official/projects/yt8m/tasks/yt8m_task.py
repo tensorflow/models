@@ -403,7 +403,8 @@ class YT8MTask(base_task.Task):
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     if self.task_config.evaluation.average_precision is not None:
-      avg_prec_metrics = self.avg_prec_metric.get()
+      avg_prec_metrics = self.avg_prec_metric.get(
+          self.task_config.evaluation.average_precision.return_per_class_ap)
       self.avg_prec_metric.clear()
       return avg_prec_metrics
     return None

@@ -37,6 +37,7 @@ aps = calculator.peek_map_at_n()
 ```
 """
 
+import numpy as np
 from official.projects.yt8m.eval_utils import average_precision_calculator
 
 
@@ -112,3 +113,24 @@ class MeanAveragePrecisionCalculator(object):
         ap = self._ap_calculators[i].peek_ap_at_n()
         aps.append(ap)
     return aps
+
+  def peek_log_weighted_map_at_n(self):
+    """Peek the non-interpolated log weighted mean average precision at n.
+
+    Returns:
+      Log weighted mean average precision.
+    """
+    sum_log_weighted_ap = 0
+    sum_log_weights = 0
+    for i in range(self._num_class):
+      pos = self._ap_calculators[i].num_accumulated_positives
+      if not self._filter_empty_classes or pos > 0:
+        ap = self._ap_calculators[i].peek_ap_at_n()
+        # TODO(b/286928055)
+        log_pos = np.log(1 + pos)
+        sum_log_weights += log_pos
+        sum_log_weighted_ap += ap * log_pos
+
+    if not sum_log_weights:
+      return 0
+    return sum_log_weighted_ap / sum_log_weights
