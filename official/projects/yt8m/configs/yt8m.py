@@ -175,6 +175,7 @@ class Losses(hyperparams.Config):
 class AveragePrecisionConfig(hyperparams.Config):
   top_k: int = 20
   top_n: Optional[int] = None
+  return_per_class_ap: bool = False
 
 
 @dataclasses.dataclass
