@@ -86,6 +86,7 @@ class Mosaic(hyperparams.Config):
   mosaic9_frequency: float = 0.0
   mixup_frequency: float = 0.0
   mosaic_center: float = 0.2
+  mosaic9_center: float = 0.33
   mosaic_crop_mode: Optional[str] = None
   aug_scale_min: float = 1.0
   aug_scale_max: float = 1.0

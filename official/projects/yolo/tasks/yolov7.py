@@ -203,6 +203,7 @@ class YoloV7Task(base_task.Task):
         mixup_frequency=params.parser.mosaic.mixup_frequency,
         jitter=params.parser.mosaic.jitter,
         mosaic_center=params.parser.mosaic.mosaic_center,
+        mosaic9_center=params.parser.mosaic.mosaic9_center,
         mosaic_crop_mode=params.parser.mosaic.mosaic_crop_mode,
         aug_scale_min=params.parser.mosaic.aug_scale_min,
         aug_scale_max=params.parser.mosaic.aug_scale_max,

@@ -237,6 +237,7 @@ def coco_yolov7() -> cfg.ExperimentConfig:
                       mixup_frequency=0.15,
                       mosaic_crop_mode='scale',
                       mosaic_center=0.25,
+                      mosaic9_center=0.33,
                       aug_scale_min=0.1,
                       aug_scale_max=1.9,
                   ),
