@@ -36,6 +36,7 @@ class Mosaic:
       jitter=0.0,
       mosaic_crop_mode='scale',
       mosaic_center=0.25,
+      mosaic9_center=0.33,
       aug_scale_min=1.0,
       aug_scale_max=1.0,
       aug_rand_angle=0.0,
@@ -66,7 +67,9 @@ class Mosaic:
         image, and None will default to scale and apply no post processing to
         the created mosaic.
       mosaic_center: `float` indicating how much to randomly deviate from the
-        from the center of the image when creating a mosaic.
+        center of the image when creating a mosaic.
+      mosaic9_center: `float` indicating how much to randomly deviate from the
+        center of the image when creating a mosaic9.
       aug_scale_min: `float` indicating the minimum scaling value for image
         scale jitter.
       aug_scale_max: `float` indicating the maximum scaling value for image
@@ -98,6 +101,7 @@ class Mosaic:
 
     self._mosaic_crop_mode = mosaic_crop_mode
     self._mosaic_center = mosaic_center
+    self._mosaic9_center = mosaic9_center
 
     self._aug_scale_min = aug_scale_min
     self._aug_scale_max = aug_scale_max
@@ -111,10 +115,10 @@ class Mosaic:
     self._deterministic = seed is not None
     self._seed = seed if seed is not None else random.randint(0, 2**30)
 
-  def _generate_cut(self, num_tiles):
+  def _generate_cut(self, num_tiles, mosaic_center):
     """Generate a random center to use for slicing and patching the images."""
     if self._mosaic_crop_mode == 'crop':
-      min_offset = self._mosaic_center
+      min_offset = mosaic_center
       cut_x = preprocessing_ops.random_uniform_strong(
           self._output_size[1] * min_offset,
           self._output_size[1] * (1 - min_offset),
@@ -199,11 +203,12 @@ class Mosaic:
     classes, is_crowd, area = self._select_ind(inds, classes, is_crowd, area)  # pylint:disable=unbalanced-tuple-unpacking
     return image, boxes, classes, is_crowd, area, crop_points
 
-  def _mosaic_crop_image(self, image, boxes, classes, is_crowd, area):
+  def _mosaic_crop_image(
+      self, image, boxes, classes, is_crowd, area, mosaic_center):
     """Process a patched image in preperation for final output."""
     if self._mosaic_crop_mode != 'crop':
       shape = tf.cast(preprocessing_ops.get_image_shape(image), tf.float32)
-      center = shape * self._mosaic_center
+      center = shape * mosaic_center
 
       # shift the center of the image by applying a translation to the whole
       # image
@@ -278,7 +283,7 @@ class Mosaic:
     return sample
 
   def _update_patched_sample(
-      self, sample, image, boxes, classes, is_crowds, areas
+      self, sample, image, boxes, classes, is_crowds, areas, mosaic_center
   ):
     """Returns a shallow copy of sample with updated values."""
     boxes = tf.concat(boxes, axis=0)
@@ -288,7 +293,7 @@ class Mosaic:
 
     if self._mosaic_crop_mode is not None:
       image, boxes, classes, is_crowds, areas, _ = self._mosaic_crop_image(
-          image, boxes, classes, is_crowds, areas
+          image, boxes, classes, is_crowds, areas, mosaic_center
       )
 
     height, width = preprocessing_ops.get_image_shape(image)
@@ -313,7 +318,7 @@ class Mosaic:
 
     return sample
 
-  def _patch(self, patches, ishape, num_rows, num_cols):
+  def _patch(self, patches, ishape, num_rows, num_cols, mosaic_center):
     """Combines patches into a num_patches x num_patches mosaic and translates the bounding boxes."""
     rows = []
     for row_idx in range(num_rows):
@@ -345,7 +350,7 @@ class Mosaic:
         areas.append(patch['groundtruth_area'])
 
     return self._update_patched_sample(
-        patches[0], image, boxes, classes, is_crowds, areas
+        patches[0], image, boxes, classes, is_crowds, areas, mosaic_center
     )
 
   def _mosaic(self, *patch_samples):
@@ -373,7 +378,7 @@ class Mosaic:
 
   def _mosaic4(self, *samples):
     """Stitches together 4 images to build a 2x2 mosaic."""
-    cut, ishape = self._generate_cut(2)
+    cut, ishape = self._generate_cut(2, self._mosaic_center)
     samples = [
         self._process_image(
             samples[0], 1.0, 1.0, cut, letter_box=self._letter_box
@@ -388,12 +393,12 @@ class Mosaic:
             samples[3], 0.0, 0.0, cut, letter_box=self._letter_box
         ),
     ]
-    stitched = self._patch(samples, ishape, 2, 2)
+    stitched = self._patch(samples, ishape, 2, 2, self._mosaic_center)
     return stitched
 
   def _mosaic9(self, *samples):
     """Stitches together 9 images to build a 3x3 mosaic."""
-    cut, ishape = self._generate_cut(3)
+    cut, ishape = self._generate_cut(3, self._mosaic9_center)
     # Only corner images can be letterboxed to prevent gaps in the image.
     samples = [
         self._process_image(
@@ -414,7 +419,7 @@ class Mosaic:
             samples[8], 0.0, 0.0, cut, letter_box=self._letter_box
         ),
     ]
-    stitched = self._patch(samples, ishape, 3, 3)
+    stitched = self._patch(samples, ishape, 3, 3, self._mosaic9_center)
     return stitched
 
   def _beta(self, alpha, beta):
