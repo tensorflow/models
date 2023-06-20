@@ -74,7 +74,7 @@ def _run_experiment_with_preemption_recovery(params, model_dir):
         preemption_watcher.block_until_worker_exit()
         logging.info(
             'Some TPU workers had been preempted (message: %s), '
-            'retarting training from the last checkpoint...',
+            'restarting training from the last checkpoint...',
             preemption_watcher.preemption_message)
         keep_training = True
       else:
