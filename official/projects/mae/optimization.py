@@ -80,7 +80,7 @@ class _ViTAdamW(nlp_optimization.AdamWeightDecay):
     self._layer_decay = layer_decay
     self._vars_substr = vars_substr
     self._layers_idx = layers_idx
-    self._max_idx = max(layers_idx) if layers_idx is not None else 0
+    self._max_idx = max(layers_idx) + 1 if layers_idx is not None else 1
 
   def _resource_apply_dense(self, grad, var, apply_state=None):
     lr_t, kwargs = self._get_lr(var.device, var.dtype.base_dtype, apply_state)
