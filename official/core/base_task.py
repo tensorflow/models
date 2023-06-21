@@ -57,7 +57,9 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     """
     super().__init__(name=name)
     self._task_config = params
-    self._logging_dir = logging_dir
+    self._logging_dir = (
+        logging_dir or ""
+    )  # Empty directory hints current working dir.
 
   @property
   def task_config(self):
