@@ -78,6 +78,8 @@ class DataConfig(cfg.DataConfig):
   max_frames: int = 300
   sample_random_frames: bool = True
   num_sample_frames: int = 300  # set smaller to allow random sample (Parser)
+  prefetch_buffer_size: int = 100
+  shuffle_buffer_size: int = 100
   num_classes: int = 3862
   num_devices: int = 1
   input_path: str = ''
