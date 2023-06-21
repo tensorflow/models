@@ -137,7 +137,7 @@ class OrbitExperimentRunner:
     return self._trainer
 
   @property
-  def checkpoint_manager(self) -> tf.train.CheckpointManager:
+  def checkpoint_manager(self) -> tf.train.CheckpointManager | None:
     """The CheckpointManager that stores the checkpoints in a train job."""
     return self._checkpoint_manager
 
@@ -205,11 +205,14 @@ class OrbitExperimentRunner:
     """Builds a Orbit controler."""
     train_actions = [] if not train_actions else train_actions
     if trainer:
+      checkpoint_manager = self.checkpoint_manager
+      assert checkpoint_manager, 'Checkpoint manager required but undefined.'
       train_actions += actions.get_train_actions(
           self.params,
           trainer,
           self.model_dir,
-          checkpoint_manager=self.checkpoint_manager)
+          checkpoint_manager=checkpoint_manager,
+      )
 
     eval_actions = [] if not eval_actions else eval_actions
     if evaluator:
