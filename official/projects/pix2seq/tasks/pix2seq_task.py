@@ -63,9 +63,9 @@ class Pix2SeqTask(base_task.Task):
         self._task_config.model.hidden_size,
         self._task_config.model.num_encoder_layers,
         self._task_config.model.num_decoder_layers,
-        self._task_config.model.dropout_rate,
-        self._task_config.model.attention_dropout_rate,
-        self._task_config.model.norm_first,
+        self._task_config.model.drop_path,
+        self._task_config.model.drop_units,
+        self._task_config.model.drop_att,
     )
     return model
 
@@ -83,7 +83,7 @@ class Pix2SeqTask(base_task.Task):
     if self._task_config.init_checkpoint_modules == 'all':
       ckpt = tf.train.Checkpoint(**model.checkpoint_items)
       status = ckpt.restore(ckpt_dir_or_file)
-      status.assert_consumed()
+      status.expect_partial().assert_existing_objects_matched()
     elif self._task_config.init_checkpoint_modules == 'backbone':
       ckpt = tf.train.Checkpoint(backbone=model.backbone)
       status = ckpt.restore(ckpt_dir_or_file)
@@ -122,6 +122,10 @@ class Pix2SeqTask(base_task.Task):
         max_num_boxes=self._task_config.model.max_num_instances,
         coord_vocab_shift=self._task_config.coord_vocab_shift,
         quantization_bins=self._task_config.quantization_bins,
+        aug_scale_min=params.aug_scale_min,
+        aug_scale_max=params.aug_scale_max,
+        aug_color_jitter_strength=params.aug_color_jitter_strength,
+        label_shift=params.label_shift,
     )
 
     reader = input_reader_factory.input_reader_generator(
