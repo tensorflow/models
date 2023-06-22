@@ -71,6 +71,10 @@ class DataConfig(cfg.DataConfig):
   shuffle_buffer_size: int = 10000
   file_type: str = 'tfrecord'
   drop_remainder: bool = True
+  aug_scale_min: float = 1.0
+  aug_scale_max: float = 1.0
+  aug_color_jitter_strength: float = 0.0
+  label_shift: int = 0
 
 
 @dataclasses.dataclass
@@ -98,8 +102,9 @@ class Pix2Seq(hyperparams.Config):
   )
   norm_activation: common.NormActivation = common.NormActivation()
   backbone_endpoint_name: str = '5'
-  dropout_rate: float = 0.1
-  attention_dropout_rate: float = 0.0
+  drop_path: float = 0.1
+  drop_units: float = 0.1
+  drop_att: float = 0.0
   norm_first: bool = True
 
 
@@ -126,9 +131,9 @@ COCO_VAL_EXAMPLES = 5000
 def pix2seq_r50_coco() -> cfg.ExperimentConfig:
   """Config to get results that matches the paper."""
   train_batch_size = 128
-  eval_batch_size = 256
+  eval_batch_size = 16
   steps_per_epoch = COCO_TRAIN_EXAMPLES // train_batch_size
-  train_steps = 300 * steps_per_epoch
+  train_steps = 80 * steps_per_epoch
   config = cfg.ExperimentConfig(
       task=Pix2SeqTask(
           init_checkpoint='',
@@ -138,14 +143,23 @@ def pix2seq_r50_coco() -> cfg.ExperimentConfig:
           ),
           model=Pix2Seq(
               input_size=[640, 640, 3],
-              norm_activation=common.NormActivation(use_sync_bn=False),
+              norm_activation=common.NormActivation(
+                  norm_momentum=0.9,
+                  norm_epsilon=1e-5,
+                  use_sync_bn=True),
+              backbone=backbones.Backbone(
+                  type='resnet', resnet=backbones.ResNet(model_id=50)
+              ),
           ),
-          losses=Losses(),
+          losses=Losses(l2_weight_decay=0.0),
           train_data=DataConfig(
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'train*'),
               is_training=True,
               global_batch_size=train_batch_size,
-              shuffle_buffer_size=1000,
+              shuffle_buffer_size=train_batch_size * 10,
+              aug_scale_min=0.3,
+              aug_scale_max=2.0,
+              aug_color_jitter_strength=0.0
           ),
           validation_data=DataConfig(
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
@@ -164,29 +178,29 @@ def pix2seq_r50_coco() -> cfg.ExperimentConfig:
           max_to_keep=10,
           optimizer_config=optimization.OptimizationConfig({
               'optimizer': {
-                  'type': 'adamw',
-                  'adamw': {
+                  'type': 'adamw_experimental',
+                  'adamw_experimental': {
                       'epsilon': 1.0e-08,
-                      'weight_decay_rate': 0.05,
+                      'weight_decay': 0.05,
                       'beta_1': 0.9,
                       'beta_2': 0.95,
-                      'gradient_clip_norm': 0.0,
+                      'global_clipnorm': -1.0,
                   },
               },
               'learning_rate': {
                   'type': 'polynomial',
                   'polynomial': {
-                      'initial_learning_rate': 0.00003 * train_batch_size / 32,
-                      'end_learning_rate': 0.0000003 * train_batch_size / 32,
+                      'initial_learning_rate': 0.0001,
+                      'end_learning_rate': 0.000001,
                       'offset': 0,
                       'power': 1.0,
-                      'decay_steps': train_steps,
+                      'decay_steps': 80 * steps_per_epoch,
                   },
               },
               'warmup': {
                   'type': 'linear',
                   'linear': {
-                      'warmup_steps': 0 * steps_per_epoch,
+                      'warmup_steps': 2 * steps_per_epoch,
                       'warmup_learning_rate': 0,
                   },
               },

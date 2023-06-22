@@ -25,28 +25,24 @@ class TransformerTest(tf.test.TestCase):
     batch_size = 2
     sequence_length = 100
     feature_size = 256
-    num_layers = 2
-    num_heads = 2
-    mlp_dim = 256
     model = transformer.TransformerEncoder(
-        num_layers=num_layers,
-        mlp_dim=mlp_dim,
-        num_heads=num_heads,
+        num_layers=3,
+        dim=feature_size,
+        mlp_ratio=4.0,
+        num_heads=2,
     )
     input_tensor = tf.ones((batch_size, sequence_length, feature_size))
-    out = model(input_tensor)
+    out = model(input_tensor, mask=None, training=False)
     self.assertAllEqual(
         tf.shape(out), (batch_size, sequence_length, feature_size)
     )
 
   def test_transformer_encoder_get_config(self):
-    num_layers = 2
-    num_heads = 2
-    mlp_dim = 256
     model = transformer.TransformerEncoder(
-        num_layers=num_layers,
-        mlp_dim=mlp_dim,
-        num_heads=num_heads,
+        num_layers=2,
+        dim=256,
+        mlp_ratio=4.0,
+        num_heads=2,
     )
     config = model.get_config()
     expected_config = {
@@ -54,14 +50,15 @@ class TransformerTest(tf.test.TestCase):
         'trainable': True,
         'dtype': 'float32',
         'num_layers': 2,
-        'mlp_dim': 256,
+        'dim': 256,
+        'mlp_ratio': 4.0,
         'num_heads': 2,
-        'dropout_rate': 0.1,
-        'attention_dropout_rate': 0.0,
-        'kernel_regularizer': None,
-        'inputs_positions': None,
-        'init_stochastic_depth_rate': 0.1,
-        'kernel_initializer': 'glorot_uniform',
+        'drop_path': 0.1,
+        'drop_units': 0.1,
+        'drop_att': 0.0,
+        'self_attention': True,
+        'use_ffn_ln': False,
+        'ln_scale_shift': True,
     }
     self.assertAllEqual(expected_config, config)
 
@@ -70,12 +67,10 @@ class TransformerTest(tf.test.TestCase):
     sequence_length = 100
     memory_length = 200
     feature_size = 256
-    num_attention_heads = 2
-    intermediate_size = 256
     model = transformer.TransformerDecoderLayer(
-        dim=intermediate_size,
+        dim=feature_size,
         mlp_ratio=4.0,
-        num_heads=num_attention_heads
+        num_heads=2
     )
     input_tensor = tf.ones((batch_size, sequence_length, feature_size))
     memory = tf.ones((batch_size, memory_length, feature_size))
@@ -96,12 +91,10 @@ class TransformerTest(tf.test.TestCase):
     )
 
   def test_transformer_decoder_layer_get_config(self):
-    num_attention_heads = 2
-    intermediate_size = 256
     model = transformer.TransformerDecoderLayer(
-        dim=intermediate_size,
+        dim=256,
         mlp_ratio=4.0,
-        num_heads=num_attention_heads
+        num_heads=2
     )
     config = model.get_config()
     expected_config = {
@@ -130,13 +123,11 @@ class TransformerTest(tf.test.TestCase):
     memory_length = 200
     feature_size = 256
     num_layers = 3
-    num_attention_heads = 4
-    intermediate_size = 256
     model = transformer.TransformerDecoder(
         num_layers=num_layers,
-        dim=intermediate_size,
+        dim=feature_size,
         mlp_ratio=4.0,
-        num_heads=num_attention_heads,
+        num_heads=2,
     )
     input_tensor = tf.ones((batch_size, sequence_length, feature_size))
     memory = tf.ones((batch_size, memory_length, feature_size))

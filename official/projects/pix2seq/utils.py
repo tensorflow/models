@@ -298,14 +298,16 @@ def build_prompt_seq_from_task_id(
   return prompt_seq
 
 
-def pad_to_max_len(data, max_len, dim):
+def clip_or_pad_to_max_len(data, max_len, dim):
   """Pad the data tensor to max length on dim."""
   shape = shape_as_list(data)
-  padding_shape, new_shape = copy.copy(shape), copy.copy(shape)
-  padding_shape[dim] = max_len - padding_shape[dim]
-  new_shape[dim] = max_len
+  padding_shape, clipped_shape = copy.copy(shape), copy.copy(shape)
+  padding_shape[dim] = tf.maximum(0, max_len - padding_shape[dim])
+  clipped_shape[dim] = tf.minimum(clipped_shape[dim], max_len)
+
   paddings = tf.zeros(padding_shape, dtype=data.dtype)
-  return tf.reshape(tf.concat([data, paddings], axis=dim), new_shape)
+  clipped_data = tf.slice(data, tf.zeros_like(shape), clipped_shape)
+  return tf.concat([clipped_data, paddings], axis=dim)
 
 
 def shape_as_list(t):

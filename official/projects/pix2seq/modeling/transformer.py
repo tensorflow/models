@@ -20,85 +20,146 @@ cross-attention layer.
 
 import tensorflow as tf
 
-from official.modeling import activations
-from official.vision.modeling.layers import nn_blocks
-from official.vision.modeling.layers import nn_layers
-
 
 class TransformerEncoder(tf.keras.layers.Layer):
-  """Transformer Encoder."""
+  """Transformer encoder."""
 
   def __init__(
       self,
       num_layers,
-      mlp_dim,
+      dim,
+      mlp_ratio,
       num_heads,
-      dropout_rate=0.1,
-      attention_dropout_rate=0.0,
-      kernel_regularizer=None,
-      inputs_positions=None,
-      init_stochastic_depth_rate=0.1,
-      kernel_initializer='glorot_uniform',
+      drop_path=0.1,
+      drop_units=0.1,
+      drop_att=0.0,
+      self_attention=True,
+      use_ffn_ln=False,
+      ln_scale_shift=True,
       **kwargs
   ):
     super().__init__(**kwargs)
     self._num_layers = num_layers
-    self._mlp_dim = mlp_dim
+    self._dim = dim
+    self._mlp_ratio = mlp_ratio
     self._num_heads = num_heads
-    self._dropout_rate = dropout_rate
-    self._attention_dropout_rate = attention_dropout_rate
-    self._kernel_regularizer = kernel_regularizer
-    self._inputs_positions = inputs_positions
-    self._init_stochastic_depth_rate = init_stochastic_depth_rate
-    self._kernel_initializer = kernel_initializer
+    self._drop_path = drop_path
+    self._drop_units = drop_units
+    self._drop_att = drop_att
+    self._self_attention = self_attention
+    self._use_ffn_ln = use_ffn_ln
+    self._ln_scale_shift = ln_scale_shift
 
-  def build(self, input_shape):
-    self._dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
+    self.enc_layers = [
+        TransformerEncoderLayer(  # pylint: disable=g-complex-comprehension
+            dim,
+            mlp_ratio,
+            num_heads,
+            drop_path,
+            drop_units,
+            drop_att,
+            self_attention=self_attention,
+            use_ffn_ln=use_ffn_ln,
+            ln_scale_shift=ln_scale_shift,
+            name='transformer_encoder' + suffix_id(i),
+        )
+        for i in range(num_layers)
+    ]
 
-    self._encoder_layers = []
-    # Set layer norm epsilons to 1e-6 to be consistent with JAX implementation.
-    # https://flax.readthedocs.io/en/latest/_autosummary/flax.deprecated.nn.LayerNorm.html
+  def call(self, x, mask, training, ret_list=False):
+    x_list = [x]
     for i in range(self._num_layers):
-      encoder_layer = nn_blocks.TransformerEncoderBlock(
-          inner_activation=activations.gelu,
-          num_attention_heads=self._num_heads,
-          inner_dim=self._mlp_dim,
-          output_dropout=self._dropout_rate,
-          attention_dropout=self._attention_dropout_rate,
-          kernel_regularizer=self._kernel_regularizer,
-          kernel_initializer=self._kernel_initializer,
-          use_bias=True,
-          norm_first=True,
-          stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
-              self._init_stochastic_depth_rate, i + 1, self._num_layers
-          ),
-          norm_epsilon=1e-6,
-      )
-      self._encoder_layers.append(encoder_layer)
-    self._norm = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-    super().build(input_shape)
-
-  def call(self, inputs, training=None):
-    x = inputs
-    x = self._dropout(x, training=training)
-
-    for encoder_layer in self._encoder_layers:
-      x = encoder_layer(x, training=training)
-    x = self._norm(x)
-    return x
+      x = self.enc_layers[i](x, mask, training)
+      x_list.append(x)
+    return (x, x_list) if ret_list else x
 
   def get_config(self):
     config = super().get_config()
     updates = {
         'num_layers': self._num_layers,
-        'mlp_dim': self._mlp_dim,
+        'dim': self._dim,
+        'mlp_ratio': self._mlp_ratio,
         'num_heads': self._num_heads,
-        'dropout_rate': self._dropout_rate,
-        'attention_dropout_rate': self._attention_dropout_rate,
-        'kernel_regularizer': self._kernel_regularizer,
-        'inputs_positions': self._inputs_positions,
-        'init_stochastic_depth_rate': self._init_stochastic_depth_rate,
-        'kernel_initializer': self._kernel_initializer,
+        'drop_path': self._drop_path,
+        'drop_units': self._drop_units,
+        'drop_att': self._drop_att,
+        'self_attention': self._self_attention,
+        'use_ffn_ln': self._use_ffn_ln,
+        'ln_scale_shift': self._ln_scale_shift,
+    }
+    config.update(updates)
+    return config
+
+
+class TransformerEncoderLayer(tf.keras.layers.Layer):  # pylint: disable=missing-docstring
+
+  def __init__(
+      self,
+      dim,
+      mlp_ratio,
+      num_heads,
+      drop_path=0.1,
+      drop_units=0.1,
+      drop_att=0.0,
+      self_attention=True,
+      use_ffn_ln=False,
+      ln_scale_shift=True,
+      **kwargs
+  ):
+    super().__init__(**kwargs)
+    self._dim = dim
+    self._mlp_ratio = mlp_ratio
+    self._num_heads = num_heads
+    self._drop_path = drop_path
+    self._drop_units = drop_units
+    self._drop_att = drop_att
+    self.self_attention = self_attention
+    self._use_ffn_ln = use_ffn_ln
+    self._ln_scale_shift = ln_scale_shift
+
+    if self_attention:
+      self.mha_ln = tf.keras.layers.LayerNormalization(
+          epsilon=1e-6,
+          center=ln_scale_shift,
+          scale=ln_scale_shift,
+          name='mha/ln',
+      )
+      self.mha = tf.keras.layers.MultiHeadAttention(
+          num_heads, dim // num_heads, dropout=drop_att, name='mha'
+      )
+    self.mlp = MLP(
+        1,
+        dim,
+        mlp_ratio,
+        drop_path,
+        drop_units,
+        use_ffn_ln=use_ffn_ln,
+        ln_scale_shift=ln_scale_shift,
+        name='mlp',
+    )
+    self.dropp = DropPath(drop_path)
+
+  def call(self, x, mask, training):
+    # x shape (bsz, seq_len, dim_att), mask shape (bsz, seq_len, seq_len).
+    if self.self_attention:
+      x_ln = self.mha_ln(x)
+      x_residual = self.mha(x_ln, x_ln, x_ln, mask, training=training)
+      x = x + self.dropp(x_residual, training)
+    x = self.mlp(x, training)
+    return x
+
+  def get_config(self):
+    config = super().get_config()
+    updates = {
+        'dim': self._dim,
+        'mlp_ratio': self._mlp_ratio,
+        'num_heads': self._num_heads,
+        'drop_path': self._drop_path,
+        'drop_units': self._drop_units,
+        'drop_att': self._drop_att,
+        'self_attention': self._self_attention,
+        'use_ffn_ln': self._use_ffn_ln,
+        'ln_scale_shift': self._ln_scale_shift,
     }
     config.update(updates)
     return config
@@ -114,7 +175,7 @@ class DropPath(tf.keras.layers.Layer):
 
   def __init__(self, drop_rate=0.0, **kwargs):
     """Initializes a drop path layer."""
-    super(DropPath, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self._drop_rate = drop_rate
     if self._drop_rate < 0 or self._drop_rate >= 1.0:
       raise ValueError('drop_rate {} is outside [0, 1)'.format(self._drop_rate))
@@ -161,7 +222,7 @@ class FeedForwardLayer(tf.keras.layers.Layer):  # pylint: disable=missing-docstr
       ln_scale_shift=False,
       **kwargs
   ):
-    super(FeedForwardLayer, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self._dim_att = dim_att
     self._dim_mlp = dim_mlp
     self._drop_units = drop_units
@@ -212,7 +273,7 @@ class MLP(tf.keras.layers.Layer):  # pylint: disable=missing-docstring
       ln_scale_shift=True,
       **kwargs
   ):
-    super(MLP, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self._num_layers = num_layers
     self._dim = dim
     self._mlp_ratio = mlp_ratio
@@ -286,7 +347,7 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):  # pylint: disable=missing
       ln_scale_shift=True,
       **kwargs
   ):
-    super(TransformerDecoderLayer, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self._dim = dim
     self._mlp_ratio = mlp_ratio
     self._num_heads = num_heads
@@ -405,7 +466,7 @@ class TransformerDecoder(tf.keras.layers.Layer):  # pylint: disable=missing-docs
       ln_scale_shift=True,
       **kwargs
   ):
-    super(TransformerDecoder, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self._num_layers = num_layers
     self._dim = dim
     self._mlp_ratio = mlp_ratio
