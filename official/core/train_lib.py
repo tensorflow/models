@@ -137,7 +137,7 @@ class OrbitExperimentRunner:
     return self._trainer
 
   @property
-  def checkpoint_manager(self) -> tf.train.CheckpointManager | None:
+  def checkpoint_manager(self) -> Optional[tf.train.CheckpointManager]:
     """The CheckpointManager that stores the checkpoints in a train job."""
     return self._checkpoint_manager
 
