@@ -17,6 +17,8 @@
 import dataclasses
 from typing import List, Optional
 
+from absl import logging
+
 import tensorflow as tf
 
 from official.modeling import optimization
@@ -85,10 +87,17 @@ class _ViTAdamW(nlp_optimization.AdamWeightDecay):
   def _resource_apply_dense(self, grad, var, apply_state=None):
     lr_t, kwargs = self._get_lr(var.device, var.dtype.base_dtype, apply_state)
     apply_state = kwargs['apply_state']
-    if self._layer_decay != 1.0 and self._vars_substr is not None and self._layers_idx is not None:
+    if (
+        self._layer_decay != 1.0
+        and self._vars_substr is not None
+        and self._layers_idx is not None
+    ):
       for var_substr, idx in zip(self._vars_substr, self._layers_idx):
         if var_substr in var.name:
-          lr_t = lr_t * (self._layer_decay ** (self._max_idx - idx))
+          decay_factor = self._layer_decay ** (self._max_idx - idx)
+          lr_t = lr_t * decay_factor
+          logging.debug(
+              'Applying layer-wise lr decay: %s: %f', var.name, decay_factor)
           break
     decay = self._decay_weights_op(var, lr_t, apply_state)
     with tf.control_dependencies([decay]):
@@ -99,7 +108,11 @@ class _ViTAdamW(nlp_optimization.AdamWeightDecay):
       m = self.get_slot(var, 'm')
       v = self.get_slot(var, 'v')
       lr = coefficients['lr_t']
-      if self._layer_decay != 1.0 and self._vars_substr is not None and self._layers_idx is not None:
+      if (
+          self._layer_decay != 1.0
+          and self._vars_substr is not None
+          and self._layers_idx is not None
+      ):
         for var_substr, idx in zip(self._vars_substr, self._layers_idx):
           if var_substr in var.name:
             lr = lr * (self._layer_decay ** (self._max_idx - idx))
@@ -137,10 +150,17 @@ class _ViTAdamW(nlp_optimization.AdamWeightDecay):
   def _resource_apply_sparse(self, grad, var, indices, apply_state=None):
     lr_t, kwargs = self._get_lr(var.device, var.dtype.base_dtype, apply_state)
     apply_state = kwargs['apply_state']
-    if self._layer_decay != 1.0 and self._vars_substr is not None and self._layers_idx is not None:
+    if (
+        self._layer_decay != 1.0
+        and self._vars_substr is not None
+        and self._layers_idx is not None
+    ):
       for var_substr, idx in zip(self._vars_substr, self._layers_idx):
         if var_substr in var.name:
-          lr_t = lr_t * (self._layer_decay ** (self._max_idx - idx))
+          decay_factor = self._layer_decay ** (self._max_idx - idx)
+          lr_t = lr_t * decay_factor
+          logging.debug(
+              'Applying layer-wise lr decay: %s: %f', var.name, decay_factor)
           break
     decay = self._decay_weights_op(var, lr_t, apply_state)
     with tf.control_dependencies([decay]):
@@ -164,7 +184,11 @@ class _ViTAdamW(nlp_optimization.AdamWeightDecay):
       with tf.control_dependencies([v_t]):
         v_t = self._resource_scatter_add(v, indices, v_scaled_g_values)
       lr = coefficients['lr_t']
-      if self._layer_decay != 1.0 and self._vars_substr is not None and self._layers_idx is not None:
+      if (
+          self._layer_decay != 1.0
+          and self._vars_substr is not None
+          and self._layers_idx is not None
+      ):
         for var_substr, idx in zip(self._vars_substr, self._layers_idx):
           if var_substr in var.name:
             lr = lr * (self._layer_decay ** (self._max_idx - idx))
