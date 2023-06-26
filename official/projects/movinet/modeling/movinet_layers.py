@@ -275,6 +275,7 @@ class ConvBlock(tf.keras.layers.Layer):
       tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
+      use_sync_bn: bool = False,
       activation: Optional[Any] = None,
       conv_type: str = '3d',
       use_buffered_input: bool = False,  # pytype: disable=annotation-type-mismatch  # typed-keras
@@ -294,6 +295,7 @@ class ConvBlock(tf.keras.layers.Layer):
       batch_norm_layer: class to use for batch norm, if applied.
       batch_norm_momentum: momentum of the batch norm operation, if applied.
       batch_norm_epsilon: epsilon of the batch norm operation, if applied.
+      use_sync_bn: if True, use synchronized batch normalization.
       activation: activation after the conv and batch norm operations.
       conv_type: '3d', '2plus1d', or '3d_2plus1d'. '3d' uses the default 3D
           ops. '2plus1d' split any 3D ops into two sequential 2D ops with their
@@ -325,6 +327,7 @@ class ConvBlock(tf.keras.layers.Layer):
     self._batch_norm_layer = batch_norm_layer
     self._batch_norm_momentum = batch_norm_momentum
     self._batch_norm_epsilon = batch_norm_epsilon
+    self._use_sync_bn = use_sync_bn
     self._activation = activation
     self._conv_type = conv_type
     self._use_buffered_input = use_buffered_input
@@ -351,6 +354,7 @@ class ConvBlock(tf.keras.layers.Layer):
         'use_batch_norm': self._use_batch_norm,
         'batch_norm_momentum': self._batch_norm_momentum,
         'batch_norm_epsilon': self._batch_norm_epsilon,
+        'use_sync_bn': self._use_sync_bn,
         'activation': self._activation,
         'conv_type': self._conv_type,
         'use_buffered_input': self._use_buffered_input,
@@ -369,11 +373,13 @@ class ConvBlock(tf.keras.layers.Layer):
       self._batch_norm = self._batch_norm_layer(
           momentum=self._batch_norm_momentum,
           epsilon=self._batch_norm_epsilon,
+          synchronized=self._use_sync_bn,
           name='bn')
       if self._conv_type != '3d' and self._kernel_size[0] > 1:
         self._batch_norm_temporal = self._batch_norm_layer(
             momentum=self._batch_norm_momentum,
             epsilon=self._batch_norm_epsilon,
+            synchronized=self._use_sync_bn,
             name='bn_temporal')
 
     self._conv_temporal = None
@@ -564,6 +570,7 @@ class StreamConvBlock(ConvBlock):
       tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
+      use_sync_bn: bool = False,
       activation: Optional[Any] = None,
       conv_type: str = '3d',
       state_prefix: Optional[str] = None,  # pytype: disable=annotation-type-mismatch  # typed-keras
@@ -583,6 +590,7 @@ class StreamConvBlock(ConvBlock):
       batch_norm_layer: class to use for batch norm, if applied.
       batch_norm_momentum: momentum of the batch norm operation, if applied.
       batch_norm_epsilon: epsilon of the batch norm operation, if applied.
+      use_sync_bn: if True, use synchronized batch normalization.
       activation: activation after the conv and batch norm operations.
       conv_type: '3d', '2plus1d', or '3d_2plus1d'. '3d' uses the default 3D
           ops. '2plus1d' split any 3D ops into two sequential 2D ops with their
@@ -613,6 +621,7 @@ class StreamConvBlock(ConvBlock):
         batch_norm_layer=batch_norm_layer,
         batch_norm_momentum=batch_norm_momentum,
         batch_norm_epsilon=batch_norm_epsilon,
+        use_sync_bn=use_sync_bn,
         activation=activation,
         conv_type=conv_type,
         use_buffered_input=use_buffer,
@@ -937,6 +946,7 @@ class SkipBlock(tf.keras.layers.Layer):
       tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,  # pytype: disable=annotation-type-mismatch  # typed-keras
+      use_sync_bn: bool = False,
       **kwargs):
     """Implementation for skip block.
 
@@ -953,6 +963,7 @@ class SkipBlock(tf.keras.layers.Layer):
       batch_norm_layer: class to use for batch norm.
       batch_norm_momentum: momentum of the batch norm operation.
       batch_norm_epsilon: epsilon of the batch norm operation.
+      use_sync_bn: if True, use synchronized batch normalization.
       **kwargs: keyword arguments to be passed to this layer.
     """
     super(SkipBlock, self).__init__(**kwargs)
@@ -965,6 +976,7 @@ class SkipBlock(tf.keras.layers.Layer):
     self._batch_norm_layer = batch_norm_layer
     self._batch_norm_momentum = batch_norm_momentum
     self._batch_norm_epsilon = batch_norm_epsilon
+    self._use_sync_bn = use_sync_bn
 
     self._projection = ConvBlock(
         filters=self._out_filters,
@@ -976,6 +988,7 @@ class SkipBlock(tf.keras.layers.Layer):
         batch_norm_layer=self._batch_norm_layer,
         batch_norm_momentum=self._batch_norm_momentum,
         batch_norm_epsilon=self._batch_norm_epsilon,
+        use_sync_bn=self._use_sync_bn,
         name='skip_project')
 
     if downsample:
@@ -1004,6 +1017,7 @@ class SkipBlock(tf.keras.layers.Layer):
         'kernel_regularizer': self._kernel_regularizer,
         'batch_norm_momentum': self._batch_norm_momentum,
         'batch_norm_epsilon': self._batch_norm_epsilon,
+        'use_sync_bn': self._use_sync_bn
     }
     base_config = super(SkipBlock, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -1054,6 +1068,7 @@ class MovinetBlock(tf.keras.layers.Layer):
       tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
+      use_sync_bn: bool = False,
       state_prefix: Optional[str] = None,  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     """Implementation for MoViNet block.
@@ -1083,6 +1098,7 @@ class MovinetBlock(tf.keras.layers.Layer):
       batch_norm_layer: class to use for batch norm.
       batch_norm_momentum: momentum of the batch norm operation.
       batch_norm_epsilon: epsilon of the batch norm operation.
+      use_sync_bn: if True, use synchronized batch normalization.
       state_prefix: a prefix string to identify states.
       **kwargs: keyword arguments to be passed to this layer.
     """
@@ -1111,6 +1127,7 @@ class MovinetBlock(tf.keras.layers.Layer):
     self._batch_norm_layer = batch_norm_layer
     self._batch_norm_momentum = batch_norm_momentum
     self._batch_norm_epsilon = batch_norm_epsilon
+    self._use_sync_bn = use_sync_bn
     self._state_prefix = state_prefix
 
     self._expansion = ConvBlock(
@@ -1124,6 +1141,7 @@ class MovinetBlock(tf.keras.layers.Layer):
         batch_norm_layer=self._batch_norm_layer,
         batch_norm_momentum=self._batch_norm_momentum,
         batch_norm_epsilon=self._batch_norm_epsilon,
+        use_sync_bn=self._use_sync_bn,
         name='expansion')
     self._feature = StreamConvBlock(
         expand_filters,
@@ -1139,6 +1157,7 @@ class MovinetBlock(tf.keras.layers.Layer):
         batch_norm_layer=self._batch_norm_layer,
         batch_norm_momentum=self._batch_norm_momentum,
         batch_norm_epsilon=self._batch_norm_epsilon,
+        use_sync_bn=self._use_sync_bn,
         state_prefix=state_prefix,
         name='feature')
     self._projection = ConvBlock(
@@ -1152,6 +1171,7 @@ class MovinetBlock(tf.keras.layers.Layer):
         batch_norm_layer=self._batch_norm_layer,
         batch_norm_momentum=self._batch_norm_momentum,
         batch_norm_epsilon=self._batch_norm_epsilon,
+        use_sync_bn=self._use_sync_bn,
         name='projection')
     self._attention = None
     if se_type != 'none':
@@ -1187,6 +1207,7 @@ class MovinetBlock(tf.keras.layers.Layer):
         'kernel_regularizer': self._kernel_regularizer,
         'batch_norm_momentum': self._batch_norm_momentum,
         'batch_norm_epsilon': self._batch_norm_epsilon,
+        'use_sync_bn': self._use_sync_bn,
         'state_prefix': self._state_prefix,
     }
     base_config = super(MovinetBlock, self).get_config()
@@ -1256,6 +1277,7 @@ class Stem(tf.keras.layers.Layer):
       tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
+      use_sync_bn: bool = False,
       state_prefix: Optional[str] = None,  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     """Implementation for video model stem.
@@ -1275,6 +1297,7 @@ class Stem(tf.keras.layers.Layer):
       batch_norm_layer: class to use for batch norm.
       batch_norm_momentum: momentum of the batch norm operation.
       batch_norm_epsilon: epsilon of the batch norm operation.
+      use_sync_bn: if True, use synchronized batch normalization.
       state_prefix: a prefix string to identify states.
       **kwargs: keyword arguments to be passed to this layer.
     """
@@ -1291,6 +1314,7 @@ class Stem(tf.keras.layers.Layer):
     self._batch_norm_layer = batch_norm_layer
     self._batch_norm_momentum = batch_norm_momentum
     self._batch_norm_epsilon = batch_norm_epsilon
+    self._use_sync_bn = use_sync_bn
     self._state_prefix = state_prefix
 
     self._stem = StreamConvBlock(
@@ -1306,6 +1330,7 @@ class Stem(tf.keras.layers.Layer):
         batch_norm_layer=self._batch_norm_layer,
         batch_norm_momentum=self._batch_norm_momentum,
         batch_norm_epsilon=self._batch_norm_epsilon,
+        use_sync_bn=self._use_sync_bn,
         state_prefix=self._state_prefix,
         name='stem')
 
@@ -1322,6 +1347,7 @@ class Stem(tf.keras.layers.Layer):
         'kernel_regularizer': self._kernel_regularizer,
         'batch_norm_momentum': self._batch_norm_momentum,
         'batch_norm_epsilon': self._batch_norm_epsilon,
+        'use_sync_bn': self._use_sync_bn,
         'state_prefix': self._state_prefix,
     }
     base_config = super(Stem, self).get_config()
@@ -1364,6 +1390,7 @@ class Head(tf.keras.layers.Layer):
       tf.keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
+      use_sync_bn: bool = False,
       average_pooling_type: str = '3d',
       state_prefix: Optional[str] = None,  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
@@ -1381,6 +1408,7 @@ class Head(tf.keras.layers.Layer):
       batch_norm_layer: class to use for batch norm.
       batch_norm_momentum: momentum of the batch norm operation.
       batch_norm_epsilon: epsilon of the batch norm operation.
+      use_sync_bn: if True, use synchronized batch normalization.
       average_pooling_type: The average pooling type. Currently supporting
         ['3d', '2d', 'none'].
       state_prefix: a prefix string to identify states.
@@ -1396,6 +1424,7 @@ class Head(tf.keras.layers.Layer):
     self._batch_norm_layer = batch_norm_layer
     self._batch_norm_momentum = batch_norm_momentum
     self._batch_norm_epsilon = batch_norm_epsilon
+    self._use_sync_bn = use_sync_bn
     self._state_prefix = state_prefix
 
     self._project = ConvBlock(
@@ -1408,6 +1437,7 @@ class Head(tf.keras.layers.Layer):
         batch_norm_layer=self._batch_norm_layer,
         batch_norm_momentum=self._batch_norm_momentum,
         batch_norm_epsilon=self._batch_norm_epsilon,
+        use_sync_bn=self._use_sync_bn,
         name='project')
     if average_pooling_type.lower() == '3d':
       self._pool = nn_layers.GlobalAveragePool3D(
@@ -1430,6 +1460,7 @@ class Head(tf.keras.layers.Layer):
         'kernel_regularizer': self._kernel_regularizer,
         'batch_norm_momentum': self._batch_norm_momentum,
         'batch_norm_epsilon': self._batch_norm_epsilon,
+        'use_sync_bn': self._use_sync_bn,
         'state_prefix': self._state_prefix,
     }
     base_config = super(Head, self).get_config()
