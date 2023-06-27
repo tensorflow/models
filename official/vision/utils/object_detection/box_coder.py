@@ -52,7 +52,7 @@ class BoxCoder(object):
     implementations.
 
     Returns:
-      an integer constant
+      An integer constant.
     """
     pass
 
@@ -60,11 +60,11 @@ class BoxCoder(object):
     """Encode a box list relative to an anchor collection.
 
     Args:
-      boxes: BoxList holding N boxes to be encoded
-      anchors: BoxList of N anchors
+      boxes: BoxList holding N boxes to be encoded.
+      anchors: BoxList of N anchors.
 
     Returns:
-      a tensor representing N relative-encoded boxes
+      A tensor representing N relative-encoded boxes.
     """
     with tf.name_scope('Encode'):
       return self._encode(boxes, anchors)
@@ -73,12 +73,12 @@ class BoxCoder(object):
     """Decode boxes that are encoded relative to an anchor collection.
 
     Args:
-      rel_codes: a tensor representing N relative-encoded boxes
-      anchors: BoxList of anchors
+      rel_codes: A tensor representing N relative-encoded boxes.
+      anchors: BoxList of anchors.
 
     Returns:
       boxlist: BoxList holding N boxes encoded in the ordinary way (i.e.,
-        with corners y_min, x_min, y_max, x_max)
+        with corners y_min, x_min, y_max, x_max).
     """
     with tf.name_scope('Decode'):
       return self._decode(rel_codes, anchors)
@@ -88,11 +88,11 @@ class BoxCoder(object):
     """Method to be overriden by implementations.
 
     Args:
-      boxes: BoxList holding N boxes to be encoded
-      anchors: BoxList of N anchors
+      boxes: BoxList holding N boxes to be encoded.
+      anchors: BoxList of N anchors.
 
     Returns:
-      a tensor representing N relative-encoded boxes
+      A tensor representing N relative-encoded boxes.
     """
     pass
 
@@ -101,12 +101,12 @@ class BoxCoder(object):
     """Method to be overriden by implementations.
 
     Args:
-      rel_codes: a tensor representing N relative-encoded boxes
-      anchors: BoxList of anchors
+      rel_codes: A tensor representing N relative-encoded boxes
+      anchors: BoxList of anchors.
 
     Returns:
       boxlist: BoxList holding N boxes encoded in the ordinary way (i.e.,
-        with corners y_min, x_min, y_max, x_max)
+        with corners y_min, x_min, y_max, x_max).
     """
     pass
 
@@ -119,18 +119,18 @@ def batch_decode(encoded_boxes, box_coder, anchors):
   the order of [y_min, x_min, y_max, x_max].
 
   Args:
-    encoded_boxes: a float32 tensor of shape [batch_size, num_anchors,
+    encoded_boxes: A float32 tensor of shape [batch_size, num_anchors,
       code_size] representing the location of the objects.
-    box_coder: a BoxCoder object.
-    anchors: a BoxList of anchors used to encode `encoded_boxes`.
+    box_coder: A BoxCoder object.
+    anchors: A BoxList of anchors used to encode `encoded_boxes`.
 
   Returns:
-    decoded_boxes: a float32 tensor of shape [batch_size, num_anchors,
+    decoded_boxes: A float32 tensor of shape [batch_size, num_anchors,
       coder_size] representing the corners of the objects in the order
       of [y_min, x_min, y_max, x_max].
 
   Raises:
-    ValueError: if batch sizes of the inputs are inconsistent, or if
+    ValueError: If batch sizes of the inputs are inconsistent, or if
     the number of anchors inferred from encoded_boxes and anchors are
     inconsistent.
   """

@@ -15,9 +15,9 @@
 """Bounding Box List operations.
 
 Example box operations that are supported:
-  * areas: compute bounding box areas
-  * iou: pairwise intersection-over-union scores
-  * sq_dist: pairwise distances between bounding boxes
+  * areas: Compute bounding box areas.
+  * iou: Pairwise intersection-over-union scores.
+  * sq_dist: Pairwise distances between bounding boxes.
 
 Whenever box_list_ops functions output a BoxList, the fields of the incoming
 BoxList are retained unless documented otherwise.
@@ -48,11 +48,11 @@ def area(boxlist, scope=None):
   """Computes area of boxes.
 
   Args:
-    boxlist: BoxList holding N boxes
-    scope: name scope.
+    boxlist: BoxList holding N boxes.
+    scope: Name scope.
 
   Returns:
-    a tensor with shape [N] representing box areas.
+    A tensor with shape [N] representing box areas.
   """
   with tf.name_scope(scope or 'Area'):
     y_min, x_min, y_max, x_max = tf.split(
@@ -64,8 +64,8 @@ def height_width(boxlist, scope=None):
   """Computes height and width of boxes in boxlist.
 
   Args:
-    boxlist: BoxList holding N boxes
-    scope: name scope.
+    boxlist: BoxList holding N boxes.
+    scope: Name scope.
 
   Returns:
     Height: A tensor with shape [N] representing box heights.
@@ -78,13 +78,13 @@ def height_width(boxlist, scope=None):
 
 
 def scale(boxlist, y_scale, x_scale, scope=None):
-  """scale box coordinates in x and y dimensions.
+  """Scale box coordinates in x and y dimensions.
 
   Args:
-    boxlist: BoxList holding N boxes
-    y_scale: (float) scalar tensor
-    x_scale: (float) scalar tensor
-    scope: name scope.
+    boxlist: BoxList holding N boxes.
+    y_scale: (float) Scalar tensor.
+    x_scale: (float) Scalar tensor.
+    scope: Name scope.
 
   Returns:
     boxlist: BoxList holding N boxes
@@ -111,15 +111,15 @@ def clip_to_window(boxlist, window, filter_nonoverlapping=True, scope=None):
   overlap at all with the window.
 
   Args:
-    boxlist: BoxList holding M_in boxes
-    window: a tensor of shape [4] representing the [y_min, x_min, y_max, x_max]
+    boxlist: BoxList holding M_in boxes.
+    window: A tensor of shape [4] representing the [y_min, x_min, y_max, x_max]
       window to which the op should clip boxes.
     filter_nonoverlapping: whether to filter out boxes that do not overlap at
       all with the window.
-    scope: name scope.
+    scope: Name scope.
 
   Returns:
-    a BoxList holding M_out boxes where M_out <= M_in
+    A BoxList holding M_out boxes where M_out <= M_in
   """
   with tf.name_scope(scope or 'ClipToWindow'):
     y_min, x_min, y_max, x_max = tf.split(
@@ -150,14 +150,14 @@ def prune_outside_window(boxlist, window, scope=None):
   overflow.
 
   Args:
-    boxlist: a BoxList holding M_in boxes.
-    window: a float tensor of shape [4] representing [ymin, xmin, ymax, xmax] of
-      the window
-    scope: name scope.
+    boxlist: A BoxList holding M_in boxes.
+    window: A float tensor of shape [4] representing [ymin, xmin, ymax, xmax] of
+      the window.
+    scope: Name scope.
 
   Returns:
-    pruned_corners: a tensor with shape [M_out, 4] where M_out <= M_in
-    valid_indices: a tensor with shape [M_out] indexing the valid bounding boxes
+    pruned_corners: A tensor with shape [M_out, 4] where M_out <= M_in
+    valid_indices: A tensor with shape [M_out] indexing the valid bounding boxes
      in the input tensor.
   """
   with tf.name_scope(scope or 'PruneOutsideWindow'):
@@ -183,15 +183,15 @@ def prune_completely_outside_window(boxlist, window, scope=None):
   partially overflow. This function does not clip partially overflowing boxes.
 
   Args:
-    boxlist: a BoxList holding M_in boxes.
-    window: a float tensor of shape [4] representing [ymin, xmin, ymax, xmax] of
-      the window
-    scope: name scope.
+    boxlist: A BoxList holding M_in boxes.
+    window: A float tensor of shape [4] representing [ymin, xmin, ymax, xmax] of
+      the window.
+    scope: Name scope.
 
   Returns:
-    pruned_boxlist: a new BoxList with all bounding boxes partially or fully in
+    pruned_boxlist: A new BoxList with all bounding boxes partially or fully in
       the window.
-    valid_indices: a tensor with shape [M_out] indexing the valid bounding boxes
+    valid_indices: A tensor with shape [M_out] indexing the valid bounding boxes
      in the input tensor.
   """
   with tf.name_scope(scope or 'PruneCompleteleyOutsideWindow'):
@@ -213,12 +213,12 @@ def intersection(boxlist1, boxlist2, scope=None):
   """Compute pairwise intersection areas between boxes.
 
   Args:
-    boxlist1: BoxList holding N boxes
-    boxlist2: BoxList holding M boxes
-    scope: name scope.
+    boxlist1: BoxList holding N boxes.
+    boxlist2: BoxList holding M boxes.
+    scope: Name scope.
 
   Returns:
-    a tensor with shape [N, M] representing pairwise intersections
+    A tensor with shape [N, M] representing pairwise intersections.
   """
   with tf.name_scope(scope or 'Intersection'):
     y_min1, x_min1, y_max1, x_max1 = tf.split(
@@ -238,12 +238,12 @@ def matched_intersection(boxlist1, boxlist2, scope=None):
   """Compute intersection areas between corresponding boxes in two boxlists.
 
   Args:
-    boxlist1: BoxList holding N boxes
-    boxlist2: BoxList holding N boxes
-    scope: name scope.
+    boxlist1: BoxList holding N boxes.
+    boxlist2: BoxList holding N boxes.
+    scope: Name scope.
 
   Returns:
-    a tensor with shape [N] representing pairwise intersections
+    A tensor with shape [N] representing pairwise intersections.
   """
   with tf.name_scope(scope or 'MatchedIntersection'):
     y_min1, x_min1, y_max1, x_max1 = tf.split(
@@ -263,12 +263,12 @@ def iou(boxlist1, boxlist2, scope=None):
   """Computes pairwise intersection-over-union between box collections.
 
   Args:
-    boxlist1: BoxList holding N boxes
-    boxlist2: BoxList holding M boxes
-    scope: name scope.
+    boxlist1: BoxList holding N boxes.
+    boxlist2: BoxList holding M boxes.
+    scope: Name scope.
 
   Returns:
-    a tensor with shape [N, M] representing pairwise iou scores.
+    A tensor with shape [N, M] representing pairwise iou scores.
   """
   with tf.name_scope(scope or 'IOU'):
     intersections = intersection(boxlist1, boxlist2)
@@ -285,12 +285,12 @@ def matched_iou(boxlist1, boxlist2, scope=None):
   """Compute intersection-over-union between corresponding boxes in boxlists.
 
   Args:
-    boxlist1: BoxList holding N boxes
-    boxlist2: BoxList holding N boxes
-    scope: name scope.
+    boxlist1: BoxList holding N boxes.
+    boxlist2: BoxList holding N boxes.
+    scope: Name scope.
 
   Returns:
-    a tensor with shape [N] representing pairwise iou scores.
+    A tensor with shape [N] representing pairwise iou scores.
   """
   with tf.name_scope(scope or 'MatchedIOU'):
     intersections = matched_intersection(boxlist1, boxlist2)
@@ -310,12 +310,12 @@ def ioa(boxlist1, boxlist2, scope=None):
   that is, ioa(box1, box2) != ioa(box2, box1).
 
   Args:
-    boxlist1: BoxList holding N boxes
-    boxlist2: BoxList holding M boxes
-    scope: name scope.
+    boxlist1: BoxList holding N boxes.
+    boxlist2: BoxList holding M boxes.
+    scope: Name scope.
 
   Returns:
-    a tensor with shape [N, M] representing pairwise ioa scores.
+    A tensor with shape [N, M] representing pairwise ioa scores.
   """
   with tf.name_scope(scope or 'IOA'):
     intersections = intersection(boxlist1, boxlist2)
@@ -337,7 +337,7 @@ def prune_non_overlapping_boxes(boxlist1,
     boxlist2: BoxList holding M boxes.
     min_overlap: Minimum required overlap between boxes, to count them as
       overlapping.
-    scope: name scope.
+    scope: Name scope.
 
   Returns:
     new_boxlist1: A pruned boxlist with size [N', 4].
@@ -359,7 +359,7 @@ def prune_small_boxes(boxlist, min_side, scope=None):
   Args:
     boxlist: BoxList holding N boxes.
     min_side: Minimum width AND height of box to survive pruning.
-    scope: name scope.
+    scope: Name scope.
 
   Returns:
     A pruned boxlist.
@@ -386,10 +386,10 @@ def change_coordinate_frame(boxlist, window, scope=None):
   Args:
     boxlist: A BoxList object holding N boxes.
     window: A rank 1 tensor [4].
-    scope: name scope.
+    scope: Name scope.
 
   Returns:
-    Returns a BoxList object with N boxes.
+    Returns A BoxList object with N boxes.
   """
   with tf.name_scope(scope or 'ChangeCoordinateFrame'):
     win_height = window[2] - window[0]
@@ -416,12 +416,12 @@ def sq_dist(boxlist1, boxlist2, scope=None):
          = ||X(i,:)||^2 + ||Y(j,:)||^2 - 2 X(i,:)' * Y(j,:),
 
   Args:
-    boxlist1: BoxList holding N boxes
-    boxlist2: BoxList holding M boxes
-    scope: name scope.
+    boxlist1: BoxList holding N boxes.
+    boxlist2: BoxList holding M boxes.
+    scope: Name scope.
 
   Returns:
-    a tensor with shape [N, M] representing pairwise distances
+    A tensor with shape [N, M] representing pairwise distances.
   """
   with tf.name_scope(scope or 'SqDist'):
     sqnorm1 = tf.reduce_sum(tf.square(boxlist1.get()), 1, keep_dims=True)
@@ -446,22 +446,22 @@ def boolean_mask(boxlist,
   from a subset of fields.
 
   Args:
-    boxlist: BoxList holding N boxes
-    indicator: a rank-1 boolean tensor
+    boxlist: BoxList holding N boxes.
+    indicator: A rank-1 boolean tensor.
     fields: (optional) list of fields to also gather from.  If None (default),
       all fields are gathered from.  Pass an empty fields list to only gather
       the box coordinates.
-    scope: name scope.
+    scope: Name scope.
     use_static_shapes: Whether to use an implementation with static shape
       gurantees.
     indicator_sum: An integer containing the sum of `indicator` vector. Only
       required if `use_static_shape` is True.
 
   Returns:
-    subboxlist: a BoxList corresponding to the subset of the input BoxList
-      specified by indicator
+    subboxlist: A BoxList corresponding to the subset of the input BoxList
+      specified by indicator.
   Raises:
-    ValueError: if `indicator` is not a rank-1 boolean tensor.
+    ValueError: If `indicator` is not a rank-1 boolean tensor.
   """
   with tf.name_scope(scope or 'BooleanMask'):
     if indicator.shape.ndims != 1:
@@ -505,21 +505,21 @@ def gather(boxlist, indices, fields=None, scope=None, use_static_shapes=False):
   subset of fields.
 
   Args:
-    boxlist: BoxList holding N boxes
-    indices: a rank-1 tensor of type int32 / int64
-    fields: (optional) list of fields to also gather from.  If None (default),
+    boxlist: BoxList holding N boxes.
+    indices: A rank-1 tensor of type int32 / int64.
+    fields: (optional) List of fields to also gather from.  If None (default),
       all fields are gathered from.  Pass an empty fields list to only gather
       the box coordinates.
-    scope: name scope.
+    scope: Name scope.
     use_static_shapes: Whether to use an implementation with static shape
       gurantees.
 
   Returns:
-    subboxlist: a BoxList corresponding to the subset of the input BoxList
-    specified by indices
+    subboxlist: A BoxList corresponding to the subset of the input BoxList
+    specified by indices.
   Raises:
-    ValueError: if specified field is not contained in boxlist or if the
-      indices are not of type int32
+    ValueError: If specified field is not contained in boxlist or if the
+      indices are not of type int32.
   """
   with tf.name_scope(scope or 'Gather'):
     if len(indices.shape.as_list()) != 1:
@@ -549,18 +549,18 @@ def concatenate(boxlists, fields=None, scope=None):
   are equal except for the first dimension.
 
   Args:
-    boxlists: list of BoxList objects
-    fields: optional list of fields to also concatenate.  By default, all fields
+    boxlists: List of BoxList objects.
+    fields: (optional) List of fields to also concatenate.  By default, all fields
       from the first BoxList in the list are included in the concatenation.
     scope: name scope.
 
   Returns:
-    a BoxList with number of boxes equal to
-      sum([boxlist.num_boxes() for boxlist in BoxList])
+    A BoxList with number of boxes equal to
+      sum([boxlist.num_boxes() for boxlist in BoxList]).
   Raises:
-    ValueError: if boxlists is invalid (i.e., is not a list, is empty, or
+    ValueError: If boxlists is invalid (i.e., is not a list, is empty, or
       contains non BoxList objects), or if requested fields are not contained in
-      all boxlists
+      all boxlists.
   """
   with tf.name_scope(scope or 'Concatenate'):
     if not isinstance(boxlists, list):
@@ -609,8 +609,8 @@ def sort_by_field(boxlist, field, order=SortOrder.descend, scope=None):
     sorted_boxlist: A sorted BoxList with the field in the specified order.
 
   Raises:
-    ValueError: if specified field does not exist
-    ValueError: if the order is not either descend or ascend
+    ValueError: If specified field does not exist.
+    ValueError: If the order is not either descend or ascend.
   """
   with tf.name_scope(scope or 'SortByField'):
     if order != SortOrder.descend and order != SortOrder.ascend:
@@ -643,15 +643,15 @@ def visualize_boxes_in_image(image, boxlist, normalized=False, scope=None):
   1 indexed.
 
   Args:
-    image: an image tensor with shape [height, width, 3]
-    boxlist: a BoxList
-    normalized: (boolean) specify whether corners are to be interpreted as
+    image: An image tensor with shape [height, width, 3].
+    boxlist: A BoxList.
+    normalized: (boolean) Specify whether corners are to be interpreted as
       absolute coordinates in image space or normalized with respect to the
       image size.
-    scope: name scope.
+    scope: Name scope.
 
   Returns:
-    image_and_boxes: an image tensor with shape [height, width, 3]
+    image_and_boxes: An image tensor with shape [height, width, 3].
   """
   with tf.name_scope(scope or 'VisualizeBoxesInImage'):
     if not normalized:
@@ -668,15 +668,15 @@ def filter_field_value_equals(boxlist, field, value, scope=None):
 
   Args:
     boxlist: BoxList holding N boxes.
-    field: field name for filtering.
-    value: scalar value.
-    scope: name scope.
+    field: Field name for filtering.
+    value: Scalar value.
+    scope: Name scope.
 
   Returns:
-    a BoxList holding M boxes where M <= N
+    A BoxList holding M boxes where M <= N
 
   Raises:
-    ValueError: if boxlist not a BoxList object or if it does not have
+    ValueError: If boxlist not a BoxList object or if it does not have
       the specified field.
   """
   with tf.name_scope(scope or 'FilterFieldValueEquals'):
@@ -700,15 +700,15 @@ def filter_greater_than(boxlist, thresh, scope=None):
   Args:
     boxlist: BoxList holding N boxes.  Must contain a 'scores' field
       representing detection scores.
-    thresh: scalar threshold
-    scope: name scope.
+    thresh: Scalar threshold.
+    scope: Name scope.
 
   Returns:
-    a BoxList holding M boxes where M <= N
+    A BoxList holding M boxes where M <= N
 
   Raises:
-    ValueError: if boxlist not a BoxList object or if it does not
-      have a scores field
+    ValueError: If boxlist not a BoxList object or if it does not
+      have a scores field.
   """
   with tf.name_scope(scope or 'FilterGreaterThan'):
     if not isinstance(boxlist, box_list.BoxList):
@@ -737,14 +737,14 @@ def non_max_suppression(boxlist, thresh, max_output_size, scope=None):
   Args:
     boxlist: BoxList holding N boxes.  Must contain a 'scores' field
       representing detection scores.
-    thresh: scalar threshold
-    max_output_size: maximum number of retained boxes
-    scope: name scope.
+    thresh: Scalar threshold.
+    max_output_size: Maximum number of retained boxes.
+    scope: Name scope.
 
   Returns:
-    a BoxList holding M boxes where M <= max_output_size
+    A BoxList holding M boxes where M <= max_output_size
   Raises:
-    ValueError: if thresh is not in [0, 1]
+    ValueError: If thresh is not in [0, 1].
   """
   with tf.name_scope(scope or 'NonMaxSuppression'):
     if not 0 <= thresh <= 1.0:
@@ -797,10 +797,10 @@ def to_normalized_coordinates(boxlist,
     height: Maximum value for height of absolute box coordinates.
     width: Maximum value for width of absolute box coordinates.
     check_range: If True, checks if the coordinates are normalized or not.
-    scope: name scope.
+    scope: Name scope.
 
   Returns:
-    boxlist with normalized coordinates in [0, 1].
+    Boxlist with normalized coordinates in [0, 1].
   """
   with tf.name_scope(scope or 'ToNormalizedCoordinates'):
     height = tf.cast(height, tf.float32)
@@ -836,10 +836,10 @@ def to_absolute_coordinates(boxlist,
     check_range: If True, checks if the coordinates are normalized or not.
     maximum_normalized_coordinate: Maximum coordinate value to be considered as
       normalized, default to 1.1.
-    scope: name scope.
+    scope: Name scope.
 
   Returns:
-    boxlist with absolute coordinates in terms of the image size.
+    Boxlist with absolute coordinates in terms of the image size.
 
   """
   with tf.name_scope(scope or 'ToAbsoluteCoordinates'):
@@ -874,7 +874,7 @@ def refine_boxes_multi_class(pool_boxes,
       have a rank 1 'scores' field and a rank 1 'classes' field.
     num_classes: (int scalar) Number of classes.
     nms_iou_thresh: (float scalar) iou threshold for non max suppression (NMS).
-    nms_max_detections: (int scalar) maximum output size for NMS.
+    nms_max_detections: (int scalar) Maximum output size for NMS.
     voting_iou_thresh: (float scalar) iou threshold for box voting.
 
   Returns:
@@ -916,7 +916,7 @@ def refine_boxes(pool_boxes,
     pool_boxes: (BoxList) A collection of boxes to be refined. pool_boxes must
       have a rank 1 'scores' field.
     nms_iou_thresh: (float scalar) iou threshold for non max suppression (NMS).
-    nms_max_detections: (int scalar) maximum output size for NMS.
+    nms_max_detections: (int scalar) Maximum output size for NMS.
     voting_iou_thresh: (float scalar) iou threshold for box voting.
 
   Returns:
