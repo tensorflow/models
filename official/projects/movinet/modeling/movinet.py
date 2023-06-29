@@ -386,10 +386,7 @@ class Movinet(tf.keras.Model):
     self._gating_activation = gating_activation
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
+    self._norm = tf.keras.layers.BatchNormalization
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
@@ -469,6 +466,7 @@ class Movinet(tf.keras.Model):
             batch_norm_layer=self._norm,
             batch_norm_momentum=self._norm_momentum,
             batch_norm_epsilon=self._norm_epsilon,
+            use_sync_bn=self._use_sync_bn,
             state_prefix='state_stem',
             name='stem')
         x, states = layer_obj(x, states=states)
@@ -508,6 +506,7 @@ class Movinet(tf.keras.Model):
               batch_norm_layer=self._norm,
               batch_norm_momentum=self._norm_momentum,
               batch_norm_epsilon=self._norm_epsilon,
+              use_sync_bn=self._use_sync_bn,
               state_prefix=f'state_{name}',
               name=name)
           x, states = layer_obj(x, states=states)
@@ -524,6 +523,7 @@ class Movinet(tf.keras.Model):
             batch_norm_layer=self._norm,
             batch_norm_momentum=self._norm_momentum,
             batch_norm_epsilon=self._norm_epsilon,
+            use_sync_bn=self._use_sync_bn,
             average_pooling_type=self._average_pooling_type,
             state_prefix='state_head',
             name='head')
