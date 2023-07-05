@@ -545,7 +545,7 @@ class MaskRCNNTask(base_task.Task):
       state.update(visualization_utils.update_detection_state(step_outputs))
       # TODO(allenyan): Mapping `detection_masks` (w.r.t. the `gt_boxes`) back
       # to full masks (w.r.t. the image). Disable mask visualization fow now.
-      state.pop('detection_masks')
+      state.pop('detection_masks', None)
 
     if not state:
       # Create an arbitrary state to indicate it's not the first step in the
