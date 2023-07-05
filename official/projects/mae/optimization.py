@@ -92,13 +92,17 @@ class _ViTAdamW(nlp_optimization.AdamWeightDecay):
         and self._vars_substr is not None
         and self._layers_idx is not None
     ):
+      is_decayed = False
       for var_substr, idx in zip(self._vars_substr, self._layers_idx):
         if var_substr in var.name:
           decay_factor = self._layer_decay ** (self._max_idx - idx)
           lr_t = lr_t * decay_factor
+          is_decayed = True
           logging.debug(
               'Applying layer-wise lr decay: %s: %f', var.name, decay_factor)
           break
+      if not is_decayed:
+        logging.debug('Ignore layer-wise lr decay: %s', var.name)
     decay = self._decay_weights_op(var, lr_t, apply_state)
     with tf.control_dependencies([decay]):
       var_device, var_dtype = var.device, var.dtype.base_dtype
@@ -155,13 +159,17 @@ class _ViTAdamW(nlp_optimization.AdamWeightDecay):
         and self._vars_substr is not None
         and self._layers_idx is not None
     ):
+      is_decayed = False
       for var_substr, idx in zip(self._vars_substr, self._layers_idx):
         if var_substr in var.name:
           decay_factor = self._layer_decay ** (self._max_idx - idx)
           lr_t = lr_t * decay_factor
+          is_decayed = True
           logging.debug(
               'Applying layer-wise lr decay: %s: %f', var.name, decay_factor)
           break
+      if not is_decayed:
+        logging.debug('Ignore layer-wise lr decay: %s', var.name)
     decay = self._decay_weights_op(var, lr_t, apply_state)
     with tf.control_dependencies([decay]):
       var_device, var_dtype = var.device, var.dtype.base_dtype
