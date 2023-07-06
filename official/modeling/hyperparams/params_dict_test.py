@@ -176,7 +176,7 @@ class ParamsDictTest(tf.test.TestCase):
     # Valid rule.
     params = params_dict.ParamsDict({'a': 1, 'c': {'a': 1}}, ['a == c.a'])
 
-    # Overridding violates the existing rule, raise error upon validate.
+    # Overriding violates the existing rule, raise error upon validate.
     params.override({'a': 11})
     with self.assertRaises(KeyError):
       params.validate()
@@ -392,6 +392,23 @@ class IOTest(tf.test.TestCase):
     converted_csv_str = params_dict.nested_csv_str_to_json_str(csv_str)
     converted_dict = yaml.load(converted_csv_str)
     self.assertDictEqual(converted_dict, expected_output)
+
+  def test_int_array_param_nested_csv_str_to_json_str(self):
+    csv_str = 'a.b[2]=3,a.b[0]=1,a.b[1]=2'
+    json_str = '{a : {b : [1, 2, 3]}}'
+    converted_csv_str = params_dict.nested_csv_str_to_json_str(csv_str)
+    self.assertEqual(converted_csv_str, json_str)
+
+  def test_float_array_param_nested_csv_str_to_json_str(self):
+    csv_str = 'a.b[1]=3.45,a.b[2]=1.32,a.b[0]=2.232'
+    json_str = '{a : {b : [2.232, 3.45, 1.32]}}'
+    converted_csv_str = params_dict.nested_csv_str_to_json_str(csv_str)
+    self.assertEqual(converted_csv_str, json_str)
+
+  def test_incomplete_array_param_nested_csv_str_to_json_str(self):
+    csv_str = 'a.b[0]=1,a.b[2]=2'
+    self.assertRaises(ValueError, params_dict.nested_csv_str_to_json_str,
+                      csv_str)
 
   def test_csv_str_load_supported_datatypes(self):
     csv_str = 'a=1,b=2.,c=[1,2,3],d=\'hello, there\',e=\"Hi.\"'
