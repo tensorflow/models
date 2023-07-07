@@ -243,6 +243,18 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.dtype = 'fp16'
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_fp16_no_tf32(self):
+    """Test Keras model on 1 GPU without float32 execution."""
+    self._setup()
+
+    tf.config.experimental.enable_tensor_float_32_execution(False)
+    FLAGS.num_gpus = 1
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16_no_tf32')
+    FLAGS.batch_size = 256
+    FLAGS.dtype = 'fp16'
+    self._run_and_report_benchmark()
+
   def benchmark_1_gpu_eager(self):
     """Test Keras model with 1 GPU in pure eager mode."""
     self._setup()
