@@ -295,19 +295,39 @@ class SparseMixerEncoderConfig(hyperparams.Config):
 class EncoderConfig(hyperparams.OneOfConfig):
   """Encoder configuration."""
   type: Optional[str] = "bert"
-  albert: AlbertEncoderConfig = AlbertEncoderConfig()
-  bert: BertEncoderConfig = BertEncoderConfig()
-  bert_v2: BertEncoderConfig = BertEncoderConfig()
-  bigbird: BigBirdEncoderConfig = BigBirdEncoderConfig()
-  kernel: KernelEncoderConfig = KernelEncoderConfig()
-  mobilebert: MobileBertEncoderConfig = MobileBertEncoderConfig()
-  reuse: ReuseEncoderConfig = ReuseEncoderConfig()
-  xlnet: XLNetEncoderConfig = XLNetEncoderConfig()
-  query_bert: QueryBertConfig = QueryBertConfig()
-  fnet: FNetEncoderConfig = FNetEncoderConfig()
-  sparse_mixer: SparseMixerEncoderConfig = SparseMixerEncoderConfig()
+  albert: AlbertEncoderConfig = dataclasses.field(
+      default_factory=AlbertEncoderConfig
+  )
+  bert: BertEncoderConfig = dataclasses.field(default_factory=BertEncoderConfig)
+  bert_v2: BertEncoderConfig = dataclasses.field(
+      default_factory=BertEncoderConfig
+  )
+  bigbird: BigBirdEncoderConfig = dataclasses.field(
+      default_factory=BigBirdEncoderConfig
+  )
+  kernel: KernelEncoderConfig = dataclasses.field(
+      default_factory=KernelEncoderConfig
+  )
+  mobilebert: MobileBertEncoderConfig = dataclasses.field(
+      default_factory=MobileBertEncoderConfig
+  )
+  reuse: ReuseEncoderConfig = dataclasses.field(
+      default_factory=ReuseEncoderConfig
+  )
+  xlnet: XLNetEncoderConfig = dataclasses.field(
+      default_factory=XLNetEncoderConfig
+  )
+  query_bert: QueryBertConfig = dataclasses.field(
+      default_factory=QueryBertConfig
+  )
+  fnet: FNetEncoderConfig = dataclasses.field(default_factory=FNetEncoderConfig)
+  sparse_mixer: SparseMixerEncoderConfig = dataclasses.field(
+      default_factory=SparseMixerEncoderConfig
+  )
   # If `any` is used, the encoder building relies on any.BUILDER.
-  any: hyperparams.Config = hyperparams.Config()
+  any: hyperparams.Config = dataclasses.field(
+      default_factory=hyperparams.Config
+  )
 
 
 @gin.configurable
