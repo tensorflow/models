@@ -119,19 +119,22 @@ class Backbone3D(backbones_3d.Backbone3D):
     movinet: movinet backbone config.
   """
   type: str = 'movinet'
-  movinet: Movinet = Movinet()
+  movinet: Movinet = dataclasses.field(default_factory=Movinet)
 
 
 @dataclasses.dataclass
 class MovinetModel(video_classification.VideoClassificationModel):
   """The MoViNet model config."""
   model_type: str = 'movinet'
-  backbone: Backbone3D = Backbone3D()
-  norm_activation: common.NormActivation = common.NormActivation(
-      activation=None,  # legacy flag, not used.
-      norm_momentum=0.99,
-      norm_epsilon=1e-3,
-      use_sync_bn=True)
+  backbone: Backbone3D = dataclasses.field(default_factory=Backbone3D)
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=lambda: common.NormActivation(  # pylint: disable=g-long-lambda
+          activation=None,  # legacy flag, not used.
+          norm_momentum=0.99,
+          norm_epsilon=1e-3,
+          use_sync_bn=True,
+      )
+  )
   activation: str = 'swish'
   output_states: bool = False
 

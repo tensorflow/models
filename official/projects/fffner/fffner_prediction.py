@@ -40,7 +40,9 @@ class FFFNerModelConfig(base_config.Config):
   num_classes_is_entity: int = 0
   num_classes_entity_type: int = 0
   use_encoder_pooler: bool = True
-  encoder: encoders.EncoderConfig = encoders.EncoderConfig()
+  encoder: encoders.EncoderConfig = dataclasses.field(
+      default_factory=encoders.EncoderConfig
+  )
 
 
 @dataclasses.dataclass
@@ -53,9 +55,13 @@ class FFFNerPredictionConfig(cfg.TaskConfig):
   hub_module_url: str = ''
   metric_type: str = 'accuracy'
   # Defines the concrete model config at instantiation time.
-  model: FFFNerModelConfig = FFFNerModelConfig()
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
+  model: FFFNerModelConfig = dataclasses.field(
+      default_factory=FFFNerModelConfig
+  )
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  validation_data: cfg.DataConfig = dataclasses.field(
+      default_factory=cfg.DataConfig
+  )
 
 
 @task_factory.register_task_cls(FFFNerPredictionConfig)
