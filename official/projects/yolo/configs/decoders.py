@@ -51,5 +51,5 @@ class YoloV7(hyperparams.Config):
 @dataclasses.dataclass
 class Decoder(decoders.Decoder):
   type: Optional[str] = 'yolo_decoder'
-  yolo_decoder: YoloDecoder = YoloDecoder()
-  yolov7: YoloV7 = YoloV7()
+  yolo_decoder: YoloDecoder = dataclasses.field(default_factory=YoloDecoder)
+  yolov7: YoloV7 = dataclasses.field(default_factory=YoloV7)

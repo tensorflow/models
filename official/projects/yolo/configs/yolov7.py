@@ -64,8 +64,12 @@ class TfExampleDecoderLabelMap(hyperparams.Config):
 @dataclasses.dataclass
 class DataDecoder(hyperparams.OneOfConfig):
   type: Optional[str] = 'simple_decoder'
-  simple_decoder: TfExampleDecoder = TfExampleDecoder()
-  label_map_decoder: TfExampleDecoderLabelMap = TfExampleDecoderLabelMap()
+  simple_decoder: TfExampleDecoder = dataclasses.field(
+      default_factory=TfExampleDecoder
+  )
+  label_map_decoder: TfExampleDecoderLabelMap = dataclasses.field(
+      default_factory=TfExampleDecoderLabelMap
+  )
 
 
 @dataclasses.dataclass
@@ -100,43 +104,55 @@ class YoloV7(hyperparams.Config):
   input_size: Optional[List[int]] = dataclasses.field(
       default_factory=lambda: [640, 640, 3]
   )
-  backbone: backbones.Backbone = backbones.Backbone(
-      type='yolov7', yolov7=backbones.YoloV7(model_id='yolov7')
+  backbone: backbones.Backbone = dataclasses.field(
+      default_factory=lambda: backbones.Backbone(  # pylint: disable=g-long-lambda
+          type='yolov7', yolov7=backbones.YoloV7(model_id='yolov7')
+      )
   )
-  decoder: decoders.Decoder = decoders.Decoder(
-      type='yolov7', yolo_decoder=decoders.YoloV7(model_id='yolov7')
+  decoder: decoders.Decoder = dataclasses.field(
+      default_factory=lambda: decoders.Decoder(  # pylint: disable=g-long-lambda
+          type='yolov7', yolo_decoder=decoders.YoloV7(model_id='yolov7')
+      )
   )
-  head: YoloV7Head = YoloV7Head()
-  detection_generator: YoloDetectionGenerator = YoloDetectionGenerator(
-      box_type=_build_dict(MIN_LEVEL, MAX_LEVEL, 'scaled')(),
-      scale_xy=_build_dict(MIN_LEVEL, MAX_LEVEL, 2.0)(),
-      path_scales=_build_path_scales(MIN_LEVEL, MAX_LEVEL)(),
-      nms_version='iou',
-      iou_thresh=0.001,
-      nms_thresh=0.7,
-      max_boxes=300,
-      pre_nms_points=5000,
+  head: YoloV7Head = dataclasses.field(default_factory=YoloV7Head)
+  detection_generator: YoloDetectionGenerator = dataclasses.field(
+      default_factory=lambda: YoloDetectionGenerator(  # pylint: disable=g-long-lambda
+          box_type=_build_dict(MIN_LEVEL, MAX_LEVEL, 'scaled')(),
+          scale_xy=_build_dict(MIN_LEVEL, MAX_LEVEL, 2.0)(),
+          path_scales=_build_path_scales(MIN_LEVEL, MAX_LEVEL)(),
+          nms_version='iou',
+          iou_thresh=0.001,
+          nms_thresh=0.7,
+          max_boxes=300,
+          pre_nms_points=5000,
+      )
   )
-  loss: YoloV7Loss = YoloV7Loss()
-  norm_activation: common.NormActivation = common.NormActivation(
-      activation='swish',
-      use_sync_bn=True,
-      norm_momentum=0.99,
-      norm_epsilon=0.001,
+  loss: YoloV7Loss = dataclasses.field(default_factory=YoloV7Loss)
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=lambda: common.NormActivation(  # pylint: disable=g-long-lambda
+          activation='swish',
+          use_sync_bn=True,
+          norm_momentum=0.99,
+          norm_epsilon=0.001,
+      )
   )
   num_classes: int = 80
   min_level: int = 3
   max_level: int = 5
-  anchor_boxes: AnchorBoxes = AnchorBoxes()
+  anchor_boxes: AnchorBoxes = dataclasses.field(default_factory=AnchorBoxes)
 
 
 @dataclasses.dataclass
 class YoloV7Task(cfg.TaskConfig):
   per_category_metrics: bool = False
   smart_bias_lr: float = 0.0
-  model: YoloV7 = YoloV7()
-  train_data: DataConfig = DataConfig(is_training=True)
-  validation_data: DataConfig = DataConfig(is_training=False)
+  model: YoloV7 = dataclasses.field(default_factory=YoloV7)
+  train_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=True)
+  )
+  validation_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=False)
+  )
   weight_decay: float = 0.0
   annotation_file: Optional[str] = None
   init_checkpoint: Optional[str] = None

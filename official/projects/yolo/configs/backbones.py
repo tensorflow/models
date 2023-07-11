@@ -40,5 +40,5 @@ class YoloV7(hyperparams.Config):
 
 @dataclasses.dataclass
 class Backbone(backbones.Backbone):
-  darknet: Darknet = Darknet()
-  yolov7: YoloV7 = YoloV7()
+  darknet: Darknet = dataclasses.field(default_factory=Darknet)
+  yolov7: YoloV7 = dataclasses.field(default_factory=YoloV7)
