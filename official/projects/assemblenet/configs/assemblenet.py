@@ -195,17 +195,24 @@ class Backbone3D(backbones_3d.Backbone3D):
     assemblenet_plus : AssembleNetPlus backbone config.
   """
   type: Optional[str] = None
-  assemblenet: AssembleNet = AssembleNet()
-  assemblenet_plus: AssembleNetPlus = AssembleNetPlus()
+  assemblenet: AssembleNet = dataclasses.field(default_factory=AssembleNet)
+  assemblenet_plus: AssembleNetPlus = dataclasses.field(
+      default_factory=AssembleNetPlus
+  )
 
 
 @dataclasses.dataclass
 class AssembleNetModel(video_classification.VideoClassificationModel):
   """The AssembleNet model config."""
   model_type: str = 'assemblenet'
-  backbone: Backbone3D = Backbone3D(type='assemblenet')
-  norm_activation: common.NormActivation = common.NormActivation(
-      norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=True)
+  backbone: Backbone3D = dataclasses.field(
+      default_factory=lambda: Backbone3D(type='assemblenet')
+  )
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=lambda: common.NormActivation(  # pylint: disable=g-long-lambda
+          norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=True
+      )
+  )
   max_pool_predictions: bool = False
 
 
@@ -213,9 +220,14 @@ class AssembleNetModel(video_classification.VideoClassificationModel):
 class AssembleNetPlusModel(video_classification.VideoClassificationModel):
   """The AssembleNet model config."""
   model_type: str = 'assemblenet_plus'
-  backbone: Backbone3D = Backbone3D(type='assemblenet_plus')
-  norm_activation: common.NormActivation = common.NormActivation(
-      norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=True)
+  backbone: Backbone3D = dataclasses.field(
+      default_factory=lambda: Backbone3D(type='assemblenet_plus')
+  )
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=lambda: common.NormActivation(  # pylint: disable=g-long-lambda
+          norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=True
+      )
+  )
   max_pool_predictions: bool = False
 
 
