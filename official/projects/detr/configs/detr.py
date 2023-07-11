@@ -36,7 +36,7 @@ class DataConfig(cfg.DataConfig):
   global_batch_size: int = 0
   is_training: bool = False
   dtype: str = 'bfloat16'
-  decoder: common.DataDecoder = common.DataDecoder()
+  decoder: common.DataDecoder = dataclasses.field(default_factory=common.DataDecoder)
   shuffle_buffer_size: int = 10000
   file_type: str = 'tfrecord'
   drop_remainder: bool = True
@@ -61,18 +61,18 @@ class Detr(hyperparams.Config):
   num_encoder_layers: int = 6
   num_decoder_layers: int = 6
   input_size: List[int] = dataclasses.field(default_factory=list)
-  backbone: backbones.Backbone = backbones.Backbone(
-      type='resnet', resnet=backbones.ResNet(model_id=50, bn_trainable=False))
-  norm_activation: common.NormActivation = common.NormActivation()
+  backbone: backbones.Backbone = dataclasses.field(default_factory=lambda:backbones.Backbone(
+      type='resnet', resnet=backbones.ResNet(model_id=50, bn_trainable=False)))
+  norm_activation: common.NormActivation = dataclasses.field(default_factory=common.NormActivation)
   backbone_endpoint_name: str = '5'
 
 
 @dataclasses.dataclass
 class DetrTask(cfg.TaskConfig):
-  model: Detr = Detr()
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
-  losses: Losses = Losses()
+  model: Detr = dataclasses.field(default_factory=Detr)
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  validation_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  losses: Losses = dataclasses.field(default_factory=Losses)
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: Union[str, List[str]] = 'all'  # all, backbone
   annotation_file: Optional[str] = None
