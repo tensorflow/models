@@ -52,20 +52,31 @@ class OrbitParams(base_config.Config):
 @dataclasses.dataclass
 class OptimizerParams(optimization.OptimizationConfig):
   """Optimizer parameters for MobileBERT-EdgeTPU."""
-  optimizer: optimization.OptimizerConfig = optimization.OptimizerConfig(
-      type='adamw',
-      adamw=optimization.AdamWeightDecayConfig(
-          weight_decay_rate=0.01,
-          exclude_from_weight_decay=['LayerNorm', 'layer_norm', 'bias']))
-  learning_rate: optimization.LrConfig = optimization.LrConfig(
-      type='polynomial',
-      polynomial=optimization.PolynomialLrConfig(
-          initial_learning_rate=1e-4,
-          decay_steps=1000000,
-          end_learning_rate=0.0))
-  warmup: optimization.WarmupConfig = optimization.WarmupConfig(
-      type='polynomial',
-      polynomial=optimization.PolynomialWarmupConfig(warmup_steps=10000))
+  optimizer: optimization.OptimizerConfig = dataclasses.field(
+      default_factory=lambda: optimization.OptimizerConfig(  # pylint: disable=g-long-lambda
+          type='adamw',
+          adamw=optimization.AdamWeightDecayConfig(
+              weight_decay_rate=0.01,
+              exclude_from_weight_decay=['LayerNorm', 'layer_norm', 'bias'],
+          ),
+      )
+  )
+  learning_rate: optimization.LrConfig = dataclasses.field(
+      default_factory=lambda: optimization.LrConfig(  # pylint: disable=g-long-lambda
+          type='polynomial',
+          polynomial=optimization.PolynomialLrConfig(
+              initial_learning_rate=1e-4,
+              decay_steps=1000000,
+              end_learning_rate=0.0,
+          ),
+      )
+  )
+  warmup: optimization.WarmupConfig = dataclasses.field(
+      default_factory=lambda: optimization.WarmupConfig(  # pylint: disable=g-long-lambda
+          type='polynomial',
+          polynomial=optimization.PolynomialWarmupConfig(warmup_steps=10000),
+      )
+  )
 
 
 @dataclasses.dataclass
@@ -144,16 +155,26 @@ class EdgeTPUBERTCustomParams(base_config.Config):
     distill_ground_truth_ratio: A float number representing the ratio between
       distillation output and ground truth.
   """
-  train_datasest: DatasetParams = DatasetParams()
-  eval_dataset: DatasetParams = DatasetParams()
-  teacher_model: Optional[PretrainerModelParams] = PretrainerModelParams()
-  student_model: PretrainerModelParams = PretrainerModelParams()
+  train_datasest: DatasetParams = dataclasses.field(
+      default_factory=DatasetParams
+  )
+  eval_dataset: DatasetParams = dataclasses.field(default_factory=DatasetParams)
+  teacher_model: Optional[PretrainerModelParams] = dataclasses.field(
+      default_factory=PretrainerModelParams
+  )
+  student_model: PretrainerModelParams = dataclasses.field(
+      default_factory=PretrainerModelParams
+  )
   teacher_model_init_checkpoint: str = ''
   student_model_init_checkpoint: str = ''
-  layer_wise_distillation: LayerWiseDistillationParams = (
-      LayerWiseDistillationParams())
-  end_to_end_distillation: EndToEndDistillationParams = (
-      EndToEndDistillationParams())
-  optimizer: OptimizerParams = OptimizerParams()
-  runtime: RuntimeParams = RuntimeParams()
-  orbit_config: OrbitParams = OrbitParams()
+  layer_wise_distillation: LayerWiseDistillationParams = dataclasses.field(
+      default_factory=LayerWiseDistillationParams
+  )
+  end_to_end_distillation: EndToEndDistillationParams = dataclasses.field(
+      default_factory=EndToEndDistillationParams
+  )
+  optimizer: OptimizerParams = dataclasses.field(
+      default_factory=OptimizerParams
+  )
+  runtime: RuntimeParams = dataclasses.field(default_factory=RuntimeParams)
+  orbit_config: OrbitParams = dataclasses.field(default_factory=OrbitParams)
