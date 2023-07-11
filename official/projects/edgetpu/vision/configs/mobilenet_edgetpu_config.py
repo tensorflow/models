@@ -60,7 +60,9 @@ class MobilenetEdgeTPUTaskConfig(base_config.ImageClassificationTask):
     saved_model_path: Instead of initializing a model from the model config,
       the model can be loaded from a file path.
   """
-  model: MobilenetEdgeTPUModelConfig = MobilenetEdgeTPUModelConfig()
+  model: MobilenetEdgeTPUModelConfig = dataclasses.field(
+      default_factory=MobilenetEdgeTPUModelConfig
+  )
   saved_model_path: Optional[str] = None
 
 

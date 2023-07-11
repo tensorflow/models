@@ -47,7 +47,9 @@ class Backbone(backbones.Backbone):
     spinenet_seg: spinenet-seg backbone config.
   """
   type: Optional[str] = None
-  mobilenet_edgetpu: MobileNetEdgeTPU = MobileNetEdgeTPU()
+  mobilenet_edgetpu: MobileNetEdgeTPU = dataclasses.field(
+      default_factory=MobileNetEdgeTPU
+  )
 
 
 @dataclasses.dataclass
@@ -55,9 +57,15 @@ class CustomSemanticSegmentationTaskConfig(base_cfg.SemanticSegmentationTask):
   """Same config for custom taks."""
 
   model: Optional[base_cfg.SemanticSegmentationModel] = None
-  train_data: base_cfg.DataConfig = base_cfg.DataConfig(is_training=True)
-  validation_data: base_cfg.DataConfig = base_cfg.DataConfig(is_training=False)
-  evaluation: base_cfg.Evaluation = base_cfg.Evaluation()
+  train_data: base_cfg.DataConfig = dataclasses.field(
+      default_factory=lambda: base_cfg.DataConfig(is_training=True)
+  )
+  validation_data: base_cfg.DataConfig = dataclasses.field(
+      default_factory=lambda: base_cfg.DataConfig(is_training=False)
+  )
+  evaluation: base_cfg.Evaluation = dataclasses.field(
+      default_factory=base_cfg.Evaluation
+  )
 
 
 # ADE 20K Dataset
