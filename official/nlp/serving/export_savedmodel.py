@@ -106,7 +106,7 @@ def create_export_module(*, task_name: Text, config_file: Text,
 
   @dataclasses.dataclass
   class Dummy(base_config.Config):
-    task: task_config_cls = task_config_cls()
+    task: task_config_cls = dataclasses.field(default_factory=task_config_cls)
 
   dummy_exp = Dummy()
   dummy_exp = hyperparams.override_params_dict(

@@ -55,19 +55,28 @@ class EfficientNetModelConfig(base_configs.ModelConfig):
               'dtype': 'float32',
           }
       })
-  loss: base_configs.LossConfig = base_configs.LossConfig(
-      name='categorical_crossentropy', label_smoothing=0.1)
-  optimizer: base_configs.OptimizerConfig = base_configs.OptimizerConfig(
-      name='rmsprop',
-      decay=0.9,
-      epsilon=0.001,
-      momentum=0.9,
-      moving_average_decay=None)
-  learning_rate: base_configs.LearningRateConfig = base_configs.LearningRateConfig(  # pylint: disable=line-too-long
-      name='exponential',
-      initial_lr=0.008,
-      decay_epochs=2.4,
-      decay_rate=0.97,
-      warmup_epochs=5,
-      scale_by_batch_size=1. / 128.,
-      staircase=True)
+  loss: base_configs.LossConfig = dataclasses.field(
+      default_factory=lambda: base_configs.LossConfig(  # pylint: disable=g-long-lambda
+          name='categorical_crossentropy', label_smoothing=0.1
+      )
+  )
+  optimizer: base_configs.OptimizerConfig = dataclasses.field(
+      default_factory=lambda: base_configs.OptimizerConfig(  # pylint: disable=g-long-lambda
+          name='rmsprop',
+          decay=0.9,
+          epsilon=0.001,
+          momentum=0.9,
+          moving_average_decay=None,
+      )
+  )
+  learning_rate: base_configs.LearningRateConfig = dataclasses.field(
+      default_factory=lambda: base_configs.LearningRateConfig(  # pylint: disable=g-long-lambda
+          name='exponential',
+          initial_lr=0.008,
+          decay_epochs=2.4,
+          decay_rate=0.97,
+          warmup_epochs=5,
+          scale_by_batch_size=1.0 / 128.0,
+          staircase=True,
+      )
+  )

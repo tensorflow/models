@@ -43,7 +43,7 @@ class BlockType(oneof.OneOfConfig):
 @dataclasses.dataclass
 class BlockSearchConfig(base_config.Config):
   """Config for searchable BlockConfig parameters."""
-  op_type: BlockType = BlockType()
+  op_type: BlockType = dataclasses.field(default_factory=BlockType)
   kernel_size: Optional[int] = None
   expand_ratio: Optional[int] = None
   stride: Optional[int] = None

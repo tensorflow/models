@@ -93,7 +93,9 @@ class ExportConfig(base_config.Config):
       For example: --finalize_method=resize128,argmax,resize512,squeeze will do
         resize bilinear to 128x128, then argmax then resize nn to 512x512
   """
-  quantization_config: QuantizationConfig = QuantizationConfig()
+  quantization_config: QuantizationConfig = dataclasses.field(
+      default_factory=QuantizationConfig
+  )
   model_name: Optional[str] = None
   output_layer: Optional[str] = None
   ckpt_path: Optional[str] = None
