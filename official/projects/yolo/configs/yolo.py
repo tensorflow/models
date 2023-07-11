@@ -76,8 +76,12 @@ class TfExampleDecoderLabelMap(hyperparams.Config):
 @dataclasses.dataclass
 class DataDecoder(hyperparams.OneOfConfig):
   type: Optional[str] = 'simple_decoder'
-  simple_decoder: TfExampleDecoder = TfExampleDecoder()
-  label_map_decoder: TfExampleDecoderLabelMap = TfExampleDecoderLabelMap()
+  simple_decoder: TfExampleDecoder = dataclasses.field(
+      default_factory=TfExampleDecoder
+  )
+  label_map_decoder: TfExampleDecoderLabelMap = dataclasses.field(
+      default_factory=TfExampleDecoderLabelMap
+  )
 
 
 @dataclasses.dataclass
@@ -112,7 +116,7 @@ class Parser(hyperparams.Config):
   best_match_only: bool = False
   anchor_thresh: float = -0.01
   area_thresh: float = 0.1
-  mosaic: Mosaic = Mosaic()
+  mosaic: Mosaic = dataclasses.field(default_factory=Mosaic)
 
 
 @dataclasses.dataclass
@@ -124,8 +128,8 @@ class DataConfig(cfg.DataConfig):
   tfds_split: str = ''
   is_training: bool = True
   dtype: str = 'float16'
-  decoder: DataDecoder = DataDecoder()
-  parser: Parser = Parser()
+  decoder: DataDecoder = dataclasses.field(default_factory=DataDecoder)
+  parser: Parser = dataclasses.field(default_factory=Parser)
   shuffle_buffer_size: int = 10000
   tfds_download: bool = True
   cache: bool = False
@@ -229,21 +233,32 @@ class AnchorBoxes(hyperparams.Config):
 class Yolo(hyperparams.Config):
   input_size: Optional[List[int]] = dataclasses.field(
       default_factory=lambda: [512, 512, 3])
-  backbone: backbones.Backbone = backbones.Backbone(
-      type='darknet', darknet=backbones.Darknet(model_id='cspdarknet53'))
-  decoder: decoders.Decoder = decoders.Decoder(
-      type='yolo_decoder',
-      yolo_decoder=decoders.YoloDecoder(version='v4', type='regular'))
-  head: YoloHead = YoloHead()
-  detection_generator: YoloDetectionGenerator = YoloDetectionGenerator()
-  loss: YoloLoss = YoloLoss()
-  norm_activation: common.NormActivation = common.NormActivation(
-      activation='mish',
-      use_sync_bn=True,
-      norm_momentum=0.99,
-      norm_epsilon=0.001)
+  backbone: backbones.Backbone = dataclasses.field(
+      default_factory=lambda: backbones.Backbone(  # pylint: disable=g-long-lambda
+          type='darknet', darknet=backbones.Darknet(model_id='cspdarknet53')
+      )
+  )
+  decoder: decoders.Decoder = dataclasses.field(
+      default_factory=lambda: decoders.Decoder(  # pylint: disable=g-long-lambda
+          type='yolo_decoder',
+          yolo_decoder=decoders.YoloDecoder(version='v4', type='regular'),
+      )
+  )
+  head: YoloHead = dataclasses.field(default_factory=YoloHead)
+  detection_generator: YoloDetectionGenerator = dataclasses.field(
+      default_factory=YoloDetectionGenerator
+  )
+  loss: YoloLoss = dataclasses.field(default_factory=YoloLoss)
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=lambda: common.NormActivation(  # pylint: disable=g-long-lambda
+          activation='mish',
+          use_sync_bn=True,
+          norm_momentum=0.99,
+          norm_epsilon=0.001,
+      )
+  )
   num_classes: int = 80
-  anchor_boxes: AnchorBoxes = AnchorBoxes()
+  anchor_boxes: AnchorBoxes = dataclasses.field(default_factory=AnchorBoxes)
   darknet_based_model: bool = False
 
 
@@ -251,9 +266,13 @@ class Yolo(hyperparams.Config):
 class YoloTask(cfg.TaskConfig):
   per_category_metrics: bool = False
   smart_bias_lr: float = 0.0
-  model: Yolo = Yolo()
-  train_data: DataConfig = DataConfig(is_training=True)
-  validation_data: DataConfig = DataConfig(is_training=False)
+  model: Yolo = dataclasses.field(default_factory=Yolo)
+  train_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=True)
+  )
+  validation_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=False)
+  )
   weight_decay: float = 0.0
   annotation_file: Optional[str] = None
   init_checkpoint: Optional[str] = None
