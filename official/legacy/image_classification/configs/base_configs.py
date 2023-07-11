@@ -112,10 +112,16 @@ class TrainConfig(hyperparams.Config):
   resume_checkpoint: bool = None
   epochs: int = None
   steps: int = None
-  callbacks: CallbacksConfig = CallbacksConfig()
+  callbacks: CallbacksConfig = dataclasses.field(
+      default_factory=CallbacksConfig
+  )
   metrics: MetricsConfig = None
-  tensorboard: TensorBoardConfig = TensorBoardConfig()
-  time_history: TimeHistoryConfig = TimeHistoryConfig()
+  tensorboard: TensorBoardConfig = dataclasses.field(
+      default_factory=TensorBoardConfig
+  )
+  time_history: TimeHistoryConfig = dataclasses.field(
+      default_factory=TimeHistoryConfig
+  )
   set_epoch_loop: bool = False
 
 
