@@ -56,4 +56,4 @@ class Backbone3D(backbones_3d.Backbone3D):
     resnet_3dy: resnet_3dy backbone config.
   """
   type: str = 'resnet_3dy'
-  resnet_3dy: ResNet3DY = ResNet3DY50()
+  resnet_3dy: ResNet3DY = dataclasses.field(default_factory=ResNet3DY50)

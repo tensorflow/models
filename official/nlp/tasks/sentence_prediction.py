@@ -42,7 +42,7 @@ class ModelConfig(base_config.Config):
   """A classifier/regressor configuration."""
   num_classes: int = 0
   use_encoder_pooler: bool = False
-  encoder: encoders.EncoderConfig = encoders.EncoderConfig()
+  encoder: encoders.EncoderConfig = dataclasses.field(default_factory=encoders.EncoderConfig)
 
 
 @dataclasses.dataclass
@@ -55,9 +55,9 @@ class SentencePredictionConfig(cfg.TaskConfig):
   hub_module_url: str = ''
   metric_type: str = 'accuracy'
   # Defines the concrete model config at instantiation time.
-  model: ModelConfig = ModelConfig()
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
+  model: ModelConfig = dataclasses.field(default_factory=ModelConfig)
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  validation_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
 
 
 @task_factory.register_task_cls(SentencePredictionConfig)
