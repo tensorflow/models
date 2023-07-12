@@ -244,7 +244,9 @@ class TrainerConfig(base_config.Config):
     preemption_on_demand_checkpoint: whether or not to save on-demand
       checkpoints after a preemption.
   """
-  optimizer_config: OptimizationConfig = OptimizationConfig()
+  optimizer_config: OptimizationConfig = dataclasses.field(
+      default_factory=OptimizationConfig
+  )
   # Orbit settings.
   train_tf_while_loop: bool = True
   train_tf_function: bool = True
@@ -284,8 +286,8 @@ class TaskConfig(base_config.Config):
   """Config passed to task."""
   init_checkpoint: str = ""
   model: Optional[base_config.Config] = None
-  train_data: DataConfig = DataConfig()
-  validation_data: DataConfig = DataConfig()
+  train_data: DataConfig = dataclasses.field(default_factory=DataConfig)
+  validation_data: DataConfig = dataclasses.field(default_factory=DataConfig)
   name: Optional[str] = None
   # Configs for differential privacy
   # These configs are only effective if you use create_optimizer in
@@ -301,6 +303,6 @@ class TaskConfig(base_config.Config):
 @dataclasses.dataclass
 class ExperimentConfig(base_config.Config):
   """Top-level configuration."""
-  task: TaskConfig = TaskConfig()
-  trainer: TrainerConfig = TrainerConfig()
-  runtime: RuntimeConfig = RuntimeConfig()
+  task: TaskConfig = dataclasses.field(default_factory=TaskConfig)
+  trainer: TrainerConfig = dataclasses.field(default_factory=TrainerConfig)
+  runtime: RuntimeConfig = dataclasses.field(default_factory=RuntimeConfig)
