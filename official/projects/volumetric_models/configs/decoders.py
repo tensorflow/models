@@ -45,5 +45,7 @@ class Decoder(hyperparams.OneOfConfig):
     unet_3d_decoder: UNet3D decoder config.
   """
   type: Optional[str] = None
-  identity: Identity = Identity()
-  unet_3d_decoder: UNet3DDecoder = UNet3DDecoder()
+  identity: Identity = dataclasses.field(default_factory=Identity)
+  unet_3d_decoder: UNet3DDecoder = dataclasses.field(
+      default_factory=UNet3DDecoder
+  )
