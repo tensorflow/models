@@ -49,9 +49,9 @@ class DataConfig(cfg.DataConfig):
     include_video_id: `True` means include video id (string) in the input to the
       model.
     temporal_stride: Not used. Need to deprecated.
-    sample_random_frames: If sample random frames.
     max_frames: Maxim Number of frames in a input example. It is used to crop
       the input in the temporal dimension.
+    sample_random_frames: If sample random frames.
     num_sample_frames: Number of frames to sample for each input example.
     num_classes: Number of classes to classify. Assuming it is a classification
       task.
@@ -75,9 +75,10 @@ class DataConfig(cfg.DataConfig):
   segment_labels: bool = False
   include_video_id: bool = False
   temporal_stride: int = 1
-  max_frames: int = 300
+  max_frames: int = 300  # Cap input frames.
   sample_random_frames: bool = True
-  num_sample_frames: int = 300  # set smaller to allow random sample (Parser)
+  # Sample random frames if not None. No sampling in inference.
+  num_sample_frames: Optional[int] = 300
   prefetch_buffer_size: int = 100
   shuffle_buffer_size: int = 100
   num_classes: int = 3862

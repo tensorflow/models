@@ -26,7 +26,6 @@ from official.projects.yt8m.configs import yt8m as yt8m_cfg
 from official.projects.yt8m.dataloaders import yt8m_input
 from official.projects.yt8m.eval_utils import eval_util
 from official.projects.yt8m.modeling import yt8m_model
-from official.projects.yt8m.modeling import yt8m_model_utils as utils
 
 
 @task_factory.register_task_cls(yt8m_cfg.YT8MTask)
@@ -238,24 +237,9 @@ class YT8MTask(base_task.Task):
                                inputs: dict[str, tf.Tensor],
                                training: bool = True):
     """Preprocesses input tensors before model on device."""
-    if training:
-      data_config = self.task_config.train_data
-    else:
-      data_config = self.task_config.validation_data
+    del training
 
-    features = inputs['video_matrix']
-    num_frames = inputs['num_frames']
-
-    # sample random frames / random sequence.
-    num_frames = tf.cast(num_frames, tf.float32)
-    num_sample_frames = data_config.num_sample_frames
-    if data_config.sample_random_frames:
-      features = utils.sample_random_frames(
-          features, num_frames, num_sample_frames)
-    else:
-      features = utils.sample_random_sequence(
-          features, num_frames, num_sample_frames)
-    return features
+    return inputs['video_matrix']
 
   def _preprocess_labels(self,
                          inputs: dict[str, tf.Tensor],
@@ -355,8 +339,8 @@ class YT8MTask(base_task.Task):
     Args:
       inputs: a dictionary of input tensors. output_dict = { "video_ids":
         batch_video_ids, "video_matrix": batch_video_matrix, "labels":
-        batch_labels, "num_frames": batch_frames, }
-      model: the model, forward definition
+        batch_labels, "num_frames": batch_frames}.
+      model: the model, forward definition.
       metrics: a nested structure of metrics objects.
 
     Returns:

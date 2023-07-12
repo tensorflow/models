@@ -105,8 +105,8 @@ def _process_segment_and_label(video_matrix, num_frames, contexts,
       batch_video_ids = tf.reshape(
           tf.tile([contexts["id"]], [num_segment]), (num_segment,))
     batch_frames = tf.reshape(
-        tf.tile([segment_size], [num_segment]), (num_segment,))
-    batch_frames = tf.cast(tf.expand_dims(batch_frames, 1), tf.float32)
+        tf.tile([segment_size], [num_segment]), (num_segment, 1))
+    batch_frames = tf.cast(batch_frames, tf.int32)
 
     # For segment labels, all labels are not exhaustively rated. So we only
     # evaluate the rated labels.
@@ -124,15 +124,17 @@ def _process_segment_and_label(video_matrix, num_frames, contexts,
         (num_segment, num_classes))
     batch_label_weights = tf.sparse.to_dense(
         sparse_label_weights, validate_indices=False)
-    # output_dict = utils.get_segments(batch_video_matrix, batch_frames, 5)
+
   else:
     # Process video-level labels.
     label_indices = contexts["labels"].values
     sparse_labels = tf.sparse.SparseTensor(
         tf.expand_dims(label_indices, axis=-1),
-        tf.ones_like(contexts["labels"].values, dtype=tf.bool), (num_classes,))
+        tf.ones_like(contexts["labels"].values, dtype=tf.float32),
+        (num_classes,),
+    )
     labels = tf.sparse.to_dense(
-        sparse_labels, default_value=False, validate_indices=False)
+        sparse_labels, validate_indices=False)
 
     # convert to batch format.
     if "id" in contexts:
@@ -173,13 +175,15 @@ def _get_video_matrix(features, feature_size, dtype, max_frames,
   """
   decoded_features = tf.reshape(features, [-1, feature_size])
 
-  num_frames = tf.math.minimum(tf.shape(decoded_features)[0], max_frames)
   if dtype.is_integer:
     feature_matrix = utils.dequantize(decoded_features, max_quantized_value,
                                       min_quantized_value)
   else:
     feature_matrix = decoded_features
-  feature_matrix = resize_axis(feature_matrix, 0, max_frames)
+
+  num_frames = tf.math.minimum(tf.shape(decoded_features)[0], max_frames)
+  feature_matrix = feature_matrix[:num_frames]
+
   return feature_matrix, num_frames
 
 
@@ -222,10 +226,7 @@ def _concat_features(features, feature_names, feature_sizes, feature_dtypes,
       num_frames = num_frames_in_this_feature
     feature_matrices[i] = feature_matrix
 
-  # cap the number of frames at self.max_frames
-  num_frames = tf.minimum(num_frames, max_frames)
-
-  # concatenate different features
+  # Concatenate different features.
   video_matrix = tf.concat(feature_matrices, 1)
 
   return video_matrix, num_frames
@@ -305,7 +306,8 @@ class Decoder(decoder.Decoder):
       if self._feature_from_bytes[i]:
         dtype = tf.dtypes.as_dtype(self._feature_dtypes[i])
         decoded_tensor[name] = tf.cast(
-            tf.io.decode_raw(decoded_tensor[name], dtype), tf.float32),
+            tf.io.decode_raw(decoded_tensor[name], out_type=dtype), tf.float32
+        )
       else:
         if isinstance(decoded_tensor[name], tf.SparseTensor):
           decoded_tensor[name] = tf.sparse.to_dense(decoded_tensor[name])
@@ -337,34 +339,50 @@ class Parser(parser.Parser):
     self._feature_sizes = input_params.feature_sizes
     self._feature_dtypes = input_params.feature_dtypes
     self._max_frames = input_params.max_frames
+    self._sample_random_frames = input_params.sample_random_frames
+    self._num_sample_frames = input_params.num_sample_frames
     self._max_quantized_value = max_quantized_value
     self._min_quantized_value = min_quantized_value
 
   def _parse_train_data(self, decoded_tensors):
     """Parses data for training."""
     # loads (potentially) different types of features and concatenates them
-    self.video_matrix, self.num_frames = _concat_features(
+    video_matrix, num_frames = _concat_features(
         decoded_tensors, self._feature_names, self._feature_sizes,
         self._feature_dtypes, self._max_frames, self._max_quantized_value,
         self._min_quantized_value)
     if not self._include_video_id and "id" in decoded_tensors:
       del decoded_tensors["id"]
 
-    return self._process_label(self.video_matrix, self.num_frames,
-                               decoded_tensors)
+    outputs = self._process_label(video_matrix, num_frames, decoded_tensors)
+    if self._num_sample_frames is not None:
+      outputs["video_matrix"] = utils.sample_video_frames(
+          outputs["video_matrix"],
+          tf.reshape(outputs["num_frames"], [-1, 1]),
+          random_frames=self._sample_random_frames,
+          num_sample_frames=self._num_sample_frames,
+      )
+    return outputs
 
   def _parse_eval_data(self, decoded_tensors):
     """Parses data for evaluation."""
     # loads (potentially) different types of features and concatenates them
-    self.video_matrix, self.num_frames = _concat_features(
+    video_matrix, num_frames = _concat_features(
         decoded_tensors, self._feature_names, self._feature_sizes,
         self._feature_dtypes, self._max_frames, self._max_quantized_value,
         self._min_quantized_value)
     if not self._include_video_id and "id" in decoded_tensors:
       del decoded_tensors["id"]
 
-    return self._process_label(self.video_matrix, self.num_frames,
-                               decoded_tensors)
+    outputs = self._process_label(video_matrix, num_frames, decoded_tensors)
+    if self._num_sample_frames is not None:
+      outputs["video_matrix"] = utils.sample_video_frames(
+          outputs["video_matrix"],
+          tf.reshape(outputs["num_frames"], [-1, 1]),
+          random_frames=self._sample_random_frames,
+          num_sample_frames=self._num_sample_frames,
+      )
+    return outputs
 
   def _process_label(self, video_matrix, num_frames, contexts):
     """Processes a batched Tensor of frames.
@@ -442,31 +460,21 @@ class TransformBatcher():
     """Add padding when segment_labels is true."""
     per_replica_batch_size = input_context.get_per_replica_batch_size(
         self._global_batch_size) if input_context else self._global_batch_size
-    if not self._segment_labels:
-      dataset = dataset.batch(
-          per_replica_batch_size, drop_remainder=self._drop_remainder)
-    else:
-      # add padding
-      pad_shapes = {
-          "video_matrix": [None, None, None],
-          "labels": [None, None],
-          "num_frames": [None, None],
-          "label_weights": [None, None]
-      }
-      pad_values = {
-          "video_matrix": 0.0,
-          "labels": -1.0,
-          "num_frames": 0.0,
-          "label_weights": 0.0
-      }
-      if self._include_video_id:
-        pad_shapes["video_ids"] = [None]
-        pad_values["video_ids"] = None
-      dataset = dataset.padded_batch(
-          per_replica_batch_size,
-          padded_shapes=pad_shapes,
-          drop_remainder=self._drop_remainder,
-          padding_values=pad_values)
+    # Add padding specifications.
+    pad_values = {
+        "video_matrix": 0.0,
+        "labels": -1.0,
+        "num_frames": 0,
+    }
+    if self._include_video_id:
+      pad_values["video_ids"] = None
+    if self._segment_labels:
+      pad_values["label_weights"] = 0.0
+    dataset = dataset.padded_batch(
+        per_replica_batch_size,
+        padding_values=pad_values,
+        drop_remainder=self._drop_remainder,
+    )
     return dataset
 
 
@@ -476,7 +484,7 @@ class PostBatchProcessor():
   def __init__(self, input_params: exp_cfg.DataConfig):
     self.segment_labels = input_params.segment_labels
     self.num_classes = input_params.num_classes
-    self.segment_size = input_params.segment_size
+    self.num_sample_frames = input_params.num_sample_frames
     self.num_features = sum(input_params.feature_sizes)
 
   def post_fn(self, batched_tensors: Dict[str,
@@ -488,12 +496,12 @@ class PostBatchProcessor():
     num_frames = batched_tensors["num_frames"]
 
     if self.segment_labels:
-      # [batch x num_segment x segment_size x num_features]
-      # -> [batch * num_segment x segment_size x num_features]
+      # [batch x num_segment x num_sample_frames x num_features]
+      # -> [batch * num_segment x num_sample_frames x num_features]
       if video_ids is not None:
         video_ids = tf.reshape(video_ids, [-1])
       video_matrix = tf.reshape(video_matrix,
-                                [-1, self.segment_size, self.num_features])
+                                [-1, self.num_sample_frames, self.num_features])
       labels = tf.reshape(labels, [-1, self.num_classes])
       num_frames = tf.reshape(num_frames, [-1, 1])
       batched_tensors["label_weights"] = tf.reshape(
