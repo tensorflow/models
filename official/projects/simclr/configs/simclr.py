@@ -55,8 +55,8 @@ class DataConfig(cfg.DataConfig):
   shuffle_buffer_size: int = 10000
   cycle_length: int = 10
   # simclr specific configs
-  parser: Parser = Parser()
-  decoder: Decoder = Decoder()
+  parser: Parser = dataclasses.field(default_factory=Parser)
+  decoder: Decoder = dataclasses.field(default_factory=Decoder)
   # Useful when doing a sanity check that we absolutely use no labels while
   # pretrain by setting labels to zeros (default = False, keep original labels)
   input_set_label_to_zero: bool = False
@@ -99,13 +99,24 @@ class Evaluation(hyperparams.Config):
 class SimCLRModel(hyperparams.Config):
   """SimCLR model config."""
   input_size: List[int] = dataclasses.field(default_factory=list)
-  backbone: backbones.Backbone = backbones.Backbone(
-      type='resnet', resnet=backbones.ResNet())
-  projection_head: ProjectionHead = ProjectionHead(
-      proj_output_dim=128, num_proj_layers=3, ft_proj_idx=1)
-  supervised_head: SupervisedHead = SupervisedHead(num_classes=1001)
-  norm_activation: common.NormActivation = common.NormActivation(
-      norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)
+  backbone: backbones.Backbone = dataclasses.field(
+      default_factory=lambda: backbones.Backbone(  # pylint: disable=g-long-lambda
+          type='resnet', resnet=backbones.ResNet()
+      )
+  )
+  projection_head: ProjectionHead = dataclasses.field(
+      default_factory=lambda: ProjectionHead(  # pylint: disable=g-long-lambda
+          proj_output_dim=128, num_proj_layers=3, ft_proj_idx=1
+      )
+  )
+  supervised_head: SupervisedHead = dataclasses.field(
+      default_factory=lambda: SupervisedHead(num_classes=1001)
+  )
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=lambda: common.NormActivation(  # pylint: disable=g-long-lambda
+          norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False
+      )
+  )
   mode: str = simclr_model.PRETRAIN
   backbone_trainable: bool = True
 
@@ -113,13 +124,21 @@ class SimCLRModel(hyperparams.Config):
 @dataclasses.dataclass
 class SimCLRPretrainTask(cfg.TaskConfig):
   """SimCLR pretraining task config."""
-  model: SimCLRModel = SimCLRModel(mode=simclr_model.PRETRAIN)
-  train_data: DataConfig = DataConfig(
-      parser=Parser(mode=simclr_model.PRETRAIN), is_training=True)
-  validation_data: DataConfig = DataConfig(
-      parser=Parser(mode=simclr_model.PRETRAIN), is_training=False)
-  loss: ContrastiveLoss = ContrastiveLoss()
-  evaluation: Evaluation = Evaluation()
+  model: SimCLRModel = dataclasses.field(
+      default_factory=lambda: SimCLRModel(mode=simclr_model.PRETRAIN)
+  )
+  train_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(  # pylint: disable=g-long-lambda
+          parser=Parser(mode=simclr_model.PRETRAIN), is_training=True
+      )
+  )
+  validation_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(  # pylint: disable=g-long-lambda
+          parser=Parser(mode=simclr_model.PRETRAIN), is_training=False
+      )
+  )
+  loss: ContrastiveLoss = dataclasses.field(default_factory=ContrastiveLoss)
+  evaluation: Evaluation = dataclasses.field(default_factory=Evaluation)
   init_checkpoint: Optional[str] = None
   # all or backbone
   init_checkpoint_modules: str = 'all'
@@ -128,15 +147,26 @@ class SimCLRPretrainTask(cfg.TaskConfig):
 @dataclasses.dataclass
 class SimCLRFinetuneTask(cfg.TaskConfig):
   """SimCLR fine tune task config."""
-  model: SimCLRModel = SimCLRModel(
-      mode=simclr_model.FINETUNE,
-      supervised_head=SupervisedHead(num_classes=1001, zero_init=True))
-  train_data: DataConfig = DataConfig(
-      parser=Parser(mode=simclr_model.FINETUNE), is_training=True)
-  validation_data: DataConfig = DataConfig(
-      parser=Parser(mode=simclr_model.FINETUNE), is_training=False)
-  loss: ClassificationLosses = ClassificationLosses()
-  evaluation: Evaluation = Evaluation()
+  model: SimCLRModel = dataclasses.field(
+      default_factory=lambda: SimCLRModel(  # pylint: disable=g-long-lambda
+          mode=simclr_model.FINETUNE,
+          supervised_head=SupervisedHead(num_classes=1001, zero_init=True),
+      )
+  )
+  train_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(  # pylint: disable=g-long-lambda
+          parser=Parser(mode=simclr_model.FINETUNE), is_training=True
+      )
+  )
+  validation_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(  # pylint: disable=g-long-lambda
+          parser=Parser(mode=simclr_model.FINETUNE), is_training=False
+      )
+  )
+  loss: ClassificationLosses = dataclasses.field(
+      default_factory=ClassificationLosses
+  )
+  evaluation: Evaluation = dataclasses.field(default_factory=Evaluation)
   init_checkpoint: Optional[str] = None
   # all, backbone_projection or backbone
   init_checkpoint_modules: str = 'backbone_projection'

@@ -66,8 +66,8 @@ class DataConfig(cfg.DataConfig):
   global_batch_size: int = 0
   is_training: bool = False
   dtype: str = 'float32'
-  decoder: DataDecoder = DataDecoder()
-  parser: DataParser = DataParser()
+  decoder: DataDecoder = dataclasses.field(default_factory=DataDecoder)
+  parser: DataParser = dataclasses.field(default_factory=DataParser)
   shuffle_buffer_size: int = 256
   prefetch_buffer_size: int = 256
   file_type: str = 'tfrecord_compressed'
@@ -143,19 +143,25 @@ class PointPillarsModel(hyperparams.Config):
   """The model config. Used by build_example_model function."""
   classes: str = 'all'
   num_classes: int = 4
-  image: ImageConfig = ImageConfig()
-  pillars: PillarsConfig = PillarsConfig()
+  image: ImageConfig = dataclasses.field(default_factory=ImageConfig)
+  pillars: PillarsConfig = dataclasses.field(default_factory=PillarsConfig)
   anchors: List[Anchor] = dataclasses.field(default_factory=list)
-  anchor_labeler: AnchorLabeler = AnchorLabeler()
+  anchor_labeler: AnchorLabeler = dataclasses.field(
+      default_factory=AnchorLabeler
+  )
 
   min_level: int = 1
   max_level: int = 3
-  featurizer: Featurizer = Featurizer()
-  backbone: Backbone = Backbone()
-  decoder: Decoder = Decoder()
-  head: SSDHead = SSDHead()
-  detection_generator: DetectionGenerator = DetectionGenerator()
-  norm_activation: common.NormActivation = common.NormActivation()
+  featurizer: Featurizer = dataclasses.field(default_factory=Featurizer)
+  backbone: Backbone = dataclasses.field(default_factory=Backbone)
+  decoder: Decoder = dataclasses.field(default_factory=Decoder)
+  head: SSDHead = dataclasses.field(default_factory=SSDHead)
+  detection_generator: DetectionGenerator = dataclasses.field(
+      default_factory=DetectionGenerator
+  )
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=common.NormActivation
+  )
 
 
 @dataclasses.dataclass
@@ -172,11 +178,17 @@ class Losses(hyperparams.Config):
 @dataclasses.dataclass
 class PointPillarsTask(cfg.TaskConfig):
   """The task config."""
-  model: PointPillarsModel = PointPillarsModel()
+  model: PointPillarsModel = dataclasses.field(
+      default_factory=PointPillarsModel
+  )
   use_raw_data: bool = False
-  train_data: DataConfig = DataConfig(is_training=True)
-  validation_data: DataConfig = DataConfig(is_training=False)
-  losses: Losses = Losses()
+  train_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=True)
+  )
+  validation_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=False)
+  )
+  losses: Losses = dataclasses.field(default_factory=Losses)
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: Union[str, List[str]] = 'all'
   use_wod_metrics: bool = True

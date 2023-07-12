@@ -117,7 +117,7 @@ class DecoderConfig(base_config.Config):
 @dataclasses.dataclass
 class PositionalDecoder(base_config.Config):
   d_model: int = 768
-  decoder: DecoderConfig = DecoderConfig()
+  decoder: DecoderConfig = dataclasses.field(default_factory=DecoderConfig)
   position_encoding_intializer_stddev: float = 0.02
   output_index_dim: int = 512
   d_latents: int = 1280
@@ -147,14 +147,18 @@ class SequenceEncoderConfig(base_config.Config):
   input_position_encoding_intializer_stddev: float = 0.02
   z_pos_enc_init_scale: float = 0.02
 
-  encoder: EncoderConfig = EncoderConfig()
+  encoder: EncoderConfig = dataclasses.field(default_factory=EncoderConfig)
 
 
 @dataclasses.dataclass
 class PretrainerConfig(base_config.Config):
   """The pretrainer configuration."""
-  encoder: SequenceEncoderConfig = SequenceEncoderConfig()
-  decoder: MaskedLMDecoderConfig = MaskedLMDecoderConfig()
+  encoder: SequenceEncoderConfig = dataclasses.field(
+      default_factory=SequenceEncoderConfig
+  )
+  decoder: MaskedLMDecoderConfig = dataclasses.field(
+      default_factory=MaskedLMDecoderConfig
+  )
 
   mlm_activation: str = 'gelu'
   mlm_initializer_range: float = 0.02
@@ -165,15 +169,21 @@ class ClassificationConfig(base_config.Config):
   """The classification configuration."""
   num_classes: int = 0
   use_encoder_pooler: bool = False
-  encoder: SequenceEncoderConfig = SequenceEncoderConfig()
-  decoder: ClassificationDecoderConfig = ClassificationDecoderConfig()
+  encoder: SequenceEncoderConfig = dataclasses.field(
+      default_factory=SequenceEncoderConfig
+  )
+  decoder: ClassificationDecoderConfig = dataclasses.field(
+      default_factory=ClassificationDecoderConfig
+  )
 
 
 @dataclasses.dataclass
 class SentencePredictionConfig(cfg.TaskConfig):
   """The sentence prediction task config."""
 
-  model: ClassificationConfig = ClassificationConfig()
+  model: ClassificationConfig = dataclasses.field(
+      default_factory=ClassificationConfig
+  )
 
   hub_module_url: str = ''
   init_checkpoint: str = ''
@@ -181,21 +191,25 @@ class SentencePredictionConfig(cfg.TaskConfig):
 
   metric_type: str = 'accuracy'
 
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  validation_data: cfg.DataConfig = dataclasses.field(
+      default_factory=cfg.DataConfig
+  )
 
 
 @dataclasses.dataclass
 class PretrainConfig(cfg.TaskConfig):
   """The word piece pretrain task config."""
 
-  model: PretrainerConfig = PretrainerConfig()
+  model: PretrainerConfig = dataclasses.field(default_factory=PretrainerConfig)
   init_checkpoint: str = ''
 
   scale_loss: bool = False
 
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  validation_data: cfg.DataConfig = dataclasses.field(
+      default_factory=cfg.DataConfig
+  )
 
 
 @exp_factory.register_config_factory('perceiver/word_piece_sentence_prediction')

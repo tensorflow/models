@@ -32,8 +32,10 @@ from official.vision.ops import augment
 class ViTConfig(cfg.TaskConfig):
   """The translation task config."""
 
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  validation_data: cfg.DataConfig = dataclasses.field(
+      default_factory=cfg.DataConfig
+  )
   patch_h: int = 14
   patch_w: int = 14
   num_classes: int = 1000
