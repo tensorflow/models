@@ -48,8 +48,9 @@ class ModelConfig(base_config.Config):
   # Defining k for calculating metrics recall@k.
   eval_top_k: Tuple[int, ...] = (1, 3, 10)
 
-  encoder: encoders.EncoderConfig = (
-      encoders.EncoderConfig())
+  encoder: encoders.EncoderConfig = dataclasses.field(
+      default_factory=encoders.EncoderConfig
+  )
 
 
 @dataclasses.dataclass
@@ -60,9 +61,11 @@ class DualEncoderConfig(cfg.TaskConfig):
   init_checkpoint: str = ''
   hub_module_url: str = ''
   # Defines the concrete model config at instantiation time.
-  model: ModelConfig = ModelConfig()
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
+  model: ModelConfig = dataclasses.field(default_factory=ModelConfig)
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  validation_data: cfg.DataConfig = dataclasses.field(
+      default_factory=cfg.DataConfig
+  )
 
 
 @task_factory.register_task_cls(DualEncoderConfig)

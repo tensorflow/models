@@ -32,4 +32,4 @@ class Hourglass(hyperparams.Config):
 
 @dataclasses.dataclass
 class Backbone(backbones.Backbone):
-  hourglass: Hourglass = Hourglass()
+  hourglass: Hourglass = dataclasses.field(default_factory=Hourglass)
