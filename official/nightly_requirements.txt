@@ -26,3 +26,6 @@ sentencepiece
 sacrebleu
 # Projects/vit dependencies
 immutabledict
+# Fix CI
+wrapt>=1.11.0,<1.15
+
