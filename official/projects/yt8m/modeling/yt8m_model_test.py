@@ -38,9 +38,10 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
 
     num_classes = 3862
     model = yt8m_model.VideoClassificationModel(
-        params=yt8m_cfg.YT8MTask.model,
+        params=yt8m_cfg.YT8MTask().model,
         num_classes=num_classes,
-        input_specs=input_specs)
+        input_specs=input_specs,
+    )
 
     # batch = 2 -> arbitrary value for test.
     inputs = np.random.rand(2, num_frames, feature_dims)
@@ -48,7 +49,9 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual([2, num_classes], predictions.numpy().shape)
 
   def test_serialize_deserialize(self):
-    model = yt8m_model.VideoClassificationModel(params=yt8m_cfg.YT8MTask.model)
+    model = yt8m_model.VideoClassificationModel(
+        params=yt8m_cfg.YT8MTask().model
+    )
 
     config = model.get_config()
     new_model = yt8m_model.VideoClassificationModel.from_config(config)

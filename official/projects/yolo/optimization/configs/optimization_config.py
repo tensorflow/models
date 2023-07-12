@@ -38,7 +38,9 @@ class OptimizerConfig(optimization_cfg.OptimizerConfig):
     rmsprop: rmsprop optimizer.
   """
   type: Optional[str] = None
-  sgd_torch: opt_cfg.SGDTorchConfig = opt_cfg.SGDTorchConfig()
+  sgd_torch: opt_cfg.SGDTorchConfig = dataclasses.field(
+      default_factory=opt_cfg.SGDTorchConfig
+  )
 
 
 @dataclasses.dataclass
@@ -53,4 +55,6 @@ class OptimizationConfig(optimization_cfg.OptimizationConfig):
     warmup: warmup oneof config.
   """
   type: Optional[str] = None
-  optimizer: OptimizerConfig = OptimizerConfig()
+  optimizer: OptimizerConfig = dataclasses.field(
+      default_factory=OptimizerConfig
+  )

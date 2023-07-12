@@ -123,7 +123,7 @@ class Backbone(hyperparams.OneOfConfig):
     dbof: dbof backbone config.
   """
   type: Optional[str] = None
-  dbof: DbofModel = DbofModel()
+  dbof: DbofModel = dataclasses.field(default_factory=DbofModel)
 
 
 @dataclasses.dataclass
@@ -152,17 +152,22 @@ class Head(hyperparams.OneOfConfig):
     logistic: Logistic head config.
   """
   type: Optional[str] = None
-  moe: MoeModel = MoeModel()
-  logistic: LogisticModel = LogisticModel()
+  moe: MoeModel = dataclasses.field(default_factory=MoeModel)
+  logistic: LogisticModel = dataclasses.field(default_factory=LogisticModel)
 
 
 @dataclasses.dataclass
 class VideoClassificationModel(hyperparams.Config):
   """The classifier model config."""
-  backbone: Backbone = Backbone(type='dbof')
-  head: Head = Head(type='moe')
-  norm_activation: common.NormActivation = common.NormActivation(
-      activation='relu', use_sync_bn=False)
+  backbone: Backbone = dataclasses.field(
+      default_factory=lambda: Backbone(type='dbof')
+  )
+  head: Head = dataclasses.field(default_factory=lambda: Head(type='moe'))
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=lambda: common.NormActivation(  # pylint: disable=g-long-lambda
+          activation='relu', use_sync_bn=False
+      )
+  )
 
 
 @dataclasses.dataclass
@@ -188,12 +193,21 @@ class Evaluation(hyperparams.Config):
 @dataclasses.dataclass
 class YT8MTask(cfg.TaskConfig):
   """The task config."""
-  model: VideoClassificationModel = VideoClassificationModel()
-  train_data: DataConfig = yt8m(is_training=True)
-  validation_data: DataConfig = yt8m(is_training=False)
-  losses: Losses = Losses()
-  evaluation: Evaluation = Evaluation(
-      average_precision=AveragePrecisionConfig())
+  model: VideoClassificationModel = dataclasses.field(
+      default_factory=VideoClassificationModel
+  )
+  train_data: DataConfig = dataclasses.field(
+      default_factory=lambda: yt8m(is_training=True)
+  )
+  validation_data: DataConfig = dataclasses.field(
+      default_factory=lambda: yt8m(is_training=False)
+  )
+  losses: Losses = dataclasses.field(default_factory=Losses)
+  evaluation: Evaluation = dataclasses.field(
+      default_factory=lambda: Evaluation(  # pylint: disable=g-long-lambda
+          average_precision=AveragePrecisionConfig()
+      )
+  )
   gradient_clip_norm: float = 1.0
 
 

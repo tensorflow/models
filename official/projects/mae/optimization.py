@@ -34,7 +34,7 @@ class ViTAdamWConfig(optimization.AdamWeightDecayConfig):
 
 @dataclasses.dataclass
 class OptimizerConfig(optimization.OptimizerConfig):
-  vit_adamw: ViTAdamWConfig = ViTAdamWConfig()
+  vit_adamw: ViTAdamWConfig = dataclasses.field(default_factory=ViTAdamWConfig)
 
 
 @dataclasses.dataclass
@@ -48,7 +48,9 @@ class OptimizationConfig(optimization.OptimizationConfig):
     learning_rate: learning rate oneof config.
     warmup: warmup oneof config.
   """
-  optimizer: OptimizerConfig = OptimizerConfig()
+  optimizer: OptimizerConfig = dataclasses.field(
+      default_factory=OptimizerConfig
+  )
 
 
 # TODO(frederickliu): figure out how to make this configuable.

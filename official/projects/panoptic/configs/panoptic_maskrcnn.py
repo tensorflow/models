@@ -69,14 +69,16 @@ class TfExampleDecoder(common.TfExampleDecoder):
 @dataclasses.dataclass
 class DataDecoder(common.DataDecoder):
   """Data decoder config."""
-  simple_decoder: TfExampleDecoder = TfExampleDecoder()
+  simple_decoder: TfExampleDecoder = dataclasses.field(
+      default_factory=TfExampleDecoder
+  )
 
 
 @dataclasses.dataclass
 class DataConfig(maskrcnn.DataConfig):
   """Input config for training."""
-  decoder: DataDecoder = DataDecoder()
-  parser: Parser = Parser()
+  decoder: DataDecoder = dataclasses.field(default_factory=DataDecoder)
+  parser: Parser = dataclasses.field(default_factory=Parser)
 
 
 @dataclasses.dataclass
@@ -103,20 +105,28 @@ class Backbone(backbones.Backbone):
     uvit: uvit backbone config.
   """
   type: Optional[str] = None
-  uvit: uvit_backbones.VisionTransformer = uvit_backbones.VisionTransformer()
+  uvit: uvit_backbones.VisionTransformer = dataclasses.field(
+      default_factory=uvit_backbones.VisionTransformer
+  )
 
 
 @dataclasses.dataclass
 class PanopticMaskRCNN(deepmac_maskrcnn.DeepMaskHeadRCNN):
   """Panoptic Mask R-CNN model config."""
-  backbone: Backbone = Backbone(type='resnet', resnet=backbones.ResNet())
-  segmentation_model: SEGMENTATION_MODEL = SEGMENTATION_MODEL(num_classes=2)
+  backbone: Backbone = dataclasses.field(
+      default_factory=lambda: Backbone(type='resnet', resnet=backbones.ResNet())
+  )
+  segmentation_model: SEGMENTATION_MODEL = dataclasses.field(
+      default_factory=lambda: SEGMENTATION_MODEL(num_classes=2)
+  )
   include_mask: bool = True
   shared_backbone: bool = True
   shared_decoder: bool = True
   stuff_classes_offset: int = 0
   generate_panoptic_masks: bool = True
-  panoptic_segmentation_generator: PanopticSegmentationGenerator = PanopticSegmentationGenerator()  # pylint:disable=line-too-long
+  panoptic_segmentation_generator: PanopticSegmentationGenerator = (
+      dataclasses.field(default_factory=PanopticSegmentationGenerator)
+  )
 
 
 @dataclasses.dataclass
@@ -152,12 +162,19 @@ class PanopticQualityEvaluator(hyperparams.Config):
 @dataclasses.dataclass
 class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   """Panoptic Mask R-CNN task config."""
-  model: PanopticMaskRCNN = PanopticMaskRCNN()
-  train_data: DataConfig = DataConfig(is_training=True)
-  validation_data: DataConfig = DataConfig(is_training=False,
-                                           drop_remainder=False)
-  segmentation_evaluation: semantic_segmentation.Evaluation = semantic_segmentation.Evaluation()  # pylint: disable=line-too-long
-  losses: Losses = Losses()
+  model: PanopticMaskRCNN = dataclasses.field(default_factory=PanopticMaskRCNN)
+  train_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=True)
+  )
+  validation_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(  # pylint: disable=g-long-lambda
+          is_training=False, drop_remainder=False
+      )
+  )
+  segmentation_evaluation: semantic_segmentation.Evaluation = dataclasses.field(
+      default_factory=semantic_segmentation.Evaluation
+  )
+  losses: Losses = dataclasses.field(default_factory=Losses)
   init_checkpoint: Optional[str] = None
   segmentation_init_checkpoint: Optional[str] = None
 
@@ -170,7 +187,9 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   # 'all': Initialize all modules
   init_checkpoint_modules: Optional[List[str]] = dataclasses.field(
       default_factory=list)
-  panoptic_quality_evaluator: PanopticQualityEvaluator = PanopticQualityEvaluator()  # pylint: disable=line-too-long
+  panoptic_quality_evaluator: PanopticQualityEvaluator = dataclasses.field(
+      default_factory=PanopticQualityEvaluator
+  )
 
 
 @exp_factory.register_config_factory('panoptic_fpn_coco')

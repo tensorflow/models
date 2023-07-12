@@ -73,22 +73,34 @@ class PretrainDistillConfig(base_config.Config):
 class BertDistillationProgressiveConfig(policies.ProgressiveConfig):
   """Defines the specific distillation behavior."""
   if_copy_embeddings: bool = True
-  layer_wise_distill_config: LayerWiseDistillConfig = LayerWiseDistillConfig()
-  pretrain_distill_config: PretrainDistillConfig = PretrainDistillConfig()
+  layer_wise_distill_config: LayerWiseDistillConfig = dataclasses.field(
+      default_factory=LayerWiseDistillConfig
+  )
+  pretrain_distill_config: PretrainDistillConfig = dataclasses.field(
+      default_factory=PretrainDistillConfig
+  )
 
 
 @dataclasses.dataclass
 class BertDistillationTaskConfig(cfg.TaskConfig):
   """Defines the teacher/student model architecture and training data."""
-  teacher_model: bert.PretrainerConfig = bert.PretrainerConfig(
-      encoder=encoders.EncoderConfig(type='mobilebert'))
+  teacher_model: bert.PretrainerConfig = dataclasses.field(
+      default_factory=lambda: bert.PretrainerConfig(  # pylint: disable=g-long-lambda
+          encoder=encoders.EncoderConfig(type='mobilebert')
+      )
+  )
 
-  student_model: bert.PretrainerConfig = bert.PretrainerConfig(
-      encoder=encoders.EncoderConfig(type='mobilebert'))
+  student_model: bert.PretrainerConfig = dataclasses.field(
+      default_factory=lambda: bert.PretrainerConfig(  # pylint: disable=g-long-lambda
+          encoder=encoders.EncoderConfig(type='mobilebert')
+      )
+  )
   # The path to the teacher model checkpoint or its directory.
   teacher_model_init_checkpoint: str = ''
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  validation_data: cfg.DataConfig = dataclasses.field(
+      default_factory=cfg.DataConfig
+  )
 
 
 def build_sub_encoder(encoder, target_layer_id):

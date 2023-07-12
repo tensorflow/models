@@ -91,4 +91,4 @@ class MaxViT(hyperparams.Config):
 class Backbone(backbones.Backbone):
   """Configuration for backbones."""
   type: Optional[str] = 'maxvit'
-  maxvit: MaxViT = MaxViT()
+  maxvit: MaxViT = dataclasses.field(default_factory=MaxViT)
