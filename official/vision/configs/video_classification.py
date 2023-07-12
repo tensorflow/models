@@ -118,10 +118,14 @@ def kinetics700_2020(is_training):
 class VideoClassificationModel(hyperparams.Config):
   """The model config."""
   model_type: str = 'video_classification'
-  backbone: backbones_3d.Backbone3D = backbones_3d.Backbone3D(
-      type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50())
-  norm_activation: common.NormActivation = common.NormActivation(
-      use_sync_bn=False)
+  backbone: backbones_3d.Backbone3D = dataclasses.field(
+      default_factory=lambda: backbones_3d.Backbone3D(  # pylint: disable=g-long-lambda
+          type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50()
+      )
+  )
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=lambda: common.NormActivation(use_sync_bn=False)
+  )
   dropout_rate: float = 0.2
   aggregate_endpoints: bool = False
   require_endpoints: Optional[Tuple[str, ...]] = None
@@ -142,12 +146,19 @@ class Metrics(hyperparams.Config):
 @dataclasses.dataclass
 class VideoClassificationTask(cfg.TaskConfig):
   """The task config."""
-  model: VideoClassificationModel = VideoClassificationModel()
-  train_data: DataConfig = DataConfig(is_training=True, drop_remainder=True)
-  validation_data: DataConfig = DataConfig(
-      is_training=False, drop_remainder=False)
-  losses: Losses = Losses()
-  metrics: Metrics = Metrics()
+  model: VideoClassificationModel = dataclasses.field(
+      default_factory=VideoClassificationModel
+  )
+  train_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=True, drop_remainder=True)
+  )
+  validation_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(  # pylint: disable=g-long-lambda
+          is_training=False, drop_remainder=False
+      )
+  )
+  losses: Losses = dataclasses.field(default_factory=Losses)
+  metrics: Metrics = dataclasses.field(default_factory=Metrics)
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: str = 'all'  # all or backbone
   freeze_backbone: bool = False

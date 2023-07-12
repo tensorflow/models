@@ -39,7 +39,7 @@ class VisionTransformer(hyperparams.Config):
   representation_size: int = 0
   hidden_size: int = 1
   patch_size: int = 16
-  transformer: Transformer = Transformer()
+  transformer: Transformer = dataclasses.field(default_factory=Transformer)
   init_stochastic_depth_rate: float = 0.0
   original_init: bool = True
   pos_embed_shape: Optional[Tuple[int, int]] = None
@@ -156,12 +156,16 @@ class Backbone(hyperparams.OneOfConfig):
     vit: vision transformer backbone config.
   """
   type: Optional[str] = None
-  resnet: ResNet = ResNet()
-  dilated_resnet: DilatedResNet = DilatedResNet()
-  revnet: RevNet = RevNet()
-  efficientnet: EfficientNet = EfficientNet()
-  spinenet: SpineNet = SpineNet()
-  spinenet_mobile: SpineNetMobile = SpineNetMobile()
-  mobilenet: MobileNet = MobileNet()
-  mobiledet: MobileDet = MobileDet()
-  vit: VisionTransformer = VisionTransformer()
+  resnet: ResNet = dataclasses.field(default_factory=ResNet)
+  dilated_resnet: DilatedResNet = dataclasses.field(
+      default_factory=DilatedResNet
+  )
+  revnet: RevNet = dataclasses.field(default_factory=RevNet)
+  efficientnet: EfficientNet = dataclasses.field(default_factory=EfficientNet)
+  spinenet: SpineNet = dataclasses.field(default_factory=SpineNet)
+  spinenet_mobile: SpineNetMobile = dataclasses.field(
+      default_factory=SpineNetMobile
+  )
+  mobilenet: MobileNet = dataclasses.field(default_factory=MobileNet)
+  mobiledet: MobileDet = dataclasses.field(default_factory=MobileDet)
+  vit: VisionTransformer = dataclasses.field(default_factory=VisionTransformer)
