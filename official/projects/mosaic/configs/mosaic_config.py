@@ -64,23 +64,37 @@ class MosaicSemanticSegmentationModel(hyperparams.Config):
   """MOSAIC semantic segmentation model config."""
   num_classes: int = 19
   input_size: List[int] = dataclasses.field(default_factory=list)
-  head: MosaicDecoderHead = MosaicDecoderHead()
-  backbone: backbones.Backbone = backbones.Backbone(
-      type='mobilenet', mobilenet=backbones.MobileNet())
-  neck: MosaicEncoderNeck = MosaicEncoderNeck()
+  head: MosaicDecoderHead = dataclasses.field(default_factory=MosaicDecoderHead)
+  backbone: backbones.Backbone = dataclasses.field(
+      default_factory=lambda: backbones.Backbone(  # pylint: disable=g-long-lambda
+          type='mobilenet', mobilenet=backbones.MobileNet()
+      )
+  )
+  neck: MosaicEncoderNeck = dataclasses.field(default_factory=MosaicEncoderNeck)
   mask_scoring_head: Optional[seg_cfg.MaskScoringHead] = None
-  norm_activation: common.NormActivation = common.NormActivation(
-      use_sync_bn=True, norm_momentum=0.99, norm_epsilon=0.001)
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=lambda: common.NormActivation(  # pylint: disable=g-long-lambda
+          use_sync_bn=True, norm_momentum=0.99, norm_epsilon=0.001
+      )
+  )
 
 
 @dataclasses.dataclass
 class MosaicSemanticSegmentationTask(seg_cfg.SemanticSegmentationTask):
   """The config for MOSAIC segmentation task."""
-  model: MosaicSemanticSegmentationModel = MosaicSemanticSegmentationModel()
-  train_data: seg_cfg.DataConfig = seg_cfg.DataConfig(is_training=True)
-  validation_data: seg_cfg.DataConfig = seg_cfg.DataConfig(is_training=False)
-  losses: seg_cfg.Losses = seg_cfg.Losses()
-  evaluation: seg_cfg.Evaluation = seg_cfg.Evaluation()
+  model: MosaicSemanticSegmentationModel = dataclasses.field(
+      default_factory=MosaicSemanticSegmentationModel
+  )
+  train_data: seg_cfg.DataConfig = dataclasses.field(
+      default_factory=lambda: seg_cfg.DataConfig(is_training=True)
+  )
+  validation_data: seg_cfg.DataConfig = dataclasses.field(
+      default_factory=lambda: seg_cfg.DataConfig(is_training=False)
+  )
+  losses: seg_cfg.Losses = dataclasses.field(default_factory=seg_cfg.Losses)
+  evaluation: seg_cfg.Evaluation = dataclasses.field(
+      default_factory=seg_cfg.Evaluation
+  )
   train_input_partition_dims: List[int] = dataclasses.field(
       default_factory=list)
   eval_input_partition_dims: List[int] = dataclasses.field(
@@ -88,7 +102,9 @@ class MosaicSemanticSegmentationTask(seg_cfg.SemanticSegmentationTask):
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: Union[
       str, List[str]] = 'all'  # all, backbone, and/or neck.
-  export_config: seg_cfg.ExportConfig = seg_cfg.ExportConfig()
+  export_config: seg_cfg.ExportConfig = dataclasses.field(
+      default_factory=seg_cfg.ExportConfig
+  )
 
 
 # Cityscapes Dataset (Download and process the dataset yourself)
