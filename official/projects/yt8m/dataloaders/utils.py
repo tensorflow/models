@@ -164,7 +164,9 @@ def get_list_of_feature_names_and_sizes(feature_names, feature_sizes):
   return list_of_feature_names, list_of_feature_sizes
 
 
-def make_yt8m_example(num_segment: int = 5) -> tf.train.SequenceExample:
+def make_yt8m_example(
+    num_segment: int = 5, num_frames: int = 120
+) -> tf.train.SequenceExample:
   """Generate fake data for unit tests."""
   rgb = np.random.randint(low=256, size=1024, dtype=np.uint8)
   audio = np.random.randint(low=256, size=128, dtype=np.uint8)
@@ -180,9 +182,9 @@ def make_yt8m_example(num_segment: int = 5) -> tf.train.SequenceExample:
   seq_example.context.feature["segment_scores"].float_list.value[:] = (
       [0.5] * num_segment)
   tfexample_utils.put_bytes_list_to_feature(
-      seq_example, rgb.tobytes(), key="rgb", repeat_num=120)
+      seq_example, rgb.tobytes(), key="rgb", repeat_num=num_frames)
   tfexample_utils.put_bytes_list_to_feature(
-      seq_example, audio.tobytes(), key="audio", repeat_num=120)
+      seq_example, audio.tobytes(), key="audio", repeat_num=num_frames)
 
   return seq_example
 
@@ -214,3 +216,74 @@ def make_example_with_float_features(
       seq_example, rgb.tolist(), key="FEATURE/feature/floats")
 
   return seq_example
+
+
+def sample_random_sequence(batch_video_matrix, num_frames, num_samples):
+  """Samples a random sequence of frames of size num_samples.
+
+  Args:
+    batch_video_matrix: tensor of shape [batch_size x max_frames x feature_size]
+    num_frames: tensor of shape [batch_size x 1]
+    num_samples: a scalar indicating the number of samples
+
+  Returns:
+    reshaped batch_video_matrix in [batch_size x 'num_samples' x feature_size]
+  """
+
+  batch_size = tf.shape(batch_video_matrix)[0]
+  frame_index_offset = tf.tile(
+      tf.expand_dims(tf.range(num_samples), 0), [batch_size, 1])
+  max_start_frame_index = tf.maximum(num_frames - num_samples, 0)
+  start_frame_index = tf.cast(
+      tf.multiply(
+          tf.random.uniform([batch_size, 1]),
+          tf.cast(max_start_frame_index + 1, tf.float32)), tf.int32)
+  frame_index = tf.minimum(start_frame_index + frame_index_offset,
+                           tf.cast(num_frames - 1, tf.int32))
+  batch_index = tf.tile(
+      tf.expand_dims(tf.range(batch_size), 1), [1, num_samples])
+  index = tf.stack([batch_index, frame_index], 2)
+  return tf.gather_nd(batch_video_matrix, index)
+
+
+def sample_random_frames(batch_video_matrix, num_frames, num_samples):
+  """Samples a random set of frames of size num_samples.
+
+  Args:
+    batch_video_matrix: tensor of shape [batch_size x max_frames x feature_size]
+    num_frames: tensor of shape [batch_size x 1]
+    num_samples (int): a scalar indicating the number of samples
+
+  Returns:
+    reshaped batch_video_matrix in [batch_size x 'num_samples' x feature_size]
+  """
+  batch_size = tf.shape(batch_video_matrix)[0]
+  frame_index = tf.cast(
+      tf.multiply(
+          tf.random.uniform([batch_size, num_samples]),
+          tf.tile(num_frames, [1, num_samples])), tf.int32)
+  batch_index = tf.tile(
+      tf.expand_dims(tf.range(batch_size), 1), [1, num_samples])
+  index = tf.stack([batch_index, frame_index], 2)
+  return tf.gather_nd(batch_video_matrix, index)
+
+
+def sample_video_frames(
+    batch_video_matrix: tf.Tensor,
+    num_frames: tf.Tensor,
+    random_frames: bool = True,
+    num_sample_frames: int = 25,
+):
+  """Preprocesses input to sample frames."""
+
+  # Sample random frames / random sequence.
+  num_frames = tf.cast(num_frames, tf.float32)
+  if random_frames:
+    batch_video_matrix = sample_random_frames(
+        batch_video_matrix, num_frames, num_sample_frames
+    )
+  else:
+    batch_video_matrix = sample_random_sequence(
+        batch_video_matrix, num_frames, num_sample_frames
+    )
+  return batch_video_matrix
