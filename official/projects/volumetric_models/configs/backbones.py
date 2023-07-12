@@ -38,4 +38,4 @@ class Backbone(hyperparams.OneOfConfig):
     unet_3d: UNet3D backbone config.
   """
   type: Optional[str] = None
-  unet_3d: UNet3D = UNet3D()
+  unet_3d: UNet3D = dataclasses.field(default_factory=UNet3D)
