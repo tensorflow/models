@@ -67,7 +67,9 @@ class DataConfig(cfg.DataConfig):
   global_batch_size: int = 0
   is_training: bool = False
   dtype: str = 'float32'
-  decoder: common.DataDecoder = common.DataDecoder()
+  decoder: common.DataDecoder = dataclasses.field(
+      default_factory=common.DataDecoder
+  )
   shuffle_buffer_size: int = 10000
   file_type: str = 'tfrecord'
   drop_remainder: bool = True
@@ -97,10 +99,15 @@ class Pix2Seq(hyperparams.Config):
   shared_decoder_embedding: bool = True
   decoder_output_bias: bool = True
   input_size: List[int] = dataclasses.field(default_factory=list)
-  backbone: backbones.Backbone = backbones.Backbone(
-      type='resnet', resnet=backbones.ResNet(model_id=50, bn_trainable=False)
+  backbone: backbones.Backbone = dataclasses.field(
+      default_factory=lambda: backbones.Backbone(  # pylint: disable=g-long-lambda
+          type='resnet',
+          resnet=backbones.ResNet(model_id=50, bn_trainable=False),
+      )
   )
-  norm_activation: common.NormActivation = common.NormActivation()
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=common.NormActivation
+  )
   backbone_endpoint_name: str = '5'
   drop_path: float = 0.1
   drop_units: float = 0.1
@@ -110,10 +117,12 @@ class Pix2Seq(hyperparams.Config):
 
 @dataclasses.dataclass
 class Pix2SeqTask(cfg.TaskConfig):
-  model: Pix2Seq = Pix2Seq()
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
-  losses: Losses = Losses()
+  model: Pix2Seq = dataclasses.field(default_factory=Pix2Seq)
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  validation_data: cfg.DataConfig = dataclasses.field(
+      default_factory=cfg.DataConfig
+  )
+  losses: Losses = dataclasses.field(default_factory=Losses)
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: Union[str, List[str]] = 'all'  # all, backbone
   annotation_file: Optional[str] = None

@@ -43,8 +43,12 @@ class TeamsPretrainerConfig(base_config.Config):
   num_shared_generator_hidden_layers: int = 3
   # Number of bottom layers shared between different discriminator tasks.
   num_discriminator_task_agnostic_layers: int = 11
-  generator: encoders.BertEncoderConfig = encoders.BertEncoderConfig()
-  discriminator: encoders.BertEncoderConfig = encoders.BertEncoderConfig()
+  generator: encoders.BertEncoderConfig = dataclasses.field(
+      default_factory=encoders.BertEncoderConfig
+  )
+  discriminator: encoders.BertEncoderConfig = dataclasses.field(
+      default_factory=encoders.BertEncoderConfig
+  )
 
 
 class TeamsEncoderConfig(encoders.BertEncoderConfig):

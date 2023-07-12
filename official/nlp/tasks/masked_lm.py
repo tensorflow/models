@@ -31,15 +31,25 @@ from official.nlp.modeling import models
 @dataclasses.dataclass
 class MaskedLMConfig(cfg.TaskConfig):
   """The model config."""
-  model: bert.PretrainerConfig = bert.PretrainerConfig(cls_heads=[
-      bert.ClsHeadConfig(
-          inner_dim=768, num_classes=2, dropout_rate=0.1, name='next_sentence')
-  ])
+  model: bert.PretrainerConfig = dataclasses.field(
+      default_factory=lambda: bert.PretrainerConfig(  # pylint: disable=g-long-lambda
+          cls_heads=[
+              bert.ClsHeadConfig(
+                  inner_dim=768,
+                  num_classes=2,
+                  dropout_rate=0.1,
+                  name='next_sentence',
+              )
+          ]
+      )
+  )
   # TODO(b/154564893): Mathematically, scale_loss should be True.
   # However, it works better with scale_loss being False.
   scale_loss: bool = False
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  validation_data: cfg.DataConfig = dataclasses.field(
+      default_factory=cfg.DataConfig
+  )
 
 
 @task_factory.register_task_cls(MaskedLMConfig)

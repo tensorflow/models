@@ -30,9 +30,13 @@ from official.projects.teams import teams_pretrainer
 @dataclasses.dataclass
 class TeamsPretrainTaskConfig(cfg.TaskConfig):
   """The model config."""
-  model: teams.TeamsPretrainerConfig = teams.TeamsPretrainerConfig()
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
+  model: teams.TeamsPretrainerConfig = dataclasses.field(
+      default_factory=teams.TeamsPretrainerConfig
+  )
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  validation_data: cfg.DataConfig = dataclasses.field(
+      default_factory=cfg.DataConfig
+  )
 
 
 def _get_generator_hidden_layers(discriminator_network, num_hidden_layers,
