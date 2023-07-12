@@ -66,7 +66,7 @@ class Decoder(hyperparams.OneOfConfig):
     fpn: fpn config.
   """
   type: Optional[str] = None
-  fpn: FPN = FPN()
-  nasfpn: NASFPN = NASFPN()
-  identity: Identity = Identity()
-  aspp: ASPP = ASPP()
+  fpn: FPN = dataclasses.field(default_factory=FPN)
+  nasfpn: NASFPN = dataclasses.field(default_factory=NASFPN)
+  identity: Identity = dataclasses.field(default_factory=Identity)
+  aspp: ASPP = dataclasses.field(default_factory=ASPP)

@@ -60,7 +60,9 @@ class DenseFeatureConfig(hyperparams.Config):
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
   """Input config for training."""
-  image_feature: DenseFeatureConfig = DenseFeatureConfig()
+  image_feature: DenseFeatureConfig = dataclasses.field(
+      default_factory=DenseFeatureConfig
+  )
   output_size: List[int] = dataclasses.field(default_factory=list)
   # If crop_size is specified, image will be resized first to
   # output_size, then crop of size crop_size will be cropped.
@@ -84,7 +86,9 @@ class DataConfig(cfg.DataConfig):
   aug_policy: Optional[str] = None
   drop_remainder: bool = True
   file_type: str = 'tfrecord'
-  decoder: Optional[common.DataDecoder] = common.DataDecoder()
+  decoder: Optional[common.DataDecoder] = dataclasses.field(
+      default_factory=common.DataDecoder
+  )
   additional_dense_features: List[DenseFeatureConfig] = dataclasses.field(
       default_factory=list)
 
@@ -127,12 +131,19 @@ class SemanticSegmentationModel(hyperparams.Config):
   input_size: List[int] = dataclasses.field(default_factory=list)
   min_level: int = 3
   max_level: int = 6
-  head: SegmentationHead = SegmentationHead()
-  backbone: backbones.Backbone = backbones.Backbone(
-      type='resnet', resnet=backbones.ResNet())
-  decoder: decoders.Decoder = decoders.Decoder(type='identity')
+  head: SegmentationHead = dataclasses.field(default_factory=SegmentationHead)
+  backbone: backbones.Backbone = dataclasses.field(
+      default_factory=lambda: backbones.Backbone(  # pylint: disable=g-long-lambda
+          type='resnet', resnet=backbones.ResNet()
+      )
+  )
+  decoder: decoders.Decoder = dataclasses.field(
+      default_factory=lambda: decoders.Decoder(type='identity')
+  )
   mask_scoring_head: Optional[MaskScoringHead] = None
-  norm_activation: common.NormActivation = common.NormActivation()
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=common.NormActivation
+  )
 
 
 @dataclasses.dataclass
@@ -169,18 +180,24 @@ class ExportConfig(hyperparams.Config):
 @dataclasses.dataclass
 class SemanticSegmentationTask(cfg.TaskConfig):
   """The model config."""
-  model: SemanticSegmentationModel = SemanticSegmentationModel()
-  train_data: DataConfig = DataConfig(is_training=True)
-  validation_data: DataConfig = DataConfig(is_training=False)
-  losses: Losses = Losses()
-  evaluation: Evaluation = Evaluation()
+  model: SemanticSegmentationModel = dataclasses.field(
+      default_factory=SemanticSegmentationModel
+  )
+  train_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=True)
+  )
+  validation_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=False)
+  )
+  losses: Losses = dataclasses.field(default_factory=Losses)
+  evaluation: Evaluation = dataclasses.field(default_factory=Evaluation)
   train_input_partition_dims: List[int] = dataclasses.field(
       default_factory=list)
   eval_input_partition_dims: List[int] = dataclasses.field(default_factory=list)
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: Union[
       str, List[str]] = 'all'  # all, backbone, and/or decoder
-  export_config: ExportConfig = ExportConfig()
+  export_config: ExportConfig = dataclasses.field(default_factory=ExportConfig)
 
 
 @exp_factory.register_config_factory('semantic_segmentation')

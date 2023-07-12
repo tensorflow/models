@@ -77,8 +77,10 @@ class DataConfig(cfg.DataConfig):
   global_batch_size: int = 0
   is_training: bool = False
   dtype: str = 'bfloat16'
-  decoder: common.DataDecoder = common.DataDecoder()
-  parser: Parser = Parser()
+  decoder: common.DataDecoder = dataclasses.field(
+      default_factory=common.DataDecoder
+  )
+  parser: Parser = dataclasses.field(default_factory=Parser)
   shuffle_buffer_size: int = 10000
   file_type: str = 'tfrecord'
 
@@ -143,8 +145,8 @@ class DetectionGenerator(hyperparams.Config):
   # When nms_version = `tflite`, values from tflite_post_processing need to be
   # specified. They are compatible with the input arguments used by TFLite
   # custom NMS op and override above parameters.
-  tflite_post_processing: common.TFLitePostProcessingConfig = (
-      common.TFLitePostProcessingConfig()
+  tflite_post_processing: common.TFLitePostProcessingConfig = dataclasses.field(
+      default_factory=common.TFLitePostProcessingConfig
   )
   # Return decoded boxes/scores even if apply_nms is set `True`.
   return_decoded: Optional[bool] = None
@@ -158,14 +160,22 @@ class RetinaNet(hyperparams.Config):
   input_size: List[int] = dataclasses.field(default_factory=list)
   min_level: int = 3
   max_level: int = 7
-  anchor: Anchor = Anchor()
-  backbone: backbones.Backbone = backbones.Backbone(
-      type='resnet', resnet=backbones.ResNet())
-  decoder: decoders.Decoder = decoders.Decoder(
-      type='fpn', fpn=decoders.FPN())
-  head: RetinaNetHead = RetinaNetHead()
-  detection_generator: DetectionGenerator = DetectionGenerator()
-  norm_activation: common.NormActivation = common.NormActivation()
+  anchor: Anchor = dataclasses.field(default_factory=Anchor)
+  backbone: backbones.Backbone = dataclasses.field(
+      default_factory=lambda: backbones.Backbone(  # pylint: disable=g-long-lambda
+          type='resnet', resnet=backbones.ResNet()
+      )
+  )
+  decoder: decoders.Decoder = dataclasses.field(
+      default_factory=lambda: decoders.Decoder(type='fpn', fpn=decoders.FPN())
+  )
+  head: RetinaNetHead = dataclasses.field(default_factory=RetinaNetHead)
+  detection_generator: DetectionGenerator = dataclasses.field(
+      default_factory=DetectionGenerator
+  )
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=common.NormActivation
+  )
 
 
 @dataclasses.dataclass
@@ -178,16 +188,20 @@ class ExportConfig(hyperparams.Config):
 
 @dataclasses.dataclass
 class RetinaNetTask(cfg.TaskConfig):
-  model: RetinaNet = RetinaNet()
-  train_data: DataConfig = DataConfig(is_training=True)
-  validation_data: DataConfig = DataConfig(is_training=False)
-  losses: Losses = Losses()
+  model: RetinaNet = dataclasses.field(default_factory=RetinaNet)
+  train_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=True)
+  )
+  validation_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=False)
+  )
+  losses: Losses = dataclasses.field(default_factory=Losses)
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: Union[
       str, List[str]] = 'all'  # all, backbone, and/or decoder
   annotation_file: Optional[str] = None
   per_category_metrics: bool = False
-  export_config: ExportConfig = ExportConfig()
+  export_config: ExportConfig = dataclasses.field(default_factory=ExportConfig)
   # If set, the COCO metrics will be computed.
   use_coco_metrics: bool = True
   # If set, the Waymo Open Dataset evaluator would be used.
