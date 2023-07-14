@@ -1,0 +1,76 @@
+# Video classification using MoViNet-A5-Stream backbone on multiple GPUs.
+# This configuration is incomplete - Some parameters will be set by model garden Docker.
+# --experiment_type=movinet_kinetics600
+
+runtime:
+  distribution_strategy: 'multi_worker_mirrored'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  losses:
+    l2_weight_decay: 0.00003
+    label_smoothing: 0.1
+  model:
+    backbone:
+      movinet:
+        model_id: 'a5'
+        causal: true
+        # Note: we train with '3d_2plus1d', but convert to '2plus1d' for inference
+        conv_type: '2plus1d'
+        se_type: '2plus3d'
+        activation: 'hard_swish'
+        gating_activation: 'hard_sigmoid'
+        use_positional_encoding: true
+        stochastic_depth_drop_rate: 0.2
+    norm_activation:
+      use_sync_bn: true
+    dropout_rate: 0.5
+    activation: 'hard_swish'
+  train_data:
+    name: kinetics600
+    variant_name: rgb
+    feature_shape: !!python/tuple
+    - 32
+    - 320
+    - 320
+    - 3
+    temporal_stride: 2
+    random_stride_range: 1
+    dtype: 'bfloat16'
+    min_image_size: 368
+    aug_max_area_ratio: 1.0
+    aug_max_aspect_ratio: 2.0
+    aug_min_area_ratio: 0.08
+    aug_min_aspect_ratio: 0.5
+  validation_data:
+    name: kinetics600
+    feature_shape: !!python/tuple
+    - 32
+    - 320
+    - 320
+    - 3
+    temporal_stride: 2
+    num_test_clips: 1
+    num_test_crops: 1
+    min_image_size: 368
+    dtype: 'bfloat16'
+    drop_remainder: false
+trainer:
+  optimizer_config:
+    learning_rate:
+      cosine:
+        initial_learning_rate: 1.8
+        decay_steps: 85785
+    warmup:
+      linear:
+        warmup_steps: 300
+    optimizer:
+      type: 'rmsprop'
+      rmsprop:
+        rho: 0.9
+        momentum: 0.9
+        epsilon: 1.0
+        clipnorm: 1.0
+  train_steps: 85785
+  steps_per_loop: 500
+  summary_interval: 500
+  validation_interval: 500
