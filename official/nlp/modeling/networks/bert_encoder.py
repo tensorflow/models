@@ -28,6 +28,7 @@ _Activation = Union[str, Callable[..., Any]]
 _approx_gelu = lambda x: tf.keras.activations.gelu(x, approximate=True)
 
 
+@tf.keras.utils.register_keras_serializable(package='Text')
 class BertEncoderV2(tf.keras.layers.Layer):
   """Bi-directional Transformer-based encoder network.
 

@@ -307,15 +307,41 @@ class BertEncoderTest(tf.test.TestCase, parameterized.TestCase):
         embedding_width=16,
         embedding_layer=None,
         norm_first=False)
-    network = bert_encoder.BertEncoder(**kwargs)
 
-    # Validate that the config can be forced to JSON.
-    _ = network.to_json()
+    with self.subTest("BertEncoder"):
+      network = bert_encoder.BertEncoder(**kwargs)
 
-    # Tests model saving/loading.
-    model_path = self.get_temp_dir() + "/model"
-    network.save(model_path)
-    _ = tf.keras.models.load_model(model_path)
+      # Validate that the config can be forced to JSON.
+      _ = network.to_json()
+
+      # Tests model saving/loading with SavedModel.
+      model_path = self.get_temp_dir() + "/model"
+      network.save(model_path)
+      _ = tf.keras.models.load_model(model_path)
+
+      # Test model saving/loading with Keras V3.
+      keras_path = self.get_temp_dir() + "/model.keras"
+      network.save(keras_path)
+      _ = tf.keras.models.load_model(keras_path)
+
+    with self.subTest("BertEncoderV2"):
+      new_net = bert_encoder.BertEncoderV2(**kwargs)
+      inputs = new_net.inputs
+      outputs = new_net(inputs)
+      network_v2 = tf.keras.Model(inputs=inputs, outputs=outputs)
+
+      # Validate that the config can be forced to JSON.
+      _ = network_v2.to_json()
+
+      # Tests model saving/loading with SavedModel.
+      model_path = self.get_temp_dir() + "/v2_model"
+      network_v2.save(model_path)
+      _ = tf.keras.models.load_model(model_path)
+
+      # Test model saving/loading with Keras V3.
+      keras_path = self.get_temp_dir() + "/v2_model.keras"
+      network_v2.save(keras_path)
+      _ = tf.keras.models.load_model(keras_path)
 
   def test_network_creation(self):
     hidden_size = 32
