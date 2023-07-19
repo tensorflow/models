@@ -39,7 +39,7 @@ from object_detection.utils import variables_helper
 if six.PY2:
   import mock  # pylint: disable=g-import-not-at-top
 else:
-  mock = unittest.mock  # pylint: disable=g-import-not-at-top, g-importing-member
+  from unittest import mock  # pylint: disable=g-import-not-at-top, g-importing-member
 
 # pylint: disable=g-import-not-at-top
 try:
