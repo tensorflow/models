@@ -117,10 +117,10 @@ provided
 Example of training AssembleNet with UCF101 TF Datasets.
 
 ```bash
-python -m official.vision.beta.projects.assemblenet.trian \
+python -m official.projects.assemblenet.trian \
 --mode=train_and_eval --experiment=assemblenet_ucf101 \
 --model_dir='YOUR_GS_BUCKET_TO_SAVE_MODEL' \
---config_file=./official/vision/beta/projects/assemblenet/\
+--config_file=./official/projects/assemblenet/\
 --ucf101_assemblenet_tpu.yaml \
 --tpu=TPU_NAME 
 ```
@@ -128,10 +128,10 @@ python -m official.vision.beta.projects.assemblenet.trian \
 Example of training AssembleNet++ with UCF101 TF Datasets.
 
 ```bash
-python -m official.vision.beta.projects.assemblenet.trian \
+python -m official.projects.assemblenet.trian \
 --mode=train_and_eval --experiment=assemblenetplus_ucf101 \
 --model_dir='YOUR_GS_BUCKET_TO_SAVE_MODEL' \
---config_file=./official/vision/beta/projects/assemblenet/\
+--config_file=./official/projects/assemblenet/\
 --ucf101_assemblenet_plus_tpu.yaml \
 --tpu=TPU_NAME 
 ```
