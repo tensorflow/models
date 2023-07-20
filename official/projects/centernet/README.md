@@ -37,7 +37,7 @@ install -r ./official/requirements.txt`
 To train the model on Coco, try the following command:
 
 ```
-python3 -m official.vision.beta.projects.centernet.train \
+python3 -m official.projects.centernet.train \
   --mode=train_and_eval \
   --experiment=centernet_hourglass_coco \
   --model_dir={MODEL_DIR} \
