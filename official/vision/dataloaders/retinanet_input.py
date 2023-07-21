@@ -210,6 +210,7 @@ class Parser(parser.Parser):
     if resize_first:
       image, boxes, image_info = self._resize_and_crop_image_and_boxes(
           image, boxes, pad=False)
+      image = tf.cast(image, dtype=tf.uint8)
 
     # Apply autoaug or randaug.
     if self._augmenter is not None:
@@ -277,7 +278,7 @@ class Parser(parser.Parser):
 
   def _parse_eval_data(self, data, anchor_labeler=None):
     """Parses data for training and evaluation."""
-    groundtruths = {}
+
     classes = data['groundtruth_classes']
     boxes = data['groundtruth_boxes']
     # If not empty, `attributes` is a dict of (name, ground_truth) pairs.

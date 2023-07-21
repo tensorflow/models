@@ -1890,6 +1890,8 @@ class ImageAugment(object):
   ) -> tf.Tensor:
     """Given an image tensor, returns a distorted image with the same shape.
 
+    Expect the image tensor values are in the range [0, 255].
+
     Args:
       image: `Tensor` of shape [height, width, 3] or
         [num_frames, height, width, 3] representing an image or image sequence.
@@ -1905,6 +1907,8 @@ class ImageAugment(object):
       bboxes: tf.Tensor
   ) -> Tuple[tf.Tensor, tf.Tensor]:
     """Distorts the image and bounding boxes.
+
+    Expect the image tensor values are in the range [0, 255].
 
     Args:
       image: `Tensor` of shape [height, width, 3] or
@@ -2070,6 +2074,7 @@ class AutoAugment(ImageAugment):
 
     tf_policies = self._make_tf_policies()
     image, bboxes = select_and_apply_random_policy(tf_policies, image, bboxes)
+    image = tf.cast(image, dtype=input_image_type)
     return image, bboxes
 
   @staticmethod
