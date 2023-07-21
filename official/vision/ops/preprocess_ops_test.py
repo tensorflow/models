@@ -330,6 +330,31 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
         [output_height, output_width, 3],
         resized_image_shape.numpy())
 
+  @parameterized.product(
+      prenormalize=[True, False],
+      dtype=[tf.uint8, tf.float32, tf.float64, tf.float16],
+  )
+  def test_normalize_image(self, prenormalize, dtype):
+    image = tf.constant([[[0, 200, 255]]], dtype=tf.uint8)
+    image = tf.tile(image, [64, 64, 1])
+
+    if dtype != tf.uint8 and prenormalize:
+      image = image / 255
+    image = tf.cast(image, dtype=dtype)
+
+    if dtype == tf.uint8 or prenormalize:
+      normalized_image = preprocess_ops.normalize_image(
+          image, offset=[0.5, 0.5, 0.5], scale=[0.5, 0.5, 0.5]
+      )
+    else:
+      normalized_image = preprocess_ops.normalize_image(
+          image, offset=[127.0, 127.0, 127.0], scale=[127.0, 127.0, 127.0]
+      )
+    max_val = tf.reduce_max(normalized_image)
+    # If we mistakely use scale=[0.5, 0.5, 0.5] for non-normalized float input,
+    # the normalized image data will contain very large values (e.g. 500).
+    tf.assert_greater(2.0, max_val)
+
 
 if __name__ == '__main__':
   tf.test.main()
