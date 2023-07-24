@@ -19,7 +19,7 @@
 *   [mnist](https://www.tensorflow.org/api_docs/python/tf/keras/datasets/mnist): A basic model to classify digits
     from the MNIST dataset. See [Running MNIST on Cloud TPU](https://cloud.google.com/tpu/docs/tutorials/mnist-2.x) tutorial and [Tensorboard.dev metrics](https://tensorboard.dev/experiment/mIah5lppTASvrHqWrdr6NA).
 *   [mask-rcnn](https://www.tensorflow.org/api_docs/python/tfm/vision/configs/maskrcnn/MaskRCNN): An object detection and instance segmentation model. See [Tensorboard.dev training metrics](https://tensorboard.dev/experiment/LH7k0fMsRwqUAcE09o9kPA).
-*   [resnet](https://www.tensorflow.org/api_docs/python/tf/keras/applications/resnet): A deep residual network that can
+*   [resnet](https://www.tensorflow.org/api_docs/python/tfm/vision/configs/image_classification/image_classification_imagenet): A deep residual network that can
     be used to classify ImageNet's dataset of 1000 classes.
     See [Training ResNet on Cloud TPU](https://cloud.google.com/tpu/docs/tutorials/resnet-2.x) tutorial and [Tensorboard.dev metrics](https://tensorboard.dev/experiment/CxlDK8YMRrSpYEGtBRpOhg).
 *   [retinanet](https://www.tensorflow.org/api_docs/python/tfm/vision/retinanet): A fast and powerful object detector. See [Tensorboard.dev training metrics](https://tensorboard.dev/experiment/b8NRnWU3TqG6Rw0UxueU6Q).
