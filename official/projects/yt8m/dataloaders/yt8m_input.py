@@ -215,21 +215,25 @@ def _concat_features(features, feature_names, feature_sizes, feature_dtypes,
       "length of feature_names (={}) != length of feature_sizes (={})".format(
           len(feature_names), len(feature_dtypes)))
 
-  num_frames = -1  # the number of frames in the video
+  # the number of common frames of all features in the video
+  num_common_frames = 1080000  # set max to a 10-hour video at 30fps
   feature_matrices = [None] * num_features  # an array of different features
   for i in range(num_features):
     feature_matrix, num_frames_in_this_feature = _get_video_matrix(
         features[feature_names[i]], feature_sizes[i],
         tf.dtypes.as_dtype(feature_dtypes[i]), max_frames, max_quantized_value,
         min_quantized_value)
-    if num_frames == -1:
-      num_frames = num_frames_in_this_feature
+    num_common_frames = tf.math.minimum(num_frames_in_this_feature,
+                                        num_common_frames)
     feature_matrices[i] = feature_matrix
+
+  for i in range(num_features):
+    feature_matrices[i] = feature_matrices[i][:num_common_frames]
 
   # Concatenate different features.
   video_matrix = tf.concat(feature_matrices, 1)
 
-  return video_matrix, num_frames
+  return video_matrix, num_common_frames
 
 
 class Decoder(decoder.Decoder):
