@@ -32,6 +32,7 @@ Usage:
 from __future__ import print_function
 
 import numpy as np
+import resampy
 import tensorflow.compat.v1 as tf
 
 import vggish_input
@@ -48,12 +49,18 @@ pca_params_path = 'vggish_pca_params.npz'
 # Relative tolerance of errors in mean and standard deviation of embeddings.
 rel_error = 0.1  # Up to 10%
 
-# Generate a 1 kHz sine wave at 16 kHz.
+# Generate a 1 kHz sine wave at 16 kHz, the preferred sample rate of VGGish.
 num_secs = 3
 freq = 1000
 sr = 16000
 t = np.arange(0, num_secs, 1 / sr)
 x = np.sin(2 * np.pi * freq * t)
+
+# Check that we can resample a signal. Don't use the resampled signal to
+# produce an embedding where we check the results because we don't want
+# to depend on the resampler never changing too much.
+resampled_x = resampy.resample(x, sr, sr * 0.75)
+print('Resampling via resampy works!')
 
 # Produce a batch of log mel spectrogram examples.
 input_batch = vggish_input.waveform_to_examples(x, sr)

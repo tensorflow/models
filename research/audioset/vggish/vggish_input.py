@@ -53,7 +53,6 @@ def waveform_to_examples(data, sample_rate):
   # Convert to mono.
   if len(data.shape) > 1:
     data = np.mean(data, axis=1)
-  print('before resampling, waveform:', data)
   # Resample to the rate assumed by VGGish.
   if sample_rate != vggish_params.SAMPLE_RATE:
     data = resampy.resample(data, sample_rate, vggish_params.SAMPLE_RATE)
