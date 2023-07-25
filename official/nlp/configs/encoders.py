@@ -17,7 +17,7 @@
 Includes configurations and factory methods.
 """
 import dataclasses
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 import gin
 import tensorflow as tf
@@ -49,6 +49,32 @@ class BertEncoderConfig(hyperparams.Config):
   return_attention_scores: bool = False
   # Pre/Post-LN Transformer
   norm_first: bool = False
+
+
+@dataclasses.dataclass
+class FunnelEncoderConfig(hyperparams.Config):
+  """Funnel encoder configuration."""
+  vocab_size: int = 30522
+  hidden_size: int = 768
+  num_layers: int = 12
+  num_attention_heads: int = 12
+  max_position_embeddings: int = 512
+  type_vocab_size: int = 16
+  inner_dim: int = 3072
+  hidden_activation: str = "gelu"
+  approx_gelu: bool = True
+  dropout_rate: float = 0.1
+  attention_dropout_rate: float = 0.1
+  pool_type: str = "max"
+  pool_stride: Union[int, Sequence[Union[int, float]]] = 2
+  unpool_length: int = 0
+  initializer_range: float = 0.02
+  output_range: Optional[int] = None
+  embedding_width: Optional[int] = None
+  embedding_layer: Optional[tf.keras.layers.Layer] = None
+  norm_first: bool = False
+  share_rezero: bool = False
+  append_dense_inputs: bool = False
 
 
 @dataclasses.dataclass
@@ -305,6 +331,9 @@ class EncoderConfig(hyperparams.OneOfConfig):
   bigbird: BigBirdEncoderConfig = dataclasses.field(
       default_factory=BigBirdEncoderConfig
   )
+  funnel: FunnelEncoderConfig = dataclasses.field(
+      default_factory=FunnelEncoderConfig
+  )
   kernel: KernelEncoderConfig = dataclasses.field(
       default_factory=KernelEncoderConfig
   )
@@ -498,6 +527,39 @@ def build_encoder(config: EncoderConfig,
         dict_outputs=True,
         layer_idx_as_attention_seed=True)
     return networks.EncoderScaffold(**kwargs)
+
+  if encoder_type == "funnel":
+
+    if encoder_cfg.hidden_activation == "gelu":
+      activation = tf_utils.get_activation(
+          encoder_cfg.hidden_activation,
+          approximate=encoder_cfg.approx_gelu)
+    else:
+      activation = tf_utils.get_activation(encoder_cfg.hidden_activation)
+
+    return networks.FunnelTransformerEncoder(
+        vocab_size=encoder_cfg.vocab_size,
+        hidden_size=encoder_cfg.hidden_size,
+        num_layers=encoder_cfg.num_layers,
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        max_sequence_length=encoder_cfg.max_position_embeddings,
+        type_vocab_size=encoder_cfg.type_vocab_size,
+        inner_dim=encoder_cfg.inner_dim,
+        inner_activation=activation,
+        output_dropout=encoder_cfg.dropout_rate,
+        attention_dropout=encoder_cfg.attention_dropout_rate,
+        pool_type=encoder_cfg.pool_type,
+        pool_stride=encoder_cfg.pool_stride,
+        unpool_length=encoder_cfg.unpool_length,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        output_range=encoder_cfg.output_range,
+        embedding_width=encoder_cfg.embedding_width,
+        embedding_layer=embedding_layer,
+        norm_first=encoder_cfg.norm_first,
+        share_rezero=encoder_cfg.share_rezero,
+        append_dense_inputs=encoder_cfg.append_dense_inputs,
+        )
 
   if encoder_type == "kernel":
     embedding_cfg = dict(
