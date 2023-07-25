@@ -48,7 +48,7 @@ _CONST_VALUE_RE = re.compile(r'(\d.*|-\d.*|None)')
 # 3- Decimal number with an optional exponential term.
 # 4- Decimal number.
 
-_LOADER = yaml.SafeLoader
+_LOADER = yaml.FullLoader
 _LOADER.add_implicit_resolver(
     'tag:yaml.org,2002:float',
     re.compile(r'''
@@ -491,7 +491,7 @@ def override_params_dict(params, dict_or_string_or_yaml_file, is_strict):
       params.override(params_dict, is_strict)
     else:
       with tf.io.gfile.GFile(dict_or_string_or_yaml_file) as f:
-        params.override(yaml.load(f, Loader=yaml.FullLoader), is_strict)
+        params.override(yaml.load(f, Loader=_LOADER), is_strict)
   else:
     raise ValueError('Unknown input type to parse.')
   return params
