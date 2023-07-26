@@ -32,7 +32,7 @@ Usage:
 from __future__ import print_function
 
 import numpy as np
-import resampy
+import resampy  # pylint: disable=import-error
 import tensorflow.compat.v1 as tf
 
 import vggish_input
