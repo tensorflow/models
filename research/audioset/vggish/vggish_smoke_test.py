@@ -82,18 +82,21 @@ with tf.Graph().as_default(), tf.Session() as sess:
   [embedding_batch] = sess.run([embedding_tensor],
                                feed_dict={features_tensor: input_batch})
   print('VGGish embedding: ', embedding_batch[0])
-  print('embedding mean/stddev', np.mean(embedding_batch), np.std(embedding_batch))
+  print('embedding mean/stddev', np.mean(embedding_batch),
+        np.std(embedding_batch))
 
 # Postprocess the results to produce whitened quantized embeddings.
 pproc = vggish_postprocess.Postprocessor(pca_params_path)
 postprocessed_batch = pproc.postprocess(embedding_batch)
 print('Postprocessed VGGish embedding: ', postprocessed_batch[0])
-print('postproc embedding mean/stddev', np.mean(postprocessed_batch), np.std(postprocessed_batch))
+print('postproc embedding mean/stddev', np.mean(postprocessed_batch),
+      np.std(postprocessed_batch))
 
 # Expected mean/stddev were measured to 3 significant places on 07/25/23 with
 # NumPy 1.21.6 / TF 2.8.2 (dating to Apr-May 2022)
 # NumPy 1.24.3 / TF 2.13.0 (representative of July 2023)
-# with Python 3.10 on a Debian-like Linux system. Both configs produced identical results.
+# with Python 3.10 on a Debian-like Linux system. Both configs produced
+# identical results.
 
 expected_embedding_mean = 0.000657
 expected_embedding_std = 0.343
