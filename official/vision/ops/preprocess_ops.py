@@ -29,6 +29,7 @@ MEAN_NORM = (0.485, 0.456, 0.406)
 STDDEV_NORM = (0.229, 0.224, 0.225)
 MEAN_RGB = tuple(255 * i for i in MEAN_NORM)
 STDDEV_RGB = tuple(255 * i for i in STDDEV_NORM)
+MEDIAN_RGB = (128.0, 128.0, 128.0)
 
 # Alias for convenience. PLEASE use `box_ops.horizontal_flip_boxes` directly.
 horizontal_flip_boxes = box_ops.horizontal_flip_boxes
