@@ -17,8 +17,75 @@
 from typing import Tuple
 import tensorflow as tf
 
+from official.vision.dataloaders import decoder
 from official.vision.dataloaders import parser
 from official.vision.ops import preprocess_ops
+from official.projects.rngdet.dataloaders import sampler as rngdet_sampler
+
+
+class Decoder(decoder.Decoder):
+  """A tf.Example decoder for RNGDet."""
+
+  def __init__(self):
+    
+    self._keys_to_features = {
+    "image/encoded": tf.io.FixedLenFeature((), tf.string),
+    "image/intersection": tf.io.FixedLenFeature((), tf.string),
+    "image/segment": tf.io.FixedLenFeature((), tf.string),
+    "edges/id": tf.io.VarLenFeature(tf.int64),
+    "edges/src": tf.io.VarLenFeature(tf.int64),
+    "edges/dst": tf.io.VarLenFeature(tf.int64),
+    "edges/vertices": tf.io.VarLenFeature(tf.int64),
+    "edges/orientation": tf.io.VarLenFeature(tf.int64),
+    "edges/length": tf.io.VarLenFeature(tf.int64),
+    "vertices/id": tf.io.VarLenFeature(tf.int64),
+    "vertices/x": tf.io.VarLenFeature(tf.int64),
+    "vertices/y": tf.io.VarLenFeature(tf.int64),
+    }
+
+  def _decode_image(self, parsed_tensors):
+    """Decodes the image and set its static shape."""
+    image = tf.io.decode_image(parsed_tensors['image/encoded'], channels=3)
+    image.set_shape([None, None, 3])
+    
+    intsec = tf.io.decode_image(parsed_tensors['image/intersection'], channels=3)
+    intsec.set_shape([None, None, 3])
+    
+    segment = tf.io.decode_image(parsed_tensors['image/segment'], channels=3)
+    segment.set_shape([None, None, 3])
+    
+    return image, intsec, segment
+
+  def decode(self, serialized_example):
+    parsed_tensors = tf.io.parse_single_example(
+        serialized=serialized_example, features=self._keys_to_features)
+    for k in parsed_tensors:
+      if isinstance(parsed_tensors[k], tf.SparseTensor):
+        if parsed_tensors[k].dtype == tf.string:
+          parsed_tensors[k] = tf.sparse.to_dense(
+              parsed_tensors[k], default_value='')
+        else:
+          parsed_tensors[k] = tf.sparse.to_dense(
+              parsed_tensors[k], default_value=0)
+    image, intsec, segment = self._decode_image(parsed_tensors)
+  
+    decoded_tensors = {
+        'image': image,
+        'intersection': intsec,
+        'segment': segment,
+        "edges/id": parsed_tensors['edges/id'],
+        "edges/src": parsed_tensors['edges/src'],
+        "edges/dst": parsed_tensors['edges/dst'],
+        "edges/vertices": parsed_tensors['edges/vertices'],
+        "edges/orientation": parsed_tensors['edges/orientation'],
+        "edges/length": parsed_tensors['edges/length'],
+        "vertices/id": parsed_tensors['vertices/id'],
+        "vertices/x": parsed_tensors['vertices/x'],
+        "vertices/y": parsed_tensors['vertices/y'],
+    }
+    
+    return decoded_tensors
+
 
 class Parser(parser.Parser):
   """Parse an image and its annotations into a dictionary of tensors."""
@@ -26,30 +93,10 @@ class Parser(parser.Parser):
   def __init__(
       self,
       eos_token_weight: float = 0.1,
-      output_size: Tuple[int, int] = (1333, 1333),
-      max_num_boxes: int = 100,
-      aug_rand_hflip=True,
-      aug_scale_min=0.3,
-      aug_scale_max=2.0,
-      aug_color_jitter_strength: float = 0.5,
-      aug_color_jitter_impl='simclrv2',
-      coord_vocab_shift=1000,
-      quantization_bins=1000,
-      skip_crowd_during_training=True,
-      label_shift: int = 0,
+      output_size: Tuple[int, int] = (1333, 1333)
   ):
     self._eos_token_weight = eos_token_weight
     self._output_size = output_size
-    self._max_num_boxes = max_num_boxes
-    self._aug_rand_hflip = aug_rand_hflip
-    self._aug_scale_min = aug_scale_min
-    self._aug_scale_max = aug_scale_max
-    self._aug_color_jitter_strength = aug_color_jitter_strength
-    self._aug_color_jitter_impl = aug_color_jitter_impl
-    self._coord_vocab_shift = coord_vocab_shift
-    self._quantization_bins = quantization_bins
-    self._skip_crowd_during_training = skip_crowd_during_training
-    self._label_shift = label_shift
     
   def parse_fn(self, is_training):
     """Returns a parse fn that reads and parses raw tensors from the decoder.
@@ -73,9 +120,36 @@ class Parser(parser.Parser):
 
   def _parse_train_data(self, data):
     """Parses data for training and evaluation."""
-
-    # Gets original image.
-    image = data['image']
+    edges = {
+      'id': data['edges/id'].numpy(),
+      'src': data['edges/src'].numpy(),
+      'dst': data['edges/dst'].numpy(),
+      'vertices': data['edges/vertices'],
+      'orientation': data['edges/orientation'],
+      'length': data['edges/length'].numpy()
+    }
+    vertices = {
+      'id': data['vertices/id'].numpy(),
+      'x': data['vertices/x'].numpy(),
+      'y': data['vertices/y'].numpy()
+    }
+    sampler = rngdet_sampler.Sampler(
+        data['image'],
+        data['intersection'],
+        data['segment'],
+        edges, vertices)
+    while 1:
+      if sampler.finish_current_image:
+        break
+        # crop
+      v_current = sampler.current_coord.copy()
+      sat_ROI, label_masks_ROI ,historical_ROI = sampler.crop_ROI(sampler.current_coord)
+      print(v_current)
+      # vertices in the next step
+      v_nexts, ahead_segments = sampler.step_expert_BC_sampler()
+      # save training sample
+      gt_probs, gt_coords, list_len = sampler.calcualte_label(v_current,v_nexts)
+    exit()
 
     # Normalizes image with mean and std pixel values.
     image = tf.image.convert_image_dtype(image, dtype=tf.float32)
