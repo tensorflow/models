@@ -236,6 +236,8 @@ class Pix2Seq(tf.keras.Model):
       drop_path=0.1,
       drop_units=0.1,
       drop_att=0.0,
+      top_k=0,
+      top_p=0.4,
       **kwargs
   ):
     super().__init__(**kwargs)
@@ -271,6 +273,8 @@ class Pix2Seq(tf.keras.Model):
         drop_units=self._drop_units,
         drop_att=self._drop_att,
     )
+    self._top_k = top_k
+    self._top_p = top_p
 
   @property
   def backbone(self) -> tf.keras.Model:
@@ -292,6 +296,8 @@ class Pix2Seq(tf.keras.Model):
         "drop_path": self._drop_path,
         "drop_units": self._drop_units,
         "drop_att": self._drop_att,
+        "top_k": self._top_k,
+        "top_p": self._top_p,
     }
 
   @classmethod
@@ -350,11 +356,15 @@ class Pix2Seq(tf.keras.Model):
           training,
       )
     else:
-      tokens, logits = self._transformer.infer({
-          "inputs": features,
-          "tokens": targets,
-          "pos_emb": pos_emb,
-      })
+      tokens, logits = self._transformer.infer(
+          {
+              "inputs": features,
+              "tokens": targets,
+              "pos_emb": pos_emb,
+          },
+          top_k=self._top_k,
+          top_p=self._top_p,
+      )
 
     return [tokens, logits]
 

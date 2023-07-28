@@ -113,6 +113,8 @@ class Pix2Seq(hyperparams.Config):
   drop_units: float = 0.1
   drop_att: float = 0.0
   norm_first: bool = True
+  top_k: int = 0
+  top_p: float = 0.4
 
 
 @dataclasses.dataclass
