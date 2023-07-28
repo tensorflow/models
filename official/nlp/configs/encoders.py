@@ -75,6 +75,7 @@ class FunnelEncoderConfig(hyperparams.Config):
   norm_first: bool = False
   share_rezero: bool = False
   append_dense_inputs: bool = False
+  transformer_cls: str = "TransformerEncoderBlock"
 
 
 @dataclasses.dataclass
@@ -559,6 +560,7 @@ def build_encoder(config: EncoderConfig,
         norm_first=encoder_cfg.norm_first,
         share_rezero=encoder_cfg.share_rezero,
         append_dense_inputs=encoder_cfg.append_dense_inputs,
+        transformer_cls=encoder_cfg.transformer_cls,
         )
 
   if encoder_type == "kernel":
