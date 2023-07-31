@@ -135,7 +135,12 @@ class Anchor(object):
 class AnchorLabeler(object):
   """Labeler for dense object detector."""
 
-  def __init__(self, match_threshold=0.5, unmatched_threshold=0.5):
+  def __init__(
+      self,
+      match_threshold=0.5,
+      unmatched_threshold=0.5,
+      box_coder_weights=None,
+  ):
     """Constructs anchor labeler to assign labels to anchors.
 
     Args:
@@ -145,6 +150,10 @@ class AnchorLabeler(object):
       unmatched_threshold: a float number between 0 and 1 representing the
         upper-bound threshold to assign negative labels for anchors. An anchor
         with a score below the threshold is labeled negative.
+      box_coder_weights: Optional `list` of 4 positive floats to scale y, x, h,
+        and w when encoding box coordinates. If set to None, does not perform
+        scaling. For Faster RCNN, the open-source implementation recommends
+        using [10.0, 10.0, 5.0, 5.0].
     """
     self.similarity_calc = iou_similarity.IouSimilarity()
     self.target_gather = target_gather.TargetGather()
@@ -153,7 +162,9 @@ class AnchorLabeler(object):
         indicators=[-1, -2, 1],
         force_match_for_each_col=True,
     )
-    self.box_coder = faster_rcnn_box_coder.FasterRcnnBoxCoder()
+    self.box_coder = faster_rcnn_box_coder.FasterRcnnBoxCoder(
+        scale_factors=box_coder_weights,
+    )
 
   def label_anchors(
       self,

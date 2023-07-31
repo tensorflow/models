@@ -348,6 +348,7 @@ class MultilevelDetectionGeneratorTest(
         'tflite_post_processing_config': tflite_post_processing_config,
         'return_decoded': False,
         'use_class_agnostic_nms': False,
+        'box_coder_weights': None,
     }
     generator = detection_generator.MultilevelDetectionGenerator(**kwargs)
 

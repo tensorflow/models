@@ -45,6 +45,7 @@ class Parser(parser.Parser):
                anchor_size,
                match_threshold=0.5,
                unmatched_threshold=0.5,
+               box_coder_weights=None,
                aug_type=None,
                aug_rand_hflip=False,
                aug_scale_min=1.0,
@@ -78,6 +79,10 @@ class Parser(parser.Parser):
       unmatched_threshold: `float` number between 0 and 1 representing the
         upper-bound threshold to assign negative labels for anchors. An anchor
         with a score below the threshold is labeled negative.
+      box_coder_weights: Optional `list` of 4 positive floats to scale y, x, h,
+        and w when encoding box coordinates. If set to None, does not perform
+        scaling. For Faster RCNN, the open-source implementation recommends
+        using [10.0, 10.0, 5.0, 5.0].
       aug_type: An optional Augmentation object to choose from AutoAugment and
         RandAugment.
       aug_rand_hflip: `bool`, if True, augment training with random horizontal
@@ -113,6 +118,7 @@ class Parser(parser.Parser):
     self._anchor_size = anchor_size
     self._match_threshold = match_threshold
     self._unmatched_threshold = unmatched_threshold
+    self._box_coder_weights = box_coder_weights
 
     # Data augmentation.
     self._aug_rand_hflip = aug_rand_hflip
@@ -254,7 +260,9 @@ class Parser(parser.Parser):
     anchor_boxes = input_anchor(image_size=(image_height, image_width))
     if anchor_labeler is None:
       anchor_labeler = anchor.AnchorLabeler(
-          self._match_threshold, self._unmatched_threshold
+          match_threshold=self._match_threshold,
+          unmatched_threshold=self._unmatched_threshold,
+          box_coder_weights=self._box_coder_weights,
       )
     (cls_targets, box_targets, att_targets, cls_weights,
      box_weights) = anchor_labeler.label_anchors(
@@ -327,7 +335,9 @@ class Parser(parser.Parser):
     anchor_boxes = input_anchor(image_size=(image_height, image_width))
     if anchor_labeler is None:
       anchor_labeler = anchor.AnchorLabeler(
-          self._match_threshold, self._unmatched_threshold
+          match_threshold=self._match_threshold,
+          unmatched_threshold=self._unmatched_threshold,
+          box_coder_weights=self._box_coder_weights,
       )
     (cls_targets, box_targets, att_targets, cls_weights,
      box_weights) = anchor_labeler.label_anchors(

@@ -370,6 +370,12 @@ def encode_boxes(boxes, anchors, weights=None):
     anchor_yc = anchor_ymin + 0.5 * anchor_h
     anchor_xc = anchor_xmin + 0.5 * anchor_w
 
+    # Avoid inf in log below.
+    anchor_h += EPSILON
+    anchor_w += EPSILON
+    box_h += EPSILON
+    box_w += EPSILON
+
     encoded_dy = (box_yc - anchor_yc) / anchor_h
     encoded_dx = (box_xc - anchor_xc) / anchor_w
     encoded_dh = tf.math.log(box_h / anchor_h)

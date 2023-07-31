@@ -127,6 +127,9 @@ class RetinaNetTask(base_task.Task):
         dtype=params.dtype,
         match_threshold=params.parser.match_threshold,
         unmatched_threshold=params.parser.unmatched_threshold,
+        box_coder_weights=(
+            self.task_config.model.detection_generator.box_coder_weights
+        ),
         aug_type=params.parser.aug_type,
         aug_rand_hflip=params.parser.aug_rand_hflip,
         aug_scale_min=params.parser.aug_scale_min,
