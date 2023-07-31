@@ -19,6 +19,45 @@ from typing import Any, Dict, Optional, Union
 import tensorflow as tf
 
 
+def weighted_average_pooling(features, weights, axis):
+  """Weighted average pooling.
+
+  Args:
+    features: a tensor of at least rank 1.
+    weights: a weight tensor whose shape is broadcast compatible with features.
+      It doesn't have to be normalized.
+    axis: the dimensions to reduce.
+
+  Returns:
+    The reduced tensor.
+  """
+  return tf.math.divide_no_nan(
+      tf.reduce_sum(weights * features, axis),  # numerator.
+      tf.reduce_sum(weights, axis),  # denominator.
+  )
+
+
+def frame_swap(frames: tf.Tensor) -> tf.Tensor:
+  """Self-weighted average pooling over all frames of a video.
+
+  It does the following operation independently for each feature:
+    x_pooled = (sum_i x_i * |x_i|) / (sum_i |x_i|).
+  Basically the weight for the feature in each frame is determined by the
+  magnitude of the feature itself.
+
+  Paper: https://research.google/pubs/pub48351/
+
+  Args:
+    frames: A tensor with shape [batch_size, max_frames, feature_size].
+
+  Returns:
+    A tensor with shape [batch_size, feature_size].
+  """
+  weights = tf.abs(frames)
+  # We set axis to 1 to reduce the dimension corresponding to max_frames.
+  return weighted_average_pooling(frames, weights, axis=1)
+
+
 def frame_pooling(frames, method):
   """Pools over the frames of a video.
 
@@ -39,6 +78,11 @@ def frame_pooling(frames, method):
     reduced = tf.reduce_mean(frames, 1)
   elif method == "max":
     reduced = tf.reduce_max(frames, 1)
+  elif method == "swap":
+    # Note we assume the frames are in the shape of
+    # [batch_size, num_frames, feature_size]. Otherwise this function might
+    # fail.
+    reduced = frame_swap(frames)
   elif method == "none":
     feature_size = frames.shape_as_list()[2]
     reduced = tf.reshape(frames, [-1, feature_size])
