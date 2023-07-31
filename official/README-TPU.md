@@ -12,7 +12,7 @@
 
 ## Computer Vision
 
-*   [efficientnet](https://www.tensorflow.org/api_docs/python/tf/keras/applications/efficientnet): A family of convolutional
+*   [efficientnet](https://github.com/tensorflow/models/blob/master/official/vision/modeling/backbones/efficientnet.py): A family of convolutional
     neural networks that scale by balancing network depth, width, and
     resolution and can be used to classify ImageNet's dataset of 1000 classes.
     See [Tensorboard.dev training metrics](https://tensorboard.dev/experiment/KnaWjrq5TXGfv0NW5m7rpg/#scalars).
