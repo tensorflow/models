@@ -327,6 +327,7 @@ def build_retinanet(
       tflite_post_processing_config=tflite_post_processing_config,
       return_decoded=generator_config.return_decoded,
       use_class_agnostic_nms=generator_config.use_class_agnostic_nms,
+      box_coder_weights=generator_config.box_coder_weights,
   )
 
   model = retinanet_model.RetinaNetModel(

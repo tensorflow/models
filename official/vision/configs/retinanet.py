@@ -152,6 +152,9 @@ class DetectionGenerator(hyperparams.Config):
   return_decoded: Optional[bool] = None
   # Only works when nms_version='v2'.
   use_class_agnostic_nms: Optional[bool] = False
+  # Weights or scales when encode and decode boxes coordinates. For Faster RCNN,
+  # the open-source implementation recommends using [10.0, 10.0, 5.0, 5.0].
+  box_coder_weights: list[float] | None = None
 
 
 @dataclasses.dataclass
