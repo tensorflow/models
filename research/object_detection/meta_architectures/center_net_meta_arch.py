@@ -3069,8 +3069,7 @@ class CenterNetMetaArch(model.DetectionModel):
           width=input_width,
           gt_classes_list=gt_classes_list,
           gt_keypoints_list=gt_keypoints_list,
-          gt_weights_list=gt_weights_list,
-          maximum_normalized_coordinate=maximum_normalized_coordinate)
+          gt_weights_list=gt_weights_list)
     else:
       gt_boxes_list = self.groundtruth_lists(fields.BoxListFields.boxes)
       heatmap_targets = assigner.assign_center_targets_from_boxes(
