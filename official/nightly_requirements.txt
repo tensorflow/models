@@ -14,8 +14,7 @@ gin-config
 tf_slim>=1.1.0
 Cython
 matplotlib
-# Loader becomes a required positional argument in 6.0 in yaml.load
-pyyaml>=5.1,<6.0
+pyyaml
 # CV related dependencies
 opencv-python-headless==4.5.2.52
 Pillow
