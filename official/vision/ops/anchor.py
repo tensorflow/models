@@ -15,6 +15,7 @@
 """Anchor box and labeler definition."""
 
 import collections
+import math
 from typing import Dict, Optional, Tuple
 
 # Import libraries
@@ -78,9 +79,10 @@ class Anchor(object):
     boxes_all = []
     for level in range(self.min_level, self.max_level + 1):
       boxes_l = []
+      feat_size = math.ceil(self.image_size[0] / 2**level)
+      stride = tf.cast(self.image_size[0] / feat_size, tf.float32)
       for scale in range(self.num_scales):
         for aspect_ratio in self.aspect_ratios:
-          stride = 2**level
           intermidate_scale = 2 ** (scale / float(self.num_scales))
           base_anchor_size = self.anchor_size * stride * intermidate_scale
           aspect_x = aspect_ratio**0.5
