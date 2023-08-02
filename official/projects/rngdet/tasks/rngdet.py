@@ -21,22 +21,23 @@ import tensorflow as tf
 from official.common import dataset_fn
 from official.core import base_task
 from official.core import task_factory
-from official.projects.detr.configs import detr as detr_cfg
-from official.projects.detr.dataloaders import coco
-from official.projects.detr.dataloaders import detr_input
-from official.projects.detr.modeling import detr
-from official.projects.detr.ops import matchers
+from official.projects.rngdet.configs import rngdet as rngdet_cfg
+from official.projects.rngdet.dataloaders import coco
+from official.projects.rngdet.dataloaders import rngdet_input
+from official.projects.rngdet.modeling import rngdet
+from official.projects.rngdet.ops import matchers
 from official.vision.dataloaders import input_reader_factory
 from official.vision.dataloaders import tf_example_decoder
 from official.vision.dataloaders import tfds_factory
 from official.vision.dataloaders import tf_example_label_map_decoder
 from official.vision.evaluation import coco_evaluator
 from official.vision.modeling import backbones
+from official.vision.modeling import decoders
 from official.vision.ops import box_ops
 
 
-@task_factory.register_task_cls(detr_cfg.DetrTask)
-class DetectionTask(base_task.Task):
+@task_factory.register_task_cls(rngdet_cfg.DetrTask)
+class RNGDetTask(base_task.Task):
   """A single-replica view of training procedure.
 
   DETR task provides artifacts for training/evalution procedures, including
@@ -45,18 +46,43 @@ class DetectionTask(base_task.Task):
   """
 
   def build_model(self):
-    """Build DETR model."""
+    """Build RNGDet model."""
 
     input_specs = tf.keras.layers.InputSpec(shape=[None] +
                                             self._task_config.model.input_size)
+    
+    l2_weight_decay = self.task_config.losses.l2_weight_decay
+    # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
+    # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
+    # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
+    l2_regularizer = (tf.keras.regularizers.l2(
+        l2_weight_decay / 2.0) if l2_weight_decay else None)
 
     backbone = backbones.factory.build_backbone(
         input_specs=input_specs,
         backbone_config=self._task_config.model.backbone,
         norm_activation_config=self._task_config.model.norm_activation)
+    
+    backbone_history = backbones.factory.build_backbone(
+        input_specs=input_specs,
+        backbone_config=self._task_config.model.backbone,
+        norm_activation_config=self._task_config.model.norm_activation)
+    
+    segment_head = decoders.factory.build_decoder(
+        input_specs=backbone.output_specs,
+        model_config=self._task_config.model,
+        l2_regularizer=l2_regularizer)
+    
+    keypoint_head = decoders.factory.build_decoder(
+        input_specs=backbone.output_specs,
+        model_config=self._task_config.model,
+        l2_regularizer=l2_regularizer)
 
-    model = detr.DETR(backbone,
+    model = rngdet.RNGDet(backbone,
+                      backbone_history,
                       self._task_config.model.backbone_endpoint_name,
+                      segment_head,
+                      keypoint_head,
                       self._task_config.model.num_queries,
                       self._task_config.model.hidden_size,
                       self._task_config.model.num_classes,

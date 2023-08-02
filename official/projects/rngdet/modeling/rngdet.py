@@ -124,16 +124,19 @@ def postprocess(outputs: dict[str, tf.Tensor]) -> dict[str, tf.Tensor]:
   return predictions
 
 
-class DETR(tf.keras.Model):
-  """DETR model with Keras.
+class RNGDet(tf.keras.Model):
+  """RNGDet model with Keras.
 
-  DETR consists of backbone, query embedding, DETRTransformer,
+  RNGDet consists of backbone, query embedding, RNGDetTransformer,
   class and box heads.
   """
 
   def __init__(self,
                backbone,
+               backbone_history,
                backbone_endpoint_name,
+               segment_head,
+               keypoint_head,
                num_queries,
                hidden_size,
                num_classes,
@@ -151,7 +154,10 @@ class DETR(tf.keras.Model):
     if hidden_size % 2 != 0:
       raise ValueError("hidden_size must be a multiple of 2.")
     self._backbone = backbone
+    self._backbone_history = backbone_history
     self._backbone_endpoint_name = backbone_endpoint_name
+    self._segment_head = segment_head
+    self._keypoint_head = keypoint_head
 
   def build(self, input_shape=None):
     self._input_proj = tf.keras.layers.Conv2D(
@@ -222,9 +228,25 @@ class DETR(tf.keras.Model):
         mask, target_shape, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
     return mask
 
-  def call(self, inputs: tf.Tensor, training: bool = None) -> List[Any]:  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs: tf.Tensor, history_samples: tf.Tensor,
+           gt_labels: tf.Tensor = None, training: bool = None) -> List[Any]:
+    # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     batch_size = tf.shape(inputs)[0]
-    features = self._backbone(inputs)[self._backbone_endpoint_name]
+    features = self._backbone(inputs)
+    pred_segment = self._segment_head(features) # FPN
+    pred_keypoint = self._keypoint_head(features) # FPN
+    inputs_history = tf.concat([pred_segment, pred_keypoint], -1)
+    out["pred_masks"] = inputs_history
+    segmentation_map = tf.sigmoid(tf.stop_gradient(tf.identity(inputs_history)))
+    
+    if gt_labels is not None:
+      history_samples = tf.concat([history_samples,gt_labels],-1)
+    else:
+      history_samples = tf.concat([history_samples,segmentation_map],-1)
+    
+    history_outs = self._backbone_history(
+        history_samples)[self._backbone_endpoint_name]
+    
     shape = tf.shape(features)
     mask = self._generate_image_mask(inputs, shape[1: 3])
 
@@ -232,8 +254,10 @@ class DETR(tf.keras.Model):
         mask[:, :, :, 0], num_pos_features=self._hidden_size)
     pos_embed = tf.reshape(pos_embed, [batch_size, -1, self._hidden_size])
 
+    proj_in = tf.concat([features[self._backbone_endpoint_name],
+                         history_outs[self._backbone_endpoint_name]], -1)
     features = tf.reshape(
-        self._input_proj(features), [batch_size, -1, self._hidden_size])
+        self._input_proj(proj_in), [batch_size, -1, self._hidden_size])
     mask = tf.reshape(mask, [batch_size, -1])
 
     decoded_list = self._transformer({
@@ -246,6 +270,12 @@ class DETR(tf.keras.Model):
         "pos_embed": pos_embed,
         "mask": mask,
     })
+    
+    #outputs_class = self.detr.class_embed(hs)
+    #outputs_coord = self.detr.bbox_embed(hs).tanh()
+    #out["pred_logits"] = outputs_class[-1]
+    #out["pred_boxes"] = outputs_coord[-1]
+    
     out_list = []
     for decoded in decoded_list:
       decoded = tf.stack(decoded)
