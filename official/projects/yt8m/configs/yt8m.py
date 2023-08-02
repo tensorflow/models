@@ -51,8 +51,9 @@ class DataConfig(cfg.DataConfig):
     temporal_stride: Not used. Need to deprecated.
     max_frames: Maxim Number of frames in a input example. It is used to crop
       the input in the temporal dimension.
-    sample_random_frames: If sample random frames.
-    num_sample_frames: Number of frames to sample for each input example.
+    sample_random_frames: If sample random frames or random sequence.
+    num_sample_frames: Number of frames to sample for each input example. No
+      frame sampling if None.
     num_classes: Number of classes to classify. Assuming it is a classification
       task.
     num_devices: Not used. To be deprecated.

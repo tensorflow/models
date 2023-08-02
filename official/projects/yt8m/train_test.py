@@ -45,25 +45,44 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
           testcase_name='segment_with_avg_precison',
           use_segment_level_labels=True,
           use_average_precision_metric=True,
+          num_sample_frames=24,
       ),
       dict(
           testcase_name='video_with_avg_precison',
           use_segment_level_labels=False,
           use_average_precision_metric=True,
+          num_sample_frames=24,
       ),
       dict(
           testcase_name='segment',
           use_segment_level_labels=True,
           use_average_precision_metric=False,
+          num_sample_frames=24,
       ),
       dict(
           testcase_name='video',
           use_segment_level_labels=False,
           use_average_precision_metric=False,
+          num_sample_frames=24,
+      ),
+      dict(
+          testcase_name='segment_without_sampling_frames',
+          use_segment_level_labels=True,
+          use_average_precision_metric=False,
+          num_sample_frames=None,
+      ),
+      dict(
+          testcase_name='video_without_sampling_frames',
+          use_segment_level_labels=False,
+          use_average_precision_metric=False,
+          num_sample_frames=None,
       ),
   )
   def test_train_and_eval(
-      self, use_segment_level_labels, use_average_precision_metric
+      self,
+      use_segment_level_labels,
+      use_average_precision_metric,
+      num_sample_frames,
   ):
     saved_flag_values = flagsaver.save_flag_values()
     train_lib.tfm_flags.define_flags()
@@ -103,11 +122,13 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
             'train_data': {
                 'input_path': self._data_path,
                 'global_batch_size': 4,
+                'num_sample_frames': num_sample_frames,
             },
             'validation_data': {
                 'input_path': self._data_path,
                 'segment_labels': use_segment_level_labels,
                 'global_batch_size': 4,
+                'num_sample_frames': num_sample_frames,
             },
             'evaluation': {
                 'average_precision': average_precision,

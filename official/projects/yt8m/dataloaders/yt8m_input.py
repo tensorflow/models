@@ -358,13 +358,22 @@ class Parser(parser.Parser):
     if not self._include_video_id and "id" in decoded_tensors:
       del decoded_tensors["id"]
 
+    # Valid `num_frames` comes from _concat_features().
     outputs = self._process_label(video_matrix, num_frames, decoded_tensors)
-    if self._num_sample_frames is not None:
+    if self._num_sample_frames is None:
+      # Padding to max_frames.
+      outputs["video_matrix"] = resize_axis(
+          outputs["video_matrix"], 1, self._max_frames
+      )
+    else:
       outputs["video_matrix"] = utils.sample_video_frames(
           outputs["video_matrix"],
           tf.reshape(outputs["num_frames"], [-1, 1]),
           random_frames=self._sample_random_frames,
           num_sample_frames=self._num_sample_frames,
+      )
+      outputs["num_frames"] = (
+          tf.ones_like(outputs["num_frames"]) * self._num_sample_frames
       )
     return outputs
 
@@ -379,12 +388,20 @@ class Parser(parser.Parser):
       del decoded_tensors["id"]
 
     outputs = self._process_label(video_matrix, num_frames, decoded_tensors)
-    if self._num_sample_frames is not None:
+    if self._num_sample_frames is None:
+      # Padding to max_frames.
+      outputs["video_matrix"] = resize_axis(
+          outputs["video_matrix"], 1, self._max_frames
+      )
+    else:
       outputs["video_matrix"] = utils.sample_video_frames(
           outputs["video_matrix"],
           tf.reshape(outputs["num_frames"], [-1, 1]),
           random_frames=self._sample_random_frames,
           num_sample_frames=self._num_sample_frames,
+      )
+      outputs["num_frames"] = (
+          tf.ones_like(outputs["num_frames"]) * self._num_sample_frames
       )
     return outputs
 
@@ -488,7 +505,9 @@ class PostBatchProcessor():
   def __init__(self, input_params: exp_cfg.DataConfig):
     self.segment_labels = input_params.segment_labels
     self.num_classes = input_params.num_classes
-    self.num_sample_frames = input_params.num_sample_frames
+    self.num_batched_frames = (
+        input_params.num_sample_frames or input_params.max_frames
+    )
     self.num_features = sum(input_params.feature_sizes)
 
   def post_fn(self, batched_tensors: Dict[str,
@@ -500,12 +519,13 @@ class PostBatchProcessor():
     num_frames = batched_tensors["num_frames"]
 
     if self.segment_labels:
-      # [batch x num_segment x num_sample_frames x num_features]
-      # -> [batch * num_segment x num_sample_frames x num_features]
+      # [batch x num_segment x num_batched_frames x num_features]
+      # -> [batch * num_segment x num_batched_frames x num_features]
       if video_ids is not None:
         video_ids = tf.reshape(video_ids, [-1])
-      video_matrix = tf.reshape(video_matrix,
-                                [-1, self.num_sample_frames, self.num_features])
+      video_matrix = tf.reshape(
+          video_matrix, [-1, self.num_batched_frames, self.num_features]
+      )
       labels = tf.reshape(labels, [-1, self.num_classes])
       num_frames = tf.reshape(num_frames, [-1, 1])
       batched_tensors["label_weights"] = tf.reshape(
