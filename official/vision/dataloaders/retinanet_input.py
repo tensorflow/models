@@ -177,7 +177,7 @@ class Parser(parser.Parser):
                                                  image_info[1, :], offset)
     return image, boxes, image_info
 
-  def _parse_train_data(self, data, anchor_labeler=None):
+  def _parse_train_data(self, data, anchor_labeler=None, input_anchor=None):
     """Parses data for training and evaluation."""
     classes = data['groundtruth_classes']
     boxes = data['groundtruth_boxes']
@@ -251,12 +251,15 @@ class Parser(parser.Parser):
       attributes[k] = tf.gather(v, indices)
 
     # Assigns anchors.
-    input_anchor = anchor.build_anchor_generator(
-        min_level=self._min_level,
-        max_level=self._max_level,
-        num_scales=self._num_scales,
-        aspect_ratios=self._aspect_ratios,
-        anchor_size=self._anchor_size)
+    if input_anchor is None:
+      input_anchor = anchor.build_anchor_generator(
+          min_level=self._min_level,
+          max_level=self._max_level,
+          num_scales=self._num_scales,
+          aspect_ratios=self._aspect_ratios,
+          anchor_size=self._anchor_size,
+      )
+
     anchor_boxes = input_anchor(image_size=(image_height, image_width))
     if anchor_labeler is None:
       anchor_labeler = anchor.AnchorLabeler(
@@ -284,7 +287,7 @@ class Parser(parser.Parser):
       labels['attribute_targets'] = att_targets
     return image, labels
 
-  def _parse_eval_data(self, data, anchor_labeler=None):
+  def _parse_eval_data(self, data, anchor_labeler=None, input_anchor=None):
     """Parses data for training and evaluation."""
 
     classes = data['groundtruth_classes']
@@ -326,12 +329,15 @@ class Parser(parser.Parser):
       attributes[k] = tf.gather(v, indices)
 
     # Assigns anchors.
-    input_anchor = anchor.build_anchor_generator(
-        min_level=self._min_level,
-        max_level=self._max_level,
-        num_scales=self._num_scales,
-        aspect_ratios=self._aspect_ratios,
-        anchor_size=self._anchor_size)
+    if input_anchor is None:
+      input_anchor = anchor.build_anchor_generator(
+          min_level=self._min_level,
+          max_level=self._max_level,
+          num_scales=self._num_scales,
+          aspect_ratios=self._aspect_ratios,
+          anchor_size=self._anchor_size,
+      )
+
     anchor_boxes = input_anchor(image_size=(image_height, image_width))
     if anchor_labeler is None:
       anchor_labeler = anchor.AnchorLabeler(
