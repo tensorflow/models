@@ -190,9 +190,8 @@ class Pix2SeqParserTest(tf.test.TestCase):
   def test_image_input_eval(self):
     decoder = tf_example_decoder.TfExampleDecoder()
     parser = rngdet_input.Parser(
-        eos_token_weight=0.1,
-        output_size=[640, 640],
-        max_num_boxes=10,
+        roi_size=128,
+        num_queries=10,
     ).parse_fn(False)
 
     seq_example, _ = fake_seq_example()
@@ -207,19 +206,24 @@ class Pix2SeqParserTest(tf.test.TestCase):
 
 def main(_):
   raw_dataset_train = tf.data.TFRecordDataset(
-    '../data/tfrecord/train-00000-of-00018.tfrecord')
+    '/data2/cityscale/tfrecord/train-noise-8-00000-of-00032.tfrecord')
   
   decoder = rngdet_input.Decoder()
   parser = rngdet_input.Parser(
-        eos_token_weight=0.1,
-        output_size=[640, 640],
+        roi_size=128,
+        num_queries=10,
     ).parse_fn(True)
   
   decoded_tensors = raw_dataset_train.map(decoder.decode)
   decoded_tensors = decoded_tensors.take(1)
   print(decoded_tensors)
+  print("***********************************")
   for i in decoded_tensors:
-    output_tensor = parser(i)
+    
+    print("***********************************")
+    images, labels = parser(i)
+    print(images)
+    print(labels)
     
 
 if __name__ == '__main__':

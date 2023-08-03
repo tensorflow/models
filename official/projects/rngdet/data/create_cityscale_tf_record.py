@@ -69,13 +69,13 @@ def create_tf_example(sat_ROI, label_masks_ROI, historical_ROI,
   """Converts image and annotations to a tf.Example proto.
 
   Args:
-    sat_ROI: 
-    label_masks_ROI: 
-    historical_ROI: 
-    gt_probs: 
-    gt_coords: 
-    list_len: 
-    gt_masks: 
+    sat_ROI: [roi_size, roi_size, 3]
+    label_masks_ROI: [roi_size, roi_size, 2]
+    historical_ROI: [roi_size, roi_size]
+    gt_probs: [num_queries]
+    gt_coords: [num_queries, 2]
+    list_len: int
+    gt_masks: [roi_size, roi_size, num_queries]
 
   Returns:
     example: The converted tf.Example
