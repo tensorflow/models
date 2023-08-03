@@ -27,7 +27,7 @@ import tensorflow as tf
 from official.modeling import tf_utils
 from official.projects.detr.modeling import transformer
 from official.vision.ops import box_ops
-
+from official.vision.ops import spatial_transform_ops
 
 def position_embedding_sine(attention_mask,
                             num_pos_features=256,
@@ -159,11 +159,9 @@ class RNGDet(tf.keras.Model):
     self._segment_head = segment_head
     self._keypoint_head = keypoint_head
 
-  def build(self, input_shape=None):
     self._input_proj = tf.keras.layers.Conv2D(
         self._hidden_size, 1, name="detr/conv2d")
     self._build_detection_decoder()
-    super().build(input_shape)
 
   def _build_detection_decoder(self):
     """Builds detection decoder."""
@@ -193,7 +191,7 @@ class RNGDet(tf.keras.Model):
                 -sqrt_k, sqrt_k),
             name="detr/box_dense_1"),
         tf.keras.layers.Dense(
-            4, kernel_initializer=tf.keras.initializers.RandomUniform(
+            2, kernel_initializer=tf.keras.initializers.RandomUniform(
                 -sqrt_k, sqrt_k),
             name="detr/box_dense_2")]
     self._sigmoid = tf.keras.layers.Activation("sigmoid")
@@ -234,9 +232,17 @@ class RNGDet(tf.keras.Model):
     batch_size = tf.shape(inputs)[0]
     features = self._backbone(inputs)
     pred_segment = self._segment_head(features) # FPN
+    pred_segment = spatial_transform_ops.nearest_upsampling(
+          pred_segment['2'], 4, use_keras_layer=False)
     pred_keypoint = self._keypoint_head(features) # FPN
+    pred_keypoint = spatial_transform_ops.nearest_upsampling(
+          pred_keypoint['2'], 4, use_keras_layer=False)
+
     inputs_history = tf.concat([pred_segment, pred_keypoint], -1)
-    out["pred_masks"] = inputs_history
+    temp = {}
+    temp["pred_masks"] = inputs_history
+    
+
     segmentation_map = tf.sigmoid(tf.stop_gradient(tf.identity(inputs_history)))
     
     if gt_labels is not None:
@@ -247,7 +253,7 @@ class RNGDet(tf.keras.Model):
     history_outs = self._backbone_history(
         history_samples)[self._backbone_endpoint_name]
     
-    shape = tf.shape(features)
+    shape = tf.shape(history_outs)
     mask = self._generate_image_mask(inputs, shape[1: 3])
 
     pos_embed = position_embedding_sine(
@@ -255,7 +261,7 @@ class RNGDet(tf.keras.Model):
     pos_embed = tf.reshape(pos_embed, [batch_size, -1, self._hidden_size])
 
     proj_in = tf.concat([features[self._backbone_endpoint_name],
-                         history_outs[self._backbone_endpoint_name]], -1)
+                         history_outs], -1)
     features = tf.reshape(
         self._input_proj(proj_in), [batch_size, -1, self._hidden_size])
     mask = tf.reshape(mask, [batch_size, -1])
@@ -288,7 +294,9 @@ class RNGDet(tf.keras.Model):
       if not training:
         out.update(postprocess(out))
       out_list.append(out)
-
+    print("***************************************")
+    print(out_list)
+    print("***************************************")
     return out_list
 
 
@@ -354,7 +362,8 @@ class DETRTransformer(tf.keras.layers.Layer):
         self_attention_mask=tf.ones(
             (target_shape[0], target_shape[1], target_shape[1])),
         cross_attention_mask=cross_attention_mask,
-        return_all_decoder_outputs=True,
+        #return_all_decoder_outputs=True,
+        return_all_decoder_outputs=False,
         input_pos_embed=targets,
         memory_pos_embed=pos_embed)
     return decoded

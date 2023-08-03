@@ -22,7 +22,6 @@ from official.common import dataset_fn
 from official.core import base_task
 from official.core import task_factory
 from official.projects.rngdet.configs import rngdet as rngdet_cfg
-from official.projects.rngdet.dataloaders import coco
 from official.projects.rngdet.dataloaders import rngdet_input
 from official.projects.rngdet.modeling import rngdet
 from official.projects.rngdet.ops import matchers
@@ -117,35 +116,21 @@ class RNGDetTask(base_task.Task):
                    params,
                    input_context: Optional[tf.distribute.InputContext] = None):
     """Build input dataset."""
-    if isinstance(params, coco.COCODataConfig):
-      dataset = coco.COCODataLoader(params).load(input_context)
-    else:
-      if params.tfds_name:
-        decoder = tfds_factory.get_detection_decoder(params.tfds_name)
-      else:
-        decoder_cfg = params.decoder.get()
-        if params.decoder.type == 'simple_decoder':
-          decoder = tf_example_decoder.TfExampleDecoder(
-              regenerate_source_id=decoder_cfg.regenerate_source_id)
-        elif params.decoder.type == 'label_map_decoder':
-          decoder = tf_example_label_map_decoder.TfExampleDecoderLabelMap(
-              label_map=decoder_cfg.label_map,
-              regenerate_source_id=decoder_cfg.regenerate_source_id)
-        else:
-          raise ValueError('Unknown decoder type: {}!'.format(
-              params.decoder.type))
+    input_size = self.task_config.model.input_size
 
-      parser = detr_input.Parser(
-          class_offset=self._task_config.losses.class_offset,
-          output_size=self._task_config.model.input_size[:2],
-      )
+    decoder = rngdet_input.Decoder()
 
-      reader = input_reader_factory.input_reader_generator(
-          params,
-          dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
-          decoder_fn=decoder.decode,
-          parser_fn=parser.parse_fn(params.is_training))
-      dataset = reader.read(input_context=input_context)
+    parser = rngdet_input.Parser(
+        class_offset=self._task_config.losses.class_offset,
+        output_size=self._task_config.model.input_size[:2],
+    )
+
+    reader = input_reader_factory.input_reader_generator(
+        params,
+        dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
+        decoder_fn=decoder.decode,
+        parser_fn=parser.parse_fn(params.is_training))
+    dataset = reader.read(input_context=input_context)
 
     return dataset
 
@@ -280,6 +265,11 @@ class RNGDetTask(base_task.Task):
     features, labels = inputs
     with tf.GradientTape() as tape:
       outputs = model(features, training=True)
+      targets = [{'labels':gt_prob[x,:list_len[x]],
+                  'masks':label_masks[x],
+                  'boxes':gt_coord[x,:list_len[x]],
+                  'instance_masks':gt_mask[x,:list_len[x]]
+                  } for x in range(label_masks.shape[0])]
 
       loss = 0.0
       cls_loss = 0.0
