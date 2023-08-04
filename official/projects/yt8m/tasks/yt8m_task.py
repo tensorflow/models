@@ -19,13 +19,13 @@ from absl import logging
 import tensorflow as tf
 
 from official.core import base_task
-from official.core import input_reader
 from official.core import task_factory
 from official.modeling import tf_utils
 from official.projects.yt8m.configs import yt8m as yt8m_cfg
 from official.projects.yt8m.dataloaders import yt8m_input
 from official.projects.yt8m.eval_utils import eval_util
 from official.projects.yt8m.modeling import yt8m_model
+from official.vision.dataloaders.google import input_reader
 
 
 @task_factory.register_task_cls(yt8m_cfg.YT8MTask)
