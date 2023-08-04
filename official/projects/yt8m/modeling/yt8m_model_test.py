@@ -26,25 +26,39 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
   """Class for testing yt8m network."""
 
   # test_yt8m_network_creation arbitrary params
-  @parameterized.parameters((32, 1152), (24, 1152))  # 1152 = 1024 + 128
-  def test_yt8m_network_creation(self, num_frames, feature_dims):
+  @parameterized.product(
+      num_sample_frames=(None, 16, 32),
+      pooling_method=('average', 'max', 'swap'),
+  )
+  def test_yt8m_network_creation(
+      self, num_sample_frames, pooling_method
+  ):
     """Test for creation of a YT8M Model.
 
     Args:
-      num_frames: number of frames.
-      feature_dims: indicates total dimension size of the features.
+      num_sample_frames: indicates number of frames to sample.
+      pooling_method: str of frame pooling method.
     """
+    num_frames = 24
+    feature_dims = 52
+    num_classes = 45
     input_specs = tf.keras.layers.InputSpec(shape=[None, None, feature_dims])
 
-    num_classes = 3862
+    params = yt8m_cfg.YT8MTask().model
+    params.backbone.dbof.pooling_method = pooling_method
     model = yt8m_model.VideoClassificationModel(
-        params=yt8m_cfg.YT8MTask().model,
+        params=params,
         num_classes=num_classes,
         input_specs=input_specs,
     )
 
     # batch = 2 -> arbitrary value for test.
-    inputs = np.random.rand(2, num_frames, feature_dims)
+    if num_sample_frames:
+      inputs = np.random.rand(2, num_sample_frames, feature_dims)
+    else:
+      # Add padding frames.
+      inputs = np.random.rand(2, num_frames + 4, feature_dims)
+
     predictions = model(inputs)['predictions']
     self.assertAllEqual([2, num_classes], predictions.numpy().shape)
 
