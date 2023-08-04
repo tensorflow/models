@@ -23,6 +23,9 @@ from official.core import config_definitions as cfg
 from official.core import input_reader
 
 
+InputReader = input_reader.InputReader
+
+
 def build_weighted_sampling_combine_fn(
     weights: Mapping[Any, Any], stop_on_empty_dataset=True
 ) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
