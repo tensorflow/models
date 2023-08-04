@@ -48,7 +48,11 @@ class YT8MTask(base_task.Task):
         params=model_config,
         input_specs=input_specs,
         num_classes=train_cfg.num_classes,
-        l2_weight_decay=l2_weight_decay)
+        l2_weight_decay=l2_weight_decay,
+    )
+
+    # Warmup calls to build model variables.
+    _ = model(tf.keras.Input(common_input_shape, dtype=tf.float32))
 
     non_trainable_batch_norm_variables = []
     non_trainable_extra_variables = []
@@ -114,17 +118,16 @@ class YT8MTask(base_task.Task):
         decoder_fn=decoder_fn,
         parser_fn=parser_fn,
         postprocess_fn=postprocess_fn,
-        transform_and_batch_fn=batch_fn)
+        transform_and_batch_fn=batch_fn,
+    )
 
     dataset = reader.read(input_context=input_context)
 
     return dataset
 
-  def build_losses(self,
-                   labels,
-                   model_outputs,
-                   label_weights=None,
-                   aux_losses=None):
+  def build_losses(
+      self, labels, model_outputs, label_weights=None, aux_losses=None
+  ):
     """Sigmoid Cross Entropy.
 
     Args:
@@ -143,7 +146,8 @@ class YT8MTask(base_task.Task):
         tf.expand_dims(model_outputs, axis=-1),
         from_logits=losses_config.from_logits,
         label_smoothing=losses_config.label_smoothing,
-        axis=-1)
+        axis=-1,
+    )
     if label_weights is None:
       model_loss = tf_utils.safe_mean(model_loss)
     else:
@@ -151,7 +155,8 @@ class YT8MTask(base_task.Task):
       # Manutally compute weighted mean loss.
       total_loss = tf.reduce_sum(model_loss)
       total_weight = tf.cast(
-          tf.reduce_sum(label_weights), dtype=total_loss.dtype)
+          tf.reduce_sum(label_weights), dtype=total_loss.dtype
+      )
       model_loss = tf.math.divide_no_nan(total_loss, total_weight)
 
     total_loss = model_loss
@@ -188,7 +193,8 @@ class YT8MTask(base_task.Task):
       top_k = self.task_config.evaluation.average_precision.top_k
       top_n = self.task_config.evaluation.average_precision.top_n
       self.avg_prec_metric = eval_util.EvaluationMetrics(
-          num_classes, top_k=top_k, top_n=top_n)
+          num_classes, top_k=top_k, top_n=top_n
+      )
 
     return metrics
 
@@ -233,17 +239,20 @@ class YT8MTask(base_task.Task):
         logs[m.name] = m.result()
     return logs
 
-  def _preprocess_model_inputs(self,
-                               inputs: dict[str, tf.Tensor],
-                               training: bool = True):
+  def _preprocess_model_inputs(
+      self,
+      inputs: dict[str, tf.Tensor],
+      training: bool = True,
+  ):
     """Preprocesses input tensors before model on device."""
-    del training
+    extra_inputs = {
+        'training': training,
+    }
+    return inputs['video_matrix'], extra_inputs
 
-    return inputs['video_matrix']
-
-  def _preprocess_labels(self,
-                         inputs: dict[str, tf.Tensor],
-                         training: bool = True):
+  def _preprocess_labels(
+      self, inputs: dict[str, tf.Tensor], training: bool = True
+  ):
     """Preprocesses labels."""
     del training  # training is unused in _preprocess_labels in YT8M.
     labels = inputs['labels']
@@ -251,11 +260,9 @@ class YT8MTask(base_task.Task):
 
     return labels, label_weights
 
-  def _postprocess_outputs(self,
-                           outputs,
-                           labels,
-                           label_weights,
-                           training: bool = True):
+  def _postprocess_outputs(
+      self, outputs, labels, label_weights, training: bool = True
+  ):
     """Postprocess model outputs (inputs / labels / label_weights)."""
     if not training and self.task_config.validation_data.segment_labels:
       # workaround to ignore the unrated labels.
@@ -279,25 +286,30 @@ class YT8MTask(base_task.Task):
     Returns:
       a dictionary of logs.
     """
-    model_inputs = self._preprocess_model_inputs(inputs, training=True)
+    inputs_tensor, extra_inputs = self._preprocess_model_inputs(
+        inputs,
+        training=True,
+    )
     labels, label_weights = self._preprocess_labels(inputs, training=True)
 
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
-      outputs = model(model_inputs, training=True)['predictions']
+      outputs = model(inputs_tensor, **extra_inputs)['predictions']
       # Casting output layer as float32 is necessary when mixed_precision is
       # mixed_float16 or mixed_bfloat16 to ensure output is casted as float32.
       outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
       # Post-process model / label outputs.
       outputs, labels, label_weights = self._postprocess_outputs(
-          outputs, labels, label_weights, training=True)
+          outputs, labels, label_weights, training=True
+      )
 
       # Computes per-replica loss
       all_losses = self.build_losses(
           model_outputs=outputs,
           labels=labels,
           label_weights=label_weights,
-          aux_losses=model.losses)
+          aux_losses=model.losses,
+      )
 
       loss = all_losses['total_loss']
       # Scales loss as the default gradients allreduce performs sum inside the
@@ -318,8 +330,9 @@ class YT8MTask(base_task.Task):
 
     # Apply gradient clipping.
     if self.task_config.gradient_clip_norm > 0:
-      grads, _ = tf.clip_by_global_norm(grads,
-                                        self.task_config.gradient_clip_norm)
+      grads, _ = tf.clip_by_global_norm(
+          grads, self.task_config.gradient_clip_norm
+      )
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
     logs = {self.loss: loss}
@@ -330,7 +343,9 @@ class YT8MTask(base_task.Task):
             outputs=outputs,
             model_losses=all_losses,
             label_weights=label_weights,
-            training=True))
+            training=True,
+        )
+    )
     return logs
 
   def validation_step(self, inputs, model, metrics=None):
@@ -346,19 +361,19 @@ class YT8MTask(base_task.Task):
     Returns:
       a dictionary of logs.
     """
-    model_inputs = self._preprocess_model_inputs(inputs, training=False)
-    labels, label_weights = self._preprocess_labels(inputs, training=False)
-
-    outputs = self.inference_step(model_inputs, model)['predictions']
+    outputs = self.inference_step(model, inputs)['predictions']
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
+    labels, label_weights = self._preprocess_labels(inputs, training=False)
     outputs, labels, label_weights = self._postprocess_outputs(
-        outputs, labels, label_weights, training=False)
+        outputs, labels, label_weights, training=False
+    )
 
     all_losses = self.build_losses(
         labels=labels,
         model_outputs=outputs,
         label_weights=label_weights,
-        aux_losses=model.losses)
+        aux_losses=model.losses,
+    )
 
     logs = {self.loss: all_losses['total_loss']}
     logs.update(
@@ -368,13 +383,18 @@ class YT8MTask(base_task.Task):
             outputs=outputs,
             model_losses=all_losses,
             label_weights=inputs.get('label_weights', None),
-            training=False))
+            training=False,
+        )
+    )
 
     return logs
 
-  def inference_step(self, inputs, model):
+  def inference_step(self, model, inputs):
     """Performs the forward step."""
-    return model(inputs, training=False)
+    model_inputs, extra_inputs = self._preprocess_model_inputs(
+        inputs, training=False
+    )
+    return model(model_inputs, **extra_inputs)
 
   def aggregate_logs(self, state=None, step_logs=None):
     if self.task_config.evaluation.average_precision is not None:
@@ -382,13 +402,15 @@ class YT8MTask(base_task.Task):
         state = self.avg_prec_metric
       self.avg_prec_metric.accumulate(
           labels=step_logs[self.avg_prec_metric.name][0],
-          predictions=step_logs[self.avg_prec_metric.name][1])
+          predictions=step_logs[self.avg_prec_metric.name][1],
+      )
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     if self.task_config.evaluation.average_precision is not None:
       avg_prec_metrics = self.avg_prec_metric.get(
-          self.task_config.evaluation.average_precision.return_per_class_ap)
+          self.task_config.evaluation.average_precision.return_per_class_ap
+      )
       self.avg_prec_metric.clear()
       return avg_prec_metrics
     return None

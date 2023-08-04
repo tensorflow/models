@@ -118,9 +118,6 @@ class VideoClassificationModel(tf.keras.Model):
         else None
     )
     self.head = aggregation_head(
-        input_specs=layers.InputSpec(
-            shape=[None, self._params.backbone.get().hidden_size]
-        ),
         vocab_size=self._num_classes,
         l2_regularizer=l2_regularizer,
         **head_cfg.as_dict(),
@@ -134,10 +131,13 @@ class VideoClassificationModel(tf.keras.Model):
     return cls(**config)
 
   def call(
-      self, inputs: tf.Tensor, training: Any = None, mask: Any = None
+      self, inputs_tensor: tf.Tensor, training: Any = None
   ) -> dict[str, tf.Tensor]:
-    features = self.backbone(inputs)
-    outputs = self.head(features)
+    features = self.backbone(
+        inputs_tensor,
+        training=training,
+    )
+    outputs = self.head(features, training=training)
     return outputs
 
   @property

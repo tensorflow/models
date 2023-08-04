@@ -13,21 +13,43 @@
 # limitations under the License.
 
 """Tests for YT8M modeling utilities."""
-
+from absl.testing import parameterized
 import tensorflow as tf
 
 from official.projects.yt8m.modeling import yt8m_model_utils
 
 
-class Yt8MModelUtilsTest(tf.test.TestCase):
+class Yt8MModelUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_swap_pooling(self):
+  @parameterized.product(
+      frame_pooling=("average", "max", "swap", "none"),
+      use_frame_mask=(True, False),
+  )
+  def test_frame_pooling(self, frame_pooling, use_frame_mask):
     frame = tf.constant([
         [[0.0, 0.0, 0.0], [0.0, 1.0, -1.0]],
         [[0.0, 0.0, 0.0], [0.0, 2.0, -2.0]],
     ])
-    swap_frame = yt8m_model_utils.frame_pooling(frame, "swap")
-    self.assertAllClose([[0.0, 1.0, -1.0], [0.0, 2.0, -2.0]], swap_frame)
+    num_frames = tf.constant([2, 2]) if use_frame_mask else None
+    pooled_frame = yt8m_model_utils.frame_pooling(
+        frame, method=frame_pooling, num_frames=num_frames
+    )
+    if frame_pooling == "swap":
+      self.assertAllClose([[0.0, 1.0, -1.0], [0.0, 2.0, -2.0]], pooled_frame)
+    elif frame_pooling == "average":
+      self.assertAllClose([[0.0, 0.5, -0.5], [0.0, 1.0, -1.0]], pooled_frame)
+    elif frame_pooling == "max":
+      self.assertAllClose([[0.0, 1.0, 0.0], [0.0, 2.0, 0.0]], pooled_frame)
+    elif frame_pooling == "none":
+      self.assertAllClose(
+          [
+              [0.0, 0.0, 0.0],
+              [0.0, 1.0, -1.0],
+              [0.0, 0.0, 0.0],
+              [0.0, 2.0, -2.0],
+          ],
+          pooled_frame,
+      )
 
 
 if __name__ == "__main__":

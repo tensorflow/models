@@ -14,9 +14,26 @@
 
 """Contains a collection of util functions for model construction."""
 
-from typing import Any, Dict, Optional, Union
+from typing import Optional
 
 import tensorflow as tf
+
+
+def _large_compatible_negative(tensor_type):
+  """Large negative number as Tensor.
+
+  This function is necessary because the standard value for epsilon
+  in this module (-1e9) cannot be represented using `tf.float16`.
+
+  Args:
+    tensor_type: A dtype to determine the type.
+
+  Returns:
+    A large negative number.
+  """
+  if tensor_type == tf.float16:
+    return tf.float16.min
+  return -1e9
 
 
 def weighted_average_pooling(features, weights, axis):
@@ -37,7 +54,9 @@ def weighted_average_pooling(features, weights, axis):
   )
 
 
-def frame_swap(frames: tf.Tensor) -> tf.Tensor:
+def frame_swap(
+    frames: tf.Tensor, frame_mask: Optional[tf.Tensor] = None
+) -> tf.Tensor:
   """Self-weighted average pooling over all frames of a video.
 
   It does the following operation independently for each feature:
@@ -49,22 +68,27 @@ def frame_swap(frames: tf.Tensor) -> tf.Tensor:
 
   Args:
     frames: A tensor with shape [batch_size, max_frames, feature_size].
+    frame_mask:  A tensor with shape [batch_size, max_frames, 1].
 
   Returns:
     A tensor with shape [batch_size, feature_size].
   """
   weights = tf.abs(frames)
+  if frame_mask is not None:
+    weights *= tf.cast(frame_mask, weights.dtype)
   # We set axis to 1 to reduce the dimension corresponding to max_frames.
   return weighted_average_pooling(frames, weights, axis=1)
 
 
-def frame_pooling(frames, method):
+def frame_pooling(frames, method="average", num_frames=None):
   """Pools over the frames of a video.
 
   Args:
     frames: tensor of shape [batch_size, num_frames, feature_size].
     method: string indicating pooling method, one of: "average", "max",
       "attention", or "none".
+    num_frames: optional tensor of shape [batch_size] indicating valid number of
+      frames for each video.
 
   Returns:
     tensor of shape [batch_size, feature_size] for average, max, or
@@ -74,124 +98,38 @@ def frame_pooling(frames, method):
     ValueError: if method is other than "average", "max", "attention", or
     "none".
   """
+  frame_mask = None
+  if num_frames is not None:
+    max_frames = frames.shape.as_list()[1]
+    # Generate binary mask from number of frames.
+    frame_mask = tf.sequence_mask(num_frames, max_frames, frames.dtype)
+    frame_mask = tf.expand_dims(frame_mask, axis=2)
+
   if method == "average":
-    reduced = tf.reduce_mean(frames, 1)
+    if num_frames is None:
+      reduced = tf.reduce_mean(frames, 1)
+    else:
+      num_frames = tf.reshape(tf.cast(num_frames, frames.dtype), [-1, 1])
+      reduced = tf.reduce_sum(frames * frame_mask, 1) / num_frames
   elif method == "max":
+    if num_frames is not None:
+      frame_mask = tf.cast(frame_mask, tf.bool)
+      frames = tf.where(
+          frame_mask,
+          frames,
+          tf.ones_like(frames, dtype=frames.dtype)
+          * _large_compatible_negative(frames.dtype),
+      )
     reduced = tf.reduce_max(frames, 1)
   elif method == "swap":
     # Note we assume the frames are in the shape of
     # [batch_size, num_frames, feature_size]. Otherwise this function might
     # fail.
-    reduced = frame_swap(frames)
+    reduced = frame_swap(frames, frame_mask)
   elif method == "none":
-    feature_size = frames.shape_as_list()[2]
+    feature_size = frames.shape.as_list()[2]
     reduced = tf.reshape(frames, [-1, feature_size])
   else:
     raise ValueError("Unrecognized pooling method: %s" % method)
 
   return reduced
-
-
-def context_gate(
-    input_features,
-    normalizer_fn=None,
-    normalizer_params: Optional[Dict[str, Any]] = None,
-    kernel_initializer: Union[
-        str, tf.keras.regularizers.Regularizer] = "glorot_uniform",
-    kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-    bias_initializer: Union[str, tf.keras.regularizers.Regularizer] = "zeros",
-    hidden_layer_size: int = 0,
-    pooling_method: Optional[str] = None,
-    additive_residual: bool = False):
-  """Context Gating.
-
-  More details: https://arxiv.org/pdf/1706.06905.pdf.
-
-  Args:
-    input_features: a tensor of at least rank 2.
-    normalizer_fn: Normalization function to use instead of `biases` (e.g.
-      tf.contrib.layers.batch_norm). If None, bias is added.
-    normalizer_params: Normalization function parameters.
-    kernel_initializer: Weight initializer to use instead of Xavier (e.g.
-      tf.contrib.layers.variance_scaling_initializer).
-    kernel_regularizer: Weight regularizer to use instead of None (e.g.,
-      tf.contrib.layers.l2_regularizer(l2_penalty)).
-    bias_initializer: Biases initializer to use (default tf.zeros_initializer)
-    hidden_layer_size: Dimensionality of the context gating hidden layer size,
-      if any. If None, will apply a fully-connected context gating layer with
-      shape [input_size x input_size]. If set to an int N, will factorize the
-      context gating layer into [input_size x N] x [N x input_size] as in the
-      squeeze-and-excitation block from https://arxiv.org/pdf/1709.01507.pdf.
-    pooling_method: Whether to perform global pooling of the local features
-      before applying the context gating layer. This is relevant only if the
-      input_features tensor has rank > 2, e.g., it's a sequence of frame
-      features, [batch_size, num_frames, feature_dim], or spatial convolution
-      features, [batch_size*num_frames, h, w, feature_dim]. If the inputs are a
-      set of local features and pooling_method is not None, will pool features
-      across all but the batch_size dimension using the specified pooling
-      method, and pass the aggregated features as context to the gating layer.
-      For a list of pooling methods, see the frame_pooling() function.
-    additive_residual: If true, will use ReLu6-activated (additive) residual
-      connections instead of Sigmoid-activated (multiplicative) connections when
-      combining the input_features with the context gating branch.
-
-  Returns:
-    A tensor with the same shape as input_features.
-  """
-  if normalizer_params is None:
-    normalizer_params = {}
-  with tf.name_scope("ContextGating"):
-    num_dimensions = len(input_features.shape.as_list())
-    feature_size = input_features.shape.as_list()[-1]
-    if pooling_method:
-      assert num_dimensions > 2
-      # Collapse the inner axes of the original features shape into a 3D tensor
-      original_shape = tf.shape(input_features)
-      # The last dimension will change after concatenating the context
-      new_shape = tf.concat(
-          [original_shape[:-1],
-           tf.constant([2 * feature_size])], 0)
-      batch_size = original_shape[0]
-      reshaped_features = tf.reshape(input_features,
-                                     [batch_size, -1, feature_size])
-      num_features = tf.shape(reshaped_features)[1]
-      # Pool the feature channels across the inner axes to get global context
-      context_features = frame_pooling(reshaped_features, pooling_method)
-      context_features = tf.expand_dims(context_features, 1)
-      # Replicate the global context features and concat to the local features.
-      context_features = tf.tile(context_features, [1, num_features, 1])
-      context_features = tf.concat([reshaped_features, context_features], 2)
-      context_features = tf.reshape(context_features, shape=new_shape)
-    else:
-      context_features = input_features
-
-    if hidden_layer_size >= 2:
-      gates_bottleneck = tf.keras.layers.Dense(
-          hidden_layer_size,
-          activation="relu6",
-          kernel_initializer=kernel_initializer,
-          bias_initializer=bias_initializer,
-          kernel_regularizer=kernel_regularizer,
-      )(context_features)
-      if normalizer_fn:
-        gates_bottleneck = normalizer_fn(**normalizer_params)(gates_bottleneck)
-    else:
-      gates_bottleneck = context_features
-
-    activation_fn = (tf.nn.relu6 if additive_residual else tf.nn.sigmoid)
-    gates = tf.keras.layers.Dense(
-        feature_size,
-        activation=activation_fn,
-        kernel_initializer=kernel_initializer,
-        bias_initializer=bias_initializer,
-        kernel_regularizer=kernel_regularizer,
-    )(gates_bottleneck)
-    if normalizer_fn:
-      gates = normalizer_fn(**normalizer_params)(gates)
-
-    if additive_residual:
-      input_features += tf.cast(gates, input_features.dtype)
-    else:
-      input_features *= tf.cast(gates, input_features.dtype)
-
-    return input_features
