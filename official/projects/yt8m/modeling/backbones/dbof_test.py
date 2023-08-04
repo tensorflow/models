@@ -50,7 +50,7 @@ class DbofTest(parameterized.TestCase, tf.test.TestCase):
     )
 
     inputs = tf.ones([2, 24, 32], dtype=tf.float32)
-    outputs = backbone(inputs)
+    outputs = backbone(inputs, num_frames=tf.constant([24, 16]))
     self.assertAllEqual(outputs.shape.as_list(), [2, 20])
 
 

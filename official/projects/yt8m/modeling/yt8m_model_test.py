@@ -55,11 +55,13 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
     # batch = 2 -> arbitrary value for test.
     if num_sample_frames:
       inputs = np.random.rand(2, num_sample_frames, feature_dims)
+      num_frames = tf.constant([num_sample_frames, num_sample_frames])
     else:
       # Add padding frames.
       inputs = np.random.rand(2, num_frames + 4, feature_dims)
+      num_frames = tf.constant([num_frames, num_frames + 1])
 
-    predictions = model(inputs)['predictions']
+    predictions = model(inputs, num_frames=num_frames)['predictions']
     self.assertAllEqual([2, num_classes], predictions.numpy().shape)
 
   def test_serialize_deserialize(self):

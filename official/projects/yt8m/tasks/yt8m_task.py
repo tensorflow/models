@@ -52,7 +52,10 @@ class YT8MTask(base_task.Task):
     )
 
     # Warmup calls to build model variables.
-    _ = model(tf.keras.Input(common_input_shape, dtype=tf.float32))
+    _ = model(
+        inputs=tf.keras.Input(common_input_shape, dtype=tf.float32),
+        num_frames=tf.keras.Input([], dtype=tf.float32),
+    )
 
     non_trainable_batch_norm_variables = []
     non_trainable_extra_variables = []
@@ -242,10 +245,16 @@ class YT8MTask(base_task.Task):
   def _preprocess_model_inputs(
       self,
       inputs: dict[str, tf.Tensor],
+      require_num_frames: bool = True,
       training: bool = True,
   ):
     """Preprocesses input tensors before model on device."""
     extra_inputs = {
+        'num_frames': (
+            tf.reshape(inputs['num_frames'], [-1])
+            if require_num_frames
+            else None
+        ),
         'training': training,
     }
     return inputs['video_matrix'], extra_inputs
@@ -286,8 +295,12 @@ class YT8MTask(base_task.Task):
     Returns:
       a dictionary of logs.
     """
+    # Will require `num_frames` if `num_sample_frames` is None since
+    # video_matrix is padded to max_frames in this case.
+    require_num_frames = self.task_config.train_data.num_sample_frames is None
     inputs_tensor, extra_inputs = self._preprocess_model_inputs(
         inputs,
+        require_num_frames=require_num_frames,
         training=True,
     )
     labels, label_weights = self._preprocess_labels(inputs, training=True)
@@ -361,7 +374,14 @@ class YT8MTask(base_task.Task):
     Returns:
       a dictionary of logs.
     """
-    outputs = self.inference_step(model, inputs)['predictions']
+    # Will require `num_frames` if `num_sample_frames` is None since
+    # video_matrix is padded to max_frames in this case.
+    require_num_frames = (
+        self.task_config.validation_data.num_sample_frames is None
+    )
+    outputs = self.inference_step(
+        model, inputs, require_num_frames=require_num_frames
+    )['predictions']
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
     labels, label_weights = self._preprocess_labels(inputs, training=False)
     outputs, labels, label_weights = self._postprocess_outputs(
@@ -389,10 +409,10 @@ class YT8MTask(base_task.Task):
 
     return logs
 
-  def inference_step(self, model, inputs):
+  def inference_step(self, model, inputs, require_num_frames=True):
     """Performs the forward step."""
     model_inputs, extra_inputs = self._preprocess_model_inputs(
-        inputs, training=False
+        inputs, require_num_frames=require_num_frames, training=False
     )
     return model(model_inputs, **extra_inputs)
 

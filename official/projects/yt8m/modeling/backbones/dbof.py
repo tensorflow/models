@@ -15,7 +15,7 @@
 """Dbof model definitions."""
 
 import functools
-from typing import Optional
+from typing import Any, Optional
 
 import tensorflow as tf
 
@@ -124,7 +124,7 @@ class Dbof(layers.Layer):
       )
 
   def call(
-      self, inputs: tf.Tensor
+      self, inputs: tf.Tensor, num_frames: Any = None,
   ) -> tf.Tensor:
     # L2 normalize input features
     activation = tf.nn.l2_normalize(inputs, -1)
@@ -147,6 +147,7 @@ class Dbof(layers.Layer):
     activation = yt8m_model_utils.frame_pooling(
         activation,
         method=self._params.pooling_method,
+        num_frames=num_frames,
     )
 
     activation = self._hidden_dense(activation)
