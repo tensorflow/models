@@ -131,10 +131,14 @@ class VideoClassificationModel(tf.keras.Model):
     return cls(**config)
 
   def call(
-      self, inputs_tensor: tf.Tensor, training: Any = None
+      self,
+      inputs: tf.Tensor,
+      num_frames: Any = None,
+      training: Any = None,
   ) -> dict[str, tf.Tensor]:
     features = self.backbone(
-        inputs_tensor,
+        inputs,
+        num_frames=num_frames,
         training=training,
     )
     outputs = self.head(features, training=training)
