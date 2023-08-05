@@ -23,7 +23,10 @@ from official.core import task_factory
 from official.core import train_lib
 from official.core import train_utils
 from official.modeling import performance
-from official.projects.simclr.common import registry_imports  # pylint: disable=unused-import
+# pylint: disable=unused-import
+from official.projects.rngdet.configs import rngdet
+from official.projects.rngdet.tasks import rngdet
+# pylint: enable=unused-import
 
 FLAGS = flags.FLAGS
 

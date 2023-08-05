@@ -12,31 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for SimCLR config."""
-from absl.testing import parameterized
+"""Tests for detr."""
 
+# pylint: disable=unused-import
+from absl.testing import parameterized
 import tensorflow as tf
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
-from official.projects.simclr.common import registry_imports  # pylint: disable=unused-import
-from official.projects.simclr.configs import simclr as exp_cfg
+from official.projects.detr.configs import detr as exp_cfg
+from official.projects.detr.dataloaders import coco
 
 
-class SimCLRConfigTest(tf.test.TestCase, parameterized.TestCase):
+class DetrTest(tf.test.TestCase, parameterized.TestCase):
 
-  @parameterized.parameters(
-      'simclr_pretraining_imagenet', 'simclr_finetuning_imagenet')
-  def test_simclr_configs(self, config_name):
+  @parameterized.parameters(('detr_coco',))
+  def test_detr_configs_tfds(self, config_name):
     config = exp_factory.get_exp_config(config_name)
     self.assertIsInstance(config, cfg.ExperimentConfig)
-    if config_name == 'simclr_pretrain_imagenet':
-      self.assertIsInstance(config.task, exp_cfg.SimCLRPretrainTask)
-    elif config_name == 'simclr_finetuning_imagenet':
-      self.assertIsInstance(config.task, exp_cfg.SimCLRFinetuneTask)
-    self.assertIsInstance(config.task.model,
-                          exp_cfg.SimCLRModel)
-    self.assertIsInstance(config.task.train_data, exp_cfg.DataConfig)
+    self.assertIsInstance(config.task, exp_cfg.DetrTask)
+    self.assertIsInstance(config.task.train_data, coco.COCODataConfig)
+    config.task.train_data.is_training = None
+    with self.assertRaises(KeyError):
+      config.validate()
+
+  @parameterized.parameters(('detr_coco_tfrecord'), ('detr_coco_tfds'))
+  def test_detr_configs(self, config_name):
+    config = exp_factory.get_exp_config(config_name)
+    self.assertIsInstance(config, cfg.ExperimentConfig)
+    self.assertIsInstance(config.task, exp_cfg.DetrTask)
+    self.assertIsInstance(config.task.train_data, cfg.DataConfig)
     config.task.train_data.is_training = None
     with self.assertRaises(KeyError):
       config.validate()

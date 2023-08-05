@@ -54,7 +54,7 @@ class Decoder(decoder.Decoder):
         'sat_roi': parsed_tensors['sat_roi'],
         'label_masks_roi': parsed_tensors['label_masks_roi'],
         'historical_roi': parsed_tensors['historical_roi'],
-        'gt_probs': parsed_tensors['gt_probs'],
+        'gt_probs': tf.cast(parsed_tensors['gt_probs'], tf.int64),
         'gt_coords': parsed_tensors['gt_coords'],
         'list_len': parsed_tensors['list_len'],
         'gt_masks': parsed_tensors['gt_masks']
@@ -69,10 +69,12 @@ class Parser(parser.Parser):
   def __init__(
       self,
       roi_size: int = 128,
-      num_queries: int = 10
+      num_queries: int = 10,
+      dtype='bfloat16'
   ):
     self._roi_size = roi_size
     self._num_queries = num_queries
+    self._dtype = dtype
     
   def parse_fn(self, is_training):
     """Returns a parse fn that reads and parses raw tensors from the decoder.
@@ -109,17 +111,22 @@ class Parser(parser.Parser):
     sat_roi = sat_roi * (
         0.7 + 0.3 * tf.random.uniform([], minval=0, maxval=1, dtype=tf.float32))
     rot_index = tf.random.uniform(shape=(), minval=0, maxval=4, dtype=tf.int32)
-    theta = tf.cast(rot_index, tf.float32) * math.pi / 2
-    # (gunho) original R matrix in incorrect
-    #R = np.array([[np.cos(theta),np.sin(theta)],[np.sin(-theta),np.cos(theta)]])
-    R = np.array([[np.cos(theta),-np.sin(theta)],[np.sin(theta),np.cos(theta)]])
-    gt_coords = tf.transpose(tf.linalg.matmul(R, gt_coords, transpose_b=True))
+    theta = tf.cast(rot_index, dtype=tf.float32) * math.pi / 2
     
+    # Define the rotation matrix
+    cos_theta = 0 if rot_index%2 is 1 else (1 if rot_index is 0 else -1)
+    sin_theta = 0 if rot_index%2 is 0 else (1 if rot_index is 1 else -1)
+    R = tf.constant([[cos_theta, -sin_theta], [sin_theta, cos_theta]],
+                    dtype=tf.float32)
+    
+    gt_coords = tf.transpose(tf.linalg.matmul(R, gt_coords, transpose_b=True)) 
     label_masks_roi = tf.image.rot90(label_masks_roi, rot_index)/255
     historical_roi = tf.image.rot90(historical_roi, rot_index)/255
     sat_roi = tf.image.rot90(sat_roi, rot_index)
     gt_masks = tf.image.rot90(gt_masks, rot_index)/255
 
+    sat_roi = tf.cast(sat_roi, dtype=self._dtype)
+    historical_roi = tf.cast(historical_roi, dtype=self._dtype)
     images = {
         'sat_roi': sat_roi,
         'historical_roi': historical_roi,

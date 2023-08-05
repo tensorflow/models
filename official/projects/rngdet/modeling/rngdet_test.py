@@ -24,14 +24,14 @@ class DetrTest(tf.test.TestCase):
   def test_forward(self):
     num_queries = 10
     hidden_size = 128
-    num_classes = 1
+    num_classes = 2
     image_size = 128
     temp = [128,128,3]
-    batch_size = 2
+    batch_size = 64
     backbone = resnet.ResNet(50, bn_trainable=False)
     backbone_endpoint_name = '5'
     history_specs = tf.keras.layers.InputSpec(
-        shape=[None] + temp[:2] + [515])
+        shape=[None] + temp[:2] + [513])
     backbone_history = resnet.ResNet(50,
                                      input_specs=history_specs,
                                      bn_trainable=False)
@@ -46,7 +46,7 @@ class DetrTest(tf.test.TestCase):
                           segment_head, keypoint_head,
                           num_queries, hidden_size, num_classes)
     test_input = tf.ones((batch_size, image_size, image_size, 3))
-    test_history = tf.ones((batch_size, image_size, image_size, 3))
+    test_history = tf.ones((batch_size, image_size, image_size, 1))
     outs = model(test_input, test_history, training=True)
     #outs = model(tf.ones((batch_size, image_size, image_size, 3)))
     self.assertLen(outs, 6)  # intermediate decoded outputs.

@@ -277,11 +277,6 @@ class RNGDet(tf.keras.Model):
         "mask": mask,
     })
     
-    #outputs_class = self.detr.class_embed(hs)
-    #outputs_coord = self.detr.bbox_embed(hs).tanh()
-    #out["pred_logits"] = outputs_class[-1]
-    #out["pred_boxes"] = outputs_coord[-1]
-    
     out_list = []
     for decoded in decoded_list:
       decoded = tf.stack(decoded)
@@ -294,9 +289,6 @@ class RNGDet(tf.keras.Model):
       if not training:
         out.update(postprocess(out))
       out_list.append(out)
-    print("***************************************")
-    print(out_list)
-    print("***************************************")
     return out_list
 
 
@@ -362,8 +354,7 @@ class DETRTransformer(tf.keras.layers.Layer):
         self_attention_mask=tf.ones(
             (target_shape[0], target_shape[1], target_shape[1])),
         cross_attention_mask=cross_attention_mask,
-        #return_all_decoder_outputs=True,
-        return_all_decoder_outputs=False,
+        return_all_decoder_outputs=True,
         input_pos_embed=targets,
         memory_pos_embed=pos_embed)
     return decoded

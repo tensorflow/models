@@ -126,78 +126,7 @@ class DetectionTest(tf.test.TestCase):
       logs = task.validation_step(next(iterator), model, metrics)
       state = task.aggregate_logs(step_outputs=logs)
       task.reduce_aggregated_logs(state)
-
-
-class DetectionTFDSTest(tf.test.TestCase):
-
-  def test_train_step(self):
-    config = detr_cfg.DetrTask(
-        model=detr_cfg.Detr(
-            input_size=[1333, 1333, 3],
-            num_encoder_layers=1,
-            num_decoder_layers=1,
-            backbone=backbones.Backbone(
-                type='resnet',
-                resnet=backbones.ResNet(model_id=10, bn_trainable=False))
-        ),
-        losses=detr_cfg.Losses(class_offset=1),
-        train_data=detr_cfg.DataConfig(
-            tfds_name='coco/2017',
-            tfds_split='validation',
-            is_training=True,
-            global_batch_size=2,
-        ))
-    with tfds.testing.mock_data(as_dataset_fn=_as_dataset):
-      task = detection.DetectionTask(config)
-      model = task.build_model()
-      dataset = task.build_inputs(config.train_data)
-      iterator = iter(dataset)
-      opt_cfg = optimization.OptimizationConfig({
-          'optimizer': {
-              'type': 'detr_adamw',
-              'detr_adamw': {
-                  'weight_decay_rate': 1e-4,
-                  'global_clipnorm': 0.1,
-              }
-          },
-          'learning_rate': {
-              'type': 'stepwise',
-              'stepwise': {
-                  'boundaries': [120000],
-                  'values': [0.0001, 1.0e-05]
-              }
-          },
-      })
-      optimizer = detection.DetectionTask.create_optimizer(opt_cfg)
-      task.train_step(next(iterator), model, optimizer)
-
-  def test_validation_step(self):
-    config = detr_cfg.DetrTask(
-        model=detr_cfg.Detr(
-            input_size=[1333, 1333, 3],
-            num_encoder_layers=1,
-            num_decoder_layers=1,
-            backbone=backbones.Backbone(
-                type='resnet',
-                resnet=backbones.ResNet(model_id=10, bn_trainable=False))
-        ),
-        losses=detr_cfg.Losses(class_offset=1),
-        validation_data=detr_cfg.DataConfig(
-            tfds_name='coco/2017',
-            tfds_split='validation',
-            is_training=False,
-            global_batch_size=2,
-        ))
-
-    with tfds.testing.mock_data(as_dataset_fn=_as_dataset):
-      task = detection.DetectionTask(config)
-      model = task.build_model()
-      metrics = task.build_metrics(training=False)
-      dataset = task.build_inputs(config.validation_data)
-      iterator = iter(dataset)
-      logs = task.validation_step(next(iterator), model, metrics)
-      state = task.aggregate_logs(step_outputs=logs)
-      task.reduce_aggregated_logs(state)
+      
 
 if __name__ == '__main__':
   tf.test.main()

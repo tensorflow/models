@@ -24,7 +24,7 @@ from official.core import task_factory
 from official.projects.rngdet.configs import rngdet as rngdet_cfg
 from official.projects.rngdet.dataloaders import rngdet_input
 from official.projects.rngdet.modeling import rngdet
-from official.projects.rngdet.ops import matchers
+from official.projects.detr.ops import matchers
 from official.vision.dataloaders import input_reader_factory
 from official.vision.dataloaders import tf_example_decoder
 from official.vision.dataloaders import tfds_factory
@@ -35,7 +35,7 @@ from official.vision.modeling import decoders
 from official.vision.ops import box_ops
 
 
-@task_factory.register_task_cls(rngdet_cfg.DetrTask)
+@task_factory.register_task_cls(rngdet_cfg.RngdetTask)
 class RNGDetTask(base_task.Task):
   """A single-replica view of training procedure.
 
@@ -62,8 +62,10 @@ class RNGDetTask(base_task.Task):
         backbone_config=self._task_config.model.backbone,
         norm_activation_config=self._task_config.model.norm_activation)
     
+    history_specs = tf.keras.layers.InputSpec(shape=[None] +
+        self._task_config.model.input_size[:2] + [513])
     backbone_history = backbones.factory.build_backbone(
-        input_specs=input_specs,
+        input_specs=history_specs,
         backbone_config=self._task_config.model.backbone,
         norm_activation_config=self._task_config.model.norm_activation)
     
@@ -121,8 +123,9 @@ class RNGDetTask(base_task.Task):
     decoder = rngdet_input.Decoder()
 
     parser = rngdet_input.Parser(
-        class_offset=self._task_config.losses.class_offset,
-        output_size=self._task_config.model.input_size[:2],
+        roi_size=self._task_config.model.roi_size,
+        num_queries=self._task_config.model.num_queries,
+        dtype=params.dtype,
     )
 
     reader = input_reader_factory.input_reader_generator(
@@ -140,18 +143,19 @@ class RNGDetTask(base_task.Task):
     # background: 0
     cls_cost = self._task_config.losses.lambda_cls * tf.gather(
         -tf.nn.softmax(cls_outputs), cls_targets, batch_dims=1, axis=-1)
-
+    
     # Compute the L1 cost between boxes,
     paired_differences = self._task_config.losses.lambda_box * tf.abs(
         tf.expand_dims(box_outputs, 2) - tf.expand_dims(box_targets, 1))
     box_cost = tf.reduce_sum(paired_differences, axis=-1)
 
     # Compute the giou cost betwen boxes
-    giou_cost = self._task_config.losses.lambda_giou * -box_ops.bbox_generalized_overlap(
+    """giou_cost = self._task_config.losses.lambda_giou * -box_ops.bbox_generalized_overlap(
         box_ops.cycxhw_to_yxyx(box_outputs),
-        box_ops.cycxhw_to_yxyx(box_targets))
+        box_ops.cycxhw_to_yxyx(box_targets))"""
 
-    total_cost = cls_cost + box_cost + giou_cost
+    #total_cost = cls_cost + box_cost + giou_cost
+    total_cost = cls_cost + box_cost
 
     max_cost = (
         self._task_config.losses.lambda_cls * 0.0 +
@@ -175,12 +179,10 @@ class RNGDetTask(base_task.Task):
     """Builds DETR losses."""
     cls_outputs = outputs['cls_outputs']
     box_outputs = outputs['box_outputs']
-    cls_targets = labels['classes']
-    box_targets = labels['boxes']
-
+    cls_targets = labels['gt_probs']
+    box_targets = labels['gt_coords']
     cost = self._compute_cost(
         cls_outputs, box_outputs, cls_targets, box_targets)
-
     _, indices = matchers.hungarian_matching(cost)
     indices = tf.stop_gradient(indices)
 
@@ -188,7 +190,9 @@ class RNGDetTask(base_task.Task):
     cls_assigned = tf.gather(cls_outputs, target_index, batch_dims=1, axis=1)
     box_assigned = tf.gather(box_outputs, target_index, batch_dims=1, axis=1)
 
-    background = tf.equal(cls_targets, 0)
+    # (gunho) background (eos in RNGDet) is assigned to 1
+    #background = tf.equal(cls_targets, 0)
+    background = tf.equal(cls_targets, 1)
     num_boxes = tf.reduce_sum(
         tf.cast(tf.logical_not(background), tf.float32), axis=-1)
 
@@ -209,12 +213,12 @@ class RNGDetTask(base_task.Task):
         background, tf.zeros_like(l_1), l_1)
 
     # Giou loss is only calculated on non-background class.
-    giou = tf.linalg.diag_part(1.0 - box_ops.bbox_generalized_overlap(
+    """giou = tf.linalg.diag_part(1.0 - box_ops.bbox_generalized_overlap(
         box_ops.cycxhw_to_yxyx(box_assigned),
         box_ops.cycxhw_to_yxyx(box_targets)
         ))
     giou_loss = self._task_config.losses.lambda_giou * tf.where(
-        background, tf.zeros_like(giou), giou)
+        background, tf.zeros_like(giou), giou)"""
 
     # Consider doing all reduce once in train_step to speed up.
     num_boxes_per_replica = tf.reduce_sum(num_boxes)
@@ -227,13 +231,15 @@ class RNGDetTask(base_task.Task):
         tf.reduce_sum(cls_loss), cls_weights_sum)
     box_loss = tf.math.divide_no_nan(
         tf.reduce_sum(box_loss), num_boxes_sum)
-    giou_loss = tf.math.divide_no_nan(
-        tf.reduce_sum(giou_loss), num_boxes_sum)
+    """giou_loss = tf.math.divide_no_nan(
+        tf.reduce_sum(giou_loss), num_boxes_sum)"""
 
     aux_losses = tf.add_n(aux_losses) if aux_losses else 0.0
 
-    total_loss = cls_loss + box_loss + giou_loss + aux_losses
-    return total_loss, cls_loss, box_loss, giou_loss
+    #total_loss = cls_loss + box_loss + giou_loss + aux_losses
+    total_loss = cls_loss + box_loss + aux_losses
+    #return total_loss, cls_loss, box_loss, giou_loss
+    return total_loss, cls_loss, box_loss
 
   def build_metrics(self, training=True):
     """Builds detection metrics."""
@@ -263,14 +269,18 @@ class RNGDetTask(base_task.Task):
       A dictionary of logs.
     """
     features, labels = inputs
+    num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
-      outputs = model(features, training=True)
-      targets = [{'labels':gt_prob[x,:list_len[x]],
-                  'masks':label_masks[x],
-                  'boxes':gt_coord[x,:list_len[x]],
-                  'instance_masks':gt_mask[x,:list_len[x]]
-                  } for x in range(label_masks.shape[0])]
-
+      outputs = model(features['sat_roi'], features['historical_roi'],
+                      training=True)
+      outputs = tf.nest.map_structure(
+          lambda x: tf.cast(x, tf.float32), outputs)
+      
+      # Computes per-replica loss.
+      """loss, cls_loss, box_loss, model_loss = self.build_losses(
+          outputs=outputs, labels=labels, aux_losses=model.losses)
+      scaled_loss = loss / num_replicas"""
+      
       loss = 0.0
       cls_loss = 0.0
       box_loss = 0.0
@@ -278,12 +288,13 @@ class RNGDetTask(base_task.Task):
 
       for output in outputs:
         # Computes per-replica loss.
-        layer_loss, layer_cls_loss, layer_box_loss, layer_giou_loss = self.build_losses(
+        #layer_loss, layer_cls_loss, layer_box_loss, layer_giou_loss = self.build_losses(
+        layer_loss, layer_cls_loss, layer_box_loss = self.build_losses(
             outputs=output, labels=labels, aux_losses=model.losses)
         loss += layer_loss
         cls_loss += layer_cls_loss
         box_loss += layer_box_loss
-        giou_loss += layer_giou_loss
+        #giou_loss += layer_giou_loss
 
       # Consider moving scaling logic from build_losses to here.
       scaled_loss = loss
