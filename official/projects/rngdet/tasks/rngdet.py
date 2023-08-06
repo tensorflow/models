@@ -328,6 +328,9 @@ class RNGDetTask(base_task.Task):
         'box_loss': box_loss,
         'giou_loss': giou_loss,
     }
+    print("---------------------------------------")
+    print(all_losses)
+    print("---------------------------------------")
 
     # Metric results will be added to logs for you.
     if metrics:

@@ -92,7 +92,7 @@ CITYSCALE_VAL_EXAMPLES = 5000
 @exp_factory.register_config_factory('rngdet_cityscale')
 def rngdet_cityscale() -> cfg.ExperimentConfig:
   """Config to get results that matches the paper."""
-  train_batch_size = 64
+  train_batch_size = 16
   eval_batch_size = 64
   steps_per_epoch = CITYSCALE_TRAIN_EXAMPLES // train_batch_size
   train_steps = 50 * steps_per_epoch  # 50 epochs
