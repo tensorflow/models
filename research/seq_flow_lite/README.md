@@ -4,6 +4,7 @@ This repository contains implementation of the following papers.
 
 * [*PRADO: Projection Attention Networks for Document Classification On-Device*](https://www.aclweb.org/anthology/D19-1506/)
 * [*Self-Governing Neural Networks for On-Device Short Text Classification*](https://www.aclweb.org/anthology/D18-1105/)
+* [*Tiny Neural Models for Seq2Seq*] (https://arxiv.org/abs/2108.03340)
 
 ## Description
 
@@ -13,14 +14,10 @@ Instead of using embedding table to lookup embeddings, sequence projection
 models computes them on the fly.
 
 
-## History
-
-### August 24, 2020
-* Add PRADO and SGNN implementation.
-
 ## Authors or Maintainers
 
 * Prabhu Kaliamoorthi
+* Arun Kandoor
 * Yicheng Fan ([@thunderfyc](https://github.com/thunderfyc))
 
 
