@@ -198,12 +198,36 @@ def decode_jpeg(image_string: tf.Tensor, channels: int = 0) -> tf.Tensor:
       dtype=tf.uint8)
 
 
-def crop_image(frames: tf.Tensor,
-               target_height: int,
-               target_width: int,
-               random: bool = False,
-               num_crops: int = 1,
-               seed: Optional[int] = None) -> tf.Tensor:
+def decode_image(image_string: tf.Tensor, channels: int = 0) -> tf.Tensor:
+  """Decodes PNG or JPEG raw bytes string into a RGB uint8 Tensor.
+
+  Args:
+    image_string: A `tf.Tensor` of type strings with the raw PNG or JPEG bytes
+      where the first dimension is timesteps.
+    channels: Number of channels of the PNG image. Allowed values are 0, 1 and
+      3. If 0, the number of channels will be calculated at runtime and no
+      static shape is set.
+
+  Returns:
+    A Tensor of shape [T, H, W, C] of type uint8 with the decoded images.
+  """
+  return tf.map_fn(
+      lambda x: tf.image.decode_image(  # pylint: disable=g-long-lambda
+          x, channels=channels, expand_animations=False),
+      image_string,
+      back_prop=False,
+      dtype=tf.uint8,
+  )
+
+
+def crop_image(
+    frames: tf.Tensor,
+    target_height: int,
+    target_width: int,
+    random: bool = False,
+    num_crops: int = 1,
+    seed: Optional[int] = None,
+) -> tf.Tensor:
   """Crops the image sequence of images.
 
   If requested size is bigger than image size, image is padded with 0. If not

@@ -96,6 +96,33 @@ class ParserUtilsTest(tf.test.TestCase):
     self.assertEqual(decoded_image.shape.as_list()[3], 3)
     self.assertAllEqual(decoded_image.shape, (2, 263, 320, 3))
 
+  def test_decode_image(self):
+    # Create a random RGB JPEG image.
+    random_image = np.random.randint(0, 256, size=(263, 320, 3), dtype=np.uint8)
+    random_image = Image.fromarray(random_image)
+    with io.BytesIO() as buffer:
+      random_image.save(buffer, format='JPEG')
+      raw_image_bytes = buffer.getvalue()
+
+    raw_image = tf.constant([raw_image_bytes, raw_image_bytes])
+    decoded_image = preprocess_ops_3d.decode_image(raw_image, 3)
+
+    self.assertEqual(decoded_image.shape.as_list()[3], 3)
+    self.assertAllEqual(decoded_image.shape, (2, 263, 320, 3))
+
+    # Create a random RGB PNG image.
+    random_image = np.random.randint(0, 256, size=(263, 320, 3), dtype=np.uint8)
+    random_image = Image.fromarray(random_image)
+    with io.BytesIO() as buffer:
+      random_image.save(buffer, format='PNG')
+      raw_image_bytes = buffer.getvalue()
+
+    raw_image = tf.constant([raw_image_bytes, raw_image_bytes])
+    decoded_image = preprocess_ops_3d.decode_image(raw_image, 3)
+
+    self.assertEqual(decoded_image.shape.as_list()[3], 3)
+    self.assertAllEqual(decoded_image.shape, (2, 263, 320, 3))
+
   def test_crop_image(self):
     cropped_image_1 = preprocess_ops_3d.crop_image(self._frames, 50, 70)
     cropped_image_2 = preprocess_ops_3d.crop_image(self._frames, 200, 200)
