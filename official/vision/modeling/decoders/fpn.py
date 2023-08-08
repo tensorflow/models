@@ -93,18 +93,18 @@ class FPN(tf.keras.Model):
         'kernel_regularizer': kernel_regularizer,
         'bias_regularizer': bias_regularizer,
     }
-    if use_separable_conv:
-      conv2d = tf.keras.layers.SeparableConv2D
-    else:
-      conv2d = tf.keras.layers.Conv2D
+    conv2d = (
+        tf.keras.layers.SeparableConv2D
+        if use_separable_conv
+        else tf.keras.layers.Conv2D
+    )
     norm = tf.keras.layers.BatchNormalization
     activation_fn = tf_utils.get_activation(activation, use_keras_layer=True)
 
     # Build input feature pyramid.
-    if tf.keras.backend.image_data_format() == 'channels_last':
-      bn_axis = -1
-    else:
-      bn_axis = 1
+    bn_axis = (
+        -1 if tf.keras.backend.image_data_format() == 'channels_last' else 1
+    )
 
     # Get input feature pyramid from backbone.
     logging.info('FPN input_specs: %s', input_specs)
@@ -191,7 +191,7 @@ class FPN(tf.keras.Model):
         for level in range(min_level, max_level + 1)
     }
 
-    super(FPN, self).__init__(inputs=inputs, outputs=feats, **kwargs)
+    super().__init__(inputs=inputs, outputs=feats, **kwargs)
 
   def _build_input_pyramid(self, input_specs: Mapping[str, tf.TensorShape],
                            min_level: int):

@@ -56,7 +56,8 @@ class Parser(parser.Parser):
                max_num_instances=100,
                dtype='bfloat16',
                resize_first: Optional[bool] = None,
-               mode=None):
+               mode=None,
+               pad=True):
     """Initializes parameters for parsing annotations in the dataset.
 
     Args:
@@ -104,6 +105,15 @@ class Parser(parser.Parser):
         augmentations; computationally more efficient.
       mode: a ModeKeys. Specifies if this is training, evaluation, prediction or
         prediction with ground-truths in the outputs.
+      pad: A bool indicating whether to pad the input image to make it
+        size a factor of 2**max_level. The padded size will be the smallest
+        rectangle, such that each dimension is the smallest multiple of 
+        2**max_level which is larger than the desired output size. For example,
+        if desired output size = (320, 320) and max_level = 7, the output padded
+        size = (384, 384). This is necessary when using FPN as it assumes each
+        lower feature map is 2x size of its higher neighbor. Without padding,
+        such relationship may be invalidated. The backbone may produce 5x5 and
+        2x2 consecutive feature maps, which does not work with FPN. 
     """
     self._mode = mode
     self._max_num_instances = max_num_instances
@@ -156,6 +166,10 @@ class Parser(parser.Parser):
     # Input pipeline optimization.
     self._resize_first = resize_first
 
+    # Whether to pad image to make its size the smallest factor of 2*max_level.
+    # This is needed when using FPN decoder.
+    self._pad = pad
+
   def _resize_and_crop_image_and_boxes(self, image, boxes, pad=True):
     """Resizes and crops image and boxes, optionally with padding."""
     # Resizes and crops image.
@@ -168,7 +182,8 @@ class Parser(parser.Parser):
         self._output_size,
         padded_size=padded_size,
         aug_scale_min=self._aug_scale_min,
-        aug_scale_max=self._aug_scale_max)
+        aug_scale_max=self._aug_scale_max,
+    )
 
     # Resizes and crops boxes.
     image_scale = image_info[2, :]
@@ -215,7 +230,8 @@ class Parser(parser.Parser):
     resize_first = self._resize_first and less_output_pixels
     if resize_first:
       image, boxes, image_info = self._resize_and_crop_image_and_boxes(
-          image, boxes, pad=False)
+          image, boxes, pad=False
+      )
       image = tf.cast(image, dtype=tf.uint8)
 
     # Apply autoaug or randaug.
@@ -233,14 +249,23 @@ class Parser(parser.Parser):
     # Converts boxes from normalized coordinates to pixel coordinates.
     boxes = box_ops.denormalize_boxes(boxes, image_shape)
 
-    if not resize_first:
-      image, boxes, image_info = self._resize_and_crop_image_and_boxes(
-          image, boxes, pad=True)
+    if self._pad:
+      padded_size = preprocess_ops.compute_padded_size(
+          self._output_size, 2**self._max_level
+      )
     else:
-      padded_size = preprocess_ops.compute_padded_size(self._output_size,
-                                                       2**self._max_level)
-      image = tf.image.pad_to_bounding_box(
-          image, 0, 0, padded_size[0], padded_size[1])
+      padded_size = self._output_size
+
+    if not resize_first:
+      image, boxes, image_info = (
+          self._resize_and_crop_image_and_boxes(image, boxes, pad=self._pad)
+      )
+
+    image = tf.image.pad_to_bounding_box(
+        image, 0, 0, padded_size[0], padded_size[1]
+    )
+    image = tf.ensure_shape(image, padded_size + [3])
+
     image_height, image_width, _ = image.get_shape().as_list()
 
     # Filters out ground-truth boxes that are all zeros.
@@ -307,13 +332,21 @@ class Parser(parser.Parser):
     boxes = box_ops.denormalize_boxes(boxes, image_shape)
 
     # Resizes and crops image.
+    if self._pad:
+      padded_size = preprocess_ops.compute_padded_size(
+          self._output_size, 2**self._max_level
+      )
+    else:
+      padded_size = self._output_size
+
     image, image_info = preprocess_ops.resize_and_crop_image(
         image,
         self._output_size,
-        padded_size=preprocess_ops.compute_padded_size(self._output_size,
-                                                       2**self._max_level),
+        padded_size=padded_size,
         aug_scale_min=1.0,
-        aug_scale_max=1.0)
+        aug_scale_max=1.0,
+    )
+    image = tf.ensure_shape(image, padded_size + [3])
     image_height, image_width, _ = image.get_shape().as_list()
 
     # Resizes and crops boxes.
