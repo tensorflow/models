@@ -45,7 +45,8 @@ def process_image(image: tf.Tensor,
                   min_area_ratio: float = 0.49,
                   max_area_ratio: float = 1.0,
                   augmenter: Optional[augment.ImageAugment] = None,
-                  seed: Optional[int] = None) -> tf.Tensor:
+                  seed: Optional[int] = None,
+                  input_image_format: Optional[str] = 'jpeg') -> tf.Tensor:
   """Processes a serialized image tensor.
 
   Args:
@@ -78,6 +79,8 @@ def process_image(image: tf.Tensor,
     max_area_ratio: The maximum area range for cropping.
     augmenter: Image augmenter to distort each image.
     seed: A deterministic seed to use when sampling.
+    input_image_format: The format of input image which could be jpeg, png or
+          none for unknown or mixed datasets.
 
   Returns:
     Processed frames. Tensor of shape
@@ -92,6 +95,10 @@ def process_image(image: tf.Tensor,
   if random_stride_range < 0:
     raise ValueError('Random stride range should be >= 0, got {}'.format(
         random_stride_range))
+
+  if input_image_format not in ('jpeg', 'png', 'none'):
+    raise ValueError('Unknown input image format: {}'.format(
+        input_image_format))
 
   if isinstance(crop_size, int):
     crop_size = (crop_size, crop_size)
@@ -120,7 +127,7 @@ def process_image(image: tf.Tensor,
 
   # Decode JPEG string to tf.uint8.
   if image.dtype == tf.string:
-    image = preprocess_ops_3d.decode_jpeg(image, num_channels)
+    image = preprocess_ops_3d.decode_image(image, num_channels)
 
   if is_training:
     # Standard image data augmentation: random resized crop and random flip.
@@ -295,6 +302,7 @@ class Parser(parser.Parser):
     self._max_aspect_ratio = input_params.aug_max_aspect_ratio
     self._min_area_ratio = input_params.aug_min_area_ratio
     self._max_area_ratio = input_params.aug_max_area_ratio
+    self._input_image_format = input_params.input_image_format
     if self._output_audio:
       self._audio_feature = input_params.audio_feature
       self._audio_shape = input_params.audio_feature_shape
@@ -343,7 +351,8 @@ class Parser(parser.Parser):
         min_area_ratio=self._min_area_ratio,
         max_area_ratio=self._max_area_ratio,
         augmenter=self._augmenter,
-        zero_centering_image=self._zero_centering_image)
+        zero_centering_image=self._zero_centering_image,
+        input_image_format=self._input_image_format)
     image = tf.cast(image, dtype=self._dtype)
 
     features = {'image': image}
@@ -378,7 +387,8 @@ class Parser(parser.Parser):
         crop_size=self._crop_size,
         num_channels=self._num_channels,
         num_crops=self._num_crops,
-        zero_centering_image=self._zero_centering_image)
+        zero_centering_image=self._zero_centering_image,
+        input_image_format=self._input_image_format)
     image = tf.cast(image, dtype=self._dtype)
     features = {'image': image}
 

@@ -64,6 +64,7 @@ class DataConfig(cfg.DataConfig):
   mixup_and_cutmix: Optional[common.MixupAndCutmix] = None
   image_field_key: str = 'image/encoded'
   label_field_key: str = 'clip/label/index'
+  input_image_format: str = 'jpeg'
 
 
 def kinetics400(is_training):
