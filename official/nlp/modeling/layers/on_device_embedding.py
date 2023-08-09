@@ -38,7 +38,7 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
       is, not to scale). Setting this option to a float will let values in
       output embeddings multiplied by scale_factor.
     weight_fallback_dtype: When keras mix precision inferred wrong dtype for
-      varibales, `weight_fallback_dtype` will be used to define the dtype of
+      variables, `weight_fallback_dtype` will be used to define the dtype of
       weights.
   """
 
