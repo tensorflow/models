@@ -1392,21 +1392,31 @@ def refine_keypoints(regressed_keypoints,
     # Shape [batch_size, num_instances, max_candidates, num_keypoints].
     tiled_keypoint_scores = tf.tile(
         tf.expand_dims(keypoint_scores, axis=1),
-        multiples=[1, num_instances, 1, 1])
+        multiples=[1, num_instances, 1, 1],
+    )
     ranking_scores = tiled_keypoint_scores / (distances + score_distance_offset)
-    nearby_candidate_inds = tf.math.argmax(ranking_scores, axis=2)
+    nearby_candidate_inds = tf.math.argmax(
+        ranking_scores, axis=2, output_type=tf.int32
+    )
   elif candidate_ranking_mode == 'score_scaled_distance_ratio':
     ranking_scores = sdr_scaled_ranking_score(
-        keypoint_scores, distances, bboxes, score_distance_multiplier)
-    nearby_candidate_inds = tf.math.argmax(ranking_scores, axis=2)
+        keypoint_scores, distances, bboxes, score_distance_multiplier
+    )
+    nearby_candidate_inds = tf.math.argmax(
+        ranking_scores, axis=2, output_type=tf.int32
+    )
   elif candidate_ranking_mode == 'gaussian_weighted':
     ranking_scores = gaussian_weighted_score(
-        keypoint_scores, distances, keypoint_std_dev, bboxes)
-    nearby_candidate_inds = tf.math.argmax(ranking_scores, axis=2)
+        keypoint_scores, distances, keypoint_std_dev, bboxes
+    )
+    nearby_candidate_inds = tf.math.argmax(
+        ranking_scores, axis=2, output_type=tf.int32
+    )
     weighted_scores = tf.math.reduce_max(ranking_scores, axis=2)
   else:
-    raise ValueError('Not recognized candidate_ranking_mode: %s' %
-                     candidate_ranking_mode)
+    raise ValueError(
+        'Not recognized candidate_ranking_mode: %s' % candidate_ranking_mode
+    )
 
   # Gather the coordinates and scores corresponding to the closest candidates.
   # Shape of tensors are [batch_size, num_instances, num_keypoints, 2] and
@@ -1600,14 +1610,12 @@ def _gather_candidates_at_indices(keypoint_candidates,
   combined_indices = tf.stack([
       _multi_range(
           batch_size,
-          value_repetitions=num_keypoints * num_indices,
-          dtype=tf.int64),
+          value_repetitions=num_keypoints * num_indices),
       _multi_range(
           num_keypoints,
           value_repetitions=num_indices,
-          range_repetitions=batch_size,
-          dtype=tf.int64),
-      tf.reshape(nearby_candidate_inds_transposed, [-1])
+          range_repetitions=batch_size),
+      tf.reshape(tf.cast(nearby_candidate_inds_transposed, tf.int32), [-1])
   ], axis=1)
 
   nearby_candidate_coords_transposed = tf.gather_nd(
