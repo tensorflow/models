@@ -367,7 +367,10 @@ class Trainer(_AsyncTrainer):
     This method provides a way to control how to fetch the next model input, and
     what data to send to the model.
 
-    This function runs in eager mode.
+    Note: This function runs on the host side when accelerators are used.
+
+    Note: Depending on the training setup this may or may not run in eager mode.
+    In most cases it will be run in graph mode.
 
     Args:
       iterator: Dataset iterator to generate the next inputs from.
@@ -414,7 +417,10 @@ class Trainer(_AsyncTrainer):
     processed later in `aggregate_logs`. This is useful for sending extra logs
     downstream that are not compatible with the accelerators.
 
-    This function runs in eager mode.
+    Note: This function runs on the host side when accelerators are used.
+
+    Note: Depending on the training setup this may or may not run in eager mode.
+    In most cases it will be run in graph mode.
 
     Args:
       iterator: Dataset iterator to generate the next inputs from.
