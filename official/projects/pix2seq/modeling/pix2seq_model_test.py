@@ -22,6 +22,7 @@ class Pix2SeqTest(tf.test.TestCase):
 
   def test_forward(self):
     hidden_size = 256
+    num_heads = 8
     max_seq_len = 50
     vocab_size = 164
     image_size = 224
@@ -29,7 +30,8 @@ class Pix2SeqTest(tf.test.TestCase):
     backbone = resnet.ResNet(50, bn_trainable=False)
     backbone_endpoint_name = '5'
     model = pix2seq_model.Pix2Seq(
-        backbone, backbone_endpoint_name, max_seq_len, vocab_size, hidden_size
+        backbone, backbone_endpoint_name, max_seq_len, vocab_size, hidden_size,
+        num_heads=num_heads,
     )
     _, outs = model(
         tf.ones((batch_size, image_size, image_size, 3)),
@@ -41,6 +43,7 @@ class Pix2SeqTest(tf.test.TestCase):
 
   def test_forward_infer(self):
     hidden_size = 256
+    num_heads = 8
     max_seq_len = 50
     vocab_size = 600
     image_size = 640
@@ -48,7 +51,8 @@ class Pix2SeqTest(tf.test.TestCase):
     backbone = resnet.ResNet(50, bn_trainable=False)
     backbone_endpoint_name = '5'
     model = pix2seq_model.Pix2Seq(
-        backbone, backbone_endpoint_name, max_seq_len, vocab_size, hidden_size
+        backbone, backbone_endpoint_name, max_seq_len, vocab_size, hidden_size,
+        num_heads=num_heads,
     )
     tokens, _ = model(
         tf.ones((batch_size, image_size, image_size, 3)),

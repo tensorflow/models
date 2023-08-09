@@ -231,6 +231,7 @@ class Pix2Seq(tf.keras.Model):
       max_seq_len,
       vocab_size,
       hidden_size,
+      num_heads,
       num_encoder_layers=6,
       num_decoder_layers=6,
       drop_path=0.1,
@@ -246,6 +247,7 @@ class Pix2Seq(tf.keras.Model):
     self._max_seq_len = max_seq_len
     self._vocab_size = vocab_size
     self._hidden_size = hidden_size
+    self._num_heads = num_heads
     self._num_encoder_layers = num_encoder_layers
     self._num_decoder_layers = num_decoder_layers
     self._drop_path = drop_path
@@ -272,6 +274,7 @@ class Pix2Seq(tf.keras.Model):
         drop_path=self._drop_path,
         drop_units=self._drop_units,
         drop_att=self._drop_att,
+        num_heads=self._num_heads,
     )
     self._top_k = top_k
     self._top_p = top_p
@@ -298,6 +301,7 @@ class Pix2Seq(tf.keras.Model):
         "drop_att": self._drop_att,
         "top_k": self._top_k,
         "top_p": self._top_p,
+        "num_heads": self._num_heads,
     }
 
   @classmethod
