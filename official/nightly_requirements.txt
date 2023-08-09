@@ -16,7 +16,7 @@ Cython
 matplotlib
 pyyaml
 # CV related dependencies
-opencv-python-headless==4.5.2.52
+opencv-python-headless
 Pillow
 pycocotools
 # NLP related dependencies
