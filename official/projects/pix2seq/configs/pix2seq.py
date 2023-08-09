@@ -92,6 +92,7 @@ class Pix2Seq(hyperparams.Config):
 
   max_num_instances: int = 100
   hidden_size: int = 256
+  num_heads: int = 8
   num_encoder_layers: int = 6
   num_decoder_layers: int = 6
   vocab_size: int = 3000

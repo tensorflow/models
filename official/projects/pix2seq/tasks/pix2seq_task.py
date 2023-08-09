@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Pix2Seq detection task definition."""
+
 from typing import Optional
 
 from absl import logging
@@ -44,28 +45,32 @@ class Pix2SeqTask(base_task.Task):
 
   def build_model(self):
     """Build Pix2Seq model."""
+    config: pix2seq_cfg.Pix2Seq = self._task_config.model
 
     input_specs = tf.keras.layers.InputSpec(
-        shape=[None] + self._task_config.model.input_size
+        shape=[None] + config.input_size
     )
 
     backbone = backbones.factory.build_backbone(
         input_specs=input_specs,
-        backbone_config=self._task_config.model.backbone,
-        norm_activation_config=self._task_config.model.norm_activation,
+        backbone_config=config.backbone,
+        norm_activation_config=config.norm_activation,
     )
 
     model = pix2seq_model.Pix2Seq(
-        backbone,
-        self._task_config.model.backbone_endpoint_name,
-        self._task_config.model.max_num_instances * 5,
-        self._task_config.model.vocab_size,
-        self._task_config.model.hidden_size,
-        self._task_config.model.num_encoder_layers,
-        self._task_config.model.num_decoder_layers,
-        self._task_config.model.drop_path,
-        self._task_config.model.drop_units,
-        self._task_config.model.drop_att,
+        backbone=backbone,
+        backbone_endpoint_name=config.backbone_endpoint_name,
+        max_seq_len=config.max_num_instances * 5,
+        vocab_size=config.vocab_size,
+        hidden_size=config.hidden_size,
+        num_encoder_layers=config.num_encoder_layers,
+        num_decoder_layers=config.num_decoder_layers,
+        drop_path=config.drop_path,
+        drop_units=config.drop_units,
+        drop_att=config.drop_att,
+        num_heads=config.num_heads,
+        top_p=config.top_p,
+        top_k=config.top_k,
     )
     return model
 
