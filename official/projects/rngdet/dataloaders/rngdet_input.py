@@ -104,6 +104,7 @@ class Parser(parser.Parser):
     historical_roi = tf.reshape(
         data['historical_roi'], [self._roi_size, self._roi_size, 1])
     gt_coords = tf.reshape(data['gt_coords'], [self._num_queries, 2])
+    gt_probs = tf.reshape(data['gt_probs'], [self._num_queries])
     gt_masks = tf.reshape(
         data['gt_masks'], [self._roi_size, self._roi_size, self._num_queries])
     
@@ -111,7 +112,6 @@ class Parser(parser.Parser):
     sat_roi = sat_roi * (
         0.7 + 0.3 * tf.random.uniform([], minval=0, maxval=1, dtype=tf.float32))
     rot_index = tf.random.uniform(shape=(), minval=0, maxval=4, dtype=tf.int32)
-    theta = tf.cast(rot_index, dtype=tf.float32) * math.pi / 2
     
     # Define the rotation matrix
     cos_theta = 0 if rot_index%2 is 1 else (1 if rot_index is 0 else -1)
@@ -133,7 +133,7 @@ class Parser(parser.Parser):
     }
     labels = {
         'label_masks_roi': label_masks_roi,
-        'gt_probs': data['gt_probs'],
+        'gt_probs': gt_probs,
         'gt_coords': gt_coords,
         'list_len': data['list_len'],
         'gt_masks': gt_masks,

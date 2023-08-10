@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Implements End-to-End Object Detection with Transformers.
+"""Implements Road Network Graph Detection by Transformer in Aerial Images.
 
-Model paper: https://arxiv.org/abs/2005.12872
+Model paper: https://arxiv.org/abs/2202.07824
 This module does not support Keras de/serialization. Please use
 tf.train.Checkpoint for object based saving and loading and tf.saved_model.save
 for graph serializaiton.
@@ -25,7 +25,7 @@ from typing import Any, List
 import tensorflow as tf
 
 from official.modeling import tf_utils
-from official.projects.detr.modeling import transformer
+from official.projects.rngdet.modeling import transformer
 from official.vision.ops import box_ops
 from official.vision.ops import spatial_transform_ops
 
@@ -91,7 +91,9 @@ def position_embedding_sine(attention_mask,
   pos_col = tf.reshape(pos_col, final_shape)
   output = tf.concat([pos_row, pos_col], -1)
 
-  embeddings = tf.cast(output, tf.float32)
+  # (gunho) type cast
+  #embeddings = tf.cast(output, tf.float32)
+  embeddings = output
   return embeddings
 
 
@@ -127,16 +129,16 @@ def postprocess(outputs: dict[str, tf.Tensor]) -> dict[str, tf.Tensor]:
 class RNGDet(tf.keras.Model):
   """RNGDet model with Keras.
 
-  RNGDet consists of backbone, query embedding, RNGDetTransformer,
-  class and box heads.
+  RNGDet consists of two backbones, two FPN decoders, query embedding,
+  RNGDetTransformer, class and box heads.
   """
 
   def __init__(self,
                backbone,
                backbone_history,
                backbone_endpoint_name,
-               segment_head,
-               keypoint_head,
+               segment_fpn,
+               keypoint_fpn,
                num_queries,
                hidden_size,
                num_classes,
@@ -156,8 +158,8 @@ class RNGDet(tf.keras.Model):
     self._backbone = backbone
     self._backbone_history = backbone_history
     self._backbone_endpoint_name = backbone_endpoint_name
-    self._segment_head = segment_head
-    self._keypoint_head = keypoint_head
+    self._segment_fpn = segment_fpn
+    self._keypoint_fpn = keypoint_fpn
 
     self._input_proj = tf.keras.layers.Conv2D(
         self._hidden_size, 1, name="detr/conv2d")
@@ -175,6 +177,14 @@ class RNGDet(tf.keras.Model):
         initializer=tf.keras.initializers.RandomNormal(mean=0., stddev=1.),
         dtype=tf.float32)
     sqrt_k = math.sqrt(1.0 / self._hidden_size)
+    self._segment_head = tf.keras.layers.Dense(
+        1,
+        kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
+        name="detr/segment_dense")
+    self._keypoint_head = tf.keras.layers.Dense(
+        1,
+        kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
+        name="detr/keypoint_dense")
     self._class_embed = tf.keras.layers.Dense(
         self._num_classes,
         kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
@@ -231,12 +241,14 @@ class RNGDet(tf.keras.Model):
     # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     batch_size = tf.shape(inputs)[0]
     features = self._backbone(inputs)
-    pred_segment = self._segment_head(features) # FPN
+    pred_segment = self._segment_fpn(features) # FPN
     pred_segment = spatial_transform_ops.nearest_upsampling(
           pred_segment['2'], 4, use_keras_layer=False)
-    pred_keypoint = self._keypoint_head(features) # FPN
+    pred_segment = self._segment_head(pred_segment)
+    pred_keypoint = self._keypoint_fpn(features) # FPN
     pred_keypoint = spatial_transform_ops.nearest_upsampling(
           pred_keypoint['2'], 4, use_keras_layer=False)
+    pred_keypoint = self._keypoint_head(pred_keypoint)
 
     inputs_history = tf.concat([pred_segment, pred_keypoint], -1)
     temp = {}
@@ -289,7 +301,7 @@ class RNGDet(tf.keras.Model):
       if not training:
         out.update(postprocess(out))
       out_list.append(out)
-    return out_list
+    return out_list, pred_segment, pred_keypoint
 
 
 class DETRTransformer(tf.keras.layers.Layer):

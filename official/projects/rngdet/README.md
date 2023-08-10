@@ -1,7 +1,7 @@
 # Road Network Graph Detection by Transformer
 
-[![Paper](https://img.shields.io/badge/Paper-TGRS.2022.3186993-00629B?logo=ieee)](https://ieeexplore.ieee.org/abstract/document/9810294)
-[![Paper](https://img.shields.io/badge/Paper-LRA.2023.3264723-00629B?logo=ieee)](https://ieeexplore.ieee.org/abstract/document/10093124)
+[![RNGDet](https://img.shields.io/badge/RNGDet-arXiv.2202.07824-B3181B?)](https://arxiv.org/abs/2202.07824)
+[![RNGDet++](https://img.shields.io/badge/RNGDet++-arXiv.2209.10150-B3181B?)](https://arxiv.org/abs/2209.10150)
 
 ## Environment setup
 The code can be run on multiple GPUs or TPUs with different distribution

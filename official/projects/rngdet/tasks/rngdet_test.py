@@ -53,7 +53,7 @@ def _as_dataset(self, *args, **kwargs):
       output_shapes=self.info.features.shape,
   )
 
-CITYSCALE_INPUT_PATH_BASE = '/data2/cityscale/tfrecord/'
+CITYSCALE_INPUT_PATH_BASE = '/home/ghpark.epiclab/cityscale/'
 
 class RngdetTest(tf.test.TestCase):
 
@@ -62,8 +62,8 @@ class RngdetTest(tf.test.TestCase):
         model=rngdet_cfg.Rngdet(
             input_size=[128, 128, 3],
             roi_size=128,
-            num_encoder_layers=1,
-            num_decoder_layers=1,
+            num_encoder_layers=2,
+            num_decoder_layers=2,
             num_queries=10,
             hidden_size=256,
             num_classes=2,
@@ -82,7 +82,7 @@ class RngdetTest(tf.test.TestCase):
             input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train*'),
             is_training=True,
             dtype='float32',
-            global_batch_size=2,
+            global_batch_size=7,
             shuffle_buffer_size=1000,
         ))
     with tfds.testing.mock_data(as_dataset_fn=_as_dataset):

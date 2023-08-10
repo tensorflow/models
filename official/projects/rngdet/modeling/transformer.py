@@ -801,6 +801,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
   def call(self, inputs, cache=None, decode_loop_step=None):
     input_tensor, memory, attention_mask, self_attention_mask, input_pos_embed, memory_pos_embed = inputs
     source_tensor = input_tensor
+    # (gunho) convert float32 to system dtype
+    #input_pos_embed = tf.cast(input_pos_embed, input_tensor.dtype)
     if self._norm_first:
       input_tensor = self.self_attention_layer_norm(input_tensor)
     self_attention_output, cache = self.self_attention(
@@ -820,6 +822,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
       source_self_attention_output = self_attention_output
       self_attention_output = self.encdec_attention_layer_norm(
           self_attention_output)
+    # (gunho) convert float32 to system dtype
+    #self_attention_output = tf.cast(self_attention_output, input_tensor.dtype)
     cross_attn_inputs = dict(
         query=self_attention_output + input_pos_embed,
         key=memory + memory_pos_embed,
@@ -842,6 +846,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
     intermediate_output = self._intermediate_dropout_layer(intermediate_output)
     layer_output = self.output_dense(intermediate_output)
     layer_output = self.output_dropout(layer_output)
+    # (gunho) convert float32 to system dtype
+    #attention_output = tf.cast(attention_output, input_tensor.dtype)
     if self._norm_first:
       layer_output = source_attention_output + layer_output
     else:

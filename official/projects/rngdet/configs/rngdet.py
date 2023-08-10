@@ -21,7 +21,7 @@ from typing import List, Optional, Union
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
-from official.projects.detr import optimization
+from official.modeling import optimization
 from official.vision.configs import common
 from official.vision.configs import decoders
 from official.vision.configs import backbones
@@ -57,7 +57,7 @@ class Rngdet(hyperparams.Config):
   """Rngdet model definations."""
   num_queries: int = 10
   hidden_size: int = 256
-  num_classes: int = 2  # 1: background
+  num_classes: int = 2  # 0: vertices, 1: background
   num_encoder_layers: int = 6
   num_decoder_layers: int = 6
   input_size: List[int] = dataclasses.field(default_factory=list)
@@ -84,22 +84,23 @@ class RngdetTask(cfg.TaskConfig):
   per_category_metrics: bool = False
 
 
-CITYSCALE_INPUT_PATH_BASE = '/data2/cityscale/tfrecord/'
-CITYSCALE_TRAIN_EXAMPLES = 420140
+CITYSCALE_INPUT_PATH_BASE = 'gs://ghpark-tfrecords/cityscale'
+#CITYSCALE_TRAIN_EXAMPLES = 420140
+CITYSCALE_TRAIN_EXAMPLES = 9600
 CITYSCALE_VAL_EXAMPLES = 5000
 
 
 @exp_factory.register_config_factory('rngdet_cityscale')
 def rngdet_cityscale() -> cfg.ExperimentConfig:
   """Config to get results that matches the paper."""
-  train_batch_size = 16
+  train_batch_size = 64
   eval_batch_size = 64
   steps_per_epoch = CITYSCALE_TRAIN_EXAMPLES // train_batch_size
   train_steps = 50 * steps_per_epoch  # 50 epochs
-  decay_at = train_steps - 40 * steps_per_epoch  # 40 epochs
+  decay_at = train_steps - 10 * steps_per_epoch  # 40 epochs
   config = cfg.ExperimentConfig(
       task=RngdetTask(
-          init_checkpoint='',
+          init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet',
           init_checkpoint_modules='backbone',
           model=Rngdet(
               input_size=[128, 128, 3],
@@ -107,7 +108,8 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
               norm_activation=common.NormActivation()),
           losses=Losses(),
           train_data=DataConfig(
-              input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train*'),
+              #input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train*'),
+              input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train-noise-8-00000-of-00032.tfrecord'),
               is_training=True,
               global_batch_size=train_batch_size,
               shuffle_buffer_size=1000,
@@ -130,12 +132,9 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
           best_checkpoint_eval_metric='AP',
           optimizer_config=optimization.OptimizationConfig({
               'optimizer': {
-                  'type': 'detr_adamw',
-                  'detr_adamw': {
-                      'weight_decay_rate': 1e-5,
-                      'global_clipnorm': 0.1,
-                      # Avoid AdamW legacy behavior.
-                      'gradient_clip_norm': 0.0
+                  'type': 'adam',
+                  'adam': {
+                      'epsilon': 1e-7
                   }
               },
               'learning_rate': {

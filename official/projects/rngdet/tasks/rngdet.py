@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""DETR detection task definition."""
+"""RNGDet task definition."""
 from typing import Optional
 
 from absl import logging
@@ -26,20 +26,17 @@ from official.projects.rngdet.dataloaders import rngdet_input
 from official.projects.rngdet.modeling import rngdet
 from official.projects.detr.ops import matchers
 from official.vision.dataloaders import input_reader_factory
-from official.vision.dataloaders import tf_example_decoder
-from official.vision.dataloaders import tfds_factory
-from official.vision.dataloaders import tf_example_label_map_decoder
 from official.vision.evaluation import coco_evaluator
 from official.vision.modeling import backbones
 from official.vision.modeling import decoders
 from official.vision.ops import box_ops
-
+from official.vision.losses import focal_loss
 
 @task_factory.register_task_cls(rngdet_cfg.RngdetTask)
 class RNGDetTask(base_task.Task):
   """A single-replica view of training procedure.
 
-  DETR task provides artifacts for training/evalution procedures, including
+  RNGDet task provides artifacts for training/evalution procedures, including
   loading/iterating over Datasets, initializing the model, calculating the loss,
   post-processing, and customized metrics with reduction.
   """
@@ -63,18 +60,18 @@ class RNGDetTask(base_task.Task):
         norm_activation_config=self._task_config.model.norm_activation)
     
     history_specs = tf.keras.layers.InputSpec(shape=[None] +
-        self._task_config.model.input_size[:2] + [513])
+        self._task_config.model.input_size[:2] + [3])
     backbone_history = backbones.factory.build_backbone(
         input_specs=history_specs,
         backbone_config=self._task_config.model.backbone,
         norm_activation_config=self._task_config.model.norm_activation)
     
-    segment_head = decoders.factory.build_decoder(
+    segment_fpn = decoders.factory.build_decoder(
         input_specs=backbone.output_specs,
         model_config=self._task_config.model,
         l2_regularizer=l2_regularizer)
     
-    keypoint_head = decoders.factory.build_decoder(
+    keypoint_fpn = decoders.factory.build_decoder(
         input_specs=backbone.output_specs,
         model_config=self._task_config.model,
         l2_regularizer=l2_regularizer)
@@ -82,8 +79,8 @@ class RNGDetTask(base_task.Task):
     model = rngdet.RNGDet(backbone,
                       backbone_history,
                       self._task_config.model.backbone_endpoint_name,
-                      segment_head,
-                      keypoint_head,
+                      segment_fpn,
+                      keypoint_fpn,
                       self._task_config.model.num_queries,
                       self._task_config.model.hidden_size,
                       self._task_config.model.num_classes,
@@ -141,6 +138,8 @@ class RNGDetTask(base_task.Task):
     # Approximate classification cost with 1 - prob[target class].
     # The 1 is a constant that doesn't change the matching, it can be ommitted.
     # background: 0
+    # (gunho) background : 1
+    background = 1
     cls_cost = self._task_config.losses.lambda_cls * tf.gather(
         -tf.nn.softmax(cls_outputs), cls_targets, batch_dims=1, axis=-1)
     
@@ -149,12 +148,6 @@ class RNGDetTask(base_task.Task):
         tf.expand_dims(box_outputs, 2) - tf.expand_dims(box_targets, 1))
     box_cost = tf.reduce_sum(paired_differences, axis=-1)
 
-    # Compute the giou cost betwen boxes
-    """giou_cost = self._task_config.losses.lambda_giou * -box_ops.bbox_generalized_overlap(
-        box_ops.cycxhw_to_yxyx(box_outputs),
-        box_ops.cycxhw_to_yxyx(box_targets))"""
-
-    #total_cost = cls_cost + box_cost + giou_cost
     total_cost = cls_cost + box_cost
 
     max_cost = (
@@ -164,9 +157,8 @@ class RNGDetTask(base_task.Task):
 
     # Set pads to large constant
     valid = tf.expand_dims(
-        tf.cast(tf.not_equal(cls_targets, 0), dtype=total_cost.dtype), axis=1)
+        tf.cast(tf.not_equal(cls_targets, background), dtype=total_cost.dtype), axis=1)
     total_cost = (1 - valid) * max_cost + valid * total_cost
-
     # Set inf of nan to large constant
     total_cost = tf.where(
         tf.logical_or(tf.math.is_nan(total_cost), tf.math.is_inf(total_cost)),
@@ -175,8 +167,32 @@ class RNGDetTask(base_task.Task):
 
     return total_cost
 
+  def segmentation_loss(self, pred_segment, pred_keypoint, labels):
+    """Builds segmentation losses for RNGDet."""
+    gt_segment = labels['label_masks_roi'][:,:,:,0]
+    gt_keypoint = labels['label_masks_roi'][:,:,:,1]
+    focal_loss_fn = focal_loss.FocalLoss(
+        alpha=0.25,
+        gamma=1.5,
+        reduction=tf.keras.losses.Reduction.SUM)
+    
+    batch_size = tf.shape(pred_segment)[0]
+    pred_segment = tf.reshape(pred_segment, [batch_size, -1, 1])
+    gt_segment = tf.reshape(gt_segment, [batch_size, -1, 1])
+    valid_segment = tf.cast(tf.reduce_sum(gt_segment), tf.float32)
+    pred_keypoint = tf.reshape(pred_keypoint, [batch_size, -1, 1])
+    gt_keypoint = tf.reshape(gt_keypoint, [batch_size, -1, 1])
+    valid_keypoint = tf.cast(tf.reduce_sum(gt_keypoint), tf.float32)
+    segment_loss = tf.math.divide_no_nan(
+        focal_loss_fn(gt_segment, pred_segment), valid_segment)
+    keypoint_loss = tf.math.divide_no_nan(
+        focal_loss_fn(gt_keypoint, pred_keypoint), valid_keypoint)
+    loss = segment_loss + keypoint_loss
+
+    return loss
+  
   def build_losses(self, outputs, labels, aux_losses=None):
-    """Builds DETR losses."""
+    """Builds RNGDet losses."""
     cls_outputs = outputs['cls_outputs']
     box_outputs = outputs['box_outputs']
     cls_targets = labels['gt_probs']
@@ -212,14 +228,6 @@ class RNGDetTask(base_task.Task):
     box_loss = self._task_config.losses.lambda_box * tf.where(
         background, tf.zeros_like(l_1), l_1)
 
-    # Giou loss is only calculated on non-background class.
-    """giou = tf.linalg.diag_part(1.0 - box_ops.bbox_generalized_overlap(
-        box_ops.cycxhw_to_yxyx(box_assigned),
-        box_ops.cycxhw_to_yxyx(box_targets)
-        ))
-    giou_loss = self._task_config.losses.lambda_giou * tf.where(
-        background, tf.zeros_like(giou), giou)"""
-
     # Consider doing all reduce once in train_step to speed up.
     num_boxes_per_replica = tf.reduce_sum(num_boxes)
     cls_weights_per_replica = tf.reduce_sum(cls_weights)
@@ -231,20 +239,16 @@ class RNGDetTask(base_task.Task):
         tf.reduce_sum(cls_loss), cls_weights_sum)
     box_loss = tf.math.divide_no_nan(
         tf.reduce_sum(box_loss), num_boxes_sum)
-    """giou_loss = tf.math.divide_no_nan(
-        tf.reduce_sum(giou_loss), num_boxes_sum)"""
 
     aux_losses = tf.add_n(aux_losses) if aux_losses else 0.0
 
-    #total_loss = cls_loss + box_loss + giou_loss + aux_losses
     total_loss = cls_loss + box_loss + aux_losses
-    #return total_loss, cls_loss, box_loss, giou_loss
     return total_loss, cls_loss, box_loss
 
   def build_metrics(self, training=True):
     """Builds detection metrics."""
     metrics = []
-    metric_names = ['cls_loss', 'box_loss', 'giou_loss']
+    metric_names = ['cls_loss', 'box_loss', 'seg_loss']
     for name in metric_names:
       metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
 
@@ -269,23 +273,22 @@ class RNGDetTask(base_task.Task):
       A dictionary of logs.
     """
     features, labels = inputs
-    num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
-      outputs = model(features['sat_roi'], features['historical_roi'],
-                      training=True)
+      outputs, pred_segment, pred_keypoint = model(features['sat_roi'],
+                                                   features['historical_roi'],
+                                                   training=True)
       outputs = tf.nest.map_structure(
           lambda x: tf.cast(x, tf.float32), outputs)
-      
-      # Computes per-replica loss.
-      """loss, cls_loss, box_loss, model_loss = self.build_losses(
-          outputs=outputs, labels=labels, aux_losses=model.losses)
-      scaled_loss = loss / num_replicas"""
+      pred_segment = tf.cast(pred_segment, tf.float32)
+      pred_keypoint = tf.cast(pred_keypoint, tf.float32)
       
       loss = 0.0
       cls_loss = 0.0
       box_loss = 0.0
-      giou_loss = 0.0
+      seg_loss = 0.0
 
+      seg_loss = self.segmentation_loss(pred_segment, pred_keypoint, labels)
+      loss += seg_loss
       for output in outputs:
         # Computes per-replica loss.
         #layer_loss, layer_cls_loss, layer_box_loss, layer_giou_loss = self.build_losses(
@@ -294,8 +297,7 @@ class RNGDetTask(base_task.Task):
         loss += layer_loss
         cls_loss += layer_cls_loss
         box_loss += layer_box_loss
-        #giou_loss += layer_giou_loss
-
+      
       # Consider moving scaling logic from build_losses to here.
       scaled_loss = loss
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
@@ -318,7 +320,7 @@ class RNGDetTask(base_task.Task):
     loss *= num_replicas_in_sync
     cls_loss *= num_replicas_in_sync
     box_loss *= num_replicas_in_sync
-    giou_loss *= num_replicas_in_sync
+    seg_loss *= num_replicas_in_sync
 
     # Trainer class handles loss metric for you.
     logs = {self.loss: loss}
@@ -326,11 +328,8 @@ class RNGDetTask(base_task.Task):
     all_losses = {
         'cls_loss': cls_loss,
         'box_loss': box_loss,
-        'giou_loss': giou_loss,
+        'seg_loss': seg_loss,
     }
-    print("---------------------------------------")
-    print(all_losses)
-    print("---------------------------------------")
 
     # Metric results will be added to logs for you.
     if metrics:
