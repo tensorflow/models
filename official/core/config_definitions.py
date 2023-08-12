@@ -214,6 +214,7 @@ class TrainerConfig(base_config.Config):
     train_tf_while_loop: whether or not to use tf while loop.
     train_tf_function: whether or not to use tf_function for training loop.
     eval_tf_function: whether or not to use tf_function for eval.
+    eval_tf_while_loop: whether or not to use tf while loop for eval.
     allow_tpu_summary: Whether to allow summary happen inside the XLA program
       runs on TPU through automatic outside compilation.
     steps_per_loop: number of steps per loop to report training metrics. This
