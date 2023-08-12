@@ -528,9 +528,15 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
           axes=[1])
 
       for i, layer in enumerate(self._transformer_layers):
+        transformer_output_range = None
+        if i == self._num_layers - 1:
+          transformer_output_range = output_range
+
         # Bypass no pooling cases.
         if self._pool_strides[i] == 1:
-          x = layer([x, x, attention_mask])
+          x = layer(
+              [x, x, attention_mask], output_range=transformer_output_range
+          )
         else:
           # Pools layer for compressing the query length.
           pooled_inputs = self._att_input_pool_layers[i](
@@ -541,8 +547,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
                   dtype=pooled_inputs.dtype), pooled_inputs),
               axis=1)
           x = layer([query_inputs, x, attention_mask],
-                    output_range=output_range if i == self._num_layers -
-                    1 else None)
+                    output_range=transformer_output_range)
         # Pools the corresponding attention_mask.
         if i < len(self._transformer_layers) - 1:
           attention_mask = _pool_and_concat(

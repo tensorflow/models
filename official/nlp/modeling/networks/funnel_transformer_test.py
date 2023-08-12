@@ -245,24 +245,32 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(tf.float32, pooled.dtype)
 
   @parameterized.named_parameters(
-      ("all_sequence", None, 3, 0),
-      ("output_range", 1, 1, 0),
-      ("all_sequence_with_unpool", None, 4, 1),
-      ("output_range_with_unpool", 1, 1, 1),
-      ("output_range_with_large_unpool", 1, 1, 2),
+      ("all_sequence", None, 3, 0, 2),
+      ("output_range", 1, 1, 0, 2),
+      ("all_sequence_with_unpool", None, 4, 1, 2),
+      ("output_range_with_unpool", 1, 1, 1, 2),
+      ("output_range_with_large_unpool", 1, 1, 2, 2),
+      ("output_range_with_no_pooling", 1, 1, 0, 1),
+      ("output_range_with_unpool_and_no_pooling", 1, 1, 1, 1),
   )
-  def test_network_invocation(self, output_range, out_seq_len, unpool_length):
+  def test_network_invocation(
+      self,
+      output_range,
+      out_seq_len,
+      unpool_length,
+      pool_stride,
+  ):
     hidden_size = 32
     sequence_length = 21
     vocab_size = 57
     num_types = 7
-    pool_stride = 2
+    num_layers = 3
     # Create a small FunnelTransformerEncoder for testing.
     test_network = funnel_transformer.FunnelTransformerEncoder(
         vocab_size=vocab_size,
         hidden_size=hidden_size,
         num_attention_heads=2,
-        num_layers=3,
+        num_layers=num_layers,
         type_vocab_size=num_types,
         pool_stride=pool_stride,
         unpool_length=unpool_length)
@@ -297,7 +305,7 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
         hidden_size=hidden_size,
         max_sequence_length=max_sequence_length,
         num_attention_heads=2,
-        num_layers=3,
+        num_layers=num_layers,
         type_vocab_size=num_types,
         pool_stride=pool_stride)
     dict_outputs = test_network([word_ids, mask, type_ids])
@@ -305,7 +313,10 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
     pooled = dict_outputs["pooled_output"]
     model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
     outputs = model.predict([word_id_data, mask_data, type_id_data])
-    self.assertEqual(outputs[0].shape[1], 3)
+    expected_sequence_length = float(sequence_length)
+    for _ in range(num_layers):
+      expected_sequence_length = np.ceil(expected_sequence_length / pool_stride)
+    self.assertEqual(outputs[0].shape[1], expected_sequence_length)
 
     # Creates a FunnelTransformerEncoder with embedding_width != hidden_size
     test_network = funnel_transformer.FunnelTransformerEncoder(
