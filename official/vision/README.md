@@ -23,6 +23,7 @@ before using models and datasets provided.
   * [RetinaNet (ImageNet pretrained)](#RetinaNet-ImageNet-pretrained)
   * [RetinaNet (Trained from scratch)](#RetinaNet-Trained-from-scratch)
   * [Mobile-size RetinaNet (Trained from scratch)](#Mobile-size-RetinaNet-Trained-from-scratch))
+  * [YOLOv7 (Trained from scratch)](#yolov7-trained-from-scratch)
 - [Instance Segmentation Baselines](#Instance-Segmentation-Baselines)
   * [Mask R-CNN (Trained from scratch)](#Mask-R-CNN-Trained-from-scratch)
   * [Cascade RCNN-RS (Trained from scratch)](#Cascade-RCNN-RS-Trained-from-scratch)
@@ -123,6 +124,15 @@ ViT-l16  | 224x224    | 82.2  | 95.8  | [ckpt](https://storage.googleapis.com/tf
         [Cascade RCNN-RS](https://arxiv.org/abs/2107.00057)
 *   Models are all trained on [COCO](https://cocodataset.org/) train2017 and
     evaluated on [COCO](https://cocodataset.org/) val2017.
+    *   The checkpoints were trained on annotations
+    [owned and licensed by the COCO Consortium](https://cocodataset.org/#termsofuse)
+    under a
+    [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/legalcode).
+    *   The COCO Consortium does not own the copyright of the images
+    corresponding to the annotations. The images are
+    [made available by Flickr](https://www.flickr.com/creativecommons/) under
+    various Creative Commons licenses, and users of the images accept full
+    responsibility for the use of the dataset.
 *   Training details:
     *   Models finetuned from [ImageNet](https://www.image-net.org/) pretrained
         checkpoints adopt the 12 or 36 epochs schedule. Models trained from
@@ -175,6 +185,16 @@ training features including:
 | ----------- | :--------: | -----: | --------: | ---------: | -----: | --------:|
 | MobileNetv2 | 256x256    | 600    | -         | 2.27       | 23.5   | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/retinanet/coco_mobilenetv2_tpu.yaml) |
 | Mobile SpineNet-49  | 384x384    | 600    | 1.0      | 2.32       | 28.1   | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/retinanet/coco_spinenet49_mobile_tpu.yaml) \| [ckpt](https://storage.googleapis.com/tf_model_garden/vision/retinanet/spinenet49mobile.tar.gz) |
+
+</details>
+
+### YOLOv7 (Trained from scratch)
+
+<details>
+
+| Variant    | Resolution | Epochs | FLOPs (B) | Params (M) | Box AP | Download |
+| ----------- | :--------: | -----: | --------: | ---------: | -----: | --------:|
+| YOLOv7 | 640x640    | 300    | 53.16         | 44.57       | 50.5   | [config](https://github.com/tensorflow/models/blob/master/official/projects/yolo/configs/experiments/yolov7/detection/yolov7.yaml) \| [ckpt](https://storage.googleapis.com/tf_model_garden/vision/yolo/yolov7/yolov7.tar.gz) |
 
 </details>
 
