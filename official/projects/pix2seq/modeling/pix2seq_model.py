@@ -630,7 +630,10 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
       del caches
       del tokens
       del logits
-      return tf.less(step, seq_len - 1)
+      return tf.logical_and(
+          tf.greater(seq_len, prompt_len),
+          tf.less(step, seq_len - 1)
+      )
 
     caches_var = tf.zeros(
         [seq_len-1, self._num_decoder_layers, bsz, self._hidden_size])
@@ -645,12 +648,12 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
     step, caches_var, tokens_var, logits_var = loop_body(
         step, caches_var, tokens_var, logits_var, is_prompt=True
     )
-    if seq_len > prompt_len:
-      step, caches_var, tokens_var, logits_var = tf.while_loop(
-          cond=cond,
-          body=loop_body,
-          loop_vars=[step, caches_var, tokens_var, logits_var]
-      )
+
+    _, _, tokens_var, logits_var = tf.while_loop(
+        cond=cond,
+        body=loop_body,
+        loop_vars=[step, caches_var, tokens_var, logits_var]
+    )
 
     sampled_tokens = tf.transpose(tokens_var[prompt_len:], [1, 0])
     sampled_tokens_logits = tf.transpose(logits_var[prompt_len:], [1, 0, 2])
