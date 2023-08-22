@@ -1,14 +1,14 @@
 # TF-Vision Model Garden
 
-⚠️ Disclaimer: All datasets hyperlinked from this page are not owned or
-distributed by Google. The dataset is made available by third parties.
-Please review the terms and conditions made available by the third parties
-before using the data.
-
 ⚠️ Disclaimer: Checkpoints are based on training with publicly available
 datasets. Some datasets contain limitations, including non-commercial use
-limitations. Please review terms and conditions made available by third parties
-before using models and datasets provided.
+limitations. Please review the terms and conditions made available by third parties
+before using the datasets provided. Checkpoints are licensed under
+[Apache 2.0](https://github.com/tensorflow/models/blob/master/LICENSE).
+
+⚠️ Disclaimer: Datasets hyperlinked from this page are not owned or distributed
+by Google. Such datasets are made available by third parties. Please review the
+terms and conditions made available by the third parties before using the data.
 
 ## Table of Contents
 
