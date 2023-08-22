@@ -1,5 +1,4 @@
 # TF-NLP Model Garden
-
 ## Introduction
 
 The TF-NLP library provides a collection of scripts for training and
@@ -7,10 +6,14 @@ evaluating transformer-based models, on various tasks such as sentence
 classification, question answering, and translation. Additionally, we provide
 checkpoints of pretrained models which can be finetuned on downstream tasks.
 
-⚠️ Disclaimer: Checkpoints are based on training with publicly available
-datasets. Some datasets contain limitations, including non-commercial use
-limitations. Please review terms and conditions made available by third parties
-before using models and datasets provided.
+⚠️ Disclaimer: Checkpoints are based on training with publicly available datasets.
+Some datasets contain limitations, including non-commercial use limitations. Please review the terms and conditions made available by third parties before using
+the datasets provided. Checkpoints are licensed under
+[Apache 2.0](https://github.com/tensorflow/models/blob/master/LICENSE).
+
+⚠️ Disclaimer: Datasets hyperlinked from this page are not owned or distributed
+by Google. Such datasets are made available by third parties. Please review the
+terms and conditions made available by the third parties before using the data.
 
 ### How to Train Models
 
