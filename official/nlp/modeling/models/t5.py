@@ -707,6 +707,7 @@ class MultiHeadAttention(Module):
     if mask is not None:
       scores += mask  # (bs, n_heads, qlen, klen)
     weights = tf.nn.softmax(tf.cast(scores, tf.float32), axis=-1)
+    output_scores = weights
     # weights shape = (bs, n_heads, qlen, klen)
     weights = tf.cast(weights, scores.dtype)
     weight_shape = tf_utils.get_shape_list(weights)
@@ -720,6 +721,7 @@ class MultiHeadAttention(Module):
     c = self.o(c)
 
     outputs = dict(context=c)
+    outputs["attention_scores"] = output_scores
     if cache:
       outputs["cache"] = cache
     return outputs
@@ -853,6 +855,7 @@ class EncoderBlock(Module):
                rescale_query: bool = False,
                weight_initializer: Optional[Initializer] = None,
                bias_initializer: Optional[Initializer] = None,
+               return_attention_scores: bool = False,
                **kwargs):
     super().__init__(**kwargs)
     with self.name_scope:
@@ -881,6 +884,7 @@ class EncoderBlock(Module):
           dtype=self.dtype,
           name="ffn")
       self.ffn_output_dropout = Dropout(dropout_rate)
+      self.return_attention_scores = return_attention_scores
 
   @tf.Module.with_name_scope
   def __call__(self,
@@ -902,7 +906,8 @@ class EncoderBlock(Module):
     ffn_output = self.ffn_output_dropout(
         ffn_output, noise_shape=tensor_shape, training=training)
     ffn_output = attn_output + ffn_output
-
+    if self.return_attention_scores:
+      return ffn_output, attention_outputs["attention_scores"]
     return ffn_output
 
 
@@ -1026,6 +1031,7 @@ class T5TransformerParams:
   # If true, uses one relative embedding for all encoder layers and one for all
   # decoder layers. Otherwise, have relative embedding for each layer.
   use_shared_relative_position_bias: bool = True
+  return_attention_scores: bool = False
 
 
 class Encoder(Module):
@@ -1099,6 +1105,7 @@ class Encoder(Module):
                   rescale_query=self.config.rescale_query,
                   weight_initializer=self.config.weight_initializer,
                   bias_initializer=self.config.bias_initializer,
+                  return_attention_scores=self.config.return_attention_scores,
                   dtype=self.dtype,
                   name="encoder_block_%d" % layer_idx))
       self.output_norm = RMSNorm(
@@ -1168,6 +1175,7 @@ class Encoder(Module):
     else:
       input_length = 0
 
+    attention_outputs = []
     for i in range(cfg.num_layers):
       position_bias = self.get_relpos_bias(input_length, dense_inputs, i)
       x = self.encoder_layers[i](
@@ -1175,10 +1183,16 @@ class Encoder(Module):
           attention_mask=encoder_mask,
           position_bias=position_bias,
           training=training)
+      if self.config.return_attention_scores:
+        x, attention_scores = x
+        attention_outputs.append(attention_scores)
 
     encoded = self.output_norm(x)
     encoded = self.output_dropout(encoded, training=training)
-    return encoded
+    if self.config.return_attention_scores:
+      return encoded, attention_outputs
+    else:
+      return encoded
 
 
 class Decoder(Module):
@@ -1373,6 +1387,7 @@ class T5Transformer(Module):
     # Builds the model components.
     shared_embedding = config.shared_embedding
     self.compute_dtype = compute_dtype
+    self.config = config
     self.decoder_cfg = dataclasses.replace(config, bidirectional=False)
     if self.decoder_cfg.num_decoder_layers is None:
       self.decoder_cfg.num_decoder_layers = self.decoder_cfg.num_layers
@@ -1556,6 +1571,8 @@ class T5Transformer(Module):
         encoder_dense_inputs=encoder_dense_inputs,
         encoder_dense_segment_ids=encoder_dense_segment_ids,
         training=training)
+    if self.config.return_attention_scores:
+      encoded, attn_scores = encoded
     outputs = self.decode(
         encoded=encoded,
         decoder_target_tokens=decoder_target_tokens,
@@ -1567,6 +1584,8 @@ class T5Transformer(Module):
         decoder_segment_ids=decoder_segment_ids,
         training=training)
     outputs["encoded"] = encoded
+    if self.config.return_attention_scores:
+      outputs["attention_scores"] = attn_scores
     return outputs
 
   @property
