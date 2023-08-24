@@ -335,6 +335,7 @@ class Pix2Seq(tf.keras.Model):
       inputs: tf.Tensor,
       targets: Optional[tf.Tensor] = None,
       training: bool = None,
+      use_teacher_forcing_for_eval: bool = False
   ) -> List[Any]:
     features = self._backbone(inputs)[self._backbone_endpoint_name]
     mask = tf.ones_like(features)
@@ -350,22 +351,18 @@ class Pix2Seq(tf.keras.Model):
     pos_emb = tf.cast(pos_emb, features.dtype)
 
     tokens = None
+    inputs = {
+        "inputs": features,
+        "tokens": targets,
+        "pos_emb": pos_emb,
+    }
     if training:
-      logits = self._transformer(
-          {
-              "inputs": features,
-              "tokens": targets,
-              "pos_emb": pos_emb,
-          },
-          training,
-      )
+      logits = self._transformer(inputs, training=True)
+    elif use_teacher_forcing_for_eval:
+      logits = self._transformer(inputs, training=False)
     else:
       tokens, logits = self._transformer.infer(
-          {
-              "inputs": features,
-              "tokens": targets,
-              "pos_emb": pos_emb,
-          },
+          inputs,
           top_k=self._top_k,
           top_p=self._top_p,
       )
