@@ -173,6 +173,14 @@ class RetinaNetHead(tf.keras.layers.Layer):
       conv_kwargs['kernel_initializer'] = tf_utils.clone_initializer(
           conv_kwargs['kernel_initializer']
       )
+    if 'pointwise_initializer' in conv_kwargs:
+      conv_kwargs['pointwise_initializer'] = tf_utils.clone_initializer(
+          conv_kwargs['pointwise_initializer']
+      )
+    if 'depthwise_initializer' in conv_kwargs:
+      conv_kwargs['depthwise_initializer'] = tf_utils.clone_initializer(
+          conv_kwargs['depthwise_initializer']
+      )
     return conv_kwargs
 
   def _init_attribute_kwargs(self):
@@ -311,6 +319,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
       for level in range(
           self._config_dict['min_level'], self._config_dict['max_level'] + 1
       ):
+        predictor_kwargs = self._conv_kwargs_new_kernel_init(predictor_kwargs)
         predictors.append(
             conv_op(name=f'{predictor_name}-{level}', **predictor_kwargs)
         )
