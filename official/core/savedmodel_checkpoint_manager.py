@@ -227,7 +227,7 @@ class SavedModelCheckpointManager(tf.train.CheckpointManager):
     logging.info('Waiting for new savedmodel at %s', self._directory)
     stop_time = time.time() + timeout if timeout is not None else None
 
-    last_savedmodel_number = 0
+    last_savedmodel_number = -1
     if last_savedmodel:
       last_savedmodel_number = self.get_savedmodel_number_from_path(
           last_savedmodel)
