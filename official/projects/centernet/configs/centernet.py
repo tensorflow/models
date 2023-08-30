@@ -71,7 +71,7 @@ class DataConfig(cfg.DataConfig):
   is_training: bool = True
   dtype: str = 'float16'
   decoder: DataDecoder = dataclasses.field(default_factory=DataDecoder)
-  parser: Parser = Parser()
+  parser: Parser = dataclasses.field(default_factory=Parser)
   shuffle_buffer_size: int = 10000
   file_type: str = 'tfrecord'
   drop_remainder: bool = True
