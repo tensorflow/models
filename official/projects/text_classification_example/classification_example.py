@@ -47,7 +47,7 @@ class ClassificationExampleConfig(cfg.TaskConfig):
   # At most one of `init_checkpoint` and `hub_module_url` can be specified.
   init_checkpoint: str = ''
   hub_module_url: str = ''
-  model: ModelConfig = ModelConfig()
+  model: ModelConfig = dataclasses.field(default_factory=ModelConfig)
 
   num_classes = 2
   class_names = ['A', 'B']
