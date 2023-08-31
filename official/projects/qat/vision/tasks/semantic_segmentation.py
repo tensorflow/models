@@ -28,9 +28,18 @@ class SemanticSegmentationTask(semantic_segmentation.SemanticSegmentationTask):
   def build_model(self) -> tf.keras.Model:
     """Builds semantic segmentation model with QAT."""
     model = super().build_model()
-    input_specs = tf.keras.layers.InputSpec(shape=[None] +
-                                            self.task_config.model.input_size)
-    if self.task_config.quantization:
+    input_specs = tf.keras.layers.InputSpec(
+        shape=[None] + self.task_config.model.input_size
+    )
+
+    # Only build a QAT model when quantization version is v2; otherwise leave it
+    # for outer quantization scope.
+    if (
+        self.task_config.quantization
+        and hasattr(self.task_config.quantization, 'version')
+        and self.task_config.quantization.version == 'v2'
+    ):
       model = factory.build_qat_segmentation_model(
-          model, self.task_config.quantization, input_specs)
+          model, self.task_config.quantization, input_specs
+      )
     return model

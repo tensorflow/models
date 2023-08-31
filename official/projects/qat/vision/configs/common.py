@@ -25,6 +25,8 @@ class Quantization(hyperparams.Config):
   """Quantization parameters.
 
   Attributes:
+    version: A string that indicates the version of QAT API. Support `v2` and
+      `v3`.
     pretrained_original_checkpoint: A string indicate pretrained checkpoint
       location.
     change_num_bits: A `bool` indicates whether to manually allocate num_bits.
@@ -35,6 +37,7 @@ class Quantization(hyperparams.Config):
     quantize_detection_head: A `bool` indicates whether to quantize detection
       head. It only works for detection model.
   """
+  version: str = 'v2'
   pretrained_original_checkpoint: Optional[str] = None
   change_num_bits: bool = False
   num_bits_weight: int = 8

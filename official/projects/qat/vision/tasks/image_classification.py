@@ -28,22 +28,34 @@ class ImageClassificationTask(image_classification.ImageClassificationTask):
   def build_model(self) -> tf.keras.Model:
     """Builds classification model with QAT."""
     input_specs = tf.keras.layers.InputSpec(
-        shape=[None] + self.task_config.model.input_size)
+        shape=[None] + self.task_config.model.input_size
+    )
 
     l2_weight_decay = self.task_config.losses.l2_weight_decay
     # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
-    l2_regularizer = (tf.keras.regularizers.l2(
-        l2_weight_decay / 2.0) if l2_weight_decay else None)
+    l2_regularizer = (
+        tf.keras.regularizers.l2(l2_weight_decay / 2.0)
+        if l2_weight_decay
+        else None
+    )
 
-    model = super(ImageClassificationTask, self).build_model()
-    if self.task_config.quantization:
+    model = super().build_model()
+
+    # Only build a QAT model when quantization version is v2; otherwise leave it
+    # for outer quantization scope.
+    if (
+        self.task_config.quantization
+        and hasattr(self.task_config.quantization, 'version')
+        and self.task_config.quantization.version == 'v2'
+    ):
       model = factory.build_qat_classification_model(
           model,
           self.task_config.quantization,
           input_specs=input_specs,
           model_config=self.task_config.model,
-          l2_regularizer=l2_regularizer)
+          l2_regularizer=l2_regularizer,
+      )
 
     return model
