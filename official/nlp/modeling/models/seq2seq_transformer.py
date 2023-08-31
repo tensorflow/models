@@ -16,9 +16,11 @@
 
 Model paper: https://arxiv.org/pdf/1706.03762.pdf
 """
+import inspect
 import math
 
 import tensorflow as tf
+
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
 from official.nlp.modeling.ops import beam_search
@@ -491,6 +493,8 @@ class TransformerDecoder(tf.keras.layers.Layer):
                norm_first=True,
                norm_epsilon=1e-6,
                intermediate_dropout=0.0,
+               self_attention_cls=None,
+               cross_attention_cls=None,
                **kwargs):
     """Initialize a Transformer decoder.
 
@@ -508,6 +512,10 @@ class TransformerDecoder(tf.keras.layers.Layer):
         layers is normalized.
       norm_epsilon: Epsilon value to initialize normalization layers.
       intermediate_dropout: Dropout probability for intermediate_dropout_layer.
+      self_attention_cls: An optional class to use for self attention
+        or a function that provides the class per layer.
+      cross_attention_cls: An optional class to use for cross attention
+        or a function that provides the class per layer.
       **kwargs: key word arguemnts passed to tf.keras.layers.Layer.
     """
     super(TransformerDecoder, self).__init__(**kwargs)
@@ -521,11 +529,26 @@ class TransformerDecoder(tf.keras.layers.Layer):
     self._norm_first = norm_first
     self._norm_epsilon = norm_epsilon
     self._intermediate_dropout = intermediate_dropout
+    self._self_attention_cls = self_attention_cls
+    self._cross_attention_cls = cross_attention_cls
 
   def build(self, input_shape):
     """Implements build() for the layer."""
+
+    def _select_attention_cls(attention_cls, index):
+      cls = None
+      if attention_cls is not None:
+        cls = (
+            attention_cls(index)
+            if inspect.isfunction(attention_cls)
+            else attention_cls
+        )
+      return cls
+
     self.decoder_layers = []
     for i in range(self.num_layers):
+      self_attention_cls = _select_attention_cls(self._self_attention_cls, i)
+      cross_attention_cls = _select_attention_cls(self._cross_attention_cls, i)
       self.decoder_layers.append(
           layers.TransformerDecoderBlock(
               num_attention_heads=self.num_attention_heads,
@@ -538,7 +561,9 @@ class TransformerDecoder(tf.keras.layers.Layer):
               norm_epsilon=self._norm_epsilon,
               intermediate_dropout=self._intermediate_dropout,
               attention_initializer=attention_initializer(input_shape[2]),
-              name=("layer_%d" % i)))
+              name=("layer_%d" % i),
+              self_attention_cls=self_attention_cls,
+              cross_attention_cls=cross_attention_cls))
     self.output_normalization = tf.keras.layers.LayerNormalization(
         epsilon=1e-6, dtype="float32")
     super(TransformerDecoder, self).build(input_shape)
@@ -554,7 +579,9 @@ class TransformerDecoder(tf.keras.layers.Layer):
         "use_bias": self._use_bias,
         "norm_first": self._norm_first,
         "norm_epsilon": self._norm_epsilon,
-        "intermediate_dropout": self._intermediate_dropout
+        "intermediate_dropout": self._intermediate_dropout,
+        "self_attention_cls": self._self_attention_cls,
+        "cross_attention_cls": self._cross_attention_cls,
     }
     base_config = super(TransformerDecoder, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
