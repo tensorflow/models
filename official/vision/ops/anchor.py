@@ -116,8 +116,12 @@ class Anchor(object):
     unpacked_labels = collections.OrderedDict()
     count = 0
     for level in range(self.min_level, self.max_level + 1):
-      feat_size_y = tf.cast(self.image_size[0] / 2**level, tf.int32)
-      feat_size_x = tf.cast(self.image_size[1] / 2**level, tf.int32)
+      feat_size_y = tf.cast(
+          math.ceil(self.image_size[0] / 2**level), tf.int32
+      )
+      feat_size_x = tf.cast(
+          math.ceil(self.image_size[1] / 2**level), tf.int32
+      )
       steps = feat_size_y * feat_size_x * self.anchors_per_location
       unpacked_labels[str(level)] = tf.reshape(
           labels[count : count + steps], [feat_size_y, feat_size_x, -1]

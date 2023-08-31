@@ -81,9 +81,9 @@ class _SingleAnchorGenerator:
 
     stride = tf.cast(self.stride, tf.float32)
     # [W]
-    cx = tf.range(0.5 * stride, image_width, stride)
+    cx = tf.range(0.5 * stride, image_width + 0.5 * stride, stride)
     # [H]
-    cy = tf.range(0.5 * stride, image_height, stride)
+    cy = tf.range(0.5 * stride, image_height + 0.5 * stride, stride)
     # [H, W]
     cx_grid, cy_grid = tf.meshgrid(cx, cy)
     # [H, W, 1]
