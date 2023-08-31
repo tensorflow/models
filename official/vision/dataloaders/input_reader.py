@@ -56,7 +56,7 @@ def create_combine_fn(
   else:
     stop_on_empty_dataset = True
 
-  if params.is_training and params.weights:
+  if params.weights:
     # Combine multiple datasets using weighted sampling.
     if (not isinstance(params.input_path, cfg.base_config.Config) or
         not isinstance(params.weights, cfg.base_config.Config)):
