@@ -128,7 +128,7 @@ class SequenceBeamSearch(tf.Module):
       alpha: A float, defining the strength of length normalization.
       max_decode_length: An integer, the maximum number of steps to decode a
         sequence.
-      eos_id: An integer. ID of end of sentence token.
+      eos_id: An integer or a list. ID of end of sentence token.
       padded_decode: A bool, indicating if max_sequence_length padding is used
         for beam search.
       dtype: A tensorflow data type used for score computation. The default is
@@ -141,7 +141,10 @@ class SequenceBeamSearch(tf.Module):
     self.beam_size = beam_size
     self.alpha = alpha
     self.max_decode_length = max_decode_length
-    self.eos_id = eos_id
+    if isinstance(eos_id, list):
+      self.eos_id = eos_id
+    else:
+      self.eos_id = [eos_id]
     self.padded_decode = padded_decode
     self.dtype = tf.as_dtype(dtype)
     self.decoding_name = decoding_name
@@ -361,7 +364,12 @@ class SequenceBeamSearch(tf.Module):
       """
       # Grow alive sequences by one token.
       new_seq, new_log_probs, topk_ids, new_cache = _grow_alive_seq(state)
-      new_finished_flags = tf.equal(topk_ids, self.eos_id)
+      new_finished_flags = tf.equal(topk_ids, self.eos_id[0])
+      for eos_id in self.eos_id[1:]:
+        one_finished_flags = tf.equal(topk_ids, eos_id)
+        new_finished_flags = tf.logical_or(
+            new_finished_flags, one_finished_flags
+        )
       # Collect top beam_size alive sequences
       alive_state = _get_new_alive_state(new_seq, new_log_probs,
                                          new_finished_flags, new_cache)
