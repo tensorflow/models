@@ -186,6 +186,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
     intermediate_dropout: Dropout probability for intermediate_dropout_layer.
     attention_initializer: Initializer for kernels of attention layers. If set
       `None`, attention layers use kernel_initializer as initializer for kernel.
+    self_attention_cls: An optional class to use for self attention.
+    cross_attention_cls: An optional class to use for cross attention.
   """
 
   def __init__(self,
@@ -207,6 +209,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
                norm_epsilon=1e-12,
                intermediate_dropout=0.0,
                attention_initializer=None,
+               self_attention_cls=None,
+               cross_attention_cls=None,
                **kwargs):
     super().__init__(**kwargs)
     self.num_attention_heads = num_attention_heads
@@ -233,7 +237,16 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
     else:
       self._attention_initializer = tf_utils.clone_initializer(
           self._kernel_initializer)
-    if self.multi_channel_cross_attention:
+
+    self._self_attention_cls = self_attention_cls or attention.CachedAttention
+
+    if cross_attention_cls is not None:
+      self._cross_attention_cls = cross_attention_cls
+      if self.multi_channel_cross_attention:
+        logging.warning(
+            "%s will be used for cross attention", cross_attention_cls
+        )
+    elif self.multi_channel_cross_attention:
       self._cross_attention_cls = multi_channel_attention.MultiChannelAttention
     else:
       self._cross_attention_cls = attention.MultiHeadAttention
@@ -256,7 +269,7 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint)
     # Self attention.
-    self.self_attention = attention.CachedAttention(
+    self.self_attention = self._self_attention_cls(
         num_heads=self.num_attention_heads,
         key_dim=self.attention_head_size,
         dropout=self.attention_dropout_rate,
@@ -369,6 +382,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         "attention_initializer": tf_utils.serialize_initializer(
             self._attention_initializer, use_legacy_format=True
         ),
+        "self_attention_cls": self._self_attention_cls,
+        "cross_attention_cls": self._cross_attention_cls,
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -418,6 +433,7 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
       # Accesses the 5-th input tensor for the doc-attention probabilities.
       cross_attn_inputs["context_attention_weights"] = inputs[-1]
     attention_output = self.encdec_attention(**cross_attn_inputs)
+
     attention_output = self.encdec_attention_dropout(attention_output)
     if self._norm_first:
       attention_output = source_self_attention_output + attention_output

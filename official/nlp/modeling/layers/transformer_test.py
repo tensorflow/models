@@ -14,8 +14,8 @@
 
 """Tests for Keras-based transformer block layer."""
 
+from absl.testing import parameterized
 import tensorflow as tf
-
 from official.nlp.modeling.layers import transformer
 
 
@@ -30,7 +30,7 @@ def _create_cache(batch_size, init_decode_length, num_heads, head_size):
   }
 
 
-class TransformerDecoderBlockTest(tf.test.TestCase):
+class TransformerDecoderBlockTest(parameterized.TestCase):
 
   def test_decoder_block_with_cache(self):
     num_attention_heads = 2
@@ -91,6 +91,60 @@ class TransformerDecoderBlockTest(tf.test.TestCase):
     new_decoder_block = transformer.TransformerDecoderBlock.from_config(
         decoder_block_config)
     self.assertEqual(decoder_block_config, new_decoder_block.get_config())
+
+  @parameterized.named_parameters(
+      ('default', False, False),
+      ('custom_self_attention', True, False),
+      ('custom_cross_attention', False, True),
+      ('custom_self_and_cross_attention', True, True),
+  )
+  def test_decoder_block_with_self_attention_override(
+      self, custom_self_attention, custom_cross_attention
+  ):
+    self_attention_called = False
+    cross_attention_called = False
+
+    class SelfAttention:
+      """Dummy implementation of custom attention."""
+
+      def __init__(self, *args, **kwargs):
+        pass
+
+      def __call__(self, query, value, attention_mask, cache, decode_loop_step):
+        nonlocal self_attention_called
+        self_attention_called = True
+        return query, cache
+
+    class CrossAttention:
+      """Dummy implementation of custom attention."""
+
+      def __init__(self, *args, **kwargs):
+        pass
+
+      def __call__(self, query, value, attention_mask):
+        nonlocal cross_attention_called
+        cross_attention_called = True
+        return query
+
+    num_attention_heads = 2
+    hidden_size = 16
+    decoder_block = transformer.TransformerDecoderBlock(
+        num_attention_heads=num_attention_heads,
+        intermediate_size=32,
+        intermediate_activation='relu',
+        dropout_rate=0.1,
+        attention_dropout_rate=0.1,
+        self_attention_cls=SelfAttention if custom_self_attention else None,
+        cross_attention_cls=CrossAttention if custom_cross_attention else None,
+    )
+    # Forward path.
+    dummy_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
+    dummy_mask = tf.zeros([2, 4, 4], dtype=tf.float32)
+    inputs = [dummy_tensor, dummy_tensor, dummy_mask, dummy_mask]
+    output, _ = decoder_block(inputs)
+    self.assertEqual(output.shape, (2, 4, hidden_size))
+    self.assertEqual(self_attention_called, custom_self_attention)
+    self.assertEqual(cross_attention_called, custom_cross_attention)
 
 
 if __name__ == '__main__':
