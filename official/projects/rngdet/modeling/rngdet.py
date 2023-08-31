@@ -204,11 +204,16 @@ class RNGDet(tf.keras.Model):
             2, kernel_initializer=tf.keras.initializers.RandomUniform(
                 -sqrt_k, sqrt_k),
             name="detr/box_dense_2")]
-    self._sigmoid = tf.keras.layers.Activation("sigmoid")
+    #self._sigmoid = tf.keras.layers.Activation("sigmoid")
+    self._tanh = tf.keras.layers.Activation("tanh")
 
   @property
   def backbone(self) -> tf.keras.Model:
     return self._backbone
+  
+  @property
+  def backbone_history(self) -> tf.keras.Model:
+    return self._backbone_history
 
   def get_config(self):
     return {
@@ -251,10 +256,6 @@ class RNGDet(tf.keras.Model):
     pred_keypoint = self._keypoint_head(pred_keypoint)
 
     inputs_history = tf.concat([pred_segment, pred_keypoint], -1)
-    temp = {}
-    temp["pred_masks"] = inputs_history
-    
-
     segmentation_map = tf.sigmoid(tf.stop_gradient(tf.identity(inputs_history)))
     
     if gt_labels is not None:
@@ -296,7 +297,7 @@ class RNGDet(tf.keras.Model):
       box_out = decoded
       for layer in self._bbox_embed:
         box_out = layer(box_out)
-      output_coord = self._sigmoid(box_out)
+      output_coord = self._tanh(box_out)
       out = {"cls_outputs": output_class, "box_outputs": output_coord}
       if not training:
         out.update(postprocess(out))
