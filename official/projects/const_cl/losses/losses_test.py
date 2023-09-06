@@ -33,7 +33,8 @@ class LossesTest(tf.test.TestCase):
     contrastive_loss_dict = contrastive_loss(inputs)
 
     self.assertAlmostEqual(contrastive_loss_dict['contrastive_accuracy'], 0.5)
-    self.assertAlmostEqual(contrastive_loss_dict['loss'], 4.136947, places=4)
+    self.assertAlmostEqual(
+        contrastive_loss_dict['loss'].numpy(), 4.136947, places=4)
 
   def test_instance_constrative_loss(self):
     instance_contrastive_loss = losses.InstanceContrastiveLoss(
