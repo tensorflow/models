@@ -53,12 +53,14 @@ def _as_dataset(self, *args, **kwargs):
       output_shapes=self.info.features.shape,
   )
 
-CITYSCALE_INPUT_PATH_BASE = '/home/ghpark.epiclab/cityscale/'
+CITYSCALE_INPUT_PATH_BASE = '/home/ghpark/cityscale'
 
 class RngdetTest(tf.test.TestCase):
 
   def test_train_step(self):
     config = rngdet_cfg.RngdetTask(
+        init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet',
+        init_checkpoint_modules='backbone',
         model=rngdet_cfg.Rngdet(
             input_size=[128, 128, 3],
             roi_size=128,
@@ -72,7 +74,7 @@ class RngdetTest(tf.test.TestCase):
             backbone_endpoint_name='5',
             backbone=backbones.Backbone(
                 type='resnet',
-                resnet=backbones.ResNet(model_id=10, bn_trainable=False)),
+                resnet=backbones.ResNet(model_id=50, bn_trainable=False)),
             decoder=decoders.Decoder(
                 type='fpn',
                 fpn=decoders.FPN())
@@ -88,6 +90,8 @@ class RngdetTest(tf.test.TestCase):
     with tfds.testing.mock_data(as_dataset_fn=_as_dataset):
       task = rngdet.RNGDetTask(config)
       model = task.build_model()
+      task.initialize(model)
+      print("-----------------------------------------")
       dataset = task.build_inputs(config.train_data)
       iterator = iter(dataset)
       opt_cfg = optimization.OptimizationConfig({

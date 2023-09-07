@@ -31,7 +31,7 @@ class DetrTest(tf.test.TestCase):
     backbone = resnet.ResNet(50, bn_trainable=False)
     backbone_endpoint_name = '5'
     history_specs = tf.keras.layers.InputSpec(
-        shape=[None] + temp[:2] + [513])
+        shape=[None] + temp[:2] + [3])
     backbone_history = resnet.ResNet(50,
                                      input_specs=history_specs,
                                      bn_trainable=False)

@@ -104,11 +104,15 @@ class RNGDetTask(base_task.Task):
       status = ckpt.restore(ckpt_dir_or_file)
       status.assert_consumed()
     elif self._task_config.init_checkpoint_modules == 'backbone':
-      ckpt = tf.train.Checkpoint(backbone=model.backbone,
-                                 backbone_history=model.backbone)
+      """ckpt = tf.train.Checkpoint(backbone=model.backbone,
+                                 backbone_history=model.backbone,
+                                 abcd=model.backbone,)"""
+      ckpt = tf.train.Checkpoint(backbone=model.backbone)
       status = ckpt.restore(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
-
+      ckpt = tf.train.Checkpoint(backbone=model.backbone_history)
+      status = ckpt.restore(ckpt_dir_or_file)
+      status.expect_partial().assert_existing_objects_matched()
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
 

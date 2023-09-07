@@ -29,6 +29,8 @@ from official.projects.rngdet.modeling import transformer
 from official.vision.ops import box_ops
 from official.vision.ops import spatial_transform_ops
 
+from typing import Any, Mapping, List, Union
+
 def position_embedding_sine(attention_mask,
                             num_pos_features=256,
                             temperature=10000.,
@@ -177,14 +179,22 @@ class RNGDet(tf.keras.Model):
         initializer=tf.keras.initializers.RandomNormal(mean=0., stddev=1.),
         dtype=tf.float32)
     sqrt_k = math.sqrt(1.0 / self._hidden_size)
-    self._segment_head = tf.keras.layers.Dense(
+    self._segment_head = tf.keras.layers.Conv2D(
+        1, 1,
+        kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
+        name="detr/segment_dense")
+    self._keypoint_head = tf.keras.layers.Conv2D(
+        1, 1,
+        kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
+        name="detr/keypoint_dense")
+    """self._segment_head = tf.keras.layers.Dense(
         1,
         kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
         name="detr/segment_dense")
     self._keypoint_head = tf.keras.layers.Dense(
         1,
         kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
-        name="detr/keypoint_dense")
+        name="detr/keypoint_dense")"""
     self._class_embed = tf.keras.layers.Dense(
         self._num_classes,
         kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
@@ -214,7 +224,33 @@ class RNGDet(tf.keras.Model):
   @property
   def backbone_history(self) -> tf.keras.Model:
     return self._backbone_history
+  
+  @property
+  def transformer(self) -> tf.keras.layers.Layer:
+    return self._transformer
+  
+  @property
+  def checkpoint_items(
+      self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
+    #"""Returns a dictionary of items to be additionally checkpointed."""
+    items = dict(
+        backbone=self.backbone,
+        backbone_history=self.backbone_history,
+        transformer=self.transformer,
+        segment_fpn=self._segment_fpn,
+        keypoint_fpn=self._keypoint_fpn,
+        query_embeddings=self._query_embeddings,
+        segment_head=self._segment_head,
+        keypoint_head=self._keypoint_head,
+        class_embed=self._class_embed,
+        bbox_embed=self._bbox_embed,
+        )
+    #items.update(=self._class_embed)
+    #if self.decoder is not None:
+    #  items.update(decoder=self.decoder)
 
+    return items
+  
   def get_config(self):
     return {
         "backbone": self._backbone,
@@ -299,8 +335,6 @@ class RNGDet(tf.keras.Model):
         box_out = layer(box_out)
       output_coord = self._tanh(box_out)
       out = {"cls_outputs": output_class, "box_outputs": output_coord}
-      if not training:
-        out.update(postprocess(out))
       out_list.append(out)
     return out_list, pred_segment, pred_keypoint
 

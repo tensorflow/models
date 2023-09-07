@@ -86,7 +86,7 @@ def create_tf_example(sat_ROI, label_masks_ROI, historical_ROI,
     "sat_roi": tfrecord_lib.convert_to_feature(sat_ROI, 'int64_list'),
     "label_masks_roi": tfrecord_lib.convert_to_feature(label_masks_ROI, 'int64_list'),
     "historical_roi": tfrecord_lib.convert_to_feature(historical_ROI, 'int64_list'),
-    "gt_probs": tfrecord_lib.convert_to_feature(gt_probs, 'int64_list'),
+    "gt_probs": tfrecord_lib.convert_to_feature(gt_probs, 'float_list'),
     "gt_coords": tfrecord_lib.convert_to_feature(gt_coords, 'float_list'),
     "list_len": tfrecord_lib.convert_to_feature(list_len),
     "gt_masks": tfrecord_lib.convert_to_feature(gt_masks, 'int64_list')
