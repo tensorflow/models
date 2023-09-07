@@ -20,7 +20,9 @@ from official.modeling import optimization
 from official.nlp.data import pretrain_dataloader
 from official.nlp.data import pretrain_dynamic_dataloader
 from official.nlp.data import pretrain_text_dataloader
+from official.nlp.tasks import electra_task
 from official.nlp.tasks import masked_lm
+
 
 _TRAINER = cfg.TrainerConfig(
     train_steps=1000000,
@@ -110,4 +112,24 @@ def bert_text_wiki_pretraining() -> cfg.ExperimentConfig:
           'task.train_data.is_training != None',
           'task.validation_data.is_training != None'
       ])
+  return config
+
+
+@exp_factory.register_config_factory('electra/pretraining')
+def electra_pretrain() -> cfg.ExperimentConfig:
+  """ELECTRA pretraining experiment."""
+  config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(enable_xla=True),
+      task=electra_task.ElectraPretrainConfig(
+          train_data=pretrain_dataloader.BertPretrainDataConfig(),
+          validation_data=pretrain_dataloader.BertPretrainDataConfig(
+              is_training=False
+          ),
+      ),
+      trainer=_TRAINER,
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None',
+      ],
+  )
   return config
