@@ -36,37 +36,37 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
           'use_separable_conv': True,
           'build_anchor_boxes': True,
           'is_training': False,
-          'has_att_heads': False
+          'has_att_heads': False,
       },
       {
           'use_separable_conv': False,
           'build_anchor_boxes': True,
           'is_training': False,
-          'has_att_heads': False
+          'has_att_heads': False,
       },
       {
           'use_separable_conv': False,
           'build_anchor_boxes': False,
           'is_training': False,
-          'has_att_heads': False
+          'has_att_heads': False,
       },
       {
           'use_separable_conv': False,
           'build_anchor_boxes': False,
           'is_training': True,
-          'has_att_heads': False
+          'has_att_heads': False,
       },
       {
           'use_separable_conv': False,
           'build_anchor_boxes': True,
           'is_training': True,
-          'has_att_heads': True
+          'has_att_heads': True,
       },
       {
           'use_separable_conv': False,
           'build_anchor_boxes': True,
           'is_training': False,
-          'has_att_heads': True
+          'has_att_heads': True,
       },
   )
   def test_build_model(self, use_separable_conv, build_anchor_boxes,
