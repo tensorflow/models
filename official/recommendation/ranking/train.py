@@ -73,7 +73,7 @@ def main(_) -> None:
 
   task = RankingTask(
       params=params.task,
-      optimizer_config=params.trainer.optimizer_config,
+      trainer_config=params.trainer,
       logging_dir=model_dir,
       steps_per_execution=params.trainer.steps_per_loop,
       name='RankingTask')
