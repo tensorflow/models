@@ -26,6 +26,7 @@ from official.projects.pix2seq import utils
 from official.projects.pix2seq.configs import pix2seq as pix2seq_cfg
 from official.projects.pix2seq.dataloaders import pix2seq_input
 from official.projects.pix2seq.modeling import pix2seq_model
+from official.projects.uvit.modeling import vit  # pylint: disable=unused-import
 from official.vision.dataloaders import input_reader_factory
 from official.vision.dataloaders import tf_example_decoder
 from official.vision.dataloaders import tfds_factory
@@ -90,9 +91,12 @@ class Pix2SeqTask(base_task.Task):
       status = ckpt.restore(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     elif self._task_config.init_checkpoint_modules == 'backbone':
-      ckpt = tf.train.Checkpoint(backbone=model.backbone)
-      status = ckpt.restore(ckpt_dir_or_file)
-      status.expect_partial().assert_existing_objects_matched()
+      if self.task_config.model.backbone.type == 'uvit':
+        model.backbone.load_checkpoint(ckpt_filepath=ckpt_dir_or_file)
+      else:
+        ckpt = tf.train.Checkpoint(backbone=model.backbone)
+        status = ckpt.restore(ckpt_dir_or_file)
+        status.expect_partial().assert_existing_objects_matched()
 
     logging.info(
         'Finished loading pretrained checkpoint from %s', ckpt_dir_or_file
