@@ -22,6 +22,7 @@ from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
+from official.projects.uvit.configs import backbones as uvit_backbones
 from official.vision.configs import backbones
 from official.vision.configs import common
 
@@ -87,6 +88,20 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class Backbone(backbones.Backbone):
+  """Configuration for backbones.
+
+  Attributes:
+    type: "str", type of backbone be used, one the of fields below.
+    uvit: uvit backbone config.
+  """
+  type: Optional[str] = None
+  resnet: backbones.ResNet = dataclasses.field(default_factory=backbones.ResNet)
+  uvit: uvit_backbones.VisionTransformer = dataclasses.field(
+      default_factory=uvit_backbones.VisionTransformer)
+
+
+@dataclasses.dataclass
 class Pix2Seq(hyperparams.Config):
   """Pix2Seq model definations."""
 
@@ -100,8 +115,8 @@ class Pix2Seq(hyperparams.Config):
   shared_decoder_embedding: bool = True
   decoder_output_bias: bool = True
   input_size: List[int] = dataclasses.field(default_factory=list)
-  backbone: backbones.Backbone = dataclasses.field(
-      default_factory=lambda: backbones.Backbone(  # pylint: disable=g-long-lambda
+  backbone: Backbone = dataclasses.field(
+      default_factory=lambda: Backbone(  # pylint: disable=g-long-lambda
           type='resnet',
           resnet=backbones.ResNet(model_id=50, bn_trainable=False),
       )
@@ -159,7 +174,7 @@ def pix2seq_r50_coco() -> cfg.ExperimentConfig:
                   norm_momentum=0.9,
                   norm_epsilon=1e-5,
                   use_sync_bn=True),
-              backbone=backbones.Backbone(
+              backbone=Backbone(
                   type='resnet', resnet=backbones.ResNet(model_id=50)
               ),
           ),
