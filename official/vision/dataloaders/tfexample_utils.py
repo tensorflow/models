@@ -199,6 +199,7 @@ def create_3d_image_test_example(
     image_width: int,
     image_volume: int,
     image_channel: int,
+    num_classes: int = 2,
     output_serialized_example: bool = False) -> tf.train.Example:
   """Creates 3D image and label.
 
@@ -207,6 +208,7 @@ def create_3d_image_test_example(
     image_width: The width of test 3D image.
     image_volume: The volume of test 3D image.
     image_channel: The channel of test 3D image.
+    num_classes: The number of classes of the test 3D label.
     output_serialized_example: A boolean flag represents whether to return a
       serialized example.
 
@@ -218,9 +220,14 @@ def create_3d_image_test_example(
   images = image[:, :, np.newaxis, :]
   images = np.tile(images, [1, 1, image_volume, 1]).astype(np.float32)
 
-  shape = [image_height, image_width, image_volume, image_channel]
-  labels = fake_feature_generator.generate_classes_np(
-      2, np.prod(shape)).reshape(shape).astype(np.float32)
+  label_shape = [image_height, image_width, image_volume, num_classes]
+  labels = (
+      fake_feature_generator.generate_classes_np(
+          num_classes, np.prod(label_shape)
+      )
+      .reshape(label_shape)
+      .astype(np.float32)
+  )
 
   builder = tf_example_builder.TfExampleBuilder()
   example = builder.add_bytes_feature(IMAGE_KEY,
