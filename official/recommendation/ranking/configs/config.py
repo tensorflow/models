@@ -52,11 +52,15 @@ class LearningRateConfig(hyperparams.Config):
 
 @dataclasses.dataclass
 class OptimizationConfig(hyperparams.Config):
-  """Embedding Optimizer config."""
+  """Embedding and dense optimizer configs."""
   lr_config: LearningRateConfig = dataclasses.field(
       default_factory=LearningRateConfig
   )
+  dense_sgd_config: LearningRateConfig = dataclasses.field(
+      default_factory=lambda: LearningRateConfig(warmup_steps=0)
+  )
   embedding_optimizer: str = 'SGD'
+  dense_optimizer: str = 'Adam'
 
 
 @dataclasses.dataclass
@@ -154,6 +158,8 @@ class TrainerConfig(cfg.TrainerConfig):
     time_history: Config of TimeHistory callback.
     optimizer_config: An `OptimizerConfig` instance for embedding optimizer.
        Defaults to None.
+    pipeline_sparse_and_dense_exeuction: Whether to pipeline embedding and
+      dense execution. This is a performance optimization.
   """
   train_steps: int = 0
   # Sets validation steps to be -1 to evaluate the entire dataset.
@@ -170,6 +176,7 @@ class TrainerConfig(cfg.TrainerConfig):
   optimizer_config: OptimizationConfig = dataclasses.field(
       default_factory=OptimizationConfig
   )
+  pipeline_sparse_and_dense_execution: bool = False
 
 
 NUM_TRAIN_EXAMPLES = 4195197692
