@@ -5,7 +5,7 @@ This repository provides the official TensorFlow 2 implementation of
 [VideoGLUE: Video General Understanding Evaluation of Foundation Models](https://arxiv.org/abs/2307.03166)
 
 <p align="center">
-  <img src="https://storage.mtls.cloud.google.com/tf_model_garden/vision/videoglue/artifacts/VideoGLUE-fig2.jpg" height=350>
+  <img src="https://storage.googleapis.com/tf_model_garden/vision/videoglue/artifacts/VideoGLUE-fig2.jpg" height=350>
 </p>
 <p align="center">
   <em>Figure 1: We study four adaptation methods to apply a foundation model to
