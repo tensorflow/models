@@ -38,10 +38,12 @@ and modeling solutions for TensorFlow users.
 
 ### 2 Model Strategy (v2 - trained on larger dataset)
 
-| Model categories | Model backbone | Model type | GCP bucket path |
+### Material type model in v2 provides combined output across Material & Plastic Type models in v1
+
+Model categories | Model backbone | Model type  | GCP bucket path |
 | ------ | ------ | ----- | ------ |
-|Material Type Model (v2) | Resnet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/two_model_strategy/material/material_version_2.zip) |
-|Material Form Model (v2) | Resnet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/two_model_strategy/material_form/material_form_version_2.zip) |
+Material Type Model | Resnet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/two_model_strategy/material/material_version_2.zip)
+Material Form Model | Resnet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/two_model_strategy/material_form/material_form_version_2.zip)
 
 ## Authors and Maintainers
 - Umair Sabir
