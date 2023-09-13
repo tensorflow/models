@@ -20,7 +20,7 @@ import sys
 from setuptools import find_packages
 from setuptools import setup
 
-version = '2.13.1'
+version = '2.13.2'
 tf_version = '2.13.0'  # Major version.
 
 project_name = 'tf-models-official'
