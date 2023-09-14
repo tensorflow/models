@@ -141,7 +141,7 @@ class RankingTask(base_task.Task):
 
     dense_optimizer = tf.keras.optimizers.get(
         self.optimizer_config.dense_optimizer, use_legacy_optimizer=True)
-    if dense_optimizer == tf.keras.optimizers.SGD:
+    if self.optimizer_config.dense_optimizer == 'SGD':
       dense_lr_config = self.optimizer_config.dense_sgd_config
       dense_lr_callable = common.WarmUpAndPolyDecay(
           batch_size=self.task_config.train_data.global_batch_size,
