@@ -2628,15 +2628,17 @@ class MixupAndCutmix:
   """
 
   def __init__(self,
+               num_classes: int,
                mixup_alpha: float = .8,
                cutmix_alpha: float = 1.,
                prob: float = 1.0,
                switch_prob: float = 0.5,
-               label_smoothing: float = 0.1,
-               num_classes: int = 1001):
+               label_smoothing: float = 0.1):
     """Applies Mixup and/or Cutmix to a batch of images.
 
     Args:
+
+      num_classes (int): Number of classes.
       mixup_alpha (float, optional): For drawing a random lambda (`lam`) from a
         beta distribution (for each image). If zero Mixup is deactivated.
         Defaults to .8.
@@ -2648,7 +2650,6 @@ class MixupAndCutmix:
         batch. Defaults to 0.5.
       label_smoothing (float, optional): Constant for label smoothing. Defaults
         to 0.1.
-      num_classes (int, optional): Number of classes. Defaults to 1001.
     """
     self.mixup_alpha = mixup_alpha
     self.cutmix_alpha = cutmix_alpha
