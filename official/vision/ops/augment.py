@@ -1716,9 +1716,9 @@ def _apply_func_with_prob(func: Any, image: tf.Tensor,
   return augmented_image, augmented_bboxes
 
 
-def select_and_apply_random_policy(policies: Any,
-                                   image: tf.Tensor,
-                                   bboxes: Optional[tf.Tensor] = None):
+def select_and_apply_random_policy(
+    policies: Any, image: tf.Tensor, bboxes: Optional[tf.Tensor] = None
+) -> Tuple[tf.Tensor, Optional[tf.Tensor]]:
   """Select a random policy from `policies` and apply it to `image`."""
   policy_to_select = tf.random.uniform([], maxval=len(policies), dtype=tf.int32)
   # Note that using tf.case instead of tf.conds would result in significantly
@@ -2075,6 +2075,7 @@ class AutoAugment(ImageAugment):
     tf_policies = self._make_tf_policies()
     image, bboxes = select_and_apply_random_policy(tf_policies, image, bboxes)
     image = tf.cast(image, dtype=input_image_type)
+    assert bboxes is not None
     return image, bboxes
 
   @staticmethod
@@ -2493,6 +2494,7 @@ class RandAugment(ImageAugment):
                          bboxes: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
     """See base class."""
     image, bboxes = self._distort_common(image, bboxes)
+    assert bboxes is not None
     return image, bboxes
 
 
