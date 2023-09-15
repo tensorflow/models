@@ -111,9 +111,10 @@ def make_video_test_example(image_shape: Sequence[int] = (263, 320, 3),
   return seq_example
 
 
-def dump_to_tfrecord(record_file: str,
-                     tf_examples: Sequence[Union[tf.train.Example,
-                                                 tf.train.SequenceExample]]):
+def dump_to_tfrecord(
+    record_file: str,
+    tf_examples: Sequence[Union[tf.train.Example, tf.train.SequenceExample]],
+    file_type: str = 'tfrecord'):
   """Writes serialized Example to TFRecord file with path.
 
   Note that examples are expected to be not seriazlied.
@@ -121,8 +122,11 @@ def dump_to_tfrecord(record_file: str,
   Args:
     record_file: The name of the output file.
     tf_examples: A list of examples to be stored.
+    file_type: A string indicating the file format, could be: 'tfrecord',
+      'tfrecords', 'tfrecord_compressed', 'tfrecords_gzip', 'riegeli'. The
+      string is case insensitive.
   """
-  file_writers.write_small_dataset(tf_examples, record_file, 'tfrecord')
+  file_writers.write_small_dataset(tf_examples, record_file, file_type)
 
 
 def create_classification_example(
