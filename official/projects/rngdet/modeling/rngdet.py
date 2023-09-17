@@ -165,10 +165,6 @@ class RNGDet(tf.keras.Model):
 
     self._input_proj = tf.keras.layers.Conv2D(
         self._hidden_size, 1, name="detr/conv2d")
-    self._build_detection_decoder()
-
-  def _build_detection_decoder(self):
-    """Builds detection decoder."""
     self._transformer = DETRTransformer(
         num_encoder_layers=self._num_encoder_layers,
         num_decoder_layers=self._num_decoder_layers,
@@ -199,7 +195,7 @@ class RNGDet(tf.keras.Model):
         self._num_classes,
         kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
         name="detr/cls_dense")
-    self._bbox_embed = [
+    """self._bbox_embed = [
         tf.keras.layers.Dense(
             self._hidden_size, activation="relu",
             kernel_initializer=tf.keras.initializers.RandomUniform(
@@ -213,10 +209,39 @@ class RNGDet(tf.keras.Model):
         tf.keras.layers.Dense(
             2, kernel_initializer=tf.keras.initializers.RandomUniform(
                 -sqrt_k, sqrt_k),
-            name="detr/box_dense_2")]
-    #self._sigmoid = tf.keras.layers.Activation("sigmoid")
-    self._tanh = tf.keras.layers.Activation("tanh")
+            name="detr/box_dense_2")]"""
+    self._bbox_embed = tf.keras.Sequential([
+        tf.keras.layers.Dense(
+            self._hidden_size, activation="relu",
+            kernel_initializer=tf.keras.initializers.RandomUniform(
+                -sqrt_k, sqrt_k),
+            name="detr/box_dense_0"),
+        tf.keras.layers.Dense(
+            self._hidden_size, activation="relu",
+            kernel_initializer=tf.keras.initializers.RandomUniform(
+                -sqrt_k, sqrt_k),
+            name="detr/box_dense_1"),
+        tf.keras.layers.Dense(
+            2, kernel_initializer=tf.keras.initializers.RandomUniform(
+                -sqrt_k, sqrt_k),
+            name="detr/box_dense_2")])
+    """self._bbox_embed_0 = tf.keras.layers.Dense(
+            self._hidden_size, activation="relu",
+            kernel_initializer=tf.keras.initializers.RandomUniform(
+                -sqrt_k, sqrt_k),
+            name="detr/box_dense_0")
+    self._bbox_embed_1 = tf.keras.layers.Dense(
+            self._hidden_size, activation="relu",
+            kernel_initializer=tf.keras.initializers.RandomUniform(
+                -sqrt_k, sqrt_k),
+            name="detr/box_dense_1")
+    self._bbox_embed_2 = tf.keras.layers.Dense(
+            2, kernel_initializer=tf.keras.initializers.RandomUniform(
+                -sqrt_k, sqrt_k),
+            name="detr/box_dense_2")"""
 
+    self._tanh = tf.keras.layers.Activation("tanh")
+    self._sigmoid = tf.keras.layers.Activation(activation='sigmoid')
   @property
   def backbone(self) -> tf.keras.Model:
     return self._backbone
@@ -331,12 +356,16 @@ class RNGDet(tf.keras.Model):
       decoded = tf.stack(decoded)
       output_class = self._class_embed(decoded)
       box_out = decoded
-      for layer in self._bbox_embed:
-        box_out = layer(box_out)
+      """for layer in self._bbox_embed:
+        box_out = layer(box_out)"""
+      box_out = self._bbox_embed(box_out)
+      #box_out = self._bbox_embed_0(box_out)
+      #box_out = self._bbox_embed_1(box_out)
+      #box_out = self._bbox_embed_2(box_out)
       output_coord = self._tanh(box_out)
       out = {"cls_outputs": output_class, "box_outputs": output_coord}
       out_list.append(out)
-    return out_list, pred_segment, pred_keypoint
+    return out_list, self._sigmoid(pred_segment), self._sigmoid(pred_keypoint)
 
 
 class DETRTransformer(tf.keras.layers.Layer):

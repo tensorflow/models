@@ -107,8 +107,11 @@ class Parser(parser.Parser):
     gt_probs = tf.reshape(data['gt_probs'], [self._num_queries])
     gt_masks = tf.reshape(
         data['gt_masks'], [self._roi_size, self._roi_size, self._num_queries])
-    
-    sat_roi = tf.image.convert_image_dtype(sat_roi, dtype=tf.float32)
+    #print(tf.reduce_max(sat_roi))
+    #sat_roi = tf.image.convert_image_dtype(sat_roi, dtype=tf.float32)
+    sat_roi = tf.cast(sat_roi, tf.float32) / 255
+    #print(tf.reduce_max(sat_roi))
+    #print("----------------------")
     sat_roi = sat_roi * (
         0.7 + 0.3 * tf.random.uniform([], minval=0, maxval=1, dtype=tf.float32))
     rot_index = tf.random.uniform(shape=(), minval=0, maxval=4, dtype=tf.int32)

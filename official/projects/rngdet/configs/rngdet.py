@@ -86,6 +86,7 @@ class RngdetTask(cfg.TaskConfig):
 
 #CITYSCALE_INPUT_PATH_BASE = 'gs://ghpark-tfrecords/cityscale'
 CITYSCALE_INPUT_PATH_BASE = '/home/ghpark/02_RNGDet/models/official/projects/rngdet/data/tfrecord'
+#CITYSCALE_INPUT_PATH_BASE = '/data2/cityscale/tfrecord'
 #CITYSCALE_TRAIN_EXAMPLES = 420140
 CITYSCALE_TRAIN_EXAMPLES = 1900
 CITYSCALE_VAL_EXAMPLES = 5000
@@ -94,11 +95,11 @@ CITYSCALE_VAL_EXAMPLES = 5000
 @exp_factory.register_config_factory('rngdet_cityscale')
 def rngdet_cityscale() -> cfg.ExperimentConfig:
   """Config to get results that matches the paper."""
-  train_batch_size = 16
+  train_batch_size = 8
   eval_batch_size = 64
   steps_per_epoch = CITYSCALE_TRAIN_EXAMPLES // train_batch_size
-  train_steps = 40 * steps_per_epoch  # 50 epochs
-  decay_at = train_steps - 30 * steps_per_epoch  # 40 epochs
+  train_steps = 50 * steps_per_epoch  # 50 epochs
+  #decay_at = train_steps - 30 * steps_per_epoch  # 40 epochs
   config = cfg.ExperimentConfig(
       task=RngdetTask(
           init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet',
@@ -109,7 +110,6 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
               norm_activation=common.NormActivation()),
           losses=Losses(),
           train_data=DataConfig(
-              #input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train*'),
               input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train*'),
               is_training=True,
               global_batch_size=train_batch_size,
@@ -133,16 +133,18 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
           best_checkpoint_eval_metric='AP',
           optimizer_config=optimization.OptimizationConfig({
               'optimizer': {
-                  'type': 'adam',
-                  'adam': {
-                      'epsilon': 1e-7
+                  'type': 'adamw',
+                  'adamw': {
+                    'weight_decay_rate': 1e-5
                   }
               },
               'learning_rate': {
                   'type': 'stepwise',
                   'stepwise': {
-                      'boundaries': [decay_at],
-                      'values': [0.0001, 1.0e-05]
+                      'boundaries': [20 * steps_per_epoch,
+                                     30 * steps_per_epoch,
+                                     40 * steps_per_epoch],
+                      'values': [0.0001, 1.0e-05, 1.0e-06, 1.0e-07]
                   }
               },
           })),

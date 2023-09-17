@@ -177,9 +177,11 @@ class RNGDetTask(base_task.Task):
     gt_segment = labels['label_masks_roi'][:,:,:,0]
     gt_keypoint = labels['label_masks_roi'][:,:,:,1]
     focal_loss_fn = focal_loss.FocalLoss(
-        alpha=0.25,
-        gamma=1.5,
+        alpha=0.75,
+        gamma=2.0,
         reduction=tf.keras.losses.Reduction.SUM)
+    """focal_loss_fn = tf.keras.losses.BinaryCrossentropy(
+      from_logits=True, reduction=tf.keras.losses.Reduction.SUM)"""
     
     batch_size = tf.shape(pred_segment)[0]
     pred_segment = tf.reshape(pred_segment, [batch_size, -1, 1])
@@ -278,6 +280,7 @@ class RNGDetTask(base_task.Task):
       A dictionary of logs.
     """
     features, labels = inputs
+    num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
       outputs, pred_segment, pred_keypoint = model(features['sat_roi'],
                                                    features['historical_roi'],
@@ -292,17 +295,17 @@ class RNGDetTask(base_task.Task):
       box_loss = 0.0
       seg_loss = 0.0
 
-      seg_loss = self.segmentation_loss(pred_segment, pred_keypoint, labels)
+      seg_loss = self.segmentation_loss(pred_segment, pred_keypoint, labels)/num_replicas
       loss += seg_loss
+      
       for output in outputs:
         # Computes per-replica loss.
-        #layer_loss, layer_cls_loss, layer_box_loss, layer_giou_loss = self.build_losses(
         layer_loss, layer_cls_loss, layer_box_loss = self.build_losses(
             outputs=output, labels=labels, aux_losses=model.losses)
         loss += layer_loss
         cls_loss += layer_cls_loss
         box_loss += layer_box_loss
-      
+
       # Consider moving scaling logic from build_losses to here.
       scaled_loss = loss
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
@@ -321,11 +324,11 @@ class RNGDetTask(base_task.Task):
     # Since we expect the gradient replica sum to happen in the optimizer,
     # the loss is scaled with global num_boxes and weights.
     # To have it more interpretable/comparable we scale it back when logging.
-    num_replicas_in_sync = tf.distribute.get_strategy().num_replicas_in_sync
+    """num_replicas_in_sync = tf.distribute.get_strategy().num_replicas_in_sync
     loss *= num_replicas_in_sync
     cls_loss *= num_replicas_in_sync
     box_loss *= num_replicas_in_sync
-    seg_loss *= num_replicas_in_sync
+    seg_loss *= num_replicas_in_sync"""
 
     # Trainer class handles loss metric for you.
     logs = {self.loss: loss}

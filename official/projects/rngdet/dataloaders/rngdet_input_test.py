@@ -215,15 +215,13 @@ def main(_):
     ).parse_fn(True)
   
   decoded_tensors = raw_dataset_train.map(decoder.decode)
-  decoded_tensors = decoded_tensors.take(10)
-  print(decoded_tensors)
-  print("***********************************")
+  decoded_tensors = decoded_tensors.take(20)
   for i in decoded_tensors:
     
     print("***********************************")
     images, labels = parser(i)
     #print(images)
-    print(labels['gt_coords'])
+    #print(labels['gt_coords'])
     #print(labels['list_len'])
     #print(labels['gt_probs'])
     
