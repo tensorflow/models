@@ -252,7 +252,7 @@ class AnchorLabeler(object):
     num_gt_labels = tf.shape(gt_labels)[0]
     weights = tf.cond(
         tf.greater(num_gt_labels, 0),
-        lambda: tf.squeeze(tf.ones_like(gt_labels, dtype=tf.float32), -1),
+        lambda: tf.ones_like(gt_labels, dtype=tf.float32)[..., -1],
         lambda: tf.ones([1], dtype=tf.float32),
     )
     if gt_weights is not None:
