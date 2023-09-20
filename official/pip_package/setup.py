@@ -20,13 +20,8 @@ import sys
 from setuptools import find_packages
 from setuptools import setup
 
-<<<<<<< HEAD
-version = '2.13.1'
-tf_version = '2.13.0'  # Major version.
-=======
 version = '2.14.0'
 tf_version = '2.14.0'  # Major version.
->>>>>>> 9854fc307 (Update pip package version for 2.14.0 release)
 
 project_name = 'tf-models-official'
 
