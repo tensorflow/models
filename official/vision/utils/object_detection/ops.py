@@ -44,7 +44,7 @@ def indices_to_dense_vector(indices,
 
   Returns:
     dense 1D Tensor of shape [size] with indices set to indices_values and the
-        rest set to default_value.
+      rest set to default_value.
   """
   size = tf.cast(size, dtype=tf.int32)
   zeros = tf.ones([size], dtype=dtype) * default_value
@@ -79,3 +79,101 @@ def matmul_gather_on_zeroth_axis(params, indices, scope=None):
     gathered_result_flattened = tf.matmul(indicator_matrix, params2d)
     return tf.reshape(gathered_result_flattened,
                       tf.stack(indices_shape + params_shape[1:]))
+
+
+def merge_boxes_with_multiple_labels(
+    boxes, classes, confidences, num_classes, quantization_bins=10000
+):
+  """Merges boxes with same coordinates and returns K-hot encoded classes.
+
+  Args:
+    boxes: A tf.float32 tensor with shape [N, 4] holding N boxes. Only
+      normalized coordinates are allowed.
+    classes: A tf.int32 tensor with shape [N] holding class indices. The class
+      index starts at 0.
+    confidences: A tf.float32 tensor with shape [N] holding class confidences.
+    num_classes: total number of classes to use for K-hot encoding.
+    quantization_bins: the number of bins used to quantize the box coordinate.
+
+  Returns:
+    merged_boxes: A tf.float32 tensor with shape [N', 4] holding boxes,
+      where N' <= N.
+    class_encodings: A tf.int32 tensor with shape [N', num_classes] holding
+      K-hot encodings for the merged boxes.
+    confidence_encodings: A tf.float32 tensor with shape [N', num_classes]
+      holding encodings of confidences for the merged boxes.
+    merged_box_indices: A tf.int32 tensor with shape [N'] holding original
+      indices of the boxes.
+  """
+  quantized_boxes = tf.cast(boxes * (quantization_bins - 1), dtype=tf.int64)
+  ymin, xmin, ymax, xmax = tf.unstack(quantized_boxes, axis=1)
+  hashcodes = (
+      ymin
+      + xmin * quantization_bins
+      + ymax * quantization_bins * quantization_bins
+      + xmax * quantization_bins * quantization_bins * quantization_bins
+  )
+  unique_hashcodes, unique_indices = tf.unique(hashcodes)
+  num_boxes = tf.shape(boxes)[0]
+  num_unique_boxes = tf.shape(unique_hashcodes)[0]
+  merged_box_indices = tf.math.unsorted_segment_min(
+      tf.range(num_boxes), unique_indices, num_unique_boxes
+  )
+  merged_boxes = tf.gather(boxes, merged_box_indices)
+  unique_indices = tf.cast(unique_indices, dtype=tf.int64)
+  classes = tf.cast(classes, dtype=tf.int64)
+
+  def map_box_encodings(i):
+    """Produces box K-hot and score encodings for each class index."""
+    box_mask = tf.equal(unique_indices, i * tf.ones(num_boxes, dtype=tf.int64))
+    box_mask = tf.reshape(box_mask, [-1])
+    box_indices = tf.boolean_mask(classes, box_mask)
+    box_confidences = tf.boolean_mask(confidences, box_mask)
+    box_indices = tf.cast(box_indices, dtype=tf.int64)
+
+    if tf.rank(box_indices) == 1:
+      box_indices = tf.expand_dims(box_indices, axis=-1)
+
+    box_class_encodings = tf.SparseTensor(
+        box_indices,
+        tf.squeeze(tf.ones_like(box_indices, dtype=tf.int64), axis=-1),
+        [num_classes],
+    )
+    box_class_encodings = tf.sparse.reorder(box_class_encodings)
+    box_class_encodings = tf.sparse.to_dense(box_class_encodings)
+
+    if tf.rank(box_confidences) > 1:
+      box_confidences = tf.squeeze(box_confidences, axis=-1)
+
+    box_confidence_encodings = tf.SparseTensor(
+        box_indices,
+        box_confidences,
+        [num_classes],
+    )
+    box_confidence_encodings = tf.sparse.reorder(box_confidence_encodings)
+    box_confidence_encodings = tf.sparse.to_dense(box_confidence_encodings)
+
+    return box_class_encodings, box_confidence_encodings
+
+  # Important to avoid int32 here since there is no GPU kernel for int32.
+  # int64 and float32 are fine.
+  class_encodings, confidence_encodings = tf.nest.map_structure(
+      tf.stop_gradient,
+      tf.map_fn(
+          map_box_encodings,
+          tf.range(tf.cast(num_unique_boxes, dtype=tf.int64)),
+          dtype=(tf.int64, tf.float32),
+      ),
+  )
+
+  merged_boxes = tf.reshape(merged_boxes, [-1, 4])
+  class_encodings = tf.cast(class_encodings, dtype=tf.int32)
+  class_encodings = tf.reshape(class_encodings, [-1, num_classes])
+  confidence_encodings = tf.reshape(confidence_encodings, [-1, num_classes])
+  merged_box_indices = tf.reshape(merged_box_indices, [-1])
+  return (
+      merged_boxes,
+      class_encodings,
+      confidence_encodings,
+      merged_box_indices,
+  )
