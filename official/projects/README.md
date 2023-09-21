@@ -4,6 +4,18 @@ This directory contains projects using Modeling libraries of TensorFlow Model
 Garden. More details about each project can be found in the individual
 project folders listed below.
 
+⚠️ Disclaimer: Checkpoints included in the project folders listed below are
+based on training with publicly available datasets. Some datasets contain
+limitations, including non-commercial use limitations. Please review the terms
+and conditions made available by third parties before using the datasets
+provided. Checkpoints are licensed under
+[Apache 2.0](https://github.com/tensorflow/models/blob/master/LICENSE).
+
+⚠️ Disclaimer: Datasets hyperlinked from the project folders listed below are
+not owned or distributed by Google. Such datasets are made available by third
+parties. Please review the terms and conditions made available by the third
+parties before using the data.
+
 ## Projects
 
 * [AssembleNet](./assemblenet/README.md)
