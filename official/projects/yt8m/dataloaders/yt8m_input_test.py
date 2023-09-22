@@ -160,9 +160,16 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
     if include_video_id:
       self.assertEqual(example['video_ids'].shape.as_list(), [batch_size])
 
-  @parameterized.parameters((True, 4), (False, 4), (False, None))
+  @parameterized.parameters(
+      (True, 4, False),
+      (False, 4, False),
+      (False, None, False),
+      (True, 4, True),
+      (False, 4, True),
+      (False, None, True),
+  )
   def test_read_video_level_float_input(
-      self, include_video_id, num_sample_frames
+      self, include_video_id, num_sample_frames, per_feature_l2_norm
   ):
     data_dir = os.path.join(self.get_temp_dir(), 'data2')
     tf.io.gfile.makedirs(data_dir)
@@ -188,6 +195,7 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
     params.feature_from_bytes = (False, False)
     params.label_field = 'clip/label/index'
     params.include_video_id = include_video_id
+    params.input_per_feature_l2_norm = per_feature_l2_norm
     reader = self.create_input_reader(params)
 
     dataset = reader.read()
@@ -211,6 +219,9 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
         'FEATURE/feature/floats'].feature[0].float_list.value
     expected_labels = examples[0].context.feature[
         params.label_field].int64_list.value
+    if per_feature_l2_norm:
+      expected_feature = tf.math.l2_normalize(expected_feature, axis=-1)
+      expected_context = tf.math.l2_normalize(expected_context, axis=-1)
     self.assertAllEqual(expected_feature,
                         example['video_matrix'][0, 0, params.feature_sizes[0]:])
     self.assertAllEqual(expected_context,

@@ -80,6 +80,7 @@ class DataConfig(cfg.DataConfig):
   sample_random_frames: bool = True
   # Sample random frames if not None. No sampling in inference.
   num_sample_frames: Optional[int] = 300
+  input_per_feature_l2_norm: bool = False
   prefetch_buffer_size: int = 100
   shuffle_buffer_size: int = 100
   num_classes: int = 3862
