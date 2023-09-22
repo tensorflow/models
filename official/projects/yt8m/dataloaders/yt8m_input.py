@@ -157,6 +157,7 @@ def _process_segment_and_label(video_matrix, num_frames, contexts,
   return output_dict
 
 
+# TODO(allenyan, zhengxu): Adds a unit test for this function.
 def _get_video_matrix(features, feature_size, dtype, max_frames,
                       max_quantized_value, min_quantized_value):
   """Decodes features from an input string and quantizes it.
@@ -187,8 +188,16 @@ def _get_video_matrix(features, feature_size, dtype, max_frames,
   return feature_matrix, num_frames
 
 
-def _concat_features(features, feature_names, feature_sizes, feature_dtypes,
-                     max_frames, max_quantized_value, min_quantized_value):
+def _concat_features(
+    features,
+    feature_names,
+    feature_sizes,
+    feature_dtypes,
+    max_frames,
+    max_quantized_value,
+    min_quantized_value,
+    per_feature_l2_norm=False,
+):
   """Loads (potentially) different types of features and concatenates them.
 
   Args:
@@ -199,6 +208,7 @@ def _concat_features(features, feature_names, feature_sizes, feature_dtypes,
       max_frames: number of frames in the sequence
       max_quantized_value: the maximum of the quantized value.
       min_quantized_value: the minimum of the quantized value.
+      per_feature_l2_norm: whether to l2 normalize each feature.
 
   Returns:
       video_matrix: different features concatenated into one matrix
@@ -225,6 +235,8 @@ def _concat_features(features, feature_names, feature_sizes, feature_dtypes,
         min_quantized_value)
     num_common_frames = tf.math.minimum(num_frames_in_this_feature,
                                         num_common_frames)
+    if per_feature_l2_norm:
+      feature_matrix = tf.math.l2_normalize(feature_matrix, axis=-1)
     feature_matrices[i] = feature_matrix
 
   for i in range(num_features):
@@ -347,6 +359,7 @@ class Parser(parser.Parser):
     self._num_sample_frames = input_params.num_sample_frames
     self._max_quantized_value = max_quantized_value
     self._min_quantized_value = min_quantized_value
+    self._input_per_feature_l2_norm = input_params.input_per_feature_l2_norm
 
   def _parse_train_data(self, decoded_tensors):
     """Parses data for training."""
@@ -354,7 +367,7 @@ class Parser(parser.Parser):
     video_matrix, num_frames = _concat_features(
         decoded_tensors, self._feature_names, self._feature_sizes,
         self._feature_dtypes, self._max_frames, self._max_quantized_value,
-        self._min_quantized_value)
+        self._min_quantized_value, self._input_per_feature_l2_norm)
     if not self._include_video_id and "id" in decoded_tensors:
       del decoded_tensors["id"]
 
@@ -383,7 +396,7 @@ class Parser(parser.Parser):
     video_matrix, num_frames = _concat_features(
         decoded_tensors, self._feature_names, self._feature_sizes,
         self._feature_dtypes, self._max_frames, self._max_quantized_value,
-        self._min_quantized_value)
+        self._min_quantized_value, self._input_per_feature_l2_norm)
     if not self._include_video_id and "id" in decoded_tensors:
       del decoded_tensors["id"]
 
