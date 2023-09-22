@@ -70,7 +70,10 @@ def _get_tpu_embedding_feature_config(
             mean=0.0, stddev=1 / math.sqrt(embedding_dim[i])),
         name=table_name_prefix + '_%02d' % i)
     feature_config[str(i)] = tf.tpu.experimental.embedding.FeatureConfig(
-        table=table_config, output_shape=[batch_size] if batch_size else None)
+        name=str(i),
+        table=table_config,
+        output_shape=[batch_size] if batch_size else None,
+    )
 
   return feature_config
 
