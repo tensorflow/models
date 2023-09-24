@@ -56,5 +56,6 @@ class MSCOCODecoder(decoder.Decoder):
 TFDS_ID_TO_DECODER_MAP = {
     'coco/2017': MSCOCODecoder,
     'coco/2014': MSCOCODecoder,
-    'coco': MSCOCODecoder
+    'coco': MSCOCODecoder,
+    'scenic:objects365': MSCOCODecoder,
 }

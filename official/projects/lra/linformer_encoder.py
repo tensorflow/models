@@ -12,19 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 """Linformer encoder. Modified From huggingface/transformers."""
 
 # pylint: disable=g-classes-have-attributes
@@ -38,7 +25,7 @@ import tensorflow_models as tfm
 from official.modeling import tf_utils
 from official.projects.lra.linformer_encoder_block import LinformerEncoderBlock
 
-layers = tfm.nlp.modeling.layers
+layers = tfm.nlp.layers
 
 _Initializer = Union[str, tf.keras.initializers.Initializer]
 _approx_gelu = lambda x: tf.keras.activations.gelu(x, approximate=True)

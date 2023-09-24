@@ -20,12 +20,18 @@ tf.train.Checkpoint for object based saving and loading and tf.saved_model.save
 for graph serializaiton.
 """
 import math
-from typing import Any, List, Optional
+from typing import Any, List, Mapping, Optional, Union
 
 import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.projects.pix2seq.modeling import transformer
+
+
+def get_shape(x):
+  static = x.shape.as_list()
+  dynamic = tf.shape(x)
+  return [dynamic[i] if s is None else s for i, s in enumerate(static)]
 
 
 def get_variable_initializer(name=None):
@@ -170,7 +176,6 @@ def position_embedding_sine(
       [tf.sin(pos_col[:, :, :, 0::2]), tf.cos(pos_col[:, :, :, 1::2])], axis=4
   )
 
-  # final_shape = pos_row.shape.as_list()[:3] + [-1]
   final_shape = tf_utils.get_shape_list(pos_row)[:3] + [-1]
   pos_row = tf.reshape(pos_row, final_shape)
   pos_col = tf.reshape(pos_col, final_shape)
@@ -226,11 +231,14 @@ class Pix2Seq(tf.keras.Model):
       max_seq_len,
       vocab_size,
       hidden_size,
+      num_heads,
       num_encoder_layers=6,
       num_decoder_layers=6,
-      dropout_rate=0.1,
-      attention_dropout_rate=0.0,
-      norm_first=True,
+      drop_path=0.1,
+      drop_units=0.1,
+      drop_att=0.0,
+      top_k=0,
+      top_p=0.4,
       **kwargs
   ):
     super().__init__(**kwargs)
@@ -239,16 +247,23 @@ class Pix2Seq(tf.keras.Model):
     self._max_seq_len = max_seq_len
     self._vocab_size = vocab_size
     self._hidden_size = hidden_size
+    self._num_heads = num_heads
     self._num_encoder_layers = num_encoder_layers
     self._num_decoder_layers = num_decoder_layers
-    self._dropout_rate = dropout_rate
-    self._attention_dropout_rate = attention_dropout_rate
-    self._norm_first = norm_first
+    self._drop_path = drop_path
+    self._drop_units = drop_units
+    self._drop_att = drop_att
     if hidden_size % 2 != 0:
       raise ValueError("hidden_size must be a multiple of 2.")
-    self._input_proj = tf.keras.layers.Conv2D(
-        self._hidden_size, 1, name="pix2seq/conv2d"
+
+    self._dropout = tf.keras.layers.Dropout(self._drop_units)
+    self._stem_projection = tf.keras.layers.Dense(
+        self._hidden_size, name="stem_projection"
     )
+    self._stem_ln = tf.keras.layers.LayerNormalization(
+        epsilon=1e-6, name="stem_ln"
+    )
+
     self._transformer = Pix2SeqTransformer(
         max_seq_len=self._max_seq_len,
         vocab_size=self._vocab_size,
@@ -256,14 +271,21 @@ class Pix2Seq(tf.keras.Model):
         pos_encoding="learned",
         num_encoder_layers=self._num_encoder_layers,
         num_decoder_layers=self._num_decoder_layers,
-        dropout_rate=self._dropout_rate,
-        attention_dropout_rate=self._attention_dropout_rate,
-        norm_first=self._norm_first,
+        drop_path=self._drop_path,
+        drop_units=self._drop_units,
+        drop_att=self._drop_att,
+        num_heads=self._num_heads,
     )
+    self._top_k = top_k
+    self._top_p = top_p
 
   @property
   def backbone(self) -> tf.keras.Model:
     return self._backbone
+
+  @property
+  def transformer(self) -> tf.keras.Model:
+    return self._transformer
 
   def get_config(self):
     return {
@@ -274,12 +296,24 @@ class Pix2Seq(tf.keras.Model):
         "hidden_size": self._hidden_size,
         "num_encoder_layers": self._num_encoder_layers,
         "num_decoder_layers": self._num_decoder_layers,
-        "dropout_rate": self._dropout_rate,
+        "drop_path": self._drop_path,
+        "drop_units": self._drop_units,
+        "drop_att": self._drop_att,
+        "top_k": self._top_k,
+        "top_p": self._top_p,
+        "num_heads": self._num_heads,
     }
 
   @classmethod
   def from_config(cls, config):
     return cls(**config)
+
+  @property
+  def checkpoint_items(
+      self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
+    """Returns a dictionary of items to be additionally checkpointed."""
+    items = dict(backbone=self.backbone, transformer=self.transformer)
+    return items
 
   def _generate_image_mask(
       self, inputs: tf.Tensor, target_shape: tf.Tensor
@@ -301,12 +335,14 @@ class Pix2Seq(tf.keras.Model):
       inputs: tf.Tensor,
       targets: Optional[tf.Tensor] = None,
       training: bool = None,
+      use_teacher_forcing_for_eval: bool = False
   ) -> List[Any]:
-    batch_size = tf.shape(inputs)[0]
     features = self._backbone(inputs)[self._backbone_endpoint_name]
-    # shape = tf.shape(features)
-    # mask = self._generate_image_mask(inputs, shape[1: 3])
     mask = tf.ones_like(features)
+    batch_size, h, w, num_channels = get_shape(features)
+    features = tf.reshape(features, [batch_size, h * w, num_channels])
+    features = self._stem_ln(
+        self._stem_projection(self._dropout(features, training)))
 
     pos_emb = position_embedding_sine(
         mask[:, :, :, 0], num_pos_features=self._hidden_size
@@ -314,26 +350,22 @@ class Pix2Seq(tf.keras.Model):
     pos_emb = tf.reshape(pos_emb, [batch_size, -1, self._hidden_size])
     pos_emb = tf.cast(pos_emb, features.dtype)
 
-    features = tf.reshape(
-        self._input_proj(features), [batch_size, -1, self._hidden_size]
-    )
-
     tokens = None
+    inputs = {
+        "inputs": features,
+        "tokens": targets,
+        "pos_emb": pos_emb,
+    }
     if training:
-      logits = self._transformer(
-          {
-              "inputs": features,
-              "tokens": targets,
-              "pos_emb": pos_emb,
-          },
-          training,
-      )
+      logits = self._transformer(inputs, training=True)
+    elif use_teacher_forcing_for_eval:
+      logits = self._transformer(inputs, training=False)
     else:
-      tokens, logits = self._transformer.infer({
-          "inputs": features,
-          "tokens": targets,
-          "pos_emb": pos_emb,
-      })
+      tokens, logits = self._transformer.infer(
+          inputs,
+          top_k=self._top_k,
+          top_p=self._top_p,
+      )
 
     return [tokens, logits]
 
@@ -349,28 +381,27 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
       pos_encoding="learned",
       num_encoder_layers=6,
       num_decoder_layers=6,
-      dropout_rate=0.1,
-      attention_dropout_rate=0.0,
-      norm_first=True,
+      drop_path=0.1,
+      drop_units=0.1,
+      drop_att=0.0,
       shared_embedding=True,
       output_bias=True,
       num_heads=8,
       **kwargs
   ):
     super().__init__(**kwargs)
-    self._dropout_rate = dropout_rate
-    self._attention_dropout_rate = attention_dropout_rate
     self._max_seq_len = max_seq_len
     self._vocab_size = vocab_size
     self._hidden_size = hidden_size
     self._pos_encoding = pos_encoding
     self._num_encoder_layers = num_encoder_layers
     self._num_decoder_layers = num_decoder_layers
-    self._norm_first = norm_first
+    self._drop_path = drop_path
+    self._drop_units = drop_units
+    self._drop_att = drop_att
     self._shared_embedding = shared_embedding
     self._output_bias = output_bias
     self._num_heads = num_heads
-    self._hidden_per_head = int(hidden_size / 8)
 
     add_seq_pos_emb(
         self, self._pos_encoding, self._max_seq_len, self._hidden_size
@@ -386,28 +417,44 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
     if self._num_encoder_layers > 0:
       self._encoder = transformer.TransformerEncoder(
           num_layers=self._num_encoder_layers,
-          mlp_dim=1024,
+          dim=self._hidden_size,
+          mlp_ratio=4,
           num_heads=self._num_heads,
-          dropout_rate=self._dropout_rate,
-          attention_dropout_rate=self._attention_dropout_rate,
-          init_stochastic_depth_rate=self._dropout_rate,
+          drop_path=self._drop_path,
+          drop_units=self._drop_units,
+          drop_att=self._drop_att,
       )
     else:
       self._encoder = None
+
+    self._output_ln_enc = tf.keras.layers.LayerNormalization(
+        epsilon=1e-6, name="output_ln_enc"
+    )
+
+    self._proj = tf.keras.layers.Dense(self._hidden_size, name="proj/linear")
+    self._proj_ln = tf.keras.layers.LayerNormalization(
+        epsilon=1e-6, name="proj/ln"
+    )
+    self._proj_mlp = transformer.MLP(
+        num_layers=1,
+        dim=self._hidden_size,
+        mlp_ratio=4,
+        drop_path=self._drop_path,
+        drop_units=self._drop_units,
+        name="proj/mlp",
+    )
 
     self._decoder = transformer.TransformerDecoder(
         num_layers=self._num_decoder_layers,
         dim=self._hidden_size,
         mlp_ratio=4,
         num_heads=self._num_heads,
+        drop_path=self._drop_path,
+        drop_units=self._drop_units,
+        drop_att=self._drop_att,
     )
-    self.dec_ln = tf.keras.layers.LayerNormalization(
-        epsilon=1e-6, name="ouput_ln"
-    )
-
-    self._proj = transformer.FeedForwardLayer()
-    self._proj_ln = tf.keras.layers.LayerNormalization(
-        epsilon=1e-6, center=True, scale=True
+    self._output_ln_dec = tf.keras.layers.LayerNormalization(
+        epsilon=1e-6, name="output_ln_dec"
     )
 
   def get_config(self):
@@ -418,7 +465,12 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
         "pos_encoding": self._pos_encoding,
         "num_encoder_layers": self._num_encoder_layers,
         "num_decoder_layers": self._num_decoder_layers,
-        "dropout_rate": self._dropout_rate,
+        "drop_path": self._drop_path,
+        "drop_units": self._drop_units,
+        "drop_att": self._drop_att,
+        "shared_embedding": self._shared_embedding,
+        "output_bias": self._output_bias,
+        "num_heads": self._num_heads,
     }
 
   def call(self, inputs: tf.Tensor, training: bool = None):
@@ -428,13 +480,14 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
 
     sources = sources + mem_pos_embed
     if self._encoder is not None:
-      encoded = self._encoder(sources, training=True)
+      encoded = self._encoder(sources, None, training=training, ret_list=False)
     else:
       encoded = sources
+    encoded = self._output_ln_enc(encoded)
 
+    encoded = self._proj_ln(self._proj(encoded))
     encoded = encoded + mem_pos_embed
-    residual = self._proj(self._proj_ln(encoded), training=True)
-    encoded += residual
+    encoded = self._proj_mlp(encoded, training=training)
 
     seq_len = tf.shape(targets)[1]
     seq_pos_emb = tf.expand_dims(self.seq_pos_emb[:seq_len], 0)
@@ -445,7 +498,7 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
 
     decoded, _ = self._decoder(
         target_emb, encoded, None, self_attention_mask, None, training)
-    decoded = self.dec_ln(decoded)
+    decoded = self._output_ln_dec(decoded)
 
     decoded = tf.cast(decoded, seq_pos_emb.dtype)
     outp_embedding = tf.cast(outp_embedding, seq_pos_emb.dtype)
@@ -498,13 +551,14 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
 
     sources = sources + mem_pos_embed
     if self._encoder is not None:
-      encoded = self._encoder(sources, training=False)
+      encoded = self._encoder(sources, None, training=False, ret_list=False)
     else:
       encoded = sources
+    encoded = self._output_ln_enc(encoded)
 
+    encoded = self._proj_ln(self._proj(encoded))
     encoded = encoded + mem_pos_embed
-    residual = self._proj(self._proj_ln(encoded), training=False)
-    encoded += residual
+    encoded = self._proj_mlp(encoded, training=False)
 
     bsz = tf.shape(prompt)[0]
     prompt_len = tf.shape(prompt)[1]
@@ -537,7 +591,7 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
         caches_in = tf.transpose(caches[:step], [1, 2, 0, 3])
       decoded, caches_out = self._decoder(
           x, encoded, caches_in, self_attention_mask, None, training=False)
-      decoded = self.dec_ln(decoded)
+      decoded = self._output_ln_dec(decoded)
 
       # (gunho) transformer.py uses tf.float32 for numeric stability.
       decoded = tf.cast(decoded, seq_pos_emb.dtype)
@@ -573,7 +627,10 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
       del caches
       del tokens
       del logits
-      return tf.less(step, seq_len - 1)
+      return tf.logical_and(
+          tf.greater(seq_len, prompt_len),
+          tf.less(step, seq_len - 1)
+      )
 
     caches_var = tf.zeros(
         [seq_len-1, self._num_decoder_layers, bsz, self._hidden_size])
@@ -588,12 +645,12 @@ class Pix2SeqTransformer(tf.keras.layers.Layer):
     step, caches_var, tokens_var, logits_var = loop_body(
         step, caches_var, tokens_var, logits_var, is_prompt=True
     )
-    if seq_len > prompt_len:
-      step, caches_var, tokens_var, logits_var = tf.while_loop(
-          cond=cond,
-          body=loop_body,
-          loop_vars=[step, caches_var, tokens_var, logits_var]
-      )
+
+    _, _, tokens_var, logits_var = tf.while_loop(
+        cond=cond,
+        body=loop_body,
+        loop_vars=[step, caches_var, tokens_var, logits_var]
+    )
 
     sampled_tokens = tf.transpose(tokens_var[prompt_len:], [1, 0])
     sampled_tokens_logits = tf.transpose(logits_var[prompt_len:], [1, 0, 2])

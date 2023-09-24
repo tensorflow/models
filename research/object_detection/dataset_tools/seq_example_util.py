@@ -149,7 +149,7 @@ def boxes_to_box_components(bboxes):
   ymax_list = []
   xmax_list = []
   for bbox in bboxes:
-    if bbox != []:  # pylint: disable=g-explicit-bool-comparison
+    if len(bbox) != 0:
       bbox = np.array(bbox).astype(np.float32)
       ymin, xmin, ymax, xmax = np.split(bbox, 4, axis=1)
     else:

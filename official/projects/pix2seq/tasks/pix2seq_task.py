@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Pix2Seq detection task definition."""
+
 from typing import Optional
 
 from absl import logging
@@ -25,6 +26,7 @@ from official.projects.pix2seq import utils
 from official.projects.pix2seq.configs import pix2seq as pix2seq_cfg
 from official.projects.pix2seq.dataloaders import pix2seq_input
 from official.projects.pix2seq.modeling import pix2seq_model
+from official.projects.uvit.modeling import vit  # pylint: disable=unused-import
 from official.vision.dataloaders import input_reader_factory
 from official.vision.dataloaders import tf_example_decoder
 from official.vision.dataloaders import tfds_factory
@@ -44,28 +46,32 @@ class Pix2SeqTask(base_task.Task):
 
   def build_model(self):
     """Build Pix2Seq model."""
+    config: pix2seq_cfg.Pix2Seq = self._task_config.model
 
     input_specs = tf.keras.layers.InputSpec(
-        shape=[None] + self._task_config.model.input_size
+        shape=[None] + config.input_size
     )
 
     backbone = backbones.factory.build_backbone(
         input_specs=input_specs,
-        backbone_config=self._task_config.model.backbone,
-        norm_activation_config=self._task_config.model.norm_activation,
+        backbone_config=config.backbone,
+        norm_activation_config=config.norm_activation,
     )
 
     model = pix2seq_model.Pix2Seq(
-        backbone,
-        self._task_config.model.backbone_endpoint_name,
-        self._task_config.model.max_num_instances * 5,
-        self._task_config.model.vocab_size,
-        self._task_config.model.hidden_size,
-        self._task_config.model.num_encoder_layers,
-        self._task_config.model.num_decoder_layers,
-        self._task_config.model.dropout_rate,
-        self._task_config.model.attention_dropout_rate,
-        self._task_config.model.norm_first,
+        backbone=backbone,
+        backbone_endpoint_name=config.backbone_endpoint_name,
+        max_seq_len=config.max_num_instances * 5,
+        vocab_size=config.vocab_size,
+        hidden_size=config.hidden_size,
+        num_encoder_layers=config.num_encoder_layers,
+        num_decoder_layers=config.num_decoder_layers,
+        drop_path=config.drop_path,
+        drop_units=config.drop_units,
+        drop_att=config.drop_att,
+        num_heads=config.num_heads,
+        top_p=config.top_p,
+        top_k=config.top_k,
     )
     return model
 
@@ -83,11 +89,14 @@ class Pix2SeqTask(base_task.Task):
     if self._task_config.init_checkpoint_modules == 'all':
       ckpt = tf.train.Checkpoint(**model.checkpoint_items)
       status = ckpt.restore(ckpt_dir_or_file)
-      status.assert_consumed()
-    elif self._task_config.init_checkpoint_modules == 'backbone':
-      ckpt = tf.train.Checkpoint(backbone=model.backbone)
-      status = ckpt.restore(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
+    elif self._task_config.init_checkpoint_modules == 'backbone':
+      if self.task_config.model.backbone.type == 'uvit':
+        model.backbone.load_checkpoint(ckpt_filepath=ckpt_dir_or_file)
+      else:
+        ckpt = tf.train.Checkpoint(backbone=model.backbone)
+        status = ckpt.restore(ckpt_dir_or_file)
+        status.expect_partial().assert_existing_objects_matched()
 
     logging.info(
         'Finished loading pretrained checkpoint from %s', ckpt_dir_or_file
@@ -122,6 +131,10 @@ class Pix2SeqTask(base_task.Task):
         max_num_boxes=self._task_config.model.max_num_instances,
         coord_vocab_shift=self._task_config.coord_vocab_shift,
         quantization_bins=self._task_config.quantization_bins,
+        aug_scale_min=params.aug_scale_min,
+        aug_scale_max=params.aug_scale_max,
+        aug_color_jitter_strength=params.aug_color_jitter_strength,
+        label_shift=params.label_shift,
     )
 
     reader = input_reader_factory.input_reader_generator(

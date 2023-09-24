@@ -32,16 +32,22 @@ from official.nlp.modeling import models
 @dataclasses.dataclass
 class ElectraPretrainConfig(cfg.TaskConfig):
   """The model config."""
-  model: electra.ElectraPretrainerConfig = electra.ElectraPretrainerConfig(
-      cls_heads=[
-          bert.ClsHeadConfig(
-              inner_dim=768,
-              num_classes=2,
-              dropout_rate=0.1,
-              name='next_sentence')
-      ])
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
+  model: electra.ElectraPretrainerConfig = dataclasses.field(
+      default_factory=lambda: electra.ElectraPretrainerConfig(  # pylint: disable=g-long-lambda
+          cls_heads=[
+              bert.ClsHeadConfig(
+                  inner_dim=768,
+                  num_classes=2,
+                  dropout_rate=0.1,
+                  name='next_sentence',
+              )
+          ]
+      )
+  )
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  validation_data: cfg.DataConfig = dataclasses.field(
+      default_factory=cfg.DataConfig
+  )
 
 
 def _build_pretrainer(

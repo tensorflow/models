@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 from absl import logging
-from keras import backend as keras_backend
 from six.moves import range
 from six.moves import zip
 import tensorflow.compat.v2 as tf
@@ -44,6 +43,18 @@ _EFFICIENTNET_LEVEL_ENDPOINTS = {
     4: 'stack_4/block_2/add',
     5: 'stack_6/block_0/project_bn',
 }
+
+
+def _is_tpu_strategy_class(clz):
+  is_tpu_strat = lambda k: k.__name__.startswith('TPUStrategy')
+  if is_tpu_strat(clz):
+    return True
+  return any(map(_is_tpu_strategy_class, clz.__bases__))
+
+
+def is_tpu_strategy(strategy):
+  """Returns whether input is a TPUStrategy instance or subclass instance."""
+  return _is_tpu_strategy_class(strategy.__class__)
 
 
 class SSDEfficientNetBiFPNKerasFeatureExtractor(
@@ -170,7 +181,7 @@ class SSDEfficientNetBiFPNKerasFeatureExtractor(
       efficientnet_overrides[
           'weight_decay'] = conv_hyperparams.get_regularizer_weight()
     if (conv_hyperparams.use_sync_batch_norm() and
-        keras_backend.is_tpu_strategy(tf.distribute.get_strategy())):
+        is_tpu_strategy(tf.distribute.get_strategy())):
       efficientnet_overrides['batch_norm'] = 'tpu'
     efficientnet_base = efficientnet_model.EfficientNet.from_name(
         model_name=self._efficientnet_version, overrides=efficientnet_overrides)

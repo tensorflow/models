@@ -3,142 +3,137 @@
 # Source: CircularNet partners
 item {
 id: 1
-name: "flexible"
+name: "Flexibles"
 }
 item {
 id: 2
-name: "bottle"
+name: "Bottle"
 }
 item {
 id: 3
-name: "jar"
+name: "Jar"
 }
 item {
 id: 4
-name: "carton"
+name: "Carton"
 }
 item {
 id: 5
-name: "sachet_and_pouch"
+name: "Sachets-&-Pouch"
 }
 item {
 id: 6
-name: "blister_pack"
+name: "Blister-pack"
 }
 item {
 id: 7
-name: "tray"
+name: "Tray"
 }
 item {
 id: 8
-name: "tube"
+name: "Tube"
 }
 item {
 id: 9
-name: "can"
+name: "Can"
 }
 item {
 id: 10
-name: "tub"
+name: "Tub"
 }
 item {
 id: 11
-name: "cosmetic_container"
+name: "Cosmetic"
 }
 item {
 id: 12
-name: "box"
+name: "Box"
 }
 item {
 id: 13
-name: "clothing"
+name: "Clothes"
 }
 item {
 id: 14
-name: "bulb"
+name: "Bulb"
 }
 item {
 id: 15
-name: "cup_and_glass"
+name: "Cup-&-glass"
 }
 item {
 id: 16
-name: "book_and_magazine"
+name: "Book-&-magazine"
 }
 item {
 id: 17
-name: "bag"
+name: "Bag"
 }
 item {
 id: 18
-name: "lid"
+name: "Lid"
 }
 item {
 id: 19
-name: "clamshell"
+name: "Clamshell"
 }
 item {
 id: 20
-name: "mirror"
+name: "Mirror"
 }
 item {
 id: 21
-name: "tangler"
-display_name: "Wire or cable"
+name: "Tangler"
 }
 item {
 id: 22
-name: "cutlery"
+name: "Cutlery"
 }
 item {
 id: 23
-name: "cassette_and_tape"
+name: "Cassette-&-tape"
 }
 item {
 id: 24
-name: "electronic_device"
+name: "Electronic-devices"
 }
 item {
 id: 25
-name: "battery"
+name: "Battery"
 }
 item {
 id: 26
-name: "pen_and_pencil"
+name: "Pen-&-pencil"
 }
 item {
 id: 27
-name: "paper_product"
+name: "Paper-products"
 }
 item {
 id: 28
-name: "footwear"
+name: "Footwear"
 }
 item {
 id: 29
-name: "scissor"
+name: "Scissor"
 }
 item {
 id: 30
-name: "toy"
+name: "Toys"
 }
 item {
 id: 31
-name: "brush"
+name: "Brush"
 }
 item {
 id: 32
-name: "pipe"
+name: "Pipe"
 }
 item {
 id: 33
-name: "foil"
+name: "Foil"
 }
 item {
 id: 34
-name: "hanger"
-}
-item {
-id: 35
-name: "container"
+name: "Hangers"
 }

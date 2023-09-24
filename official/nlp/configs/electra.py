@@ -31,6 +31,10 @@ class ElectraPretrainerConfig(base_config.Config):
   discriminator_loss_weight: float = 50.0
   tie_embeddings: bool = True
   disallow_correct: bool = False
-  generator_encoder: encoders.EncoderConfig = encoders.EncoderConfig()
-  discriminator_encoder: encoders.EncoderConfig = encoders.EncoderConfig()
+  generator_encoder: encoders.EncoderConfig = dataclasses.field(
+      default_factory=encoders.EncoderConfig
+  )
+  discriminator_encoder: encoders.EncoderConfig = dataclasses.field(
+      default_factory=encoders.EncoderConfig
+  )
   cls_heads: List[bert.ClsHeadConfig] = dataclasses.field(default_factory=list)

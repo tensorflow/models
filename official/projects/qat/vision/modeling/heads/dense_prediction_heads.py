@@ -13,10 +13,7 @@
 # limitations under the License.
 
 """Contains definitions of dense prediction heads."""
-from __future__ import annotations
-
-import copy
-from typing import Any, Dict, List, Mapping, Optional, Union, Type
+from typing import List, Mapping, Union, Optional, Any, Dict
 
 # Import libraries
 
@@ -27,80 +24,6 @@ import tensorflow_model_optimization as tfmot
 from official.modeling import tf_utils
 from official.projects.qat.vision.quantization import configs
 from official.projects.qat.vision.quantization import helper
-
-
-class SeparableConv2DQuantized(tf.keras.layers.Layer):
-  """Quantized SeperableConv2D."""
-
-  def __init__(self,
-               name: Optional[str] = None,
-               last_quantize: bool = False,
-               **conv_kwargs):
-    """Initializes a SeparableConv2DQuantized.
-
-    Args:
-      name: The name of the layer.
-      last_quantize: A `bool` indicates whether add quantization for the output.
-      **conv_kwargs: A keyword arguments to be used for conv and dwconv.
-    """
-
-    super().__init__(name=name)
-    self._conv_kwargs = copy.deepcopy(conv_kwargs)
-    self._name = name
-    self._last_quantize = last_quantize
-
-  def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
-    """Creates the child layers of the layer."""
-    depthwise_conv2d_quantized = helper.quantize_wrapped_layer(
-        tf.keras.layers.DepthwiseConv2D,
-        configs.Default8BitConvQuantizeConfig(
-            ['depthwise_kernel'], [], True))
-    conv2d_quantized = helper.quantize_wrapped_layer(
-        tf.keras.layers.Conv2D,
-        configs.Default8BitConvQuantizeConfig(
-            ['kernel'], [], self._last_quantize))
-
-    dwconv_kwargs = self._conv_kwargs.copy()
-    # Depthwise conv input filters is always equal to output filters.
-    # This filters argument only needed for the point-wise conv2d op.
-    del dwconv_kwargs['filters']
-    dwconv_kwargs.update({
-        'activation': None,
-        'use_bias': False,
-    })
-    self.dw_conv = depthwise_conv2d_quantized(name='dw', **dwconv_kwargs)
-
-    conv_kwargs = self._conv_kwargs.copy()
-    conv_kwargs.update({
-        'kernel_size': (1, 1),
-        'strides': (1, 1),
-        'padding': 'valid',
-        'groups': 1,
-    })
-
-    self.conv = conv2d_quantized(name='pw', **conv_kwargs)
-
-  def call(self, inputs: tf.Tensor) -> tf.Tensor:
-    """Call the separable conv layer."""
-    x = self.dw_conv(inputs)
-    outputs = self.conv(x)
-    return outputs
-
-  def get_config(self) -> Dict[str, Any]:
-    """Returns the config of the layer."""
-    config = self._conv_kwargs.copy()
-    config.update({
-        'name': self._name,
-        'last_quantize': self._last_quantize,
-    })
-    return config
-
-  @classmethod
-  def from_config(
-      cls: Type[SeparableConv2DQuantized],
-      config: Dict[str, Any]) -> SeparableConv2DQuantized:
-    """Creates a layer from its config."""
-    return cls(**config)
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -125,6 +48,7 @@ class RetinaNetHeadQuantized(tf.keras.layers.Layer):
       bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       num_params_per_anchor: int = 4,
       share_classification_heads: bool = False,
+      share_level_convs: bool = True,
       **kwargs):
     """Initializes a RetinaNet quantized head.
 
@@ -161,9 +85,14 @@ class RetinaNetHeadQuantized(tf.keras.layers.Layer):
       share_classification_heads: A `bool` that indicates whethere sharing
         weights among the main and attribute classification heads. Not used in
         the QAT model.
+      share_level_convs: An optional bool to enable sharing convs
+        across levels for classnet, boxnet, classifier and box regressor.
+        If True, convs will be shared across all levels. Not used in the QAT
+        model.
       **kwargs: Additional keyword arguments to be passed.
     """
     del share_classification_heads
+    del share_level_convs
 
     super().__init__(**kwargs)
     self._config_dict = {
@@ -195,7 +124,7 @@ class RetinaNetHeadQuantized(tf.keras.layers.Layer):
   def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the head."""
     if self._config_dict['use_separable_conv']:
-      conv_op = SeparableConv2DQuantized
+      conv_op = helper.SeparableConv2DQuantized
     else:
       conv_op = helper.quantize_wrapped_layer(
           tf.keras.layers.Conv2D,

@@ -103,6 +103,53 @@ class BeamSearchTests(tf.test.TestCase, parameterized.TestCase):
     else:
       self.assertAllEqual([[[0, 1, 0, 1], [0, 1, 1, 2]]], predictions)
 
+  @parameterized.named_parameters([
+      ('padded_decode_true_with_name', True, 0.0, 'decoding'),
+      ('padded_decode_false_with_name', False, 0.0, 'decoding'),
+      ('padded_decode_true_without_name', True, 0.0, None),
+      ('padded_decode_false_without_name', False, 0.0, None),
+      ('padded_decode_false_with_noise', False, 0.5, 'decoding'),
+  ])
+  def test_sequence_beam_search_multi_eos(
+      self, padded_decode, noise_multiplier, name
+  ):
+    # batch_size*beam_size, max_decode_length, vocab_size
+    probabilities = tf.constant([
+        [[0.2, 0.7, 0.1], [0.5, 0.3, 0.2], [0.1, 0.8, 0.1]],
+        [[0.1, 0.8, 0.1], [0.3, 0.4, 0.3], [0.2, 0.1, 0.7]],
+    ])
+    # batch_size, max_decode_length, num_heads, embed_size per head
+    x = tf.zeros([1, 3, 2, 32], dtype=tf.float32)
+    cache = {'layer_%d' % layer: {'k': x, 'v': x} for layer in range(2)}
+
+    def _get_test_symbols_to_logits_fn():
+      """Test function that returns logits for next token."""
+
+      def symbols_to_logits_fn(_, i, cache):
+        logits = tf.cast(probabilities[:, i, :], tf.float32)
+        return logits, cache
+
+      return symbols_to_logits_fn
+
+    predictions, _ = beam_search.sequence_beam_search(
+        symbols_to_logits_fn=_get_test_symbols_to_logits_fn(),
+        initial_ids=tf.zeros([1], dtype=tf.int32),
+        initial_cache=cache,
+        vocab_size=3,
+        beam_size=2,
+        alpha=0.6,
+        max_decode_length=3,
+        eos_id=[9, 10],
+        padded_decode=padded_decode,
+        dtype=tf.float32,
+        noise_multiplier=noise_multiplier,
+        decoding_name=name,
+    )
+    if noise_multiplier > 0:
+      self.assertAllEqual([[[0, 1, 0, 1], [0, 0, 2, 2]]], predictions)
+    else:
+      self.assertAllEqual([[[0, 1, 0, 1], [0, 1, 1, 2]]], predictions)
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -158,6 +158,7 @@ def build_yolov7(input_specs, model_config, l2_regularization):
       max_level,
       num_anchors,
       kernel_regularizer=l2_regularization,
+      use_separable_conv=model_config.head.use_separable_conv,
   )
   # YOLOv7 and YOLOv4 share the same detection generator.
   detection_generator_obj = build_yolov7_detection_generator(

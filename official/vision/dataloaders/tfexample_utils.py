@@ -111,9 +111,10 @@ def make_video_test_example(image_shape: Sequence[int] = (263, 320, 3),
   return seq_example
 
 
-def dump_to_tfrecord(record_file: str,
-                     tf_examples: Sequence[Union[tf.train.Example,
-                                                 tf.train.SequenceExample]]):
+def dump_to_tfrecord(
+    record_file: str,
+    tf_examples: Sequence[Union[tf.train.Example, tf.train.SequenceExample]],
+    file_type: str = 'tfrecord'):
   """Writes serialized Example to TFRecord file with path.
 
   Note that examples are expected to be not seriazlied.
@@ -121,8 +122,11 @@ def dump_to_tfrecord(record_file: str,
   Args:
     record_file: The name of the output file.
     tf_examples: A list of examples to be stored.
+    file_type: A string indicating the file format, could be: 'tfrecord',
+      'tfrecords', 'tfrecord_compressed', 'tfrecords_gzip', 'riegeli'. The
+      string is case insensitive.
   """
-  file_writers.write_small_dataset(tf_examples, record_file, 'tfrecord')
+  file_writers.write_small_dataset(tf_examples, record_file, file_type)
 
 
 def create_classification_example(
@@ -199,6 +203,7 @@ def create_3d_image_test_example(
     image_width: int,
     image_volume: int,
     image_channel: int,
+    num_classes: int = 2,
     output_serialized_example: bool = False) -> tf.train.Example:
   """Creates 3D image and label.
 
@@ -207,6 +212,7 @@ def create_3d_image_test_example(
     image_width: The width of test 3D image.
     image_volume: The volume of test 3D image.
     image_channel: The channel of test 3D image.
+    num_classes: The number of classes of the test 3D label.
     output_serialized_example: A boolean flag represents whether to return a
       serialized example.
 
@@ -218,9 +224,14 @@ def create_3d_image_test_example(
   images = image[:, :, np.newaxis, :]
   images = np.tile(images, [1, 1, image_volume, 1]).astype(np.float32)
 
-  shape = [image_height, image_width, image_volume, image_channel]
-  labels = fake_feature_generator.generate_classes_np(
-      2, np.prod(shape)).reshape(shape).astype(np.float32)
+  label_shape = [image_height, image_width, image_volume, num_classes]
+  labels = (
+      fake_feature_generator.generate_classes_np(
+          num_classes, np.prod(label_shape)
+      )
+      .reshape(label_shape)
+      .astype(np.float32)
+  )
 
   builder = tf_example_builder.TfExampleBuilder()
   example = builder.add_bytes_feature(IMAGE_KEY,

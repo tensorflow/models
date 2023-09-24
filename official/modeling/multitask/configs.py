@@ -57,23 +57,35 @@ class AnnealingSampleConfig(hyperparams.Config):
 @dataclasses.dataclass
 class TaskSamplingConfig(hyperparams.OneOfConfig):
   type: str = ""
-  uniform: hyperparams.Config = hyperparams.Config()
-  proportional: ProportionalSampleConfig = ProportionalSampleConfig()
-  annealing: AnnealingSampleConfig = AnnealingSampleConfig()
+  uniform: hyperparams.Config = dataclasses.field(
+      default_factory=hyperparams.Config
+  )
+  proportional: ProportionalSampleConfig = dataclasses.field(
+      default_factory=ProportionalSampleConfig
+  )
+  annealing: AnnealingSampleConfig = dataclasses.field(
+      default_factory=AnnealingSampleConfig
+  )
 
 
 @dataclasses.dataclass
 class MultiTaskTrainerConfig(cfg.TrainerConfig):
   trainer_type: str = "interleaving"
-  task_sampler: TaskSamplingConfig = TaskSamplingConfig(type="proportional")
+  task_sampler: TaskSamplingConfig = dataclasses.field(
+      default_factory=lambda: TaskSamplingConfig(type="proportional")
+  )
 
 
 @dataclasses.dataclass
 class MultiTaskExperimentConfig(hyperparams.Config):
   """An experiment config for multi-task training and multi-task evaluation."""
-  task: MultiTaskConfig = MultiTaskConfig()
-  trainer: MultiTaskTrainerConfig = MultiTaskTrainerConfig()
-  runtime: cfg.RuntimeConfig = cfg.RuntimeConfig()
+  task: MultiTaskConfig = dataclasses.field(default_factory=MultiTaskConfig)
+  trainer: MultiTaskTrainerConfig = dataclasses.field(
+      default_factory=MultiTaskTrainerConfig
+  )
+  runtime: cfg.RuntimeConfig = dataclasses.field(
+      default_factory=cfg.RuntimeConfig
+  )
 
 
 @dataclasses.dataclass

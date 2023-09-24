@@ -37,8 +37,12 @@ class TfExampleDecoder(hyperparams.Config):
 @dataclasses.dataclass
 class DataDecoder(hyperparams.OneOfConfig):
   type: Optional[str] = 'simple_decoder'
-  simple_decoder: TfExampleDecoder = TfExampleDecoder()
-  label_map_decoder: TfExampleDecoderLabelMap = TfExampleDecoderLabelMap()
+  simple_decoder: TfExampleDecoder = dataclasses.field(
+      default_factory=TfExampleDecoder
+  )
+  label_map_decoder: TfExampleDecoderLabelMap = dataclasses.field(
+      default_factory=TfExampleDecoderLabelMap
+  )
 
 
 @dataclasses.dataclass
@@ -66,8 +70,8 @@ class DataConfig(cfg.DataConfig):
   global_batch_size: int = 32
   is_training: bool = True
   dtype: str = 'float16'
-  decoder: DataDecoder = DataDecoder()
-  parser: Parser = Parser()
+  decoder: DataDecoder = dataclasses.field(default_factory=DataDecoder)
+  parser: Parser = dataclasses.field(default_factory=Parser)
   shuffle_buffer_size: int = 10000
   file_type: str = 'tfrecord'
   drop_remainder: bool = True
@@ -82,7 +86,7 @@ class DetectionLoss(hyperparams.Config):
 
 @dataclasses.dataclass
 class Losses(hyperparams.Config):
-  detection: DetectionLoss = DetectionLoss()
+  detection: DetectionLoss = dataclasses.field(default_factory=DetectionLoss)
   gaussian_iou: float = 0.7
   class_offset: int = 1
 
@@ -112,13 +116,21 @@ class CenterNetModel(hyperparams.Config):
   num_classes: int = 90
   max_num_instances: int = 128
   input_size: List[int] = dataclasses.field(default_factory=list)
-  backbone: backbones.Backbone = backbones.Backbone(
-      type='hourglass', hourglass=backbones.Hourglass(model_id=52))
-  head: CenterNetHead = CenterNetHead()
+  backbone: backbones.Backbone = dataclasses.field(
+      default_factory=lambda: backbones.Backbone(  # pylint: disable=g-long-lambda
+          type='hourglass', hourglass=backbones.Hourglass(model_id=52)
+      )
+  )
+  head: CenterNetHead = dataclasses.field(default_factory=CenterNetHead)
   # pylint: disable=line-too-long
-  detection_generator: CenterNetDetectionGenerator = CenterNetDetectionGenerator()
-  norm_activation: common.NormActivation = common.NormActivation(
-      norm_momentum=0.1, norm_epsilon=1e-5, use_sync_bn=True)
+  detection_generator: CenterNetDetectionGenerator = dataclasses.field(
+      default_factory=CenterNetDetectionGenerator
+  )
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=lambda: common.NormActivation(  # pylint: disable=g-long-lambda
+          norm_momentum=0.1, norm_epsilon=1e-5, use_sync_bn=True
+      )
+  )
 
 
 @dataclasses.dataclass
@@ -129,17 +141,25 @@ class CenterNetDetection(hyperparams.Config):
 
 @dataclasses.dataclass
 class CenterNetSubTasks(hyperparams.Config):
-  detection: CenterNetDetection = CenterNetDetection()
+  detection: CenterNetDetection = dataclasses.field(
+      default_factory=CenterNetDetection
+  )
 
 
 @dataclasses.dataclass
 class CenterNetTask(cfg.TaskConfig):
   """Config for centernet task."""
-  model: CenterNetModel = CenterNetModel()
-  train_data: DataConfig = DataConfig(is_training=True)
-  validation_data: DataConfig = DataConfig(is_training=False)
-  subtasks: CenterNetSubTasks = CenterNetSubTasks()
-  losses: Losses = Losses()
+  model: CenterNetModel = dataclasses.field(default_factory=CenterNetModel)
+  train_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=True)
+  )
+  validation_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=False)
+  )
+  subtasks: CenterNetSubTasks = dataclasses.field(
+      default_factory=CenterNetSubTasks
+  )
+  losses: Losses = dataclasses.field(default_factory=Losses)
   gradient_clip_norm: float = 10.0
   per_category_metrics: bool = False
   weight_decay: float = 5e-4

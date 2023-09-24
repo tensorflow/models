@@ -35,7 +35,7 @@ from official.nlp.tasks import utils
 @dataclasses.dataclass
 class ModelConfig(base_config.Config):
   """A base span labeler configuration."""
-  encoder: encoders.EncoderConfig = encoders.EncoderConfig()
+  encoder: encoders.EncoderConfig = dataclasses.field(default_factory=encoders.EncoderConfig)
   head_dropout: float = 0.1
   head_initializer_range: float = 0.02
 
@@ -46,7 +46,7 @@ class TaggingConfig(cfg.TaskConfig):
   # At most one of `init_checkpoint` and `hub_module_url` can be specified.
   init_checkpoint: str = ''
   hub_module_url: str = ''
-  model: ModelConfig = ModelConfig()
+  model: ModelConfig = dataclasses.field(default_factory=ModelConfig)
 
   # The real class names, the order of which should match real label id.
   # Note that a word may be tokenized into multiple word_pieces tokens, and
@@ -54,8 +54,8 @@ class TaggingConfig(cfg.TaskConfig):
   # of the word, and a negative label id is assigned to the remaining tokens.
   # The negative label id will not contribute to loss and metrics.
   class_names: Optional[List[str]] = None
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  validation_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
 
 
 def _masked_labels_and_weights(y_true):

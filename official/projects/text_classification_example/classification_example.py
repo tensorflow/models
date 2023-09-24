@@ -34,7 +34,9 @@ from official.projects.text_classification_example import classification_data_lo
 @dataclasses.dataclass
 class ModelConfig(base_config.Config):
   """A base span labeler configuration."""
-  encoder: encoders.EncoderConfig = encoders.EncoderConfig()
+  encoder: encoders.EncoderConfig = dataclasses.field(
+      default_factory=encoders.EncoderConfig
+  )
   head_dropout: float = 0.1
   head_initializer_range: float = 0.02
 
@@ -45,13 +47,15 @@ class ClassificationExampleConfig(cfg.TaskConfig):
   # At most one of `init_checkpoint` and `hub_module_url` can be specified.
   init_checkpoint: str = ''
   hub_module_url: str = ''
-  model: ModelConfig = ModelConfig()
+  model: ModelConfig = dataclasses.field(default_factory=ModelConfig)
 
   num_classes = 2
   class_names = ['A', 'B']
-  train_data: cfg.DataConfig = classification_data_loader.ClassificationExampleDataConfig(
+  train_data: cfg.DataConfig = dataclasses.field(
+      default_factory=classification_data_loader.ClassificationExampleDataConfig
   )
-  validation_data: cfg.DataConfig = classification_data_loader.ClassificationExampleDataConfig(
+  validation_data: cfg.DataConfig = dataclasses.field(
+      default_factory=classification_data_loader.ClassificationExampleDataConfig
   )
 
 

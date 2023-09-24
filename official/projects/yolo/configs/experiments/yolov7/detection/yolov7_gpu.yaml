@@ -69,6 +69,11 @@ task:
       use_sync_bn: true
   train_data:
     input_path: /readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/train*
+    shuffle_buffer_size: 5000
+    decoder:
+      simple_decoder:
+        regenerate_source_id: true
+        coco91_to_80: false
     is_training: true
     global_batch_size: 32
     dtype: float32
@@ -100,6 +105,10 @@ task:
         aug_scale_max: 1.9
   validation_data:
     input_path: /readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/val*
+    decoder:
+      simple_decoder:
+        regenerate_source_id: true
+        coco91_to_80: false
     is_training: false
     global_batch_size: 8
     dtype: float32

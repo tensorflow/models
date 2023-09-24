@@ -32,7 +32,7 @@ class DumpConfig1(base_config.Config):
 class DumpConfig2(base_config.Config):
   c: int = 2
   d: str = 'text'
-  e: DumpConfig1 = DumpConfig1()
+  e: DumpConfig1 = dataclasses.field(default_factory=DumpConfig1)
   optional_e: Optional[DumpConfig1] = None
 
 

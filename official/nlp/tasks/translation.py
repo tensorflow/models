@@ -98,8 +98,8 @@ class EncDecoder(base_config.Config):
 @dataclasses.dataclass
 class ModelConfig(base_config.Config):
   """A base Seq2Seq model configuration."""
-  encoder: EncDecoder = EncDecoder()
-  decoder: EncDecoder = EncDecoder()
+  encoder: EncDecoder = dataclasses.field(default_factory=EncDecoder)
+  decoder: EncDecoder = dataclasses.field(default_factory=EncDecoder)
 
   embedding_width: int = 512
   dropout_rate: float = 0.1
@@ -117,9 +117,11 @@ class ModelConfig(base_config.Config):
 @dataclasses.dataclass
 class TranslationConfig(cfg.TaskConfig):
   """The translation task config."""
-  model: ModelConfig = ModelConfig()
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
+  model: ModelConfig = dataclasses.field(default_factory=ModelConfig)
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  validation_data: cfg.DataConfig = dataclasses.field(
+      default_factory=cfg.DataConfig
+  )
   # Tokenization
   sentencepiece_model_path: str = ""
   # Evaluation.

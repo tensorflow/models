@@ -40,7 +40,6 @@ def _maximum_activation_size(model):
       if hasattr(output, 'shape'):
         size = np.prod(output.shape)
         max_size = max(max_size, size)
-        print('Layer', size, output.shape, layer.name)
   return max_size
 
 

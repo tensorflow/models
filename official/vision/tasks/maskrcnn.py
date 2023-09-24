@@ -35,6 +35,7 @@ from official.vision.evaluation import coco_utils
 from official.vision.evaluation import instance_metrics as metrics_lib
 from official.vision.losses import maskrcnn_losses
 from official.vision.modeling import factory
+from official.vision.utils.object_detection import visualization_utils
 
 
 def zero_out_disallowed_class_ids(batch_class_ids: tf.Tensor,
@@ -502,6 +503,14 @@ class MaskRCNNTask(base_task.Task):
     logs = {self.loss: 0}
     self._update_metrics(labels, outputs, logs)
 
+    if (
+        hasattr(self.task_config, 'allow_image_summary')
+        and self.task_config.allow_image_summary
+    ):
+      logs.update(
+          {'visualization': (tf.cast(images, dtype=tf.float32), outputs)}
+      )
+
     return logs
 
   def aggregate_logs(
@@ -511,19 +520,11 @@ class MaskRCNNTask(base_task.Task):
   ) -> Optional[Any]:
     """Optional aggregation over logs returned from a validation step."""
     if not state:
-      state = []
-      # The metrics which update state on device.
-      if self.instance_box_perclass_metrics is not None:
-        state.append(self.instance_box_perclass_metrics)
-      if self.instance_mask_perclass_metrics is not None:
-        state.append(self.instance_mask_perclass_metrics)
       # The metrics which update state on CPU.
       if self.task_config.use_coco_metrics:
         self.coco_metric.reset_states()
-        state.append(self.coco_metric)
       if self.task_config.use_wod_metrics:
         self.wod_metric.reset_states()
-        state.append(self.wod_metric)
 
     if self.task_config.use_coco_metrics:
       self.coco_metric.update_state(
@@ -535,6 +536,16 @@ class MaskRCNNTask(base_task.Task):
           step_outputs[self.wod_metric.name][0],
           step_outputs[self.wod_metric.name][1],
       )
+
+    if 'visualization' in step_outputs:
+      # Update detection state for writing summary if there are artifacts for
+      # visualization.
+      if state is None:
+        state = {}
+      state.update(visualization_utils.update_detection_state(step_outputs))
+      # TODO(allenyan): Mapping `detection_masks` (w.r.t. the `gt_boxes`) back
+      # to full masks (w.r.t. the image). Disable mask visualization fow now.
+      state.pop('detection_masks', None)
 
     if not state:
       # Create an arbitrary state to indicate it's not the first step in the
@@ -605,4 +616,12 @@ class MaskRCNNTask(base_task.Task):
       logs.update(self.coco_metric.result())
     if self.task_config.use_wod_metrics:
       logs.update(self.wod_metric.result())
+
+    # Add visualization for summary.
+    if isinstance(aggregated_logs, dict) and 'image' in aggregated_logs:
+      validation_outputs = visualization_utils.visualize_outputs(
+          logs=aggregated_logs, task_config=self.task_config
+      )
+      logs.update(validation_outputs)
+
     return logs

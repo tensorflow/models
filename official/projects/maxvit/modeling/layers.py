@@ -652,6 +652,28 @@ def _config_batch_norm(
     raise ValueError(f'Unsupported norm_type {norm_type}.')
 
 
+def _build_downsample_layer(
+    pool_type: str, pool_stride: int, data_format: str = 'channels_last'
+) -> tf.keras.layers.Layer:
+  """Builds a downsample layer for MbConv based on pool type."""
+  if pool_type == 'max':
+    return tf.keras.layers.MaxPooling2D(
+        pool_size=(pool_stride, pool_stride),
+        strides=(pool_stride, pool_stride),
+        padding='same',
+        data_format=data_format,
+    )
+  elif pool_type == 'avg':
+    return tf.keras.layers.AveragePooling2D(
+        pool_size=(pool_stride, pool_stride),
+        strides=(pool_stride, pool_stride),
+        padding='same',
+        data_format=data_format,
+    )
+  else:
+    raise ValueError(f'Unsurpported pool_type {pool_type}')
+
+
 class MBConvBlock(tf.keras.layers.Layer):
   """Mobile Inverted Residual Bottleneck (https://arxiv.org/abs/1905.02244)."""
 
@@ -693,7 +715,8 @@ class MBConvBlock(tf.keras.layers.Layer):
     self._bn_momentum = bn_momentum
     self._kernel_initializer = kernel_initializer
     self._bias_initializer = bias_initializer
-
+    self._pool_layer = _build_downsample_layer(
+        pool_type, pool_stride, data_format)
     self._activation_fn = common_ops.get_act_fn(self._activation)
 
   def build(self, input_shape: tf.TensorShape) -> None:
@@ -788,14 +811,7 @@ class MBConvBlock(tf.keras.layers.Layer):
   def downsample(self, inputs: tf.Tensor, name: str) -> tf.Tensor:
     output = inputs
     if self._pool_stride > 1:
-      output = common_ops.pooling_2d(
-          output,
-          self._pool_type,
-          self._pool_stride,
-          padding='same',
-          data_format=self._data_format,
-          name=name,
-      )
+      output = self._pool_layer(output)
     return output
 
   def shortcut_branch(self, shortcut: tf.Tensor) -> tf.Tensor:

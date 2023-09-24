@@ -46,6 +46,7 @@ def run_experiment(
     model_dir: str,
     run_post_eval: bool = False,
     trainer: base_trainer.MultiTaskBaseTrainer = None,
+    eval_summary_manager: Optional[orbit.utils.SummaryManagerInterface] = None,
     best_ckpt_exporter_creator: Optional[Any] = train_utils
     .maybe_create_best_ckpt_exporter
 ) -> Union[base_model.MultiTaskBaseModel, Tuple[base_model.MultiTaskBaseModel,
@@ -64,6 +65,10 @@ def run_experiment(
       are returned.
     trainer: (optional) A multi-task trainer to use. If none is provided, a
       default one will be created based on `params`.
+    eval_summary_manager: Instance of the eval summary manager. If set, the
+      `eval_summary_dir` will be ignored. Otherwise the eval summary manager
+      will be created internally for TensorBoard summaries by default from the
+      `eval_summary_dir`.
     best_ckpt_exporter_creator: A functor for creating best checkpoint exporter.
 
   Returns:
@@ -117,6 +122,7 @@ def run_experiment(
       checkpoint_manager=checkpoint_manager,
       summary_dir=os.path.join(model_dir, 'train'),
       eval_summary_dir=os.path.join(model_dir, 'validation'),
+      eval_summary_manager=eval_summary_manager,
       summary_interval=params.trainer.summary_interval)
 
   logging.info('Starts to execute mode: %s', mode)
@@ -162,6 +168,7 @@ def run_experiment_with_multitask_eval(
     run_post_eval: bool = False,
     save_summary: bool = True,
     trainer: Optional[core_lib.Trainer] = None,
+    eval_summary_manager: Optional[orbit.utils.SummaryManagerInterface] = None,
     best_ckpt_exporter_creator: Optional[Any] = train_utils
     .maybe_create_best_ckpt_exporter,
 ) -> Tuple[Any, Any]:
@@ -181,6 +188,10 @@ def run_experiment_with_multitask_eval(
     trainer: the core_lib.Trainer instance. It should be created within the
       strategy.scope(). If not provided, an instance will be created by default
       if `mode` contains 'train'.
+    eval_summary_manager: Instance of the eval summary manager. If set, the
+      `eval_summary_dir` will be ignored. Otherwise the eval summary manager
+      will be created internally for TensorBoard summaries by default from the
+      `eval_summary_dir`.
     best_ckpt_exporter_creator: A functor for creating best checkpoint exporter.
 
   Returns:
@@ -253,6 +264,7 @@ def run_experiment_with_multitask_eval(
       summary_dir=os.path.join(model_dir, 'train') if save_summary else None,
       eval_summary_dir=os.path.join(model_dir, 'validation') if
       (save_summary) else None,
+      eval_summary_manager=eval_summary_manager,
       summary_interval=params.trainer.summary_interval if
       (save_summary) else None)
 

@@ -354,6 +354,30 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
     encoded = encoder(tf.zeros((4, 8), dtype=tf.int32))
     self.assertEqual(encoded.shape, (4, 8, config.d_model))
 
+  @parameterized.named_parameters(("return_score", True),
+                                  ("not_return_score", False))
+  def test_encoder_att_scores(self, return_attention_scores):
+    config = t5.T5TransformerParams(
+        num_layers=2,
+        d_model=4,
+        d_kv=3,
+        num_heads=4,
+        d_ff=16,
+        vocab_size=10,
+        vocab_embeddings_initializer=tf.keras.initializers.Ones(),
+        relative_embeddings_initializer=tf.keras.initializers.Ones(),
+        return_attention_scores=return_attention_scores)
+    encoder = t5.Encoder(config, compute_dtype=tf.float32)
+    encoded = encoder(tf.zeros((4, 8), dtype=tf.int32))
+    if return_attention_scores:
+      encoded, scores = encoded
+      self.assertEqual(encoded.shape, (4, 8, config.d_model))
+      self.assertIsNotNone(scores)
+      self.assertLen(scores, 2)
+      self.assertEqual(scores[0].shape, (4, 4, 8, 8))
+    else:
+      self.assertEqual(encoded.shape, (4, 8, config.d_model))
+
   @parameterized.named_parameters(("bfloat16", tf.bfloat16),
                                   ("float32", tf.float32))
   def test_encoder_with_dense(self, dtype):
@@ -405,7 +429,6 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
     encoded = tf.zeros((4, 8, config.d_model), dtype=tf.float32)
     outputs = decoder(targets, encoded)
     logits = outputs["logits"]
-    cache = outputs["cache"]
     self.assertEqual(logits.shape, (4, 8, config.vocab_size))
 
     cache = {}
@@ -480,7 +503,62 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(outputs["logits"].shape,
                      (batch_size, 1, config.vocab_size))
     for v in transformer.trainable_variables:
-      print(v.name, v.shape)
+      self.assertEqual(v.dtype, tf.float32)
+
+  def test_transformer_return_attn_scores(self):
+    max_decode_len = 10
+    config = t5.T5TransformerParams(
+        num_layers=1,
+        d_model=8,
+        d_kv=4,
+        num_heads=4,
+        d_ff=32,
+        vocab_size=10,
+        shared_embedding=True,
+        layer_sharing=False,
+        ffn_activations=("relu",),
+        logits_via_embedding=True,
+        return_attention_scores=True,
+    )
+    transformer = t5.T5Transformer(config, compute_dtype=tf.float32)
+    self.assertLen(transformer.trainable_variables, 26)
+    inputs = tf.convert_to_tensor(
+        np.array([[2, 2, 1, 3, 1, 0], [3, 3, 1, 2, 2, 1]])
+    )
+    segments = tf.convert_to_tensor(
+        np.array([[1, 1, 1, 2, 2, 0], [1, 1, 1, 2, 2, 2]])
+    )
+
+    outputs = transformer(
+        encoder_input_tokens=inputs,
+        decoder_input_tokens=inputs,
+        decoder_target_tokens=inputs,
+        encoder_segment_ids=segments,
+        decoder_segment_ids=segments,
+    )
+    self.assertIn("attention_scores", outputs)
+    self.assertLen(outputs["attention_scores"], 1)
+    self.assertEqual(outputs["attention_scores"][0].shape, (2, 4, 6, 6))
+    cache = {}
+    batch_size = 2
+    cache[0] = _create_cache(
+        batch_size,
+        max_decode_len,
+        config.num_heads,
+        config.d_kv,
+        dtype=tf.float32,
+    )
+    outputs = transformer.decode(
+        encoder_input_tokens=inputs,
+        encoded=outputs["encoded"],
+        decoder_target_tokens=tf.ones((batch_size, 1), dtype=tf.int32),
+        decode_position=1,
+        decode=True,
+        max_decode_len=max_decode_len,
+        cache=cache)
+    self.assertEqual(outputs["logits"].shape,
+                     (batch_size, 1, config.vocab_size))
+    for v in transformer.trainable_variables:
       self.assertEqual(v.dtype, tf.float32)
 
   @parameterized.named_parameters(
@@ -533,7 +611,6 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(outputs["logits"].shape,
                      (batch_size, 1, config.vocab_size))
     for v in transformer.trainable_variables:
-      print(v.name, v.shape)
       self.assertEqual(v.dtype, tf.float32)
 
   @parameterized.named_parameters(
@@ -602,7 +679,6 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(outputs["logits"].shape,
                      (batch_size, 1, config.vocab_size))
     for v in transformer.trainable_variables:
-      print(v.name, v.shape)
       self.assertEqual(v.dtype, tf.float32)
 
   @parameterized.named_parameters(
@@ -654,7 +730,6 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(outputs["logits"].shape,
                      (batch_size, 1, config.vocab_size))
     for v in transformer.trainable_variables:
-      print(v.name, v.shape)
       self.assertEqual(v.dtype, tf.float32)
 
   @parameterized.named_parameters(
@@ -709,7 +784,6 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(outputs["logits"].shape,
                      (batch_size, 1, config.vocab_size))
     for v in transformer.trainable_variables:
-      print(v.name, v.shape)
       self.assertEqual(v.dtype, tf.float32)
 
 

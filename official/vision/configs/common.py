@@ -49,8 +49,12 @@ class DataDecoder(hyperparams.OneOfConfig):
     label_map_decoder: TF Example decoder with label map config.
   """
   type: Optional[str] = 'simple_decoder'
-  simple_decoder: TfExampleDecoder = TfExampleDecoder()
-  label_map_decoder: TfExampleDecoderLabelMap = TfExampleDecoderLabelMap()
+  simple_decoder: TfExampleDecoder = dataclasses.field(
+      default_factory=TfExampleDecoder
+  )
+  label_map_decoder: TfExampleDecoderLabelMap = dataclasses.field(
+      default_factory=TfExampleDecoderLabelMap
+  )
 
 
 @dataclasses.dataclass
@@ -106,8 +110,8 @@ class Augmentation(hyperparams.OneOfConfig):
     autoaug: AutoAugment config.
   """
   type: Optional[str] = None
-  randaug: RandAugment = RandAugment()
-  autoaug: AutoAugment = AutoAugment()
+  randaug: RandAugment = dataclasses.field(default_factory=RandAugment)
+  autoaug: AutoAugment = dataclasses.field(default_factory=AutoAugment)
 
 
 @dataclasses.dataclass

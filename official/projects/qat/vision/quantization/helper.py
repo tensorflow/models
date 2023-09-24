@@ -13,7 +13,11 @@
 # limitations under the License.
 
 """Quantization helpers."""
-from typing import Any, Dict
+
+from __future__ import annotations
+
+import copy
+from typing import Any, Dict, List, Optional, Type, Union
 
 import tensorflow as tf
 
@@ -22,20 +26,42 @@ from official.projects.qat.vision.quantization import configs
 
 
 _QUANTIZATION_WEIGHT_NAMES = [
-    'output_max', 'output_min', 'optimizer_step', 'kernel_min', 'kernel_max',
-    'add_three_min', 'add_three_max', 'divide_six_min', 'divide_six_max',
-    'depthwise_kernel_min', 'depthwise_kernel_max',
-    'reduce_mean_quantizer_vars_min', 'reduce_mean_quantizer_vars_max',
-    'quantize_layer_min', 'quantize_layer_max',
-    'quantize_layer_1_min', 'quantize_layer_1_max',
-    'quantize_layer_2_min', 'quantize_layer_2_max',
-    'quantize_layer_3_min', 'quantize_layer_3_max',
-    'post_activation_min', 'post_activation_max',
+    'output_max',
+    'output_min',
+    'optimizer_step',
+    'kernel_min',
+    'kernel_max',
+    'add_three_min',
+    'add_three_max',
+    'divide_six_min',
+    'divide_six_max',
+    'depthwise_kernel_min',
+    'depthwise_kernel_max',
+    'pointwise_kernel_min',
+    'pointwise_kernel_max',
+    'reduce_mean_quantizer_vars_min',
+    'reduce_mean_quantizer_vars_max',
+    'quantize_layer_min',
+    'quantize_layer_max',
+    'quantize_layer_1_min',
+    'quantize_layer_1_max',
+    'quantize_layer_2_min',
+    'quantize_layer_2_max',
+    'quantize_layer_3_min',
+    'quantize_layer_3_max',
+    'post_activation_min',
+    'post_activation_max',
 ]
 
 _ORIGINAL_WEIGHT_NAME = [
-    'kernel', 'depthwise_kernel', 'gamma', 'beta', 'moving_mean',
-    'moving_variance', 'bias'
+    'kernel',
+    'depthwise_kernel',
+    'pointwise_kernel',
+    'gamma',
+    'beta',
+    'moving_mean',
+    'moving_variance',
+    'bias',
 ]
 
 
@@ -139,6 +165,84 @@ def norm_by_activation(activation, norm_quantized, norm_no_quantized):
     return norm_quantized
   else:
     return norm_no_quantized
+
+
+class SeparableConv2DQuantized(tf.keras.layers.Layer):
+  """Quantized SeperableConv2D."""
+
+  def __init__(
+      self,
+      name: Optional[str] = None,
+      last_quantize: bool = False,
+      **conv_kwargs,
+  ):
+    """Initializes a SeparableConv2DQuantized.
+
+    Args:
+      name: The name of the layer.
+      last_quantize: A `bool` indicates whether add quantization for the output.
+      **conv_kwargs: A keyword arguments to be used for conv and dwconv.
+    """
+
+    super().__init__(name=name)
+    self._conv_kwargs = copy.deepcopy(conv_kwargs)
+    self._name = name
+    self._last_quantize = last_quantize
+
+  def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
+    """Creates the child layers of the layer."""
+    depthwise_conv2d_quantized = quantize_wrapped_layer(
+        tf.keras.layers.DepthwiseConv2D,
+        configs.Default8BitConvQuantizeConfig(['depthwise_kernel'], [], True),
+    )
+    conv2d_quantized = quantize_wrapped_layer(
+        tf.keras.layers.Conv2D,
+        configs.Default8BitConvQuantizeConfig(
+            ['kernel'], [], self._last_quantize
+        ),
+    )
+
+    dwconv_kwargs = self._conv_kwargs.copy()
+    # Depthwise conv input filters is always equal to output filters.
+    # This filters argument only needed for the point-wise conv2d op.
+    del dwconv_kwargs['filters']
+    dwconv_kwargs.update({
+        'activation': None,
+        'use_bias': False,
+    })
+    self.dw_conv = depthwise_conv2d_quantized(name='dw', **dwconv_kwargs)
+
+    conv_kwargs = self._conv_kwargs.copy()
+    conv_kwargs.update({
+        'kernel_size': (1, 1),
+        'strides': (1, 1),
+        'padding': 'valid',
+        'groups': 1,
+    })
+
+    self.conv = conv2d_quantized(name='pw', **conv_kwargs)
+
+  def call(self, inputs: tf.Tensor) -> tf.Tensor:
+    """Call the separable conv layer."""
+    x = self.dw_conv(inputs)
+    outputs = self.conv(x)
+    return outputs
+
+  def get_config(self) -> Dict[str, Any]:
+    """Returns the config of the layer."""
+    config = self._conv_kwargs.copy()
+    config.update({
+        'name': self._name,
+        'last_quantize': self._last_quantize,
+    })
+    return config
+
+  @classmethod
+  def from_config(
+      cls: Type[SeparableConv2DQuantized], config: Dict[str, Any]
+  ) -> SeparableConv2DQuantized:
+    """Creates a layer from its config."""
+    return cls(**config)
 
 
 Conv2DQuantized = quantize_wrapped_layer(

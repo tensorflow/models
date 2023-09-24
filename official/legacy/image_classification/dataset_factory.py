@@ -116,7 +116,7 @@ class DatasetConfig(base_config.Config):
   num_devices: int = 1
   dtype: str = 'float32'
   one_hot: bool = True
-  augmenter: AugmentConfig = AugmentConfig()
+  augmenter: AugmentConfig = dataclasses.field(default_factory=AugmentConfig)
   download: bool = False
   shuffle_buffer_size: int = 10000
   file_shuffle_buffer_size: int = 1024

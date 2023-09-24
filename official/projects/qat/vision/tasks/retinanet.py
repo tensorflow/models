@@ -32,9 +32,15 @@ class RetinaNetTask(retinanet.RetinaNetTask):
     dummpy_input = tf.zeros([1] + self.task_config.model.input_size)
     model(dummpy_input, training=True)
 
-    if self.task_config.quantization:
+    # Only build a QAT model when quantization version is v2; otherwise leave it
+    # for outer quantization scope.
+    if (
+        self.task_config.quantization
+        and self.task_config.quantization.version == 'v2'
+    ):
       model = factory.build_qat_retinanet(
           model,
           self.task_config.quantization,
-          model_config=self.task_config.model)
+          model_config=self.task_config.model,
+      )
     return model

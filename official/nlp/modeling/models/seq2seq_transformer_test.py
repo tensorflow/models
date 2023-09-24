@@ -21,12 +21,20 @@ import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
+from official.nlp.modeling.layers import attention
 from official.nlp.modeling.models import seq2seq_transformer
 
 
 class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
 
-  def _build_model(self, padded_decode, decode_max_length, embedding_width):
+  def _build_model(
+      self,
+      padded_decode,
+      decode_max_length,
+      embedding_width,
+      self_attention_cls=None,
+      cross_attention_cls=None,
+  ):
     num_layers = 1
     num_attention_heads = 2
     intermediate_size = 32
@@ -43,7 +51,11 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
         norm_epsilon=1e-6,
         intermediate_dropout=0.01)
     encoder_layer = seq2seq_transformer.TransformerEncoder(**encdec_kwargs)
-    decoder_layer = seq2seq_transformer.TransformerDecoder(**encdec_kwargs)
+    decoder_layer = seq2seq_transformer.TransformerDecoder(
+        **encdec_kwargs,
+        self_attention_cls=self_attention_cls,
+        cross_attention_cls=cross_attention_cls
+    )
 
     return seq2seq_transformer.Seq2SeqTransformer(
         vocab_size=vocab_size,
@@ -64,8 +76,41 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
           ],
           embed=[True, False],
           is_training=[True, False],
+          custom_self_attention=[False, True],
+          custom_cross_attention=[False, True],
           mode="eager"))
-  def test_create_model_with_ds(self, distribution, embed, is_training):
+  def test_create_model_with_ds(
+      self,
+      distribution,
+      embed,
+      is_training,
+      custom_self_attention,
+      custom_cross_attention,
+  ):
+    self_attention_called = False
+    cross_attention_called = False
+
+    class SelfAttention(attention.CachedAttention):
+      """Dummy implementation of custom attention."""
+
+      def __call__(
+          self, *args, **kwargs
+      ):
+        nonlocal self_attention_called
+        self_attention_called = True
+        return super().__call__(*args, **kwargs)
+
+    class CrossAttention:
+      """Dummy implementation of custom attention."""
+
+      def __init__(self, *args, **kwargs):
+        pass
+
+      def __call__(self, query, value, attention_mask, **kwargs):
+        nonlocal cross_attention_called
+        cross_attention_called = True
+        return query
+
     with distribution.scope():
       padded_decode = isinstance(
           distribution,
@@ -74,7 +119,14 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
       batch_size = 4
       embedding_width = 16
       model = self._build_model(
-          padded_decode, decode_max_length, embedding_width)
+          padded_decode,
+          decode_max_length,
+          embedding_width,
+          self_attention_cls=SelfAttention if custom_self_attention else None,
+          cross_attention_cls=CrossAttention
+          if custom_cross_attention
+          else None,
+      )
 
       @tf.function
       def step(inputs):
@@ -105,6 +157,8 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
         local_outputs = step(fake_inputs)
         logging.info("local_outputs=%s", local_outputs)
         self.assertEqual(local_outputs["outputs"][0].shape, (4, 10))
+    self.assertEqual(self_attention_called, custom_self_attention)
+    self.assertEqual(cross_attention_called, custom_cross_attention)
 
   @parameterized.parameters(True, False)
   def test_create_savedmodel(self, padded_decode):

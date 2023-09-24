@@ -18,12 +18,16 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from keras.applications import resnet
 
 import tensorflow.compat.v1 as tf
 
 from object_detection.core import freezable_batch_norm
 from object_detection.models.keras_models import model_utils
+
+try:
+  from keras.applications import resnet  # pylint: disable=g-import-not-at-top
+except ImportError:
+  from tf_keras.applications import resnet  # pylint: disable=g-import-not-at-top
 
 
 def _fixed_padding(inputs, kernel_size, rate=1):  # pylint: disable=invalid-name

@@ -214,6 +214,7 @@ class TrainerConfig(base_config.Config):
     train_tf_while_loop: whether or not to use tf while loop.
     train_tf_function: whether or not to use tf_function for training loop.
     eval_tf_function: whether or not to use tf_function for eval.
+    eval_tf_while_loop: whether or not to use tf while loop for eval.
     allow_tpu_summary: Whether to allow summary happen inside the XLA program
       runs on TPU through automatic outside compilation.
     steps_per_loop: number of steps per loop to report training metrics. This
@@ -244,7 +245,9 @@ class TrainerConfig(base_config.Config):
     preemption_on_demand_checkpoint: whether or not to save on-demand
       checkpoints after a preemption.
   """
-  optimizer_config: OptimizationConfig = OptimizationConfig()
+  optimizer_config: OptimizationConfig = dataclasses.field(
+      default_factory=OptimizationConfig
+  )
   # Orbit settings.
   train_tf_while_loop: bool = True
   train_tf_function: bool = True
@@ -276,7 +279,7 @@ class TrainerConfig(base_config.Config):
   recovery_max_trials: int = 0
   validation_summary_subdir: str = "validation"
   # Preemption on-demand checkpoint.
-  preemption_on_demand_checkpoint: bool = True
+  preemption_on_demand_checkpoint: bool = True  # copybara-replace
 
 
 @dataclasses.dataclass
@@ -284,8 +287,8 @@ class TaskConfig(base_config.Config):
   """Config passed to task."""
   init_checkpoint: str = ""
   model: Optional[base_config.Config] = None
-  train_data: DataConfig = DataConfig()
-  validation_data: DataConfig = DataConfig()
+  train_data: DataConfig = dataclasses.field(default_factory=DataConfig)
+  validation_data: DataConfig = dataclasses.field(default_factory=DataConfig)
   name: Optional[str] = None
   # Configs for differential privacy
   # These configs are only effective if you use create_optimizer in
@@ -301,6 +304,6 @@ class TaskConfig(base_config.Config):
 @dataclasses.dataclass
 class ExperimentConfig(base_config.Config):
   """Top-level configuration."""
-  task: TaskConfig = TaskConfig()
-  trainer: TrainerConfig = TrainerConfig()
-  runtime: RuntimeConfig = RuntimeConfig()
+  task: TaskConfig = dataclasses.field(default_factory=TaskConfig)
+  trainer: TrainerConfig = dataclasses.field(default_factory=TrainerConfig)
+  runtime: RuntimeConfig = dataclasses.field(default_factory=RuntimeConfig)

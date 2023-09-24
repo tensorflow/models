@@ -88,10 +88,6 @@ class ResNet3DRS(ResNet3D):
                         use_self_gating=True))
 
 
-_RESNET3D50_DEFAULT_CFG = ResNet3D50()
-_RESNET3DRS_DEFAULT_CFG = ResNet3DRS()
-
-
 @dataclasses.dataclass
 class Backbone3D(hyperparams.OneOfConfig):
   """Configuration for backbones.
@@ -102,5 +98,5 @@ class Backbone3D(hyperparams.OneOfConfig):
     resnet_3d_rs: resnet3d-rs backbone config.
   """
   type: Optional[str] = None
-  resnet_3d: ResNet3D = _RESNET3D50_DEFAULT_CFG
-  resnet_3d_rs: ResNet3D = _RESNET3DRS_DEFAULT_CFG
+  resnet_3d: ResNet3D = dataclasses.field(default_factory=ResNet3D50)
+  resnet_3d_rs: ResNet3D = dataclasses.field(default_factory=ResNet3DRS)

@@ -15,11 +15,10 @@ task:
       use_sync_bn: false
   train_data:
     global_batch_size: 192
-    shuffle_buffer_size: 1024
+    shuffle_buffer_size: 256
     dtype: 'float16'
   validation_data:
     global_batch_size: 256
-    shuffle_buffer_size: 1024
     dtype: 'float16'
 trainer:
   train_steps: 1500000

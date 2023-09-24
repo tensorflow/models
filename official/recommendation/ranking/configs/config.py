@@ -52,9 +52,15 @@ class LearningRateConfig(hyperparams.Config):
 
 @dataclasses.dataclass
 class OptimizationConfig(hyperparams.Config):
-  """Embedding Optimizer config."""
-  lr_config: LearningRateConfig = LearningRateConfig()
+  """Embedding and dense optimizer configs."""
+  lr_config: LearningRateConfig = dataclasses.field(
+      default_factory=LearningRateConfig
+  )
+  dense_sgd_config: LearningRateConfig = dataclasses.field(
+      default_factory=lambda: LearningRateConfig(warmup_steps=0)
+  )
   embedding_optimizer: str = 'SGD'
+  dense_optimizer: str = 'Adam'
 
 
 @dataclasses.dataclass
@@ -115,10 +121,14 @@ class Loss(hyperparams.Config):
 class Task(hyperparams.Config):
   """The model config."""
   init_checkpoint: str = ''
-  model: ModelConfig = ModelConfig()
-  train_data: DataConfig = DataConfig(is_training=True)
-  validation_data: DataConfig = DataConfig(is_training=False)
-  loss: Loss = Loss()
+  model: ModelConfig = dataclasses.field(default_factory=ModelConfig)
+  train_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=True)
+  )
+  validation_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=False)
+  )
+  loss: Loss = dataclasses.field(default_factory=Loss)
   use_synthetic_data: bool = False
 
 
@@ -148,16 +158,25 @@ class TrainerConfig(cfg.TrainerConfig):
     time_history: Config of TimeHistory callback.
     optimizer_config: An `OptimizerConfig` instance for embedding optimizer.
        Defaults to None.
+    pipeline_sparse_and_dense_exeuction: Whether to pipeline embedding and
+      dense execution. This is a performance optimization.
   """
   train_steps: int = 0
   # Sets validation steps to be -1 to evaluate the entire dataset.
   validation_steps: int = -1
   validation_interval: int = 70000
-  callbacks: CallbacksConfig = CallbacksConfig()
+  callbacks: CallbacksConfig = dataclasses.field(
+      default_factory=CallbacksConfig
+  )
   use_orbit: bool = False
   enable_metrics_in_training: bool = True
-  time_history: TimeHistoryConfig = TimeHistoryConfig(log_steps=5000)
-  optimizer_config: OptimizationConfig = OptimizationConfig()
+  time_history: TimeHistoryConfig = dataclasses.field(
+      default_factory=lambda: TimeHistoryConfig(log_steps=5000)
+  )
+  optimizer_config: OptimizationConfig = dataclasses.field(
+      default_factory=OptimizationConfig
+  )
+  pipeline_sparse_and_dense_execution: bool = False
 
 
 NUM_TRAIN_EXAMPLES = 4195197692
@@ -184,26 +203,35 @@ class Config(hyperparams.Config):
     task: `Task` instance.
     trainer: A `TrainerConfig` instance.
   """
-  runtime: cfg.RuntimeConfig = cfg.RuntimeConfig()
-  task: Task = Task(
-      model=ModelConfig(
-          embedding_dim=8,
-          vocab_sizes=vocab_sizes,
-          bottom_mlp=[64, 32, 8],
-          top_mlp=[64, 32, 1]),
-      loss=Loss(label_smoothing=0.0),
-      train_data=DataConfig(
-          is_training=True,
-          global_batch_size=train_batch_size),
-      validation_data=DataConfig(
-          is_training=False,
-          global_batch_size=eval_batch_size))
-  trainer: TrainerConfig = TrainerConfig(
-      train_steps=2 * steps_per_epoch,
-      validation_interval=steps_per_epoch,
-      validation_steps=NUM_EVAL_EXAMPLES // eval_batch_size,
-      enable_metrics_in_training=True,
-      optimizer_config=OptimizationConfig())
+  runtime: cfg.RuntimeConfig = dataclasses.field(
+      default_factory=cfg.RuntimeConfig
+  )
+  task: Task = dataclasses.field(
+      default_factory=lambda: Task(  # pylint: disable=g-long-lambda
+          model=ModelConfig(
+              embedding_dim=8,
+              vocab_sizes=vocab_sizes,
+              bottom_mlp=[64, 32, 8],
+              top_mlp=[64, 32, 1],
+          ),
+          loss=Loss(label_smoothing=0.0),
+          train_data=DataConfig(
+              is_training=True, global_batch_size=train_batch_size
+          ),
+          validation_data=DataConfig(
+              is_training=False, global_batch_size=eval_batch_size
+          ),
+      )
+  )
+  trainer: TrainerConfig = dataclasses.field(
+      default_factory=lambda: TrainerConfig(  # pylint: disable=g-long-lambda
+          train_steps=2 * steps_per_epoch,
+          validation_interval=steps_per_epoch,
+          validation_steps=NUM_EVAL_EXAMPLES // eval_batch_size,
+          enable_metrics_in_training=True,
+          optimizer_config=OptimizationConfig(),
+      )
+  )
   restrictions: dataclasses.InitVar[Optional[List[str]]] = None
 
 

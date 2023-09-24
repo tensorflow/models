@@ -1,0 +1,89 @@
+# ViT video classification on Moments-in-Time.
+#
+# --experiment_type=mh_video_classification
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  init_checkpoint: '/tmp/video_mae/VIT_B_16x4_MAE_PT.npy'
+  init_checkpoint_modules: 'customized_vmae'
+  model:
+    backbone:
+      type: 'vit_3d'
+      vit_3d:
+        variant: 'mae'
+        pooler: 'none'
+        model_name: 'vit-b16'
+        temporal_patch_size: 2
+        representation_size: 0
+        init_stochastic_depth_rate: 0.2
+        pos_embed_shape:
+        - 8  # time
+        - 196  # space
+        transformer:
+          dropout_rate: 0.0
+    dropout_rate: 0.5
+    classifier_type: 'pooler'
+    norm_activation:
+      norm_momentum: 0.9
+      use_sync_bn: true
+  train_data:
+    name: moments-in-time
+    num_classes: 339
+    num_examples: 791297
+    zero_centering_image: false
+    feature_shape: !!python/tuple
+    - 16
+    - 224
+    - 224
+    - 3
+    temporal_stride: 4
+    global_batch_size: 256
+    dtype: 'bfloat16'
+    shuffle_buffer_size: 512
+    prefetch_buffer_size: 512
+    drop_remainder: true
+  validation_data:
+    name: moments-in-time
+    num_classes: 339
+    zero_centering_image: false
+    num_examples: 33900
+    global_batch_size: 16
+    feature_shape: !!python/tuple
+    - 16
+    - 224
+    - 224
+    - 3
+    temporal_stride: 4
+    num_test_clips: 4
+    num_test_crops: 3
+    dtype: 'bfloat16'
+    drop_remainder: true
+  losses:
+    label_smoothing: 0.1
+    l2_weight_decay: 5e-5
+trainer:
+  optimizer_config:
+    learning_rate:
+      cosine:
+        initial_learning_rate: 1e-4
+        decay_steps: 154550  # 50 eps
+    warmup:
+      linear:
+        warmup_steps: 7727
+    optimizer:
+      type: 'adamw'
+      adamw:
+        beta_1: 0.9
+        beta_2: 0.999
+        amsgrad: false
+        weight_decay_rate: 1e-5
+        exclude_from_weight_decay: !!python/list
+        - 'LayerNorm'
+        - 'layer_norm'
+        - 'bias'
+  train_steps: 154550  # 50 eps
+  validation_steps: 2118  # 33900 // 16
+  steps_per_loop: 500
+  summary_interval: 500
+  validation_interval: 500

@@ -36,27 +36,31 @@ class Parser(parser.Parser):
       output_size: Tuple[int, int] = (1333, 1333),
       max_num_boxes: int = 100,
       aug_rand_hflip=True,
+      aug_scale_min=0.3,
+      aug_scale_max=2.0,
       aug_color_jitter_strength: float = 0.5,
       aug_color_jitter_impl='simclrv2',
       coord_vocab_shift=1000,
       quantization_bins=1000,
       skip_crowd_during_training=True,
-      resize_scales: Tuple[int, ...] = RESIZE_SCALES,
+      label_shift: int = 0,
   ):
     self._eos_token_weight = eos_token_weight
     self._output_size = output_size
     self._max_num_boxes = max_num_boxes
     self._aug_rand_hflip = aug_rand_hflip
+    self._aug_scale_min = aug_scale_min
+    self._aug_scale_max = aug_scale_max
     self._aug_color_jitter_strength = aug_color_jitter_strength
     self._aug_color_jitter_impl = aug_color_jitter_impl
     self._coord_vocab_shift = coord_vocab_shift
     self._quantization_bins = quantization_bins
     self._skip_crowd_during_training = skip_crowd_during_training
-    self._resize_scales = resize_scales
+    self._label_shift = label_shift
 
   def _parse_train_data(self, data):
     """Parses data for training and evaluation."""
-    classes = data['groundtruth_classes']
+    classes = data['groundtruth_classes'] + self._label_shift
     boxes = data['groundtruth_boxes']
 
     is_crowds = data['groundtruth_is_crowd']
@@ -86,53 +90,20 @@ class Parser(parser.Parser):
     image = tf.clip_by_value(image, 0.0, 1.0)
     image, boxes, _ = preprocess_ops.random_horizontal_flip(image, boxes)
 
-    do_crop = tf.greater(tf.random.uniform([]), 0.5)
-    if do_crop:
-      # Rescale
-      boxes = box_ops.denormalize_boxes(boxes, tf.shape(image)[:2])
-      index = tf.random.categorical(tf.zeros([1, 3]), 1)[0]
-      scales = tf.gather([400.0, 500.0, 600.0], index, axis=0)
-      short_side = scales[0]
-      image, image_info = preprocess_ops.resize_image(image, short_side)
-      boxes = preprocess_ops.resize_and_crop_boxes(
-          boxes, image_info[2, :], image_info[1, :], image_info[3, :]
-      )
-      boxes = box_ops.normalize_boxes(boxes, image_info[1, :])
-
-      # Do croping
-      shape = tf.cast(image_info[1], dtype=tf.int32)
-      h = tf.random.uniform(
-          [], 384, tf.math.minimum(shape[0], 600), dtype=tf.int32
-      )
-      w = tf.random.uniform(
-          [], 384, tf.math.minimum(shape[1], 600), dtype=tf.int32
-      )
-      i = tf.random.uniform([], 0, shape[0] - h + 1, dtype=tf.int32)
-      j = tf.random.uniform([], 0, shape[1] - w + 1, dtype=tf.int32)
-      image = tf.image.crop_to_bounding_box(image, i, j, h, w)
-      boxes = boxes[..., :] * tf.cast(
-          tf.stack([shape[0], shape[1], shape[0], shape[1]]),
-          dtype=tf.float32)
-      boxes = tf.clip_by_value(
-          (boxes - tf.cast(tf.stack([i, j, i, j]), dtype=tf.float32)) /
-          tf.cast(tf.stack([h, w, h, w]), dtype=tf.float32), 0.0, 1.0)
-    scales = tf.constant(self._resize_scales, dtype=tf.float32)
-    index = tf.random.categorical(tf.zeros([1, 6]), 1)[0]
-    scales = tf.gather(scales, index, axis=0)
-
     image_shape = tf.shape(image)[:2]
     boxes = box_ops.denormalize_boxes(boxes, image_shape)
-    short_side = scales[0]
-    image, image_info = preprocess_ops.resize_image(
-        image, short_side, max(self._output_size)
-    )
+
+    image, image_info = preprocess_ops.resize_and_crop_image(
+        image,
+        self._output_size,
+        padded_size=self._output_size,
+        aug_scale_min=self._aug_scale_min,
+        aug_scale_max=self._aug_scale_max)
+
     boxes = preprocess_ops.resize_and_crop_boxes(
         boxes, image_info[2, :], image_info[1, :], image_info[3, :]
     )
-    scale = tf.cast(
-        tf.concat([self._output_size, self._output_size], -1), boxes.dtype
-    )
-    boxes = boxes / scale
+    boxes = box_ops.normalize_boxes(boxes, image_info[1, :])
 
     # Filters out ground truth boxes that are all zeros.
     indices = box_ops.get_non_empty_box_indices(boxes)
@@ -143,6 +114,9 @@ class Parser(parser.Parser):
     boxes, classes = utils.inject_noise_bbox(
         boxes, classes, self._max_num_boxes
     )
+
+    boxes = utils.clip_or_pad_to_max_len(boxes, self._max_num_boxes, 0)
+    classes = utils.clip_or_pad_to_max_len(classes, self._max_num_boxes, 0)
 
     outputs = self.build_response_seq_from_bbox(
         boxes, classes, self._coord_vocab_shift, self._quantization_bins
@@ -159,13 +133,14 @@ class Parser(parser.Parser):
         image - backgrnd_val, 0, 0, self._output_size[0], self._output_size[1]
     )
 
-    input_seq = utils.pad_to_max_len(input_seq, self._max_num_boxes * 5 + 1, -1)
-    target_seq = utils.pad_to_max_len(
+    input_seq = utils.clip_or_pad_to_max_len(
+        input_seq, self._max_num_boxes * 5 + 1, -1)
+    target_seq = utils.clip_or_pad_to_max_len(
         target_seq, self._max_num_boxes * 5 + 1, -1
     )
 
     input_seq, target_seq = input_seq[..., :-1], target_seq[..., 1:]
-    token_weights = utils.pad_to_max_len(
+    token_weights = utils.clip_or_pad_to_max_len(
         token_weights, self._max_num_boxes * 5, -1
     )
 
@@ -266,7 +241,7 @@ class Parser(parser.Parser):
 
   def _parse_eval_data(self, data):
     """Parses data for training and evaluation."""
-    classes = data['groundtruth_classes']
+    classes = data['groundtruth_classes'] + self._label_shift
     boxes = data['groundtruth_boxes']
     is_crowd = data['groundtruth_is_crowd']
 
@@ -274,13 +249,11 @@ class Parser(parser.Parser):
     image = data['image']
     image = tf.image.convert_image_dtype(image, dtype=tf.float32)
 
-    scales = tf.constant([self._resize_scales[-1]], tf.float32)
     image_shape = tf.shape(image)[:2]
     boxes = box_ops.denormalize_boxes(boxes, image_shape)
     gt_boxes = boxes
-    short_side = scales[0]
     image, image_info = preprocess_ops.resize_image(
-        image, short_side, max(self._output_size)
+        image, min(self._output_size), max(self._output_size)
     )
     boxes = preprocess_ops.resize_and_crop_boxes(
         boxes, image_info[2, :], image_info[1, :], image_info[3, :]

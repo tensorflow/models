@@ -23,8 +23,12 @@ from official.core import config_definitions as cfg
 from official.core import input_reader
 
 
+InputReader = input_reader.InputReader
+
+
 def build_weighted_sampling_combine_fn(
-    weights: Mapping[Any, Any]) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
+    weights: Mapping[Any, Any], stop_on_empty_dataset=True
+) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
   """Builds a combine_fn using weighted sampling."""
 
   def combine_fn(datasets: Mapping[Any, tf.data.Dataset]) -> tf.data.Dataset:
@@ -35,7 +39,7 @@ def build_weighted_sampling_combine_fn(
       ds.append(dataset)
       ws.append(weights[k])
     return tf.data.Dataset.sample_from_datasets(
-        ds, ws, stop_on_empty_dataset=True)
+        ds, ws, stop_on_empty_dataset=stop_on_empty_dataset)
 
   return combine_fn
 
@@ -44,7 +48,15 @@ def create_combine_fn(
     params: cfg.DataConfig
 ) -> Union[None, Callable[[tf.data.Dataset], tf.data.Dataset]]:
   """Creates and returns a combine_fn for dataset mixing."""
-  if params.is_training and params.weights:
+  if (
+      hasattr(params, 'stop_on_empty_dataset')
+      and params.stop_on_empty_dataset is not None
+  ):
+    stop_on_empty_dataset = params.stop_on_empty_dataset
+  else:
+    stop_on_empty_dataset = True
+
+  if params.weights:
     # Combine multiple datasets using weighted sampling.
     if (not isinstance(params.input_path, cfg.base_config.Config) or
         not isinstance(params.weights, cfg.base_config.Config)):
@@ -63,7 +75,7 @@ def create_combine_fn(
         raise ValueError(
             'input_path key \'%s\' does not have a corresponding weight.' % k)
 
-    return build_weighted_sampling_combine_fn(weights)
+    return build_weighted_sampling_combine_fn(weights, stop_on_empty_dataset)
   return None
 
 

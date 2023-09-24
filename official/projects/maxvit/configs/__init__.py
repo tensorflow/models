@@ -19,4 +19,4 @@ from official.projects.maxvit.configs import backbones  # pylint:disable=unused-
 from official.projects.maxvit.configs import rcnn  # pylint:disable=unused-import
 from official.projects.maxvit.configs import retinanet  # pylint:disable=unused-import
 from official.projects.maxvit.configs import semantic_segmentation  # pylint:disable=unused-import
-from official.projects.maxvit.configs.google import image_classification  # pylint:disable=unused-import
+from official.projects.maxvit.configs import image_classification  # pylint:disable=unused-import

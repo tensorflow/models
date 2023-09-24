@@ -1716,9 +1716,9 @@ def _apply_func_with_prob(func: Any, image: tf.Tensor,
   return augmented_image, augmented_bboxes
 
 
-def select_and_apply_random_policy(policies: Any,
-                                   image: tf.Tensor,
-                                   bboxes: Optional[tf.Tensor] = None):
+def select_and_apply_random_policy(
+    policies: Any, image: tf.Tensor, bboxes: Optional[tf.Tensor] = None
+) -> Tuple[tf.Tensor, Optional[tf.Tensor]]:
   """Select a random policy from `policies` and apply it to `image`."""
   policy_to_select = tf.random.uniform([], maxval=len(policies), dtype=tf.int32)
   # Note that using tf.case instead of tf.conds would result in significantly
@@ -1890,6 +1890,8 @@ class ImageAugment(object):
   ) -> tf.Tensor:
     """Given an image tensor, returns a distorted image with the same shape.
 
+    Expect the image tensor values are in the range [0, 255].
+
     Args:
       image: `Tensor` of shape [height, width, 3] or
         [num_frames, height, width, 3] representing an image or image sequence.
@@ -1905,6 +1907,8 @@ class ImageAugment(object):
       bboxes: tf.Tensor
   ) -> Tuple[tf.Tensor, tf.Tensor]:
     """Distorts the image and bounding boxes.
+
+    Expect the image tensor values are in the range [0, 255].
 
     Args:
       image: `Tensor` of shape [height, width, 3] or
@@ -2070,6 +2074,8 @@ class AutoAugment(ImageAugment):
 
     tf_policies = self._make_tf_policies()
     image, bboxes = select_and_apply_random_policy(tf_policies, image, bboxes)
+    image = tf.cast(image, dtype=input_image_type)
+    assert bboxes is not None
     return image, bboxes
 
   @staticmethod
@@ -2488,6 +2494,7 @@ class RandAugment(ImageAugment):
                          bboxes: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
     """See base class."""
     image, bboxes = self._distort_common(image, bboxes)
+    assert bboxes is not None
     return image, bboxes
 
 
@@ -2621,15 +2628,17 @@ class MixupAndCutmix:
   """
 
   def __init__(self,
+               num_classes: int,
                mixup_alpha: float = .8,
                cutmix_alpha: float = 1.,
                prob: float = 1.0,
                switch_prob: float = 0.5,
-               label_smoothing: float = 0.1,
-               num_classes: int = 1001):
+               label_smoothing: float = 0.1):
     """Applies Mixup and/or Cutmix to a batch of images.
 
     Args:
+
+      num_classes (int): Number of classes.
       mixup_alpha (float, optional): For drawing a random lambda (`lam`) from a
         beta distribution (for each image). If zero Mixup is deactivated.
         Defaults to .8.
@@ -2641,7 +2650,6 @@ class MixupAndCutmix:
         batch. Defaults to 0.5.
       label_smoothing (float, optional): Constant for label smoothing. Defaults
         to 0.1.
-      num_classes (int, optional): Number of classes. Defaults to 1001.
     """
     self.mixup_alpha = mixup_alpha
     self.cutmix_alpha = cutmix_alpha

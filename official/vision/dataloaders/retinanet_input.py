@@ -45,6 +45,7 @@ class Parser(parser.Parser):
                anchor_size,
                match_threshold=0.5,
                unmatched_threshold=0.5,
+               box_coder_weights=None,
                aug_type=None,
                aug_rand_hflip=False,
                aug_scale_min=1.0,
@@ -55,7 +56,8 @@ class Parser(parser.Parser):
                max_num_instances=100,
                dtype='bfloat16',
                resize_first: Optional[bool] = None,
-               mode=None):
+               mode=None,
+               pad=True):
     """Initializes parameters for parsing annotations in the dataset.
 
     Args:
@@ -78,6 +80,10 @@ class Parser(parser.Parser):
       unmatched_threshold: `float` number between 0 and 1 representing the
         upper-bound threshold to assign negative labels for anchors. An anchor
         with a score below the threshold is labeled negative.
+      box_coder_weights: Optional `list` of 4 positive floats to scale y, x, h,
+        and w when encoding box coordinates. If set to None, does not perform
+        scaling. For Faster RCNN, the open-source implementation recommends
+        using [10.0, 10.0, 5.0, 5.0].
       aug_type: An optional Augmentation object to choose from AutoAugment and
         RandAugment.
       aug_rand_hflip: `bool`, if True, augment training with random horizontal
@@ -99,6 +105,15 @@ class Parser(parser.Parser):
         augmentations; computationally more efficient.
       mode: a ModeKeys. Specifies if this is training, evaluation, prediction or
         prediction with ground-truths in the outputs.
+      pad: A bool indicating whether to pad the input image to make it
+        size a factor of 2**max_level. The padded size will be the smallest
+        rectangle, such that each dimension is the smallest multiple of 
+        2**max_level which is larger than the desired output size. For example,
+        if desired output size = (320, 320) and max_level = 7, the output padded
+        size = (384, 384). This is necessary when using FPN as it assumes each
+        lower feature map is 2x size of its higher neighbor. Without padding,
+        such relationship may be invalidated. The backbone may produce 5x5 and
+        2x2 consecutive feature maps, which does not work with FPN. 
     """
     self._mode = mode
     self._max_num_instances = max_num_instances
@@ -113,6 +128,7 @@ class Parser(parser.Parser):
     self._anchor_size = anchor_size
     self._match_threshold = match_threshold
     self._unmatched_threshold = unmatched_threshold
+    self._box_coder_weights = box_coder_weights
 
     # Data augmentation.
     self._aug_rand_hflip = aug_rand_hflip
@@ -150,6 +166,10 @@ class Parser(parser.Parser):
     # Input pipeline optimization.
     self._resize_first = resize_first
 
+    # Whether to pad image to make its size the smallest factor of 2*max_level.
+    # This is needed when using FPN decoder.
+    self._pad = pad
+
   def _resize_and_crop_image_and_boxes(self, image, boxes, pad=True):
     """Resizes and crops image and boxes, optionally with padding."""
     # Resizes and crops image.
@@ -162,7 +182,8 @@ class Parser(parser.Parser):
         self._output_size,
         padded_size=padded_size,
         aug_scale_min=self._aug_scale_min,
-        aug_scale_max=self._aug_scale_max)
+        aug_scale_max=self._aug_scale_max,
+    )
 
     # Resizes and crops boxes.
     image_scale = image_info[2, :]
@@ -171,7 +192,7 @@ class Parser(parser.Parser):
                                                  image_info[1, :], offset)
     return image, boxes, image_info
 
-  def _parse_train_data(self, data, anchor_labeler=None):
+  def _parse_train_data(self, data, anchor_labeler=None, input_anchor=None):
     """Parses data for training and evaluation."""
     classes = data['groundtruth_classes']
     boxes = data['groundtruth_boxes']
@@ -209,7 +230,9 @@ class Parser(parser.Parser):
     resize_first = self._resize_first and less_output_pixels
     if resize_first:
       image, boxes, image_info = self._resize_and_crop_image_and_boxes(
-          image, boxes, pad=False)
+          image, boxes, pad=False
+      )
+      image = tf.cast(image, dtype=tf.uint8)
 
     # Apply autoaug or randaug.
     if self._augmenter is not None:
@@ -226,14 +249,23 @@ class Parser(parser.Parser):
     # Converts boxes from normalized coordinates to pixel coordinates.
     boxes = box_ops.denormalize_boxes(boxes, image_shape)
 
-    if not resize_first:
-      image, boxes, image_info = self._resize_and_crop_image_and_boxes(
-          image, boxes, pad=True)
+    if self._pad:
+      padded_size = preprocess_ops.compute_padded_size(
+          self._output_size, 2**self._max_level
+      )
     else:
-      padded_size = preprocess_ops.compute_padded_size(self._output_size,
-                                                       2**self._max_level)
-      image = tf.image.pad_to_bounding_box(
-          image, 0, 0, padded_size[0], padded_size[1])
+      padded_size = self._output_size
+
+    if not resize_first:
+      image, boxes, image_info = (
+          self._resize_and_crop_image_and_boxes(image, boxes, pad=self._pad)
+      )
+
+    image = tf.image.pad_to_bounding_box(
+        image, 0, 0, padded_size[0], padded_size[1]
+    )
+    image = tf.ensure_shape(image, padded_size + [3])
+
     image_height, image_width, _ = image.get_shape().as_list()
 
     # Filters out ground-truth boxes that are all zeros.
@@ -244,16 +276,21 @@ class Parser(parser.Parser):
       attributes[k] = tf.gather(v, indices)
 
     # Assigns anchors.
-    input_anchor = anchor.build_anchor_generator(
-        min_level=self._min_level,
-        max_level=self._max_level,
-        num_scales=self._num_scales,
-        aspect_ratios=self._aspect_ratios,
-        anchor_size=self._anchor_size)
+    if input_anchor is None:
+      input_anchor = anchor.build_anchor_generator(
+          min_level=self._min_level,
+          max_level=self._max_level,
+          num_scales=self._num_scales,
+          aspect_ratios=self._aspect_ratios,
+          anchor_size=self._anchor_size,
+      )
+
     anchor_boxes = input_anchor(image_size=(image_height, image_width))
     if anchor_labeler is None:
       anchor_labeler = anchor.AnchorLabeler(
-          self._match_threshold, self._unmatched_threshold
+          match_threshold=self._match_threshold,
+          unmatched_threshold=self._unmatched_threshold,
+          box_coder_weights=self._box_coder_weights,
       )
     (cls_targets, box_targets, att_targets, cls_weights,
      box_weights) = anchor_labeler.label_anchors(
@@ -275,9 +312,9 @@ class Parser(parser.Parser):
       labels['attribute_targets'] = att_targets
     return image, labels
 
-  def _parse_eval_data(self, data, anchor_labeler=None):
+  def _parse_eval_data(self, data, anchor_labeler=None, input_anchor=None):
     """Parses data for training and evaluation."""
-    groundtruths = {}
+
     classes = data['groundtruth_classes']
     boxes = data['groundtruth_boxes']
     # If not empty, `attributes` is a dict of (name, ground_truth) pairs.
@@ -295,13 +332,21 @@ class Parser(parser.Parser):
     boxes = box_ops.denormalize_boxes(boxes, image_shape)
 
     # Resizes and crops image.
+    if self._pad:
+      padded_size = preprocess_ops.compute_padded_size(
+          self._output_size, 2**self._max_level
+      )
+    else:
+      padded_size = self._output_size
+
     image, image_info = preprocess_ops.resize_and_crop_image(
         image,
         self._output_size,
-        padded_size=preprocess_ops.compute_padded_size(self._output_size,
-                                                       2**self._max_level),
+        padded_size=padded_size,
         aug_scale_min=1.0,
-        aug_scale_max=1.0)
+        aug_scale_max=1.0,
+    )
+    image = tf.ensure_shape(image, padded_size + [3])
     image_height, image_width, _ = image.get_shape().as_list()
 
     # Resizes and crops boxes.
@@ -317,16 +362,21 @@ class Parser(parser.Parser):
       attributes[k] = tf.gather(v, indices)
 
     # Assigns anchors.
-    input_anchor = anchor.build_anchor_generator(
-        min_level=self._min_level,
-        max_level=self._max_level,
-        num_scales=self._num_scales,
-        aspect_ratios=self._aspect_ratios,
-        anchor_size=self._anchor_size)
+    if input_anchor is None:
+      input_anchor = anchor.build_anchor_generator(
+          min_level=self._min_level,
+          max_level=self._max_level,
+          num_scales=self._num_scales,
+          aspect_ratios=self._aspect_ratios,
+          anchor_size=self._anchor_size,
+      )
+
     anchor_boxes = input_anchor(image_size=(image_height, image_width))
     if anchor_labeler is None:
       anchor_labeler = anchor.AnchorLabeler(
-          self._match_threshold, self._unmatched_threshold
+          match_threshold=self._match_threshold,
+          unmatched_threshold=self._unmatched_threshold,
+          box_coder_weights=self._box_coder_weights,
       )
     (cls_targets, box_targets, att_targets, cls_weights,
      box_weights) = anchor_labeler.label_anchors(

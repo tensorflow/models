@@ -19,14 +19,13 @@ from absl import logging
 import tensorflow as tf
 
 from official.core import base_task
-from official.core import input_reader
 from official.core import task_factory
 from official.modeling import tf_utils
 from official.projects.yt8m.configs import yt8m as yt8m_cfg
 from official.projects.yt8m.dataloaders import yt8m_input
 from official.projects.yt8m.eval_utils import eval_util
-from official.projects.yt8m.modeling import yt8m_model_utils as utils
-from official.projects.yt8m.modeling.yt8m_model import DbofModel
+from official.projects.yt8m.modeling import yt8m_model
+from official.core import input_reader
 
 
 @task_factory.register_task_cls(yt8m_cfg.YT8MTask)
@@ -45,20 +44,26 @@ class YT8MTask(base_task.Task):
     l2_weight_decay = self.task_config.losses.l2_weight_decay
     # Model configuration.
     model_config = self.task_config.model
-    model = DbofModel(
+    model = yt8m_model.VideoClassificationModel(
         params=model_config,
         input_specs=input_specs,
         num_classes=train_cfg.num_classes,
-        l2_weight_decay=l2_weight_decay)
+        l2_weight_decay=l2_weight_decay,
+    )
+
+    # Warmup calls to build model variables.
+    _ = model(
+        inputs=tf.keras.Input(common_input_shape, dtype=tf.float32),
+        num_frames=tf.keras.Input([], dtype=tf.float32),
+    )
 
     non_trainable_batch_norm_variables = []
     non_trainable_extra_variables = []
-    for var in model.variables:
-      if not var.trainable:
-        if 'moving_mean' or 'moving_variance' in var.name:
-          non_trainable_batch_norm_variables.append(var)
-        else:
-          non_trainable_extra_variables.append(var)
+    for var in model.non_trainable_variables:
+      if 'moving_mean' in var.name or 'moving_variance' in var.name:
+        non_trainable_batch_norm_variables.append(var)
+      else:
+        non_trainable_extra_variables.append(var)
 
     logging.info(
         'Trainable model variables:\n%s',
@@ -116,22 +121,21 @@ class YT8MTask(base_task.Task):
         decoder_fn=decoder_fn,
         parser_fn=parser_fn,
         postprocess_fn=postprocess_fn,
-        transform_and_batch_fn=batch_fn)
+        transform_and_batch_fn=batch_fn,
+    )
 
     dataset = reader.read(input_context=input_context)
 
     return dataset
 
-  def build_losses(self,
-                   labels,
-                   model_outputs,
-                   label_weights=None,
-                   aux_losses=None):
+  def build_losses(
+      self, labels, model_outputs, label_weights=None, aux_losses=None
+  ):
     """Sigmoid Cross Entropy.
 
     Args:
       labels: tensor containing truth labels.
-      model_outputs: output logits of the classifier.
+      model_outputs: output probabilities of the classifier.
       label_weights: optional tensor of label weights.
       aux_losses: tensor containing auxiliarly loss tensors, i.e. `losses` in
         keras.Model.
@@ -141,12 +145,12 @@ class YT8MTask(base_task.Task):
     """
     losses_config = self.task_config.losses
     model_loss = tf.keras.losses.binary_crossentropy(
-        labels,
-        model_outputs,
+        tf.expand_dims(labels, axis=-1),
+        tf.expand_dims(model_outputs, axis=-1),
         from_logits=losses_config.from_logits,
         label_smoothing=losses_config.label_smoothing,
-        axis=None)
-
+        axis=-1,
+    )
     if label_weights is None:
       model_loss = tf_utils.safe_mean(model_loss)
     else:
@@ -154,7 +158,8 @@ class YT8MTask(base_task.Task):
       # Manutally compute weighted mean loss.
       total_loss = tf.reduce_sum(model_loss)
       total_weight = tf.cast(
-          tf.reduce_sum(label_weights), dtype=total_loss.dtype)
+          tf.reduce_sum(label_weights), dtype=total_loss.dtype
+      )
       model_loss = tf.math.divide_no_nan(total_loss, total_weight)
 
     total_loss = model_loss
@@ -191,7 +196,8 @@ class YT8MTask(base_task.Task):
       top_k = self.task_config.evaluation.average_precision.top_k
       top_n = self.task_config.evaluation.average_precision.top_n
       self.avg_prec_metric = eval_util.EvaluationMetrics(
-          num_classes, top_k=top_k, top_n=top_n)
+          num_classes, top_k=top_k, top_n=top_n
+      )
 
     return metrics
 
@@ -236,32 +242,26 @@ class YT8MTask(base_task.Task):
         logs[m.name] = m.result()
     return logs
 
-  def _preprocess_model_inputs(self,
-                               inputs: dict[str, tf.Tensor],
-                               training: bool = True):
+  def _preprocess_model_inputs(
+      self,
+      inputs: dict[str, tf.Tensor],
+      require_num_frames: bool = True,
+      training: bool = True,
+  ):
     """Preprocesses input tensors before model on device."""
-    if training:
-      data_config = self.task_config.train_data
-    else:
-      data_config = self.task_config.validation_data
+    extra_inputs = {
+        'num_frames': (
+            tf.reshape(inputs['num_frames'], [-1])
+            if require_num_frames
+            else None
+        ),
+        'training': training,
+    }
+    return inputs['video_matrix'], extra_inputs
 
-    features = inputs['video_matrix']
-    num_frames = inputs['num_frames']
-
-    # sample random frames / random sequence.
-    num_frames = tf.cast(num_frames, tf.float32)
-    num_sample_frames = data_config.num_sample_frames
-    if self.task_config.model.sample_random_frames:
-      features = utils.sample_random_frames(
-          features, num_frames, num_sample_frames)
-    else:
-      features = utils.sample_random_sequence(
-          features, num_frames, num_sample_frames)
-    return features
-
-  def _preprocess_labels(self,
-                         inputs: dict[str, tf.Tensor],
-                         training: bool = True):
+  def _preprocess_labels(
+      self, inputs: dict[str, tf.Tensor], training: bool = True
+  ):
     """Preprocesses labels."""
     del training  # training is unused in _preprocess_labels in YT8M.
     labels = inputs['labels']
@@ -269,12 +269,9 @@ class YT8MTask(base_task.Task):
 
     return labels, label_weights
 
-  def _postprocess_outputs(self,
-                           inputs,
-                           outputs,
-                           labels,
-                           label_weights,
-                           training: bool = True):
+  def _postprocess_outputs(
+      self, outputs, labels, label_weights, training: bool = True
+  ):
     """Postprocess model outputs (inputs / labels / label_weights)."""
     if not training and self.task_config.validation_data.segment_labels:
       # workaround to ignore the unrated labels.
@@ -282,7 +279,7 @@ class YT8MTask(base_task.Task):
       # remove padding
       outputs = outputs[~tf.reduce_all(labels == -1, axis=1)]
       labels = labels[~tf.reduce_all(labels == -1, axis=1)]
-    return inputs, outputs, labels, label_weights
+    return outputs, labels, label_weights
 
   def train_step(self, inputs, model, optimizer, metrics=None):
     """Does forward and backward.
@@ -298,25 +295,34 @@ class YT8MTask(base_task.Task):
     Returns:
       a dictionary of logs.
     """
-    model_inputs = self._preprocess_model_inputs(inputs, training=True)
+    # Will require `num_frames` if `num_sample_frames` is None since
+    # video_matrix is padded to max_frames in this case.
+    require_num_frames = self.task_config.train_data.num_sample_frames is None
+    inputs_tensor, extra_inputs = self._preprocess_model_inputs(
+        inputs,
+        require_num_frames=require_num_frames,
+        training=True,
+    )
     labels, label_weights = self._preprocess_labels(inputs, training=True)
 
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
-      outputs = model(model_inputs, training=True)
+      outputs = model(inputs_tensor, **extra_inputs)['predictions']
       # Casting output layer as float32 is necessary when mixed_precision is
       # mixed_float16 or mixed_bfloat16 to ensure output is casted as float32.
       outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
       # Post-process model / label outputs.
-      inputs, outputs, labels, label_weights = self._postprocess_outputs(
-          inputs, outputs, labels, label_weights, training=True)
+      outputs, labels, label_weights = self._postprocess_outputs(
+          outputs, labels, label_weights, training=True
+      )
 
       # Computes per-replica loss
       all_losses = self.build_losses(
           model_outputs=outputs,
           labels=labels,
           label_weights=label_weights,
-          aux_losses=model.losses)
+          aux_losses=model.losses,
+      )
 
       loss = all_losses['total_loss']
       # Scales loss as the default gradients allreduce performs sum inside the
@@ -337,8 +343,9 @@ class YT8MTask(base_task.Task):
 
     # Apply gradient clipping.
     if self.task_config.gradient_clip_norm > 0:
-      grads, _ = tf.clip_by_global_norm(grads,
-                                        self.task_config.gradient_clip_norm)
+      grads, _ = tf.clip_by_global_norm(
+          grads, self.task_config.gradient_clip_norm
+      )
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
     logs = {self.loss: loss}
@@ -349,7 +356,9 @@ class YT8MTask(base_task.Task):
             outputs=outputs,
             model_losses=all_losses,
             label_weights=label_weights,
-            training=True))
+            training=True,
+        )
+    )
     return logs
 
   def validation_step(self, inputs, model, metrics=None):
@@ -358,26 +367,33 @@ class YT8MTask(base_task.Task):
     Args:
       inputs: a dictionary of input tensors. output_dict = { "video_ids":
         batch_video_ids, "video_matrix": batch_video_matrix, "labels":
-        batch_labels, "num_frames": batch_frames, }
-      model: the model, forward definition
+        batch_labels, "num_frames": batch_frames}.
+      model: the model, forward definition.
       metrics: a nested structure of metrics objects.
 
     Returns:
       a dictionary of logs.
     """
-    model_inputs = self._preprocess_model_inputs(inputs, training=False)
-    labels, label_weights = self._preprocess_labels(inputs, training=False)
-
-    outputs = self.inference_step(model_inputs, model)
+    # Will require `num_frames` if `num_sample_frames` is None since
+    # video_matrix is padded to max_frames in this case.
+    require_num_frames = (
+        self.task_config.validation_data.num_sample_frames is None
+    )
+    outputs = self.inference_step(
+        model, inputs, require_num_frames=require_num_frames
+    )['predictions']
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
-    inputs, outputs, labels, label_weights = self._postprocess_outputs(
-        inputs, outputs, labels, label_weights, training=False)
+    labels, label_weights = self._preprocess_labels(inputs, training=False)
+    outputs, labels, label_weights = self._postprocess_outputs(
+        outputs, labels, label_weights, training=False
+    )
 
     all_losses = self.build_losses(
         labels=labels,
         model_outputs=outputs,
         label_weights=label_weights,
-        aux_losses=model.losses)
+        aux_losses=model.losses,
+    )
 
     logs = {self.loss: all_losses['total_loss']}
     logs.update(
@@ -387,13 +403,18 @@ class YT8MTask(base_task.Task):
             outputs=outputs,
             model_losses=all_losses,
             label_weights=inputs.get('label_weights', None),
-            training=False))
+            training=False,
+        )
+    )
 
     return logs
 
-  def inference_step(self, inputs, model):
+  def inference_step(self, model, inputs, require_num_frames=True):
     """Performs the forward step."""
-    return model(inputs, training=False)
+    model_inputs, extra_inputs = self._preprocess_model_inputs(
+        inputs, require_num_frames=require_num_frames, training=False
+    )
+    return model(model_inputs, **extra_inputs)
 
   def aggregate_logs(self, state=None, step_logs=None):
     if self.task_config.evaluation.average_precision is not None:
@@ -401,12 +422,15 @@ class YT8MTask(base_task.Task):
         state = self.avg_prec_metric
       self.avg_prec_metric.accumulate(
           labels=step_logs[self.avg_prec_metric.name][0],
-          predictions=step_logs[self.avg_prec_metric.name][1])
+          predictions=step_logs[self.avg_prec_metric.name][1],
+      )
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     if self.task_config.evaluation.average_precision is not None:
-      avg_prec_metrics = self.avg_prec_metric.get()
+      avg_prec_metrics = self.avg_prec_metric.get(
+          self.task_config.evaluation.average_precision.return_per_class_ap
+      )
       self.avg_prec_metric.clear()
       return avg_prec_metrics
     return None

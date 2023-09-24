@@ -22,7 +22,7 @@ from official.modeling import optimization
 
 @dataclasses.dataclass
 class OcrTaskConfig(cfg.TaskConfig):
-  train_data: cfg.DataConfig = cfg.DataConfig()
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
   model_call_needs_labels: bool = False
 
 

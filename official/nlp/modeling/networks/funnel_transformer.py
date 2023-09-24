@@ -298,6 +298,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
           str, tf.keras.layers.Layer
       ] = layers.TransformerEncoderBlock,
       share_rezero: bool = False,
+      append_dense_inputs: bool = False,
       **kwargs
   ):
     super().__init__(**kwargs)
@@ -420,6 +421,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
     self._pool_strides = pool_strides  # This is a list here.
     self._unpool_length = unpool_length
     self._pool_type = pool_type
+    self._append_dense_inputs = append_dense_inputs
 
     self._config = {
         'vocab_size': vocab_size,
@@ -485,11 +487,22 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
       word_embeddings = self._embedding_layer(word_ids)
 
     if dense_inputs is not None:
-      # Concat the dense embeddings at sequence begin so unpool_len can control
-      # embedding not being pooled.
-      word_embeddings = tf.concat([dense_inputs, word_embeddings], axis=1)
-      type_ids = tf.concat([dense_type_ids, type_ids], axis=1)
-      mask = tf.concat([dense_mask, mask], axis=1)
+      # Allow concatenation of the dense embeddings at sequence end if requested
+      # and `unpool_length`` is set as zero
+      if self._append_dense_inputs:
+        if self._unpool_length != 0:
+          raise ValueError(
+              'unpool_length is not supported by append_dense_inputs now.'
+          )
+        word_embeddings = tf.concat([word_embeddings, dense_inputs], axis=1)
+        type_ids = tf.concat([type_ids, dense_type_ids], axis=1)
+        mask = tf.concat([mask, dense_mask], axis=1)
+      else:
+        # Concat the dense embeddings at sequence begin so unpool_len can
+        # control embedding not being pooled.
+        word_embeddings = tf.concat([dense_inputs, word_embeddings], axis=1)
+        type_ids = tf.concat([dense_type_ids, type_ids], axis=1)
+        mask = tf.concat([dense_mask, mask], axis=1)
     # absolute position embeddings
     position_embeddings = self._position_embedding_layer(word_embeddings)
     type_embeddings = self._type_embedding_layer(type_ids)
@@ -515,9 +528,15 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
           axes=[1])
 
       for i, layer in enumerate(self._transformer_layers):
+        transformer_output_range = None
+        if i == self._num_layers - 1:
+          transformer_output_range = output_range
+
         # Bypass no pooling cases.
         if self._pool_strides[i] == 1:
-          x = layer([x, x, attention_mask])
+          x = layer(
+              [x, x, attention_mask], output_range=transformer_output_range
+          )
         else:
           # Pools layer for compressing the query length.
           pooled_inputs = self._att_input_pool_layers[i](
@@ -528,8 +547,7 @@ class FunnelTransformerEncoder(tf.keras.layers.Layer):
                   dtype=pooled_inputs.dtype), pooled_inputs),
               axis=1)
           x = layer([query_inputs, x, attention_mask],
-                    output_range=output_range if i == self._num_layers -
-                    1 else None)
+                    output_range=transformer_output_range)
         # Pools the corresponding attention_mask.
         if i < len(self._transformer_layers) - 1:
           attention_mask = _pool_and_concat(

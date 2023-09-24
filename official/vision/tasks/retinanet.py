@@ -127,6 +127,9 @@ class RetinaNetTask(base_task.Task):
         dtype=params.dtype,
         match_threshold=params.parser.match_threshold,
         unmatched_threshold=params.parser.unmatched_threshold,
+        box_coder_weights=(
+            self.task_config.model.detection_generator.box_coder_weights
+        ),
         aug_type=params.parser.aug_type,
         aug_rand_hflip=params.parser.aug_rand_hflip,
         aug_scale_min=params.parser.aug_scale_min,
@@ -205,10 +208,12 @@ class RetinaNetTask(base_task.Task):
 
     return attribute_loss
 
-  def build_losses(self,
-                   outputs: Mapping[str, Any],
-                   labels: Mapping[str, Any],
-                   aux_losses: Optional[Any] = None):
+  def build_losses(
+      self,
+      outputs: Mapping[str, Any],
+      labels: Mapping[str, Any],
+      aux_losses: Optional[Any] = None,
+  ):
     """Build RetinaNet losses."""
     params = self.task_config
     attribute_heads = self.task_config.model.head.attribute_heads
@@ -321,7 +326,8 @@ class RetinaNetTask(base_task.Task):
 
       # Computes per-replica loss.
       loss, cls_loss, box_loss, model_loss = self.build_losses(
-          outputs=outputs, labels=labels, aux_losses=model.losses)
+          outputs=outputs, labels=labels, aux_losses=model.losses
+      )
       scaled_loss = loss / num_replicas
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
@@ -371,7 +377,8 @@ class RetinaNetTask(base_task.Task):
                     image_shape=labels['image_info'][:, 1, :],
                     training=False)
     loss, cls_loss, box_loss, model_loss = self.build_losses(
-        outputs=outputs, labels=labels, aux_losses=model.losses)
+        outputs=outputs, labels=labels, aux_losses=model.losses
+    )
     logs = {self.loss: loss}
 
     all_losses = {

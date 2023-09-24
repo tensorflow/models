@@ -26,7 +26,7 @@ class ResNet(base_config.Config):
 @dataclasses.dataclass
 class Backbone(oneof.OneOfConfig):
   type: str = 'resnet'
-  resnet: ResNet = ResNet()
+  resnet: ResNet = dataclasses.field(default_factory=ResNet)
   not_resnet: int = 2
 
 
@@ -39,8 +39,8 @@ class OutputLayer(oneof.OneOfConfig):
 
 @dataclasses.dataclass
 class Network(base_config.Config):
-  backbone: Backbone = Backbone()
-  output_layer: OutputLayer = OutputLayer()
+  backbone: Backbone = dataclasses.field(default_factory=Backbone)
+  output_layer: OutputLayer = dataclasses.field(default_factory=OutputLayer)
 
 
 class OneOfTest(tf.test.TestCase):

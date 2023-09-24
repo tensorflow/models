@@ -41,7 +41,9 @@ from official.nlp.tools import tokenization
 @dataclasses.dataclass
 class ModelConfig(base_config.Config):
   """A base span labeler configuration."""
-  encoder: encoders.EncoderConfig = encoders.EncoderConfig()
+  encoder: encoders.EncoderConfig = dataclasses.field(
+      default_factory=encoders.EncoderConfig
+  )
 
 
 @dataclasses.dataclass
@@ -53,9 +55,11 @@ class QuestionAnsweringConfig(cfg.TaskConfig):
   n_best_size: int = 20
   max_answer_length: int = 30
   null_score_diff_threshold: float = 0.0
-  model: ModelConfig = ModelConfig()
-  train_data: cfg.DataConfig = cfg.DataConfig()
-  validation_data: cfg.DataConfig = cfg.DataConfig()
+  model: ModelConfig = dataclasses.field(default_factory=ModelConfig)
+  train_data: cfg.DataConfig = dataclasses.field(default_factory=cfg.DataConfig)
+  validation_data: cfg.DataConfig = dataclasses.field(
+      default_factory=cfg.DataConfig
+  )
 
 
 @dataclasses.dataclass

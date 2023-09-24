@@ -83,7 +83,7 @@ class Backbone3D(backbones_3d.Backbone3D):
     s3d: s3d backbone config.
   """
   type: str = 's3d'
-  s3d: S3D = S3D()
+  s3d: S3D = dataclasses.field(default_factory=S3D)
 
 
 @dataclasses.dataclass
@@ -95,4 +95,4 @@ class S3DModel(video_classification.VideoClassificationModel):
     backbone: backbone config.
   """
   model_type: str = 's3d'
-  backbone: Backbone3D = Backbone3D()
+  backbone: Backbone3D = dataclasses.field(default_factory=Backbone3D)

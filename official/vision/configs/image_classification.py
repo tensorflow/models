@@ -49,7 +49,9 @@ class DataConfig(cfg.DataConfig):
   label_field_key: str = 'image/class/label'
   decode_jpeg_only: bool = True
   mixup_and_cutmix: Optional[common.MixupAndCutmix] = None
-  decoder: Optional[common.DataDecoder] = common.DataDecoder()
+  decoder: Optional[common.DataDecoder] = dataclasses.field(
+      default_factory=common.DataDecoder
+  )
 
   # Keep for backward compatibility.
   aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'.
@@ -69,11 +71,15 @@ class ImageClassificationModel(hyperparams.Config):
   """The model config."""
   num_classes: int = 0
   input_size: List[int] = dataclasses.field(default_factory=list)
-  backbone: backbones.Backbone = backbones.Backbone(
-      type='resnet', resnet=backbones.ResNet())
+  backbone: backbones.Backbone = dataclasses.field(
+      default_factory=lambda: backbones.Backbone(  # pylint: disable=g-long-lambda
+          type='resnet', resnet=backbones.ResNet()
+      )
+  )
   dropout_rate: float = 0.0
-  norm_activation: common.NormActivation = common.NormActivation(
-      use_sync_bn=False)
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=lambda: common.NormActivation(use_sync_bn=False)
+  )
   # Adds a BatchNormalization layer pre-GlobalAveragePooling in classification
   add_head_batch_norm: bool = False
   kernel_initializer: str = 'random_uniform'
@@ -103,11 +109,17 @@ class Evaluation(hyperparams.Config):
 @dataclasses.dataclass
 class ImageClassificationTask(cfg.TaskConfig):
   """The task config."""
-  model: ImageClassificationModel = ImageClassificationModel()
-  train_data: DataConfig = DataConfig(is_training=True)
-  validation_data: DataConfig = DataConfig(is_training=False)
-  losses: Losses = Losses()
-  evaluation: Evaluation = Evaluation()
+  model: ImageClassificationModel = dataclasses.field(
+      default_factory=ImageClassificationModel
+  )
+  train_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=True)
+  )
+  validation_data: DataConfig = dataclasses.field(
+      default_factory=lambda: DataConfig(is_training=False)
+  )
+  losses: Losses = dataclasses.field(default_factory=Losses)
+  evaluation: Evaluation = dataclasses.field(default_factory=Evaluation)
   train_input_partition_dims: Optional[List[int]] = dataclasses.field(
       default_factory=list)
   eval_input_partition_dims: Optional[List[int]] = dataclasses.field(

@@ -1128,6 +1128,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
       nms_v3_refinements: Optional[int] = None,
       return_decoded: Optional[bool] = None,
       use_class_agnostic_nms: Optional[bool] = None,
+      box_coder_weights: list[float] | None = None,
       **kwargs,
   ):
     """Initializes a multi-level detection generator.
@@ -1162,6 +1163,10 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         regardless of whether `apply_nms` is True or not.
       use_class_agnostic_nms: A `bool` of whether non max suppression is
         operated on all the boxes using max scores across all classes.
+      box_coder_weights: An optional `list` of 4 positive floats to scale y, x,
+        h, and w when encoding box coordinates. If set to None, does not perform
+        scaling. For Faster RCNN, the open-source implementation recommends
+        using [10.0, 10.0, 5.0, 5.0].
       **kwargs: Additional keyword arguments passed to Layer.
 
     Raises:
@@ -1186,6 +1191,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         'soft_nms_sigma': soft_nms_sigma,
         'return_decoded': return_decoded,
         'use_class_agnostic_nms': use_class_agnostic_nms,
+        'box_coder_weights': box_coder_weights,
     }
     # Don't store if were not defined
     if pre_nms_top_k_sharding_block is not None:
@@ -1257,7 +1263,11 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
           raw_boxes_i,
           [batch_size, num_locations * num_anchors_per_locations, 4],
       )
-      boxes_i = box_ops.decode_boxes(raw_boxes_i, anchor_boxes_i)
+      boxes_i = box_ops.decode_boxes(
+          raw_boxes_i,
+          anchor_boxes_i,
+          weights=self._config_dict['box_coder_weights'],
+      )
 
       # Box clipping.
       if image_shape is not None:
