@@ -41,7 +41,7 @@ def _generate_record_file(filepath, src_lines, tgt_lines, unique_id=False):
     }
     if unique_id:
       features['unique_id'] = tf.train.Feature(
-          int64_list=tf.train.Int64List(value=[i])),
+          int64_list=tf.train.Int64List(value=[i]))
     example = tf.train.Example(
         features=tf.train.Features(
             feature=features))
