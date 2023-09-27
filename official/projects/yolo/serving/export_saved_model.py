@@ -81,12 +81,23 @@ def main(_):
 
   params = exp_factory.get_exp_config(FLAGS.experiment)
   for config_file in FLAGS.config_file or []:
-    params = hyperparams.override_params_dict(
-        params, config_file, is_strict=True)
+    try:
+      params = hyperparams.override_params_dict(
+          params, config_file, is_strict=True
+      )
+    except KeyError:
+      params = hyperparams.override_params_dict(
+          params, config_file, is_strict=False
+      )
   if FLAGS.params_override:
-    params = hyperparams.override_params_dict(
-        params, FLAGS.params_override, is_strict=True)
-
+    try:
+      params = hyperparams.override_params_dict(
+          params, FLAGS.params_override, is_strict=True
+      )
+    except KeyError:
+      params = hyperparams.override_params_dict(
+          params, FLAGS.params_override, is_strict=False
+      )
   params.validate()
   params.lock()
 
