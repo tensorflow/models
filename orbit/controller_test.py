@@ -281,6 +281,7 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     test_controller.train_and_evaluate(
         train_steps=10, eval_steps=2, eval_interval=6)
     self.assertEqual(test_runner.global_step, 10)
+    self.assertTrue(controller._orbit_api_gauge.get_cell().value())
 
   def test_no_checkpoint_and_summaries(self):
     test_runner = TestRunner()
@@ -293,6 +294,7 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     test_controller.train_and_evaluate(
         train_steps=10, eval_steps=2, eval_interval=6)
     self.assertEqual(test_runner.global_step, 10)
+    self.assertTrue(controller._orbit_api_gauge.get_cell().value())
 
   @parameterized.named_parameters(
       ("_sync_checkpoint_saving", False),
@@ -317,6 +319,7 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     test_controller.train_and_evaluate(
         train_steps=10, eval_steps=2, eval_interval=6)
     self.assertEqual(test_runner.global_step, 10)
+    self.assertTrue(controller._orbit_api_gauge.get_cell().value())
 
     # No summaries are saved.
     self.assertEmpty(tf.io.gfile.glob(

@@ -26,6 +26,14 @@ from orbit import utils
 
 import tensorflow as tf
 
+# pylint: disable=g-direct-tensorflow-import
+from tensorflow.python.eager import monitoring
+# pylint: enable=g-direct-tensorflow-import
+
+_orbit_api_gauge = monitoring.BoolGauge(
+    "/tensorflow/api/orbit", "orbit api usage"
+)
+
 
 def _log(message: str):
   """Logs `message` to the `info` log, and also prints to stdout."""
@@ -242,6 +250,9 @@ class Controller:
       restored_path = self.restore_checkpoint()
       if restored_path:
         _log(f"restored from checkpoint: {restored_path}")
+
+    # Set Orbit framework gauge to True value
+    _orbit_api_gauge.get_cell().set(True)
 
   def train(self, steps: int, checkpoint_at_completion: bool = True):
     """Runs training until the specified global step count has been reached.
