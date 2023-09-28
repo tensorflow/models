@@ -46,6 +46,13 @@ class Parser(hyperparams.Config):
   rpn_batch_size_per_im: int = 256
   rpn_fg_fraction: float = 0.5
   mask_crop_size: int = 112
+  pad: bool = True  # Only support `pad = True`.
+
+  def __post_init__(self, *args, **kwargs):
+    """Validates the configuration."""
+    if not self.pad:
+      raise ValueError('`maskrcnn.Parser` only supports `pad = True`.')
+    super().__post_init__(*args, **kwargs)
 
 
 @dataclasses.dataclass

@@ -59,6 +59,7 @@ class Parser(hyperparams.Config):
   max_num_instances: int = 100
   # Can choose AutoAugment and RandAugment.
   aug_type: Optional[common.Augmentation] = None
+  pad: bool = True
 
   # Keep for backward compatibility. Not used.
   aug_policy: Optional[str] = None
