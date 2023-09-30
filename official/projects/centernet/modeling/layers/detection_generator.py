@@ -34,7 +34,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
   """CenterNet Detection Generator."""
 
   def __init__(self,
-               input_image_dims: int = 512,
+               input_image_dims: tuple[int, int] | int = 512,
                net_down_scale: int = 4,
                max_detections: int = 100,
                peak_error: float = 1e-6,
@@ -47,7 +47,10 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
     """Initialize CenterNet Detection Generator.
 
     Args:
-      input_image_dims: An `int` that specifies the input image size.
+      input_image_dims: The input image size. If it is a tuple of two `int`s, it
+        is the size (height, width) of the input images. If it is an `int`, the
+        input images are supposed to be squared images whose height and width
+        are equal.
       net_down_scale: An `int` that specifies stride of the output.
       max_detections: An `int` specifying the maximum number of bounding
         boxes generated. This is an upper bound, so the number of generated
@@ -66,6 +69,9 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
       **kwargs: Additional keyword arguments to be passed.
     """
     super(CenterNetDetectionGenerator, self).__init__(**kwargs)
+
+    if isinstance(input_image_dims, int):
+      input_image_dims = (input_image_dims, input_image_dims)
 
     # Object center selection parameters
     self._max_detections = max_detections
@@ -246,10 +252,28 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
     return boxes, detection_classes
 
   def convert_strided_predictions_to_normalized_boxes(self, boxes: tf.Tensor):
+    """Converts strided predictions to normalized boxes.
+
+    Args:
+      boxes: A tf.Tensor of shape [batch_size, num_predictions, 4], representing
+        the strided predictions of the detected objects.
+
+    Returns:
+      A tf.Tensor of shape [batch_size, num_predictions, 4], representing
+        the normalized boxes of the detected objects.
+    """
     boxes = boxes * tf.cast(self._net_down_scale, boxes.dtype)
-    boxes = boxes / tf.cast(self._input_image_dims, boxes.dtype)
-    boxes = tf.clip_by_value(boxes, 0.0, 1.0)
-    return boxes
+
+    height = tf.cast(self._input_image_dims[0], boxes.dtype)
+    width = tf.cast(self._input_image_dims[1], boxes.dtype)
+    ymin = boxes[..., 0:1] / height
+    xmin = boxes[..., 1:2] / width
+    ymax = boxes[..., 2:3] / height
+    xmax = boxes[..., 3:4] / width
+
+    normalized_boxes = tf.concat([ymin, xmin, ymax, xmax], axis=-1)
+    normalized_boxes = tf.clip_by_value(normalized_boxes, 0.0, 1.0)
+    return normalized_boxes
 
   def __call__(self, inputs):
     # Get heatmaps from decoded outputs via final hourglass stack output
@@ -308,8 +332,7 @@ class CenterNetDetectionGenerator(tf.keras.layers.Layer):
           nms_thresh=0.4)
 
     num_det = tf.reduce_sum(tf.cast(scores > 0, dtype=tf.int32), axis=1)
-    boxes = box_ops.denormalize_boxes(
-        boxes, [self._input_image_dims, self._input_image_dims])
+    boxes = box_ops.denormalize_boxes(boxes, self._input_image_dims)
 
     return {
         'boxes': boxes,

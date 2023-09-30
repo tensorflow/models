@@ -130,7 +130,10 @@ class CenterNetTask(base_task.Task):
         peak_extract_kernel_size=dg_config.peak_extract_kernel_size,
         class_offset=dg_config.class_offset,
         net_down_scale=self._net_down_scale,
-        input_image_dims=model_config.input_size[0],
+        input_image_dims=(
+            model_config.input_size[0],
+            model_config.input_size[1],
+        ),
         use_nms=dg_config.use_nms,
         nms_pre_thresh=dg_config.nms_pre_thresh,
         nms_thresh=dg_config.nms_thresh)
