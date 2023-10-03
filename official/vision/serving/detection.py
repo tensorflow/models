@@ -20,7 +20,6 @@ from typing import Mapping, Tuple
 from absl import logging
 import tensorflow as tf
 
-from official.core import config_definitions as cfg
 from official.vision import configs
 from official.vision.modeling import factory
 from official.vision.ops import anchor
@@ -32,33 +31,14 @@ from official.vision.serving import export_base
 class DetectionModule(export_base.ExportModule):
   """Detection Module."""
 
-  def __init__(
-      self,
-      params: cfg.ExperimentConfig,
-      *,
-      input_image_size: list[int],
-      **kwargs,
-  ):
-    """Initializes a detection module for export.
-
-    Args:
-      params: Experiment params.
-      input_image_size: List or Tuple of size of the input image. For 2D image,
-        it is [height, width].
-      **kwargs: All other kwargs are passed to `export_base.ExportModule`; see
-        the documentation on `export_base.ExportModule` for valid arguments.
-    """
-    if params.task.train_data.parser.pad:
-      self._padded_size = preprocess_ops.compute_padded_size(
-          input_image_size, 2**params.task.model.max_level
+  @property
+  def _padded_size(self):
+    if self.params.task.train_data.parser.pad:
+      return preprocess_ops.compute_padded_size(
+          self._input_image_size, 2**self.params.task.model.max_level
       )
     else:
-      self._padded_size = input_image_size
-    super().__init__(
-        params=params,
-        input_image_size=input_image_size,
-        **kwargs,
-    )
+      return self._input_image_size
 
   def _build_model(self):
 
