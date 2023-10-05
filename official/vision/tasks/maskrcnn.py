@@ -202,8 +202,10 @@ class MaskRCNNTask(base_task.Task):
     return rpn_score_loss, rpn_box_loss
 
   def _build_frcnn_losses(
-      self, outputs: Mapping[str, Any],
-      labels: Mapping[str, Any]) -> Tuple[tf.Tensor, tf.Tensor]:
+      self,
+      outputs: Mapping[str, Any],
+      labels: Mapping[str, Any],
+  ) -> Tuple[tf.Tensor, tf.Tensor]:
     """Builds losses for Fast R-CNN."""
     cascade_ious = self.task_config.model.roi_sampler.cascade_iou_thresholds
 
@@ -222,10 +224,19 @@ class MaskRCNNTask(base_task.Task):
     for cas_num in range(num_det_heads):
       frcnn_cls_loss_i = tf.reduce_mean(
           frcnn_cls_loss_fn(
-              outputs['class_outputs_{}'
-                      .format(cas_num) if cas_num else 'class_outputs'],
-              outputs['class_targets_{}'
-                      .format(cas_num) if cas_num else 'class_targets']))
+              outputs[
+                  'class_outputs_{}'.format(cas_num)
+                  if cas_num
+                  else 'class_outputs'
+              ],
+              outputs[
+                  'class_targets_{}'.format(cas_num)
+                  if cas_num
+                  else 'class_targets'
+              ],
+              self.task_config.losses.class_weights,
+          )
+      )
       frcnn_box_loss_i = tf.reduce_mean(
           frcnn_box_loss_fn(
               outputs['box_outputs_{}'.format(cas_num
@@ -257,6 +268,7 @@ class MaskRCNNTask(base_task.Task):
                    labels: Mapping[str, Any],
                    aux_losses: Optional[Any] = None) -> Dict[str, tf.Tensor]:
     """Builds Mask R-CNN losses."""
+    loss_params = self.task_config.losses
     rpn_score_loss, rpn_box_loss = self._build_rpn_losses(outputs, labels)
     frcnn_cls_loss, frcnn_box_loss = self._build_frcnn_losses(outputs, labels)
     if self.task_config.model.include_mask:
@@ -264,20 +276,20 @@ class MaskRCNNTask(base_task.Task):
     else:
       mask_loss = tf.constant(0.0, dtype=tf.float32)
 
-    params = self.task_config
     model_loss = (
-        params.losses.rpn_score_weight * rpn_score_loss +
-        params.losses.rpn_box_weight * rpn_box_loss +
-        params.losses.frcnn_class_weight * frcnn_cls_loss +
-        params.losses.frcnn_box_weight * frcnn_box_loss +
-        params.losses.mask_weight * mask_loss)
+        loss_params.rpn_score_weight * rpn_score_loss
+        + loss_params.rpn_box_weight * rpn_box_loss
+        + loss_params.frcnn_class_weight * frcnn_cls_loss
+        + loss_params.frcnn_box_weight * frcnn_box_loss
+        + loss_params.mask_weight * mask_loss
+    )
 
     total_loss = model_loss
     if aux_losses:
       reg_loss = tf.reduce_sum(aux_losses)
       total_loss = model_loss + reg_loss
 
-    total_loss = params.losses.loss_weight * total_loss
+    total_loss = loss_params.loss_weight * total_loss
     losses = {
         'total_loss': total_loss,
         'rpn_score_loss': rpn_score_loss,
