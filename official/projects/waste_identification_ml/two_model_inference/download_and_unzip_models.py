@@ -73,16 +73,16 @@ def execute_command(cmd: str) -> str:
 
 def main(_) -> None:
   # Download the provided files
-  execute_command(f"wget {args.url1}")
-  execute_command(f"wget {args.url2}")
+  execute_command(f"wget {args.material_url}")
+  execute_command(f"wget {args.material_form_url}")
 
   # Create directories
   os.makedirs("material", exist_ok=True)
   os.makedirs("material_form", exist_ok=True)
 
   # Unzip the provided files
-  zip_file1 = os.path.basename(args.url1)
-  zip_file2 = os.path.basename(args.url2)
+  zip_file1 = os.path.basename(args.material_url)
+  zip_file2 = os.path.basename(args.material_form_url)
   execute_command(f"unzip {zip_file1} -d material/")
   execute_command(f"unzip {zip_file2} -d material_form/")
 
