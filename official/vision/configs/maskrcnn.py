@@ -223,6 +223,7 @@ class Losses(hyperparams.Config):
   frcnn_class_weight: float = 1.0
   frcnn_box_weight: float = 1.0
   mask_weight: float = 1.0
+  class_weights: Optional[List[float]] = None
 
 
 @dataclasses.dataclass
