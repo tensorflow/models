@@ -894,3 +894,160 @@ def update_detection_state(step_outputs=None) -> Dict[str, Any]:
       state['detection_masks'] = tf.concat(detection_masks, axis=0)
 
   return state
+
+
+def update_segmentation_state(step_outputs=None) -> Dict[str, Any]:
+  """Updates segmentation state to optionally add input image and predictions."""
+  state = {}
+  if step_outputs:
+    state['image'] = tf.concat(step_outputs['visualization'][0], axis=0)
+    state['logits'] = tf.concat(
+        step_outputs['visualization'][1]['logits'], axis=0
+    )
+  return state
+
+
+def visualize_segmentation_outputs(
+    logs,
+    task_config,
+    original_image_spatial_shape=None,
+    true_image_shape=None,
+    image_mean: Optional[Union[float, List[float]]] = None,
+    image_std: Optional[Union[float, List[float]]] = None,
+    key: str = 'image/validation_outputs',
+) -> Dict[str, Any]:
+  """Visualizes the detection outputs.
+
+  It extracts images and predictions from logs and draws visualization on input
+  images. By default, it requires `detection_boxes`, `detection_classes` and
+  `detection_scores` in the prediction, and optionally accepts
+  `detection_keypoints` and `detection_masks`.
+
+  Args:
+    logs: A dictionaty of log that contains images and predictions.
+    task_config: A task config.
+    original_image_spatial_shape: A [N, 2] tensor containing the spatial size of
+      the original image.
+    true_image_shape: A [N, 3] tensor containing the spatial size of unpadded
+      original_image.
+    image_mean: An optional float or list of floats used as the mean pixel value
+      to normalize images.
+    image_std: An optional float or list of floats used as the std to normalize
+      images.
+    key: A string specifying the key of the returned dictionary.
+
+  Returns:
+    A dictionary of images with visualization drawn on it. Each key corresponds
+      to a 4D tensor with segments drawn on each image.
+  """
+  images = logs['image']
+  masks = np.argmax(logs['logits'], axis=-1)
+  num_classes = task_config.model.num_classes
+
+  def _denormalize_images(images: tf.Tensor) -> tf.Tensor:
+    if image_mean is None and image_std is None:
+      images *= tf.constant(
+          preprocess_ops.STDDEV_RGB, shape=[1, 1, 3], dtype=images.dtype
+      )
+      images += tf.constant(
+          preprocess_ops.MEAN_RGB, shape=[1, 1, 3], dtype=images.dtype
+      )
+    elif image_mean is not None and image_std is not None:
+      if isinstance(image_mean, float) and isinstance(image_std, float):
+        images = images * image_std + image_mean
+      elif isinstance(image_mean, list) and isinstance(image_std, list):
+        images *= tf.constant(image_std, shape=[1, 1, 3], dtype=images.dtype)
+        images += tf.constant(image_mean, shape=[1, 1, 3], dtype=images.dtype)
+      else:
+        raise ValueError(
+            '`image_mean` and `image_std` should be the same type.'
+        )
+    else:
+      raise ValueError(
+          'Both `image_mean` and `image_std` should be set or None at the same '
+          'time.'
+      )
+    return tf.cast(images, dtype=tf.uint8)
+
+  images = tf.nest.map_structure(
+      tf.identity,
+      tf.map_fn(
+          _denormalize_images,
+          elems=images,
+          fn_output_signature=tf.TensorSpec(
+              shape=images.shape.as_list()[1:], dtype=tf.uint8
+          ),
+          parallel_iterations=32,
+      ),
+  )
+
+  if images.shape[3] > 3:
+    images = images[:, :, :, 0:3]
+  elif images.shape[3] == 1:
+    images = tf.image.grayscale_to_rgb(images)
+  if true_image_shape is None:
+    true_shapes = tf.constant(-1, shape=[images.shape.as_list()[0], 3])
+  else:
+    true_shapes = true_image_shape
+  if original_image_spatial_shape is None:
+    original_shapes = tf.constant(-1, shape=[images.shape.as_list()[0], 2])
+  else:
+    original_shapes = original_image_spatial_shape
+
+  visualize_fn = functools.partial(_visualize_masks, num_classes=num_classes)
+  elems = [true_shapes, original_shapes, images, masks]
+
+  def draw_segments(image_and_segments):
+    """Draws boxes on image."""
+    true_shape = image_and_segments[0]
+    original_shape = image_and_segments[1]
+    if true_image_shape is not None:
+      image = shape_utils.pad_or_clip_nd(
+          image_and_segments[2], [true_shape[0], true_shape[1], 3]
+      )
+    if original_image_spatial_shape is not None:
+      image_and_segments[2] = _resize_original_image(image, original_shape)
+
+    image_with_boxes = tf.compat.v1.py_func(
+        visualize_fn, image_and_segments[2:], tf.uint8
+    )
+    return image_with_boxes
+
+  images_with_segments = tf.map_fn(
+      draw_segments, elems, dtype=tf.uint8, back_prop=False
+  )
+
+  outputs = {}
+  for i, image in enumerate(images_with_segments):
+    outputs[key + f'/{i}'] = image[None, ...]
+
+  return outputs
+
+
+def _visualize_masks(image, mask, num_classes, alpha=0.4):
+  """Visualizes semantic segmentation masks."""
+  solid_color = np.repeat(
+      np.expand_dims(np.zeros_like(mask), axis=2), 3, axis=2
+  )
+  for i in range(num_classes):
+    color = STANDARD_COLORS[i % len(STANDARD_COLORS)]
+    rgb = ImageColor.getrgb(color)
+    one_class_mask = np.where(mask == i, 1, 0)
+    solid_color = solid_color + np.expand_dims(
+        one_class_mask, axis=2
+    ) * np.reshape(list(rgb), [1, 1, 3])
+
+  pil_image = Image.fromarray(image)
+  pil_solid_color = (
+      Image.fromarray(np.uint8(solid_color))
+      .convert('RGBA')
+      .resize(pil_image.size)
+  )
+  pil_mask = (
+      Image.fromarray(np.uint8(255.0 * alpha * np.ones_like(mask)))
+      .convert('L')
+      .resize(pil_image.size)
+  )
+  pil_image = Image.composite(pil_solid_color, pil_image, pil_mask)
+  np.copyto(image, np.array(pil_image.convert('RGB')))
+  return image
