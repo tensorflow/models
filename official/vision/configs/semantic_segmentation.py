@@ -198,6 +198,7 @@ class SemanticSegmentationTask(cfg.TaskConfig):
   init_checkpoint_modules: Union[
       str, List[str]] = 'all'  # all, backbone, and/or decoder
   export_config: ExportConfig = dataclasses.field(default_factory=ExportConfig)
+  allow_image_summary: bool = True
 
 
 @exp_factory.register_config_factory('semantic_segmentation')

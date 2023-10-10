@@ -29,6 +29,7 @@ from official.vision.dataloaders import tfds_factory
 from official.vision.evaluation import segmentation_metrics
 from official.vision.losses import segmentation_losses
 from official.vision.modeling import factory
+from official.vision.utils.object_detection import visualization_utils
 
 
 @task_factory.register_task_cls(exp_cfg.SemanticSegmentationTask)
@@ -321,6 +322,14 @@ class SemanticSegmentationTask(base_task.Task):
     if metrics:
       self.process_metrics(metrics, labels, outputs)
 
+    if (
+        hasattr(self.task_config, 'allow_image_summary')
+        and self.task_config.allow_image_summary
+    ):
+      logs.update(
+          {'visualization': (tf.cast(features, dtype=tf.float32), outputs)}
+      )
+
     return logs
 
   def inference_step(self, inputs: tf.Tensor, model: tf.keras.Model):
@@ -330,17 +339,37 @@ class SemanticSegmentationTask(base_task.Task):
   def aggregate_logs(self, state=None, step_outputs=None):
     if state is None and self.iou_metric is not None:
       self.iou_metric.reset_states()
-      state = self.iou_metric
+
+    if 'visualization' in step_outputs:
+      # Update segmentation state for writing summary if there are artifacts for
+      # visualization.
+      if state is None:
+        state = {}
+      state.update(visualization_utils.update_segmentation_state(step_outputs))
+
+    if state is None:
+      # Create an arbitrary state to indicate it's not the first step in the
+      # following calls to this function.
+      state = True
+
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
-    result = {}
+    logs = {}
     if self.iou_metric is not None:
       ious = self.iou_metric.result()
       # TODO(arashwan): support loading class name from a label map file.
       if self.task_config.evaluation.report_per_class_iou:
         for i, value in enumerate(ious.numpy()):
-          result.update({'iou/{}'.format(i): value})
+          logs.update({'iou/{}'.format(i): value})
       # Computes mean IoU
-      result.update({'mean_iou': tf.reduce_mean(ious)})
-    return result
+      logs.update({'mean_iou': tf.reduce_mean(ious)})
+
+    # Add visualization for summary.
+    if isinstance(aggregated_logs, dict) and 'image' in aggregated_logs:
+      validation_outputs = visualization_utils.visualize_segmentation_outputs(
+          logs=aggregated_logs, task_config=self.task_config
+      )
+      logs.update(validation_outputs)
+
+    return logs
