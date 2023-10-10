@@ -141,20 +141,16 @@ class RNGDet(tf.keras.Model):
                backbone_endpoint_name,
                segment_fpn,
                keypoint_fpn,
+               transformer,
+               input_proj,
                num_queries,
                hidden_size,
                num_classes,
-               num_encoder_layers=6,
-               num_decoder_layers=6,
-               dropout_rate=0.1,
                **kwargs):
     super().__init__(**kwargs)
     self._num_queries = num_queries
     self._hidden_size = hidden_size
     self._num_classes = num_classes
-    self._num_encoder_layers = num_encoder_layers
-    self._num_decoder_layers = num_decoder_layers
-    self._dropout_rate = dropout_rate
     if hidden_size % 2 != 0:
       raise ValueError("hidden_size must be a multiple of 2.")
     self._backbone = backbone
@@ -162,13 +158,13 @@ class RNGDet(tf.keras.Model):
     self._backbone_endpoint_name = backbone_endpoint_name
     self._segment_fpn = segment_fpn
     self._keypoint_fpn = keypoint_fpn
+    self._transformer = transformer
 
-    self._input_proj = tf.keras.layers.Conv2D(
-        self._hidden_size, 1, name="detr/conv2d")
-    self._transformer = DETRTransformer(
-        num_encoder_layers=self._num_encoder_layers,
-        num_decoder_layers=self._num_decoder_layers,
-        dropout_rate=self._dropout_rate)
+    self._input_proj = input_proj
+    """self._build_detection_decoder()
+
+  def _build_detection_decoder(self):"""
+    
     self._query_embeddings = self.add_weight(
         "detr/query_embeddings",
         shape=[self._num_queries, self._hidden_size],
@@ -195,21 +191,6 @@ class RNGDet(tf.keras.Model):
         self._num_classes,
         kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
         name="detr/cls_dense")
-    """self._bbox_embed = [
-        tf.keras.layers.Dense(
-            self._hidden_size, activation="relu",
-            kernel_initializer=tf.keras.initializers.RandomUniform(
-                -sqrt_k, sqrt_k),
-            name="detr/box_dense_0"),
-        tf.keras.layers.Dense(
-            self._hidden_size, activation="relu",
-            kernel_initializer=tf.keras.initializers.RandomUniform(
-                -sqrt_k, sqrt_k),
-            name="detr/box_dense_1"),
-        tf.keras.layers.Dense(
-            2, kernel_initializer=tf.keras.initializers.RandomUniform(
-                -sqrt_k, sqrt_k),
-            name="detr/box_dense_2")]"""
     self._bbox_embed = tf.keras.Sequential([
         tf.keras.layers.Dense(
             self._hidden_size, activation="relu",
@@ -225,23 +206,9 @@ class RNGDet(tf.keras.Model):
             2, kernel_initializer=tf.keras.initializers.RandomUniform(
                 -sqrt_k, sqrt_k),
             name="detr/box_dense_2")])
-    """self._bbox_embed_0 = tf.keras.layers.Dense(
-            self._hidden_size, activation="relu",
-            kernel_initializer=tf.keras.initializers.RandomUniform(
-                -sqrt_k, sqrt_k),
-            name="detr/box_dense_0")
-    self._bbox_embed_1 = tf.keras.layers.Dense(
-            self._hidden_size, activation="relu",
-            kernel_initializer=tf.keras.initializers.RandomUniform(
-                -sqrt_k, sqrt_k),
-            name="detr/box_dense_1")
-    self._bbox_embed_2 = tf.keras.layers.Dense(
-            2, kernel_initializer=tf.keras.initializers.RandomUniform(
-                -sqrt_k, sqrt_k),
-            name="detr/box_dense_2")"""
-
+    #self._sigmoid = tf.keras.layers.Activation("sigmoid")
     self._tanh = tf.keras.layers.Activation("tanh")
-    self._sigmoid = tf.keras.layers.Activation(activation='sigmoid')
+
   @property
   def backbone(self) -> tf.keras.Model:
     return self._backbone
@@ -253,6 +220,14 @@ class RNGDet(tf.keras.Model):
   @property
   def transformer(self) -> tf.keras.layers.Layer:
     return self._transformer
+  
+  @property
+  def input_proj(self) -> tf.keras.layers.Layer:
+    return self._input_proj
+
+  @property
+  def class_embed(self) -> tf.keras.layers.Layer:
+    return self._class_embed
   
   @property
   def checkpoint_items(
@@ -267,8 +242,9 @@ class RNGDet(tf.keras.Model):
         query_embeddings=self._query_embeddings,
         segment_head=self._segment_head,
         keypoint_head=self._keypoint_head,
-        class_embed=self._class_embed,
+        class_embed=self.class_embed,
         bbox_embed=self._bbox_embed,
+        input_proj=self.input_proj,
         )
     #items.update(=self._class_embed)
     #if self.decoder is not None:
@@ -279,13 +255,15 @@ class RNGDet(tf.keras.Model):
   def get_config(self):
     return {
         "backbone": self._backbone,
+        "backbone_history": self._backbone_history,
         "backbone_endpoint_name": self._backbone_endpoint_name,
+        "segment_fpn": self._segment_fpn,
+        "keypoint_fpn": self._keypoint_fpn,
+        "transformer": self.transformer,
+        "input_proj": self.input_proj,
         "num_queries": self._num_queries,
         "hidden_size": self._hidden_size,
         "num_classes": self._num_classes,
-        "num_encoder_layers": self._num_encoder_layers,
-        "num_decoder_layers": self._num_decoder_layers,
-        "dropout_rate": self._dropout_rate,
     }
 
   @classmethod
@@ -315,9 +293,12 @@ class RNGDet(tf.keras.Model):
     pred_keypoint = spatial_transform_ops.nearest_upsampling(
           pred_keypoint['2'], 4, use_keras_layer=False)
     pred_keypoint = self._keypoint_head(pred_keypoint)
-
+    
     inputs_history = tf.concat([pred_segment, pred_keypoint], -1)
-    segmentation_map = tf.sigmoid(tf.stop_gradient(tf.identity(inputs_history)))
+    #inputs_history = tf.stop_gradient(inputs_history)
+
+    #segmentation_map = tf.sigmoid(tf.stop_gradient(tf.identity(inputs_history)))
+    segmentation_map = tf.sigmoid((inputs_history))
     
     if gt_labels is not None:
       history_samples = tf.concat([history_samples,gt_labels],-1)
@@ -336,13 +317,13 @@ class RNGDet(tf.keras.Model):
 
     proj_in = tf.concat([features[self._backbone_endpoint_name],
                          history_outs], -1)
-    features = tf.reshape(
+    inputs = tf.reshape(
         self._input_proj(proj_in), [batch_size, -1, self._hidden_size])
     mask = tf.reshape(mask, [batch_size, -1])
 
     decoded_list = self._transformer({
         "inputs":
-            features,
+            inputs,
         "targets":
             tf.tile(
                 tf.expand_dims(self._query_embeddings, axis=0),
@@ -359,13 +340,10 @@ class RNGDet(tf.keras.Model):
       """for layer in self._bbox_embed:
         box_out = layer(box_out)"""
       box_out = self._bbox_embed(box_out)
-      #box_out = self._bbox_embed_0(box_out)
-      #box_out = self._bbox_embed_1(box_out)
-      #box_out = self._bbox_embed_2(box_out)
       output_coord = self._tanh(box_out)
       out = {"cls_outputs": output_class, "box_outputs": output_coord}
       out_list.append(out)
-    return out_list, self._sigmoid(pred_segment), self._sigmoid(pred_keypoint)
+    return out_list, pred_segment, pred_keypoint
 
 
 class DETRTransformer(tf.keras.layers.Layer):
@@ -403,6 +381,10 @@ class DETRTransformer(tf.keras.layers.Layer):
         "num_decoder_layers": self._num_decoder_layers,
         "dropout_rate": self._dropout_rate,
     }
+  
+  @classmethod
+  def from_config(cls, config):
+    return cls(**config)
 
   def call(self, inputs):
     sources = inputs["inputs"]
@@ -434,3 +416,31 @@ class DETRTransformer(tf.keras.layers.Layer):
         input_pos_embed=targets,
         memory_pos_embed=pos_embed)
     return decoded
+
+
+@tf.keras.utils.register_keras_serializable(package='Vision')
+class InputProjection(tf.keras.layers.Layer):
+
+  def __init__(self, hidden_size, **kwargs):
+    super(InputProjection, self).__init__(**kwargs)
+    self._hidden_size = hidden_size
+
+  def build(self, input_shape=None):
+    self._conv = tf.keras.layers.Conv2D(
+        self._hidden_size, 1, name="detr/conv2d")
+    super(InputProjection, self).build(input_shape)
+
+  def call(self, inputs):
+    out = self._conv(inputs)
+    return out
+
+  def get_config(self):
+    return {
+        "hidden_size": self._hidden_size,
+    }
+  
+  @classmethod
+  def from_config(cls, config):
+    return cls(**config)
+
+  

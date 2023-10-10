@@ -19,12 +19,11 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 import os
 
-from official.projects.detr import optimization
+from official.projects.rngdet import optimization
 from official.projects.rngdet.configs import rngdet as rngdet_cfg
 from official.projects.rngdet.tasks import rngdet
 from official.vision.configs import backbones
 from official.vision.configs import decoders
-from official.projects.detr.tasks import detection
 
 _NUM_EXAMPLES = 10
 
@@ -53,24 +52,25 @@ def _as_dataset(self, *args, **kwargs):
       output_shapes=self.info.features.shape,
   )
 
-CITYSCALE_INPUT_PATH_BASE = '/home/ghpark/cityscale'
+#CITYSCALE_INPUT_PATH_BASE = '/home/ghpark/cityscale'
+CITYSCALE_INPUT_PATH_BASE = '/home/ghpark.epiclab/03_rngdet/models/official/projects/rngdet'
 
 class RngdetTest(tf.test.TestCase):
 
   def test_train_step(self):
     config = rngdet_cfg.RngdetTask(
-        init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet',
-        init_checkpoint_modules='backbone',
+        init_checkpoint='gs://ghpark-ckpts/rngdet/test_02',
+        init_checkpoint_modules='all',
         model=rngdet_cfg.Rngdet(
             input_size=[128, 128, 3],
             roi_size=128,
-            num_encoder_layers=2,
-            num_decoder_layers=2,
+            num_encoder_layers=6,
+            num_decoder_layers=6,
             num_queries=10,
             hidden_size=256,
             num_classes=2,
             min_level=2,
-            max_level=2,
+            max_level=5,
             backbone_endpoint_name='5',
             backbone=backbones.Backbone(
                 type='resnet',
@@ -81,17 +81,41 @@ class RngdetTest(tf.test.TestCase):
             
         ),
         train_data=rngdet_cfg.DataConfig(
-            input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train*'),
+            input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train-noise*'),
             is_training=True,
             dtype='float32',
-            global_batch_size=7,
+            global_batch_size=1,
             shuffle_buffer_size=1000,
         ))
     with tfds.testing.mock_data(as_dataset_fn=_as_dataset):
       task = rngdet.RNGDetTask(config)
       model = task.build_model()
+      
       task.initialize(model)
-      print("-----------------------------------------")
+      """ckpt_dir_or_file = 'gs://ghpark-ckpts/rngdet/test_00'
+      #ckpt_dir_or_file = '/home/ghpark.epiclab/03_rngdet/ckpt/test_00'
+      ckpt = tf.train.Checkpoint(
+          backbone=model.backbone,
+          backbone_history=model.backbone_history,
+          transformer=model.transformer,
+          segment_fpn=model._segment_fpn,
+          keypoint_fpn=model._keypoint_fpn,
+          query_embeddings=model._query_embeddings,
+          segment_head=model._segment_head,
+          keypoint_head=model._keypoint_head,
+          class_embed=model._class_embed,
+          bbox_embed=model._bbox_embed,
+          input_proj=model.input_proj)
+      status = ckpt.restore(tf.train.latest_checkpoint(ckpt_dir_or_file))
+      status.expect_partial().assert_existing_objects_matched()"""
+
+      print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+      print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+      print("LOAD CHECKPOINT DONE")
+      print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+      print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+
+
       dataset = task.build_inputs(config.train_data)
       iterator = iter(dataset)
       opt_cfg = optimization.OptimizationConfig({
@@ -110,7 +134,9 @@ class RngdetTest(tf.test.TestCase):
               }
           },
       })
-      optimizer = detection.DetectionTask.create_optimizer(opt_cfg)
+      optimizer = rngdet.RNGDetTask.create_optimizer(opt_cfg)
+      task.train_step(next(iterator), model, optimizer)
+      print("***************************************")
       task.train_step(next(iterator), model, optimizer)
 
   """def test_validation_step(self):

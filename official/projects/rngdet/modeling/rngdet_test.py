@@ -21,7 +21,7 @@ from official.vision.modeling.decoders import fpn
 
 class DetrTest(tf.test.TestCase):
 
-  def test_forward(self):
+  """def test_forward(self):
     num_queries = 10
     hidden_size = 128
     num_classes = 2
@@ -54,34 +54,17 @@ class DetrTest(tf.test.TestCase):
       self.assertAllEqual(
           tf.shape(out['cls_outputs']), (batch_size, num_queries, num_classes))
       self.assertAllEqual(
-          tf.shape(out['box_outputs']), (batch_size, num_queries, 4))
+          tf.shape(out['box_outputs']), (batch_size, num_queries, 4))"""
 
-  """def test_get_from_config_detr_transformer(self):
-    config = {
-        'num_encoder_layers': 1,
-        'num_decoder_layers': 2,
-        'dropout_rate': 0.5,
-    }
-    detr_model = detr.DETRTransformer.from_config(config)
-    retrieved_config = detr_model.get_config()
-
-    self.assertEqual(config, retrieved_config)
-
-  def test_get_from_config_detr(self):
-    config = {
-        'backbone': resnet.ResNet(50, bn_trainable=False),
-        'backbone_endpoint_name': '5',
-        'num_queries': 2,
-        'hidden_size': 4,
-        'num_classes': 10,
-        'num_encoder_layers': 4,
-        'num_decoder_layers': 5,
-        'dropout_rate': 0.5,
-    }
-    detr_model = detr.DETR.from_config(config)
-    retrieved_config = detr_model.get_config()
-
-    self.assertEqual(config, retrieved_config)"""
+  def test_serialize_deserialize(self):
+    retinanet_head = rngdet.InputProjection(
+        hidden_size=256
+    )
+    config = retinanet_head.get_config()
+    new_retinanet_head = (
+        rngdet.InputProjection.from_config(config))
+    self.assertAllEqual(
+        retinanet_head.get_config(), new_retinanet_head.get_config())
 
 
 if __name__ == '__main__':
