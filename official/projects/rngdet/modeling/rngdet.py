@@ -295,9 +295,7 @@ class RNGDet(tf.keras.Model):
     pred_keypoint = self._keypoint_head(pred_keypoint)
     
     inputs_history = tf.concat([pred_segment, pred_keypoint], -1)
-    #inputs_history = tf.stop_gradient(inputs_history)
-
-    #segmentation_map = tf.sigmoid(tf.stop_gradient(tf.identity(inputs_history)))
+    inputs_history = tf.stop_gradient(inputs_history)
     segmentation_map = tf.sigmoid((inputs_history))
     
     if gt_labels is not None:
