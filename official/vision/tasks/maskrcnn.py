@@ -575,6 +575,10 @@ class MaskRCNNTask(base_task.Task):
     else:
       instance_metrics = self.instance_box_perclass_metrics
       prefix = ''
+    if instance_metrics is None:
+      raise ValueError(
+          'No instance metrics defined when use_masks is %s' % use_masks
+      )
     result = instance_metrics.result()
     iou_thresholds = instance_metrics.get_config()['iou_thresholds']
 
