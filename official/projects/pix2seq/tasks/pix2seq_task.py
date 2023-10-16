@@ -70,6 +70,7 @@ class Pix2SeqTask(base_task.Task):
         drop_units=config.drop_units,
         drop_att=config.drop_att,
         num_heads=config.num_heads,
+        temperature=config.temperature,
         top_p=config.top_p,
         top_k=config.top_k,
     )

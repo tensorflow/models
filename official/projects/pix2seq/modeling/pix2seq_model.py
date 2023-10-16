@@ -237,6 +237,7 @@ class Pix2Seq(tf.keras.Model):
       drop_path=0.1,
       drop_units=0.1,
       drop_att=0.0,
+      temperature=1.0,
       top_k=0,
       top_p=0.4,
       **kwargs
@@ -276,6 +277,7 @@ class Pix2Seq(tf.keras.Model):
         drop_att=self._drop_att,
         num_heads=self._num_heads,
     )
+    self._temperature = temperature
     self._top_k = top_k
     self._top_p = top_p
 
@@ -299,6 +301,7 @@ class Pix2Seq(tf.keras.Model):
         "drop_path": self._drop_path,
         "drop_units": self._drop_units,
         "drop_att": self._drop_att,
+        "temperature": self._temperature,
         "top_k": self._top_k,
         "top_p": self._top_p,
         "num_heads": self._num_heads,
@@ -363,6 +366,7 @@ class Pix2Seq(tf.keras.Model):
     else:
       tokens, logits = self._transformer.infer(
           inputs,
+          temperature=self._temperature,
           top_k=self._top_k,
           top_p=self._top_p,
       )
