@@ -20,13 +20,13 @@ import tensorflow as tf
 
 from official.core import config_definitions as cfg
 from official.core import export_base
-from official.projects.yolo.configs.yolo import YoloTask
-from official.projects.yolo.configs.yolov7 import YoloV7Task
+from official.projects.yolo.configs import darknet_classification
+from official.projects.yolo.configs import yolo
+from official.projects.yolo.configs import yolov7
 from official.projects.yolo.modeling import factory as yolo_factory
 from official.projects.yolo.modeling.backbones import darknet  # pylint: disable=unused-import
 from official.projects.yolo.modeling.decoders import yolo_decoder  # pylint: disable=unused-import
 from official.projects.yolo.serving import model_fn as yolo_model_fn
-from official.vision import configs
 from official.vision.dataloaders import classification_input
 from official.vision.modeling import factory
 from official.vision.serving import export_utils
@@ -164,12 +164,12 @@ def create_yolo_export_module(
       input_type, batch_size, input_image_size, num_channels, input_name)
   input_specs = tf.keras.layers.InputSpec(shape=[batch_size] +
                                           input_image_size + [num_channels])
-  if isinstance(params.task, YoloTask):
+  if isinstance(params.task, yolo.YoloTask):
     model, _ = yolo_factory.build_yolo(
         input_specs=input_specs,
         model_config=params.task.model,
         l2_regularization=None)
-  elif isinstance(params.task, YoloV7Task):
+  elif isinstance(params.task, yolov7.YoloV7Task):
     model = yolo_factory.build_yolov7(
         input_specs=input_specs,
         model_config=params.task.model,
@@ -248,13 +248,13 @@ def get_export_module(params: cfg.ExperimentConfig,
                       input_name: Optional[str] = None) -> ExportModule:
   """Factory for export modules."""
   if isinstance(params.task,
-                configs.image_classification.ImageClassificationTask):
+                darknet_classification.ImageClassificationTask):
     export_module = create_classification_export_module(params, input_type,
                                                         batch_size,
                                                         input_image_size,
                                                         num_channels,
                                                         input_name)
-  elif isinstance(params.task, (YoloTask, YoloV7Task)):
+  elif isinstance(params.task, (yolo.YoloTask, yolov7.YoloV7Task)):
     export_module = create_yolo_export_module(params, input_type, batch_size,
                                               input_image_size, num_channels,
                                               input_name)
