@@ -1128,7 +1128,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
       nms_v3_refinements: Optional[int] = None,
       return_decoded: Optional[bool] = None,
       use_class_agnostic_nms: Optional[bool] = None,
-      box_coder_weights: Optional[list[float]] = None,
+      box_coder_weights: Optional[List[float]] = None,
       **kwargs,
   ):
     """Initializes a multi-level detection generator.
