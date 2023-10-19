@@ -31,10 +31,17 @@ class ImageClassificationModel(hyperparams.Config):
   """Image classification model config."""
   num_classes: int = 0
   input_size: List[int] = dataclasses.field(default_factory=lambda: [224, 224])
-  backbone: backbones.Backbone = backbones.Backbone(
-      type='darknet', darknet=backbones.Darknet())
+  backbone: backbones.Backbone = dataclasses.field(
+      # pylint: disable=g-long-lambda
+      default_factory=lambda: backbones.Backbone(
+          type='darknet', darknet=backbones.Darknet()
+      )
+      # pylint: enable=g-long-lambda
+  )
   dropout_rate: float = 0.0
-  norm_activation: common.NormActivation = common.NormActivation()
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=common.NormActivation
+  )
   # Adds a Batch Normalization layer pre-GlobalAveragePooling in classification.
   add_head_batch_norm: bool = False
   kernel_initializer: str = 'VarianceScaling'
@@ -53,11 +60,17 @@ class Losses(hyperparams.Config):
 @dataclasses.dataclass
 class ImageClassificationTask(cfg.TaskConfig):
   """The model config."""
-  model: ImageClassificationModel = ImageClassificationModel()
-  train_data: imc.DataConfig = imc.DataConfig(is_training=True)
-  validation_data: imc.DataConfig = imc.DataConfig(is_training=False)
-  evaluation: imc.Evaluation = imc.Evaluation()
-  losses: Losses = Losses()
+  model: ImageClassificationModel = dataclasses.field(
+      default_factory=ImageClassificationModel
+  )
+  train_data: imc.DataConfig = dataclasses.field(
+      default_factory=lambda: imc.DataConfig(is_training=True)
+  )
+  validation_data: imc.DataConfig = dataclasses.field(
+      default_factory=lambda: imc.DataConfig(is_training=False)
+  )
+  evaluation: imc.Evaluation = dataclasses.field(default_factory=imc.Evaluation)
+  losses: Losses = dataclasses.field(default_factory=Losses)
   gradient_clip_norm: float = 0.0
   logging_dir: Optional[str] = None
   freeze_backbone: bool = False
