@@ -300,7 +300,7 @@ class Attention(tf.keras.layers.Layer):
 
     attn_probs = common_ops.float32_softmax(attn_logits, axis=-1)
     if self.dropatt:
-      attn_probs = tf.keras.layers.Dropout(self.dropatt, 'attn_prob_drop')(
+      attn_probs = tf.keras.layers.Dropout(self.dropatt, name='attn_prob_drop')(
           attn_probs, training=training
       )
 
