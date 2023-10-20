@@ -488,8 +488,8 @@ def _masking_ngrams(grams, max_ngram_size, max_masked_tokens, rng):
     rng.shuffle(v)
 
   # Create the weighting for n-gram length selection.
-  # Stored cummulatively for `random.choices` below.
-  cummulative_weights = list(
+  # Stored cumulatively for `random.choices` below.
+  cumulative_weights = list(
       itertools.accumulate([1./n for n in range(1, max_ngram_size+1)]))
 
   output_ngrams = []
