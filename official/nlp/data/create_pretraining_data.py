@@ -432,7 +432,7 @@ def _contiguous(sorted_grams):
 def _masking_ngrams(grams, max_ngram_size, max_masked_tokens, rng):
   """Create a list of masking {1, ..., n}-grams from a list of one-grams.
 
-  This is an extention of 'whole word masking' to mask multiple, contiguous
+  This is an extension of 'whole word masking' to mask multiple, contiguous
   words such as (e.g., "the red boat").
 
   Each input gram represents the token indices of a single word,
