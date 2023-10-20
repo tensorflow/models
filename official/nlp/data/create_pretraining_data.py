@@ -503,7 +503,7 @@ def _masking_ngrams(grams, max_ngram_size, max_masked_tokens, rng):
          sum(len(s) for s in ngrams.values())):
     # Pick an n-gram size based on our weights.
     sz = random.choices(range(1, max_ngram_size+1),
-                        cum_weights=cummulative_weights)[0]
+                        cum_weights=cumulative_weights)[0]
 
     # Ensure this size doesn't result in too many masked tokens.
     # E.g., a two-gram contains _at least_ two tokens.
