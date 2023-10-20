@@ -498,7 +498,7 @@ def _masking_ngrams(grams, max_ngram_size, max_masked_tokens, rng):
   # Loop until we have enough masked tokens or there are no more candidate
   # n-grams of any length.
   # Each code path should ensure one or more elements from `ngrams` are removed
-  # to guarentee this loop terminates.
+  # to guarantee this loop terminates.
   while (sum(masked_tokens) < max_masked_tokens and
          sum(len(s) for s in ngrams.values())):
     # Pick an n-gram size based on our weights.
