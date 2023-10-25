@@ -57,7 +57,8 @@ class Parser(parser.Parser):
                dtype='bfloat16',
                resize_first: Optional[bool] = None,
                mode=None,
-               pad=True):
+               pad=True,
+               keep_aspect_ratio=True):
     """Initializes parameters for parsing annotations in the dataset.
 
     Args:
@@ -113,7 +114,8 @@ class Parser(parser.Parser):
         size = (384, 384). This is necessary when using FPN as it assumes each
         lower feature map is 2x size of its higher neighbor. Without padding,
         such relationship may be invalidated. The backbone may produce 5x5 and
-        2x2 consecutive feature maps, which does not work with FPN. 
+        2x2 consecutive feature maps, which does not work with FPN.
+      keep_aspect_ratio: `bool`, if True, keep the aspect ratio when resizing.
     """
     self._mode = mode
     self._max_num_instances = max_num_instances
@@ -170,6 +172,8 @@ class Parser(parser.Parser):
     # This is needed when using FPN decoder.
     self._pad = pad
 
+    self._keep_aspect_ratio = keep_aspect_ratio
+
   def _resize_and_crop_image_and_boxes(self, image, boxes, pad=True):
     """Resizes and crops image and boxes, optionally with padding."""
     # Resizes and crops image.
@@ -183,6 +187,7 @@ class Parser(parser.Parser):
         padded_size=padded_size,
         aug_scale_min=self._aug_scale_min,
         aug_scale_max=self._aug_scale_max,
+        keep_aspect_ratio=self._keep_aspect_ratio,
     )
 
     # Resizes and crops boxes.
@@ -345,6 +350,7 @@ class Parser(parser.Parser):
         padded_size=padded_size,
         aug_scale_min=1.0,
         aug_scale_max=1.0,
+        keep_aspect_ratio=self._keep_aspect_ratio,
     )
     image = tf.ensure_shape(image, padded_size + [3])
     image_height, image_width, _ = image.get_shape().as_list()
