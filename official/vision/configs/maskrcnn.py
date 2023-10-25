@@ -47,11 +47,16 @@ class Parser(hyperparams.Config):
   rpn_fg_fraction: float = 0.5
   mask_crop_size: int = 112
   pad: bool = True  # Only support `pad = True`.
+  keep_aspect_ratio: bool = True  # Only support `keep_aspect_ratio = True`.
 
   def __post_init__(self, *args, **kwargs):
     """Validates the configuration."""
     if not self.pad:
       raise ValueError('`maskrcnn.Parser` only supports `pad = True`.')
+    if not self.keep_aspect_ratio:
+      raise ValueError(
+          '`maskrcnn.Parser` only supports `keep_aspect_ratio = True`.'
+      )
     super().__post_init__(*args, **kwargs)
 
 

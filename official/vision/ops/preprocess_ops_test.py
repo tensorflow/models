@@ -15,7 +15,9 @@
 """Tests for preprocess_ops.py."""
 
 import io
+
 # Import libraries
+
 from absl.testing import parameterized
 import numpy as np
 from PIL import Image
@@ -56,6 +58,44 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
     output_data = output_data.numpy()
     self.assertAllClose(output_size, output_data.shape[0])
     self.assertAllClose(expected_outputs, output_data)
+
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='no_jittering',
+          input_size=(100, 200),
+          desired_size=(20, 10),
+          aug_scale_max=1.0,
+          output_scales=(20 / 100, 10 / 200),
+      ),
+      dict(
+          testcase_name='with_jittering',
+          input_size=(100, 200),
+          desired_size=(20, 10),
+          aug_scale_max=2.0,
+          output_scales=(20 / 100, 10 / 200),
+      ),
+  )
+  def test_resize_and_crop_image_not_keep_aspect_ratio(
+      self, input_size, desired_size, aug_scale_max, output_scales
+  ):
+    image = tf.convert_to_tensor(np.random.rand(*input_size, 3))
+
+    resized_image, image_info = preprocess_ops.resize_and_crop_image(
+        image,
+        desired_size=desired_size,
+        padded_size=desired_size,
+        aug_scale_max=aug_scale_max,
+        keep_aspect_ratio=False,
+    )
+    resized_image_shape = tf.shape(resized_image)
+
+    self.assertAllEqual([*desired_size, 3], resized_image_shape.numpy())
+    if aug_scale_max == 1:
+      self.assertNDArrayNear(
+          [input_size, desired_size, output_scales, [0.0, 0.0]],
+          image_info.numpy(),
+          1e-5,
+      )
 
   @parameterized.parameters(
       (100, 200, 100, 200, 32, 1.0, 1.0, 128, 224),

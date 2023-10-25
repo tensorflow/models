@@ -60,6 +60,7 @@ class Parser(hyperparams.Config):
   # Can choose AutoAugment and RandAugment.
   aug_type: Optional[common.Augmentation] = None
   pad: bool = True
+  keep_aspect_ratio: bool = True
 
   # Keep for backward compatibility. Not used.
   aug_policy: Optional[str] = None

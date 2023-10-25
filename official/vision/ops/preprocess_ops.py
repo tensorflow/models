@@ -158,7 +158,8 @@ def resize_and_crop_image(image,
                           aug_scale_min=1.0,
                           aug_scale_max=1.0,
                           seed=1,
-                          method=tf.image.ResizeMethod.BILINEAR):
+                          method=tf.image.ResizeMethod.BILINEAR,
+                          keep_aspect_ratio=True):
   """Resizes the input image to output size (RetinaNet style).
 
   Resize and pad images given the desired output size of the image and
@@ -184,6 +185,7 @@ def resize_and_crop_image(image,
       random scale applied to desired_size for training scale jittering.
     seed: seed for random scale jittering.
     method: function to resize input image to scaled image.
+    keep_aspect_ratio: whether or not to keep the aspect ratio when resizing.
 
   Returns:
     output_image: `Tensor` of shape [height, width, 3] where [height, width]
@@ -213,9 +215,10 @@ def resize_and_crop_image(image,
     else:
       scaled_size = tf.cast(desired_size, tf.float32)
 
-    scale = tf.minimum(
-        scaled_size[0] / image_size[0], scaled_size[1] / image_size[1])
-    scaled_size = tf.round(image_size * scale)
+    if keep_aspect_ratio:
+      scale = tf.minimum(
+          scaled_size[0] / image_size[0], scaled_size[1] / image_size[1])
+      scaled_size = tf.round(image_size * scale)
 
     # Computes 2D image_scale.
     image_scale = scaled_size / image_size

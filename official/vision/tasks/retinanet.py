@@ -137,6 +137,7 @@ class RetinaNetTask(base_task.Task):
         skip_crowd_during_training=params.parser.skip_crowd_during_training,
         max_num_instances=params.parser.max_num_instances,
         pad=params.parser.pad,
+        keep_aspect_ratio=params.parser.keep_aspect_ratio,
     )
 
     reader = input_reader_factory.input_reader_generator(

@@ -88,6 +88,7 @@ class DetectionModule(export_base.ExportModule):
         padded_size=self._padded_size,
         aug_scale_min=1.0,
         aug_scale_max=1.0,
+        keep_aspect_ratio=self.params.task.train_data.parser.keep_aspect_ratio,
     )
     anchor_boxes = self._build_anchor_boxes()
 
