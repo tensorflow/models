@@ -34,40 +34,55 @@ from official.core import input_reader
 from official.nlp.data import data_loader
 from official.nlp.data import data_loader_factory
 
+# Constants for bucketing examples based on length
 _MIN_BOUNDARY = 8
 _BOUNDARY_SCALE = 1.1
 
 
 def _get_example_length(example):
+    """Returns the maximum length between the example inputs and targets."""
     length = tf.maximum(tf.shape(example[0])[0], tf.shape(example[1])[0])
     return length
 
 
 def _create_min_max_boundaries(
-    max_length, min_boundary=_MIN_BOUNDARY, boundary_scale=_BOUNDARY_SCALE
+        max_length, min_boundary=_MIN_BOUNDARY, boundary_scale=_BOUNDARY_SCALE
 ):
+    """Create min and max boundary lists up to max_length."""
     bucket_boundaries = []
     x = min_boundary
     while x < max_length:
         bucket_boundaries.append(x)
         x = max(x + 1, int(x * boundary_scale))
+
+    # Create min and max boundary lists from the initial list.
     buckets_min = [0] + bucket_boundaries
     buckets_max = bucket_boundaries + [max_length + 1]
     return buckets_min, buckets_max
 
 
 def _batch_examples(dataset, batch_size, max_length):
+    """Group examples by similar lengths and return batched dataset."""
     buckets_min, buckets_max = _create_min_max_boundaries(max_length)
+
+    # Create a list of batch sizes for each bucket_id
     bucket_batch_sizes = [int(batch_size) // x for x in buckets_max]
+
+    # Validate bucket batch sizes
     if any([batch_size <= 0 for batch_size in bucket_batch_sizes]):
         raise ValueError(
             "The token budget, global batch size, is too small to yield 0 bucket "
             "window: %s" % str(bucket_batch_sizes)
         )
+
     bucket_batch_sizes = tf.constant(bucket_batch_sizes, dtype=tf.int64)
 
     def example_to_bucket_id(example):
-        seq_length = _get_example_length((example["inputs"], example["targets"]))
+        """Return an integer bucket id for this example based on length."""
+        example_input = example["inputs"]
+        example_target = example["targets"]
+        seq_length = _get_example_length((example_input, example_target))
+
         conditions_c = tf.logical_and(
             tf.less_equal(buckets_min, seq_length), tf.less(seq_length, buckets_max)
         )
@@ -75,15 +90,21 @@ def _batch_examples(dataset, batch_size, max_length):
         return bucket_id
 
     def window_size_fn(bucket_id):
+        """Return the number of examples to be grouped when given a bucket id."""
         return bucket_batch_sizes[bucket_id]
 
     def batching_fn(bucket_id, grouped_dataset):
+        """Batch and add padding to a dataset of elements with similar lengths."""
         bucket_batch_size = window_size_fn(bucket_id)
+
+        # Batch the dataset and add padding so that all input sequences in the
+        # examples have the same length, and all target sequences have the same
+        # lengths as well. Resulting lengths of inputs and targets can differ.
         padded_shapes = dict(
-            [
-                (name, [None] * len(spec.shape))
+            {
+                name: [None] * len(spec.shape)
                 for name, spec in grouped_dataset.element_spec.items()
-            ]
+            }
         )
         return grouped_dataset.padded_batch(bucket_batch_size, padded_shapes)
 
@@ -99,6 +120,7 @@ def _batch_examples(dataset, batch_size, max_length):
 
 @dataclasses.dataclass
 class WMTDataConfig(cfg.DataConfig):
+    """Data config for WMT translation."""
     max_seq_length: int = 64
     static_batch: bool = False
     sentencepiece_model_path: str = ""
@@ -110,6 +132,8 @@ class WMTDataConfig(cfg.DataConfig):
 
 @data_loader_factory.register_data_loader_cls(WMTDataConfig)
 class WMTDataLoader(data_loader.DataLoader):
+    """A class to load dataset for WMT translation task."""
+
     def __init__(self, params: WMTDataConfig):
         self._params = params
         self._max_seq_length = params.max_seq_length
@@ -122,6 +146,7 @@ class WMTDataLoader(data_loader.DataLoader):
             )
 
     def _decode(self, record: tf.Tensor):
+        """Decodes a serialized tf.Example."""
         name_to_features = {
             self._params.src_lang: tf.io.FixedLenFeature([], tf.string),
             self._params.tgt_lang: tf.io.FixedLenFeature([], tf.string),
@@ -129,6 +154,8 @@ class WMTDataLoader(data_loader.DataLoader):
         if self._params.has_unique_id:
             name_to_features["unique_id"] = tf.io.FixedLenFeature([], tf.int64)
         example = tf.io.parse_single_example(record, name_to_features)
+        # tf.Example only supports tf.int64, but the TPU only supports tf.int32.
+        # So cast all int64 to int32.
         for name in example:
             t = example[name]
             if t.dtype == tf.int64:
@@ -156,7 +183,7 @@ class WMTDataLoader(data_loader.DataLoader):
     def _maybe_truncate(self, inputs):
         truncated_inputs = {}
         for k, v in inputs.items():
-            if k == "inputs" or k == "targets":
+            if k in ["inputs", "targets"]:
                 truncated_inputs[k] = (
                     tf.pad(v[: self._max_seq_length - 1], [[0, 1]], constant_values=1)
                     if tf.shape(v)[0] > self._max_seq_length
@@ -167,22 +194,25 @@ class WMTDataLoader(data_loader.DataLoader):
         return truncated_inputs
 
     def _tokenize_bucketize_and_batch(
-        self, dataset, input_context: Optional[tf.distribute.InputContext] = None
+            self, dataset, input_context: Optional[tf.distribute.InputContext] = None
     ):
         dataset = dataset.map(
             self._tokenize, num_parallel_calls=tf.data.experimental.AUTOTUNE
         )
+
         if self._params.is_training:
             dataset = dataset.filter(self._filter_max_length)
         else:
             dataset = dataset.map(
                 self._maybe_truncate, num_parallel_calls=tf.data.experimental.AUTOTUNE
             )
+
         per_replica_batch_size = (
             input_context.get_per_replica_batch_size(self._global_batch_size)
             if input_context
             else self._global_batch_size
         )
+
         if self._static_batch:
             padded_shapes = {}
             for name, _ in dataset.element_spec.items():
@@ -192,6 +222,7 @@ class WMTDataLoader(data_loader.DataLoader):
                     padded_shapes[name] = (
                         [self._max_seq_length] if self._static_batch else [None]
                     )
+
             batch_size = per_replica_batch_size
             if self._params.is_training:
                 batch_size = int(batch_size // self._max_seq_length)
@@ -202,16 +233,19 @@ class WMTDataLoader(data_loader.DataLoader):
             dataset = _batch_examples(
                 dataset, per_replica_batch_size, self._max_seq_length
             )
+
         dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
         return dataset
 
     def load(self, input_context: Optional[tf.distribute.InputContext] = None):
+        """Returns a tf.dataset.Dataset."""
         decoder_fn = None
+        # Only decode for TFRecords.
         if self._params.input_path:
             decoder_fn = self._decode
 
         def _identity(
-            dataset, input_context: Optional[tf.distribute.InputContext] = None
+                dataset, input_context: Optional[tf.distribute.InputContext] = None
         ):
             del input_context
             return dataset
