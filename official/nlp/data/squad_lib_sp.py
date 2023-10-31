@@ -776,7 +776,7 @@ def postprocess_output(all_examples,
               start_logit=pred.start_logit,
               end_logit=pred.end_logit))
 
-    # if we didn't inlude the empty option in the n-best, include it
+    # if we didn't include the empty option in the n-best, include it
     if version_2_with_negative and not xlnet_format:
       if "" not in seen_predictions:
         nbest.append(
