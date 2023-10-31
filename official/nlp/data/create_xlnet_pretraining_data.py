@@ -271,7 +271,7 @@ def _create_a_and_b_segments(
   Args:
     tokens: The 1D input token ids. This represents an individual entry within a
       batch.
-    sentence_ids: The 1D input sentence ids. This represents an indivdual entry
+    sentence_ids: The 1D input sentence ids. This represents an individual entry
       within a batch. This should be the same length as `tokens`.
     begin_index: The reference beginning index to split data.
     total_length: The target combined length of segments A and B.
