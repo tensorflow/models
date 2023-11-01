@@ -70,7 +70,7 @@ class Parser(parser.Parser):
       self,
       roi_size: int = 128,
       num_queries: int = 10,
-      dtype='bfloat16'
+      dtype='float32'
   ):
     self._roi_size = roi_size
     self._num_queries = num_queries
@@ -107,11 +107,9 @@ class Parser(parser.Parser):
     gt_probs = tf.reshape(data['gt_probs'], [self._num_queries])
     gt_masks = tf.reshape(
         data['gt_masks'], [self._roi_size, self._roi_size, self._num_queries])
-    #print(tf.reduce_max(sat_roi))
+    
     #sat_roi = tf.image.convert_image_dtype(sat_roi, dtype=tf.float32)
-    sat_roi = tf.cast(sat_roi, tf.float32) / 255
-    #print(tf.reduce_max(sat_roi))
-    #print("----------------------")
+    sat_roi = tf.cast(sat_roi, tf.float32)/255
     sat_roi = sat_roi * (
         0.7 + 0.3 * tf.random.uniform([], minval=0, maxval=1, dtype=tf.float32))
     rot_index = tf.random.uniform(shape=(), minval=0, maxval=4, dtype=tf.int32)
@@ -146,18 +144,46 @@ class Parser(parser.Parser):
   
   def _parse_eval_data(self, data):
     """Parses data for training and evaluation."""
+    sat_roi = tf.reshape(data['sat_roi'], [self._roi_size, self._roi_size, 3])
+    sat_roi = tf.cast(sat_roi, tf.float32)/255
+    label_masks_roi = tf.reshape(
+        data['label_masks_roi'], [self._roi_size, self._roi_size, 2])/255
+    historical_roi = tf.reshape(
+        data['historical_roi'], [self._roi_size, self._roi_size, 1])/255
+    gt_coords = tf.reshape(data['gt_coords'], [self._num_queries, 2])
+    gt_probs = tf.reshape(data['gt_probs'], [self._num_queries])
+    gt_masks = tf.reshape(
+        data['gt_masks'], [self._roi_size, self._roi_size, self._num_queries])/255
+    
+    #sat_roi = tf.image.convert_image_dtype(sat_roi, dtype=tf.float32)
+    sat_roi = sat_roi * (
+        0.7 + 0.3 * tf.random.uniform([], minval=0, maxval=1, dtype=tf.float32))
+    rot_index = tf.random.uniform(shape=(), minval=0, maxval=4, dtype=tf.int32)
+    
+    # Define the rotation matrix
+    cos_theta = 0 if rot_index%2 is 1 else (1 if rot_index is 0 else -1)
+    sin_theta = 0 if rot_index%2 is 0 else (1 if rot_index is 1 else -1)
+    R = tf.constant([[cos_theta, -sin_theta], [sin_theta, cos_theta]],
+                    dtype=tf.float32)
+    
+    gt_coords = tf.transpose(tf.linalg.matmul(R, gt_coords, transpose_b=True)) 
+    label_masks_roi = tf.image.rot90(label_masks_roi, rot_index)
+    historical_roi = tf.image.rot90(historical_roi, rot_index)
+    sat_roi = tf.image.rot90(sat_roi, rot_index)
+    gt_masks = tf.image.rot90(gt_masks, rot_index)
 
-    # Gets original image.
-    image = data['image']
+    #sat_roi = tf.cast(sat_roi, dtype=self._dtype)
+    #historical_roi = tf.cast(historical_roi, dtype=self._dtype)
+    images = {
+        'sat_roi': sat_roi,
+        'historical_roi': historical_roi,
+    }
+    labels = {
+        'label_masks_roi': label_masks_roi,
+        'gt_probs': gt_probs,
+        'gt_coords': gt_coords,
+        'list_len': data['list_len'],
+        'gt_masks': gt_masks,
+    }
 
-    # Normalizes image with mean and std pixel values.
-    image = tf.image.convert_image_dtype(image, dtype=tf.float32)
-
-    image, image_info = preprocess_ops.resize_and_crop_image(
-        image,
-        self._output_size,
-        padded_size=self._output_size,
-        aug_scale_min=self._aug_scale_min,
-        aug_scale_max=self._aug_scale_max)
-
-    return image
+    return images, labels

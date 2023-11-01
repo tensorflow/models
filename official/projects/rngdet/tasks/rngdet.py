@@ -24,6 +24,7 @@ from official.core import task_factory
 from official.projects.rngdet.configs import rngdet as rngdet_cfg
 from official.projects.rngdet.dataloaders import rngdet_input
 from official.projects.rngdet.modeling import rngdet
+from official.projects.rngdet.modeling import fpn
 from official.projects.detr.ops import matchers
 from official.vision.dataloaders import input_reader_factory
 from official.vision.evaluation import coco_evaluator
@@ -46,35 +47,32 @@ class RNGDetTask(base_task.Task):
 
     input_specs = tf.keras.layers.InputSpec(shape=[None] +
                                             self._task_config.model.input_size)
-    
-    l2_weight_decay = self.task_config.losses.l2_weight_decay
-    # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
-    # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
-    # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
-    l2_regularizer = (tf.keras.regularizers.l2(
-        l2_weight_decay / 2.0) if l2_weight_decay else None)
 
     backbone = backbones.factory.build_backbone(
         input_specs=input_specs,
         backbone_config=self._task_config.model.backbone,
         norm_activation_config=self._task_config.model.norm_activation)
-    
-    history_specs = tf.keras.layers.InputSpec(shape=[None] +
-        self._task_config.model.input_size[:2] + [3])
+
     backbone_history = backbones.factory.build_backbone(
-        input_specs=history_specs,
+        input_specs=input_specs,
         backbone_config=self._task_config.model.backbone,
         norm_activation_config=self._task_config.model.norm_activation)
     
     segment_fpn = decoders.factory.build_decoder(
         input_specs=backbone.output_specs,
-        model_config=self._task_config.model,
-        l2_regularizer=l2_regularizer)
+        model_config=self._task_config.model)
     
     keypoint_fpn = decoders.factory.build_decoder(
         input_specs=backbone.output_specs,
-        model_config=self._task_config.model,
-        l2_regularizer=l2_regularizer)
+        model_config=self._task_config.model)
+
+    """segment_fpn = fpn.build_fpn_decoder(
+        input_specs=backbone.output_specs,
+        model_config=self._task_config.model)
+    
+    keypoint_fpn = fpn.build_fpn_decoder(
+        input_specs=backbone.output_specs,
+        model_config=self._task_config.model)"""
     
     transformer = rngdet.DETRTransformer(
         num_encoder_layers=self._task_config.model.num_encoder_layers,
@@ -94,6 +92,12 @@ class RNGDetTask(base_task.Task):
                       self._task_config.model.num_queries,
                       self._task_config.model.hidden_size,
                       self._task_config.model.num_classes)
+
+    # Builds the model through warm-up call.
+    dummy_images = tf.keras.Input(self.task_config.model.input_size)
+    dummy_history = tf.keras.Input(self.task_config.model.input_size[:2] + [1])
+    _ = model(dummy_images, dummy_history, training=False)
+
     return model
 
   def initialize(self, model: tf.keras.Model):
@@ -240,8 +244,6 @@ class RNGDetTask(base_task.Task):
     cls_assigned = tf.gather(cls_outputs, target_index, batch_dims=1, axis=1)
     box_assigned = tf.gather(box_outputs, target_index, batch_dims=1, axis=1)
 
-    
-
 
     # (gunho) background (eos in RNGDet) is assigned to 1
     #background = tf.equal(cls_targets, 0)
@@ -342,21 +344,13 @@ class RNGDetTask(base_task.Task):
       seg_loss = self.segmentation_loss(pred_segment, pred_keypoint, labels)
       loss += seg_loss
       
-      
-      
-      # Computes per-replica loss.
-      layer_loss, layer_cls_loss, layer_box_loss = self.build_losses(
-          outputs=outputs[-1], labels=labels, aux_losses=model.losses)
-      loss += layer_loss
-      cls_loss += layer_cls_loss
-      box_loss += layer_box_loss
-      """for output in outputs:
+      for output in outputs:
         # Computes per-replica loss.
         layer_loss, layer_cls_loss, layer_box_loss = self.build_losses(
             outputs=output, labels=labels, aux_losses=model.losses)
         loss += layer_loss/self._task_config.model.num_decoder_layers
         cls_loss += layer_cls_loss/self._task_config.model.num_decoder_layers
-        box_loss += layer_box_loss/self._task_config.model.num_decoder_layers"""
+        box_loss += layer_box_loss/self._task_config.model.num_decoder_layers
       
       # Consider moving scaling logic from build_losses to here.
       scaled_loss = loss
@@ -382,19 +376,20 @@ class RNGDetTask(base_task.Task):
     box_loss *= num_replicas_in_sync
     seg_loss *= num_replicas_in_sync
 
+    
     # Trainer class handles loss metric for you.
     logs = {self.loss: loss}
 
-    """print(box_loss)
-    print(cls_loss)
-    print("*************************")
-    exit()"""
 
     all_losses = {
         'cls_loss': cls_loss,
         'box_loss': box_loss,
         'seg_loss': seg_loss,
     }
+
+    # (gunho) check global norm
+    norm = tf.linalg.global_norm(grads)
+    logs['global_norm'] = norm
 
     # Metric results will be added to logs for you.
     if metrics:

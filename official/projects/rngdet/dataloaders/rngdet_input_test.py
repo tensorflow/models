@@ -206,7 +206,7 @@ class Pix2SeqParserTest(tf.test.TestCase):
 
 def main(_):
   raw_dataset_train = tf.data.TFRecordDataset(
-    '/data2/cityscale/tfrecord/train-noise-8-00000-of-00032.tfrecord')
+    '/home/ghpark.epiclab/03_rngdet/models/official/projects/rngdet/train-noise-8-00000-of-00032.tfrecord')
   
   decoder = rngdet_input.Decoder()
   parser = rngdet_input.Parser(
@@ -215,7 +215,9 @@ def main(_):
     ).parse_fn(True)
   
   decoded_tensors = raw_dataset_train.map(decoder.decode)
-  decoded_tensors = decoded_tensors.take(20)
+  decoded_tensors = decoded_tensors.take(10)
+  #print(decoded_tensors)
+  #print("***********************************")
   for i in decoded_tensors:
     
     print("***********************************")

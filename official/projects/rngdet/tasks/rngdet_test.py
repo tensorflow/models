@@ -84,16 +84,18 @@ class RngdetTest(tf.test.TestCase):
             input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train-noise*'),
             is_training=True,
             dtype='float32',
-            global_batch_size=1,
+            global_batch_size=3,
             shuffle_buffer_size=1000,
         ))
     with tfds.testing.mock_data(as_dataset_fn=_as_dataset):
       task = rngdet.RNGDetTask(config)
       model = task.build_model()
-      
-      task.initialize(model)
-      """ckpt_dir_or_file = 'gs://ghpark-ckpts/rngdet/test_00'
-      #ckpt_dir_or_file = '/home/ghpark.epiclab/03_rngdet/ckpt/test_00'
+      dummy_images = tf.keras.Input([128, 128, 3])
+      dummy_history = tf.keras.Input([128, 128, 1])
+      _ = model(dummy_images, dummy_history, training=False)
+      #task.initialize(model)
+      #ckpt_dir_or_file = 'gs://ghpark-ckpts/rngdet/test_00'
+      ckpt_dir_or_file = '/home/ghpark.epiclab/03_rngdet/ckpt/test_02'
       ckpt = tf.train.Checkpoint(
           backbone=model.backbone,
           backbone_history=model.backbone_history,
@@ -107,8 +109,7 @@ class RngdetTest(tf.test.TestCase):
           bbox_embed=model._bbox_embed,
           input_proj=model.input_proj)
       status = ckpt.restore(tf.train.latest_checkpoint(ckpt_dir_or_file))
-      status.expect_partial().assert_existing_objects_matched()"""
-
+      status.expect_partial().assert_existing_objects_matched()
       print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
       print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
       print("LOAD CHECKPOINT DONE")
@@ -135,8 +136,6 @@ class RngdetTest(tf.test.TestCase):
           },
       })
       optimizer = rngdet.RNGDetTask.create_optimizer(opt_cfg)
-      task.train_step(next(iterator), model, optimizer)
-      print("***************************************")
       task.train_step(next(iterator), model, optimizer)
 
   """def test_validation_step(self):

@@ -99,34 +99,6 @@ def position_embedding_sine(attention_mask,
   return embeddings
 
 
-def postprocess(outputs: dict[str, tf.Tensor]) -> dict[str, tf.Tensor]:
-  """Performs post-processing on model output.
-
-  Args:
-    outputs: The raw model output.
-
-  Returns:
-    Postprocessed model output.
-  """
-  predictions = {
-      "detection_boxes":  # Box coordinates are relative values here.
-          box_ops.cycxhw_to_yxyx(outputs["box_outputs"]),
-      "detection_scores":
-          tf.math.reduce_max(
-              tf.nn.softmax(outputs["cls_outputs"])[:, :, 1:], axis=-1),
-      "detection_classes":
-          tf.math.argmax(outputs["cls_outputs"][:, :, 1:], axis=-1) + 1,
-      # Fix this. It's not being used at the moment.
-      "num_detections":
-          tf.reduce_sum(
-              tf.cast(
-                  tf.math.greater(
-                      tf.math.reduce_max(outputs["cls_outputs"], axis=-1), 0),
-                  tf.int32),
-              axis=-1)
-  }
-  return predictions
-
 
 class RNGDet(tf.keras.Model):
   """RNGDet model with Keras.
@@ -246,9 +218,6 @@ class RNGDet(tf.keras.Model):
         bbox_embed=self._bbox_embed,
         input_proj=self.input_proj,
         )
-    #items.update(=self._class_embed)
-    #if self.decoder is not None:
-    #  items.update(decoder=self.decoder)
 
     return items
   
