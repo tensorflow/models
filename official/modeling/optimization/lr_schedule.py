@@ -30,11 +30,12 @@ def _make_offset_wrapper(new_class_name: str, base_lr_class):
 
   Example:
     CosineDecayWithOffset = _make_offset_wrapper(
-                     'CosineDecayWithOffset', tf.keras.experimental.CosineDecay)
+                     'CosineDecayWithOffset', 
+                     tf.keras.optimizers.schedules.CosineDecay)
     # Use the lr:
     lr = CosineDecayWithOffset(offset=100, initial_learning_rate=0.1,
                                decay_steps=1000)
-    lr(101) # equals to tf.keras.experimental.CosineDecay(...)(101-100)
+    lr(101) # equals to keras.optimizers.schedules.CosineDecay(...)(101-100)
 
   Args:
     new_class_name: the name of the new class.
@@ -85,8 +86,10 @@ PolynomialDecayWithOffset = _make_offset_wrapper(
 ExponentialDecayWithOffset = _make_offset_wrapper(
     "ExponentialDecayWithOffset",
     tf.keras.optimizers.schedules.ExponentialDecay)
-CosineDecayWithOffset = _make_offset_wrapper("CosineDecayWithOffset",
-                                             tf.keras.experimental.CosineDecay)
+CosineDecayWithOffset = _make_offset_wrapper(
+    "CosineDecayWithOffset",
+    tf.keras.optimizers.schedules.CosineDecay,
+)
 
 
 class LinearWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
