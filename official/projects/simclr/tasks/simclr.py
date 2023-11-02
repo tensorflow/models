@@ -27,7 +27,7 @@ the task definition:
 from typing import Dict, Optional
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import config_definitions
@@ -82,7 +82,7 @@ class SimCLRPretrainTask(base_task.Task):
 
   def build_model(self):
     model_config = self.task_config.model
-    input_specs = tf.keras.layers.InputSpec(shape=[None] +
+    input_specs = tf_keras.layers.InputSpec(shape=[None] +
                                             model_config.input_size)
 
     l2_weight_decay = self.task_config.loss.l2_weight_decay
@@ -90,7 +90,7 @@ class SimCLRPretrainTask(base_task.Task):
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
     l2_regularizer = (
-        tf.keras.regularizers.l2(l2_weight_decay /
+        tf_keras.regularizers.l2(l2_weight_decay /
                                  2.0) if l2_weight_decay else None)
 
     # Build backbone
@@ -138,7 +138,7 @@ class SimCLRPretrainTask(base_task.Task):
 
     return model
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Loading pretrained checkpoint."""
     if not self.task_config.init_checkpoint:
       return
@@ -230,12 +230,12 @@ class SimCLRPretrainTask(base_task.Task):
       labels = tf.concat([labels, labels], 0)
 
       if self.task_config.evaluation.one_hot:
-        sup_loss = tf.keras.losses.CategoricalCrossentropy(
-            from_logits=True, reduction=tf.keras.losses.Reduction.NONE)(labels,
+        sup_loss = tf_keras.losses.CategoricalCrossentropy(
+            from_logits=True, reduction=tf_keras.losses.Reduction.NONE)(labels,
                                                                         outputs)
       else:
-        sup_loss = tf.keras.losses.SparseCategoricalCrossentropy(
-            from_logits=True, reduction=tf.keras.losses.Reduction.NONE)(labels,
+        sup_loss = tf_keras.losses.SparseCategoricalCrossentropy(
+            from_logits=True, reduction=tf_keras.losses.Reduction.NONE)(labels,
                                                                         outputs)
       sup_loss = tf.reduce_mean(sup_loss)
 
@@ -269,19 +269,19 @@ class SimCLRPretrainTask(base_task.Task):
       if self.task_config.model.supervised_head:
         metric_names.extend(['supervised_loss', 'accuracy'])
       for name in metric_names:
-        metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
+        metrics.append(tf_keras.metrics.Mean(name, dtype=tf.float32))
     else:
       k = self.task_config.evaluation.top_k
       if self.task_config.evaluation.one_hot:
         metrics = [
-            tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
-            tf.keras.metrics.TopKCategoricalAccuracy(
+            tf_keras.metrics.CategoricalAccuracy(name='accuracy'),
+            tf_keras.metrics.TopKCategoricalAccuracy(
                 k=k, name='top_{}_accuracy'.format(k))
         ]
       else:
         metrics = [
-            tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
-            tf.keras.metrics.SparseTopKCategoricalAccuracy(
+            tf_keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
+            tf_keras.metrics.SparseTopKCategoricalAccuracy(
                 k=k, name='top_{}_accuracy'.format(k))
         ]
     return metrics
@@ -313,7 +313,7 @@ class SimCLRPretrainTask(base_task.Task):
       scaled_loss = losses['total_loss'] / num_replicas
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
@@ -322,7 +322,7 @@ class SimCLRPretrainTask(base_task.Task):
       logging.info(var.name)
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient when LossScaleOptimizer is used.
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
@@ -395,7 +395,7 @@ class SimCLRFinetuneTask(base_task.Task):
 
   def build_model(self):
     model_config = self.task_config.model
-    input_specs = tf.keras.layers.InputSpec(shape=[None] +
+    input_specs = tf_keras.layers.InputSpec(shape=[None] +
                                             model_config.input_size)
 
     l2_weight_decay = self.task_config.loss.l2_weight_decay
@@ -403,7 +403,7 @@ class SimCLRFinetuneTask(base_task.Task):
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
     l2_regularizer = (
-        tf.keras.regularizers.l2(l2_weight_decay /
+        tf_keras.regularizers.l2(l2_weight_decay /
                                  2.0) if l2_weight_decay else None)
 
     backbone = backbones.factory.build_backbone(
@@ -445,7 +445,7 @@ class SimCLRFinetuneTask(base_task.Task):
 
     return model
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Loading pretrained checkpoint."""
     if not self.task_config.init_checkpoint:
       return
@@ -514,13 +514,13 @@ class SimCLRFinetuneTask(base_task.Task):
     """
     losses_config = self.task_config.loss
     if losses_config.one_hot:
-      total_loss = tf.keras.losses.categorical_crossentropy(
+      total_loss = tf_keras.losses.categorical_crossentropy(
           labels,
           model_outputs,
           from_logits=True,
           label_smoothing=losses_config.label_smoothing)
     else:
-      total_loss = tf.keras.losses.sparse_categorical_crossentropy(
+      total_loss = tf_keras.losses.sparse_categorical_crossentropy(
           labels, model_outputs, from_logits=True)
 
     total_loss = tf_utils.safe_mean(total_loss)
@@ -534,14 +534,14 @@ class SimCLRFinetuneTask(base_task.Task):
     k = self.task_config.evaluation.top_k
     if self.task_config.evaluation.one_hot:
       metrics = [
-          tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
-          tf.keras.metrics.TopKCategoricalAccuracy(
+          tf_keras.metrics.CategoricalAccuracy(name='accuracy'),
+          tf_keras.metrics.TopKCategoricalAccuracy(
               k=k, name='top_{}_accuracy'.format(k))
       ]
     else:
       metrics = [
-          tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
-          tf.keras.metrics.SparseTopKCategoricalAccuracy(
+          tf_keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
+          tf_keras.metrics.SparseTopKCategoricalAccuracy(
               k=k, name='top_{}_accuracy'.format(k))
       ]
     return metrics
@@ -580,7 +580,7 @@ class SimCLRFinetuneTask(base_task.Task):
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
@@ -590,7 +590,7 @@ class SimCLRFinetuneTask(base_task.Task):
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient before apply_gradients when LossScaleOptimizer is
     # used.
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 

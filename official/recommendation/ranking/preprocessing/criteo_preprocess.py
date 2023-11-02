@@ -36,7 +36,7 @@ from absl import logging
 
 import apache_beam as beam
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_transform as tft
 import tensorflow_transform.beam as tft_beam
 from tensorflow_transform.tf_metadata import dataset_metadata

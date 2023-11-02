@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.roformer import roformer_encoder
 
@@ -25,7 +25,7 @@ class RoformerEncoderTest(tf.test.TestCase, parameterized.TestCase):
 
   def tearDown(self):
     super(RoformerEncoderTest, self).tearDown()
-    tf.keras.mixed_precision.set_global_policy("float32")
+    tf_keras.mixed_precision.set_global_policy("float32")
 
   def test_network_creation(self):
     hidden_size = 32
@@ -37,16 +37,16 @@ class RoformerEncoderTest(tf.test.TestCase, parameterized.TestCase):
         num_attention_heads=2,
         num_layers=3)
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     dict_outputs = test_network([word_ids, mask, type_ids])
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
 
     self.assertIsInstance(test_network.transformer_layers, list)
     self.assertLen(test_network.transformer_layers, 3)
-    self.assertIsInstance(test_network.pooler_layer, tf.keras.layers.Dense)
+    self.assertIsInstance(test_network.pooler_layer, tf_keras.layers.Dense)
 
     expected_data_shape = [None, sequence_length, hidden_size]
     expected_pooled_shape = [None, hidden_size]
@@ -67,9 +67,9 @@ class RoformerEncoderTest(tf.test.TestCase, parameterized.TestCase):
         num_attention_heads=2,
         num_layers=3)
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     dict_outputs = test_network([word_ids, mask, type_ids])
     all_encoder_outputs = dict_outputs["encoder_outputs"]
     pooled = dict_outputs["pooled_output"]
@@ -88,7 +88,7 @@ class RoformerEncoderTest(tf.test.TestCase, parameterized.TestCase):
   def test_network_creation_with_float16_dtype(self):
     hidden_size = 32
     sequence_length = 21
-    tf.keras.mixed_precision.set_global_policy("mixed_float16")
+    tf_keras.mixed_precision.set_global_policy("mixed_float16")
     # Create a small BertEncoder for testing.
     test_network = roformer_encoder.RoformerEncoder(
         vocab_size=100,
@@ -96,9 +96,9 @@ class RoformerEncoderTest(tf.test.TestCase, parameterized.TestCase):
         num_attention_heads=2,
         num_layers=3)
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     dict_outputs = test_network([word_ids, mask, type_ids])
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
@@ -131,15 +131,15 @@ class RoformerEncoderTest(tf.test.TestCase, parameterized.TestCase):
         type_vocab_size=num_types,
         output_range=output_range)
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     dict_outputs = test_network([word_ids, mask, type_ids])
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
 
     # Create a model based off of this network:
-    model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
+    model = tf_keras.Model([word_ids, mask, type_ids], [data, pooled])
 
     # Invoke the model. We can't validate the output data here (the model is too
     # complex) but this will catch structural runtime errors.
@@ -164,7 +164,7 @@ class RoformerEncoderTest(tf.test.TestCase, parameterized.TestCase):
     dict_outputs = test_network([word_ids, mask, type_ids])
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
-    model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
+    model = tf_keras.Model([word_ids, mask, type_ids], [data, pooled])
     outputs = model.predict([word_id_data, mask_data, type_id_data])
     self.assertEqual(outputs[0].shape[1], sequence_length)
 
@@ -180,7 +180,7 @@ class RoformerEncoderTest(tf.test.TestCase, parameterized.TestCase):
     dict_outputs = test_network([word_ids, mask, type_ids])
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
-    model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
+    model = tf_keras.Model([word_ids, mask, type_ids], [data, pooled])
     outputs = model.predict([word_id_data, mask_data, type_id_data])
     self.assertEqual(outputs[0].shape[-1], hidden_size)
     self.assertTrue(hasattr(test_network, "_embedding_projection"))
@@ -205,10 +205,10 @@ class RoformerEncoderTest(tf.test.TestCase, parameterized.TestCase):
         norm_first=False)
     network = roformer_encoder.RoformerEncoder(**kwargs)
     expected_config = dict(kwargs)
-    expected_config["inner_activation"] = tf.keras.activations.serialize(
-        tf.keras.activations.get(expected_config["inner_activation"]))
-    expected_config["initializer"] = tf.keras.initializers.serialize(
-        tf.keras.initializers.get(expected_config["initializer"]))
+    expected_config["inner_activation"] = tf_keras.activations.serialize(
+        tf_keras.activations.get(expected_config["inner_activation"]))
+    expected_config["initializer"] = tf_keras.initializers.serialize(
+        tf_keras.initializers.get(expected_config["initializer"]))
     self.assertEqual(network.get_config(), expected_config)
     # Create another network object from the first object's config.
     new_network = roformer_encoder.RoformerEncoder.from_config(
@@ -223,7 +223,7 @@ class RoformerEncoderTest(tf.test.TestCase, parameterized.TestCase):
     # Tests model saving/loading.
     model_path = self.get_temp_dir() + "/model"
     network.save(model_path)
-    _ = tf.keras.models.load_model(model_path)
+    _ = tf_keras.models.load_model(model_path)
 
 
 if __name__ == "__main__":

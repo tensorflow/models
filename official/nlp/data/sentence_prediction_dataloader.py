@@ -17,7 +17,7 @@ import dataclasses
 import functools
 from typing import List, Mapping, Optional, Tuple
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_hub as hub
 
 from official.common import dataset_fn

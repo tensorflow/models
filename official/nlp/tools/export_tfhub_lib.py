@@ -23,7 +23,7 @@ from typing import Optional, Text, Tuple
 
 # Import libraries
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 # pylint: disable=g-direct-tensorflow-import  TODO(b/175369555): Remove these.
 from tensorflow.core.protobuf import saved_model_pb2
 from tensorflow.python.ops import control_flow_assert
@@ -49,7 +49,7 @@ def get_bert_encoder(bert_config):
       attention_dropout_rate=bert_config.attention_probs_dropout_prob,
       max_sequence_length=bert_config.max_position_embeddings,
       type_vocab_size=bert_config.type_vocab_size,
-      initializer=tf.keras.initializers.TruncatedNormal(
+      initializer=tf_keras.initializers.TruncatedNormal(
           stddev=bert_config.initializer_range),
       embedding_width=bert_config.embedding_size,
       dict_outputs=True)
@@ -80,7 +80,7 @@ def _create_model(
     bert_config: Optional[configs.BertConfig] = None,
     encoder_config: Optional[encoders.EncoderConfig] = None,
     with_mlm: bool,
-) -> Tuple[tf.keras.Model, tf.keras.Model]:
+) -> Tuple[tf_keras.Model, tf_keras.Model]:
   """Creates the model to export and the model to restore the checkpoint.
 
   Args:
@@ -119,7 +119,7 @@ def _create_model(
   # For interchangeability with other text representations,
   # add "default" as an alias for BERT's whole-input reptesentations.
   encoder_output_dict["default"] = encoder_output_dict["pooled_output"]
-  core_model = tf.keras.Model(
+  core_model = tf_keras.Model(
       inputs=encoder_inputs_dict, outputs=encoder_output_dict)
 
   if with_mlm:
@@ -138,7 +138,7 @@ def _create_model(
     else:
       pretrainer_inputs_dict = {x.name: x for x in pretrainer.inputs}
     pretrainer_output_dict = pretrainer(pretrainer_inputs_dict)
-    mlm_model = tf.keras.Model(
+    mlm_model = tf_keras.Model(
         inputs=pretrainer_inputs_dict, outputs=pretrainer_output_dict)
     # Set `_auto_track_sub_layers` to False, so that the additional weights
     # from `mlm` sub-object will not be included in the core model.
@@ -315,7 +315,7 @@ def create_preprocessing(*,
                          sp_model_file: Optional[str] = None,
                          do_lower_case: bool,
                          tokenize_with_offsets: bool,
-                         default_seq_length: int) -> tf.keras.Model:
+                         default_seq_length: int) -> tf_keras.Model:
   """Returns a preprocessing Model for given tokenization parameters.
 
   This function builds a Keras Model with attached subobjects suitable for
@@ -336,7 +336,7 @@ def create_preprocessing(*,
       bert_pack_inputs subobject.
 
   Returns:
-    A tf.keras.Model object with several attached subobjects, suitable for
+    A tf_keras.Model object with several attached subobjects, suitable for
     saving as a preprocessing SavedModel.
   """
   # Select tokenizer.
@@ -356,7 +356,7 @@ def create_preprocessing(*,
 
   # The root object of the preprocessing model can be called to do
   # one-shot preprocessing for users with single-sentence inputs.
-  sentences = tf.keras.layers.Input(shape=(), dtype=tf.string, name="sentences")
+  sentences = tf_keras.layers.Input(shape=(), dtype=tf.string, name="sentences")
   if tokenize_with_offsets:
     tokens, start_offsets, limit_offsets = tokenize(sentences)
   else:
@@ -365,24 +365,24 @@ def create_preprocessing(*,
       seq_length=default_seq_length,
       special_tokens_dict=tokenize.get_special_tokens_dict())
   model_inputs = pack(tokens)
-  preprocessing = tf.keras.Model(sentences, model_inputs)
+  preprocessing = tf_keras.Model(sentences, model_inputs)
 
   # Individual steps of preprocessing are made available as named subobjects
   # to enable more general preprocessing. For saving, they need to be Models
   # in their own right.
-  preprocessing.tokenize = tf.keras.Model(sentences, tokens)
+  preprocessing.tokenize = tf_keras.Model(sentences, tokens)
   # Provide an equivalent to tokenize.get_special_tokens_dict().
   preprocessing.tokenize.get_special_tokens_dict = tf.train.Checkpoint()
   preprocessing.tokenize.get_special_tokens_dict.__call__ = tf.function(
       lambda: tokenize.get_special_tokens_dict(),  # pylint: disable=[unnecessary-lambda]
       input_signature=[])
   if tokenize_with_offsets:
-    preprocessing.tokenize_with_offsets = tf.keras.Model(
+    preprocessing.tokenize_with_offsets = tf_keras.Model(
         sentences, [tokens, start_offsets, limit_offsets])
     preprocessing.tokenize_with_offsets.get_special_tokens_dict = (
         preprocessing.tokenize.get_special_tokens_dict)
   # Conceptually, this should be
-  # preprocessing.bert_pack_inputs = tf.keras.Model(tokens, model_inputs)
+  # preprocessing.bert_pack_inputs = tf_keras.Model(tokens, model_inputs)
   # but technicalities require us to use a wrapper (see comments there).
   # In particular, seq_length can be overridden when calling this.
   preprocessing.bert_pack_inputs = BertPackInputsSavedModelWrapper(pack)

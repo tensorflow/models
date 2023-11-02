@@ -19,7 +19,7 @@ protos for object detection.
 """
 import csv
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.dataloaders import tf_example_decoder
 

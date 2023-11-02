@@ -16,12 +16,12 @@
 
 from typing import Any, Dict, Optional, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yt8m.modeling import yt8m_model_utils
 
 
-class ContextGate(tf.keras.layers.Layer):
+class ContextGate(tf_keras.layers.Layer):
   """Context Gating. More details: https://arxiv.org/pdf/1706.06905.pdf."""
 
   def __init__(
@@ -29,10 +29,10 @@ class ContextGate(tf.keras.layers.Layer):
       normalizer_fn=None,
       normalizer_params: Optional[Dict[str, Any]] = None,
       kernel_initializer: Union[
-          str, tf.keras.regularizers.Regularizer
+          str, tf_keras.regularizers.Regularizer
       ] = "glorot_uniform",
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_initializer: Union[str, tf.keras.regularizers.Regularizer] = "zeros",
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_initializer: Union[str, tf_keras.regularizers.Regularizer] = "zeros",
       hidden_layer_size: int = 0,
       pooling_method: Optional[str] = None,
       additive_residual: bool = False,
@@ -83,7 +83,7 @@ class ContextGate(tf.keras.layers.Layer):
     self._additive_residual = additive_residual
 
     if hidden_layer_size >= 2:
-      self._gates_bottleneck = tf.keras.layers.Dense(
+      self._gates_bottleneck = tf_keras.layers.Dense(
           hidden_layer_size,
           activation="relu6",
           kernel_initializer=kernel_initializer,
@@ -101,7 +101,7 @@ class ContextGate(tf.keras.layers.Layer):
     super().build(input_shape)
     feature_size = input_shape[-1]
     activation_fn = tf.nn.relu6 if self._additive_residual else tf.nn.sigmoid
-    self._gates = tf.keras.layers.Dense(
+    self._gates = tf_keras.layers.Dense(
         feature_size,
         activation=activation_fn,
         kernel_initializer=self._kernel_initializer,

@@ -19,7 +19,7 @@ import re
 from typing import Any, Callable, Dict, Optional, Text
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.bert import model_training_utils
 from official.legacy.xlnet import data_utils
@@ -51,11 +51,11 @@ def train(
     train_input_fn: Callable,
     total_training_steps: int,
     steps_per_loop: int,
-    optimizer: tf.keras.optimizers.Optimizer,
-    learning_rate_fn: tf.keras.optimizers.schedules.LearningRateSchedule,
-    eval_fn: Optional[Callable[[tf.keras.Model, int, tf.summary.SummaryWriter],
+    optimizer: tf_keras.optimizers.Optimizer,
+    learning_rate_fn: tf_keras.optimizers.schedules.LearningRateSchedule,
+    eval_fn: Optional[Callable[[tf_keras.Model, int, tf.summary.SummaryWriter],
                                Any]] = None,
-    metric_fn: Optional[Callable[[], tf.keras.metrics.Metric]] = None,
+    metric_fn: Optional[Callable[[], tf_keras.metrics.Metric]] = None,
     init_checkpoint: Optional[Text] = None,
     init_from_transformerxl: Optional[bool] = False,
     model_dir: Optional[Text] = None,
@@ -140,7 +140,7 @@ def train(
     if not hasattr(model, "optimizer"):
       raise ValueError("User should set optimizer attribute to model.")
 
-    train_loss_metric = tf.keras.metrics.Mean("training_loss", dtype=tf.float32)
+    train_loss_metric = tf_keras.metrics.Mean("training_loss", dtype=tf.float32)
     train_metric = None
     if metric_fn:
       train_metric = metric_fn()

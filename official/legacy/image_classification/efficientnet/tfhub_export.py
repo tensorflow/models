@@ -23,7 +23,7 @@ import os
 from absl import app
 from absl import flags
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.image_classification.efficientnet import efficientnet_model
 
@@ -36,22 +36,22 @@ flags.DEFINE_string("export_path", None,
 
 
 def export_tfhub(model_path, hub_destination, model_name):
-  """Restores a tf.keras.Model and saves for TF-Hub."""
+  """Restores a tf_keras.Model and saves for TF-Hub."""
   model_configs = dict(efficientnet_model.MODEL_CONFIGS)
   config = model_configs[model_name]
 
-  image_input = tf.keras.layers.Input(
+  image_input = tf_keras.layers.Input(
       shape=(None, None, 3), name="image_input", dtype=tf.float32)
   x = image_input * 255.0
   outputs = efficientnet_model.efficientnet(x, config)
-  hub_model = tf.keras.Model(image_input, outputs)
+  hub_model = tf_keras.Model(image_input, outputs)
   ckpt = tf.train.Checkpoint(model=hub_model)
   ckpt.restore(model_path).assert_existing_objects_matched()
   hub_model.save(
       os.path.join(hub_destination, "classification"), include_optimizer=False)
 
   feature_vector_output = hub_model.get_layer(name="top_pool").get_output_at(0)
-  hub_model2 = tf.keras.Model(image_input, feature_vector_output)
+  hub_model2 = tf_keras.Model(image_input, feature_vector_output)
   hub_model2.save(
       os.path.join(hub_destination, "feature-vector"), include_optimizer=False)
 

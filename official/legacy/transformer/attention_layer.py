@@ -15,12 +15,12 @@
 """Implementation of multiheaded attention and self-attention layers."""
 import math
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
 
-class Attention(tf.keras.layers.Layer):
+class Attention(tf_keras.layers.Layer):
   """Multi-headed attention layer."""
 
   def __init__(self, hidden_size, num_heads, attention_dropout):
@@ -48,23 +48,23 @@ class Attention(tf.keras.layers.Layer):
 
     def _glorot_initializer(fan_in, fan_out):
       limit = math.sqrt(6.0 / (fan_in + fan_out))
-      return tf.keras.initializers.RandomUniform(minval=-limit, maxval=limit)
+      return tf_keras.initializers.RandomUniform(minval=-limit, maxval=limit)
 
     attention_initializer = _glorot_initializer(input_shape.as_list()[-1],
                                                 self.hidden_size)
-    self.query_dense_layer = tf.keras.layers.EinsumDense(
+    self.query_dense_layer = tf_keras.layers.EinsumDense(
         "BTE,ENH->BTNH",
         output_shape=(None, self.num_heads, size_per_head),
         kernel_initializer=tf_utils.clone_initializer(attention_initializer),
         bias_axes=None,
         name="query")
-    self.key_dense_layer = tf.keras.layers.EinsumDense(
+    self.key_dense_layer = tf_keras.layers.EinsumDense(
         "BTE,ENH->BTNH",
         output_shape=(None, self.num_heads, size_per_head),
         kernel_initializer=tf_utils.clone_initializer(attention_initializer),
         bias_axes=None,
         name="key")
-    self.value_dense_layer = tf.keras.layers.EinsumDense(
+    self.value_dense_layer = tf_keras.layers.EinsumDense(
         "BTE,ENH->BTNH",
         output_shape=(None, self.num_heads, size_per_head),
         kernel_initializer=tf_utils.clone_initializer(attention_initializer),
@@ -72,7 +72,7 @@ class Attention(tf.keras.layers.Layer):
         name="value")
 
     output_initializer = _glorot_initializer(self.hidden_size, self.hidden_size)
-    self.output_dense_layer = tf.keras.layers.EinsumDense(
+    self.output_dense_layer = tf_keras.layers.EinsumDense(
         "BTNH,NHE->BTE",
         output_shape=(None, self.hidden_size),
         kernel_initializer=output_initializer,

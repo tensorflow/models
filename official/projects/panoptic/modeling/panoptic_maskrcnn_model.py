@@ -16,7 +16,7 @@
 
 from typing import List, Mapping, Optional, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.deepmac_maskrcnn.modeling import maskrcnn_model
 
@@ -26,23 +26,23 @@ class PanopticMaskRCNNModel(maskrcnn_model.DeepMaskRCNNModel):
 
   def __init__(
       self,
-      backbone: tf.keras.Model,
-      decoder: tf.keras.Model,
-      rpn_head: tf.keras.layers.Layer,
-      detection_head: Union[tf.keras.layers.Layer,
-                            List[tf.keras.layers.Layer]],
-      roi_generator: tf.keras.layers.Layer,
-      roi_sampler: Union[tf.keras.layers.Layer,
-                         List[tf.keras.layers.Layer]],
-      roi_aligner: tf.keras.layers.Layer,
-      detection_generator: tf.keras.layers.Layer,
-      panoptic_segmentation_generator: Optional[tf.keras.layers.Layer] = None,
-      mask_head: Optional[tf.keras.layers.Layer] = None,
-      mask_sampler: Optional[tf.keras.layers.Layer] = None,
-      mask_roi_aligner: Optional[tf.keras.layers.Layer] = None,
-      segmentation_backbone: Optional[tf.keras.Model] = None,
-      segmentation_decoder: Optional[tf.keras.Model] = None,
-      segmentation_head: tf.keras.layers.Layer = None,
+      backbone: tf_keras.Model,
+      decoder: tf_keras.Model,
+      rpn_head: tf_keras.layers.Layer,
+      detection_head: Union[tf_keras.layers.Layer,
+                            List[tf_keras.layers.Layer]],
+      roi_generator: tf_keras.layers.Layer,
+      roi_sampler: Union[tf_keras.layers.Layer,
+                         List[tf_keras.layers.Layer]],
+      roi_aligner: tf_keras.layers.Layer,
+      detection_generator: tf_keras.layers.Layer,
+      panoptic_segmentation_generator: Optional[tf_keras.layers.Layer] = None,
+      mask_head: Optional[tf_keras.layers.Layer] = None,
+      mask_sampler: Optional[tf_keras.layers.Layer] = None,
+      mask_roi_aligner: Optional[tf_keras.layers.Layer] = None,
+      segmentation_backbone: Optional[tf_keras.Model] = None,
+      segmentation_decoder: Optional[tf_keras.Model] = None,
+      segmentation_head: tf_keras.layers.Layer = None,
       class_agnostic_bbox_pred: bool = False,
       cascade_class_ensemble: bool = False,
       min_level: Optional[int] = None,
@@ -56,8 +56,8 @@ class PanopticMaskRCNNModel(maskrcnn_model.DeepMaskRCNNModel):
     """Initializes the Panoptic Mask R-CNN model.
 
     Args:
-      backbone: `tf.keras.Model`, the backbone network.
-      decoder: `tf.keras.Model`, the decoder network.
+      backbone: `tf_keras.Model`, the backbone network.
+      decoder: `tf_keras.Model`, the decoder network.
       rpn_head: the RPN head.
       detection_head: the detection head or a list of heads.
       roi_generator: the ROI generator.
@@ -70,12 +70,12 @@ class PanopticMaskRCNNModel(maskrcnn_model.DeepMaskRCNNModel):
       mask_head: the mask head.
       mask_sampler: the mask sampler.
       mask_roi_aligner: the ROI alginer for mask prediction.
-      segmentation_backbone: `tf.keras.Model`, the backbone network for the
+      segmentation_backbone: `tf_keras.Model`, the backbone network for the
         segmentation head for panoptic task. Providing `segmentation_backbone`
         will allow the segmentation head to use a standlone backbone. Setting
         `segmentation_backbone=None` would enable backbone sharing between the
         MaskRCNN model and segmentation head.
-      segmentation_decoder: `tf.keras.Model`, the decoder network for the
+      segmentation_decoder: `tf_keras.Model`, the decoder network for the
         segmentation head for panoptic task. Providing `segmentation_decoder`
         will allow the segmentation head to use a standlone decoder. Setting
         `segmentation_decoder=None` would enable decoder sharing between the
@@ -197,7 +197,7 @@ class PanopticMaskRCNNModel(maskrcnn_model.DeepMaskRCNNModel):
 
   @property
   def checkpoint_items(
-      self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
+      self) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = super().checkpoint_items
     if self.segmentation_backbone is not None:

@@ -17,14 +17,14 @@
 from typing import Sequence, Union
 
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.vision.modeling.layers import nn_layers
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class BasicBlock3DVolume(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class BasicBlock3DVolume(tf_keras.layers.Layer):
   """A basic 3d convolution block."""
 
   def __init__(self,
@@ -32,8 +32,8 @@ class BasicBlock3DVolume(tf.keras.layers.Layer):
                strides: Union[int, Sequence[int]],
                kernel_size: Union[int, Sequence[int]],
                kernel_initializer: str = 'VarianceScaling',
-               kernel_regularizer: tf.keras.regularizers.Regularizer = None,
-               bias_regularizer: tf.keras.regularizers.Regularizer = None,
+               kernel_regularizer: tf_keras.regularizers.Regularizer = None,
+               bias_regularizer: tf_keras.regularizers.Regularizer = None,
                activation: str = 'relu',
                use_sync_bn: bool = False,
                norm_momentum: float = 0.99,
@@ -53,9 +53,9 @@ class BasicBlock3DVolume(tf.keras.layers.Layer):
         height and width of the 3D convolution window. Can be a single integer
         to specify the same value for all spatial dimensions.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
         Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2d.
         Default to None.
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
@@ -84,10 +84,10 @@ class BasicBlock3DVolume(tf.keras.layers.Layer):
     self._use_batch_normalization = use_batch_normalization
 
     if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
+      self._norm = tf_keras.layers.experimental.SyncBatchNormalization
     else:
-      self._norm = tf.keras.layers.BatchNormalization
-    if tf.keras.backend.image_data_format() == 'channels_last':
+      self._norm = tf_keras.layers.BatchNormalization
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -99,12 +99,12 @@ class BasicBlock3DVolume(tf.keras.layers.Layer):
     self._norms = []
     for filters in self._filters:
       self._convs.append(
-          tf.keras.layers.Conv3D(
+          tf_keras.layers.Conv3D(
               filters=filters,
               kernel_size=self._kernel_size,
               strides=self._strides,
               padding='same',
-              data_format=tf.keras.backend.image_data_format(),
+              data_format=tf_keras.backend.image_data_format(),
               activation=None))
       self._norms.append(
           self._norm(
@@ -143,8 +143,8 @@ class BasicBlock3DVolume(tf.keras.layers.Layer):
     return x
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class ResidualBlock3DVolume(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class ResidualBlock3DVolume(tf_keras.layers.Layer):
   """A residual 3d block."""
 
   def __init__(self,
@@ -176,9 +176,9 @@ class ResidualBlock3DVolume(tf.keras.layers.Layer):
       stochastic_depth_drop_rate: `float` or None. if not None, drop rate for
         the stochastic depth layer.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
         Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2d.
         Default to None.
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
@@ -203,10 +203,10 @@ class ResidualBlock3DVolume(tf.keras.layers.Layer):
     self._bias_regularizer = bias_regularizer
 
     if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
+      self._norm = tf_keras.layers.experimental.SyncBatchNormalization
     else:
-      self._norm = tf.keras.layers.BatchNormalization
-    if tf.keras.backend.image_data_format() == 'channels_last':
+      self._norm = tf_keras.layers.BatchNormalization
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -214,7 +214,7 @@ class ResidualBlock3DVolume(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     if self._use_projection:
-      self._shortcut = tf.keras.layers.Conv3D(
+      self._shortcut = tf_keras.layers.Conv3D(
           filters=self._filters,
           kernel_size=1,
           strides=self._strides,
@@ -227,7 +227,7 @@ class ResidualBlock3DVolume(tf.keras.layers.Layer):
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon)
 
-    self._conv1 = tf.keras.layers.Conv3D(
+    self._conv1 = tf_keras.layers.Conv3D(
         filters=self._filters,
         kernel_size=3,
         strides=self._strides,
@@ -241,7 +241,7 @@ class ResidualBlock3DVolume(tf.keras.layers.Layer):
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon)
 
-    self._conv2 = tf.keras.layers.Conv3D(
+    self._conv2 = tf_keras.layers.Conv3D(
         filters=self._filters,
         kernel_size=3,
         strides=1,
@@ -315,8 +315,8 @@ class ResidualBlock3DVolume(tf.keras.layers.Layer):
     return self._activation_fn(x + shortcut)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class BottleneckBlock3DVolume(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class BottleneckBlock3DVolume(tf_keras.layers.Layer):
   """A standard bottleneck block."""
 
   def __init__(self,
@@ -350,9 +350,9 @@ class BottleneckBlock3DVolume(tf.keras.layers.Layer):
       stochastic_depth_drop_rate: `float` or None. if not None, drop rate for
         the stochastic depth layer.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
         Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2d.
         Default to None.
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
@@ -377,10 +377,10 @@ class BottleneckBlock3DVolume(tf.keras.layers.Layer):
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
     if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
+      self._norm = tf_keras.layers.experimental.SyncBatchNormalization
     else:
-      self._norm = tf.keras.layers.BatchNormalization
-    if tf.keras.backend.image_data_format() == 'channels_last':
+      self._norm = tf_keras.layers.BatchNormalization
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -388,7 +388,7 @@ class BottleneckBlock3DVolume(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     if self._use_projection:
-      self._shortcut = tf.keras.layers.Conv3D(
+      self._shortcut = tf_keras.layers.Conv3D(
           filters=self._filters * 4,
           kernel_size=1,
           strides=self._strides,
@@ -401,7 +401,7 @@ class BottleneckBlock3DVolume(tf.keras.layers.Layer):
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon)
 
-    self._conv1 = tf.keras.layers.Conv3D(
+    self._conv1 = tf_keras.layers.Conv3D(
         filters=self._filters,
         kernel_size=1,
         strides=1,
@@ -414,7 +414,7 @@ class BottleneckBlock3DVolume(tf.keras.layers.Layer):
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon)
 
-    self._conv2 = tf.keras.layers.Conv3D(
+    self._conv2 = tf_keras.layers.Conv3D(
         filters=self._filters,
         kernel_size=3,
         strides=self._strides,
@@ -429,7 +429,7 @@ class BottleneckBlock3DVolume(tf.keras.layers.Layer):
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon)
 
-    self._conv3 = tf.keras.layers.Conv3D(
+    self._conv3 = tf_keras.layers.Conv3D(
         filters=self._filters * 4,
         kernel_size=1,
         strides=1,

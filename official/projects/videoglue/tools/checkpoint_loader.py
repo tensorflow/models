@@ -18,7 +18,7 @@ from typing import List, Tuple
 
 from absl import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 # pylint:disable=line-too-long
@@ -79,7 +79,7 @@ _VMAE_CKPT_MAPPING = [
 class CheckpointLoaderBase(object):
   """Checkpoint loader object."""
 
-  def __init__(self, model: tf.keras.Model,
+  def __init__(self, model: tf_keras.Model,
                init_checkpoint: str,
                init_checkpoint_type: str):
     self._init_checkpoint = init_checkpoint
@@ -93,7 +93,7 @@ class CheckpointLoaderBase(object):
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
 
-  def _load_checkpoint(self, model: tf.keras.Model, ckpt_dir_or_file: str):
+  def _load_checkpoint(self, model: tf_keras.Model, ckpt_dir_or_file: str):
     """Loads checkpoint."""
     if self._init_checkpoint_type == 'all':
       ckpt = tf.train.Checkpoint(model=model)
@@ -133,7 +133,7 @@ class CheckpointLoaderVMAE(CheckpointLoaderBase):
     return ckpt_weight
 
   def _customized_vmae_initialize(self,
-                                  model: tf.keras.Model,
+                                  model: tf_keras.Model,
                                   ckpt_dir_or_file: str):
     """Loads pretrained Video MAE checkpoint."""
     with tf.io.gfile.GFile(ckpt_dir_or_file, 'rb') as ckpt:
@@ -194,14 +194,14 @@ class CheckpointLoaderVMAE(CheckpointLoaderBase):
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
 
-  def _load_checkpoint(self, model: tf.keras.Model, ckpt_dir_or_file: str):
+  def _load_checkpoint(self, model: tf_keras.Model, ckpt_dir_or_file: str):
     """Loads checkpoint."""
     self._customized_vmae_initialize(
         model=model, ckpt_dir_or_file=ckpt_dir_or_file)
 
 
 def get_checkpoint_loader(
-    model: tf.keras.Model, init_checkpoint: str, init_checkpoint_type: str):
+    model: tf_keras.Model, init_checkpoint: str, init_checkpoint_type: str):
   """Gets the corresponding checkpoint loader."""
 
   if init_checkpoint_type == 'customized_vmae':

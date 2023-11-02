@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.assemblenet.configs import assemblenet as asn_config
 from official.projects.assemblenet.modeling import assemblenet_plus as asnp
@@ -39,8 +39,8 @@ class AssembleNetPlusTest(parameterized.TestCase, tf.test.TestCase):
       vid_input = (batch_size * num_frames, img_size, img_size, 3)
       obj_input = (batch_size * num_frames, img_size, img_size,
                    num_object_classes)
-      input_specs = (tf.keras.layers.InputSpec(shape=(vid_input)),
-                     tf.keras.layers.InputSpec(shape=(obj_input)))
+      input_specs = (tf_keras.layers.InputSpec(shape=(vid_input)),
+                     tf_keras.layers.InputSpec(shape=(obj_input)))
       vid_inputs = np.random.rand(batch_size * num_frames, img_size, img_size,
                                   3)
       obj_inputs = np.random.rand(batch_size * num_frames, img_size, img_size,
@@ -52,7 +52,7 @@ class AssembleNetPlusTest(parameterized.TestCase, tf.test.TestCase):
       edge_weights = asn_config.full_asnp_structure_weights
     else:
       # video input: (batch_size, FLAGS.num_frames, image_size, image_size, 3)
-      input_specs = tf.keras.layers.InputSpec(
+      input_specs = tf_keras.layers.InputSpec(
           shape=(batch_size, num_frames, img_size, img_size, 3))
       inputs = np.random.rand(batch_size, num_frames, img_size, img_size, 3)
 

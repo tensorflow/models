@@ -16,7 +16,7 @@
 
 from orbit.utils import common
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 class UtilsTest(tf.test.TestCase):

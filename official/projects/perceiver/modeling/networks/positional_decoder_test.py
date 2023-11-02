@@ -14,7 +14,7 @@
 
 """Tests for positional_decoder."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.perceiver.configs import perceiver as cfg
 from official.projects.perceiver.modeling.layers import decoder
@@ -48,9 +48,9 @@ class PositionalDecoderTest(tf.test.TestCase):
         d_model=positional_decoder_cfg.d_model)
 
     # Create the inputs (note that the first dimension is implicit).
-    latent_output = tf.keras.Input(
+    latent_output = tf_keras.Input(
         shape=(z_index_dim, d_latents), dtype=tf.float32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     dict_outputs = mlm_decoder(
         dict(latent_output=latent_output, input_mask=mask))
     data = dict_outputs["sequence_output"]
@@ -87,22 +87,22 @@ class PositionalDecoderTest(tf.test.TestCase):
         d_model=positional_decoder_cfg.d_model)
 
     # Create the inputs (note that the first dimension is implicit).
-    latent_output = tf.keras.Input(
+    latent_output = tf_keras.Input(
         shape=(z_index_dim, d_latents), dtype=tf.float32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     dict_outputs = mlm_decoder(
         dict(latent_output=latent_output, input_mask=mask))
     data = dict_outputs["sequence_output"]
 
     # Create a model based off of this network:
     # model =
-    _ = tf.keras.Model([latent_output, mask], [data])
+    _ = tf_keras.Model([latent_output, mask], [data])
 
     # TODO(b/222634115) make save work.
     # Tests model saving/loading.
     # model_path = self.get_temp_dir() + "/model"
     # model.save(model_path)
-    # _ = tf.keras.models.load_model(model_path)
+    # _ = tf_keras.models.load_model(model_path)
 
 # TODO(b/222634115) add test coverage.
 

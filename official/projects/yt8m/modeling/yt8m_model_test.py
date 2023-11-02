@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yt8m.configs import yt8m as yt8m_cfg
 from official.projects.yt8m.modeling import yt8m_model
@@ -42,7 +42,7 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
     num_frames = 24
     feature_dims = 52
     num_classes = 45
-    input_specs = tf.keras.layers.InputSpec(shape=[None, None, feature_dims])
+    input_specs = tf_keras.layers.InputSpec(shape=[None, None, feature_dims])
 
     params = yt8m_cfg.YT8MTask().model
     params.backbone.dbof.pooling_method = pooling_method

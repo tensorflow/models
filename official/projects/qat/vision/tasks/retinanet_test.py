@@ -18,7 +18,7 @@ import os
 
 from absl.testing import parameterized
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official import vision
 from official.core import exp_factory

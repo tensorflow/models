@@ -17,7 +17,7 @@
 # Import libraries
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.vision.ops import anchor
 
 

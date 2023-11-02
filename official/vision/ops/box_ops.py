@@ -16,7 +16,7 @@
 
 # Import libraries
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 EPSILON = 1e-8

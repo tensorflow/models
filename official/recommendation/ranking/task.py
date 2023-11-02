@@ -17,7 +17,7 @@
 import math
 from typing import Dict, List, Optional, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_recommenders as tfrs
 
 from official.core import base_task
@@ -121,7 +121,7 @@ class RankingTask(base_task.Task):
     """See base class. Return None, optimizer is set in `build_model`."""
     return None
 
-  def build_model(self) -> tf.keras.Model:
+  def build_model(self) -> tf_keras.Model:
     """Creates Ranking model architecture and Optimizers.
 
     The RankingModel uses different optimizers/learning rates for embedding
@@ -138,11 +138,11 @@ class RankingTask(base_task.Task):
         warmup_steps=lr_config.warmup_steps,
         decay_steps=lr_config.decay_steps,
         decay_start_steps=lr_config.decay_start_steps)
-    embedding_optimizer = tf.keras.optimizers.get(
+    embedding_optimizer = tf_keras.optimizers.get(
         self.optimizer_config.embedding_optimizer, use_legacy_optimizer=True)
     embedding_optimizer.learning_rate = lr_callable
 
-    dense_optimizer = tf.keras.optimizers.get(
+    dense_optimizer = tf_keras.optimizers.get(
         self.optimizer_config.dense_optimizer, use_legacy_optimizer=True)
     if self.optimizer_config.dense_optimizer == 'SGD':
       dense_lr_config = self.optimizer_config.dense_sgd_config
@@ -173,8 +173,8 @@ class RankingTask(base_task.Task):
       feature_interaction = tfrs.layers.feature_interaction.DotInteraction(
           skip_gather=True)
     elif self.task_config.model.interaction == 'cross':
-      feature_interaction = tf.keras.Sequential([
-          tf.keras.layers.Concatenate(),
+      feature_interaction = tf_keras.Sequential([
+          tf_keras.layers.Concatenate(),
           tfrs.layers.feature_interaction.Cross()
       ])
     else:
@@ -201,9 +201,9 @@ class RankingTask(base_task.Task):
   def train_step(
       self,
       inputs: Dict[str, tf.Tensor],
-      model: tf.keras.Model,
-      optimizer: tf.keras.optimizers.Optimizer,
-      metrics: Optional[List[tf.keras.metrics.Metric]] = None) -> tf.Tensor:
+      model: tf_keras.Model,
+      optimizer: tf_keras.optimizers.Optimizer,
+      metrics: Optional[List[tf_keras.metrics.Metric]] = None) -> tf.Tensor:
     """See base class."""
     # All metrics need to be passed through the RankingModel.
     assert metrics == model.metrics
@@ -212,8 +212,8 @@ class RankingTask(base_task.Task):
   def validation_step(
       self,
       inputs: Dict[str, tf.Tensor],
-      model: tf.keras.Model,
-      metrics: Optional[List[tf.keras.metrics.Metric]] = None) -> tf.Tensor:
+      model: tf_keras.Model,
+      metrics: Optional[List[tf_keras.metrics.Metric]] = None) -> tf.Tensor:
     """See base class."""
     # All metrics need to be passed through the RankingModel.
     assert metrics == model.metrics

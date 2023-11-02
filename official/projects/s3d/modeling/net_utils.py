@@ -15,16 +15,16 @@
 """Commonly used TensorFlow 2 network blocks."""
 from typing import Any, Text, Sequence, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.modeling import tf_utils
 
 WEIGHT_INITIALIZER = {
-    'Xavier': tf.keras.initializers.GlorotUniform,
-    'Gaussian': lambda: tf.keras.initializers.RandomNormal(stddev=0.01),
+    'Xavier': tf_keras.initializers.GlorotUniform,
+    'Gaussian': lambda: tf_keras.initializers.RandomNormal(stddev=0.01),
 }
 
-initializers = tf.keras.initializers
-regularizers = tf.keras.regularizers
+initializers = tf_keras.initializers
+regularizers = tf_keras.regularizers
 
 
 def make_set_from_start_endpoint(start_endpoint: Text,
@@ -45,7 +45,7 @@ def apply_depth_multiplier(d: Union[int, Sequence[Any]],
     return [apply_depth_multiplier(x, depth_multiplier) for x in d]
 
 
-class ParameterizedConvLayer(tf.keras.layers.Layer):
+class ParameterizedConvLayer(tf_keras.layers.Layer):
   """Convolution layer based on the input conv_type."""
 
   def __init__(
@@ -74,10 +74,10 @@ class ParameterizedConvLayer(tf.keras.layers.Layer):
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
+      self._norm = tf_keras.layers.experimental.SyncBatchNormalization
     else:
-      self._norm = tf.keras.layers.BatchNormalization
-    if tf.keras.backend.image_data_format() == 'channels_last':
+      self._norm = tf_keras.layers.BatchNormalization
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._channel_axis = -1
     else:
       self._channel_axis = 1
@@ -195,7 +195,7 @@ class ParameterizedConvLayer(tf.keras.layers.Layer):
   def _append_conv_layer(self, param):
     """Appends conv, normalization and activation layers."""
     self._parameterized_conv_layers.append(
-        tf.keras.layers.Conv3D(
+        tf_keras.layers.Conv3D(
             padding='same',
             use_bias=False,
             kernel_regularizer=self._kernel_regularizer,
@@ -206,7 +206,7 @@ class ParameterizedConvLayer(tf.keras.layers.Layer):
 
     relu_layer_params = self._build_activation_layer_params(param)
     self._parameterized_conv_layers.append(
-        tf.keras.layers.Activation('relu', **relu_layer_params))
+        tf_keras.layers.Activation('relu', **relu_layer_params))
 
   def build(self, input_shape):
     self._parameterized_conv_layers = []

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Losses used for BASNet models."""
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 EPSILON = 1e-5
 
@@ -22,8 +22,8 @@ class BASNetLoss:
   """BASNet hybrid loss."""
 
   def __init__(self):
-    self._binary_crossentropy = tf.keras.losses.BinaryCrossentropy(
-        reduction=tf.keras.losses.Reduction.SUM, from_logits=False)
+    self._binary_crossentropy = tf_keras.losses.BinaryCrossentropy(
+        reduction=tf_keras.losses.Reduction.SUM, from_logits=False)
     self._ssim = tf.image.ssim
 
   def __call__(self, sigmoids, labels):

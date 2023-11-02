@@ -23,14 +23,14 @@ in: https://github.com/tensorflow/models/blob/master/research/object_detection
 
 from typing import Any, Mapping
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.centernet.ops import loss_ops
 from official.projects.centernet.ops import nms_ops
 from official.vision.ops import box_ops
 
 
-class CenterNetDetectionGenerator(tf.keras.layers.Layer):
+class CenterNetDetectionGenerator(tf_keras.layers.Layer):
   """CenterNet Detection Generator."""
 
   def __init__(self,

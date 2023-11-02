@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Semantic segmentation task definition."""
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import task_factory
 from official.projects.mosaic import mosaic_tasks
@@ -26,7 +26,7 @@ class MosaicSemanticSegmentationTask(mosaic_tasks.MosaicSemanticSegmentationTask
                                     ):
   """A task for semantic segmentation with QAT."""
 
-  def build_model(self, training=True) -> tf.keras.Model:
+  def build_model(self, training=True) -> tf_keras.Model:
     """Builds semantic segmentation model with QAT."""
     model = super().build_model(training)
     if training:
@@ -36,7 +36,7 @@ class MosaicSemanticSegmentationTask(mosaic_tasks.MosaicSemanticSegmentationTask
         input_size = crop_size
     else:
       input_size = self.task_config.validation_data.output_size
-    input_specs = tf.keras.layers.InputSpec(shape=[None] + input_size + [3])
+    input_specs = tf_keras.layers.InputSpec(shape=[None] + input_size + [3])
     if self.task_config.quantization:
       model = factory.build_qat_mosaic_model(
           model, self.task_config.quantization, input_specs)

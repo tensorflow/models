@@ -15,13 +15,13 @@
 """Segmentation heads."""
 
 from typing import Any, Union, Sequence, Mapping, Tuple
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class SegmentationHead3D(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class SegmentationHead3D(tf_keras.layers.Layer):
   """Segmentation head for 3D input."""
 
   def __init__(self,
@@ -35,8 +35,8 @@ class SegmentationHead3D(tf.keras.layers.Layer):
                norm_momentum: float = 0.99,
                norm_epsilon: float = 0.001,
                use_batch_normalization: bool = False,
-               kernel_regularizer: tf.keras.regularizers.Regularizer = None,
-               bias_regularizer: tf.keras.regularizers.Regularizer = None,
+               kernel_regularizer: tf_keras.regularizers.Regularizer = None,
+               bias_regularizer: tf_keras.regularizers.Regularizer = None,
                output_logits: bool = True,  # pytype: disable=annotation-type-mismatch  # typed-keras
                **kwargs):
     """Initialize params to build segmentation head.
@@ -60,9 +60,9 @@ class SegmentationHead3D(tf.keras.layers.Layer):
       norm_epsilon: `float`, the epsilon parameter of the normalization layers.
       use_batch_normalization: A bool of whether to use batch normalization or
         not.
-      kernel_regularizer: `tf.keras.regularizers.Regularizer` object for layer
+      kernel_regularizer: `tf_keras.regularizers.Regularizer` object for layer
         kernel.
-      bias_regularizer: `tf.keras.regularizers.Regularizer` object for bias.
+      bias_regularizer: `tf_keras.regularizers.Regularizer` object for bias.
       output_logits: A `bool` of whether to output logits or not. Default
         is True. If set to False, output softmax.
       **kwargs: other keyword arguments passed to Layer.
@@ -84,7 +84,7 @@ class SegmentationHead3D(tf.keras.layers.Layer):
         'bias_regularizer': bias_regularizer,
         'output_logits': output_logits
     }
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -92,20 +92,20 @@ class SegmentationHead3D(tf.keras.layers.Layer):
 
   def build(self, input_shape: Union[tf.TensorShape, Sequence[tf.TensorShape]]):
     """Creates the variables of the segmentation head."""
-    conv_op = tf.keras.layers.Conv3D
+    conv_op = tf_keras.layers.Conv3D
     conv_kwargs = {
         'kernel_size': (3, 3, 3),
         'padding': 'same',
         'use_bias': False,
-        'kernel_initializer': tf.keras.initializers.RandomNormal(stddev=0.01),
+        'kernel_initializer': tf_keras.initializers.RandomNormal(stddev=0.01),
         'kernel_regularizer': self._config_dict['kernel_regularizer'],
     }
     final_kernel_size = (1, 1, 1)
 
     bn_op = (
-        tf.keras.layers.experimental.SyncBatchNormalization
+        tf_keras.layers.experimental.SyncBatchNormalization
         if self._config_dict['use_sync_bn'] else
-        tf.keras.layers.BatchNormalization)
+        tf_keras.layers.BatchNormalization)
     bn_kwargs = {
         'axis': self._bn_axis,
         'momentum': self._config_dict['norm_momentum'],
@@ -133,7 +133,7 @@ class SegmentationHead3D(tf.keras.layers.Layer):
         padding='valid',
         activation=None,
         bias_initializer=tf.zeros_initializer(),
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.01),
         kernel_regularizer=self._config_dict['kernel_regularizer'],
         bias_regularizer=self._config_dict['bias_regularizer'])
 
@@ -170,10 +170,10 @@ class SegmentationHead3D(tf.keras.layers.Layer):
         x = self._norms[i](x)
       x = self._activation(x)
 
-    x = tf.keras.layers.UpSampling3D(size=self._config_dict['upsample_factor'])(
+    x = tf_keras.layers.UpSampling3D(size=self._config_dict['upsample_factor'])(
         x)
     x = self._classifier(x)
-    return x if self._config_dict['output_logits'] else tf.keras.layers.Softmax(
+    return x if self._config_dict['output_logits'] else tf_keras.layers.Softmax(
         dtype='float32')(
             x)
 

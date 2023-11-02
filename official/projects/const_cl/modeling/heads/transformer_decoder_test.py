@@ -14,7 +14,7 @@
 
 """Tests for TransformerDecoder."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.const_cl.modeling.heads import transformer_decoder
 

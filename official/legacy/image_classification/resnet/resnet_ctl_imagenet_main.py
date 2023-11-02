@@ -22,7 +22,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.common import distribute_utils
 from official.legacy.image_classification.resnet import common
 from official.legacy.image_classification.resnet import imagenet_preprocessing
@@ -113,7 +113,7 @@ def run(flags_obj):
   if data_format is None:
     data_format = ('channels_first' if tf.config.list_physical_devices('GPU')
                    else 'channels_last')
-  tf.keras.backend.set_image_data_format(data_format)
+  tf_keras.backend.set_image_data_format(data_format)
 
   strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,

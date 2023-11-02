@@ -15,10 +15,10 @@
 """Keras-based MegaEncoder block layer."""
 
 from typing import Optional
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-class MultiHeadEMA(tf.keras.layers.Layer):
+class MultiHeadEMA(tf_keras.layers.Layer):
   """Exponential Moving Average Layer.
 
   See "https://arxiv.org/abs/2209.10655" for more details.

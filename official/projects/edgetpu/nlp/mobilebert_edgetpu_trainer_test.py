@@ -14,7 +14,7 @@
 
 """Tests for mobilebert_edgetpu_trainer.py."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.edgetpu.nlp import mobilebert_edgetpu_trainer
 from official.projects.edgetpu.nlp.configs import params

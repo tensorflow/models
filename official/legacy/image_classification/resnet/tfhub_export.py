@@ -24,7 +24,7 @@ import os
 from absl import app
 from absl import flags
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.image_classification.resnet import imagenet_preprocessing
 from official.legacy.image_classification.resnet import resnet_model
@@ -38,7 +38,7 @@ flags.DEFINE_string("export_path", None,
 
 
 def export_tfhub(model_path, hub_destination):
-  """Restores a tf.keras.Model and saves for TF-Hub."""
+  """Restores a tf_keras.Model and saves for TF-Hub."""
   model = resnet_model.resnet50(
       num_classes=imagenet_preprocessing.NUM_CLASSES, rescale_inputs=True)
   model.load_weights(model_path)
@@ -48,7 +48,7 @@ def export_tfhub(model_path, hub_destination):
   # Extracts a sub-model to use pooling feature vector as model output.
   image_input = model.get_layer(index=0).get_output_at(0)
   feature_vector_output = model.get_layer(name="reduce_mean").get_output_at(0)
-  hub_model = tf.keras.Model(image_input, feature_vector_output)
+  hub_model = tf_keras.Model(image_input, feature_vector_output)
 
   # Exports a SavedModel.
   hub_model.save(

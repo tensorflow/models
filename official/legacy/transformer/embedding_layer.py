@@ -14,10 +14,10 @@
 
 """Implementation of embedding layer with shared weights."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-class EmbeddingSharedWeights(tf.keras.layers.Layer):
+class EmbeddingSharedWeights(tf_keras.layers.Layer):
   """Calculates input embeddings and pre-softmax linear with shared weights."""
 
   def __init__(self, vocab_size, hidden_size):

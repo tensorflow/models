@@ -14,7 +14,7 @@
 
 """Tests for official.nlp.tasks.masked_lm."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
@@ -47,7 +47,7 @@ class MLMTaskTest(tf.test.TestCase):
     dataset = task.build_inputs(config.train_data)
 
     iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    optimizer = tf_keras.optimizers.SGD(lr=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     task.validation_step(next(iterator), model, metrics=metrics)
 

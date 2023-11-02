@@ -17,12 +17,12 @@
 from collections.abc import MutableMapping
 import inspect
 from typing import Any, Optional, Union
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
 
-class GroupConv2D(tf.keras.layers.Conv2D):
+class GroupConv2D(tf_keras.layers.Conv2D):
   """2D group convolution as a Keras Layer."""
 
   def __init__(self,
@@ -42,10 +42,10 @@ class GroupConv2D(tf.keras.layers.Conv2D):
                activity_regularizer: Any = None,
                kernel_constraint: Any = None,
                bias_constraint: Any = None,
-               batch_norm_layer: Optional[tf.keras.layers.Layer] = None,
+               batch_norm_layer: Optional[tf_keras.layers.Layer] = None,
                bn_epsilon: float = 1e-3,
                bn_momentum: float = 0.99,
-               **kwargs: Any) -> tf.keras.layers.Layer:
+               **kwargs: Any) -> tf_keras.layers.Layer:
     """Creates a 2D group convolution keras layer.
 
     Args:
@@ -84,7 +84,7 @@ class GroupConv2D(tf.keras.layers.Conv2D):
       bias_constraint: Constraint function applied to the bias vector ( see
         `keras.constraints`).
       batch_norm_layer: The batch normalization layer to use. This is typically
-        tf.keras.layer.BatchNormalization or a derived class.
+        tf_keras.layer.BatchNormalization or a derived class.
       bn_epsilon: Batch normalization epsilon.
       bn_momentum: Momentum used for moving average in batch normalization.
       **kwargs: Additional keyword arguments.
@@ -187,7 +187,7 @@ class GroupConv2D(tf.keras.layers.Conv2D):
                 trainable=True,
                 dtype=self.dtype))
     channel_axis = self._get_channel_axis()
-    self.input_spec = tf.keras.layers.InputSpec(
+    self.input_spec = tf_keras.layers.InputSpec(
         ndim=self.rank + 2, axes={channel_axis: input_channel})
 
     self._build_conv_op_data_shape = input_shape[-(self.rank + 1):]
@@ -267,19 +267,19 @@ class GroupConv2D(tf.keras.layers.Conv2D):
     return cls(**config)
 
 
-class GroupConv2DKerasModel(tf.keras.Model):
+class GroupConv2DKerasModel(tf_keras.Model):
   """2D group convolution as a keras model."""
 
   def __init__(self,
                filters: int,
                kernel_size: tuple[int, int],
                groups: int,
-               batch_norm_layer: Optional[tf.keras.layers.Layer] = None,
+               batch_norm_layer: Optional[tf_keras.layers.Layer] = None,
                bn_epsilon: float = 1e-3,
                bn_momentum: float = 0.99,
                data_format: str = 'channels_last',
                padding: str = 'valid',
-               **kwargs: Any) -> tf.keras.Model:
+               **kwargs: Any) -> tf_keras.Model:
     """Creates a 2D group convolution layer as a keras model.
 
     Args:
@@ -290,7 +290,7 @@ class GroupConv2DKerasModel(tf.keras.Model):
         specify the same value for all spatial dimensions.
       groups: The number of input/output channel groups.
       batch_norm_layer: The batch normalization layer to use. This is typically
-        tf.keras.layer.BatchNormalization or a derived class.
+        tf_keras.layer.BatchNormalization or a derived class.
       bn_epsilon: Batch normalization epsilon.
       bn_momentum: Momentum used for moving average in batch normalization.
       data_format: The ordering of the dimensions in the inputs. `channels_last`
@@ -322,7 +322,7 @@ class GroupConv2DKerasModel(tf.keras.Model):
       self.use_batch_norm = True
 
     if 'activation' in kwargs.keys():
-      self.activation = tf.keras.activations.get(kwargs['activation'])
+      self.activation = tf_keras.activations.get(kwargs['activation'])
       kwargs.pop('activation')
     else:
       self.activation = None
@@ -338,7 +338,7 @@ class GroupConv2DKerasModel(tf.keras.Model):
     for _ in range(self._groups):
       # Override the activation so that batchnorm can be applied after the conv.
       self.conv_layers.append(
-          tf.keras.layers.Conv2D(per_conv_filter_size, kernel_size, **kwargs))
+          tf_keras.layers.Conv2D(per_conv_filter_size, kernel_size, **kwargs))
 
     if self.use_batch_norm:
       for _ in range(self._groups):
@@ -446,14 +446,14 @@ def argmax(input_tensor,
           name=name))
 
 
-class ArgmaxKerasLayer(tf.keras.layers.Layer):
+class ArgmaxKerasLayer(tf_keras.layers.Layer):
   """Implements argmax as a keras model."""
 
   def __init__(self,
                axis=-1,
                name=None,
                output_type=tf.dtypes.int32,
-               **kwargs: Any) -> tf.keras.Model:
+               **kwargs: Any) -> tf_keras.Model:
     """Implements argmax as a keras model.
 
     Args:

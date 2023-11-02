@@ -18,7 +18,7 @@ import os
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.data import sentence_prediction_dataloader
 from official.nlp.tasks import sentence_prediction
@@ -98,7 +98,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
         functools.partial(task.build_inputs, config.train_data))
 
     iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    optimizer = tf_keras.optimizers.SGD(lr=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     # model.save(os.path.join(self.get_temp_dir(), "saved_model"))
     # TODO(b/222634115) fix save
@@ -131,7 +131,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     dataset = task.build_inputs(config.train_data)
 
     iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    optimizer = tf_keras.optimizers.SGD(lr=0.1)
     task.initialize(model)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     task.validation_step(next(iterator), model, metrics=metrics)
@@ -144,7 +144,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
               1,
           "expected_loss_predicate":
               lambda loss: loss > 1.0,
-          "metric": tf.keras.metrics.MeanSquaredError,
+          "metric": tf_keras.metrics.MeanSquaredError,
       },
       {
           "testcase_name":
@@ -153,7 +153,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
               2,
           "expected_loss_predicate":
               lambda loss: loss < 1.0,
-          "metric": tf.keras.metrics.SparseCategoricalAccuracy
+          "metric": tf_keras.metrics.SparseCategoricalAccuracy
       },
   )
   def test_metrics_and_losses(self, num_classes, expected_loss_predicate,
@@ -169,7 +169,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
 
     dataset = task.build_inputs(config.train_data)
     iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    optimizer = tf_keras.optimizers.SGD(lr=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
 
     logs = task.validation_step(next(iterator), model, metrics=metrics)

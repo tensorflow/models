@@ -22,7 +22,7 @@ from absl import app
 from absl import flags
 from absl import logging
 from six.moves import zip
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import distribute_utils
 from official.legacy.transformer import metrics as transformer_metrics
@@ -91,7 +91,7 @@ def define_flags():
 # pylint: disable=protected-access
 
 
-class Trainer(tf.keras.Model):
+class Trainer(tf_keras.Model):
   """A training only model."""
 
   def __init__(self, model, params):
@@ -120,7 +120,7 @@ class Trainer(tf.keras.Model):
     tvars = self.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     self.optimizer.apply_gradients(list(zip(grads, tvars)))
-    if isinstance(self.optimizer, tf.keras.optimizers.experimental.Optimizer):
+    if isinstance(self.optimizer, tf_keras.optimizers.experimental.Optimizer):
       learning_rate = self.optimizer.learning_rate
     else:
       learning_rate = self.optimizer._decayed_lr(var_dtype=tf.float32)
@@ -151,7 +151,7 @@ def train(params, strategy, dataset=None):
         optimizer=opt,
         steps_per_execution=FLAGS.steps_per_loop)
     summary_dir = os.path.join(FLAGS.model_dir, "summaries")
-    summary_callback = tf.keras.callbacks.TensorBoard(
+    summary_callback = tf_keras.callbacks.TensorBoard(
         summary_dir, update_freq=max(100, FLAGS.steps_per_loop))
     checkpoint = tf.train.Checkpoint(
         model=model, optimizer=opt, global_step=opt.iterations)

@@ -15,7 +15,7 @@
 """Task definition for image semantic segmentation with MOSAIC models."""
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import task_factory
 from official.projects.mosaic.configs import mosaic_config
@@ -33,16 +33,16 @@ class MosaicSemanticSegmentationTask(seg_tasks.SemanticSegmentationTask):
   # `input_shape` if the model will be trained and evaluated in different
   # `input_shape`. For example, the model is trained with cropping but
   # evaluated with original shape.
-  def build_model(self, training: bool = True) -> tf.keras.Model:
+  def build_model(self, training: bool = True) -> tf_keras.Model:
     """Builds MOSAIC segmentation model."""
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None] + self.task_config.model.input_size)
 
     l2_weight_decay = self.task_config.losses.l2_weight_decay
     # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
-    l2_regularizer = (tf.keras.regularizers.l2(
+    l2_regularizer = (tf_keras.regularizers.l2(
         l2_weight_decay / 2.0) if l2_weight_decay else None)
 
     model = mosaic_model.build_mosaic_segmentation_model(
@@ -73,7 +73,7 @@ class MosaicSemanticSegmentationTask(seg_tasks.SemanticSegmentationTask):
 
     return model
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Loads pretrained checkpoint."""
     if not self.task_config.init_checkpoint:
       return

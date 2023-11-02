@@ -15,7 +15,7 @@
 from absl import logging
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yt8m.eval_utils.average_precision_calculator import AveragePrecisionCalculator
 

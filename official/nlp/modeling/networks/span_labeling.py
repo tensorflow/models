@@ -15,7 +15,7 @@
 """Span labeling network."""
 # pylint: disable=g-classes-have-attributes
 import collections
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
@@ -26,8 +26,8 @@ def _apply_paragraph_mask(logits, paragraph_mask):
   return tf.nn.log_softmax(masked_logits, -1), masked_logits
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
-class SpanLabeling(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class SpanLabeling(tf_keras.Model):
   """Span labeling network head for BERT modeling.
 
   This network implements a simple single-span labeler based on a dense layer.
@@ -50,10 +50,10 @@ class SpanLabeling(tf.keras.Model):
                output='logits',
                **kwargs):
 
-    sequence_data = tf.keras.layers.Input(
+    sequence_data = tf_keras.layers.Input(
         shape=(None, input_width), name='sequence_data', dtype=tf.float32)
 
-    intermediate_logits = tf.keras.layers.Dense(
+    intermediate_logits = tf_keras.layers.Dense(
         2,  # This layer predicts start location and end location.
         activation=activation,
         kernel_initializer=initializer,
@@ -61,9 +61,9 @@ class SpanLabeling(tf.keras.Model):
             sequence_data)
     start_logits, end_logits = self._split_output_tensor(intermediate_logits)
 
-    start_predictions = tf.keras.layers.Activation(tf.nn.log_softmax)(
+    start_predictions = tf_keras.layers.Activation(tf.nn.log_softmax)(
         start_logits)
-    end_predictions = tf.keras.layers.Activation(tf.nn.log_softmax)(end_logits)
+    end_predictions = tf_keras.layers.Activation(tf.nn.log_softmax)(end_logits)
 
     if output == 'logits':
       output_tensors = [start_logits, end_logits]
@@ -111,7 +111,7 @@ class SpanLabeling(tf.keras.Model):
     return cls(**config)
 
 
-class XLNetSpanLabeling(tf.keras.layers.Layer):
+class XLNetSpanLabeling(tf_keras.layers.Layer):
   """Span labeling network head for XLNet on SQuAD2.0.
 
   This networks implements a span-labeler based on dense layers and question
@@ -156,31 +156,31 @@ class XLNetSpanLabeling(tf.keras.layers.Layer):
       raise ValueError('`start_n_top` must be greater than 1.')
     self._start_n_top = start_n_top
     self._end_n_top = end_n_top
-    self.start_logits_dense = tf.keras.layers.Dense(
+    self.start_logits_dense = tf_keras.layers.Dense(
         units=1,
         kernel_initializer=tf_utils.clone_initializer(initializer),
         name='predictions/transform/start_logits')
 
-    self.end_logits_inner_dense = tf.keras.layers.Dense(
+    self.end_logits_inner_dense = tf_keras.layers.Dense(
         units=input_width,
         kernel_initializer=tf_utils.clone_initializer(initializer),
         activation=activation,
         name='predictions/transform/end_logits/inner')
-    self.end_logits_layer_norm = tf.keras.layers.LayerNormalization(
+    self.end_logits_layer_norm = tf_keras.layers.LayerNormalization(
         axis=-1, epsilon=1e-12,
         name='predictions/transform/end_logits/layernorm')
-    self.end_logits_output_dense = tf.keras.layers.Dense(
+    self.end_logits_output_dense = tf_keras.layers.Dense(
         units=1,
         kernel_initializer=tf_utils.clone_initializer(initializer),
         name='predictions/transform/end_logits/output')
 
-    self.answer_logits_inner = tf.keras.layers.Dense(
+    self.answer_logits_inner = tf_keras.layers.Dense(
         units=input_width,
         kernel_initializer=tf_utils.clone_initializer(initializer),
         activation=activation,
         name='predictions/transform/answer_logits/inner')
-    self.answer_logits_dropout = tf.keras.layers.Dropout(rate=dropout_rate)
-    self.answer_logits_output = tf.keras.layers.Dense(
+    self.answer_logits_dropout = tf_keras.layers.Dropout(rate=dropout_rate)
+    self.answer_logits_output = tf_keras.layers.Dense(
         units=1,
         kernel_initializer=tf_utils.clone_initializer(initializer),
         use_bias=False,

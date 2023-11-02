@@ -14,7 +14,7 @@
 
 """Models for ViT."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.projects.mae.modeling import utils
@@ -33,34 +33,34 @@ def to_patch(images, patch_height, patch_width):
   return x
 
 
-class ViTClassifier(tf.keras.Model):
+class ViTClassifier(tf_keras.Model):
   """ViT classifier for finetune."""
 
   def __init__(self, encoder, num_classes, **kwargs):
     super().__init__(**kwargs)
     self.encoder = encoder
-    self.linear = tf.keras.layers.Dense(
+    self.linear = tf_keras.layers.Dense(
         num_classes,
-        kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=2e-5))
+        kernel_initializer=tf_keras.initializers.TruncatedNormal(stddev=2e-5))
 
   def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     encoded = self.encoder({'images': inputs})
     return self.linear(encoded[:, 0])
 
 
-class ViTLinearClassifier(tf.keras.Model):
+class ViTLinearClassifier(tf_keras.Model):
   """ViT classifier for linear probing."""
 
   def __init__(self, encoder, num_classes, use_sync_bn=True, **kwargs):
     super().__init__(**kwargs)
     self.encoder = encoder
-    self.linear = tf.keras.layers.Dense(
+    self.linear = tf_keras.layers.Dense(
         num_classes,
-        kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.01))
+        kernel_initializer=tf_keras.initializers.TruncatedNormal(stddev=0.01))
     if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
+      self._norm = tf_keras.layers.experimental.SyncBatchNormalization
     else:
-      self._norm = tf.keras.layers.BatchNormalization
+      self._norm = tf_keras.layers.BatchNormalization
     self.batch_norm = self._norm(
         axis=-1, epsilon=1e-6, center=False, scale=False, momentum=0.9)
 
@@ -70,7 +70,7 @@ class ViTLinearClassifier(tf.keras.Model):
     return self.linear(features)
 
 
-class VisionTransformer(tf.keras.Model):
+class VisionTransformer(tf_keras.Model):
   """ViT backbone."""
 
   def __init__(self,
@@ -84,7 +84,7 @@ class VisionTransformer(tf.keras.Model):
     self.init_stochastic_depth_rate = init_stochastic_depth_rate
 
   def build(self, input_shape):
-    self.patch_to_embed = tf.keras.layers.Dense(1024)
+    self.patch_to_embed = tf_keras.layers.Dense(1024)
     # ViT-L
     self.encoder = vit.Encoder(
         num_layers=24,

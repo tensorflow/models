@@ -17,19 +17,19 @@
 
 from typing import Any, Callable, Optional, Union, Tuple
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
 
 
-_Initializer = Union[str, tf.keras.initializers.Initializer]
+_Initializer = Union[str, tf_keras.initializers.Initializer]
 _Activation = Union[str, Callable[..., Any]]
 
-_approx_gelu = lambda x: tf.keras.activations.gelu(x, approximate=True)
+_approx_gelu = lambda x: tf_keras.activations.gelu(x, approximate=True)
 
 
-class TokenDropBertEncoder(tf.keras.layers.Layer):
+class TokenDropBertEncoder(tf_keras.layers.Layer):
   """Bi-directional Transformer-based encoder network with token dropping.
 
   During pretraining, we drop unimportant tokens starting from an intermediate
@@ -106,11 +106,11 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
       token_keep_k: int = 256,
       token_allow_list: Tuple[int, ...] = (100, 101, 102, 103),
       token_deny_list: Tuple[int, ...] = (0,),
-      initializer: _Initializer = tf.keras.initializers.TruncatedNormal(
+      initializer: _Initializer = tf_keras.initializers.TruncatedNormal(
           stddev=0.02),
       output_range: Optional[int] = None,
       embedding_width: Optional[int] = None,
-      embedding_layer: Optional[tf.keras.layers.Layer] = None,
+      embedding_layer: Optional[tf_keras.layers.Layer] = None,
       norm_first: bool = False,
       with_dense_inputs: bool = False,
       **kwargs):
@@ -133,8 +133,8 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
       logging.warning('`output_range` is available as an argument for `call()`.'
                       'The `output_range` as __init__ argument is deprecated.')
 
-    activation = tf.keras.activations.get(inner_activation)
-    initializer = tf.keras.initializers.get(initializer)
+    activation = tf_keras.activations.get(inner_activation)
+    initializer = tf_keras.initializers.get(initializer)
 
     if embedding_width is None:
       embedding_width = hidden_size
@@ -160,17 +160,17 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
         use_one_hot=True,
         name='type_embeddings')
 
-    self._embedding_norm_layer = tf.keras.layers.LayerNormalization(
+    self._embedding_norm_layer = tf_keras.layers.LayerNormalization(
         name='embeddings/layer_norm', axis=-1, epsilon=1e-12, dtype=tf.float32)
 
-    self._embedding_dropout = tf.keras.layers.Dropout(
+    self._embedding_dropout = tf_keras.layers.Dropout(
         rate=output_dropout, name='embedding_dropout')
 
     # We project the 'embedding' output to 'hidden_size' if it is not already
     # 'hidden_size'.
     self._embedding_projection = None
     if embedding_width != hidden_size:
-      self._embedding_projection = tf.keras.layers.EinsumDense(
+      self._embedding_projection = tf_keras.layers.EinsumDense(
           '...x,xy->...y',
           output_shape=hidden_size,
           bias_axes='y',
@@ -212,7 +212,7 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
           name='transformer/layer_%d' % i)
       self._transformer_layers.append(layer)
 
-    self._pooler_layer = tf.keras.layers.Dense(
+    self._pooler_layer = tf_keras.layers.Dense(
         units=hidden_size,
         activation='tanh',
         kernel_initializer=tf_utils.clone_initializer(initializer),
@@ -226,7 +226,7 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
         'max_sequence_length': max_sequence_length,
         'type_vocab_size': type_vocab_size,
         'inner_dim': inner_dim,
-        'inner_activation': tf.keras.activations.serialize(activation),
+        'inner_activation': tf_keras.activations.serialize(activation),
         'output_dropout': output_dropout,
         'attention_dropout': attention_dropout,
         'token_loss_init_value': token_loss_init_value,
@@ -234,7 +234,7 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
         'token_keep_k': token_keep_k,
         'token_allow_list': token_allow_list,
         'token_deny_list': token_deny_list,
-        'initializer': tf.keras.initializers.serialize(initializer),
+        'initializer': tf_keras.initializers.serialize(initializer),
         'output_range': output_range,
         'embedding_width': embedding_width,
         'embedding_layer': embedding_layer,
@@ -243,19 +243,19 @@ class TokenDropBertEncoder(tf.keras.layers.Layer):
     }
     if with_dense_inputs:
       self.inputs = dict(
-          input_word_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
-          input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
-          input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
-          dense_inputs=tf.keras.Input(
+          input_word_ids=tf_keras.Input(shape=(None,), dtype=tf.int32),
+          input_mask=tf_keras.Input(shape=(None,), dtype=tf.int32),
+          input_type_ids=tf_keras.Input(shape=(None,), dtype=tf.int32),
+          dense_inputs=tf_keras.Input(
               shape=(None, embedding_width), dtype=tf.float32),
-          dense_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
-          dense_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
+          dense_mask=tf_keras.Input(shape=(None,), dtype=tf.int32),
+          dense_type_ids=tf_keras.Input(shape=(None,), dtype=tf.int32),
       )
     else:
       self.inputs = dict(
-          input_word_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
-          input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
-          input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32))
+          input_word_ids=tf_keras.Input(shape=(None,), dtype=tf.int32),
+          input_mask=tf_keras.Input(shape=(None,), dtype=tf.int32),
+          input_type_ids=tf_keras.Input(shape=(None,), dtype=tf.int32))
 
   def call(self, inputs, output_range: Optional[tf.Tensor] = None):
     if isinstance(inputs, dict):

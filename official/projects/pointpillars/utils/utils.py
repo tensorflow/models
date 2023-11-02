@@ -18,7 +18,7 @@ import collections
 from typing import Any, List, Mapping, Tuple
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 CLASSES = {'vehicle': 1, 'pedestrian': 2, 'cyclist': 3}
@@ -31,7 +31,7 @@ def assert_shape(x: np.ndarray, shape: List[int]):
 
 
 def assert_channels_last():
-  if tf.keras.backend.image_data_format() != 'channels_last':
+  if tf_keras.backend.image_data_format() != 'channels_last':
     raise ValueError('Only "channels_last" mode is supported')
 
 

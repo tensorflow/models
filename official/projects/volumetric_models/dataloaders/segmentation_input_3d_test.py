@@ -17,7 +17,7 @@
 import os
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.volumetric_models.dataloaders import segmentation_input_3d
 from official.vision.dataloaders import tfexample_utils

@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.image_classification import learning_rate
 
@@ -32,7 +32,7 @@ class LearningRateTests(tf.test.TestCase):
     decay_rate = 0.01
     warmup_steps = 10
 
-    base_lr = tf.keras.optimizers.schedules.ExponentialDecay(
+    base_lr = tf_keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=initial_lr,
         decay_steps=decay_steps,
         decay_rate=decay_rate)

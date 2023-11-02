@@ -17,7 +17,7 @@
 import dataclasses
 from typing import Any, Dict, Optional, Tuple, List
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.vision.modeling.backbones import factory
@@ -26,7 +26,7 @@ from official.vision.modeling.layers import nn_blocks
 from official.vision.modeling.layers import nn_layers
 
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
 #  pylint: disable=pointless-string-statement
@@ -344,22 +344,22 @@ def block_spec_decoder(
   return decoded_specs
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MobileDet(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MobileDet(tf_keras.Model):
   """Creates a MobileDet family model."""
 
   def __init__(
       self,
       model_id: str = 'MobileDetCPU',
       filter_size_scale: float = 1.0,
-      input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
+      input_specs: tf_keras.layers.InputSpec = layers.InputSpec(
           shape=[None, None, None, 3]),
       # The followings are for hyper-parameter tuning.
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       # The followings should be kept the same most of the times.
       min_depth: int = 8,
       divisible_by: int = 8,
@@ -375,14 +375,14 @@ class MobileDet(tf.keras.Model):
         channels) for all convolution ops. The value must be greater than zero.
         Typical usage will be to set this value in (0, 1) to reduce the number
         of parameters or computation cost of the model.
-      input_specs: A `tf.keras.layers.InputSpec` of specs of the input tensor.
+      input_specs: A `tf_keras.layers.InputSpec` of specs of the input tensor.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
       kernel_initializer: A `str` for kernel initializer of convolutional
         layers.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
       min_depth: An `int` of minimum depth (number of channels) for all
         convolution ops. Enforced when filter_size_scale < 1, and not an active
@@ -413,7 +413,7 @@ class MobileDet(tf.keras.Model):
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
 
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
+    inputs = tf_keras.Input(shape=input_specs.shape[1:])
 
     block_specs = SUPPORTED_SPECS_MAP.get(model_id)
     self._decoded_specs = block_spec_decoder(
@@ -522,7 +522,7 @@ class MobileDet(tf.keras.Model):
         raise ValueError('Unknown block type {} for layer {}'.format(
             block_def.block_fn, i))
 
-      net = tf.keras.layers.Activation('linear', name=block_name)(net)
+      net = tf_keras.layers.Activation('linear', name=block_name)(net)
 
       if block_def.is_output:
         endpoints[str(endpoint_level)] = net
@@ -558,11 +558,11 @@ class MobileDet(tf.keras.Model):
 
 @factory.register_backbone_builder('mobiledet')
 def build_mobiledet(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
-) -> tf.keras.Model:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
+) -> tf_keras.Model:
   """Builds MobileDet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()

@@ -15,7 +15,7 @@
 """Tests for optimized_multiheadattention_layer."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.edgetpu.vision.modeling import optimized_multiheadattention_layer
 
@@ -35,7 +35,7 @@ class OptimizedMultiheadattentionLayerTest(tf.test.TestCase):
     input_tensor_2 = tf.random.uniform((_BATCH_SIZE, _SEQ_LEN, _EMBEDDING_SIZE))
 
     # Instantiate layer and call with inputs to build.
-    orig_layer = tf.keras.layers.MultiHeadAttention(
+    orig_layer = tf_keras.layers.MultiHeadAttention(
         num_heads=_NUM_HEADS, key_dim=_KEY_DIM)
     _ = orig_layer(input_tensor_1, input_tensor_2)
     opt_layer = optimized_multiheadattention_layer.OptimizedMultiHeadAttention(

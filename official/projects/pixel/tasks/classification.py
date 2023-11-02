@@ -20,7 +20,7 @@ from typing import Tuple
 import numpy as np
 from scipy import stats
 from sklearn import metrics as sklearn_metrics
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import config_definitions as cfg
@@ -65,7 +65,7 @@ class PixelClassificationTask(base_task.Task):
   label_field: str = 'label'
   metric_type: str = 'accuracy'
 
-  def build_model(self) -> tf.keras.Model:
+  def build_model(self) -> tf_keras.Model:
     encoder = pixel.VisionTransformer(
         self.task_config.patch_h,
         self.task_config.patch_w,
@@ -95,9 +95,9 @@ class PixelClassificationTask(base_task.Task):
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     label_ids = labels[self.label_field]
     if self.task_config.num_classes == 1:
-      loss = tf.keras.losses.mean_squared_error(label_ids, model_outputs)
+      loss = tf_keras.losses.mean_squared_error(label_ids, model_outputs)
     else:
-      loss = tf.keras.losses.sparse_categorical_crossentropy(
+      loss = tf_keras.losses.sparse_categorical_crossentropy(
           label_ids, tf.cast(model_outputs, tf.float32), from_logits=True
       )
 
@@ -105,7 +105,7 @@ class PixelClassificationTask(base_task.Task):
       loss += tf.add_n(aux_losses)
     return tf_utils.safe_mean(loss)
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Load encoder if checkpoint exists.
 
     Args:
@@ -124,15 +124,15 @@ class PixelClassificationTask(base_task.Task):
   def build_metrics(self, training=None):
     del training
     if self.task_config.num_classes == 1:
-      metrics = [tf.keras.metrics.MeanSquaredError()]
+      metrics = [tf_keras.metrics.MeanSquaredError()]
     elif self.task_config.num_classes == 2:
       metrics = [
-          tf.keras.metrics.SparseCategoricalAccuracy(name='cls_accuracy'),
-          tf.keras.metrics.AUC(name='auc', curve='PR'),
+          tf_keras.metrics.SparseCategoricalAccuracy(name='cls_accuracy'),
+          tf_keras.metrics.AUC(name='auc', curve='PR'),
       ]
     else:
       metrics = [
-          tf.keras.metrics.SparseCategoricalAccuracy(name='cls_accuracy'),
+          tf_keras.metrics.SparseCategoricalAccuracy(name='cls_accuracy'),
       ]
     return metrics
 
@@ -150,7 +150,7 @@ class PixelClassificationTask(base_task.Task):
   def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
     compiled_metrics.update_state(labels[self.label_field], model_outputs)
 
-  def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
+  def validation_step(self, inputs, model: tf_keras.Model, metrics=None):
     features, labels = inputs, inputs
     outputs = self.inference_step(features, model)
     loss = self.build_losses(

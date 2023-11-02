@@ -15,7 +15,7 @@
 """Tests for official.nlp.projects.longformer.longformer_attention."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling.tf_utils import get_shape_list
 from official.projects.longformer import longformer_attention

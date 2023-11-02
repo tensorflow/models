@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from official.nlp.modeling.networks import xlnet_base
@@ -411,7 +411,7 @@ class XLNetModelTests(tf.test.TestCase):
         attention_dropout_rate=0.,
         attention_type="bi",
         bi_data=True,
-        initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
+        initializer=tf_keras.initializers.RandomNormal(stddev=0.1),
         two_stream=False,
         tie_attention_biases=True,
         reuse_length=0,
@@ -435,7 +435,7 @@ class XLNetModelTests(tf.test.TestCase):
         attention_dropout_rate=0.,
         attention_type="bi",
         bi_data=True,
-        initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
+        initializer=tf_keras.initializers.RandomNormal(stddev=0.1),
         two_stream=False,
         tie_attention_biases=True,
         memory_length=0,

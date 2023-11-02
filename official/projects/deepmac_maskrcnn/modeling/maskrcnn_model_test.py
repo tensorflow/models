@@ -18,7 +18,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.deepmac_maskrcnn.modeling import maskrcnn_model
 from official.projects.deepmac_maskrcnn.modeling.heads import instance_heads as deep_instance_heads
@@ -50,7 +50,7 @@ def construct_model_and_anchors(image_size, use_gt_boxes_for_masks):
       image_size=image_size).multilevel_boxes
   num_anchors_per_location = len(aspect_ratios) * num_scales
 
-  input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, 3])
+  input_specs = tf_keras.layers.InputSpec(shape=[None, None, None, 3])
   backbone = resnet.ResNet(model_id=50, input_specs=input_specs)
   decoder = fpn.FPN(
       min_level=min_level,

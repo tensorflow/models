@@ -17,13 +17,13 @@
 from absl.testing import parameterized
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling import networks
 from official.nlp.modeling.models import xlnet
 
 
-def _get_xlnet_base() -> tf.keras.layers.Layer:
+def _get_xlnet_base() -> tf_keras.layers.Layer:
   """Returns a trivial base XLNet model."""
   return networks.XLNetBase(
       vocab_size=100,
@@ -36,7 +36,7 @@ def _get_xlnet_base() -> tf.keras.layers.Layer:
       attention_dropout_rate=0.,
       attention_type='bi',
       bi_data=True,
-      initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
+      initializer=tf_keras.initializers.RandomNormal(stddev=0.1),
       two_stream=False,
       tie_attention_biases=True,
       reuse_length=0,
@@ -70,19 +70,19 @@ class XLNetPretrainerTest(tf.test.TestCase):
     # Create an XLNet trainer with the created network.
     xlnet_trainer_model = xlnet.XLNetPretrainer(network=xlnet_base)
     inputs = dict(
-        input_word_ids=tf.keras.layers.Input(
+        input_word_ids=tf_keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='input_word_ids'),
-        input_type_ids=tf.keras.layers.Input(
+        input_type_ids=tf_keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='input_type_ids'),
-        input_mask=tf.keras.layers.Input(
+        input_mask=tf_keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='input_mask'),
-        permutation_mask=tf.keras.layers.Input(
+        permutation_mask=tf_keras.layers.Input(
             shape=(seq_length, seq_length,), dtype=tf.int32,
             name='permutation_mask'),
-        target_mapping=tf.keras.layers.Input(
+        target_mapping=tf_keras.layers.Input(
             shape=(num_predictions, seq_length), dtype=tf.int32,
             name='target_mapping'),
-        masked_tokens=tf.keras.layers.Input(
+        masked_tokens=tf_keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='masked_tokens'))
     logits, _ = xlnet_trainer_model(inputs)
 
@@ -152,20 +152,20 @@ class XLNetClassifierTest(tf.test.TestCase, parameterized.TestCase):
     xlnet_trainer_model = xlnet.XLNetClassifier(
         network=xlnet_base,
         num_classes=num_classes,
-        initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
+        initializer=tf_keras.initializers.RandomNormal(stddev=0.1),
         summary_type='last',
         dropout_rate=0.1)
     inputs = dict(
-        input_word_ids=tf.keras.layers.Input(
+        input_word_ids=tf_keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='input_word_ids'),
-        input_type_ids=tf.keras.layers.Input(
+        input_type_ids=tf_keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='input_type_ids'),
-        input_mask=tf.keras.layers.Input(
+        input_mask=tf_keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='input_mask'),
-        permutation_mask=tf.keras.layers.Input(
+        permutation_mask=tf_keras.layers.Input(
             shape=(seq_length, seq_length,), dtype=tf.int32,
             name='permutation_mask'),
-        masked_tokens=tf.keras.layers.Input(
+        masked_tokens=tf_keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='masked_tokens'))
     logits = xlnet_trainer_model(inputs)
 
@@ -184,7 +184,7 @@ class XLNetClassifierTest(tf.test.TestCase, parameterized.TestCase):
     xlnet_trainer_model = xlnet.XLNetClassifier(
         network=xlnet_base,
         num_classes=num_classes,
-        initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
+        initializer=tf_keras.initializers.RandomNormal(stddev=0.1),
         summary_type='last',
         dropout_rate=0.1)
 
@@ -209,7 +209,7 @@ class XLNetClassifierTest(tf.test.TestCase, parameterized.TestCase):
     xlnet_trainer_model = xlnet.XLNetClassifier(
         network=xlnet_base,
         num_classes=2,
-        initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
+        initializer=tf_keras.initializers.RandomNormal(stddev=0.1),
         summary_type='last',
         dropout_rate=0.1)
 
@@ -240,21 +240,21 @@ class XLNetSpanLabelerTest(tf.test.TestCase):
         network=xlnet_base,
         start_n_top=top_n,
         end_n_top=top_n,
-        initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
+        initializer=tf_keras.initializers.RandomNormal(stddev=0.1),
         span_labeling_activation='tanh',
         dropout_rate=0.1)
     inputs = dict(
-        input_word_ids=tf.keras.layers.Input(
+        input_word_ids=tf_keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='input_word_ids'),
-        input_type_ids=tf.keras.layers.Input(
+        input_type_ids=tf_keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='input_type_ids'),
-        input_mask=tf.keras.layers.Input(
+        input_mask=tf_keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='input_mask'),
-        paragraph_mask=tf.keras.layers.Input(
+        paragraph_mask=tf_keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='paragraph_mask'),
-        class_index=tf.keras.layers.Input(
+        class_index=tf_keras.layers.Input(
             shape=(), dtype=tf.int32, name='class_index'),
-        start_positions=tf.keras.layers.Input(
+        start_positions=tf_keras.layers.Input(
             shape=(), dtype=tf.int32, name='start_positions'))
     outputs = xlnet_trainer_model(inputs)
     self.assertIsInstance(outputs, dict)
@@ -300,7 +300,7 @@ class XLNetSpanLabelerTest(tf.test.TestCase):
         network=xlnet_base,
         start_n_top=2,
         end_n_top=2,
-        initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
+        initializer=tf_keras.initializers.RandomNormal(stddev=0.1),
         span_labeling_activation='tanh',
         dropout_rate=0.1)
 

@@ -17,7 +17,7 @@
 import io
 from typing import Optional, Sequence, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def write_small_dataset(examples: Sequence[Union[tf.train.Example,

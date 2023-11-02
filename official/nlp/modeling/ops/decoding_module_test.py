@@ -15,7 +15,7 @@
 """Test decoding utility methods."""
 
 import abc
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.ops import decoding_module
 

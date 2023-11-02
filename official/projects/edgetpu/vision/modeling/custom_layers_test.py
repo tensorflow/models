@@ -17,7 +17,7 @@
 import itertools
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.projects.edgetpu.vision.modeling import custom_layers
 
 GROUPS = [2, 4]
@@ -25,7 +25,7 @@ INPUT_CHANNEL = [8, 16]
 OUTPUT_CHANNEL = [8, 16]
 USE_BATCH_NORM = [True, False]
 ACTIVATION = ['relu', 'linear']
-BATCH_NORM_LAYER = tf.keras.layers.BatchNormalization
+BATCH_NORM_LAYER = tf_keras.layers.BatchNormalization
 
 # 2 functionally identical group conv implementations.
 GROUP_CONV_IMPL = {
@@ -121,7 +121,7 @@ class GroupConv2DTest(tf.test.TestCase, parameterized.TestCase):
         use_bias=False,
         batch_norm_layer=batch_norm_layer,
         activation=activation)
-    gc_layer = tf.keras.Sequential([custom_layers.GroupConv2D(**kwargs)])
+    gc_layer = tf_keras.Sequential([custom_layers.GroupConv2D(**kwargs)])
     gc_model = custom_layers.GroupConv2DKerasModel(**kwargs)
     gc_layer.build(input_shape=(None, 3, 3, input_channel))
     gc_model.build(input_shape=(None, 3, 3, input_channel))

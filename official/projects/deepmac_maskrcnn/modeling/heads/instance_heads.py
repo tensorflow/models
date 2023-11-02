@@ -17,13 +17,13 @@
 # Import libraries
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.projects.deepmac_maskrcnn.modeling.heads import hourglass_network
 
 
-class DeepMaskHead(tf.keras.layers.Layer):
+class DeepMaskHead(tf_keras.layers.Layer):
   """Creates a mask head."""
 
   def __init__(self,
@@ -59,9 +59,9 @@ class DeepMaskHead(tf.keras.layers.Layer):
         normalization across different replicas.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
       class_agnostic: A `bool`. If set, we use a single channel mask head that
         is shared between all classes.
       convnet_variant: A `str` denoting the architecture of network used in the
@@ -86,16 +86,16 @@ class DeepMaskHead(tf.keras.layers.Layer):
         'convnet_variant': convnet_variant,
     }
 
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
     self._activation = tf_utils.get_activation(activation)
 
   def _get_conv_op_and_kwargs(self):
-    conv_op = (tf.keras.layers.SeparableConv2D
+    conv_op = (tf_keras.layers.SeparableConv2D
                if self._config_dict['use_separable_conv']
-               else tf.keras.layers.Conv2D)
+               else tf_keras.layers.Conv2D)
     conv_kwargs = {
         'filters': self._config_dict['num_filters'],
         'kernel_size': 3,
@@ -103,9 +103,9 @@ class DeepMaskHead(tf.keras.layers.Layer):
     }
     if self._config_dict['use_separable_conv']:
       conv_kwargs.update({
-          'depthwise_initializer': tf.keras.initializers.VarianceScaling(
+          'depthwise_initializer': tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
-          'pointwise_initializer': tf.keras.initializers.VarianceScaling(
+          'pointwise_initializer': tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'bias_initializer': tf.zeros_initializer(),
           'depthwise_regularizer': self._config_dict['kernel_regularizer'],
@@ -114,7 +114,7 @@ class DeepMaskHead(tf.keras.layers.Layer):
       })
     else:
       conv_kwargs.update({
-          'kernel_initializer': tf.keras.initializers.VarianceScaling(
+          'kernel_initializer': tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'bias_initializer': tf.zeros_initializer(),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
@@ -125,9 +125,9 @@ class DeepMaskHead(tf.keras.layers.Layer):
 
   def _get_bn_op_and_kwargs(self):
 
-    bn_op = (tf.keras.layers.experimental.SyncBatchNormalization
+    bn_op = (tf_keras.layers.experimental.SyncBatchNormalization
              if self._config_dict['use_sync_bn']
-             else tf.keras.layers.BatchNormalization)
+             else tf_keras.layers.BatchNormalization)
     bn_kwargs = {
         'axis': self._bn_axis,
         'momentum': self._config_dict['norm_momentum'],
@@ -143,12 +143,12 @@ class DeepMaskHead(tf.keras.layers.Layer):
 
     self._build_convnet_variant()
 
-    self._deconv = tf.keras.layers.Conv2DTranspose(
+    self._deconv = tf_keras.layers.Conv2DTranspose(
         filters=self._config_dict['num_filters'],
         kernel_size=self._config_dict['upsample_factor'],
         strides=self._config_dict['upsample_factor'],
         padding='valid',
-        kernel_initializer=tf.keras.initializers.VarianceScaling(
+        kernel_initializer=tf_keras.initializers.VarianceScaling(
             scale=2, mode='fan_out', distribution='untruncated_normal'),
         bias_initializer=tf.zeros_initializer(),
         kernel_regularizer=self._config_dict['kernel_regularizer'],
@@ -170,9 +170,9 @@ class DeepMaskHead(tf.keras.layers.Layer):
     }
     if self._config_dict['use_separable_conv']:
       conv_kwargs.update({
-          'depthwise_initializer': tf.keras.initializers.VarianceScaling(
+          'depthwise_initializer': tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
-          'pointwise_initializer': tf.keras.initializers.VarianceScaling(
+          'pointwise_initializer': tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'bias_initializer': tf.zeros_initializer(),
           'depthwise_regularizer': self._config_dict['kernel_regularizer'],
@@ -181,7 +181,7 @@ class DeepMaskHead(tf.keras.layers.Layer):
       })
     else:
       conv_kwargs.update({
-          'kernel_initializer': tf.keras.initializers.VarianceScaling(
+          'kernel_initializer': tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'bias_initializer': tf.zeros_initializer(),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],

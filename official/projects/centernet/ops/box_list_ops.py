@@ -14,7 +14,7 @@
 
 """Bounding Box List operations."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.centernet.ops import box_list
 from official.vision.ops import sampling_ops

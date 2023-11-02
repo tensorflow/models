@@ -17,7 +17,7 @@ from typing import Optional, Text
 
 from absl import logging
 import gin
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.modeling.hyperparams import params_dict
@@ -66,7 +66,7 @@ def remove_sos_from_seq(seq, pad_token_id):
   return targets
 
 
-class Bert2Bert(tf.keras.Model):
+class Bert2Bert(tf_keras.Model):
   """Bert2Bert encoder decoder model for training."""
 
   def __init__(self, params, bert_layer, decoder_layer, name=None):
@@ -390,13 +390,13 @@ def get_bert2bert_layers(params: configs.BERT2BERTConfig):
   Returns:
     two keras Layers, bert_model_layer and decoder_layer
   """
-  input_ids = tf.keras.layers.Input(
+  input_ids = tf_keras.layers.Input(
       shape=(None,), name="input_ids", dtype=tf.int32)
-  input_mask = tf.keras.layers.Input(
+  input_mask = tf_keras.layers.Input(
       shape=(None,), name="input_mask", dtype=tf.int32)
-  segment_ids = tf.keras.layers.Input(
+  segment_ids = tf_keras.layers.Input(
       shape=(None,), name="segment_ids", dtype=tf.int32)
-  target_ids = tf.keras.layers.Input(
+  target_ids = tf_keras.layers.Input(
       shape=(None,), name="target_ids", dtype=tf.int32)
   bert_config = utils.get_bert_config_from_params(params)
   bert_model_layer = networks.BertEncoder(
@@ -410,7 +410,7 @@ def get_bert2bert_layers(params: configs.BERT2BERTConfig):
       attention_dropout_rate=bert_config.attention_probs_dropout_prob,
       max_sequence_length=bert_config.max_position_embeddings,
       type_vocab_size=bert_config.type_vocab_size,
-      initializer=tf.keras.initializers.TruncatedNormal(
+      initializer=tf_keras.initializers.TruncatedNormal(
           stddev=bert_config.initializer_range),
       return_all_encoder_outputs=True,
       name="bert_encoder")
@@ -442,11 +442,11 @@ def get_nhnet_layers(params: configs.NHNetConfig):
   Returns:
     two keras Layers, bert_model_layer and decoder_layer
   """
-  input_ids = tf.keras.layers.Input(
+  input_ids = tf_keras.layers.Input(
       shape=(None,), name="input_ids", dtype=tf.int32)
-  input_mask = tf.keras.layers.Input(
+  input_mask = tf_keras.layers.Input(
       shape=(None,), name="input_mask", dtype=tf.int32)
-  segment_ids = tf.keras.layers.Input(
+  segment_ids = tf_keras.layers.Input(
       shape=(None,), name="segment_ids", dtype=tf.int32)
   bert_config = utils.get_bert_config_from_params(params)
   bert_model_layer = networks.BertEncoder(
@@ -460,19 +460,19 @@ def get_nhnet_layers(params: configs.NHNetConfig):
       attention_dropout_rate=bert_config.attention_probs_dropout_prob,
       max_sequence_length=bert_config.max_position_embeddings,
       type_vocab_size=bert_config.type_vocab_size,
-      initializer=tf.keras.initializers.TruncatedNormal(
+      initializer=tf_keras.initializers.TruncatedNormal(
           stddev=bert_config.initializer_range),
       return_all_encoder_outputs=True,
       name="bert_encoder")
   bert_model_layer([input_ids, input_mask, segment_ids])
 
-  input_ids = tf.keras.layers.Input(
+  input_ids = tf_keras.layers.Input(
       shape=(None, None), name="input_ids", dtype=tf.int32)
-  all_encoder_outputs = tf.keras.layers.Input((None, None, params.hidden_size),
+  all_encoder_outputs = tf_keras.layers.Input((None, None, params.hidden_size),
                                               dtype=tf.float32)
-  target_ids = tf.keras.layers.Input(
+  target_ids = tf_keras.layers.Input(
       shape=(None,), name="target_ids", dtype=tf.int32)
-  doc_attention_probs = tf.keras.layers.Input(
+  doc_attention_probs = tf_keras.layers.Input(
       (params.num_decoder_attn_heads, None, None), dtype=tf.float32)
   # pylint: disable=protected-access
   decoder_layer = decoder.Decoder(params, bert_model_layer._embedding_layer)
@@ -494,7 +494,7 @@ def get_nhnet_layers(params: configs.NHNetConfig):
 
 def create_transformer_model(params,
                              init_checkpoint: Optional[Text] = None
-                            ) -> tf.keras.Model:
+                            ) -> tf_keras.Model:
   """A helper to create Transformer model."""
   bert_layer, decoder_layer = get_bert2bert_layers(params=params)
   model = Bert2Bert(
@@ -516,7 +516,7 @@ def create_transformer_model(params,
 def create_bert2bert_model(
     params: configs.BERT2BERTConfig,
     cls=Bert2Bert,
-    init_checkpoint: Optional[Text] = None) -> tf.keras.Model:
+    init_checkpoint: Optional[Text] = None) -> tf_keras.Model:
   """A helper to create Bert2Bert model."""
   bert_layer, decoder_layer = get_bert2bert_layers(params=params)
   if init_checkpoint:
@@ -532,7 +532,7 @@ def create_bert2bert_model(
 def create_nhnet_model(
     params: configs.NHNetConfig,
     cls=NHNet,
-    init_checkpoint: Optional[Text] = None) -> tf.keras.Model:
+    init_checkpoint: Optional[Text] = None) -> tf_keras.Model:
   """A helper to create NHNet model."""
   bert_layer, decoder_layer = get_nhnet_layers(params=params)
   model = cls(

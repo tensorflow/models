@@ -17,7 +17,7 @@ from typing import Any, List, Mapping, Optional, Union
 
 # Import libraries
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.vision.modeling.decoders import factory
@@ -27,8 +27,8 @@ from official.vision.modeling.layers import nn_layers
 TensorMapUnion = Union[tf.Tensor, Mapping[str, tf.Tensor]]
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class ASPP(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class ASPP(tf_keras.layers.Layer):
   """Creates an Atrous Spatial Pyramid Pooling (ASPP) layer."""
 
   def __init__(
@@ -43,7 +43,7 @@ class ASPP(tf.keras.layers.Layer):
       activation: str = 'relu',
       dropout_rate: float = 0.0,
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       interpolation: str = 'bilinear',
       use_depthwise_convolution: bool = False,
       spp_layer_version: str = 'v1',
@@ -65,7 +65,7 @@ class ASPP(tf.keras.layers.Layer):
       dropout_rate: A `float` rate for dropout regularization.
       kernel_initializer: A `str` name of kernel_initializer for convolutional
         layers.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
       interpolation: A `str` of interpolation method. It should be one of
         `bilinear`, `nearest`, `bicubic`, `area`, `lanczos3`, `lanczos5`,
@@ -161,8 +161,8 @@ class ASPP(tf.keras.layers.Layer):
 def build_aspp_decoder(
     input_specs: Mapping[str, tf.TensorShape],
     model_config: hyperparams.Config,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
-) -> tf.keras.Model:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
+) -> tf_keras.Model:
   """Builds ASPP decoder from a config.
 
   Args:
@@ -170,11 +170,11 @@ def build_aspp_decoder(
       {level: TensorShape} from a backbone. Note this is for consistent
         interface, and is not used by ASPP decoder.
     model_config: A OneOfConfig. Model config.
-    l2_regularizer: A `tf.keras.regularizers.Regularizer` instance. Default to
+    l2_regularizer: A `tf_keras.regularizers.Regularizer` instance. Default to
       None.
 
   Returns:
-    A `tf.keras.Model` instance of the ASPP decoder.
+    A `tf_keras.Model` instance of the ASPP decoder.
 
   Raises:
     ValueError: If the model_config.decoder.type is not `aspp`.

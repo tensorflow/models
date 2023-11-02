@@ -15,7 +15,7 @@
 """Factory method to build panoptic segmentation model."""
 from typing import Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.deepmac_maskrcnn.tasks import deep_mask_head_rcnn
 from official.projects.panoptic.configs import panoptic_deeplab as panoptic_deeplab_cfg
@@ -31,9 +31,9 @@ from official.vision.modeling.heads import segmentation_heads
 
 
 def build_panoptic_maskrcnn(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     model_config: panoptic_maskrcnn_cfg.PanopticMaskRCNN,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds Panoptic Mask R-CNN model.
 
   This factory function builds the mask rcnn first, builds the non-shared
@@ -41,12 +41,12 @@ def build_panoptic_maskrcnn(
   the panoptic segmentation model.
 
   Args:
-    input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+    input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
     model_config: Config instance for the panoptic maskrcnn model.
-    l2_regularizer: Optional `tf.keras.regularizers.Regularizer`, if specified,
+    l2_regularizer: Optional `tf_keras.regularizers.Regularizer`, if specified,
       the model is built with the provided regularization layer.
   Returns:
-    tf.keras.Model for the panoptic segmentation model.
+    tf_keras.Model for the panoptic segmentation model.
   """
   norm_activation_config = model_config.norm_activation
   segmentation_config = model_config.segmentation_model
@@ -153,20 +153,20 @@ def build_panoptic_maskrcnn(
 
 
 def build_panoptic_deeplab(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     model_config: panoptic_deeplab_cfg.PanopticDeeplab,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
-) -> tf.keras.Model:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
+) -> tf_keras.Model:
   """Builds Panoptic Deeplab model.
 
 
   Args:
-    input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+    input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
     model_config: Config instance for the panoptic deeplab model.
-    l2_regularizer: Optional `tf.keras.regularizers.Regularizer`, if specified,
+    l2_regularizer: Optional `tf_keras.regularizers.Regularizer`, if specified,
       the model is built with the provided regularization layer.
   Returns:
-    tf.keras.Model for the panoptic segmentation model.
+    tf_keras.Model for the panoptic segmentation model.
   """
   norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(

@@ -15,7 +15,7 @@
 """Builds video classification models."""
 from typing import Any, Mapping, Optional, Union, List, Text
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.videoglue.configs import video_classification as cfg
 from official.projects.videoglue.modeling.backbones import vit_3d  # pylint: disable=unused-import
@@ -23,17 +23,17 @@ from official.projects.videoglue.modeling.heads import simple
 from official.vision.modeling import backbones
 from official.vision.modeling import factory_3d as model_factory
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
-class MultiHeadVideoClassificationModel(tf.keras.Model):
+class MultiHeadVideoClassificationModel(tf_keras.Model):
   """A multi-head video classification class builder."""
 
   def __init__(
       self,
-      backbone: tf.keras.Model,
+      backbone: tf_keras.Model,
       num_classes: Union[List[int], int],
-      input_specs: Optional[Mapping[str, tf.keras.layers.InputSpec]] = None,
+      input_specs: Optional[Mapping[str, tf_keras.layers.InputSpec]] = None,
       dropout_rate: float = 0.0,
       attention_num_heads: int = 6,
       attention_hidden_size: int = 768,
@@ -41,8 +41,8 @@ class MultiHeadVideoClassificationModel(tf.keras.Model):
       add_temporal_pos_emb_pooler: bool = False,
       aggregate_endpoints: bool = False,
       kernel_initializer: str = 'random_uniform',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       require_endpoints: Optional[List[Text]] = None,
       classifier_type: str = 'linear',
       **kwargs):
@@ -51,7 +51,7 @@ class MultiHeadVideoClassificationModel(tf.keras.Model):
     Args:
       backbone: a 3d backbone network.
       num_classes: `int` number of classes in classification task.
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+      input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
       dropout_rate: `float` rate for dropout regularization.
       attention_num_heads: attention pooler layer number of heads.
       attention_hidden_size: attention pooler layer hidden size.
@@ -61,9 +61,9 @@ class MultiHeadVideoClassificationModel(tf.keras.Model):
       aggregate_endpoints: `bool` aggregate all end ponits or only use the
         final end point.
       kernel_initializer: kernel initializer for the dense layer.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object. Default to
+      kernel_regularizer: tf_keras.regularizers.Regularizer object. Default to
         None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object. Default to
+      bias_regularizer: tf_keras.regularizers.Regularizer object. Default to
         None.
       require_endpoints: the required endpoints for prediction. If None or
         empty, then only uses the final endpoint.
@@ -93,12 +93,12 @@ class MultiHeadVideoClassificationModel(tf.keras.Model):
     self._backbone = backbone
 
     inputs = {
-        k: tf.keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
+        k: tf_keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
     }
     endpoints = backbone(inputs['image'])
 
     if classifier_type == 'linear':
-      pool_or_flatten_op = tf.keras.layers.GlobalAveragePooling3D()
+      pool_or_flatten_op = tf_keras.layers.GlobalAveragePooling3D()
     elif classifier_type == 'pooler':
       pool_or_flatten_op = lambda x: tf.reshape(  # pylint:disable=g-long-lambda
           x,
@@ -137,8 +137,8 @@ class MultiHeadVideoClassificationModel(tf.keras.Model):
     outputs = []
     if classifier_type == 'linear':
       for nc in num_classes:
-        x = tf.keras.layers.Dropout(dropout_rate)(input_embeddings)
-        x = tf.keras.layers.Dense(
+        x = tf_keras.layers.Dropout(dropout_rate)(input_embeddings)
+        x = tf_keras.layers.Dense(
             nc, kernel_initializer=kernel_initializer,
             kernel_regularizer=kernel_regularizer,
             bias_regularizer=bias_regularizer)(x)
@@ -164,12 +164,12 @@ class MultiHeadVideoClassificationModel(tf.keras.Model):
 
   @property
   def checkpoint_items(
-      self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
+      self) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     return dict(backbone=self.backbone)
 
   @property
-  def backbone(self) -> tf.keras.Model:
+  def backbone(self) -> tf_keras.Model:
     return self._backbone
 
   def get_config(self) -> Mapping[str, Any]:
@@ -182,10 +182,10 @@ class MultiHeadVideoClassificationModel(tf.keras.Model):
 
 @model_factory.register_model_builder('mh_video_classification')
 def build_mh_video_classification_model(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     model_config: cfg.MultiHeadVideoClassificationModel,
     num_classes: Union[List[int], int],
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
 ) -> MultiHeadVideoClassificationModel:
   """Builds the video classification model."""
   input_specs_dict = {'image': input_specs}

@@ -17,13 +17,13 @@
 
 from typing import Tuple
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
-class MatMulWithMargin(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class MatMulWithMargin(tf_keras.layers.Layer):
   """This layer computs a dot product matrix given two encoded inputs.
 
   Args:

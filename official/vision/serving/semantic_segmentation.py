@@ -14,7 +14,7 @@
 
 """Semantic segmentation input and model functions for serving/inference."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling import factory
 from official.vision.ops import preprocess_ops
@@ -25,7 +25,7 @@ class SegmentationModule(export_base.ExportModule):
   """Segmentation Module."""
 
   def _build_model(self):
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[self._batch_size] + self._input_image_size + [3])
 
     return factory.build_segmentation_model(

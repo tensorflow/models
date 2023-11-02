@@ -19,7 +19,7 @@ import random
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import exp_factory
 from official.vision import registry_imports  # pylint: disable=unused-import

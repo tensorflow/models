@@ -26,7 +26,7 @@ import tempfile
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import distribute_utils
 from official.legacy.transformer import compute_bleu
@@ -208,7 +208,7 @@ class TransformerTask(object):
         current_step = opt.iterations.numpy()
 
       if params["use_ctl"]:
-        train_loss_metric = tf.keras.metrics.Mean(
+        train_loss_metric = tf_keras.metrics.Mean(
             "training_loss", dtype=tf.float32)
         if params["enable_tensorboard"]:
           summary_writer = tf.summary.create_file_writer(
@@ -411,7 +411,7 @@ class TransformerTask(object):
     if params["enable_checkpointing"]:
       ckpt_full_path = os.path.join(cur_log_dir, "cp-{epoch:04d}.ckpt")
       callbacks.append(
-          tf.keras.callbacks.ModelCheckpoint(
+          tf_keras.callbacks.ModelCheckpoint(
               ckpt_full_path, save_weights_only=params["save_weights_only"]))
     return callbacks
 
@@ -434,7 +434,7 @@ class TransformerTask(object):
     lr_schedule = optimizer.LearningRateSchedule(
         params["learning_rate"], params["hidden_size"],
         params["learning_rate_warmup_steps"])
-    opt = tf.keras.optimizers.Adam(
+    opt = tf_keras.optimizers.Adam(
         lr_schedule,
         params["optimizer_adam_beta1"],
         params["optimizer_adam_beta2"],

@@ -35,7 +35,7 @@ from typing import Text
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.bert import bert_models
 from official.legacy.bert import configs
@@ -96,7 +96,7 @@ def _get_do_lower_case(do_lower_case, vocab_file):
 
 def create_labse_model(bert_tfhub_module: Text,
                        bert_config: configs.BertConfig,
-                       normalize: bool) -> tf.keras.Model:
+                       normalize: bool) -> tf_keras.Model:
   """Creates a LaBSE keras core model from BERT configuration.
 
   Args:
@@ -127,7 +127,7 @@ def create_labse_model(bert_tfhub_module: Text,
 def export_labse_model(bert_tfhub_module: Text, bert_config: configs.BertConfig,
                        model_checkpoint_path: Text, hub_destination: Text,
                        vocab_file: Text, do_lower_case: bool, normalize: bool):
-  """Restores a tf.keras.Model and saves for TF-Hub."""
+  """Restores a tf_keras.Model and saves for TF-Hub."""
   core_model, encoder = create_labse_model(
       bert_tfhub_module, bert_config, normalize)
   checkpoint = tf.train.Checkpoint(encoder=encoder)

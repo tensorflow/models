@@ -51,7 +51,7 @@ from typing import Any, Callable, List, Mapping, Optional
 
 from absl import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.projects.assemblenet.configs import assemblenet as cfg
@@ -59,7 +59,7 @@ from official.projects.assemblenet.modeling import rep_flow_2d_layer as rf
 from official.vision.modeling import factory_3d as model_factory
 from official.vision.modeling.backbones import factory as backbone_factory
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 intermediate_channel_size = [64, 128, 256, 512]
 
 
@@ -76,7 +76,7 @@ def fixed_padding(inputs, kernel_size):
     A padded `Tensor` of the same `data_format` with size either intact
     (if `kernel_size == 1`) or padded (if `kernel_size > 1`).
   """
-  data_format = tf.keras.backend.image_data_format()
+  data_format = tf_keras.backend.image_data_format()
   pad_total = kernel_size - 1
   pad_beg = pad_total // 2
   pad_end = pad_total - pad_beg
@@ -118,7 +118,7 @@ def reshape_temporal_conv1d_bn(inputs: tf.Tensor,
     A padded `Tensor` of the same `data_format` with size either intact
     (if `kernel_size == 1`) or padded (if `kernel_size > 1`).
   """
-  data_format = tf.keras.backend.image_data_format()
+  data_format = tf_keras.backend.image_data_format()
   assert data_format == 'channels_last'
 
   feature_shape = inputs.shape
@@ -128,23 +128,23 @@ def reshape_temporal_conv1d_bn(inputs: tf.Tensor,
       [-1, num_frames, feature_shape[1] * feature_shape[2], feature_shape[3]])
 
   if temporal_dilation == 1:
-    inputs = tf.keras.layers.Conv2D(
+    inputs = tf_keras.layers.Conv2D(
         filters=filters,
         kernel_size=(kernel_size, 1),
         strides=1,
         padding='SAME',
         use_bias=False,
-        kernel_initializer=tf.keras.initializers.VarianceScaling())(
+        kernel_initializer=tf_keras.initializers.VarianceScaling())(
             inputs=inputs)
   else:
-    inputs = tf.keras.layers.Conv2D(
+    inputs = tf_keras.layers.Conv2D(
         filters=filters,
         kernel_size=(kernel_size, 1),
         strides=1,
         padding='SAME',
         dilation_rate=(temporal_dilation, 1),
         use_bias=False,
-        kernel_initializer=tf.keras.initializers.TruncatedNormal(
+        kernel_initializer=tf_keras.initializers.TruncatedNormal(
             stddev=math.sqrt(2.0 / (kernel_size * feature_shape[3]))))(
                 inputs=inputs)
 
@@ -164,7 +164,7 @@ def conv2d_fixed_padding(inputs: tf.Tensor, filters: int, kernel_size: int,
   """Strided 2-D convolution with explicit padding.
 
   The padding is consistent and is based only on `kernel_size`, not on the
-  dimensions of `inputs` (as opposed to using `tf.keras.layers.Conv2D` alone).
+  dimensions of `inputs` (as opposed to using `tf_keras.layers.Conv2D` alone).
 
   Args:
     inputs: `Tensor` of size `[batch, channels, height_in, width_in]`.
@@ -178,13 +178,13 @@ def conv2d_fixed_padding(inputs: tf.Tensor, filters: int, kernel_size: int,
   if strides > 1:
     inputs = fixed_padding(inputs, kernel_size)
 
-  return tf.keras.layers.Conv2D(
+  return tf_keras.layers.Conv2D(
       filters=filters,
       kernel_size=kernel_size,
       strides=strides,
       padding=('SAME' if strides == 1 else 'VALID'),
       use_bias=False,
-      kernel_initializer=tf.keras.initializers.VarianceScaling())(
+      kernel_initializer=tf_keras.initializers.VarianceScaling())(
           inputs=inputs)
 
 
@@ -215,14 +215,14 @@ def conv3d_same_padding(inputs: tf.Tensor,
     else:
       kernel_size = [kernel_size, kernel_size, kernel_size]
 
-  return tf.keras.layers.Conv3D(
+  return tf_keras.layers.Conv3D(
       filters=filters,
       kernel_size=kernel_size,
       strides=[1, strides, strides],
       padding='SAME',
       dilation_rate=[temporal_dilation, 1, 1],
       use_bias=False,
-      kernel_initializer=tf.keras.initializers.VarianceScaling())(
+      kernel_initializer=tf_keras.initializers.VarianceScaling())(
           inputs=inputs)
 
 
@@ -374,7 +374,7 @@ def spatial_resize_and_concat(inputs):
   Returns:
     The output `Tensor` after concatenation.
   """
-  data_format = tf.keras.backend.image_data_format()
+  data_format = tf_keras.backend.image_data_format()
   assert data_format == 'channels_last'
 
   # Do nothing if only 1 input
@@ -393,7 +393,7 @@ def spatial_resize_and_concat(inputs):
   for i in range(len(inputs)):
     if inputs[i].shape[1] != sm_size[0] or inputs[i].shape[2] != sm_size[1]:
       ratio = (inputs[i].shape[1] + 1) // sm_size[0]
-      inputs[i] = tf.keras.layers.MaxPool2D([ratio, ratio],
+      inputs[i] = tf_keras.layers.MaxPool2D([ratio, ratio],
                                             ratio,
                                             padding='same')(
                                                 inputs[i])
@@ -431,7 +431,7 @@ class _ApplyEdgeWeight(layers.Layer):
     self._index = index
     self._use_5d_mode = use_5d_mode
     self._model_edge_weights = model_edge_weights
-    data_format = tf.keras.backend.image_data_format()
+    data_format = tf_keras.backend.image_data_format()
     assert data_format == 'channels_last'
 
   def get_config(self):
@@ -452,7 +452,7 @@ class _ApplyEdgeWeight(layers.Layer):
     if self._index is None or not self._model_edge_weights:
       self._edge_weights = self.add_weight(
           shape=self._weights_shape,
-          initializer=tf.keras.initializers.TruncatedNormal(
+          initializer=tf_keras.initializers.TruncatedNormal(
               mean=0.0, stddev=0.01),
           trainable=True,
           name='agg_weights')
@@ -499,11 +499,11 @@ class _ApplyEdgeWeight(layers.Layer):
         assert sm_size[0] != 0
         ratio = (inp.shape[h_channel_loc] + 1) // sm_size[0]
         if use_5d_mode:
-          inp = tf.keras.layers.MaxPool3D([1, ratio, ratio], [1, ratio, ratio],
+          inp = tf_keras.layers.MaxPool3D([1, ratio, ratio], [1, ratio, ratio],
                                           padding='same')(
                                               inp)
         else:
-          inp = tf.keras.layers.MaxPool2D([ratio, ratio], ratio,
+          inp = tf_keras.layers.MaxPool2D([ratio, ratio], ratio,
                                           padding='same')(
                                               inp)
 
@@ -610,7 +610,7 @@ def rgb_conv_stem(inputs,
   Returns:
     The output `Tensor`.
   """
-  data_format = tf.keras.backend.image_data_format()
+  data_format = tf_keras.backend.image_data_format()
   assert data_format == 'channels_last'
 
   if temporal_dilation < 1:
@@ -634,7 +634,7 @@ def rgb_conv_stem(inputs,
       bn_epsilon=bn_epsilon,
       use_sync_bn=use_sync_bn)
 
-  inputs = tf.keras.layers.MaxPool2D(
+  inputs = tf_keras.layers.MaxPool2D(
       pool_size=3, strides=2, padding='SAME')(
           inputs=inputs)
   inputs = tf.identity(inputs, 'initial_max_pool')
@@ -673,7 +673,7 @@ def flow_conv_stem(inputs,
           inputs)
   inputs = tf.nn.relu(inputs)
 
-  inputs = tf.keras.layers.MaxPool2D(
+  inputs = tf_keras.layers.MaxPool2D(
       pool_size=2, strides=2, padding='SAME')(
           inputs=inputs)
   inputs = tf.identity(inputs, 'initial_max_pool')
@@ -704,7 +704,7 @@ def multi_stream_heads(streams,
 
   def _pool_and_reshape(net):
     # The activation is 7x7 so this is a global average pool.
-    net = tf.keras.layers.GlobalAveragePooling2D()(inputs=net)
+    net = tf_keras.layers.GlobalAveragePooling2D()(inputs=net)
     net = tf.identity(net, 'final_avg_pool0')
 
     net = tf.reshape(net, [-1, num_frames, num_channels])
@@ -724,7 +724,7 @@ def multi_stream_heads(streams,
   if len(final_nodes) > 1:
     outputs = outputs / len(final_nodes)
 
-  outputs = tf.keras.layers.Dense(
+  outputs = tf_keras.layers.Dense(
       units=num_classes,
       kernel_initializer=tf.random_normal_initializer(stddev=.01))(
           inputs=outputs)
@@ -739,7 +739,7 @@ def multi_stream_heads(streams,
   return outputs
 
 
-class AssembleNet(tf.keras.Model):
+class AssembleNet(tf_keras.Model):
   """AssembleNet backbone."""
 
   def __init__(
@@ -766,7 +766,7 @@ class AssembleNet(tf.keras.Model):
         inputs of the same resolution.
       num_frames: the number of frames in the input tensor.
       model_structure: AssembleNet model structure in the string format.
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+      input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
         Dimension should be `[batch*time, height, width, channels]`.
       model_edge_weights: AssembleNet model structure connection weights in the
         string format.
@@ -776,8 +776,8 @@ class AssembleNet(tf.keras.Model):
       combine_method: 'str' for the weighted summation to fuse different blocks.
       **kwargs: pass through arguments.
     """
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
-    data_format = tf.keras.backend.image_data_format()
+    inputs = tf_keras.Input(shape=input_specs.shape[1:])
+    data_format = tf_keras.backend.image_data_format()
 
     # Creation of the model graph.
     logging.info('model_structure=%r', model_structure)
@@ -883,7 +883,7 @@ class AssembleNet(tf.keras.Model):
         inputs=original_inputs, outputs=streams, **kwargs)
 
 
-class AssembleNetModel(tf.keras.Model):
+class AssembleNetModel(tf_keras.Model):
   """An AssembleNet model builder."""
 
   def __init__(self,
@@ -892,7 +892,7 @@ class AssembleNetModel(tf.keras.Model):
                num_frames: int,
                model_structure: List[Any],
                input_specs: Optional[Mapping[str,
-                                             tf.keras.layers.InputSpec]] = None,
+                                             tf_keras.layers.InputSpec]] = None,
                max_pool_predictions: bool = False,
                **kwargs):
     if not input_specs:
@@ -914,7 +914,7 @@ class AssembleNetModel(tf.keras.Model):
       grouping[model_structure[i][0]].append(i)
 
     inputs = {
-        k: tf.keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
+        k: tf_keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
     }
     streams = self._backbone(inputs['image'])
 
@@ -985,7 +985,7 @@ def assemblenet_v1(assemblenet_depth: int,
                    **kwargs):
   """Returns the AssembleNet model for a given size and number of output classes."""
 
-  data_format = tf.keras.backend.image_data_format()
+  data_format = tf_keras.backend.image_data_format()
   assert data_format == 'channels_last'
 
   if assemblenet_depth not in ASSEMBLENET_SPECS:
@@ -1014,11 +1014,11 @@ def assemblenet_v1(assemblenet_depth: int,
 
 @backbone_factory.register_backbone_builder('assemblenet')
 def build_assemblenet_v1(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
-) -> tf.keras.Model:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
+) -> tf_keras.Model:
   """Builds assemblenet backbone."""
   del l2_regularizer
 
@@ -1055,10 +1055,10 @@ def build_assemblenet_v1(
 
 @model_factory.register_model_builder('assemblenet')
 def build_assemblenet_model(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     model_config: cfg.AssembleNetModel,
     num_classes: int,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None):
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None):
   """Builds assemblenet model."""
   input_specs_dict = {'image': input_specs}
   backbone = build_assemblenet_v1(input_specs, model_config.backbone,

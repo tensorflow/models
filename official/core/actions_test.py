@@ -19,7 +19,7 @@ import os
 from absl.testing import parameterized
 import numpy as np
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -27,12 +27,12 @@ from official.core import actions
 from official.modeling import optimization
 
 
-class TestModel(tf.keras.Model):
+class TestModel(tf_keras.Model):
 
   def __init__(self):
     super().__init__()
     self.value = tf.Variable(0.0)
-    self.dense = tf.keras.layers.Dense(2)
+    self.dense = tf_keras.layers.Dense(2)
     _ = self.dense(tf.zeros((2, 2), tf.float32))
 
   def call(self, x, training=None):
@@ -51,7 +51,7 @@ class ActionsTest(tf.test.TestCase, parameterized.TestCase):
     with distribution.scope():
       directory = self.create_tempdir()
       model = TestModel()
-      optimizer = tf.keras.optimizers.SGD()
+      optimizer = tf_keras.optimizers.SGD()
       optimizer = optimization.ExponentialMovingAverage(
           optimizer, trainable_weights_only=False)
 
@@ -81,7 +81,7 @@ class ActionsTest(tf.test.TestCase, parameterized.TestCase):
       # Raises an error for a normal optimizer.
       with self.assertRaisesRegex(ValueError,
                                   'Optimizer has to be instance of.*'):
-        _ = actions.EMACheckpointing(directory, tf.keras.optimizers.SGD(),
+        _ = actions.EMACheckpointing(directory, tf_keras.optimizers.SGD(),
                                      checkpoint)
 
   @combinations.generate(
@@ -121,7 +121,7 @@ class ActionsTest(tf.test.TestCase, parameterized.TestCase):
     with distribution.scope():
       directory = self.get_temp_dir()
       model = TestModel()
-      optimizer = tf.keras.optimizers.SGD()
+      optimizer = tf_keras.optimizers.SGD()
       pruning = actions.PruningAction(directory, model, optimizer)
 
       pruning({})

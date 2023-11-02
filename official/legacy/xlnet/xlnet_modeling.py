@@ -17,22 +17,22 @@
 import copy
 import warnings
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.legacy.xlnet import data_utils
 from official.nlp.modeling import networks
 
 
 def gelu(x):
-  return tf.keras.activations.gelu(x, approximate=True)
+  return tf_keras.activations.gelu(x, approximate=True)
 
 
 def _get_initializer(flags):
   """Get variable initializer."""
   if flags.init_method == "uniform":
-    initializer = tf.keras.initializers.RandomUniform(
+    initializer = tf_keras.initializers.RandomUniform(
         minval=-flags.init_range, maxval=flags.init_range)
   elif flags.init_method == "normal":
-    initializer = tf.keras.initializers.RandomNormal(stddev=flags.init_std)
+    initializer = tf_keras.initializers.RandomNormal(stddev=flags.init_std)
   else:
     raise ValueError("Initializer {} not supported".format(flags.init_method))
   return initializer
@@ -78,7 +78,7 @@ def _cache_mem(curr_out, prev_mem, mem_len, reuse_len=None):
     else:
       new_mem = tf.concat([prev_mem, curr_out], 0)[-mem_len:]
 
-  return tf.keras.backend.stop_gradient(new_mem)
+  return tf_keras.backend.stop_gradient(new_mem)
 
 
 def is_special_none_tensor(tensor):
@@ -86,8 +86,8 @@ def is_special_none_tensor(tensor):
   return tensor.shape.ndims == 0 and tensor.dtype == tf.int32
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
-class RelativePositionEncoding(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package="Text")
+class RelativePositionEncoding(tf_keras.layers.Layer):
   """Creates a relative positional encoding.
 
   This layer creates a relative positional encoding as described in
@@ -132,7 +132,7 @@ class RelativePositionEncoding(tf.keras.layers.Layer):
     return pos_emb
 
 
-class RelativeAttention(tf.keras.layers.Layer):
+class RelativeAttention(tf_keras.layers.Layer):
   """Core calculations for relative attention."""
 
   def __init__(self, dropout_att, scale):
@@ -143,7 +143,7 @@ class RelativeAttention(tf.keras.layers.Layer):
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
 
-    self.attention_probs_dropout = tf.keras.layers.Dropout(
+    self.attention_probs_dropout = tf_keras.layers.Dropout(
         rate=self.dropout_att)
 
     super(RelativeAttention, self).build(unused_input_shapes)
@@ -185,7 +185,7 @@ class RelativeAttention(tf.keras.layers.Layer):
     return attn_vec
 
 
-class PositionwiseFF(tf.keras.layers.Layer):
+class PositionwiseFF(tf_keras.layers.Layer):
   """Positionwise feed-forward layer."""
 
   def __init__(self, d_model, d_inner, dropout, kernel_initializer,
@@ -207,20 +207,20 @@ class PositionwiseFF(tf.keras.layers.Layer):
       raise (ValueError("Unsupported activation type {}".format(
           self.activation_type)))
     self.inner_projection_layer = (
-        tf.keras.layers.Dense(
+        tf_keras.layers.Dense(
             units=self.d_inner,
             activation=activation,
             kernel_initializer=self.kernel_initializer,
             name="layer_1"))
     self.output_projection_layer = (
-        tf.keras.layers.Dense(
+        tf_keras.layers.Dense(
             units=self.d_model,
             kernel_initializer=self.kernel_initializer,
             name="layer_2"))
-    self.output_dropout = tf.keras.layers.Dropout(
+    self.output_dropout = tf_keras.layers.Dropout(
         rate=self.dropout, name="drop_2")
     self.output_layer_norm = (
-        tf.keras.layers.LayerNormalization(
+        tf_keras.layers.LayerNormalization(
             name="LayerNorm", axis=-1, epsilon=1e-12))
     super(PositionwiseFF, self).build(unused_input_shapes)
 
@@ -234,7 +234,7 @@ class PositionwiseFF(tf.keras.layers.Layer):
     return output
 
 
-class EmbeddingLookup(tf.keras.layers.Layer):
+class EmbeddingLookup(tf_keras.layers.Layer):
   """Looks up words embeddings for id tensor."""
 
   def __init__(self, n_token, d_embed, initializer, **kwargs):
@@ -257,7 +257,7 @@ class EmbeddingLookup(tf.keras.layers.Layer):
     return tf.nn.embedding_lookup(self.lookup_table, inputs)
 
 
-class RelativeMultiheadAttention(tf.keras.layers.Layer):
+class RelativeMultiheadAttention(tf_keras.layers.Layer):
   """Multi-head attention with relative embedding."""
 
   def __init__(self, d_model, n_head, d_head, dropout, dropout_att,
@@ -274,7 +274,7 @@ class RelativeMultiheadAttention(tf.keras.layers.Layer):
     """Implements build() for the layer."""
     self.scale = 1.0 / (self.d_head**0.5)
 
-    self.output_layer_norm = tf.keras.layers.LayerNormalization(
+    self.output_layer_norm = tf_keras.layers.LayerNormalization(
         name="LayerNorm", axis=-1, epsilon=1e-12)
 
     self.kh_projection_layer = self.add_weight(
@@ -302,7 +302,7 @@ class RelativeMultiheadAttention(tf.keras.layers.Layer):
         shape=[self.d_model, self.n_head, self.d_head],
         initializer=self.initializer)
 
-    self.attention_dropout = tf.keras.layers.Dropout(rate=self.dropout)
+    self.attention_dropout = tf_keras.layers.Dropout(rate=self.dropout)
 
     super(RelativeMultiheadAttention, self).build(unused_input_shapes)
 
@@ -360,7 +360,7 @@ class RelativeMultiheadAttention(tf.keras.layers.Layer):
     return (output_h, output_g)
 
 
-class TransformerXLModel(tf.keras.layers.Layer):
+class TransformerXLModel(tf_keras.layers.Layer):
   """Defines a Transformer-XL computation graph with additional support for XLNet."""
 
   def __init__(self,
@@ -452,8 +452,8 @@ class TransformerXLModel(tf.keras.layers.Layer):
         dtype=self.tf_float,
         name="word_embedding")
 
-    self.h_dropout = tf.keras.layers.Dropout(rate=self.dropout)
-    self.g_dropout = tf.keras.layers.Dropout(rate=self.dropout)
+    self.h_dropout = tf_keras.layers.Dropout(rate=self.dropout)
+    self.g_dropout = tf_keras.layers.Dropout(rate=self.dropout)
 
     if self.untie_r:
       self.r_w_bias = (
@@ -501,7 +501,7 @@ class TransformerXLModel(tf.keras.layers.Layer):
     self.mask_emb = self.add_weight(
         "mask_emb/mask_emb", shape=[1, 1, self.d_model], dtype=self.tf_float)
 
-    self.emb_dropout = tf.keras.layers.Dropout(rate=self.dropout)
+    self.emb_dropout = tf_keras.layers.Dropout(rate=self.dropout)
     self.fwd_position_embedding = RelativePositionEncoding(self.d_model)
     self.bwd_position_embedding = RelativePositionEncoding(self.d_model)
 
@@ -526,7 +526,7 @@ class TransformerXLModel(tf.keras.layers.Layer):
               activation_type=self.ff_activation,
               name="layer_%d/ff" % (i)))
 
-    self.output_dropout = tf.keras.layers.Dropout(rate=self.dropout)
+    self.output_dropout = tf_keras.layers.Dropout(rate=self.dropout)
 
     super(TransformerXLModel, self).build(unused_input_shapes)
 
@@ -741,7 +741,7 @@ class TransformerXLModel(tf.keras.layers.Layer):
     return output, new_mems, None
 
 
-class PretrainingXLNetModel(tf.keras.Model):
+class PretrainingXLNetModel(tf_keras.Model):
   """XLNet keras model combined with pretraining LM loss layer.
 
   See the original paper: https://arxiv.org/pdf/1906.08237.pdf
@@ -826,7 +826,7 @@ class PretrainingXLNetModel(tf.keras.Model):
     return self.new_mems, model_output
 
 
-class ClassificationXLNetModel(tf.keras.Model):
+class ClassificationXLNetModel(tf_keras.Model):
   """XLNet keras model combined with classification loss layer.
 
   See the original paper: https://arxiv.org/pdf/1906.08237.pdf
@@ -901,11 +901,11 @@ class ClassificationXLNetModel(tf.keras.Model):
 
     summary = self.summarization_layer(attention_output)
     per_example_loss, logits = self.cl_loss_layer(hidden=summary, labels=label)
-    self.add_loss(tf.keras.backend.mean(per_example_loss))
+    self.add_loss(tf_keras.backend.mean(per_example_loss))
     return new_mems, logits
 
 
-class LMLossLayer(tf.keras.layers.Layer):
+class LMLossLayer(tf_keras.layers.Layer):
   """Layer computing cross entropy loss for language modeling."""
 
   def __init__(self,
@@ -945,12 +945,12 @@ class LMLossLayer(tf.keras.layers.Layer):
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
     if self.use_proj:
-      self.proj_layer = tf.keras.layers.Dense(
+      self.proj_layer = tf_keras.layers.Dense(
           units=self.hidden_size,
           kernel_initializer=self.initializer,
           activation=gelu,
           name="lm_projection/dense")
-      self.proj_layer_norm = tf.keras.layers.LayerNormalization(
+      self.proj_layer_norm = tf_keras.layers.LayerNormalization(
           axis=-1, epsilon=1e-12, name="lm_projection/LayerNorm")
     if not self.tie_weight:
       self.softmax_w = self.add_weight(
@@ -984,7 +984,7 @@ class LMLossLayer(tf.keras.layers.Layer):
     return total_loss, logits
 
 
-class Summarization(tf.keras.layers.Layer):
+class Summarization(tf_keras.layers.Layer):
   """The layer to pool the output from XLNet model into a vector."""
 
   def __init__(self,
@@ -1024,12 +1024,12 @@ class Summarization(tf.keras.layers.Layer):
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
     if self.use_proj:
-      self.proj_layer = tf.keras.layers.Dense(
+      self.proj_layer = tf_keras.layers.Dense(
           units=self.hidden_size,
           kernel_initializer=self.initializer,
           activation=tf.nn.tanh,
           name="summary")
-    self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout_rate)
+    self.dropout_layer = tf_keras.layers.Dropout(rate=self.dropout_rate)
 
     super(Summarization, self).build(unused_input_shapes)
 
@@ -1047,7 +1047,7 @@ class Summarization(tf.keras.layers.Layer):
     return summary
 
 
-class ClassificationLossLayer(tf.keras.layers.Layer):
+class ClassificationLossLayer(tf_keras.layers.Layer):
   """Layer computing cross entropy loss for classification task."""
 
   def __init__(self, n_class, initializer, **kwargs):
@@ -1065,7 +1065,7 @@ class ClassificationLossLayer(tf.keras.layers.Layer):
 
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
-    self.proj_layer = tf.keras.layers.Dense(
+    self.proj_layer = tf_keras.layers.Dense(
         units=self.n_class, kernel_initializer=self.initializer, name="logit")
 
     super(ClassificationLossLayer, self).build(unused_input_shapes)
@@ -1080,7 +1080,7 @@ class ClassificationLossLayer(tf.keras.layers.Layer):
     return loss, logits
 
 
-class QAXLNetModel(tf.keras.Model):
+class QAXLNetModel(tf_keras.Model):
   """XLNet keras model combined with question answering loss layer.
 
   See the original paper: https://arxiv.org/pdf/1906.08237.pdf
@@ -1161,7 +1161,7 @@ class QAXLNetModel(tf.keras.Model):
       return results
 
 
-class QALossLayer(tf.keras.layers.Layer):
+class QALossLayer(tf_keras.layers.Layer):
   """Layer computing position and regression loss for question answering task."""
 
   def __init__(self, hidden_size, start_n_top, end_n_top, initializer,
@@ -1185,28 +1185,28 @@ class QALossLayer(tf.keras.layers.Layer):
 
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
-    self.start_logits_proj_layer = tf.keras.layers.Dense(
+    self.start_logits_proj_layer = tf_keras.layers.Dense(
         units=1, kernel_initializer=self.initializer, name="start_logits/dense")
-    self.end_logits_proj_layer0 = tf.keras.layers.Dense(
+    self.end_logits_proj_layer0 = tf_keras.layers.Dense(
         units=self.hidden_size,
         kernel_initializer=self.initializer,
         activation=tf.nn.tanh,
         name="end_logits/dense_0")
-    self.end_logits_proj_layer1 = tf.keras.layers.Dense(
+    self.end_logits_proj_layer1 = tf_keras.layers.Dense(
         units=1, kernel_initializer=self.initializer, name="end_logits/dense_1")
-    self.end_logits_layer_norm = tf.keras.layers.LayerNormalization(
+    self.end_logits_layer_norm = tf_keras.layers.LayerNormalization(
         axis=-1, epsilon=1e-12, name="end_logits/LayerNorm")
-    self.answer_class_proj_layer0 = tf.keras.layers.Dense(
+    self.answer_class_proj_layer0 = tf_keras.layers.Dense(
         units=self.hidden_size,
         kernel_initializer=self.initializer,
         activation=tf.nn.tanh,
         name="answer_class/dense_0")
-    self.answer_class_proj_layer1 = tf.keras.layers.Dense(
+    self.answer_class_proj_layer1 = tf_keras.layers.Dense(
         units=1,
         kernel_initializer=self.initializer,
         use_bias=False,
         name="answer_class/dense_1")
-    self.ans_feature_dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
+    self.ans_feature_dropout = tf_keras.layers.Dropout(rate=self.dropout_rate)
     super(QALossLayer, self).build(unused_input_shapes)
 
   def __call__(self, hidden, p_mask, cls_index, **kwargs):

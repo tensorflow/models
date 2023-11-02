@@ -14,7 +14,7 @@
 
 """Tests for transformer."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.pix2seq.modeling import transformer
 

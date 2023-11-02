@@ -15,7 +15,7 @@
 """Tests for sequence_encoder."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.perceiver.configs import encoders
 from official.projects.perceiver.configs import perceiver
@@ -54,9 +54,9 @@ class SequenceEncoderTest(tf.test.TestCase):
         z_index_dim=z_index_dim,
         d_latents=d_latents)
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     dict_outputs = test_network(
         dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids))
     data = dict_outputs["latent_output"]
@@ -79,15 +79,15 @@ class SequenceEncoderTest(tf.test.TestCase):
         d_latents=d_latents,
         vocab_size=vocab_size)
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     dict_outputs = test_network(
         dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids))
     data = dict_outputs["latent_output"]
 
     # Create a model based off of this network:
-    model = tf.keras.Model([word_ids, mask, type_ids], [data])
+    model = tf_keras.Model([word_ids, mask, type_ids], [data])
 
     # Invoke the model. We can't validate the output data here (the model is too
     # complex) but this will catch structural runtime errors.
@@ -134,9 +134,9 @@ class SequenceEncoderTest(tf.test.TestCase):
         input_position_encoding_intializer_stddev=sequence_encoder_config
         .input_position_encoding_intializer_stddev)
 
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
 
     dict_outputs = network(
         dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids))
@@ -144,13 +144,13 @@ class SequenceEncoderTest(tf.test.TestCase):
 
     # Create a model based off of this network:
     # model =
-    _ = tf.keras.Model([word_ids, mask, type_ids], [data])
+    _ = tf_keras.Model([word_ids, mask, type_ids], [data])
 
     # TODO(b/222634115) make save work.
     # Tests model saving/loading.
     # model_path = self.get_temp_dir() + "/model"
     # model.save(model_path)
-    # _ = tf.keras.models.load_model(model_path)
+    # _ = tf_keras.models.load_model(model_path)
 
 # TODO(b/222634115) add test coverage.
 

@@ -17,14 +17,14 @@
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.pointpillars.modeling import layers
 from official.projects.pointpillars.utils import utils
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class SSDHead(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class SSDHead(tf_keras.layers.Layer):
   """A SSD head for PointPillars detection."""
 
   def __init__(
@@ -35,7 +35,7 @@ class SSDHead(tf.keras.layers.Layer):
       attribute_heads: Optional[List[Dict[str, Any]]] = None,
       min_level: int = 1,
       max_level: int = 3,
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initialize the SSD Head.
 
@@ -49,7 +49,7 @@ class SSDHead(tf.keras.layers.Layer):
         of predicted values for each instance).
       min_level: An `int` of min level for output mutiscale features.
       max_level: An `int` of max level for output mutiscale features.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
       **kwargs: Additional keyword arguments to be passed.
 
@@ -91,22 +91,22 @@ class SSDHead(tf.keras.layers.Layer):
           kernel_regularizer=self._config_dict['kernel_regularizer'])
 
     # Detection convs, share weights across multi levels.
-    self._classifier = tf.keras.layers.Conv2D(
+    self._classifier = tf_keras.layers.Conv2D(
         filters=(self._config_dict['num_classes'] *
                  self._config_dict['num_anchors_per_location']),
         kernel_size=3,
         strides=1,
         padding='same',
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=1e-5),
+        kernel_initializer=tf_keras.initializers.RandomNormal(stddev=1e-5),
         kernel_regularizer=self._config_dict['kernel_regularizer'],
         bias_initializer=tf.constant_initializer(-np.log((1 - 0.01) / 0.01)))
-    self._box_regressor = tf.keras.layers.Conv2D(
+    self._box_regressor = tf_keras.layers.Conv2D(
         filters=(self._config_dict['num_params_per_anchor'] *
                  self._config_dict['num_anchors_per_location']),
         kernel_size=3,
         strides=1,
         padding='same',
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=1e-5),
+        kernel_initializer=tf_keras.initializers.RandomNormal(stddev=1e-5),
         kernel_regularizer=self._config_dict['kernel_regularizer'],
         bias_initializer=tf.zeros_initializer())
     if self._config_dict['attribute_heads']:
@@ -117,12 +117,12 @@ class SSDHead(tf.keras.layers.Layer):
         att_size = att_config['size']
         if att_type != 'regression':
           raise ValueError('Unsupported head type: {}'.format(att_type))
-        self._att_predictors[att_name] = tf.keras.layers.Conv2D(
+        self._att_predictors[att_name] = tf_keras.layers.Conv2D(
             filters=(att_size * self._config_dict['num_anchors_per_location']),
             kernel_size=3,
             strides=1,
             padding='same',
-            kernel_initializer=tf.keras.initializers.RandomNormal(stddev=1e-5),
+            kernel_initializer=tf_keras.initializers.RandomNormal(stddev=1e-5),
             kernel_regularizer=self._config_dict['kernel_regularizer'],
             bias_initializer=tf.zeros_initializer())
 
@@ -171,5 +171,5 @@ class SSDHead(tf.keras.layers.Layer):
     return self._config_dict
 
   @classmethod
-  def from_config(cls, config: Mapping[str, Any]) -> tf.keras.layers.Layer:
+  def from_config(cls, config: Mapping[str, Any]) -> tf_keras.layers.Layer:
     return cls(**config)

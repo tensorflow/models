@@ -17,7 +17,7 @@ import os
 
 from absl import app
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_hub as hub
 
 from official.projects.fffner.fffner import FFFNerEncoderConfig
@@ -61,7 +61,7 @@ def _create_fffner_model(bert_config):
       inner_dim=bert_config["intermediate_size"],
       max_sequence_length=bert_config["max_position_embeddings"],
       type_vocab_size=bert_config["type_vocab_size"],
-      initializer=tf.keras.initializers.TruncatedNormal(
+      initializer=tf_keras.initializers.TruncatedNormal(
           stddev=encoder_cfg.initializer_range),
       output_range=encoder_cfg.output_range,
       embedding_width=bert_config["hidden_size"],

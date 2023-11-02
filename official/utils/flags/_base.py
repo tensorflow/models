@@ -15,7 +15,7 @@
 """Flags which will be nearly universal across models."""
 
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.utils.flags._conventions import help_wrap
 
 

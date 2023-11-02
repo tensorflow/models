@@ -30,10 +30,10 @@
 """
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-class SpectralNormalization(tf.keras.layers.Wrapper):
+class SpectralNormalization(tf_keras.layers.Wrapper):
   """Implements spectral normalization for Dense layer."""
 
   def __init__(self,
@@ -47,7 +47,7 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
     """Initializer.
 
     Args:
-      layer: (tf.keras.layers.Layer) A TF Keras layer to apply normalization to.
+      layer: (tf_keras.layers.Layer) A TF Keras layer to apply normalization to.
       iteration: (int) The number of power iteration to perform to estimate
         weight matrix's singular value.
       norm_multiplier: (float) Multiplicative constant to threshold the
@@ -71,8 +71,8 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
     if inhere_layer_name:
       wrapper_name = layer.name
 
-    if not isinstance(layer, tf.keras.layers.Layer):
-      raise ValueError('`layer` must be a `tf.keras.layer.Layer`. '
+    if not isinstance(layer, tf_keras.layers.Layer):
+      raise ValueError('`layer` must be a `tf_keras.layer.Layer`. '
                        'Observed `{}`'.format(layer))
     super().__init__(
         layer, name=wrapper_name, **kwargs)
@@ -150,7 +150,7 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
     return self.layer.kernel.assign(self.w)
 
 
-class SpectralNormalizationConv2D(tf.keras.layers.Wrapper):
+class SpectralNormalizationConv2D(tf_keras.layers.Wrapper):
   """Implements spectral normalization for Conv2D layer based on [3]."""
 
   def __init__(self,
@@ -164,7 +164,7 @@ class SpectralNormalizationConv2D(tf.keras.layers.Wrapper):
     """Initializer.
 
     Args:
-      layer: (tf.keras.layers.Layer) A TF Keras layer to apply normalization to.
+      layer: (tf_keras.layers.Layer) A TF Keras layer to apply normalization to.
       iteration: (int) The number of power iteration to perform to estimate
         weight matrix's singular value.
       norm_multiplier: (float) Multiplicative constant to threshold the
@@ -189,9 +189,9 @@ class SpectralNormalizationConv2D(tf.keras.layers.Wrapper):
     # Set layer attributes.
     layer._name += '_spec_norm'
 
-    if not isinstance(layer, tf.keras.layers.Conv2D):
+    if not isinstance(layer, tf_keras.layers.Conv2D):
       raise ValueError(
-          'layer must be a `tf.keras.layer.Conv2D` instance. You passed: {input}'
+          'layer must be a `tf_keras.layer.Conv2D` instance. You passed: {input}'
           .format(input=layer))
     super().__init__(layer, **kwargs)
 

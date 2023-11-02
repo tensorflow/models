@@ -18,21 +18,21 @@ import dataclasses
 from typing import Optional, Dict, Any, Tuple
 
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.vision.modeling.backbones import factory
 from official.vision.modeling.layers import nn_blocks
 from official.vision.modeling.layers import nn_layers
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
 #  pylint: disable=pointless-string-statement
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class Conv2DBNBlock(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class Conv2DBNBlock(tf_keras.layers.Layer):
   """A convolution block with batch normalization."""
 
   def __init__(
@@ -44,8 +44,8 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
       use_explicit_padding: bool = False,
       activation: str = 'relu6',
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       use_normalization: bool = True,
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
@@ -67,9 +67,9 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
       activation: A `str` name of the activation function.
       kernel_initializer: A `str` for kernel initializer of convolutional
         layers.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
       use_normalization: If True, use batch normalization.
       use_sync_bn: If True, use synchronized batch normalization.
@@ -91,13 +91,13 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
     self._use_sync_bn = use_sync_bn
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
-    self._norm = tf.keras.layers.BatchNormalization
+    self._norm = tf_keras.layers.BatchNormalization
 
     if use_explicit_padding and kernel_size > 1:
       self._padding = 'valid'
     else:
       self._padding = 'same'
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -124,8 +124,8 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
   def build(self, input_shape):
     if self._use_explicit_padding and self._kernel_size > 1:
       padding_size = nn_layers.get_padding_for_kernel_size(self._kernel_size)
-      self._pad = tf.keras.layers.ZeroPadding2D(padding_size)
-    self._conv0 = tf.keras.layers.Conv2D(
+      self._pad = tf_keras.layers.ZeroPadding2D(padding_size)
+    self._conv0 = tf_keras.layers.Conv2D(
         filters=self._filters,
         kernel_size=self._kernel_size,
         strides=self._strides,
@@ -614,22 +614,22 @@ def block_spec_decoder(
   return decoded_specs
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MobileNet(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MobileNet(tf_keras.Model):
   """Creates a MobileNet family model."""
 
   def __init__(
       self,
       model_id: str = 'MobileNetV2',
       filter_size_scale: float = 1.0,
-      input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
+      input_specs: tf_keras.layers.InputSpec = layers.InputSpec(
           shape=[None, None, None, 3]),
       # The followings are for hyper-parameter tuning.
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       # The followings should be kept the same most of the times.
       output_stride: Optional[int] = None,
       min_depth: int = 8,
@@ -652,14 +652,14 @@ class MobileNet(tf.keras.Model):
         channels) for all convolution ops. The value must be greater than zero.
         Typical usage will be to set this value in (0, 1) to reduce the number
         of parameters or computation cost of the model.
-      input_specs: A `tf.keras.layers.InputSpec` of specs of the input tensor.
+      input_specs: A `tf_keras.layers.InputSpec` of specs of the input tensor.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
       kernel_initializer: A `str` for kernel initializer of convolutional
         layers.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
       output_stride: An `int` that specifies the requested ratio of input to
         output spatial resolution. If not None, then we invoke atrous
@@ -714,7 +714,7 @@ class MobileNet(tf.keras.Model):
     self._finegrain_classification_mode = finegrain_classification_mode
     self._output_intermediate_endpoints = output_intermediate_endpoints
 
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
+    inputs = tf_keras.Input(shape=input_specs.shape[1:])
 
     block_specs = SUPPORTED_SPECS_MAP.get(model_id)
     self._decoded_specs = block_spec_decoder(
@@ -865,7 +865,7 @@ class MobileNet(tf.keras.Model):
         raise ValueError('Unknown block type {} for layer {}'.format(
             block_def.block_fn, i))
 
-      net = tf.keras.layers.Activation('linear', name=block_name)(net)
+      net = tf_keras.layers.Activation('linear', name=block_name)(net)
 
       if block_def.is_output:
         endpoints[str(endpoint_level)] = net
@@ -909,11 +909,11 @@ class MobileNet(tf.keras.Model):
 
 @factory.register_backbone_builder('mobilenet')
 def build_mobilenet(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
-) -> tf.keras.Model:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
+) -> tf_keras.Model:
   """Builds MobileNet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()

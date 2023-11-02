@@ -18,7 +18,7 @@ import os
 
 from orbit.utils.summary_manager_interface import SummaryManagerInterface
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 class SummaryManager(SummaryManagerInterface):

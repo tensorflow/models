@@ -28,7 +28,7 @@ E-ELAN is proposed in YOLOv7 paper:
     arXiv:2207.02696
 """
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.projects.yolo.modeling.layers import nn_blocks
@@ -38,9 +38,9 @@ from official.vision.modeling.decoders import factory
 # Required block functions for YOLOv7 decoder familes.
 _BLOCK_FNS = {
     'convbn': nn_blocks.ConvBN,
-    'upsample2d': tf.keras.layers.UpSampling2D,
-    'maxpool2d': tf.keras.layers.MaxPooling2D,
-    'concat': tf.keras.layers.Concatenate,
+    'upsample2d': tf_keras.layers.UpSampling2D,
+    'maxpool2d': tf_keras.layers.MaxPooling2D,
+    'concat': tf_keras.layers.Concatenate,
     'sppcspc': nn_blocks.SPPCSPC,
     'repconv': nn_blocks.RepConv,
 }
@@ -304,7 +304,7 @@ DECODERS = {
 }
 
 
-class YoloV7(tf.keras.Model):
+class YoloV7(tf_keras.Model):
   """YOLOv7 decoder architecture."""
 
   def __init__(
@@ -334,10 +334,10 @@ class YoloV7(tf.keras.Model):
       use_separable_conv: `bool` wether to use separable convs.
       kernel_initializer: a `str` for kernel initializer of convolutional
         layers.
-      kernel_regularizer: a `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: a `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
       bias_initializer: a `str` for bias initializer of convolutional layers.
-      bias_regularizer: a `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: a `tf_keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
       **kwargs: Additional keyword arguments to be passed.
     """
@@ -396,7 +396,7 @@ class YoloV7(tf.keras.Model):
   def _generate_inputs(self, input_specs):
     inputs = {}
     for level, input_shape in input_specs.items():
-      inputs[level] = tf.keras.layers.Input(shape=input_shape[1:])
+      inputs[level] = tf_keras.layers.Input(shape=input_shape[1:])
     return inputs
 
   def _group_layer_inputs(self, from_index, inputs, outputs):
@@ -437,10 +437,10 @@ class YoloV7(tf.keras.Model):
 
 @factory.register_decoder_builder('yolov7')
 def build_yolov7(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     model_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None,
-) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None,
+) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds YOLOv7 decoder."""
   decoder_config = model_config.decoder
   norm_activation_config = model_config.norm_activation

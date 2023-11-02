@@ -23,7 +23,7 @@ with minor changes.
 import functools
 from typing import Dict, List, Text, Tuple
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.panoptic.ops import mask_ops
 
@@ -82,7 +82,7 @@ def _get_instance_centers_from_heatmap(
 
   # Non-maximum suppression.
   padded_map = _add_zero_padding(center_heatmap, nms_kernel_size, rank=3)
-  pooled_center_heatmap = tf.keras.backend.pool2d(
+  pooled_center_heatmap = tf_keras.backend.pool2d(
       tf.expand_dims(padded_map, 0),
       pool_size=(nms_kernel_size, nms_kernel_size),
       strides=(1, 1),
@@ -370,7 +370,7 @@ def _merge_semantic_and_instance_maps(
   return panoptic_prediction
 
 
-class PostProcessor(tf.keras.layers.Layer):
+class PostProcessor(tf_keras.layers.Layer):
   """This class contains code of a Panoptic-Deeplab post-processor."""
 
   def __init__(

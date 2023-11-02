@@ -172,7 +172,7 @@ def get_dataset() -> tf.data.Dataset:
 
 
 def stateful_representative_dataset_generator(
-    model: tf.keras.Model,
+    model: tf_keras.Model,
     dataset_iter: Any,
     init_states: Mapping[str, tf.Tensor],
     save_dataset_to_tfrecords: bool = False,
@@ -270,7 +270,7 @@ def quantize_movinet(dataset_fn):
 
   # Load model
   encoder = hub.KerasLayer(FLAGS.saved_model_with_states_dir, trainable=False)
-  inputs = tf.keras.layers.Input(
+  inputs = tf_keras.layers.Input(
       shape=[1, FLAGS.image_size, FLAGS.image_size, 3],
       dtype=tf.float32,
       name='image')
@@ -283,14 +283,14 @@ def quantize_movinet(dataset_fn):
           tf.constant([1, 1, FLAGS.image_size, FLAGS.image_size, 3])).items()
   }
   states_input = {
-      name: tf.keras.Input(shape[1:], dtype=dtype, name=name)
+      name: tf_keras.Input(shape[1:], dtype=dtype, name=name)
       for name, (shape, dtype) in state_shapes.items()
   }
 
   # The inputs to the model are the states and the video
   inputs = {**states_input, 'image': inputs}
   outputs = encoder(inputs)
-  model = tf.keras.Model(inputs, outputs, name='movinet_stream')
+  model = tf_keras.Model(inputs, outputs, name='movinet_stream')
   input_shape = tf.constant(
       [1, FLAGS.num_frames, FLAGS.image_size, FLAGS.image_size, 3])
   init_states = init_states_fn(input_shape)

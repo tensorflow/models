@@ -15,7 +15,7 @@
 """HS Video Classification task."""
 from typing import Any, List, Optional, Mapping
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import task_factory
 from official.projects.videoglue.configs import video_classification as exp_cfg
@@ -82,7 +82,7 @@ class MultiHeadVideoClassificationTask(
         params=params, dataset_config=dataset_config)
     return data_loader(input_context=input_context)
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Loads pretrained checkpoint."""
     if not self.task_config.init_checkpoint:
       return
@@ -98,30 +98,30 @@ class MultiHeadVideoClassificationTask(
     for label_name in self._get_label_names():
       if self._is_multilabel():
         metrics += [
-            tf.keras.metrics.AUC(
+            tf_keras.metrics.AUC(
                 curve='ROC',
                 multi_label=self._is_multilabel(),
                 name=f'{label_name}/ROC-AUC'),
-            tf.keras.metrics.RecallAtPrecision(
+            tf_keras.metrics.RecallAtPrecision(
                 precision=0.95, name=f'{label_name}/RecallAtPrecision95'),
-            tf.keras.metrics.AUC(
+            tf_keras.metrics.AUC(
                 curve='PR',
                 multi_label=self._is_multilabel(),
                 name=f'{label_name}/PR-AUC'),
         ]
       else:
         metrics += [
-            tf.keras.metrics.CategoricalAccuracy(
+            tf_keras.metrics.CategoricalAccuracy(
                 name=f'{label_name}/accuracy'),
-            tf.keras.metrics.TopKCategoricalAccuracy(
+            tf_keras.metrics.TopKCategoricalAccuracy(
                 k=1, name=f'{label_name}/top_1_accuracy'),
-            tf.keras.metrics.TopKCategoricalAccuracy(
+            tf_keras.metrics.TopKCategoricalAccuracy(
                 k=5, name=f'{label_name}/top_5_accuracy')
         ]
 
     if self._is_multihead():
       metrics.append(
-          tf.keras.metrics.Mean(name='label_joint/accuracy'))
+          tf_keras.metrics.Mean(name='label_joint/accuracy'))
     return metrics
 
   def process_metrics(self, metrics: List[Any],
@@ -176,8 +176,8 @@ class MultiHeadVideoClassificationTask(
 
   def train_step(self,
                  inputs: Mapping[str, Any],
-                 model: tf.keras.Model,
-                 optimizer: tf.keras.optimizers.Optimizer,
+                 model: tf_keras.Model,
+                 optimizer: tf_keras.optimizers.Optimizer,
                  metrics: Optional[List[Any]] = None):
     """Does forward and backward pass.
 
@@ -196,7 +196,7 @@ class MultiHeadVideoClassificationTask(
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
       outputs = model(features, training=True)
-      # tf.keras.Model eliminates the list if the outputs list len is 1.
+      # tf_keras.Model eliminates the list if the outputs list len is 1.
       # Recover it here to be compatible with multihead settings.
       outputs = [outputs] if isinstance(outputs, tf.Tensor) else outputs
       # Casting output layer as float32 is necessary when mixed_precision is
@@ -219,14 +219,14 @@ class MultiHeadVideoClassificationTask(
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
       if isinstance(
-          optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+          optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scale back gradient before apply_gradients when LossScaleOptimizer is
     # used.
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
@@ -238,7 +238,7 @@ class MultiHeadVideoClassificationTask(
 
   def validation_step(self,
                       inputs: Mapping[str, tf.Tensor],
-                      model: tf.keras.Model,
+                      model: tf_keras.Model,
                       metrics: Optional[List[Any]] = None):
     """Validatation step.
 
@@ -260,7 +260,7 @@ class MultiHeadVideoClassificationTask(
           features['image'], input_partition_dims)
 
     outputs = self.inference_step(features, model)
-    # tf.keras.Model eliminates the list if the outputs list len is 1.
+    # tf_keras.Model eliminates the list if the outputs list len is 1.
     # Recover it here to be compatible with multihead settings.
     outputs = [outputs] if isinstance(outputs, tf.Tensor) else outputs
     # Casting output layer as float32 is necessary when mixed_precision is

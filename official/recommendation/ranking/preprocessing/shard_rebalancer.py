@@ -20,7 +20,7 @@ import datetime
 import os
 
 import apache_beam as beam
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 parser = argparse.ArgumentParser()

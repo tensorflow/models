@@ -14,7 +14,7 @@
 
 """Region Similarity Calculators."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def area(box):

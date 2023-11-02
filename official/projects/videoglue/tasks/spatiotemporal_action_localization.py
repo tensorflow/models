@@ -16,7 +16,7 @@
 from typing import Any, List, Optional, Mapping
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import task_factory
 from official.projects.videoglue.configs import spatiotemporal_action_localization as exp_cfg
@@ -36,7 +36,7 @@ class SpatiotemporalActionLocalizationTask(
     """Whether the dataset/task has multi-labels."""
     return True
 
-  def build_model(self) -> tf.keras.Model:
+  def build_model(self) -> tf_keras.Model:
     """Builds video model."""
     common_input_shape = [
         d1 if d1 == d2 else None
@@ -47,16 +47,16 @@ class SpatiotemporalActionLocalizationTask(
     num_instances = self.task_config.train_data.num_instances
     input_specs_dict = {
         'image':
-            tf.keras.layers.InputSpec(shape=[None] + common_input_shape),
+            tf_keras.layers.InputSpec(shape=[None] + common_input_shape),
         'instances_position':
-            tf.keras.layers.InputSpec(shape=[None, num_instances, 4]),
+            tf_keras.layers.InputSpec(shape=[None, num_instances, 4]),
     }
 
     l2_weight_decay = self.task_config.losses.l2_weight_decay
     # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
-    l2_regularizer = (tf.keras.regularizers.l2(
+    l2_regularizer = (tf_keras.regularizers.l2(
         l2_weight_decay / 2.0) if l2_weight_decay else None)
 
     model = factory_3d.build_model(
@@ -97,7 +97,7 @@ class SpatiotemporalActionLocalizationTask(
         params=params, dataset_config=dataset_config)
     return data_loader(input_context=input_context)
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Loads pretrained checkpoint."""
     if not self.task_config.init_checkpoint:
       return
@@ -125,8 +125,8 @@ class SpatiotemporalActionLocalizationTask(
     losses_config = self.task_config.losses
 
     # in shape [B, N]
-    xent_loss_fn = tf.keras.losses.BinaryCrossentropy(
-        reduction=tf.keras.losses.Reduction.NONE,
+    xent_loss_fn = tf_keras.losses.BinaryCrossentropy(
+        reduction=tf_keras.losses.Reduction.NONE,
         from_logits=False,
         label_smoothing=losses_config.label_smoothing)
     class_targets = labels['class_target']
@@ -162,8 +162,8 @@ class SpatiotemporalActionLocalizationTask(
   def build_metrics(self, training: bool = True):
     """Gets streaming metrics for training/validation."""
     metrics = [
-        tf.keras.metrics.AUC(curve='PR', multi_label=True, name='AUPR'),
-        tf.keras.metrics.AUC(curve='ROC', multi_label=True, name='AUROC'),
+        tf_keras.metrics.AUC(curve='PR', multi_label=True, name='AUPR'),
+        tf_keras.metrics.AUC(curve='ROC', multi_label=True, name='AUROC'),
     ]
     self.evaluator = eval_util.SpatiotemporalActionLocalizationEvaluator()
     return metrics
@@ -195,8 +195,8 @@ class SpatiotemporalActionLocalizationTask(
 
   def train_step(self,
                  inputs: Mapping[str, tf.Tensor],
-                 model: tf.keras.Model,
-                 optimizer: tf.keras.optimizers.Optimizer,
+                 model: tf_keras.Model,
+                 optimizer: tf_keras.optimizers.Optimizer,
                  metrics: Optional[List[Any]] = None):
     """Does one forward and backward pass.
 
@@ -225,7 +225,7 @@ class SpatiotemporalActionLocalizationTask(
 
   def validation_step(self,
                       inputs: Mapping[str, tf.Tensor],
-                      model: tf.keras.Model,
+                      model: tf_keras.Model,
                       metrics: Optional[List[Any]] = None):
     """Validatation step.
 

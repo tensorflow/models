@@ -14,15 +14,15 @@
 
 """Roformer attention layer."""
 # pylint: disable=g-classes-have-attributes
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
-EinsumDense = tf.keras.layers.EinsumDense
-MultiHeadAttention = tf.keras.layers.MultiHeadAttention
+EinsumDense = tf_keras.layers.EinsumDense
+MultiHeadAttention = tf_keras.layers.MultiHeadAttention
 
 
 def _build_trig_vector(length, key_dim):
   """Builds the trig vector."""
-  tf_dtype = tf.keras.mixed_precision.global_policy().compute_dtype
+  tf_dtype = tf_keras.mixed_precision.global_policy().compute_dtype
   position_ids = tf.cast(tf.range(length), dtype=tf_dtype)
   position_ids = tf.expand_dims(position_ids, axis=0)
   steps = key_dim // 2
@@ -38,8 +38,8 @@ def _build_trig_vector(length, key_dim):
   return sin_vec, cos_vec
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
-class RoformerAttention(tf.keras.layers.MultiHeadAttention):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class RoformerAttention(tf_keras.layers.MultiHeadAttention):
   """Roformer Attention."""
 
   def __init__(self,

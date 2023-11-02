@@ -15,7 +15,7 @@
 """Tests for decoder."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.perceiver.modeling.layers import decoder
 
@@ -30,9 +30,9 @@ class PerceiverBasicDecoderTest(tf.test.TestCase):
         num_heads=8)
     lantent_length = 8
     latent_width = 80
-    query_input = tf.keras.Input(
+    query_input = tf_keras.Input(
         shape=(sequence_length, embedding_width))
-    latent_input = tf.keras.Input(
+    latent_input = tf_keras.Input(
         shape=(lantent_length, latent_width))
 
     output_tensor = test_layer((query_input, latent_input))
@@ -48,11 +48,11 @@ class PerceiverBasicDecoderTest(tf.test.TestCase):
         num_heads=8)
     lantent_length = 8
     latent_width = 80
-    query_input = tf.keras.Input(
+    query_input = tf_keras.Input(
         shape=(sequence_length, embedding_width))
-    latent_input = tf.keras.Input(
+    latent_input = tf_keras.Input(
         shape=(lantent_length, latent_width))
-    mask_tensor = tf.keras.Input(
+    mask_tensor = tf_keras.Input(
         shape=(sequence_length),
         dtype=tf.int32)
     output_tensor = test_layer(
@@ -70,11 +70,11 @@ class PerceiverBasicDecoderTest(tf.test.TestCase):
         num_heads=8)
     lantent_length = 8
     latent_width = 80
-    query_input = tf.keras.Input(
+    query_input = tf_keras.Input(
         shape=(sequence_length, embedding_width))
-    latent_input = tf.keras.Input(
+    latent_input = tf_keras.Input(
         shape=(lantent_length, latent_width))
-    mask_tensor = tf.keras.Input(
+    mask_tensor = tf_keras.Input(
         shape=(sequence_length),
         dtype=tf.int32)
     output_tensor = test_layer(
@@ -82,7 +82,7 @@ class PerceiverBasicDecoderTest(tf.test.TestCase):
         query_mask=mask_tensor)
 
     # Create a model from the test layer.
-    model = tf.keras.Model(
+    model = tf_keras.Model(
         ((query_input, latent_input), mask_tensor),
         output_tensor)
 

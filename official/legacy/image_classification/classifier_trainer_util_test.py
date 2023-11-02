@@ -22,7 +22,7 @@ import copy
 import os
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.image_classification import classifier_trainer
 from official.legacy.image_classification import dataset_factory
@@ -30,12 +30,12 @@ from official.legacy.image_classification import test_utils
 from official.legacy.image_classification.configs import base_configs
 
 
-def get_trivial_model(num_classes: int) -> tf.keras.Model:
+def get_trivial_model(num_classes: int) -> tf_keras.Model:
   """Creates and compiles trivial model for ImageNet dataset."""
   model = test_utils.trivial_model(num_classes=num_classes)
   lr = 0.01
-  optimizer = tf.keras.optimizers.SGD(learning_rate=lr)
-  loss_obj = tf.keras.losses.SparseCategoricalCrossentropy()
+  optimizer = tf_keras.optimizers.SGD(learning_rate=lr)
+  loss_obj = tf_keras.losses.SparseCategoricalCrossentropy()
   model.compile(optimizer=optimizer, loss=loss_obj, run_eagerly=True)
   return model
 
@@ -120,7 +120,7 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
   def test_resume_from_checkpoint(self):
     """Tests functionality for resuming from checkpoint."""
     # Set the keras policy
-    tf.keras.mixed_precision.set_global_policy('mixed_bfloat16')
+    tf_keras.mixed_precision.set_global_policy('mixed_bfloat16')
 
     # Get the model, datasets, and compile it.
     model = get_trivial_model(10)
@@ -131,7 +131,7 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
     train_steps = 10
     ds = get_trivial_data()
     callbacks = [
-        tf.keras.callbacks.ModelCheckpoint(
+        tf_keras.callbacks.ModelCheckpoint(
             os.path.join(model_dir, 'model.ckpt-{epoch:04d}'),
             save_weights_only=True)
     ]

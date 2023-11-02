@@ -17,7 +17,7 @@
 import functools
 import inspect
 import six
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.util import deprecation
 from official.modeling import activations
@@ -25,7 +25,7 @@ from official.modeling import activations
 
 @deprecation.deprecated(
     None,
-    "tf.keras.layers.Layer supports multiple positional args and kwargs as "
+    "tf_keras.layers.Layer supports multiple positional args and kwargs as "
     "input tensors. pack/unpack inputs to override __call__ is no longer "
     "needed.")
 def pack_inputs(inputs):
@@ -50,7 +50,7 @@ def pack_inputs(inputs):
 
 @deprecation.deprecated(
     None,
-    "tf.keras.layers.Layer supports multiple positional args and kwargs as "
+    "tf_keras.layers.Layer supports multiple positional args and kwargs as "
     "input tensors. pack/unpack inputs to override __call__ is no longer "
     "needed.")
 def unpack_inputs(inputs):
@@ -89,7 +89,7 @@ def get_activation(identifier, use_keras_layer=False, **kwargs):
 
   It checks string first and if it is one of customized activation not in TF,
   the corresponding activation will be returned. For non-customized activation
-  names and callable identifiers, always fallback to tf.keras.activations.get.
+  names and callable identifiers, always fallback to tf_keras.activations.get.
 
   Prefers using keras layers when use_keras_layer=True. Now it only supports
   'relu', 'linear', 'identity', 'swish', 'mish', 'leaky_relu', and 'gelu'.
@@ -122,7 +122,7 @@ def get_activation(identifier, use_keras_layer=False, **kwargs):
           "gelu": functools.partial(tf.nn.gelu, **kwargs),
       }
       if identifier in keras_layer_allowlist:
-        return tf.keras.layers.Activation(keras_layer_allowlist[identifier])
+        return tf_keras.layers.Activation(keras_layer_allowlist[identifier])
     name_to_fn = {
         "gelu": activations.gelu,
         "simple_swish": activations.simple_swish,
@@ -133,8 +133,8 @@ def get_activation(identifier, use_keras_layer=False, **kwargs):
         "mish": activations.mish,
     }
     if identifier in name_to_fn:
-      return tf.keras.activations.get(name_to_fn[identifier])
-  return tf.keras.activations.get(identifier)
+      return tf_keras.activations.get(name_to_fn[identifier])
+  return tf_keras.activations.get(identifier)
 
 
 def get_shape_list(tensor, expected_rank=None, name=None):
@@ -286,7 +286,7 @@ def cross_replica_concat(value, axis, name="cross_replica_concat"):
 def clone_initializer(initializer):
   # Keras initializer is going to be stateless, which mean reusing the same
   # initializer will produce same init value when the shapes are the same.
-  if isinstance(initializer, tf.keras.initializers.Initializer):
+  if isinstance(initializer, tf_keras.initializers.Initializer):
     return initializer.__class__.from_config(initializer.get_config())
   # When the input is string/dict or other serialized configs, caller will
   # create a new keras Initializer instance based on that, and we don't need to
@@ -295,21 +295,21 @@ def clone_initializer(initializer):
 
 
 def serialize_keras_object(obj):
-  if hasattr(tf.keras.utils, "legacy"):
-    return tf.keras.utils.legacy.serialize_keras_object(obj)
+  if hasattr(tf_keras.utils, "legacy"):
+    return tf_keras.utils.legacy.serialize_keras_object(obj)
   else:
-    return tf.keras.utils.serialize_keras_object(obj)
+    return tf_keras.utils.serialize_keras_object(obj)
 
 
 def deserialize_keras_object(
     config, module_objects=None, custom_objects=None, printable_module_name=None
 ):
-  if hasattr(tf.keras.utils, "legacy"):
-    return tf.keras.utils.legacy.deserialize_keras_object(
+  if hasattr(tf_keras.utils, "legacy"):
+    return tf_keras.utils.legacy.deserialize_keras_object(
         config, custom_objects, module_objects, printable_module_name
     )
   else:
-    return tf.keras.utils.deserialize_keras_object(
+    return tf_keras.utils.deserialize_keras_object(
         config, custom_objects, module_objects, printable_module_name
     )
 
@@ -317,56 +317,56 @@ def deserialize_keras_object(
 def serialize_layer(layer, use_legacy_format=False):
   if (
       "use_legacy_format"
-      in inspect.getfullargspec(tf.keras.layers.serialize).args
+      in inspect.getfullargspec(tf_keras.layers.serialize).args
   ):
-    return tf.keras.layers.serialize(layer, use_legacy_format=use_legacy_format)
+    return tf_keras.layers.serialize(layer, use_legacy_format=use_legacy_format)
   else:
-    return tf.keras.layers.serialize(layer)
+    return tf_keras.layers.serialize(layer)
 
 
 def serialize_initializer(initializer, use_legacy_format=False):
   if (
       "use_legacy_format"
-      in inspect.getfullargspec(tf.keras.initializers.serialize).args
+      in inspect.getfullargspec(tf_keras.initializers.serialize).args
   ):
-    return tf.keras.initializers.serialize(
+    return tf_keras.initializers.serialize(
         initializer, use_legacy_format=use_legacy_format
     )
   else:
-    return tf.keras.initializers.serialize(initializer)
+    return tf_keras.initializers.serialize(initializer)
 
 
 def serialize_regularizer(regularizer, use_legacy_format=False):
   if (
       "use_legacy_format"
-      in inspect.getfullargspec(tf.keras.regularizers.serialize).args
+      in inspect.getfullargspec(tf_keras.regularizers.serialize).args
   ):
-    return tf.keras.regularizers.serialize(
+    return tf_keras.regularizers.serialize(
         regularizer, use_legacy_format=use_legacy_format
     )
   else:
-    return tf.keras.regularizers.serialize(regularizer)
+    return tf_keras.regularizers.serialize(regularizer)
 
 
 def serialize_constraint(constraint, use_legacy_format=False):
   if (
       "use_legacy_format"
-      in inspect.getfullargspec(tf.keras.constraints.serialize).args
+      in inspect.getfullargspec(tf_keras.constraints.serialize).args
   ):
-    return tf.keras.constraints.serialize(
+    return tf_keras.constraints.serialize(
         constraint, use_legacy_format=use_legacy_format
     )
   else:
-    return tf.keras.constraints.serialize(constraint)
+    return tf_keras.constraints.serialize(constraint)
 
 
 def serialize_activation(activation, use_legacy_format=False):
   if (
       "use_legacy_format"
-      in inspect.getfullargspec(tf.keras.activations.serialize).args
+      in inspect.getfullargspec(tf_keras.activations.serialize).args
   ):
-    return tf.keras.activations.serialize(
+    return tf_keras.activations.serialize(
         activation, use_legacy_format=use_legacy_format
     )
   else:
-    return tf.keras.activations.serialize(activation)
+    return tf_keras.activations.serialize(activation)

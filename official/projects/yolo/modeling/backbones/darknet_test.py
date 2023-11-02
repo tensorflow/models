@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -34,13 +34,13 @@ class DarknetTest(parameterized.TestCase, tf.test.TestCase):
   def test_network_creation(self, input_size, model_id, endpoint_filter_scale,
                             scale_final, dilate):
     """Test creation of ResNet family models."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     network = darknet.Darknet(
         model_id=model_id, min_level=3, max_level=5, dilate=dilate)
     self.assertEqual(network.model_id, model_id)
 
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
 
     if dilate:
@@ -78,7 +78,7 @@ class DarknetTest(parameterized.TestCase, tf.test.TestCase):
     """Test for sync bn on TPU and GPU devices."""
     inputs = np.random.rand(1, 224, 224, 3)
 
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     with strategy.scope():
       network = darknet.Darknet(
@@ -92,13 +92,13 @@ class DarknetTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(1, 3, 4)
   def test_input_specs(self, input_dim):
     """Test different input feature dimensions."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
-    input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, input_dim])
+    input_specs = tf_keras.layers.InputSpec(shape=[None, None, None, input_dim])
     network = darknet.Darknet(
         model_id='darknet53', min_level=3, max_level=5, input_specs=input_specs)
 
-    inputs = tf.keras.Input(shape=(224, 224, input_dim), batch_size=1)
+    inputs = tf_keras.Input(shape=(224, 224, input_dim), batch_size=1)
     _ = network(inputs)
 
   def test_serialize_deserialize(self):

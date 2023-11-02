@@ -32,7 +32,7 @@ import typing
 from absl import logging
 import numpy as np
 from six.moves import queue
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.tpu.datasets import StreamingFilesDataset
 from official.recommendation import constants as rconst

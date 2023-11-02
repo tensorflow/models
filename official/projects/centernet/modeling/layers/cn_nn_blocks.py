@@ -16,7 +16,7 @@
 
 from typing import List, Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling.layers import nn_blocks
 
@@ -41,8 +41,8 @@ def _make_repeated_residual_blocks(
     initial_stride: int = 1,
     initial_skip_conv: bool = False,
     kernel_initializer: str = 'VarianceScaling',
-    kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-    bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+    kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+    bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
 ):
   """Stack Residual blocks one after the other.
 
@@ -61,9 +61,9 @@ def _make_repeated_residual_blocks(
       convolution. This is useful when the number of channels in the input
       are not the same as residual_channels.
     kernel_initializer: A `str` for kernel initializer of convolutional layers.
-    kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+    kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
       Conv2D. Default to None.
-    bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+    bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
       Default to None.
 
   Returns:
@@ -120,10 +120,10 @@ def _make_repeated_residual_blocks(
       kernel_regularizer=kernel_regularizer,
       bias_regularizer=bias_regularizer))
 
-  return tf.keras.Sequential(blocks)
+  return tf_keras.Sequential(blocks)
 
 
-class HourglassBlock(tf.keras.layers.Layer):
+class HourglassBlock(tf_keras.layers.Layer):
   """Hourglass module: an encoder-decoder block."""
 
   def __init__(
@@ -135,8 +135,8 @@ class HourglassBlock(tf.keras.layers.Layer):
       norm_momentum: float = 0.1,
       norm_epsilon: float = 1e-5,
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initialize Hourglass module.
 
@@ -158,9 +158,9 @@ class HourglassBlock(tf.keras.layers.Layer):
       norm_momentum: `float`, momentum for the batch normalization layers.
       norm_epsilon: `float`, epsilon for the batch normalization layers.
       kernel_initializer: A `str` for kernel initializer of conv layers.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
       **kwargs: Additional keyword arguments to be passed.
     """
@@ -241,7 +241,7 @@ class HourglassBlock(tf.keras.layers.Layer):
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer)
 
-      self.upsample_layer = tf.keras.layers.UpSampling2D(
+      self.upsample_layer = tf_keras.layers.UpSampling2D(
           size=2,
           interpolation='nearest')
 
@@ -273,7 +273,7 @@ class HourglassBlock(tf.keras.layers.Layer):
     return config
 
 
-class CenterNetHeadConv(tf.keras.layers.Layer):
+class CenterNetHeadConv(tf_keras.layers.Layer):
   """Convolution block for the CenterNet head."""
 
   def __init__(self,
@@ -297,15 +297,15 @@ class CenterNetHeadConv(tf.keras.layers.Layer):
   def build(self, input_shape):
     n_channels = input_shape[-1]
 
-    self.conv1 = tf.keras.layers.Conv2D(
+    self.conv1 = tf_keras.layers.Conv2D(
         filters=n_channels,
         kernel_size=(3, 3),
         padding='same')
 
-    self.relu = tf.keras.layers.ReLU()
+    self.relu = tf_keras.layers.ReLU()
 
     # Initialize bias to the last Conv2D Layer
-    self.conv2 = tf.keras.layers.Conv2D(
+    self.conv2 = tf_keras.layers.Conv2D(
         filters=self._output_filters,
         kernel_size=(1, 1),
         padding='valid',

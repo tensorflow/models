@@ -19,12 +19,12 @@ import string
 from typing import Any, Callable, Optional, Tuple, Union
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.maxvit.modeling import common_ops
 
 
-class TrailDense(tf.keras.layers.Layer):
+class TrailDense(tf_keras.layers.Layer):
   """Dense module that projects multiple trailing dimensions."""
 
   def __init__(
@@ -105,7 +105,7 @@ class TrailDense(tf.keras.layers.Layer):
     return output
 
 
-class Attention(tf.keras.layers.Layer):
+class Attention(tf_keras.layers.Layer):
   """Multi-headed attention module."""
 
   def __init__(
@@ -300,7 +300,7 @@ class Attention(tf.keras.layers.Layer):
 
     attn_probs = common_ops.float32_softmax(attn_logits, axis=-1)
     if self.dropatt:
-      attn_probs = tf.keras.layers.Dropout(self.dropatt, name='attn_prob_drop')(
+      attn_probs = tf_keras.layers.Dropout(self.dropatt, name='attn_prob_drop')(
           attn_probs, training=training
       )
 
@@ -312,7 +312,7 @@ class Attention(tf.keras.layers.Layer):
     return output
 
 
-class FFN(tf.keras.layers.Layer):
+class FFN(tf_keras.layers.Layer):
   """Positionwise feed-forward network."""
 
   def __init__(
@@ -352,7 +352,7 @@ class FFN(tf.keras.layers.Layer):
     output = self._expand_dense(output)
     output = self._activation_fn(output)
     if self.dropout:
-      output = tf.keras.layers.Dropout(self.dropout, name='nonlinearity_drop')(
+      output = tf_keras.layers.Dropout(self.dropout, name='nonlinearity_drop')(
           output, training=training
       )
     output = self._shrink_dense(output)
@@ -360,7 +360,7 @@ class FFN(tf.keras.layers.Layer):
     return output
 
 
-class TransformerBlock(tf.keras.layers.Layer):
+class TransformerBlock(tf_keras.layers.Layer):
   """Transformer block = Attention + FFN."""
 
   def __init__(
@@ -432,7 +432,7 @@ class TransformerBlock(tf.keras.layers.Layer):
     else:
       self._shortcut_proj = None
 
-    self._attn_layer_norm = tf.keras.layers.LayerNormalization(
+    self._attn_layer_norm = tf_keras.layers.LayerNormalization(
         axis=-1,
         epsilon=self._ln_epsilon,
         dtype=self._ln_dtype,
@@ -452,7 +452,7 @@ class TransformerBlock(tf.keras.layers.Layer):
         bias_initializer=self._bias_initializer,
     )
 
-    self._ffn_layer_norm = tf.keras.layers.LayerNormalization(
+    self._ffn_layer_norm = tf_keras.layers.LayerNormalization(
         axis=-1,
         epsilon=self._ln_epsilon,
         dtype=self._ln_dtype,
@@ -544,7 +544,7 @@ class TransformerBlock(tf.keras.layers.Layer):
     shortcut = self.shortcut_branch(inputs)
     output = self.attn_branch(inputs, training, attn_mask)
     if self._dropout:
-      output = tf.keras.layers.Dropout(self._dropout, name='after_attn_drop')(
+      output = tf_keras.layers.Dropout(self._dropout, name='after_attn_drop')(
           output, training=training
       )
     output = common_ops.residual_add(
@@ -554,7 +554,7 @@ class TransformerBlock(tf.keras.layers.Layer):
     shortcut = output
     output = self.ffn_branch(output, training)
     if self._dropout:
-      output = tf.keras.layers.Dropout(self._dropout, name='after_ffn_drop')(
+      output = tf_keras.layers.Dropout(self._dropout, name='after_ffn_drop')(
           output, training=training
       )
     output = common_ops.residual_add(
@@ -564,7 +564,7 @@ class TransformerBlock(tf.keras.layers.Layer):
     return output
 
 
-class SqueezeAndExcitation(tf.keras.layers.Layer):
+class SqueezeAndExcitation(tf_keras.layers.Layer):
   """Squeeze-and-excitation layer."""
 
   def __init__(
@@ -585,7 +585,7 @@ class SqueezeAndExcitation(tf.keras.layers.Layer):
     self._activation_fn = common_ops.get_act_fn(activation)
 
     # Squeeze and Excitation layer.
-    self._se_reduce = tf.keras.layers.Conv2D(
+    self._se_reduce = tf_keras.layers.Conv2D(
         se_filters,
         kernel_size=[1, 1],
         strides=[1, 1],
@@ -596,7 +596,7 @@ class SqueezeAndExcitation(tf.keras.layers.Layer):
         bias_initializer=bias_initializer,
         name='reduce_conv2d',
     )
-    self._se_expand = tf.keras.layers.Conv2D(
+    self._se_expand = tf_keras.layers.Conv2D(
         output_filters,
         kernel_size=[1, 1],
         strides=[1, 1],
@@ -633,17 +633,17 @@ def _config_batch_norm(
 
   if norm_type == 'layer_norm':
     return functools.partial(
-        tf.keras.layers.LayerNormalization, epsilon=ln_epsilon
+        tf_keras.layers.LayerNormalization, epsilon=ln_epsilon
     )
   elif norm_type == 'batch_norm':
     return functools.partial(
-        tf.keras.layers.BatchNormalization,
+        tf_keras.layers.BatchNormalization,
         momentum=bn_momentum,
         epsilon=bn_epsilon,
     )
   elif norm_type == 'sync_batch_norm':
     return functools.partial(
-        tf.keras.layers.BatchNormalization,
+        tf_keras.layers.BatchNormalization,
         momentum=bn_momentum,
         epsilon=bn_epsilon,
         synchronized=True,
@@ -654,17 +654,17 @@ def _config_batch_norm(
 
 def _build_downsample_layer(
     pool_type: str, pool_stride: int, data_format: str = 'channels_last'
-) -> tf.keras.layers.Layer:
+) -> tf_keras.layers.Layer:
   """Builds a downsample layer for MbConv based on pool type."""
   if pool_type == 'max':
-    return tf.keras.layers.MaxPooling2D(
+    return tf_keras.layers.MaxPooling2D(
         pool_size=(pool_stride, pool_stride),
         strides=(pool_stride, pool_stride),
         padding='same',
         data_format=data_format,
     )
   elif pool_type == 'avg':
-    return tf.keras.layers.AveragePooling2D(
+    return tf_keras.layers.AveragePooling2D(
         pool_size=(pool_stride, pool_stride),
         strides=(pool_stride, pool_stride),
         padding='same',
@@ -674,7 +674,7 @@ def _build_downsample_layer(
     raise ValueError(f'Unsurpported pool_type {pool_type}')
 
 
-class MBConvBlock(tf.keras.layers.Layer):
+class MBConvBlock(tf_keras.layers.Layer):
   """Mobile Inverted Residual Bottleneck (https://arxiv.org/abs/1905.02244)."""
 
   def __init__(
@@ -734,7 +734,7 @@ class MBConvBlock(tf.keras.layers.Layer):
 
     # Shortcut projection.
     if input_size != self._hidden_size:
-      self._shortcut_conv = tf.keras.layers.Conv2D(
+      self._shortcut_conv = tf_keras.layers.Conv2D(
           filters=self._hidden_size,
           kernel_size=1,
           strides=1,
@@ -754,7 +754,7 @@ class MBConvBlock(tf.keras.layers.Layer):
     # Expansion phase. Called if not using fused convolutions and expansion
     # phase is necessary.
     if self._expansion_rate != 1:
-      self._expand_conv = tf.keras.layers.Conv2D(
+      self._expand_conv = tf_keras.layers.Conv2D(
           filters=inner_size,
           kernel_size=1,
           strides=(
@@ -769,7 +769,7 @@ class MBConvBlock(tf.keras.layers.Layer):
       self._expand_norm = norm_cls(name='expand_norm')
 
     # Depth-wise convolution phase. Called if not using fused convolutions.
-    self._depthwise_conv = tf.keras.layers.DepthwiseConv2D(
+    self._depthwise_conv = tf_keras.layers.DepthwiseConv2D(
         kernel_size=self._kernel_size,
         strides=(
             self._pool_stride if self._downsample_loc == 'depth_conv' else 1
@@ -796,7 +796,7 @@ class MBConvBlock(tf.keras.layers.Layer):
       self._se = None
 
     # Output phase.
-    self._shrink_conv = tf.keras.layers.Conv2D(
+    self._shrink_conv = tf_keras.layers.Conv2D(
         filters=self._hidden_size,
         kernel_size=1,
         strides=1,
@@ -837,7 +837,7 @@ class MBConvBlock(tf.keras.layers.Layer):
     logging.debug('DConv shape: %s', output.shape)
 
     if self._dropcnn:
-      output = tf.keras.layers.Dropout(self._dropcnn, 'after_dconv_drop')(
+      output = tf_keras.layers.Dropout(self._dropcnn, 'after_dconv_drop')(
           output, training=training
       )
 

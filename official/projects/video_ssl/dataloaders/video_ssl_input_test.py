@@ -18,7 +18,7 @@ import io
 # Import libraries
 import numpy as np
 from PIL import Image
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.video_ssl.configs import video_ssl as exp_cfg
 from official.projects.video_ssl.dataloaders import video_ssl_input

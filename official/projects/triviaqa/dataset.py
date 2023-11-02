@@ -20,7 +20,7 @@ import os
 from absl import logging
 import apache_beam as beam
 import six
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_datasets.public_api as tfds
 
 from official.projects.triviaqa import preprocess

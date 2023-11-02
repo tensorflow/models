@@ -19,7 +19,7 @@ from __future__ import annotations
 import copy
 from typing import Any, Dict, List, Optional, Type, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 import tensorflow_model_optimization as tfmot
 from official.projects.qat.vision.quantization import configs
@@ -74,8 +74,8 @@ def is_quantization_weight_name(name: str) -> bool:
   raise ValueError('Variable name {} is not supported.'.format(simple_name))
 
 
-def copy_original_weights(original_model: tf.keras.Model,
-                          quantized_model: tf.keras.Model):
+def copy_original_weights(original_model: tf_keras.Model,
+                          quantized_model: tf_keras.Model):
   """Helper function that copy the original model weights to quantized model."""
   original_weight_value = original_model.get_weights()
   weight_values = quantized_model.get_weights()
@@ -167,7 +167,7 @@ def norm_by_activation(activation, norm_quantized, norm_no_quantized):
     return norm_no_quantized
 
 
-class SeparableConv2DQuantized(tf.keras.layers.Layer):
+class SeparableConv2DQuantized(tf_keras.layers.Layer):
   """Quantized SeperableConv2D."""
 
   def __init__(
@@ -192,11 +192,11 @@ class SeparableConv2DQuantized(tf.keras.layers.Layer):
   def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the child layers of the layer."""
     depthwise_conv2d_quantized = quantize_wrapped_layer(
-        tf.keras.layers.DepthwiseConv2D,
+        tf_keras.layers.DepthwiseConv2D,
         configs.Default8BitConvQuantizeConfig(['depthwise_kernel'], [], True),
     )
     conv2d_quantized = quantize_wrapped_layer(
-        tf.keras.layers.Conv2D,
+        tf_keras.layers.Conv2D,
         configs.Default8BitConvQuantizeConfig(
             ['kernel'], [], self._last_quantize
         ),
@@ -246,45 +246,45 @@ class SeparableConv2DQuantized(tf.keras.layers.Layer):
 
 
 Conv2DQuantized = quantize_wrapped_layer(
-    tf.keras.layers.Conv2D,
+    tf_keras.layers.Conv2D,
     configs.Default8BitConvQuantizeConfig(['kernel'], ['activation'], False))
 Conv2DOutputQuantized = quantize_wrapped_layer(
-    tf.keras.layers.Conv2D,
+    tf_keras.layers.Conv2D,
     configs.Default8BitConvQuantizeConfig(['kernel'], ['activation'], True))
 DepthwiseConv2DQuantized = quantize_wrapped_layer(
-    tf.keras.layers.DepthwiseConv2D,
+    tf_keras.layers.DepthwiseConv2D,
     configs.Default8BitConvQuantizeConfig(['depthwise_kernel'], ['activation'],
                                           False))
 DepthwiseConv2DOutputQuantized = quantize_wrapped_layer(
-    tf.keras.layers.DepthwiseConv2D,
+    tf_keras.layers.DepthwiseConv2D,
     configs.Default8BitConvQuantizeConfig(['depthwise_kernel'], ['activation'],
                                           True))
 GlobalAveragePooling2DQuantized = quantize_wrapped_layer(
-    tf.keras.layers.GlobalAveragePooling2D,
+    tf_keras.layers.GlobalAveragePooling2D,
     configs.Default8BitQuantizeConfig([], [], True))
 AveragePooling2DQuantized = quantize_wrapped_layer(
-    tf.keras.layers.AveragePooling2D,
+    tf_keras.layers.AveragePooling2D,
     configs.Default8BitQuantizeConfig([], [], True))
 ResizingQuantized = quantize_wrapped_layer(
-    tf.keras.layers.Resizing, configs.Default8BitQuantizeConfig([], [], True))
+    tf_keras.layers.Resizing, configs.Default8BitQuantizeConfig([], [], True))
 ConcatenateQuantized = quantize_wrapped_layer(
-    tf.keras.layers.Concatenate, configs.Default8BitQuantizeConfig([], [],
+    tf_keras.layers.Concatenate, configs.Default8BitQuantizeConfig([], [],
                                                                    True))
 UpSampling2DQuantized = quantize_wrapped_layer(
-    tf.keras.layers.UpSampling2D, configs.Default8BitQuantizeConfig([], [],
+    tf_keras.layers.UpSampling2D, configs.Default8BitQuantizeConfig([], [],
                                                                     True))
 ReshapeQuantized = quantize_wrapped_layer(
-    tf.keras.layers.Reshape, configs.Default8BitQuantizeConfig([], [], True))
+    tf_keras.layers.Reshape, configs.Default8BitQuantizeConfig([], [], True))
 DenseQuantized = quantize_wrapped_layer(
-    tf.keras.layers.Dense,
+    tf_keras.layers.Dense,
     configs.Default8BitQuantizeConfig(['kernel'], ['activation'], False),
 )
 DenseOutputQuantized = quantize_wrapped_layer(
-    tf.keras.layers.Dense,
+    tf_keras.layers.Dense,
     configs.Default8BitQuantizeConfig(['kernel'], ['activation'], True),
 )
 IdentityQuantized = quantize_wrapped_layer(
-    tf.keras.layers.Identity, configs.Default8BitQuantizeConfig([], [], True)
+    tf_keras.layers.Identity, configs.Default8BitQuantizeConfig([], [], True)
 )
 
 # pylint:disable=g-long-lambda

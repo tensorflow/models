@@ -20,7 +20,7 @@ import os
 
 from absl.testing import parameterized
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import registry_imports  # pylint: disable=unused-import
 from official.core import exp_factory

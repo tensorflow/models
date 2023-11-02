@@ -18,7 +18,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.networks import packed_sequence_embedding
 
@@ -27,7 +27,7 @@ class PackedSequenceEmbeddingTest(tf.test.TestCase, parameterized.TestCase):
 
   def tearDown(self):
     super(PackedSequenceEmbeddingTest, self).tearDown()
-    tf.keras.mixed_precision.set_global_policy('float32')
+    tf_keras.mixed_precision.set_global_policy('float32')
 
   @parameterized.parameters([
       (True, True, True),
@@ -39,7 +39,7 @@ class PackedSequenceEmbeddingTest(tf.test.TestCase, parameterized.TestCase):
                             use_float16):
     """Validate that the Keras object can be created."""
     if use_float16:
-      tf.keras.mixed_precision.set_global_policy('mixed_float16')
+      tf_keras.mixed_precision.set_global_policy('mixed_float16')
     seq_length = 16
     vocab_size = 100
     max_position_embeddings = 32
@@ -52,7 +52,7 @@ class PackedSequenceEmbeddingTest(tf.test.TestCase, parameterized.TestCase):
         embedding_width=embedding_width,
         hidden_size=hidden_size,
         max_seq_length=max_position_embeddings,
-        initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
+        initializer=tf_keras.initializers.TruncatedNormal(stddev=0.02),
         dropout_rate=0.1,
         use_position_id=use_position_id,
         pack_multiple_sequences=pack_multiple_sequences,
@@ -60,22 +60,22 @@ class PackedSequenceEmbeddingTest(tf.test.TestCase, parameterized.TestCase):
     test_object = packed_sequence_embedding.PackedSequenceEmbedding(
         **embedding_cfg)
 
-    input_word_ids = tf.keras.Input(shape=(seq_length,), dtype=tf.int32)
-    input_mask = tf.keras.Input(shape=(seq_length,), dtype=tf.int32)
-    input_type_ids = tf.keras.Input(shape=(seq_length,), dtype=tf.int32)
+    input_word_ids = tf_keras.Input(shape=(seq_length,), dtype=tf.int32)
+    input_mask = tf_keras.Input(shape=(seq_length,), dtype=tf.int32)
+    input_type_ids = tf_keras.Input(shape=(seq_length,), dtype=tf.int32)
     network_inputs = {
         'input_word_ids': input_word_ids,
         'input_mask': input_mask,
         'input_type_ids': input_type_ids,
     }
     if use_position_id:
-      network_inputs['position_ids'] = tf.keras.Input(
+      network_inputs['position_ids'] = tf_keras.Input(
           shape=(seq_length,), dtype=tf.int32)
 
     embedding, mask = test_object(network_inputs)
 
     # Create a model based off of this network:
-    model = tf.keras.Model(network_inputs, [embedding, mask])
+    model = tf_keras.Model(network_inputs, [embedding, mask])
 
     # Invoke the model. We can't validate the output data here (the model is too
     # complex) but this will catch structural runtime errors.
@@ -99,7 +99,7 @@ class PackedSequenceEmbeddingTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(expected_attention_mask_shape, attention_mask.shape)
 
   def test_serialize_deserialize(self):
-    tf.keras.mixed_precision.set_global_policy('mixed_float16')
+    tf_keras.mixed_precision.set_global_policy('mixed_float16')
     # Create a network object that sets all of its config options.
     embedding_cfg = dict(
         vocab_size=100,
@@ -107,7 +107,7 @@ class PackedSequenceEmbeddingTest(tf.test.TestCase, parameterized.TestCase):
         embedding_width=64,
         hidden_size=64,
         max_seq_length=32,
-        initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
+        initializer=tf_keras.initializers.TruncatedNormal(stddev=0.02),
         dropout_rate=0.1,
         use_position_id=True,
         pack_multiple_sequences=False,
@@ -115,8 +115,8 @@ class PackedSequenceEmbeddingTest(tf.test.TestCase, parameterized.TestCase):
     network = packed_sequence_embedding.PackedSequenceEmbedding(**embedding_cfg)
 
     expected_config = dict(embedding_cfg)
-    expected_config['initializer'] = tf.keras.initializers.serialize(
-        tf.keras.initializers.get(expected_config['initializer']))
+    expected_config['initializer'] = tf_keras.initializers.serialize(
+        tf_keras.initializers.get(expected_config['initializer']))
     self.assertEqual(network.get_config(), expected_config)
 
     # Create another network object from the first object's config.

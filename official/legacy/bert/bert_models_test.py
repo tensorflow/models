@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.bert import bert_models
 from official.legacy.bert import configs as bert_configs
@@ -43,7 +43,7 @@ class BertModelsTest(tf.test.TestCase):
         max_predictions_per_seq=2,
         initializer=None,
         use_next_sentence_label=True)
-    self.assertIsInstance(model, tf.keras.Model)
+    self.assertIsInstance(model, tf_keras.Model)
     self.assertIsInstance(encoder, networks.BertEncoder)
 
     # model has one scalar output: loss value.
@@ -64,8 +64,8 @@ class BertModelsTest(tf.test.TestCase):
         initializer=None,
         hub_module_url=None,
         hub_module_trainable=None)
-    self.assertIsInstance(model, tf.keras.Model)
-    self.assertIsInstance(core_model, tf.keras.Model)
+    self.assertIsInstance(model, tf_keras.Model)
+    self.assertIsInstance(core_model, tf_keras.Model)
 
     # Expect two output from model: start positions and end positions
     self.assertIsInstance(model.output, list)
@@ -87,8 +87,8 @@ class BertModelsTest(tf.test.TestCase):
         final_layer_initializer=None,
         hub_module_url=None,
         hub_module_trainable=None)
-    self.assertIsInstance(model, tf.keras.Model)
-    self.assertIsInstance(core_model, tf.keras.Model)
+    self.assertIsInstance(model, tf_keras.Model)
+    self.assertIsInstance(core_model, tf_keras.Model)
 
     # model has one classification output with num_labels=3.
     self.assertEqual(model.output.shape.as_list(), [None, 3])

@@ -15,12 +15,12 @@
 """Perceiver classifier."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling import layers
 
 
-class Classifier(tf.keras.Model):
+class Classifier(tf_keras.Model):
   """Classifier model based on a shared encoder and optional decoder.
 
   This is an implementation of the network structure surrounding a transformer
@@ -43,14 +43,14 @@ class Classifier(tf.keras.Model):
     num_classes:
       Number of classes outputted by classification head.
     inputs:
-      A `Dict[str, tf.keras.Input]` with `input_word_ids`, `input_mask`, and
+      A `Dict[str, tf_keras.Input]` with `input_word_ids`, `input_mask`, and
       `input_type_ids`. The shapes are all `(None)` with dtype `tf.int32`.
     head_name:
       Name of the classification head.
     classifier:
       Classification head layer.
     initializer:
-      `tf.keras.initializers.Initializer` used for classification head layer.
+      `tf_keras.initializers.Initializer` used for classification head layer.
   """
 
   def __init__(self,
@@ -88,9 +88,9 @@ class Classifier(tf.keras.Model):
         If set, the arguments ('num_classes', 'initializer', 'dropout_rate',
         'use_encoder_pooler', 'head_name') will be ignored.
       name:
-        Sets the `tf.keras.Model` name.
+        Sets the `tf_keras.Model` name.
       **kwargs:
-        Any keyword arguments to pass through to `tf.keras.Model`.
+        Any keyword arguments to pass through to `tf_keras.Model`.
     """
     super().__init__(name=name, **kwargs)
 
@@ -133,7 +133,7 @@ class Classifier(tf.keras.Model):
 
     if initializer is None:
       stddev = 1. / np.sqrt(cls_inputs.shape[-1])
-      initializer = tf.keras.initializers.TruncatedNormal(stddev=stddev)
+      initializer = tf_keras.initializers.TruncatedNormal(stddev=stddev)
 
     if cls_head:
       classifier = cls_head
@@ -157,7 +157,7 @@ class Classifier(tf.keras.Model):
     Accepts inputs as dictionary of tensors.
     Args:
       inputs:
-        A `Dict[str, tf.keras.Input]` with `input_word_ids`, `input_mask`, and
+        A `Dict[str, tf_keras.Input]` with `input_word_ids`, `input_mask`, and
         `input_type_ids`. The shapes are all `(None)` with dtype `tf.int32`.
 
     Returns:

@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.networks import classification
 
@@ -30,7 +30,7 @@ class ClassificationTest(tf.test.TestCase, parameterized.TestCase):
     test_object = classification.Classification(
         input_width=input_width, num_classes=num_classes)
     # Create a 2-dimensional input (the first dimension is implicit).
-    cls_data = tf.keras.Input(shape=(input_width,), dtype=tf.float32)
+    cls_data = tf_keras.Input(shape=(input_width,), dtype=tf.float32)
     output = test_object(cls_data)
 
     # Validate that the outputs are of the expected shape.
@@ -44,11 +44,11 @@ class ClassificationTest(tf.test.TestCase, parameterized.TestCase):
     test_object = classification.Classification(
         input_width=input_width, num_classes=num_classes, output='predictions')
     # Create a 2-dimensional input (the first dimension is implicit).
-    cls_data = tf.keras.Input(shape=(input_width,), dtype=tf.float32)
+    cls_data = tf_keras.Input(shape=(input_width,), dtype=tf.float32)
     output = test_object(cls_data)
 
     # Invoke the network as part of a Model.
-    model = tf.keras.Model(cls_data, output)
+    model = tf_keras.Model(cls_data, output)
     input_data = 10 * np.random.random_sample((3, input_width))
     _ = model.predict(input_data)
 
@@ -60,10 +60,10 @@ class ClassificationTest(tf.test.TestCase, parameterized.TestCase):
         input_width=input_width, num_classes=num_classes, output='predictions')
 
     # Create a 2-dimensional input (the first dimension is implicit).
-    cls_data = tf.keras.Input(shape=(input_width,), dtype=tf.float32)
+    cls_data = tf_keras.Input(shape=(input_width,), dtype=tf.float32)
     output = test_object(cls_data)
-    model = tf.keras.Model(cls_data, output)
-    logits_model = tf.keras.Model(test_object.inputs, test_object.logits)
+    model = tf_keras.Model(cls_data, output)
+    logits_model = tf_keras.Model(test_object.inputs, test_object.logits)
 
     batch_size = 3
     input_data = 10 * np.random.random_sample((batch_size, input_width))
@@ -76,9 +76,9 @@ class ClassificationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(expected_output_shape, logits.shape)
 
     # Ensure that the logits, when softmaxed, create the outputs.
-    input_tensor = tf.keras.Input(expected_output_shape[1:])
-    output_tensor = tf.keras.layers.Activation(tf.nn.log_softmax)(input_tensor)
-    softmax_model = tf.keras.Model(input_tensor, output_tensor)
+    input_tensor = tf_keras.Input(expected_output_shape[1:])
+    output_tensor = tf_keras.layers.Activation(tf.nn.log_softmax)(input_tensor)
+    softmax_model = tf_keras.Model(input_tensor, output_tensor)
 
     calculated_softmax = softmax_model.predict(logits)
     self.assertAllClose(outputs, calculated_softmax)
@@ -92,10 +92,10 @@ class ClassificationTest(tf.test.TestCase, parameterized.TestCase):
         input_width=input_width, num_classes=num_classes, output='logits')
 
     # Create a 2-dimensional input (the first dimension is implicit).
-    cls_data = tf.keras.Input(shape=(input_width,), dtype=tf.float32)
+    cls_data = tf_keras.Input(shape=(input_width,), dtype=tf.float32)
     output = test_object(cls_data)
-    model = tf.keras.Model(cls_data, output)
-    logits_model = tf.keras.Model(test_object.inputs, test_object.logits)
+    model = tf_keras.Model(cls_data, output)
+    logits_model = tf_keras.Model(test_object.inputs, test_object.logits)
 
     batch_size = 3
     input_data = 10 * np.random.random_sample((batch_size, input_width))
@@ -120,12 +120,12 @@ class ClassificationTest(tf.test.TestCase, parameterized.TestCase):
     logit_object.set_weights(test_object.get_weights())
 
     # Create a 2-dimensional input (the first dimension is implicit).
-    cls_data = tf.keras.Input(shape=(input_width,), dtype=tf.float32)
+    cls_data = tf_keras.Input(shape=(input_width,), dtype=tf.float32)
     output = test_object(cls_data)
     logit_output = logit_object(cls_data)
 
-    model = tf.keras.Model(cls_data, output)
-    logits_model = tf.keras.Model(cls_data, logit_output)
+    model = tf_keras.Model(cls_data, output)
+    logits_model = tf_keras.Model(cls_data, logit_output)
 
     batch_size = 3
     input_data = 10 * np.random.random_sample((batch_size, input_width))
@@ -138,9 +138,9 @@ class ClassificationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(expected_output_shape, logits.shape)
 
     # Ensure that the logits, when softmaxed, create the outputs.
-    input_tensor = tf.keras.Input(expected_output_shape[1:])
-    output_tensor = tf.keras.layers.Activation(tf.nn.log_softmax)(input_tensor)
-    softmax_model = tf.keras.Model(input_tensor, output_tensor)
+    input_tensor = tf_keras.Input(expected_output_shape[1:])
+    output_tensor = tf_keras.layers.Activation(tf.nn.log_softmax)(input_tensor)
+    softmax_model = tf_keras.Model(input_tensor, output_tensor)
 
     calculated_softmax = softmax_model.predict(logits)
     self.assertAllClose(outputs, calculated_softmax)

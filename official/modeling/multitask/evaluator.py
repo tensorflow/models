@@ -19,7 +19,7 @@ The evaluator implements the Orbit `AbstractEvaluator` interface.
 from typing import Dict, List, Optional, Union
 import gin
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import train_utils
@@ -33,7 +33,7 @@ class MultiTaskEvaluator(orbit.AbstractEvaluator):
   def __init__(
       self,
       eval_tasks: List[base_task.Task],
-      model: Union[tf.keras.Model, base_model.MultiTaskBaseModel],
+      model: Union[tf_keras.Model, base_model.MultiTaskBaseModel],
       global_step: Optional[tf.Variable] = None,
       eval_steps: Optional[Dict[str, int]] = None,
       checkpoint_exporter: Optional[train_utils.BestCheckpointExporter] = None):
@@ -41,7 +41,7 @@ class MultiTaskEvaluator(orbit.AbstractEvaluator):
 
     Args:
       eval_tasks: A list of tasks to evaluate.
-      model: tf.keras.Model instance.
+      model: tf_keras.Model instance.
       global_step: the global step variable.
       eval_steps: a dictionary of steps to run eval keyed by task names.
       checkpoint_exporter: an object that has the `maybe_export_checkpoint`
@@ -124,7 +124,7 @@ class MultiTaskEvaluator(orbit.AbstractEvaluator):
       # Builds the per-task metrics and losses.
       self._validation_losses = {}
       for task in self.tasks:
-        self._validation_losses[task.name] = tf.keras.metrics.Mean(
+        self._validation_losses[task.name] = tf_keras.metrics.Mean(
             "validation_loss", dtype=tf.float32)
     return self._validation_losses
 

@@ -23,7 +23,7 @@ from absl import flags
 from absl import logging
 
 import gin
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import distribute_utils
 # Imports registered experiment configs.

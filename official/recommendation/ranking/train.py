@@ -20,7 +20,7 @@ from absl import app
 from absl import flags
 from absl import logging
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import distribute_utils
 from official.core import base_trainer
@@ -150,7 +150,7 @@ def main(_) -> None:
     callbacks = [checkpoint_callback, time_callback]
 
     if enable_tensorboard:
-      tensorboard_callback = tf.keras.callbacks.TensorBoard(
+      tensorboard_callback = tf_keras.callbacks.TensorBoard(
           log_dir=model_dir,
           update_freq=min(1000, params.trainer.validation_interval),
           profile_batch=FLAGS.profile_steps)

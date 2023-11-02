@@ -15,7 +15,7 @@
 import unittest
 
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.utils.flags import core as flags_core  # pylint: disable=g-bad-import-order
 

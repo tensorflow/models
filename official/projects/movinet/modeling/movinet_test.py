@@ -15,7 +15,7 @@
 """Tests for movinet.py."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.movinet.modeling import movinet
 
@@ -24,13 +24,13 @@ class MoViNetTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_network_creation(self):
     """Test creation of MoViNet family models."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     network = movinet.Movinet(
         model_id='a0',
         causal=True,
     )
-    inputs = tf.keras.Input(shape=(8, 128, 128, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(8, 128, 128, 3), batch_size=1)
     endpoints, states = network(inputs)
 
     self.assertAllEqual(endpoints['stem'].shape, [1, 8, 64, 64, 8])
@@ -45,7 +45,7 @@ class MoViNetTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_network_with_states(self):
     """Test creation of MoViNet family models with states."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     backbone = movinet.Movinet(
         model_id='a0',
@@ -70,7 +70,7 @@ class MoViNetTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_movinet_stream(self):
     """Test if the backbone can be run in streaming mode."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     backbone = movinet.Movinet(
         model_id='a0',
@@ -100,7 +100,7 @@ class MoViNetTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_movinet_stream_nse(self):
     """Test if the backbone can be run in streaming mode w/o SE layer."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     backbone = movinet.Movinet(
         model_id='a0',
@@ -142,7 +142,7 @@ class MoViNetTest(parameterized.TestCase, tf.test.TestCase):
           msg=f'Expecting stream_buffer only, found {state_key}')
 
   def test_movinet_2plus1d_stream(self):
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     backbone = movinet.Movinet(
         model_id='a0',
@@ -172,7 +172,7 @@ class MoViNetTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllClose(predicted, expected, 1e-5, 1e-5)
 
   def test_movinet_3d_2plus1d_stream(self):
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     backbone = movinet.Movinet(
         model_id='a0',

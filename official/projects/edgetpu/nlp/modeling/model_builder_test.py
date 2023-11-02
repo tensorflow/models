@@ -14,7 +14,7 @@
 
 """Tests for mobilebert_edgetpu.model_builder.py."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp import modeling
 from official.nlp.configs import encoders
@@ -62,7 +62,7 @@ class ModelBuilderTest(tf.test.TestCase):
         word_embed_size=128,
         type_vocab_size=2,
         output_embed_size=encoders.MobileBertEncoderConfig().hidden_size)
-    dummy_input = tf.keras.layers.Input(
+    dummy_input = tf_keras.layers.Input(
         shape=(None,), dtype=tf.int32)
     _ = embedding(dummy_input)
     embedding_table = embedding.word_embedding.embeddings

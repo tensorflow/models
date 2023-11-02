@@ -19,15 +19,15 @@ import inspect
 
 from absl import logging
 import gin
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
+@tf_keras.utils.register_keras_serializable(package='Text')
 @gin.configurable
-class EncoderScaffold(tf.keras.Model):
+class EncoderScaffold(tf_keras.Model):
   """Bi-directional Transformer-based encoder network scaffold.
 
   This network allows users to flexibly implement an encoder similar to the one
@@ -110,7 +110,7 @@ class EncoderScaffold(tf.keras.Model):
 
   def __init__(self,
                pooled_output_dim,
-               pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+               pooler_layer_initializer=tf_keras.initializers.TruncatedNormal(
                    stddev=0.02),
                embedding_cls=None,
                embedding_cfg=None,
@@ -143,11 +143,11 @@ class EncoderScaffold(tf.keras.Model):
     else:
       embedding_network = None
       seq_length = embedding_cfg.get('seq_length', None)
-      word_ids = tf.keras.layers.Input(
+      word_ids = tf_keras.layers.Input(
           shape=(seq_length,), dtype=tf.int32, name='input_word_ids')
-      mask = tf.keras.layers.Input(
+      mask = tf_keras.layers.Input(
           shape=(seq_length,), dtype=tf.int32, name='input_mask')
-      type_ids = tf.keras.layers.Input(
+      type_ids = tf_keras.layers.Input(
           shape=(seq_length,), dtype=tf.int32, name='input_type_ids')
       inputs = [word_ids, mask, type_ids]
 
@@ -174,10 +174,10 @@ class EncoderScaffold(tf.keras.Model):
           name='type_embeddings')
       type_embeddings = type_embedding_layer(type_ids)
 
-      embeddings = tf.keras.layers.Add()(
+      embeddings = tf_keras.layers.Add()(
           [word_embeddings, position_embeddings, type_embeddings])
 
-      embedding_norm_layer = tf.keras.layers.LayerNormalization(
+      embedding_norm_layer = tf_keras.layers.LayerNormalization(
           name='embeddings/layer_norm',
           axis=-1,
           epsilon=1e-12,
@@ -185,7 +185,7 @@ class EncoderScaffold(tf.keras.Model):
       embeddings = embedding_norm_layer(embeddings)
 
       embeddings = (
-          tf.keras.layers.Dropout(
+          tf_keras.layers.Dropout(
               rate=embedding_cfg['dropout_rate'])(embeddings))
 
       mask_cfg = {} if mask_cfg is None else mask_cfg
@@ -233,7 +233,7 @@ class EncoderScaffold(tf.keras.Model):
 
     if layer_norm_before_pooling:
       # Normalize the final output.
-      output_layer_norm = tf.keras.layers.LayerNormalization(
+      output_layer_norm = tf_keras.layers.LayerNormalization(
           name='final_layer_norm',
           axis=-1,
           epsilon=1e-12)
@@ -244,9 +244,9 @@ class EncoderScaffold(tf.keras.Model):
     # like this will create a SliceOpLambda layer. This is better than a Lambda
     # layer with Python code, because that is fundamentally less portable.
     first_token_tensor = last_layer_output[:, 0, :]
-    pooler_layer_initializer = tf.keras.initializers.get(
+    pooler_layer_initializer = tf_keras.initializers.get(
         pooler_layer_initializer)
-    pooler_layer = tf.keras.layers.Dense(
+    pooler_layer = tf_keras.layers.Dense(
         units=pooled_output_dim,
         activation='tanh',
         kernel_initializer=pooler_layer_initializer,
@@ -306,7 +306,7 @@ class EncoderScaffold(tf.keras.Model):
     config_dict = {
         'num_hidden_instances': self._num_hidden_instances,
         'pooled_output_dim': self._pooled_output_dim,
-        'pooler_layer_initializer': tf.keras.initializers.serialize(
+        'pooler_layer_initializer': tf_keras.initializers.serialize(
             self._pooler_layer_initializer),
         'embedding_cls': self._embedding_network,
         'embedding_cfg': self._embedding_cfg,
@@ -327,7 +327,7 @@ class EncoderScaffold(tf.keras.Model):
           # `self._hidden_cfg` may contain `class`, e.g., when `hidden_cfg` is
           # `TransformerScaffold`, `attention_cls` argument can be a `class`.
           if inspect.isclass(v):
-            config_dict[cfg_name][k] = tf.keras.utils.get_registered_name(v)
+            config_dict[cfg_name][k] = tf_keras.utils.get_registered_name(v)
           else:
             config_dict[cfg_name][k] = v
 
@@ -339,7 +339,7 @@ class EncoderScaffold(tf.keras.Model):
     for cls_name, cls in clss.items():
       if inspect.isclass(cls):
         key = '{}_string'.format(cls_name)
-        config_dict[key] = tf.keras.utils.get_registered_name(cls)
+        config_dict[key] = tf_keras.utils.get_registered_name(cls)
       else:
         config_dict[cls_name] = cls
 
@@ -352,7 +352,7 @@ class EncoderScaffold(tf.keras.Model):
     for cls_name in cls_names:
       cls_string = '{}_string'.format(cls_name)
       if cls_string in config:
-        config[cls_name] = tf.keras.utils.get_registered_object(
+        config[cls_name] = tf_keras.utils.get_registered_object(
             config[cls_string], custom_objects=custom_objects)
         del config[cls_string]
     return cls(**config)

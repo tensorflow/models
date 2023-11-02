@@ -14,7 +14,7 @@
 
 """Utility functions for masks."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def resize_and_rescale_offsets(input_tensor: tf.Tensor, target_size):

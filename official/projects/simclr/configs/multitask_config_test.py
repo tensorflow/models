@@ -14,7 +14,7 @@
 
 """Tests for multitask_config."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import exp_factory
 from official.modeling.multitask import configs as multitask_configs

@@ -16,30 +16,30 @@
 
 from typing import Any, List, Mapping, Optional, Tuple, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops import anchor
 from official.vision.ops import box_ops
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MaskRCNNModel(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MaskRCNNModel(tf_keras.Model):
   """The Mask R-CNN(-RS) and Cascade RCNN-RS models."""
 
   def __init__(self,
-               backbone: tf.keras.Model,
-               decoder: tf.keras.Model,
-               rpn_head: tf.keras.layers.Layer,
-               detection_head: Union[tf.keras.layers.Layer,
-                                     List[tf.keras.layers.Layer]],
-               roi_generator: tf.keras.layers.Layer,
-               roi_sampler: Union[tf.keras.layers.Layer,
-                                  List[tf.keras.layers.Layer]],
-               roi_aligner: tf.keras.layers.Layer,
-               detection_generator: tf.keras.layers.Layer,
-               mask_head: Optional[tf.keras.layers.Layer] = None,
-               mask_sampler: Optional[tf.keras.layers.Layer] = None,
-               mask_roi_aligner: Optional[tf.keras.layers.Layer] = None,
+               backbone: tf_keras.Model,
+               decoder: tf_keras.Model,
+               rpn_head: tf_keras.layers.Layer,
+               detection_head: Union[tf_keras.layers.Layer,
+                                     List[tf_keras.layers.Layer]],
+               roi_generator: tf_keras.layers.Layer,
+               roi_sampler: Union[tf_keras.layers.Layer,
+                                  List[tf_keras.layers.Layer]],
+               roi_aligner: tf_keras.layers.Layer,
+               detection_generator: tf_keras.layers.Layer,
+               mask_head: Optional[tf_keras.layers.Layer] = None,
+               mask_sampler: Optional[tf_keras.layers.Layer] = None,
+               mask_roi_aligner: Optional[tf_keras.layers.Layer] = None,
                class_agnostic_bbox_pred: bool = False,
                cascade_class_ensemble: bool = False,
                min_level: Optional[int] = None,
@@ -52,8 +52,8 @@ class MaskRCNNModel(tf.keras.Model):
     """Initializes the R-CNN(-RS) model.
 
     Args:
-      backbone: `tf.keras.Model`, the backbone network.
-      decoder: `tf.keras.Model`, the decoder network.
+      backbone: `tf_keras.Model`, the backbone network.
+      decoder: `tf_keras.Model`, the decoder network.
       rpn_head: the RPN head.
       detection_head: the detection head or a list of heads.
       roi_generator: the ROI generator.
@@ -487,7 +487,7 @@ class MaskRCNNModel(tf.keras.Model):
 
   @property
   def checkpoint_items(
-      self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
+      self) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(
         backbone=self.backbone,

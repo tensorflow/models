@@ -15,7 +15,7 @@
 """Tests for official.nlp.projects.lra.mega_encoder."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.lra import mega_encoder
 

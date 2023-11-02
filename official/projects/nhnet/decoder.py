@@ -14,14 +14,14 @@
 
 """Transformer decoder that mimics a BERT encoder, to load BERT checkpoints."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.transformer import model_utils as transformer_utils
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
 
 
-class TransformerDecoder(tf.keras.layers.Layer):
+class TransformerDecoder(tf_keras.layers.Layer):
   """Transformer decoder stack."""
 
   def __init__(self,
@@ -60,7 +60,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
               intermediate_activation=self.intermediate_activation,
               dropout_rate=self.hidden_dropout_prob,
               attention_dropout_rate=self.attention_probs_dropout_prob,
-              kernel_initializer=tf.keras.initializers.TruncatedNormal(
+              kernel_initializer=tf_keras.initializers.TruncatedNormal(
                   stddev=self.initializer_range),
               multi_channel_cross_attention=self.multi_channel_cross_attention,
               name=("layer_%d" % i)))
@@ -163,7 +163,7 @@ def get_attention_bias(input_tensor,
   return tf.where(bias < 0, tf.zeros_like(bias), tf.ones_like(bias))
 
 
-class AttentionBias(tf.keras.layers.Layer):
+class AttentionBias(tf_keras.layers.Layer):
 
   def __init__(self, bias_type, **kwargs):
     super(AttentionBias, self).__init__(**kwargs)
@@ -173,7 +173,7 @@ class AttentionBias(tf.keras.layers.Layer):
     return get_attention_bias(inputs, self.bias_type)
 
 
-class EmbeddingPostprocessor(tf.keras.layers.Layer):
+class EmbeddingPostprocessor(tf_keras.layers.Layer):
   """Performs various post-processing on a word embedding tensor."""
 
   def __init__(self,
@@ -194,7 +194,7 @@ class EmbeddingPostprocessor(tf.keras.layers.Layer):
     self.initializer_range = initializer_range
 
     if not initializer:
-      self.initializer = tf.keras.initializers.TruncatedNormal(
+      self.initializer = tf_keras.initializers.TruncatedNormal(
           stddev=initializer_range)
     else:
       self.initializer = initializer
@@ -212,7 +212,7 @@ class EmbeddingPostprocessor(tf.keras.layers.Layer):
       self.type_embeddings = self.add_weight(
           "type_embeddings",
           shape=[self.token_type_vocab_size, width],
-          initializer=tf.keras.initializers.TruncatedNormal(
+          initializer=tf_keras.initializers.TruncatedNormal(
               stddev=self.initializer_range),
           dtype=self.dtype)
 
@@ -221,13 +221,13 @@ class EmbeddingPostprocessor(tf.keras.layers.Layer):
       self.position_embeddings = self.add_weight(
           "position_embeddings",
           shape=[self.max_position_embeddings, width],
-          initializer=tf.keras.initializers.TruncatedNormal(
+          initializer=tf_keras.initializers.TruncatedNormal(
               stddev=self.initializer_range),
           dtype=self.dtype)
 
-    self.output_layer_norm = tf.keras.layers.LayerNormalization(
+    self.output_layer_norm = tf_keras.layers.LayerNormalization(
         name="layer_norm", axis=-1, epsilon=1e-12, dtype=tf.float32)
-    self.output_dropout = tf.keras.layers.Dropout(
+    self.output_dropout = tf_keras.layers.Dropout(
         rate=self.dropout_prob, dtype=tf.float32)
     super(EmbeddingPostprocessor, self).build(input_shapes)
 
@@ -267,7 +267,7 @@ class EmbeddingPostprocessor(tf.keras.layers.Layer):
     return output
 
 
-class Decoder(tf.keras.layers.Layer):
+class Decoder(tf_keras.layers.Layer):
   """The decoder network which can reuse encoder embeddings for target."""
 
   def __init__(self, config, embedding_lookup=None, **kwargs):
@@ -284,7 +284,7 @@ class Decoder(tf.keras.layers.Layer):
       self.embedding_lookup = layers.OnDeviceEmbedding(
           vocab_size=self.config.vocab_size,
           embedding_width=self.config.hidden_size,
-          initializer=tf.keras.initializers.TruncatedNormal(
+          initializer=tf_keras.initializers.TruncatedNormal(
               stddev=self.config.initializer_range),
           name="target_embeddings")
     self.embedding_postprocessor = EmbeddingPostprocessor(
@@ -292,7 +292,7 @@ class Decoder(tf.keras.layers.Layer):
         use_position_embeddings=True,
         max_position_embeddings=self.config.max_position_embeddings,
         dropout_prob=self.config.hidden_dropout_prob,
-        initializer=tf.keras.initializers.VarianceScaling(
+        initializer=tf_keras.initializers.VarianceScaling(
             scale=self.config.initializer_gain,
             mode="fan_avg",
             distribution="uniform"),

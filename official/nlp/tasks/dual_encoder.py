@@ -17,7 +17,7 @@ from typing import Mapping, Tuple
 # Import libraries
 from absl import logging
 import dataclasses
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import config_definitions as cfg
@@ -141,12 +141,12 @@ class DualEncoderTask(base_task.Task):
 
   def build_metrics(self, training=None):
     del training
-    metrics = [tf.keras.metrics.Mean(name='batch_size_per_core')]
+    metrics = [tf_keras.metrics.Mean(name='batch_size_per_core')]
     for k in self.task_config.model.eval_top_k:
-      metrics.append(tf.keras.metrics.SparseTopKCategoricalAccuracy(
+      metrics.append(tf_keras.metrics.SparseTopKCategoricalAccuracy(
           k=k, name=f'left_recall_at_{k}'))
       if self.task_config.model.bidirectional:
-        metrics.append(tf.keras.metrics.SparseTopKCategoricalAccuracy(
+        metrics.append(tf_keras.metrics.SparseTopKCategoricalAccuracy(
             k=k, name=f'right_recall_at_{k}'))
     return metrics
 
@@ -171,7 +171,7 @@ class DualEncoderTask(base_task.Task):
 
   def validation_step(self,
                       inputs,
-                      model: tf.keras.Model,
+                      model: tf_keras.Model,
                       metrics=None) -> Mapping[str, tf.Tensor]:
     outputs = model(inputs)
     loss = self.build_losses(

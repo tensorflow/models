@@ -15,7 +15,7 @@
 """Keras-based softmax layer with optional masking."""
 # pylint: disable=g-classes-have-attributes
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def _large_compatible_negative(tensor_type):
@@ -35,8 +35,8 @@ def _large_compatible_negative(tensor_type):
   return -1e9
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
-class MaskedSoftmax(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class MaskedSoftmax(tf_keras.layers.Layer):
   """Performs a softmax with optional masking on a tensor.
 
   Args:

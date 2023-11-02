@@ -20,16 +20,16 @@ from __future__ import print_function
 from typing import Any, Mapping, Optional
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 BASE_LEARNING_RATE = 0.1
 
 
-class WarmupDecaySchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
+class WarmupDecaySchedule(tf_keras.optimizers.schedules.LearningRateSchedule):
   """A wrapper for LearningRateSchedule that includes warmup steps."""
 
   def __init__(self,
-               lr_schedule: tf.keras.optimizers.schedules.LearningRateSchedule,
+               lr_schedule: tf_keras.optimizers.schedules.LearningRateSchedule,
                warmup_steps: int,
                warmup_lr: Optional[float] = None):
     """Add warmup decay to a learning rate schedule.
@@ -73,7 +73,7 @@ class WarmupDecaySchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
     return config
 
 
-class CosineDecayWithWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
+class CosineDecayWithWarmup(tf_keras.optimizers.schedules.LearningRateSchedule):
   """Class to generate learning rate tensor."""
 
   def __init__(self, batch_size: int, total_steps: int, warmup_steps: int):

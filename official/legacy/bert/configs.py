@@ -18,7 +18,7 @@ import copy
 import json
 
 import six
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 class BertConfig(object):

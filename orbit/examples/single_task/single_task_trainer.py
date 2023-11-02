@@ -15,7 +15,7 @@
 """A trainer object that can train models with a single output."""
 
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 class SingleTaskTrainer(orbit.StandardTrainer):
@@ -24,7 +24,7 @@ class SingleTaskTrainer(orbit.StandardTrainer):
   This trainer will handle running a model with one output on a single
   dataset. It will apply the provided loss function to the model's output
   to calculate gradients and will apply them via the provided optimizer. It will
-  also supply the output of that model to one or more `tf.keras.metrics.Metric`
+  also supply the output of that model to one or more `tf_keras.metrics.Metric`
   objects.
   """
 
@@ -56,11 +56,11 @@ class SingleTaskTrainer(orbit.StandardTrainer):
       loss_fn: A per-element loss function of the form (target, output). The
         output of this loss function will be reduced via `tf.reduce_mean` to
         create the final loss. We recommend using the functions in the
-        `tf.keras.losses` package or `tf.keras.losses.Loss` objects with
-        `reduction=tf.keras.losses.reduction.NONE`.
-      optimizer: A `tf.keras.optimizers.Optimizer` instance.
-      metrics: A single `tf.keras.metrics.Metric` object, or a list of
-        `tf.keras.metrics.Metric` objects.
+        `tf_keras.losses` package or `tf_keras.losses.Loss` objects with
+        `reduction=tf_keras.losses.reduction.NONE`.
+      optimizer: A `tf_keras.optimizers.Optimizer` instance.
+      metrics: A single `tf_keras.metrics.Metric` object, or a list of
+        `tf_keras.metrics.Metric` objects.
       trainer_options: An optional `orbit.utils.StandardTrainerOptions` object.
     """
     self.label_key = label_key
@@ -72,7 +72,7 @@ class SingleTaskTrainer(orbit.StandardTrainer):
     self.strategy = tf.distribute.get_strategy()
 
     # We always want to report training loss.
-    self.train_loss = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
+    self.train_loss = tf_keras.metrics.Mean('training_loss', dtype=tf.float32)
 
     # We need self.metrics to be an iterable later, so we handle that here.
     if metrics is None:
@@ -109,7 +109,7 @@ class SingleTaskTrainer(orbit.StandardTrainer):
         # replicas during the apply_gradients call.
         # Note, the reduction of loss is explicitly handled and scaled by
         # num_replicas_in_sync. Recommend to use a plain loss function.
-        # If you're using tf.keras.losses.Loss object, you may need to set
+        # If you're using tf_keras.losses.Loss object, you may need to set
         # reduction argument explicitly.
         loss = tf.reduce_mean(self.loss_fn(target, output))
         scaled_loss = loss / self.strategy.num_replicas_in_sync

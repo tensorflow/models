@@ -16,13 +16,13 @@
 from typing import Any, Mapping, Union, Optional, Dict
 
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class SegmentationModel(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class SegmentationModel(tf_keras.Model):
   """A Segmentation class model.
 
   Input images are passed through backbone first. Decoder network is then
@@ -34,9 +34,9 @@ class SegmentationModel(tf.keras.Model):
   different backbones, and decoders.
   """
 
-  def __init__(self, backbone: tf.keras.Model, decoder: tf.keras.Model,
-               head: tf.keras.layers.Layer,
-               mask_scoring_head: Optional[tf.keras.layers.Layer] = None,
+  def __init__(self, backbone: tf_keras.Model, decoder: tf_keras.Model,
+               head: tf_keras.layers.Layer,
+               mask_scoring_head: Optional[tf_keras.layers.Layer] = None,
                **kwargs):
     """Segmentation initialization function.
 
@@ -77,7 +77,7 @@ class SegmentationModel(tf.keras.Model):
 
   @property
   def checkpoint_items(
-      self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
+      self) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(backbone=self.backbone, head=self.head)
     if self.decoder is not None:

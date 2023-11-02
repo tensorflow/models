@@ -18,7 +18,7 @@
 # Import libraries
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.qat.vision.modeling.heads import dense_prediction_heads
 

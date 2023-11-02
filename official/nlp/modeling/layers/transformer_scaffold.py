@@ -17,16 +17,16 @@
 
 from absl import logging
 import gin
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.nlp.modeling.layers import attention
 from official.nlp.modeling.layers import util
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
+@tf_keras.utils.register_keras_serializable(package="Text")
 @gin.configurable
-class TransformerScaffold(tf.keras.layers.Layer):
+class TransformerScaffold(tf_keras.layers.Layer):
   """Transformer scaffold layer.
 
   This layer implements the Transformer from "Attention Is All You Need".
@@ -117,12 +117,12 @@ class TransformerScaffold(tf.keras.layers.Layer):
     self._inner_activation = inner_activation
     self._attention_dropout_rate = attention_dropout_rate
     self._dropout_rate = dropout_rate
-    self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
-    self._bias_initializer = tf.keras.initializers.get(bias_initializer)
-    self._kernel_regularizer = tf.keras.regularizers.get(kernel_regularizer)
-    self._bias_regularizer = tf.keras.regularizers.get(bias_regularizer)
-    self._kernel_constraint = tf.keras.constraints.get(kernel_constraint)
-    self._bias_constraint = tf.keras.constraints.get(bias_constraint)
+    self._kernel_initializer = tf_keras.initializers.get(kernel_initializer)
+    self._bias_initializer = tf_keras.initializers.get(bias_initializer)
+    self._kernel_regularizer = tf_keras.regularizers.get(kernel_regularizer)
+    self._bias_regularizer = tf_keras.regularizers.get(bias_regularizer)
+    self._kernel_constraint = tf_keras.constraints.get(kernel_constraint)
+    self._bias_constraint = tf_keras.constraints.get(bias_constraint)
 
   def build(self, input_shape):
     if isinstance(input_shape, tf.TensorShape):
@@ -153,11 +153,11 @@ class TransformerScaffold(tf.keras.layers.Layer):
         bias_constraint=self._bias_constraint)
 
     def get_layer_instance(instance_or_cls, config, default_config):
-      if isinstance(instance_or_cls, tf.keras.layers.Layer):
+      if isinstance(instance_or_cls, tf_keras.layers.Layer):
         return instance_or_cls
       elif isinstance(instance_or_cls, dict):
         return get_layer_instance(
-            tf.keras.utils.deserialize_keras_object(instance_or_cls),
+            tf_keras.utils.deserialize_keras_object(instance_or_cls),
             config,
             default_config,
         )
@@ -206,18 +206,18 @@ class TransformerScaffold(tf.keras.layers.Layer):
 
     # self._dropout_rate controls dropout rates at two places:
     # after attention, and after FFN.
-    self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
+    self._attention_dropout = tf_keras.layers.Dropout(rate=self._dropout_rate)
     # Use float32 in layernorm for numeric stability.
     # It is probably safe in mixed_float16, but we haven't validated this yet.
     self._attention_layer_norm = (
-        tf.keras.layers.LayerNormalization(
+        tf_keras.layers.LayerNormalization(
             name="self_attention_layer_norm",
             axis=-1,
             epsilon=self._norm_epsilon,
             dtype=tf.float32))
 
     if self._feedforward_block is None:
-      self._intermediate_dense = tf.keras.layers.EinsumDense(
+      self._intermediate_dense = tf_keras.layers.EinsumDense(
           "abc,cd->abd",
           output_shape=(None, self._inner_dim),
           bias_axes="d",
@@ -226,15 +226,15 @@ class TransformerScaffold(tf.keras.layers.Layer):
               self._kernel_initializer),
           bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
           **common_kwargs)
-      policy = tf.keras.mixed_precision.global_policy()
+      policy = tf_keras.mixed_precision.global_policy()
       if policy.name == "mixed_bfloat16":
         # bfloat16 causes BERT with the LAMB optimizer to not converge
         # as well, so we use float32.
         # TODO(b/154538392): Investigate this.
         policy = tf.float32
-      self._intermediate_activation_layer = tf.keras.layers.Activation(
+      self._intermediate_activation_layer = tf_keras.layers.Activation(
           self._inner_activation, dtype=policy)
-      self._output_dense = tf.keras.layers.EinsumDense(
+      self._output_dense = tf_keras.layers.EinsumDense(
           "abc,cd->abd",
           output_shape=(None, hidden_size),
           bias_axes="d",
@@ -244,9 +244,9 @@ class TransformerScaffold(tf.keras.layers.Layer):
           bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
           **common_kwargs)
 
-    self._output_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
+    self._output_dropout = tf_keras.layers.Dropout(rate=self._dropout_rate)
     # Use float32 in layernorm for numeric stability.
-    self._output_layer_norm = tf.keras.layers.LayerNormalization(
+    self._output_layer_norm = tf_keras.layers.LayerNormalization(
         name="output_layer_norm",
         axis=-1,
         epsilon=self._norm_epsilon,

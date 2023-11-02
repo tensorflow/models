@@ -15,7 +15,7 @@
 """Provides functions to help with evaluating models."""
 import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.projects.yt8m.eval_utils import average_precision_calculator as ap_calculator
 from official.projects.yt8m.eval_utils import mean_average_precision_calculator as map_calculator
 

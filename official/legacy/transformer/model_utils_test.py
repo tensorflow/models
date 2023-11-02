@@ -14,7 +14,7 @@
 
 """Test Transformer model helper methods."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.transformer import model_utils
 

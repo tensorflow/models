@@ -19,7 +19,7 @@ import re
 
 from typing import Callable, Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def _id_key(filename):

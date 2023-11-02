@@ -20,7 +20,7 @@ from absl import logging
 
 import gin
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_trainer
 from official.core import config_definitions
@@ -39,16 +39,16 @@ class PruningAction:
   def __init__(
       self,
       export_dir: str,
-      model: tf.keras.Model,
-      optimizer: tf.keras.optimizers.Optimizer,
+      model: tf_keras.Model,
+      optimizer: tf_keras.optimizers.Optimizer,
   ):
     """Initializes the instance.
 
     Args:
       export_dir: `str` for the export directory of the pruning summaries.
-      model: `tf.keras.Model` model instance used for training. This will be
+      model: `tf_keras.Model` model instance used for training. This will be
         used to assign a pruning step to each prunable weight.
-      optimizer: `tf.keras.optimizers.Optimizer` optimizer instance used for
+      optimizer: `tf_keras.optimizers.Optimizer` optimizer instance used for
         training. This will be used to find the current training steps.
     """
     # TODO(b/221490190): Avoid local import when the bug is fixed.
@@ -84,14 +84,14 @@ class EMACheckpointing:
 
   def __init__(self,
                export_dir: str,
-               optimizer: tf.keras.optimizers.Optimizer,
+               optimizer: tf_keras.optimizers.Optimizer,
                checkpoint: tf.train.Checkpoint,
                max_to_keep: int = 1):
     """Initializes the instance.
 
     Args:
       export_dir: `str` for the export directory of the EMA average weights.
-      optimizer: `tf.keras.optimizers.Optimizer` optimizer instance used for
+      optimizer: `tf_keras.optimizers.Optimizer` optimizer instance used for
         training. This will be used to swap the model weights with the average
         weigths.
       checkpoint: `tf.train.Checkpoint` instance.

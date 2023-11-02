@@ -18,7 +18,7 @@ import itertools
 import os
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import exp_factory
 from official.core import task_factory
@@ -49,10 +49,10 @@ def _build_experiment_model(experiment_type):
 
 def _build_model(config):
   model = _build_experiment_model(config.model_name)
-  model_input = tf.keras.Input(
+  model_input = tf_keras.Input(
       shape=(config.image_size, config.image_size, 3), batch_size=1)
   model_output = export_util.finalize_serving(model(model_input), config)
-  model_for_inference = tf.keras.Model(model_input, model_output)
+  model_for_inference = tf_keras.Model(model_input, model_output)
   return model_for_inference
 
 

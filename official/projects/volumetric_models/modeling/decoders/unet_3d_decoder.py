@@ -21,17 +21,17 @@ Annotation. arXiv:1606.06650.
 
 from typing import Any, Dict, Mapping, Optional, Sequence
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.projects.volumetric_models.modeling import nn_blocks_3d
 from official.projects.volumetric_models.modeling.decoders import factory
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class UNet3DDecoder(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class UNet3DDecoder(tf_keras.Model):
   """Class to build 3D UNet decoder."""
 
   def __init__(self,
@@ -39,7 +39,7 @@ class UNet3DDecoder(tf.keras.Model):
                input_specs: Mapping[str, tf.TensorShape],
                pool_size: Sequence[int] = (2, 2, 2),
                kernel_size: Sequence[int] = (3, 3, 3),
-               kernel_regularizer: tf.keras.regularizers.Regularizer = None,
+               kernel_regularizer: tf_keras.regularizers.Regularizer = None,
                activation: str = 'relu',
                norm_momentum: float = 0.99,
                norm_epsilon: float = 0.001,
@@ -57,7 +57,7 @@ class UNet3DDecoder(tf.keras.Model):
         {level: TensorShape} from a backbone.
       pool_size: The pooling size for the max pooling operations.
       kernel_size: The kernel size for 3D convolution.
-      kernel_regularizer: A tf.keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: A tf_keras.regularizers.Regularizer object for Conv2D.
         Default to None.
       activation: The name of the activation function.
       norm_momentum: The normalization momentum for the moving average.
@@ -89,7 +89,7 @@ class UNet3DDecoder(tf.keras.Model):
       self._norm = layers.BatchNormalization
     self._use_batch_normalization = use_batch_normalization
 
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       channel_dim = -1
     else:
       channel_dim = 1
@@ -141,7 +141,7 @@ class UNet3DDecoder(tf.keras.Model):
 
     inputs = {}
     for level, spec in input_specs.items():
-      inputs[level] = tf.keras.Input(shape=spec[1:])
+      inputs[level] = tf_keras.Input(shape=spec[1:])
     return inputs
 
   def get_config(self) -> Mapping[str, Any]:
@@ -161,19 +161,19 @@ class UNet3DDecoder(tf.keras.Model):
 def build_unet_3d_decoder(
     input_specs: Mapping[str, tf.TensorShape],
     model_config: hyperparams.Config,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
-) -> tf.keras.Model:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
+) -> tf_keras.Model:
   """Builds UNet3D decoder from a config.
 
   Args:
     input_specs: A `dict` of input specifications. A dictionary consists of
       {level: TensorShape} from a backbone.
     model_config: A OneOfConfig. Model config.
-    l2_regularizer: A `tf.keras.regularizers.Regularizer` instance. Default to
+    l2_regularizer: A `tf_keras.regularizers.Regularizer` instance. Default to
       None.
 
   Returns:
-    A `tf.keras.Model` instance of the UNet3D decoder.
+    A `tf_keras.Model` instance of the UNet3D decoder.
   """
   decoder_type = model_config.decoder.type
   decoder_cfg = model_config.decoder.get()

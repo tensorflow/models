@@ -15,14 +15,14 @@
 """Contains definitions for Panoptic Deeplab heads."""
 
 from typing import List, Mapping, Optional, Tuple, Union
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.projects.panoptic.modeling.layers import fusion_layers
 from official.vision.ops import spatial_transform_ops
 
 
-class PanopticDeeplabHead(tf.keras.layers.Layer):
+class PanopticDeeplabHead(tf_keras.layers.Layer):
   """Creates a panoptic deeplab head."""
 
   def __init__(
@@ -40,8 +40,8 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initializes a panoptic deeplab head.
 
@@ -70,9 +70,9 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
         normalization across different replicas.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
       **kwargs: Additional keyword arguments to be passed.
     """
     super(PanopticDeeplabHead, self).__init__(**kwargs)
@@ -94,7 +94,7 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
         'kernel_regularizer': kernel_regularizer,
         'bias_regularizer': bias_regularizer
     }
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -104,8 +104,8 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
     """Creates the variables of the head."""
     kernel_size = self._config_dict['kernel_size']
     use_depthwise_convolution = self._config_dict['use_depthwise_convolution']
-    random_initializer = tf.keras.initializers.RandomNormal(stddev=0.01)
-    conv_op = tf.keras.layers.Conv2D
+    random_initializer = tf_keras.initializers.RandomNormal(stddev=0.01)
+    conv_op = tf_keras.layers.Conv2D
     conv_kwargs = {
         'kernel_size': kernel_size if not use_depthwise_convolution else 1,
         'padding': 'same',
@@ -113,9 +113,9 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
         'kernel_initializer': random_initializer,
         'kernel_regularizer': self._config_dict['kernel_regularizer'],
     }
-    bn_op = (tf.keras.layers.experimental.SyncBatchNormalization
+    bn_op = (tf_keras.layers.experimental.SyncBatchNormalization
              if self._config_dict['use_sync_bn']
-             else tf.keras.layers.BatchNormalization)
+             else tf_keras.layers.BatchNormalization)
     bn_kwargs = {
         'axis': self._bn_axis,
         'momentum': self._config_dict['norm_momentum'],
@@ -142,7 +142,7 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
     for i in range(self._config_dict['num_convs']):
       if use_depthwise_convolution:
         self._convs.append(
-            tf.keras.layers.DepthwiseConv2D(
+            tf_keras.layers.DepthwiseConv2D(
                 name='panoptic_deeplab_head_depthwise_conv_{}'.format(i),
                 kernel_size=kernel_size,
                 padding='same',
@@ -186,7 +186,7 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
       A `tf.Tensor` of the fused backbone and decoder features.
     """
     if training is None:
-      training = tf.keras.backend.learning_phase()
+      training = tf_keras.backend.learning_phase()
 
     x = self._panoptic_deeplab_fusion(inputs, training=training)
 
@@ -210,7 +210,7 @@ class PanopticDeeplabHead(tf.keras.layers.Layer):
     return cls(**config)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf_keras.utils.register_keras_serializable(package='Vision')
 class SemanticHead(PanopticDeeplabHead):
   """Creates a semantic head."""
 
@@ -231,8 +231,8 @@ class SemanticHead(PanopticDeeplabHead):
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initializes a instance center head.
 
@@ -265,9 +265,9 @@ class SemanticHead(PanopticDeeplabHead):
         normalization across different replicas.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
       **kwargs: Additional keyword arguments to be passed.
     """
     super(SemanticHead, self).__init__(
@@ -294,13 +294,13 @@ class SemanticHead(PanopticDeeplabHead):
   def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the semantic head."""
     super(SemanticHead, self).build(input_shape)
-    self._classifier = tf.keras.layers.Conv2D(
+    self._classifier = tf_keras.layers.Conv2D(
         name='semantic_output',
         filters=self._config_dict['num_classes'],
         kernel_size=self._config_dict['prediction_kernel_size'],
         padding='same',
         bias_initializer=tf.zeros_initializer(),
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.01),
         kernel_regularizer=self._config_dict['kernel_regularizer'],
         bias_regularizer=self._config_dict['bias_regularizer'])
 
@@ -310,13 +310,13 @@ class SemanticHead(PanopticDeeplabHead):
     """Forward pass of the head."""
 
     if training is None:
-      training = tf.keras.backend.learning_phase()
+      training = tf_keras.backend.learning_phase()
     x = super(SemanticHead, self).call(inputs, training=training)
     outputs = self._classifier(x)
     return outputs
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf_keras.utils.register_keras_serializable(package='Vision')
 class InstanceHead(PanopticDeeplabHead):
   """Creates a instance head."""
 
@@ -336,8 +336,8 @@ class InstanceHead(PanopticDeeplabHead):
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initializes a instance center head.
 
@@ -368,9 +368,9 @@ class InstanceHead(PanopticDeeplabHead):
         normalization across different replicas.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
       **kwargs: Additional keyword arguments to be passed.
     """
     super(InstanceHead, self).__init__(
@@ -396,23 +396,23 @@ class InstanceHead(PanopticDeeplabHead):
   def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the instance head."""
     super(InstanceHead, self).build(input_shape)
-    self._instance_center_prediction_conv = tf.keras.layers.Conv2D(
+    self._instance_center_prediction_conv = tf_keras.layers.Conv2D(
         name='instance_centers_heatmap',
         filters=1,
         kernel_size=self._config_dict['prediction_kernel_size'],
         padding='same',
         bias_initializer=tf.zeros_initializer(),
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.01),
         kernel_regularizer=self._config_dict['kernel_regularizer'],
         bias_regularizer=self._config_dict['bias_regularizer'])
 
-    self._instance_center_regression_conv = tf.keras.layers.Conv2D(
+    self._instance_center_regression_conv = tf_keras.layers.Conv2D(
         name='instance_centers_offset',
         filters=2,
         kernel_size=self._config_dict['prediction_kernel_size'],
         padding='same',
         bias_initializer=tf.zeros_initializer(),
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.01),
         kernel_regularizer=self._config_dict['kernel_regularizer'],
         bias_regularizer=self._config_dict['bias_regularizer'])
 
@@ -422,7 +422,7 @@ class InstanceHead(PanopticDeeplabHead):
     """Forward pass of the head."""
 
     if training is None:
-      training = tf.keras.backend.learning_phase()
+      training = tf_keras.backend.learning_phase()
 
     x = super(InstanceHead, self).call(inputs, training=training)
     instance_centers_heatmap = self._instance_center_prediction_conv(x)

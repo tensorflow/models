@@ -16,7 +16,7 @@
 import os
 from typing import Any, Dict, Mapping, Text
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import export_base
 
@@ -41,7 +41,7 @@ class ExportBaseTest(tf.test.TestCase):
 
   def test_export_module(self):
     tmp_dir = self.get_temp_dir()
-    model = tf.keras.layers.Dense(2)
+    model = tf_keras.layers.Dense(2)
     inputs = tf.ones([2, 4], tf.float32)
     expected_output = model(inputs, training=False)
     module = TestModule(params=None, model=model)
@@ -67,7 +67,7 @@ class ExportBaseTest(tf.test.TestCase):
 
   def test_custom_inference_step(self):
     tmp_dir = self.get_temp_dir()
-    model = tf.keras.layers.Dense(2)
+    model = tf_keras.layers.Dense(2)
     inputs = tf.ones([2, 4], tf.float32)
 
     def _inference_step(inputs, model):

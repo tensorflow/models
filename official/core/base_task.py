@@ -18,7 +18,7 @@ import functools
 from typing import Optional
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import config_definitions
 from official.modeling import optimization
@@ -110,7 +110,7 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
 
     return optimizer
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """[Optional] A callback function used as CheckpointManager's init_fn.
 
     This function will be called when no checkpoint is found for the model.
@@ -141,7 +141,7 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     logging.info("Finished loading pretrained checkpoint from %s",
                  ckpt_dir_or_file)
 
-  def build_model(self) -> tf.keras.Model:
+  def build_model(self) -> tf_keras.Model:
     """[Optional] Creates model architecture.
 
     Returns:
@@ -222,8 +222,8 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
 
   def train_step(self,
                  inputs,
-                 model: tf.keras.Model,
-                 optimizer: tf.keras.optimizers.Optimizer,
+                 model: tf_keras.Model,
+                 optimizer: tf_keras.optimizers.Optimizer,
                  metrics=None):
     """Does forward and backward.
 
@@ -260,14 +260,14 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
       # For mixed precision, when a LossScaleOptimizer is used, the loss is
       # scaled to avoid numeric underflow.
       if isinstance(optimizer,
-                    tf.keras.mixed_precision.LossScaleOptimizer):
+                    tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
 
     if isinstance(optimizer,
-                  tf.keras.mixed_precision.LossScaleOptimizer):
+                  tf_keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
     logs = {self.loss: loss}
@@ -279,7 +279,7 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
       logs.update({m.name: m.result() for m in model.metrics})
     return logs
 
-  def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
+  def validation_step(self, inputs, model: tf_keras.Model, metrics=None):
     """Validation step.
 
     With distribution strategies, this method runs on devices.
@@ -308,7 +308,7 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
       logs.update({m.name: m.result() for m in model.metrics})
     return logs
 
-  def inference_step(self, inputs, model: tf.keras.Model):
+  def inference_step(self, inputs, model: tf_keras.Model):
     """Performs the forward step.
 
     With distribution strategies, this method runs on devices.

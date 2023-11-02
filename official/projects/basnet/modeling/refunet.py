@@ -13,12 +13,12 @@
 # limitations under the License.
 
 """RefUNet model."""
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.projects.basnet.modeling import nn_blocks
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class RefUnet(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class RefUnet(tf_keras.layers.Layer):
   """Residual Refinement Module of BASNet.
 
   Boundary-Aware network (BASNet) were proposed in:
@@ -46,9 +46,9 @@ class RefUnet(tf.keras.layers.Layer):
       norm_epsilon: `float` small float added to variance to avoid dividing by
         zero.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
                           Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2d.
                         Default to None.
       **kwargs: keyword arguments to be passed.
     """
@@ -63,19 +63,19 @@ class RefUnet(tf.keras.layers.Layer):
         'kernel_regularizer': kernel_regularizer,
         'bias_regularizer': bias_regularizer,
     }
-    self._concat = tf.keras.layers.Concatenate(axis=-1)
-    self._sigmoid = tf.keras.layers.Activation(activation='sigmoid')
-    self._maxpool = tf.keras.layers.MaxPool2D(
+    self._concat = tf_keras.layers.Concatenate(axis=-1)
+    self._sigmoid = tf_keras.layers.Activation(activation='sigmoid')
+    self._maxpool = tf_keras.layers.MaxPool2D(
         pool_size=2,
         strides=2,
         padding='valid')
-    self._upsample = tf.keras.layers.UpSampling2D(
+    self._upsample = tf_keras.layers.UpSampling2D(
         size=2,
         interpolation='bilinear')
 
   def build(self, input_shape):
     """Creates the variables of the BASNet decoder."""
-    conv_op = tf.keras.layers.Conv2D
+    conv_op = tf_keras.layers.Conv2D
     conv_kwargs = {
         'kernel_size': 3,
         'strides': 1,

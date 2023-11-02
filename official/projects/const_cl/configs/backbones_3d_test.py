@@ -14,7 +14,7 @@
 
 """Tests for backbones_3d."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.const_cl.configs import backbones_3d
 

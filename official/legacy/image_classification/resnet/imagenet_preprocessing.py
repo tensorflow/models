@@ -38,7 +38,7 @@ from __future__ import print_function
 import os
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 DEFAULT_IMAGE_SIZE = 224
 NUM_CHANNELS = 3
@@ -257,13 +257,13 @@ def get_parse_record_fn(use_keras_image_data_format=False):
   This is useful by handling different types of Keras models. For instance,
   the current resnet_model.resnet50 input format is always channel-last,
   whereas the keras_applications mobilenet input format depends on
-  tf.keras.backend.image_data_format(). We should set
+  tf_keras.backend.image_data_format(). We should set
   use_keras_image_data_format=False for the former and True for the latter.
 
   Args:
     use_keras_image_data_format: A boolean denoting whether data format is keras
       backend image data format. If False, the image format is channel-last. If
-      True, the image format matches tf.keras.backend.image_data_format().
+      True, the image format matches tf_keras.backend.image_data_format().
 
   Returns:
     Function to use for parsing the records.
@@ -272,7 +272,7 @@ def get_parse_record_fn(use_keras_image_data_format=False):
   def parse_record_fn(raw_record, is_training, dtype):
     image, label = parse_record(raw_record, is_training, dtype)
     if use_keras_image_data_format:
-      if tf.keras.backend.image_data_format() == 'channels_first':
+      if tf_keras.backend.image_data_format() == 'channels_first':
         image = tf.transpose(image, perm=[2, 0, 1])
     return image, label
 

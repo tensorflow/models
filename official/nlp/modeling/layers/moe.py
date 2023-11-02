@@ -17,16 +17,16 @@
 import dataclasses
 from typing import Callable, Optional, Tuple
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
 
-_InitializerType = tf.keras.initializers.Initializer
+_InitializerType = tf_keras.initializers.Initializer
 
 
-_DEFAULT_KERNEL_INITIALIZER = tf.keras.initializers.TruncatedNormal(stddev=2e-2)
-_DEFAULT_BIAS_INITIALIZER = tf.keras.initializers.Zeros()
+_DEFAULT_KERNEL_INITIALIZER = tf_keras.initializers.TruncatedNormal(stddev=2e-2)
+_DEFAULT_BIAS_INITIALIZER = tf_keras.initializers.Zeros()
 
 
 ################## Routers (gating functions) ##################
@@ -75,7 +75,7 @@ class RouterMask:
 RouterOutput = RouterMask
 
 
-class Router(tf.keras.layers.Layer):
+class Router(tf_keras.layers.Layer):
   """Abstract base router class, defining router API and inner workings.
 
   Computations are performed in float32 for stability, and returned after
@@ -127,7 +127,7 @@ class Router(tf.keras.layers.Layer):
     self.router_z_loss_weight = router_z_loss_weight
     self._export_metrics = export_metrics
 
-    self.router_weights = tf.keras.layers.Dense(
+    self.router_weights = tf_keras.layers.Dense(
         num_experts,
         use_bias=use_bias,
         kernel_initializer=tf_utils.clone_initializer(kernel_initializer),
@@ -147,13 +147,13 @@ class Router(tf.keras.layers.Layer):
         <float>[num_groups, tokens_per_group, hidden_dim].
       expert_capacity: Each group will send this many tokens to each expert.
       training: If true, apply jitter noise during routing. If not provided
-        taken from tf.keras.backend.
+        taken from tf_keras.backend.
 
     Returns:
       Router indices or mask arrays (depending on router type).
     """
     if training is None:
-      training = tf.keras.backend.learning_phase()
+      training = tf_keras.backend.learning_phase()
 
     # inputs shape <float>[num_groups, tokens_per_group, hidden_dim]
     router_probs, router_logits = self._compute_router_probabilities(
@@ -195,7 +195,7 @@ class Router(tf.keras.layers.Layer):
           dtype=inputs.dtype)
     # inputs <float>, router_logits <float32>
     router_logits = self.router_weights(inputs)
-    router_probs = tf.keras.activations.softmax(router_logits, axis=-1)
+    router_probs = tf_keras.activations.softmax(router_logits, axis=-1)
     return router_probs, router_logits
 
   def _compute_routing_instructions(self, router_probs: tf.Tensor,
@@ -321,7 +321,7 @@ class ExpertsChooseMaskedRouter(MaskedRouter):
 ################## Model layers ##################
 
 
-class FeedForward(tf.keras.layers.Layer):
+class FeedForward(tf_keras.layers.Layer):
   """Feed-forward layer - position independent, dense, nonlinear transformation.
 
   Typically used in an MLP Transformer block.
@@ -333,7 +333,7 @@ class FeedForward(tf.keras.layers.Layer):
       *,
       inner_dropout: float = 0.0,
       output_dropout: float = 0.0,
-      activation: Callable[[tf.Tensor], tf.Tensor] = tf.keras.activations.gelu,
+      activation: Callable[[tf.Tensor], tf.Tensor] = tf_keras.activations.gelu,
       kernel_initializer: _InitializerType = _DEFAULT_KERNEL_INITIALIZER,
       bias_initializer: _InitializerType = _DEFAULT_BIAS_INITIALIZER,
       name: str = "feed_forward",
@@ -356,18 +356,18 @@ class FeedForward(tf.keras.layers.Layer):
     self.kernel_initializer = kernel_initializer
     self.bias_initializer = bias_initializer
 
-    self.intermediate_layer = tf.keras.layers.Dense(
+    self.intermediate_layer = tf_keras.layers.Dense(
         d_ff,
         kernel_initializer=tf_utils.clone_initializer(self.kernel_initializer),
         bias_initializer=tf_utils.clone_initializer(self.bias_initializer),
         name="intermediate")
-    self.inner_dropout_layer = tf.keras.layers.Dropout(
+    self.inner_dropout_layer = tf_keras.layers.Dropout(
         inner_dropout)
-    self.output_dropout_layer = tf.keras.layers.Dropout(output_dropout)
+    self.output_dropout_layer = tf_keras.layers.Dropout(output_dropout)
 
   def build(self, input_shape: Tuple[int, int, int]):
     """Creates the input shape dependent output weight variables."""
-    self.output_layer = tf.keras.layers.Dense(
+    self.output_layer = tf_keras.layers.Dense(
         input_shape[-1],
         kernel_initializer=tf_utils.clone_initializer(self.kernel_initializer),
         bias_initializer=tf_utils.clone_initializer(self.bias_initializer),
@@ -396,7 +396,7 @@ class FeedForward(tf.keras.layers.Layer):
     return x
 
 
-class FeedForwardExperts(tf.keras.layers.Layer):
+class FeedForwardExperts(tf_keras.layers.Layer):
   """Feed-forward layer with multiple experts.
 
   Note that call() takes inputs with shape
@@ -416,7 +416,7 @@ class FeedForwardExperts(tf.keras.layers.Layer):
       *,
       inner_dropout: float = 0.0,
       output_dropout: float = 0.0,
-      activation: Callable[[tf.Tensor], tf.Tensor] = tf.keras.activations.gelu,
+      activation: Callable[[tf.Tensor], tf.Tensor] = tf_keras.activations.gelu,
       kernel_initializer: _InitializerType = _DEFAULT_KERNEL_INITIALIZER,
       bias_initializer: _InitializerType = _DEFAULT_BIAS_INITIALIZER,
       name: str = "experts",
@@ -442,16 +442,16 @@ class FeedForwardExperts(tf.keras.layers.Layer):
     self.kernel_initializer = kernel_initializer
     self.bias_initializer = bias_initializer
 
-    self.intermediate_layer = tf.keras.layers.EinsumDense(
+    self.intermediate_layer = tf_keras.layers.EinsumDense(
         "gech,ehf->gecf",
         output_shape=(self.num_experts, None, d_ff),
         bias_axes="ef",
         kernel_initializer=tf_utils.clone_initializer(self.kernel_initializer),
         bias_initializer=tf_utils.clone_initializer(self.bias_initializer),
         name="intermediate")
-    self.inner_dropout_layer = tf.keras.layers.Dropout(
+    self.inner_dropout_layer = tf_keras.layers.Dropout(
         inner_dropout)
-    self.output_dropout_layer = tf.keras.layers.Dropout(output_dropout)
+    self.output_dropout_layer = tf_keras.layers.Dropout(output_dropout)
 
   def build(self, input_shape: Tuple[int, int, int, int]):
     """Creates the input shape dependent output weight variables."""
@@ -460,7 +460,7 @@ class FeedForwardExperts(tf.keras.layers.Layer):
           f"Input shape {input_shape} is inconsistent with num_experts "
           f"{self.num_experts}.")
 
-    self.output_layer = tf.keras.layers.EinsumDense(
+    self.output_layer = tf_keras.layers.EinsumDense(
         "gecf,efh->gech",
         output_shape=(self.num_experts, None, input_shape[-1]),
         bias_axes="eh",
@@ -491,7 +491,7 @@ class FeedForwardExperts(tf.keras.layers.Layer):
     return x
 
 
-class MoeLayer(tf.keras.layers.Layer):
+class MoeLayer(tf_keras.layers.Layer):
   """Sparse MoE layer with per-token routing.
 
   In this TF implementation, all experts need to fit onto a single device
@@ -569,7 +569,7 @@ class MoeLayer(tf.keras.layers.Layer):
       inputs: Batch of input embeddings of shape
         <float>[batch_size, seq_length, hidden_dim].
       training: Only apply dropout and jitter noise during training. If not
-        provided taken from tf.keras.backend.
+        provided taken from tf_keras.backend.
 
     Returns:
       Transformed inputs with same shape as inputs:
@@ -579,7 +579,7 @@ class MoeLayer(tf.keras.layers.Layer):
       ValueError if we cannot find a group_size satisfying given requirements.
     """
     if training is None:
-      training = tf.keras.backend.learning_phase()
+      training = tf_keras.backend.learning_phase()
 
     # inputs shape [batch_size, seq_length, hidden_dim]
     batch_size, seq_length, hidden_dim = inputs.shape
@@ -653,7 +653,7 @@ class MoeLayer(tf.keras.layers.Layer):
     return combined_outputs
 
 
-class MoeLayerWithBackbone(tf.keras.layers.Layer):
+class MoeLayerWithBackbone(tf_keras.layers.Layer):
   """Sparse MoE layer plus a FeedForward layer evaluated for all tokens.
 
   Uses Keras add_loss() and add_metric() APIs.
@@ -667,7 +667,7 @@ class MoeLayerWithBackbone(tf.keras.layers.Layer):
       inner_dropout: float = 0.0,
       output_dropout: float = 0.0,
       activation: Callable[[tf.Tensor],
-                           tf.Tensor] = tf.keras.activations.gelu,
+                           tf.Tensor] = tf_keras.activations.gelu,
       kernel_initializer: _InitializerType = _DEFAULT_KERNEL_INITIALIZER,
       bias_initializer: _InitializerType = _DEFAULT_BIAS_INITIALIZER,
       name: str = "moe_with_backbone",
@@ -710,7 +710,7 @@ class MoeLayerWithBackbone(tf.keras.layers.Layer):
       inputs: Batch of input embeddings of shape
         <float>[batch_size, seq_length, hidden_dim].
       training: Only apply dropout and jitter noise during training. If not
-        provided taken from tf.keras.backend.
+        provided taken from tf_keras.backend.
 
     Returns:
       Transformed inputs with same shape as inputs:

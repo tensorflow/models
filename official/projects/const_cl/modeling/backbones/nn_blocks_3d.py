@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Contains common building blocks for 3D networks."""
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling.layers import nn_blocks_3d
 from official.vision.modeling.layers import nn_layers
@@ -25,13 +25,13 @@ class BottleneckBlock3D(nn_blocks_3d.BottleneckBlock3D):
   """Creates a 3D bottleneck block."""
 
   def build(self, input_shape):
-    self._shortcut_maxpool = tf.keras.layers.MaxPool3D(
+    self._shortcut_maxpool = tf_keras.layers.MaxPool3D(
         pool_size=[1, 1, 1],
         strides=[
             self._temporal_strides, self._spatial_strides, self._spatial_strides
         ])
 
-    self._shortcut_conv = tf.keras.layers.Conv3D(
+    self._shortcut_conv = tf_keras.layers.Conv3D(
         filters=4 * self._filters,
         kernel_size=1,
         strides=[
@@ -48,7 +48,7 @@ class BottleneckBlock3D(nn_blocks_3d.BottleneckBlock3D):
         epsilon=self._norm_epsilon,
         name='shortcut_conv/batch_norm')
 
-    self._temporal_conv = tf.keras.layers.Conv3D(
+    self._temporal_conv = tf_keras.layers.Conv3D(
         filters=self._filters,
         kernel_size=[self._temporal_kernel_size, 1, 1],
         strides=[self._temporal_strides, 1, 1],
@@ -64,7 +64,7 @@ class BottleneckBlock3D(nn_blocks_3d.BottleneckBlock3D):
         epsilon=self._norm_epsilon,
         name='temporal_conv/batch_norm')
 
-    self._spatial_conv = tf.keras.layers.Conv3D(
+    self._spatial_conv = tf_keras.layers.Conv3D(
         filters=self._filters,
         kernel_size=[1, 3, 3],
         strides=[1, self._spatial_strides, self._spatial_strides],
@@ -80,7 +80,7 @@ class BottleneckBlock3D(nn_blocks_3d.BottleneckBlock3D):
         epsilon=self._norm_epsilon,
         name='spatial_conv/batch_norm')
 
-    self._expand_conv = tf.keras.layers.Conv3D(
+    self._expand_conv = tf_keras.layers.Conv3D(
         filters=4 * self._filters,
         kernel_size=[1, 1, 1],
         strides=[1, 1, 1],

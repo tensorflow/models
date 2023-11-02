@@ -15,14 +15,14 @@
 """Contains common building blocks for simclr neural networks."""
 from typing import Text, Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
-regularizers = tf.keras.regularizers
+regularizers = tf_keras.regularizers
 
 
-class DenseBN(tf.keras.layers.Layer):
+class DenseBN(tf_keras.layers.Layer):
   """Modified Dense layer to help build simclr system.
 
   The layer is a standards combination of Dense, BatchNorm and Activation.
@@ -54,9 +54,9 @@ class DenseBN(tf.keras.layers.Layer):
         zero.
       activation: `str` name of the activation function.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
         Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2d.
         Default to None.
       name: `str`, name of the layer.
       **kwargs: keyword arguments to be passed.
@@ -77,10 +77,10 @@ class DenseBN(tf.keras.layers.Layer):
     self._name = name
 
     if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
+      self._norm = tf_keras.layers.experimental.SyncBatchNormalization
     else:
-      self._norm = tf.keras.layers.BatchNormalization
-    if tf.keras.backend.image_data_format() == 'channels_last':
+      self._norm = tf_keras.layers.BatchNormalization
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -106,7 +106,7 @@ class DenseBN(tf.keras.layers.Layer):
     return dict(list(base_config.items()) + list(config.items()))
 
   def build(self, input_shape):
-    self._dense0 = tf.keras.layers.Dense(
+    self._dense0 = tf_keras.layers.Dense(
         self._output_dim,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,

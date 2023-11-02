@@ -15,7 +15,7 @@
 """Contains definitions of ROI generator."""
 from typing import Optional, Mapping
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops import box_ops
 from official.vision.ops import nms
@@ -176,8 +176,8 @@ def _multilevel_propose_rois(raw_boxes: Mapping[str, tf.Tensor],
     return selected_rois, selected_roi_scores
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MultilevelROIGenerator(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MultilevelROIGenerator(tf_keras.layers.Layer):
   """Proposes RoIs for the second stage processing."""
 
   def __init__(self,

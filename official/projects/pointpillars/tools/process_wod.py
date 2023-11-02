@@ -21,7 +21,7 @@ from absl import flags
 from absl import logging
 import apache_beam as beam
 from apache_beam.io import tfrecordio
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.projects.pointpillars.configs import pointpillars

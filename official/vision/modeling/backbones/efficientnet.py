@@ -19,7 +19,7 @@ from typing import Any, List, Tuple
 
 # Import libraries
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.modeling import tf_utils
@@ -27,7 +27,7 @@ from official.vision.modeling.backbones import factory
 from official.vision.modeling.layers import nn_blocks
 from official.vision.modeling.layers import nn_layers
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 # The fixed EfficientNet-B0 architecture discovered by NAS.
 # Each element represents a specification of a building block:
@@ -92,8 +92,8 @@ def block_spec_decoder(specs: List[Tuple[Any, ...]], width_scale: float,
   return decoded_specs
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class EfficientNet(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class EfficientNet(tf_keras.Model):
   """Creates an EfficientNet family model.
 
   This implements the EfficientNet model from:
@@ -104,13 +104,13 @@ class EfficientNet(tf.keras.Model):
 
   def __init__(self,
                model_id: str,
-               input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
+               input_specs: tf_keras.layers.InputSpec = layers.InputSpec(
                    shape=[None, None, None, 3]),
                se_ratio: float = 0.0,
                stochastic_depth_drop_rate: float = 0.0,
                kernel_initializer: str = 'VarianceScaling',
-               kernel_regularizer: tf.keras.regularizers.Regularizer = None,
-               bias_regularizer: tf.keras.regularizers.Regularizer = None,
+               kernel_regularizer: tf_keras.regularizers.Regularizer = None,
+               bias_regularizer: tf_keras.regularizers.Regularizer = None,
                activation: str = 'relu',
                se_inner_activation: str = 'relu',
                use_sync_bn: bool = False,
@@ -121,15 +121,15 @@ class EfficientNet(tf.keras.Model):
 
     Args:
       model_id: A `str` of model ID of EfficientNet.
-      input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
+      input_specs: A `tf_keras.layers.InputSpec` of the input tensor.
       se_ratio: A `float` of squeeze and excitation ratio for inverted
         bottleneck blocks.
       stochastic_depth_drop_rate: A `float` of drop rate for drop connect layer.
       kernel_initializer: A `str` for kernel initializer of convolutional
         layers.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
       activation: A `str` of name of the activation function.
       se_inner_activation: A `str` of name of the activation function used in
@@ -153,13 +153,13 @@ class EfficientNet(tf.keras.Model):
     self._bias_regularizer = bias_regularizer
     self._norm = layers.BatchNormalization
 
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       bn_axis = -1
     else:
       bn_axis = 1
 
     # Build EfficientNet.
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
+    inputs = tf_keras.Input(shape=input_specs.shape[1:])
     width_scale = SCALING_MAP[model_id]['width_scale']
     depth_scale = SCALING_MAP[model_id]['depth_scale']
 
@@ -305,11 +305,11 @@ class EfficientNet(tf.keras.Model):
 
 @factory.register_backbone_builder('efficientnet')
 def build_efficientnet(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None,
-    se_inner_activation: str = 'relu') -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None,
+    se_inner_activation: str = 'relu') -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds EfficientNet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()

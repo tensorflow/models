@@ -17,7 +17,7 @@
 import dataclasses
 from typing import List, Mapping, Text
 from seqeval import metrics as seqeval_metrics
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import config_definitions as cfg
@@ -62,7 +62,7 @@ class ClassificationExampleConfig(cfg.TaskConfig):
 class ClassificationExampleTask(base_task.Task):
   """Task object for classification."""
 
-  def build_model(self) -> tf.keras.Model:
+  def build_model(self) -> tf_keras.Model:
     if self.task_config.hub_module_url and self.task_config.init_checkpoint:
       raise ValueError('At most one of `hub_module_url` and '
                        '`init_checkpoint` can be specified.')
@@ -75,12 +75,12 @@ class ClassificationExampleTask(base_task.Task):
     return models.BertClassifier(
         network=encoder_network,
         num_classes=len(self.task_config.class_names),
-        initializer=tf.keras.initializers.TruncatedNormal(
+        initializer=tf_keras.initializers.TruncatedNormal(
             stddev=self.task_config.model.head_initializer_range),
         dropout_rate=self.task_config.model.head_dropout)
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
-    loss = tf.keras.losses.sparse_categorical_crossentropy(
+    loss = tf_keras.losses.sparse_categorical_crossentropy(
         labels, tf.cast(model_outputs, tf.float32), from_logits=True)
     return tf_utils.safe_mean(loss)
 
@@ -92,7 +92,7 @@ class ClassificationExampleTask(base_task.Task):
     return loader.load(input_context)
 
   def inference_step(self, inputs,
-                     model: tf.keras.Model) -> Mapping[str, tf.Tensor]:
+                     model: tf_keras.Model) -> Mapping[str, tf.Tensor]:
     """Performs the forward step."""
     logits = model(inputs, training=False)
     return {
@@ -102,7 +102,7 @@ class ClassificationExampleTask(base_task.Task):
 
   def validation_step(self,
                       inputs,
-                      model: tf.keras.Model,
+                      model: tf_keras.Model,
                       metrics=None) -> Mapping[str, tf.Tensor]:
     """Validatation step.
 

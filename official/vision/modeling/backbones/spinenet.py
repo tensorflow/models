@@ -20,7 +20,7 @@ from typing import Any, List, Optional, Tuple
 # Import libraries
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.modeling import tf_utils
@@ -29,7 +29,7 @@ from official.vision.modeling.layers import nn_blocks
 from official.vision.modeling.layers import nn_layers
 from official.vision.ops import spatial_transform_ops
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 FILTER_SIZE_MAP = {
     1: 32,
@@ -124,8 +124,8 @@ def build_block_specs(
   return [BlockSpec(*b) for b in block_specs]
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class SpineNet(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class SpineNet(tf_keras.Model):
   """Creates a SpineNet family model.
 
   This implements:
@@ -137,7 +137,7 @@ class SpineNet(tf.keras.Model):
 
   def __init__(
       self,
-      input_specs: tf.keras.layers.InputSpec = tf.keras.layers.InputSpec(
+      input_specs: tf_keras.layers.InputSpec = tf_keras.layers.InputSpec(
           shape=[None, None, None, 3]),
       min_level: int = 3,
       max_level: int = 7,
@@ -148,8 +148,8 @@ class SpineNet(tf.keras.Model):
       filter_size_scale: float = 1.0,
       init_stochastic_depth_rate: float = 0.0,
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       activation: str = 'relu',
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
@@ -158,7 +158,7 @@ class SpineNet(tf.keras.Model):
     """Initializes a SpineNet model.
 
     Args:
-      input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
+      input_specs: A `tf_keras.layers.InputSpec` of the input tensor.
       min_level: An `int` of min level for output mutiscale features.
       max_level: An `int` of max level for output mutiscale features.
       block_specs: A list of block specifications for the SpineNet model
@@ -173,9 +173,9 @@ class SpineNet(tf.keras.Model):
         of parameters or computation cost of the model.
       init_stochastic_depth_rate: A `float` of initial stochastic depth rate.
       kernel_initializer: A str for kernel initializer of convolutional layers.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
       activation: A `str` name of the activation function.
       use_sync_bn: If True, use synchronized batch normalization.
@@ -207,13 +207,13 @@ class SpineNet(tf.keras.Model):
     self._set_activation_fn(activation)
     self._norm = layers.BatchNormalization
 
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
 
     # Build SpineNet.
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
+    inputs = tf_keras.Input(shape=input_specs.shape[1:])
 
     net = self._build_stem(inputs=inputs)
     input_width = input_specs.shape[2]
@@ -547,10 +547,10 @@ class SpineNet(tf.keras.Model):
 
 @factory.register_backbone_builder('spinenet')
 def build_spinenet(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:
   """Builds SpineNet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()

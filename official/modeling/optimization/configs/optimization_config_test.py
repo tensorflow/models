@@ -14,7 +14,7 @@
 
 """Tests for optimization_config.py."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling.optimization.configs import learning_rate_config as lr_cfg
 from official.modeling.optimization.configs import optimization_config

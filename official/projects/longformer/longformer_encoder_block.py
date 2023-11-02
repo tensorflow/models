@@ -14,12 +14,12 @@
 
 """Longformer attention layer. Modified From huggingface/transformers."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.projects.longformer.longformer_attention import LongformerAttention
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
-class LongformerEncoderBlock(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package="Text")
+class LongformerEncoderBlock(tf_keras.layers.Layer):
   """LongformerEncoderBlock.
 
     Args:
@@ -96,19 +96,19 @@ class LongformerEncoderBlock(tf.keras.layers.Layer):
     self._output_dropout = output_dropout
     self._output_dropout_rate = output_dropout
     self._output_range = output_range
-    self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
-    self._bias_initializer = tf.keras.initializers.get(bias_initializer)
-    self._kernel_regularizer = tf.keras.regularizers.get(kernel_regularizer)
-    self._bias_regularizer = tf.keras.regularizers.get(bias_regularizer)
-    self._activity_regularizer = tf.keras.regularizers.get(activity_regularizer)
-    self._kernel_constraint = tf.keras.constraints.get(kernel_constraint)
-    self._bias_constraint = tf.keras.constraints.get(bias_constraint)
+    self._kernel_initializer = tf_keras.initializers.get(kernel_initializer)
+    self._bias_initializer = tf_keras.initializers.get(bias_initializer)
+    self._kernel_regularizer = tf_keras.regularizers.get(kernel_regularizer)
+    self._bias_regularizer = tf_keras.regularizers.get(bias_regularizer)
+    self._activity_regularizer = tf_keras.regularizers.get(activity_regularizer)
+    self._kernel_constraint = tf_keras.constraints.get(kernel_constraint)
+    self._bias_constraint = tf_keras.constraints.get(bias_constraint)
     self._use_bias = use_bias
     self._norm_first = norm_first
     self._norm_epsilon = norm_epsilon
     self._inner_dropout = inner_dropout
     if attention_initializer:
-      self._attention_initializer = tf.keras.initializers.get(
+      self._attention_initializer = tf_keras.initializers.get(
           attention_initializer)
     else:
       self._attention_initializer = self._kernel_initializer
@@ -154,39 +154,39 @@ class LongformerEncoderBlock(tf.keras.layers.Layer):
         name="self_attention",
         **common_kwargs)
     # TFLongformerSelfOutput.dropout
-    self._attention_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
+    self._attention_dropout = tf_keras.layers.Dropout(rate=self._output_dropout)
     # Use float32 in layernorm for numeric stability.
     # It is probably safe in mixed_float16, but we haven't validated this yet.
     # TFLongformerSelfOutput.Layernorm
     self._attention_layer_norm = (
-        tf.keras.layers.LayerNormalization(
+        tf_keras.layers.LayerNormalization(
             name="self_attention_layer_norm",
             axis=-1,
             epsilon=self._norm_epsilon,
             dtype=tf.float32))
     # TFLongformerIntermediate
     # TFLongformerIntermediate.dense
-    self._intermediate_dense = tf.keras.layers.EinsumDense(
+    self._intermediate_dense = tf_keras.layers.EinsumDense(
         einsum_equation,
         output_shape=(None, self._inner_dim),
         bias_axes="d",
         kernel_initializer=self._kernel_initializer,
         name="intermediate",
         **common_kwargs)
-    policy = tf.keras.mixed_precision.global_policy()
+    policy = tf_keras.mixed_precision.global_policy()
     if policy.name == "mixed_bfloat16":
       # bfloat16 causes BERT with the LAMB optimizer to not converge
       # as well, so we use float32.
       # TODO(b/154538392): Investigate this.
       policy = tf.float32
     # TFLongformerIntermediate.intermediate_act_fn
-    self._intermediate_activation_layer = tf.keras.layers.Activation(
+    self._intermediate_activation_layer = tf_keras.layers.Activation(
         self._inner_activation, dtype=policy)
-    self._inner_dropout_layer = tf.keras.layers.Dropout(
+    self._inner_dropout_layer = tf_keras.layers.Dropout(
         rate=self._inner_dropout)
     # TFLongformerOutput
     # TFLongformerOutput.dense
-    self._output_dense = tf.keras.layers.EinsumDense(
+    self._output_dense = tf_keras.layers.EinsumDense(
         einsum_equation,
         output_shape=(None, hidden_size),
         bias_axes="d",
@@ -194,10 +194,10 @@ class LongformerEncoderBlock(tf.keras.layers.Layer):
         kernel_initializer=self._kernel_initializer,
         **common_kwargs)
     # TFLongformerOutput.dropout
-    self._output_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
+    self._output_dropout = tf_keras.layers.Dropout(rate=self._output_dropout)
     # Use float32 in layernorm for numeric stability.
     # TFLongformerOutput.layernorm
-    self._output_layer_norm = tf.keras.layers.LayerNormalization(
+    self._output_layer_norm = tf_keras.layers.LayerNormalization(
         name="output_layer_norm",
         axis=-1,
         epsilon=self._norm_epsilon,
@@ -220,19 +220,19 @@ class LongformerEncoderBlock(tf.keras.layers.Layer):
         "output_range":
             self._output_range,
         "kernel_initializer":
-            tf.keras.initializers.serialize(self._kernel_initializer),
+            tf_keras.initializers.serialize(self._kernel_initializer),
         "bias_initializer":
-            tf.keras.initializers.serialize(self._bias_initializer),
+            tf_keras.initializers.serialize(self._bias_initializer),
         "kernel_regularizer":
-            tf.keras.regularizers.serialize(self._kernel_regularizer),
+            tf_keras.regularizers.serialize(self._kernel_regularizer),
         "bias_regularizer":
-            tf.keras.regularizers.serialize(self._bias_regularizer),
+            tf_keras.regularizers.serialize(self._bias_regularizer),
         "activity_regularizer":
-            tf.keras.regularizers.serialize(self._activity_regularizer),
+            tf_keras.regularizers.serialize(self._activity_regularizer),
         "kernel_constraint":
-            tf.keras.constraints.serialize(self._kernel_constraint),
+            tf_keras.constraints.serialize(self._kernel_constraint),
         "bias_constraint":
-            tf.keras.constraints.serialize(self._bias_constraint),
+            tf_keras.constraints.serialize(self._bias_constraint),
         "use_bias":
             self._use_bias,
         "norm_first":
@@ -242,7 +242,7 @@ class LongformerEncoderBlock(tf.keras.layers.Layer):
         "inner_dropout":
             self._inner_dropout,
         "attention_initializer":
-            tf.keras.initializers.serialize(self._attention_initializer),
+            tf_keras.initializers.serialize(self._attention_initializer),
         "attention_axes":
             self._attention_axes,
     }

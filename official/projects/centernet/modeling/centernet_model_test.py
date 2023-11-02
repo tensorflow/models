@@ -15,7 +15,7 @@
 """Test for centernet detection model."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.centernet.configs import backbones
 from official.projects.centernet.modeling import centernet_model
@@ -29,7 +29,7 @@ class CenterNetTest(parameterized.TestCase, tf.test.TestCase):
 
   def testBuildCenterNet(self):
     backbone = hourglass.build_hourglass(
-        input_specs=tf.keras.layers.InputSpec(shape=[None, 512, 512, 3]),
+        input_specs=tf_keras.layers.InputSpec(shape=[None, 512, 512, 3]),
         backbone_config=backbones.Backbone(type='hourglass'),
         norm_activation_config=common.NormActivation(use_sync_bn=True)
     )

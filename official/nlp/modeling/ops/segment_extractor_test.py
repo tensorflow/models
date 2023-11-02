@@ -17,7 +17,7 @@
 import functools
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.ops import segment_extractor
 

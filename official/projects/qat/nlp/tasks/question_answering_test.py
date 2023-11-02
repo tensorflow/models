@@ -17,7 +17,7 @@ import json
 import os
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.configs import encoders
 from official.nlp.data import question_answering_dataloader

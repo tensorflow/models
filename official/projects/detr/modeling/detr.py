@@ -22,7 +22,7 @@ for graph serializaiton.
 import math
 from typing import Any, List
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.projects.detr.modeling import transformer
@@ -124,7 +124,7 @@ def postprocess(outputs: dict[str, tf.Tensor]) -> dict[str, tf.Tensor]:
   return predictions
 
 
-class DETR(tf.keras.Model):
+class DETR(tf_keras.Model):
   """DETR model with Keras.
 
   DETR consists of backbone, query embedding, DETRTransformer,
@@ -154,7 +154,7 @@ class DETR(tf.keras.Model):
     self._backbone_endpoint_name = backbone_endpoint_name
 
   def build(self, input_shape=None):
-    self._input_proj = tf.keras.layers.Conv2D(
+    self._input_proj = tf_keras.layers.Conv2D(
         self._hidden_size, 1, name="detr/conv2d")
     self._build_detection_decoder()
     super().build(input_shape)
@@ -168,32 +168,32 @@ class DETR(tf.keras.Model):
     self._query_embeddings = self.add_weight(
         "detr/query_embeddings",
         shape=[self._num_queries, self._hidden_size],
-        initializer=tf.keras.initializers.RandomNormal(mean=0., stddev=1.),
+        initializer=tf_keras.initializers.RandomNormal(mean=0., stddev=1.),
         dtype=tf.float32)
     sqrt_k = math.sqrt(1.0 / self._hidden_size)
-    self._class_embed = tf.keras.layers.Dense(
+    self._class_embed = tf_keras.layers.Dense(
         self._num_classes,
-        kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
+        kernel_initializer=tf_keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
         name="detr/cls_dense")
     self._bbox_embed = [
-        tf.keras.layers.Dense(
+        tf_keras.layers.Dense(
             self._hidden_size, activation="relu",
-            kernel_initializer=tf.keras.initializers.RandomUniform(
+            kernel_initializer=tf_keras.initializers.RandomUniform(
                 -sqrt_k, sqrt_k),
             name="detr/box_dense_0"),
-        tf.keras.layers.Dense(
+        tf_keras.layers.Dense(
             self._hidden_size, activation="relu",
-            kernel_initializer=tf.keras.initializers.RandomUniform(
+            kernel_initializer=tf_keras.initializers.RandomUniform(
                 -sqrt_k, sqrt_k),
             name="detr/box_dense_1"),
-        tf.keras.layers.Dense(
-            4, kernel_initializer=tf.keras.initializers.RandomUniform(
+        tf_keras.layers.Dense(
+            4, kernel_initializer=tf_keras.initializers.RandomUniform(
                 -sqrt_k, sqrt_k),
             name="detr/box_dense_2")]
-    self._sigmoid = tf.keras.layers.Activation("sigmoid")
+    self._sigmoid = tf_keras.layers.Activation("sigmoid")
 
   @property
-  def backbone(self) -> tf.keras.Model:
+  def backbone(self) -> tf_keras.Model:
     return self._backbone
 
   def get_config(self):
@@ -262,7 +262,7 @@ class DETR(tf.keras.Model):
     return out_list
 
 
-class DETRTransformer(tf.keras.layers.Layer):
+class DETRTransformer(tf_keras.layers.Layer):
   """Encoder and Decoder of DETR."""
 
   def __init__(self, num_encoder_layers=6, num_decoder_layers=6,

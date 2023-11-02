@@ -21,7 +21,7 @@ from typing import Any, Mapping, Optional, Text, Tuple
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.common import distribute_utils
 from official.legacy.image_classification import callbacks as custom_callbacks
 from official.legacy.image_classification import dataset_factory
@@ -38,7 +38,7 @@ from official.utils import hyperparams_flags
 from official.utils.misc import keras_utils
 
 
-def get_models() -> Mapping[str, tf.keras.Model]:
+def get_models() -> Mapping[str, tf_keras.Model]:
   """Returns the mapping from model type name to Keras model."""
   return {
       'efficientnet': efficientnet_model.EfficientNet.from_name,
@@ -64,26 +64,26 @@ def _get_metrics(one_hot: bool) -> Mapping[Text, Any]:
     return {
         # (name, metric_fn)
         'acc':
-            tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
+            tf_keras.metrics.CategoricalAccuracy(name='accuracy'),
         'accuracy':
-            tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
+            tf_keras.metrics.CategoricalAccuracy(name='accuracy'),
         'top_1':
-            tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
+            tf_keras.metrics.CategoricalAccuracy(name='accuracy'),
         'top_5':
-            tf.keras.metrics.TopKCategoricalAccuracy(
+            tf_keras.metrics.TopKCategoricalAccuracy(
                 k=5, name='top_5_accuracy'),
     }
   else:
     return {
         # (name, metric_fn)
         'acc':
-            tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
+            tf_keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
         'accuracy':
-            tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
+            tf_keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
         'top_1':
-            tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
+            tf_keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
         'top_5':
-            tf.keras.metrics.SparseTopKCategoricalAccuracy(
+            tf_keras.metrics.SparseTopKCategoricalAccuracy(
                 k=5, name='top_5_accuracy'),
     }
 
@@ -192,7 +192,7 @@ def _get_params_from_flags(flags_obj: flags.FlagValues):
   return params
 
 
-def resume_from_checkpoint(model: tf.keras.Model, model_dir: str,
+def resume_from_checkpoint(model: tf_keras.Model, model_dir: str,
                            train_steps: int) -> int:
   """Resumes from the latest checkpoint, if possible.
 
@@ -233,7 +233,7 @@ def initialize(params: base_configs.ExperimentConfig,
     data_format = 'channels_first'
   else:
     data_format = 'channels_last'
-  tf.keras.backend.set_image_data_format(data_format)
+  tf_keras.backend.set_image_data_format(data_format)
   if params.runtime.run_eagerly:
     # Enable eager execution to allow step-by-step debugging
     tf.config.experimental_run_functions_eagerly(True)
@@ -348,10 +348,10 @@ def train_and_eval(
     steps_per_loop = train_steps if params.train.set_epoch_loop else 1
 
     if one_hot:
-      loss_obj = tf.keras.losses.CategoricalCrossentropy(
+      loss_obj = tf_keras.losses.CategoricalCrossentropy(
           label_smoothing=params.model.loss.label_smoothing)
     else:
-      loss_obj = tf.keras.losses.SparseCategoricalCrossentropy()
+      loss_obj = tf_keras.losses.SparseCategoricalCrossentropy()
     model.compile(
         optimizer=optimizer,
         loss=loss_obj,

@@ -25,7 +25,7 @@ Metrics:
 
 import functools
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def _pad_tensors_to_same_length(x, y):
@@ -131,7 +131,7 @@ def padded_neg_log_perplexity(logits, labels, vocab_size):
   return -num, den
 
 
-class MetricLayer(tf.keras.layers.Layer):
+class MetricLayer(tf_keras.layers.Layer):
   """Custom a layer of metrics for Transformer model."""
 
   def __init__(self, vocab_size):
@@ -144,11 +144,11 @@ class MetricLayer(tf.keras.layers.Layer):
     neg_log_perplexity = functools.partial(
         padded_neg_log_perplexity, vocab_size=self.vocab_size)
     self.metric_mean_fns = [
-        (tf.keras.metrics.Mean("accuracy"), padded_accuracy),
-        (tf.keras.metrics.Mean("accuracy_top5"), padded_accuracy_top5),
-        (tf.keras.metrics.Mean("accuracy_per_sequence"),
+        (tf_keras.metrics.Mean("accuracy"), padded_accuracy),
+        (tf_keras.metrics.Mean("accuracy_top5"), padded_accuracy_top5),
+        (tf_keras.metrics.Mean("accuracy_per_sequence"),
          padded_sequence_accuracy),
-        (tf.keras.metrics.Mean("neg_log_perplexity"), neg_log_perplexity),
+        (tf_keras.metrics.Mean("neg_log_perplexity"), neg_log_perplexity),
     ]
     super(MetricLayer, self).build(input_shape)
 

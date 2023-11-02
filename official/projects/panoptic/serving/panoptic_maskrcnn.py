@@ -16,7 +16,7 @@
 
 from typing import List
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import config_definitions as cfg
 from official.projects.panoptic.modeling import panoptic_maskrcnn_model
@@ -29,7 +29,7 @@ class PanopticSegmentationModule(detection.DetectionModule):
   def __init__(self,
                params: cfg.ExperimentConfig,
                *,
-               model: tf.keras.Model,
+               model: tf_keras.Model,
                batch_size: int,
                input_image_size: List[int],
                num_channels: int = 3):

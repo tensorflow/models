@@ -16,7 +16,7 @@
 
 from typing import Any, Callable, Dict, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_model_optimization as tfmot
 
 from official.modeling import tf_utils
@@ -58,8 +58,8 @@ def _quantize_wrapped_layer(cls, quantize_config):
   return constructor
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class SqueezeExcitationNBitQuantized(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class SqueezeExcitationNBitQuantized(tf_keras.layers.Layer):
   """Creates a squeeze and excitation layer."""
 
   def __init__(self,
@@ -88,9 +88,9 @@ class SqueezeExcitationNBitQuantized(tf.keras.layers.Layer):
       use_3d_input: A `bool` of whether input is 2D or 3D image.
       kernel_initializer: A `str` of kernel_initializer for convolutional
         layers.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2d.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2d.
         Default to None.
       activation: A `str` name of the activation function.
       gating_activation: A `str` name of the activation function for final
@@ -113,7 +113,7 @@ class SqueezeExcitationNBitQuantized(tf.keras.layers.Layer):
     self._bias_regularizer = bias_regularizer
     self._num_bits_weight = num_bits_weight
     self._num_bits_activation = num_bits_activation
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       if not use_3d_input:
         self._spatial_axis = [1, 2]
       else:
@@ -136,13 +136,13 @@ class SqueezeExcitationNBitQuantized(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     conv2d_quantized = _quantize_wrapped_layer(
-        tf.keras.layers.Conv2D,
+        tf_keras.layers.Conv2D,
         configs.DefaultNBitConvQuantizeConfig(
             ['kernel'], ['activation'], False,
             num_bits_weight=self._num_bits_weight,
             num_bits_activation=self._num_bits_activation))
     conv2d_quantized_output_quantized = _quantize_wrapped_layer(
-        tf.keras.layers.Conv2D,
+        tf_keras.layers.Conv2D,
         configs.DefaultNBitConvQuantizeConfig(
             ['kernel'], ['activation'], True,
             num_bits_weight=self._num_bits_weight,
@@ -174,7 +174,7 @@ class SqueezeExcitationNBitQuantized(tf.keras.layers.Layer):
         activation=NoOpActivation())
 
     self._multiply = tfmot.quantization.keras.QuantizeWrapperV2(
-        tf.keras.layers.Multiply(),
+        tf_keras.layers.Multiply(),
         configs.DefaultNBitQuantizeConfig(
             [], [], True, num_bits_weight=self._num_bits_weight,
             num_bits_activation=self._num_bits_activation))

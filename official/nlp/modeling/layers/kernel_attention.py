@@ -16,14 +16,14 @@
 
 import functools
 import math
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
 _NUMERIC_STABLER = 1e-6
 
 
-class KernelMask(tf.keras.layers.Layer):
+class KernelMask(tf_keras.layers.Layer):
   """Creates kernel attention mask.
 
     inputs: from_tensor: 2D or 3D Tensor of shape
@@ -389,8 +389,8 @@ def expplus(data_orig,
   else:
     data_normalizer = 1.0
     lengths = tf.math.square(data)
-    lengths = tf.reduce_sum(lengths, axis=tf.keras.backend.ndim(data) - 1)
-    lengths = tf.expand_dims(lengths, axis=tf.keras.backend.ndim(data) - 1)
+    lengths = tf.reduce_sum(lengths, axis=tf_keras.backend.ndim(data) - 1)
+    lengths = tf.expand_dims(lengths, axis=tf_keras.backend.ndim(data) - 1)
     lengths = tf.math.sqrt(lengths)
     data /= lengths
   ratio = 1.0 / tf.math.sqrt(
@@ -399,9 +399,9 @@ def expplus(data_orig,
                         projection_matrix)
   diag_data = tf.math.square(data)
   diag_data = tf.math.reduce_sum(
-      diag_data, axis=tf.keras.backend.ndim(data) - 1)
+      diag_data, axis=tf_keras.backend.ndim(data) - 1)
   diag_data = (diag_data / 2.0) * data_normalizer * data_normalizer
-  diag_data = tf.expand_dims(diag_data, axis=tf.keras.backend.ndim(data) - 1)
+  diag_data = tf.expand_dims(diag_data, axis=tf_keras.backend.ndim(data) - 1)
 
   # Calculating coefficients A, B of the FAVOR++ mechanism:
   _, l, _, _ = tf_utils.get_shape_list(data_orig)
@@ -438,7 +438,7 @@ def expplus(data_orig,
   # Calculating diag_omega for the FAVOR++ mechanism:
   diag_omega = tf.math.square(projection_matrix)
   diag_omega = tf.math.reduce_sum(
-      diag_omega, axis=tf.keras.backend.ndim(projection_matrix) - 1)
+      diag_omega, axis=tf_keras.backend.ndim(projection_matrix) - 1)
   diag_omega = tf.expand_dims(diag_omega, axis=0)
   diag_omega = tf.expand_dims(diag_omega, axis=0)
   diag_omega = tf.expand_dims(diag_omega, axis=0)
@@ -470,14 +470,14 @@ _CAUSAL_SUPPORT_TRANSFORM_MAP = {
     "elu":
         functools.partial(
             _generalized_kernel,
-            f=lambda x: tf.keras.activations.elu(x) + 1,
+            f=lambda x: tf_keras.activations.elu(x) + 1,
             h=lambda x: 1),
     "relu":
         functools.partial(
             _generalized_kernel,
             # Improve numerical stability and avoid NaNs in some cases by adding
             # a tiny epsilon.
-            f=lambda x: tf.keras.activations.relu(x) + 1e-3,
+            f=lambda x: tf_keras.activations.relu(x) + 1e-3,
             h=lambda x: 1),
     "square":
         functools.partial(_generalized_kernel, f=tf.math.square, h=lambda x: 1),
@@ -515,7 +515,7 @@ _TRANSFORM_MAP = {
 # pylint: enable=g-long-lambda
 
 
-class KernelAttention(tf.keras.layers.MultiHeadAttention):
+class KernelAttention(tf_keras.layers.MultiHeadAttention):
   """A variant of efficient transformers which replaces softmax with kernels.
 
   This module combines ideas from the two following papers:
@@ -742,7 +742,7 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
           self._query_shape.rank - 1,
           common_kwargs,
           name="attention_output_softmax")
-      self._dropout_softmax = tf.keras.layers.Dropout(rate=self._dropout)
+      self._dropout_softmax = tf_keras.layers.Dropout(rate=self._dropout)
 
   def call(self, query, value, key=None, attention_mask=None, cache=None,
            training=False):

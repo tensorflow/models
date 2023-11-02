@@ -18,7 +18,7 @@ import math
 from typing import Optional, Tuple
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import activations
 from official.vision.modeling.backbones import factory
@@ -27,14 +27,14 @@ from official.vision.modeling.layers import nn_blocks
 from official.vision.modeling.layers import nn_layers
 
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
 class AddPositionEmbs(layers.Layer):
   """Adds (optionally learned) positional embeddings to the inputs."""
 
   def __init__(self,
-               posemb_init: Optional[tf.keras.initializers.Initializer] = None,
+               posemb_init: Optional[tf_keras.initializers.Initializer] = None,
                posemb_origin_shape: Optional[Tuple[int, int]] = None,
                posemb_target_shape: Optional[Tuple[int, int]] = None,
                **kwargs):
@@ -143,7 +143,7 @@ class Encoder(layers.Layer):
   def build(self, input_shape):
     if self._add_pos_embed:
       self._pos_embed = AddPositionEmbs(
-          posemb_init=tf.keras.initializers.RandomNormal(stddev=0.02),
+          posemb_init=tf_keras.initializers.RandomNormal(stddev=0.02),
           posemb_origin_shape=self._pos_embed_origin_shape,
           posemb_target_shape=self._pos_embed_target_shape,
           name='posembed_input')
@@ -204,7 +204,7 @@ class Encoder(layers.Layer):
     return config
 
 
-class VisionTransformer(tf.keras.Model):
+class VisionTransformer(tf_keras.Model):
   """Class to build VisionTransformer family model."""
 
   def __init__(
@@ -235,7 +235,7 @@ class VisionTransformer(tf.keras.Model):
     self._hidden_size = hidden_size
     self._patch_size = patch_size
 
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
+    inputs = tf_keras.Input(shape=input_specs.shape[1:])
 
     x = layers.Conv2D(
         filters=hidden_size,
@@ -245,14 +245,14 @@ class VisionTransformer(tf.keras.Model):
         kernel_regularizer=kernel_regularizer,
         kernel_initializer='lecun_normal' if original_init else 'he_uniform')(
             inputs)
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       rows_axis, cols_axis = (1, 2)
     else:
       rows_axis, cols_axis = (2, 3)
       # The reshape below assumes the data_format is 'channels_last,' so
       # transpose to that. Once the data is flattened by the reshape, the
       # data_format is irrelevant, so no need to update
-      # tf.keras.backend.image_data_format.
+      # tf_keras.backend.image_data_format.
       x = tf.transpose(x, perm=[0, 2, 3, 1])
 
     pos_embed_target_shape = (x.shape[rows_axis], x.shape[cols_axis])

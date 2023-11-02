@@ -16,7 +16,7 @@
 
 from typing import Any, Mapping, Tuple
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.pointpillars.configs import pointpillars as cfg
 from official.vision.dataloaders import decoder

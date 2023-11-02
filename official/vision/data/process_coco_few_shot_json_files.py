@@ -29,7 +29,7 @@ import os
 from absl import app
 from absl import flags
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 logger = tf.get_logger()
 logger.setLevel(logging.INFO)

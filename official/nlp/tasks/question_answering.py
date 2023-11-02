@@ -21,7 +21,7 @@ from typing import List, Optional
 
 from absl import logging
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import config_definitions as cfg
@@ -111,7 +111,7 @@ class QuestionAnsweringTask(base_task.Task):
     encoder_cfg = self.task_config.model.encoder.get()
     return models.BertSpanLabeler(
         network=encoder_network,
-        initializer=tf.keras.initializers.TruncatedNormal(
+        initializer=tf_keras.initializers.TruncatedNormal(
             stddev=encoder_cfg.initializer_range))
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
@@ -119,11 +119,11 @@ class QuestionAnsweringTask(base_task.Task):
     end_positions = labels['end_positions']
     start_logits, end_logits = model_outputs
 
-    start_loss = tf.keras.losses.sparse_categorical_crossentropy(
+    start_loss = tf_keras.losses.sparse_categorical_crossentropy(
         start_positions,
         tf.cast(start_logits, dtype=tf.float32),
         from_logits=True)
-    end_loss = tf.keras.losses.sparse_categorical_crossentropy(
+    end_loss = tf_keras.losses.sparse_categorical_crossentropy(
         end_positions, tf.cast(end_logits, dtype=tf.float32), from_logits=True)
 
     loss = (tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)) / 2
@@ -224,9 +224,9 @@ class QuestionAnsweringTask(base_task.Task):
       return []
     # TODO(lehou): a list of metrics doesn't work the same as in compile/fit.
     metrics = [
-        tf.keras.metrics.SparseCategoricalAccuracy(
+        tf_keras.metrics.SparseCategoricalAccuracy(
             name='start_position_accuracy'),
-        tf.keras.metrics.SparseCategoricalAccuracy(
+        tf_keras.metrics.SparseCategoricalAccuracy(
             name='end_position_accuracy'),
     ]
     return metrics
@@ -248,7 +248,7 @@ class QuestionAnsweringTask(base_task.Task):
             'end_positions': end_logits
         })
 
-  def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
+  def validation_step(self, inputs, model: tf_keras.Model, metrics=None):
     features, _ = inputs
     unique_ids = features.pop('unique_ids')
     model_outputs = self.inference_step(features, model)
@@ -351,7 +351,7 @@ class XLNetQuestionAnsweringTask(QuestionAnsweringTask):
         network=encoder_network,
         start_n_top=self.task_config.n_best_size,
         end_n_top=self.task_config.n_best_size,
-        initializer=tf.keras.initializers.RandomNormal(
+        initializer=tf_keras.initializers.RandomNormal(
             stddev=encoder_cfg.initializer_range))
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
@@ -368,7 +368,7 @@ class XLNetQuestionAnsweringTask(QuestionAnsweringTask):
         start_positions, start_logits)
     end_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
         end_positions, end_logits)
-    is_impossible_loss = tf.keras.losses.binary_crossentropy(
+    is_impossible_loss = tf_keras.losses.binary_crossentropy(
         is_impossible, class_logits, from_logits=True)
 
     loss = (tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)) / 2
@@ -412,7 +412,7 @@ class XLNetQuestionAnsweringTask(QuestionAnsweringTask):
         is_impossible=zero)
     return x, y
 
-  def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
+  def validation_step(self, inputs, model: tf_keras.Model, metrics=None):
     features, _ = inputs
     unique_ids = features.pop('unique_ids')
     model_outputs = self.inference_step(features, model)
@@ -459,7 +459,7 @@ class XLNetQuestionAnsweringTask(QuestionAnsweringTask):
 
 
 def predict(task: QuestionAnsweringTask, params: cfg.DataConfig,
-            model: tf.keras.Model):
+            model: tf_keras.Model):
   """Predicts on the input data.
 
   Args:

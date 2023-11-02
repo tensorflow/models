@@ -18,7 +18,7 @@ import math
 from typing import Mapping, Tuple
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision import configs
 from official.vision.modeling import factory
@@ -50,7 +50,7 @@ class DetectionModule(export_base.ExportModule):
                    'does not support with dynamic batch size.', nms_version)
       self.params.task.model.detection_generator.nms_version = 'batched'
 
-    input_specs = tf.keras.layers.InputSpec(shape=[
+    input_specs = tf_keras.layers.InputSpec(shape=[
         self._batch_size, *self._padded_size, 3])
 
     if isinstance(self.params.task.model, configs.maskrcnn.MaskRCNN):

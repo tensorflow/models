@@ -16,7 +16,7 @@
 from typing import Callable, List, Tuple, Optional
 
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.modeling import tf_utils
@@ -24,7 +24,7 @@ from official.vision.modeling.backbones import factory
 from official.vision.modeling.layers import nn_blocks_3d
 from official.vision.modeling.layers import nn_layers
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 RESNET_SPECS = {
     50: [
@@ -72,8 +72,8 @@ RESNET_SPECS = {
 }
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class ResNet3D(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class ResNet3D(tf_keras.Model):
   """Creates a 3D ResNet family model."""
 
   def __init__(
@@ -82,7 +82,7 @@ class ResNet3D(tf.keras.Model):
       temporal_strides: List[int],
       temporal_kernel_sizes: List[Tuple[int]],
       use_self_gating: Optional[List[int]] = None,
-      input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
+      input_specs: tf_keras.layers.InputSpec = layers.InputSpec(
           shape=[None, None, None, None, 3]),
       stem_type: str = 'v0',
       stem_conv_temporal_kernel_size: int = 5,
@@ -95,8 +95,8 @@ class ResNet3D(tf.keras.Model):
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initializes a 3D ResNet model.
 
@@ -108,7 +108,7 @@ class ResNet3D(tf.keras.Model):
         sizes for all 3d blocks in different block groups.
       use_self_gating: A list of booleans to specify applying self-gating module
         or not in each block group. If None, self-gating is not applied.
-      input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
+      input_specs: A `tf_keras.layers.InputSpec` of the input tensor.
       stem_type: A `str` of stem type of ResNet. Default to `v0`. If set to
         `v1`, use ResNet-D type stem (https://arxiv.org/abs/1812.01187).
       stem_conv_temporal_kernel_size: An `int` of temporal kernel size for the
@@ -124,9 +124,9 @@ class ResNet3D(tf.keras.Model):
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
       kernel_initializer: A str for kernel initializer of convolutional layers.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
       **kwargs: Additional keyword arguments to be passed.
     """
@@ -149,13 +149,13 @@ class ResNet3D(tf.keras.Model):
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
 
     # Build ResNet3D backbone.
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
+    inputs = tf_keras.Input(shape=input_specs.shape[1:])
     endpoints = self._build_model(inputs)
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
 
@@ -294,7 +294,7 @@ class ResNet3D(tf.keras.Model):
                    spatial_strides: int,
                    block_fn: Callable[
                        ...,
-                       tf.keras.layers.Layer] = nn_blocks_3d.BottleneckBlock3D,
+                       tf_keras.layers.Layer] = nn_blocks_3d.BottleneckBlock3D,
                    block_repeats: int = 1,
                    stochastic_depth_drop_rate: float = 0.0,
                    use_self_gating: bool = False,
@@ -401,11 +401,11 @@ class ResNet3D(tf.keras.Model):
 
 @factory.register_backbone_builder('resnet_3d')
 def build_resnet3d(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
-) -> tf.keras.Model:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
+) -> tf_keras.Model:
   """Builds ResNet 3d backbone from a config."""
   backbone_cfg = backbone_config.get()
 
@@ -440,11 +440,11 @@ def build_resnet3d(
 
 @factory.register_backbone_builder('resnet_3d_rs')
 def build_resnet3d_rs(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
-) -> tf.keras.Model:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
+) -> tf_keras.Model:
   """Builds ResNet-3D-RS backbone from a config."""
   backbone_cfg = backbone_config.get()
 

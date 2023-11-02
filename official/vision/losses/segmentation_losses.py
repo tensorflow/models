@@ -14,7 +14,7 @@
 
 """Losses used for segmentation models."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.vision.dataloaders import utils
@@ -266,8 +266,8 @@ class MaskScoringLoss:
 
   def __init__(self, ignore_label):
     self._ignore_label = ignore_label
-    self._mse_loss = tf.keras.losses.MeanSquaredError(
-        reduction=tf.keras.losses.Reduction.NONE)
+    self._mse_loss = tf_keras.losses.MeanSquaredError(
+        reduction=tf_keras.losses.Reduction.NONE)
 
   def __call__(self, predicted_scores, logits, labels):
     actual_scores = get_actual_mask_scores(logits, labels, self._ignore_label)

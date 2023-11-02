@@ -16,7 +16,7 @@
 
 from typing import List
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import config_definitions as cfg
 from official.projects.panoptic.modeling import factory
@@ -31,7 +31,7 @@ class PanopticSegmentationModule(
   def __init__(self,
                params: cfg.ExperimentConfig,
                *,
-               model: tf.keras.Model,
+               model: tf_keras.Model,
                batch_size: int,
                input_image_size: List[int],
                num_channels: int = 3):
@@ -52,7 +52,7 @@ class PanopticSegmentationModule(
         num_channels=num_channels)
 
   def _build_model(self):
-    input_specs = tf.keras.layers.InputSpec(shape=[self._batch_size] +
+    input_specs = tf_keras.layers.InputSpec(shape=[self._batch_size] +
                                             self._input_image_size + [3])
 
     return factory.build_panoptic_deeplab(

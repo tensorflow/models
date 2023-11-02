@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Tests for const_cl_model."""
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.const_cl.configs import const_cl as const_cl_cfg
 from official.projects.const_cl.modeling import const_cl_model
@@ -26,10 +26,10 @@ class ConstClModelTest(tf.test.TestCase):
 
   def test_build_const_cl_pretrain_model(self):
     model_config = const_cl_cfg.ConstCLModel()
-    images_input_specs = tf.keras.layers.InputSpec(
+    images_input_specs = tf_keras.layers.InputSpec(
         shape=[None, 16, 224, 224, 4])
-    boxes_input_specs = tf.keras.layers.InputSpec(shape=[None, 16, 8, 4])
-    masks_input_specs = tf.keras.layers.InputSpec(shape=[None, 16, 8])
+    boxes_input_specs = tf_keras.layers.InputSpec(shape=[None, 16, 8, 4])
+    masks_input_specs = tf_keras.layers.InputSpec(shape=[None, 16, 8])
 
     input_specs_dict = {
         'image': images_input_specs,

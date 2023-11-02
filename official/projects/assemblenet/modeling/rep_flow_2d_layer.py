@@ -24,9 +24,9 @@ channels], to make this run on TPU.
 """
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 BATCH_NORM_DECAY = 0.99
 BATCH_NORM_EPSILON = 1e-5
 
@@ -53,7 +53,7 @@ def build_batch_norm(init_zero: bool = False,
   else:
     gamma_initializer = tf.ones_initializer()
 
-  data_format = tf.keras.backend.image_data_format()
+  data_format = tf_keras.backend.image_data_format()
   assert data_format == 'channels_last'
 
   if data_format == 'channels_first':
@@ -91,7 +91,7 @@ def divergence(p1, p2, f_grad_x, f_grad_y, name):
   Returns:
     A `Tensor` with the same `data_format` and shape as input.
   """
-  data_format = tf.keras.backend.image_data_format()
+  data_format = tf_keras.backend.image_data_format()
   df = 'NHWC' if data_format == 'channels_last' else 'NCHW'
 
   with tf.name_scope('divergence_' + name):
@@ -108,7 +108,7 @@ def divergence(p1, p2, f_grad_x, f_grad_y, name):
 
 
 def forward_grad(x, f_grad_x, f_grad_y, name):
-  data_format = tf.keras.backend.image_data_format()
+  data_format = tf_keras.backend.image_data_format()
   with tf.name_scope('forward_grad_' + name):
     df = 'NHWC' if data_format == 'channels_last' else 'NCHW'
     grad_x = tf.nn.conv2d(x, f_grad_x, [1, 1, 1, 1], 'SAME', data_format=df)
@@ -257,7 +257,7 @@ class RepresentationFlow(layers.Layer):
           strides=1,
           padding='same',
           use_bias=False,
-          kernel_initializer=tf.keras.initializers.VarianceScaling(),
+          kernel_initializer=tf_keras.initializers.VarianceScaling(),
           name='rf/bottleneck1')
       self._bottleneck_conv2 = layers.Conv2D(
           filters=self._depth,
@@ -265,7 +265,7 @@ class RepresentationFlow(layers.Layer):
           strides=1,
           padding='same',
           use_bias=False,
-          kernel_initializer=tf.keras.initializers.VarianceScaling(),
+          kernel_initializer=tf_keras.initializers.VarianceScaling(),
           name='rf/bottleneck2')
       self._batch_norm = build_batch_norm(init_zero=True)
 
@@ -280,7 +280,7 @@ class RepresentationFlow(layers.Layer):
     Returns:
       A tensor of the same shape as the inputs.
     """
-    data_format = tf.keras.backend.image_data_format()
+    data_format = tf_keras.backend.image_data_format()
     df = 'NHWC' if data_format == 'channels_last' else 'NCHW'
     axis = 3 if data_format == 'channels_last' else 1  # channel axis
     dtype = inputs.dtype

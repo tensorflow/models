@@ -16,7 +16,7 @@
 from typing import Optional
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 import tensorflow_model_optimization as tfmot
 from official.projects.qat.nlp.modeling.layers.multi_head_attention import MultiHeadAttentionQuantized
@@ -31,7 +31,7 @@ def _quantized_multi_head_attention(*args, **kwargs):
 
 
 def _quantized_einsum_dense(*args, **kwargs):
-  layer = tf.keras.layers.EinsumDense(*args, **kwargs)
+  layer = tf_keras.layers.EinsumDense(*args, **kwargs)
   return tfmot.quantization.keras.QuantizeWrapperV2(
       layer, configs.DefaultEinsumDenseQuantizeConfig())
 
@@ -41,12 +41,12 @@ def _output_quantize(layer):
       layer, configs.Default8BitOutputQuantizeConfig())
 
 
-class TransformerEncoderBlockQuantized(tf.keras.layers.Layer):
+class TransformerEncoderBlockQuantized(tf_keras.layers.Layer):
   """TransformerEncoderBlock layer.
 
   This layer implements the Transformer Encoder from
   "Attention Is All You Need". (https://arxiv.org/abs/1706.03762),
-  which combines a `tf.keras.layers.MultiHeadAttention` layer with a
+  which combines a `tf_keras.layers.MultiHeadAttention` layer with a
   two-layer feedforward network.
 
   References:
@@ -125,19 +125,19 @@ class TransformerEncoderBlockQuantized(tf.keras.layers.Layer):
     self._output_dropout = output_dropout
     self._output_dropout_rate = output_dropout
     self._output_range = output_range
-    self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
-    self._bias_initializer = tf.keras.initializers.get(bias_initializer)
-    self._kernel_regularizer = tf.keras.regularizers.get(kernel_regularizer)
-    self._bias_regularizer = tf.keras.regularizers.get(bias_regularizer)
-    self._activity_regularizer = tf.keras.regularizers.get(activity_regularizer)
-    self._kernel_constraint = tf.keras.constraints.get(kernel_constraint)
-    self._bias_constraint = tf.keras.constraints.get(bias_constraint)
+    self._kernel_initializer = tf_keras.initializers.get(kernel_initializer)
+    self._bias_initializer = tf_keras.initializers.get(bias_initializer)
+    self._kernel_regularizer = tf_keras.regularizers.get(kernel_regularizer)
+    self._bias_regularizer = tf_keras.regularizers.get(bias_regularizer)
+    self._activity_regularizer = tf_keras.regularizers.get(activity_regularizer)
+    self._kernel_constraint = tf_keras.constraints.get(kernel_constraint)
+    self._bias_constraint = tf_keras.constraints.get(bias_constraint)
     self._use_bias = use_bias
     self._norm_first = norm_first
     self._norm_epsilon = norm_epsilon
     self._inner_dropout = inner_dropout
     if attention_initializer:
-      self._attention_initializer = tf.keras.initializers.get(
+      self._attention_initializer = tf_keras.initializers.get(
           attention_initializer)
     else:
       self._attention_initializer = self._kernel_initializer
@@ -177,11 +177,11 @@ class TransformerEncoderBlockQuantized(tf.keras.layers.Layer):
         attention_axes=self._attention_axes,
         name="self_attention",
         **common_kwargs)
-    self._attention_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
+    self._attention_dropout = tf_keras.layers.Dropout(rate=self._output_dropout)
     # Use float32 in layernorm for numeric stability.
     # It is probably safe in mixed_float16, but we haven't validated this yet.
     self._attention_layer_norm = _output_quantize(
-        tf.keras.layers.LayerNormalization(
+        tf_keras.layers.LayerNormalization(
             name="self_attention_layer_norm",
             axis=-1,
             epsilon=self._norm_epsilon,
@@ -193,16 +193,16 @@ class TransformerEncoderBlockQuantized(tf.keras.layers.Layer):
         kernel_initializer=self._kernel_initializer,
         name="intermediate",
         **common_kwargs)
-    policy = tf.keras.mixed_precision.global_policy()
+    policy = tf_keras.mixed_precision.global_policy()
     if policy.name == "mixed_bfloat16":
       # bfloat16 causes BERT with the LAMB optimizer to not converge
       # as well, so we use float32.
       # TODO(b/154538392): Investigate this.
       policy = tf.float32
     self._intermediate_activation_layer = _output_quantize(
-        tf.keras.layers.Activation(
+        tf_keras.layers.Activation(
             self._inner_activation, dtype=policy))
-    self._inner_dropout_layer = tf.keras.layers.Dropout(
+    self._inner_dropout_layer = tf_keras.layers.Dropout(
         rate=self._inner_dropout)
     self._output_dense = _quantized_einsum_dense(
         "abc,cd->abd",
@@ -211,16 +211,16 @@ class TransformerEncoderBlockQuantized(tf.keras.layers.Layer):
         name="output",
         kernel_initializer=self._kernel_initializer,
         **common_kwargs)
-    self._output_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
+    self._output_dropout = tf_keras.layers.Dropout(rate=self._output_dropout)
     # Use float32 in layernorm for numeric stability.
     self._output_layer_norm = _output_quantize(
-        tf.keras.layers.LayerNormalization(
+        tf_keras.layers.LayerNormalization(
             name="output_layer_norm",
             axis=-1,
             epsilon=self._norm_epsilon,
             dtype=tf.float32))
-    self._add = _output_quantize(tf.keras.layers.Add())
-    self._output_add = tf.keras.layers.Add()
+    self._add = _output_quantize(tf_keras.layers.Add())
+    self._output_add = tf_keras.layers.Add()
 
     super().build(input_shape)
 
@@ -239,19 +239,19 @@ class TransformerEncoderBlockQuantized(tf.keras.layers.Layer):
         "output_range":
             self._output_range,
         "kernel_initializer":
-            tf.keras.initializers.serialize(self._kernel_initializer),
+            tf_keras.initializers.serialize(self._kernel_initializer),
         "bias_initializer":
-            tf.keras.initializers.serialize(self._bias_initializer),
+            tf_keras.initializers.serialize(self._bias_initializer),
         "kernel_regularizer":
-            tf.keras.regularizers.serialize(self._kernel_regularizer),
+            tf_keras.regularizers.serialize(self._kernel_regularizer),
         "bias_regularizer":
-            tf.keras.regularizers.serialize(self._bias_regularizer),
+            tf_keras.regularizers.serialize(self._bias_regularizer),
         "activity_regularizer":
-            tf.keras.regularizers.serialize(self._activity_regularizer),
+            tf_keras.regularizers.serialize(self._activity_regularizer),
         "kernel_constraint":
-            tf.keras.constraints.serialize(self._kernel_constraint),
+            tf_keras.constraints.serialize(self._kernel_constraint),
         "bias_constraint":
-            tf.keras.constraints.serialize(self._bias_constraint),
+            tf_keras.constraints.serialize(self._bias_constraint),
         "use_bias":
             self._use_bias,
         "norm_first":
@@ -261,7 +261,7 @@ class TransformerEncoderBlockQuantized(tf.keras.layers.Layer):
         "inner_dropout":
             self._inner_dropout,
         "attention_initializer":
-            tf.keras.initializers.serialize(self._attention_initializer),
+            tf_keras.initializers.serialize(self._attention_initializer),
         "attention_axes": self._attention_axes,
     }
     base_config = super().get_config()

@@ -15,7 +15,7 @@
 """Tests for decoders."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.pointpillars.modeling import heads
 
@@ -32,7 +32,7 @@ class SSDHeadTest(parameterized.TestCase, tf.test.TestCase):
     n, h, w, c = 1, 32, 32, 4
     num_anchors_per_location = 3
     num_params_per_anchor = 4
-    inputs = {'1': tf.keras.Input(shape=[h, w, c], batch_size=n)}
+    inputs = {'1': tf_keras.Input(shape=[h, w, c], batch_size=n)}
 
     head = heads.SSDHead(num_classes, num_anchors_per_location,
                          num_params_per_anchor, attribute_heads, min_level,

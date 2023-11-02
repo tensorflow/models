@@ -16,7 +16,7 @@
 
 from typing import List, Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 # pylint: disable=protected-access
 
@@ -48,7 +48,7 @@ def maybe_merge_call(fn, strategy, *args, **kwargs):
     return fn(strategy, *args, **kwargs)
 
 
-class ExponentialMovingAverage(tf.keras.optimizers.legacy.Optimizer):
+class ExponentialMovingAverage(tf_keras.optimizers.legacy.Optimizer):
   """Optimizer that computes an exponential moving average of the variables.
 
   Empirically it has been found that using the moving average of the trained
@@ -59,7 +59,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.legacy.Optimizer):
 
   Example of usage for training:
   ```python
-  opt = tf.keras.optimizers.SGD(learning_rate)
+  opt = tf_keras.optimizers.SGD(learning_rate)
   opt = ExponentialMovingAverage(opt)
 
   opt.shadow_copy(model)
@@ -74,7 +74,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.legacy.Optimizer):
   """
 
   def __init__(self,
-               optimizer: tf.keras.optimizers.Optimizer,
+               optimizer: tf_keras.optimizers.Optimizer,
                trainable_weights_only: bool = True,
                average_decay: float = 0.99,
                start_step: int = 0,
@@ -84,7 +84,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.legacy.Optimizer):
     """Construct a new ExponentialMovingAverage optimizer.
 
     Args:
-      optimizer: `tf.keras.optimizers.Optimizer` that will be
+      optimizer: `tf_keras.optimizers.Optimizer` that will be
         used to compute and apply gradients.
       trainable_weights_only: 'bool', if True, only model trainable weights will
         be updated. Otherwise, all model weights will be updated. This mainly
@@ -111,7 +111,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.legacy.Optimizer):
     self._average_weights = None
     self._model_weights = None
 
-  def shadow_copy(self, model: tf.keras.Model):
+  def shadow_copy(self, model: tf_keras.Model):
     """Creates shadow variables for the given model weights."""
 
     if self._trainable_weights_only:
@@ -279,7 +279,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.legacy.Optimizer):
 
   def get_config(self):
     config = {
-        'optimizer': tf.keras.optimizers.serialize(self._optimizer),
+        'optimizer': tf_keras.optimizers.serialize(self._optimizer),
         'average_decay': self._average_decay,
         'start_step': self._start_step,
         'dynamic_decay': self._dynamic_decay,
@@ -289,7 +289,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.legacy.Optimizer):
 
   @classmethod
   def from_config(cls, config, custom_objects=None):
-    optimizer = tf.keras.optimizers.deserialize(
+    optimizer = tf_keras.optimizers.deserialize(
         config.pop('optimizer'),
         custom_objects=custom_objects,
     )

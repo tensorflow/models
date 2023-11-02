@@ -15,14 +15,14 @@
 """Contains definitions of segmentation head of the MOSAIC model."""
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.projects.mosaic.modeling import mosaic_blocks
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MosaicDecoderHead(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MosaicDecoderHead(tf_keras.layers.Layer):
   """Creates a MOSAIC decoder in segmentation head.
 
   Reference:
@@ -45,9 +45,9 @@ class MosaicDecoderHead(tf.keras.layers.Layer):
       batchnorm_momentum: float = 0.99,
       batchnorm_epsilon: float = 0.001,
       kernel_initializer: str = 'GlorotUniform',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       interpolation: str = 'bilinear',
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initializes a MOSAIC segmentation head.
 
@@ -81,11 +81,11 @@ class MosaicDecoderHead(tf.keras.layers.Layer):
       batchnorm_epsilon: A `float` added to variance to avoid dividing by zero.
       kernel_initializer: Kernel initializer for conv layers. Defaults to
         `glorot_uniform`.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
       interpolation: The interpolation method for upsampling. Defaults to
         `bilinear`.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
       **kwargs: Additional keyword arguments to be passed.
     """
     super(MosaicDecoderHead, self).__init__(**kwargs)
@@ -154,13 +154,13 @@ class MosaicDecoderHead(tf.keras.layers.Layer):
     if use_additional_classifier_layer:
       # This additional classification layer uses different kernel
       # initializers and bias compared to earlier blocks.
-      self._pixelwise_classifier = tf.keras.layers.Conv2D(
+      self._pixelwise_classifier = tf_keras.layers.Conv2D(
           name='pixelwise_classifier',
           filters=num_classes,
           kernel_size=classifier_kernel_size,
           padding='same',
           bias_initializer=tf.zeros_initializer(),
-          kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+          kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.01),
           kernel_regularizer=kernel_regularizer,
           bias_regularizer=bias_regularizer,
           use_bias=True)

@@ -14,7 +14,7 @@
 
 """Utils used to manipulate tensor shapes."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def assert_shape_equal(shape_a, shape_b):

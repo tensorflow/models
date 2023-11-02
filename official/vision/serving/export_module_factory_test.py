@@ -20,7 +20,7 @@ import os
 from absl.testing import parameterized
 import numpy as np
 from PIL import Image
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import exp_factory
 from official.core import export_base
@@ -71,7 +71,7 @@ class ImageClassificationExportTest(tf.test.TestCase, parameterized.TestCase):
     module = self._get_classification_module(input_type, input_image_size)
     # Test that the model restores any attrs that are trackable objects
     # (eg: tables, resource variables, keras models/layers, tf.hub modules).
-    module.model.test_trackable = tf.keras.layers.InputLayer(input_shape=(4,))
+    module.model.test_trackable = tf_keras.layers.InputLayer(input_shape=(4,))
     ckpt_path = tf.train.Checkpoint(model=module.model).save(
         os.path.join(tmp_dir, 'ckpt'))
     export_dir = export_base.export(

@@ -24,7 +24,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import gin
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.common import distribute_utils
 from official.legacy.bert import bert_models
 from official.legacy.bert import common_flags
@@ -153,11 +153,11 @@ def run_bert_classifier(strategy,
         use_float16=common_flags.use_float16())
     return classifier_model, core_model
 
-  # tf.keras.losses objects accept optional sample_weight arguments (eg. coming
+  # tf_keras.losses objects accept optional sample_weight arguments (eg. coming
   # from the dataset) to compute weighted loss, as used for the regression
   # tasks. The classification tasks, using the custom get_loss_fn don't accept
   # sample weights though.
-  loss_fn = (tf.keras.losses.MeanSquaredError() if is_regression
+  loss_fn = (tf_keras.losses.MeanSquaredError() if is_regression
              else get_loss_fn(num_classes))
 
   # Defines evaluation metrics function, which will create metrics in the
@@ -166,12 +166,12 @@ def run_bert_classifier(strategy,
     metric_fn = custom_metrics
   elif is_regression:
     metric_fn = functools.partial(
-        tf.keras.metrics.MeanSquaredError,
+        tf_keras.metrics.MeanSquaredError,
         'mean_squared_error',
         dtype=tf.float32)
   else:
     metric_fn = functools.partial(
-        tf.keras.metrics.SparseCategoricalAccuracy,
+        tf_keras.metrics.SparseCategoricalAccuracy,
         'accuracy',
         dtype=tf.float32)
 
@@ -230,7 +230,7 @@ def run_keras_compile_fit(model_dir,
         steps_per_execution=steps_per_loop)
 
     summary_dir = os.path.join(model_dir, 'summaries')
-    summary_callback = tf.keras.callbacks.TensorBoard(summary_dir)
+    summary_callback = tf_keras.callbacks.TensorBoard(summary_dir)
     checkpoint = tf.train.Checkpoint(model=bert_model, optimizer=optimizer)
     checkpoint_manager = tf.train.CheckpointManager(
         checkpoint,
@@ -347,7 +347,7 @@ def export_classifier(model_export_path, input_meta_data, bert_config,
     raise ValueError('Export path is not specified: %s' % model_dir)
 
   # Export uses float32 for now, even if training uses mixed precision.
-  tf.keras.mixed_precision.set_global_policy('float32')
+  tf_keras.mixed_precision.set_global_policy('float32')
   classifier_model = bert_models.classifier_model(
       bert_config,
       input_meta_data.get('num_labels', 1),
@@ -422,7 +422,7 @@ def custom_main(custom_callbacks=None, custom_metrics=None):
   """Run classification or regression.
 
   Args:
-    custom_callbacks: list of tf.keras.Callbacks passed to training loop.
+    custom_callbacks: list of tf_keras.Callbacks passed to training loop.
     custom_metrics: list of metrics passed to the training loop.
   """
   gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_param)

@@ -15,7 +15,7 @@
 """Factory methods to build models."""
 
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import registry
 from official.vision.configs import video_classification as video_classification_cfg
@@ -32,7 +32,7 @@ def register_model_builder(key: str):
   This decorator supports registration of backbone builder as follows:
 
   ```
-  class MyModel(tf.keras.Model):
+  class MyModel(tf_keras.Model):
     pass
 
   @register_backbone_builder('mybackbone')
@@ -55,22 +55,22 @@ def register_model_builder(key: str):
 
 def build_model(
     model_type: str,
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     model_config: video_classification_cfg.hyperparams.Config,
     num_classes: int,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:
   """Builds backbone from a config.
 
   Args:
     model_type: string name of model type. It should be consistent with
       ModelConfig.model_type.
-    input_specs: tf.keras.layers.InputSpec.
+    input_specs: tf_keras.layers.InputSpec.
     model_config: a OneOfConfig. Model config.
     num_classes: number of classes.
-    l2_regularizer: tf.keras.regularizers.Regularizer instance. Default to None.
+    l2_regularizer: tf_keras.regularizers.Regularizer instance. Default to None.
 
   Returns:
-    tf.keras.Model instance of the backbone.
+    tf_keras.Model instance of the backbone.
   """
   model_builder = registry.lookup(_REGISTERED_MODEL_CLS, model_type)
 
@@ -79,10 +79,10 @@ def build_model(
 
 @register_model_builder('video_classification')
 def build_video_classification_model(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     model_config: video_classification_cfg.VideoClassificationModel,
     num_classes: int,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:
   """Builds the video classification model."""
   input_specs_dict = {'image': input_specs}
   norm_activation_config = model_config.norm_activation

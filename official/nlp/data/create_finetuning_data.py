@@ -21,7 +21,7 @@ import os
 # Import libraries
 from absl import app
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.nlp.data import classifier_data_lib
 from official.nlp.data import sentence_retrieval_lib
 # word-piece tokenizer based squad_lib

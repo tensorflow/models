@@ -18,7 +18,7 @@ import io
 # Import libraries
 import numpy as np
 from PIL import Image
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_datasets as tfds
 
 from official.vision.configs import common

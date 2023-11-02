@@ -15,7 +15,7 @@
 """Tests for factory functions."""
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from official.vision.configs import backbones as backbones_cfg
@@ -42,7 +42,7 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
 
     factory_network = factory.build_backbone(
-        input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
+        input_specs=tf_keras.layers.InputSpec(shape=[None, None, None, 3]),
         backbone_config=backbone_config,
         norm_activation_config=norm_activation_config)
 
@@ -73,7 +73,7 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
 
     factory_network = factory.build_backbone(
-        input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
+        input_specs=tf_keras.layers.InputSpec(shape=[None, None, None, 3]),
         backbone_config=backbone_config,
         norm_activation_config=norm_activation_config)
 
@@ -106,7 +106,7 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
 
     factory_network = factory.build_backbone(
-        input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
+        input_specs=tf_keras.layers.InputSpec(shape=[None, None, None, 3]),
         backbone_config=backbone_config,
         norm_activation_config=norm_activation_config)
 
@@ -122,7 +122,7 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
     min_level = 3
     max_level = 7
 
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None, input_size, input_size, 3])
     network = backbones.SpineNet(
         input_specs=input_specs,
@@ -138,7 +138,7 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
 
     factory_network = factory.build_backbone(
-        input_specs=tf.keras.layers.InputSpec(
+        input_specs=tf_keras.layers.InputSpec(
             shape=[None, input_size, input_size, 3]),
         backbone_config=backbone_config,
         norm_activation_config=norm_activation_config)
@@ -162,7 +162,7 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
 
     factory_network = factory.build_backbone(
-        input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
+        input_specs=tf_keras.layers.InputSpec(shape=[None, None, None, 3]),
         backbone_config=backbone_config,
         norm_activation_config=norm_activation_config)
 
@@ -214,7 +214,7 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
 
     factory_network = factory.build_backbone(
-        input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
+        input_specs=tf_keras.layers.InputSpec(shape=[None, None, None, 3]),
         backbone_config=backbone_config,
         norm_activation_config=norm_activation_config)
 

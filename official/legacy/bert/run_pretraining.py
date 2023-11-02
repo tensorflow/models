@@ -19,7 +19,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import gin
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.common import distribute_utils
 from official.legacy.bert import bert_models
 from official.legacy.bert import common_flags

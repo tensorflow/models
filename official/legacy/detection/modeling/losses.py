@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def focal_loss(logits, targets, alpha, gamma, normalizer):
@@ -90,8 +90,8 @@ class RpnScoreLoss(object):
 
   def __init__(self, params):
     self._rpn_batch_size_per_im = params.rpn_batch_size_per_im
-    self._binary_crossentropy = tf.keras.losses.BinaryCrossentropy(
-        reduction=tf.keras.losses.Reduction.SUM, from_logits=True)
+    self._binary_crossentropy = tf_keras.losses.BinaryCrossentropy(
+        reduction=tf_keras.losses.Reduction.SUM, from_logits=True)
 
   def __call__(self, score_outputs, labels):
     """Computes total RPN detection loss.
@@ -153,8 +153,8 @@ class RpnBoxLoss(object):
     # The delta is typically around the mean value of regression target.
     # for instances, the regression targets of 512x512 input with 6 anchors on
     # P2-P6 pyramid is about [0.1, 0.1, 0.2, 0.2].
-    self._huber_loss = tf.keras.losses.Huber(
-        delta=params.huber_loss_delta, reduction=tf.keras.losses.Reduction.SUM)
+    self._huber_loss = tf_keras.losses.Huber(
+        delta=params.huber_loss_delta, reduction=tf_keras.losses.Reduction.SUM)
 
   def __call__(self, box_outputs, labels):
     """Computes total RPN detection loss.
@@ -199,8 +199,8 @@ class OlnRpnCenterLoss(object):
   """Object Localization Network RPN centerness regression loss function."""
 
   def __init__(self):
-    self._l1_loss = tf.keras.losses.MeanAbsoluteError(
-        reduction=tf.keras.losses.Reduction.SUM)
+    self._l1_loss = tf_keras.losses.MeanAbsoluteError(
+        reduction=tf_keras.losses.Reduction.SUM)
 
   def __call__(self, center_outputs, labels):
     """Computes total RPN centerness regression loss.
@@ -342,8 +342,8 @@ class FastrcnnClassLoss(object):
   """Fast R-CNN classification loss function."""
 
   def __init__(self):
-    self._categorical_crossentropy = tf.keras.losses.CategoricalCrossentropy(
-        reduction=tf.keras.losses.Reduction.SUM, from_logits=True)
+    self._categorical_crossentropy = tf_keras.losses.CategoricalCrossentropy(
+        reduction=tf_keras.losses.Reduction.SUM, from_logits=True)
 
   def __call__(self, class_outputs, class_targets):
     """Computes the class loss (Fast-RCNN branch) of Mask-RCNN.
@@ -388,8 +388,8 @@ class FastrcnnBoxLoss(object):
     # The delta is typically around the mean value of regression target.
     # for instances, the regression targets of 512x512 input with 6 anchors on
     # P2-P6 pyramid is about [0.1, 0.1, 0.2, 0.2].
-    self._huber_loss = tf.keras.losses.Huber(
-        delta=params.huber_loss_delta, reduction=tf.keras.losses.Reduction.SUM)
+    self._huber_loss = tf_keras.losses.Huber(
+        delta=params.huber_loss_delta, reduction=tf_keras.losses.Reduction.SUM)
 
   def __call__(self, box_outputs, class_targets, box_targets):
     """Computes the box loss (Fast-RCNN branch) of Mask-RCNN.
@@ -465,8 +465,8 @@ class OlnBoxScoreLoss(object):
 
   def __init__(self, params):
     self._ignore_threshold = params.ignore_threshold
-    self._l1_loss = tf.keras.losses.MeanAbsoluteError(
-        reduction=tf.keras.losses.Reduction.SUM)
+    self._l1_loss = tf_keras.losses.MeanAbsoluteError(
+        reduction=tf_keras.losses.Reduction.SUM)
 
   def __call__(self, score_outputs, score_targets):
     """Computes the class loss (Fast-RCNN branch) of Mask-RCNN.
@@ -505,8 +505,8 @@ class MaskrcnnLoss(object):
   """Mask R-CNN instance segmentation mask loss function."""
 
   def __init__(self):
-    self._binary_crossentropy = tf.keras.losses.BinaryCrossentropy(
-        reduction=tf.keras.losses.Reduction.SUM, from_logits=True)
+    self._binary_crossentropy = tf_keras.losses.BinaryCrossentropy(
+        reduction=tf_keras.losses.Reduction.SUM, from_logits=True)
 
   def __call__(self, mask_outputs, mask_targets, select_class_targets):
     """Computes the mask loss of Mask-RCNN.
@@ -616,8 +616,8 @@ class RetinanetBoxLoss(object):
   """RetinaNet box loss."""
 
   def __init__(self, params):
-    self._huber_loss = tf.keras.losses.Huber(
-        delta=params.huber_loss_delta, reduction=tf.keras.losses.Reduction.SUM)
+    self._huber_loss = tf_keras.losses.Huber(
+        delta=params.huber_loss_delta, reduction=tf_keras.losses.Reduction.SUM)
 
   def __call__(self, box_outputs, labels, num_positives):
     """Computes box detection loss.
@@ -695,8 +695,8 @@ class ShapemaskLoss(object):
   """ShapeMask mask loss function wrapper."""
 
   def __init__(self):
-    self._binary_crossentropy = tf.keras.losses.BinaryCrossentropy(
-        reduction=tf.keras.losses.Reduction.SUM, from_logits=True)
+    self._binary_crossentropy = tf_keras.losses.BinaryCrossentropy(
+        reduction=tf_keras.losses.Reduction.SUM, from_logits=True)
 
   def __call__(self, logits, labels, valid_mask):
     """ShapeMask mask cross entropy loss function wrapper.

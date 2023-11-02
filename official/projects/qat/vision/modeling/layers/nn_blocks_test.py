@@ -17,7 +17,7 @@
 from typing import Any, Iterable, Tuple
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -45,7 +45,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
                                      stochastic_depth_drop_rate, se_ratio):
     input_size = 128
     filter_size = 256
-    inputs = tf.keras.Input(
+    inputs = tf_keras.Input(
         shape=(input_size, input_size, filter_size * 4), batch_size=1)
     block = block_fn(
         filter_size,
@@ -73,7 +73,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     input_size = 128
     in_filters = 24
     out_filters = 40
-    inputs = tf.keras.Input(
+    inputs = tf_keras.Input(
         shape=(input_size, input_size, in_filters), batch_size=1)
     block = block_fn(
         in_filters=in_filters,

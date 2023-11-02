@@ -14,13 +14,13 @@
 
 """Definitions for random feature Gaussian process layer."""
 import math
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 _SUPPORTED_LIKELIHOOD = ('binary_logistic', 'poisson', 'gaussian')
 
 
-class RandomFeatureGaussianProcess(tf.keras.layers.Layer):
+class RandomFeatureGaussianProcess(tf_keras.layers.Layer):
   """Gaussian process layer with random feature approximation [1].
 
   During training, the model updates the maximum a posteriori (MAP) logits
@@ -98,7 +98,7 @@ class RandomFeatureGaussianProcess(tf.keras.layers.Layer):
       scale_random_features: (bool) Whether to scale the random feature
         by sqrt(2. / num_inducing).
       use_custom_random_features: (bool) Whether to use custom random
-        features implemented using tf.keras.layers.Dense.
+        features implemented using tf_keras.layers.Dense.
       custom_random_features_initializer: (str or callable) Initializer for
         the random features. Default to random normal which approximates a RBF
         kernel function if activation function is cos.
@@ -151,14 +151,14 @@ class RandomFeatureGaussianProcess(tf.keras.layers.Layer):
           minval=0., maxval=2. * math.pi)
       if self.custom_random_features_initializer is None:
         self.custom_random_features_initializer = (
-            tf.keras.initializers.RandomNormal(stddev=1.))
+            tf_keras.initializers.RandomNormal(stddev=1.))
       if self.custom_random_features_activation is None:
         self.custom_random_features_activation = tf.math.cos
 
   def build(self, input_shape):
     # Defines model layers.
     if self.normalize_input:
-      self._input_norm_layer = tf.keras.layers.LayerNormalization(
+      self._input_norm_layer = tf_keras.layers.LayerNormalization(
           name='gp_input_normalization')
       self._input_norm_layer.build(input_shape)
       input_shape = self._input_norm_layer.compute_output_shape(input_shape)
@@ -177,10 +177,10 @@ class RandomFeatureGaussianProcess(tf.keras.layers.Layer):
           name='gp_covariance')
       self._gp_cov_layer.build(input_shape)
 
-    self._gp_output_layer = tf.keras.layers.Dense(
+    self._gp_output_layer = tf_keras.layers.Dense(
         units=self.units,
         use_bias=False,
-        kernel_regularizer=tf.keras.regularizers.l2(self.l2_regularization),
+        kernel_regularizer=tf_keras.regularizers.l2(self.l2_regularization),
         dtype=self.dtype,
         name='gp_output_weights',
         **self.gp_output_kwargs)
@@ -197,8 +197,8 @@ class RandomFeatureGaussianProcess(tf.keras.layers.Layer):
   def _make_random_feature_layer(self, name):
     """Defines random feature layer depending on kernel type."""
     if not self.use_custom_random_features:
-      # Use default RandomFourierFeatures layer from tf.keras.
-      return tf.keras.layers.experimental.RandomFourierFeatures(
+      # Use default RandomFourierFeatures layer from tf_keras.
+      return tf_keras.layers.experimental.RandomFourierFeatures(
           output_dim=self.num_inducing,
           kernel_initializer=self.gp_kernel_type,
           scale=self.gp_kernel_scale,
@@ -207,11 +207,11 @@ class RandomFeatureGaussianProcess(tf.keras.layers.Layer):
           name=name)
 
     if self.gp_kernel_type.lower() == 'linear':
-      custom_random_feature_layer = tf.keras.layers.Lambda(
+      custom_random_feature_layer = tf_keras.layers.Lambda(
           lambda x: x, name=name)
     else:
       # Use user-supplied configurations.
-      custom_random_feature_layer = tf.keras.layers.Dense(
+      custom_random_feature_layer = tf_keras.layers.Dense(
           units=self.num_inducing,
           use_bias=True,
           activation=self.custom_random_features_activation,
@@ -267,7 +267,7 @@ class RandomFeatureGaussianProcess(tf.keras.layers.Layer):
     return model_output
 
 
-class LaplaceRandomFeatureCovariance(tf.keras.layers.Layer):
+class LaplaceRandomFeatureCovariance(tf_keras.layers.Layer):
   """Computes the Gaussian Process covariance using Laplace method.
 
   At training time, this layer updates the Gaussian process posterior using
@@ -324,7 +324,7 @@ class LaplaceRandomFeatureCovariance(tf.keras.layers.Layer):
             name='gp_precision_matrix',
             shape=(gp_feature_dim, gp_feature_dim),
             dtype=self.dtype,
-            initializer=tf.keras.initializers.Identity(self.ridge_penalty),
+            initializer=tf_keras.initializers.Identity(self.ridge_penalty),
             trainable=False,
             aggregation=tf.VariableAggregation.ONLY_FIRST_REPLICA))
     self.built = True
@@ -417,7 +417,7 @@ class LaplaceRandomFeatureCovariance(tf.keras.layers.Layer):
 
   def _get_training_value(self, training=None):
     if training is None:
-      training = tf.keras.backend.learning_phase()
+      training = tf_keras.backend.learning_phase()
 
     if isinstance(training, int):
       training = bool(training)

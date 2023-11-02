@@ -14,11 +14,11 @@
 
 """Masked language model network."""
 # pylint: disable=g-classes-have-attributes
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
-class MaskedLM(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class MaskedLM(tf_keras.layers.Layer):
   """Masked language model network head for BERT modeling.
 
   This layer implements a masked language model based on the provided
@@ -50,7 +50,7 @@ class MaskedLM(tf.keras.layers.Layer):
     super().__init__(name=name, **kwargs)
     self.embedding_table = embedding_table
     self.activation = activation
-    self.initializer = tf.keras.initializers.get(initializer)
+    self.initializer = tf_keras.initializers.get(initializer)
 
     if output not in ('predictions', 'logits'):
       raise ValueError(
@@ -60,12 +60,12 @@ class MaskedLM(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     self._vocab_size, hidden_size = self.embedding_table.shape
-    self.dense = tf.keras.layers.Dense(
+    self.dense = tf_keras.layers.Dense(
         hidden_size,
         activation=self.activation,
         kernel_initializer=self.initializer,
         name='transform/dense')
-    self.layer_norm = tf.keras.layers.LayerNormalization(
+    self.layer_norm = tf_keras.layers.LayerNormalization(
         axis=-1, epsilon=1e-12, name='transform/LayerNorm')
     self.bias = self.add_weight(
         'output_bias/bias',

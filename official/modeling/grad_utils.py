@@ -16,7 +16,7 @@
 
 from absl import logging
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def _filter_grads(grads_and_vars):
@@ -98,7 +98,7 @@ def minimize_using_explicit_allreduce(tape,
 
   Args:
       tape: An instance of `tf.GradientTape`.
-      optimizer: An instance of `tf.keras.optimizers.Optimizer`.
+      optimizer: An instance of `tf_keras.optimizers.Optimizer`.
       loss: the loss tensor.
       trainable_variables: A list of model Variables.
       pre_allreduce_callbacks: A list of callback functions that takes gradients
@@ -117,7 +117,7 @@ def minimize_using_explicit_allreduce(tape,
         in one pack.
   """
   if isinstance(optimizer,
-                tf.keras.mixed_precision.LossScaleOptimizer):
+                tf_keras.mixed_precision.LossScaleOptimizer):
     # FP16 GPU code path
     with tape:
       scaled_loss = optimizer.get_scaled_loss(loss)

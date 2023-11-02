@@ -15,7 +15,7 @@
 """Span labeling network."""
 # pylint: disable=g-classes-have-attributes
 import collections
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_model_optimization as tfmot
 
 from official.projects.qat.nlp.quantization import configs
@@ -27,8 +27,8 @@ def _apply_paragraph_mask(logits, paragraph_mask):
   return tf.nn.log_softmax(masked_logits, -1), masked_logits
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
-class SpanLabelingQuantized(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class SpanLabelingQuantized(tf_keras.Model):
   """Span labeling network head for BERT modeling.
 
   This network implements a simple single-span labeler based on a dense layer.
@@ -51,10 +51,10 @@ class SpanLabelingQuantized(tf.keras.Model):
                output='logits',
                **kwargs):
 
-    sequence_data = tf.keras.layers.Input(
+    sequence_data = tf_keras.layers.Input(
         shape=(None, input_width), name='sequence_data', dtype=tf.float32)
 
-    logits_layer = tf.keras.layers.Dense(
+    logits_layer = tf_keras.layers.Dense(
         2,  # This layer predicts start location and end location.
         activation=activation,
         kernel_initializer=initializer,
@@ -65,9 +65,9 @@ class SpanLabelingQuantized(tf.keras.Model):
     intermediate_logits = logits_layer(sequence_data)
     start_logits, end_logits = self._split_output_tensor(intermediate_logits)
 
-    start_predictions = tf.keras.layers.Activation(tf.nn.log_softmax)(
+    start_predictions = tf_keras.layers.Activation(tf.nn.log_softmax)(
         start_logits)
-    end_predictions = tf.keras.layers.Activation(tf.nn.log_softmax)(end_logits)
+    end_predictions = tf_keras.layers.Activation(tf.nn.log_softmax)(end_logits)
 
     if output == 'logits':
       output_tensors = [start_logits, end_logits]

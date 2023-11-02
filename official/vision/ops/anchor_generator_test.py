@@ -15,7 +15,7 @@
 """Tests for anchor_generator.py."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.vision.ops import anchor_generator
 
 

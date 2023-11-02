@@ -16,7 +16,7 @@
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import dataset_fn
 from official.core import task_factory
@@ -50,17 +50,17 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
     self.segmentation_perclass_iou_metric = None
     self.panoptic_quality_metric = None
 
-  def build_model(self) -> tf.keras.Model:
+  def build_model(self) -> tf_keras.Model:
     """Builds Panoptic Mask R-CNN model."""
 
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None] + self.task_config.model.input_size)
 
     l2_weight_decay = self.task_config.losses.l2_weight_decay
     # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
-    l2_regularizer = (tf.keras.regularizers.l2(
+    l2_regularizer = (tf_keras.regularizers.l2(
         l2_weight_decay / 2.0) if l2_weight_decay else None)
 
     model = factory.build_panoptic_maskrcnn(
@@ -72,14 +72,14 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
       model.backbone.trainable = False
 
     # Builds the model through warm-up call.
-    dummy_images = tf.keras.Input(self.task_config.model.input_size)
+    dummy_images = tf_keras.Input(self.task_config.model.input_size)
     # Note that image_info is always in the shape of [4, 2].
-    dummy_image_info = tf.keras.layers.Input([4, 2])
+    dummy_image_info = tf_keras.layers.Input([4, 2])
     _ = model(dummy_images, image_info=dummy_image_info, training=False)
 
     return model
 
-  def initialize(self, model: tf.keras.Model) -> None:
+  def initialize(self, model: tf_keras.Model) -> None:
     """Loads pretrained checkpoint."""
 
     if not self.task_config.init_checkpoint:
@@ -252,14 +252,14 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
 
   def build_metrics(
       self, training: bool = True
-  ) -> List[tf.keras.metrics.Metric]:
+  ) -> List[tf_keras.metrics.Metric]:
     """Builds detection metrics."""
     metrics = super().build_metrics(training)
 
     if training:
       metric_names = ['maskrcnn_loss', 'segmentation_loss']
       for name in metric_names:
-        metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
+        metrics.append(tf_keras.metrics.Mean(name, dtype=tf.float32))
 
       if self.task_config.segmentation_evaluation.report_train_mean_iou:
         self.segmentation_train_mean_iou = segmentation_metrics.MeanIoU(
@@ -300,8 +300,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
 
   def train_step(self,
                  inputs: Tuple[Any, Any],
-                 model: tf.keras.Model,
-                 optimizer: tf.keras.optimizers.Optimizer,
+                 model: tf_keras.Model,
+                 optimizer: tf_keras.optimizers.Optimizer,
                  metrics: Optional[List[Any]] = None) -> Dict[str, Any]:
     """Does forward and backward.
 
@@ -340,13 +340,13 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient when LossScaleOptimizer is used.
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
@@ -400,7 +400,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   def validation_step(
       self,
       inputs: Tuple[Any, Any],
-      model: tf.keras.Model,
+      model: tf_keras.Model,
       metrics: Optional[List[Any]] = None,
   ) -> Dict[str, Any]:
     """Validatation step.

@@ -19,7 +19,7 @@ import os
 import tempfile
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from tensorflow.python.util import deprecation
 from official.common import distribute_utils
 from official.modeling import grad_utils
@@ -261,7 +261,7 @@ def run_customized_training_loop(
 
   total_training_steps = steps_per_epoch * epochs
   train_iterator = _get_input_iterator(train_input_fn, strategy)
-  eval_loss_metric = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
+  eval_loss_metric = tf_keras.metrics.Mean('training_loss', dtype=tf.float32)
 
   with distribute_utils.get_strategy_scope(strategy):
     # To correctly place the model weights on accelerators,
@@ -274,7 +274,7 @@ def run_customized_training_loop(
       raise ValueError('sub_model_export_name is specified as %s, but '
                        'sub_model is None.' % sub_model_export_name)
 
-    callback_list = tf.keras.callbacks.CallbackList(
+    callback_list = tf_keras.callbacks.CallbackList(
         callbacks=custom_callbacks, model=model)
 
     optimizer = model.optimizer
@@ -287,7 +287,7 @@ def run_customized_training_loop(
       checkpoint.read(init_checkpoint).assert_existing_objects_matched()
       logging.info('Loading from checkpoint file completed')
 
-    train_loss_metric = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
+    train_loss_metric = tf_keras.metrics.Mean('training_loss', dtype=tf.float32)
     eval_metrics = metric_fn() if metric_fn else []
     if not isinstance(eval_metrics, list):
       eval_metrics = [eval_metrics]
@@ -340,7 +340,7 @@ def run_customized_training_loop(
                                                      post_allreduce_callbacks,
                                                      allreduce_bytes_per_pack)
       else:
-        if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+        if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
           with tape:
             scaled_loss = optimizer.get_scaled_loss(loss)
           scaled_grads = tape.gradient(scaled_loss, training_vars)

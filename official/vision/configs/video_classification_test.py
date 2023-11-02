@@ -16,7 +16,7 @@
 
 # pylint: disable=unused-import
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official import vision
 from official.core import config_definitions as cfg

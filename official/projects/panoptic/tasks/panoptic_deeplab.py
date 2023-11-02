@@ -16,7 +16,7 @@
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import dataset_fn
 from official.core import base_task
@@ -36,14 +36,14 @@ class PanopticDeeplabTask(base_task.Task):
 
   def build_model(self):
     """Builds panoptic deeplab model."""
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None] + self.task_config.model.input_size)
 
     l2_weight_decay = self.task_config.losses.l2_weight_decay
     # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
-    l2_regularizer = (tf.keras.regularizers.l2(
+    l2_regularizer = (tf_keras.regularizers.l2(
         l2_weight_decay / 2.0) if l2_weight_decay else None)
 
     model = factory.build_panoptic_deeplab(
@@ -52,13 +52,13 @@ class PanopticDeeplabTask(base_task.Task):
         l2_regularizer=l2_regularizer)
 
     # Builds the model through warm-up call.
-    dummy_images = tf.keras.Input(self.task_config.model.input_size)
+    dummy_images = tf_keras.Input(self.task_config.model.input_size)
     # Note that image_info is always in the shape of [4, 2].
-    dummy_image_info = tf.keras.layers.Input([4, 2])
+    dummy_image_info = tf_keras.layers.Input([4, 2])
     _ = model(dummy_images, dummy_image_info, training=False)
     return model
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Loads pretrained checkpoint."""
     if not self.task_config.init_checkpoint:
       return
@@ -192,7 +192,7 @@ class PanopticDeeplabTask(base_task.Task):
     return losses
 
   def build_metrics(self, training: bool = True) -> List[
-      tf.keras.metrics.Metric]:
+      tf_keras.metrics.Metric]:
     """Build metrics."""
     eval_config = self.task_config.evaluation
     metrics = []
@@ -204,7 +204,7 @@ class PanopticDeeplabTask(base_task.Task):
           'instance_center_offset_loss',
           'model_loss']
       for name in metric_names:
-        metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
+        metrics.append(tf_keras.metrics.Mean(name, dtype=tf.float32))
 
       if eval_config.report_train_mean_iou:
         self.train_mean_iou = segmentation_metrics.MeanIoU(
@@ -237,8 +237,8 @@ class PanopticDeeplabTask(base_task.Task):
   def train_step(
       self,
       inputs: Tuple[Any, Any],
-      model: tf.keras.Model,
-      optimizer: tf.keras.optimizers.Optimizer,
+      model: tf_keras.Model,
+      optimizer: tf_keras.optimizers.Optimizer,
       metrics: Optional[List[Any]] = None) -> Dict[str, Any]:
     """Does forward and backward.
 
@@ -271,13 +271,13 @@ class PanopticDeeplabTask(base_task.Task):
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient when LossScaleOptimizer is used.
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
@@ -307,7 +307,7 @@ class PanopticDeeplabTask(base_task.Task):
   def validation_step(
       self,
       inputs: Tuple[Any, Any],
-      model: tf.keras.Model,
+      model: tf_keras.Model,
       metrics: Optional[List[Any]] = None) -> Dict[str, Any]:
     """Validatation step.
 

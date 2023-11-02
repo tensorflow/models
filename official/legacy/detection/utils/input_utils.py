@@ -16,7 +16,7 @@
 
 import math
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.detection.utils import box_utils
 from official.vision.utils.object_detection import preprocessor

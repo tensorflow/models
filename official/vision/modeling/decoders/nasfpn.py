@@ -19,7 +19,7 @@ from typing import Any, List, Mapping, Optional, Tuple
 # Import libraries
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.modeling import tf_utils
@@ -61,8 +61,8 @@ def build_block_specs(
   return [BlockSpec(*b) for b in block_specs]
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class NASFPN(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class NASFPN(tf_keras.Model):
   """Creates a NAS-FPN model.
 
   This implements the paper:
@@ -85,8 +85,8 @@ class NASFPN(tf.keras.Model):
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initializes a NAS-FPN model.
 
@@ -108,9 +108,9 @@ class NASFPN(tf.keras.Model):
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
       kernel_initializer: A `str` name of kernel_initializer for convolutional
         layers.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
       **kwargs: Additional keyword arguments to be passed.
     """
     self._config_dict = {
@@ -134,11 +134,11 @@ class NASFPN(tf.keras.Model):
         build_block_specs() if block_specs is None else block_specs
     )
     self._num_repeats = num_repeats
-    self._conv_op = (tf.keras.layers.SeparableConv2D
+    self._conv_op = (tf_keras.layers.SeparableConv2D
                      if self._config_dict['use_separable_conv']
-                     else tf.keras.layers.Conv2D)
-    self._norm_op = tf.keras.layers.BatchNormalization
-    if tf.keras.backend.image_data_format() == 'channels_last':
+                     else tf_keras.layers.Conv2D)
+    self._norm_op = tf_keras.layers.BatchNormalization
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -186,7 +186,7 @@ class NASFPN(tf.keras.Model):
 
     inputs = {}
     for level, spec in input_specs.items():
-      inputs[level] = tf.keras.Input(shape=spec[1:])
+      inputs[level] = tf_keras.Input(shape=spec[1:])
     return inputs
 
   def _resample_feature_map(self,
@@ -206,7 +206,7 @@ class NASFPN(tf.keras.Model):
 
     if input_level < target_level:
       stride = int(2 ** (target_level - input_level))
-      return tf.keras.layers.MaxPool2D(
+      return tf_keras.layers.MaxPool2D(
           pool_size=stride, strides=stride, padding='same')(x)
     if input_level > target_level:
       scale = int(2 ** (input_level - target_level))
@@ -216,7 +216,7 @@ class NASFPN(tf.keras.Model):
     # dtype mismatch when one input (by default float32 dtype) does not meet all
     # the above conditions and is output unchanged, while other inputs are
     # processed to have different dtype, e.g., using bfloat16 on TPU.
-    compute_dtype = tf.keras.layers.Layer().dtype_policy.compute_dtype
+    compute_dtype = tf_keras.layers.Layer().dtype_policy.compute_dtype
     if (compute_dtype is not None) and (x.dtype != compute_dtype):
       return tf.cast(x, dtype=compute_dtype)
     else:
@@ -226,9 +226,9 @@ class NASFPN(tf.keras.Model):
   def _conv_kwargs(self):
     if self._config_dict['use_separable_conv']:
       return {
-          'depthwise_initializer': tf.keras.initializers.VarianceScaling(
+          'depthwise_initializer': tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
-          'pointwise_initializer': tf.keras.initializers.VarianceScaling(
+          'pointwise_initializer': tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'bias_initializer': tf.zeros_initializer(),
           'depthwise_regularizer': self._config_dict['kernel_regularizer'],
@@ -237,7 +237,7 @@ class NASFPN(tf.keras.Model):
       }
     else:
       return {
-          'kernel_initializer': tf.keras.initializers.VarianceScaling(
+          'kernel_initializer': tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'bias_initializer': tf.zeros_initializer(),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
@@ -334,19 +334,19 @@ class NASFPN(tf.keras.Model):
 def build_nasfpn_decoder(
     input_specs: Mapping[str, tf.TensorShape],
     model_config: hyperparams.Config,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
-) -> tf.keras.Model:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
+) -> tf_keras.Model:
   """Builds NASFPN decoder from a config.
 
   Args:
     input_specs: A `dict` of input specifications. A dictionary consists of
       {level: TensorShape} from a backbone.
     model_config: A OneOfConfig. Model config.
-    l2_regularizer: A `tf.keras.regularizers.Regularizer` instance. Default to
+    l2_regularizer: A `tf_keras.regularizers.Regularizer` instance. Default to
       None.
 
   Returns:
-    A `tf.keras.Model` instance of the NASFPN decoder.
+    A `tf_keras.Model` instance of the NASFPN decoder.
 
   Raises:
     ValueError: If the model_config.decoder.type is not `nasfpn`.

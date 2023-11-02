@@ -16,7 +16,7 @@
 
 from typing import Mapping
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 # pylint: disable=unused-import
 from official.projects.volumetric_models.modeling import backbones
@@ -28,10 +28,10 @@ from official.vision.serving import export_base
 class SegmentationModule(export_base.ExportModule):
   """Segmentation Module."""
 
-  def _build_model(self) -> tf.keras.Model:
+  def _build_model(self) -> tf_keras.Model:
     """Builds and returns a segmentation model."""
     num_channels = self.params.task.model.num_channels
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[self._batch_size] + self._input_image_size + [num_channels])
 
     return factory.build_segmentation_model_3d(

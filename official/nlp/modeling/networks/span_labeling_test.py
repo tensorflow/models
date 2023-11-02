@@ -14,7 +14,7 @@
 
 """Tests for span_labeling network."""
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.networks import span_labeling
 
@@ -28,7 +28,7 @@ class SpanLabelingTest(tf.test.TestCase):
     test_network = span_labeling.SpanLabeling(
         input_width=input_width, output='predictions')
     # Create a 3-dimensional input (the first dimension is implicit).
-    sequence_data = tf.keras.Input(
+    sequence_data = tf_keras.Input(
         shape=(sequence_length, input_width), dtype=tf.float32)
     start_outputs, end_outputs = test_network(sequence_data)
 
@@ -44,10 +44,10 @@ class SpanLabelingTest(tf.test.TestCase):
     test_network = span_labeling.SpanLabeling(input_width=input_width)
 
     # Create a 3-dimensional input (the first dimension is implicit).
-    sequence_data = tf.keras.Input(
+    sequence_data = tf_keras.Input(
         shape=(sequence_length, input_width), dtype=tf.float32)
     outputs = test_network(sequence_data)
-    model = tf.keras.Model(sequence_data, outputs)
+    model = tf_keras.Model(sequence_data, outputs)
 
     # Invoke the network as part of a Model.
     batch_size = 3
@@ -67,11 +67,11 @@ class SpanLabelingTest(tf.test.TestCase):
     test_network = span_labeling.SpanLabeling(
         input_width=input_width, output='predictions')
     # Create a 3-dimensional input (the first dimension is implicit).
-    sequence_data = tf.keras.Input(
+    sequence_data = tf_keras.Input(
         shape=(sequence_length, input_width), dtype=tf.float32)
     output = test_network(sequence_data)
-    model = tf.keras.Model(sequence_data, output)
-    logit_model = tf.keras.Model(
+    model = tf_keras.Model(sequence_data, output)
+    logit_model = tf_keras.Model(
         test_network.inputs,
         [test_network.start_logits, test_network.end_logits])
 
@@ -89,9 +89,9 @@ class SpanLabelingTest(tf.test.TestCase):
     self.assertEqual(expected_output_shape, end_logits.shape)
 
     # Ensure that the logits, when softmaxed, create the outputs.
-    input_tensor = tf.keras.Input(expected_output_shape[1:])
-    output_tensor = tf.keras.layers.Activation(tf.nn.log_softmax)(input_tensor)
-    softmax_model = tf.keras.Model(input_tensor, output_tensor)
+    input_tensor = tf_keras.Input(expected_output_shape[1:])
+    output_tensor = tf_keras.layers.Activation(tf.nn.log_softmax)(input_tensor)
+    softmax_model = tf_keras.Model(input_tensor, output_tensor)
 
     start_softmax = softmax_model.predict(start_logits)
     self.assertAllClose(start_outputs, start_softmax)
@@ -109,12 +109,12 @@ class SpanLabelingTest(tf.test.TestCase):
     logit_network.set_weights(test_network.get_weights())
 
     # Create a 3-dimensional input (the first dimension is implicit).
-    sequence_data = tf.keras.Input(
+    sequence_data = tf_keras.Input(
         shape=(sequence_length, input_width), dtype=tf.float32)
     output = test_network(sequence_data)
     logit_output = logit_network(sequence_data)
-    model = tf.keras.Model(sequence_data, output)
-    logit_model = tf.keras.Model(sequence_data, logit_output)
+    model = tf_keras.Model(sequence_data, output)
+    logit_model = tf_keras.Model(sequence_data, logit_output)
 
     batch_size = 3
     input_data = 10 * np.random.random_sample(
@@ -130,9 +130,9 @@ class SpanLabelingTest(tf.test.TestCase):
     self.assertEqual(expected_output_shape, end_logits.shape)
 
     # Ensure that the logits, when softmaxed, create the outputs.
-    input_tensor = tf.keras.Input(expected_output_shape[1:])
-    output_tensor = tf.keras.layers.Activation(tf.nn.log_softmax)(input_tensor)
-    softmax_model = tf.keras.Model(input_tensor, output_tensor)
+    input_tensor = tf_keras.Input(expected_output_shape[1:])
+    output_tensor = tf_keras.layers.Activation(tf.nn.log_softmax)(input_tensor)
+    softmax_model = tf_keras.Model(input_tensor, output_tensor)
 
     start_softmax = softmax_model.predict(start_logits)
     self.assertAllClose(start_outputs, start_softmax)
@@ -228,11 +228,11 @@ class XLNetSpanLabelingTest(tf.test.TestCase):
     hidden_size = 4
     batch_size = 2
 
-    sequence_data = tf.keras.Input(shape=(seq_length, hidden_size),
+    sequence_data = tf_keras.Input(shape=(seq_length, hidden_size),
                                    dtype=tf.float32)
-    class_index = tf.keras.Input(shape=(), dtype=tf.uint8)
-    paragraph_mask = tf.keras.Input(shape=(seq_length), dtype=tf.float32)
-    start_positions = tf.keras.Input(shape=(), dtype=tf.int32)
+    class_index = tf_keras.Input(shape=(), dtype=tf.uint8)
+    paragraph_mask = tf_keras.Input(shape=(seq_length), dtype=tf.float32)
+    start_positions = tf_keras.Input(shape=(), dtype=tf.int32)
 
     layer = span_labeling.XLNetSpanLabeling(
         input_width=hidden_size,
@@ -246,7 +246,7 @@ class XLNetSpanLabelingTest(tf.test.TestCase):
                    class_index=class_index,
                    paragraph_mask=paragraph_mask,
                    start_positions=start_positions)
-    model = tf.keras.Model(
+    model = tf_keras.Model(
         inputs={
             'sequence_data': sequence_data,
             'class_index': class_index,

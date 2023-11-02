@@ -15,7 +15,7 @@
 """Tests for BERT token classifier."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling import networks
 from official.nlp.modeling.models import bert_token_classifier
@@ -45,9 +45,9 @@ class BertTokenClassifierTest(tf.test.TestCase, parameterized.TestCase):
         output_encoder_outputs=output_encoder_outputs)
 
     # Create a set of 2-dimensional inputs (the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
 
     # Invoke the trainer model on the inputs. This causes the layer to be built.
     outputs = bert_trainer_model([word_ids, mask, type_ids])

@@ -14,7 +14,7 @@
 
 """TFDS Classification decoders."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.vision.dataloaders import decoder
 
 

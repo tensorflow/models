@@ -15,7 +15,7 @@
 """Contains custom quantization layer transforms."""
 from typing import Any, Type, Mapping, List, Union, Tuple
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_model_optimization as tfmot
 from official.modeling import tf_utils
 from official.projects.qat.vision.modeling.layers import nn_blocks as quantized_nn_blocks
@@ -59,7 +59,7 @@ class CustomLayerQuantize(
     return layer_metadata
 
   def _create_dummy_input_shape(
-      self, quantized_layer: tf.keras.layers.Layer
+      self, quantized_layer: tf_keras.layers.Layer
   ) -> Union[List[int], Tuple[Any, Any]]:
     dummy_input_shape = [1, 128, 128, 1]
     # SegmentationHead layer requires a tuple of 2 tensors.

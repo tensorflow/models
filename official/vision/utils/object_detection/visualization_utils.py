@@ -32,7 +32,7 @@ from PIL import ImageColor
 from PIL import ImageDraw
 from PIL import ImageFont
 import six
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops import box_ops
 from official.vision.ops import preprocess_ops

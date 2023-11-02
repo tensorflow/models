@@ -15,7 +15,7 @@
 """Losses for maskrcnn model."""
 
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 class RpnScoreLoss(object):
@@ -23,8 +23,8 @@ class RpnScoreLoss(object):
 
   def __init__(self, rpn_batch_size_per_im):
     self._rpn_batch_size_per_im = rpn_batch_size_per_im
-    self._binary_crossentropy = tf.keras.losses.BinaryCrossentropy(
-        reduction=tf.keras.losses.Reduction.SUM, from_logits=True)
+    self._binary_crossentropy = tf_keras.losses.BinaryCrossentropy(
+        reduction=tf_keras.losses.Reduction.SUM, from_logits=True)
 
   def __call__(self, score_outputs, labels):
     """Computes total RPN detection loss.
@@ -86,8 +86,8 @@ class RpnBoxLoss(object):
     # The delta is typically around the mean value of regression target.
     # for instances, the regression targets of 512x512 input with 6 anchors on
     # P2-P6 pyramid is about [0.1, 0.1, 0.2, 0.2].
-    self._huber_loss = tf.keras.losses.Huber(
-        delta=huber_loss_delta, reduction=tf.keras.losses.Reduction.SUM)
+    self._huber_loss = tf_keras.losses.Huber(
+        delta=huber_loss_delta, reduction=tf_keras.losses.Reduction.SUM)
 
   def __call__(self, box_outputs, labels):
     """Computes total RPN detection loss.
@@ -261,8 +261,8 @@ class FastrcnnBoxLoss(object):
       class_agnostic_bbox_pred: if True, class agnostic bounding box prediction
         is performed.
     """
-    self._huber_loss = tf.keras.losses.Huber(
-        delta=huber_loss_delta, reduction=tf.keras.losses.Reduction.SUM)
+    self._huber_loss = tf_keras.losses.Huber(
+        delta=huber_loss_delta, reduction=tf_keras.losses.Reduction.SUM)
     self._class_agnostic_bbox_pred = class_agnostic_bbox_pred
 
   def __call__(self, box_outputs, class_targets, box_targets):
@@ -335,8 +335,8 @@ class MaskrcnnLoss(object):
   """Mask R-CNN instance segmentation mask loss function."""
 
   def __init__(self):
-    self._binary_crossentropy = tf.keras.losses.BinaryCrossentropy(
-        reduction=tf.keras.losses.Reduction.SUM, from_logits=True)
+    self._binary_crossentropy = tf_keras.losses.BinaryCrossentropy(
+        reduction=tf_keras.losses.Reduction.SUM, from_logits=True)
 
   def __call__(self, mask_outputs, mask_targets, select_class_targets):
     """Computes the mask loss of Mask-RCNN.

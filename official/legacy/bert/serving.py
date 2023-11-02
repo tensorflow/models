@@ -16,7 +16,7 @@
 
 from absl import app
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.bert import bert_models
 from official.legacy.bert import configs
@@ -36,7 +36,7 @@ flags.DEFINE_string("export_path", None,
 FLAGS = flags.FLAGS
 
 
-class BertServing(tf.keras.Model):
+class BertServing(tf_keras.Model):
   """Bert transformer encoder model for serving."""
 
   def __init__(self, bert_config, name_to_features=None, name="serving_model"):

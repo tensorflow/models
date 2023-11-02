@@ -15,7 +15,7 @@
 """Tests for backbones."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.pointpillars.modeling import featurizers
 
@@ -36,24 +36,24 @@ class FeaturizerTest(parameterized.TestCase, tf.test.TestCase):
                                         num_blocks, num_channels)
 
     # Train mode.
-    pillars = tf.keras.Input(shape=pillars_size, batch_size=train_batch_size)
-    indices = tf.keras.Input(
+    pillars = tf_keras.Input(shape=pillars_size, batch_size=train_batch_size)
+    indices = tf_keras.Input(
         shape=[n, 2], batch_size=train_batch_size, dtype=tf.int32)
     image = featurizer(pillars, indices, training=True)
     self.assertAllEqual([train_batch_size, h, w, num_channels],
                         image.shape.as_list())
 
     # Evaluation mode.
-    pillars = tf.keras.Input(shape=pillars_size, batch_size=eval_batch_size)
-    indices = tf.keras.Input(
+    pillars = tf_keras.Input(shape=pillars_size, batch_size=eval_batch_size)
+    indices = tf_keras.Input(
         shape=[n, 2], batch_size=eval_batch_size, dtype=tf.int32)
     image = featurizer(pillars, indices, training=False)
     self.assertAllEqual([eval_batch_size, h, w, num_channels],
                         image.shape.as_list())
 
     # Test mode, batch size must be 1.
-    pillars = tf.keras.Input(shape=pillars_size, batch_size=1)
-    indices = tf.keras.Input(
+    pillars = tf_keras.Input(shape=pillars_size, batch_size=1)
+    indices = tf_keras.Input(
         shape=[n, 2], batch_size=1, dtype=tf.int32)
     image = featurizer(pillars, indices, training=None)
     self.assertAllEqual([1, h, w, num_channels],

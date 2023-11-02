@@ -26,7 +26,7 @@ import os
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 # pylint: enable=g-bad-import-order
 
 from official.common import distribute_utils
@@ -51,7 +51,7 @@ def metric_fn(logits, dup_mask, match_mlperf):
   return in_top_k, metric_weights
 
 
-class MetricLayer(tf.keras.layers.Layer):
+class MetricLayer(tf_keras.layers.Layer):
   """Custom layer of metrics for NCF model."""
 
   def __init__(self, match_mlperf):
@@ -81,14 +81,14 @@ class MetricLayer(tf.keras.layers.Layer):
     return logits
 
 
-class LossLayer(tf.keras.layers.Layer):
+class LossLayer(tf_keras.layers.Layer):
   """Pass-through loss layer for NCF model."""
 
   def __init__(self, loss_normalization_factor):
     # The loss may overflow in float16, so we use float32 instead.
     super(LossLayer, self).__init__(dtype="float32")
     self.loss_normalization_factor = loss_normalization_factor
-    self.loss = tf.keras.losses.SparseCategoricalCrossentropy(
+    self.loss = tf_keras.losses.SparseCategoricalCrossentropy(
         from_logits=True, reduction="sum")
 
   def get_config(self):
@@ -107,7 +107,7 @@ class LossLayer(tf.keras.layers.Layer):
     return logits
 
 
-class IncrementEpochCallback(tf.keras.callbacks.Callback):
+class IncrementEpochCallback(tf_keras.callbacks.Callback):
   """A callback to increase the requested epoch for the data producer.
 
   The reason why we need this is because we can only buffer a limited amount of
@@ -122,7 +122,7 @@ class IncrementEpochCallback(tf.keras.callbacks.Callback):
     self._producer.increment_request_epoch()
 
 
-class CustomEarlyStopping(tf.keras.callbacks.Callback):
+class CustomEarlyStopping(tf_keras.callbacks.Callback):
   """Stop training has reached a desired hit rate."""
 
   def __init__(self, monitor, desired_value):
@@ -157,28 +157,28 @@ def _get_keras_model(params):
   """Constructs and returns the model."""
   batch_size = params["batch_size"]
 
-  user_input = tf.keras.layers.Input(
+  user_input = tf_keras.layers.Input(
       shape=(1,), name=movielens.USER_COLUMN, dtype=tf.int32)
 
-  item_input = tf.keras.layers.Input(
+  item_input = tf_keras.layers.Input(
       shape=(1,), name=movielens.ITEM_COLUMN, dtype=tf.int32)
 
-  valid_pt_mask_input = tf.keras.layers.Input(
+  valid_pt_mask_input = tf_keras.layers.Input(
       shape=(1,), name=rconst.VALID_POINT_MASK, dtype=tf.bool)
 
-  dup_mask_input = tf.keras.layers.Input(
+  dup_mask_input = tf_keras.layers.Input(
       shape=(1,), name=rconst.DUPLICATE_MASK, dtype=tf.int32)
 
-  label_input = tf.keras.layers.Input(
+  label_input = tf_keras.layers.Input(
       shape=(1,), name=rconst.TRAIN_LABEL_KEY, dtype=tf.bool)
 
   base_model = neumf_model.construct_model(user_input, item_input, params)
 
   logits = base_model.output
 
-  zeros = tf.keras.layers.Lambda(lambda x: x * 0)(logits)
+  zeros = tf_keras.layers.Lambda(lambda x: x * 0)(logits)
 
-  softmax_logits = tf.keras.layers.concatenate([zeros, logits], axis=-1)
+  softmax_logits = tf_keras.layers.concatenate([zeros, logits], axis=-1)
 
   # Custom training loop calculates loss and metric as a part of
   # training/evaluation step function.
@@ -190,7 +190,7 @@ def _get_keras_model(params):
     softmax_logits = LossLayer(batch_size)(
         [softmax_logits, label_input, valid_pt_mask_input])
 
-  keras_model = tf.keras.Model(
+  keras_model = tf_keras.Model(
       inputs={
           movielens.USER_COLUMN: user_input,
           movielens.ITEM_COLUMN: item_input,
@@ -216,7 +216,7 @@ def run_ncf(_):
   model_helpers.apply_clean(FLAGS)
 
   if FLAGS.dtype == "fp16" and FLAGS.fp16_implementation == "keras":
-    tf.keras.mixed_precision.set_global_policy("mixed_float16")
+    tf_keras.mixed_precision.set_global_policy("mixed_float16")
 
   strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
@@ -265,7 +265,7 @@ def run_ncf(_):
 
   with distribute_utils.get_strategy_scope(strategy):
     keras_model = _get_keras_model(params)
-    optimizer = tf.keras.optimizers.Adam(
+    optimizer = tf_keras.optimizers.Adam(
         learning_rate=params["learning_rate"],
         beta_1=params["beta1"],
         beta_2=params["beta2"],
@@ -283,9 +283,9 @@ def run_ncf(_):
       # here for the case where a custom training loop or fixed loss scale is
       # used.
       if loss_scale == "dynamic":
-        optimizer = tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
+        optimizer = tf_keras.mixed_precision.LossScaleOptimizer(optimizer)
       else:
-        optimizer = tf.keras.mixed_precision.LossScaleOptimizer(
+        optimizer = tf_keras.mixed_precision.LossScaleOptimizer(
             optimizer, dynamic=False, initial_scale=loss_scale)
 
     if params["keras_use_ctl"]:
@@ -306,10 +306,10 @@ def run_ncf(_):
       if not FLAGS.ml_perf:
         # Create Tensorboard summary and checkpoint callbacks.
         summary_dir = os.path.join(FLAGS.model_dir, "summaries")
-        summary_callback = tf.keras.callbacks.TensorBoard(
+        summary_callback = tf_keras.callbacks.TensorBoard(
             summary_dir, profile_batch=0)
         checkpoint_path = os.path.join(FLAGS.model_dir, "checkpoint")
-        checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        checkpoint_callback = tf_keras.callbacks.ModelCheckpoint(
             checkpoint_path, save_weights_only=True)
 
         callbacks += [summary_callback, checkpoint_callback]
@@ -375,7 +375,7 @@ def run_ncf_custom_training(params,
   Returns:
     A tuple of train loss and a list of training and evaluation results.
   """
-  loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
+  loss_object = tf_keras.losses.SparseCategoricalCrossentropy(
       reduction="sum", from_logits=True)
   train_input_iterator = iter(
       strategy.experimental_distribute_dataset(train_input_dataset))

@@ -15,7 +15,7 @@
 """Yolo loss utility functions."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yolo.ops import box_ops
 from official.projects.yolo.ops import math_ops
@@ -43,7 +43,7 @@ def sigmoid_bce(y, x_prime, label_smoothing):
 
   This simplification is used by the darknet library in order to improve
   training stability. The gradient is almost the same
-  as tf.keras.losses.binary_crossentropy but varies slightly and
+  as tf_keras.losses.binary_crossentropy but varies slightly and
   yields different performance.
 
   Args:
@@ -171,7 +171,7 @@ class GridGenerator:
       scale_anchors: An `int` for how much to scale this level to get the
         original input shape.
     """
-    self.dtype = tf.keras.backend.floatx()
+    self.dtype = tf_keras.backend.floatx()
     self._scale_anchors = scale_anchors
     self._anchors = tf.convert_to_tensor(anchors)
     return
@@ -206,7 +206,7 @@ class GridGenerator:
 
   def __call__(self, height, width, batch_size, dtype=None):
     if dtype is None:
-      self.dtype = tf.keras.backend.floatx()
+      self.dtype = tf_keras.backend.floatx()
     else:
       self.dtype = dtype
     grid_points = self._build_grid_points(height, width, self._anchors,

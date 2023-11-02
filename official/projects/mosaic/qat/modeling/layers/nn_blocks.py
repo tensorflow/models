@@ -16,7 +16,7 @@
 
 from typing import Dict, Tuple, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 import tensorflow_model_optimization as tfmot
 from official.modeling import tf_utils
@@ -25,7 +25,7 @@ from official.projects.qat.vision.quantization import configs
 from official.projects.qat.vision.quantization import helper
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf_keras.utils.register_keras_serializable(package='Vision')
 class MultiKernelGroupConvBlockQuantized(mosaic_blocks.MultiKernelGroupConvBlock
                                         ):
   """A quantized multi-kernel grouped convolution block.
@@ -48,8 +48,8 @@ class MultiKernelGroupConvBlockQuantized(mosaic_blocks.MultiKernelGroupConvBlock
         tf_utils.get_activation(self._activation, use_keras_layer=True),
         configs.Default8BitActivationQuantizeConfig())
     norm_layer = (
-        tf.keras.layers.experimental.SyncBatchNormalization
-        if self._use_sync_bn else tf.keras.layers.BatchNormalization)
+        tf_keras.layers.experimental.SyncBatchNormalization
+        if self._use_sync_bn else tf_keras.layers.BatchNormalization)
     norm_with_quantize = helper.BatchNormalizationQuantized(norm_layer)
     norm_no_quantize = helper.BatchNormalizationNoQuantized(norm_layer)
     self._bn_op = helper.norm_by_activation(
@@ -85,8 +85,8 @@ class MultiKernelGroupConvBlockQuantized(mosaic_blocks.MultiKernelGroupConvBlock
             momentum=self._batchnorm_momentum,
             epsilon=self._batchnorm_epsilon)
         # Use list manually as current QAT API does not support sequential model
-        # within a tf.keras.Sequential block, e.g. conv_branch =
-        # tf.keras.Sequential([depthwise_conv, feature_conv, batchnorm_op,])
+        # within a tf_keras.Sequential block, e.g. conv_branch =
+        # tf_keras.Sequential([depthwise_conv, feature_conv, batchnorm_op,])
         conv_branch = [
             depthwise_conv,
             batchnorm_op_depthwise,
@@ -116,7 +116,7 @@ class MultiKernelGroupConvBlockQuantized(mosaic_blocks.MultiKernelGroupConvBlock
         axis=self._group_split_axis)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf_keras.utils.register_keras_serializable(package='Vision')
 class MosaicEncoderBlockQuantized(mosaic_blocks.MosaicEncoderBlock):
   """Implements the encoder module/block of MOSAIC model.
 
@@ -134,7 +134,7 @@ class MosaicEncoderBlockQuantized(mosaic_blocks.MosaicEncoderBlock):
     input_shape = (
         input_shape[self._encoder_input_level]
         if isinstance(input_shape, dict) else input_shape)
-    self._data_format = tf.keras.backend.image_data_format()
+    self._data_format = tf_keras.backend.image_data_format()
     if self._data_format == 'channels_last':
       height = input_shape[1]
       width = input_shape[2]
@@ -150,8 +150,8 @@ class MosaicEncoderBlockQuantized(mosaic_blocks.MosaicEncoderBlock):
         tf_utils.get_activation(self._activation, use_keras_layer=True),
         configs.Default8BitActivationQuantizeConfig())
     norm_layer = (
-        tf.keras.layers.experimental.SyncBatchNormalization
-        if self._use_sync_bn else tf.keras.layers.BatchNormalization)
+        tf_keras.layers.experimental.SyncBatchNormalization
+        if self._use_sync_bn else tf_keras.layers.BatchNormalization)
     norm_with_quantize = helper.BatchNormalizationQuantized(norm_layer)
     norm_no_quantize = helper.BatchNormalizationNoQuantized(norm_layer)
     self._bn_op = helper.norm_by_activation(
@@ -174,7 +174,7 @@ class MosaicEncoderBlockQuantized(mosaic_blocks.MosaicEncoderBlock):
             axis=self._bn_axis,
             momentum=self._batchnorm_momentum,
             epsilon=self._batchnorm_epsilon)
-        # Use list manually instead of tf.keras.Sequential([])
+        # Use list manually instead of tf_keras.Sequential([])
         self._global_pool_branch = [
             global_pool,
             global_projection,
@@ -215,7 +215,7 @@ class MosaicEncoderBlockQuantized(mosaic_blocks.MosaicEncoderBlock):
     # enlarge the projection #channels to the sum of the filter depths of
     # branches.
     self._output_channels = sum(self._branch_filter_depths)
-    # Use list manually instead of tf.keras.Sequential([]).
+    # Use list manually instead of tf_keras.Sequential([]).
     self._encoder_projection = [
         helper.Conv2DQuantized(
             filters=self._output_channels,
@@ -239,7 +239,7 @@ class MosaicEncoderBlockQuantized(mosaic_blocks.MosaicEncoderBlock):
     self._concat_layer = helper.ConcatenateQuantized(axis=self._channel_axis)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf_keras.utils.register_keras_serializable(package='Vision')
 class DecoderSumMergeBlockQuantized(mosaic_blocks.DecoderSumMergeBlock):
   """Implements the decoder feature sum merge block of MOSAIC model.
 
@@ -263,8 +263,8 @@ class DecoderSumMergeBlockQuantized(mosaic_blocks.DecoderSumMergeBlock):
         tf_utils.get_activation(self._activation, use_keras_layer=True),
         configs.Default8BitActivationQuantizeConfig())
     norm_layer = (
-        tf.keras.layers.experimental.SyncBatchNormalization
-        if self._use_sync_bn else tf.keras.layers.BatchNormalization)
+        tf_keras.layers.experimental.SyncBatchNormalization
+        if self._use_sync_bn else tf_keras.layers.BatchNormalization)
     norm_with_quantize = helper.BatchNormalizationQuantized(norm_layer)
     norm_no_quantize = helper.BatchNormalizationNoQuantized(norm_layer)
     self._bn_op = helper.norm_by_activation(
@@ -305,7 +305,7 @@ class DecoderSumMergeBlockQuantized(mosaic_blocks.DecoderSumMergeBlock):
           batchnorm_op_high,
       ]
     # Resize feature maps.
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       low_res_height = low_res_input_shape[1]
       low_res_width = low_res_input_shape[2]
       high_res_height = high_res_input_shape[1]
@@ -332,10 +332,10 @@ class DecoderSumMergeBlockQuantized(mosaic_blocks.DecoderSumMergeBlock):
           interpolation=self._interpolation,
           crop_to_aspect_ratio=False)
     self._add_layer = tfmot.quantization.keras.QuantizeWrapperV2(
-        tf.keras.layers.Add(), configs.Default8BitQuantizeConfig([], [], True))
+        tf_keras.layers.Add(), configs.Default8BitQuantizeConfig([], [], True))
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf_keras.utils.register_keras_serializable(package='Vision')
 class DecoderConcatMergeBlockQuantized(mosaic_blocks.DecoderConcatMergeBlock):
   """Implements the decoder feature concat merge block of MOSAIC model.
 
@@ -352,7 +352,7 @@ class DecoderConcatMergeBlockQuantized(mosaic_blocks.DecoderConcatMergeBlock):
     low_res_input_shape = input_shape[0]
     high_res_input_shape = input_shape[1]
     # Set up resizing feature maps before concat.
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       low_res_height = low_res_input_shape[1]
       low_res_width = low_res_input_shape[2]
       high_res_height = high_res_input_shape[1]
@@ -370,8 +370,8 @@ class DecoderConcatMergeBlockQuantized(mosaic_blocks.DecoderConcatMergeBlock):
         tf_utils.get_activation(self._activation, use_keras_layer=True),
         configs.Default8BitActivationQuantizeConfig())
     norm_layer = (
-        tf.keras.layers.experimental.SyncBatchNormalization
-        if self._use_sync_bn else tf.keras.layers.BatchNormalization)
+        tf_keras.layers.experimental.SyncBatchNormalization
+        if self._use_sync_bn else tf_keras.layers.BatchNormalization)
     norm_with_quantize = helper.BatchNormalizationQuantized(norm_layer)
     norm_no_quantize = helper.BatchNormalizationNoQuantized(norm_layer)
     self._bn_op = helper.norm_by_activation(

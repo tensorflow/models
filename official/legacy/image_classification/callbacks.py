@@ -21,7 +21,7 @@ import os
 from typing import Any, List, MutableMapping, Optional, Text
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import optimization
 from official.utils.misc import keras_utils
@@ -38,19 +38,19 @@ def get_callbacks(
     batch_size: int = 0,
     log_steps: int = 0,
     model_dir: Optional[str] = None,
-    backup_and_restore: bool = False) -> List[tf.keras.callbacks.Callback]:
+    backup_and_restore: bool = False) -> List[tf_keras.callbacks.Callback]:
   """Get all callbacks."""
   model_dir = model_dir or ''
   callbacks = []
   if model_checkpoint:
     ckpt_full_path = os.path.join(model_dir, 'model.ckpt-{epoch:04d}')
     callbacks.append(
-        tf.keras.callbacks.ModelCheckpoint(
+        tf_keras.callbacks.ModelCheckpoint(
             ckpt_full_path, save_weights_only=True, verbose=1))
   if backup_and_restore:
     backup_dir = os.path.join(model_dir, 'tmp')
     callbacks.append(
-        tf.keras.callbacks.experimental.BackupAndRestore(backup_dir))
+        tf_keras.callbacks.experimental.BackupAndRestore(backup_dir))
   if include_tensorboard:
     callbacks.append(
         CustomTensorBoard(
@@ -82,14 +82,14 @@ def get_callbacks(
 
 def get_scalar_from_tensor(t: tf.Tensor) -> int:
   """Utility function to convert a Tensor to a scalar."""
-  t = tf.keras.backend.get_value(t)
+  t = tf_keras.backend.get_value(t)
   if callable(t):
     return t()
   else:
     return t
 
 
-class CustomTensorBoard(tf.keras.callbacks.TensorBoard):
+class CustomTensorBoard(tf_keras.callbacks.TensorBoard):
   """A customized TensorBoard callback that tracks additional datapoints.
 
   Metrics tracked:
@@ -157,7 +157,7 @@ class CustomTensorBoard(tf.keras.callbacks.TensorBoard):
     return get_scalar_from_tensor(
         self._get_base_optimizer()._decayed_lr(var_dtype=tf.float32))  # pylint:disable=protected-access
 
-  def _get_base_optimizer(self) -> tf.keras.optimizers.Optimizer:
+  def _get_base_optimizer(self) -> tf_keras.optimizers.Optimizer:
     """Get the base optimizer used by the current model."""
 
     optimizer = self.model.optimizer
@@ -169,7 +169,7 @@ class CustomTensorBoard(tf.keras.callbacks.TensorBoard):
     return optimizer
 
 
-class MovingAverageCallback(tf.keras.callbacks.Callback):
+class MovingAverageCallback(tf_keras.callbacks.Callback):
   """A Callback to be used with a `ExponentialMovingAverage` optimizer.
 
   Applies moving average weights to the model during validation time to test
@@ -187,7 +187,7 @@ class MovingAverageCallback(tf.keras.callbacks.Callback):
     super(MovingAverageCallback, self).__init__(**kwargs)
     self.overwrite_weights_on_train_end = overwrite_weights_on_train_end
 
-  def set_model(self, model: tf.keras.Model):
+  def set_model(self, model: tf_keras.Model):
     super(MovingAverageCallback, self).set_model(model)
     assert isinstance(self.model.optimizer,
                       optimization.ExponentialMovingAverage)
@@ -204,7 +204,7 @@ class MovingAverageCallback(tf.keras.callbacks.Callback):
       self.model.optimizer.assign_average_vars(self.model.variables)
 
 
-class AverageModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
+class AverageModelCheckpoint(tf_keras.callbacks.ModelCheckpoint):
   """Saves and, optionally, assigns the averaged weights.
 
   Taken from tfa.callbacks.AverageModelCheckpoint.
@@ -212,7 +212,7 @@ class AverageModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
   Attributes:
     update_weights: If True, assign the moving average weights to the model, and
       save them. If False, keep the old non-averaged weights, but the saved
-      model uses the average weights. See `tf.keras.callbacks.ModelCheckpoint`
+      model uses the average weights. See `tf_keras.callbacks.ModelCheckpoint`
       for the other args.
   """
 

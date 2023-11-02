@@ -15,7 +15,7 @@
 """Factory methods to build models."""
 # Import libraries
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 import tensorflow_model_optimization as tfmot
 from official.projects.qat.vision.configs import common
@@ -37,20 +37,20 @@ from official.vision.modeling.layers import nn_layers
 
 
 def build_qat_classification_model(
-    model: tf.keras.Model,
+    model: tf_keras.Model,
     quantization: common.Quantization,
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     model_config: configs.image_classification.ImageClassificationModel,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None
-) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None
+) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Apply model optimization techniques.
 
   Args:
     model: The model applying model optimization techniques.
     quantization: The Quantization config.
-    input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+    input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
     model_config: The model config.
-    l2_regularizer: tf.keras.regularizers.Regularizer object. Default to None.
+    l2_regularizer: tf_keras.regularizers.Regularizer object. Default to None.
 
   Returns:
     model: The model that applied optimization techniques.
@@ -64,7 +64,7 @@ def build_qat_classification_model(
     status.expect_partial().assert_existing_objects_matched()
 
   scope_dict = {
-      'L2': tf.keras.regularizers.l2,
+      'L2': tf_keras.regularizers.l2,
   }
   with tfmot.quantization.keras.quantize_scope(scope_dict):
     annotated_backbone = tfmot.quantization.keras.quantize_annotate_model(
@@ -98,14 +98,14 @@ def build_qat_classification_model(
 
   with tfmot.quantization.keras.quantize_scope(scope_dict):
     def apply_quantization_to_dense(layer):
-      if isinstance(layer, (tf.keras.layers.Dense,
-                            tf.keras.layers.Dropout,
-                            tf.keras.layers.GlobalAveragePooling2D)):
+      if isinstance(layer, (tf_keras.layers.Dense,
+                            tf_keras.layers.Dropout,
+                            tf_keras.layers.GlobalAveragePooling2D)):
         return tfmot.quantization.keras.quantize_annotate_layer(layer)
       return layer
 
     backbone_optimized_model.use_legacy_config = True
-    annotated_model = tf.keras.models.clone_model(
+    annotated_model = tf_keras.models.clone_model(
         backbone_optimized_model,
         clone_function=apply_quantization_to_dense,
     )
@@ -127,19 +127,19 @@ def build_qat_classification_model(
 
 def _clone_function_for_fpn(layer):
   if isinstance(layer, (
-      tf.keras.layers.BatchNormalization,
-      tf.keras.layers.experimental.SyncBatchNormalization)):
+      tf_keras.layers.BatchNormalization,
+      tf_keras.layers.experimental.SyncBatchNormalization)):
     return tfmot.quantization.keras.quantize_annotate_layer(
         qat_nn_layers.BatchNormalizationWrapper(layer),
         qat_configs.Default8BitOutputQuantizeConfig())
-  if isinstance(layer, tf.keras.layers.UpSampling2D):
+  if isinstance(layer, tf_keras.layers.UpSampling2D):
     return layer
   return tfmot.quantization.keras.quantize_annotate_layer(layer)
 
 
 def build_qat_retinanet(
-    model: tf.keras.Model, quantization: common.Quantization,
-    model_config: configs.retinanet.RetinaNet) -> tf.keras.Model:
+    model: tf_keras.Model, quantization: common.Quantization,
+    model_config: configs.retinanet.RetinaNet) -> tf_keras.Model:
   """Applies quantization aware training for RetinaNet model.
 
   Args:
@@ -160,7 +160,7 @@ def build_qat_retinanet(
     status.expect_partial().assert_existing_objects_matched()
 
   scope_dict = {
-      'L2': tf.keras.regularizers.l2,
+      'L2': tf_keras.regularizers.l2,
       'BatchNormalizationWrapper': qat_nn_layers.BatchNormalizationWrapper,
   }
   with tfmot.quantization.keras.quantize_scope(scope_dict):
@@ -174,7 +174,7 @@ def build_qat_retinanet(
       if not isinstance(decoder, fpn.FPN):
         raise ValueError('Currently only supports FPN.')
 
-      decoder = tf.keras.models.clone_model(
+      decoder = tf_keras.models.clone_model(
           decoder,
           clone_function=_clone_function_for_fpn,
       )
@@ -211,8 +211,8 @@ def build_qat_retinanet(
 
 
 def build_qat_segmentation_model(
-    model: tf.keras.Model, quantization: common.Quantization,
-    input_specs: tf.keras.layers.InputSpec) -> tf.keras.Model:
+    model: tf_keras.Model, quantization: common.Quantization,
+    input_specs: tf_keras.layers.InputSpec) -> tf_keras.Model:
   """Applies quantization aware training for segmentation model.
 
   Args:
@@ -235,11 +235,11 @@ def build_qat_segmentation_model(
       model.backbone, model.decoder, model.head, input_specs)
 
   scope_dict = {
-      'L2': tf.keras.regularizers.l2,
+      'L2': tf_keras.regularizers.l2,
   }
 
   model.use_legacy_config = True  # Ensures old Keras serialization format
-  # Apply QAT to backbone (a tf.keras.Model) first.
+  # Apply QAT to backbone (a tf_keras.Model) first.
   with tfmot.quantization.keras.quantize_scope(scope_dict):
     annotated_backbone = tfmot.quantization.keras.quantize_annotate_model(
         model.backbone)
@@ -263,7 +263,7 @@ def build_qat_segmentation_model(
       return layer
 
     backbone_optimized_model.use_legacy_config = True
-    annotated_model = tf.keras.models.clone_model(
+    annotated_model = tf_keras.models.clone_model(
         backbone_optimized_model,
         clone_function=apply_quantization_to_layers,
     )

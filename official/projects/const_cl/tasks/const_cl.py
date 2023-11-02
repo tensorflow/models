@@ -16,7 +16,7 @@
 from typing import Any, Optional
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.core import input_reader
 from official.core import task_factory
 from official.projects.const_cl.configs import const_cl as exp_cfg
@@ -42,12 +42,12 @@ class ConstCLPretrainTask(video_ssl_pretrain.VideoSSLPretrainTask):
     num_instances = self.task_config.train_data.num_instances
     input_specs_dict = {
         'image':
-            tf.keras.layers.InputSpec(shape=[None] + common_input_shape),
+            tf_keras.layers.InputSpec(shape=[None] + common_input_shape),
         'instances_position':
-            tf.keras.layers.InputSpec(
+            tf_keras.layers.InputSpec(
                 shape=[None, num_frames, num_instances, 4]),
         'instances_mask':
-            tf.keras.layers.InputSpec(shape=[None, num_frames, num_instances]),
+            tf_keras.layers.InputSpec(shape=[None, num_frames, num_instances]),
     }
 
     logging.info('Build model input %r', common_input_shape)
@@ -137,19 +137,19 @@ class ConstCLPretrainTask(video_ssl_pretrain.VideoSSLPretrainTask):
   def build_metrics(self, training=True):
     """Gets streaming metrics for training/validation."""
     metrics = [
-        tf.keras.metrics.Mean(name='regularization_loss'),
+        tf_keras.metrics.Mean(name='regularization_loss'),
 
-        tf.keras.metrics.Mean(name='global_loss/loss'),
-        tf.keras.metrics.Mean(name='global_loss/contrastive_accuracy'),
-        tf.keras.metrics.Mean(name='global_loss/contrastive_entropy'),
+        tf_keras.metrics.Mean(name='global_loss/loss'),
+        tf_keras.metrics.Mean(name='global_loss/contrastive_accuracy'),
+        tf_keras.metrics.Mean(name='global_loss/contrastive_entropy'),
 
-        tf.keras.metrics.Mean(name='local_loss/loss'),
-        tf.keras.metrics.Mean(name='local_loss/positive_similarity_mean'),
-        tf.keras.metrics.Mean(name='local_loss/positive_similarity_max'),
-        tf.keras.metrics.Mean(name='local_loss/positive_similarity_min'),
-        tf.keras.metrics.Mean(name='local_loss/negative_similarity_mean'),
-        tf.keras.metrics.Mean(name='local_loss/negative_similarity_max'),
-        tf.keras.metrics.Mean(name='local_loss/negative_similarity_min'),
+        tf_keras.metrics.Mean(name='local_loss/loss'),
+        tf_keras.metrics.Mean(name='local_loss/positive_similarity_mean'),
+        tf_keras.metrics.Mean(name='local_loss/positive_similarity_max'),
+        tf_keras.metrics.Mean(name='local_loss/positive_similarity_min'),
+        tf_keras.metrics.Mean(name='local_loss/negative_similarity_mean'),
+        tf_keras.metrics.Mean(name='local_loss/negative_similarity_max'),
+        tf_keras.metrics.Mean(name='local_loss/negative_similarity_min'),
     ]
     return metrics
 
@@ -189,14 +189,14 @@ class ConstCLPretrainTask(video_ssl_pretrain.VideoSSLPretrainTask):
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
       if isinstance(
-          optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+          optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient before apply_gradients when LossScaleOptimizer is
     # used.
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 

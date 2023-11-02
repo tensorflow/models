@@ -15,7 +15,7 @@
 """Contains modules related to Inception networks."""
 from typing import Callable, Dict, Optional, Sequence, Set, Text, Tuple, Type, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.projects.s3d.modeling import net_utils
@@ -48,8 +48,8 @@ INCEPTION_V1_LOCAL_SKELETON = [
     ('Mixed_5c_local', [[384], [192, 384], [48, 128], [128]]),  # 8x7x7x1024
 ]
 
-initializers = tf.keras.initializers
-regularizers = tf.keras.regularizers
+initializers = tf_keras.initializers
+regularizers = tf_keras.regularizers
 
 
 def inception_v1_stem_cells(
@@ -110,10 +110,10 @@ def inception_v1_stem_cells(
   if self_gating_endpoints is None:
     self_gating_endpoints = set()
   if use_sync_bn:
-    batch_norm = tf.keras.layers.experimental.SyncBatchNormalization
+    batch_norm = tf_keras.layers.experimental.SyncBatchNormalization
   else:
-    batch_norm = tf.keras.layers.BatchNormalization
-  if tf.keras.backend.image_data_format() == 'channels_last':
+    batch_norm = tf_keras.layers.BatchNormalization
+  if tf_keras.backend.image_data_format() == 'channels_last':
     bn_axis = -1
   else:
     bn_axis = 1
@@ -121,7 +121,7 @@ def inception_v1_stem_cells(
   end_points = {}
   # batch_size x 32 x 112 x 112 x 64
   end_point = 'Conv2d_1a_7x7'
-  net = tf.keras.layers.Conv3D(
+  net = tf_keras.layers.Conv3D(
       filters=net_utils.apply_depth_multiplier(64, depth_multiplier),
       kernel_size=[first_temporal_kernel_size, 7, 7],
       strides=[2, 2, 2],
@@ -145,7 +145,7 @@ def inception_v1_stem_cells(
     return net, end_points
   # batch_size x 32 x 56 x 56 x 64
   end_point = 'MaxPool_2a_3x3'
-  net = tf.keras.layers.MaxPool3D(
+  net = tf_keras.layers.MaxPool3D(
       pool_size=[1, 3, 3],
       strides=[1, 2, 2],
       padding='same',
@@ -156,7 +156,7 @@ def inception_v1_stem_cells(
     return net, end_points
   # batch_size x 32 x 56 x 56 x 64
   end_point = 'Conv2d_2b_1x1'
-  net = tf.keras.layers.Conv3D(
+  net = tf_keras.layers.Conv3D(
       filters=net_utils.apply_depth_multiplier(64, depth_multiplier),
       strides=[1, 1, 1],
       kernel_size=[1, 1, 1],
@@ -206,7 +206,7 @@ def inception_v1_stem_cells(
     return net, end_points
   # batch_size x 32 x 28 x 28 x 192
   end_point = 'MaxPool_3a_3x3'
-  net = tf.keras.layers.MaxPool3D(
+  net = tf_keras.layers.MaxPool3D(
       pool_size=[1, 3, 3],
       strides=[1, 2, 2],
       padding='same',
@@ -220,22 +220,22 @@ def _construct_branch_3_layers(
     channels: int,
     swap_pool_and_1x1x1: bool,
     pool_type: Text,
-    batch_norm_layer: tf.keras.layers.Layer,
+    batch_norm_layer: tf_keras.layers.Layer,
     kernel_initializer: Union[Text, initializers.Initializer],
     kernel_regularizer: Union[Text, regularizers.Regularizer],
 ):
   """Helper function for Branch 3 inside Inception module."""
   kernel_size = [1, 3, 3] if pool_type == '2d' else [3] * 3
 
-  conv = tf.keras.layers.Conv3D(
+  conv = tf_keras.layers.Conv3D(
       filters=channels,
       kernel_size=[1, 1, 1],
       padding='same',
       use_bias=False,
       kernel_initializer=kernel_initializer,
       kernel_regularizer=kernel_regularizer)
-  activation = tf.keras.layers.Activation('relu')
-  pool = tf.keras.layers.MaxPool3D(
+  activation = tf_keras.layers.Activation('relu')
+  pool = tf_keras.layers.MaxPool3D(
       pool_size=kernel_size, strides=[1, 1, 1], padding='same')
   if swap_pool_and_1x1x1:
     branch_3_layers = [conv, batch_norm_layer, activation, pool]
@@ -244,7 +244,7 @@ def _construct_branch_3_layers(
   return branch_3_layers
 
 
-class InceptionV1CellLayer(tf.keras.layers.Layer):
+class InceptionV1CellLayer(tf_keras.layers.Layer):
   """A single Tensorflow 2 cell used in the original I3D/S3D model."""
 
   def __init__(
@@ -314,11 +314,11 @@ class InceptionV1CellLayer(tf.keras.layers.Layer):
     self._kernel_regularizer = kernel_regularizer
     self._parameterized_conv_layer = parameterized_conv_layer
     if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
+      self._norm = tf_keras.layers.experimental.SyncBatchNormalization
     else:
-      self._norm = tf.keras.layers.BatchNormalization
+      self._norm = tf_keras.layers.BatchNormalization
 
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._channel_axis = -1
     else:
       self._channel_axis = 1
@@ -460,38 +460,38 @@ class InceptionV1CellLayer(tf.keras.layers.Layer):
     branch_params = self._build_branch_params()
 
     self._branch_0_layers = [
-        tf.keras.layers.Conv3D(**branch_params[0][0]),
+        tf_keras.layers.Conv3D(**branch_params[0][0]),
         self._norm(**branch_params[0][1]),
-        tf.keras.layers.Activation('relu', **branch_params[0][2]),
+        tf_keras.layers.Activation('relu', **branch_params[0][2]),
     ]
 
     self._branch_1_layers = [
-        tf.keras.layers.Conv3D(**branch_params[1][0]),
+        tf_keras.layers.Conv3D(**branch_params[1][0]),
         self._norm(**branch_params[1][1]),
-        tf.keras.layers.Activation('relu', **branch_params[1][2]),
+        tf_keras.layers.Activation('relu', **branch_params[1][2]),
         self._parameterized_conv_layer(**branch_params[1][3]),
     ]
 
     self._branch_2_layers = [
-        tf.keras.layers.Conv3D(**branch_params[2][0]),
+        tf_keras.layers.Conv3D(**branch_params[2][0]),
         self._norm(**branch_params[2][1]),
-        tf.keras.layers.Activation('relu', **branch_params[2][2]),
+        tf_keras.layers.Activation('relu', **branch_params[2][2]),
         self._parameterized_conv_layer(**branch_params[2][3])
     ]
 
     if self._swap_pool_and_1x1x1:
       self._branch_3_layers = [
-          tf.keras.layers.Conv3D(**branch_params[3][0]),
+          tf_keras.layers.Conv3D(**branch_params[3][0]),
           self._norm(**branch_params[3][1]),
-          tf.keras.layers.Activation('relu', **branch_params[3][2]),
-          tf.keras.layers.MaxPool3D(**branch_params[3][3]),
+          tf_keras.layers.Activation('relu', **branch_params[3][2]),
+          tf_keras.layers.MaxPool3D(**branch_params[3][3]),
       ]
     else:
       self._branch_3_layers = [
-          tf.keras.layers.MaxPool3D(**branch_params[3][3]),
-          tf.keras.layers.Conv3D(**branch_params[3][0]),
+          tf_keras.layers.MaxPool3D(**branch_params[3][3]),
+          tf_keras.layers.Conv3D(**branch_params[3][0]),
           self._norm(**branch_params[3][1]),
-          tf.keras.layers.Activation('relu', **branch_params[3][2]),
+          tf_keras.layers.Activation('relu', **branch_params[3][2]),
       ]
 
     if self._use_self_gating_on_branch:

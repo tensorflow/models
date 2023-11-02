@@ -15,7 +15,7 @@
 """Tests for segmentation_losses.py."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.volumetric_models.evaluation import segmentation_metrics
 

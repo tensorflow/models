@@ -23,7 +23,7 @@ import os
 import six
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.tools import tokenization
 

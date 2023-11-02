@@ -14,10 +14,10 @@
 
 """Self Regularized Non-Monotonic Activation Function."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
+@tf_keras.utils.register_keras_serializable(package='Text')
 def mish(x) -> tf.Tensor:
   """Mish activation function.
 

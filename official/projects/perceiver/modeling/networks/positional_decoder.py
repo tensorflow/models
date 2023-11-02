@@ -14,12 +14,12 @@
 
 """Perceiver networks."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling import layers
 
 
-class PositionalDecoder(tf.keras.layers.Layer):
+class PositionalDecoder(tf_keras.layers.Layer):
   """Perceiver Positional Decoder Network.
 
   Creates a position encoding for queries and composes basic decoder.
@@ -31,7 +31,7 @@ class PositionalDecoder(tf.keras.layers.Layer):
   Use `self.inputs` for inputs.
 
   Attributes:
-    inputs: A `Dict[Text, tf.keras.Input]` with `latent_output` and
+    inputs: A `Dict[Text, tf_keras.Input]` with `latent_output` and
       `input_mask`. The shape of `latent_output` is shape
       `(z_index_dim, d_latents)` with dtype `tf.float32` and `input_mask` is
        shape `(None)` with dtype `tf.int32`.
@@ -60,12 +60,12 @@ class PositionalDecoder(tf.keras.layers.Layer):
       d_model:
         Model last dimension.
       position_encoding_intializer_stddev:
-        `stddev` of `tf.keras.initializers.TruncatedNormal` used for the
+        `stddev` of `tf_keras.initializers.TruncatedNormal` used for the
         learned position embedding table kernel initializer.
       name:
-        Sets the `tf.keras.layers.Layer` name.
+        Sets the `tf_keras.layers.Layer` name.
       **kwargs:
-        Any keyword arguments to pass through to `tf.keras.layers.Layer`.
+        Any keyword arguments to pass through to `tf_keras.layers.Layer`.
     """
     super().__init__(**kwargs, name=name)
 
@@ -79,17 +79,17 @@ class PositionalDecoder(tf.keras.layers.Layer):
         position_encoding_intializer_stddev)
 
     self.inputs = dict(
-        latent_output=tf.keras.Input(
+        latent_output=tf_keras.Input(
             shape=(self._z_index_dim, self._d_latents),
             dtype=tf.float32),
-        input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32))
+        input_mask=tf_keras.Input(shape=(None,), dtype=tf.int32))
 
   def _create_decoder_query(self, position_encoding_intializer_stddev):
     """Create the position encoding for the output query."""
     return layers.PositionEmbedding(
         max_length=self._output_index_dim,
         name='decoder_pos_enc',
-        initializer=tf.keras.initializers.TruncatedNormal(
+        initializer=tf_keras.initializers.TruncatedNormal(
             stddev=position_encoding_intializer_stddev))
 
   def call(self, inputs, training=None):
@@ -99,7 +99,7 @@ class PositionalDecoder(tf.keras.layers.Layer):
     `latent_output` as key-value for the decoder.
     Args:
       inputs:
-        A `Dict[Text, tf.keras.Input]` with `latent_output` and
+        A `Dict[Text, tf_keras.Input]` with `latent_output` and
         `input_mask`. The shape of `latent_output` is shape
         `(z_index_dim, d_latents)` with dtype `tf.float32` and `input_mask` is
         shape `(None)` with dtype `tf.int32`.

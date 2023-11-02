@@ -18,7 +18,7 @@ import tempfile
 from typing import Any, List, Mapping, Optional, Tuple
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import dataset_fn
 from official.core import base_task
@@ -45,7 +45,7 @@ def _copy_recursively(src: str, dst: str) -> None:
           overwrite=True)
 
 
-def get_models() -> Mapping[str, tf.keras.Model]:
+def get_models() -> Mapping[str, tf_keras.Model]:
   """Returns the mapping from model type name to Keras model."""
   model_mapping = {}
 
@@ -63,7 +63,7 @@ def get_models() -> Mapping[str, tf.keras.Model]:
   return model_mapping
 
 
-def load_searched_model(saved_model_path: str) -> tf.keras.Model:
+def load_searched_model(saved_model_path: str) -> tf_keras.Model:
   """Loads saved model from file.
 
   Excepting loading MobileNet-EdgeTPU-V1/V2 models, we can also load searched
@@ -83,7 +83,7 @@ def load_searched_model(saved_model_path: str) -> tf.keras.Model:
       raise ValueError('Saved model path is invalid.')
     load_options = tf.saved_model.LoadOptions(
         experimental_io_device='/job:localhost')
-    model = tf.keras.models.load_model(load_path, options=load_options)
+    model = tf_keras.models.load_model(load_path, options=load_options)
 
   return model
 
@@ -115,7 +115,7 @@ class EdgeTPUTask(base_task.Task):
 
     return model
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Loads pretrained checkpoint."""
     if not self.task_config.init_checkpoint:
       return
@@ -190,7 +190,7 @@ class EdgeTPUTask(base_task.Task):
     Args:
       labels: Input groundtruth labels.
       model_outputs: Output logits of the classifier.
-      aux_losses: The auxiliarly loss tensors, i.e. `losses` in tf.keras.Model.
+      aux_losses: The auxiliarly loss tensors, i.e. `losses` in tf_keras.Model.
 
     Returns:
       The total loss tensor.
@@ -200,13 +200,13 @@ class EdgeTPUTask(base_task.Task):
 
     if not is_multilabel:
       if losses_config.one_hot:
-        total_loss = tf.keras.losses.categorical_crossentropy(
+        total_loss = tf_keras.losses.categorical_crossentropy(
             labels,
             model_outputs,
             from_logits=False,
             label_smoothing=losses_config.label_smoothing)
       else:
-        total_loss = tf.keras.losses.sparse_categorical_crossentropy(
+        total_loss = tf_keras.losses.sparse_categorical_crossentropy(
             labels, model_outputs, from_logits=True)
     else:
       # Multi-label weighted binary cross entropy loss.
@@ -221,20 +221,20 @@ class EdgeTPUTask(base_task.Task):
     return total_loss
 
   def build_metrics(self,
-                    training: bool = True) -> List[tf.keras.metrics.Metric]:
+                    training: bool = True) -> List[tf_keras.metrics.Metric]:
     """Gets streaming metrics for training/validation."""
     is_multilabel = self.task_config.train_data.is_multilabel
     if not is_multilabel:
       k = self.task_config.evaluation.top_k
       if self.task_config.losses.one_hot:
         metrics = [
-            tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
-            tf.keras.metrics.TopKCategoricalAccuracy(
+            tf_keras.metrics.CategoricalAccuracy(name='accuracy'),
+            tf_keras.metrics.TopKCategoricalAccuracy(
                 k=k, name='top_{}_accuracy'.format(k))]
       else:
         metrics = [
-            tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
-            tf.keras.metrics.SparseTopKCategoricalAccuracy(
+            tf_keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
+            tf_keras.metrics.SparseTopKCategoricalAccuracy(
                 k=k, name='top_{}_accuracy'.format(k))]
     else:
       metrics = []
@@ -243,12 +243,12 @@ class EdgeTPUTask(base_task.Task):
       # TODO(arashwan): Investigate adding following metric to train.
       if not training:
         metrics = [
-            tf.keras.metrics.AUC(
+            tf_keras.metrics.AUC(
                 name='globalPR-AUC',
                 curve='PR',
                 multi_label=False,
                 from_logits=True),
-            tf.keras.metrics.AUC(
+            tf_keras.metrics.AUC(
                 name='meanPR-AUC',
                 curve='PR',
                 multi_label=True,
@@ -259,14 +259,14 @@ class EdgeTPUTask(base_task.Task):
 
   def train_step(self,
                  inputs: Tuple[Any, Any],
-                 model: tf.keras.Model,
-                 optimizer: tf.keras.optimizers.Optimizer,
+                 model: tf_keras.Model,
+                 optimizer: tf_keras.optimizers.Optimizer,
                  metrics: Optional[List[Any]] = None):
     """Does forward and backward.
 
     Args:
       inputs: A tuple of input tensors of (features, labels).
-      model: A tf.keras.Model instance.
+      model: A tf_keras.Model instance.
       optimizer: The optimizer for this training step.
       metrics: A nested structure of metrics objects.
 
@@ -292,7 +292,7 @@ class EdgeTPUTask(base_task.Task):
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
       if isinstance(
-          optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+          optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
@@ -300,7 +300,7 @@ class EdgeTPUTask(base_task.Task):
     # Scales back gradient before apply_gradients when LossScaleOptimizer is
     # used.
     if isinstance(
-        optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+        optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
@@ -314,13 +314,13 @@ class EdgeTPUTask(base_task.Task):
 
   def validation_step(self,
                       inputs: Tuple[Any, Any],
-                      model: tf.keras.Model,
+                      model: tf_keras.Model,
                       metrics: Optional[List[Any]] = None):
     """Runs validatation step.
 
     Args:
       inputs: A tuple of input tensors of (features, labels).
-      model: A tf.keras.Model instance.
+      model: A tf_keras.Model instance.
       metrics: A nested structure of metrics objects.
 
     Returns:
@@ -344,6 +344,6 @@ class EdgeTPUTask(base_task.Task):
       logs.update({m.name: m.result() for m in model.metrics})
     return logs
 
-  def inference_step(self, inputs: tf.Tensor, model: tf.keras.Model):
+  def inference_step(self, inputs: tf.Tensor, model: tf_keras.Model):
     """Performs the forward step."""
     return model(inputs, training=False)

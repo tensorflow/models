@@ -14,7 +14,7 @@
 
 """Check that the config is set correctly."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.deepmac_maskrcnn.configs import deep_mask_head_rcnn
 

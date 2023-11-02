@@ -15,7 +15,7 @@
 """Builds the Video Action Transformer Network."""
 from typing import Mapping, Optional, Tuple
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.videoglue.configs import spatiotemporal_action_localization as cfg
 from official.projects.videoglue.modeling.backbones import vit_3d  # pylint: disable=unused-import
@@ -24,8 +24,8 @@ from official.vision.modeling import backbones
 from official.vision.modeling import factory_3d as model_factory
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class VideoActionTransformerModel(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class VideoActionTransformerModel(tf_keras.Model):
   """A Video Action Transformer Network.
 
   Reference: Girdhar, Rohit et. al. "Video action transformer network." In CVPR
@@ -34,7 +34,7 @@ class VideoActionTransformerModel(tf.keras.Model):
 
   def __init__(
       self,
-      backbone: tf.keras.Model,
+      backbone: tf_keras.Model,
       num_classes: int,
       endpoint_name: str,
       # parameters for classifier
@@ -55,9 +55,9 @@ class VideoActionTransformerModel(tf.keras.Model):
       attention_dropout_rate: float = 0.0,
       layer_norm_epsilon: float = 1e-6,
       use_positional_embedding: bool = True,
-      input_specs: Optional[Mapping[str, tf.keras.layers.InputSpec]] = None,
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      input_specs: Optional[Mapping[str, tf_keras.layers.InputSpec]] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initialization function.
 
@@ -81,16 +81,16 @@ class VideoActionTransformerModel(tf.keras.Model):
       layer_norm_epsilon: The layer norm epsilon.
       use_positional_embedding: Whether to use positional embedding.
       input_specs: Specs of the input tensor.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object.
-      bias_regularizer: tf.keras.regularizers.Regularizer object.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object.
+      bias_regularizer: tf_keras.regularizers.Regularizer object.
       **kwargs: Keyword arguments to be passed.
     """
     if not input_specs:
       input_specs = {
           'image':
-              tf.keras.layers.InputSpec(shape=[None, None, None, None, 3]),
+              tf_keras.layers.InputSpec(shape=[None, None, None, None, 3]),
           'instances_position':
-              tf.keras.layers.InputSpec(shape=[None, None, 4]),
+              tf_keras.layers.InputSpec(shape=[None, None, 4]),
       }
 
     self._num_classes = num_classes
@@ -120,8 +120,8 @@ class VideoActionTransformerModel(tf.keras.Model):
     self._backbone = backbone
 
   def _build_model(
-      self, backbone: tf.keras.Model,
-      input_specs: Mapping[str, tf.keras.layers.InputSpec]
+      self, backbone: tf_keras.Model,
+      input_specs: Mapping[str, tf_keras.layers.InputSpec]
   ) -> Tuple[Mapping[str, tf.Tensor], tf.Tensor]:
     """Builds the model network.
 
@@ -135,7 +135,7 @@ class VideoActionTransformerModel(tf.keras.Model):
     """
 
     inputs = {
-        k: tf.keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
+        k: tf_keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
     }
     endpoints = backbone(inputs['image'])
     features = endpoints[self._endpoint_name]
@@ -168,17 +168,17 @@ class VideoActionTransformerModel(tf.keras.Model):
     return inputs, outputs
 
   @property
-  def backbone(self) -> tf.keras.Model:
+  def backbone(self) -> tf_keras.Model:
     """Returns the backbone of the model."""
     return self._backbone
 
 
 @model_factory.register_model_builder('video_action_transformer_model')
 def build_video_action_transformer_model(
-    input_specs_dict: Mapping[str, tf.keras.layers.InputSpec],
+    input_specs_dict: Mapping[str, tf_keras.layers.InputSpec],
     model_config: cfg.VideoActionTransformerModel,
     num_classes: int,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
 ) -> VideoActionTransformerModel:
   """Builds the video action localziation model."""
   backbone = backbones.factory.build_backbone(

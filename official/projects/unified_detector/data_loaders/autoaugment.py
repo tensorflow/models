@@ -35,7 +35,7 @@ Changes include:
 
 import inspect
 import math
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_addons.image as tfa_image
 
 # This signifies the max integer that the controller RNN could predict for the

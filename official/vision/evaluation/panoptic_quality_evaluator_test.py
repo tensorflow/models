@@ -15,7 +15,7 @@
 """Tests for panoptic_quality_evaluator."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.evaluation import panoptic_quality_evaluator
 

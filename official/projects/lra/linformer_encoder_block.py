@@ -17,14 +17,14 @@
 from typing import Any, Optional
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_models as tfm
 
 from official.modeling import tf_utils
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
-class LinformerEncoderBlock(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package="Text")
+class LinformerEncoderBlock(tf_keras.layers.Layer):
   """LinformerEncoderBlock layer.
 
   This layer implements the Linformer Encoder from
@@ -117,9 +117,9 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
       attention_axes: axes over which the attention is applied. `None` means
         attention over all axes, but batch, heads, and features.
       use_query_residual: Toggle to execute residual connection after attention.
-      key_dim: `key_dim` for the `tf.keras.layers.MultiHeadAttention`. If
+      key_dim: `key_dim` for the `tf_keras.layers.MultiHeadAttention`. If
         `None`, we use the first `input_shape`'s last dim.
-      value_dim: `value_dim` for the `tf.keras.layers.MultiHeadAttention`.
+      value_dim: `value_dim` for the `tf_keras.layers.MultiHeadAttention`.
       output_last_dim: Final dimension of the output of this module. This also
         dictates the value for the final dimension of the multi-head-attention.
         When it's `None`, we use, in order of decreasing precedence, `key_dim` *
@@ -142,13 +142,13 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
     self._inner_activation = inner_activation
     self._attention_dropout_rate = attention_dropout
     self._output_dropout_rate = output_dropout
-    self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
-    self._bias_initializer = tf.keras.initializers.get(bias_initializer)
-    self._kernel_regularizer = tf.keras.regularizers.get(kernel_regularizer)
-    self._bias_regularizer = tf.keras.regularizers.get(bias_regularizer)
-    self._activity_regularizer = tf.keras.regularizers.get(activity_regularizer)
-    self._kernel_constraint = tf.keras.constraints.get(kernel_constraint)
-    self._bias_constraint = tf.keras.constraints.get(bias_constraint)
+    self._kernel_initializer = tf_keras.initializers.get(kernel_initializer)
+    self._bias_initializer = tf_keras.initializers.get(bias_initializer)
+    self._kernel_regularizer = tf_keras.regularizers.get(kernel_regularizer)
+    self._bias_regularizer = tf_keras.regularizers.get(bias_regularizer)
+    self._activity_regularizer = tf_keras.regularizers.get(activity_regularizer)
+    self._kernel_constraint = tf_keras.constraints.get(kernel_constraint)
+    self._bias_constraint = tf_keras.constraints.get(bias_constraint)
     self._use_bias = use_bias
     self._norm_first = norm_first
     self._norm_epsilon = norm_epsilon
@@ -160,7 +160,7 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
     self._diff_q_kv_att_layer_norm = diff_q_kv_att_layer_norm
     self._return_attention_scores = return_attention_scores
     if attention_initializer:
-      self._attention_initializer = tf.keras.initializers.get(
+      self._attention_initializer = tf_keras.initializers.get(
           attention_initializer
       )
     else:
@@ -211,7 +211,7 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
     )
-    self._key_projection = tf.keras.layers.Dense(
+    self._key_projection = tf_keras.layers.Dense(
         self._low_rank_features,
         activation=None,
         use_bias=False,
@@ -220,7 +220,7 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
         name="key_low_rank_projection",
         **common_kwargs
     )
-    self._value_projection = tf.keras.layers.Dense(
+    self._value_projection = tf_keras.layers.Dense(
         self._low_rank_features,
         activation=None,
         use_bias=False,
@@ -229,7 +229,7 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
         name="value_low_rank_projection",
         **common_kwargs
     )
-    self._attention_layer = tf.keras.layers.MultiHeadAttention(
+    self._attention_layer = tf_keras.layers.MultiHeadAttention(
         num_heads=self._num_heads,
         key_dim=self._low_rank_features,
         value_dim=self._low_rank_features,
@@ -242,12 +242,12 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
         name="self_attention",
         **common_kwargs
     )
-    self._attention_dropout = tf.keras.layers.Dropout(
+    self._attention_dropout = tf_keras.layers.Dropout(
         rate=self._attention_dropout_rate
     )
     # Use float32 in layernorm for numeric stability.
     # It is probably safe in mixed_float16, but we haven't validated this yet.
-    self._attention_layer_norm = tf.keras.layers.LayerNormalization(
+    self._attention_layer_norm = tf_keras.layers.LayerNormalization(
         name="self_attention_layer_norm",
         axis=-1,
         epsilon=self._norm_epsilon,
@@ -255,14 +255,14 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
     )
     self._attention_layer_norm_kv = self._attention_layer_norm
     if self._diff_q_kv_att_layer_norm:
-      self._attention_layer_norm_kv = tf.keras.layers.LayerNormalization(
+      self._attention_layer_norm_kv = tf_keras.layers.LayerNormalization(
           name="self_attention_layer_norm_kv",
           axis=-1,
           epsilon=self._norm_epsilon,
           dtype=tf.float32,
       )
 
-    self._intermediate_dense = tf.keras.layers.EinsumDense(
+    self._intermediate_dense = tf_keras.layers.EinsumDense(
         einsum_equation,
         output_shape=(None, self._inner_dim),
         bias_axes="d",
@@ -271,19 +271,19 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
         name="intermediate",
         **common_kwargs
     )
-    policy = tf.keras.mixed_precision.global_policy()
+    policy = tf_keras.mixed_precision.global_policy()
     if policy.name == "mixed_bfloat16":
       # bfloat16 causes BERT with the LAMB optimizer to not converge
       # as well, so we use float32.
       # TODO(b/154538392): Investigate this.
       policy = tf.float32
-    self._intermediate_activation_layer = tf.keras.layers.Activation(
+    self._intermediate_activation_layer = tf_keras.layers.Activation(
         self._inner_activation, dtype=policy
     )
-    self._inner_dropout_layer = tf.keras.layers.Dropout(
+    self._inner_dropout_layer = tf_keras.layers.Dropout(
         rate=self._inner_dropout
     )
-    self._output_dense = tf.keras.layers.EinsumDense(
+    self._output_dense = tf_keras.layers.EinsumDense(
         einsum_equation,
         output_shape=(None, last_output_shape),
         bias_axes="d",
@@ -292,11 +292,11 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
         bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs
     )
-    self._output_dropout = tf.keras.layers.Dropout(
+    self._output_dropout = tf_keras.layers.Dropout(
         rate=self._output_dropout_rate
     )
     # Use float32 in layernorm for numeric stability.
-    self._output_layer_norm = tf.keras.layers.LayerNormalization(
+    self._output_layer_norm = tf_keras.layers.LayerNormalization(
         name="output_layer_norm",
         axis=-1,
         epsilon=self._norm_epsilon,
@@ -313,32 +313,32 @@ class LinformerEncoderBlock(tf.keras.layers.Layer):
         "inner_activation": self._inner_activation,
         "output_dropout": self._output_dropout_rate,
         "attention_dropout": self._attention_dropout_rate,
-        "kernel_initializer": tf.keras.initializers.serialize(
+        "kernel_initializer": tf_keras.initializers.serialize(
             self._kernel_initializer
         ),
-        "bias_initializer": tf.keras.initializers.serialize(
+        "bias_initializer": tf_keras.initializers.serialize(
             self._bias_initializer
         ),
-        "kernel_regularizer": tf.keras.regularizers.serialize(
+        "kernel_regularizer": tf_keras.regularizers.serialize(
             self._kernel_regularizer
         ),
-        "bias_regularizer": tf.keras.regularizers.serialize(
+        "bias_regularizer": tf_keras.regularizers.serialize(
             self._bias_regularizer
         ),
-        "activity_regularizer": tf.keras.regularizers.serialize(
+        "activity_regularizer": tf_keras.regularizers.serialize(
             self._activity_regularizer
         ),
-        "kernel_constraint": tf.keras.constraints.serialize(
+        "kernel_constraint": tf_keras.constraints.serialize(
             self._kernel_constraint
         ),
-        "bias_constraint": tf.keras.constraints.serialize(
+        "bias_constraint": tf_keras.constraints.serialize(
             self._bias_constraint
         ),
         "use_bias": self._use_bias,
         "norm_first": self._norm_first,
         "norm_epsilon": self._norm_epsilon,
         "inner_dropout": self._inner_dropout,
-        "attention_initializer": tf.keras.initializers.serialize(
+        "attention_initializer": tf_keras.initializers.serialize(
             self._attention_initializer
         ),
         "attention_axes": self._attention_axes,

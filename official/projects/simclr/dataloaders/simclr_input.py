@@ -38,7 +38,7 @@ typical image classification input
 
 from typing import List
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.simclr.dataloaders import preprocess_ops as simclr_preprocess_ops
 from official.projects.simclr.modeling import simclr_model

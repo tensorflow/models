@@ -17,7 +17,7 @@
 from typing import Callable, Optional
 
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.modeling import tf_utils
@@ -25,7 +25,7 @@ from official.vision.modeling.backbones import factory
 from official.vision.modeling.layers import nn_blocks
 from official.vision.modeling.layers import nn_layers
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 # Specifications for different ResNet variants.
 # Each entry specifies block configurations of the particular ResNet variant.
@@ -101,8 +101,8 @@ RESNET_SPECS = {
 }
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class ResNet(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class ResNet(tf_keras.Model):
   """Creates ResNet and ResNet-RS family models.
 
   This implements the Deep Residual Network from:
@@ -118,7 +118,7 @@ class ResNet(tf.keras.Model):
   def __init__(
       self,
       model_id: int,
-      input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
+      input_specs: tf_keras.layers.InputSpec = layers.InputSpec(
           shape=[None, None, None, 3]),
       depth_multiplier: float = 1.0,
       stem_type: str = 'v0',
@@ -132,15 +132,15 @@ class ResNet(tf.keras.Model):
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       bn_trainable: bool = True,
       **kwargs):
     """Initializes a ResNet model.
 
     Args:
       model_id: An `int` of the depth of ResNet backbone model.
-      input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
+      input_specs: A `tf_keras.layers.InputSpec` of the input tensor.
       depth_multiplier: A `float` of the depth multiplier to uniformaly scale up
         all layers in channel size. This argument is also referred to as
         `width_multiplier` in (https://arxiv.org/abs/2103.07579).
@@ -158,9 +158,9 @@ class ResNet(tf.keras.Model):
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A small `float` added to variance to avoid dividing by zero.
       kernel_initializer: A str for kernel initializer of convolutional layers.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
       bn_trainable: A `bool` that indicates whether batch norm layers should be
         trainable. Default to True.
@@ -185,13 +185,13 @@ class ResNet(tf.keras.Model):
     self._bias_regularizer = bias_regularizer
     self._bn_trainable = bn_trainable
 
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
 
     # Build ResNet.
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
+    inputs = tf_keras.Input(shape=input_specs.shape[1:])
     x = self._stem(inputs)
 
     endpoints = {}
@@ -324,7 +324,7 @@ class ResNet(tf.keras.Model):
                    inputs: tf.Tensor,
                    filters: int,
                    strides: int,
-                   block_fn: Callable[..., tf.keras.layers.Layer],
+                   block_fn: Callable[..., tf_keras.layers.Layer],
                    block_repeats: int = 1,
                    stochastic_depth_drop_rate: float = 0.0,
                    name: str = 'block_group'):
@@ -381,7 +381,7 @@ class ResNet(tf.keras.Model):
           bn_trainable=self._bn_trainable)(
               x)
 
-    return tf.keras.layers.Activation('linear', name=name)(x)
+    return tf_keras.layers.Activation('linear', name=name)(x)
 
   def get_config(self):
     config_dict = {
@@ -416,10 +416,10 @@ class ResNet(tf.keras.Model):
 
 @factory.register_backbone_builder('resnet')
 def build_resnet(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds ResNet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()

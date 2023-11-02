@@ -16,7 +16,7 @@
 from typing import Dict, List, Optional, Tuple
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import task_factory
@@ -38,7 +38,7 @@ class YT8MTask(base_task.Task):
     common_input_shape = [None, sum(train_cfg.feature_sizes)]
 
     # [batch_size x num_frames x num_features]
-    input_specs = tf.keras.layers.InputSpec(shape=[None] + common_input_shape)
+    input_specs = tf_keras.layers.InputSpec(shape=[None] + common_input_shape)
     logging.info('Build model input %r', common_input_shape)
 
     l2_weight_decay = self.task_config.losses.l2_weight_decay
@@ -53,8 +53,8 @@ class YT8MTask(base_task.Task):
 
     # Warmup calls to build model variables.
     _ = model(
-        inputs=tf.keras.Input(common_input_shape, dtype=tf.float32),
-        num_frames=tf.keras.Input([], dtype=tf.float32),
+        inputs=tf_keras.Input(common_input_shape, dtype=tf.float32),
+        num_frames=tf_keras.Input([], dtype=tf.float32),
     )
 
     non_trainable_batch_norm_variables = []
@@ -144,7 +144,7 @@ class YT8MTask(base_task.Task):
       A dict of tensors contains total loss, model loss tensors.
     """
     losses_config = self.task_config.losses
-    model_loss = tf.keras.losses.binary_crossentropy(
+    model_loss = tf_keras.losses.binary_crossentropy(
         tf.expand_dims(labels, axis=-1),
         tf.expand_dims(model_outputs, axis=-1),
         from_logits=losses_config.from_logits,
@@ -185,7 +185,7 @@ class YT8MTask(base_task.Task):
     metrics = []
     metric_names = ['total_loss', 'model_loss']
     for name in metric_names:
-      metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
+      metrics.append(tf_keras.metrics.Mean(name, dtype=tf.float32))
 
     if (
         self.task_config.evaluation.average_precision is not None
@@ -203,7 +203,7 @@ class YT8MTask(base_task.Task):
 
   def process_metrics(
       self,
-      metrics: List[tf.keras.metrics.Metric],
+      metrics: List[tf_keras.metrics.Metric],
       labels: tf.Tensor,
       outputs: tf.Tensor,
       model_losses: Optional[Dict[str, tf.Tensor]] = None,
@@ -331,14 +331,14 @@ class YT8MTask(base_task.Task):
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient before apply_gradients when LossScaleOptimizer is
     # used.
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
 
     # Apply gradient clipping.

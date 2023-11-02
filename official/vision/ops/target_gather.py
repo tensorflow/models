@@ -14,7 +14,7 @@
 
 """Definition of target gather, which gathers targets from indices."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 class TargetGather:

@@ -15,7 +15,7 @@
 """Feature Pyramid Network and Path Aggregation variants used in YOLO."""
 from typing import Mapping, Optional, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.projects.yolo.modeling.layers import nn_blocks
@@ -84,13 +84,13 @@ YOLO_MODELS = {
 }
 
 
-class _IdentityRoute(tf.keras.layers.Layer):
+class _IdentityRoute(tf_keras.layers.Layer):
 
   def call(self, inputs):  # pylint: disable=arguments-differ
     return None, inputs
 
 
-class YoloFPN(tf.keras.layers.Layer):
+class YoloFPN(tf_keras.layers.Layer):
   """YOLO Feature pyramid network."""
 
   def __init__(self,
@@ -128,8 +128,8 @@ class YoloFPN(tf.keras.layers.Layer):
       norm_epsilon: `float`, small float added to variance to avoid dividing by
         zero.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
+      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
       **kwargs: keyword arguments to be passed.
     """
 
@@ -246,7 +246,7 @@ class YoloFPN(tf.keras.layers.Layer):
     return outputs
 
 
-class YoloPAN(tf.keras.layers.Layer):
+class YoloPAN(tf_keras.layers.Layer):
   """YOLO Path Aggregation Network."""
 
   def __init__(self,
@@ -282,8 +282,8 @@ class YoloPAN(tf.keras.layers.Layer):
       norm_epsilon: `float`, small float added to variance to avoid dividing
         by zero.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
+      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
       fpn_input: `bool`, for whether the input into this fucntion is an FPN or
         a backbone.
       fpn_filter_scale: `int`, scaling factor for the FPN filters.
@@ -438,7 +438,7 @@ class YoloPAN(tf.keras.layers.Layer):
     return outputs
 
 
-class YoloDecoder(tf.keras.Model):
+class YoloDecoder(tf_keras.Model):
   """Darknet Backbone Decoder."""
 
   def __init__(self,
@@ -489,8 +489,8 @@ class YoloDecoder(tf.keras.Model):
       norm_epsilon: `float`, small float added to variance to avoid dividing by
         zero.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
+      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
       **kwargs: keyword arguments to be passed.
     """
 
@@ -533,7 +533,7 @@ class YoloDecoder(tf.keras.Model):
         **self._base_config)
 
     inputs = {
-        key: tf.keras.layers.Input(shape=value[1:])
+        key: tf_keras.layers.Input(shape=value[1:])
         for key, value in input_specs.items()
     }
     if self._use_fpn:
@@ -575,20 +575,20 @@ class YoloDecoder(tf.keras.Model):
 def build_yolo_decoder(
     input_specs: Mapping[str, tf.TensorShape],
     model_config: hyperparams.Config,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-    **kwargs) -> Union[None, tf.keras.Model, tf.keras.layers.Layer]:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+    **kwargs) -> Union[None, tf_keras.Model, tf_keras.layers.Layer]:
   """Builds Yolo FPN/PAN decoder from a config.
 
   Args:
     input_specs: A `dict` of input specifications. A dictionary consists of
       {level: TensorShape} from a backbone.
     model_config: A OneOfConfig. Model config.
-    l2_regularizer: A `tf.keras.regularizers.Regularizer` instance. Default to
+    l2_regularizer: A `tf_keras.regularizers.Regularizer` instance. Default to
       None.
     **kwargs: Additional kwargs arguments.
 
   Returns:
-    A `tf.keras.Model` instance of the Yolo FPN/PAN decoder.
+    A `tf_keras.Model` instance of the Yolo FPN/PAN decoder.
   """
   decoder_cfg = model_config.decoder.get()
   norm_activation_config = model_config.norm_activation

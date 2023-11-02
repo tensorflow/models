@@ -20,7 +20,7 @@ import os
 import sys
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from tqdm import tqdm
 import transformers
 

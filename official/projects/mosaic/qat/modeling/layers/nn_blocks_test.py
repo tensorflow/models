@@ -17,7 +17,7 @@
 from typing import Any, Iterable, Tuple
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -44,7 +44,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
   def test_multi_kernel_grouped_convolution_block_creation(
       self, block_fn, output_filter_depths):
     input_size = 32
-    inputs = tf.keras.Input(shape=(input_size, input_size, 16), batch_size=1)
+    inputs = tf_keras.Input(shape=(input_size, input_size, 16), batch_size=1)
     block = block_fn(
         output_filter_depths=output_filter_depths, kernel_sizes=[3, 3])
 
@@ -64,7 +64,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
                                          pyramid_pool_bin_nums):
     input_size = 128
     in_filters = 24
-    inputs = tf.keras.Input(
+    inputs = tf_keras.Input(
         shape=(input_size, input_size, in_filters), batch_size=1)
     block = block_fn(
         branch_filter_depths=branch_filter_depths,
@@ -83,8 +83,8 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
   def test_decoder_sum_merge_block_creation(self, block_fn,
                                             decoder_projected_depth,
                                             output_size):
-    inputs = (tf.keras.Input(shape=(64, 64, 128), batch_size=1),
-              tf.keras.Input(shape=(16, 16, 256), batch_size=1))
+    inputs = (tf_keras.Input(shape=(64, 64, 128), batch_size=1),
+              tf_keras.Input(shape=(16, 16, 256), batch_size=1))
     block = block_fn(
         decoder_projected_depth=decoder_projected_depth,
         output_size=output_size)
@@ -103,8 +103,8 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
                                                decoder_internal_depth,
                                                decoder_projected_depth,
                                                output_size):
-    inputs = (tf.keras.Input(shape=(64, 64, 128), batch_size=1),
-              tf.keras.Input(shape=(16, 16, 256), batch_size=1))
+    inputs = (tf_keras.Input(shape=(64, 64, 128), batch_size=1),
+              tf_keras.Input(shape=(16, 16, 256), batch_size=1))
     block = block_fn(
         decoder_internal_depth=decoder_internal_depth,
         decoder_projected_depth=decoder_projected_depth,

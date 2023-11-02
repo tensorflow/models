@@ -17,7 +17,7 @@ import os
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from sentencepiece import SentencePieceTrainer
 from official.nlp.data import sentence_prediction_dataloader as loader

@@ -14,22 +14,22 @@
 
 """Testing utils for mock models and tasks."""
 from typing import Dict, Text
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.core import base_task
 from official.core import config_definitions as cfg
 from official.core import task_factory
 from official.modeling.multitask import base_model
 
 
-class MockFooModel(tf.keras.Model):
+class MockFooModel(tf_keras.Model):
   """A mock model can consume 'foo' and 'bar' inputs."""
 
   def __init__(self, shared_layer, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self._share_layer = shared_layer
-    self._foo_specific_layer = tf.keras.layers.Dense(1)
-    self.inputs = {"foo": tf.keras.Input(shape=(2,), dtype=tf.float32),
-                   "bar": tf.keras.Input(shape=(2,), dtype=tf.float32)}
+    self._foo_specific_layer = tf_keras.layers.Dense(1)
+    self.inputs = {"foo": tf_keras.Input(shape=(2,), dtype=tf.float32),
+                   "bar": tf_keras.Input(shape=(2,), dtype=tf.float32)}
 
   def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     self.add_loss(tf.zeros((1,), dtype=tf.float32))
@@ -40,14 +40,14 @@ class MockFooModel(tf.keras.Model):
     return self._foo_specific_layer(self._share_layer(input_tensor))
 
 
-class MockBarModel(tf.keras.Model):
+class MockBarModel(tf_keras.Model):
   """A mock model can only consume 'bar' inputs."""
 
   def __init__(self, shared_layer, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self._share_layer = shared_layer
-    self._bar_specific_layer = tf.keras.layers.Dense(1)
-    self.inputs = {"bar": tf.keras.Input(shape=(2,), dtype=tf.float32)}
+    self._bar_specific_layer = tf_keras.layers.Dense(1)
+    self.inputs = {"bar": tf_keras.Input(shape=(2,), dtype=tf.float32)}
 
   def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     self.add_loss(tf.zeros((2,), dtype=tf.float32))
@@ -57,10 +57,10 @@ class MockBarModel(tf.keras.Model):
 class MockMultiTaskModel(base_model.MultiTaskBaseModel):
 
   def __init__(self, *args, **kwargs):
-    self._shared_dense = tf.keras.layers.Dense(1)
+    self._shared_dense = tf_keras.layers.Dense(1)
     super().__init__(*args, **kwargs)
 
-  def _instantiate_sub_tasks(self) -> Dict[Text, tf.keras.Model]:
+  def _instantiate_sub_tasks(self) -> Dict[Text, tf_keras.Model]:
     return {
         "foo": MockFooModel(self._shared_dense),
         "bar": MockBarModel(self._shared_dense)
@@ -96,16 +96,16 @@ class MockFooTask(base_task.Task):
 
   def build_metrics(self, training: bool = True):
     del training
-    return [tf.keras.metrics.Accuracy(name="foo_acc")]
+    return [tf_keras.metrics.Accuracy(name="foo_acc")]
 
   def build_inputs(self, params):
     return mock_data("foo")
 
-  def build_model(self) -> tf.keras.Model:
-    return MockFooModel(shared_layer=tf.keras.layers.Dense(1))
+  def build_model(self) -> tf_keras.Model:
+    return MockFooModel(shared_layer=tf_keras.layers.Dense(1))
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
-    loss = tf.keras.losses.mean_squared_error(labels, model_outputs)
+    loss = tf_keras.losses.mean_squared_error(labels, model_outputs)
     if aux_losses:
       loss += tf.add_n(aux_losses)
     return tf.reduce_mean(loss)
@@ -117,13 +117,13 @@ class MockBarTask(base_task.Task):
 
   def build_metrics(self, training: bool = True):
     del training
-    return [tf.keras.metrics.Accuracy(name="bar_acc")]
+    return [tf_keras.metrics.Accuracy(name="bar_acc")]
 
   def build_inputs(self, params):
     return mock_data("bar")
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
-    loss = tf.keras.losses.mean_squared_error(labels, model_outputs)
+    loss = tf_keras.losses.mean_squared_error(labels, model_outputs)
     if aux_losses:
       loss += tf.add_n(aux_losses)
     return tf.reduce_mean(loss)

@@ -14,7 +14,7 @@
 
 """Export modules for QAT model serving/inference."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.mosaic.modeling import mosaic_model
 from official.projects.mosaic.qat.modeling import factory as qat_factory
@@ -24,8 +24,8 @@ from official.vision.serving import semantic_segmentation
 class MosaicModule(semantic_segmentation.SegmentationModule):
   """MOSAIC Module."""
 
-  def _build_model(self) -> tf.keras.Model:
-    input_specs = tf.keras.layers.InputSpec(shape=[1] +
+  def _build_model(self) -> tf_keras.Model:
+    input_specs = tf_keras.layers.InputSpec(shape=[1] +
                                             self._input_image_size + [3])
 
     model = mosaic_model.build_mosaic_segmentation_model(

@@ -29,7 +29,7 @@ from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 # Box coder types.
 FASTER_RCNN = 'faster_rcnn'

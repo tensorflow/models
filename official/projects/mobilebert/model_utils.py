@@ -159,7 +159,7 @@ def create_mobilebert_pretrainer(bert_config):
   masked_lm = layers.MobileBertMaskedLM(
       embedding_table=mobilebert_encoder.get_embedding_table(),
       activation=tf_utils.get_activation(bert_config.hidden_act),
-      initializer=tf.keras.initializers.TruncatedNormal(
+      initializer=tf_keras.initializers.TruncatedNormal(
           stddev=bert_config.initializer_range),
       name="cls/predictions")
 

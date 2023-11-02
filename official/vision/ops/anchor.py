@@ -20,7 +20,7 @@ from typing import Dict, Optional, Tuple
 
 # Import libraries
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops import anchor_generator
 from official.vision.ops import box_matcher

@@ -14,12 +14,12 @@
 
 """Optimizer and learning rate scheduler."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling.hyperparams import params_dict
 
 
-class LearningRateSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
+class LearningRateSchedule(tf_keras.optimizers.schedules.LearningRateSchedule):
   """Learning rate schedule."""
 
   def __init__(self, initial_learning_rate, hidden_size, warmup_steps):
@@ -68,7 +68,7 @@ def create_optimizer(params: params_dict.ParamsDict):
   """Creates optimizer."""
   lr_schedule = LearningRateSchedule(params.learning_rate, params.hidden_size,
                                      params.learning_rate_warmup_steps)
-  return tf.keras.optimizers.Adam(
+  return tf_keras.optimizers.Adam(
       learning_rate=lr_schedule,
       beta_1=params.adam_beta1,
       beta_2=params.adam_beta2,

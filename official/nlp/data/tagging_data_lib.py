@@ -17,7 +17,7 @@ import collections
 import os
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.data import classifier_data_lib
 from official.nlp.tools import tokenization

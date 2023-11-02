@@ -30,7 +30,7 @@ from absl import flags
 from absl import logging
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.tools import tokenization
 

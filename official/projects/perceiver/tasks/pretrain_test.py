@@ -14,7 +14,7 @@
 
 """Tests for official.nlp.tasks.masked_lm."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_datasets as tfds
 
 from official.nlp.data import pretrain_dataloader
@@ -91,7 +91,7 @@ class PretrainTaskTest(tf.test.TestCase):
     dataset = task.build_inputs(config.train_data)
 
     iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    optimizer = tf_keras.optimizers.SGD(lr=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     task.validation_step(next(iterator), model, metrics=metrics)
 

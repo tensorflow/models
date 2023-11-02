@@ -32,7 +32,7 @@ import math
 from typing import Any, List, Iterable, Optional, Tuple, Union
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 # This signifies the max integer that the controller RNN could predict for the

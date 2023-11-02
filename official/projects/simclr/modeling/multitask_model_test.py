@@ -16,7 +16,7 @@
 
 import os.path
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.simclr.configs import multitask_config
 from official.projects.simclr.modeling import multitask_model

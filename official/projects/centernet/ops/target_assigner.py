@@ -16,7 +16,7 @@
 
 from typing import Dict, List
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops import sampling_ops
 

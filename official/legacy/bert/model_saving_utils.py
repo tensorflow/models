@@ -17,11 +17,11 @@
 import os
 import typing
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def export_bert_model(model_export_path: typing.Text,
-                      model: tf.keras.Model,
+                      model: tf_keras.Model,
                       checkpoint_dir: typing.Optional[typing.Text] = None,
                       restore_model_using_load_weights: bool = False) -> None:
   """Export BERT model for serving which does not include the optimizer.
@@ -45,8 +45,8 @@ def export_bert_model(model_export_path: typing.Text,
   """
   if not model_export_path:
     raise ValueError('model_export_path must be specified.')
-  if not isinstance(model, tf.keras.Model):
-    raise ValueError('model must be a tf.keras.Model object.')
+  if not isinstance(model, tf_keras.Model):
+    raise ValueError('model must be a tf_keras.Model object.')
 
   if checkpoint_dir:
     if restore_model_using_load_weights:

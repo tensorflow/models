@@ -16,7 +16,7 @@
 
 import dataclasses
 from typing import Optional, Tuple
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import config_definitions as cfg
@@ -47,7 +47,7 @@ class ViTConfig(cfg.TaskConfig):
 class ViTClassificationTask(base_task.Task):
   """Image classificaiton with ViT and load checkpoint if exists."""
 
-  def build_model(self) -> tf.keras.Model:
+  def build_model(self) -> tf_keras.Model:
     encoder = vit.VisionTransformer(
         self.task_config.patch_h,
         self.task_config.patch_w,
@@ -97,7 +97,7 @@ class ViTClassificationTask(base_task.Task):
     dataset = reader.read(input_context=input_context)
     return dataset
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Load encoder if checkpoint exists.
 
     Args:
@@ -117,12 +117,12 @@ class ViTClassificationTask(base_task.Task):
   def build_metrics(self, training=None):
     del training
     metrics = [
-        tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
+        tf_keras.metrics.CategoricalAccuracy(name='accuracy'),
     ]
     return metrics
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
-    return tf.keras.losses.categorical_crossentropy(
+    return tf_keras.losses.categorical_crossentropy(
         labels,
         model_outputs,
         from_logits=True)

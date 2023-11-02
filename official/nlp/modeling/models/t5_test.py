@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -62,7 +62,7 @@ class ModulesTest(tf.test.TestCase, parameterized.TestCase):
         features=4,
         compute_dtype=dtype,
         name="foo",
-        embeddings_initializer=tf.keras.initializers.Zeros())
+        embeddings_initializer=tf_keras.initializers.Zeros())
     self.assertAllClose(l(inputs), tf.zeros((2, 2, 4), dtype))
 
   @parameterized.named_parameters(("bfloat16", tf.bfloat16),
@@ -82,7 +82,7 @@ class ModulesTest(tf.test.TestCase, parameterized.TestCase):
     l = t5.Linear(
         in_features=4,
         out_features=4,
-        w_init=tf.keras.initializers.Ones(),
+        w_init=tf_keras.initializers.Ones(),
         name="foo")
     inputs = tf.ones((2, 4), dtype=dtype)
     outputs = l(inputs)
@@ -97,7 +97,7 @@ class ModulesTest(tf.test.TestCase, parameterized.TestCase):
         out_features=4,
         num_heads=2,
         to_3d=True,
-        w_init=tf.keras.initializers.Ones(),
+        w_init=tf_keras.initializers.Ones(),
         name="foo")
     inputs = np.ones((batch_size, 2, 4), dtype=np.float32)
     self.assertEqual(l(inputs).shape, (batch_size, 2, 2, 4))
@@ -107,7 +107,7 @@ class ModulesTest(tf.test.TestCase, parameterized.TestCase):
         out_features=4,
         num_heads=2,
         to_3d=False,
-        w_init=tf.keras.initializers.Ones(),
+        w_init=tf_keras.initializers.Ones(),
         name="foo")
     inputs = np.ones((batch_size, 2, 2, 2), dtype=np.float32)
     self.assertEqual(l(inputs).shape, (batch_size, 2, 4))
@@ -140,14 +140,14 @@ class ModulesTest(tf.test.TestCase, parameterized.TestCase):
     l = t5.RelativePositionEmbedding(
         num_heads=4,
         bidirectional=False,
-        embeddings_initializer=tf.keras.initializers.Ones(),
+        embeddings_initializer=tf_keras.initializers.Ones(),
         compute_dtype=dtype,
         name="foo")
     self.assertEqual(l(4, 2).shape, (1, 4, 4, 2))
     l = t5.RelativePositionEmbedding(
         num_heads=4,
         bidirectional=True,
-        embeddings_initializer=tf.keras.initializers.Ones(),
+        embeddings_initializer=tf_keras.initializers.Ones(),
         compute_dtype=dtype,
         name="bar")
     outputs = l(4, 2)
@@ -172,7 +172,7 @@ class ModulesTest(tf.test.TestCase, parameterized.TestCase):
     pos_embed = t5.RelativePositionEmbedding(
         num_heads=4,
         bidirectional=False,
-        embeddings_initializer=tf.keras.initializers.Ones(),
+        embeddings_initializer=tf_keras.initializers.Ones(),
         name="pos_embed")
     position_bias = pos_embed(from_seq_length, from_seq_length)
     l = t5.MultiHeadAttention(d_model=4, d_kv=2, num_heads=4, dropout_rate=0.1)
@@ -234,7 +234,7 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
       pos_embed = t5.RelativePositionEmbedding(
           num_heads=head_size,
           bidirectional=False,
-          embeddings_initializer=tf.keras.initializers.Ones(),
+          embeddings_initializer=tf_keras.initializers.Ones(),
           name="pos_embed")
       l = t5.SelfAttention(
           d_model=4, d_kv=head_size, num_heads=num_heads, dropout_rate=0.1)
@@ -302,7 +302,7 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
     pos_embed = t5.RelativePositionEmbedding(
         num_heads=2,
         bidirectional=True,
-        embeddings_initializer=tf.keras.initializers.Ones(),
+        embeddings_initializer=tf_keras.initializers.Ones(),
         name="bar")
     attention_mask = t5.make_attention_mask(
         tf.ones((batch_size, from_seq_length)),
@@ -322,7 +322,7 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
     pos_embed = t5.RelativePositionEmbedding(
         num_heads=2,
         bidirectional=True,
-        embeddings_initializer=tf.keras.initializers.Ones(),
+        embeddings_initializer=tf_keras.initializers.Ones(),
         name="bar")
     encoder_decoder_mask = t5.make_attention_mask(
         tf.ones((batch_size, from_seq_length)),
@@ -348,8 +348,8 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
         num_heads=4,
         d_ff=16,
         vocab_size=10,
-        vocab_embeddings_initializer=tf.keras.initializers.Ones(),
-        relative_embeddings_initializer=tf.keras.initializers.Ones())
+        vocab_embeddings_initializer=tf_keras.initializers.Ones(),
+        relative_embeddings_initializer=tf_keras.initializers.Ones())
     encoder = t5.Encoder(config, compute_dtype=dtype)
     encoded = encoder(tf.zeros((4, 8), dtype=tf.int32))
     self.assertEqual(encoded.shape, (4, 8, config.d_model))
@@ -364,8 +364,8 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
         num_heads=4,
         d_ff=16,
         vocab_size=10,
-        vocab_embeddings_initializer=tf.keras.initializers.Ones(),
-        relative_embeddings_initializer=tf.keras.initializers.Ones(),
+        vocab_embeddings_initializer=tf_keras.initializers.Ones(),
+        relative_embeddings_initializer=tf_keras.initializers.Ones(),
         return_attention_scores=return_attention_scores)
     encoder = t5.Encoder(config, compute_dtype=tf.float32)
     encoded = encoder(tf.zeros((4, 8), dtype=tf.int32))
@@ -388,8 +388,8 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
         num_heads=4,
         d_ff=16,
         vocab_size=10,
-        vocab_embeddings_initializer=tf.keras.initializers.Ones(),
-        relative_embeddings_initializer=tf.keras.initializers.Ones())
+        vocab_embeddings_initializer=tf_keras.initializers.Ones(),
+        relative_embeddings_initializer=tf_keras.initializers.Ones())
     encoder = t5.Encoder(config, compute_dtype=dtype)
     encoded = encoder(
         tf.zeros((4, 8), dtype=tf.int32),
@@ -406,8 +406,8 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
         num_heads=4,
         d_ff=16,
         vocab_size=10,
-        vocab_embeddings_initializer=tf.keras.initializers.Ones(),
-        relative_embeddings_initializer=tf.keras.initializers.Ones())
+        vocab_embeddings_initializer=tf_keras.initializers.Ones(),
+        relative_embeddings_initializer=tf_keras.initializers.Ones())
     encoder = t5.Encoder(config, compute_dtype=dtype)
     encoded = encoder(dense_inputs=tf.ones((4, 2, 4), dtype=dtype))
     self.assertEqual(encoded.shape, (4, 2, config.d_model))
@@ -421,8 +421,8 @@ class T5Test(tf.test.TestCase, parameterized.TestCase):
         num_heads=4,
         d_ff=16,
         vocab_size=10,
-        vocab_embeddings_initializer=tf.keras.initializers.Ones(),
-        relative_embeddings_initializer=tf.keras.initializers.Ones())
+        vocab_embeddings_initializer=tf_keras.initializers.Ones(),
+        relative_embeddings_initializer=tf_keras.initializers.Ones())
     decoder = t5.Decoder(config)
     batch_size = 4
     targets = tf.zeros((4, 8), dtype=tf.int32)

@@ -25,7 +25,7 @@ from absl import logging
 import gin
 import numpy as np
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 # pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.framework import ops
@@ -243,7 +243,7 @@ class BestCheckpointExporter:
 
 def create_optimizer(task: base_task.Task,
                      params: config_definitions.ExperimentConfig
-                     ) -> tf.keras.optimizers.Optimizer:
+                     ) -> tf_keras.optimizers.Optimizer:
   """A create optimizer util to be backward compatability with new args."""
   if 'dp_config' in inspect.signature(task.create_optimizer).parameters:
     dp_config = None
@@ -471,7 +471,7 @@ def remove_ckpts(model_dir):
     tf.io.gfile.remove(file_to_remove)
 
 
-def write_model_params(model: Union[tf.Module, tf.keras.Model],
+def write_model_params(model: Union[tf.Module, tf_keras.Model],
                        output_path: str) -> None:
   """Writes the model parameters and shapes to a file.
 
@@ -489,7 +489,7 @@ def write_model_params(model: Union[tf.Module, tf.keras.Model],
 
 
 def try_count_params(
-    model: Union[tf.Module, tf.keras.Model],
+    model: Union[tf.Module, tf_keras.Model],
     trainable_only: bool = False):
   """Count the number of parameters if model is possible.
 
@@ -519,7 +519,7 @@ def try_count_params(
   return total_params
 
 
-def try_count_flops(model: Union[tf.Module, tf.keras.Model],
+def try_count_flops(model: Union[tf.Module, tf_keras.Model],
                     inputs_kwargs: Optional[Dict[str, Any]] = None,
                     output_path: Optional[str] = None):
   """Counts and returns model FLOPs.

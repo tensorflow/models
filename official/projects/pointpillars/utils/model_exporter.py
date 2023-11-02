@@ -18,7 +18,7 @@ import os
 from typing import Any, Dict, Mapping, Optional, Tuple
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import config_definitions as cfg
 from official.core import export_base
@@ -56,7 +56,7 @@ def export_inference_graph(
         params=params,
         batch_size=batch_size)
   # Disable custom_gradients to make trt-converter be able to work.
-  # Consider to use tf.keras.models.save_model/load_model APIs to fix
+  # Consider to use tf_keras.models.save_model/load_model APIs to fix
   # the custom gradients saving problem.
   # https://github.com/tensorflow/tensorflow/issues/40166
   save_options = tf.saved_model.SaveOptions(experimental_custom_gradients=False)
@@ -140,22 +140,22 @@ class PointPillarsModule(export_base.ExportModule):
     super().__init__(params=params, model=model)
 
   def _build_input_specs(
-      self) -> Tuple[tf.keras.layers.InputSpec, tf.keras.layers.InputSpec]:
+      self) -> Tuple[tf_keras.layers.InputSpec, tf_keras.layers.InputSpec]:
     pillars_config = self._params.task.model.pillars
-    pillars_spec = tf.keras.layers.InputSpec(
+    pillars_spec = tf_keras.layers.InputSpec(
         shape=(self._batch_size,
                pillars_config.num_pillars,
                pillars_config.num_points_per_pillar,
                pillars_config.num_features_per_point),
         dtype='float32')
-    indices_spec = tf.keras.layers.InputSpec(
+    indices_spec = tf_keras.layers.InputSpec(
         shape=(self._batch_size,
                pillars_config.num_pillars,
                2),
         dtype='int32')
     return pillars_spec, indices_spec
 
-  def _build_model(self) -> tf.keras.Model:
+  def _build_model(self) -> tf_keras.Model:
     logging.info('Building PointPillars model.')
     input_specs = {
         'pillars': self._pillars_spec, 'indices': self._indices_spec

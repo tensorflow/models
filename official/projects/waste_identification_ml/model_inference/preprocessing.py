@@ -15,7 +15,7 @@
 """This module provides utilities to normalize image tensors.
 """
 from typing import Sequence
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 MEAN_NORM = (0.485, 0.456, 0.406)
 STDDEV_NORM = (0.229, 0.224, 0.225)

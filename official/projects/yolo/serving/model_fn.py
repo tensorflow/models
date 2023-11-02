@@ -16,7 +16,7 @@
 
 from typing import List, Tuple
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yolo.ops import preprocessing_ops
 from official.vision.ops import box_ops

@@ -16,7 +16,7 @@
 
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -66,7 +66,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters('1', '6spp', '6sppfpn', '6')
   def test_network_creation(self, version):
     """Test creation of ResNet family models."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
     input_shape = {
         '3': [1, 52, 52, 256],
         '4': [1, 26, 26, 512],
@@ -94,7 +94,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
   def test_sync_bn_multiple_devices(self, strategy, use_sync_bn):
     """Test for sync bn on TPU and GPU devices."""
 
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     with strategy.scope():
       input_shape = {
@@ -113,7 +113,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(1, 3, 4)
   def test_input_specs(self, input_dim):
     """Test different input feature dimensions."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     input_shape = {
         '3': [1, 52, 52, 256],
@@ -129,7 +129,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_serialize_deserialize(self):
     """Create a network object that sets all of its config options."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     input_shape = {
         '3': [1, 52, 52, 256],

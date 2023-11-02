@@ -16,7 +16,7 @@
 
 import functools
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 LARGE_NUM = 1e9
 

@@ -19,13 +19,13 @@ It is a literal translation of the PyTorch implementation.
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.centernet.modeling.layers import cn_nn_blocks
 from official.vision.modeling.layers import nn_blocks
 
 
-class HourglassBlockPyTorch(tf.keras.layers.Layer):
+class HourglassBlockPyTorch(tf_keras.layers.Layer):
   """An CornerNet-style implementation of the hourglass block."""
 
   def __init__(self, dims, modules, k=0, **kwargs):
@@ -63,7 +63,7 @@ class HourglassBlockPyTorch(tf.keras.layers.Layer):
     next_dim = dims[k + 1]
 
     self.up1 = self.make_up_layer(3, curr_dim, curr_dim, curr_mod, **kwargs)
-    self.max1 = tf.keras.layers.MaxPool2D(strides=2)
+    self.max1 = tf_keras.layers.MaxPool2D(strides=2)
     self.low1 = self.make_hg_layer(3, curr_dim, next_dim, curr_mod, **kwargs)
     if self.n - k > 1:
       self.low2 = type(self)(dims, modules, k=k + 1, **kwargs)
@@ -72,8 +72,8 @@ class HourglassBlockPyTorch(tf.keras.layers.Layer):
           3, next_dim, next_dim, next_mod, **kwargs)
     self.low3 = self.make_hg_layer_revr(
         3, next_dim, curr_dim, curr_mod, **kwargs)
-    self.up2 = tf.keras.layers.UpSampling2D(2)
-    self.merge = tf.keras.layers.Add()
+    self.up2 = tf_keras.layers.UpSampling2D(2)
+    self.merge = tf_keras.layers.Add()
 
     super(HourglassBlockPyTorch, self).build(input_shape)
 
@@ -91,7 +91,7 @@ class HourglassBlockPyTorch(tf.keras.layers.Layer):
         nn_blocks.ResidualBlock(out_dim, 1, use_projection=True, **kwargs)]
     for _ in range(1, modules):
       layers.append(nn_blocks.ResidualBlock(out_dim, 1, **kwargs))
-    return tf.keras.Sequential(layers)
+    return tf_keras.Sequential(layers)
 
   def make_layer_revr(self, k, inp_dim, out_dim, modules, **kwargs):
     layers = []
@@ -100,7 +100,7 @@ class HourglassBlockPyTorch(tf.keras.layers.Layer):
           nn_blocks.ResidualBlock(inp_dim, 1, **kwargs))
     layers.append(
         nn_blocks.ResidualBlock(out_dim, 1, use_projection=True, **kwargs))
-    return tf.keras.Sequential(layers)
+    return tf_keras.Sequential(layers)
 
   def make_up_layer(self, k, inp_dim, out_dim, modules, **kwargs):
     return self.make_layer(k, inp_dim, out_dim, modules, **kwargs)
@@ -121,7 +121,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     dims = [256, 256, 384, 384, 384, 512]
     modules = [2, 2, 2, 2, 2, 4]
     model = cn_nn_blocks.HourglassBlock(dims, modules)
-    test_input = tf.keras.Input((512, 512, 256))
+    test_input = tf_keras.Input((512, 512, 256))
     _ = model(test_input)
 
     filter_sizes = [256, 256, 384, 384, 384, 512]

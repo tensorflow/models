@@ -19,7 +19,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import distribute_utils
 from official.common import flags as tfm_flags

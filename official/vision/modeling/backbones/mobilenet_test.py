@@ -20,7 +20,7 @@ import math
 # Import libraries
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling.backbones import mobilenet
 
@@ -89,12 +89,12 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
       ))
   def test_input_specs(self, input_dim, model_id):
     """Test different input feature dimensions."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
-    input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, input_dim])
+    input_specs = tf_keras.layers.InputSpec(shape=[None, None, None, input_dim])
     network = mobilenet.MobileNet(model_id=model_id, input_specs=input_specs)
 
-    inputs = tf.keras.Input(shape=(128, 128, input_dim), batch_size=1)
+    inputs = tf_keras.Input(shape=(128, 128, input_dim), batch_size=1)
     _ = network(inputs)
 
   @parameterized.parameters(
@@ -115,7 +115,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
   def test_mobilenet_creation(self, model_id,
                               input_size):
     """Test creation of MobileNet family models."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     mobilenet_layers = {
         # The number of filters of layers having outputs been collected
@@ -135,7 +135,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     network = mobilenet.MobileNet(model_id=model_id,
                                   filter_size_scale=1.0)
 
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
 
     for idx, num_filter in enumerate(mobilenet_layers[model_id]):
@@ -160,7 +160,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
           [32, 224],
       ))
   def test_mobilenet_intermediate_layers(self, model_id, input_size):
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
     # Tests the mobilenet intermediate depthwise layers.
     mobilenet_depthwise_layers = {
         # The number of filters of depthwise layers having outputs been
@@ -182,7 +182,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
                                   filter_size_scale=1.0,
                                   output_intermediate_endpoints=True)
 
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
 
     for idx, num_filter in enumerate(mobilenet_depthwise_layers[model_id]):
@@ -243,7 +243,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(network.count_params(),
                      mobilenet_params[(model_id, filter_size_scale)])
 
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     _ = network(inputs)
 
   @parameterized.parameters(
@@ -264,7 +264,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
       ))
   def test_mobilenet_output_stride(self, model_id, output_stride):
     """Test for creation of a MobileNet with different output strides."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     mobilenet_layers = {
         # The number of filters of the layers outputs been collected
@@ -286,7 +286,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     level = int(math.log2(output_stride))
     input_size = 224
 
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
     num_filter = mobilenet_layers[model_id]
     self.assertAllEqual(

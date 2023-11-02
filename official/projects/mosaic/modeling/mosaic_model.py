@@ -15,7 +15,7 @@
 """Builds the overall MOSAIC segmentation models."""
 from typing import Any, Dict, Optional, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.mosaic.configs import mosaic_config
 from official.projects.mosaic.modeling import mosaic_blocks
@@ -24,8 +24,8 @@ from official.vision.modeling import backbones
 from official.vision.modeling.heads import segmentation_heads
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MosaicSegmentationModel(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MosaicSegmentationModel(tf_keras.Model):
   """A model class for segmentation using MOSAIC.
 
   Input images are passed through a backbone first. A MOSAIC neck encoder
@@ -39,10 +39,10 @@ class MosaicSegmentationModel(tf.keras.Model):
   """
 
   def __init__(self,
-               backbone: tf.keras.Model,
-               head: tf.keras.layers.Layer,
-               neck: Optional[tf.keras.layers.Layer] = None,
-               mask_scoring_head: Optional[tf.keras.layers.Layer] = None,
+               backbone: tf_keras.Model,
+               head: tf_keras.layers.Layer,
+               neck: Optional[tf_keras.layers.Layer] = None,
+               mask_scoring_head: Optional[tf_keras.layers.Layer] = None,
                **kwargs):
     """Segmentation initialization function.
 
@@ -87,7 +87,7 @@ class MosaicSegmentationModel(tf.keras.Model):
 
   @property
   def checkpoint_items(
-      self) -> Dict[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
+      self) -> Dict[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(backbone=self.backbone, head=self.head)
     if self.neck is not None:
@@ -109,12 +109,12 @@ class MosaicSegmentationModel(tf.keras.Model):
 
 
 def build_mosaic_segmentation_model(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     model_config: mosaic_config.MosaicSemanticSegmentationModel,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-    backbone: Optional[tf.keras.Model] = None,
-    neck: Optional[tf.keras.layers.Layer] = None
-) -> tf.keras.Model:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+    backbone: Optional[tf_keras.Model] = None,
+    neck: Optional[tf_keras.layers.Layer] = None
+) -> tf_keras.Model:
   """Builds MOSAIC Segmentation model."""
   norm_activation_config = model_config.norm_activation
   if backbone is None:

@@ -22,7 +22,7 @@ import operator
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_datasets as tfds
 
 import sentencepiece as spm
@@ -155,7 +155,7 @@ def main(argv):
         FLAGS.data_dir, FLAGS.split, FLAGS.batch_size, include_answers=False)
   # Initialize model and compile.
   with strategy.scope():
-    model = tf.keras.models.load_model(FLAGS.saved_model_dir, compile=False)
+    model = tf_keras.models.load_model(FLAGS.saved_model_dir, compile=False)
   logging.info('Model initialized. Beginning prediction loop.')
   logits_fn = tf.function(
       functools.partial(prediction.distributed_logits_fn, model))

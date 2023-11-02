@@ -16,9 +16,9 @@
 import re
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
-LearningRateSchedule = tf.keras.optimizers.schedules.LearningRateSchedule
+LearningRateSchedule = tf_keras.optimizers.schedules.LearningRateSchedule
 
 
 def _var_key(var):
@@ -43,7 +43,7 @@ def _var_key(var):
   return var._unique_id
 
 
-class SGDTorch(tf.keras.optimizers.legacy.Optimizer):
+class SGDTorch(tf_keras.optimizers.legacy.Optimizer):
   """Optimizer that simulates the SGD module used in pytorch.
 
 

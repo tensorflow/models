@@ -14,7 +14,7 @@
 
 """Tests for ELECTRA pre trainer network."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling import networks
 from official.nlp.modeling.models import electra_pretrainer
@@ -50,12 +50,12 @@ class ElectraPretrainerTest(tf.test.TestCase):
         disallow_correct=True)
 
     # Create a set of 2-dimensional inputs (the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    lm_positions = tf.keras.Input(
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    lm_positions = tf_keras.Input(
         shape=(num_token_predictions,), dtype=tf.int32)
-    lm_ids = tf.keras.Input(shape=(num_token_predictions,), dtype=tf.int32)
+    lm_ids = tf_keras.Input(shape=(num_token_predictions,), dtype=tf.int32)
     inputs = {
         'input_word_ids': word_ids,
         'input_mask': mask,

@@ -15,7 +15,7 @@
 """Tests for preprocessing_ops.py."""
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yolo.ops import preprocessing_ops
 from official.vision.ops import box_ops as bbox_ops

@@ -23,7 +23,7 @@ import dataclasses
 from typing import Any, Mapping
 from absl import logging
 import six
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import streamz_counters
 from official.modeling.fast_training.progressive import utils
@@ -96,12 +96,12 @@ class ProgressivePolicy:
   @abc.abstractmethod
   def get_model(self,
                 stage_id: int,
-                old_model: tf.keras.Model = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+                old_model: tf_keras.Model = None) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
     """Return model for this stage. For initialization, `old_model` = None."""
     pass
 
   @abc.abstractmethod
-  def get_optimizer(self, stage_id: int) -> tf.keras.optimizers.Optimizer:
+  def get_optimizer(self, stage_id: int) -> tf_keras.optimizers.Optimizer:
     """Return optimizer for this stage."""
     pass
 
@@ -116,7 +116,7 @@ class ProgressivePolicy:
     pass
 
   @property
-  def cur_model(self) -> tf.keras.Model:
+  def cur_model(self) -> tf_keras.Model:
     return self._volatiles.model
 
   @property
@@ -132,7 +132,7 @@ class ProgressivePolicy:
     return self._cur_eval_dataset
 
   @property
-  def cur_optimizer(self) -> tf.keras.optimizers.Optimizer:
+  def cur_optimizer(self) -> tf_keras.optimizers.Optimizer:
     return self._volatiles.optimizer
 
   @property

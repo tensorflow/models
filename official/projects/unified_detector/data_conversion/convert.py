@@ -29,7 +29,7 @@ import random
 
 from absl import app
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tqdm
 import utils
 

@@ -25,7 +25,7 @@ from PIL import Image
 from pycocotools import coco
 from pycocotools import mask as mask_api
 import six
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import dataset_fn
 from official.vision.dataloaders import tf_example_decoder

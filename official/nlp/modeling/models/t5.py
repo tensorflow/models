@@ -28,7 +28,7 @@ import math
 from typing import Callable, Dict, Optional, Sequence, Text, Union
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
@@ -157,7 +157,7 @@ class Embed(Module):
     if embeddings_initializer:
       self.embed_init = embeddings_initializer
     else:
-      self.embed_init = tf.keras.initializers.TruncatedNormal(stddev=1.0)
+      self.embed_init = tf_keras.initializers.TruncatedNormal(stddev=1.0)
     with self.name_scope:
       self.embeddings = self.create_variable(
           "embedding", [self.vocab_size, self.features],
@@ -224,7 +224,7 @@ class RMSNorm(Module):
       self.weight = self.create_variable(
           "scale", [hidden_size],
           dtype=self.dtype,
-          initializer=tf.keras.initializers.Ones())
+          initializer=tf_keras.initializers.Ones())
 
   @tf.Module.with_name_scope
   def __call__(self, x):
@@ -254,14 +254,14 @@ class Linear(Module):
     self.use_bias = use_bias
     self.w_init = w_init
     if self.use_bias:
-      self.b_init = b_init if b_init else tf.keras.initializers.Zeros()
+      self.b_init = b_init if b_init else tf_keras.initializers.Zeros()
     elif b_init is not None:
       raise ValueError("When not using a bias the b_init must be None.")
 
     with self.name_scope:
       if self.w_init is None:
         stddev = 1 / math.sqrt(self.in_features)
-        self.w_init = tf.keras.initializers.HeNormal()
+        self.w_init = tf_keras.initializers.HeNormal()
 
       self.w = self.create_variable(
           "kernel", [self.in_features, self.out_features],
@@ -322,13 +322,13 @@ class Linear3D(Module):
       self.bias_shape = (self.out_features,)
       bias_rank = 1
     if self.use_bias:
-      self.b_init = b_init or tf.keras.initializers.Zeros()
+      self.b_init = b_init or tf_keras.initializers.Zeros()
     elif b_init is not None:
       raise ValueError("When not using a bias the b_init must be None.")
 
     with self.name_scope:
       if self.w_init is None:
-        self.w_init = tf.keras.initializers.HeNormal()
+        self.w_init = tf_keras.initializers.HeNormal()
 
       self.w = self.create_variable(
           "kernel",
@@ -1019,7 +1019,7 @@ class T5TransformerParams:
   relative_attention_num_buckets: int = 32
   relative_attention_max_distance: int = 128
   relative_embeddings_initializer: Optional[Initializer] = None
-  weight_initializer: Optional[Initializer] = (tf.keras.initializers.HeNormal())
+  weight_initializer: Optional[Initializer] = (tf_keras.initializers.HeNormal())
   bias_initializer: Optional[Initializer] = None
   rescale_query: bool = False
   bidirectional: bool = True

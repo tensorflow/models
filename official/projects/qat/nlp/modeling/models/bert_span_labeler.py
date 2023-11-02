@@ -15,13 +15,13 @@
 """BERT Question Answering model."""
 # pylint: disable=g-classes-have-attributes
 import collections
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.qat.nlp.modeling.networks import span_labeling
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
-class BertSpanLabelerQuantized(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class BertSpanLabelerQuantized(tf_keras.Model):
   """Span labeler model based on a BERT-style transformer-based encoder.
 
   This is an implementation of the network structure surrounding a transformer
@@ -80,10 +80,10 @@ class BertSpanLabelerQuantized(tf.keras.Model):
     # Use identity layers wrapped in lambdas to explicitly name the output
     # tensors. This allows us to use string-keyed dicts in Keras fit/predict/
     # evaluate calls.
-    start_logits = tf.keras.layers.Lambda(
+    start_logits = tf_keras.layers.Lambda(
         tf.identity, name='start_positions')(
             start_logits)
-    end_logits = tf.keras.layers.Lambda(
+    end_logits = tf_keras.layers.Lambda(
         tf.identity, name='end_positions')(
             end_logits)
 

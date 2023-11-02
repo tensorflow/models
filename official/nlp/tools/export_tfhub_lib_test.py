@@ -19,7 +19,7 @@ import tempfile
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from tensorflow import estimator as tf_estimator
 import tensorflow_hub as hub
 import tensorflow_text as text
@@ -111,7 +111,7 @@ def _read_asset(asset: tf.saved_model.Asset):
 
 def _find_lambda_layers(layer):
   """Returns list of all Lambda layers in a Keras model."""
-  if isinstance(layer, tf.keras.layers.Lambda):
+  if isinstance(layer, tf_keras.layers.Lambda):
     return [layer]
   elif hasattr(layer, "layers"):  # It's nested, like a Model.
     result = []
@@ -233,9 +233,9 @@ class ExportModelTest(tf.test.TestCase, parameterized.TestCase):
     self.assertGreater(_dropout_mean_stddev(training=True), 1e-3)
 
     # Test propagation of seq_length in shape inference.
-    input_word_ids = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
-    input_mask = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
-    input_type_ids = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
+    input_word_ids = tf_keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
+    input_mask = tf_keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
+    input_type_ids = tf_keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
     input_dict = dict(
         input_word_ids=input_word_ids,
         input_mask=input_mask,
@@ -469,9 +469,9 @@ class ExportModelWithMLMTest(tf.test.TestCase, parameterized.TestCase):
     self.assertGreater(_dropout_mean_stddev_mlm(training=True), 1e-3)
 
     # Test propagation of seq_length in shape inference.
-    input_word_ids = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
-    input_mask = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
-    input_type_ids = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
+    input_word_ids = tf_keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
+    input_mask = tf_keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
+    input_type_ids = tf_keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
     input_dict = dict(
         input_word_ids=input_word_ids,
         input_mask=input_mask,
@@ -1006,7 +1006,7 @@ class ExportPreprocessingTest(tf.test.TestCase, parameterized.TestCase):
     def input_fn():
       self.assertFalse(tf.executing_eagerly())
       # Build a preprocessing Model.
-      sentences = tf.keras.layers.Input(shape=[], dtype=tf.string)
+      sentences = tf_keras.layers.Input(shape=[], dtype=tf.string)
       preprocess = tf.saved_model.load(preprocess_export_path)
       tokenize = hub.KerasLayer(preprocess.tokenize)
       special_tokens_dict = _get_special_tokens_dict(tokenize.resolved_object)
@@ -1016,7 +1016,7 @@ class ExportPreprocessingTest(tf.test.TestCase, parameterized.TestCase):
       packed_inputs = layers.BertPackInputs(
           4, special_tokens_dict=special_tokens_dict)(
               tokens)
-      preprocessing = tf.keras.Model(sentences, packed_inputs)
+      preprocessing = tf_keras.Model(sentences, packed_inputs)
       # Map the dataset.
       ds = tf.data.Dataset.from_tensors(
           (tf.constant(["abc", "D EF"]), tf.constant([0, 1])))
