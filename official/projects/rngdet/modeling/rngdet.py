@@ -25,7 +25,8 @@ from typing import Any, List
 import tensorflow as tf
 
 from official.modeling import tf_utils
-from official.projects.rngdet.modeling import transformer
+#from official.projects.rngdet.modeling import transformer
+from official.projects.pix2seq.modeling import transformer
 from official.vision.ops import box_ops
 from official.vision.ops import spatial_transform_ops
 
@@ -284,11 +285,12 @@ class RNGDet(tf.keras.Model):
 
     proj_in = tf.concat([features[self._backbone_endpoint_name],
                          history_outs], -1)
+    # (gunho) stem_ln?
     inputs = tf.reshape(
         self._input_proj(proj_in), [batch_size, -1, self._hidden_size])
     mask = tf.reshape(mask, [batch_size, -1])
 
-    decoded_list = self._transformer({
+    decoded = self._transformer({
         "inputs":
             inputs,
         "targets":
@@ -297,49 +299,84 @@ class RNGDet(tf.keras.Model):
                 (batch_size, 1, 1)),
         "pos_embed": pos_embed,
         "mask": mask,
-    })
+    }, training=training)
     
-    out_list = []
+    """out_list = []
     for decoded in decoded_list:
       decoded = tf.stack(decoded)
       output_class = self._class_embed(decoded)
       box_out = decoded
-      """for layer in self._bbox_embed:
-        box_out = layer(box_out)"""
       box_out = self._bbox_embed(box_out)
       output_coord = self._tanh(box_out)
       out = {"cls_outputs": output_class, "box_outputs": output_coord}
-      out_list.append(out)
-    return out_list, pred_segment, pred_keypoint
+      out_list.append(out)"""
+    output_class = self._class_embed(decoded)
+    box_out = decoded
+    box_out = self._bbox_embed(box_out)
+    output_coord = self._tanh(box_out)
+    out = {"cls_outputs": output_class, "box_outputs": output_coord}
+    return out, pred_segment, pred_keypoint
 
 
 class DETRTransformer(tf.keras.layers.Layer):
   """Encoder and Decoder of DETR."""
 
-  def __init__(self, num_encoder_layers=6, num_decoder_layers=6,
-               dropout_rate=0.1, **kwargs):
+  def __init__(self, hidden_size, num_encoder_layers=6, num_decoder_layers=6,
+               drop_path=0.1, drop_units=0.1, drop_att=0.0, output_bias=True,
+               num_heads=8, **kwargs):
     super().__init__(**kwargs)
-    self._dropout_rate = dropout_rate
+    self._hidden_size = hidden_size
     self._num_encoder_layers = num_encoder_layers
     self._num_decoder_layers = num_decoder_layers
+    self._drop_path = drop_path
+    self._drop_units = drop_units
+    self._drop_att = drop_att
+    self._output_bias = output_bias
+    self._num_heads = num_heads
 
   def build(self, input_shape=None):
     if self._num_encoder_layers > 0:
       self._encoder = transformer.TransformerEncoder(
-          attention_dropout_rate=self._dropout_rate,
-          dropout_rate=self._dropout_rate,
-          intermediate_dropout=self._dropout_rate,
-          norm_first=False,
-          num_layers=self._num_encoder_layers)
+          num_layers=self._num_encoder_layers,
+          dim=self._hidden_size,
+          mlp_ratio=4,
+          num_heads=self._num_heads,
+          drop_path=self._drop_path,
+          drop_units=self._drop_units,
+          drop_att=self._drop_att,
+      )
     else:
       self._encoder = None
 
+    self._output_ln_enc = tf.keras.layers.LayerNormalization(
+        epsilon=1e-6, name="output_ln_enc"
+    )
+
+    self._proj = tf.keras.layers.Dense(self._hidden_size, name="proj/linear")
+    self._proj_ln = tf.keras.layers.LayerNormalization(
+        epsilon=1e-6, name="proj/ln"
+    )
+    self._proj_mlp = transformer.MLP(
+        num_layers=1,
+        dim=self._hidden_size,
+        mlp_ratio=4,
+        drop_path=self._drop_path,
+        drop_units=self._drop_units,
+        name="proj/mlp",
+    )
+
     self._decoder = transformer.TransformerDecoder(
-        attention_dropout_rate=self._dropout_rate,
-        dropout_rate=self._dropout_rate,
-        intermediate_dropout=self._dropout_rate,
-        norm_first=False,
-        num_layers=self._num_decoder_layers)
+        num_layers=self._num_decoder_layers,
+        dim=self._hidden_size,
+        mlp_ratio=4,
+        num_heads=self._num_heads,
+        drop_path=self._drop_path,
+        drop_units=self._drop_units,
+        drop_att=self._drop_att,
+    )
+    self._output_ln_dec = tf.keras.layers.LayerNormalization(
+        epsilon=1e-6, name="output_ln_dec"
+    )
     super().build(input_shape)
 
   def get_config(self):
@@ -353,7 +390,7 @@ class DETRTransformer(tf.keras.layers.Layer):
   def from_config(cls, config):
     return cls(**config)
 
-  def call(self, inputs):
+  def call(self, inputs, training=None):
     sources = inputs["inputs"]
     targets = inputs["targets"]
     pos_embed = inputs["pos_embed"]
@@ -361,27 +398,29 @@ class DETRTransformer(tf.keras.layers.Layer):
     input_shape = tf_utils.get_shape_list(sources)
     source_attention_mask = tf.tile(
         tf.expand_dims(mask, axis=1), [1, input_shape[1], 1])
+    
+    sources = sources + pos_embed
     if self._encoder is not None:
       memory = self._encoder(
-          sources, attention_mask=source_attention_mask, pos_embed=pos_embed)
+          sources, mask=source_attention_mask, training=training)
     else:
       memory = sources
+
+    memory = memory + pos_embed
 
     target_shape = tf_utils.get_shape_list(targets)
     cross_attention_mask = tf.tile(
         tf.expand_dims(mask, axis=1), [1, target_shape[1], 1])
+    self_attention_mask = tf.ones(
+            [target_shape[0], target_shape[1], target_shape[1]])
     target_shape = tf.shape(targets)
-    decoded = self._decoder(
-        tf.zeros_like(targets),
+    decoded, _ = self._decoder(
+        tf.zeros_like(targets)+targets,
         memory,
-        # TODO(b/199545430): self_attention_mask could be set to None when this
-        # bug is resolved. Passing ones for now.
-        self_attention_mask=tf.ones(
-            (target_shape[0], target_shape[1], target_shape[1])),
-        cross_attention_mask=cross_attention_mask,
-        return_all_decoder_outputs=True,
-        input_pos_embed=targets,
-        memory_pos_embed=pos_embed)
+        None,
+        self_attention_mask,
+        cross_attention_mask,
+        training=training)
     return decoded
 
 

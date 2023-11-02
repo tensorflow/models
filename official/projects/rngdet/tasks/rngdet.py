@@ -75,9 +75,9 @@ class RNGDetTask(base_task.Task):
         model_config=self._task_config.model)"""
     
     transformer = rngdet.DETRTransformer(
+        hidden_size=self._task_config.model.hidden_size,
         num_encoder_layers=self._task_config.model.num_encoder_layers,
-        num_decoder_layers=self._task_config.model.num_decoder_layers,
-        dropout_rate=0.0)
+        num_decoder_layers=self._task_config.model.num_decoder_layers)
 
     input_proj = rngdet.InputProjection(
         self._task_config.model.hidden_size)
@@ -344,13 +344,20 @@ class RNGDetTask(base_task.Task):
       seg_loss = self.segmentation_loss(pred_segment, pred_keypoint, labels)
       loss += seg_loss
       
-      for output in outputs:
+      # Computes per-replica loss.
+      layer_loss, layer_cls_loss, layer_box_loss = self.build_losses(
+          outputs=outputs, labels=labels, aux_losses=model.losses)
+      loss += layer_loss
+      cls_loss += layer_cls_loss
+      box_loss += layer_box_loss
+
+      """for output in outputs:
         # Computes per-replica loss.
         layer_loss, layer_cls_loss, layer_box_loss = self.build_losses(
             outputs=output, labels=labels, aux_losses=model.losses)
         loss += layer_loss/self._task_config.model.num_decoder_layers
         cls_loss += layer_cls_loss/self._task_config.model.num_decoder_layers
-        box_loss += layer_box_loss/self._task_config.model.num_decoder_layers
+        box_loss += layer_box_loss/self._task_config.model.num_decoder_layers"""
       
       # Consider moving scaling logic from build_losses to here.
       scaled_loss = loss
