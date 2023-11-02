@@ -25,7 +25,7 @@ from official.modeling import optimization
 from official.vision.configs import common
 from official.vision.configs import decoders
 from official.vision.configs import backbones
-from official.projects.rngdet import optimization as optimization_detr
+#from official.projects.rngdet import optimization as optimization_detr
 
 
 @dataclasses.dataclass
@@ -200,10 +200,10 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
           max_to_keep=1,
           best_checkpoint_export_subdir='best_ckpt',
           best_checkpoint_eval_metric='AP',
-          optimizer_config=optimization_detr.OptimizationConfig({
+          optimizer_config=optimization.OptimizationConfig({
               'optimizer': {
-                  'type': 'detr_adamw',
-                  'detr_adamw': {
+                  'type': 'adamw',
+                  'adamw': {
                       'weight_decay_rate': 1e-5,
                       'epsilon': 1e-08,
                       'global_clipnorm': 0.1,
